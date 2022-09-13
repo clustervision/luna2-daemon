@@ -4,16 +4,24 @@ import os
 import logging
 import sys
 import configparser
-from dotenv import load_dotenv
-from flask import request, url_for, Flask, json
 
-load_dotenv('config/.env', override=False)
+from flask import request, url_for, Flask, json, send_file
+
+import sys
+from pathlib import Path
+from dotenv import load_dotenv
+
+CurrentDir = os.path.dirname(os.path.realpath(__file__))
+path = Path(CurrentDir)
+ParentDir = path.parent
+
+load_dotenv(str(ParentDir)+'/config/.env', override=False)
 token = os.getenv('TOKEN')
 serverip = os.getenv('SERVERIP')
 serverport = os.getenv('RESTSERVERPORT')
 
 configParser = configparser.RawConfigParser()
-configParser.read('config/config.ini')
+configParser.read(str(ParentDir)+'/config/config.ini')
 SERVICEFILE = configParser.get("FILES", "service_file") 
 
 api = Flask(__name__)
@@ -40,6 +48,23 @@ def confignode(token, node):
 @api.route("/<string:token>/config/node/<string:id>", methods=['GET', 'POST'])
 def confignodeid(token, id):
     result = {"message": "This is Config ID API, ID is : "+id}
+    return result, 200
+
+
+@api.route("/<string:token>/files/<string:filename>", methods=['GET', 'POST'])
+def files(token, filename):
+    message = ""
+    if filename:
+        file_path = str(ParentDir)+"/files/"+filename
+        if not os.path.exists(file_path):
+            message = "File Not exsists"
+            print("File Not exsists")
+        else:
+            message = file_path
+            return send_file(file_path, as_attachment=True)
+    else:
+        message ="Kindly provide the complete filename ex: filename.ext."
+    result = {"message": message}
     return result, 200
 
 

@@ -1,0 +1,10 @@
+[Unit]
+Description=Luna 2 Daemon
+
+[Service]
+Type=oneshot
+RemainAfterExit=true
+ExecStart=/luna2-daemon/webserver/server.sh
+
+[Install]
+WantedBy=multi-user.target

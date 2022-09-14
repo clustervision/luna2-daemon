@@ -14,7 +14,7 @@ __status__      = "Production"
 
 import os
 import subprocess
-from utils.constants import *
+from common.constants import *
 
 
 class Helper(object):

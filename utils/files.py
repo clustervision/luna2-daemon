@@ -13,7 +13,10 @@ __status__      = "Production"
 """
 import os
 from pathlib import Path
-from utils.constants import *
+from common.constants import *
+# from utils.log import *
+# logger = Log.get_logger()
+# logger.debug("asdasd")
 
 class Files(object):
 
@@ -30,6 +33,7 @@ class Files(object):
 
 
     def list_files(self):
+        # logger.debug("asdasd")
         files = []
         filepath = BASE_DIR+"/files/"
         if os.path.exists(filepath):

@@ -1,291 +1,1124 @@
-2022-09-12 17:10:37,585 INFO: =============== Logger Level Set To [INFO]===============
-2022-09-12 17:11:45,522 INFO: =============== Logger Level Set To [INFO]===============
-2022-09-12 17:12:30,925 INFO: =============== Logger Level Set To [INFO]===============
-2022-09-12 17:13:15,886 INFO: =============== Logger Level Set To [INFO]===============
-2022-09-12 17:23:37,262 INFO: =============== Logger Level Set To [INFO]===============
-2022-09-12 17:24:34,877 INFO: =============== Logger Level Set To [INFO]===============
-2022-09-12 17:28:16,445 INFO: =============== Logger Level Set To [INFO]===============
-2022-09-12 17:28:33,149 INFO: =============== Logger Level Set To [INFO]===============
-2022-09-12 17:30:06,275 INFO: =============== Logger Level Set To [INFO]===============
-2022-09-12 17:30:06,278 INFO: All Services
-2022-09-12 18:15:08,310 INFO: =============== Logger Level Set To [INFO]===============
-2022-09-12 18:15:45,562 INFO: =============== Logger Level Set To [INFO]===============
-2022-09-12 18:17:02,561 INFO: =============== Logger Level Set To [INFO]===============
-2022-09-12 18:17:02,564 INFO: All Services
-2022-09-12 18:26:43,090 INFO: =============== Logger Level Set To [INFO]===============
-2022-09-12 18:26:55,775 INFO: =============== Logger Level Set To [INFO]===============
-2022-09-12 18:26:55,778 INFO: All Services
-2022-09-12 18:34:29,195 INFO: =============== Logger Level Set To [INFO]===============
-2022-09-12 18:34:29,198 INFO: All Services
-2022-09-12 18:34:35,145 INFO: =============== Logger Level Set To [INFO]===============
-2022-09-12 18:34:35,178 INFO: All Services
-2022-09-12 19:54:20,969 INFO: =============== Logger Level Set To [INFO]===============
-2022-09-12 19:55:42,827 INFO: =============== Logger Level Set To [INFO]===============
-2022-09-12 19:55:42,862 INFO: All Services
-2022-09-12 19:57:15,362 INFO: =============== Logger Level Set To [INFO]===============
-2022-09-12 20:54:44,749 INFO: =============== Logger Level Set To [INFO]===============
-2022-09-12 20:54:44,752 WARNING: Service httpd already added.
-2022-09-13 10:59:29,445 INFO: =============== Logger Level Set To [INFO]===============
-2022-09-14 10:39:39,321 INFO: =============== Logger Level Set To [INFO]===============
-2022-09-14 10:40:05,318 INFO: =============== Logger Level Set To [INFO]===============
-2022-09-14 10:41:00,251 INFO: =============== Logger Level Set To [INFO]===============
-2022-09-14 10:44:31,860 INFO: =============== Logger Level Set To [20]===============
-2022-09-14 10:45:15,484 INFO: =============== Logger Level Set To [20]===============
-2022-09-14 10:45:50,236 INFO: =============== Logger Level Set To [20]===============
-2022-09-14 10:46:26,711 INFO: =============== Logger Level Set To [20]===============
-2022-09-14 10:49:23,317 INFO: =============== Logger Level Set To [20]===============
-2022-09-14 10:49:32,641 INFO: =============== Logger Level Set To [20]===============
-2022-09-14 10:50:04,223 INFO: =============== Logger Level Set To [20]===============
-2022-09-14 10:51:17,099 INFO: =============== Logger Level Set To [20]===============
-2022-09-14 10:51:36,434 INFO: =============== Logger Level Set To [20]===============
-2022-09-14 10:51:36,435 INFO: test
-2022-09-14 10:51:36,455 INFO: [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+2022-09-14 19:55:37,415 INFO: asdasd
+2022-09-14 19:55:37,481 INFO: [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
  * Running on http://127.0.0.1:7050
-2022-09-14 10:51:36,455 INFO: [33mPress CTRL+C to quit[0m
-2022-09-14 10:51:36,457 INFO:  * Restarting with stat
-2022-09-14 10:51:36,938 INFO: =============== Logger Level Set To [20]===============
-2022-09-14 10:51:36,938 INFO: test
-2022-09-14 10:51:36,955 WARNING:  * Debugger is active!
-2022-09-14 10:51:36,959 INFO:  * Debugger PIN: 117-724-678
-2022-09-14 10:51:52,926 INFO: 127.0.0.1 - - [14/Sep/2022 10:51:52] "GET /84e3b078-bb76-11ea-b3de-0242ac130004/files/ HTTP/1.1" 200 -
-2022-09-14 10:52:04,879 INFO:  * Detected change in '/mnt/hgfs/clustervision/luna2-daemon/luna.py', reloading
-2022-09-14 10:52:04,963 INFO:  * Restarting with stat
-2022-09-14 10:52:05,467 INFO: =============== Logger Level Set To [20]===============
-2022-09-14 10:52:05,467 INFO: test
-2022-09-14 10:52:05,483 WARNING:  * Debugger is active!
-2022-09-14 10:52:05,488 INFO:  * Debugger PIN: 117-724-678
-2022-09-14 10:52:54,996 INFO:  * Detected change in '/mnt/hgfs/clustervision/luna2-daemon/utils/log.py', reloading
-2022-09-14 10:52:55,079 INFO:  * Restarting with stat
-2022-09-14 10:59:33,907 INFO: =============== Logger Level Set To [20]===============
-2022-09-14 11:05:38,631 INFO: =============== Logger Level Set To [20]===============
-2022-09-14 11:05:38,631 INFO: test
-2022-09-14 11:05:38,649 INFO: [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+2022-09-14 19:55:37,481 INFO: [33mPress CTRL+C to quit[0m
+2022-09-14 19:55:37,483 INFO:  * Restarting with stat
+2022-09-14 19:55:37,807 INFO: asdasd
+2022-09-14 19:55:37,868 WARNING:  * Debugger is active!
+2022-09-14 19:55:37,874 INFO:  * Debugger PIN: 117-724-678
+2022-09-14 19:56:29,388 INFO: asdasd
+2022-09-14 19:56:29,462 INFO: [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
  * Running on http://127.0.0.1:7050
-2022-09-14 11:05:38,649 INFO: [33mPress CTRL+C to quit[0m
-2022-09-14 11:05:38,650 INFO:  * Restarting with stat
-2022-09-14 11:05:39,119 INFO: =============== Logger Level Set To [20]===============
-2022-09-14 11:05:39,120 INFO: test
-2022-09-14 11:05:39,136 WARNING:  * Debugger is active!
-2022-09-14 11:05:39,139 INFO:  * Debugger PIN: 117-724-678
-2022-09-14 11:07:15,082 INFO:  * Detected change in '/mnt/hgfs/clustervision/luna2-daemon/luna.py', reloading
-2022-09-14 11:07:15,166 INFO:  * Restarting with stat
-2022-09-14 11:07:15,672 INFO: =============== Logger Level Set To [20]===============
-2022-09-14 11:07:15,673 INFO: test
-2022-09-14 11:07:15,689 WARNING:  * Debugger is active!
-2022-09-14 11:07:15,693 INFO:  * Debugger PIN: 117-724-678
-2022-09-14 11:07:55,942 INFO:  * Detected change in '/mnt/hgfs/clustervision/luna2-daemon/utils/log.py', reloading
-2022-09-14 11:07:56,025 INFO:  * Restarting with stat
-2022-09-14 11:08:20,150 INFO: =============== Logger Level Set To [20]===============
-2022-09-14 11:08:20,150 INFO: test
-2022-09-14 11:08:20,167 INFO: [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+2022-09-14 19:56:29,462 INFO: [33mPress CTRL+C to quit[0m
+2022-09-14 19:56:29,464 INFO:  * Restarting with stat
+2022-09-14 19:56:29,784 INFO: asdasd
+2022-09-14 19:56:29,845 WARNING:  * Debugger is active!
+2022-09-14 19:56:29,851 INFO:  * Debugger PIN: 117-724-678
+2022-09-14 19:56:49,187 INFO: asdasd
+2022-09-14 19:56:49,234 INFO: asdasd
+2022-09-14 19:56:49,264 INFO: [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
  * Running on http://127.0.0.1:7050
-2022-09-14 11:08:20,167 INFO: [33mPress CTRL+C to quit[0m
-2022-09-14 11:08:20,168 INFO:  * Restarting with stat
-2022-09-14 11:08:20,612 INFO: =============== Logger Level Set To [20]===============
-2022-09-14 11:08:20,612 INFO: test
-2022-09-14 11:08:20,628 WARNING:  * Debugger is active!
-2022-09-14 11:08:20,632 INFO:  * Debugger PIN: 117-724-678
-2022-09-14 11:08:25,829 INFO:  * Detected change in '/mnt/hgfs/clustervision/luna2-daemon/utils/log.py', reloading
-2022-09-14 11:08:25,921 INFO:  * Restarting with stat
-2022-09-14 11:08:26,405 INFO: =============== Logger Level Set To [20]===============
-2022-09-14 11:08:26,405 INFO: test
-2022-09-14 11:08:26,422 WARNING:  * Debugger is active!
-2022-09-14 11:08:26,426 INFO:  * Debugger PIN: 117-724-678
-2022-09-14 11:11:29,026 INFO:  * Detected change in '/mnt/hgfs/clustervision/luna2-daemon/utils/log.py', reloading
-2022-09-14 11:11:29,115 INFO:  * Restarting with stat
-2022-09-14 11:14:02,219 INFO: =============== Logger Level Set To [20]===============
-2022-09-14 11:14:02,220 INFO: test
-2022-09-14 11:14:02,238 INFO: [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+2022-09-14 19:56:49,264 INFO: [33mPress CTRL+C to quit[0m
+2022-09-14 19:56:49,266 INFO:  * Restarting with stat
+2022-09-14 19:56:49,585 INFO: asdasd
+2022-09-14 19:56:49,624 INFO: asdasd
+2022-09-14 19:56:49,649 WARNING:  * Debugger is active!
+2022-09-14 19:56:49,655 INFO:  * Debugger PIN: 117-724-678
+2022-09-14 19:57:13,594 INFO:  * Detected change in '/mnt/hgfs/clustervision/luna2-daemon/apis/boot.py', reloading
+2022-09-14 19:57:13,638 INFO:  * Restarting with stat
+2022-09-14 19:57:14,008 INFO: asdasd
+2022-09-14 19:57:14,058 INFO: asdasd
+2022-09-14 19:57:14,088 WARNING:  * Debugger is active!
+2022-09-14 19:57:14,094 INFO:  * Debugger PIN: 117-724-678
+2022-09-14 19:57:18,601 INFO:  * Detected change in '/mnt/hgfs/clustervision/luna2-daemon/apis/boot.py', reloading
+2022-09-14 19:57:18,649 INFO:  * Restarting with stat
+2022-09-14 19:57:19,033 INFO: asdasd
+2022-09-14 19:57:19,081 INFO: asdasd
+2022-09-14 19:57:19,107 WARNING:  * Debugger is active!
+2022-09-14 19:57:19,114 INFO:  * Debugger PIN: 117-724-678
+2022-09-14 19:57:21,011 INFO:  * Detected change in '/mnt/hgfs/clustervision/luna2-daemon/apis/boot.py', reloading
+2022-09-14 19:57:21,058 INFO:  * Restarting with stat
+2022-09-14 19:57:21,442 INFO: asdasd
+2022-09-14 19:57:21,489 INFO: boot
+2022-09-14 19:57:21,519 WARNING:  * Debugger is active!
+2022-09-14 19:57:21,524 INFO:  * Debugger PIN: 117-724-678
+2022-09-14 19:57:26,299 INFO: asdasd
+2022-09-14 19:57:26,338 INFO: boot
+2022-09-14 19:57:26,368 INFO: [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
  * Running on http://127.0.0.1:7050
-2022-09-14 11:14:02,239 INFO: [33mPress CTRL+C to quit[0m
-2022-09-14 11:14:02,240 INFO:  * Restarting with stat
-2022-09-14 11:14:02,707 INFO: =============== Logger Level Set To [20]===============
-2022-09-14 11:14:02,708 INFO: test
-2022-09-14 11:14:02,724 WARNING:  * Debugger is active!
-2022-09-14 11:14:02,728 INFO:  * Debugger PIN: 117-724-678
-2022-09-14 11:14:09,985 INFO:  * Detected change in '/mnt/hgfs/clustervision/luna2-daemon/utils/log.py', reloading
-2022-09-14 11:14:10,068 INFO:  * Restarting with stat
-2022-09-14 11:14:10,559 INFO: =============== Logger Level Set To [20]===============
-2022-09-14 11:14:10,560 INFO: test
-2022-09-14 11:14:10,578 WARNING:  * Debugger is active!
-2022-09-14 11:14:10,582 INFO:  * Debugger PIN: 117-724-678
-2022-09-14 11:41:01,526 INFO: 127.0.0.1 - - [14/Sep/2022 11:41:01] "GET /84e3b078-bb76-11ea-b3de-0242ac130004/files/ HTTP/1.1" 200 -
-2022-09-14 11:41:17,148 INFO:  * Detected change in '/mnt/hgfs/clustervision/luna2-daemon/luna.py', reloading
-2022-09-14 11:41:17,297 INFO:  * Restarting with stat
-2022-09-14 11:41:23,707 INFO:  * Restarting with stat
-2022-09-14 11:42:55,538 INFO:  * Restarting with stat
-2022-09-14 12:09:06,881 INFO: =============== Logger Level Set To [20]===============
-2022-09-14 12:09:07,639 WARNING:  * Debugger is active!
-2022-09-14 12:09:07,649 INFO:  * Debugger PIN: 117-724-678
-2022-09-14 12:09:14,488 INFO:  * Detected change in '/mnt/hgfs/clustervision/luna2-daemon/luna.py', reloading
-2022-09-14 12:09:15,276 INFO: =============== Logger Level Set To [20]===============
-2022-09-14 12:09:16,090 WARNING:  * Debugger is active!
-2022-09-14 12:09:16,098 INFO:  * Debugger PIN: 117-724-678
-2022-09-14 12:10:29,278 INFO:  * Detected change in '/mnt/hgfs/clustervision/luna2-daemon/utils/log.py', reloading
-2022-09-14 12:10:30,006 INFO: =============== Logger Level Set To [INFO]===============
-2022-09-14 12:10:30,785 WARNING:  * Debugger is active!
-2022-09-14 12:10:30,794 INFO:  * Debugger PIN: 117-724-678
-2022-09-14 12:11:11,010 INFO:  * Detected change in '/mnt/hgfs/clustervision/luna2-daemon/luna.py', reloading
-2022-09-14 12:11:11,727 INFO: =============== Logger Level Set To [INFO]===============
-2022-09-14 12:11:12,465 WARNING:  * Debugger is active!
-2022-09-14 12:11:12,475 INFO:  * Debugger PIN: 117-724-678
-2022-09-14 12:11:30,459 INFO:  * Detected change in '/mnt/hgfs/clustervision/luna2-daemon/luna.py', reloading
-2022-09-14 12:11:31,226 INFO: =============== Logger Level Set To [INFO]===============
-2022-09-14 12:11:32,065 WARNING:  * Debugger is active!
-2022-09-14 12:11:32,074 INFO:  * Debugger PIN: 117-724-678
-2022-09-14 12:13:53,876 INFO: 127.0.0.1 - - [14/Sep/2022 12:13:53] "GET /84e3b078-bb76-11ea-b3de-0242ac130004/files/ HTTP/1.1" 200 -
-2022-09-14 12:14:04,904 INFO: =============== Logger Level Set To [INFO]===============
-2022-09-14 12:14:05,681 INFO: [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+2022-09-14 19:57:26,369 INFO: [33mPress CTRL+C to quit[0m
+2022-09-14 19:57:26,370 INFO:  * Restarting with stat
+2022-09-14 19:57:26,689 INFO: asdasd
+2022-09-14 19:57:26,724 INFO: boot
+2022-09-14 19:57:26,752 WARNING:  * Debugger is active!
+2022-09-14 19:57:26,758 INFO:  * Debugger PIN: 117-724-678
+2022-09-14 19:57:42,448 INFO: 127.0.0.1 - - [14/Sep/2022 19:57:42] "GET /84e3b078-bb76-11ea-b3de-0242ac130004/boot HTTP/1.1" 200 -
+2022-09-14 19:57:53,608 INFO:  * Detected change in '/mnt/hgfs/clustervision/luna2-daemon/apis/boot.py', reloading
+2022-09-14 19:57:53,669 INFO:  * Restarting with stat
+2022-09-14 19:57:54,065 INFO: asdasd
+2022-09-14 19:57:54,110 INFO: boot
+2022-09-14 19:57:54,138 WARNING:  * Debugger is active!
+2022-09-14 19:57:54,145 INFO:  * Debugger PIN: 117-724-678
+2022-09-14 19:57:57,087 INFO: boot
+2022-09-14 19:57:57,108 INFO: 127.0.0.1 - - [14/Sep/2022 19:57:57] "GET /84e3b078-bb76-11ea-b3de-0242ac130004/boot HTTP/1.1" 200 -
+2022-09-14 19:57:59,081 INFO: boot
+2022-09-14 19:57:59,083 INFO: 127.0.0.1 - - [14/Sep/2022 19:57:59] "GET /84e3b078-bb76-11ea-b3de-0242ac130004/boot HTTP/1.1" 200 -
+2022-09-14 19:58:00,293 INFO: boot
+2022-09-14 19:58:00,295 INFO: 127.0.0.1 - - [14/Sep/2022 19:58:00] "GET /84e3b078-bb76-11ea-b3de-0242ac130004/boot HTTP/1.1" 200 -
+2022-09-14 20:00:08,248 INFO:  * Detected change in '/mnt/hgfs/clustervision/luna2-daemon/utils/log.py', reloading
+2022-09-14 20:00:08,306 INFO:  * Restarting with stat
+2022-09-14 20:00:08,653 INFO: asdasd
+2022-09-14 20:00:08,689 INFO: boot
+2022-09-14 20:00:08,714 WARNING:  * Debugger is active!
+2022-09-14 20:00:08,720 INFO:  * Debugger PIN: 117-724-678
+2022-09-14 20:01:06,286 INFO:  * Detected change in '/mnt/hgfs/clustervision/luna2-daemon/utils/log.py', reloading
+2022-09-14 20:01:06,338 INFO:  * Restarting with stat
+2022-09-14 20:01:06,697 INFO: asdasd
+2022-09-14 20:01:06,736 INFO: boot
+2022-09-14 20:01:06,762 WARNING:  * Debugger is active!
+2022-09-14 20:01:06,769 INFO:  * Debugger PIN: 117-724-678
+2022-09-14 20:01:11,369 INFO:  * Detected change in '/mnt/hgfs/clustervision/luna2-daemon/apis/boot.py', reloading
+2022-09-14 20:01:11,422 INFO:  * Restarting with stat
+2022-09-14 20:01:11,779 INFO: asdasd
+2022-09-14 20:01:11,853 WARNING:  * Debugger is active!
+2022-09-14 20:01:11,859 INFO:  * Debugger PIN: 117-724-678
+2022-09-14 20:01:24,042 INFO:  * Detected change in '/mnt/hgfs/clustervision/luna2-daemon/apis/boot.py', reloading
+2022-09-14 20:01:24,090 INFO:  * Restarting with stat
+2022-09-14 20:01:24,436 INFO: asdasd
+2022-09-14 20:01:24,509 WARNING:  * Debugger is active!
+2022-09-14 20:01:24,515 INFO:  * Debugger PIN: 117-724-678
+2022-09-14 20:01:26,451 INFO:  * Detected change in '/mnt/hgfs/clustervision/luna2-daemon/apis/boot.py', reloading
+2022-09-14 20:01:26,506 INFO:  * Restarting with stat
+2022-09-14 20:01:26,875 INFO: asdasd
+2022-09-14 20:01:26,950 WARNING:  * Debugger is active!
+2022-09-14 20:01:26,956 INFO:  * Debugger PIN: 117-724-678
+2022-09-14 20:01:28,929 INFO: 127.0.0.1 - - [14/Sep/2022 20:01:28] "[35m[1mGET /84e3b078-bb76-11ea-b3de-0242ac130004/boot HTTP/1.1[0m" 500 -
+2022-09-14 20:01:29,019 INFO: 127.0.0.1 - - [14/Sep/2022 20:01:29] "GET /84e3b078-bb76-11ea-b3de-0242ac130004/boot?__debugger__=yes&cmd=resource&f=style.css HTTP/1.1" 200 -
+2022-09-14 20:01:29,022 INFO: 127.0.0.1 - - [14/Sep/2022 20:01:29] "[36mGET /84e3b078-bb76-11ea-b3de-0242ac130004/boot?__debugger__=yes&cmd=resource&f=debugger.js HTTP/1.1[0m" 304 -
+2022-09-14 20:01:29,070 INFO: 127.0.0.1 - - [14/Sep/2022 20:01:29] "[36mGET /84e3b078-bb76-11ea-b3de-0242ac130004/boot?__debugger__=yes&cmd=resource&f=console.png HTTP/1.1[0m" 304 -
+2022-09-14 20:01:42,175 INFO:  * Detected change in '/mnt/hgfs/clustervision/luna2-daemon/utils/log.py', reloading
+2022-09-14 20:01:42,244 INFO:  * Restarting with stat
+2022-09-14 20:01:42,590 INFO: asdasd
+2022-09-14 20:01:42,676 WARNING:  * Debugger is active!
+2022-09-14 20:01:42,683 INFO:  * Debugger PIN: 117-724-678
+2022-09-14 20:01:47,727 WARNING: I am log
+2022-09-14 20:01:47,731 INFO: 127.0.0.1 - - [14/Sep/2022 20:01:47] "GET /84e3b078-bb76-11ea-b3de-0242ac130004/boot HTTP/1.1" 200 -
+2022-09-14 20:02:58,727 INFO:  * Detected change in '/mnt/hgfs/clustervision/luna2-daemon/utils/log.py', reloading
+2022-09-14 20:02:58,773 INFO:  * Restarting with stat
+2022-09-14 20:02:59,137 INFO: asdasd
+2022-09-14 20:02:59,209 WARNING:  * Debugger is active!
+2022-09-14 20:02:59,214 INFO:  * Debugger PIN: 117-724-678
+2022-09-14 20:03:01,128 INFO:  * Detected change in '/mnt/hgfs/clustervision/luna2-daemon/utils/log.py', reloading
+2022-09-14 20:03:01,175 INFO:  * Restarting with stat
+2022-09-14 20:03:01,546 INFO: asdasd
+2022-09-14 20:03:01,660 WARNING:  * Debugger is active!
+2022-09-14 20:03:01,666 INFO:  * Debugger PIN: 117-724-678
+2022-09-14 20:03:03,799 INFO:  * Detected change in '/mnt/hgfs/clustervision/luna2-daemon/utils/log.py', reloading
+2022-09-14 20:03:03,849 INFO:  * Restarting with stat
+2022-09-14 20:03:04,235 INFO: asdasd
+2022-09-14 20:03:04,308 WARNING:  * Debugger is active!
+2022-09-14 20:03:04,314 INFO:  * Debugger PIN: 117-724-678
+2022-09-14 20:03:06,160 INFO: I am log
+2022-09-14 20:03:06,185 INFO: 127.0.0.1 - - [14/Sep/2022 20:03:06] "GET /84e3b078-bb76-11ea-b3de-0242ac130004/boot HTTP/1.1" 200 -
+2022-09-14 20:03:30,396 INFO: I am log
+2022-09-14 20:03:30,398 INFO: 127.0.0.1 - - [14/Sep/2022 20:03:30] "GET /84e3b078-bb76-11ea-b3de-0242ac130004/boot HTTP/1.1" 200 -
+2022-09-14 20:03:37,926 INFO: I am log
+2022-09-14 20:03:37,928 INFO: 127.0.0.1 - - [14/Sep/2022 20:03:37] "GET /84e3b078-bb76-11ea-b3de-0242ac130004/boot HTTP/1.1" 200 -
+2022-09-14 20:03:53,350 INFO: I am log
+2022-09-14 20:03:53,352 INFO: 127.0.0.1 - - [14/Sep/2022 20:03:53] "GET /84e3b078-bb76-11ea-b3de-0242ac130004/boot HTTP/1.1" 200 -
+2022-09-14 20:03:56,005 INFO: I am log
+2022-09-14 20:03:56,006 INFO: 127.0.0.1 - - [14/Sep/2022 20:03:56] "GET /84e3b078-bb76-11ea-b3de-0242ac130004/boot HTTP/1.1" 200 -
+2022-09-14 20:05:08,668 INFO:  * Detected change in '/mnt/hgfs/clustervision/luna2-daemon/apis/boot.py', reloading
+2022-09-14 20:05:08,729 INFO:  * Restarting with stat
+2022-09-14 20:05:09,120 INFO: asdasd
+2022-09-14 20:05:09,239 WARNING:  * Debugger is active!
+2022-09-14 20:05:09,248 INFO:  * Debugger PIN: 117-724-678
+2022-09-14 20:05:11,586 INFO: I am log
+2022-09-14 20:05:11,589 INFO: 127.0.0.1 - - [14/Sep/2022 20:05:11] "GET /84e3b078-bb76-11ea-b3de-0242ac130004/boot HTTP/1.1" 200 -
+2022-09-14 20:05:17,733 INFO:  * Detected change in '/mnt/hgfs/clustervision/luna2-daemon/apis/boot.py', reloading
+2022-09-14 20:05:17,786 INFO:  * Restarting with stat
+2022-09-14 20:05:18,149 INFO: asdasd
+2022-09-14 20:05:18,240 WARNING:  * Debugger is active!
+2022-09-14 20:05:18,246 INFO:  * Debugger PIN: 117-724-678
+2022-09-14 20:05:50,024 INFO:  * Detected change in '/mnt/hgfs/clustervision/luna2-daemon/luna.py', reloading
+2022-09-14 20:05:50,091 INFO:  * Restarting with stat
+2022-09-14 20:05:50,504 INFO: Log Level info
+2022-09-14 20:05:50,583 WARNING:  * Debugger is active!
+2022-09-14 20:05:50,590 INFO:  * Debugger PIN: 117-724-678
+2022-09-14 20:06:33,297 INFO: Log Level info
+2022-09-14 20:06:33,364 INFO: [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
  * Running on http://127.0.0.1:7050
-2022-09-14 12:14:05,682 INFO: [33mPress CTRL+C to quit[0m
-2022-09-14 12:14:05,684 INFO:  * Restarting with stat
-2022-09-14 12:14:06,310 INFO: =============== Logger Level Set To [INFO]===============
-2022-09-14 12:14:07,140 WARNING:  * Debugger is active!
-2022-09-14 12:14:07,147 INFO:  * Debugger PIN: 117-724-678
-2022-09-14 12:14:22,068 INFO: 127.0.0.1 - - [14/Sep/2022 12:14:22] "GET /84e3b078-bb76-11ea-b3de-0242ac130004/files/ HTTP/1.1" 200 -
-2022-09-14 12:14:54,262 INFO:  * Detected change in '/mnt/hgfs/clustervision/luna2-daemon/luna.py', reloading
-2022-09-14 12:14:54,473 INFO:  * Restarting with stat
-2022-09-14 12:14:55,052 INFO: =============== Logger Level Set To [INFO]===============
-2022-09-14 12:14:55,913 WARNING:  * Debugger is active!
-2022-09-14 12:14:55,922 INFO:  * Debugger PIN: 117-724-678
-2022-09-14 12:14:58,001 INFO: 127.0.0.1 - - [14/Sep/2022 12:14:58] "GET /84e3b078-bb76-11ea-b3de-0242ac130004/files/ HTTP/1.1" 200 -
-2022-09-14 12:16:17,234 INFO: =============== Logger Level Set To [DEBUG]===============
-2022-09-14 12:16:17,992 INFO: [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+2022-09-14 20:06:33,365 INFO: [33mPress CTRL+C to quit[0m
+2022-09-14 20:06:33,367 INFO:  * Restarting with stat
+2022-09-14 20:06:33,682 INFO: Log Level info
+2022-09-14 20:06:33,747 WARNING:  * Debugger is active!
+2022-09-14 20:06:33,752 INFO:  * Debugger PIN: 117-724-678
+2022-09-14 20:06:58,027 INFO:  * Detected change in '/mnt/hgfs/clustervision/luna2-daemon/luna.py', reloading
+2022-09-14 20:06:58,071 INFO:  * Restarting with stat
+2022-09-14 20:06:58,450 INFO: Log Level info
+2022-09-14 20:06:58,513 WARNING:  * Debugger is active!
+2022-09-14 20:06:58,520 INFO:  * Debugger PIN: 117-724-678
+2022-09-14 20:07:10,780 INFO:  * Detected change in '/mnt/hgfs/clustervision/luna2-daemon/luna.py', reloading
+2022-09-14 20:07:10,839 INFO:  * Restarting with stat
+2022-09-14 20:07:11,185 INFO: Log Level info
+2022-09-14 20:07:11,254 WARNING:  * Debugger is active!
+2022-09-14 20:07:11,260 INFO:  * Debugger PIN: 117-724-678
+2022-09-14 20:09:12,685 INFO: Log Level asdasd
+2022-09-14 20:09:12,752 INFO: [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
  * Running on http://127.0.0.1:7050
-2022-09-14 12:16:17,992 INFO: [33mPress CTRL+C to quit[0m
-2022-09-14 12:16:17,995 INFO:  * Restarting with stat
-2022-09-14 12:16:18,558 INFO: =============== Logger Level Set To [DEBUG]===============
-2022-09-14 12:16:19,403 WARNING:  * Debugger is active!
-2022-09-14 12:16:19,412 INFO:  * Debugger PIN: 117-724-678
-2022-09-14 12:16:37,781 DEBUG: 84e3b078-bb76-11ea-b3de-0242ac130004
-2022-09-14 12:16:37,800 INFO: 127.0.0.1 - - [14/Sep/2022 12:16:37] "GET /84e3b078-bb76-11ea-b3de-0242ac130004/files/ HTTP/1.1" 200 -
-2022-09-14 12:24:20,461 INFO:  * Detected change in '/mnt/hgfs/clustervision/luna2-daemon/luna.py', reloading
-2022-09-14 12:24:20,632 INFO:  * Restarting with stat
-2022-09-14 12:24:21,121 INFO: =============== Logger Level Set To [DEBUG]===============
-2022-09-14 12:24:21,880 WARNING:  * Debugger is active!
-2022-09-14 12:24:21,892 INFO:  * Debugger PIN: 117-724-678
-2022-09-14 12:24:25,495 INFO: 84e3b078-bb76-11ea-b3de-0242ac130004
-2022-09-14 12:24:25,514 INFO: 127.0.0.1 - - [14/Sep/2022 12:24:25] "GET /84e3b078-bb76-11ea-b3de-0242ac130004/files/ HTTP/1.1" 200 -
-2022-09-14 12:25:08,014 INFO:  * Detected change in '/mnt/hgfs/clustervision/luna2-daemon/luna.py', reloading
-2022-09-14 12:25:08,197 INFO:  * Restarting with stat
-2022-09-14 12:25:08,738 INFO: =============== Logger Level Set To [DEBUG]===============
-2022-09-14 12:25:09,552 WARNING:  * Debugger is active!
-2022-09-14 12:25:09,560 INFO:  * Debugger PIN: 117-724-678
-2022-09-14 12:25:11,626 WARNING: 84e3b078-bb76-11ea-b3de-0242ac130004
-2022-09-14 12:25:11,650 INFO: 127.0.0.1 - - [14/Sep/2022 12:25:11] "GET /84e3b078-bb76-11ea-b3de-0242ac130004/files/ HTTP/1.1" 200 -
-2022-09-14 12:27:15,206 WARNING: 84e3b078-bb76-11ea-b3de-0242ac130004
-2022-09-14 12:27:15,228 INFO: 127.0.0.1 - - [14/Sep/2022 12:27:15] "GET /84e3b078-bb76-11ea-b3de-0242ac130004/files/ HTTP/1.1" 200 -
-2022-09-14 13:22:04,972 WARNING: 84e3b078-bb76-11ea-b3de-0242ac130004
-2022-09-14 13:22:05,002 INFO: 127.0.0.1 - - [14/Sep/2022 13:22:05] "GET /84e3b078-bb76-11ea-b3de-0242ac130004/files/ HTTP/1.1" 200 -
-2022-09-14 13:22:06,773 WARNING: 84e3b078-bb76-11ea-b3de-0242ac130004
-2022-09-14 13:22:06,798 INFO: 127.0.0.1 - - [14/Sep/2022 13:22:06] "GET /84e3b078-bb76-11ea-b3de-0242ac130004/files/ HTTP/1.1" 200 -
-2022-09-14 13:23:04,080 INFO:  * Detected change in '/mnt/hgfs/clustervision/luna2-daemon/luna.py', reloading
-2022-09-14 13:23:04,271 INFO:  * Restarting with stat
-2022-09-14 13:23:04,734 INFO: =============== Logger Level Set To [DEBUG]===============
-2022-09-14 13:23:05,598 WARNING:  * Debugger is active!
-2022-09-14 13:23:05,606 INFO:  * Debugger PIN: 117-724-678
-2022-09-14 13:23:08,057 INFO: 84e3b078-bb76-11ea-b3de-0242ac130004
-2022-09-14 13:23:08,100 INFO: 127.0.0.1 - - [14/Sep/2022 13:23:08] "GET /84e3b078-bb76-11ea-b3de-0242ac130004/files/ HTTP/1.1" 200 -
-2022-09-14 13:23:09,255 INFO: 84e3b078-bb76-11ea-b3de-0242ac130004
-2022-09-14 13:23:09,301 INFO: 127.0.0.1 - - [14/Sep/2022 13:23:09] "GET /84e3b078-bb76-11ea-b3de-0242ac130004/files/ HTTP/1.1" 200 -
-2022-09-14 13:23:10,035 INFO: 84e3b078-bb76-11ea-b3de-0242ac130004
-2022-09-14 13:23:10,066 INFO: 127.0.0.1 - - [14/Sep/2022 13:23:10] "GET /84e3b078-bb76-11ea-b3de-0242ac130004/files/ HTTP/1.1" 200 -
-2022-09-14 13:23:46,437 INFO:  * Detected change in '/mnt/hgfs/clustervision/luna2-daemon/utils/log.py', reloading
-2022-09-14 13:23:46,633 INFO:  * Restarting with stat
-2022-09-14 13:23:47,045 INFO: =============== Logger Level Set To [DEBUG]===============
-2022-09-14 13:23:47,840 WARNING:  * Debugger is active!
-2022-09-14 13:23:47,849 INFO:  * Debugger PIN: 117-724-678
-2022-09-14 13:24:46,961 INFO: =============== Logger Level Set To [DEBUG]===============
-2022-09-14 13:24:47,749 INFO: [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+2022-09-14 20:09:12,753 INFO: [33mPress CTRL+C to quit[0m
+2022-09-14 20:09:12,754 INFO:  * Restarting with stat
+2022-09-14 20:09:13,070 INFO: Log Level asdasd
+2022-09-14 20:09:13,134 WARNING:  * Debugger is active!
+2022-09-14 20:09:13,139 INFO:  * Debugger PIN: 117-724-678
+2022-09-14 20:12:19,394 INFO: Log Level info
+2022-09-14 20:12:19,466 INFO: [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
  * Running on http://127.0.0.1:7050
-2022-09-14 13:24:47,749 INFO: [33mPress CTRL+C to quit[0m
-2022-09-14 13:24:47,752 INFO:  * Restarting with stat
-2022-09-14 13:24:48,225 INFO: =============== Logger Level Set To [DEBUG]===============
-2022-09-14 13:24:48,993 WARNING:  * Debugger is active!
-2022-09-14 13:24:49,003 INFO:  * Debugger PIN: 117-724-678
-2022-09-14 13:27:42,729 INFO:  * Detected change in '/mnt/hgfs/clustervision/luna2-daemon/utils/log.py', reloading
-2022-09-14 13:27:42,914 INFO:  * Restarting with stat
-2022-09-14 13:34:18,784 INFO:  * Restarting with stat
-2022-09-14 13:34:34,022 INFO: =============== Logger Level Set To [10]===============
-2022-09-14 13:34:34,075 INFO: [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+2022-09-14 20:12:19,466 INFO: [33mPress CTRL+C to quit[0m
+2022-09-14 20:12:19,468 INFO:  * Restarting with stat
+2022-09-14 20:12:19,823 INFO: Log Level info
+2022-09-14 20:12:19,888 WARNING:  * Debugger is active!
+2022-09-14 20:12:19,893 INFO:  * Debugger PIN: 117-724-678
+2022-09-14 20:12:46,615 INFO: Log Level debug
+2022-09-14 20:12:46,685 INFO: [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
  * Running on http://127.0.0.1:7050
-2022-09-14 13:34:34,076 INFO: [33mPress CTRL+C to quit[0m
-2022-09-14 13:34:34,080 INFO:  * Restarting with stat
-2022-09-14 13:34:35,556 INFO: =============== Logger Level Set To [10]===============
-2022-09-14 13:34:35,607 WARNING:  * Debugger is active!
-2022-09-14 13:34:35,615 INFO:  * Debugger PIN: 117-724-678
-2022-09-14 13:34:54,707 INFO: =============== Logger Level Set To [10]===============
-2022-09-14 13:34:54,750 INFO: [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+2022-09-14 20:12:46,686 INFO: [33mPress CTRL+C to quit[0m
+2022-09-14 20:12:46,688 INFO:  * Restarting with stat
+2022-09-14 20:12:47,008 INFO: Log Level debug
+2022-09-14 20:12:47,074 WARNING:  * Debugger is active!
+2022-09-14 20:12:47,079 INFO:  * Debugger PIN: 117-724-678
+2022-09-14 20:20:38,834 INFO:  * Detected change in '/mnt/hgfs/clustervision/luna2-daemon/luna.py', reloading
+2022-09-14 20:20:38,881 INFO:  * Restarting with stat
+2022-09-14 20:20:39,276 INFO: Log Level debug
+2022-09-14 20:20:39,361 WARNING:  * Debugger is active!
+2022-09-14 20:20:39,366 INFO:  * Debugger PIN: 117-724-678
+2022-09-14 20:20:40,026 INFO:  * Detected change in '/mnt/hgfs/clustervision/luna2-daemon/luna.py', reloading
+2022-09-14 20:20:40,080 INFO:  * Restarting with stat
+2022-09-14 20:20:40,444 INFO: Log Level debug
+2022-09-14 20:20:40,514 WARNING:  * Debugger is active!
+2022-09-14 20:20:40,520 INFO:  * Debugger PIN: 117-724-678
+2022-09-14 20:20:44,804 INFO: Log Level debug
+2022-09-14 20:20:44,873 INFO: [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
  * Running on http://127.0.0.1:7050
-2022-09-14 13:34:54,752 INFO: [33mPress CTRL+C to quit[0m
-2022-09-14 13:34:54,756 INFO:  * Restarting with stat
-2022-09-14 13:34:56,203 INFO: =============== Logger Level Set To [10]===============
-2022-09-14 13:34:56,263 WARNING:  * Debugger is active!
-2022-09-14 13:34:56,274 INFO:  * Debugger PIN: 117-724-678
-2022-09-14 13:35:06,041 INFO:  * Detected change in '/mnt/hgfs/clustervision/luna2-daemon/luna.py', reloading
-2022-09-14 13:35:06,194 INFO:  * Restarting with stat
-2022-09-14 13:35:07,344 INFO: =============== Logger Level Set To [10]===============
-2022-09-14 13:35:07,378 WARNING:  * Debugger is active!
-2022-09-14 13:35:07,387 INFO:  * Debugger PIN: 117-724-678
-2022-09-14 13:35:08,838 INFO:  * Detected change in '/mnt/hgfs/clustervision/luna2-daemon/luna.py', reloading
-2022-09-14 13:35:09,039 INFO:  * Restarting with stat
-2022-09-14 13:35:10,450 INFO: =============== Logger Level Set To [10]===============
-2022-09-14 13:35:10,501 WARNING:  * Debugger is active!
-2022-09-14 13:35:10,510 INFO:  * Debugger PIN: 117-724-678
-2022-09-14 13:35:14,343 INFO: =============== Logger Level Set To [10]===============
-2022-09-14 13:35:14,395 INFO: [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+2022-09-14 20:20:44,873 INFO: [33mPress CTRL+C to quit[0m
+2022-09-14 20:20:44,875 INFO:  * Restarting with stat
+2022-09-14 20:20:45,224 INFO: Log Level debug
+2022-09-14 20:20:45,290 WARNING:  * Debugger is active!
+2022-09-14 20:20:45,296 INFO:  * Debugger PIN: 117-724-678
+2022-09-14 20:21:42,140 INFO:  * Detected change in '/mnt/hgfs/clustervision/luna2-daemon/utils/log.py', reloading
+2022-09-14 20:21:42,214 INFO:  * Restarting with stat
+2022-09-14 20:21:42,708 WARNING:  * Debugger is active!
+2022-09-14 20:21:42,715 INFO:  * Debugger PIN: 117-724-678
+2022-09-14 20:21:44,750 INFO:  * Detected change in '/mnt/hgfs/clustervision/luna2-daemon/utils/log.py', reloading
+2022-09-14 20:21:44,800 INFO:  * Restarting with stat
+2022-09-14 20:21:45,219 WARNING:  * Debugger is active!
+2022-09-14 20:21:45,225 INFO:  * Debugger PIN: 117-724-678
+2022-09-14 20:21:53,777 INFO:  * Detected change in '/mnt/hgfs/clustervision/luna2-daemon/utils/log.py', reloading
+2022-09-14 20:21:53,852 INFO:  * Restarting with stat
+2022-09-14 20:21:54,291 WARNING:  * Debugger is active!
+2022-09-14 20:21:54,296 INFO:  * Debugger PIN: 117-724-678
+2022-09-14 20:22:01,474 INFO: [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
  * Running on http://127.0.0.1:7050
-2022-09-14 13:35:14,396 INFO: [33mPress CTRL+C to quit[0m
-2022-09-14 13:35:14,398 INFO:  * Restarting with stat
-2022-09-14 13:35:15,688 INFO: =============== Logger Level Set To [10]===============
-2022-09-14 13:35:15,743 WARNING:  * Debugger is active!
-2022-09-14 13:35:15,751 INFO:  * Debugger PIN: 117-724-678
-2022-09-14 13:35:34,590 INFO:  * Detected change in '/mnt/hgfs/clustervision/luna2-daemon/luna.py', reloading
-2022-09-14 13:35:34,774 INFO:  * Restarting with stat
-2022-09-14 13:35:36,045 INFO: =============== Logger Level Set To [10]===============
-2022-09-14 13:35:36,100 WARNING:  * Debugger is active!
-2022-09-14 13:35:36,109 INFO:  * Debugger PIN: 117-724-678
-2022-09-14 13:38:00,139 INFO:  * Detected change in '/mnt/hgfs/clustervision/luna2-daemon/luna.py', reloading
-2022-09-14 13:38:00,328 INFO:  * Restarting with stat
-2022-09-14 13:42:16,721 INFO: =============== Logger Level Set To [10]===============
-2022-09-14 13:42:16,721 DEBUG: test
-2022-09-14 13:42:16,753 WARNING:  * Debugger is active!
-2022-09-14 13:42:16,763 INFO:  * Debugger PIN: 117-724-678
-2022-09-14 13:42:57,839 INFO:  * Detected change in '/mnt/hgfs/clustervision/luna2-daemon/luna.py', reloading
-2022-09-14 13:42:59,473 INFO: =============== Logger Level Set To [10]===============
-2022-09-14 13:42:59,474 INFO: test
-2022-09-14 13:42:59,536 WARNING:  * Debugger is active!
-2022-09-14 13:42:59,546 INFO:  * Debugger PIN: 117-724-678
-2022-09-14 13:43:05,866 INFO:  * Detected change in '/mnt/hgfs/clustervision/luna2-daemon/luna.py', reloading
-2022-09-14 13:43:07,384 INFO: =============== Logger Level Set To [10]===============
-2022-09-14 13:43:07,385 CRITICAL: test
-2022-09-14 13:43:07,432 WARNING:  * Debugger is active!
-2022-09-14 13:43:07,441 INFO:  * Debugger PIN: 117-724-678
-2022-09-14 13:43:12,463 INFO:  * Detected change in '/mnt/hgfs/clustervision/luna2-daemon/luna.py', reloading
-2022-09-14 13:43:13,875 INFO: =============== Logger Level Set To [10]===============
-2022-09-14 13:43:13,876 DEBUG: test
-2022-09-14 13:43:13,919 WARNING:  * Debugger is active!
-2022-09-14 13:43:13,927 INFO:  * Debugger PIN: 117-724-678
-2022-09-14 13:43:41,899 INFO:  * Detected change in '/mnt/hgfs/clustervision/luna2-daemon/utils/log.py', reloading
-2022-09-14 13:43:43,471 INFO: =============== Logger Level Set To [DEBUG]===============
-2022-09-14 13:43:43,472 DEBUG: test
-2022-09-14 13:43:43,525 WARNING:  * Debugger is active!
-2022-09-14 13:43:43,535 INFO:  * Debugger PIN: 117-724-678
-2022-09-14 13:45:07,918 INFO:  * Detected change in '/mnt/hgfs/clustervision/luna2-daemon/utils/log.py', reloading
-2022-09-14 13:45:09,323 INFO: =============== Logger Level Set To [DEBUG]===============
-2022-09-14 13:45:09,324 DEBUG: test
-2022-09-14 13:45:09,376 WARNING:  * Debugger is active!
-2022-09-14 13:45:09,384 INFO:  * Debugger PIN: 117-724-678
-2022-09-14 13:45:23,675 INFO: =============== Logger Level Set To [DEBUG]===============
-2022-09-14 13:45:23,677 DEBUG: test
-2022-09-14 13:45:23,738 INFO: [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+2022-09-14 20:22:01,474 INFO: [33mPress CTRL+C to quit[0m
+2022-09-14 20:22:01,476 INFO:  * Restarting with stat
+2022-09-14 20:22:01,845 WARNING:  * Debugger is active!
+2022-09-14 20:22:01,853 INFO:  * Debugger PIN: 117-724-678
+2022-09-14 20:22:17,028 INFO:  * Detected change in '/mnt/hgfs/clustervision/luna2-daemon/luna.py', reloading
+2022-09-14 20:22:17,079 INFO:  * Restarting with stat
+2022-09-14 20:22:17,481 WARNING:  * Debugger is active!
+2022-09-14 20:22:17,487 INFO:  * Debugger PIN: 117-724-678
+2022-09-14 20:23:03,610 INFO:  * Detected change in '/mnt/hgfs/clustervision/luna2-daemon/utils/log.py', reloading
+2022-09-14 20:23:03,656 INFO:  * Restarting with stat
+2022-09-14 20:23:04,088 WARNING:  * Debugger is active!
+2022-09-14 20:23:04,093 INFO:  * Debugger PIN: 117-724-678
+2022-09-14 20:23:09,952 INFO:  * Detected change in '/mnt/hgfs/clustervision/luna2-daemon/utils/log.py', reloading
+2022-09-14 20:23:12,401 INFO: [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
  * Running on http://127.0.0.1:7050
-2022-09-14 13:45:23,740 INFO: [33mPress CTRL+C to quit[0m
-2022-09-14 13:45:23,744 INFO:  * Restarting with stat
-2022-09-14 13:45:25,174 INFO: =============== Logger Level Set To [DEBUG]===============
-2022-09-14 13:45:25,175 DEBUG: test
-2022-09-14 13:45:25,231 WARNING:  * Debugger is active!
-2022-09-14 13:45:25,241 INFO:  * Debugger PIN: 117-724-678
-2022-09-14 13:46:22,145 INFO:  * Detected change in '/mnt/hgfs/clustervision/luna2-daemon/luna.py', reloading
-2022-09-14 13:46:22,294 INFO:  * Restarting with stat
-2022-09-14 13:46:23,621 INFO: =============== Logger Level Set To [DEBUG]===============
+2022-09-14 20:23:12,402 INFO: [33mPress CTRL+C to quit[0m
+2022-09-14 20:23:12,404 INFO:  * Restarting with stat
+2022-09-14 20:23:12,801 WARNING:  * Debugger is active!
+2022-09-14 20:23:12,806 INFO:  * Debugger PIN: 117-724-678
+2022-09-14 20:23:56,683 INFO:  * Detected change in '/mnt/hgfs/clustervision/luna2-daemon/utils/log.py', reloading
+2022-09-14 20:23:56,738 INFO:  * Restarting with stat
+2022-09-14 20:23:57,146 WARNING:  * Debugger is active!
+2022-09-14 20:23:57,153 INFO:  * Debugger PIN: 117-724-678
+2022-09-14 20:24:01,732 INFO:  * Detected change in '/mnt/hgfs/clustervision/luna2-daemon/luna.py', reloading
+2022-09-14 20:24:01,783 INFO:  * Restarting with stat
+2022-09-14 20:24:02,202 WARNING:  * Debugger is active!
+2022-09-14 20:24:02,208 INFO:  * Debugger PIN: 117-724-678
+2022-09-14 20:24:08,355 INFO: [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on http://127.0.0.1:7050
+2022-09-14 20:24:08,356 INFO: [33mPress CTRL+C to quit[0m
+2022-09-14 20:24:08,358 INFO:  * Restarting with stat
+2022-09-14 20:24:08,734 WARNING:  * Debugger is active!
+2022-09-14 20:24:08,739 INFO:  * Debugger PIN: 117-724-678
+2022-09-14 20:26:30,643 INFO:  * Detected change in '/mnt/hgfs/clustervision/luna2-daemon/utils/log.py', reloading
+2022-09-14 20:26:30,693 INFO:  * Restarting with stat
+2022-09-14 20:27:08,999 INFO: [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on http://127.0.0.1:7050
+2022-09-14 20:27:09,000 INFO: [33mPress CTRL+C to quit[0m
+2022-09-14 20:27:09,001 INFO:  * Restarting with stat
+2022-09-14 20:27:09,403 WARNING:  * Debugger is active!
+2022-09-14 20:27:09,408 INFO:  * Debugger PIN: 117-724-678
+2022-09-14 20:27:55,322 INFO: Log Level info
+2022-09-14 20:27:55,391 INFO: [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on http://127.0.0.1:7050
+2022-09-14 20:27:55,391 INFO: [33mPress CTRL+C to quit[0m
+2022-09-14 20:27:55,392 INFO:  * Restarting with stat
+2022-09-14 20:27:55,734 INFO: Log Level info
+2022-09-14 20:27:55,799 WARNING:  * Debugger is active!
+2022-09-14 20:27:55,805 INFO:  * Debugger PIN: 117-724-678
+2022-09-14 20:28:31,678 INFO:  * Detected change in '/mnt/hgfs/clustervision/luna2-daemon/luna.py', reloading
+2022-09-14 20:28:31,724 INFO:  * Restarting with stat
+2022-09-14 20:28:32,081 INFO: Log Level info
+2022-09-14 20:28:32,152 WARNING:  * Debugger is active!
+2022-09-14 20:28:32,158 INFO:  * Debugger PIN: 117-724-678
+2022-09-14 20:28:48,962 INFO:  * Detected change in '/mnt/hgfs/clustervision/luna2-daemon/utils/log.py', reloading
+2022-09-14 20:28:49,046 INFO:  * Restarting with stat
+2022-09-14 20:28:49,567 INFO: Log Level info
+2022-09-14 20:28:49,646 WARNING:  * Debugger is active!
+2022-09-14 20:28:49,653 INFO:  * Debugger PIN: 117-724-678
+2022-09-14 20:29:03,673 INFO:  * Detected change in '/mnt/hgfs/clustervision/luna2-daemon/utils/log.py', reloading
+2022-09-14 20:29:03,721 INFO:  * Restarting with stat
+2022-09-14 20:29:04,080 INFO: Log Level info
+2022-09-14 20:29:04,156 WARNING:  * Debugger is active!
+2022-09-14 20:29:04,162 INFO:  * Debugger PIN: 117-724-678
+2022-09-14 20:29:06,144 INFO:  * Detected change in '/mnt/hgfs/clustervision/luna2-daemon/luna.py', reloading
+2022-09-14 20:29:06,191 INFO:  * Restarting with stat
+2022-09-14 20:29:06,505 INFO: Log Level info
+2022-09-14 20:29:06,572 WARNING:  * Debugger is active!
+2022-09-14 20:29:06,577 INFO:  * Debugger PIN: 117-724-678
+2022-09-14 20:29:38,298 INFO: Log Level info
+2022-09-14 20:29:38,366 INFO: [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on http://127.0.0.1:7050
+2022-09-14 20:29:38,367 INFO: [33mPress CTRL+C to quit[0m
+2022-09-14 20:29:38,369 INFO:  * Restarting with stat
+2022-09-14 20:29:38,698 INFO: Log Level info
+2022-09-14 20:29:38,769 WARNING:  * Debugger is active!
+2022-09-14 20:29:38,774 INFO:  * Debugger PIN: 117-724-678
+2022-09-14 20:29:45,024 INFO: [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on http://127.0.0.1:7050
+2022-09-14 20:29:45,025 INFO: [33mPress CTRL+C to quit[0m
+2022-09-14 20:29:45,027 INFO:  * Restarting with stat
+2022-09-14 20:29:45,447 WARNING:  * Debugger is active!
+2022-09-14 20:29:45,454 INFO:  * Debugger PIN: 117-724-678
+2022-09-14 20:30:30,625 INFO:  * Detected change in '/mnt/hgfs/clustervision/luna2-daemon/utils/log.py', reloading
+2022-09-14 20:30:30,687 INFO:  * Restarting with stat
+2022-09-14 20:30:31,140 WARNING:  * Debugger is active!
+2022-09-14 20:30:31,146 INFO:  * Debugger PIN: 117-724-678
+2022-09-14 20:30:34,618 INFO: [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on http://127.0.0.1:7050
+2022-09-14 20:30:34,618 INFO: [33mPress CTRL+C to quit[0m
+2022-09-14 20:30:34,620 INFO:  * Restarting with stat
+2022-09-14 20:30:35,009 WARNING:  * Debugger is active!
+2022-09-14 20:30:35,015 INFO:  * Debugger PIN: 117-724-678
+2022-09-14 20:31:22,814 INFO:  * Detected change in '/mnt/hgfs/clustervision/luna2-daemon/luna.py', reloading
+2022-09-14 20:31:22,864 INFO:  * Restarting with stat
+2022-09-14 20:31:23,335 WARNING:  * Debugger is active!
+2022-09-14 20:31:23,340 INFO:  * Debugger PIN: 117-724-678
+2022-09-14 20:31:46,257 INFO:  * Detected change in '/mnt/hgfs/clustervision/luna2-daemon/utils/log.py', reloading
+2022-09-14 20:31:46,317 INFO:  * Restarting with stat
+2022-09-14 20:31:46,767 WARNING:  * Debugger is active!
+2022-09-14 20:31:46,773 INFO:  * Debugger PIN: 117-724-678
+2022-09-14 20:31:48,764 INFO:  * Detected change in '/mnt/hgfs/clustervision/luna2-daemon/utils/log.py', reloading
+2022-09-14 20:31:48,808 INFO:  * Restarting with stat
+2022-09-14 20:31:49,237 WARNING:  * Debugger is active!
+2022-09-14 20:31:49,242 INFO:  * Debugger PIN: 117-724-678
+2022-09-14 20:32:31,894 INFO: [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on http://127.0.0.1:7050
+2022-09-14 20:32:31,895 INFO: [33mPress CTRL+C to quit[0m
+2022-09-14 20:32:31,896 INFO:  * Restarting with stat
+2022-09-14 20:32:32,305 WARNING:  * Debugger is active!
+2022-09-14 20:32:32,311 INFO:  * Debugger PIN: 117-724-678
+2022-09-14 20:33:12,177 INFO:  * Detected change in '/mnt/hgfs/clustervision/luna2-daemon/apis/boot.py', reloading
+2022-09-14 20:33:12,225 INFO:  * Restarting with stat
+2022-09-14 20:33:12,663 WARNING:  * Debugger is active!
+2022-09-14 20:33:12,669 INFO:  * Debugger PIN: 117-724-678
+2022-09-14 20:34:16,289 INFO:  * Detected change in '/mnt/hgfs/clustervision/luna2-daemon/luna.py', reloading
+2022-09-14 20:34:16,332 INFO:  * Restarting with stat
+2022-09-14 20:34:16,729 WARNING:  * Debugger is active!
+2022-09-14 20:34:16,735 INFO:  * Debugger PIN: 117-724-678
+2022-09-14 20:34:38,268 INFO:  * Detected change in '/mnt/hgfs/clustervision/luna2-daemon/luna.py', reloading
+2022-09-14 20:34:38,316 INFO:  * Restarting with stat
+2022-09-14 20:34:38,792 WARNING:  * Debugger is active!
+2022-09-14 20:34:38,798 INFO:  * Debugger PIN: 117-724-678
+2022-09-14 20:34:42,742 INFO: [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on http://127.0.0.1:7050
+2022-09-14 20:34:42,743 INFO: [33mPress CTRL+C to quit[0m
+2022-09-14 20:34:42,745 INFO:  * Restarting with stat
+2022-09-14 20:34:43,135 WARNING:  * Debugger is active!
+2022-09-14 20:34:43,142 INFO:  * Debugger PIN: 117-724-678
+2022-09-14 20:34:58,197 INFO:  * Detected change in '/mnt/hgfs/clustervision/luna2-daemon/utils/log.py', reloading
+2022-09-14 20:34:58,246 INFO:  * Restarting with stat
+2022-09-14 20:34:58,714 WARNING:  * Debugger is active!
+2022-09-14 20:34:58,720 INFO:  * Debugger PIN: 117-724-678
+2022-09-14 20:35:01,430 INFO: [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on http://127.0.0.1:7050
+2022-09-14 20:35:01,432 INFO: [33mPress CTRL+C to quit[0m
+2022-09-14 20:35:01,434 INFO:  * Restarting with stat
+2022-09-14 20:35:01,816 WARNING:  * Debugger is active!
+2022-09-14 20:35:01,821 INFO:  * Debugger PIN: 117-724-678
+2022-09-14 20:35:37,859 INFO:  * Detected change in '/mnt/hgfs/clustervision/luna2-daemon/luna.py', reloading
+2022-09-14 20:35:37,909 INFO:  * Restarting with stat
+2022-09-14 20:35:41,162 INFO: [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on http://127.0.0.1:7050
+2022-09-14 20:35:41,163 INFO: [33mPress CTRL+C to quit[0m
+2022-09-14 20:35:41,164 INFO:  * Restarting with stat
+2022-09-14 20:35:41,669 WARNING:  * Debugger is active!
+2022-09-14 20:35:41,677 INFO:  * Debugger PIN: 117-724-678
+2022-09-14 20:35:52,228 INFO: Log Level info
+2022-09-14 20:35:52,296 INFO: [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on http://127.0.0.1:7050
+2022-09-14 20:35:52,296 INFO: [33mPress CTRL+C to quit[0m
+2022-09-14 20:35:52,298 INFO:  * Restarting with stat
+2022-09-14 20:35:52,627 INFO: Log Level info
+2022-09-14 20:35:52,695 WARNING:  * Debugger is active!
+2022-09-14 20:35:52,701 INFO:  * Debugger PIN: 117-724-678
+2022-09-14 20:38:01,803 INFO:  * Detected change in '/mnt/hgfs/clustervision/luna2-daemon/luna.py', reloading
+2022-09-14 20:38:01,850 INFO:  * Restarting with stat
+2022-09-14 20:38:02,198 INFO: Log Level info
+2022-09-14 20:38:20,040 INFO: Log Level info
+2022-09-14 20:38:20,108 INFO: [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on http://127.0.0.1:7050
+2022-09-14 20:38:20,109 INFO: [33mPress CTRL+C to quit[0m
+2022-09-14 20:38:20,110 INFO:  * Restarting with stat
+2022-09-14 20:38:20,428 INFO: Log Level info
+2022-09-14 20:38:20,491 WARNING:  * Debugger is active!
+2022-09-14 20:38:20,496 INFO:  * Debugger PIN: 117-724-678
+2022-09-14 20:38:37,058 INFO:  * Detected change in '/mnt/hgfs/clustervision/luna2-daemon/utils/log.py', reloading
+2022-09-14 20:38:37,106 INFO:  * Restarting with stat
+2022-09-14 20:38:37,497 INFO: Log Level info
+2022-09-14 20:38:37,578 WARNING:  * Debugger is active!
+2022-09-14 20:38:37,585 INFO:  * Debugger PIN: 117-724-678
+2022-09-14 20:38:39,619 INFO:  * Detected change in '/mnt/hgfs/clustervision/luna2-daemon/utils/log.py', reloading
+2022-09-14 20:38:39,664 INFO:  * Restarting with stat
+2022-09-14 20:38:40,037 INFO: Log Level info
+2022-09-14 20:38:40,112 WARNING:  * Debugger is active!
+2022-09-14 20:38:40,120 INFO:  * Debugger PIN: 117-724-678
+2022-09-14 20:39:16,312 INFO:  * Detected change in '/mnt/hgfs/clustervision/luna2-daemon/luna.py', reloading
+2022-09-14 20:39:16,359 INFO:  * Restarting with stat
+2022-09-14 20:39:16,822 INFO: Log Level info
+2022-09-14 20:39:16,897 WARNING:  * Debugger is active!
+2022-09-14 20:39:16,902 INFO:  * Debugger PIN: 117-724-678
+2022-09-14 20:39:20,158 INFO: Log Level info
+2022-09-14 20:39:20,226 INFO: [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on http://127.0.0.1:7050
+2022-09-14 20:39:20,227 INFO: [33mPress CTRL+C to quit[0m
+2022-09-14 20:39:20,228 INFO:  * Restarting with stat
+2022-09-14 20:39:20,547 INFO: Log Level info
+2022-09-14 20:39:20,607 WARNING:  * Debugger is active!
+2022-09-14 20:39:20,612 INFO:  * Debugger PIN: 117-724-678
+2022-09-14 20:40:53,289 INFO:  * Detected change in '/mnt/hgfs/clustervision/luna2-daemon/luna.py', reloading
+2022-09-14 20:40:53,337 INFO:  * Restarting with stat
+2022-09-14 20:40:53,698 INFO: Log Level info
+2022-09-14 20:40:53,780 WARNING:  * Debugger is active!
+2022-09-14 20:40:53,787 INFO:  * Debugger PIN: 117-724-678
+2022-09-14 20:41:00,501 INFO: [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on http://127.0.0.1:7050
+2022-09-14 20:41:00,502 INFO: [33mPress CTRL+C to quit[0m
+2022-09-14 20:41:00,503 INFO:  * Restarting with stat
+2022-09-14 20:41:00,884 WARNING:  * Debugger is active!
+2022-09-14 20:41:00,889 INFO:  * Debugger PIN: 117-724-678
+2022-09-14 20:41:12,195 INFO:  * Detected change in '/mnt/hgfs/clustervision/luna2-daemon/luna.py', reloading
+2022-09-14 20:41:12,239 INFO:  * Restarting with stat
+2022-09-14 20:41:12,624 WARNING:  * Debugger is active!
+2022-09-14 20:41:12,630 INFO:  * Debugger PIN: 117-724-678
+2022-09-14 20:41:49,652 INFO: I am log
+2022-09-14 20:41:49,653 INFO: 127.0.0.1 - - [14/Sep/2022 20:41:49] "GET /84e3b078-bb76-11ea-b3de-0242ac130004/boot HTTP/1.1" 200 -
+2022-09-14 20:41:53,479 INFO: I am log
+2022-09-14 20:41:53,482 INFO: 127.0.0.1 - - [14/Sep/2022 20:41:53] "GET /84e3b078-bb76-11ea-b3de-0242ac130004/boot HTTP/1.1" 200 -
+2022-09-14 20:42:26,066 INFO:  * Detected change in '/mnt/hgfs/clustervision/luna2-daemon/utils/log.py', reloading
+2022-09-14 20:42:26,120 INFO:  * Restarting with stat
+2022-09-14 20:42:26,562 WARNING:  * Debugger is active!
+2022-09-14 20:42:26,567 INFO:  * Debugger PIN: 117-724-678
+2022-09-14 20:42:39,198 INFO:  * Detected change in '/mnt/hgfs/clustervision/luna2-daemon/luna.py', reloading
+2022-09-14 20:42:39,245 INFO:  * Restarting with stat
+2022-09-14 20:42:39,604 INFO: Log Level info
+2022-09-14 20:42:39,605 INFO: asdasdsd
+2022-09-14 20:42:39,605 INFO: asdas
+2022-09-14 20:42:39,671 WARNING:  * Debugger is active!
+2022-09-14 20:42:39,677 INFO:  * Debugger PIN: 117-724-678
+2022-09-14 20:42:41,678 INFO:  * Detected change in '/mnt/hgfs/clustervision/luna2-daemon/luna.py', reloading
+2022-09-14 20:42:41,728 INFO:  * Restarting with stat
+2022-09-14 20:42:42,075 INFO: Log Level info
+2022-09-14 20:42:42,076 INFO: asdasdsd
+2022-09-14 20:42:42,077 INFO: asdas
+2022-09-14 20:42:42,143 WARNING:  * Debugger is active!
+2022-09-14 20:42:42,149 INFO:  * Debugger PIN: 117-724-678
+2022-09-14 20:42:57,296 INFO:  * Detected change in '/mnt/hgfs/clustervision/luna2-daemon/utils/log.py', reloading
+2022-09-14 20:42:57,343 INFO:  * Restarting with stat
+2022-09-14 20:42:57,772 WARNING:  * Debugger is active!
+2022-09-14 20:42:57,778 INFO:  * Debugger PIN: 117-724-678
+2022-09-14 20:43:51,038 INFO:  * Detected change in '/mnt/hgfs/clustervision/luna2-daemon/utils/log.py', reloading
+2022-09-14 20:43:51,103 INFO:  * Restarting with stat
+2022-09-14 20:43:51,475 INFO: Log Level info
+2022-09-14 20:43:51,475 INFO: asdasdsd
+2022-09-14 20:43:51,476 INFO: asdas
+2022-09-14 20:43:51,546 WARNING:  * Debugger is active!
+2022-09-14 20:43:51,552 INFO:  * Debugger PIN: 117-724-678
+2022-09-14 20:44:03,061 INFO: Log Level info
+2022-09-14 20:44:03,061 INFO: asdasdsd
+2022-09-14 20:44:03,062 INFO: asdas
+2022-09-14 20:44:03,131 INFO: [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on http://127.0.0.1:7050
+2022-09-14 20:44:03,132 INFO: [33mPress CTRL+C to quit[0m
+2022-09-14 20:44:03,134 INFO:  * Restarting with stat
+2022-09-14 20:44:03,458 INFO: Log Level info
+2022-09-14 20:44:03,459 INFO: asdasdsd
+2022-09-14 20:44:03,459 INFO: asdas
+2022-09-14 20:44:03,526 WARNING:  * Debugger is active!
+2022-09-14 20:44:03,531 INFO:  * Debugger PIN: 117-724-678
+2022-09-14 20:44:47,714 INFO:  * Detected change in '/mnt/hgfs/clustervision/luna2-daemon/utils/log.py', reloading
+2022-09-14 20:44:47,762 INFO:  * Restarting with stat
+2022-09-14 20:44:48,144 INFO: Log Level info
+2022-09-14 20:44:48,145 INFO: asdasdsd
+2022-09-14 20:44:48,145 INFO: asdas
+2022-09-14 20:44:48,221 WARNING:  * Debugger is active!
+2022-09-14 20:44:48,227 INFO:  * Debugger PIN: 117-724-678
+2022-09-14 20:45:00,946 INFO:  * Detected change in '/mnt/hgfs/clustervision/luna2-daemon/luna.py', reloading
+2022-09-14 20:45:00,995 INFO:  * Restarting with stat
+2022-09-14 20:45:01,404 WARNING:  * Debugger is active!
+2022-09-14 20:45:01,410 INFO:  * Debugger PIN: 117-724-678
+2022-09-14 20:45:04,590 INFO: [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on http://127.0.0.1:7050
+2022-09-14 20:45:04,591 INFO: [33mPress CTRL+C to quit[0m
+2022-09-14 20:45:04,592 INFO:  * Restarting with stat
+2022-09-14 20:45:05,003 WARNING:  * Debugger is active!
+2022-09-14 20:45:05,015 INFO:  * Debugger PIN: 117-724-678
+2022-09-14 20:45:40,387 INFO:  * Detected change in '/mnt/hgfs/clustervision/luna2-daemon/utils/log.py', reloading
+2022-09-14 20:45:40,451 INFO:  * Restarting with stat
+2022-09-14 20:45:40,933 WARNING:  * Debugger is active!
+2022-09-14 20:45:40,940 INFO:  * Debugger PIN: 117-724-678
+2022-09-14 20:45:50,863 INFO:  * Detected change in '/mnt/hgfs/clustervision/luna2-daemon/utils/log.py', reloading
+2022-09-14 20:45:50,920 INFO:  * Restarting with stat
+2022-09-14 20:45:51,410 WARNING:  * Debugger is active!
+2022-09-14 20:45:51,415 INFO:  * Debugger PIN: 117-724-678
+2022-09-14 20:46:08,003 INFO:  * Detected change in '/mnt/hgfs/clustervision/luna2-daemon/utils/log.py', reloading
+2022-09-14 20:46:08,050 INFO:  * Restarting with stat
+2022-09-14 20:46:08,494 WARNING:  * Debugger is active!
+2022-09-14 20:46:08,500 INFO:  * Debugger PIN: 117-724-678
+2022-09-14 20:46:21,016 INFO:  * Detected change in '/mnt/hgfs/clustervision/luna2-daemon/luna.py', reloading
+2022-09-14 20:46:21,067 INFO:  * Restarting with stat
+2022-09-14 20:46:21,476 WARNING:  * Debugger is active!
+2022-09-14 20:46:21,483 INFO:  * Debugger PIN: 117-724-678
+2022-09-14 20:46:23,475 INFO:  * Detected change in '/mnt/hgfs/clustervision/luna2-daemon/luna.py', reloading
+2022-09-14 20:46:23,522 INFO:  * Restarting with stat
+2022-09-14 20:46:23,934 WARNING:  * Debugger is active!
+2022-09-14 20:46:23,941 INFO:  * Debugger PIN: 117-724-678
+2022-09-14 20:46:33,846 INFO:  * Detected change in '/mnt/hgfs/clustervision/luna2-daemon/luna.py', reloading
+2022-09-14 20:46:33,892 INFO:  * Restarting with stat
+2022-09-14 20:46:34,293 WARNING:  * Debugger is active!
+2022-09-14 20:46:34,299 INFO:  * Debugger PIN: 117-724-678
+2022-09-14 20:47:00,233 INFO:  * Detected change in '/mnt/hgfs/clustervision/luna2-daemon/utils/log.py', reloading
+2022-09-14 20:47:00,278 INFO:  * Restarting with stat
+2022-09-14 20:47:00,708 WARNING:  * Debugger is active!
+2022-09-14 20:47:00,715 INFO:  * Debugger PIN: 117-724-678
+2022-09-14 20:47:02,752 INFO:  * Detected change in '/mnt/hgfs/clustervision/luna2-daemon/utils/log.py', reloading
+2022-09-14 20:47:02,801 INFO:  * Restarting with stat
+2022-09-14 20:47:03,219 WARNING:  * Debugger is active!
+2022-09-14 20:47:03,225 INFO:  * Debugger PIN: 117-724-678
+2022-09-14 20:47:11,806 INFO:  * Detected change in '/mnt/hgfs/clustervision/luna2-daemon/luna.py', reloading
+2022-09-14 20:47:11,855 INFO:  * Restarting with stat
+2022-09-14 20:47:12,291 WARNING:  * Debugger is active!
+2022-09-14 20:47:12,297 INFO:  * Debugger PIN: 117-724-678
+2022-09-14 20:47:17,123 INFO:  * Detected change in '/mnt/hgfs/clustervision/luna2-daemon/luna.py', reloading
+2022-09-14 20:47:17,181 INFO:  * Restarting with stat
+2022-09-14 20:47:17,557 INFO: Log Level info
+2022-09-14 20:47:17,558 INFO: asdasdsd
+2022-09-14 20:47:17,559 INFO: asdas
+2022-09-14 20:47:17,658 WARNING:  * Debugger is active!
+2022-09-14 20:47:17,664 INFO:  * Debugger PIN: 117-724-678
+2022-09-14 20:47:24,557 INFO: Log Level info
+2022-09-14 20:47:24,558 INFO: asdasdsd
+2022-09-14 20:47:24,559 INFO: asdas
+2022-09-14 20:47:24,627 INFO: [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on http://127.0.0.1:7050
+2022-09-14 20:47:24,628 INFO: [33mPress CTRL+C to quit[0m
+2022-09-14 20:47:24,630 INFO:  * Restarting with stat
+2022-09-14 20:47:25,080 INFO: Log Level info
+2022-09-14 20:47:25,081 INFO: asdasdsd
+2022-09-14 20:47:25,081 INFO: asdas
+2022-09-14 20:47:25,144 WARNING:  * Debugger is active!
+2022-09-14 20:47:25,151 INFO:  * Debugger PIN: 117-724-678
+2022-09-14 20:47:36,150 INFO: Log Level info
+2022-09-14 20:47:36,150 INFO: asdasdsd
+2022-09-14 20:47:36,151 INFO: asdas
+2022-09-14 20:47:36,222 INFO: [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on http://127.0.0.1:7050
+2022-09-14 20:47:36,222 INFO: [33mPress CTRL+C to quit[0m
+2022-09-14 20:47:36,224 INFO:  * Restarting with stat
+2022-09-14 20:47:36,553 INFO: Log Level info
+2022-09-14 20:47:36,554 INFO: asdasdsd
+2022-09-14 20:47:36,554 INFO: asdas
+2022-09-14 20:47:36,624 WARNING:  * Debugger is active!
+2022-09-14 20:47:36,630 INFO:  * Debugger PIN: 117-724-678
+2022-09-14 20:47:47,956 INFO:  * Detected change in '/mnt/hgfs/clustervision/luna2-daemon/luna.py', reloading
+2022-09-14 20:47:48,001 INFO:  * Restarting with stat
+2022-09-14 20:47:56,380 INFO: Log Level info
+2022-09-14 20:47:56,380 INFO: asdasdsd
+2022-09-14 20:47:56,381 INFO: asdas
+2022-09-14 20:47:56,449 INFO: [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on http://127.0.0.1:7050
+2022-09-14 20:47:56,450 INFO: [33mPress CTRL+C to quit[0m
+2022-09-14 20:47:56,452 INFO:  * Restarting with stat
+2022-09-14 20:47:56,774 INFO: Log Level info
+2022-09-14 20:47:56,775 INFO: asdasdsd
+2022-09-14 20:47:56,775 INFO: asdas
+2022-09-14 20:47:56,842 WARNING:  * Debugger is active!
+2022-09-14 20:47:56,848 INFO:  * Debugger PIN: 117-724-678
+2022-09-14 20:48:14,649 INFO:  * Detected change in '/mnt/hgfs/clustervision/luna2-daemon/luna.py', reloading
+2022-09-14 20:48:14,711 INFO:  * Restarting with stat
+2022-09-14 20:49:18,457 WARNING: Log Level warning
+2022-09-14 20:49:18,458 WARNING: asdasdsd
+2022-09-14 20:49:18,459 WARNING: asdas
+2022-09-14 20:49:18,530 INFO: [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on http://127.0.0.1:7050
+2022-09-14 20:49:18,531 INFO: [33mPress CTRL+C to quit[0m
+2022-09-14 20:49:18,533 INFO:  * Restarting with stat
+2022-09-14 20:49:18,863 WARNING: Log Level warning
+2022-09-14 20:49:18,864 WARNING: asdasdsd
+2022-09-14 20:49:18,865 WARNING: asdas
+2022-09-14 20:49:18,931 WARNING:  * Debugger is active!
+2022-09-14 20:49:18,938 INFO:  * Debugger PIN: 117-724-678
+2022-09-14 20:49:25,367 DEBUG: Log Level debug
+2022-09-14 20:49:25,368 DEBUG: asdasdsd
+2022-09-14 20:49:25,369 DEBUG: asdas
+2022-09-14 20:49:25,438 INFO: [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on http://127.0.0.1:7050
+2022-09-14 20:49:25,439 INFO: [33mPress CTRL+C to quit[0m
+2022-09-14 20:49:25,441 INFO:  * Restarting with stat
+2022-09-14 20:49:25,779 DEBUG: Log Level debug
+2022-09-14 20:49:25,780 DEBUG: asdasdsd
+2022-09-14 20:49:25,780 DEBUG: asdas
+2022-09-14 20:49:25,853 WARNING:  * Debugger is active!
+2022-09-14 20:49:25,859 INFO:  * Debugger PIN: 117-724-678
+2022-09-14 20:49:45,577 CRITICAL: Log Level critical
+2022-09-14 20:49:45,577 CRITICAL: asdasdsd
+2022-09-14 20:49:45,578 CRITICAL: asdas
+2022-09-14 20:49:45,648 INFO: [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on http://127.0.0.1:7050
+2022-09-14 20:49:45,649 INFO: [33mPress CTRL+C to quit[0m
+2022-09-14 20:49:45,650 INFO:  * Restarting with stat
+2022-09-14 20:49:45,968 CRITICAL: Log Level critical
+2022-09-14 20:49:45,969 CRITICAL: asdasdsd
+2022-09-14 20:49:45,969 CRITICAL: asdas
+2022-09-14 20:49:46,034 WARNING:  * Debugger is active!
+2022-09-14 20:49:46,039 INFO:  * Debugger PIN: 117-724-678
+2022-09-14 20:52:47,812 CRITICAL: ++++++++++++++ Luna Logger Level set to critical +++++++++++++++ 
+2022-09-14 20:52:47,892 INFO: [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on http://127.0.0.1:7050
+2022-09-14 20:52:47,892 INFO: [33mPress CTRL+C to quit[0m
+2022-09-14 20:52:47,894 INFO:  * Restarting with stat
+2022-09-14 20:52:48,222 CRITICAL: ++++++++++++++ Luna Logger Level set to critical +++++++++++++++ 
+2022-09-14 20:52:48,293 WARNING:  * Debugger is active!
+2022-09-14 20:52:48,298 INFO:  * Debugger PIN: 117-724-678
+2022-09-14 20:53:00,488 CRITICAL: ++++++++++++++ Luna Logger Level set to critical +++++++++++++++ 
+2022-09-14 20:53:00,556 INFO: [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on http://127.0.0.1:7050
+2022-09-14 20:53:00,558 INFO: [33mPress CTRL+C to quit[0m
+2022-09-14 20:53:00,559 INFO:  * Restarting with stat
+2022-09-14 20:53:00,896 CRITICAL: ++++++++++++++ Luna Logger Level set to critical +++++++++++++++ 
+2022-09-14 20:53:00,960 WARNING:  * Debugger is active!
+2022-09-14 20:53:00,966 INFO:  * Debugger PIN: 117-724-678
+2022-09-14 20:53:08,415 DEBUG: ++++++++++++++ Luna Logger Level set to debug +++++++++++++++ 
+2022-09-14 20:53:08,489 INFO: [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on http://127.0.0.1:7050
+2022-09-14 20:53:08,490 INFO: [33mPress CTRL+C to quit[0m
+2022-09-14 20:53:08,492 INFO:  * Restarting with stat
+2022-09-14 20:53:08,829 DEBUG: ++++++++++++++ Luna Logger Level set to debug +++++++++++++++ 
+2022-09-14 20:53:08,895 WARNING:  * Debugger is active!
+2022-09-14 20:53:08,901 INFO:  * Debugger PIN: 117-724-678
+2022-09-14 20:53:33,258 INFO: ++++++++++++++ Luna Logger Level set to info +++++++++++++++ 
+2022-09-14 20:53:33,325 INFO: [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on http://127.0.0.1:7050
+2022-09-14 20:53:33,326 INFO: [33mPress CTRL+C to quit[0m
+2022-09-14 20:53:33,327 INFO:  * Restarting with stat
+2022-09-14 20:53:33,649 INFO: ++++++++++++++ Luna Logger Level set to info +++++++++++++++ 
+2022-09-14 20:53:33,714 WARNING:  * Debugger is active!
+2022-09-14 20:53:33,720 INFO:  * Debugger PIN: 117-724-678
+2022-09-14 20:53:46,940 DEBUG: ++++++++++++++ Luna Logger Level set to debug +++++++++++++++ 
+2022-09-14 20:53:47,009 INFO: [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on http://127.0.0.1:7050
+2022-09-14 20:53:47,010 INFO: [33mPress CTRL+C to quit[0m
+2022-09-14 20:53:47,011 INFO:  * Restarting with stat
+2022-09-14 20:53:47,342 DEBUG: ++++++++++++++ Luna Logger Level set to debug +++++++++++++++ 
+2022-09-14 20:53:47,408 WARNING:  * Debugger is active!
+2022-09-14 20:53:47,415 INFO:  * Debugger PIN: 117-724-678
+2022-09-14 20:54:10,674 INFO:  * Detected change in '/mnt/hgfs/clustervision/luna2-daemon/luna.py', reloading
+2022-09-14 20:54:10,723 INFO:  * Restarting with stat
+2022-09-14 20:54:11,114 DEBUG: ++++++++++++++ Luna Logger Level set to debug +++++++++++++++ 
+2022-09-14 20:54:11,201 WARNING:  * Debugger is active!
+2022-09-14 20:54:11,207 INFO:  * Debugger PIN: 117-724-678
+2022-09-14 20:55:02,246 INFO:  * Detected change in '/mnt/hgfs/clustervision/luna2-daemon/utils/log.py', reloading
+2022-09-14 20:55:02,289 INFO:  * Restarting with stat
+2022-09-14 20:55:02,676 DEBUG: ++++++++++++++ Luna Logger Level set to debug +++++++++++++++ 
+2022-09-14 20:55:02,753 WARNING:  * Debugger is active!
+2022-09-14 20:55:02,759 INFO:  * Debugger PIN: 117-724-678
+2022-09-14 20:55:22,972 INFO:  * Detected change in '/mnt/hgfs/clustervision/luna2-daemon/utils/log.py', reloading
+2022-09-14 20:55:23,025 INFO:  * Restarting with stat
+2022-09-14 20:55:23,444 DEBUG: ++++++++++++++ Luna Logger Level set to debug +++++++++++++++ 
+2022-09-14 20:55:23,522 WARNING:  * Debugger is active!
+2022-09-14 20:55:23,528 INFO:  * Debugger PIN: 117-724-678
+2022-09-14 20:59:56,028 INFO:  * Detected change in '/mnt/hgfs/clustervision/luna2-daemon/luna.py', reloading
+2022-09-14 20:59:56,080 INFO:  * Restarting with stat
+2022-09-14 20:59:56,496 DEBUG: ++++++++++++++ Luna Logger Level set to debug ++++++++++++++ 
+2022-09-14 20:59:56,574 WARNING:  * Debugger is active!
+2022-09-14 20:59:56,579 INFO:  * Debugger PIN: 117-724-678
+2022-09-14 21:03:29,302 INFO:  * Detected change in '/mnt/hgfs/clustervision/luna2-daemon/luna.py', reloading
+2022-09-14 21:03:29,351 INFO:  * Restarting with stat
+2022-09-14 21:03:29,686 DEBUG: ++++++++++++++ Luna Logger Level set to debug ++++++++++++++ 
+2022-09-14 21:03:29,763 WARNING:  * Debugger is active!
+2022-09-14 21:03:29,769 INFO:  * Debugger PIN: 117-724-678
+2022-09-14 21:03:57,294 INFO:  * Detected change in '/mnt/hgfs/clustervision/luna2-daemon/luna.py', reloading
+2022-09-14 21:03:57,351 INFO:  * Restarting with stat
+2022-09-14 21:03:57,742 DEBUG: ++++++++++++++ Luna Logger Level set to debug ++++++++++++++ 
+2022-09-14 21:03:57,815 WARNING:  * Debugger is active!
+2022-09-14 21:03:57,821 INFO:  * Debugger PIN: 117-724-678
+2022-09-14 21:09:55,800 INFO:  * Detected change in '/mnt/hgfs/clustervision/luna2-daemon/apis/boot.py', reloading
+2022-09-14 21:09:55,853 INFO:  * Restarting with stat
+2022-09-14 21:09:56,199 DEBUG: ++++++++++++++ Luna Logger Level set to debug ++++++++++++++ 
+2022-09-14 21:10:24,631 DEBUG: ++++++++++++++ Luna Logger Level set to debug ++++++++++++++ 
+2022-09-14 21:10:24,723 INFO: [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on http://127.0.0.1:7050
+2022-09-14 21:10:24,724 INFO: [33mPress CTRL+C to quit[0m
+2022-09-14 21:10:24,725 INFO:  * Restarting with stat
+2022-09-14 21:10:25,091 DEBUG: ++++++++++++++ Luna Logger Level set to debug ++++++++++++++ 
+2022-09-14 21:10:25,166 WARNING:  * Debugger is active!
+2022-09-14 21:10:25,172 INFO:  * Debugger PIN: 117-724-678
+2022-09-14 21:10:27,994 INFO: I am log
+2022-09-14 21:10:27,996 INFO: 127.0.0.1 - - [14/Sep/2022 21:10:27] "GET /84e3b078-bb76-11ea-b3de-0242ac130004/boot HTTP/1.1" 200 -
+2022-09-14 21:10:39,103 INFO: 127.0.0.1 - - [14/Sep/2022 21:10:39] "[33mGET /boot HTTP/1.1[0m" 404 -
+2022-09-14 21:10:47,940 INFO: 127.0.0.1 - - [14/Sep/2022 21:10:47] "[31m[1mGET /84e3b078-bb76-11ea-b3de-0242ac130002/boot HTTP/1.1[0m" 401 -
+2022-09-14 21:10:59,706 INFO: I am log
+2022-09-14 21:10:59,707 INFO: 127.0.0.1 - - [14/Sep/2022 21:10:59] "GET /84e3b078-bb76-11ea-b3de-0242ac130004/boot HTTP/1.1" 200 -
+2022-09-14 21:11:43,326 INFO:  * Detected change in '/mnt/hgfs/clustervision/luna2-daemon/apis/boot.py', reloading
+2022-09-14 21:11:43,384 INFO:  * Restarting with stat
+2022-09-14 21:11:43,770 DEBUG: ++++++++++++++ Luna Logger Level set to debug ++++++++++++++ 
+2022-09-14 21:11:43,852 WARNING:  * Debugger is active!
+2022-09-14 21:11:43,858 INFO:  * Debugger PIN: 117-724-678
+2022-09-14 21:11:56,155 INFO: This is Boot API.
+2022-09-14 21:11:56,157 INFO: 127.0.0.1 - - [14/Sep/2022 21:11:56] "GET /84e3b078-bb76-11ea-b3de-0242ac130004/boot HTTP/1.1" 200 -
+2022-09-14 21:13:37,097 INFO:  * Detected change in '/mnt/hgfs/clustervision/luna2-daemon/apis/boot.py', reloading
+2022-09-14 21:13:37,145 INFO:  * Restarting with stat
+2022-09-14 21:13:37,493 DEBUG: ++++++++++++++ Luna Logger Level set to debug ++++++++++++++ 
+2022-09-14 21:13:37,591 WARNING:  * Debugger is active!
+2022-09-14 21:13:37,598 INFO:  * Debugger PIN: 117-724-678
+2022-09-14 21:14:01,011 INFO:  * Detected change in '/mnt/hgfs/clustervision/luna2-daemon/utils/log.py', reloading
+2022-09-14 21:14:01,056 INFO:  * Restarting with stat
+2022-09-14 21:14:01,451 DEBUG: ++++++++++++++ Luna Logger Level set to debug ++++++++++++++ 
+2022-09-14 21:14:01,531 WARNING:  * Debugger is active!
+2022-09-14 21:14:01,538 INFO:  * Debugger PIN: 117-724-678
+2022-09-14 21:14:48,928 INFO:  * Detected change in '/mnt/hgfs/clustervision/luna2-daemon/apis/boot.py', reloading
+2022-09-14 21:14:48,970 INFO:  * Restarting with stat
+2022-09-14 21:14:49,295 DEBUG: ++++++++++++++ Luna Logger Level set to debug ++++++++++++++ 
+2022-09-14 21:14:49,381 WARNING:  * Debugger is active!
+2022-09-14 21:14:49,387 INFO:  * Debugger PIN: 117-724-678
+2022-09-14 21:14:52,477 INFO: 127.0.0.1 - - [14/Sep/2022 21:14:52] "[35m[1mGET /84e3b078-bb76-11ea-b3de-0242ac130004/boot HTTP/1.1[0m" 500 -
+2022-09-14 21:14:52,561 INFO: 127.0.0.1 - - [14/Sep/2022 21:14:52] "[36mGET /84e3b078-bb76-11ea-b3de-0242ac130004/boot?__debugger__=yes&cmd=resource&f=style.css HTTP/1.1[0m" 304 -
+2022-09-14 21:14:52,566 INFO: 127.0.0.1 - - [14/Sep/2022 21:14:52] "[36mGET /84e3b078-bb76-11ea-b3de-0242ac130004/boot?__debugger__=yes&cmd=resource&f=debugger.js HTTP/1.1[0m" 304 -
+2022-09-14 21:14:52,702 INFO: 127.0.0.1 - - [14/Sep/2022 21:14:52] "[36mGET /84e3b078-bb76-11ea-b3de-0242ac130004/boot?__debugger__=yes&cmd=resource&f=console.png HTTP/1.1[0m" 304 -
+2022-09-14 21:16:10,991 INFO:  * Detected change in '/mnt/hgfs/clustervision/luna2-daemon/apis/boot.py', reloading
+2022-09-14 21:16:11,042 INFO:  * Restarting with stat
+2022-09-14 21:16:11,422 DEBUG: ++++++++++++++ Luna Logger Level set to debug ++++++++++++++ 
+2022-09-14 21:16:11,513 WARNING:  * Debugger is active!
+2022-09-14 21:16:11,518 INFO:  * Debugger PIN: 117-724-678
+2022-09-14 21:16:15,201 INFO: 127.0.0.1 - - [14/Sep/2022 21:16:15] "[35m[1mGET /84e3b078-bb76-11ea-b3de-0242ac130004/boot HTTP/1.1[0m" 500 -
+2022-09-14 21:16:15,277 INFO: 127.0.0.1 - - [14/Sep/2022 21:16:15] "[36mGET /84e3b078-bb76-11ea-b3de-0242ac130004/boot?__debugger__=yes&cmd=resource&f=style.css HTTP/1.1[0m" 304 -
+2022-09-14 21:16:15,293 INFO: 127.0.0.1 - - [14/Sep/2022 21:16:15] "[36mGET /84e3b078-bb76-11ea-b3de-0242ac130004/boot?__debugger__=yes&cmd=resource&f=debugger.js HTTP/1.1[0m" 304 -
+2022-09-14 21:16:15,327 INFO: 127.0.0.1 - - [14/Sep/2022 21:16:15] "[36mGET /84e3b078-bb76-11ea-b3de-0242ac130004/boot?__debugger__=yes&cmd=resource&f=console.png HTTP/1.1[0m" 304 -
+2022-09-14 21:16:57,248 INFO:  * Detected change in '/mnt/hgfs/clustervision/luna2-daemon/utils/log.py', reloading
+2022-09-14 21:16:57,302 INFO:  * Restarting with stat
+2022-09-14 21:16:57,675 DEBUG: ++++++++++++++ Luna Logger Level set to debug ++++++++++++++ 
+2022-09-14 21:16:57,759 WARNING:  * Debugger is active!
+2022-09-14 21:16:57,765 INFO:  * Debugger PIN: 117-724-678
+2022-09-14 21:17:03,803 DEBUG: ++++++++++++++ Luna Logger Level set to debug ++++++++++++++ 
+2022-09-14 21:17:03,882 INFO: [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on http://127.0.0.1:7050
+2022-09-14 21:17:03,882 INFO: [33mPress CTRL+C to quit[0m
+2022-09-14 21:17:03,884 INFO:  * Restarting with stat
+2022-09-14 21:17:04,213 DEBUG: ++++++++++++++ Luna Logger Level set to debug ++++++++++++++ 
+2022-09-14 21:17:04,287 WARNING:  * Debugger is active!
+2022-09-14 21:17:04,293 INFO:  * Debugger PIN: 117-724-678
+2022-09-14 21:17:08,018 INFO: 127.0.0.1 - - [14/Sep/2022 21:17:08] "[35m[1mGET /84e3b078-bb76-11ea-b3de-0242ac130004/boot HTTP/1.1[0m" 500 -
+2022-09-14 21:17:08,089 INFO: 127.0.0.1 - - [14/Sep/2022 21:17:08] "[36mGET /84e3b078-bb76-11ea-b3de-0242ac130004/boot?__debugger__=yes&cmd=resource&f=debugger.js HTTP/1.1[0m" 304 -
+2022-09-14 21:17:08,090 INFO: 127.0.0.1 - - [14/Sep/2022 21:17:08] "[36mGET /84e3b078-bb76-11ea-b3de-0242ac130004/boot?__debugger__=yes&cmd=resource&f=style.css HTTP/1.1[0m" 304 -
+2022-09-14 21:17:08,115 INFO: 127.0.0.1 - - [14/Sep/2022 21:17:08] "[36mGET /84e3b078-bb76-11ea-b3de-0242ac130004/boot?__debugger__=yes&cmd=resource&f=console.png HTTP/1.1[0m" 304 -
+2022-09-14 21:17:16,037 INFO:  * Detected change in '/mnt/hgfs/clustervision/luna2-daemon/apis/boot.py', reloading
+2022-09-14 21:17:16,085 INFO:  * Restarting with stat
+2022-09-14 21:17:16,509 DEBUG: ++++++++++++++ Luna Logger Level set to debug ++++++++++++++ 
+2022-09-14 21:17:16,587 WARNING:  * Debugger is active!
+2022-09-14 21:17:16,593 INFO:  * Debugger PIN: 117-724-678
+2022-09-14 21:17:18,721 INFO: This is Boot API.
+2022-09-14 21:17:18,723 INFO: 127.0.0.1 - - [14/Sep/2022 21:17:18] "GET /84e3b078-bb76-11ea-b3de-0242ac130004/boot HTTP/1.1" 200 -
+2022-09-14 21:18:19,261 INFO:  * Detected change in '/mnt/hgfs/clustervision/luna2-daemon/utils/log.py', reloading
+2022-09-14 21:18:19,309 INFO:  * Restarting with stat
+2022-09-14 21:18:19,737 DEBUG: ++++++++++++++ Luna Logger Level set to debug ++++++++++++++ 
+2022-09-14 21:18:19,827 WARNING:  * Debugger is active!
+2022-09-14 21:18:19,834 INFO:  * Debugger PIN: 117-724-678
+2022-09-14 21:18:50,309 INFO:  * Detected change in '/mnt/hgfs/clustervision/luna2-daemon/apis/boot.py', reloading
+2022-09-14 21:18:50,368 INFO:  * Restarting with stat
+2022-09-14 21:18:50,762 DEBUG: ++++++++++++++ Luna Logger Level set to debug ++++++++++++++ 
+2022-09-14 21:18:50,852 WARNING:  * Debugger is active!
+2022-09-14 21:18:50,858 INFO:  * Debugger PIN: 117-724-678
+2022-09-14 21:18:53,449 ERROR: This is Boot API.
+2022-09-14 21:18:53,450 INFO: This is Boot API.
+2022-09-14 21:18:53,452 INFO: 127.0.0.1 - - [14/Sep/2022 21:18:53] "GET /84e3b078-bb76-11ea-b3de-0242ac130004/boot HTTP/1.1" 200 -
+2022-09-14 21:18:59,994 INFO:  * Detected change in '/mnt/hgfs/clustervision/luna2-daemon/apis/boot.py', reloading
+2022-09-14 21:19:00,049 INFO:  * Restarting with stat
+2022-09-14 21:19:00,444 DEBUG: ++++++++++++++ Luna Logger Level set to debug ++++++++++++++ 
+2022-09-14 21:19:00,526 WARNING:  * Debugger is active!
+2022-09-14 21:19:00,532 INFO:  * Debugger PIN: 117-724-678
+2022-09-14 21:19:01,263 INFO:  * Detected change in '/mnt/hgfs/clustervision/luna2-daemon/apis/boot.py', reloading
+2022-09-14 21:19:01,316 INFO:  * Restarting with stat
+2022-09-14 21:19:01,679 DEBUG: ++++++++++++++ Luna Logger Level set to debug ++++++++++++++ 
+2022-09-14 21:19:01,764 WARNING:  * Debugger is active!
+2022-09-14 21:19:01,769 INFO:  * Debugger PIN: 117-724-678
+2022-09-14 21:19:13,304 INFO:  * Detected change in '/mnt/hgfs/clustervision/luna2-daemon/apis/boot.py', reloading
+2022-09-14 21:19:13,355 INFO:  * Restarting with stat
+2022-09-14 21:19:13,732 DEBUG: ++++++++++++++ Luna Logger Level set to debug ++++++++++++++ 
+2022-09-14 21:19:13,826 WARNING:  * Debugger is active!
+2022-09-14 21:19:13,831 INFO:  * Debugger PIN: 117-724-678
+2022-09-14 21:19:15,979 INFO:  * Detected change in '/mnt/hgfs/clustervision/luna2-daemon/apis/boot.py', reloading
+2022-09-14 21:19:16,043 INFO:  * Restarting with stat
+2022-09-14 21:19:16,458 DEBUG: ++++++++++++++ Luna Logger Level set to debug ++++++++++++++ 
+2022-09-14 21:19:16,541 WARNING:  * Debugger is active!
+2022-09-14 21:19:16,547 INFO:  * Debugger PIN: 117-724-678
+2022-09-14 21:19:16,962 ERROR: This is Boot API.
+2022-09-14 21:19:17,014 INFO: This is Boot API.
+2022-09-14 21:19:17,015 INFO: 127.0.0.1 - - [14/Sep/2022 21:19:17] "GET /84e3b078-bb76-11ea-b3de-0242ac130004/boot HTTP/1.1" 200 -
+2022-09-14 21:22:03,244 INFO:  * Detected change in '/mnt/hgfs/clustervision/luna2-daemon/utils/log.py', reloading
+2022-09-14 21:22:03,297 INFO:  * Restarting with stat
+[DEBUG]:[2022-09-14 21:22:03,708]:[MainThread]:[log.py:luna_logging@50] - ++++++++++++++ Luna Logger Level set to debug ++++++++++++++ 
+[WARNING]:[2022-09-14 21:22:03,797]:[MainThread]:[_internal.py:_log@224] -  * Debugger is active!
+[INFO]:[2022-09-14 21:22:03,805]:[MainThread]:[_internal.py:_log@224] -  * Debugger PIN: 117-724-678
+[ERROR]:[2022-09-14 21:22:10,121]:[Thread-2 (process_request_thread)]:[boot.py:boot@15] - This is Boot API.
+[INFO]:[2022-09-14 21:22:10,122]:[Thread-2 (process_request_thread)]:[log.py:luna_logging@52] - This is Boot API.
+[INFO]:[2022-09-14 21:22:10,123]:[Thread-2 (process_request_thread)]:[_internal.py:_log@224] - 127.0.0.1 - - [14/Sep/2022 21:22:10] "GET /84e3b078-bb76-11ea-b3de-0242ac130004/boot HTTP/1.1" 200 -
+[DEBUG]:[2022-09-14 21:22:16,102]:[MainThread]:[log.py:luna_logging@50] - ++++++++++++++ Luna Logger Level set to debug ++++++++++++++ 
+[INFO]:[2022-09-14 21:22:16,177]:[MainThread]:[_internal.py:_log@224] - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on http://127.0.0.1:7050
+[INFO]:[2022-09-14 21:22:16,178]:[MainThread]:[_internal.py:_log@224] - [33mPress CTRL+C to quit[0m
+[INFO]:[2022-09-14 21:22:16,179]:[MainThread]:[_internal.py:_log@224] -  * Restarting with stat
+[DEBUG]:[2022-09-14 21:22:16,529]:[MainThread]:[log.py:luna_logging@50] - ++++++++++++++ Luna Logger Level set to debug ++++++++++++++ 
+[WARNING]:[2022-09-14 21:22:16,601]:[MainThread]:[_internal.py:_log@224] -  * Debugger is active!
+[INFO]:[2022-09-14 21:22:16,606]:[MainThread]:[_internal.py:_log@224] -  * Debugger PIN: 117-724-678
+[ERROR]:[2022-09-14 21:22:20,281]:[Thread-2 (process_request_thread)]:[boot.py:boot@15] - This is Boot API.
+[INFO]:[2022-09-14 21:22:20,282]:[Thread-2 (process_request_thread)]:[log.py:luna_logging@52] - This is Boot API.
+[INFO]:[2022-09-14 21:22:20,283]:[Thread-2 (process_request_thread)]:[_internal.py:_log@224] - 127.0.0.1 - - [14/Sep/2022 21:22:20] "GET /84e3b078-bb76-11ea-b3de-0242ac130004/boot HTTP/1.1" 200 -
+[DEBUG]:[2022-09-14 21:24:46,181]:[MainThread]:[log.py:luna_logging@51] - ++++++++++++++ Luna Logger Level set to debug ++++++++++++++ 
+[INFO]:[2022-09-14 21:24:46,258]:[MainThread]:[_internal.py:_log@224] - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on http://127.0.0.1:7050
+[INFO]:[2022-09-14 21:24:46,259]:[MainThread]:[_internal.py:_log@224] - [33mPress CTRL+C to quit[0m
+[INFO]:[2022-09-14 21:24:46,261]:[MainThread]:[_internal.py:_log@224] -  * Restarting with stat
+[DEBUG]:[2022-09-14 21:24:46,610]:[MainThread]:[log.py:luna_logging@51] - ++++++++++++++ Luna Logger Level set to debug ++++++++++++++ 
+[WARNING]:[2022-09-14 21:24:46,686]:[MainThread]:[_internal.py:_log@224] -  * Debugger is active!
+[INFO]:[2022-09-14 21:24:46,693]:[MainThread]:[_internal.py:_log@224] -  * Debugger PIN: 117-724-678
+[ERROR]:[2022-09-14 21:25:18,563]:[Thread-2 (process_request_thread)]:[boot.py:boot@15] - This is Boot API.
+[INFO]:[2022-09-14 21:25:18,564]:[Thread-2 (process_request_thread)]:[log.py:luna_logging@53] - This is Boot API.
+[INFO]:[2022-09-14 21:25:18,566]:[Thread-2 (process_request_thread)]:[_internal.py:_log@224] - 127.0.0.1 - - [14/Sep/2022 21:25:18] "GET /84e3b078-bb76-11ea-b3de-0242ac130004/boot HTTP/1.1" 200 -
+[INFO]:[2022-09-14 21:26:53,891]:[MainThread]:[_internal.py:_log@224] -  * Detected change in '/mnt/hgfs/clustervision/luna2-daemon/utils/log.py', reloading
+[INFO]:[2022-09-14 21:26:53,935]:[MainThread]:[_internal.py:_log@224] -  * Restarting with stat
+[DEBUG]:[2022-09-14 21:26:54,298]:[MainThread]:[log.py:luna_logging@44] - ++++++++++++++ Luna Logger Level set to debug ++++++++++++++ 
+[WARNING]:[2022-09-14 21:26:54,372]:[MainThread]:[_internal.py:_log@224] -  * Debugger is active!
+[INFO]:[2022-09-14 21:26:54,378]:[MainThread]:[_internal.py:_log@224] -  * Debugger PIN: 117-724-678
+[INFO]:[2022-09-14 21:30:14,756]:[MainThread]:[_internal.py:_log@224] -  * Detected change in '/mnt/hgfs/clustervision/luna2-daemon/utils/log.py', reloading
+[INFO]:[2022-09-14 21:30:14,807]:[MainThread]:[_internal.py:_log@224] -  * Restarting with stat
+[WARNING]:[2022-09-14 21:30:15,231]:[MainThread]:[_internal.py:_log@224] -  * Debugger is active!
+[INFO]:[2022-09-14 21:30:15,236]:[MainThread]:[_internal.py:_log@224] -  * Debugger PIN: 117-724-678
+[INFO]:[2022-09-14 21:30:23,172]:[MainThread]:[_internal.py:_log@224] - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on http://127.0.0.1:7050
+[INFO]:[2022-09-14 21:30:23,172]:[MainThread]:[_internal.py:_log@224] - [33mPress CTRL+C to quit[0m
+[INFO]:[2022-09-14 21:30:23,174]:[MainThread]:[_internal.py:_log@224] -  * Restarting with stat
+[WARNING]:[2022-09-14 21:30:23,568]:[MainThread]:[_internal.py:_log@224] -  * Debugger is active!
+[INFO]:[2022-09-14 21:30:23,572]:[MainThread]:[_internal.py:_log@224] -  * Debugger PIN: 117-724-678
+[ERROR]:[2022-09-14 21:30:28,283]:[Thread-2 (process_request_thread)]:[boot.py:boot@15] - This is Boot API.
+[INFO]:[2022-09-14 21:30:28,288]:[Thread-2 (process_request_thread)]:[log.py:luna_logging@46] - This is Boot API.
+[INFO]:[2022-09-14 21:30:28,290]:[Thread-2 (process_request_thread)]:[_internal.py:_log@224] - 127.0.0.1 - - [14/Sep/2022 21:30:28] "GET /84e3b078-bb76-11ea-b3de-0242ac130004/boot HTTP/1.1" 200 -
+[ERROR]:[2022-09-14 21:30:52,626]:[Thread-3 (process_request_thread)]:[boot.py:boot@15] - This is Boot API.
+[INFO]:[2022-09-14 21:30:52,632]:[Thread-3 (process_request_thread)]:[log.py:luna_logging@46] - This is Boot API.
+[INFO]:[2022-09-14 21:30:52,653]:[Thread-3 (process_request_thread)]:[_internal.py:_log@224] - 127.0.0.1 - - [14/Sep/2022 21:30:52] "GET /84e3b078-bb76-11ea-b3de-0242ac130004/boot HTTP/1.1" 200 -
+[INFO]:[2022-09-14 21:31:03,637]:[MainThread]:[log.py:luna_logging@46] - ++++++++++++++ Luna Logger Level set to info ++++++++++++++ 
+[INFO]:[2022-09-14 21:31:03,715]:[MainThread]:[_internal.py:_log@224] - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on http://127.0.0.1:7050
+[INFO]:[2022-09-14 21:31:03,716]:[MainThread]:[_internal.py:_log@224] - [33mPress CTRL+C to quit[0m
+[INFO]:[2022-09-14 21:31:03,718]:[MainThread]:[_internal.py:_log@224] -  * Restarting with stat
+[INFO]:[2022-09-14 21:31:04,062]:[MainThread]:[log.py:luna_logging@46] - ++++++++++++++ Luna Logger Level set to info ++++++++++++++ 
+[WARNING]:[2022-09-14 21:31:04,133]:[MainThread]:[_internal.py:_log@224] -  * Debugger is active!
+[INFO]:[2022-09-14 21:31:04,138]:[MainThread]:[_internal.py:_log@224] -  * Debugger PIN: 117-724-678
+[ERROR]:[2022-09-14 21:31:16,734]:[Thread-2 (process_request_thread)]:[boot.py:boot@15] - This is Boot API.
+[INFO]:[2022-09-14 21:31:16,735]:[Thread-2 (process_request_thread)]:[log.py:luna_logging@46] - This is Boot API.
+[INFO]:[2022-09-14 21:31:16,736]:[Thread-2 (process_request_thread)]:[_internal.py:_log@224] - 127.0.0.1 - - [14/Sep/2022 21:31:16] "GET /84e3b078-bb76-11ea-b3de-0242ac130004/boot HTTP/1.1" 200 -
+[INFO]:[2022-09-14 21:32:12,763]:[MainThread]:[_internal.py:_log@224] -  * Detected change in '/mnt/hgfs/clustervision/luna2-daemon/utils/log.py', reloading
+[INFO]:[2022-09-14 21:32:12,825]:[MainThread]:[_internal.py:_log@224] -  * Restarting with stat
+[INFO]:[2022-09-14 21:32:41,079]:[MainThread]:[log.py:luna_logging@46] - ++++++++++++++ Luna Logger Level set to info ++++++++++++++ 
+[INFO]:[2022-09-14 21:32:41,158]:[MainThread]:[_internal.py:_log@224] - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on http://127.0.0.1:7050
+[INFO]:[2022-09-14 21:32:41,159]:[MainThread]:[_internal.py:_log@224] - [33mPress CTRL+C to quit[0m
+[INFO]:[2022-09-14 21:32:41,161]:[MainThread]:[_internal.py:_log@224] -  * Restarting with stat
+[INFO]:[2022-09-14 21:32:41,501]:[MainThread]:[log.py:luna_logging@46] - ++++++++++++++ Luna Logger Level set to info ++++++++++++++ 
+[WARNING]:[2022-09-14 21:32:41,575]:[MainThread]:[_internal.py:_log@224] -  * Debugger is active!
+[INFO]:[2022-09-14 21:32:41,580]:[MainThread]:[_internal.py:_log@224] -  * Debugger PIN: 117-724-678
+[ERROR]:[2022-09-14 21:32:49,556]:[Thread-2 (process_request_thread)]:[boot.py:boot@15] - This is Boot API.
+[INFO]:[2022-09-14 21:32:49,557]:[Thread-2 (process_request_thread)]:[log.py:luna_logging@46] - This is Boot API.
+[INFO]:[2022-09-14 21:32:49,559]:[Thread-2 (process_request_thread)]:[_internal.py:_log@224] - 127.0.0.1 - - [14/Sep/2022 21:32:49] "GET /84e3b078-bb76-11ea-b3de-0242ac130004/boot HTTP/1.1" 200 -
+[INFO]:[2022-09-14 21:33:07,197]:[MainThread]:[_internal.py:_log@224] -  * Detected change in '/mnt/hgfs/clustervision/luna2-daemon/utils/log.py', reloading
+[INFO]:[2022-09-14 21:33:07,241]:[MainThread]:[_internal.py:_log@224] -  * Restarting with stat
+[INFO]:[2022-09-14 21:33:07,653]:[MainThread]:[log.py:luna_logging@46] - ++++++++++++++ Luna Logger Level set to info ++++++++++++++ 
+[WARNING]:[2022-09-14 21:33:07,732]:[MainThread]:[_internal.py:_log@224] -  * Debugger is active!
+[INFO]:[2022-09-14 21:33:07,738]:[MainThread]:[_internal.py:_log@224] -  * Debugger PIN: 117-724-678
+[INFO]:[2022-09-14 21:33:15,545]:[MainThread]:[log.py:luna_logging@46] - ++++++++++++++ Luna Logger Level set to info ++++++++++++++ 
+[INFO]:[2022-09-14 21:33:15,626]:[MainThread]:[_internal.py:_log@224] - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on http://127.0.0.1:7050
+[INFO]:[2022-09-14 21:33:15,626]:[MainThread]:[_internal.py:_log@224] - [33mPress CTRL+C to quit[0m
+[INFO]:[2022-09-14 21:33:15,628]:[MainThread]:[_internal.py:_log@224] -  * Restarting with stat
+[INFO]:[2022-09-14 21:33:15,962]:[MainThread]:[log.py:luna_logging@46] - ++++++++++++++ Luna Logger Level set to info ++++++++++++++ 
+[WARNING]:[2022-09-14 21:33:16,032]:[MainThread]:[_internal.py:_log@224] -  * Debugger is active!
+[INFO]:[2022-09-14 21:33:16,037]:[MainThread]:[_internal.py:_log@224] -  * Debugger PIN: 117-724-678
+[INFO]:[2022-09-14 21:33:22,190]:[MainThread]:[_internal.py:_log@224] -  * Detected change in '/mnt/hgfs/clustervision/luna2-daemon/utils/log.py', reloading
+[INFO]:[2022-09-14 21:33:22,241]:[MainThread]:[_internal.py:_log@224] -  * Restarting with stat
+[INFO]:[2022-09-14 21:33:22,612]:[MainThread]:[log.py:luna_logging@46] - ++++++++++++++ Luna Logger Level set to info ++++++++++++++ 
+[WARNING]:[2022-09-14 21:33:22,686]:[MainThread]:[_internal.py:_log@224] -  * Debugger is active!
+[INFO]:[2022-09-14 21:33:22,692]:[MainThread]:[_internal.py:_log@224] -  * Debugger PIN: 117-724-678
+[INFO]:[2022-09-14 21:33:24,765]:[MainThread]:[_internal.py:_log@224] -  * Detected change in '/mnt/hgfs/clustervision/luna2-daemon/utils/log.py', reloading
+[INFO]:[2022-09-14 21:33:24,817]:[MainThread]:[_internal.py:_log@224] -  * Restarting with stat
+[INFO]:[2022-09-14 21:33:25,178]:[MainThread]:[log.py:luna_logging@46] - ++++++++++++++ Luna Logger Level set to info ++++++++++++++ 
+[WARNING]:[2022-09-14 21:33:25,270]:[MainThread]:[_internal.py:_log@224] -  * Debugger is active!
+[INFO]:[2022-09-14 21:33:25,277]:[MainThread]:[_internal.py:_log@224] -  * Debugger PIN: 117-724-678
+[INFO]:[2022-09-14 21:33:32,846]:[MainThread]:[_internal.py:_log@224] -  * Detected change in '/mnt/hgfs/clustervision/luna2-daemon/luna.py', reloading
+[INFO]:[2022-09-14 21:33:32,900]:[MainThread]:[_internal.py:_log@224] -  * Restarting with stat
+[INFO]:[2022-09-14 21:33:33,274]:[MainThread]:[log.py:luna_logging@46] - ++++++++++++++ Luna Logger Level set to info ++++++++++++++ 
+[WARNING]:[2022-09-14 21:33:33,362]:[MainThread]:[_internal.py:_log@224] -  * Debugger is active!
+[INFO]:[2022-09-14 21:33:33,368]:[MainThread]:[_internal.py:_log@224] -  * Debugger PIN: 117-724-678
+[INFO]:[2022-09-14 21:36:46,859]:[MainThread]:[_internal.py:_log@224] -  * Detected change in '/mnt/hgfs/clustervision/luna2-daemon/utils/log.py', reloading
+[INFO]:[2022-09-14 21:36:46,910]:[MainThread]:[_internal.py:_log@224] -  * Restarting with stat
+[INFO]:[2022-09-14 21:36:47,316]:[MainThread]:[log.py:luna_logging@46] - ++++++++++++++ Luna Logger Level set to info ++++++++++++++ 
+[WARNING]:[2022-09-14 21:36:47,411]:[MainThread]:[_internal.py:_log@224] -  * Debugger is active!
+[INFO]:[2022-09-14 21:36:47,417]:[MainThread]:[_internal.py:_log@224] -  * Debugger PIN: 117-724-678
+[INFO]:[2022-09-14 21:36:59,271]:[MainThread]:[_internal.py:_log@224] -  * Detected change in '/mnt/hgfs/clustervision/luna2-daemon/apis/boot.py', reloading
+[INFO]:[2022-09-14 21:36:59,318]:[MainThread]:[_internal.py:_log@224] -  * Restarting with stat
+[INFO]:[2022-09-14 21:36:59,689]:[MainThread]:[log.py:luna_logging@46] - ++++++++++++++ Luna Logger Level set to info ++++++++++++++ 
+[WARNING]:[2022-09-14 21:36:59,772]:[MainThread]:[_internal.py:_log@224] -  * Debugger is active!
+[INFO]:[2022-09-14 21:36:59,778]:[MainThread]:[_internal.py:_log@224] -  * Debugger PIN: 117-724-678
+[ERROR]:[2022-09-14 21:37:02,139]:[Thread-2 (process_request_thread)]:[boot.py:boot@15] - This is Boot API.
+[INFO]:[2022-09-14 21:37:02,140]:[Thread-2 (process_request_thread)]:[log.py:luna_logging@46] - This is Boot API.
+[INFO]:[2022-09-14 21:37:02,142]:[Thread-2 (process_request_thread)]:[_internal.py:_log@224] - 127.0.0.1 - - [14/Sep/2022 21:37:02] "GET /84e3b078-bb76-11ea-b3de-0242ac130004/boot HTTP/1.1" 200 -
+[INFO]:[2022-09-14 21:38:26,756]:[MainThread]:[_internal.py:_log@224] -  * Detected change in '/mnt/hgfs/clustervision/luna2-daemon/utils/log.py', reloading
+[INFO]:[2022-09-14 21:38:26,804]:[MainThread]:[_internal.py:_log@224] -  * Restarting with stat
+[INFO]:[2022-09-14 21:44:17,618]:[MainThread]:[log.py:init_log@93] - =============== Logger Level Set To [INFO]===============
+[INFO]:[2022-09-14 21:44:17,704]:[MainThread]:[_internal.py:_log@224] - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on http://127.0.0.1:7050
+[INFO]:[2022-09-14 21:44:17,705]:[MainThread]:[_internal.py:_log@224] - [33mPress CTRL+C to quit[0m
+[INFO]:[2022-09-14 21:44:17,707]:[MainThread]:[_internal.py:_log@224] -  * Restarting with stat
+[INFO]:[2022-09-14 21:44:18,137]:[MainThread]:[log.py:init_log@93] - =============== Logger Level Set To [INFO]===============
+[WARNING]:[2022-09-14 21:44:18,216]:[MainThread]:[_internal.py:_log@224] -  * Debugger is active!
+[INFO]:[2022-09-14 21:44:18,222]:[MainThread]:[_internal.py:_log@224] -  * Debugger PIN: 117-724-678
+[INFO]:[2022-09-14 21:44:29,813]:[MainThread]:[log.py:init_log@93] - =============== Logger Level Set To [DEBUG]===============
+[INFO]:[2022-09-14 21:44:29,900]:[MainThread]:[_internal.py:_log@224] - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on http://127.0.0.1:7050
+[INFO]:[2022-09-14 21:44:29,900]:[MainThread]:[_internal.py:_log@224] - [33mPress CTRL+C to quit[0m
+[INFO]:[2022-09-14 21:44:29,902]:[MainThread]:[_internal.py:_log@224] -  * Restarting with stat
+[INFO]:[2022-09-14 21:44:30,312]:[MainThread]:[log.py:init_log@93] - =============== Logger Level Set To [DEBUG]===============
+[WARNING]:[2022-09-14 21:44:30,391]:[MainThread]:[_internal.py:_log@224] -  * Debugger is active!
+[INFO]:[2022-09-14 21:44:30,397]:[MainThread]:[_internal.py:_log@224] -  * Debugger PIN: 117-724-678
+[INFO]:[2022-09-14 21:44:48,855]:[MainThread]:[_internal.py:_log@224] -  * Detected change in '/mnt/hgfs/clustervision/luna2-daemon/utils/log.py', reloading
+[INFO]:[2022-09-14 21:44:48,910]:[MainThread]:[_internal.py:_log@224] -  * Restarting with stat
+[INFO]:[2022-09-14 21:44:49,282]:[MainThread]:[log.py:init_log@40] - =============== Logger Level Set To [DEBUG]===============
+[WARNING]:[2022-09-14 21:44:49,361]:[MainThread]:[_internal.py:_log@224] -  * Debugger is active!
+[INFO]:[2022-09-14 21:44:49,367]:[MainThread]:[_internal.py:_log@224] -  * Debugger PIN: 117-724-678
+[INFO]:[2022-09-14 21:44:50,126]:[MainThread]:[_internal.py:_log@224] -  * Detected change in '/mnt/hgfs/clustervision/luna2-daemon/utils/log.py', reloading
+[INFO]:[2022-09-14 21:44:50,174]:[MainThread]:[_internal.py:_log@224] -  * Restarting with stat
+[INFO]:[2022-09-14 21:44:50,667]:[MainThread]:[log.py:init_log@40] - =============== Logger Level Set To [DEBUG]===============
+[WARNING]:[2022-09-14 21:44:50,739]:[MainThread]:[_internal.py:_log@224] -  * Debugger is active!
+[INFO]:[2022-09-14 21:44:50,744]:[MainThread]:[_internal.py:_log@224] -  * Debugger PIN: 117-724-678
+[INFO]:[2022-09-14 21:44:52,814]:[MainThread]:[_internal.py:_log@224] -  * Detected change in '/mnt/hgfs/clustervision/luna2-daemon/utils/log.py', reloading
+[INFO]:[2022-09-14 21:44:52,874]:[MainThread]:[_internal.py:_log@224] -  * Restarting with stat
+[INFO]:[2022-09-14 21:44:53,241]:[MainThread]:[log.py:init_log@40] - =============== Logger Level Set To [DEBUG]===============
+[WARNING]:[2022-09-14 21:44:53,316]:[MainThread]:[_internal.py:_log@224] -  * Debugger is active!
+[INFO]:[2022-09-14 21:44:53,321]:[MainThread]:[_internal.py:_log@224] -  * Debugger PIN: 117-724-678
+[INFO]:[2022-09-14 21:45:24,223]:[MainThread]:[_internal.py:_log@224] -  * Detected change in '/mnt/hgfs/clustervision/luna2-daemon/luna.py', reloading
+[INFO]:[2022-09-14 21:45:24,278]:[MainThread]:[_internal.py:_log@224] -  * Restarting with stat
+[INFO]:[2022-09-14 21:45:24,682]:[MainThread]:[log.py:init_log@40] - =============== Logger Level Set To [DEBUG]===============
+[WARNING]:[2022-09-14 21:45:24,683]:[MainThread]:[luna.py:<module>@24] - This is Boot API.
+[DEBUG]:[2022-09-14 21:45:24,684]:[MainThread]:[luna.py:<module>@25] - This is Boot API.
+[WARNING]:[2022-09-14 21:45:24,762]:[MainThread]:[_internal.py:_log@224] -  * Debugger is active!
+[INFO]:[2022-09-14 21:45:24,767]:[MainThread]:[_internal.py:_log@224] -  * Debugger PIN: 117-724-678
+[INFO]:[2022-09-14 21:45:50,107]:[MainThread]:[_internal.py:_log@224] -  * Detected change in '/mnt/hgfs/clustervision/luna2-daemon/luna.py', reloading
+[INFO]:[2022-09-14 21:45:50,179]:[MainThread]:[_internal.py:_log@224] -  * Restarting with stat
+[INFO]:[2022-09-14 21:45:50,719]:[MainThread]:[log.py:init_log@40] - =============== Logger Level Set To [DEBUG]===============
+[WARNING]:[2022-09-14 21:45:50,720]:[MainThread]:[luna.py:<module>@24] - This is warning.
+[DEBUG]:[2022-09-14 21:45:50,720]:[MainThread]:[luna.py:<module>@25] - This is debug.
+[INFO]:[2022-09-14 21:45:50,721]:[MainThread]:[luna.py:<module>@26] - This is info.
+[CRITICAL]:[2022-09-14 21:45:50,721]:[MainThread]:[luna.py:<module>@27] - This is critical.
+[WARNING]:[2022-09-14 21:45:50,808]:[MainThread]:[_internal.py:_log@224] -  * Debugger is active!
+[INFO]:[2022-09-14 21:45:50,814]:[MainThread]:[_internal.py:_log@224] -  * Debugger PIN: 117-724-678
+[INFO]:[2022-09-14 21:45:52,921]:[MainThread]:[_internal.py:_log@224] -  * Detected change in '/mnt/hgfs/clustervision/luna2-daemon/luna.py', reloading
+[INFO]:[2022-09-14 21:45:52,965]:[MainThread]:[_internal.py:_log@224] -  * Restarting with stat
+[INFO]:[2022-09-14 21:45:53,330]:[MainThread]:[log.py:init_log@40] - =============== Logger Level Set To [DEBUG]===============
+[WARNING]:[2022-09-14 21:45:53,330]:[MainThread]:[luna.py:<module>@24] - This is warning.
+[DEBUG]:[2022-09-14 21:45:53,331]:[MainThread]:[luna.py:<module>@25] - This is debug.
+[INFO]:[2022-09-14 21:45:53,332]:[MainThread]:[luna.py:<module>@26] - This is info.
+[CRITICAL]:[2022-09-14 21:45:53,332]:[MainThread]:[luna.py:<module>@27] - This is critical.
+[WARNING]:[2022-09-14 21:45:53,417]:[MainThread]:[_internal.py:_log@224] -  * Debugger is active!
+[INFO]:[2022-09-14 21:45:53,423]:[MainThread]:[_internal.py:_log@224] -  * Debugger PIN: 117-724-678
+[INFO]:[2022-09-14 21:46:05,217]:[MainThread]:[log.py:init_log@40] - =============== Logger Level Set To [INFO]===============
+[WARNING]:[2022-09-14 21:46:05,218]:[MainThread]:[luna.py:<module>@24] - This is warning.
+[INFO]:[2022-09-14 21:46:05,219]:[MainThread]:[luna.py:<module>@26] - This is info.
+[CRITICAL]:[2022-09-14 21:46:05,219]:[MainThread]:[luna.py:<module>@27] - This is critical.
+[INFO]:[2022-09-14 21:46:05,301]:[MainThread]:[_internal.py:_log@224] - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on http://127.0.0.1:7050
+[INFO]:[2022-09-14 21:46:05,301]:[MainThread]:[_internal.py:_log@224] - [33mPress CTRL+C to quit[0m
+[INFO]:[2022-09-14 21:46:05,303]:[MainThread]:[_internal.py:_log@224] -  * Restarting with stat
+[INFO]:[2022-09-14 21:46:05,638]:[MainThread]:[log.py:init_log@40] - =============== Logger Level Set To [INFO]===============
+[WARNING]:[2022-09-14 21:46:05,639]:[MainThread]:[luna.py:<module>@24] - This is warning.
+[INFO]:[2022-09-14 21:46:05,640]:[MainThread]:[luna.py:<module>@26] - This is info.
+[CRITICAL]:[2022-09-14 21:46:05,640]:[MainThread]:[luna.py:<module>@27] - This is critical.
+[WARNING]:[2022-09-14 21:46:05,719]:[MainThread]:[_internal.py:_log@224] -  * Debugger is active!
+[INFO]:[2022-09-14 21:46:05,725]:[MainThread]:[_internal.py:_log@224] -  * Debugger PIN: 117-724-678
+[INFO]:[2022-09-14 21:46:16,099]:[MainThread]:[_internal.py:_log@224] -  * Detected change in '/mnt/hgfs/clustervision/luna2-daemon/luna.py', reloading
+[INFO]:[2022-09-14 21:46:16,143]:[MainThread]:[_internal.py:_log@224] -  * Restarting with stat
+[INFO]:[2022-09-14 21:46:16,490]:[MainThread]:[log.py:init_log@40] - =============== Logger Level Set To [INFO]===============
+[WARNING]:[2022-09-14 21:46:16,491]:[MainThread]:[luna.py:<module>@24] - This is warning.
+[INFO]:[2022-09-14 21:46:16,491]:[MainThread]:[luna.py:<module>@26] - This is info.
+[CRITICAL]:[2022-09-14 21:46:16,492]:[MainThread]:[luna.py:<module>@27] - This is critical.
+[WARNING]:[2022-09-14 21:46:16,569]:[MainThread]:[_internal.py:_log@224] -  * Debugger is active!
+[INFO]:[2022-09-14 21:46:16,574]:[MainThread]:[_internal.py:_log@224] -  * Debugger PIN: 117-724-678
+[INFO]:[2022-09-14 21:49:34,389]:[MainThread]:[_internal.py:_log@224] -  * Detected change in '/mnt/hgfs/clustervision/luna2-daemon/luna.py', reloading
+[INFO]:[2022-09-14 21:49:34,435]:[MainThread]:[_internal.py:_log@224] -  * Restarting with stat
+[INFO]:[2022-09-14 21:49:34,772]:[MainThread]:[log.py:init_log@40] - =============== Logger Level Set To [INFO]===============
+[WARNING]:[2022-09-14 21:49:34,773]:[MainThread]:[luna.py:<module>@23] - This is warning.
+[INFO]:[2022-09-14 21:49:34,774]:[MainThread]:[luna.py:<module>@25] - This is info.
+[CRITICAL]:[2022-09-14 21:49:34,774]:[MainThread]:[luna.py:<module>@26] - This is critical.
+[WARNING]:[2022-09-14 21:49:34,853]:[MainThread]:[_internal.py:_log@224] -  * Debugger is active!
+[INFO]:[2022-09-14 21:49:34,859]:[MainThread]:[_internal.py:_log@224] -  * Debugger PIN: 117-724-678
+[INFO]:[2022-09-14 21:49:43,754]:[MainThread]:[_internal.py:_log@224] -  * Detected change in '/mnt/hgfs/clustervision/luna2-daemon/luna.py', reloading
+[INFO]:[2022-09-14 21:49:43,816]:[MainThread]:[_internal.py:_log@224] -  * Restarting with stat
+[INFO]:[2022-09-14 21:49:44,182]:[MainThread]:[log.py:init_log@40] - =============== Logger Level Set To [INFO]===============
+[WARNING]:[2022-09-14 21:49:44,182]:[MainThread]:[luna.py:<module>@24] - This is warning.
+[INFO]:[2022-09-14 21:49:44,183]:[MainThread]:[luna.py:<module>@26] - This is info.
+[CRITICAL]:[2022-09-14 21:49:44,184]:[MainThread]:[luna.py:<module>@27] - This is critical.
+[WARNING]:[2022-09-14 21:49:44,259]:[MainThread]:[_internal.py:_log@224] -  * Debugger is active!
+[INFO]:[2022-09-14 21:49:44,264]:[MainThread]:[_internal.py:_log@224] -  * Debugger PIN: 117-724-678
+[INFO]:[2022-09-14 21:49:49,039]:[MainThread]:[_internal.py:_log@224] -  * Detected change in '/mnt/hgfs/clustervision/luna2-daemon/luna.py', reloading
+[INFO]:[2022-09-14 21:49:49,108]:[MainThread]:[_internal.py:_log@224] -  * Restarting with stat
+[INFO]:[2022-09-14 21:49:49,498]:[MainThread]:[log.py:init_log@40] - =============== Logger Level Set To [INFO]===============
+[WARNING]:[2022-09-14 21:49:49,499]:[MainThread]:[luna.py:<module>@24] - This is warning.
+[INFO]:[2022-09-14 21:49:49,500]:[MainThread]:[luna.py:<module>@26] - This is info.
+[CRITICAL]:[2022-09-14 21:49:49,500]:[MainThread]:[luna.py:<module>@27] - This is critical.
+[WARNING]:[2022-09-14 21:49:49,578]:[MainThread]:[_internal.py:_log@224] -  * Debugger is active!
+[INFO]:[2022-09-14 21:49:49,584]:[MainThread]:[_internal.py:_log@224] -  * Debugger PIN: 117-724-678
+[INFO]:[2022-09-14 21:49:55,903]:[MainThread]:[_internal.py:_log@224] -  * Detected change in '/mnt/hgfs/clustervision/luna2-daemon/luna.py', reloading
+[INFO]:[2022-09-14 21:49:55,963]:[MainThread]:[_internal.py:_log@224] -  * Restarting with stat
+[INFO]:[2022-09-14 21:49:56,387]:[MainThread]:[log.py:init_log@40] - =============== Logger Level Set To [INFO]===============
+[WARNING]:[2022-09-14 21:49:56,387]:[MainThread]:[luna.py:<module>@24] - This is warning.
+[INFO]:[2022-09-14 21:49:56,388]:[MainThread]:[luna.py:<module>@26] - This is info.
+[CRITICAL]:[2022-09-14 21:49:56,388]:[MainThread]:[luna.py:<module>@27] - This is critical.
+[WARNING]:[2022-09-14 21:49:56,474]:[MainThread]:[_internal.py:_log@224] -  * Debugger is active!
+[INFO]:[2022-09-14 21:49:56,480]:[MainThread]:[_internal.py:_log@224] -  * Debugger PIN: 117-724-678
+[INFO]:[2022-09-14 21:50:25,819]:[MainThread]:[_internal.py:_log@224] -  * Detected change in '/mnt/hgfs/clustervision/luna2-daemon/utils/log.py', reloading
+[INFO]:[2022-09-14 21:50:25,864]:[MainThread]:[_internal.py:_log@224] -  * Restarting with stat
+[INFO]:[2022-09-14 21:50:26,201]:[MainThread]:[log.py:init_log@40] - =============== Luna Logging Level IsSet To [INFO]===============
+[WARNING]:[2022-09-14 21:50:26,202]:[MainThread]:[luna.py:<module>@24] - This is warning.
+[INFO]:[2022-09-14 21:50:26,202]:[MainThread]:[luna.py:<module>@26] - This is info.
+[CRITICAL]:[2022-09-14 21:50:26,203]:[MainThread]:[luna.py:<module>@27] - This is critical.
+[WARNING]:[2022-09-14 21:50:26,285]:[MainThread]:[_internal.py:_log@224] -  * Debugger is active!
+[INFO]:[2022-09-14 21:50:26,291]:[MainThread]:[_internal.py:_log@224] -  * Debugger PIN: 117-724-678
+[INFO]:[2022-09-14 21:51:07,880]:[MainThread]:[_internal.py:_log@224] -  * Detected change in '/mnt/hgfs/clustervision/luna2-daemon/utils/log.py', reloading
+[INFO]:[2022-09-14 21:51:07,928]:[MainThread]:[_internal.py:_log@224] -  * Restarting with stat
+[INFO]:[2022-09-14 21:51:08,336]:[MainThread]:[log.py:init_log@40] - =============== Luna Logging Level IsSet To [INFO] =============== 
+[WARNING]:[2022-09-14 21:51:08,337]:[MainThread]:[luna.py:<module>@24] - This is warning.
+[INFO]:[2022-09-14 21:51:08,337]:[MainThread]:[luna.py:<module>@26] - This is info.
+[CRITICAL]:[2022-09-14 21:51:08,338]:[MainThread]:[luna.py:<module>@27] - This is critical.
+[WARNING]:[2022-09-14 21:51:08,424]:[MainThread]:[_internal.py:_log@224] -  * Debugger is active!
+[INFO]:[2022-09-14 21:51:08,429]:[MainThread]:[_internal.py:_log@224] -  * Debugger PIN: 117-724-678
+[INFO]:[2022-09-14 21:51:11,983]:[MainThread]:[_internal.py:_log@224] -  * Detected change in '/mnt/hgfs/clustervision/luna2-daemon/utils/log.py', reloading
+[INFO]:[2022-09-14 21:51:12,044]:[MainThread]:[_internal.py:_log@224] -  * Restarting with stat
+[INFO]:[2022-09-14 21:51:12,435]:[MainThread]:[log.py:init_log@40] - =============== Luna Logging Level IsSet To [INFO] ===============
+[WARNING]:[2022-09-14 21:51:12,435]:[MainThread]:[luna.py:<module>@24] - This is warning.
+[INFO]:[2022-09-14 21:51:12,436]:[MainThread]:[luna.py:<module>@26] - This is info.
+[CRITICAL]:[2022-09-14 21:51:12,436]:[MainThread]:[luna.py:<module>@27] - This is critical.
+[WARNING]:[2022-09-14 21:51:12,522]:[MainThread]:[_internal.py:_log@224] -  * Debugger is active!
+[INFO]:[2022-09-14 21:51:12,528]:[MainThread]:[_internal.py:_log@224] -  * Debugger PIN: 117-724-678
+[INFO]:[2022-09-14 21:51:13,281]:[MainThread]:[_internal.py:_log@224] -  * Detected change in '/mnt/hgfs/clustervision/luna2-daemon/utils/log.py', reloading
+[INFO]:[2022-09-14 21:51:13,329]:[MainThread]:[_internal.py:_log@224] -  * Restarting with stat
+[INFO]:[2022-09-14 21:51:13,703]:[MainThread]:[log.py:init_log@40] - =============== Luna Logging Level IsSet To [INFO] ===============
+[WARNING]:[2022-09-14 21:51:13,703]:[MainThread]:[luna.py:<module>@24] - This is warning.
+[INFO]:[2022-09-14 21:51:13,704]:[MainThread]:[luna.py:<module>@26] - This is info.
+[CRITICAL]:[2022-09-14 21:51:13,705]:[MainThread]:[luna.py:<module>@27] - This is critical.
+[WARNING]:[2022-09-14 21:51:13,784]:[MainThread]:[_internal.py:_log@224] -  * Debugger is active!
+[INFO]:[2022-09-14 21:51:13,792]:[MainThread]:[_internal.py:_log@224] -  * Debugger PIN: 117-724-678
+[INFO]:[2022-09-14 21:53:36,988]:[MainThread]:[log.py:init_log@40] - =============== Luna Logging Level IsSet To [INFO] ===============
+[WARNING]:[2022-09-14 21:53:36,989]:[MainThread]:[luna.py:<module>@24] - This is warning.
+[INFO]:[2022-09-14 21:53:36,989]:[MainThread]:[luna.py:<module>@26] - This is info.
+[CRITICAL]:[2022-09-14 21:53:36,990]:[MainThread]:[luna.py:<module>@27] - This is critical.
+[INFO]:[2022-09-14 21:53:37,063]:[MainThread]:[_internal.py:_log@224] - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on http://127.0.0.1:7050
+[INFO]:[2022-09-14 21:53:37,063]:[MainThread]:[_internal.py:_log@224] - [33mPress CTRL+C to quit[0m
+[INFO]:[2022-09-14 21:53:37,065]:[MainThread]:[_internal.py:_log@224] -  * Restarting with stat
+[INFO]:[2022-09-14 21:53:37,422]:[MainThread]:[log.py:init_log@40] - =============== Luna Logging Level IsSet To [INFO] ===============
+[WARNING]:[2022-09-14 21:53:37,423]:[MainThread]:[luna.py:<module>@24] - This is warning.
+[INFO]:[2022-09-14 21:53:37,423]:[MainThread]:[luna.py:<module>@26] - This is info.
+[CRITICAL]:[2022-09-14 21:53:37,424]:[MainThread]:[luna.py:<module>@27] - This is critical.
+[WARNING]:[2022-09-14 21:53:37,492]:[MainThread]:[_internal.py:_log@224] -  * Debugger is active!
+[INFO]:[2022-09-14 21:53:37,498]:[MainThread]:[_internal.py:_log@224] -  * Debugger PIN: 117-724-678
+[ERROR]:[2022-09-14 21:53:42,432]:[Thread-2 (process_request_thread)]:[boot.py:boot@15] - This is Boot API.
+[INFO]:[2022-09-14 21:53:42,434]:[Thread-2 (process_request_thread)]:[_internal.py:_log@224] - 127.0.0.1 - - [14/Sep/2022 21:53:42] "GET /84e3b078-bb76-11ea-b3de-0242ac130004/boot HTTP/1.1" 200 -
+[ERROR]:[2022-09-14 21:53:43,831]:[Thread-3 (process_request_thread)]:[boot.py:boot@15] - This is Boot API.
+[INFO]:[2022-09-14 21:53:43,832]:[Thread-3 (process_request_thread)]:[_internal.py:_log@224] - 127.0.0.1 - - [14/Sep/2022 21:53:43] "GET /84e3b078-bb76-11ea-b3de-0242ac130004/boot HTTP/1.1" 200 -
+[INFO]:[2022-09-14 21:54:17,744]:[MainThread]:[log.py:init_log@40] - =============== Luna Logging Level IsSet To [INFO] ===============
+[WARNING]:[2022-09-14 21:54:17,745]:[MainThread]:[luna.py:<module>@24] - This is warning.
+[INFO]:[2022-09-14 21:54:17,746]:[MainThread]:[luna.py:<module>@26] - This is info.
+[CRITICAL]:[2022-09-14 21:54:17,747]:[MainThread]:[luna.py:<module>@27] - This is critical.
+[INFO]:[2022-09-14 21:54:17,838]:[MainThread]:[_internal.py:_log@224] - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on http://127.0.0.1:7050
+[INFO]:[2022-09-14 21:54:17,839]:[MainThread]:[_internal.py:_log@224] - [33mPress CTRL+C to quit[0m
+[INFO]:[2022-09-14 21:54:17,840]:[MainThread]:[_internal.py:_log@224] -  * Restarting with stat
+[INFO]:[2022-09-14 21:54:18,184]:[MainThread]:[log.py:init_log@40] - =============== Luna Logging Level IsSet To [INFO] ===============
+[WARNING]:[2022-09-14 21:54:18,185]:[MainThread]:[luna.py:<module>@24] - This is warning.
+[INFO]:[2022-09-14 21:54:18,186]:[MainThread]:[luna.py:<module>@26] - This is info.
+[CRITICAL]:[2022-09-14 21:54:18,186]:[MainThread]:[luna.py:<module>@27] - This is critical.
+[WARNING]:[2022-09-14 21:54:18,267]:[MainThread]:[_internal.py:_log@224] -  * Debugger is active!
+[INFO]:[2022-09-14 21:54:18,272]:[MainThread]:[_internal.py:_log@224] -  * Debugger PIN: 117-724-678
+[ERROR]:[2022-09-14 21:54:24,812]:[Thread-2 (process_request_thread)]:[boot.py:boot@15] - This is Boot API.
+[INFO]:[2022-09-14 21:54:24,815]:[Thread-2 (process_request_thread)]:[_internal.py:_log@224] - 127.0.0.1 - - [14/Sep/2022 21:54:24] "GET /84e3b078-bb76-11ea-b3de-0242ac130004/boot HTTP/1.1" 200 -
+[ERROR]:[2022-09-14 22:56:30,914]:[Thread-3 (process_request_thread)]:[boot.py:boot@15] - This is Boot API.
+[INFO]:[2022-09-14 22:56:30,916]:[Thread-3 (process_request_thread)]:[_internal.py:_log@224] - 127.0.0.1 - - [14/Sep/2022 22:56:30] "GET /84e3b078-bb76-11ea-b3de-0242ac130004/boot HTTP/1.1" 200 -
+[INFO]:[2022-09-14 22:57:55,993]:[MainThread]:[_internal.py:_log@224] -  * Detected change in '/mnt/hgfs/clustervision/luna2-daemon/apis/boot.py', reloading
+[INFO]:[2022-09-14 22:57:56,057]:[MainThread]:[_internal.py:_log@224] -  * Restarting with stat
+[INFO]:[2022-09-14 22:57:56,487]:[MainThread]:[log.py:init_log@40] - =============== Luna Logging Level IsSet To [INFO] ===============
+[WARNING]:[2022-09-14 22:57:56,487]:[MainThread]:[luna.py:<module>@24] - This is warning.
+[INFO]:[2022-09-14 22:57:56,488]:[MainThread]:[luna.py:<module>@26] - This is info.
+[CRITICAL]:[2022-09-14 22:57:56,488]:[MainThread]:[luna.py:<module>@27] - This is critical.
+[WARNING]:[2022-09-14 22:57:56,580]:[MainThread]:[_internal.py:_log@224] -  * Debugger is active!
+[INFO]:[2022-09-14 22:57:56,585]:[MainThread]:[_internal.py:_log@224] -  * Debugger PIN: 117-724-678
+[INFO]:[2022-09-15 00:38:36,762]:[MainThread]:[_internal.py:_log@224] -  * Detected change in '/mnt/hgfs/clustervision/luna2-daemon/apis/boot.py', reloading
+[INFO]:[2022-09-15 00:38:36,799]:[MainThread]:[_internal.py:_log@224] -  * Restarting with stat
+[INFO]:[2022-09-15 00:38:37,088]:[MainThread]:[log.py:init_log@40] - =============== Luna Logging Level IsSet To [INFO] ===============
+[WARNING]:[2022-09-15 00:38:37,088]:[MainThread]:[luna.py:<module>@24] - This is warning.
+[INFO]:[2022-09-15 00:38:37,088]:[MainThread]:[luna.py:<module>@26] - This is info.
+[CRITICAL]:[2022-09-15 00:38:37,089]:[MainThread]:[luna.py:<module>@27] - This is critical.
+[WARNING]:[2022-09-15 00:38:37,176]:[MainThread]:[_internal.py:_log@224] -  * Debugger is active!
+[INFO]:[2022-09-15 00:38:37,180]:[MainThread]:[_internal.py:_log@224] -  * Debugger PIN: 117-724-678
+[INFO]:[2022-09-15 00:38:43,288]:[MainThread]:[_internal.py:_log@224] -  * Detected change in '/mnt/hgfs/clustervision/luna2-daemon/luna.py', reloading
+[INFO]:[2022-09-15 00:38:43,330]:[MainThread]:[_internal.py:_log@224] -  * Restarting with stat
+[INFO]:[2022-09-15 00:38:43,722]:[MainThread]:[log.py:init_log@40] - =============== Luna Logging Level IsSet To [INFO] ===============
+[WARNING]:[2022-09-15 00:38:43,722]:[MainThread]:[luna.py:<module>@24] - This is warning.
+[INFO]:[2022-09-15 00:38:43,723]:[MainThread]:[luna.py:<module>@26] - This is info.
+[CRITICAL]:[2022-09-15 00:38:43,723]:[MainThread]:[luna.py:<module>@27] - This is critical.
+[WARNING]:[2022-09-15 00:38:43,805]:[MainThread]:[_internal.py:_log@224] -  * Debugger is active!
+[INFO]:[2022-09-15 00:38:43,809]:[MainThread]:[_internal.py:_log@224] -  * Debugger PIN: 117-724-678
+[INFO]:[2022-09-15 00:38:50,261]:[MainThread]:[_internal.py:_log@224] -  * Detected change in '/mnt/hgfs/clustervision/luna2-daemon/luna.py', reloading
+[INFO]:[2022-09-15 00:38:50,307]:[MainThread]:[_internal.py:_log@224] -  * Restarting with stat
+[INFO]:[2022-09-15 00:38:50,681]:[MainThread]:[log.py:init_log@40] - =============== Luna Logging Level IsSet To [INFO] ===============
+[WARNING]:[2022-09-15 00:38:50,681]:[MainThread]:[luna.py:<module>@24] - This is warning.
+[INFO]:[2022-09-15 00:38:50,682]:[MainThread]:[luna.py:<module>@26] - This is info.
+[CRITICAL]:[2022-09-15 00:38:50,682]:[MainThread]:[luna.py:<module>@27] - This is critical.
+[WARNING]:[2022-09-15 00:38:50,761]:[MainThread]:[_internal.py:_log@224] -  * Debugger is active!
+[INFO]:[2022-09-15 00:38:50,767]:[MainThread]:[_internal.py:_log@224] -  * Debugger PIN: 117-724-678
+[INFO]:[2022-09-15 00:42:01,023]:[MainThread]:[_internal.py:_log@224] -  * Detected change in '/mnt/hgfs/clustervision/luna2-daemon/apis/boot.py', reloading
+[INFO]:[2022-09-15 00:42:01,064]:[MainThread]:[_internal.py:_log@224] -  * Restarting with stat
+[INFO]:[2022-09-15 00:42:01,374]:[MainThread]:[log.py:init_log@40] - =============== Luna Logging Level IsSet To [INFO] ===============
+[WARNING]:[2022-09-15 00:42:01,374]:[MainThread]:[luna.py:<module>@24] - This is warning.
+[INFO]:[2022-09-15 00:42:01,375]:[MainThread]:[luna.py:<module>@26] - This is info.
+[CRITICAL]:[2022-09-15 00:42:01,375]:[MainThread]:[luna.py:<module>@27] - This is critical.
+[WARNING]:[2022-09-15 00:42:01,455]:[MainThread]:[_internal.py:_log@224] -  * Debugger is active!
+[INFO]:[2022-09-15 00:42:01,458]:[MainThread]:[_internal.py:_log@224] -  * Debugger PIN: 117-724-678

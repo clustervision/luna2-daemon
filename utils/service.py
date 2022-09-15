@@ -24,7 +24,7 @@ class Service(object):
         match name:
             case "dhcpd" | "named":
                 match action:
-                    case "start" | "stop" | "reload" | "restart":
+                    case "start" | "stop" | "reload" | "restart" | "status":
                         command = "/usr/bin/systemctl {} {}".format(action, name)
                         output = Helper.runcommand(command)
                         response, code = self.service_status(name, action, output)
@@ -65,5 +65,12 @@ class Service(object):
                     code = 200
                 else:
                     response = "Service {} is Failed to {}.".format(name, action)
+                    code = 200
+            case "status":
+                if "active (running)" in str(output):
+                    response = "Service {} is Active & Running.".format(name)
+                    code = 200
+                else:
+                    response = "Service {} is Not Active & Running.".format(name)
                     code = 200
         return response, code

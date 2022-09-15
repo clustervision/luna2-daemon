@@ -4,12 +4,12 @@ import os
 import sys
 import logging
 import configparser
-from flask import  Flask, request, url_for, json, send_file
+from flask import  Flask, request, url_for, json
 from utils.log import *
 from common.constants import *
 from utils.helper import *
-from utils.service import *
-from utils.files import *
+# from utils.service import *
+# from utils.files import *
 
 if len(sys.argv) == 2:
     log_level = str(sys.argv[1])
@@ -21,70 +21,26 @@ if len(sys.argv) == 2:
 
 Log.init_log(LEVEL)
 logger = Log.get_logger()
-logger.warning("This is warning.")
-logger.debug("This is debug.")
-logger.info("This is info.")
-logger.critical("This is critical.")
+# logger.warning("This is warning.")
+# logger.debug("This is debug.")
+# logger.info("This is info.")
+# logger.critical("This is critical.")
 
 
 # from flask import Flask, request, abort, json
 from apis.boot import boot_blueprint
-# from apis.config import config_blueprint
-# from apis.files import files_blueprint
-# from apis.service import service_blueprint
-# from apis.monitor import monitor_blueprint
+from apis.config import config_blueprint
+from apis.files import files_blueprint
+from apis.service import service_blueprint
+from apis.monitor import monitor_blueprint
 api = Flask(__name__)
 api.register_blueprint(boot_blueprint)
-# api.register_blueprint(config_blueprint)
-# api.register_blueprint(files_blueprint)
-# api.register_blueprint(service_blueprint)
-# api.register_blueprint(monitor_blueprint)
+api.register_blueprint(config_blueprint)
+api.register_blueprint(files_blueprint)
+api.register_blueprint(service_blueprint)
+api.register_blueprint(monitor_blueprint)
 
 
-@api.route("/<string:token>/config", methods=['GET', 'POST'])
-def config(token):
-    result = {"message": "This is Config API"}
-    return result, 200
-
-
-@api.route("/<string:token>/config/node/<string:node>", methods=['GET', 'POST'])
-def confignode(token, node):
-    result = {"message": "This is Config Node API, Node is: "+node}
-    return result, 200
-
-
-@api.route("/<string:token>/config/node/<string:id>", methods=['GET', 'POST'])
-def confignodeid(token, id):
-    result = {"message": "This is Config ID API, ID is : "+id}
-    return result, 200
-
-
-@api.route("/<string:token>/files/", methods=['GET'], defaults={'filename': None})
-@api.route("/<string:token>/files/<string:filename>", methods=['GET'])
-def files(token, filename=None):
-    # luna_logging(token, "info")
-    if filename:
-        filepath = Files().check_file(filename)
-        if filepath:
-            return send_file(filepath, as_attachment=True)
-        else:
-            response = "File {}, is not present.".format(filename)
-            code = 200
-            return json.dumps(response), code
-    else:
-        filelist = Files().list_files()
-        if filelist:
-            return filelist
-        else:
-            response = "Nothing is present."
-            code = 200
-            return json.dumps(response), code
-
-
-@api.route("/<string:token>/service/<string:name>/<string:action>", methods=['GET'])
-def service(token, name, action):
-    response, code = Service().luna_service(name, action)
-    return json.dumps(response), code
 
 @api.route('/')
 def main():

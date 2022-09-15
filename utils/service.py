@@ -3,12 +3,14 @@
 __author__      = "Sumit Sharma"
 __copyright__   = "Copyright 2022, Luna2 Project"
 __license__     = "GPL"
-__version__     = "1.0"
+__version__     = "2.0"
 __maintainer__  = "Sumit Sharma"
 __email__       = "sumit.sharma@clustervision.com"
-__status__      = "Production"
+__status__      = "Development"
 
 """
+This File is a Service Class, responsible to perform start, stop, reload, restart and action items for provided service name.
+TODO: Excat response should be return instead of generic.
 
 """
 

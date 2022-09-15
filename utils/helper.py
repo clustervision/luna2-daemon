@@ -3,16 +3,16 @@
 __author__      = "Sumit Sharma"
 __copyright__   = "Copyright 2022, Luna2 Project"
 __license__     = "GPL"
-__version__     = "1.0"
+__version__     = "2.0"
 __maintainer__  = "Sumit Sharma"
 __email__       = "sumit.sharma@clustervision.com"
-__status__      = "Production"
+__status__      = "Development"
 
 """
+This Is a Helper Class, which help the project to provide the common tasks.
 
 """
-
-import os
+ 
 import subprocess
 from common.constants import *
 
@@ -28,6 +28,3 @@ class Helper(object):
         output = process.communicate()
         process.wait()
         return output
-        # output = process.stdout.readline().decode()
-        # outputerror = process.stderr.readline().decode()
-        # return output, outputerror

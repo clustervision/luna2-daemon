@@ -1,15 +1,23 @@
 #!/usr/bin/env python3
 
-import os
-import sys
-import logging
-import configparser
-from flask import  Flask, request, url_for, json
+__author__      = "Sumit Sharma"
+__copyright__   = "Copyright 2022, Luna2 Project"
+__license__     = "GPL"
+__version__     = "2.0"
+__maintainer__  = "Sumit Sharma"
+__email__       = "sumit.sharma@clustervision.com"
+__status__      = "Development"
+
+"""
+This File is a Main File Luna 2 Daemon Service.
+This File will Initiate the Logger and A Entry Point to the API's
+Some Of Default Error Handler is defaine here such as 404, 400, etc.
+Getting the Constants from common/constant.py File
+"""
+
+from flask import Flask, request, abort, json
 from utils.log import *
 from common.constants import *
-from utils.helper import *
-# from utils.service import *
-# from utils.files import *
 
 if len(sys.argv) == 2:
     log_level = str(sys.argv[1])
@@ -26,8 +34,6 @@ logger = Log.get_logger()
 # logger.info("This is info.")
 # logger.critical("This is critical.")
 
-
-# from flask import Flask, request, abort, json
 from apis.boot import boot_blueprint
 from apis.config import config_blueprint
 from apis.files import files_blueprint
@@ -41,35 +47,40 @@ api.register_blueprint(service_blueprint)
 api.register_blueprint(monitor_blueprint)
 
 
-
 @api.route('/')
 def main():
     abort(404)
+
 
 @api.errorhandler(400)
 def bad_request(e):
     error = {"message": "Bad Requests"}
     return json.dumps(error), 401
 
+
 @api.errorhandler(401)
 def unauthorized(e):
     error = {"message": "Unauthorized"}
     return json.dumps(error), 401
+
 
 @api.errorhandler(404)
 def page_not_found(e):
     error = {"message": "Route Not Found"}
     return json.dumps(error), 404
 
+
 @api.errorhandler(500)
 def server_error(e):
     error = {"message": "Server Error"}
     return json.dumps(error), 500
 
+
 @api.errorhandler(503)
 def service_unavailable(e, msg):
     error = {"message": msg + " Service Unavailable"}
     return json.dumps(error), 503
+
 
 if __name__ == "__main__":
     api.run(host=SERVERIP, port=SERVERPORT, debug=True)

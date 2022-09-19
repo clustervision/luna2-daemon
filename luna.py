@@ -19,6 +19,8 @@ from flask import Flask, request, abort, json
 from utils.log import *
 from common.constants import *
 
+
+
 if len(sys.argv) == 2:
     log_level = str(sys.argv[1])
     if log_level == "--debug":
@@ -29,17 +31,20 @@ if len(sys.argv) == 2:
 
 Log.init_log(LEVEL)
 logger = Log.get_logger()
-# logger.warning("This is warning.")
-# logger.debug("This is debug.")
-# logger.info("This is info.")
-# logger.critical("This is critical.")
 
+
+#### To Generate the Application Security Key -> python -c 'import secrets; print(secrets.token_hex())'
+
+
+from apis.auth import auth_blueprint
 from apis.boot import boot_blueprint
 from apis.config import config_blueprint
 from apis.files import files_blueprint
 from apis.service import service_blueprint
 from apis.monitor import monitor_blueprint
+# global api
 api = Flask(__name__)
+api.register_blueprint(auth_blueprint)
 api.register_blueprint(boot_blueprint)
 api.register_blueprint(config_blueprint)
 api.register_blueprint(files_blueprint)

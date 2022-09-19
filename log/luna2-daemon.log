@@ -1,41 +1,10 @@
-[INFO]:[2022-09-15 14:21:14,744]:[MainThread]:[log.py:init_log@45] - =============== Luna Logging Level IsSet To [INFO] ===============
-[INFO]:[2022-09-15 14:21:14,946]:[MainThread]:[_internal.py:_log@224] - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+[INFO]:[2022-09-20 00:52:05,028]:[MainThread]:[log.py:init_log@45] - =============== Luna Logging Level IsSet To [INFO] ===============
+[INFO]:[2022-09-20 00:52:05,267]:[MainThread]:[_internal.py:_log@224] - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
  * Running on http://127.0.0.1:7050
-[INFO]:[2022-09-15 14:21:14,946]:[MainThread]:[_internal.py:_log@224] - [33mPress CTRL+C to quit[0m
-[INFO]:[2022-09-15 14:21:14,947]:[MainThread]:[_internal.py:_log@224] -  * Restarting with stat
-[INFO]:[2022-09-15 14:21:15,385]:[MainThread]:[log.py:init_log@45] - =============== Luna Logging Level IsSet To [INFO] ===============
-[WARNING]:[2022-09-15 14:21:15,530]:[MainThread]:[_internal.py:_log@224] -  * Debugger is active!
-[INFO]:[2022-09-15 14:21:15,535]:[MainThread]:[_internal.py:_log@224] -  * Debugger PIN: 117-724-678
-[ERROR]:[2022-09-15 14:21:27,021]:[Thread-3 (process_request_thread)]:[boot.py:boot@28] - This is Boot API.
-[INFO]:[2022-09-15 14:21:27,022]:[Thread-3 (process_request_thread)]:[_internal.py:_log@224] - 127.0.0.1 - - [15/Sep/2022 14:21:27] "GET /84e3b078-bb76-11ea-b3de-0242ac130004/boot HTTP/1.1" 200 -
-[INFO]:[2022-09-15 14:21:32,680]:[Thread-5 (process_request_thread)]:[_internal.py:_log@224] - 127.0.0.1 - - [15/Sep/2022 14:21:32] "[33mGET /84e3b078-bb76-11ea-b3de-0242ac130004/config/ HTTP/1.1[0m" 404 -
-[INFO]:[2022-09-15 14:21:36,851]:[Thread-6 (process_request_thread)]:[config.py:config@29] - This is Config API.
-[INFO]:[2022-09-15 14:21:36,852]:[Thread-6 (process_request_thread)]:[_internal.py:_log@224] - 127.0.0.1 - - [15/Sep/2022 14:21:36] "GET /84e3b078-bb76-11ea-b3de-0242ac130004/config HTTP/1.1" 200 -
-[INFO]:[2022-09-15 14:21:49,321]:[Thread-8 (process_request_thread)]:[files.py:files@30] - This is Files API.
-[INFO]:[2022-09-15 14:21:49,327]:[Thread-8 (process_request_thread)]:[_internal.py:_log@224] - 127.0.0.1 - - [15/Sep/2022 14:21:49] "GET /84e3b078-bb76-11ea-b3de-0242ac130004/files HTTP/1.1" 200 -
-[INFO]:[2022-09-15 14:22:09,626]:[Thread-10 (process_request_thread)]:[_internal.py:_log@224] - 127.0.0.1 - - [15/Sep/2022 14:22:09] "[35m[1mGET /84e3b078-bb76-11ea-b3de-0242ac130004/service/named/restart HTTP/1.1[0m" 500 -
-[INFO]:[2022-09-15 14:22:09,664]:[Thread-11 (process_request_thread)]:[_internal.py:_log@224] - 127.0.0.1 - - [15/Sep/2022 14:22:09] "GET /84e3b078-bb76-11ea-b3de-0242ac130004/service/named/restart?__debugger__=yes&cmd=resource&f=style.css HTTP/1.1" 200 -
-[INFO]:[2022-09-15 14:22:09,665]:[Thread-12 (process_request_thread)]:[_internal.py:_log@224] - 127.0.0.1 - - [15/Sep/2022 14:22:09] "GET /84e3b078-bb76-11ea-b3de-0242ac130004/service/named/restart?__debugger__=yes&cmd=resource&f=debugger.js HTTP/1.1" 200 -
-[INFO]:[2022-09-15 14:22:09,707]:[Thread-13 (process_request_thread)]:[_internal.py:_log@224] - 127.0.0.1 - - [15/Sep/2022 14:22:09] "GET /84e3b078-bb76-11ea-b3de-0242ac130004/service/named/restart?__debugger__=yes&cmd=resource&f=console.png HTTP/1.1" 200 -
-[INFO]:[2022-09-15 14:22:21,523]:[MainThread]:[_internal.py:_log@224] -  * Detected change in '/mnt/hgfs/clustervision/luna2-daemon/apis/service.py', reloading
-[INFO]:[2022-09-15 14:22:21,566]:[MainThread]:[_internal.py:_log@224] -  * Restarting with stat
-[INFO]:[2022-09-15 14:22:22,022]:[MainThread]:[log.py:init_log@45] - =============== Luna Logging Level IsSet To [INFO] ===============
-[WARNING]:[2022-09-15 14:22:22,184]:[MainThread]:[_internal.py:_log@224] -  * Debugger is active!
-[INFO]:[2022-09-15 14:22:22,189]:[MainThread]:[_internal.py:_log@224] -  * Debugger PIN: 117-724-678
-[INFO]:[2022-09-15 14:22:24,545]:[Thread-3 (process_request_thread)]:[_internal.py:_log@224] - 127.0.0.1 - - [15/Sep/2022 14:22:24] "GET /84e3b078-bb76-11ea-b3de-0242ac130004/service/named/restart HTTP/1.1" 200 -
-[INFO]:[2022-09-15 14:22:34,074]:[MainThread]:[_internal.py:_log@224] -  * Detected change in '/mnt/hgfs/clustervision/luna2-daemon/apis/monitor.py', reloading
-[INFO]:[2022-09-15 14:22:34,115]:[MainThread]:[_internal.py:_log@224] -  * Restarting with stat
-[INFO]:[2022-09-15 14:22:34,591]:[MainThread]:[log.py:init_log@45] - =============== Luna Logging Level IsSet To [INFO] ===============
-[WARNING]:[2022-09-15 14:22:34,766]:[MainThread]:[_internal.py:_log@224] -  * Debugger is active!
-[INFO]:[2022-09-15 14:22:34,773]:[MainThread]:[_internal.py:_log@224] -  * Debugger PIN: 117-724-678
-[INFO]:[2022-09-15 14:22:46,015]:[Thread-3 (process_request_thread)]:[_internal.py:_log@224] - 127.0.0.1 - - [15/Sep/2022 14:22:46] "GET /84e3b078-bb76-11ea-b3de-0242ac130004/monitor/service/named HTTP/1.1" 200 -
-[INFO]:[2022-09-15 14:22:50,779]:[MainThread]:[_internal.py:_log@224] -  * Detected change in '/mnt/hgfs/clustervision/luna2-daemon/apis/monitor.py', reloading
-[INFO]:[2022-09-15 14:22:50,825]:[MainThread]:[_internal.py:_log@224] -  * Restarting with stat
-[INFO]:[2022-09-15 14:22:51,297]:[MainThread]:[log.py:init_log@45] - =============== Luna Logging Level IsSet To [INFO] ===============
-[WARNING]:[2022-09-15 14:22:51,482]:[MainThread]:[_internal.py:_log@224] -  * Debugger is active!
-[INFO]:[2022-09-15 14:22:51,488]:[MainThread]:[_internal.py:_log@224] -  * Debugger PIN: 117-724-678
-[INFO]:[2022-09-15 14:22:55,005]:[MainThread]:[_internal.py:_log@224] -  * Detected change in '/mnt/hgfs/clustervision/luna2-daemon/luna.py', reloading
-[INFO]:[2022-09-15 14:22:55,062]:[MainThread]:[_internal.py:_log@224] -  * Restarting with stat
-[INFO]:[2022-09-15 14:22:55,567]:[MainThread]:[log.py:init_log@45] - =============== Luna Logging Level IsSet To [INFO] ===============
-[WARNING]:[2022-09-15 14:22:55,741]:[MainThread]:[_internal.py:_log@224] -  * Debugger is active!
-[INFO]:[2022-09-15 14:22:55,750]:[MainThread]:[_internal.py:_log@224] -  * Debugger PIN: 117-724-678
+ * Running on http://192.168.1.17:7050
+[INFO]:[2022-09-20 00:52:05,268]:[MainThread]:[_internal.py:_log@224] - [33mPress CTRL+C to quit[0m
+[INFO]:[2022-09-20 00:52:05,269]:[MainThread]:[_internal.py:_log@224] -  * Restarting with stat
+[INFO]:[2022-09-20 00:52:05,622]:[MainThread]:[log.py:init_log@45] - =============== Luna Logging Level IsSet To [INFO] ===============
+[WARNING]:[2022-09-20 00:52:05,822]:[MainThread]:[_internal.py:_log@224] -  * Debugger is active!
+[INFO]:[2022-09-20 00:52:05,825]:[MainThread]:[_internal.py:_log@224] -  * Debugger PIN: 117-724-678

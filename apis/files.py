@@ -14,7 +14,6 @@ This File is Serving the Files.
 """
 
 from common.constants import *
-from common.validate_auth import *
 from flask import Blueprint, request, send_file, json
 from utils.log import *
 from utils.files import *
@@ -22,9 +21,8 @@ from utils.files import *
 logger = Log.get_logger()
 files_blueprint = Blueprint('files', __name__)
 
-@files_blueprint.route("/<string:token>/files", methods=['GET'])
-@login_required
-def files(token):
+@files_blueprint.route("/files", methods=['GET'])
+def files():
     filelist = Files().list_files()
     if filelist:
         logger.info("This is Files API.")
@@ -35,9 +33,8 @@ def files(token):
         return json.dumps(response), code
 
 
-@files_blueprint.route("/<string:token>/files/<string:filename>", methods=['GET'])
-@login_required
-def files_get(token, filename=None):
+@files_blueprint.route("/files/<string:filename>", methods=['GET'])
+def files_get(filename=None):
     if filename:
         filepath = Files().check_file(filename)
         if filepath:

@@ -14,13 +14,13 @@ Import this file will provide all variables which is fetched here.
 
 """
 
-
 import os
 import configparser
 from pathlib import Path
 CurrentDir = os.path.dirname(os.path.realpath(__file__))
 UTILSDIR = Path(CurrentDir)
 BASE_DIR = str(UTILSDIR.parent)
+SECRET_KEY = '004f2af45d3a4e161a7dd2d17fdae47f'
 
 ############### LUNA CONFIGURATION FILE ###################
 configParser = configparser.RawConfigParser()
@@ -32,5 +32,20 @@ SERVERPORT = configParser.get("CONNECTION", "SERVERPORT")
 
 LEVEL = configParser.get("LOGGER", "LEVEL")
 LOGFILE = configParser.get("LOGGER", "LOGFILE")
+
+
+USERNAME = configParser.get("API", "USERNAME")
+PASSWORD = configParser.get("API", "PASSWORD")
+EXPIRYTIME = configParser.get("API", "EXPIRYTIME")
+if EXPIRYTIME:
+	EXPIRY = int(EXPIRYTIME.replace("h", ""))
+	EXPIRY = EXPIRY*60*60
+else:
+	EXPIRY = 24*60*60
+
+SQLDB = configParser.get("DATABASE", "SQLITE")
+MYSQLBD = ""
+POSTGREDB = ""
+
 
 ############### LUNA CONFIGURATION FILE ###################

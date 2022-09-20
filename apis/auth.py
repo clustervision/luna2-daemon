@@ -27,39 +27,53 @@ auth_blueprint = Blueprint('auth', __name__)
 
 
 
-@auth_blueprint.route("/register", methods=['GET'])
-def register():
-    data = request.get_json() 
-    hashed_password = generate_password_hash(data['password'], method='sha256')
+# @auth_blueprint.route("/register", methods=['GET'])
+# def register():
+#     data = request.get_json() 
+#     hashed_password = generate_password_hash(data['password'], method='sha256')
 
-    new_user = Users(id=str(uuid.uuid4()), name=data['username'], password=hashed_password, admin=False)
-    db.session.add(new_user) 
-    db.session.commit()
-    response = {'message': 'registered successfully'}
-    code = 200
-    return json.dumps(response), code
+#     new_user = Users(id=str(uuid.uuid4()), name=data['username'], password=hashed_password, admin=False)
+#     db.session.add(new_user) 
+#     db.session.commit()
+#     response = {'message': 'registered successfully'}
+#     code = 200
+#     return json.dumps(response), code
 
 
 @auth_blueprint.route("/token", methods=['POST'])
 def token():
     auth = request.get_json(force=True)
     if not auth or not auth["username"] or not auth["password"]:
-        response = {'message' : 'login required'}
+        response = {'message' : 'Login Required'}
         code = 401
-        return json.dumps(response), code
-    select = "*"
-    table = "user"
-    where = [{"column": "username", "value": auth["username"]}]
-    user = Database().get_record(select, table, where)
-    if user:
-        userID = user[0]["id"]
-        password = user[0]["password"]
-        if check_password_hash(password, auth["password"]):
-            token = jwt.encode({'id': userID, 'exp': datetime.datetime.utcnow() + datetime.timedelta(minutes=int(EXPIRY))}, SECRET_KEY, "HS256")
+        # return json.dumps(response), code
+    if USERNAME != auth["username"]:
+        response = {'message' : 'Incorrect Username {}'.format(auth["username"])}
+        code = 401
+        # return json.dumps(response), code
+    else:
+        if PASSWORD != auth["password"]:
+            response = {'message' : 'Incorrect Password {}'.format(auth["password"])}
+            code = 401
+            # return json.dumps(response), code
+        else:
+            token = jwt.encode({'id': 1, 'exp': datetime.datetime.utcnow() + datetime.timedelta(minutes=int(EXPIRY))}, SECRET_KEY, "HS256")
             response = {'token' : token}
             code = 200
-            return json.dumps(response), code
-
-    response = {'message' : 'could not verify'}
-    code = 401
+            # return json.dumps(response), code
+    # DB interaction
+    # select = "*"
+    # table = "user"
+    # where = [{"column": "username", "value": auth["username"]}]
+    # user = Database().get_record(select, table, where)
+    # if user:
+    #     userID = user[0]["id"]
+    #     password = user[0]["password"]
+    #     if check_password_hash(password, auth["password"]):
+    #         token = jwt.encode({'id': userID, 'exp': datetime.datetime.utcnow() + datetime.timedelta(minutes=int(EXPIRY))}, SECRET_KEY, "HS256")
+    #         response = {'token' : token}
+    #         code = 200
+    #         return json.dumps(response), code
+    # response = {'message' : 'could not verify'}
+    # code = 401
     return json.dumps(response), code

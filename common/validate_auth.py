@@ -40,19 +40,22 @@ def token_required(f):
         if 'x-access-tokens' in request.headers:
             token = request.headers['x-access-tokens']
         if not token:
-            return jsonify({'message': 'a valid token is missing'})
+            return jsonify({'message': 'A Valid Token Is Missing.'})
         try:
             data = jwt.decode(token, SECRET_KEY, algorithms=["HS256"])
-            select = "*"
-            table = "user"
-            where = [{"column": "id", "value": str(data["id"])}]
-            user = Database().get_record(select, table, where)
-            if user:
-                userID = user[0]["id"]
-                password = user[0]["password"]
-                current_user = userID
+            if data["id"] == 1:
+                current_user = data["id"]
+            # DB Interaction
+            # select = "*"
+            # table = "user"
+            # where = [{"column": "id", "value": str(data["id"])}]
+            # user = Database().get_record(select, table, where)
+            # if user:
+            #     userID = user[0]["id"]
+            #     password = user[0]["password"]
+            #     current_user = userID
         except:
-            return jsonify({'message': 'token is invalid'})
+            return jsonify({'message': 'Token Is Invalid.'})
         return f(**kwargs)
     return decorator
 
@@ -69,15 +72,19 @@ def validate_access(f):
             access = "anonymous"
         try:
             data = jwt.decode(token, SECRET_KEY, algorithms=["HS256"])
-            select = "*"
-            table = "user"
-            where = [{"column": "id", "value": str(data["id"])}]
-            user = Database().get_record(select, table, where)
-            if user:
-                userID = user[0]["id"]
-                password = user[0]["password"]
-                current_user = userID
+            if data["id"] == 1:
+                current_user = data["id"]
                 access = "admin"
+            # DB Interaction
+            # select = "*"
+            # table = "user"
+            # where = [{"column": "id", "value": str(data["id"])}]
+            # user = Database().get_record(select, table, where)
+            # if user:
+            #     userID = user[0]["id"]
+            #     password = user[0]["password"]
+            #     current_user = userID
+            #     access = "admin"
         except:
             return f(**kwargs)
         return f(access=access, **kwargs)

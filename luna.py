@@ -13,6 +13,7 @@ This File is a Main File Luna 2 Daemon Service.
 This File will Initiate the Logger and A Entry Point to the API's
 Some Of Default Error Handler is defaine here such as 404, 400, etc.
 Getting the Constants from common/constant.py File
+#### To Generate the Application Security Key -> python -c 'import secrets; print(secrets.token_hex())'
 """
 
 from flask import Flask, request, abort, json
@@ -30,10 +31,7 @@ if len(sys.argv) == 2:
         LEVEL = "critical"
 
 Log.init_log(LEVEL)
-logger = Log.get_logger()
-
-
-#### To Generate the Application Security Key -> python -c 'import secrets; print(secrets.token_hex())'
+# logger = Log.get_logger()
 
 
 from apis.auth import auth_blueprint

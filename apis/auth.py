@@ -46,7 +46,7 @@ def token():
             response = {"message" : 'Incorrect Password {}'.format(auth["password"])}
             code = 401
         else:
-            token = jwt.encode({'id': 1, 'exp': datetime.datetime.utcnow() + datetime.timedelta(minutes=1)}, SECRET_KEY, "HS256")
+            token = jwt.encode({'id': 1, 'exp': datetime.datetime.utcnow() + datetime.timedelta(minutes=int(EXPIRY))}, SECRET_KEY, "HS256")
             logger.info("Login Token generated Successfully, Token {}".format(token))
             response = {"token" : token}
             code = 200

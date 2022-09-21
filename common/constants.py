@@ -26,7 +26,6 @@ SECRET_KEY = '004f2af45d3a4e161a7dd2d17fdae47f'
 configParser = configparser.RawConfigParser()
 configParser.read('config/luna.conf')
 
-TOKEN = configParser.get("CONNECTION", "TOKEN")
 SERVERIP = configParser.get("CONNECTION", "SERVERIP")
 SERVERPORT = configParser.get("CONNECTION", "SERVERPORT")
 

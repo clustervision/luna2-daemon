@@ -22,23 +22,12 @@ from utils.service import *
 logger = Log.get_logger()
 service_blueprint = Blueprint('service', __name__)
 
+"""
+/service will receive the service name and action.
+With the Help of Service Class perform the action
+"""
 @service_blueprint.route("/service/<string:name>/<string:action>", methods=['POST'])
 @token_required
 def service(name, action):
     response, code = Service().luna_service(name, action)
     return json.dumps(response), code
-
-
-@service_blueprint.route("/service/test/<string:name>", methods=['GET'])
-@validate_access
-def service_test(name, **kwargs):
-    access = "anonymous"
-    if "access" in kwargs:
-        access = "admin"
-    # for key, value in kwargs.items():
-    #     print(value)
-    #     if key == "access" and value == "admin":
-    #         access = "admin"
-    print(name)
-    print(access)
-    return access

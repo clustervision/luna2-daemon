@@ -14,7 +14,7 @@ This File is a A Entry Point of Every Configuration Related Activity.
 """
 
 from common.constants import *
-# from common.validate_auth import *
+from common.validate_auth import *
 from flask import Blueprint, request, json
 from utils.log import *
 
@@ -23,39 +23,33 @@ logger = Log.get_logger()
 config_blueprint = Blueprint('config', __name__)
 
 
-# @config_blueprint.route("/<string:token>/config", methods=['GET'])
-# @login_required
-@config_blueprint.route("/config", methods=['GET'])
-def config():
-    logger.info("This is Config API.")
-    response = {"message": "This is Config API."}
-    code = 200
-    return json.dumps(response), code
-
-
-# @config_blueprint.route("/<string:token>/config/node", methods=['GET'])
-# @login_required
+"""
+/config/node Return the list of all nodes
+"""
 @config_blueprint.route("/config/node", methods=['GET'])
-def config_node():
+@validate_access
+def config_node(**kwargs):
+    if "access" in kwargs:
+        access = "admin"
     logger.info("This is Config Node API.")
     response = {"message": "This is Node Node API."}
     code = 200
     return json.dumps(response), code
 
 
-# @config_blueprint.route("/<string:token>/config/node/<string:node>", methods=['GET','POST'])
-# @login_required
-@config_blueprint.route("/config/node/<string:node>", methods=['GET','POST'])
-def config_node_get(node=None):
+"""
+/config/node will receive the Node Name or ID.
+Return the complete information of the Node
+"""
+@config_blueprint.route("/config/node/<string:node>", methods=['GET'])
+@validate_access
+def config_node_get(node=None, **kwargs):
+    if "access" in kwargs:
+        access = "admin"
     if node:
-        if request.method == 'POST':
-            logger.info("This is Config Node POST API NodeID is: {}".format(node))
-            response = {"message": "This is Config Node POST API NodeID is: {}".format(node)}
-            code = 200
-        else:
-            logger.info("This is Config Node GET API NodeID is: {}".format(node))
-            response = {"message": "This is Config Node GET API NodeID is: {}".format(node)}
-            code = 200
+        logger.info("This is Config Node GET API NodeID is: {}".format(node))
+        response = {"message": "This is Config Node GET API NodeID is: {}".format(node)}
+        code = 200
     else:
         logger.error("NodeID is Missing.")
         response = {"message": "NodeID is Missing."}
@@ -63,8 +57,21 @@ def config_node_get(node=None):
     return json.dumps(response), code
 
 
-# @config_blueprint.route("/<string:token>/config/node/<string:node>/remove", methods=['GET'])
-# @login_required
+@config_blueprint.route("/config/node/<string:node>", methods=['POST'])
+@token_required
+def config_node_post(node=None):
+    if node:
+        logger.info("This is Config Node POST API NodeID is: {}".format(node))
+        response = {"message": "This is Config Node POST API NodeID is: {}".format(node)}
+        code = 200
+    else:
+        logger.error("NodeID is Missing.")
+        response = {"message": "NodeID is Missing."}
+        code = 200
+    return json.dumps(response), code
+
+
+
 @config_blueprint.route("/config/node/<string:node>/remove", methods=['GET'])
 def config_node_remove(node=None):
     if node:
@@ -78,8 +85,6 @@ def config_node_remove(node=None):
     return json.dumps(response), code
 
 
-# @config_blueprint.route("/<string:token>/config/node/<string:node>/interfaces", methods=['GET','POST'])
-# @login_required
 @config_blueprint.route("/config/node/<string:node>/interfaces", methods=['GET','POST'])
 def config_node_interfaces(node=None):
     if node:
@@ -98,8 +103,6 @@ def config_node_interfaces(node=None):
     return json.dumps(response), code
 
 
-# @config_blueprint.route("/<string:token>/config/group", methods=['GET'])
-# @login_required
 @config_blueprint.route("/config/group", methods=['GET'])
 def config_group():
     logger.info("This is Config Group API.")
@@ -108,8 +111,6 @@ def config_group():
     return json.dumps(response), code
 
 
-# @config_blueprint.route("/<string:token>/config/group/<string:group>", methods=['GET','POST'])
-# @login_required
 @config_blueprint.route("/config/group/<string:group>", methods=['GET','POST'])
 def config_group_get(group=None):
     if group:
@@ -128,8 +129,6 @@ def config_group_get(group=None):
     return json.dumps(response), code
 
 
-# @config_blueprint.route("/<string:token>/config/group/<string:group>/remove", methods=['GET'])
-# @login_required
 @config_blueprint.route("/config/group/<string:group>/remove", methods=['GET'])
 def config_group_remove(group=None):
     if group:
@@ -143,8 +142,6 @@ def config_group_remove(group=None):
     return json.dumps(response), code
 
 
-# @config_blueprint.route("/<string:token>/config/group/<string:group>/interfaces", methods=['GET','POST'])
-# @login_required
 @config_blueprint.route("/config/group/<string:group>/interfaces", methods=['GET','POST'])
 def config_group_interfaces(group=None):
     if group:
@@ -163,10 +160,6 @@ def config_group_interfaces(group=None):
     return json.dumps(response), code
 
 
-
-
-# @config_blueprint.route("/<string:token>/config/osimage/<string:name>", methods=['GET','POST'])
-# @login_required
 @config_blueprint.route("/config/osimage/<string:name>", methods=['GET','POST'])
 def config_osimage(name=None):
     if name:
@@ -185,8 +178,6 @@ def config_osimage(name=None):
     return json.dumps(response), code
 
 
-# @config_blueprint.route("/<string:token>/config/osimage/<string:name>/remove", methods=['GET'])
-# @login_required
 @config_blueprint.route("/config/osimage/<string:name>/remove", methods=['GET'])
 def config_osimage_remove(name=None):
     if name:
@@ -200,8 +191,6 @@ def config_osimage_remove(name=None):
     return json.dumps(response), code
 
 
-# @config_blueprint.route("/<string:token>/config/osimage/<string:name>/pack", methods=['GET','POST'])
-# @login_required
 @config_blueprint.route("/config/osimage/<string:name>/pack", methods=['GET','POST'])
 def config_osimage_pack(name=None):
     if name:
@@ -220,8 +209,6 @@ def config_osimage_pack(name=None):
     return json.dumps(response), code
 
 
-# @config_blueprint.route("/<string:token>/config/osimage/<string:name>/kernel", methods=['GET','POST'])
-# @login_required
 @config_blueprint.route("/config/osimage/<string:name>/kernel", methods=['GET','POST'])
 def config_osimage_kernel(name=None):
     if group:
@@ -240,11 +227,8 @@ def config_osimage_kernel(name=None):
     return json.dumps(response), code
 
 
-
-# @config_blueprint.route("/<string:token>/config/clusrer", methods=['GET','POST'])
-# @login_required
-@config_blueprint.route("/config/clusrer", methods=['GET','POST'])
-def config_clusrer():
+@config_blueprint.route("/config/cluster", methods=['GET','POST'])
+def config_cluster():
     if request.method == 'POST':
         logger.info("This is Config Cluster POST API.")
         response = {"message": "This is Config Cluster POST API."}
@@ -256,11 +240,6 @@ def config_clusrer():
     return json.dumps(response), code
 
 
-
-
-
-# @config_blueprint.route("/<string:token>/config/bmcsetup", methods=['GET'])
-# @login_required
 @config_blueprint.route("/config/bmcsetup", methods=['GET'])
 def config_bmcsetup():
     logger.info("This is Config BMC Setup API.")
@@ -269,8 +248,6 @@ def config_bmcsetup():
     return json.dumps(response), code
 
 
-# @config_blueprint.route("/<string:token>/config/bmcsetup/<string:bmcname>", methods=['GET','POST'])
-# @login_required
 @config_blueprint.route("/config/bmcsetup/<string:bmcname>", methods=['GET','POST'])
 def config_bmcsetup_get(bmcname=None):
     if bmcname:
@@ -289,8 +266,6 @@ def config_bmcsetup_get(bmcname=None):
     return json.dumps(response), code
 
 
-# @config_blueprint.route("/<string:token>/config/bmcsetup/<string:bmcname>/remove", methods=['GET'])
-# @login_required
 @config_blueprint.route("/config/bmcsetup/<string:bmcname>/remove", methods=['GET'])
 def config_bmcsetup_remove(bmcname=None):
     if bmcname:
@@ -304,9 +279,6 @@ def config_bmcsetup_remove(bmcname=None):
     return json.dumps(response), code
 
 
-
-# @config_blueprint.route("/<string:token>/config/switch", methods=['GET'])
-# @login_required
 @config_blueprint.route("/config/switch", methods=['GET'])
 def config_switch():
     logger.info("This is Config Switch API.")
@@ -315,8 +287,6 @@ def config_switch():
     return json.dumps(response), code
 
 
-# @config_blueprint.route("/<string:token>/config/switch/<string:switch>", methods=['GET'])
-# @login_required
 @config_blueprint.route("/config/switch/<string:switch>", methods=['GET'])
 def config_switch_get(switch=None):
     if switch:
@@ -330,8 +300,6 @@ def config_switch_get(switch=None):
     return json.dumps(response), code
 
 
-# @config_blueprint.route("/<string:token>/config/switch/<string:switch>/remove", methods=['GET'])
-# @login_required
 @config_blueprint.route("/config/switch/<string:switch>/remove", methods=['GET'])
 def config_switch_remove(switch=None):
     if switch:
@@ -345,9 +313,6 @@ def config_switch_remove(switch=None):
     return json.dumps(response), code
 
 
-
-# @config_blueprint.route("/<string:token>/config/otherdev/<string:device>", methods=['GET'])
-# @login_required
 @config_blueprint.route("/config/otherdev/<string:device>", methods=['GET'])
 def config_otherdev_get(device=None):
     if device:
@@ -361,8 +326,6 @@ def config_otherdev_get(device=None):
     return json.dumps(response), code
 
 
-# @config_blueprint.route("/<string:token>/config/otherdev/<string:device>/remove", methods=['GET'])
-# @login_required
 @config_blueprint.route("/config/otherdev/<string:device>/remove", methods=['GET'])
 def config_otherdev_remove(device=None):
     if device:

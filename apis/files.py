@@ -9,11 +9,12 @@ __email__       = "sumit.sharma@clustervision.com"
 __status__      = "Development"
 
 """
-This File is Serving the Files.
+This File is Serving the TarBalls Files.
 
 """
 
 from common.constants import *
+from common.validate_auth import *
 from flask import Blueprint, request, send_file, json
 from utils.log import *
 from utils.files import *
@@ -21,8 +22,15 @@ from utils.files import *
 logger = Log.get_logger()
 files_blueprint = Blueprint('files', __name__)
 
+
+"""
+/files will provide the list of tar files inside the tar file directory 
+"""
 @files_blueprint.route("/files", methods=['GET'])
-def files():
+@validate_access
+def files(**kwargs):
+    if "access" in kwargs:
+        access = "admin"
     filelist = Files().list_files()
     if filelist:
         logger.info("This is Files API.")
@@ -33,8 +41,15 @@ def files():
         return json.dumps(response), code
 
 
+"""
+/files will receive the tar file COMPLETE name.
+Return the Tar File.
+"""
 @files_blueprint.route("/files/<string:filename>", methods=['GET'])
-def files_get(filename=None):
+@validate_access
+def files_get(filename=None, **kwargs):
+    if "access" in kwargs:
+        access = "admin"
     if filename:
         filepath = Files().check_file(filename)
         if filepath:

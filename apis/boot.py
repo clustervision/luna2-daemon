@@ -14,28 +14,38 @@ This File is a A Entry Point of Every Boot Related Activity.
 """
 
 from common.constants import *
-# from common.validate_auth import *
+from common.validate_auth import *
 from flask import Blueprint, request, json
 from utils.log import *
 
 logger = Log.get_logger()
 boot_blueprint = Blueprint('boot', __name__)
 
-
-# @boot_blueprint.route("/<string:token>/boot", methods=['GET'])
-# @login_required
+"""
+/boot will serve the template from boot_ipxe.cfg
+Template should be modified via Jinja2 with correct fields. 
+"""
 @boot_blueprint.route("/boot", methods=['GET'])
-def boot():
-    logger.error("This is Boot API.")
+@validate_access
+def boot(**kwargs):
+    if "access" in kwargs:
+        access = "admin"
+    logger.info("This is Boot API. It will start render boot_ipxe.cfg")
     response = {"message": "This is Boot API."}
     code = 200
     return json.dumps(response), code
 
 
-# @boot_blueprint.route("/<string:token>/boot/search/mac/<string:mac>", methods=['GET'])
-# @login_required
+"""
+/boot search receive MAC Address 
+Check if SNMP port-detection has been enabled.
+Return the hostname
+"""
 @boot_blueprint.route("/boot/search/mac/<string:mac>", methods=['GET'])
-def boot_search_mac(mac=None):
+@validate_access
+def boot_search_mac(mac=None, **kwargs):
+    if "access" in kwargs:
+        access = "admin"
     if mac:
         logger.info("This is Boot Search API MACID is. {}".format(mac))
         response = {"message": "This is Boot Search API MACID is. {}".format(mac)}
@@ -47,10 +57,15 @@ def boot_search_mac(mac=None):
     return json.dumps(response), code
 
 
-# @boot_blueprint.route("/<string:token>/boot/install/<string:node>", methods=['GET'])
-# @login_required
+"""
+/boot search receive NodeName or NodeID 
+Return Call the installation script for the Node.
+"""
 @boot_blueprint.route("/boot/install/<string:node>", methods=['GET'])
-def boot_install(node=None):
+@validate_access
+def boot_install(node=None, **kwargs):
+    if "access" in kwargs:
+        access = "admin"
     if node:
         logger.info("This is Boot Install API NodeID is: {}".format(node))
         response = {"message": "This is Boot Install API NodeID is: {}".format(node)}

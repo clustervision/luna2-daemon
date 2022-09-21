@@ -16,55 +16,48 @@ Correct Token Should be supplied to access any Luna 2 API.
 import os
 from common.constants import *
 from functools import wraps
-from flask import abort, request, jsonify
+from flask import request, json
 from utils.log import *
 import jwt
 from utils.database.database import *
 
 logger = Log.get_logger()
 
-def login_required(f):
-    @wraps(f)
-    def login(**kwargs):
-        if not kwargs['token'] == TOKEN:
-            abort(401)
-        return f(**kwargs)
-    return login
 
-
+"""
+/token_required is a wrapper, which will validate the token for all POST API
+"""
 def token_required(f):
     @wraps(f)
     def decorator(*args, **kwargs):
-        my_auth_url = os.getenv('SECRET_KEY')
         token = None
         if 'x-access-tokens' in request.headers:
             token = request.headers['x-access-tokens']
         if not token:
-            return jsonify({'message': 'A Valid Token Is Missing.'})
+            logger.error("A Valid Token Is Missing.")
+            response = {"message": "A Valid Token Is Missing."}
+            code = 401
+            return json.dumps(response), code
         try:
             data = jwt.decode(token, SECRET_KEY, algorithms=["HS256"])
             if data["id"] == 1:
                 current_user = data["id"]
-            # DB Interaction
-            # select = "*"
-            # table = "user"
-            # where = [{"column": "id", "value": str(data["id"])}]
-            # user = Database().get_record(select, table, where)
-            # if user:
-            #     userID = user[0]["id"]
-            #     password = user[0]["password"]
-            #     current_user = userID
         except:
-            return jsonify({'message': 'Token Is Invalid.'})
+            logger.error("Token Is Invalid.")
+            response = {"message": "Token Is Invalid."}
+            code = 401
+            return json.dumps(response), code
         return f(**kwargs)
     return decorator
 
 
+"""
+/validate_access is a wrapper, which will validate the access against the token for all GET API
+"""
 def validate_access(f):
     @wraps(f)
     def decorator(*args, **kwargs):
         access = "anonymous"
-        my_auth_url = os.getenv('SECRET_KEY')
         token = None
         if 'x-access-tokens' in request.headers:
             token = request.headers['x-access-tokens']
@@ -75,16 +68,6 @@ def validate_access(f):
             if data["id"] == 1:
                 current_user = data["id"]
                 access = "admin"
-            # DB Interaction
-            # select = "*"
-            # table = "user"
-            # where = [{"column": "id", "value": str(data["id"])}]
-            # user = Database().get_record(select, table, where)
-            # if user:
-            #     userID = user[0]["id"]
-            #     password = user[0]["password"]
-            #     current_user = userID
-            #     access = "admin"
         except:
             return f(**kwargs)
         return f(access=access, **kwargs)

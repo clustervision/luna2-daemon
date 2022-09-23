@@ -10,6 +10,9 @@ __status__      = "Development"
 
 """
 This File is a A Entry Point of Every Configuration Related Activity.
+@token_required is a Wrapper Method to Validate the POST API.
+@validate_access is a Wrapper to Validate the access for the GET API.
+    This Method will return URL params in kwargs along with access
 
 """
 

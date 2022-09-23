@@ -21,57 +21,53 @@ from utils.log import *
 logger = Log.get_logger()
 boot_blueprint = Blueprint('boot', __name__)
 
+
 """
-/boot will serve the template from boot_ipxe.cfg
-Template should be modified via Jinja2 with correct fields. 
+Input - None
+Process - Via Jinja2 filled data in template boot_ipxe.cfg 
+Output - boot_ipxe.cfg
 """
 @boot_blueprint.route("/boot", methods=['GET'])
-@validate_access
-def boot(**kwargs):
-    if "access" in kwargs:
-        access = "admin"
+def boot():
     logger.info("This is Boot API. It will start render boot_ipxe.cfg")
-    response = {"message": "This is Boot API."}
+    response = {"message": "This is Boot API. It will start render boot_ipxe.cfg."}
     code = 200
     return json.dumps(response), code
 
 
 """
-/boot search receive MAC Address 
-Check if SNMP port-detection has been enabled.
-Return the hostname
+Input - MacID
+Process - Discovery on MAC address, Server will lookup the MAC if SNMP port-detection has been enabled
+Output - hostname
 """
 @boot_blueprint.route("/boot/search/mac/<string:mac>", methods=['GET'])
-@validate_access
-def boot_search_mac(mac=None, **kwargs):
-    if "access" in kwargs:
-        access = "admin"
-    if mac:
-        logger.info("This is Boot Search API MACID is. {}".format(mac))
-        response = {"message": "This is Boot Search API MACID is. {}".format(mac)}
+def boot_search_mac(mac=None):
+    hostname = "HOSTNAME"
+    if hostname:
+        logger.info("hostname is {}".format(hostname))
+        response = {"message": hostname}
         code = 200
     else:
-        logger.error("MacID is Missing.")
-        response = {"message": "MacID is Missing."}
-        code = 200
+        logger.error("Hostname Not Found For MacID {}.".format(mac))
+        response = {"message": "Hostname Not Found For MacID {}.".format(mac)}
+        code = 404
     return json.dumps(response), code
 
 
 """
-/boot search receive NodeName or NodeID 
-Return Call the installation script for the Node.
+Input - NodeID or Node Name
+Process - Call the installation script for this node.
+Output - Success or Failure
 """
 @boot_blueprint.route("/boot/install/<string:node>", methods=['GET'])
-@validate_access
-def boot_install(node=None, **kwargs):
-    if "access" in kwargs:
-        access = "admin"
-    if node:
-        logger.info("This is Boot Install API NodeID is: {}".format(node))
-        response = {"message": "This is Boot Install API NodeID is: {}".format(node)}
+def boot_install(node=None):
+    install = True
+    if install:
+        logger.info("Installation Script is Started For  NodeID: {}".format(node))
+        response = {"message": "Installation Script is Started For  NodeID: {}".format(node)}
         code = 200
     else:
-        logger.error("NodeID is Missing.")
-        response = {"message": "NodeID is Missing."}
-        code = 200
+        logger.error("Not Able To Find The NodeID: {}".format(node))
+        response = {"message": "Not Able To Find The NodeID: {}".format(node)}
+        code = 404
     return json.dumps(response), code

@@ -10,6 +10,7 @@ __status__      = "Development"
 
 """
 This File is Serving the TarBalls Files.
+TarBalls Default Location is mentioned in Conf file.
 
 """
 
@@ -24,45 +25,37 @@ files_blueprint = Blueprint('files', __name__)
 
 
 """
-/files will provide the list of tar files inside the tar file directory 
+Input - None
+Process - Search TARBALLS for *.tar.gz. *.tar.bz2 files. 
+Output - List of available files.
 """
 @files_blueprint.route("/files", methods=['GET'])
-@validate_access
-def files(**kwargs):
-    if "access" in kwargs:
-        access = "admin"
+def files():
     filelist = Files().list_files()
     if filelist:
-        logger.info("This is Files API.")
-        return filelist
+        logger.info("Available Tar file in {} are {}.".format(TARBALL, str(filelist)))
+        return filelist, 200
     else:
-        response = {"message": "Nothing is present."}
-        code = 200
+        logger.error("No Tar file is present in {}.".format(TARBALL))
+        response = {"message": "No Tar file is present in {}.".format(TARBALL)}
+        code = 503
         return json.dumps(response), code
 
 
 """
-/files will receive the tar file COMPLETE name.
-Return the Tar File.
+Input - Tar File Name
+Process - Make Available File to Download. 
+Output - File
 """
 @files_blueprint.route("/files/<string:filename>", methods=['GET'])
-@validate_access
-def files_get(filename=None, **kwargs):
-    if "access" in kwargs:
-        access = "admin"
-    if filename:
-        filepath = Files().check_file(filename)
-        if filepath:
-            return send_file(filepath, as_attachment=True)
-        else:
-            response = "File {}, is not present.".format(filename)
-            code = 200
-            return json.dumps(response), code
-        logger.info("This is Files GET API File Name is: {}".format(filename))
-        response = {"message": "This is Files GET API File Name is: {}".format(filename)}
-        code = 200
+def files_get(filename=None):
+    filepath = Files().check_file(filename)
+    if filepath:
+        logger.info("Tar File Path is {}.".format(filepath))
+        return send_file(filepath, as_attachment=True), 200
     else:
-        logger.error("File Name is Missing.")
-        response = {"message": "File Name is Missing."}
-        code = 200
+        logger.error("Tar File {} Is Not Present in Directory {}.".format(filename, TARBALL))
+        response = "Tar File {} Is Not Present in Directory {}.".format(filename, TARBALL)
+        code = 503
+        return json.dumps(response), code
     return json.dumps(response), code

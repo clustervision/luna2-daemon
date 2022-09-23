@@ -9,26 +9,35 @@ __email__       = "sumit.sharma@clustervision.com"
 __status__      = "Development"
 
 """
-This File is a Service Class, responsible to perform start, stop, reload, restart and action items for provided service name.
-TODO: Excat response should be return instead of generic.
-
+This File is a Service Class, responsible to perform start, stop, reload, status, or restart action on provided service name.
 """
 
 from utils.helper import *
+from utils.log import *
+
 
 class Service(object):
 
+    """
+    Constructor - Initialize The Service Names.
+    """
     def __init__(self):
         self.DHCP = DHCP
         self.DNS = DNS
+        self.logger = Log.get_logger()
 
 
+    """
+    Input - name of service and action need to be perform
+    Process - Validate the Service Name and Action and perform the action with the help of runcommand method from Helper Class.
+    Output - Success or Failure.
+    """
     def luna_service(self, name, action):
         match name:
             case self.DHCP | self.DNS:
                 match action:
                     case "start" | "stop" | "reload" | "restart" | "status":
-                        command = "{} {} {}".format(COMMAND, action, name)
+                        command = "{} {} {}".format(COMMAND, action, name) ## Fetch the command from the .conf file
                         output = Helper.runcommand(command)
                         response, code = self.service_status(name, action, output)
                     case _:
@@ -39,6 +48,12 @@ class Service(object):
                 code = 400
         return response, code
 
+
+    """
+    Input - name of service and action need to be perform
+    Process - After Validating Token, Check Queue if the same request is enque in last two seconds. If Not Then only execute the action with the Help of Service Class.
+    Output - Success or Failure.
+    """
     def service_status(self, name, action, output):
         match action:
             case "start":
@@ -64,6 +79,7 @@ class Service(object):
                     code = 200
             case "restart":
                 if "(b'', b'')" in str(output):
+                    self.logger.info("This is Boot API. It will start render boot_ipxe.cfg")
                     response = "Service {} is {}ed.".format(name, action)
                     code = 200
                 else:

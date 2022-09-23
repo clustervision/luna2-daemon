@@ -27,8 +27,8 @@ class Helper(object):
 
     def runcommand(command):
         process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
-        logger.info("Command Executed {}".format(command))
+        # logger.info("Command Executed {}".format(command))
         output = process.communicate()
         process.wait()
-        logger.info("output Executed {}".format(str(output)))
+        # logger.info("output Executed {}".format(str(output)))
         return output

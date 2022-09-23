@@ -35,7 +35,7 @@ LOGFILE = configParser.get("LOGGER", "LOGFILE")
 
 USERNAME = configParser.get("API", "USERNAME")
 PASSWORD = configParser.get("API", "PASSWORD")
-EXPIRY = configParser.get("API", "EXPIRYTIME")
+EXPIRY = configParser.get("API", "EXPIRY")
 if EXPIRY:
 	EXPIRY = int(EXPIRY.replace("h", ""))
 	EXPIRY = EXPIRY*60*60

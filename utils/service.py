@@ -34,18 +34,20 @@ class Service(object):
     """
     def luna_service(self, name, action):
         match name:
-            case self.DHCP | self.DNS:
+            case self.DHCP | self.DNS | "luna2":
                 match action:
                     case "start" | "stop" | "reload" | "restart" | "status":
                         command = "{} {} {}".format(COMMAND, action, name) ## Fetch the command from the .conf file
                         output = Helper.runcommand(command)
                         response, code = self.service_status(name, action, output)
                     case _:
-                        response = {"error": "Service Action {} is not recognized.".format(action)}
-                        code = 400
+                        self.logger.error("Service Action {} Is Not Recognized.".format(name))
+                        response = {"error": "Service Action {} Is Not Recognized.".format(action)}
+                        code = 404
             case _:
-                response = {"error": "Service Name {} is not recognized.".format(name)}
-                code = 400
+                self.logger.error("Service Name {} Is Not Recognized.".format(name))
+                response = {"error": "Service Name {} Is Not Recognized.".format(name)}
+                code = 404
         return response, code
 
 
@@ -58,38 +60,47 @@ class Service(object):
         match action:
             case "start":
                 if "(b'', b'')" in str(output):
+                    self.logger.info("Service {} is {}ed.".format(name, action))
                     response = "Service {} is {}ed.".format(name, action)
                     code = 200
                 else:
+                    self.logger.error("Service {} is Failed to {}.".format(name, action))
                     response = "Service {} is Failed to {}.".format(name, action)
-                    code = 200
+                    code = 500
             case "stop":
                 if "(b'', b'')" in str(output):
+                    self.logger.info("Service {} is {}ped.".format(name, action))
                     response = "Service {} is {}ped.".format(name, action)
                     code = 200
                 else:
+                    self.logger.error("Service {} is Failed to {}.".format(name, action))
                     response = "Service {} is Failed to {}.".format(name, action)
-                    code = 200
+                    code = 500
             case "reload":
                 if "Failed" in str(output):
+                     self.logger.error("Service {} is Failed to {}.".format(name, action))
                     response = "Service {} is Failed to {}.".format(name, action)
-                    code = 200
+                    code = 500
                 else:
+                    self.logger.info("Service {} is {}ed.".format(name, action))
                     response = "Service {} is {}ed.".format(name, action)
                     code = 200
             case "restart":
                 if "(b'', b'')" in str(output):
-                    self.logger.info("This is Boot API. It will start render boot_ipxe.cfg")
+                    self.logger.info("Service {} is {}ed.".format(name, action))
                     response = "Service {} is {}ed.".format(name, action)
                     code = 200
                 else:
+                     self.logger.error("Service {} is Failed to {}.".format(name, action))
                     response = "Service {} is Failed to {}.".format(name, action)
-                    code = 200
+                    code = 500
             case "status":
                 if "active (running)" in str(output):
+                    self.logger.info("Service {} is Active & Running.".format(name))
                     response = "Service {} is Active & Running.".format(name)
                     code = 200
                 else:
+                     self.logger.error("Service {} is Not Active & Running.".format(name))
                     response = "Service {} is Not Active & Running.".format(name)
-                    code = 200
+                    code = 500
         return response, code

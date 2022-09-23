@@ -9,26 +9,34 @@ __email__       = "sumit.sharma@clustervision.com"
 __status__      = "Development"
 
 """
-This Is a Helper Class, which help the project to provide the common tasks.
+This Is a Helper Class, which help the project to provide the common Methods.
 
 """
  
 import subprocess
 from common.constants import *
 from utils.log import *
-logger = Log.get_logger()
 
 
 class Helper(object):
 
+
+    """
+    Constructor - As of now, nothing have to initialize.
+    """
     def __init__(self):
-        pass
+        self.logger = Log.get_logger()
 
 
+    """
+    Input - command, which need to be executed
+    Process - Via subprocess, execute the command and wait to receive the complete output.
+    Output - Detailed result.
+    """
     def runcommand(command):
         process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
-        # logger.info("Command Executed {}".format(command))
+        self.logger.debug("Command Executed {}".format(command))
         output = process.communicate()
         process.wait()
-        # logger.info("output Executed {}".format(str(output)))
+        self.logger.debug("Output Of Command {} ".format(str(output)))
         return output

@@ -35,9 +35,9 @@ LOGFILE = configParser.get("LOGGER", "LOGFILE")
 
 USERNAME = configParser.get("API", "USERNAME")
 PASSWORD = configParser.get("API", "PASSWORD")
-EXPIRYTIME = configParser.get("API", "EXPIRYTIME")
-if EXPIRYTIME:
-	EXPIRY = int(EXPIRYTIME.replace("h", ""))
+EXPIRY = configParser.get("API", "EXPIRYTIME")
+if EXPIRY:
+	EXPIRY = int(EXPIRY.replace("h", ""))
 	EXPIRY = EXPIRY*60*60
 else:
 	EXPIRY = 24*60*60
@@ -45,6 +45,18 @@ else:
 SQLDB = configParser.get("DATABASE", "SQLITE")
 MYSQLBD = ""
 POSTGREDB = ""
+
+TARBALL = configParser.get("FILES", "TARBALL")
+
+DHCP = configParser.get("SERVICES", "DHCP")
+DNS = configParser.get("SERVICES", "DNS")
+CONTROL = configParser.get("SERVICES", "CONTROL")
+COOLDOWN = configParser.get("SERVICES", "COOLDOWN")
+if COOLDOWN:
+	COOLDOWN = int(COOLDOWN.replace("s", ""))
+else:
+	COOLDOWN = 2
+COMMAND = configParser.get("SERVICES", "COMMAND")
 
 
 ############### LUNA CONFIGURATION FILE ###################

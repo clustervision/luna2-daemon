@@ -19,15 +19,16 @@ from utils.helper import *
 class Service(object):
 
     def __init__(self):
-        pass
+        self.DHCP = DHCP
+        self.DNS = DNS
 
 
     def luna_service(self, name, action):
         match name:
-            case "dhcpd" | "named":
+            case self.DHCP | self.DNS:
                 match action:
                     case "start" | "stop" | "reload" | "restart" | "status":
-                        command = "/usr/bin/systemctl {} {}".format(action, name)
+                        command = "{} {} {}".format(COMMAND, action, name)
                         output = Helper.runcommand(command)
                         response, code = self.service_status(name, action, output)
                     case _:

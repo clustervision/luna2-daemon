@@ -15,6 +15,8 @@ This Is a Helper Class, which help the project to provide the common tasks.
  
 import subprocess
 from common.constants import *
+from utils.log import *
+logger = Log.get_logger()
 
 
 class Helper(object):
@@ -25,6 +27,8 @@ class Helper(object):
 
     def runcommand(command):
         process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
+        logger.info("Command Executed {}".format(command))
         output = process.communicate()
         process.wait()
+        logger.info("output Executed {}".format(str(output)))
         return output

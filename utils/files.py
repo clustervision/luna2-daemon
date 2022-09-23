@@ -26,7 +26,7 @@ class Files(object):
 
 
     def check_file(self, filename):
-        filepath = BASE_DIR+"/files/"+filename
+        filepath = TARBALL+"/"+filename
         if os.path.exists(filepath):
             return filepath
         else:
@@ -34,9 +34,8 @@ class Files(object):
 
 
     def list_files(self):
-        # logger.debug("asdasd")
         files = []
-        filepath = BASE_DIR+"/files/"
+        filepath = TARBALL+"/"
         if os.path.exists(filepath):
             for file in os.listdir(filepath):
                 if file.endswith(".tar.gz") or file.endswith(".tar.bz2"):

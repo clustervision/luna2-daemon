@@ -31,8 +31,6 @@ if len(sys.argv) == 2:
         LEVEL = "critical"
 
 Log.init_log(LEVEL)
-# logger = Log.get_logger()
-
 
 from apis.auth import auth_blueprint
 from apis.boot import boot_blueprint
@@ -40,7 +38,6 @@ from apis.config import config_blueprint
 from apis.files import files_blueprint
 from apis.service import service_blueprint
 from apis.monitor import monitor_blueprint
-# global api
 api = Flask(__name__)
 api.register_blueprint(auth_blueprint)
 api.register_blueprint(boot_blueprint)
@@ -86,4 +83,4 @@ def service_unavailable(e, msg):
 
 
 if __name__ == "__main__":
-    api.run(host=SERVERIP, port=SERVERPORT, debug=True)
+    api.run(host=SERVERIP, port=SERVERPORT, debug=True, threaded=True)

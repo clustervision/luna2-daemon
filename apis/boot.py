@@ -15,7 +15,7 @@ This File is a A Entry Point of Every Boot Related Activity.
 
 from common.constants import *
 from common.validate_auth import *
-from flask import Blueprint, request, json
+from flask import Blueprint, request, json, render_template
 from utils.log import *
 
 logger = Log.get_logger()
@@ -29,10 +29,11 @@ Output - boot_ipxe.cfg
 """
 @boot_blueprint.route("/boot", methods=['GET'])
 def boot():
-    logger.info("This is Boot API. It will start render boot_ipxe.cfg")
-    response = {"message": "This is Boot API. It will start render boot_ipxe.cfg."}
-    code = 200
-    return json.dumps(response), code
+    nodes = ["node001", "node002", "node003", "node004"]
+    data = {"protocol": "http", "serverip": "10.141.255.254", "serverport": "7051", "nodes": nodes}
+    Template = "boot_ipxe.cfg"
+    logger.info("Boot API Serving the {}".format(Template))
+    return render_template(Template, data=data), 200
 
 
 """

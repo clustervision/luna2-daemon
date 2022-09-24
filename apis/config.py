@@ -10,9 +10,10 @@ __status__      = "Development"
 
 """
 This File is a A Entry Point of Every Configuration Related Activity.
-@token_required is a Wrapper Method to Validate the POST API.
+@token_required is a Wrapper Method to Validate the POST API. It contains arguments and keyword arguments Of The API
 @validate_access is a Wrapper to Validate the access for the GET API.
-    This Method will return URL params in kwargs along with access
+    It contains arguments and keyword arguments Of The API
+    After validate the Token, Return the arguments and keyword arguments Of The API Along access key with admin value to use further.
 
 """
 
@@ -27,548 +28,677 @@ config_blueprint = Blueprint('config', __name__)
 
 
 """
-/config/node Return the list of all nodes
+Input - None
+Process - Fetch the list of avaiable Nodes.
+Output - Return the List Of Nodes.
 """
 @config_blueprint.route("/config/node", methods=['GET'])
-@validate_access
-def config_node(**kwargs):
-    if "access" in kwargs:
-        access = "admin"
-    logger.info("This is Config Node API.")
-    response = {"message": "This is Node Node API."}
-    code = 200
-    return json.dumps(response), code
-
-
-"""
-/config/node will receive the Node Name or ID.
-Return the complete information of the Node
-"""
-@config_blueprint.route("/config/node/<string:node>", methods=['GET'])
-@validate_access
-def config_node_get(node=None, **kwargs):
-    if "access" in kwargs:
-        access = "admin"
-        logger.info("access: {}".format(access))
-    if node:
-        logger.info("This is Config Node GET API NodeID is: {}".format(node))
-        response = {"message": "This is Config Node GET API NodeID is: {}".format(node)}
+def config_node():
+    nodes = True
+    if nodes:
+        logger.info("Avaiable Nodes => {}".format(str(nodes)))
+        response = {"message": "Avaiable Nodes => {}".format(str(nodes))}
         code = 200
     else:
-        logger.error("NodeID is Missing.")
-        response = {"message": "NodeID is Missing."}
-        code = 200
+        logger.error("Nodes aren't Avaiable.")
+        response = {"message": "Nodes aren't Avaiable."}
+        code = 404
     return json.dumps(response), code
 
+
 """
-/config/node will receive the Node Name or ID.
-Do update or create depends on the payload.
+Input - Node ID or Name
+Process - Fetch the node host information.
+Output - Node Info.
+"""
+@config_blueprint.route("/config/node/<string:node>", methods=['GET'])
+def config_node_get(node=None):
+    nodes = True
+    if nodes:
+        logger.info("Node Information => {}".format(str(nodes)))
+        response = {"message": "Node Information => {}".format(str(nodes))}
+        code = 200
+    else:
+        logger.error("Node Is Not Exist.")
+        response = {"message": "Node Is Not Exist."}
+        code = 404
+    return json.dumps(response), code
+
+
+"""
+Input - Node ID or Name
+Process - Create OR Update the Node.
+Output - Create OR Update Info.
 """
 @config_blueprint.route("/config/node/<string:node>", methods=['POST'])
 @token_required
 def config_node_post(node=None):
-    if node:
-        logger.info("This is Config Node POST API NodeID is: {}".format(node))
-        response = {"message": "This is Config Node POST API NodeID is: {}".format(node)}
+    create = True
+    update = False
+    if create:
+        logger.info("Node {} Created Successfully.".format(str(node)))
+        response = {"message": "Node {} Created Successfully.".format(str(node))}
+        code = 201
+    elif update:
+        logger.info("Node {} Updated Successfully.".format(str(node)))
+        response = {"message": "Node {} Updated Successfully.".format(str(node))}
         code = 200
     else:
-        logger.error("NodeID is Missing.")
-        response = {"message": "NodeID is Missing."}
-        code = 200
+        logger.error("Node Is Not Exist.")
+        response = {"message": "Node Is Not Exist."}
+        code = 404
     return json.dumps(response), code
 
 
 """
-/config/node/NODE/remove will receive the Node Name or ID.
-And Delete The Node.
+Input - Node ID or Name
+Process - Delete the Node.
+Output - Delete Info.
 """
 @config_blueprint.route("/config/node/<string:node>/remove", methods=['POST'])
 @token_required
 def config_node_remove(node=None):
-    if node:
-        logger.info("This is Config Node Remove API NodeID is: {}".format(node))
-        response = {"message": "This is Config Node Remove API NodeID is: {}".format(node)}
-        code = 200
+    remove = True
+    if remove:
+        logger.info("Node {} Removed Successfully.".format(str(node)))
+        response = {"message": "Node {} Removed Successfully.".format(str(node))}
+        code = 204
     else:
-        logger.error("NodeID is Missing.")
-        response = {"message": "NodeID is Missing."}
-        code = 200
+        logger.error("Node Is Not Exist.")
+        response = {"message": "Node Is Not Exist."}
+        code = 404
     return json.dumps(response), code
 
+
 """
-/config/node/NODE/interfaces will receive the NODE ID or Name.
-Return the network interface list of the Node
+Input - Node ID or Name
+Process - Fetch the List the network interfaces of the Node.
+Output - Network Interfaces.
 """
 @config_blueprint.route("/config/node/<string:node>/interfaces", methods=['GET'])
-@validate_access
-def config_node_interfaces_get(node=None, **kwargs):
-    if "access" in kwargs:
-        access = "admin"
-    if node:
-        logger.info("This is Config Node Interfaces GET API NodeID is: {}".format(node))
-        response = {"message": "This is Config Node Interfaces GET API NodeID is: {}".format(node)}
-        code = 200
+def config_node_interfaces_get(node=None):
+    interfaces = True
+    if interfaces:
+        logger.info("Node {} Have Network Interfaces {}.".format(str(node), str(interfaces)))
+        response = {"message": "Node {} Have Network Interfaces {}.".format(str(node), str(interfaces))}
+        code = 204
     else:
-        logger.error("NodeID is Missing.")
-        response = {"message": "NodeID is Missing."}
-        code = 200
+        logger.error("Node {} Doesn't have any Network Interfaces.".format(str(node)))
+        response = {"message": "Node {} Doesn't have any Network Interfaces.".format(str(node))}
+        code = 404
     return json.dumps(response), code
 
 
 """
-/config/node/NODE/interfaces will receive the NODE ID or Name.
-Return update the node interface list.
+Input - Node ID or Name
+Process - Updates the interface array for the Node. {Note that this overrides the group}
+Output - Network Interfaces.
 """
 @config_blueprint.route("/config/node/<string:node>/interfaces", methods=['POST'])
 @token_required
 def config_node_interfaces_post(node=None):
-    if node:
-        logger.info("This is Config Node Interfaces POST API NodeID is: {}".format(node))
-        response = {"message": "This is Config Node Interfaces POST API NodeID is: {}".format(node)}
+    create = True
+    update = False
+    interface = True
+    if create:
+        logger.info("Network Interfaces {} Is Created for Node {}.".format(str(interfaces), str(node)))
+        response = {"message": "Network Interfaces {} Is Created for Node {}.".format(str(interfaces), str(node))}
+        code = 201
+    elif update:
+        logger.info("Network Interfaces {} Is Updated for Node {}.".format(str(interfaces), str(node)))
+        response = {"message": "Network Interfaces {} Is Updated for Node {}.".format(str(interfaces), str(node))}
         code = 200
     else:
-        logger.error("NodeID is Missing.")
-        response = {"message": "NodeID is Missing."}
-        code = 200
+        logger.error("Node {} Doesn't have any Network Interfaces.".format(str(node)))
+        response = {"message": "Node {} Doesn't have any Network Interfaces.".format(str(node))}
+        code = 404
     return json.dumps(response), code
 
 
 """
-/config/group will provide a list of groups.
+Input - None
+Process - Fetch The List Of Groups.
+Output - Group List.
 """
 @config_blueprint.route("/config/group", methods=['GET'])
-@validate_access
-def config_group(**kwargs):
-    if "access" in kwargs:
-        access = "admin"
-    logger.info("This is Config Group API.")
-    response = {"message": "This is Group API."}
-    code = 200
-    return json.dumps(response), code
-
-
-"""
-/config/group will receive a group name or id.
-Return the information of provided group.
-"""
-@config_blueprint.route("/config/group/<string:group>", methods=['GET'])
-@validate_access
-def config_group_get(group=None, **kwargs):
-    if "access" in kwargs:
-        access = "admin"
-    if group:
-        logger.info("This is Config Group GET API Group is: {}".format(group))
-        response = {"message": "This is Config Group GET API Group is: {}".format(group)}
+def config_group():
+    groups = True
+    if groups:
+        logger.info("Avaiable Groups => {}".format(str(groups)))
+        response = {"message": "Avaiable Groups => {}".format(str(groups))}
         code = 200
     else:
-        logger.error("Group is Missing.")
-        response = {"message": "Group is Missing."}
-        code = 200
+        logger.error("Groups aren't Avaiable.")
+        response = {"message": "Groups aren't Avaiable."}
+        code = 404
     return json.dumps(response), code
 
 
 """
-/config/group will do update or create a group, depends on the payload.
+Input - Group ID or Name
+Process - Fetch The Information Of The Groups.
+Output - Group Information.
+"""
+@config_blueprint.route("/config/group/<string:group>", methods=['GET'])
+def config_group_get(group=None):
+    groupdetail = True
+    if groupdetail:
+        logger.info("Group {} Details is {}.".format(group, str(groupdetail)))
+        response = {"message": "Group {} Details is {}.".format(group, str(groupdetail))}
+        code = 200
+    else:
+        logger.error("Group is Not Exist.")
+        response = {"message": "Group is Not Exist."}
+        code = 404
+    return json.dumps(response), code
+
+
+"""
+Input - Group ID or Name
+Process - Create Or Update The Groups.
+Output - Group Information.
 """
 @config_blueprint.route("/config/group/<string:group>", methods=['POST'])
 @token_required
 def config_group_post(group=None):
-    if group:
-        logger.info("This is Config Group POST API Group is: {}".format(group))
-        response = {"message": "This is Config Group POST API Group is: {}".format(group)}
+    create = True
+    update = False
+    if create:
+        logger.info("Group {} Created Successfully.".format(group))
+        response = {"message": "Group {} Created Successfully.".format(group)}
+        code = 201
+    elif update:
+        logger.info("Group {} Updated Successfully.".format(group))
+        response = {"message": "Group {} Updated Successfully.".format(group)}
         code = 200
     else:
-        logger.error("Group is Missing.")
-        response = {"message": "Group is Missing."}
-        code = 200
+        logger.error("Group is Not Exist.")
+        response = {"message": "Group is Not Exist."}
+        code = 404
     return json.dumps(response), code
 
 
 """
-/config/group/GROUP/remove will receive the group name or ID.
-Return Delete the group.
+Input - Group ID or Name
+Process - Delete The Groups.
+Output - Group Information.
 """
 @config_blueprint.route("/config/group/<string:group>/remove", methods=['POST'])
 @token_required
 def config_group_remove(group=None):
-    if group:
-        logger.info("This is Config Group Remove API Group is: {}".format(group))
-        response = {"message": "This is Config Group Remove API Group is: {}".format(group)}
-        code = 200
+    remove = True
+    if remove:
+        logger.info("Group {} Deleted Successfully.".format(group))
+        response = {"message": "Group {} Deleted Successfully.".format(group)}
+        code = 204
     else:
-        logger.error("Group is Missing.")
-        response = {"message": "Group is Missing."}
-        code = 200
+        logger.error("Group is Not Exist.")
+        response = {"message": "Group is Not Exist."}
+        code = 404
     return json.dumps(response), code
 
 
 """
-/config/group/GROUP/interfaces will receive the group name or ID.
-Return List the network interfaces of the individual group.
+Input - Group ID or Name
+Process - Fetch List the network interfaces of the Group.
+Output - Network Interface List.
 """
 @config_blueprint.route("/config/group/<string:group>/interfaces", methods=['GET'])
-@validate_access
-def config_group_interfaces_get(group=None, **kwargs):
-    if "access" in kwargs:
-        access = "admin"
-    if group:
-        logger.info("This is Config Group Interfaces GET API Group is: {}".format(group))
-        response = {"message": "This is Config Group Interfaces GET API Group is: {}".format(group)}
+def config_group_interfaces_get(group=None):
+    interfaces = True
+    if interfaces:
+        logger.info("Group {} Have Network Interfaces => {}.".format(group, str(interfaces)))
+        response = {"message": "Group {} Have Network Interfaces => {}.".format(group, str(interfaces))}
         code = 200
     else:
-        logger.error("Group is Missing.")
-        response = {"message": "Group is Missing."}
-        code = 200
+        logger.error("Group {} Don't Have Any Network Interfaces.".format(group))
+        response = {"message": "Group {} Don't Have Any Network Interfaces.".format(group)}
+        code = 404
     return json.dumps(response), code
 
 
 """
-/config/group/GROUP/interfaces will receive the group name or ID.
-Return Create or update the network interface. Primary is the interface name. Note reserved names such as BOOTIF and BMC
+Input - Group ID or Name
+Process - Create or Update network interfaces of the Group. {BOOTIF and BMC are reserved}
+Output - Network Interface Info.
 """
 @config_blueprint.route("/config/group/<string:group>/interfaces", methods=['POST'])
 @token_required
 def config_group_interfaces_post(group=None):
-    if group:
-        logger.info("This is Config Group Interfaces POST API Group is: {}".format(group))
-        response = {"message": "This is Config Group Interfaces POST API Group is: {}".format(group)}
+    create = True
+    update = False
+    interfaces = True
+    if create:
+        logger.info("Network Interfaces {} Created For The Group {}.".format(str(interfaces), group))
+        response = {"message": "Network Interfaces {} Created For The Group {}.".format(str(interfaces), group)}
+        code = 201
+    elif update:
+        logger.info("Network Interfaces {} Updated For The Group {}.".format(str(interfaces), group))
+        response = {"message": "Network Interfaces {} Updated For The Group {}.".format(str(interfaces), group)}
         code = 200
     else:
-        logger.error("Group is Missing.")
-        response = {"message": "Group is Missing."}
-        code = 200
+        logger.error("Group {} Don't Have Any Network Interfaces.".format(group))
+        response = {"message": "Group {} Don't Have Any Network Interfaces.".format(group)}
+        code = 404
     return json.dumps(response), code
 
 
 """
-/config/osimage will receive the OS Image Name or ID.
-Return the OSImage All Information
+Input - OS Image ID or Name
+Process - Fetch the OS Image information.
+Output - OSImage Info.
 """
 @config_blueprint.route("/config/osimage/<string:name>", methods=['GET'])
-@validate_access
-def config_osimage_get(name=None, **kwargs):
-    if "access" in kwargs:
-        access = "admin"
-    if name:
-        logger.info("This is Config OSImage GET API OSImage is: {}".format(name))
-        response = {"message": "This is Config OSImage GET API OSImage Name is: {}".format(name)}
+def config_osimage_get(name=None):
+    osimage = True
+    if osimage:
+        logger.info("OS Image {} information is: {}".format(name, str(osimage)))
+        response = {"message": "OS Image {} information is: {}".format(name, str(osimage))}
         code = 200
     else:
-        logger.error("OSImage Name is Missing.")
-        response = {"message": "OSImage Name is Missing."}
-        code = 200
+        logger.error("OS Image Doesn't Exist.")
+        response = {"message": "OS Image Doesn't Exist."}
+        code = 404
     return json.dumps(response), code
 
 
 """
-/config/osimage will receive the OS Image Name or ID.
-Return create a new OSImage.
+Input - OS Image ID or Name
+Process - Create or Update the OS Image information.
+Output - OSImage Info.
 """
 @config_blueprint.route("/config/osimage/<string:name>", methods=['POST'])
 @token_required
 def config_osimage_post(name=None):
-    if name:
-        logger.info("This is Config OSImage POST API OSImage Name is: {}".format(name))
-        response = {"message": "This is Config OSImage POST API OSImage Name is: {}".format(name)}
+    create = True
+    update = False
+    if create:
+        logger.info("OS Image {} Created Successfully.".format(name))
+        response = {"message": "OS Image {} Created Successfully.".format(name)}
+        code = 201
+    elif update:
+        logger.info("OS Image {} Updated Successfully.".format(name))
+        response = {"message": "OS Image {} Updated Successfully.".format(name)}
         code = 200
     else:
-        logger.error("OSImage Name is Missing.")
-        response = {"message": "OSImage Name is Missing."}
-        code = 200
+        logger.error("OS Image Creation Failed.")
+        response = {"message": "OS Image Creation Failed."}
+        code = 404
     return json.dumps(response), code
 
 
 """
-/config/osimage/OSIMAGE/remove will receive the OS Image Name or ID.
-Return delete the OSImage.
+Input - OS Image ID or Name
+Process - Delete the OS Image.
+Output - OSImage Info.
 """
 @config_blueprint.route("/config/osimage/<string:name>/remove", methods=['GET'])
 @validate_access
 def config_osimage_remove(name=None, **kwargs):
     if "access" in kwargs:
         access = "admin"
-    if name:
-        logger.info("This is Config OSImage Remove API OSImage Name is: {}".format(name))
-        response = {"message": "This is Config OSImage Remove API OSImage Name is: {}".format(name)}
-        code = 200
+        remove = True
+        if remove:
+            logger.info("OS Image {} Deleted Successfully.".format(name))
+            response = {"message": "OS Image {} Deleted Successfully.".format(name)}
+            code = 204
+        else:
+            logger.error("OS Image Is Not Exist.")
+            response = {"message": "OS Image Is Not Exist."}
+            code = 404
     else:
-        logger.error("OSImage Name is Missing.")
-        response = {"message": "OSImage Name is Missing."}
-        code = 200
+        logger.error("Need a Valid Token to Perform this action.")
+        response = {"message": "Need a Valid Token to Perform this action."}
+        code = 401
     return json.dumps(response), code
 
 
 """
-/config/osimage/OSIMAGE/pack will receive the OS Image Name or ID.
-Return Manually pack osimage.
+Input - OS Image ID or Name
+Process - Manually Pack the OS Image.
+Output - Success or Failure.
 """
 @config_blueprint.route("/config/osimage/<string:name>/pack", methods=['GET'])
 @validate_access
 def config_osimage_pack(name=None, **kwargs):
     if "access" in kwargs:
         access = "admin"
-    if name:
-        logger.info("This is Config OSImage Pack GET API OSImage is: {}".format(name))
-        response = {"message": "This is Config OSImage Pack GET API OSImage Name is: {}".format(name)}
-        code = 200
+        pack = True
+        if pack:
+            logger.info("OS Image {} Packed Successfully.".format(name))
+            response = {"message": "OS Image {} Packed Successfully.".format(name)}
+            code = 204
+        else:
+            logger.error("OS Image Is Not Exist.")
+            response = {"message": "OS Image Is Not Exist."}
+            code = 404
     else:
-        logger.error("OSImage Name is Missing.")
-        response = {"message": "OSImage Name is Missing."}
-        code = 200
+        logger.error("Need a Valid Token to Perform this action.")
+        response = {"message": "Need a Valid Token to Perform this action."}
+        code = 401
     return json.dumps(response), code
 
 
 """
-/config/osimage/OSIMAGE/kernel will receive the OS Image Name or ID.
-Return the OSImage Kernel Version.
+Input - OS Image ID or Name
+Process - Fetch The Kernel Version.
+Output - Kernel Version.
 """
 @config_blueprint.route("/config/osimage/<string:name>/kernel", methods=['GET'])
 @validate_access
-def config_osimage_kernel_get(name=None, **kwargs):
-    if "access" in kwargs:
-        access = "admin"
-    if name:
-        logger.info("This is Config OSImage Kernel GET API OSImage is: {}".format(name))
-        response = {"message": "This is Config OSImage Kernel GET API OSImage Name is: {}".format(name)}
+def config_osimage_kernel_get(name=None):
+    kernel = True
+    if kernel:
+        logger.info("OS Image {} Kernel is: {}".format(name, str(kernel)))
+        response = {"message": "OS Image {} Kernel is: {}".format(name, str(kernel))}
         code = 200
     else:
-        logger.error("OSImage Name is Missing.")
-        response = {"message": "OSImage Name is Missing."}
-        code = 200
+        logger.error("OS Image Is Not Exist.")
+        response = {"message": "OS Image Is Not Exist."}
+        code = 404
     return json.dumps(response), code
 
 
 """
-/config/osimage/OSIMAGE/kernel will receive the OS Image Name or ID.
-Return update the OSImage Kernel Version.
+Input - OS Image ID or Name
+Process - Manually change kernel version.
+Output - Kernel Version.
 """
 @config_blueprint.route("/config/osimage/<string:name>/kernel", methods=['POST'])
 @token_required
 def config_osimage_kernel_post(name=None):
-    if name:
-        logger.info("This is Config OSImage Kernel POST API OSImage Name is: {}".format(name))
-        response = {"message": "This is Config OSImage Kernel POST API OSImage Name is: {}".format(name)}
+    kernel = True
+    if kernel:
+        logger.info("OSImage {} Kernel Changed to: {}".format(name, str(kernel)))
+        response = {"message": "OSImage {} Kernel Changed to: {}".format(name, str(kernel))}
         code = 200
     else:
-        logger.error("OSImage Name is Missing.")
-        response = {"message": "OSImage Name is Missing."}
-        code = 200
+        logger.error("OS Image Is Not Exist.")
+        response = {"message": "OS Image Is Not Exist."}
+        code = 404
     return json.dumps(response), code
 
 
 """
-/config/cluster Show cluster information.
+Input - None
+Process - Fetch The Cluster Information.
+Output - Cluster Information.
 """
 @config_blueprint.route("/config/cluster", methods=['GET'])
-@validate_access
-def config_cluster(**kwargs):
-    if "access" in kwargs:
-        access = "admin"
-    logger.info("This is Config Cluster GET API.")
-    response = {"message": "This is Config Cluster GET API."}
-    code = 200
+def config_cluster():
+    cluster = True
+    if cluster:
+        logger.info("Cluster Information: {}".format(str(cluster)))
+        response = {"message": "Cluster Information: {}".format(str(cluster))}
+        code = 200
+    else:
+        logger.error("Cluster Is Not Exist.")
+        response = {"message": "Cluster Is Not Exist."}
+        code = 404
     return json.dumps(response), code
 
 
 """
-/config/bmcsetup revert with List Of Configured BMC Setup Settings.
+Input - None
+Process - Fetch The list of configured settings.
+Output - List Of BMC Setup.
 """
 @config_blueprint.route("/config/bmcsetup", methods=['GET'])
 @validate_access
 def config_bmcsetup(**kwargs):
+    bmcsetup = False
+    bmcsetupname = False
     if "access" in kwargs:
         access = "admin"
-    logger.info("This is Config BMC Setup API.")
-    response = {"message": "This is BMC Setup API."}
-    code = 200
+        bmcsetup = True
+    else:
+        bmcsetupname = False
+    if bmcsetup:
+        logger.info("List Of BMC Setup is: {}.".format(bmcsetup))
+        response = {"message": "List Of BMC Setup is: {}.".format(bmcsetup)}
+        code = 200
+    elif bmcsetupname:
+        logger.info("BMC Setup Name is: {}.".format(bmcsetup))
+        response = {"message": "BMC Setup Name is: {}.".format(bmcsetup)}
+        code = 200
+    else:
+        logger.error("BMC Setup Is Not Exist.")
+        response = {"message": "BMC Setup Is Not Exist."}
+        code = 404
     return json.dumps(response), code
 
 
 """
-/config/bmcsetup receive BMC Name.
-Return the BMC Setup Settings.
+Input - BMC Setup ID or Name
+Process - Fetch The BMC Setup information.
+Output - BMC Setup Information.
 """
 @config_blueprint.route("/config/bmcsetup/<string:bmcname>", methods=['GET'])
 @validate_access
 def config_bmcsetup_get(bmcname=None, **kwargs):
+    bmcsetup = False
+    bmcsetupname = False
     if "access" in kwargs:
         access = "admin"
-    if bmcname:
-        logger.info("This is Config BMC Setup GET API BMC Setup Name is: {}".format(bmcname))
-        response = {"message": "This is Config BMC Setup GET API BMC Setup Name is: {}".format(bmcname)}
+        bmcsetup = True
+    else:
+        bmcsetupname = False
+    if bmcsetup:
+        logger.info("BMC Setup is: {}.".format(bmcsetup))
+        response = {"message": "BMC Setup is: {}.".format(bmcsetup)}
+        code = 200
+    elif bmcsetupname:
+        logger.info("BMC Setup Name is: {}.".format(bmcsetup))
+        response = {"message": "BMC Setup Name is: {}.".format(bmcsetup)}
         code = 200
     else:
-        logger.error("BMC Setup Name is Missing.")
-        response = {"message": "BMC Setup Name is Missing."}
-        code = 200
+        logger.error("BMC Setup Is Not Exist.")
+        response = {"message": "BMC Setup Is Not Exist."}
+        code = 404
     return json.dumps(response), code
 
 
 """
-/config/bmcsetup receive BMC Name.
-Return create or update the BMC Setup depends upon the Payload.
+Input - BMC Setup ID or Name
+Process - Create or Update BMC Setup information.
+Output - Success or Failure.
 """
 @config_blueprint.route("/config/bmcsetup/<string:bmcname>", methods=['POST'])
 @token_required
 def config_bmcsetup_post(bmcname=None):
-    if bmcname:
-        logger.info("This is Config BMC Setup POST API BMC Setup Name is: {}".format(bmcname))
-        response = {"message": "This is Config BMC Setup POST API BMC Setup Name is: {}".format(bmcname)}
+    create = True
+    update = False
+    if create:
+        logger.info("BMC Setup {} Created Successfully.".format(bmcname))
+        response = {"message": "BMC Setup {} Created Successfully.".format(bmcname)}
+        code = 201
+    elif update:
+        logger.info("BMC Setup {} Updated Successfully.".format(bmcname))
+        response = {"message": "BMC Setup {} Updated Successfully.".format(bmcname)}
         code = 200
     else:
-        logger.error("BMC Setup Name is Missing.")
-        response = {"message": "BMC Setup Name is Missing."}
-        code = 200
+        logger.error("BMC Setup Is Not Exist.")
+        response = {"message": "BMC Setup Is Not Exist."}
+        code = 404
     return json.dumps(response), code
 
 
 """
-/config/bmcsetup/BMCNAME/credentials receive BMC Name.
-Return BMC name and get Credentials.
+Input - BMC Setup ID or Name
+Process - Fetch BMC Setup and Credentials.
+Output - BMC Name And Credentials.
 """
 @config_blueprint.route("/config/bmcsetup/<string:bmcname>/credentials", methods=['GET'])
 @validate_access
 def config_bmcsetup_credentials_get(bmcname=None, **kwargs):
     if "access" in kwargs:
         access = "admin"
-    if bmcname:
-        logger.info("This is Config BMC Setup Credentials GET API BMC Setup Name is: {}".format(bmcname))
-        response = {"message": "This is Config BMC Setup Credentials GET API BMC Setup Name is: {}".format(bmcname)}
-        code = 200
+        bmcsetup = True
+        if bmcsetup:
+            logger.info("BMC Setup Name and Credentials is: {}".format(bmcsetup))
+            response = {"message": "BMC Setup Name and Credentials is: {}".format(bmcsetup)}
+            code = 200
+        else:
+            logger.error("BMC Setup Is Not Exist.")
+            response = {"message": "BMC Setup Is Not Exist."}
+            code = 404
     else:
-        logger.error("BMC Setup Name is Missing.")
-        response = {"message": "BMC Setup Name is Missing."}
-        code = 200
+        logger.error("Need a Valid Token to Perform this action.")
+        response = {"message": "Need a Valid Token to Perform this action."}
+        code = 401
     return json.dumps(response), code
 
 
 """
-/config/bmcsetup/BMCNAME/credentials receive BMC Name.
-Return Update the BMC Credentials.
+Input - BMC Setup ID or Name
+Process - Update The BMC Setup Credentials.
+Output - Success or Failure.
 """
 @config_blueprint.route("/config/bmcsetup/<string:bmcname>/credentials", methods=['POST'])
 @token_required
 def config_bmcsetup_credentials_post(bmcname=None):
-    if bmcname:
-        logger.info("This is Config BMC Setup Credentials POST API BMC Setup Name is: {}".format(bmcname))
-        response = {"message": "This is Config BMC Setup Credentials POST API BMC Setup Name is: {}".format(bmcname)}
+    update = True
+    if update:
+        logger.info("BMC Setup Credentials Updated Successfully.")
+        response = {"message": "BMC Setup Credentials Updated Successfully."}
         code = 200
     else:
         logger.error("BMC Setup Name is Missing.")
         response = {"message": "BMC Setup Name is Missing."}
-        code = 200
+        code = 404
     return json.dumps(response), code
 
 
 """
-/config/bmcsetup/BMCNAME/remove receive BMC Name.
-Return Delete the BMC Setup.
+Input - BMC Setup ID or Name
+Process - Delete The BMC Setup Credentials.
+Output - Success or Failure.
 """
 @config_blueprint.route("/config/bmcsetup/<string:bmcname>/remove", methods=['GET'])
 @validate_access
 def config_bmcsetup_remove(bmcname=None, **kwargs):
     if "access" in kwargs:
         access = "admin"
-    if bmcname:
-        logger.info("This is Config BMC Setup Remove API BMC Setup Name is: {}".format(bmcname))
-        response = {"message": "This is Config BMC Setup Remove API BMC Setup Name is: {}".format(bmcname)}
-        code = 200
+        remove = True
+        if remove:
+            logger.info("BMC Setup {} Removed Successfully.".format(bmcname))
+            response = {"message": "BMC Setup {} Removed Successfully.".format(bmcname)}
+            code = 200
+        else:
+            logger.error("BMC Setup Name is Missing.")
+            response = {"message": "BMC Setup Name is Missing."}
+            code = 404
     else:
-        logger.error("BMC Setup Name is Missing.")
-        response = {"message": "BMC Setup Name is Missing."}
-        code = 200
+        logger.error("Need a Valid Token to Perform this action.")
+        response = {"message": "Need a Valid Token to Perform this action."}
+        code = 401
     return json.dumps(response), code
 
 
 """
-/config/switch Returns the List of All switches.
+Input - None
+Process - Fetch The List Of Switches.
+Output - Switches.
 """
 @config_blueprint.route("/config/switch", methods=['GET'])
-@validate_access
-def config_switch(**kwargs):
-    if "access" in kwargs:
-        access = "admin"
-    logger.info("This is Config Switch API.")
-    response = {"message": "This is Switch API."}
-    code = 200
-    return json.dumps(response), code
-
-
-"""
-/config/switch receive the Switch Name or ID.
-Returns the information of given Switch.
-"""
-@config_blueprint.route("/config/switch/<string:switch>", methods=['GET'])
-@validate_access
-def config_switch_get(switch=None, **kwargs):
-    if "access" in kwargs:
-        access = "admin"
+def config_switch():
+    switch = True
     if switch:
-        logger.info("This is Config Switch GET API Switch: {}".format(switch))
-        response = {"message": "This is Config Switch GET API Switch: {}".format(switch)}
+        logger.info("Avaiable Switches are {}.".format(switch))
+        response = {"message": "Avaiable Switches are {}.".format(switch)}
         code = 200
     else:
-        logger.error("Switch is Missing.")
-        response = {"message": "Switch is Missing."}
-        code = 200
+        logger.error("No Switch is Avaiable.")
+        response = {"message": "No Switch is Avaiable."}
+        code = 404
     return json.dumps(response), code
 
 
 """
-/config/switch receive the Switch Name or ID.
-Returns Delete the Switch.
+Input - Switch ID or Name
+Process - Fetch The Switch Information.
+Output - Switch Details.
+"""
+@config_blueprint.route("/config/switch/<string:switch>", methods=['GET'])
+def config_switch_get(switch=None):
+    switchdetails = True
+    if switchdetails:
+        logger.info("Switch {} Details:{}.".format(switch, str(switchdetails)))
+        response = {"message": "Switch {} Details:{}.".format(switch, str(switchdetails))}
+        code = 200
+    else:
+        logger.error("Switch {} Is Not Exist.".format(switch))
+        response = {"message": "Switch {} Is Not Exist.".format(switch)}
+        code = 404
+    return json.dumps(response), code
+
+
+"""
+Input - Switch ID or Name
+Process - Delete The Switch.
+Output - Success or Failure.
 """
 @config_blueprint.route("/config/switch/<string:switch>/remove", methods=['GET'])
 @validate_access
 def config_switch_remove(switch=None, **kwargs):
     if "access" in kwargs:
         access = "admin"
-    if switch:
-        logger.info("This is Config Switch Remove API Switch is: {}".format(switch))
-        response = {"message": "This is Config Switch Remove API Switch is: {}".format(switch)}
-        code = 200
+        remove = True
+        if remove:
+            logger.info("Switch () Is Deleted Successfully.".format(switch))
+            response = {"message": "Switch () Is Deleted Successfully.".format(switch)}
+            code = 200
+        else:
+            logger.error("Switch {} Is Not Exist.".format(switch))
+            response = {"message": "Switch {} Is Not Exist.".format(switch)}
+            code = 404
     else:
-        logger.error("Switch is Missing.")
-        response = {"message": "Switch is Missing."}
-        code = 200
+        logger.error("Need a Valid Token to Perform this action.")
+        response = {"message": "Need a Valid Token to Perform this action."}
+        code = 401
     return json.dumps(response), code
 
 
 """
-/config/otherdev receive the Device Name or ID.
-Returns the list of other Devices..
+Input - Device ID or Name
+Process - Fetch The List Of Devices.
+Output - Devices.
 """
 @config_blueprint.route("/config/otherdev/<string:device>", methods=['GET'])
-@validate_access
-def config_otherdev_get(device=None, **kwargs):
-    if "access" in kwargs:
-        access = "admin"
-    if device:
-        logger.info("This is Config Other Device GET API Device: {}".format(device))
-        response = {"message": "This is Config Other Device GET API Device: {}".format(device)}
+def config_otherdev_get(device=None):
+    devicedetails = True
+    if devicedetails:
+        logger.info("Other Device List is: {}".format(str(devicedetails)))
+        response = {"message": "Other Device List is: {}".format(str(devicedetails))}
         code = 200
     else:
-        logger.error("Device is Missing.")
-        response = {"message": "Device is Missing."}
-        code = 200
+        logger.error("Device {} Is Not Exist.".format(switch))
+        response = {"message": "Device {} Is Not Exist.".format(switch)}
+        code = 404
     return json.dumps(response), code
 
 
 """
-/config/otherdev receive the Device Name or ID.
-Returns Delete the Device.
+Input - Device ID or Name
+Process - Delete The Other Device.
+Output - Success Or Failure.
 """
 @config_blueprint.route("/config/otherdev/<string:device>/remove", methods=['GET'])
 @validate_access
 def config_otherdev_remove(device=None, **kwargs):
     if "access" in kwargs:
         access = "admin"
-    if device:
-        logger.info("This is Config Other Device Remove API Device is: {}".format(device))
-        response = {"message": "This is Config Other Device Remove API Device is: {}".format(device)}
-        code = 200
+        remove = True
+        if remove:
+            logger.info("Device () Is Deleted Successfully.".format(device))
+            response = {"message": "Device () Is Deleted Successfully.".format(device)}
+            code = 200
+        else:
+            logger.error("Device {} Is Not Exist.".format(device))
+            response = {"message": "Device {} Is Not Exist.".format(device)}
+            code = 404
     else:
-        logger.error("Device is Missing.")
-        response = {"message": "Device is Missing."}
-        code = 200
+        logger.error("Need a Valid Token to Perform this action.")
+        response = {"message": "Need a Valid Token to Perform this action."}
+        code = 401
     return json.dumps(response), code

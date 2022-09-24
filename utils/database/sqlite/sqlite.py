@@ -9,19 +9,32 @@ __email__       = "sumit.sharma@clustervision.com"
 __status__      = "Production"
 
 """
-This is SQLite Class. It will perform all operations with SQLite Database.
-This is the Default Database for Luna 2.
+This Class deal all CRUD operations on Database SQLite, which is default for luna.
 
 """
 from common.constants import *
+from utils.log import *
 
 
 class SQLite(object):
 
+
+	"""
+    Constructor - Initialize The Cursor to perform the operations.
+    """
 	def __init__(self, cursor):
 		self.cursor = cursor
+		self.logger = Log.get_logger()
 
 
+	"""
+    Input - select fields, tablename, where clause 
+    Process - It is SELECT operation on the DB.
+    			select can be comma separated column name or None.
+				table is the table name where the select operation should be happen.
+				where can be None for all OR a list of dict ex: where = [{"column": "name", "value": "cluster"}, {"column": "network", "value": "ib"}]
+    Output - Fetch rows along with column name.
+    """
 	def get_record(self, select=None, table=None, where=None):
 		if where:
 		    Where = []
@@ -41,9 +54,11 @@ class SQLite(object):
 		    query = "SELECT {} FROM '{}' WHERE {}".format(strcolumn, table, strWhere)
 		else:
 		    query = "SELECT {} FROM '{}'".format(strcolumn, table)
+		self.logger.debug("Query Executing => {} .".format(query))
 		self.cursor.execute(query)
-		names = list(map(lambda x: x[0], self.cursor.description))
+		names = list(map(lambda x: x[0], self.cursor.description)) # Fetching the Column Names
 		data = self.cursor.fetchall()
+		self.logger.debug("Data Set Retrived => {}.".format(str(data)))
 		rowdict = {}
 		response = []
 		for row in data:

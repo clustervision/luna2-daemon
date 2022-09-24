@@ -10,7 +10,8 @@ __status__      = "Development"
 
 """
 This File is a wrapper for the TOKEN verification.
-Correct Token Should be supplied to access any Luna 2 API.
+Correct Token Should be supplied to access any Luna POST API.
+If Get API Has the Token, it will get the access to fetch more data.
 
 """
 import os
@@ -25,7 +26,9 @@ logger = Log.get_logger()
 
 
 """
-/token_required is a wrapper, which will validate the token for all POST API
+Input - Token
+Process - After validate the Token, Return the arguments and keyword arguments Of The API.
+Output - Success or Failure.
 """
 def token_required(f):
     @wraps(f)
@@ -39,7 +42,7 @@ def token_required(f):
             code = 401
             return json.dumps(response), code
         try:
-            data = jwt.decode(token, SECRET_KEY, algorithms=["HS256"])
+            data = jwt.decode(token, SECRET_KEY, algorithms=["HS256"]) ## Decoding Token
             if data["id"] == 1:
                 current_user = data["id"]
         except:
@@ -52,7 +55,9 @@ def token_required(f):
 
 
 """
-/validate_access is a wrapper, which will validate the access against the token for all GET API
+Input - Token
+Process - After validate the Token, Return the arguments and keyword arguments Of The API Along access key with admin value to use further.
+Output - With/Without Access.
 """
 def validate_access(f):
     @wraps(f)
@@ -64,11 +69,11 @@ def validate_access(f):
         if not token:
             access = "anonymous"
         try:
-            data = jwt.decode(token, SECRET_KEY, algorithms=["HS256"])
+            data = jwt.decode(token, SECRET_KEY, algorithms=["HS256"]) ## Decoding Token
             if data["id"] == 1:
                 current_user = data["id"]
-                access = "admin"
+                access = "admin"  ## Adding Access admin to retirve the full data set or perform the admin level action.
         except:
-            return f(**kwargs)
+            return f(**kwargs)  ## Without Access admin to perform the minimal operation.
         return f(access=access, **kwargs)
     return decorator

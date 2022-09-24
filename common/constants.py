@@ -42,9 +42,21 @@ if EXPIRY:
 else:
 	EXPIRY = 24*60*60
 
+DEFAULTDB = configParser.get("DATABASE", "DEFAULTDB")
+
 SQLDB = configParser.get("DATABASE", "SQLITE")
-MYSQLBD = ""
-POSTGREDB = ""
+
+MYSQLDB = configParser.get("DATABASE", "MYSQLDB")
+MYSQLUSERNAME = configParser.get("DATABASE", "MYSQLUSERNAME")
+MYSQLPASSWORD = configParser.get("DATABASE", "MYSQLPASSWORD")
+MYSQLHOST = configParser.get("DATABASE", "MYSQLHOST")
+MYSQLPORT = configParser.get("DATABASE", "MYSQLPORT")
+
+PGSQLDB = configParser.get("DATABASE", "PGSQLDB")
+PGSQLUSERNAME = configParser.get("DATABASE", "PGSQLUSERNAME")
+PGSQLPASSWORD = configParser.get("DATABASE", "PGSQLPASSWORD")
+PGSQLHOST = configParser.get("DATABASE", "PGSQLHOST")
+
 
 TARBALL = configParser.get("FILES", "TARBALL")
 

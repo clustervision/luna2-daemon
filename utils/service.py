@@ -38,7 +38,7 @@ class Service(object):
                 match action:
                     case "start" | "stop" | "reload" | "restart" | "status":
                         command = "{} {} {}".format(COMMAND, action, name) ## Fetch the command from the .conf file
-                        output = Helper.runcommand(command)
+                        output = Helper().runcommand(command)
                         response, code = self.service_status(name, action, output)
                     case _:
                         self.logger.error("Service Action {} Is Not Recognized.".format(name))
@@ -78,7 +78,7 @@ class Service(object):
                     code = 500
             case "reload":
                 if "Failed" in str(output):
-                     self.logger.error("Service {} is Failed to {}.".format(name, action))
+                    self.logger.error("Service {} is Failed to {}.".format(name, action))
                     response = "Service {} is Failed to {}.".format(name, action)
                     code = 500
                 else:
@@ -91,7 +91,7 @@ class Service(object):
                     response = "Service {} is {}ed.".format(name, action)
                     code = 200
                 else:
-                     self.logger.error("Service {} is Failed to {}.".format(name, action))
+                    self.logger.error("Service {} is Failed to {}.".format(name, action))
                     response = "Service {} is Failed to {}.".format(name, action)
                     code = 500
             case "status":
@@ -100,7 +100,7 @@ class Service(object):
                     response = "Service {} is Active & Running.".format(name)
                     code = 200
                 else:
-                     self.logger.error("Service {} is Not Active & Running.".format(name))
+                    self.logger.error("Service {} is Not Active & Running.".format(name))
                     response = "Service {} is Not Active & Running.".format(name)
                     code = 500
         return response, code

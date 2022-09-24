@@ -38,7 +38,7 @@ from apis.config import config_blueprint
 from apis.files import files_blueprint
 from apis.service import service_blueprint
 from apis.monitor import monitor_blueprint
-api = Flask(__name__)
+api = Flask(__name__, template_folder='templates')
 api.register_blueprint(auth_blueprint)
 api.register_blueprint(boot_blueprint)
 api.register_blueprint(config_blueprint)

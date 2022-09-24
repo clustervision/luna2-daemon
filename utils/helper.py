@@ -33,7 +33,7 @@ class Helper(object):
     Process - Via subprocess, execute the command and wait to receive the complete output.
     Output - Detailed result.
     """
-    def runcommand(command):
+    def runcommand(self, command):
         process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
         self.logger.debug("Command Executed {}".format(command))
         output = process.communicate()

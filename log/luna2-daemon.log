@@ -1,0 +1,12 @@
+[INFO]:[2022-09-24 19:00:21,184]:[MainThread]:[log.py:init_log@49] - =============== Luna Logging Level IsSet To [INFO] ===============
+[INFO]:[2022-09-24 19:00:21,930]:[MainThread]:[_internal.py:_log@224] - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:7050
+ * Running on http://192.168.1.17:7050
+[INFO]:[2022-09-24 19:00:21,930]:[MainThread]:[_internal.py:_log@224] - [33mPress CTRL+C to quit[0m
+[INFO]:[2022-09-24 19:00:21,932]:[MainThread]:[_internal.py:_log@224] -  * Restarting with stat
+[INFO]:[2022-09-24 19:00:22,930]:[MainThread]:[log.py:init_log@49] - =============== Luna Logging Level IsSet To [INFO] ===============
+[WARNING]:[2022-09-24 19:00:23,735]:[MainThread]:[_internal.py:_log@224] -  * Debugger is active!
+[INFO]:[2022-09-24 19:00:23,741]:[MainThread]:[_internal.py:_log@224] -  * Debugger PIN: 117-724-678
+[INFO]:[2022-09-24 19:00:27,865]:[Thread-2 (process_request_thread)]:[boot.py:boot@35] - Boot API Serving the boot_ipxe.cfg
+[INFO]:[2022-09-24 19:00:28,682]:[Thread-2 (process_request_thread)]:[_internal.py:_log@224] - 192.168.1.11 - - [24/Sep/2022 19:00:28] "GET /boot HTTP/1.1" 200 -

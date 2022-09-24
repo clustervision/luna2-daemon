@@ -14,20 +14,18 @@ This File is use for authentication purpose.
 """
 import jwt
 import datetime
-
 from common.constants import *
 from flask import Blueprint, request, json
 from utils.log import *
-from utils.database.database import *
-from werkzeug.security import generate_password_hash,check_password_hash
 
 logger = Log.get_logger()
 auth_blueprint = Blueprint('auth', __name__)
 
 
 """
-/token will receive JSON dict of username and password.
-Valdate from luna.conf and generate a token with JWT
+Input - username and password
+Process - Validate the username and password from the conf file. On the success, create a token, which is valid for Exipy time mentioned in conf. 
+Output - Token.
 """
 @auth_blueprint.route("/token", methods=['POST'])
 def token():
@@ -46,8 +44,9 @@ def token():
             response = {"message" : 'Incorrect Password {}'.format(auth["password"])}
             code = 401
         else:
+            # Creating Token via JWT with default id =1, expiry time and Secret Key from conf file, and algo Sha 256
             token = jwt.encode({'id': 1, 'exp': datetime.datetime.utcnow() + datetime.timedelta(minutes=int(EXPIRY))}, SECRET_KEY, "HS256")
-            logger.info("Login Token generated Successfully, Token {}".format(token))
+            logger.debug("Login Token generated Successfully, Token {}".format(token))
             response = {"token" : token}
-            code = 200
+            code = 201
     return json.dumps(response), code

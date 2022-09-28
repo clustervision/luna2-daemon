@@ -2593,3 +2593,97 @@
 [INFO]:[2022-09-28 15:30:52,220]:[Thread-76 (process_request_thread)]:[_internal.py:_log@224] - 192.168.1.11 - - [28/Sep/2022 15:30:52] "GET /vendor/bootstrap/js/bootstrap.bundle.min.js.map HTTP/1.1" 200 -
 [INFO]:[2022-09-28 15:30:52,238]:[Thread-77 (process_request_thread)]:[_internal.py:_log@224] - 192.168.1.11 - - [28/Sep/2022 15:30:52] "GET /vendor/quill/quill.min.js.map HTTP/1.1" 200 -
 [INFO]:[2022-09-28 15:30:52,479]:[Thread-78 (process_request_thread)]:[_internal.py:_log@224] - 192.168.1.11 - - [28/Sep/2022 15:30:52] "GET /vendor/bootstrap/css/bootstrap.min.css.map HTTP/1.1" 200 -
+[INFO]:[2022-09-28 15:48:05,582]:[Thread-80 (process_request_thread)]:[_internal.py:_log@224] - 192.168.1.11 - - [28/Sep/2022 15:48:05] "GET /admin HTTP/1.1" 200 -
+[INFO]:[2022-09-28 15:48:06,030]:[Thread-82 (process_request_thread)]:[_internal.py:_log@224] - 192.168.1.11 - - [28/Sep/2022 15:48:06] "[36mGET /vendor/bootstrap-icons/bootstrap-icons.css HTTP/1.1[0m" 304 -
+[INFO]:[2022-09-28 15:48:06,032]:[Thread-85 (process_request_thread)]:[_internal.py:_log@224] - 192.168.1.11 - - [28/Sep/2022 15:48:06] "[36mGET /vendor/quill/quill.bubble.css HTTP/1.1[0m" 304 -
+[INFO]:[2022-09-28 15:48:06,252]:[Thread-84 (process_request_thread)]:[_internal.py:_log@224] - 192.168.1.11 - - [28/Sep/2022 15:48:06] "[36mGET /vendor/quill/quill.snow.css HTTP/1.1[0m" 304 -
+[INFO]:[2022-09-28 15:48:06,258]:[Thread-81 (process_request_thread)]:[_internal.py:_log@224] - 192.168.1.11 - - [28/Sep/2022 15:48:06] "[36mGET /vendor/bootstrap/css/bootstrap.min.css HTTP/1.1[0m" 304 -
+[INFO]:[2022-09-28 15:48:06,258]:[Thread-83 (process_request_thread)]:[_internal.py:_log@224] - 192.168.1.11 - - [28/Sep/2022 15:48:06] "[36mGET /vendor/boxicons/css/boxicons.min.css HTTP/1.1[0m" 304 -
+[INFO]:[2022-09-28 15:48:06,263]:[Thread-86 (process_request_thread)]:[_internal.py:_log@224] - 192.168.1.11 - - [28/Sep/2022 15:48:06] "[36mGET /vendor/remixicon/remixicon.css HTTP/1.1[0m" 304 -
+[INFO]:[2022-09-28 15:48:06,471]:[Thread-87 (process_request_thread)]:[_internal.py:_log@224] - 192.168.1.11 - - [28/Sep/2022 15:48:06] "[36mGET /vendor/simple-datatables/style.css HTTP/1.1[0m" 304 -
+[INFO]:[2022-09-28 15:48:06,473]:[Thread-88 (process_request_thread)]:[_internal.py:_log@224] - 192.168.1.11 - - [28/Sep/2022 15:48:06] "[36mGET /css/style.css HTTP/1.1[0m" 304 -
+[INFO]:[2022-09-28 15:48:06,865]:[Thread-89 (process_request_thread)]:[_internal.py:_log@224] - 192.168.1.11 - - [28/Sep/2022 15:48:06] "[36mGET /vendor/apexcharts/apexcharts.min.js HTTP/1.1[0m" 304 -
+[INFO]:[2022-09-28 15:48:06,875]:[Thread-90 (process_request_thread)]:[_internal.py:_log@224] - 192.168.1.11 - - [28/Sep/2022 15:48:06] "[36mGET /vendor/bootstrap/js/bootstrap.bundle.min.js HTTP/1.1[0m" 304 -
+[INFO]:[2022-09-28 15:48:06,878]:[Thread-91 (process_request_thread)]:[_internal.py:_log@224] - 192.168.1.11 - - [28/Sep/2022 15:48:06] "[36mGET /vendor/chart.js/chart.min.js HTTP/1.1[0m" 304 -
+[INFO]:[2022-09-28 15:48:06,902]:[Thread-92 (process_request_thread)]:[_internal.py:_log@224] - 192.168.1.11 - - [28/Sep/2022 15:48:06] "[36mGET /vendor/echarts/echarts.min.js HTTP/1.1[0m" 304 -
+[INFO]:[2022-09-28 15:48:06,910]:[Thread-94 (process_request_thread)]:[_internal.py:_log@224] - 192.168.1.11 - - [28/Sep/2022 15:48:06] "[36mGET /vendor/simple-datatables/simple-datatables.js HTTP/1.1[0m" 304 -
+[INFO]:[2022-09-28 15:48:06,912]:[Thread-93 (process_request_thread)]:[_internal.py:_log@224] - 192.168.1.11 - - [28/Sep/2022 15:48:06] "[36mGET /vendor/quill/quill.min.js HTTP/1.1[0m" 304 -
+[INFO]:[2022-09-28 15:48:06,913]:[Thread-95 (process_request_thread)]:[_internal.py:_log@224] - 192.168.1.11 - - [28/Sep/2022 15:48:06] "[36mGET /vendor/tinymce/tinymce.min.js HTTP/1.1[0m" 304 -
+[INFO]:[2022-09-28 15:48:06,925]:[Thread-96 (process_request_thread)]:[_internal.py:_log@224] - 192.168.1.11 - - [28/Sep/2022 15:48:06] "[36mGET /vendor/php-email-form/validate.js HTTP/1.1[0m" 304 -
+[INFO]:[2022-09-28 15:48:06,932]:[Thread-97 (process_request_thread)]:[_internal.py:_log@224] - 192.168.1.11 - - [28/Sep/2022 15:48:06] "[36mGET /js/main.js HTTP/1.1[0m" 304 -
+[INFO]:[2022-09-28 15:48:06,937]:[Thread-98 (process_request_thread)]:[_internal.py:_log@224] - 192.168.1.11 - - [28/Sep/2022 15:48:06] "[36mGET /js/jquery-3.6.1.min.js HTTP/1.1[0m" 304 -
+[INFO]:[2022-09-28 15:48:06,940]:[Thread-99 (process_request_thread)]:[_internal.py:_log@224] - 192.168.1.11 - - [28/Sep/2022 15:48:06] "[36mGET /images/CV-Logo-SVG.svg HTTP/1.1[0m" 304 -
+[INFO]:[2022-09-28 15:48:06,943]:[Thread-100 (process_request_thread)]:[_internal.py:_log@224] - 192.168.1.11 - - [28/Sep/2022 15:48:06] "[36mGET /vendor/bootstrap-icons/fonts/bootstrap-icons.woff2?8d200481aa7f02a2d63a331fc782cfaf HTTP/1.1[0m" 304 -
+[INFO]:[2022-09-28 15:48:12,527]:[Thread-101 (process_request_thread)]:[_internal.py:_log@224] - 192.168.1.11 - - [28/Sep/2022 15:48:12] "[31m[1mPOST /admin HTTP/1.1[0m" 401 -
+[INFO]:[2022-09-28 15:48:13,528]:[Thread-107 (process_request_thread)]:[_internal.py:_log@224] - 192.168.1.11 - - [28/Sep/2022 15:48:13] "[36mGET /vendor/remixicon/remixicon.css HTTP/1.1[0m" 304 -
+[INFO]:[2022-09-28 15:48:13,530]:[Thread-102 (process_request_thread)]:[_internal.py:_log@224] - 192.168.1.11 - - [28/Sep/2022 15:48:13] "[36mGET /vendor/bootstrap/css/bootstrap.min.css HTTP/1.1[0m" 304 -
+[INFO]:[2022-09-28 15:48:13,534]:[Thread-104 (process_request_thread)]:[_internal.py:_log@224] - 192.168.1.11 - - [28/Sep/2022 15:48:13] "[36mGET /vendor/boxicons/css/boxicons.min.css HTTP/1.1[0m" 304 -
+[INFO]:[2022-09-28 15:48:13,536]:[Thread-105 (process_request_thread)]:[_internal.py:_log@224] - 192.168.1.11 - - [28/Sep/2022 15:48:13] "[36mGET /vendor/quill/quill.snow.css HTTP/1.1[0m" 304 -
+[INFO]:[2022-09-28 15:48:13,538]:[Thread-103 (process_request_thread)]:[_internal.py:_log@224] - 192.168.1.11 - - [28/Sep/2022 15:48:13] "[36mGET /vendor/bootstrap-icons/bootstrap-icons.css HTTP/1.1[0m" 304 -
+[INFO]:[2022-09-28 15:48:13,538]:[Thread-106 (process_request_thread)]:[_internal.py:_log@224] - 192.168.1.11 - - [28/Sep/2022 15:48:13] "[36mGET /vendor/quill/quill.bubble.css HTTP/1.1[0m" 304 -
+[INFO]:[2022-09-28 15:48:13,662]:[Thread-109 (process_request_thread)]:[_internal.py:_log@224] - 192.168.1.11 - - [28/Sep/2022 15:48:13] "[36mGET /css/style.css HTTP/1.1[0m" 304 -
+[INFO]:[2022-09-28 15:48:13,663]:[Thread-108 (process_request_thread)]:[_internal.py:_log@224] - 192.168.1.11 - - [28/Sep/2022 15:48:13] "[36mGET /vendor/simple-datatables/style.css HTTP/1.1[0m" 304 -
+[INFO]:[2022-09-28 15:48:14,321]:[Thread-110 (process_request_thread)]:[_internal.py:_log@224] - 192.168.1.11 - - [28/Sep/2022 15:48:14] "[36mGET /vendor/apexcharts/apexcharts.min.js HTTP/1.1[0m" 304 -
+[INFO]:[2022-09-28 15:48:14,691]:[Thread-112 (process_request_thread)]:[_internal.py:_log@224] - 192.168.1.11 - - [28/Sep/2022 15:48:14] "[36mGET /vendor/bootstrap-icons/fonts/bootstrap-icons.woff2?8d200481aa7f02a2d63a331fc782cfaf HTTP/1.1[0m" 304 -
+[INFO]:[2022-09-28 15:48:14,695]:[Thread-115 (process_request_thread)]:[_internal.py:_log@224] - 192.168.1.11 - - [28/Sep/2022 15:48:14] "[36mGET /vendor/echarts/echarts.min.js HTTP/1.1[0m" 304 -
+[INFO]:[2022-09-28 15:48:14,696]:[Thread-114 (process_request_thread)]:[_internal.py:_log@224] - 192.168.1.11 - - [28/Sep/2022 15:48:14] "[36mGET /vendor/chart.js/chart.min.js HTTP/1.1[0m" 304 -
+[INFO]:[2022-09-28 15:48:14,697]:[Thread-116 (process_request_thread)]:[_internal.py:_log@224] - 192.168.1.11 - - [28/Sep/2022 15:48:14] "[36mGET /vendor/quill/quill.min.js HTTP/1.1[0m" 304 -
+[INFO]:[2022-09-28 15:48:14,699]:[Thread-113 (process_request_thread)]:[_internal.py:_log@224] - 192.168.1.11 - - [28/Sep/2022 15:48:14] "[36mGET /images/CV-Logo-SVG.svg HTTP/1.1[0m" 304 -
+[INFO]:[2022-09-28 15:48:14,784]:[Thread-111 (process_request_thread)]:[_internal.py:_log@224] - 192.168.1.11 - - [28/Sep/2022 15:48:14] "[36mGET /vendor/bootstrap/js/bootstrap.bundle.min.js HTTP/1.1[0m" 304 -
+[INFO]:[2022-09-28 15:48:14,806]:[Thread-118 (process_request_thread)]:[_internal.py:_log@224] - 192.168.1.11 - - [28/Sep/2022 15:48:14] "[36mGET /vendor/tinymce/tinymce.min.js HTTP/1.1[0m" 304 -
+[INFO]:[2022-09-28 15:48:14,808]:[Thread-117 (process_request_thread)]:[_internal.py:_log@224] - 192.168.1.11 - - [28/Sep/2022 15:48:14] "[36mGET /vendor/simple-datatables/simple-datatables.js HTTP/1.1[0m" 304 -
+[INFO]:[2022-09-28 15:48:14,823]:[Thread-119 (process_request_thread)]:[_internal.py:_log@224] - 192.168.1.11 - - [28/Sep/2022 15:48:14] "[36mGET /vendor/php-email-form/validate.js HTTP/1.1[0m" 304 -
+[INFO]:[2022-09-28 15:48:14,827]:[Thread-120 (process_request_thread)]:[_internal.py:_log@224] - 192.168.1.11 - - [28/Sep/2022 15:48:14] "[36mGET /js/main.js HTTP/1.1[0m" 304 -
+[INFO]:[2022-09-28 15:48:14,830]:[Thread-121 (process_request_thread)]:[_internal.py:_log@224] - 192.168.1.11 - - [28/Sep/2022 15:48:14] "[36mGET /js/jquery-3.6.1.min.js HTTP/1.1[0m" 304 -
+[INFO]:[2022-09-28 15:48:22,702]:[Thread-122 (process_request_thread)]:[_internal.py:_log@224] - 192.168.1.11 - - [28/Sep/2022 15:48:22] "[31m[1mPOST /admin HTTP/1.1[0m" 401 -
+[INFO]:[2022-09-28 15:48:22,774]:[Thread-124 (process_request_thread)]:[_internal.py:_log@224] - 192.168.1.11 - - [28/Sep/2022 15:48:22] "[36mGET /vendor/bootstrap-icons/bootstrap-icons.css HTTP/1.1[0m" 304 -
+[INFO]:[2022-09-28 15:48:22,775]:[Thread-123 (process_request_thread)]:[_internal.py:_log@224] - 192.168.1.11 - - [28/Sep/2022 15:48:22] "[36mGET /vendor/bootstrap/css/bootstrap.min.css HTTP/1.1[0m" 304 -
+[INFO]:[2022-09-28 15:48:22,776]:[Thread-125 (process_request_thread)]:[_internal.py:_log@224] - 192.168.1.11 - - [28/Sep/2022 15:48:22] "[36mGET /vendor/boxicons/css/boxicons.min.css HTTP/1.1[0m" 304 -
+[INFO]:[2022-09-28 15:48:22,786]:[Thread-126 (process_request_thread)]:[_internal.py:_log@224] - 192.168.1.11 - - [28/Sep/2022 15:48:22] "[36mGET /vendor/quill/quill.snow.css HTTP/1.1[0m" 304 -
+[INFO]:[2022-09-28 15:48:22,793]:[Thread-129 (process_request_thread)]:[_internal.py:_log@224] - 192.168.1.11 - - [28/Sep/2022 15:48:22] "[36mGET /vendor/simple-datatables/style.css HTTP/1.1[0m" 304 -
+[INFO]:[2022-09-28 15:48:22,797]:[Thread-130 (process_request_thread)]:[_internal.py:_log@224] - 192.168.1.11 - - [28/Sep/2022 15:48:22] "[36mGET /css/style.css HTTP/1.1[0m" 304 -
+[INFO]:[2022-09-28 15:48:22,799]:[Thread-128 (process_request_thread)]:[_internal.py:_log@224] - 192.168.1.11 - - [28/Sep/2022 15:48:22] "[36mGET /vendor/remixicon/remixicon.css HTTP/1.1[0m" 304 -
+[INFO]:[2022-09-28 15:48:22,804]:[Thread-127 (process_request_thread)]:[_internal.py:_log@224] - 192.168.1.11 - - [28/Sep/2022 15:48:22] "[36mGET /vendor/quill/quill.bubble.css HTTP/1.1[0m" 304 -
+[INFO]:[2022-09-28 15:48:22,822]:[Thread-131 (process_request_thread)]:[_internal.py:_log@224] - 192.168.1.11 - - [28/Sep/2022 15:48:22] "[36mGET /vendor/apexcharts/apexcharts.min.js HTTP/1.1[0m" 304 -
+[INFO]:[2022-09-28 15:48:22,836]:[Thread-133 (process_request_thread)]:[_internal.py:_log@224] - 192.168.1.11 - - [28/Sep/2022 15:48:22] "[36mGET /vendor/chart.js/chart.min.js HTTP/1.1[0m" 304 -
+[INFO]:[2022-09-28 15:48:22,841]:[Thread-135 (process_request_thread)]:[_internal.py:_log@224] - 192.168.1.11 - - [28/Sep/2022 15:48:22] "[36mGET /vendor/quill/quill.min.js HTTP/1.1[0m" 304 -
+[INFO]:[2022-09-28 15:48:22,847]:[Thread-132 (process_request_thread)]:[_internal.py:_log@224] - 192.168.1.11 - - [28/Sep/2022 15:48:22] "[36mGET /vendor/bootstrap/js/bootstrap.bundle.min.js HTTP/1.1[0m" 304 -
+[INFO]:[2022-09-28 15:48:22,848]:[Thread-134 (process_request_thread)]:[_internal.py:_log@224] - 192.168.1.11 - - [28/Sep/2022 15:48:22] "[36mGET /vendor/echarts/echarts.min.js HTTP/1.1[0m" 304 -
+[INFO]:[2022-09-28 15:48:22,851]:[Thread-136 (process_request_thread)]:[_internal.py:_log@224] - 192.168.1.11 - - [28/Sep/2022 15:48:22] "[36mGET /vendor/simple-datatables/simple-datatables.js HTTP/1.1[0m" 304 -
+[INFO]:[2022-09-28 15:48:22,853]:[Thread-137 (process_request_thread)]:[_internal.py:_log@224] - 192.168.1.11 - - [28/Sep/2022 15:48:22] "[36mGET /vendor/tinymce/tinymce.min.js HTTP/1.1[0m" 304 -
+[INFO]:[2022-09-28 15:48:22,867]:[Thread-139 (process_request_thread)]:[_internal.py:_log@224] - 192.168.1.11 - - [28/Sep/2022 15:48:22] "[36mGET /js/main.js HTTP/1.1[0m" 304 -
+[INFO]:[2022-09-28 15:48:22,870]:[Thread-140 (process_request_thread)]:[_internal.py:_log@224] - 192.168.1.11 - - [28/Sep/2022 15:48:22] "[36mGET /js/jquery-3.6.1.min.js HTTP/1.1[0m" 304 -
+[INFO]:[2022-09-28 15:48:22,874]:[Thread-138 (process_request_thread)]:[_internal.py:_log@224] - 192.168.1.11 - - [28/Sep/2022 15:48:22] "[36mGET /vendor/php-email-form/validate.js HTTP/1.1[0m" 304 -
+[INFO]:[2022-09-28 15:48:22,876]:[Thread-141 (process_request_thread)]:[_internal.py:_log@224] - 192.168.1.11 - - [28/Sep/2022 15:48:22] "[36mGET /images/CV-Logo-SVG.svg HTTP/1.1[0m" 304 -
+[INFO]:[2022-09-28 15:48:22,888]:[Thread-142 (process_request_thread)]:[_internal.py:_log@224] - 192.168.1.11 - - [28/Sep/2022 15:48:22] "[36mGET /vendor/bootstrap-icons/fonts/bootstrap-icons.woff2?8d200481aa7f02a2d63a331fc782cfaf HTTP/1.1[0m" 304 -
+[INFO]:[2022-09-28 15:52:06,146]:[Thread-143 (process_request_thread)]:[boot.py:boot@35] - Boot API Serving the boot_ipxe.cfg
+[INFO]:[2022-09-28 15:52:06,892]:[Thread-143 (process_request_thread)]:[_internal.py:_log@224] - 192.168.1.11 - - [28/Sep/2022 15:52:06] "GET /boot HTTP/1.1" 200 -
+[INFO]:[2022-09-28 16:48:48,072]:[MainThread]:[_internal.py:_log@224] -  * Detected change in '/mnt/hgfs/clustervision/luna2-daemon/luna.py', reloading
+[INFO]:[2022-09-28 16:48:48,198]:[MainThread]:[_internal.py:_log@224] -  * Restarting with stat
+[INFO]:[2022-09-28 16:48:49,667]:[MainThread]:[log.py:init_log@49] - =============== Luna Logging Level IsSet To [INFO] ===============
+[WARNING]:[2022-09-28 16:48:50,632]:[MainThread]:[_internal.py:_log@224] -  * Debugger is active!
+[INFO]:[2022-09-28 16:48:50,641]:[MainThread]:[_internal.py:_log@224] -  * Debugger PIN: 100-585-902
+[INFO]:[2022-09-28 16:48:58,180]:[MainThread]:[_internal.py:_log@224] -  * Detected change in '/mnt/hgfs/clustervision/luna2-daemon/luna.py', reloading
+[INFO]:[2022-09-28 16:48:58,267]:[MainThread]:[_internal.py:_log@224] -  * Restarting with stat
+[INFO]:[2022-09-28 16:48:59,534]:[MainThread]:[log.py:init_log@49] - =============== Luna Logging Level IsSet To [INFO] ===============
+[WARNING]:[2022-09-28 16:49:00,357]:[MainThread]:[_internal.py:_log@224] -  * Debugger is active!
+[INFO]:[2022-09-28 16:49:00,366]:[MainThread]:[_internal.py:_log@224] -  * Debugger PIN: 100-585-902
+[INFO]:[2022-09-28 16:49:18,208]:[MainThread]:[log.py:init_log@49] - =============== Luna Logging Level IsSet To [INFO] ===============
+[INFO]:[2022-09-28 16:49:19,124]:[MainThread]:[_internal.py:_log@224] - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:7050
+ * Running on http://192.168.1.17:7050
+[INFO]:[2022-09-28 16:49:19,125]:[MainThread]:[_internal.py:_log@224] - [33mPress CTRL+C to quit[0m
+[INFO]:[2022-09-28 16:49:19,127]:[MainThread]:[_internal.py:_log@224] -  * Restarting with stat
+[INFO]:[2022-09-28 16:49:20,434]:[MainThread]:[log.py:init_log@49] - =============== Luna Logging Level IsSet To [INFO] ===============
+[WARNING]:[2022-09-28 16:49:21,228]:[MainThread]:[_internal.py:_log@224] -  * Debugger is active!
+[INFO]:[2022-09-28 16:49:21,237]:[MainThread]:[_internal.py:_log@224] -  * Debugger PIN: 100-585-902
+[INFO]:[2022-09-28 16:49:43,833]:[Thread-2 (process_request_thread)]:[boot.py:boot@35] - Boot API Serving the boot_ipxe.cfg
+[INFO]:[2022-09-28 16:49:44,107]:[Thread-2 (process_request_thread)]:[_internal.py:_log@224] - 192.168.1.11 - - [28/Sep/2022 16:49:44] "GET /boot HTTP/1.1" 200 -
+[INFO]:[2022-09-28 16:49:55,600]:[Thread-3 (process_request_thread)]:[_internal.py:_log@224] - 192.168.1.11 - - [28/Sep/2022 16:49:55] "[33mGET /admin HTTP/1.1[0m" 404 -
+[INFO]:[2022-09-28 16:50:00,305]:[Thread-4 (process_request_thread)]:[_internal.py:_log@224] - 192.168.1.11 - - [28/Sep/2022 16:50:00] "[33mGET /dashboard HTTP/1.1[0m" 404 -
+[INFO]:[2022-09-28 16:50:10,619]:[MainThread]:[_internal.py:_log@224] -  * Detected change in '/mnt/hgfs/clustervision/luna2-daemon/luna.py', reloading
+[INFO]:[2022-09-28 16:50:10,699]:[MainThread]:[_internal.py:_log@224] -  * Restarting with stat
+[INFO]:[2022-09-28 16:50:11,711]:[MainThread]:[log.py:init_log@49] - =============== Luna Logging Level IsSet To [INFO] ===============
+[WARNING]:[2022-09-28 16:50:12,454]:[MainThread]:[_internal.py:_log@224] -  * Debugger is active!
+[INFO]:[2022-09-28 16:50:12,462]:[MainThread]:[_internal.py:_log@224] -  * Debugger PIN: 100-585-902

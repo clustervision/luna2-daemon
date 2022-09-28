@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <meta name="description" content="Cluster Vision Authentication.">
+    <meta name="author" content="Sumit Sharma">
+    <link rel="icon" href="{{ url_for('admin.static', filename='images/CVS-Favicon1-150x150.webp') }}">
+    <title>ClusterVision :: Manage</title>
+    <link href="{{ url_for('admin.static', filename='css/bootstrap.min.css') }}" rel="stylesheet">
+    <link href="{{ url_for('admin.static', filename='css/floating-labels.css') }}" rel="stylesheet">
+  </head>
+  <body>
+    <form class="form-signin" action="" method="POST">
+      <div class="text-center mb-4">
+        {% if response %}<div class="alert alert-danger" role="alert">{{ response.message }}</div>{% endif %}
+        <img class="mb-4" src="images/CV-Logo-SVG.svg" alt="" >
+        <h1 class="h3 mb-3 font-weight-normal">Administration</h1>
+        <p>Login and Manage Everything under  <code>Luna 2</code></p>
+      </div>
+      <div class="form-label-group">
+        <input type="text" id="inputEmail" class="form-control" name="username" placeholder="Email address" required autofocus>
+        <label for="inputEmail">Username</label>
+      </div>
+      <div class="form-label-group">
+        <input type="password" id="inputPassword" class="form-control" name="password" placeholder="Password" required>
+        <label for="inputPassword">Password</label>
+      </div>
+      <button class="btn btn-lg btn-primary btn-block" type="submit">Sign in</button>
+      <p class="mt-5 mb-3 text-muted text-center">&copy; 2022</p>
+    </form>
+  </body>
+</html>
+<script type="text/javascript" src="{{ url_for('admin.static', filename='js/jquery-3.6.1.min.js') }}"></script>
+<script type="text/javascript">
+  $(".alert").fadeTo(2000, 500).slideUp(500, function(){
+    $(".alert").slideUp(500);
+});
+</script>

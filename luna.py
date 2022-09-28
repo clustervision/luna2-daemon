@@ -28,7 +28,7 @@ if len(sys.argv) == 2:
         log_level = log_level.replace("--", "")
         LEVEL = log_level
     else:
-        LEVEL = "critical"
+        LEVEL = "info"
 
 Log.init_log(LEVEL)
 
@@ -38,13 +38,15 @@ from apis.config import config_blueprint
 from apis.files import files_blueprint
 from apis.service import service_blueprint
 from apis.monitor import monitor_blueprint
-api = Flask(__name__, template_folder='templates')
+from web.admin import admin_blueprint
+api = Flask(__name__)
 api.register_blueprint(auth_blueprint)
 api.register_blueprint(boot_blueprint)
 api.register_blueprint(config_blueprint)
 api.register_blueprint(files_blueprint)
 api.register_blueprint(service_blueprint)
 api.register_blueprint(monitor_blueprint)
+api.register_blueprint(admin_blueprint)
 
 
 @api.route('/')

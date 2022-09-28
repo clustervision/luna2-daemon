@@ -32,7 +32,7 @@ class Database(object):
     """
 	def __init__(self):
 		self.logger = Log.get_logger()
-		if DEFAULTDB == "SQLDB":
+		if DEFAULTDB == "SQLITE":
 			self.DB = self.sqlite()
 			self.logger.debug("Select Database To Perform Actions Is => {}.".format(SQLDB))
 		elif DEFAULTDB == "MYSQLDB":

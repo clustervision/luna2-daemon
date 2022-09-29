@@ -2687,3 +2687,245 @@
 [INFO]:[2022-09-28 16:50:11,711]:[MainThread]:[log.py:init_log@49] - =============== Luna Logging Level IsSet To [INFO] ===============
 [WARNING]:[2022-09-28 16:50:12,454]:[MainThread]:[_internal.py:_log@224] -  * Debugger is active!
 [INFO]:[2022-09-28 16:50:12,462]:[MainThread]:[_internal.py:_log@224] -  * Debugger PIN: 100-585-902
+[INFO]:[2022-09-28 19:05:11,609]:[MainThread]:[_internal.py:_log@224] -  * Detected change in '/mnt/hgfs/clustervision/luna2-daemon/common/odbc.py', reloading
+[INFO]:[2022-09-28 19:05:11,656]:[MainThread]:[_internal.py:_log@224] -  * Restarting with stat
+[INFO]:[2022-09-28 19:05:12,282]:[MainThread]:[log.py:init_log@49] - =============== Luna Logging Level IsSet To [INFO] ===============
+[WARNING]:[2022-09-28 19:05:12,828]:[MainThread]:[_internal.py:_log@224] -  * Debugger is active!
+[INFO]:[2022-09-28 19:05:12,832]:[MainThread]:[_internal.py:_log@224] -  * Debugger PIN: 100-585-902
+[INFO]:[2022-09-28 19:06:10,034]:[MainThread]:[_internal.py:_log@224] -  * Detected change in '/mnt/hgfs/clustervision/luna2-daemon/common/odbc.py', reloading
+[INFO]:[2022-09-28 19:06:10,089]:[MainThread]:[_internal.py:_log@224] -  * Restarting with stat
+[INFO]:[2022-09-28 19:06:10,718]:[MainThread]:[log.py:init_log@49] - =============== Luna Logging Level IsSet To [INFO] ===============
+[WARNING]:[2022-09-28 19:06:11,203]:[MainThread]:[_internal.py:_log@224] -  * Debugger is active!
+[INFO]:[2022-09-28 19:06:11,208]:[MainThread]:[_internal.py:_log@224] -  * Debugger PIN: 100-585-902
+[INFO]:[2022-09-28 19:06:19,667]:[MainThread]:[_internal.py:_log@224] -  * Detected change in '/mnt/hgfs/clustervision/luna2-daemon/common/odbc.py', reloading
+[INFO]:[2022-09-28 19:06:19,720]:[MainThread]:[_internal.py:_log@224] -  * Restarting with stat
+[INFO]:[2022-09-28 19:06:20,418]:[MainThread]:[log.py:init_log@49] - =============== Luna Logging Level IsSet To [INFO] ===============
+[WARNING]:[2022-09-28 19:06:20,910]:[MainThread]:[_internal.py:_log@224] -  * Debugger is active!
+[INFO]:[2022-09-28 19:06:20,914]:[MainThread]:[_internal.py:_log@224] -  * Debugger PIN: 100-585-902
+[INFO]:[2022-09-28 19:07:05,175]:[MainThread]:[_internal.py:_log@224] -  * Detected change in '/mnt/hgfs/clustervision/luna2-daemon/common/odbc.py', reloading
+[INFO]:[2022-09-28 19:07:05,243]:[MainThread]:[_internal.py:_log@224] -  * Restarting with stat
+[INFO]:[2022-09-28 19:07:05,894]:[MainThread]:[log.py:init_log@49] - =============== Luna Logging Level IsSet To [INFO] ===============
+[WARNING]:[2022-09-28 19:07:06,364]:[MainThread]:[_internal.py:_log@224] -  * Debugger is active!
+[INFO]:[2022-09-28 19:07:06,369]:[MainThread]:[_internal.py:_log@224] -  * Debugger PIN: 100-585-902
+[INFO]:[2022-09-28 19:11:20,089]:[MainThread]:[_internal.py:_log@224] -  * Detected change in '/mnt/hgfs/clustervision/luna2-daemon/common/odbc.py', reloading
+[INFO]:[2022-09-28 19:11:20,138]:[MainThread]:[_internal.py:_log@224] -  * Restarting with stat
+[INFO]:[2022-09-28 19:11:20,812]:[MainThread]:[log.py:init_log@49] - =============== Luna Logging Level IsSet To [INFO] ===============
+[WARNING]:[2022-09-28 19:11:21,313]:[MainThread]:[_internal.py:_log@224] -  * Debugger is active!
+[INFO]:[2022-09-28 19:11:21,317]:[MainThread]:[_internal.py:_log@224] -  * Debugger PIN: 100-585-902
+[INFO]:[2022-09-28 19:12:02,497]:[MainThread]:[_internal.py:_log@224] -  * Detected change in '/mnt/hgfs/clustervision/luna2-daemon/common/odbc.py', reloading
+[INFO]:[2022-09-28 19:12:02,547]:[MainThread]:[_internal.py:_log@224] -  * Restarting with stat
+[INFO]:[2022-09-28 19:12:03,191]:[MainThread]:[log.py:init_log@49] - =============== Luna Logging Level IsSet To [INFO] ===============
+[WARNING]:[2022-09-28 19:12:03,670]:[MainThread]:[_internal.py:_log@224] -  * Debugger is active!
+[INFO]:[2022-09-28 19:12:03,674]:[MainThread]:[_internal.py:_log@224] -  * Debugger PIN: 100-585-902
+[INFO]:[2022-09-28 19:12:11,506]:[MainThread]:[_internal.py:_log@224] -  * Detected change in '/mnt/hgfs/clustervision/luna2-daemon/common/odbc.py', reloading
+[INFO]:[2022-09-28 19:12:11,553]:[MainThread]:[_internal.py:_log@224] -  * Restarting with stat
+[INFO]:[2022-09-28 19:12:12,170]:[MainThread]:[log.py:init_log@49] - =============== Luna Logging Level IsSet To [INFO] ===============
+[WARNING]:[2022-09-28 19:12:12,630]:[MainThread]:[_internal.py:_log@224] -  * Debugger is active!
+[INFO]:[2022-09-28 19:12:12,634]:[MainThread]:[_internal.py:_log@224] -  * Debugger PIN: 100-585-902
+[INFO]:[2022-09-28 19:12:46,364]:[MainThread]:[_internal.py:_log@224] -  * Detected change in '/mnt/hgfs/clustervision/luna2-daemon/common/odbc.py', reloading
+[INFO]:[2022-09-28 19:12:46,412]:[MainThread]:[_internal.py:_log@224] -  * Restarting with stat
+[INFO]:[2022-09-28 19:12:47,090]:[MainThread]:[log.py:init_log@49] - =============== Luna Logging Level IsSet To [INFO] ===============
+[WARNING]:[2022-09-28 19:12:47,560]:[MainThread]:[_internal.py:_log@224] -  * Debugger is active!
+[INFO]:[2022-09-28 19:12:47,564]:[MainThread]:[_internal.py:_log@224] -  * Debugger PIN: 100-585-902
+[INFO]:[2022-09-28 19:23:21,934]:[MainThread]:[_internal.py:_log@224] -  * Detected change in '/mnt/hgfs/clustervision/luna2-daemon/common/odbc.py', reloading
+[INFO]:[2022-09-28 19:23:21,982]:[MainThread]:[_internal.py:_log@224] -  * Restarting with stat
+[INFO]:[2022-09-28 19:23:22,749]:[MainThread]:[log.py:init_log@49] - =============== Luna Logging Level IsSet To [INFO] ===============
+[WARNING]:[2022-09-28 19:23:23,223]:[MainThread]:[_internal.py:_log@224] -  * Debugger is active!
+[INFO]:[2022-09-28 19:23:23,228]:[MainThread]:[_internal.py:_log@224] -  * Debugger PIN: 100-585-902
+[INFO]:[2022-09-29 08:11:00,560]:[MainThread]:[log.py:init_log@49] - =============== Luna Logging Level IsSet To [INFO] ===============
+[INFO]:[2022-09-29 08:13:57,791]:[MainThread]:[log.py:init_log@49] - =============== Luna Logging Level IsSet To [INFO] ===============
+[INFO]:[2022-09-29 08:19:06,839]:[MainThread]:[log.py:init_log@49] - =============== Luna Logging Level IsSet To [INFO] ===============
+[INFO]:[2022-09-29 08:21:16,625]:[MainThread]:[log.py:init_log@49] - =============== Luna Logging Level IsSet To [INFO] ===============
+[INFO]:[2022-09-29 08:21:36,246]:[MainThread]:[log.py:init_log@49] - =============== Luna Logging Level IsSet To [INFO] ===============
+[INFO]:[2022-09-29 08:22:32,243]:[MainThread]:[log.py:init_log@49] - =============== Luna Logging Level IsSet To [INFO] ===============
+[INFO]:[2022-09-29 08:25:32,425]:[MainThread]:[log.py:init_log@49] - =============== Luna Logging Level IsSet To [INFO] ===============
+[INFO]:[2022-09-29 08:27:18,363]:[MainThread]:[log.py:init_log@49] - =============== Luna Logging Level IsSet To [INFO] ===============
+[INFO]:[2022-09-29 08:27:18,564]:[MainThread]:[_internal.py:_log@224] - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:7050
+ * Running on http://192.168.1.13:7050
+[INFO]:[2022-09-29 08:27:18,565]:[MainThread]:[_internal.py:_log@224] - [33mPress CTRL+C to quit[0m
+[INFO]:[2022-09-29 08:27:18,566]:[MainThread]:[_internal.py:_log@224] -  * Restarting with stat
+[INFO]:[2022-09-29 08:27:18,731]:[MainThread]:[log.py:init_log@49] - =============== Luna Logging Level IsSet To [INFO] ===============
+[WARNING]:[2022-09-29 08:27:18,858]:[MainThread]:[_internal.py:_log@224] -  * Debugger is active!
+[INFO]:[2022-09-29 08:27:18,875]:[MainThread]:[_internal.py:_log@224] -  * Debugger PIN: 117-723-858
+[ERROR]:[2022-09-29 08:28:22,319]:[Thread-2 (process_request_thread)]:[_internal.py:_log@224] - 192.168.1.13 - - [29/Sep/2022 08:28:22] code 400, message Bad request version ('ó\x00"\x13\x01\x13\x03\x13\x02À+À/Ì©Ì¨À,À0À')
+[INFO]:[2022-09-29 08:28:22,320]:[Thread-2 (process_request_thread)]:[_internal.py:_log@224] - 192.168.1.13 - - [29/Sep/2022 08:28:22] "[35m[1m  ü¶YôÔË(\¹''ìãq«|Ð?¿x¬;Ô i]1ü$9`ndë\SÓj©,G´ïxó "À+À/Ì©Ì¨À,À0À[0m" HTTPStatus.BAD_REQUEST -
+[ERROR]:[2022-09-29 08:28:27,721]:[Thread-3 (process_request_thread)]:[_internal.py:_log@224] - 192.168.1.13 - - [29/Sep/2022 08:28:27] code 400, message Bad request version ('Æ«/Ç¼m¸\x14\x8aH3í4\x0f2,u\x00"\x13\x01\x13\x03\x13\x02À+À/Ì©Ì¨À,À0À')
+[INFO]:[2022-09-29 08:28:27,723]:[Thread-3 (process_request_thread)]:[_internal.py:_log@224] - 192.168.1.13 - - [29/Sep/2022 08:28:27] "[35m[1m  ü4ßpÑÞ}Ò½î¾.ªåõ±K\v¾ëºGÛ#úI mÝì½êñz7%ãÆ«/Ç¼m¸H3í42,u "À+À/Ì©Ì¨À,À0À[0m" HTTPStatus.BAD_REQUEST -
+[ERROR]:[2022-09-29 08:28:44,089]:[Thread-4 (process_request_thread)]:[_internal.py:_log@224] - 127.0.0.1 - - [29/Sep/2022 08:28:44] code 400, message Bad HTTP/0.9 request type ('\x16\x03\x01\x02\x00\x01\x00\x01ü\x03\x03è\x9f\x92\x19Á9.\x99\x125\x8d\x84ü¨_µ÷\x03÷¼À¼ôÞ')
+[INFO]:[2022-09-29 08:28:44,089]:[Thread-4 (process_request_thread)]:[_internal.py:_log@224] - 127.0.0.1 - - [29/Sep/2022 08:28:44] "[35m[1m  üèÁ9.5ü¨_µ÷÷¼À¼ôÞhÒµ[0m" HTTPStatus.BAD_REQUEST -
+[ERROR]:[2022-09-29 08:28:44,092]:[Thread-5 (process_request_thread)]:[_internal.py:_log@224] - 127.0.0.1 - - [29/Sep/2022 08:28:44] code 400, message Bad request version ('J\x00q°½´pvU\x10<Ö¾ïN2}\x00"\x13\x01\x13\x03\x13\x02À+À/Ì©Ì¨À,À0À')
+[INFO]:[2022-09-29 08:28:44,093]:[Thread-5 (process_request_thread)]:[_internal.py:_log@224] - 127.0.0.1 - - [29/Sep/2022 08:28:44] "[35m[1m  ü¤6Dõ ¿dÏÑ÷	Å¶q?÷¼ß»,è1_äK þ4xmm,À$±Qlc|J q°½´pvU<Ö¾ïN2} "À+À/Ì©Ì¨À,À0À[0m" HTTPStatus.BAD_REQUEST -
+[INFO]:[2022-09-29 08:29:02,418]:[Thread-6 (process_request_thread)]:[_internal.py:_log@224] - 127.0.0.1 - - [29/Sep/2022 08:29:02] "[33mGET / HTTP/1.1[0m" 404 -
+[INFO]:[2022-09-29 08:29:02,497]:[Thread-7 (process_request_thread)]:[_internal.py:_log@224] - 127.0.0.1 - - [29/Sep/2022 08:29:02] "[33mGET /favicon.ico HTTP/1.1[0m" 404 -
+[INFO]:[2022-09-29 08:31:53,618]:[Thread-8 (process_request_thread)]:[_internal.py:_log@224] - 192.168.1.11 - - [29/Sep/2022 08:31:53] "[33mGET / HTTP/1.1[0m" 404 -
+[INFO]:[2022-09-29 08:31:53,789]:[Thread-9 (process_request_thread)]:[_internal.py:_log@224] - 192.168.1.11 - - [29/Sep/2022 08:31:53] "[33mGET /favicon.ico HTTP/1.1[0m" 404 -
+[INFO]:[2022-09-29 08:35:45,250]:[MainThread]:[_internal.py:_log@224] -  * Detected change in '/mnt/hgfs/luna/common/odbc.py', reloading
+[INFO]:[2022-09-29 08:35:45,300]:[MainThread]:[_internal.py:_log@224] -  * Restarting with stat
+[INFO]:[2022-09-29 08:35:45,478]:[MainThread]:[log.py:init_log@49] - =============== Luna Logging Level IsSet To [INFO] ===============
+[WARNING]:[2022-09-29 08:35:45,605]:[MainThread]:[_internal.py:_log@224] -  * Debugger is active!
+[INFO]:[2022-09-29 08:35:45,609]:[MainThread]:[_internal.py:_log@224] -  * Debugger PIN: 117-723-858
+[INFO]:[2022-09-29 08:35:47,800]:[MainThread]:[_internal.py:_log@224] -  * Detected change in '/mnt/hgfs/luna/common/odbc.py', reloading
+[INFO]:[2022-09-29 08:35:47,837]:[MainThread]:[_internal.py:_log@224] -  * Restarting with stat
+[INFO]:[2022-09-29 08:35:48,004]:[MainThread]:[log.py:init_log@49] - =============== Luna Logging Level IsSet To [INFO] ===============
+[WARNING]:[2022-09-29 08:35:48,136]:[MainThread]:[_internal.py:_log@224] -  * Debugger is active!
+[INFO]:[2022-09-29 08:35:48,140]:[MainThread]:[_internal.py:_log@224] -  * Debugger PIN: 117-723-858
+[INFO]:[2022-09-29 08:50:56,857]:[MainThread]:[_internal.py:_log@224] -  * Detected change in '/mnt/hgfs/luna/common/odbc.py', reloading
+[INFO]:[2022-09-29 08:50:56,900]:[MainThread]:[_internal.py:_log@224] -  * Restarting with stat
+[INFO]:[2022-09-29 08:50:57,096]:[MainThread]:[log.py:init_log@49] - =============== Luna Logging Level IsSet To [INFO] ===============
+[WARNING]:[2022-09-29 08:50:57,229]:[MainThread]:[_internal.py:_log@224] -  * Debugger is active!
+[INFO]:[2022-09-29 08:50:57,233]:[MainThread]:[_internal.py:_log@224] -  * Debugger PIN: 117-723-858
+[INFO]:[2022-09-29 18:04:52,619]:[MainThread]:[log.py:init_log@49] - =============== Luna Logging Level IsSet To [INFO] ===============
+[INFO]:[2022-09-29 18:04:52,800]:[MainThread]:[_internal.py:_log@224] - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:7050
+ * Running on http://192.168.1.13:7050
+[INFO]:[2022-09-29 18:04:52,801]:[MainThread]:[_internal.py:_log@224] - [33mPress CTRL+C to quit[0m
+[INFO]:[2022-09-29 18:04:52,802]:[MainThread]:[_internal.py:_log@224] -  * Restarting with stat
+[INFO]:[2022-09-29 18:04:53,015]:[MainThread]:[log.py:init_log@49] - =============== Luna Logging Level IsSet To [INFO] ===============
+[WARNING]:[2022-09-29 18:04:53,101]:[MainThread]:[_internal.py:_log@224] -  * Debugger is active!
+[INFO]:[2022-09-29 18:04:53,115]:[MainThread]:[_internal.py:_log@224] -  * Debugger PIN: 117-723-858
+[INFO]:[2022-09-29 18:11:28,061]:[MainThread]:[log.py:init_log@49] - =============== Luna Logging Level IsSet To [INFO] ===============
+[INFO]:[2022-09-29 18:11:28,164]:[MainThread]:[_internal.py:_log@224] - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:7050
+ * Running on http://192.168.1.13:7050
+[INFO]:[2022-09-29 18:11:28,164]:[MainThread]:[_internal.py:_log@224] - [33mPress CTRL+C to quit[0m
+[INFO]:[2022-09-29 18:11:28,165]:[MainThread]:[_internal.py:_log@224] -  * Restarting with stat
+[INFO]:[2022-09-29 18:11:28,379]:[MainThread]:[log.py:init_log@49] - =============== Luna Logging Level IsSet To [INFO] ===============
+[WARNING]:[2022-09-29 18:11:28,468]:[MainThread]:[_internal.py:_log@224] -  * Debugger is active!
+[INFO]:[2022-09-29 18:11:28,472]:[MainThread]:[_internal.py:_log@224] -  * Debugger PIN: 101-057-725
+[INFO]:[2022-09-29 18:13:05,384]:[MainThread]:[_internal.py:_log@224] -  * Detected change in '/mnt/hgfs/luna/apis/auth.py', reloading
+[INFO]:[2022-09-29 18:13:05,422]:[MainThread]:[_internal.py:_log@224] -  * Restarting with stat
+[INFO]:[2022-09-29 18:13:05,689]:[MainThread]:[log.py:init_log@49] - =============== Luna Logging Level IsSet To [INFO] ===============
+[WARNING]:[2022-09-29 18:13:05,855]:[MainThread]:[_internal.py:_log@224] -  * Debugger is active!
+[INFO]:[2022-09-29 18:13:05,860]:[MainThread]:[_internal.py:_log@224] -  * Debugger PIN: 101-057-725
+[INFO]:[2022-09-29 18:13:41,224]:[MainThread]:[_internal.py:_log@224] -  * Detected change in '/mnt/hgfs/luna/apis/auth.py', reloading
+[INFO]:[2022-09-29 18:13:41,256]:[MainThread]:[_internal.py:_log@224] -  * Restarting with stat
+[INFO]:[2022-09-29 18:13:41,467]:[MainThread]:[log.py:init_log@49] - =============== Luna Logging Level IsSet To [INFO] ===============
+[WARNING]:[2022-09-29 18:13:41,565]:[MainThread]:[_internal.py:_log@224] -  * Debugger is active!
+[INFO]:[2022-09-29 18:13:41,570]:[MainThread]:[_internal.py:_log@224] -  * Debugger PIN: 101-057-725
+[INFO]:[2022-09-29 18:13:43,384]:[MainThread]:[_internal.py:_log@224] -  * Detected change in '/mnt/hgfs/luna/apis/auth.py', reloading
+[INFO]:[2022-09-29 18:13:43,425]:[MainThread]:[_internal.py:_log@224] -  * Restarting with stat
+[INFO]:[2022-09-29 18:13:43,645]:[MainThread]:[log.py:init_log@49] - =============== Luna Logging Level IsSet To [INFO] ===============
+[WARNING]:[2022-09-29 18:13:43,740]:[MainThread]:[_internal.py:_log@224] -  * Debugger is active!
+[INFO]:[2022-09-29 18:13:43,744]:[MainThread]:[_internal.py:_log@224] -  * Debugger PIN: 101-057-725
+[INFO]:[2022-09-29 18:16:55,953]:[Thread-2 (process_request_thread)]:[_internal.py:_log@224] - 127.0.0.1 - - [29/Sep/2022 18:16:55] "[35m[1mPOST /token HTTP/1.1[0m" 500 -
+[INFO]:[2022-09-29 18:17:23,029]:[MainThread]:[_internal.py:_log@224] -  * Detected change in '/mnt/hgfs/luna/apis/auth.py', reloading
+[INFO]:[2022-09-29 18:17:23,107]:[MainThread]:[_internal.py:_log@224] -  * Restarting with stat
+[INFO]:[2022-09-29 18:17:23,483]:[MainThread]:[log.py:init_log@49] - =============== Luna Logging Level IsSet To [INFO] ===============
+[WARNING]:[2022-09-29 18:17:23,627]:[MainThread]:[_internal.py:_log@224] -  * Debugger is active!
+[INFO]:[2022-09-29 18:17:23,633]:[MainThread]:[_internal.py:_log@224] -  * Debugger PIN: 101-057-725
+[INFO]:[2022-09-29 18:17:29,546]:[Thread-2 (process_request_thread)]:[_internal.py:_log@224] - 127.0.0.1 - - [29/Sep/2022 18:17:29] "POST /token HTTP/1.1" 200 -
+[INFO]:[2022-09-29 18:17:50,263]:[MainThread]:[_internal.py:_log@224] -  * Detected change in '/mnt/hgfs/luna/apis/auth.py', reloading
+[INFO]:[2022-09-29 18:17:50,308]:[MainThread]:[_internal.py:_log@224] -  * Restarting with stat
+[INFO]:[2022-09-29 18:17:50,623]:[MainThread]:[log.py:init_log@49] - =============== Luna Logging Level IsSet To [INFO] ===============
+[WARNING]:[2022-09-29 18:17:50,777]:[MainThread]:[_internal.py:_log@224] -  * Debugger is active!
+[INFO]:[2022-09-29 18:17:50,782]:[MainThread]:[_internal.py:_log@224] -  * Debugger PIN: 101-057-725
+[INFO]:[2022-09-29 18:19:06,070]:[MainThread]:[_internal.py:_log@224] -  * Detected change in '/mnt/hgfs/luna/utils/database/database.py', reloading
+[INFO]:[2022-09-29 18:19:06,119]:[MainThread]:[_internal.py:_log@224] -  * Restarting with stat
+[INFO]:[2022-09-29 18:19:06,431]:[MainThread]:[log.py:init_log@49] - =============== Luna Logging Level IsSet To [INFO] ===============
+[WARNING]:[2022-09-29 18:19:06,574]:[MainThread]:[_internal.py:_log@224] -  * Debugger is active!
+[INFO]:[2022-09-29 18:19:06,578]:[MainThread]:[_internal.py:_log@224] -  * Debugger PIN: 101-057-725
+[INFO]:[2022-09-29 18:19:08,742]:[MainThread]:[_internal.py:_log@224] -  * Detected change in '/mnt/hgfs/luna/utils/database/database.py', reloading
+[INFO]:[2022-09-29 18:19:08,784]:[MainThread]:[_internal.py:_log@224] -  * Restarting with stat
+[INFO]:[2022-09-29 18:19:09,078]:[MainThread]:[log.py:init_log@49] - =============== Luna Logging Level IsSet To [INFO] ===============
+[WARNING]:[2022-09-29 18:19:09,240]:[MainThread]:[_internal.py:_log@224] -  * Debugger is active!
+[INFO]:[2022-09-29 18:19:09,245]:[MainThread]:[_internal.py:_log@224] -  * Debugger PIN: 101-057-725
+[INFO]:[2022-09-29 18:20:06,059]:[MainThread]:[_internal.py:_log@224] -  * Detected change in '/mnt/hgfs/luna/utils/database/database.py', reloading
+[INFO]:[2022-09-29 18:20:06,102]:[MainThread]:[_internal.py:_log@224] -  * Restarting with stat
+[INFO]:[2022-09-29 18:20:06,429]:[MainThread]:[log.py:init_log@49] - =============== Luna Logging Level IsSet To [INFO] ===============
+[INFO]:[2022-09-29 18:20:45,760]:[MainThread]:[log.py:init_log@49] - =============== Luna Logging Level IsSet To [INFO] ===============
+[INFO]:[2022-09-29 18:20:45,894]:[MainThread]:[_internal.py:_log@224] - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:7050
+ * Running on http://192.168.1.13:7050
+[INFO]:[2022-09-29 18:20:45,895]:[MainThread]:[_internal.py:_log@224] - [33mPress CTRL+C to quit[0m
+[INFO]:[2022-09-29 18:20:45,896]:[MainThread]:[_internal.py:_log@224] -  * Restarting with stat
+[INFO]:[2022-09-29 18:20:46,199]:[MainThread]:[log.py:init_log@49] - =============== Luna Logging Level IsSet To [INFO] ===============
+[WARNING]:[2022-09-29 18:20:46,316]:[MainThread]:[_internal.py:_log@224] -  * Debugger is active!
+[INFO]:[2022-09-29 18:20:46,321]:[MainThread]:[_internal.py:_log@224] -  * Debugger PIN: 101-057-725
+[INFO]:[2022-09-29 18:21:21,049]:[MainThread]:[_internal.py:_log@224] -  * Detected change in '/mnt/hgfs/luna/utils/database/database.py', reloading
+[INFO]:[2022-09-29 18:21:21,105]:[MainThread]:[_internal.py:_log@224] -  * Restarting with stat
+[INFO]:[2022-09-29 18:21:21,411]:[MainThread]:[log.py:init_log@49] - =============== Luna Logging Level IsSet To [INFO] ===============
+[WARNING]:[2022-09-29 18:21:21,533]:[MainThread]:[_internal.py:_log@224] -  * Debugger is active!
+[INFO]:[2022-09-29 18:21:21,537]:[MainThread]:[_internal.py:_log@224] -  * Debugger PIN: 101-057-725
+[INFO]:[2022-09-29 18:22:02,941]:[MainThread]:[_internal.py:_log@224] -  * Detected change in '/mnt/hgfs/luna/utils/database/database.py', reloading
+[INFO]:[2022-09-29 18:22:02,986]:[MainThread]:[_internal.py:_log@224] -  * Restarting with stat
+[INFO]:[2022-09-29 18:22:03,268]:[MainThread]:[log.py:init_log@49] - =============== Luna Logging Level IsSet To [INFO] ===============
+[WARNING]:[2022-09-29 18:22:03,402]:[MainThread]:[_internal.py:_log@224] -  * Debugger is active!
+[INFO]:[2022-09-29 18:22:03,407]:[MainThread]:[_internal.py:_log@224] -  * Debugger PIN: 101-057-725
+[INFO]:[2022-09-29 18:22:36,789]:[MainThread]:[_internal.py:_log@224] -  * Detected change in '/mnt/hgfs/luna/utils/database/database.py', reloading
+[INFO]:[2022-09-29 18:22:36,835]:[MainThread]:[_internal.py:_log@224] -  * Restarting with stat
+[INFO]:[2022-09-29 18:22:37,222]:[MainThread]:[log.py:init_log@49] - =============== Luna Logging Level IsSet To [INFO] ===============
+[WARNING]:[2022-09-29 18:22:37,361]:[MainThread]:[_internal.py:_log@224] -  * Debugger is active!
+[INFO]:[2022-09-29 18:22:37,366]:[MainThread]:[_internal.py:_log@224] -  * Debugger PIN: 101-057-725
+[INFO]:[2022-09-29 18:23:11,067]:[MainThread]:[_internal.py:_log@224] -  * Detected change in '/mnt/hgfs/luna/utils/database/database.py', reloading
+[INFO]:[2022-09-29 18:23:11,117]:[MainThread]:[_internal.py:_log@224] -  * Restarting with stat
+[INFO]:[2022-09-29 18:23:11,431]:[MainThread]:[log.py:init_log@49] - =============== Luna Logging Level IsSet To [INFO] ===============
+[WARNING]:[2022-09-29 18:23:11,571]:[MainThread]:[_internal.py:_log@224] -  * Debugger is active!
+[INFO]:[2022-09-29 18:23:11,577]:[MainThread]:[_internal.py:_log@224] -  * Debugger PIN: 101-057-725
+[INFO]:[2022-09-29 18:23:21,888]:[MainThread]:[_internal.py:_log@224] -  * Detected change in '/mnt/hgfs/luna/utils/database/sqlite/sqlite.py', reloading
+[INFO]:[2022-09-29 18:23:21,935]:[MainThread]:[_internal.py:_log@224] -  * Restarting with stat
+[INFO]:[2022-09-29 18:23:22,239]:[MainThread]:[log.py:init_log@49] - =============== Luna Logging Level IsSet To [INFO] ===============
+[WARNING]:[2022-09-29 18:23:22,364]:[MainThread]:[_internal.py:_log@224] -  * Debugger is active!
+[INFO]:[2022-09-29 18:23:22,369]:[MainThread]:[_internal.py:_log@224] -  * Debugger PIN: 101-057-725
+[INFO]:[2022-09-29 18:24:17,359]:[MainThread]:[log.py:init_log@49] - =============== Luna Logging Level IsSet To [INFO] ===============
+[INFO]:[2022-09-29 18:25:02,787]:[MainThread]:[log.py:init_log@49] - =============== Luna Logging Level IsSet To [INFO] ===============
+[INFO]:[2022-09-29 18:25:02,919]:[MainThread]:[_internal.py:_log@224] - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:7050
+ * Running on http://192.168.1.13:7050
+[INFO]:[2022-09-29 18:25:02,919]:[MainThread]:[_internal.py:_log@224] - [33mPress CTRL+C to quit[0m
+[INFO]:[2022-09-29 18:25:02,921]:[MainThread]:[_internal.py:_log@224] -  * Restarting with stat
+[INFO]:[2022-09-29 18:25:03,222]:[MainThread]:[log.py:init_log@49] - =============== Luna Logging Level IsSet To [INFO] ===============
+[WARNING]:[2022-09-29 18:25:03,312]:[MainThread]:[_internal.py:_log@224] -  * Debugger is active!
+[INFO]:[2022-09-29 18:25:03,317]:[MainThread]:[_internal.py:_log@224] -  * Debugger PIN: 101-057-725
+[INFO]:[2022-09-29 18:25:07,496]:[MainThread]:[_internal.py:_log@224] -  * Detected change in '/mnt/hgfs/luna/common/validate_auth.py', reloading
+[INFO]:[2022-09-29 18:25:07,543]:[MainThread]:[_internal.py:_log@224] -  * Restarting with stat
+[INFO]:[2022-09-29 18:25:07,836]:[MainThread]:[log.py:init_log@49] - =============== Luna Logging Level IsSet To [INFO] ===============
+[WARNING]:[2022-09-29 18:25:07,948]:[MainThread]:[_internal.py:_log@224] -  * Debugger is active!
+[INFO]:[2022-09-29 18:25:07,953]:[MainThread]:[_internal.py:_log@224] -  * Debugger PIN: 101-057-725
+[INFO]:[2022-09-29 18:25:09,646]:[MainThread]:[_internal.py:_log@224] -  * Detected change in '/mnt/hgfs/luna/common/validate_auth.py', reloading
+[INFO]:[2022-09-29 18:25:09,700]:[MainThread]:[_internal.py:_log@224] -  * Restarting with stat
+[INFO]:[2022-09-29 18:25:10,015]:[MainThread]:[log.py:init_log@49] - =============== Luna Logging Level IsSet To [INFO] ===============
+[WARNING]:[2022-09-29 18:25:10,124]:[MainThread]:[_internal.py:_log@224] -  * Debugger is active!
+[INFO]:[2022-09-29 18:25:10,129]:[MainThread]:[_internal.py:_log@224] -  * Debugger PIN: 101-057-725
+[INFO]:[2022-09-29 18:25:40,032]:[MainThread]:[_internal.py:_log@224] -  * Detected change in '/mnt/hgfs/luna/common/odbc.py', reloading
+[INFO]:[2022-09-29 18:25:40,087]:[MainThread]:[_internal.py:_log@224] -  * Restarting with stat
+[INFO]:[2022-09-29 18:25:40,390]:[MainThread]:[log.py:init_log@49] - =============== Luna Logging Level IsSet To [INFO] ===============
+[WARNING]:[2022-09-29 18:25:40,486]:[MainThread]:[_internal.py:_log@224] -  * Debugger is active!
+[INFO]:[2022-09-29 18:25:40,491]:[MainThread]:[_internal.py:_log@224] -  * Debugger PIN: 101-057-725
+[INFO]:[2022-09-29 18:25:44,626]:[MainThread]:[_internal.py:_log@224] -  * Detected change in '/mnt/hgfs/luna/common/odbc.py', reloading
+[INFO]:[2022-09-29 18:25:44,678]:[MainThread]:[_internal.py:_log@224] -  * Restarting with stat
+[INFO]:[2022-09-29 18:25:45,011]:[MainThread]:[log.py:init_log@49] - =============== Luna Logging Level IsSet To [INFO] ===============
+[WARNING]:[2022-09-29 18:25:45,114]:[MainThread]:[_internal.py:_log@224] -  * Debugger is active!
+[INFO]:[2022-09-29 18:25:45,120]:[MainThread]:[_internal.py:_log@224] -  * Debugger PIN: 101-057-725
+[INFO]:[2022-09-29 18:25:50,475]:[MainThread]:[_internal.py:_log@224] -  * Detected change in '/mnt/hgfs/luna/common/odbc.py', reloading
+[INFO]:[2022-09-29 18:25:50,518]:[MainThread]:[_internal.py:_log@224] -  * Restarting with stat
+[INFO]:[2022-09-29 18:25:50,807]:[MainThread]:[log.py:init_log@49] - =============== Luna Logging Level IsSet To [INFO] ===============
+[WARNING]:[2022-09-29 18:25:50,895]:[MainThread]:[_internal.py:_log@224] -  * Debugger is active!
+[INFO]:[2022-09-29 18:25:50,901]:[MainThread]:[_internal.py:_log@224] -  * Debugger PIN: 101-057-725
+[INFO]:[2022-09-29 18:26:11,038]:[MainThread]:[_internal.py:_log@224] -  * Detected change in '/mnt/hgfs/luna/common/constants.py', reloading
+[INFO]:[2022-09-29 18:26:11,081]:[MainThread]:[_internal.py:_log@224] -  * Restarting with stat
+[INFO]:[2022-09-29 18:26:11,378]:[MainThread]:[log.py:init_log@49] - =============== Luna Logging Level IsSet To [INFO] ===============
+[WARNING]:[2022-09-29 18:26:11,471]:[MainThread]:[_internal.py:_log@224] -  * Debugger is active!
+[INFO]:[2022-09-29 18:26:11,475]:[MainThread]:[_internal.py:_log@224] -  * Debugger PIN: 101-057-725
+[INFO]:[2022-09-29 18:26:31,608]:[MainThread]:[_internal.py:_log@224] -  * Detected change in '/mnt/hgfs/luna/common/odbc.py', reloading
+[INFO]:[2022-09-29 18:26:31,654]:[MainThread]:[_internal.py:_log@224] -  * Restarting with stat
+[INFO]:[2022-09-29 18:26:31,973]:[MainThread]:[log.py:init_log@49] - =============== Luna Logging Level IsSet To [INFO] ===============
+[WARNING]:[2022-09-29 18:26:32,080]:[MainThread]:[_internal.py:_log@224] -  * Debugger is active!
+[INFO]:[2022-09-29 18:26:32,084]:[MainThread]:[_internal.py:_log@224] -  * Debugger PIN: 101-057-725
+[INFO]:[2022-09-29 18:29:49,897]:[Thread-2 (process_request_thread)]:[files.py:files@36] - Available Tar file in /trinity/local/luna/files are ['file_1.tar.bz2', 'file_1.tar.gz', 'file_2.tar.bz2', 'file_2.tar.gz'].
+[INFO]:[2022-09-29 18:29:49,899]:[Thread-2 (process_request_thread)]:[_internal.py:_log@224] - 127.0.0.1 - - [29/Sep/2022 18:29:49] "GET /files HTTP/1.1" 200 -
+[INFO]:[2022-09-29 18:32:16,614]:[MainThread]:[_internal.py:_log@224] -  * Detected change in '/mnt/hgfs/luna/common/constants.py', reloading
+[INFO]:[2022-09-29 18:32:16,664]:[MainThread]:[_internal.py:_log@224] -  * Restarting with stat
+[INFO]:[2022-09-29 18:32:16,974]:[MainThread]:[log.py:init_log@49] - =============== Luna Logging Level IsSet To [INFO] ===============
+[WARNING]:[2022-09-29 18:32:17,113]:[MainThread]:[_internal.py:_log@224] -  * Debugger is active!
+[INFO]:[2022-09-29 18:32:17,119]:[MainThread]:[_internal.py:_log@224] -  * Debugger PIN: 101-057-725
+[INFO]:[2022-09-29 18:32:32,608]:[MainThread]:[_internal.py:_log@224] -  * Detected change in '/mnt/hgfs/luna/utils/database.py', reloading
+[INFO]:[2022-09-29 18:32:32,656]:[MainThread]:[_internal.py:_log@224] -  * Restarting with stat
+[INFO]:[2022-09-29 18:32:32,943]:[MainThread]:[log.py:init_log@49] - =============== Luna Logging Level IsSet To [INFO] ===============
+[WARNING]:[2022-09-29 18:32:33,039]:[MainThread]:[_internal.py:_log@224] -  * Debugger is active!
+[INFO]:[2022-09-29 18:32:33,044]:[MainThread]:[_internal.py:_log@224] -  * Debugger PIN: 101-057-725

@@ -20,7 +20,6 @@ from functools import wraps
 from flask import request, json
 from utils.log import *
 import jwt
-from utils.database.database import *
 
 logger = Log.get_logger()
 

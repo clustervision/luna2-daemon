@@ -10,7 +10,7 @@ __status__      = "Development"
 
 """
 This Log Class is responsible to start the Logger depend on the Level.
-Level Should be configured in config/luna.conf or by the argument --debug.
+Level Should be configured in config/luna.ini or by the argument --debug.
 Default Loggin level is set to the INFO.
 Method get_logger will provide a logging object, which is helpful to write the log messages.
 Logger Object have basic mathods: debug, error, info, critical and warnings.
@@ -19,7 +19,7 @@ Logger Object have basic mathods: debug, error, info, critical and warnings.
 
 import sys
 import logging
-from common.constants import *
+from common.constant import *
 
 class Log:
     __logger = None

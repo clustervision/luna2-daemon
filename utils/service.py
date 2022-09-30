@@ -37,7 +37,7 @@ class Service(object):
             case self.DHCP | self.DNS | "luna2":
                 match action:
                     case "start" | "stop" | "reload" | "restart" | "status":
-                        command = "{} {} {}".format(COMMAND, action, name) ## Fetch the command from the .conf file
+                        command = "{} {} {}".format(COMMAND, action, name) ## Fetch the command from the .ini file
                         output = Helper().runcommand(command)
                         response, code = self.service_status(name, action, output)
                     case _:

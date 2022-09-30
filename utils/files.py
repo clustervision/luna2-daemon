@@ -16,7 +16,6 @@ It can only provide files ending with tar.gz and tar.bz2
 """
 
 import os
-from common.constants import *
 from utils.log import *
 logger = Log.get_logger()
 

@@ -17,7 +17,6 @@ This File is a A Entry Point of Every Configuration Related Activity.
 
 """
 
-from common.constants import *
 from common.validate_auth import *
 from flask import Blueprint, request, json
 from utils.log import *

@@ -15,7 +15,6 @@ Database have the default methods for CRUD. In case of changing database model d
 """
 
 import pyodbc
-from common.constants import *
 from utils.log import *
 
 class Database(object):
@@ -26,7 +25,7 @@ class Database(object):
     """
 	def __init__(self):
 		self.logger = Log.get_logger()
-		self.connection = pyodbc.connect("DRIVER={};SERVER={};DATABASE={};UID={};PWD={};charset=utf8mb4;PORT={};".format(DRIVER, HOST, DATABASE, USERNAME, PASSWORD, PORT))
+		self.connection = pyodbc.connect("DRIVER={};SERVER={};DATABASE={};UID={};PWD={};charset=utf8mb4;PORT={};".format(DRIVER, HOST, DATABASE, DBUSER, DBPASSWORD, PORT))
 		self.cursor = self.connection.cursor()
 
 

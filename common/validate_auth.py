@@ -15,7 +15,6 @@ If Get API Has the Token, it will get the access to fetch more data.
 
 """
 import os
-from common.constants import *
 from functools import wraps
 from flask import request, json
 from utils.log import *

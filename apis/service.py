@@ -10,13 +10,12 @@ __status__      = "Development"
 
 """
 This File Manage the Services.
-Mainly Two Services DHCP and DNS, which is mentioned in the .conf file
+Mainly Two Services DHCP and DNS, which is mentioned in the .ini file
 @token_required is a Wrapper Method to Validate the POST API. It contains arguments and keyword arguments Of The API
 Service Class Have a Queue to Manage the Multiple Services.
 
 """
 
-from common.constants import *
 from common.validate_auth import *
 from flask import current_app, Blueprint, request, json
 from utils.log import *

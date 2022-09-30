@@ -13,7 +13,6 @@ This File is a A Entry Point to Monitor the services.
 
 """
 
-from common.constants import *
 from common.validate_auth import *
 from flask import Blueprint, request, json
 from utils.log import *

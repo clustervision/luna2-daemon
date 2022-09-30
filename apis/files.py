@@ -14,7 +14,6 @@ TarBalls Default Location is mentioned in Conf file.
 
 """
 
-from common.constants import *
 from common.validate_auth import *
 from flask import Blueprint, request, send_file, json
 from utils.log import *

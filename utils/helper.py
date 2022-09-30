@@ -14,7 +14,6 @@ This Is a Helper Class, which help the project to provide the common Methods.
 """
  
 import subprocess
-from common.constants import *
 from utils.log import *
 
 

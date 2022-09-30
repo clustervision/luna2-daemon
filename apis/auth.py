@@ -14,7 +14,6 @@ This File is use for authentication purpose.
 """
 import jwt
 import datetime
-from common.constants import *
 from flask import Blueprint, request, json
 from utils.log import *
 
@@ -34,6 +33,8 @@ def token():
         logger.error("Login Required")
         response = {"message" : "Login Required"}
         code = 401
+    print(HOST)
+    print(USERNAME)
     if USERNAME != auth["username"]:
         logger.warning("Incorrect Username {}".format(auth["username"]))
         response = {"message" : "Incorrect Username {}".format(auth["username"])}

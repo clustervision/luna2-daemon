@@ -17,19 +17,10 @@ Getting the Constants from common/constant.py File
 """
 
 from flask import Flask, request, abort, json
+from common.constant import *
 from utils.log import *
-from common.constants import *
 
-
-if len(sys.argv) == 2:
-    log_level = str(sys.argv[1])
-    if log_level == "--debug":
-        log_level = log_level.replace("--", "")
-        LEVEL = log_level
-    else:
-        LEVEL = "info"
-
-Log.init_log(LEVEL)
+logger = Log.init_log(LEVEL)
 
 from apis.auth import auth_blueprint
 from apis.boot import boot_blueprint

@@ -13,8 +13,6 @@ This File is a A Entry Point of Every Boot Related Activity.
 
 """
 
-from common.constants import *
-from common.validate_auth import *
 from flask import Blueprint, request, json, render_template
 from utils.log import *
 
@@ -30,10 +28,10 @@ Output - boot_ipxe.cfg
 @boot_blueprint.route("/boot", methods=['GET'])
 def boot():
     nodes = ["node001", "node002", "node003", "node004"]
-    data = {"protocol": "http", "serverip": "10.141.255.254", "serverport": "7051", "nodes": nodes}
+    data = {"protocol": "http", "server_ip": "10.141.255.254", "server_port": "7051", "nodes": nodes}
     Template = "boot_ipxe.cfg"
     logger.info("Boot API Serving the {}".format(Template))
-    return render_template(Template, data=data), 200
+    return render_template(Template, p=data), 200
 
 
 """

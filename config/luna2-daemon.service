@@ -4,7 +4,7 @@ Description=Luna 2 Daemon
 [Service]
 Type=oneshot
 RemainAfterExit=true
-ExecStart=/luna2-daemon/config/server.sh
+ExecStart=/trinity/local/luna/config/server.sh
 
 [Install]
 WantedBy=multi-user.target

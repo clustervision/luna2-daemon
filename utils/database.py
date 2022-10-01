@@ -30,6 +30,28 @@ class Database(object):
 
 
 	"""
+    Input - None 
+    Output - Return Cursor Od Database.
+    """
+	def get_cursor(self):
+		return self.cursor
+
+
+	"""
+    Input - None
+    Process - Check If Database is Active, Readable and Writable.
+    Output - Result/None.
+    """
+	def check_db(self):
+		try:
+			self.cursor.execute("SELECT * FROM user")
+			result = self.cursor.fetchone()
+		except Exception as e:
+			result = None
+		return result
+
+
+	"""
     Input - select fields, tablename, where clause 
     Process - It is SELECT operation on the DB.
     			select can be comma separated column name or None.

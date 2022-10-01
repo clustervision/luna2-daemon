@@ -67,10 +67,14 @@ def server_error(e):
 
 
 @api.errorhandler(503)
-def service_unavailable(e, msg):
-    error = {"message": msg + " Service Unavailable"}
+def service_unavailable(error):
+    error = {"message": str(error) + " Service Unavailable"}
     return json.dumps(error), 503
 
 
-if __name__ == "__main__":
+def main():
     api.run(host=SERVERIP, port=SERVERPORT, debug=True, threaded=True)
+
+
+if __name__ == "__main__":
+    main()

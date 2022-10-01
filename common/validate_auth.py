@@ -16,8 +16,9 @@ If Get API Has the Token, it will get the access to fetch more data.
 """
 import os
 from functools import wraps
-from flask import request, json
+from flask import request, json, abort
 from utils.log import *
+from utils.database import *
 import jwt
 
 logger = Log.get_logger()
@@ -74,4 +75,23 @@ def validate_access(f):
         except:
             return f(**kwargs)  ## Without Access admin to perform the minimal operation.
         return f(access=access, **kwargs)
+    return decorator
+
+
+"""
+Input - None
+Process - Verify If Database is present & Active and Working.
+Output - Success OR Abort to 503.
+"""
+def dbcheck(f):
+    @wraps(f)
+    def decorator(*args, **kwargs):
+        result = Database().check_db()
+        if result:
+            logger.info("Database Is Ready For The Transaction.")
+        else:
+            logger.error("Database Is Not Ready.")
+            abort(503, "Database")
+
+        return f(**kwargs)
     return decorator

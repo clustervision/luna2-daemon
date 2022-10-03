@@ -99,7 +99,7 @@ if configParser.has_section("SERVICES"):
 
 ############### LUNA OVERRIDE CONFIGURATION FILE ###################
 if override:
-	configParser.read('config/luna.ini')
+	configParser.read(override)
 	if configParser.has_section("CONNECTION"):
 		if configParser.has_option("CONNECTION", "SERVERIP"):
 			SERVERIP = configParser.get("CONNECTION", "SERVERIP")

@@ -12,9 +12,8 @@ Currently the Installation is tested only on CentOS 8 & 9 ARCH=64.
 Included ODBC Driver Managr, PostgreSQL Server & ODBC Driver, MySQL Server, SQLite, Git and OpenSSL
 ```
 dnf install -y wget yum-utils make gcc openssl-devel bzip2-devel libffi-devel zlib-devel \
-				git sqlite-devel unixODBC unixODBC-devel mysql-server postgresql-server \
-				postgresql-odbc
-				```
+				git sqlite-devel unixODBC unixODBC-devel mysql-server postgresql-server postgresql-odbc
+```
 
 ** In case of unavailability of any package find & installation process -> https://pkgs.org/
 * Install Python 3.10

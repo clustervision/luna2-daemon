@@ -176,3 +176,11 @@ if args["debug"]:
     LEVEL = "debug"
 
 ######################## POST CALCULATION ###########################
+
+
+######################## SET CRON JOB TO MONITOR ###########################
+# cronfile = "/etc/cron.d/luna2-daemon.monitor"
+# crondata = "0 * * * * root curl http://127.0.0.1:7050/monitor/service/luna2"
+# with open(cronfile, "w") as file:
+#     file.write(crondata)
+######################## SET CRON JOB TO MONITOR ###########################

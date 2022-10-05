@@ -65,11 +65,16 @@ class Database(object):
 		else:
 		    strcolumn = "*"
 		if where:
-		    query = "SELECT {} FROM '{}' WHERE {}".format(strcolumn, table, where)
+		    query = "SELECT {} FROM '{}' {}".format(strcolumn, table, where)
 		else:
 		    query = "SELECT {} FROM '{}'".format(strcolumn, table)
 		self.logger.debug("Query Executing => {} .".format(query))
-		self.cursor.execute(query)
+		try:
+			self.cursor.execute(query)
+		except Exception as e:
+			self.logger.error("Error occur While Executing => {}. Error Is {} .".format(query, str(e)))
+			return None
+		
 		names = list(map(lambda x: x[0], self.cursor.description)) # Fetching the Column Names
 		data = self.cursor.fetchall()
 		self.logger.debug("Data Set Retrived => {}.".format(str(data)))

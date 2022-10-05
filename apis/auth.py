@@ -68,7 +68,7 @@ def token():
     if USERNAME != username:
         logger.info("Username {} Not belongs to INI.".format(username))
         table = "user"
-        where = "username = '{}' AND roleid = '1'".format(username)
+        where = " WHERE username = '{}' AND roleid = '1'".format(username)
         user = Database().get_record(None, table, where)
         if user:
             UserID = user[0]["id"]

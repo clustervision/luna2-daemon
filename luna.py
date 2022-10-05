@@ -16,11 +16,14 @@ Getting the Constants from common/constant.py File
 #### To Generate the Application Security Key -> python -c 'import secrets; print(secrets.token_hex())'
 """
 
+
+# from common.sanitycheck import *
 from flask import Flask, request, abort, json
 from common.constant import *
-from utils.log import *
+# from utils.log import *
+from common.bootstrap import *
 
-logger = Log.init_log(LEVEL)
+# logger = Log.init_log(LEVEL)
 
 from apis.auth import auth_blueprint
 from apis.boot import boot_blueprint

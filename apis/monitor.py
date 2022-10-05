@@ -91,12 +91,24 @@ def checkdbstatus():
         sqlite = True
         if os.access(DATABASE, os.R_OK): 
             read = True
+            code = 500
+            try:
+                file = open(DATABASE, "a")
+                if file.writable():
+                    write = True
+                    code = 200
+                    file.close()
+            except Exception as e:
+                logger.error("DATABASE {} is Not Writable.".format(DATABASE))
+            
             with open(DATABASE,'r', encoding = "ISO-8859-1") as f:
                 header = f.read(100)
                 if header.startswith('SQLite format 3'):
-                    write = True
+                    read, write = True, True
                     code = 200
                 else:
+                    read, write = False, False
+                    code = 503
                     logger.error("DATABASE {} is Not a SQLite3 Database.".format(DATABASE))
         else:
             logger.error("DATABASE {} is Not Readable.".format(DATABASE))

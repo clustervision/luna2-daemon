@@ -56,26 +56,16 @@ class Database(object):
     Process - It is SELECT operation on the DB.
     			select can be comma separated column name or None.
 				table is the table name where the select operation should be happen.
-				where can be None for all OR a list of dict ex: where = [{"column": "name", "value": "cluster"}, {"column": "network", "value": "ib"}]
+				where can be None OR complete where condition
     Output - Fetch rows along with column name.
     """
 	def get_record(self, select=None, table=None, where=None):
-		if where:
-		    Where = []
-		    for cols in where:
-		        column = ""
-		        if 'column' in cols.keys():
-		            column = column + cols['column']
-		        if 'value' in cols.keys():
-		            column = column + " = '" +cols['value']+"'"
-		        Where.append(column)
-		        strWhere = ' AND '.join(map(str, Where))
 		if select:
 		    strcolumn = ','.join(map(str, select))
 		else:
 		    strcolumn = "*"
 		if where:
-		    query = "SELECT {} FROM '{}' WHERE {}".format(strcolumn, table, strWhere)
+		    query = "SELECT {} FROM '{}' WHERE {}".format(strcolumn, table, where)
 		else:
 		    query = "SELECT {} FROM '{}'".format(strcolumn, table)
 		self.logger.debug("Query Executing => {} .".format(query))

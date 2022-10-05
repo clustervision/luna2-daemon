@@ -15,6 +15,7 @@ Import this file will provide all variables which is fetched here.
 """
 
 import os
+import sys
 import argparse
 import configparser
 from pathlib import Path
@@ -43,6 +44,9 @@ if configParser.has_section("CONNECTION"):
 		SERVERIP = configParser.get("CONNECTION", "SERVERIP")
 	if configParser.has_option("CONNECTION", "SERVERPORT"):
 		SERVERPORT = configParser.get("CONNECTION", "SERVERPORT")
+	else:
+		print("Error :: SERVERPORT is not present ")
+		sys.exit(0)
 
 if configParser.has_section("LOGGER"):
 	if configParser.has_option("LOGGER", "LEVEL"):

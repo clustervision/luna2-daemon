@@ -17,13 +17,14 @@ Getting the Constants from common/constant.py File
 """
 
 
-# from common.sanitycheck import *
+
 from flask import Flask, request, abort, json
 from common.constant import *
-# from utils.log import *
-from common.bootstrap import *
+from utils.log import *
 
-# logger = Log.init_log(LEVEL)
+logger = Log.init_log(LEVEL)
+
+from common.bootstrap import *
 
 from apis.auth import auth_blueprint
 from apis.boot import boot_blueprint
@@ -38,6 +39,7 @@ api.register_blueprint(config_blueprint)
 api.register_blueprint(files_blueprint)
 api.register_blueprint(service_blueprint)
 api.register_blueprint(monitor_blueprint)
+
 
 
 @api.route('/')

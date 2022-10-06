@@ -154,8 +154,8 @@ class Database(object):
 		   self.cursor.execute(query)     
 		   self.connection.commit()
 		except Exception as e:
-		   print(e)
-		   sys.exit(0)
+			self.logger.error("Error occur While Executing => {}. Error Is {} .".format(query, str(e)))
+			return None
 		return True
 
 

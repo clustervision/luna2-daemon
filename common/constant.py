@@ -16,6 +16,8 @@ Import this file will provide all variables which is fetched here.
 
 import os
 import sys
+# import socket
+import ipaddress
 import argparse
 import configparser
 from pathlib import Path
@@ -35,136 +37,224 @@ BASE_DIR = str(UTILSDIR.parent)
 SECRET_KEY = '004f2af45d3a4e161a7dd2d17fdae47f'
 configParser = configparser.RawConfigParser()
 
+ConfigFile = "/trinity/local/luna/config/luna.ini"
 
-############### LUNA CONFIGURATION FILE ###################
 
-configParser.read('config/luna.ini')
-if configParser.has_section("CONNECTION"):
-	if configParser.has_option("CONNECTION", "SERVERIP"):
-		SERVERIP = configParser.get("CONNECTION", "SERVERIP")
-	if configParser.has_option("CONNECTION", "SERVERPORT"):
-		SERVERPORT = configParser.get("CONNECTION", "SERVERPORT")
-	else:
-		print("Error :: SERVERPORT is not present ")
+"""
+Input - Message and Default File True or False  
+Output - Print Message; If Error from Default, then Stop the Code.
+"""
+def ini_error(message, default):
+	print(message)
+	if default:
 		sys.exit(0)
 
-if configParser.has_section("LOGGER"):
-	if configParser.has_option("LOGGER", "LEVEL"):
-		LEVEL = configParser.get("LOGGER", "LEVEL")
-	if configParser.has_option("LOGGER", "LOGFILE"):
-		LOGFILE = configParser.get("LOGGER", "LOGFILE")
-
-if configParser.has_section("API"):
-	if configParser.has_option("API", "USERNAME"):
-		USERNAME = configParser.get("API", "USERNAME")
-	if configParser.has_option("API", "PASSWORD"):
-		PASSWORD = configParser.get("API", "PASSWORD")
-	if configParser.has_option("API", "EXPIRY"):
-		EXPIRY = configParser.get("API", "EXPIRY")
-
-if configParser.has_section("FILES"):
-	if configParser.has_option("FILES", "TARBALL"):
-		TARBALL = configParser.get("FILES", "TARBALL")
-
-if configParser.has_section("DATABASE"):
-	if configParser.has_option("DATABASE", "DRIVER"):
-		DRIVER = configParser.get("DATABASE", "DRIVER")
-	if configParser.has_option("DATABASE", "DATABASE"):
-		DATABASE = configParser.get("DATABASE", "DATABASE")
-	if configParser.has_option("DATABASE", "DBUSER"):
-		DBUSER = configParser.get("DATABASE", "DBUSER")
-	if configParser.has_option("DATABASE", "DBPASSWORD"):
-		DBPASSWORD = configParser.get("DATABASE", "DBPASSWORD")
-	if configParser.has_option("DATABASE", "HOST"):
-		HOST = configParser.get("DATABASE", "HOST")
-	if configParser.has_option("DATABASE", "PORT"):
-		PORT = configParser.get("DATABASE", "PORT")
-
-if configParser.has_section("LOGGER"):
-	if configParser.has_option("LOGGER", "LEVEL"):
-		LEVEL = configParser.get("LOGGER", "LEVEL")
-	if configParser.has_option("LOGGER", "LOGFILE"):
-		LOGFILE = configParser.get("LOGGER", "LOGFILE")
-
-if configParser.has_section("SERVICES"):
-	if configParser.has_option("SERVICES", "DHCP"):
-		DHCP = configParser.get("SERVICES", "DHCP")
-	if configParser.has_option("SERVICES", "DNS"):
-		DNS = configParser.get("SERVICES", "DNS")
-	if configParser.has_option("SERVICES", "CONTROL"):
-		CONTROL = configParser.get("SERVICES", "CONTROL")
-	if configParser.has_option("SERVICES", "COOLDOWN"):
-		COOLDOWN = configParser.get("SERVICES", "COOLDOWN")
-	if configParser.has_option("SERVICES", "COMMAND"):
-		COMMAND = configParser.get("SERVICES", "COMMAND")
-
-############### LUNA CONFIGURATION FILE ###################
+"""
+Input - Section And Option From INI File  
+Output - Set the Global Variable
+"""
+def set_variable(section, option):
+	globals()[option] = configParser.get(section, option)
 
 
-############### LUNA OVERRIDE CONFIGURATION FILE ###################
-if override:
-	configParser.read(override)
+"""
+Input - Filename and Default File True or False
+Output - Retrive Configuration
+"""
+def getconfig(filename=None, default=None):
+	configParser.read(filename)
 	if configParser.has_section("CONNECTION"):
 		if configParser.has_option("CONNECTION", "SERVERIP"):
-			SERVERIP = configParser.get("CONNECTION", "SERVERIP")
+			set_variable("CONNECTION", "SERVERIP")
+		else:
+			message = "ERROR :: In CONNECTION, SERVERIP is Unavailable in {}.".format(filename)
+			ini_error(message, default)
 		if configParser.has_option("CONNECTION", "SERVERPORT"):
-			SERVERPORT = configParser.get("CONNECTION", "SERVERPORT")
+			set_variable("CONNECTION", "SERVERPORT")
+		else:
+			message = "ERROR :: In CONNECTION, SERVERPORT is Unavailable in {}.".format(filename)
+			ini_error(message, default)
+	else:
+		message = "ERROR :: Section Name CONNECTION is Unavailable in {}.".format(filename)
+		ini_error(message, default)
+
 
 	if configParser.has_section("LOGGER"):
 		if configParser.has_option("LOGGER", "LEVEL"):
-			LEVEL = configParser.get("LOGGER", "LEVEL")
+			set_variable("LOGGER", "LEVEL")
+		else:
+			message = "ERROR :: In LOGGER, LEVEL is Unavailable in {}.".format(filename)
+			ini_error(message, default)
 		if configParser.has_option("LOGGER", "LOGFILE"):
-			LOGFILE = configParser.get("LOGGER", "LOGFILE")
+			set_variable("LOGGER", "LOGFILE")
+		else:
+			message = "ERROR :: In LOGGER, LOGFILE is Unavailable in {}.".format(filename)
+			ini_error(message, default)
+	else:
+		message = "ERROR :: Section Name LOGGER is Unavailable in {}.".format(filename)
+		ini_error(message, default)
+
 
 	if configParser.has_section("API"):
 		if configParser.has_option("API", "USERNAME"):
-			USERNAME = configParser.get("API", "USERNAME")
+			set_variable("API", "USERNAME")
+		else:
+			message = "ERROR :: In API, USERNAME is Unavailable in {}.".format(filename)
+			ini_error(message, default)
 		if configParser.has_option("API", "PASSWORD"):
-			PASSWORD = configParser.get("API", "PASSWORD")
+			set_variable("API", "PASSWORD")
+		else:
+			message = "ERROR :: In API, PASSWORD is Unavailable in {}.".format(filename)
+			ini_error(message, default)
 		if configParser.has_option("API", "EXPIRY"):
-			EXPIRY = configParser.get("API", "EXPIRY")
+			set_variable("API", "EXPIRY")
+		else:
+			message = "ERROR :: In API, EXPIRY is Unavailable in {}.".format(filename)
+			ini_error(message, default)
+	else:
+		message = "ERROR :: Section Name API is Unavailable in {}.".format(filename)
+		ini_error(message, default)
 
 	if configParser.has_section("FILES"):
 		if configParser.has_option("FILES", "TARBALL"):
-			TARBALL = configParser.get("FILES", "TARBALL")
+			set_variable("FILES", "TARBALL")
+		else:
+			message = "ERROR :: In FILES, TARBALL is Unavailable in {}.".format(filename)
+			ini_error(message, default)
+	else:
+		message = "ERROR :: Section Name FILES is Unavailable in {}.".format(filename)
+		ini_error(message, default)
 
 	if configParser.has_section("DATABASE"):
 		if configParser.has_option("DATABASE", "DRIVER"):
-			DRIVER = configParser.get("DATABASE", "DRIVER")
+			set_variable("DATABASE", "DRIVER")
+		else:
+			message = "ERROR :: In DATABASE, DRIVER is Unavailable in {}.".format(filename)
+			ini_error(message, default)
 		if configParser.has_option("DATABASE", "DATABASE"):
-			DATABASE = configParser.get("DATABASE", "DATABASE")
+			set_variable("DATABASE", "DATABASE")
+		else:
+			message = "ERROR :: In DATABASE, DATABASE is Unavailable in {}.".format(filename)
+			ini_error(message, default)
 		if configParser.has_option("DATABASE", "DBUSER"):
-			DBUSER = configParser.get("DATABASE", "DBUSER")
+			set_variable("DATABASE", "DBUSER")
+		else:
+			message = "ERROR :: In DATABASE, DBUSER is Unavailable in {}.".format(filename)
+			ini_error(message, default)
 		if configParser.has_option("DATABASE", "DBPASSWORD"):
-			DBPASSWORD = configParser.get("DATABASE", "DBPASSWORD")
+			set_variable("DATABASE", "DBPASSWORD")
+		else:
+			message = "ERROR :: In DATABASE, DBPASSWORD is Unavailable in {}.".format(filename)
+			ini_error(message, default)
 		if configParser.has_option("DATABASE", "HOST"):
-			HOST = configParser.get("DATABASE", "HOST")
+			set_variable("DATABASE", "HOST")
+		else:
+			message = "ERROR :: In DATABASE, HOST is Unavailable in {}.".format(filename)
+			ini_error(message, default)
 		if configParser.has_option("DATABASE", "PORT"):
-			PORT = configParser.get("DATABASE", "PORT")
-
-	if configParser.has_section("LOGGER"):
-		if configParser.has_option("LOGGER", "LEVEL"):
-			LEVEL = configParser.get("LOGGER", "LEVEL")
-		if configParser.has_option("LOGGER", "LOGFILE"):
-			LOGFILE = configParser.get("LOGGER", "LOGFILE")
+			set_variable("DATABASE", "PORT")
+		else:
+			message = "ERROR :: In DATABASE, PORT is Unavailable in {}.".format(filename)
+			ini_error(message, default)
+	else:
+		message = "ERROR :: Section Name DATABASE is Unavailable in {}.".format(filename)
+		ini_error(message, default)
 
 	if configParser.has_section("SERVICES"):
 		if configParser.has_option("SERVICES", "DHCP"):
-			DHCP = configParser.get("SERVICES", "DHCP")
+			set_variable("SERVICES", "DHCP")
+		else:
+			message = "ERROR :: In SERVICES, DHCP is Unavailable in {}.".format(filename)
+			ini_error(message, default)
 		if configParser.has_option("SERVICES", "DNS"):
-			DNS = configParser.get("SERVICES", "DNS")
+			set_variable("SERVICES", "DNS")
+		else:
+			message = "ERROR :: In SERVICES, DNS is Unavailable in {}.".format(filename)
+			ini_error(message, default)
 		if configParser.has_option("SERVICES", "CONTROL"):
-			CONTROL = configParser.get("SERVICES", "CONTROL")
+			set_variable("SERVICES", "CONTROL")
+		else:
+			message = "ERROR :: In SERVICES, CONTROL is Unavailable in {}.".format(filename)
+			ini_error(message, default)
 		if configParser.has_option("SERVICES", "COOLDOWN"):
-			COOLDOWN = configParser.get("SERVICES", "COOLDOWN")
+			set_variable("SERVICES", "COOLDOWN")
+		else:
+			message = "ERROR :: In SERVICES, COOLDOWN is Unavailable in {}.".format(filename)
+			ini_error(message, default)
 		if configParser.has_option("SERVICES", "COMMAND"):
-			COMMAND = configParser.get("SERVICES", "COMMAND")
+			set_variable("SERVICES", "COMMAND")
+		else:
+			message = "ERROR :: In SERVICES, COMMAND is Unavailable in {}.".format(filename)
+			ini_error(message, default)
+	else:
+		message = "ERROR :: Section Name SERVICES is Unavailable in {}.".format(filename)
+		ini_error(message, default)
 
-############### LUNA OVERRIDE CONFIGURATION FILE ###################
+
+"""
+Input - Filename
+Output - Check File Existence And Readability
+"""
+def checkfile(filename=None):
+	ConfigFilePath = Path(filename)
+	if ConfigFilePath.is_file():
+		if os.access(filename, os.R_OK):
+			return True
+		else:
+			print("File {} Is Not readable.".format(filename))
+	else:
+		print("File {} Is Abesnt.".format(filename))
+	return False
+
+"""
+Input - Directory
+Output - Directory Existence, Readability and Writable
+"""
+def checkdir(directory=None):
+	if os.path.exists(directory):
+		if os.access(directory, os.R_OK):
+			if os.access(directory, os.W_OK):
+				return True
+			else:
+				print("Directory {} Is Writable.".format(directory))
+		else:
+			print("Directory {} Is Not readable.".format(directory))
+	else:
+	    print("Directory {} Is Not exists.".format(directory))
+	return False
 
 
-######################## POST CALCULATION ###########################
+"""
+Input - Filename and Default File True or False
+Output - Check If File Writable
+"""
+def checkwritable(filename=None):
+	write = False
+	try:
+	    file = open(filename, "a")
+	    if file.writable():
+	        write = True
+	except Exception as e:
+	    print("File {} is Not Writable.".format(filename))
+	return write
 
+"""
+Calling Methods with INI File and Default Option.
+"""
+file_check = checkfile(ConfigFile)
+if file_check:
+	getconfig(ConfigFile, True)
+else:
+	sys.exit(0)
+if override:
+	file_check_override = checkfile(override)
+	if file_check_override:
+		getconfig(override, False)
+
+
+"""
+Post Retrieval Calculation
+"""
 if EXPIRY:
 	EXPIRY = int(EXPIRY.replace("h", ""))
 	EXPIRY = EXPIRY*60*60
@@ -179,8 +269,49 @@ else:
 if args["debug"]:
     LEVEL = "debug"
 
-######################## POST CALCULATION ###########################
 
+"""
+Sanity Checks On SERVERIP, SERVERPORT, LOGFILE, TARBALL
+"""
+
+def check_ip(ipaddr):
+	try:
+	    ip = ipaddress.ip_address(ipaddr)
+	except Exception as e:
+	    print("Invalid IP Address: {} ".format(ipaddr))
+check_ip(SERVERIP)
+
+
+def check_port(ipaddr, port):
+	if int(port) < 0 or int(port) > 65535:
+		return True
+    # with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+    # 	return s.connect_ex((ipaddr, int(port))) == 0
+
+port_check = check_port(SERVERIP, SERVERPORT)
+if port_check:
+	print("Port: {} Is In Use, Kindly Free This Port OR Use Other Port.".format(SERVERPORT))
+	sys.exit(0)
+
+check_log_read = checkfile(LOGFILE)
+if check_log_read is not True:
+	print("Log File: {} Is Not Readable.".format(LOGFILE))
+	sys.exit(0)
+
+check_log_write = checkwritable(LOGFILE)
+if check_log_write is not True:
+	print("Log File: {} Is Not Writable.".format(LOGFILE))
+	sys.exit(0)
+
+check_dir_read = checkdir(TARBALL)
+if check_dir_read is not True:
+	print("TARBALL Directory: {} Is Not Readable.".format(TARBALL))
+	sys.exit(0)
+
+check_dir_write = checkdir(TARBALL)
+if check_dir_write is not True:
+	print("TARBALL Directory: {} Is Not Writable.".format(TARBALL))
+	sys.exit(0)
 
 ######################## SET CRON JOB TO MONITOR ###########################
 # cronfile = "/etc/cron.d/luna2-daemon.monitor"

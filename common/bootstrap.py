@@ -14,14 +14,17 @@ This File is responsible to Check & Perform all bootstrap related activity.
 """
 
 from common.dbcheck import *
+import hostlist
 
 Bootstrap = False
-BootStrapFile = "/trinity/local/luna/config/bootstrap.ini"
+#########>>>>>>............. DEVELOPMENT PURPOSE ------>> Remove Line 20 and 21 When Feature is Developed, And Uncomment Next Line --> BootStrapFile
+BootStrapFile = "/trinity/local/luna/config/bootstrapDEV.ini"
+#########>>>>>>............. DEVELOPMENT PURPOSE
+# BootStrapFile = "/trinity/local/luna/config/bootstrap.ini"
 BootStrapFilePath = Path(BootStrapFile)
 
 
 def bootstrap():
-	Nodes = []
 	configParser.read(BootStrapFile)
 	if configParser.has_section("HOSTS"):
 		if configParser.has_option("HOSTS", "CONTROLLER1"):
@@ -34,13 +37,7 @@ def bootstrap():
 			logger.error("In HOSTS, CONTROLLER2 is Unavailable in {}.".format(BootStrapFile))
 		if configParser.has_option("HOSTS", "NODELIST"):
 			NODELIST = configParser.get("HOSTS", "NODELIST")
-			if NODELIST:
-				nodename = NODELIST.split("[",1)[0]
-				nodecount = NODELIST.replace(nodename, "").replace("[", "").replace("]", "")
-				nodecount = nodecount.split("-")
-				length = nodecount[1].count('0')
-				for x in range(int(nodecount[1])):
-					Nodes.append(nodename+str(x+1).zfill(length+1))				
+			NODELIST = hostlist.expand_hostlist(NODELIST)			
 		else:
 			logger.error("In HOSTS, NODELIST is Unavailable in {}.".format(BootStrapFile))
 	else:
@@ -91,39 +88,53 @@ def bootstrap():
 	else:
 		logger.error("Section Name BMCSETUP is Unavailable in {}.".format(BootStrapFile))
 
-	print(Nodes)
+
+	##########>>>>>>>>>>............ Database Insert Activity; Still not Finalize
+	# table = ["cluster", "bmcsetup", "group", "groupinterface", "groupsecrets", "network", "osimage", "switch", "tracker", "node", "nodeinterface", "nodesecrets"]
+	# for x in table:
+	# 	row = [{"column": "name", "value": "node004"}, {"column": "ip", "value": "10.141.0.1"}]
+	# 	result = Database().insert(x, row)
+	# 	if result is None:
+	# 		sys.exit(0)
+
+	# Rename bootstrap.ini file to bootstrap-time().ini
+
+	##########>>>>>>>>>>............ Database Insert Activity; Still not Finalize
 
 
-
+bootstrap_file, database_ready = False, False
 
 if BootStrapFilePath.is_file():
 	logger.info("Bootstrp file is present {}.".format(BootStrapFile))
 	if os.access(BootStrapFile, os.R_OK):
 		logger.info("Bootstrp file is readable {}.".format(BootStrapFile))
-		checkdb, code = checkdbstatus()
-		if checkdb["read"] == True and checkdb["write"] == True:
-			logger.info("Database {} READ WRITE Check TRUE.".format(checkdb["database"]))
-			table = ["cluster", "bmcsetup", "group", "groupinterface", "groupsecrets", "network", "osimage", "switch", "tracker", "node", "nodeinterface", "nodesecrets"]
-			num = 0
-			for x in table:
-				result = Database().get_record(None, x, None)
-				if result is None:
-					sys.exit(0)
-				if result:
-					num = num+1
-			num = 0 ##############>>>>>>>>>>>>>>>>>>>..... REMOVE THIS LINE AFTER DEVELOPMENT
-			if num == 0:
-				logger.info("Database {} Is Empty and Daemon Ready for BootStrapping.".format(checkdb["database"]))
-				bootstrap()
-			else:
-				logger.info("Database {} Already Filled with Data.".format(checkdb["database"]))
-		else:
-			logger.error("Database {} READ {} WRITE {} Check TRUE file is not readable {}.".format(checkdb["database"], checkdb["read"], checkdb["write"]))
-
+		bootstrap_file = True
 	else:
 		logger.error("Bootstrp file is not readable {}.".format(BootStrapFile))
-else:
-	logger.error("Bootstrp file is abesnt {}.".format(BootStrapFile))
+# else:
+# 	logger.info("Bootstrp file is abesnt {}.".format(BootStrapFile))
+
+if bootstrap_file:
+	checkdb, code = checkdbstatus()
+	if checkdb["read"] == True and checkdb["write"] == True:
+		logger.info("Database {} READ WRITE Check TRUE.".format(checkdb["database"]))
+		table = ["cluster", "bmcsetup", "group", "groupinterface", "groupsecrets", "network", "osimage", "switch", "tracker", "node", "nodeinterface", "nodesecrets"]
+		num = 0
+		for tableX in table:
+			result = Database().get_record(None, tableX, None)
+			if result is None:
+				sys.exit(0)
+			if result:
+				num = num+1
+		num = 0 ##############>>>>>>>>>>>>>>>>>>>..... REMOVE THIS LINE AFTER DEVELOPMENT
+		if num == 0:
+			logger.info("Database {} Is Empty and Daemon Ready for BootStrapping.".format(checkdb["database"]))
+			database_ready = True
+		else:
+			logger.info("Database {} Already Filled with Data.".format(checkdb["database"]))
+	else:
+		logger.error("Database {} READ {} WRITE {} Is not correct.".format(checkdb["database"], checkdb["read"], checkdb["write"]))
 
 
-sys.exit(0)
+if database_ready:
+	bootstrap()

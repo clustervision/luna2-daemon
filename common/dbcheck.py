@@ -15,9 +15,7 @@ This File is responsible to Check The Status for Database.
 
 import os
 from utils.database import *
-from utils.log import *
-logger = Log.init_log(LEVEL)
-
+logger = Log.get_logger()
 """
 Input - None
 Process - Check the Current Database condition.

@@ -5,6 +5,9 @@ Description=Luna 2 Daemon
 Type=oneshot
 RemainAfterExit=true
 ExecStart=/trinity/local/luna/config/server.sh
+ExecReload=/trinity/local/luna/config/server.sh
 
 [Install]
 WantedBy=multi-user.target
+
+# Always setenforce 0 or /sbin/setenforce 0

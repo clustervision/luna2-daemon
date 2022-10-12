@@ -34,7 +34,7 @@ class Service(object):
     """
     def luna_service(self, name, action):
         match name:
-            case self.DHCP | self.DNS | "luna2":
+            case self.DHCP | self.DNS | "luna2-daemon":
                 match action:
                     case "start" | "stop" | "reload" | "restart" | "status":
                         command = "{} {} {}".format(COMMAND, action, name) ## Fetch the command from the .ini file

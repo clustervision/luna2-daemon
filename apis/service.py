@@ -92,5 +92,5 @@ def reload():
         logger.error(str(error))
         abort(503, str(error))
     else:
-        response, code = Service().luna_service("luna2", "reload")
+        response, code = Service().luna_service("luna2-daemon", "reload")
         return json.dumps(response), code

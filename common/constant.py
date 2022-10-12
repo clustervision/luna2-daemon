@@ -190,6 +190,16 @@ def getconfig(filename=None, default=None):
 		message = "ERROR :: Section Name SERVICES is Unavailable in {}.".format(filename)
 		ini_error(message, default)
 
+	if configParser.has_section("TEMPLATES"):
+		if configParser.has_option("TEMPLATES", "TEMPLATES_DIR"):
+			set_variable("TEMPLATES", "TEMPLATES_DIR")
+		else:
+			message = "ERROR :: In TEMPLATES, TEMPLATES_DIR is Unavailable in {}.".format(filename)
+			ini_error(message, default)
+	else:
+		message = "ERROR :: Section Name TEMPLATES is Unavailable in {}.".format(filename)
+		ini_error(message, default)
+
 
 """
 Input - Filename
@@ -271,7 +281,7 @@ if args["debug"]:
 
 
 """
-Sanity Checks On SERVERIP, SERVERPORT, LOGFILE, TARBALL
+Sanity Checks On SERVERIP, SERVERPORT, LOGFILE, TARBALL, TEMPLATES_DIR
 """
 
 def check_ip(ipaddr):
@@ -279,6 +289,7 @@ def check_ip(ipaddr):
 	    ip = ipaddress.ip_address(ipaddr)
 	except Exception as e:
 	    print("Invalid IP Address: {} ".format(ipaddr))
+	    sys.exit(0)
 check_ip(SERVERIP)
 
 
@@ -313,6 +324,31 @@ if check_dir_write is not True:
 	print("TARBALL Directory: {} Is Not Writable.".format(TARBALL))
 	sys.exit(0)
 
+check_dir_read = checkdir(TEMPLATES_DIR)
+if check_dir_read is not True:
+	print("TEMPLATES_DIR Directory: {} Is Not Readable.".format(TEMPLATES_DIR))
+	sys.exit(0)
+
+check_dir_write = checkdir(TEMPLATES_DIR)
+if check_dir_write is not True:
+	print("TEMPLATES_DIR Directory: {} Is Not Writable.".format(TEMPLATES_DIR))
+	sys.exit(0)
+
+check_boot_ipxe_read = checkfile(TEMPLATES_DIR+"/boot_ipxe.cfg")
+if check_boot_ipxe_read is not True:
+    print("Boot PXE File: {} Is Not Readable.".format(TEMPLATES_DIR+"/boot_ipxe.cfg"))
+    sys.exit(0)
+
+check_boot_ipxe_write = checkwritable(TEMPLATES_DIR+"/boot_ipxe.cfg")
+if check_boot_ipxe_write is not True:
+    print("Boot PXE File: {} Is Not Writable.".format(TEMPLATES_DIR+"/boot_ipxe.cfg"))
+    sys.exit(0)
+
+if check_boot_ipxe_read and check_boot_ipxe_write:
+	with open(TEMPLATES_DIR+"/boot_ipxe.cfg", "r") as bootfile:
+		bootfile = bootfile.readlines()
+	# print(bootfile)
+	
 ######################## SET CRON JOB TO MONITOR ###########################
 # cronfile = "/etc/cron.d/luna2-daemon.monitor"
 # crondata = "0 * * * * root curl http://127.0.0.1:7050/monitor/service/luna2"

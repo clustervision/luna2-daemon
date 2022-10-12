@@ -22,6 +22,8 @@ from utils.log import *
 from utils.service import *
 import queue
 import time
+import sys
+from jinja2 import Environment
 
 logger = Log.get_logger()
 service_blueprint = Blueprint('service', __name__)
@@ -49,3 +51,46 @@ def service(name, action):
         time.sleep(COOLDOWN) ## Cool Down to Manage the Service itself.
         logger.info(response)
     return json.dumps(response), code
+
+
+@service_blueprint.route("/service/reload", methods=['GET'])
+def reload():
+    check_dir_read = checkdir(TEMPLATES_DIR)
+    if check_dir_read is not True:
+        print("TEMPLATES_DIR Directory: {} Is Not Readable.".format(TEMPLATES_DIR))
+        sys.exit(0)
+
+    check_dir_write = checkdir(TEMPLATES_DIR)
+    if check_dir_write is not True:
+        print("TEMPLATES_DIR Directory: {} Is Not Writable.".format(TEMPLATES_DIR))
+        sys.exit(0)
+
+    check_boot_ipxe_read = checkfile(TEMPLATES_DIR+"/boot_ipxe.cfg")
+    if check_boot_ipxe_read is not True:
+        print("Boot PXE File: {} Is Not Readable.".format(TEMPLATES_DIR+"/boot_ipxe.cfg"))
+        sys.exit(0)
+
+    check_boot_ipxe_write = checkwritable(TEMPLATES_DIR+"/boot_ipxe.cfg")
+    if check_boot_ipxe_write is not True:
+        print("Boot PXE File: {} Is Not Writable.".format(TEMPLATES_DIR+"/boot_ipxe.cfg"))
+        sys.exit(0)
+    if check_boot_ipxe_read and check_boot_ipxe_write:
+        with open(TEMPLATES_DIR+"/boot_ipxe.cfg", "r") as newbootfile:
+            newbootfile = newbootfile.readlines()
+    parse = None
+    error = ""
+    if newbootfile != bootfile:
+        try:
+            env = Environment()
+            with open(TEMPLATES_DIR+"/boot_ipxe.cfg") as template:
+                parse = env.parse(template.read())
+                parse = False
+        except Exception as e:
+            parse = True
+            error = e
+    if parse:
+        logger.error(str(error))
+        abort(503, str(error))
+    else:
+        response, code = Service().luna_service("luna2", "reload")
+        return json.dumps(response), code

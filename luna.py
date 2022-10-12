@@ -41,7 +41,6 @@ api.register_blueprint(service_blueprint)
 api.register_blueprint(monitor_blueprint)
 
 
-
 @api.route('/')
 def main():
     abort(404)

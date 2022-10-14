@@ -27,19 +27,32 @@ import pyfiglet
 from argparse import ArgumentParser
 import subprocess
 import logging
-# import requests
-# from dotenv import load_dotenv
-import configparser
+from configparser import RawConfigParser
+from pathlib import Path
 
-# load_dotenv('config/.env', override=False)
+CurrentDir = os.path.dirname(os.path.realpath(__file__))
+UTILSDIR = Path(CurrentDir)
+BASE_DIR = str(UTILSDIR.parent)
+configParser = RawConfigParser()
+ConfigFile = "/trinity/local/luna/config/luna.ini"
 
-# token = os.getenv('TOKEN')
-# serverip = os.getenv('SERVERIP')
-# serverport = os.getenv('RESTSERVERPORT')
+global CONSTANT
 
-# configParser = configparser.RawConfigParser()
-# configParser.read('config/config.ini')
-# SERVICEFILE = configParser.get("FILES", "service_file") 
+CONSTANT = {
+    "CONNECTION": { "SERVERIP": None, "SERVERPORT": None },
+    "LOGGER": { "LEVEL": None, "LOGFILE": None },
+    "API": { "USERNAME": None, "PASSWORD": None, "EXPIRY": None },
+    "DATABASE": { "DRIVER": None, "DATABASE": None, "DBUSER": None, "DBPASSWORD": None, "HOST": None, "PORT": None },
+    "FILES": { "TARBALL": None },
+    "SERVICES": { "DHCP": None, "DNS": None, "CONTROL": None, "COOLDOWN": None, "COMMAND": None },
+    "TEMPLATES": { "TEMPLATES_DIR": None }
+}
+
+
+
+
+
+
 
 def banner():
     MainBanner = "ClusterVision  "
@@ -68,6 +81,7 @@ def daemon():
     if args["ini"]:
         override = args["ini"]
     if args["command"] == "start":
+        updateconfig(args)
         start()
     if args["command"] == "stop":
         stop()
@@ -92,15 +106,22 @@ def cleanup():
 Start systemd service
 """
 def start():
-    command = "gunicorn -w 4 -b 0.0.0.0:7050 --log-file ./log/gunicorn.log --log-level INFO --access-logfile ./log/gunicorn-access.log --error-logfile ./log/gunicorn-error.log 'luna:api' &"
-    process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
+    processes = check_run()
+    if processes:
+        print("luna2-daemon Is Already Running.")
+    else:
+        command = "gunicorn -w 4 -b {}:{} --log-file ./log/gunicorn.log --log-level {} --access-logfile ./log/gunicorn-access.log --error-logfile ./log/gunicorn-error.log 'luna:api' &".format(SERVERIP, SERVERPORT, LEVEL)
+        process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
+        print("luna2-daemon Is Started Now.")
+    return True
+
     pass
     ## systemctl start luna2-daemon
 
 """
 Stop systemd service
 """
-def stop():
+def check_run():
     command = "lsof -i -P -n | grep LISTEN | grep 7050 | cut -d ' ' -f3"
     process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
     output = process.communicate()
@@ -109,13 +130,21 @@ def stop():
     output = output.replace("(", "")
     output = output.split("\\n")
     output = [i for i in output if i]
-    print(output)
-    for x in output:
-        command = "kill -9 {}".format(str(x))
-        process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
-        output = process.communicate()
-        print(output) 
     return output
+
+"""
+Stop systemd service
+"""
+def stop():
+    processes = check_run()
+    if processes:
+        for x in processes:
+            command = "kill -9 {}".format(str(x))
+            process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
+            processes = process.communicate()
+        print("luna2-daemon Is Stopped Now.")
+    else:
+        print("luna2-daemon Is Already Stopped.")
     ## systemctl stop luna2-daemon
 
 """
@@ -139,36 +168,75 @@ def status():
     pass
     ## systemctl status luna2-daemon
 
-"""
-Run Shell Command 
-"""
-def runcommand(command):
-    # process = subprocess.Popen(command, shell=True, stdin=None, stdout=None, stderr=None, close_fds=True)
-    process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
-    # logger.debug("Command Executed {}".format(command))
-    # output = process.communicate()
-    # process.wait()
-    # logger.debug("Output Of Command {} ".format(str(output)))
-    # return output
+
+def checksection():
+    for item in list(CONSTANT.keys()):
+        if item not in configParser.sections():
+            print("ERROR :: Section {} Is Missing, Kindly Check The File {}.".format(item, filename))
+            sys.exit(0)
+
+
+def checkoption(each_section):
+    for item in list(CONSTANT[each_section].keys()):
+        if item.lower() not in list(dict(configParser.items(each_section)).keys()):
+            print("ERROR :: Section {} Don't Have Option {}, Kindly Check The File {}.".format(each_section, each_key.upper(), filename))
+            sys.exit(0)
+
+def getconfig(filename=None):
+    configParser.read(filename)
+    checksection()
+    for each_section in configParser.sections():
+        for (each_key, each_val) in configParser.items(each_section):
+            globals()[each_key.upper()] = each_val
+            if each_section in list(CONSTANT.keys()):
+                checkoption(each_section)
+                CONSTANT[each_section][each_key.upper()] = each_val
+            else:
+                CONSTANT[each_section] = {}
+                CONSTANT[each_section][each_key.upper()] = each_val
+
+
+def updateconfig(args):
+    file_check = checkfile(ConfigFile)
+    if file_check:
+        getconfig(ConfigFile)
+    else:
+        sys.exit(0)
+
+    if args["ini"]:
+        file_check_override = checkfile(args["ini"])
+        if file_check_override:
+            getconfig(args["ini"])
+
+    # if EXPIRY:
+    #     EXPIRY = int(EXPIRY.replace("h", ""))
+    #     EXPIRY = EXPIRY*60*60
+    # else:
+    #     EXPIRY = 24*60*60
+    # sys.exit(0)
+
+    # if COOLDOWN:
+    #     COOLDOWN = int(COOLDOWN.replace("s", ""))
+    # else:
+    #     COOLDOWN = 2
+
+    if args["debug"]:
+        LEVEL = "debug"
 
 """
-Run Sanity Check on Everything from INI File, Bootstrap and Templates
+Input - Filename
+Output - Check File Existence And Readability
 """
-def sanitycheck():
-    pass
-
-"""
-Navigation from the Start, Reload, and Restart; Check the Debug is True; Run gunicorn with worker and logs level from INI file
-"""
-def rundaemon():
-    command = "gunicorn -w 4 -b 0.0.0.0:7050 --log-file ./log/gunicorn.log --log-level INFO --access-logfile ./log/gunicorn-access.log --error-logfile ./log/gunicorn-error.log 'luna:api' &"
-    output = runcommand(command)
-    return output
-    # pass
-    ## Extract IP, Port, Log-level, and Log-file from INI file. 
-    ##
-    ##
-    ## gunicorn -w 4 -b 0.0.0.0:7050 --log-file ./log/gunicorn.log --log-level INFO --access-logfile ./log/gunicorn-access.log --error-logfile ./log/gunicorn-error.log 'luna:api' &
+def checkfile(filename=None):
+    ConfigFilePath = Path(filename)
+    if ConfigFilePath.is_file():
+        if os.access(filename, os.R_OK):
+            return True
+        else:
+            print("File {} Is Not readable.".format(filename))
+    else:
+        print("File {} Is Abesnt.".format(filename))
+    return False
 
 
 if __name__ == "__main__":

@@ -16,8 +16,6 @@ Getting the Constants from common/constant.py File
 #### To Generate the Application Security Key -> python -c 'import secrets; print(secrets.token_hex())'
 """
 
-
-
 from flask import Flask, request, abort, json
 from common.constant import *
 from utils.log import *
@@ -43,7 +41,7 @@ api.register_blueprint(monitor_blueprint)
 
 @api.route('/')
 def main():
-    abort(404)
+    return abort(404)
 
 
 @api.errorhandler(400)

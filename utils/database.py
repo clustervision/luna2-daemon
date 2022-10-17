@@ -13,7 +13,7 @@ This Class Identify the specified Database Connection from Configuration and ret
 Database have the default methods for CRUD. In case of changing database model dosn't impact the application.
 
 """
-
+import sys
 import pyodbc
 from utils.log import *
 
@@ -61,13 +61,13 @@ class Database(object):
     """
 	def get_record(self, select=None, table=None, where=None):
 		if select:
-		    strcolumn = ','.join(map(str, select))
+			strcolumn = ','.join(map(str, select))
 		else:
-		    strcolumn = "*"
+			strcolumn = "*"
 		if where:
-		    query = "SELECT {} FROM '{}' {}".format(strcolumn, table, where)
+			query = "SELECT {} FROM '{}' {}".format(strcolumn, table, where)
 		else:
-		    query = "SELECT {} FROM '{}'".format(strcolumn, table)
+			query = "SELECT {} FROM '{}'".format(strcolumn, table)
 		self.logger.debug("Query Executing => {} .".format(query))
 		try:
 			self.cursor.execute(query)
@@ -81,10 +81,10 @@ class Database(object):
 		rowdict = {}
 		response = []
 		for row in data:
-		    for key, value in zip(names,row):
-		        rowdict[key] = value
-		    response.append(rowdict)
-		    rowdict = {}
+			for key, value in zip(names,row):
+				rowdict[key] = value
+			response.append(rowdict)
+			rowdict = {}
 		return response
 
 
@@ -98,29 +98,25 @@ class Database(object):
     """
 	def create(self, table=None, column=None):
 		columns = []
-		for cols in tablecolumn:
-		    column = ""
-		    if 'column' in cols.keys():
-		        column = column + ' [' + cols['column'] + '] '
-		    if 'datatype' in cols.keys():
-		        column = column + ' ' +cols['datatype'] + ' '
-		    if 'length' in cols.keys():
-		        column = column + ' (' +cols['length'] + ') '
-		    if 'key'in cols.keys():
-		        column = column + ' ' +cols['key'] + ' '
-		    columns.append(column)
-		    strcolumns = ', '.join(map(str, columns))
+		for cols in column:
+			strcolumn = ""
+			if 'column' in cols.keys():
+				strcolumn = strcolumn + ' [' + cols['column'] + '] '
+			if 'datatype' in cols.keys():
+				strcolumn = strcolumn + ' ' +cols['datatype'] + ' '
+			if 'length' in cols.keys():
+				strcolumn = strcolumn + ' (' +cols['length'] + ') '
+			if 'key'in cols.keys():
+				strcolumn = strcolumn + ' ' +cols['key'] + ' '
+			columns.append(strcolumn)
+			strcolumns = ', '.join(map(str, columns))
 		query = "CREATE TABLE IF NOT EXISTS `{}` ({})".format(table, strcolumns)
-		# print(query)
-		# sys.exit(0)
 		try:
-		    cursor.execute(query)     
-		    connection.commit()
+			self.cursor.execute(query)
+			self.connection.commit()
 		except Exception as e:
-		    print(e)
-		    sys.exit(0)
-		# cursor.execute(query)     
-		# connection.commit()
+			print(e)
+			sys.exit(0)
 
 
 	"""
@@ -146,13 +142,13 @@ class Database(object):
 		keys = []
 		values = []
 		if data:
-		   for x in data:
-		       keys.append("'"+str(x)+"'")
-		       values.append("'"+str(data[x])+"'")
+			for x in data:
+				keys.append("'"+str(x)+"'")
+				values.append("'"+str(data[x])+"'")
 		query = "INSERT INTO '{}' ({}) VALUES ({})".format(table, ",".join(keys), ",".join(values))
 		try:
-		   self.cursor.execute(query)     
-		   self.connection.commit()
+			self.cursor.execute(query)
+			self.connection.commit()
 		except Exception as e:
 			self.logger.error("Error occur While Executing => {}. Error Is {} .".format(query, str(e)))
 			return None
@@ -171,28 +167,28 @@ class Database(object):
 		columns = []
 		Where = []
 		for cols in update:
-		    column = ""
-		    if 'column' in cols.keys():
-		        column = column+ cols['column']
-		    if 'value' in cols.keys():
-		        column = column + ' = "' +cols['value'] +'"'
-		    columns.append(column)
-		    strcolumns = ', '.join(map(str, columns))
+			column = ""
+			if 'column' in cols.keys():
+				column = column+ cols['column']
+			if 'value' in cols.keys():
+				column = column + ' = "' +cols['value'] +'"'
+			columns.append(column)
+			strcolumns = ', '.join(map(str, columns))
 		for cols in where:
-		    column = ""
-		    if 'column' in cols.keys():
-		        column = column + cols['column']
-		    if 'value' in cols.keys():
-		        column = column + ' = "' +cols['value'] +'"'
-		    Where.append(column)
-		    strWhere = ' AND '.join(map(str, Where))
+			column = ""
+			if 'column' in cols.keys():
+				column = column + cols['column']
+			if 'value' in cols.keys():
+				column = column + ' = "' +cols['value'] +'"'
+			Where.append(column)
+			strWhere = ' AND '.join(map(str, Where))
 		query = "UPDATE '{}' SET {} WHERE {}".format(table, strcolumns, strWhere)
 		try:
-		    self.cursor.execute(query)     
-		    self.connection.commit()
+			self.cursor.execute(query)
+			self.connection.commit()
 		except Exception as e:
-		    print(e)
-		    sys.exit(0)
+			print(e)
+			sys.exit(0)
 		return True
 
 
@@ -206,13 +202,13 @@ class Database(object):
 	def delete_row(self, table=None, row=None, where=None):
 		Where = []
 		for cols in where:
-		    column = ""
-		    if 'column' in cols.keys():
-		        column = column + cols['column']
-		    if 'value' in cols.keys():
-		        column = column + ' = ' +cols['value']
-		    Where.append(column)
-		    strWhere = ' AND '.join(map(str, Where))
+			column = ""
+			if 'column' in cols.keys():
+				column = column + cols['column']
+			if 'value' in cols.keys():
+				column = column + ' = ' +cols['value']
+			Where.append(column)
+			strWhere = ' AND '.join(map(str, Where))
 
 		query = "DELETE FROM {} WHERE {}".format(table, strWhere)
 		cursor.execute(query)     

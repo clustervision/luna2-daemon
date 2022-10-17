@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 
-__author__      = "Sumit Sharma"
-__copyright__   = "Copyright 2022, Luna2 Project"
-__license__     = "GPL"
-__version__     = "2.0"
-__maintainer__  = "Sumit Sharma"
-__email__       = "sumit.sharma@clustervision.com"
-__status__      = "Development"
+__author__      = 'Sumit Sharma'
+__copyright__   = 'Copyright 2022, Luna2 Project'
+__license__     = 'GPL'
+__version__     = '2.0'
+__maintainer__  = 'Sumit Sharma'
+__email__       = 'sumit.sharma@clustervision.com'
+__status__      = 'Development'
 
 """
 This Log Class is responsible to start the Logger depend on the Level.

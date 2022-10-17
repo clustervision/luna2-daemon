@@ -1,3 +1,6 @@
 __pycache__
 
 log/luna2-daemon.log
+log/gunicorn-access.log
+log/gunicorn-error.log
+.vscode/settings.json

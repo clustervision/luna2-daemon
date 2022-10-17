@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 
-__author__      = "Sumit Sharma"
-__copyright__   = "Copyright 2022, Luna2 Project"
-__license__     = "GPL"
-__version__     = "2.0"
-__maintainer__  = "Sumit Sharma"
-__email__       = "sumit.sharma@clustervision.com"
-__status__      = "Development"
+__author__      = 'Sumit Sharma'
+__copyright__   = 'Copyright 2022, Luna2 Project'
+__license__     = 'GPL'
+__version__     = '2.0'
+__maintainer__  = 'Sumit Sharma'
+__email__       = 'sumit.sharma@clustervision.com'
+__status__      = 'Development'
 
 """
 This File is responsible to fetch each variable configured in config/luna.ini.
@@ -30,6 +30,7 @@ override = None
 # if args["ini"]:
 #     override = args["ini"]
 
+global CONSTANT
 
 CurrentDir = os.path.dirname(os.path.realpath(__file__))
 UTILSDIR = Path(CurrentDir)
@@ -37,7 +38,7 @@ BASE_DIR = str(UTILSDIR.parent)
 SECRET_KEY = '004f2af45d3a4e161a7dd2d17fdae47f'
 configParser = RawConfigParser()
 
-ConfigFile = "/trinity/local/luna/config/luna.ini"
+ConfigFile = '/trinity/local/luna/config/luna.ini'
 
 """
 Input - Filename
@@ -55,9 +56,6 @@ def checkfile(filename=None):
 	return False
 
 
-
-
-global CONSTANT
 
 CONSTANT = {
 	"CONNECTION": { "SERVERIP": None, "SERVERPORT": None },
@@ -96,11 +94,6 @@ def getconfig(filename=None):
 				CONSTANT[each_section] = {}
 				CONSTANT[each_section][each_key.upper()] = each_val
 
-
-
-
-
-
 file_check = checkfile(ConfigFile)
 if file_check:
 	getconfig(ConfigFile)
@@ -119,185 +112,6 @@ print(CONSTANT)
 print(VAR1)
 print("===========================================")
 
-# sys.exit(0)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-# """
-# Input - Message and Default File True or False  
-# Output - Print Message; If Error from Default, then Stop the Code.
-# """
-# def ini_error(message, default):
-# 	print(message)
-# 	if default:
-# 		sys.exit(0)
-
-# """
-# Input - Section And Option From INI File  
-# Output - Set the Global Variable
-# """
-# def set_variable(section, option):
-# 	globals()[option] = configParser.get(section, option)
-
-
-# """
-# Input - Filename and Default File True or False
-# Output - Retrive Configuration
-# """
-# def getconfig(filename=None, default=None):
-# 	configParser.read(filename)
-# 	if configParser.has_section("CONNECTION"):
-# 		if configParser.has_option("CONNECTION", "SERVERIP"):
-# 			set_variable("CONNECTION", "SERVERIP")
-# 		else:
-# 			message = "ERROR :: In CONNECTION, SERVERIP is Unavailable in {}.".format(filename)
-# 			ini_error(message, default)
-# 		if configParser.has_option("CONNECTION", "SERVERPORT"):
-# 			set_variable("CONNECTION", "SERVERPORT")
-# 		else:
-# 			message = "ERROR :: In CONNECTION, SERVERPORT is Unavailable in {}.".format(filename)
-# 			ini_error(message, default)
-# 	else:
-# 		message = "ERROR :: Section Name CONNECTION is Unavailable in {}.".format(filename)
-# 		ini_error(message, default)
-
-
-# 	if configParser.has_section("LOGGER"):
-# 		if configParser.has_option("LOGGER", "LEVEL"):
-# 			set_variable("LOGGER", "LEVEL")
-# 		else:
-# 			message = "ERROR :: In LOGGER, LEVEL is Unavailable in {}.".format(filename)
-# 			ini_error(message, default)
-# 		if configParser.has_option("LOGGER", "LOGFILE"):
-# 			set_variable("LOGGER", "LOGFILE")
-# 		else:
-# 			message = "ERROR :: In LOGGER, LOGFILE is Unavailable in {}.".format(filename)
-# 			ini_error(message, default)
-# 	else:
-# 		message = "ERROR :: Section Name LOGGER is Unavailable in {}.".format(filename)
-# 		ini_error(message, default)
-
-
-# 	if configParser.has_section("API"):
-# 		if configParser.has_option("API", "USERNAME"):
-# 			set_variable("API", "USERNAME")
-# 		else:
-# 			message = "ERROR :: In API, USERNAME is Unavailable in {}.".format(filename)
-# 			ini_error(message, default)
-# 		if configParser.has_option("API", "PASSWORD"):
-# 			set_variable("API", "PASSWORD")
-# 		else:
-# 			message = "ERROR :: In API, PASSWORD is Unavailable in {}.".format(filename)
-# 			ini_error(message, default)
-# 		if configParser.has_option("API", "EXPIRY"):
-# 			set_variable("API", "EXPIRY")
-# 		else:
-# 			message = "ERROR :: In API, EXPIRY is Unavailable in {}.".format(filename)
-# 			ini_error(message, default)
-# 	else:
-# 		message = "ERROR :: Section Name API is Unavailable in {}.".format(filename)
-# 		ini_error(message, default)
-
-# 	if configParser.has_section("FILES"):
-# 		if configParser.has_option("FILES", "TARBALL"):
-# 			set_variable("FILES", "TARBALL")
-# 		else:
-# 			message = "ERROR :: In FILES, TARBALL is Unavailable in {}.".format(filename)
-# 			ini_error(message, default)
-# 	else:
-# 		message = "ERROR :: Section Name FILES is Unavailable in {}.".format(filename)
-# 		ini_error(message, default)
-
-# 	if configParser.has_section("DATABASE"):
-# 		if configParser.has_option("DATABASE", "DRIVER"):
-# 			set_variable("DATABASE", "DRIVER")
-# 		else:
-# 			message = "ERROR :: In DATABASE, DRIVER is Unavailable in {}.".format(filename)
-# 			ini_error(message, default)
-# 		if configParser.has_option("DATABASE", "DATABASE"):
-# 			set_variable("DATABASE", "DATABASE")
-# 		else:
-# 			message = "ERROR :: In DATABASE, DATABASE is Unavailable in {}.".format(filename)
-# 			ini_error(message, default)
-# 		if configParser.has_option("DATABASE", "DBUSER"):
-# 			set_variable("DATABASE", "DBUSER")
-# 		else:
-# 			message = "ERROR :: In DATABASE, DBUSER is Unavailable in {}.".format(filename)
-# 			ini_error(message, default)
-# 		if configParser.has_option("DATABASE", "DBPASSWORD"):
-# 			set_variable("DATABASE", "DBPASSWORD")
-# 		else:
-# 			message = "ERROR :: In DATABASE, DBPASSWORD is Unavailable in {}.".format(filename)
-# 			ini_error(message, default)
-# 		if configParser.has_option("DATABASE", "HOST"):
-# 			set_variable("DATABASE", "HOST")
-# 		else:
-# 			message = "ERROR :: In DATABASE, HOST is Unavailable in {}.".format(filename)
-# 			ini_error(message, default)
-# 		if configParser.has_option("DATABASE", "PORT"):
-# 			set_variable("DATABASE", "PORT")
-# 		else:
-# 			message = "ERROR :: In DATABASE, PORT is Unavailable in {}.".format(filename)
-# 			ini_error(message, default)
-# 	else:
-# 		message = "ERROR :: Section Name DATABASE is Unavailable in {}.".format(filename)
-# 		ini_error(message, default)
-
-# 	if configParser.has_section("SERVICES"):
-# 		if configParser.has_option("SERVICES", "DHCP"):
-# 			set_variable("SERVICES", "DHCP")
-# 		else:
-# 			message = "ERROR :: In SERVICES, DHCP is Unavailable in {}.".format(filename)
-# 			ini_error(message, default)
-# 		if configParser.has_option("SERVICES", "DNS"):
-# 			set_variable("SERVICES", "DNS")
-# 		else:
-# 			message = "ERROR :: In SERVICES, DNS is Unavailable in {}.".format(filename)
-# 			ini_error(message, default)
-# 		if configParser.has_option("SERVICES", "CONTROL"):
-# 			set_variable("SERVICES", "CONTROL")
-# 		else:
-# 			message = "ERROR :: In SERVICES, CONTROL is Unavailable in {}.".format(filename)
-# 			ini_error(message, default)
-# 		if configParser.has_option("SERVICES", "COOLDOWN"):
-# 			set_variable("SERVICES", "COOLDOWN")
-# 		else:
-# 			message = "ERROR :: In SERVICES, COOLDOWN is Unavailable in {}.".format(filename)
-# 			ini_error(message, default)
-# 		if configParser.has_option("SERVICES", "COMMAND"):
-# 			set_variable("SERVICES", "COMMAND")
-# 		else:
-# 			message = "ERROR :: In SERVICES, COMMAND is Unavailable in {}.".format(filename)
-# 			ini_error(message, default)
-# 	else:
-# 		message = "ERROR :: Section Name SERVICES is Unavailable in {}.".format(filename)
-# 		ini_error(message, default)
-
-# 	if configParser.has_section("TEMPLATES"):
-# 		if configParser.has_option("TEMPLATES", "TEMPLATES_DIR"):
-# 			set_variable("TEMPLATES", "TEMPLATES_DIR")
-# 		else:
-# 			message = "ERROR :: In TEMPLATES, TEMPLATES_DIR is Unavailable in {}.".format(filename)
-# 			ini_error(message, default)
-# 	else:
-# 		message = "ERROR :: Section Name TEMPLATES is Unavailable in {}.".format(filename)
-# 		ini_error(message, default)
-
-
-
 
 """
 Input - Directory
@@ -313,7 +127,7 @@ def checkdir(directory=None):
 		else:
 			print("Directory {} Is Not readable.".format(directory))
 	else:
-	    print("Directory {} Is Not exists.".format(directory))
+		print("Directory {} Is Not exists.".format(directory))
 	return False
 
 
@@ -324,11 +138,11 @@ Output - Check If File Writable
 def checkwritable(filename=None):
 	write = False
 	try:
-	    file = open(filename, "a")
-	    if file.writable():
-	        write = True
+		file = open(filename, "a")
+		if file.writable():
+			write = True
 	except Exception as e:
-	    print("File {} is Not Writable.".format(filename))
+		print("File {} is Not Writable.".format(filename))
 	return write
 
 """
@@ -370,10 +184,10 @@ Sanity Checks On SERVERIP, SERVERPORT, LOGFILE, TARBALL, TEMPLATES_DIR
 
 def check_ip(ipaddr):
 	try:
-	    ip = ipaddress.ip_address(ipaddr)
+		ip = ipaddress.ip_address(ipaddr)
 	except Exception as e:
-	    print("Invalid IP Address: {} ".format(ipaddr))
-	    sys.exit(0)
+		print("Invalid IP Address: {} ".format(ipaddr))
+		sys.exit(0)
 check_ip(SERVERIP)
 
 

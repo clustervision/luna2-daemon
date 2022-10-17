@@ -1,9 +1,7 @@
 #!/usr/bin/python
 
 """
-
 EXTRA TIME ACTIVITY
-
 Strategy Of this file is required, Because...
 1. None of the Microservice Application supports Boilerplate Arguments on Prodcution. TODO Point 6
 2. Will provide easy access to manage the application.
@@ -47,11 +45,6 @@ CONSTANT = {
     "SERVICES": { "DHCP": None, "DNS": None, "CONTROL": None, "COOLDOWN": None, "COMMAND": None },
     "TEMPLATES": { "TEMPLATES_DIR": None }
 }
-
-
-
-
-
 
 
 def banner():

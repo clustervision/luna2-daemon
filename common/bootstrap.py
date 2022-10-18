@@ -12,10 +12,12 @@ __status__      = 'Development'
 This File is responsible to Check & Perform all bootstrap related activity.
 
 """
+import sys
 import hostlist
 from pathlib import Path
+from configparser import RawConfigParser
 from common.dbcheck import checkdbstatus
-
+configParser = RawConfigParser()
 
 Bootstrap = False
 #########>>>>>>............. DEVELOPMENT PURPOSE ------>> Remove Line 20 and 21 When Feature is Developed, And Uncomment Next Line --> BootStrapFile
@@ -94,11 +96,8 @@ def getconfig(filename=None):
 				BOOTSTRAP[each_section] = {}
 				BOOTSTRAP[each_section][each_key.upper()] = each_val
 
-file_check = checkfile(BootStrapFile)
-if file_check:
+if bootstrap_file:
 	getconfig(BootStrapFile)
-else:
-	sys.exit(0)
 
 ##########>>>>>>>>>>............ Database Insert Activity; Still not Finalize
 # table = ["cluster", "bmcsetup", "group", "groupinterface", "groupsecrets", "network", "osimage", "switch", "tracker", "node", "nodeinterface", "nodesecrets"]

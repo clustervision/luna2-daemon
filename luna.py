@@ -17,7 +17,7 @@ To Generate the Application Security Key -> python -c "import secrets; print(sec
 '''
 
 from flask import Flask, abort, json
-from .common.constant import *
+from common.constant import *
 from utils.log import *
 
 logger = Log.init_log(LEVEL)
@@ -74,9 +74,9 @@ def service_unavailable(error):
     return json.dumps(error), 503
 
 
-# def main():
-#     api.run(host=SERVERIP, port=SERVERPORT, debug=True, threaded=True)
+def main():
+    api.run(host=SERVERIP, port=SERVERPORT, debug=True, threaded=True)
 
 
-# if __name__ == "__main__":
-#     main()
+if __name__ == "__main__":
+    main()

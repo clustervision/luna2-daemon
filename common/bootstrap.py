@@ -1,105 +1,28 @@
 #!/usr/bin/env python3
 
-__author__      = "Sumit Sharma"
-__copyright__   = "Copyright 2022, Luna2 Project"
-__license__     = "GPL"
-__version__     = "2.0"
-__maintainer__  = "Sumit Sharma"
-__email__       = "sumit.sharma@clustervision.com"
-__status__      = "Development"
+__author__      = 'Sumit Sharma'
+__copyright__   = 'Copyright 2022, Luna2 Project'
+__license__     = 'GPL'
+__version__     = '2.0'
+__maintainer__  = 'Sumit Sharma'
+__email__       = 'sumit.sharma@clustervision.com'
+__status__      = 'Development'
 
 """
 This File is responsible to Check & Perform all bootstrap related activity.
 
 """
-
-from common.dbcheck import *
 import hostlist
+from pathlib import Path
+from common.dbcheck import checkdbstatus
+
 
 Bootstrap = False
 #########>>>>>>............. DEVELOPMENT PURPOSE ------>> Remove Line 20 and 21 When Feature is Developed, And Uncomment Next Line --> BootStrapFile
-BootStrapFile = "/trinity/local/luna/config/bootstrapDEV.ini"
+BootStrapFile = '/trinity/local/luna/config/bootstrapDEV.ini'
 #########>>>>>>............. DEVELOPMENT PURPOSE
 # BootStrapFile = "/trinity/local/luna/config/bootstrap.ini"
 BootStrapFilePath = Path(BootStrapFile)
-
-
-def bootstrap():
-	configParser.read(BootStrapFile)
-	if configParser.has_section("HOSTS"):
-		if configParser.has_option("HOSTS", "CONTROLLER1"):
-			CONTROLLER1 = configParser.get("HOSTS", "CONTROLLER1")
-		else:
-			logger.error("In HOSTS, CONTROLLER1 is Unavailable in {}.".format(BootStrapFile))
-		if configParser.has_option("HOSTS", "CONTROLLER2"):
-			CONTROLLER2 = configParser.get("HOSTS", "CONTROLLER2")
-		else:
-			logger.error("In HOSTS, CONTROLLER2 is Unavailable in {}.".format(BootStrapFile))
-		if configParser.has_option("HOSTS", "NODELIST"):
-			NODELIST = configParser.get("HOSTS", "NODELIST")
-			NODELIST = hostlist.expand_hostlist(NODELIST)			
-		else:
-			logger.error("In HOSTS, NODELIST is Unavailable in {}.".format(BootStrapFile))
-	else:
-		logger.error("Section Name HOSTS is Unavailable in {}.".format(BootStrapFile))
-
-	if configParser.has_section("NETWORKS"):
-		if configParser.has_option("NETWORKS", "INTERNAL"):
-			INTERNAL = configParser.get("NETWORKS", "INTERNAL")
-		else:
-			logger.error("In NETWORKS, INTERNAL is Unavailable in {}.".format(BootStrapFile))
-		if configParser.has_option("NETWORKS", "BMC"):
-			BMC = configParser.get("NETWORKS", "BMC")
-		else:
-			logger.error("In NETWORKS, BMC is Unavailable in {}.".format(BootStrapFile))
-		if configParser.has_option("NETWORKS", "IB"):
-			IB = configParser.get("NETWORKS", "IB")			
-		else:
-			logger.error("In NETWORKS, IB is Unavailable in {}.".format(BootStrapFile))
-	else:
-		logger.error("Section Name NETWORKS is Unavailable in {}.".format(BootStrapFile))
-
-	if configParser.has_section("GROUPS"):
-		if configParser.has_option("GROUPS", "NAME"):
-			GROUPNAME = configParser.get("GROUPS", "NAME")
-		else:
-			logger.error("In GROUPS, NAME is Unavailable in {}.".format(BootStrapFile))
-	else:
-		logger.error("Section Name GROUPS is Unavailable in {}.".format(BootStrapFile))
-
-	if configParser.has_section("OSIMAGE"):
-		if configParser.has_option("OSIMAGE", "NAME"):
-			OSIMAGENAME = configParser.get("OSIMAGE", "NAME")
-		else:
-			logger.error("In OSIMAGE, NAME is Unavailable in {}.".format(BootStrapFile))
-	else:
-		logger.error("Section Name OSIMAGE is Unavailable in {}.".format(BootStrapFile))
-
-
-	if configParser.has_section("BMCSETUP"):
-		if configParser.has_option("BMCSETUP", "USERNAME"):
-			BMCUSERNAME = configParser.get("BMCSETUP", "USERNAME")
-		else:
-			logger.error("In BMCSETUP, USERNAME is Unavailable in {}.".format(BootStrapFile))
-		if configParser.has_option("BMCSETUP", "PASSWORD"):
-			BMCPASSWORD = configParser.get("BMCSETUP", "PASSWORD")
-		else:
-			logger.error("In BMCSETUP, PASSWORD is Unavailable in {}.".format(BootStrapFile))
-	else:
-		logger.error("Section Name BMCSETUP is Unavailable in {}.".format(BootStrapFile))
-
-
-	##########>>>>>>>>>>............ Database Insert Activity; Still not Finalize
-	# table = ["cluster", "bmcsetup", "group", "groupinterface", "groupsecrets", "network", "osimage", "switch", "tracker", "node", "nodeinterface", "nodesecrets"]
-	# for x in table:
-	# 	row = [{"column": "name", "value": "node004"}, {"column": "ip", "value": "10.141.0.1"}]
-	# 	result = Database().insert(x, row)
-	# 	if result is None:
-	# 		sys.exit(0)
-
-	# Rename bootstrap.ini file to bootstrap-time().ini
-
-	##########>>>>>>>>>>............ Database Insert Activity; Still not Finalize
 
 
 bootstrap_file, database_ready = False, False
@@ -111,8 +34,7 @@ if BootStrapFilePath.is_file():
 		bootstrap_file = True
 	else:
 		logger.error("Bootstrp file is not readable {}.".format(BootStrapFile))
-# else:
-# 	logger.info("Bootstrp file is abesnt {}.".format(BootStrapFile))
+
 
 if bootstrap_file:
 	checkdb, code = checkdbstatus()
@@ -136,5 +58,56 @@ if bootstrap_file:
 		logger.error("Database {} READ {} WRITE {} Is not correct.".format(checkdb["database"], checkdb["read"], checkdb["write"]))
 
 
-if database_ready:
-	bootstrap()
+
+
+BOOTSTRAP = {
+	"HOSTS": { "CONTROLLER1": None, "CONTROLLER2": None, "NODELIST": None },
+	"NETWORKS": { "INTERNAL": None, "BMC": None, "IB": None },
+	"GROUPS": { "NAME": None },
+	"OSIMAGE": { "NAME": None },
+	"BMCSETUP": { "USERNAME": None, "PASSWORD": None }
+}
+
+def checksection():
+	for item in list(BOOTSTRAP.keys()):
+		if item not in configParser.sections():
+			print("ERROR :: Section {} Is Missing, Kindly Check The File {}.".format(item, filename))
+			sys.exit(0)
+
+
+def checkoption(each_section):
+	for item in list(BOOTSTRAP[each_section].keys()):
+		if item.lower() not in list(dict(configParser.items(each_section)).keys()):
+			print("ERROR :: Section {} Don't Have Option {}, Kindly Check The File {}.".format(each_section, each_key.upper(), filename))
+			sys.exit(0)
+
+def getconfig(filename=None):
+	configParser.read(filename)
+	checksection()
+	for each_section in configParser.sections():
+		for (each_key, each_val) in configParser.items(each_section):
+			globals()[each_key.upper()] = each_val
+			if each_section in list(BOOTSTRAP.keys()):
+				checkoption(each_section)
+				BOOTSTRAP[each_section][each_key.upper()] = each_val
+			else:
+				BOOTSTRAP[each_section] = {}
+				BOOTSTRAP[each_section][each_key.upper()] = each_val
+
+file_check = checkfile(BootStrapFile)
+if file_check:
+	getconfig(BootStrapFile)
+else:
+	sys.exit(0)
+
+##########>>>>>>>>>>............ Database Insert Activity; Still not Finalize
+# table = ["cluster", "bmcsetup", "group", "groupinterface", "groupsecrets", "network", "osimage", "switch", "tracker", "node", "nodeinterface", "nodesecrets"]
+# for x in table:
+# 	row = [{"column": "name", "value": "node004"}, {"column": "ip", "value": "10.141.0.1"}]
+# 	result = Database().insert(x, row)
+# 	if result is None:
+# 		sys.exit(0)
+
+# Rename bootstrap.ini file to bootstrap-time().ini
+
+##########>>>>>>>>>>............ Database Insert Activity; Still not Finalize

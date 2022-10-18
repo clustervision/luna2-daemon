@@ -1,23 +1,23 @@
 #!/usr/bin/env python3
 
-__author__      = "Sumit Sharma"
-__copyright__   = "Copyright 2022, Luna2 Project"
-__license__     = "GPL"
-__version__     = "2.0"
-__maintainer__  = "Sumit Sharma"
-__email__       = "sumit.sharma@clustervision.com"
-__status__      = "Development"
+__author__      = 'Sumit Sharma'
+__copyright__   = 'Copyright 2022, Luna2 Project'
+__license__     = 'GPL'
+__version__     = '2.0'
+__maintainer__  = 'Sumit Sharma'
+__email__       = 'sumit.sharma@clustervision.com'
+__status__      = 'Development'
 
-"""
+'''
 This File is a Main File Luna 2 Daemon Service.
 This File will Initiate the Logger and A Entry Point to the API's
 Some Of Default Error Handler is defaine here such as 404, 400, etc.
 Getting the Constants from common/constant.py File
-#### To Generate the Application Security Key -> python -c 'import secrets; print(secrets.token_hex())'
-"""
+To Generate the Application Security Key -> python -c "import secrets; print(secrets.token_hex())"
+'''
 
-from flask import Flask, request, abort, json
-from common.constant import *
+from flask import Flask, abort, json
+from .common.constant import *
 from utils.log import *
 
 logger = Log.init_log(LEVEL)
@@ -41,7 +41,7 @@ api.register_blueprint(monitor_blueprint)
 
 @api.route('/')
 def main():
-    return abort(404)
+    abort(404)
 
 
 @api.errorhandler(400)

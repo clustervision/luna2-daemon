@@ -72,11 +72,3 @@ def server_error(e):
 def service_unavailable(error):
     error = {"message": str(error) + " Service Unavailable"}
     return json.dumps(error), 503
-
-
-# def main():
-#     api.run(host=SERVERIP, port=SERVERPORT, debug=True, threaded=True)
-
-
-# if __name__ == "__main__":
-#     main()

@@ -16,19 +16,8 @@ Import this file will provide all variables which is fetched here.
 
 import os
 import sys
-# import socket
-import ipaddress
-import argparse
 from configparser import RawConfigParser
 from pathlib import Path
-
-# parser = argparse.ArgumentParser(prog='luna2-daemon', description='Manage Luna2 Daemon')
-# parser.add_argument("-d", "--debug", action="store_true", help='Run Application on Debug Mode.')
-# parser.add_argument("-i", "--ini", default="/trinity/local/luna/config/luna.ini", help='Overright the Default Configuration.')
-# args = vars(parser.parse_args())
-override = None
-# if args["ini"]:
-#     override = args["ini"]
 
 global CONSTANT
 
@@ -58,7 +47,6 @@ def checkfile(filename=None):
 
 
 CONSTANT = {
-	"CONNECTION": { "SERVERIP": None, "SERVERPORT": None },
 	"LOGGER": { "LEVEL": None, "LOGFILE": None },
 	"API": { "USERNAME": None, "PASSWORD": None, "EXPIRY": None },
 	"DATABASE": { "DRIVER": None, "DATABASE": None, "DBUSER": None, "DBPASSWORD": None, "HOST": None, "PORT": None },
@@ -101,18 +89,6 @@ else:
 	sys.exit(0)
 
 
-if override:
-	file_check_override = checkfile(override)
-	if file_check_override:
-		getconfig(override)
-
-
-print("===========================================")
-print(CONSTANT)
-print(VAR1)
-print("===========================================")
-
-
 """
 Input - Directory
 Output - Directory Existence, Readability and Writable
@@ -145,24 +121,10 @@ def checkwritable(filename=None):
 		print("File {} is Not Writable.".format(filename))
 	return write
 
-"""
-Calling Methods with INI File and Default Option.
-"""
-# file_check = checkfile(ConfigFile)
-# if file_check:
-# 	getconfig(ConfigFile, True)
-# else:
-# 	sys.exit(0)
-# if override:
-# 	file_check_override = checkfile(override)
-# 	if file_check_override:
-# 		getconfig(override, False)
-
 
 """
 Post Retrieval Calculation
 """
-
 if EXPIRY:
 	EXPIRY = int(EXPIRY.replace("h", ""))
 	EXPIRY = EXPIRY*60*60
@@ -174,33 +136,10 @@ if COOLDOWN:
 else:
 	COOLDOWN = 2
 
-# if args["debug"]:
-#     LEVEL = "debug"
-
 
 """
-Sanity Checks On SERVERIP, SERVERPORT, LOGFILE, TARBALL, TEMPLATES_DIR
+Sanity Checks On LOGFILE, TARBALL, TEMPLATES_DIR
 """
-
-def check_ip(ipaddr):
-	try:
-		ip = ipaddress.ip_address(ipaddr)
-	except Exception as e:
-		print("Invalid IP Address: {} ".format(ipaddr))
-		sys.exit(0)
-check_ip(SERVERIP)
-
-
-def check_port(ipaddr, port):
-	if int(port) < 0 or int(port) > 65535:
-		return True
-    # with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-    # 	return s.connect_ex((ipaddr, int(port))) == 0
-
-port_check = check_port(SERVERIP, SERVERPORT)
-if port_check:
-	print("Port: {} Is In Use, Kindly Free This Port OR Use Other Port.".format(SERVERPORT))
-	sys.exit(0)
 
 check_log_read = checkfile(LOGFILE)
 if check_log_read is not True:

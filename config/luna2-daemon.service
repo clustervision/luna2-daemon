@@ -1,5 +1,6 @@
 [Unit]
 Description=Luna 2 Daemon
+Documentation=https://clustervision.com
 
 [Service]
 Type=oneshot

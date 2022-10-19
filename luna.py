@@ -1,4 +1,13 @@
 #!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
+"""
+This File is a Main File Luna 2 Daemon Service.
+This File will Initiate the Logger and A Entry Point to the API's
+Some Of Default Error Handler is defaine here such as 404, 400, etc.
+Getting the Constants from common/constant.py File
+To Generate the Application Security Key -> python -c "import secrets; print(secrets.token_hex())"
+"""
 
 __author__      = 'Sumit Sharma'
 __copyright__   = 'Copyright 2022, Luna2 Project'
@@ -8,21 +17,14 @@ __maintainer__  = 'Sumit Sharma'
 __email__       = 'sumit.sharma@clustervision.com'
 __status__      = 'Development'
 
-'''
-This File is a Main File Luna 2 Daemon Service.
-This File will Initiate the Logger and A Entry Point to the API's
-Some Of Default Error Handler is defaine here such as 404, 400, etc.
-Getting the Constants from common/constant.py File
-To Generate the Application Security Key -> python -c "import secrets; print(secrets.token_hex())"
-'''
 
 from flask import Flask, abort, json
-from common.constant import *
-from utils.log import *
+from common.constant import CONSTANT
+from utils.log import Log
 
-logger = Log.init_log(LEVEL)
-
-from common.bootstrap import *
+LOGGER = Log.init_log(CONSTANT['LOGGER']['LEVEL'])
+from common.bootstrap import checkbootstrap
+checkbootstrap()
 
 from apis.auth import auth_blueprint
 from apis.boot import boot_blueprint
@@ -38,6 +40,7 @@ api.register_blueprint(files_blueprint)
 api.register_blueprint(service_blueprint)
 api.register_blueprint(monitor_blueprint)
 
+# Logger.info('Variable ---------->> {}'.format(CONSTANT))
 
 @api.route('/')
 def main():
@@ -45,25 +48,25 @@ def main():
 
 
 @api.errorhandler(400)
-def bad_request(e):
+def bad_request():
     error = {"message": "Bad Requests"}
     return json.dumps(error), 401
 
 
 @api.errorhandler(401)
-def unauthorized(e):
+def unauthorized():
     error = {"message": "Unauthorized"}
     return json.dumps(error), 401
 
 
 @api.errorhandler(404)
-def page_not_found(e):
+def page_not_found():
     error = {"message": "Route Not Found"}
     return json.dumps(error), 404
 
 
 @api.errorhandler(500)
-def server_error(e):
+def server_error():
     error = {"message": "Server Error"}
     return json.dumps(error), 500
 

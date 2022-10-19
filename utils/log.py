@@ -1,12 +1,5 @@
 #!/usr/bin/env python3
-
-__author__      = 'Sumit Sharma'
-__copyright__   = 'Copyright 2022, Luna2 Project'
-__license__     = 'GPL'
-__version__     = '2.0'
-__maintainer__  = 'Sumit Sharma'
-__email__       = 'sumit.sharma@clustervision.com'
-__status__      = 'Development'
+# -*- coding: utf-8 -*-
 
 """
 This Log Class is responsible to start the Logger depend on the Level.
@@ -16,10 +9,17 @@ Method get_logger will provide a logging object, which is helpful to write the l
 Logger Object have basic mathods: debug, error, info, critical and warnings.
 
 """
+__author__      = 'Sumit Sharma'
+__copyright__   = 'Copyright 2022, Luna2 Project'
+__license__     = 'GPL'
+__version__     = '2.0'
+__maintainer__  = 'Sumit Sharma'
+__email__       = 'sumit.sharma@clustervision.com'
+__status__      = 'Development'
 
 import sys
 import logging
-from common.constant import *
+from common.constant import CONSTANT, BASE_DIR
 
 class Log:
     __logger = None
@@ -37,7 +37,7 @@ class Log:
         else:
             levels = {"NOTSET": 0, "DEBUG": 10, "INFO": 20, "WARNING": 30, "ERROR": 40, "CRITICAL": 50}
             log_level = levels[log_level.upper()]
-        logging.basicConfig(filename=BASE_DIR+"/"+LOGFILE, format='[%(levelname)s]:[%(asctime)s]:[%(threadName)s]:[%(filename)s:%(funcName)s@%(lineno)d] - %(message)s', filemode='a', level=log_level)
+        logging.basicConfig(filename=BASE_DIR+"/"+CONSTANT['LOGGER']['LOGFILE'], format='[%(levelname)s]:[%(asctime)s]:[%(threadName)s]:[%(filename)s:%(funcName)s@%(lineno)d] - %(message)s', filemode='a', level=log_level)
         cls.__logger = logging.getLogger("luna2-daemon")
         cls.__logger.setLevel(log_level)
         formatter = logging.Formatter('[%(levelname)s]:[%(asctime)s]:[%(threadName)s]:[%(filename)s:%(funcName)s@%(lineno)d] - %(message)s')

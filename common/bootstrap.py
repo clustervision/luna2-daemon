@@ -18,7 +18,8 @@ from pathlib import Path
 from configparser import RawConfigParser
 from common.dbcheck import checkdbstatus
 configParser = RawConfigParser()
-
+from utils.log import Log
+logger = Log.get_logger()
 Bootstrap = False
 #########>>>>>>............. DEVELOPMENT PURPOSE ------>> Remove Line 20 and 21 When Feature is Developed, And Uncomment Next Line --> BootStrapFile
 BootStrapFile = '/trinity/local/luna/config/bootstrapDEV.ini'
@@ -36,7 +37,7 @@ if BootStrapFilePath.is_file():
 		bootstrap_file = True
 	else:
 		logger.error("Bootstrp file is not readable {}.".format(BootStrapFile))
-
+logger.error("Bootstrp file is not readable {}.".format(BootStrapFile))
 
 if bootstrap_file:
 	checkdb, code = checkdbstatus()
@@ -96,8 +97,15 @@ def getconfig(filename=None):
 				BOOTSTRAP[each_section] = {}
 				BOOTSTRAP[each_section][each_key.upper()] = each_val
 
-if bootstrap_file:
-	getconfig(BootStrapFile)
+
+
+def checkbootstrap():
+	if bootstrap_file:
+		getconfig(BootStrapFile)
+	else:
+		return True
+
+
 
 ##########>>>>>>>>>>............ Database Insert Activity; Still not Finalize
 # table = ["cluster", "bmcsetup", "group", "groupinterface", "groupsecrets", "network", "osimage", "switch", "tracker", "node", "nodeinterface", "nodesecrets"]
@@ -110,3 +118,7 @@ if bootstrap_file:
 # Rename bootstrap.ini file to bootstrap-time().ini
 
 ##########>>>>>>>>>>............ Database Insert Activity; Still not Finalize
+
+
+# if __name__ == '__main__':
+#     checkbootstrap()

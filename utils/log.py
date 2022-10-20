@@ -22,16 +22,18 @@ import logging
 from common.constant import CONSTANT, BASE_DIR
 
 class Log:
+    """This Log Class is responsible to start the Logger depend on the Level."""
     __logger = None
 
 
-    """
-    Input - log_level
-    Process - Validate the Log Level, Set it to INFO if not correct.
-    Output - Logger Object.
-    """
+    
     @classmethod
     def init_log(cls, log_level):
+        """
+        Input - log_level
+        Process - Validate the Log Level, Set it to INFO if not correct.
+        Output - Logger Object.
+        """
         if not log_level:
             log_level = 20
         else:
@@ -46,13 +48,14 @@ class Log:
         cnsl.setFormatter(formatter)
         cls.__logger.addHandler(cnsl)
         levels = {0: "NOTSET", 10: "DEBUG", 20: "INFO", 30: "WARNING", 40: "ERROR", 50: "CRITICAL"}
-        cls.__logger.info('=============== Luna Logging Level IsSet To [{}] ==============='.format(levels[log_level]))
+        cls.__logger.info(f'=============== Luna Logging Level IsSet To [{levels[log_level]}] ===============')
         return cls.__logger
 
-    """
-    Input - None
-    Output - Logger Object.
-    """
+    
     @classmethod
     def get_logger(cls):
+        """
+        Input - None
+        Output - Logger Object.
+        """
         return cls.__logger

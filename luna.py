@@ -44,34 +44,40 @@ api.register_blueprint(monitor_blueprint)
 
 @api.route('/')
 def main():
+    """ Abort Main Route"""
     abort(404)
 
 
 @api.errorhandler(400)
 def bad_request():
+    """ Abort All 400"""
     error = {"message": "Bad Requests"}
     return json.dumps(error), 401
 
 
 @api.errorhandler(401)
 def unauthorized():
+    """ Abort All 401"""
     error = {"message": "Unauthorized"}
     return json.dumps(error), 401
 
 
 @api.errorhandler(404)
 def page_not_found():
+    """ Abort All 404"""
     error = {"message": "Route Not Found"}
     return json.dumps(error), 404
 
 
 @api.errorhandler(500)
 def server_error():
+    """ Abort All 500"""
     error = {"message": "Server Error"}
     return json.dumps(error), 500
 
 
 @api.errorhandler(503)
 def service_unavailable(error):
+    """ Abort All 503"""
     error = {"message": str(error) + " Service Unavailable"}
     return json.dumps(error), 503

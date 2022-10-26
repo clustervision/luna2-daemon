@@ -11,6 +11,7 @@ from pathlib import Path
 import hostlist
 import sys
 import os
+import ipaddress
 from utils.database import *
 __author__ = 'Sumit Sharma'
 __copyright__ = 'Copyright 2022, Luna2 Project'
@@ -97,6 +98,19 @@ def getconfig(filename=None):
             globals()[each_key.upper()] = each_val
             if each_section in list(BOOTSTRAP.keys()):
                 checkoption(each_section)
+                if 'CONTROLLER1' in each_key.upper():
+                    check_ip(each_val)
+                elif 'CONTROLLER' in each_key.upper() and 'CONTROLLER1' not in each_key.upper():
+                    if each_val == None:
+                        check_ip(each_val)
+                if 'NODELIST' in each_key.upper():
+                    try:
+                        each_val = hostlist.expand_hostlist(each_val)
+                    except Exception as e:
+                        print("Invalid Node List range: {}, Kindly use the Numbers in incremental order.".format(each_val))
+                        sys.exit(0)
+                if 'NETWORKS' in each_section:
+                    check_ip_network(each_val)
                 BOOTSTRAP[each_section][each_key.upper()] = each_val
             else:
                 BOOTSTRAP[each_section] = {}
@@ -106,9 +120,24 @@ def getconfig(filename=None):
 def checkbootstrap():
     if bootstrap_file:
         getconfig(BootStrapFile)
-        print(BOOTSTRAP)
     else:
         return True
+
+
+def check_ip(ipaddr):
+    try:
+        ip = ipaddress.ip_address(ipaddr)
+    except Exception as e:
+        print("Invalid IP Address: {} ".format(ipaddr))
+        sys.exit(0)
+
+
+def check_ip_network(ipaddr):
+    try:
+        subnet = ipaddress.ip_network(ipaddr)
+    except Exception as e:
+        print("Invalid Subnet: {} ".format(ipaddr))
+        sys.exit(0)
 
 
 # >>>>>>>>>>............ Database Insert Activity; Still not Finalize

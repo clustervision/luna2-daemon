@@ -81,3 +81,11 @@ def service_unavailable(error):
     """ Abort All 503"""
     error = {"message": str(error) + " Service Unavailable"}
     return json.dumps(error), 503
+
+
+def main():
+    api.run(host="0.0.0.0", port=7050, debug=True, threaded=True)
+
+
+if __name__ == "__main__":
+    main()

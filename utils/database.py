@@ -25,7 +25,7 @@ class Database(object):
     """
 	def __init__(self):
 		self.logger = Log.get_logger()
-		self.connection = pyodbc.connect("DRIVER={};SERVER={};DATABASE={};UID={};PWD={};charset=utf8mb4;PORT={};".format(DRIVER, HOST, DATABASE, DBUSER, DBPASSWORD, PORT))
+		self.connection = pyodbc.connect("DRIVER={};SERVER={};DATABASE={};UID={};PWD={};charset=utf8mb4;PORT={};".format(CONSTANT['DATABASE']['DRIVER'], CONSTANT['DATABASE']['HOST'], CONSTANT['DATABASE']['DATABASE'], CONSTANT['DATABASE']['DBUSER'], CONSTANT['DATABASE']['DBPASSWORD'], CONSTANT['DATABASE']['PORT']))
 		self.cursor = self.connection.cursor()
 
 

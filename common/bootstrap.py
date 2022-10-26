@@ -11,6 +11,7 @@ from pathlib import Path
 import hostlist
 import sys
 import os
+from utils.database import *
 __author__ = 'Sumit Sharma'
 __copyright__ = 'Copyright 2022, Luna2 Project'
 __license__ = 'GPL'
@@ -25,9 +26,9 @@ configParser = RawConfigParser()
 # logger = Log.get_logger()
 Bootstrap = False
 # >>>>>>............. DEVELOPMENT PURPOSE ------>> Remove Line 20 and 21 When Feature is Developed, And Uncomment Next Line --> BootStrapFile
-BootStrapFile = '/trinity/local/luna/config/bootstrapDEV.ini'
+# BootStrapFile = '/trinity/local/luna/config/bootstrapDEV.ini'
 # >>>>>>............. DEVELOPMENT PURPOSE
-# BootStrapFile = "/trinity/local/luna/config/bootstrap.ini"
+BootStrapFile = "/trinity/local/luna/config/bootstrap.ini"
 BootStrapFilePath = Path(BootStrapFile)
 
 
@@ -44,7 +45,7 @@ if BootStrapFilePath.is_file():
 if bootstrap_file:
     checkdb, code = checkdbstatus()
     if checkdb["read"] == True and checkdb["write"] == True:
-        print('INFO :: Database {checkdb["database"]} READ WRITE Check TRUE.')
+        print(f'INFO :: Database {checkdb["database"]} READ WRITE Check TRUE.')
         table = ["cluster", "bmcsetup", "group", "groupinterface", "groupsecrets",
                  "network", "osimage", "switch", "tracker", "node", "nodeinterface", "nodesecrets"]
         num = 0
@@ -56,15 +57,12 @@ if bootstrap_file:
                 num = num+1
         num = 0  # >>>>>>>>>>>>>>>>>>>..... REMOVE THIS LINE AFTER DEVELOPMENT
         if num == 0:
-            print(
-                f'INFO :: Database {checkdb["database"]} Is Empty and Daemon Ready for BootStrapping.')
+            print(f'INFO :: Database {checkdb["database"]} Is Empty and Daemon Ready for BootStrapping.')
             database_ready = True
         else:
-            print(
-                f'INFO :: Database {checkdb["database"]} Already Filled with Data.')
+            print(f'INFO :: Database {checkdb["database"]} Already Filled with Data.')
     else:
-        print(
-            f'ERROR :: Database {checkdb["database"]} READ {checkdb["read"]} WRITE {checkdb["write"]} Is not correct.')
+        print(f'ERROR :: Database {checkdb["database"]} READ {checkdb["read"]} WRITE {checkdb["write"]} Is not correct.')
 
 BOOTSTRAP = {
     'HOSTS': {'CONTROLLER1': None, 'CONTROLLER2': None, 'NODELIST': None},
@@ -108,6 +106,7 @@ def getconfig(filename=None):
 def checkbootstrap():
     if bootstrap_file:
         getconfig(BootStrapFile)
+        print(BOOTSTRAP)
     else:
         return True
 

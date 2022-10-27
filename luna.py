@@ -23,8 +23,9 @@ from common.constant import CONSTANT
 from utils.log import Log
 
 LOGGER = Log.init_log(CONSTANT['LOGGER']['LEVEL'])
-from common.bootstrap import checkbootstrap
-checkbootstrap()
+import common.bootstrap
+# from common.bootstrap import checkbootstrap
+# checkbootstrap()
 
 from apis.auth import auth_blueprint
 from apis.boot import boot_blueprint
@@ -83,9 +84,11 @@ def service_unavailable(error):
     return json.dumps(error), 503
 
 
-def main():
-    api.run(host="0.0.0.0", port=7050, debug=True, threaded=True)
+# def main():
+#     api.run(host="0.0.0.0", port=7050, debug=True, threaded=True)
 
 
-if __name__ == "__main__":
-    main()
+# if __name__ == "__main__":
+#     # main()
+#     api.run(host="0.0.0.0", port=7050, debug=True, threaded=True)
+api.run(host="0.0.0.0", port=7050)

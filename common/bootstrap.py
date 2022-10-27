@@ -12,6 +12,7 @@ import hostlist
 import sys
 import os
 import ipaddress
+import time
 from utils.database import *
 __author__ = 'Sumit Sharma'
 __copyright__ = 'Copyright 2022, Luna2 Project'
@@ -56,7 +57,6 @@ if bootstrap_file:
                 sys.exit(0)
             if result:
                 num = num+1
-        num = 0  # >>>>>>>>>>>>>>>>>>>..... REMOVE THIS LINE AFTER DEVELOPMENT
         if num == 0:
             print(f'INFO :: Database {checkdb["database"]} Is Empty and Daemon Ready for BootStrapping.')
             database_ready = True
@@ -100,29 +100,29 @@ def getconfig(filename=None):
                 checkoption(each_section)
                 if 'CONTROLLER1' in each_key.upper():
                     check_ip(each_val)
+                    BOOTSTRAP[each_section][each_key.upper()] = each_val
                 elif 'CONTROLLER' in each_key.upper() and 'CONTROLLER1' not in each_key.upper():
-                    if each_val == None:
+                    if "." in each_val:
                         check_ip(each_val)
-                if 'NODELIST' in each_key.upper():
+                        BOOTSTRAP[each_section][each_key.upper()] = each_val
+                    else:
+                        # BOOTSTRAP[each_section].pop(each_key.upper())
+                        del BOOTSTRAP[each_section][each_key.upper()]
+                elif 'NODELIST' in each_key.upper():
                     try:
                         each_val = hostlist.expand_hostlist(each_val)
+                        BOOTSTRAP[each_section][each_key.upper()] = each_val
                     except Exception as e:
                         print("Invalid Node List range: {}, Kindly use the Numbers in incremental order.".format(each_val))
                         sys.exit(0)
-                if 'NETWORKS' in each_section:
+                elif 'NETWORKS' in each_section:
                     check_ip_network(each_val)
-                BOOTSTRAP[each_section][each_key.upper()] = each_val
+                    BOOTSTRAP[each_section][each_key.upper()] = each_val
+                else:
+                    BOOTSTRAP[each_section][each_key.upper()] = each_val
             else:
                 BOOTSTRAP[each_section] = {}
                 BOOTSTRAP[each_section][each_key.upper()] = each_val
-
-
-def checkbootstrap():
-    if bootstrap_file:
-        getconfig(BootStrapFile)
-    else:
-        return True
-
 
 def check_ip(ipaddr):
     try:
@@ -140,15 +140,56 @@ def check_ip_network(ipaddr):
         sys.exit(0)
 
 
-# >>>>>>>>>>............ Database Insert Activity; Still not Finalize
-# table = ["cluster", "bmcsetup", "group", "groupinterface", "groupsecrets", "network", "osimage", "switch", "tracker", "node", "nodeinterface", "nodesecrets"]
-# for x in table:
-# 	row = [{"column": "name", "value": "node004"}, {"column": "ip", "value": "10.141.0.1"}]
-# 	result = Database().insert(x, row)
-# 	if result is None:
-# 		sys.exit(0)
 
-# Rename bootstrap.ini file to bootstrap-time().ini
+
+def bootstrap():
+    print("Ruuning Bootstrap")
+    print(BOOTSTRAP)
+    """
+    DELETE FROM "controller";
+    DELETE FROM "cluster";
+    DELETE FROM "bmcsetup";
+    DELETE FROM "group";
+    DELETE FROM "groupinterface";
+    DELETE FROM "groupsecrets";
+    DELETE FROM "network";
+    DELETE FROM "osimage";
+    DELETE FROM "switch";
+    DELETE FROM "tracker";
+    DELETE FROM "node";
+    DELETE FROM "nodeinterface";
+    DELETE FROM "nodesecrets";
+    """
+    num  = 1
+    for x in BOOTSTRAP["HOSTS"]:
+        if "CONTROLLER"+str(num) in BOOTSTRAP["HOSTS"].keys():
+            row = [{"column": "ipaddr", "value": BOOTSTRAP["HOSTS"]["CONTROLLER"+str(num)]}]
+            result = Database().insert("controller", row)
+        num = num + 1
+    for NodeX in BOOTSTRAP["HOSTS"]["NODELIST"]:
+        row = [{"column": "name", "value": str(NodeX)}]
+        result = Database().insert("node", row)
+    for NetworkX in BOOTSTRAP["NETWORKS"].keys():
+        row = [{"column": "name", "value": str(NetworkX)},{"column": "network", "value": str(BOOTSTRAP["NETWORKS"][NetworkX])}]
+        result = Database().insert("network", row)
+    row = [{"column": "name", "value": str(BOOTSTRAP["GROUPS"]["NAME"])}]
+    result = Database().insert("group", row)
+    row = [{"column": "name", "value": str(BOOTSTRAP["OSIMAGE"]["NAME"])}]
+    result = Database().insert("osimage", row)
+    row = [{"column": "username", "value": str(BOOTSTRAP["BMCSETUP"]["USERNAME"])}, {"column": "password", "value": str(BOOTSTRAP["BMCSETUP"]["PASSWORD"])}]
+    result = Database().insert("bmcsetup", row)
+    TIME = str(time.time()).replace(".", "")
+    BootStrapNewFile = f"/trinity/local/luna/config/bootstrap-{TIME}.ini"
+    os.rename(BootStrapFile, BootStrapNewFile)
+    print("Finish Bootstrap")
+
+
+# def checkbootstrap():
+if bootstrap_file:
+    getconfig(BootStrapFile)
+    bootstrap()
+# else:
+#     return True
 
 # >>>>>>>>>>............ Database Insert Activity; Still not Finalize
 

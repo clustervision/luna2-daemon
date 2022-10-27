@@ -141,10 +141,10 @@ class Database(object):
 	def insert(self, table=None, row=None):
 		keys = []
 		values = []
-		if data:
-			for x in data:
-				keys.append("'"+str(x)+"'")
-				values.append("'"+str(data[x])+"'")
+		if row:
+			for x in row:
+				keys.append("'"+str(x["column"])+"'")
+				values.append("'"+str(x["value"])+"'")
 		query = "INSERT INTO '{}' ({}) VALUES ({})".format(table, ",".join(keys), ",".join(values))
 		try:
 			self.cursor.execute(query)

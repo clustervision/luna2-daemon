@@ -41,7 +41,7 @@ Process - Via Jinja2 filled data in template templ_boot_ipxe_short.cfg
 Output - templ_boot_ipxe_short.cfg
 """
 @boot_blueprint.route("/boot/short", methods=['GET'])
-def boot():
+def boot_short():
     nodes = ["node001", "node002", "node003", "node004"]
     data = {"protocol": "http", "server_ip": "10.141.255.254", "server_port": "7051", "nodes": nodes}
     Template = "templ_boot_ipxe_short.cfg"
@@ -55,7 +55,7 @@ Process - Via Jinja2 filled data in template templ_boot_disk.cfg
 Output - templ_boot_disk.cfg
 """
 @boot_blueprint.route("/boot/disk", methods=['GET'])
-def boot():
+def boot_disk():
     nodes = ["node001", "node002", "node003", "node004"]
     data = {"protocol": "http", "server_ip": "10.141.255.254", "server_port": "7051", "nodes": nodes}
     Template = "templ_boot_disk.cfg"

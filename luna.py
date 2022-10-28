@@ -27,8 +27,9 @@ import common.bootstrap
 # from common.bootstrap import checkbootstrap
 # checkbootstrap()
 
-import utils.templates
-
+from utils.templates import Templates
+TEMP = Templates().validate()
+print(TEMP)
 ## TODO ->
 # 1. Check Templates for errors
 # 2. If Error Stop with message 

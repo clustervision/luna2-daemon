@@ -166,20 +166,19 @@ if check_dir_write is not True:
     print('TEMPLATES_DIR Directory: {} Is Not Writable.'.format(TEMPLATES_DIR))
     sys.exit(0)
 
-check_boot_ipxe_read = checkfile(TEMPLATES_DIR+'/boot_ipxe.cfg')
-if check_boot_ipxe_read is not True:
-    print('Boot PXE File: {} Is Not Readable.'.format(TEMPLATES_DIR+'/boot_ipxe.cfg'))
-    sys.exit(0)
+# check_boot_ipxe_read = checkfile(TEMPLATES_DIR+'/boot_ipxe.cfg')
+# if check_boot_ipxe_read is not True:
+#     print('Boot PXE File: {} Is Not Readable.'.format(TEMPLATES_DIR+'/boot_ipxe.cfg'))
+#     sys.exit(0)
 
-check_boot_ipxe_write = checkwritable(TEMPLATES_DIR+'/boot_ipxe.cfg')
-if check_boot_ipxe_write is not True:
-    print('Boot PXE File: {} Is Not Writable.'.format(TEMPLATES_DIR+'/boot_ipxe.cfg'))
-    sys.exit(0)
+# check_boot_ipxe_write = checkwritable(TEMPLATES_DIR+'/boot_ipxe.cfg')
+# if check_boot_ipxe_write is not True:
+#     print('Boot PXE File: {} Is Not Writable.'.format(TEMPLATES_DIR+'/boot_ipxe.cfg'))
+#     sys.exit(0)
 
-if check_boot_ipxe_read and check_boot_ipxe_write:
-    with open(TEMPLATES_DIR+'/boot_ipxe.cfg', 'r') as bootfile:
-        bootfile = bootfile.readlines()
-    # print(bootfile)
+# if check_boot_ipxe_read and check_boot_ipxe_write:
+#     with open(TEMPLATES_DIR+'/boot_ipxe.cfg', 'r') as bootfile:
+#         bootfile = bootfile.readlines()
 
 ######################## SET CRON JOB TO MONITOR ###########################
 # cronfile = "/etc/cron.d/luna2-daemon.monitor"

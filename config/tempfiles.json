@@ -1,0 +1,8 @@
+{
+  "files": [
+    "boot_ipxe.cfg",
+    "boot_ipxe_short.cfg",
+    "boot_ipxe_disk.cfg"
+  ],
+  "directories": null
+}

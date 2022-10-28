@@ -17,7 +17,7 @@ from flask import Blueprint, request, json, render_template
 from utils.log import *
 
 logger = Log.get_logger()
-boot_blueprint = Blueprint('boot', __name__, template_folder='../ipxe') # , template_folder='templates'
+boot_blueprint = Blueprint('boot', __name__, template_folder='../templates') # , template_folder='templates'
 
 
 """

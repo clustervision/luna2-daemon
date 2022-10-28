@@ -23,31 +23,44 @@ boot_blueprint = Blueprint('boot', __name__, template_folder='../templates') # ,
 
 """
 Input - None
-Process - Via Jinja2 filled data in template boot_ipxe.cfg 
-Output - boot_ipxe.cfg
+Process - Via Jinja2 filled data in template templ_boot_ipxe.cfg 
+Output - templ_boot_ipxe.cfg
 """
 @boot_blueprint.route("/boot", methods=['GET'])
 def boot():
-    ## TODO TRIX-39 [Waiting for confirmation]
-    ## Validate Node from Node Table
-    ## Validate BootMenu and NetBoot from group table
-    # node, bootmenu, netboot = check_node_state(nodeparam)
-    # if node == True and bootmenu == False and netboot == True:
-    #     Template = "boot_ipxe_short.cfg"
-    # elif node == True and bootmenu == True and netboot == True:
-    #     Template = "boot_ipxe.cfg"
-    # elif node == True and bootmenu == True and netboot == False:
-    #     Template = "boot_ipxe_disk.cfg"
-    # elif node == False and bootmenu == False and netboot == True:
-    #     Template = "boot_ipxe.cfg"
-    # else:
-    #     Template = "boot_ipxe.cfg"
     nodes = ["node001", "node002", "node003", "node004"]
     data = {"protocol": "http", "server_ip": "10.141.255.254", "server_port": "7051", "nodes": nodes}
-    Template = "boot_ipxe.cfg"
+    Template = "templ_boot_ipxe.cfg"
     logger.info("Boot API Serving the {}".format(Template))
     return render_template(Template, p=data), 200
 
+
+"""
+Input - None
+Process - Via Jinja2 filled data in template templ_boot_ipxe_short.cfg 
+Output - templ_boot_ipxe_short.cfg
+"""
+@boot_blueprint.route("/boot/short", methods=['GET'])
+def boot():
+    nodes = ["node001", "node002", "node003", "node004"]
+    data = {"protocol": "http", "server_ip": "10.141.255.254", "server_port": "7051", "nodes": nodes}
+    Template = "templ_boot_ipxe_short.cfg"
+    logger.info("Boot API Serving the {}".format(Template))
+    return render_template(Template, p=data), 200
+
+
+"""
+Input - None
+Process - Via Jinja2 filled data in template templ_boot_disk.cfg 
+Output - templ_boot_disk.cfg
+"""
+@boot_blueprint.route("/boot/disk", methods=['GET'])
+def boot():
+    nodes = ["node001", "node002", "node003", "node004"]
+    data = {"protocol": "http", "server_ip": "10.141.255.254", "server_port": "7051", "nodes": nodes}
+    Template = "templ_boot_disk.cfg"
+    logger.info("Boot API Serving the {}".format(Template))
+    return render_template(Template, p=data), 200
 
 """
 Input - MacID
@@ -87,21 +100,35 @@ def boot_install(node=None):
     return json.dumps(response), code
 
 
-def check_node_state(nodeparam):
-    node, bootmenu, netboot = False, False, False
-    table = "node"
-    where = f' WHERE id = "{nodeparam}" OR name = "{nodeparam}" OR macaddr = "{nodeparam}"'
-    NODE = Database().get_record(None, table, where)
-    if NODE:
-        node = True
-        logger.info(f'Node {nodeparam} is a Registered Node.')
-    else:
-        logger.info(f'Node {nodeparam} is Not a Registered Node.')
-    GROUP = Database().get_record(None, 'group', None)
-    if GROUP:
-        bootmenu = GROUP[0]["bootmenu"]
-        netboot = GROUP[0]["netboot"]
-        logger.info(f'Node {nodeparam} Have BootMenu {bootmenu} and NetBoot {netboot}.')
-    else:
-        logger.info(f'Node {nodeparam} Do not have the BootMenu and the NetBoot.')
-    return node, bootmenu, netboot
+    ## TODO TRIX-39 [Waiting for confirmation]
+    ## Validate Node from Node Table
+    ## Validate BootMenu and NetBoot from group table
+    # node, bootmenu, netboot = check_node_state(nodeparam)
+    # if node == True and bootmenu == False and netboot == True:
+    #     Template = "boot_ipxe_short.cfg"
+    # elif node == True and bootmenu == True and netboot == True:
+    #     Template = "boot_ipxe.cfg"
+    # elif node == True and bootmenu == True and netboot == False:
+    #     Template = "boot_ipxe_disk.cfg"
+    # elif node == False and bootmenu == False and netboot == True:
+    #     Template = "boot_ipxe.cfg"
+    # else:
+    #     Template = "boot_ipxe.cfg"
+# def check_node_state(nodeparam):
+#     node, bootmenu, netboot = False, False, False
+#     table = "node"
+#     where = f' WHERE id = "{nodeparam}" OR name = "{nodeparam}" OR macaddr = "{nodeparam}"'
+#     NODE = Database().get_record(None, table, where)
+#     if NODE:
+#         node = True
+#         logger.info(f'Node {nodeparam} is a Registered Node.')
+#     else:
+#         logger.info(f'Node {nodeparam} is Not a Registered Node.')
+#     GROUP = Database().get_record(None, 'group', None)
+#     if GROUP:
+#         bootmenu = GROUP[0]["bootmenu"]
+#         netboot = GROUP[0]["netboot"]
+#         logger.info(f'Node {nodeparam} Have BootMenu {bootmenu} and NetBoot {netboot}.')
+#     else:
+#         logger.info(f'Node {nodeparam} Do not have the BootMenu and the NetBoot.')
+#     return node, bootmenu, netboot

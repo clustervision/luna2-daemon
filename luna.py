@@ -27,6 +27,15 @@ import common.bootstrap
 # from common.bootstrap import checkbootstrap
 # checkbootstrap()
 
+import utils.templates
+
+## TODO ->
+# 1. Check Templates for errors
+# 2. If Error Stop with message 
+# 3. Remove Temp Directory
+# 4. Create Temo Directory
+
+
 from apis.auth import auth_blueprint
 from apis.boot import boot_blueprint
 from apis.config import config_blueprint

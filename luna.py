@@ -53,6 +53,17 @@ api.register_blueprint(monitor_blueprint)
 
 # Logger.info('Variable ---------->> {}'.format(CONSTANT))
 
+def on_starting(server):
+    LOGGER.info(f'Templates Check On Start')
+    return True
+
+
+def on_reload(server):
+    TEMPLATE_CHECK = Templates().validate()
+    LOGGER.info(f'Templates Check Status is: {TEMPLATE_CHECK}')
+    return True
+
+
 @api.route('/')
 def main():
     """ Abort Main Route"""
@@ -101,4 +112,4 @@ def service_unavailable(error):
 # if __name__ == "__main__":
 #     # main()
 #     api.run(host="0.0.0.0", port=7050, debug=True, threaded=True)
-api.run(host="0.0.0.0", port=7050)
+# api.run(host="0.0.0.0", port=7050)

@@ -166,7 +166,7 @@ class Database(object):
 	def update(self, table=None, row=None, where=None):
 		columns = []
 		Where = []
-		for cols in update:
+		for cols in row:
 			column = ""
 			if 'column' in cols.keys():
 				column = column+ cols['column']

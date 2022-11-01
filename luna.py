@@ -18,7 +18,7 @@ __email__       = 'sumit.sharma@clustervision.com'
 __status__      = 'Development'
 
 
-from flask import Flask, abort, json
+from flask import Flask, abort, json, Response
 from common.constant import CONSTANT
 from utils.log import Log
 
@@ -67,14 +67,14 @@ def on_reload(server):
 @api.route('/')
 def main():
     """ Abort Main Route"""
-    abort(404)
+    abort(404, None)
 
 
 @api.errorhandler(400)
 def bad_request():
     """ Abort All 400"""
     error = {"message": "Bad Requests"}
-    return json.dumps(error), 401
+    return json.dumps(error), 400
 
 
 @api.errorhandler(401)
@@ -85,10 +85,14 @@ def unauthorized():
 
 
 @api.errorhandler(404)
-def page_not_found():
+def page_not_found(error):
     """ Abort All 404"""
-    error = {"message": "Route Not Found"}
-    return json.dumps(error), 404
+    if error:
+        status_code = Response(status=404)
+        return status_code
+    else:
+        error = {"message": "Route Not Found"}
+        return json.dumps(error), 404
 
 
 @api.errorhandler(500)
@@ -112,4 +116,4 @@ def service_unavailable(error):
 # if __name__ == "__main__":
 #     # main()
 #     api.run(host="0.0.0.0", port=7050, debug=True, threaded=True)
-# api.run(host="0.0.0.0", port=7050)
+api.run(host="0.0.0.0", port=7050, debug=True)

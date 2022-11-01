@@ -13,7 +13,7 @@ This File is a A Entry Point of Every Boot Related Activity.
 
 """
 
-from flask import Blueprint, request, json, render_template
+from flask import Blueprint, request, json, render_template, abort
 from utils.log import *
 from utils.database import *
 
@@ -65,21 +65,42 @@ def boot_disk():
 """
 Input - MacID
 Process - Discovery on MAC address, Server will lookup the MAC if SNMP port-detection has been enabled
-Output - hostname
+Output - iPXE Template
 """
 @boot_blueprint.route("/boot/search/mac/<string:mac>", methods=['GET'])
 def boot_search_mac(mac=None):
-    hostname = "HOSTNAME"
-    if hostname:
-        logger.info("hostname is {}".format(hostname))
-        response = {"message": hostname}
-        code = 200
-    else:
-        logger.error("Hostname Not Found For MacID {}.".format(mac))
-        response = {"message": "Hostname Not Found For MacID {}.".format(mac)}
-        code = 404
-    return json.dumps(response), code
+    data = {"protocol": "http", "server_ip": "10.141.255.254", "server_port": "7051", "nodes": None}
+    NODE = Database().get_record(None, 'node', f' WHERE macaddr = "{mac}"')
+    ## TODO -> Switch Configuration Needs to be checked before response
+    if not NODE:
+        logger.debug(f'Mac Address {mac} Not Found.')
+        abort(404, "Empty")
+    # row = [{"column": "status", "value": "installer.discovery"}]
+    # where = [{"column": "id", "value": NODE[0]["id"]}]
+    # Database().update('node', row, where)
+    Template = "templ_nodeboot.cfg"
+    logger.info(f'Node Found with Mac Address {mac}.')
+    return render_template(Template, p=data), 200        
 
+
+"""
+Input - Hostname
+Process - Discovery on Hostname, Server will lookup the MAC if SNMP port-detection has been enabled
+Output - iPXE Template
+"""
+@boot_blueprint.route("/boot/manual/hostname/<string:hostname>", methods=['GET'])
+def boot_manual_hostname(hostname=None):
+    data = {"protocol": "http", "server_ip": "10.141.255.254", "server_port": "7051", "service": '0'}
+    NODE = Database().get_record(None, 'node', f' WHERE hostname = "{hostname}"')
+    ## TODO -> Switch Configuration Needs to be checked before response
+    if not NODE:
+        logger.debug(f'Hostname {hostname} Not Found.')
+        abort(404, "Empty")
+    if NODE[0]['service'] == True:
+        data['service'] = '1'
+    Template = "templ_nodeboot.cfg"
+    logger.info(f'Node Found with Hostname {hostname}.')
+    return render_template(Template, p=data), 200    
 
 """
 Input - NodeID or Node Name

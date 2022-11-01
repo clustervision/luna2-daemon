@@ -1,0 +1,146 @@
+[INFO]:[2022-11-01 10:39:49,844]:[MainThread]:[log.py:init_log@51] - =============== Luna Logging Level IsSet To [INFO] ===============
+[2022-11-01 10:39:49 +0100] [5381] [INFO] Starting gunicorn 20.1.0
+[2022-11-01 10:39:49 +0100] [5381] [INFO] Listening at: http://0.0.0.0:7050 (5381)
+[2022-11-01 10:39:49 +0100] [5381] [INFO] Using worker: sync
+[2022-11-01 10:39:49 +0100] [5387] [INFO] Booting worker with pid: 5387
+[INFO]:[2022-11-01 10:40:04,053]:[MainThread]:[log.py:init_log@51] - =============== Luna Logging Level IsSet To [INFO] ===============
+[2022-11-01 10:40:04 +0100] [5389] [INFO] Starting gunicorn 20.1.0
+[2022-11-01 10:40:04 +0100] [5389] [ERROR] Connection in use: ('0.0.0.0', 7050)
+[2022-11-01 10:40:04 +0100] [5389] [ERROR] Retrying in 1 second.
+[2022-11-01 10:40:05 +0100] [5389] [ERROR] Connection in use: ('0.0.0.0', 7050)
+[2022-11-01 10:40:05 +0100] [5389] [ERROR] Retrying in 1 second.
+[2022-11-01 10:40:06 +0100] [5389] [ERROR] Connection in use: ('0.0.0.0', 7050)
+[2022-11-01 10:40:06 +0100] [5389] [ERROR] Retrying in 1 second.
+[2022-11-01 10:40:07 +0100] [5389] [ERROR] Connection in use: ('0.0.0.0', 7050)
+[2022-11-01 10:40:07 +0100] [5389] [ERROR] Retrying in 1 second.
+[2022-11-01 10:40:08 +0100] [5389] [ERROR] Connection in use: ('0.0.0.0', 7050)
+[2022-11-01 10:40:08 +0100] [5389] [ERROR] Retrying in 1 second.
+[2022-11-01 10:40:09 +0100] [5389] [ERROR] Can't connect to ('0.0.0.0', 7050)
+True
+True
+[INFO]:[2022-11-01 10:41:10,686]:[MainThread]:[boot.py:boot@34] - Boot API Serving the templ_boot_ipxe.cfg
+[2022-11-01 10:41:10 +0100] [5387] [ERROR] Error handling request /favicon.ico
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.10/site-packages/flask/app.py", line 1820, in full_dispatch_request
+    rv = self.dispatch_request()
+  File "/usr/local/lib/python3.10/site-packages/flask/app.py", line 1785, in dispatch_request
+    self.raise_routing_exception(req)
+  File "/usr/local/lib/python3.10/site-packages/flask/app.py", line 1767, in raise_routing_exception
+    raise request.routing_exception  # type: ignore
+  File "/usr/local/lib/python3.10/site-packages/flask/ctx.py", line 351, in match_request
+    result = self.url_adapter.match(return_rule=True)  # type: ignore
+  File "/usr/local/lib/python3.10/site-packages/werkzeug/routing/map.py", line 624, in match
+    raise NotFound() from None
+werkzeug.exceptions.NotFound: 404 Not Found: The requested URL was not found on the server. If you entered the URL manually please check your spelling and try again.
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.10/site-packages/flask/app.py", line 2525, in wsgi_app
+    response = self.full_dispatch_request()
+  File "/usr/local/lib/python3.10/site-packages/flask/app.py", line 1822, in full_dispatch_request
+    rv = self.handle_user_exception(e)
+  File "/usr/local/lib/python3.10/site-packages/flask/app.py", line 1666, in handle_user_exception
+    return self.handle_http_exception(e)
+  File "/usr/local/lib/python3.10/site-packages/flask/app.py", line 1606, in handle_http_exception
+    return self.ensure_sync(handler)(e)
+TypeError: page_not_found() takes 0 positional arguments but 1 was given
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.10/site-packages/gunicorn/workers/sync.py", line 136, in handle
+    self.handle_request(listener, req, client, addr)
+  File "/usr/local/lib/python3.10/site-packages/gunicorn/workers/sync.py", line 179, in handle_request
+    respiter = self.wsgi(environ, resp.start_response)
+  File "/usr/local/lib/python3.10/site-packages/flask/app.py", line 2548, in __call__
+    return self.wsgi_app(environ, start_response)
+  File "/usr/local/lib/python3.10/site-packages/flask/app.py", line 2528, in wsgi_app
+    response = self.handle_exception(e)
+  File "/usr/local/lib/python3.10/site-packages/flask/app.py", line 1724, in handle_exception
+    server_error = self.ensure_sync(handler)(server_error)
+TypeError: server_error() takes 0 positional arguments but 1 was given
+[INFO]:[2022-11-01 10:41:16,783]:[MainThread]:[boot.py:boot@34] - Boot API Serving the templ_boot_ipxe.cfg
+[2022-11-01 10:41:16 +0100] [5387] [ERROR] Error handling request /favicon.ico
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.10/site-packages/flask/app.py", line 1820, in full_dispatch_request
+    rv = self.dispatch_request()
+  File "/usr/local/lib/python3.10/site-packages/flask/app.py", line 1785, in dispatch_request
+    self.raise_routing_exception(req)
+  File "/usr/local/lib/python3.10/site-packages/flask/app.py", line 1767, in raise_routing_exception
+    raise request.routing_exception  # type: ignore
+  File "/usr/local/lib/python3.10/site-packages/flask/ctx.py", line 351, in match_request
+    result = self.url_adapter.match(return_rule=True)  # type: ignore
+  File "/usr/local/lib/python3.10/site-packages/werkzeug/routing/map.py", line 624, in match
+    raise NotFound() from None
+werkzeug.exceptions.NotFound: 404 Not Found: The requested URL was not found on the server. If you entered the URL manually please check your spelling and try again.
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.10/site-packages/flask/app.py", line 2525, in wsgi_app
+    response = self.full_dispatch_request()
+  File "/usr/local/lib/python3.10/site-packages/flask/app.py", line 1822, in full_dispatch_request
+    rv = self.handle_user_exception(e)
+  File "/usr/local/lib/python3.10/site-packages/flask/app.py", line 1666, in handle_user_exception
+    return self.handle_http_exception(e)
+  File "/usr/local/lib/python3.10/site-packages/flask/app.py", line 1606, in handle_http_exception
+    return self.ensure_sync(handler)(e)
+TypeError: page_not_found() takes 0 positional arguments but 1 was given
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.10/site-packages/gunicorn/workers/sync.py", line 136, in handle
+    self.handle_request(listener, req, client, addr)
+  File "/usr/local/lib/python3.10/site-packages/gunicorn/workers/sync.py", line 179, in handle_request
+    respiter = self.wsgi(environ, resp.start_response)
+  File "/usr/local/lib/python3.10/site-packages/flask/app.py", line 2548, in __call__
+    return self.wsgi_app(environ, start_response)
+  File "/usr/local/lib/python3.10/site-packages/flask/app.py", line 2528, in wsgi_app
+    response = self.handle_exception(e)
+  File "/usr/local/lib/python3.10/site-packages/flask/app.py", line 1724, in handle_exception
+    server_error = self.ensure_sync(handler)(server_error)
+TypeError: server_error() takes 0 positional arguments but 1 was given
+[INFO]:[2022-11-01 10:42:17,073]:[MainThread]:[boot.py:boot@34] - Boot API Serving the templ_boot_ipxe.cfg
+[2022-11-01 10:42:17 +0100] [5387] [ERROR] Error handling request /favicon.ico
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.10/site-packages/flask/app.py", line 1820, in full_dispatch_request
+    rv = self.dispatch_request()
+  File "/usr/local/lib/python3.10/site-packages/flask/app.py", line 1785, in dispatch_request
+    self.raise_routing_exception(req)
+  File "/usr/local/lib/python3.10/site-packages/flask/app.py", line 1767, in raise_routing_exception
+    raise request.routing_exception  # type: ignore
+  File "/usr/local/lib/python3.10/site-packages/flask/ctx.py", line 351, in match_request
+    result = self.url_adapter.match(return_rule=True)  # type: ignore
+  File "/usr/local/lib/python3.10/site-packages/werkzeug/routing/map.py", line 624, in match
+    raise NotFound() from None
+werkzeug.exceptions.NotFound: 404 Not Found: The requested URL was not found on the server. If you entered the URL manually please check your spelling and try again.
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.10/site-packages/flask/app.py", line 2525, in wsgi_app
+    response = self.full_dispatch_request()
+  File "/usr/local/lib/python3.10/site-packages/flask/app.py", line 1822, in full_dispatch_request
+    rv = self.handle_user_exception(e)
+  File "/usr/local/lib/python3.10/site-packages/flask/app.py", line 1666, in handle_user_exception
+    return self.handle_http_exception(e)
+  File "/usr/local/lib/python3.10/site-packages/flask/app.py", line 1606, in handle_http_exception
+    return self.ensure_sync(handler)(e)
+TypeError: page_not_found() takes 0 positional arguments but 1 was given
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.10/site-packages/gunicorn/workers/sync.py", line 136, in handle
+    self.handle_request(listener, req, client, addr)
+  File "/usr/local/lib/python3.10/site-packages/gunicorn/workers/sync.py", line 179, in handle_request
+    respiter = self.wsgi(environ, resp.start_response)
+  File "/usr/local/lib/python3.10/site-packages/flask/app.py", line 2548, in __call__
+    return self.wsgi_app(environ, start_response)
+  File "/usr/local/lib/python3.10/site-packages/flask/app.py", line 2528, in wsgi_app
+    response = self.handle_exception(e)
+  File "/usr/local/lib/python3.10/site-packages/flask/app.py", line 1724, in handle_exception
+    server_error = self.ensure_sync(handler)(server_error)
+TypeError: server_error() takes 0 positional arguments but 1 was given

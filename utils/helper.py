@@ -12,6 +12,7 @@ __status__      = 'Development'
 This Is a Helper Class, which help the project to provide the common Methods.
 
 """
+import sys
 import subprocess
 from utils.log import *
 
@@ -38,3 +39,13 @@ class Helper(object):
         process.wait()
         self.logger.debug("Output Of Command {} ".format(str(output)))
         return output
+
+
+    """
+    Input - Error Message (String)
+    Output - Stop The Daemon With Error Message .
+    """
+    def stop(self, message=None):
+        self.logger.error(f'Daemon Stopped Because: {message}')
+        sys.exit(-1)
+        return False

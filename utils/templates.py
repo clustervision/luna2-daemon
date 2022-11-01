@@ -17,6 +17,7 @@ import os
 import json
 import subprocess
 from utils.log import *
+from utils.helper import Helper
 
 
 class Templates(object):
@@ -49,10 +50,12 @@ class Templates(object):
             file.close()
             if data:
                 if 'files' in data.keys():
-                    for templatefiles in data.keys():
+                    Helper().runcommand(f'rm -rf /var/tmp/luna2')
+                    Helper().runcommand(f'mkdir /var/tmp/luna2')
+                    for templatefiles in data['files']:
                         tempdirstatus = self.checkdir(TEMPLATELIST)
-                        print(tempdirstatus)
-            # checkwritable(TEMPLATES_DIR+'/boot_ipxe.cfg') 
+                        if tempdirstatus:
+                            Helper().runcommand(f'cp {CONSTANT["TEMPLATES"]["TEMPLATES_DIR"]}/{templatefiles} /var/tmp/luna2/')
 
 
     """

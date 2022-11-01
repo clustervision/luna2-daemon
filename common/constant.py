@@ -135,11 +135,12 @@ def checkwritable(filename=None):
 """
 Sanity Checks On LOGFILE, TARBALL, TEMPLATES_DIR
 """
+### TODO -> Create Universal method for exit, before exit, send message, exit code should be "-1"
 
 check_log_read = checkfile(LOGFILE)
 if check_log_read is not True:
     print('Log File: {} Is Not Readable.'.format(LOGFILE))
-    sys.exit(0)
+    sys.exit(-1)
 
 check_log_write = checkwritable(LOGFILE)
 if check_log_write is not True:

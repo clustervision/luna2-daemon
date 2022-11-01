@@ -12,6 +12,7 @@ __status__      = 'Development'
 This Is a Helper Class, which help the project to provide the common Methods.
 
 """
+import os
 import sys
 import subprocess
 from utils.log import *
@@ -49,3 +50,51 @@ class Helper(object):
         self.logger.error(f'Daemon Stopped Because: {message}')
         sys.exit(-1)
         return False
+
+    """
+    Input - Directory
+    Output - Directory Existence, Readability and Writable
+    """
+    def checkpathstate(self, path=None):
+        pathtype = self.checkpathtype(path)
+        if pathtype == 'File' or pathtype == 'Directory':
+            if os.access(path, os.R_OK):
+                if os.access(path, os.W_OK):
+                    return True
+                else:
+                    print(f'{pathtype} {path} Is Writable.')
+            else:
+                print(f'{pathtype} {path} Is Not readable.')
+        else:
+            print(f'{pathtype} {path} Is Not exists.')
+        return False
+
+
+    """
+    Input - Path of File or Directory
+    Output - File or directory or Not Exists
+    """
+    def checkpathtype(self, path=None):
+        pathstatus = self.checkpath(path)
+        if pathstatus:
+            if os.path.isdir(path):  
+                response = 'File'  
+            elif os.path.isfile(path):  
+                response = 'Directory'
+            else:
+                response = 'socket orFIFO or device'
+        else:
+            response = 'Not Exists'
+        return response
+
+
+    """
+    Input - Path of File or Directory
+    Output - True or False Is exists or not
+    """
+    def checkpath(self, path=None):
+        if os.path.exists(path):
+            response = True
+        else:
+            response = None
+        return response

@@ -37,90 +37,34 @@ class Templates(object):
     """
     def validate(self):
         if CONSTANT["TEMPLATES"]["TEMPLATES_DIR"]:
-            TEMPLATEDIR = CONSTANT["TEMPLATES"]["TEMPLATES_DIR"]
-        if TEMPLATEDIR:
-            dirstatus = self.checkdir(TEMPLATEDIR)
-        if CONSTANT["TEMPLATES"]["TEMPLATELIST"]:
-            TEMPLATELIST = CONSTANT["TEMPLATES"]["TEMPLATELIST"]
-        if TEMPLATELIST:
-            tempdirstatus = self.checkdir(TEMPLATELIST)
-        if tempdirstatus:
-            file = open(TEMPLATELIST)
-            data = json.load(file)
-            file.close()
-            if data:
-                if 'files' in data.keys():
-                    Helper().runcommand(f'rm -rf /var/tmp/luna2')
-                    Helper().runcommand(f'mkdir /var/tmp/luna2')
-                    for templatefiles in data['files']:
-                        tempdirstatus = self.checkdir(TEMPLATELIST)
-                        if tempdirstatus:
-                            Helper().runcommand(f'cp {CONSTANT["TEMPLATES"]["TEMPLATES_DIR"]}/{templatefiles} /var/tmp/luna2/')
-
-
-    """
-    Input - Directory
-    Output - Directory Existence, Readability and Writable
-    """
-    def checkdir(self, directory=None):
-        if os.path.exists(directory):
-            if os.access(directory, os.R_OK):
-                if os.access(directory, os.W_OK):
-                    return True
+            TEMPLDIRSTATE = Helper().checkpathstate(CONSTANT["TEMPLATES"]["TEMPLATES_DIR"])
+            if TEMPLDIRSTATE:
+                if CONSTANT["TEMPLATES"]["TEMPLATELIST"]:
+                    tempdirstatus = Helper().checkpathstate(CONSTANT["TEMPLATES"]["TEMPLATELIST"])
+                    if tempdirstatus:
+                        file = open(CONSTANT["TEMPLATES"]["TEMPLATELIST"])
+                        data = json.load(file)
+                        file.close()
+                        if data:
+                            if 'files' in data.keys():
+                                Helper().runcommand(f'rm -rf /var/tmp/luna2')
+                                Helper().runcommand(f'mkdir /var/tmp/luna2')
+                                for templatefiles in data['files']:
+                                    templfilestatus = Helper().checkpathstate(CONSTANT["TEMPLATES"]["TEMPLATES_DIR"]+'/'+templatefiles)
+                                    if templfilestatus:
+                                        Helper().runcommand(f'cp {CONSTANT["TEMPLATES"]["TEMPLATES_DIR"]}/{templatefiles} /var/tmp/luna2/')
+                                    else:
+                                        logger.error(f'{CONSTANT["TEMPLATES"]["TEMPLATES_DIR"]}/{templatefiles} is Not Present.')
+                            else:
+                                logger.error(f'{CONSTANT["TEMPLATES"]["TEMPLATELIST"]} Do Not have file list.')
+                        else:
+                            logger.error(f'{CONSTANT["TEMPLATES"]["TEMPLATELIST"]} Is Empty.')
+                    else:
+                        logger.error(f'{CONSTANT["TEMPLATES"]["TEMPLATELIST"]} is Not Present.')
                 else:
-                    print('Directory {} Is Writable.'.format(directory))
+                    logger.error(f'TEMPLATELIST Not Present in the INI File.')
             else:
-                print('Directory {} Is Not readable.'.format(directory))
+                logger.error(f'{CONSTANT["TEMPLATES"]["TEMPLATES_DIR"]} is Not Present.')
         else:
-            print('Directory {} Is Not exists.'.format(directory))
-        return False
-
-
-    def checkfile(filename=None):
-        ConfigFilePath = Path(filename)
-        if ConfigFilePath.is_file():
-            if os.access(filename, os.R_OK):
-                return True
-            else:
-                print('File {} Is Not readable.'.format(filename))
-        else:
-            print('File {} Is Abesnt.'.format(filename))
-        return False
-
-    def checkwritable(filename=None):
-        write = False
-        try:
-            file = open(filename, 'a')
-            if file.writable():
-                write = True
-        except Exception as e:
-            print('File {} is Not Writable.'.format(filename))
-        return write
-
-
-        #  check_dir_read = checkdir(TEMPLATES_DIR)
-        # if check_dir_read is not True:
-        #     print('TEMPLATES_DIR Directory: {} Is Not Readable.'.format(TEMPLATES_DIR))
-        #     sys.exit(0)
-
-        # check_dir_write = checkdir(TEMPLATES_DIR)
-        # if check_dir_write is not True:
-        #     print('TEMPLATES_DIR Directory: {} Is Not Writable.'.format(TEMPLATES_DIR))
-        #     sys.exit(0)
-
-        # check_boot_ipxe_read = checkfile(TEMPLATES_DIR+'/boot_ipxe.cfg')
-        # if check_boot_ipxe_read is not True:
-        #     print('Boot PXE File: {} Is Not Readable.'.format(TEMPLATES_DIR+'/boot_ipxe.cfg'))
-        #     sys.exit(0)
-
-        # check_boot_ipxe_write = checkwritable(TEMPLATES_DIR+'/boot_ipxe.cfg')
-        # if check_boot_ipxe_write is not True:
-        #     print('Boot PXE File: {} Is Not Writable.'.format(TEMPLATES_DIR+'/boot_ipxe.cfg'))
-        #     sys.exit(0)
-
-        # if check_boot_ipxe_read and check_boot_ipxe_write:
-        #     with open(TEMPLATES_DIR+'/boot_ipxe.cfg', 'r') as bootfile:
-        #         bootfile = bootfile.readlines()
-
-
-        print(CONSTANT["TEMPLATES"]["TEMPLATES_DIR"])
+            logger.error(f'TEMPLATES_DIR Not Present in the INI File.')
+        return True

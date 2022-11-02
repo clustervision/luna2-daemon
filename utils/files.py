@@ -31,7 +31,7 @@ class Files(object):
     Output - filepath
     """
     def check_file(self, filename):
-        filepath = TARBALL+"/"+filename
+        filepath = CONSTANT["FILES"]["TARBALL"]+"/"+filename
         if os.path.exists(filepath):
             logger.debug("File Path {} Is exists.".format(filepath))
             return filepath
@@ -47,7 +47,7 @@ class Files(object):
     """
     def list_files(self):
         files = []
-        filepath = TARBALL+"/"
+        filepath = CONSTANT["FILES"]["TARBALL"]+"/"
         if os.path.exists(filepath):
             for file in os.listdir(filepath):
                 if file.endswith(".tar.gz") or file.endswith(".tar.bz2"):

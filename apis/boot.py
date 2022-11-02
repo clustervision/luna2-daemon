@@ -33,7 +33,6 @@ def boot():
     data = {"protocol": "http", "server_ip": "10.141.255.254", "server_port": "7051", "nodes": nodes}
     Template = "templ_boot_ipxe.cfg"
     logger.info("Boot API Serving the {}".format(Template))
-    print(boot_blueprint.template_folder)
     CHECKTEMPLATE = Helper().checkjinja(CONSTANT["TEMPLATES"]["TEMPLATES_DIR"]+'/'+Template)
     if CHECKTEMPLATE:
         return render_template(Template, p=data), 200

@@ -32,11 +32,11 @@ Output - List of available files.
 def files():
     filelist = Files().list_files()
     if filelist:
-        logger.info("Available Tar file in {} are {}.".format(TARBALL, str(filelist)))
+        logger.info("Available Tar file in {} are {}.".format(CONSTANT["FILES"]["TARBALL"], str(filelist)))
         return filelist, 200
     else:
-        logger.error("No Tar file is present in {}.".format(TARBALL))
-        response = {"message": "No Tar file is present in {}.".format(TARBALL)}
+        logger.error("No Tar file is present in {}.".format(CONSTANT["FILES"]["TARBALL"]))
+        response = {"message": "No Tar file is present in {}.".format(CONSTANT["FILES"]["TARBALL"])}
         code = 503
         return json.dumps(response), code
 
@@ -48,13 +48,22 @@ Output - File
 """
 @files_blueprint.route("/files/<string:filename>", methods=['GET'])
 def files_get(filename=None):
+    if request.environ.get('HTTP_X_FORWARDED_FOR') is None:
+        REQUESTIP = request.environ['REMOTE_ADDR']
+    else:
+        REQUESTIP = request.environ['HTTP_X_FORWARDED_FOR']
+    NODEINTERFACE = Database().get_record(None, 'nodeinterface', f' WHERE ipaddress = "{REQUESTIP}"')
+    if NODEINTERFACE:
+        row = [{"column": "status", "value": "installer.discovery"}]
+        where = [{"column": "id", "value": NODEINTERFACE[0]["id"]}]
+        Database().update('node', row, where)
     filepath = Files().check_file(filename)
     if filepath:
         logger.info("Tar File Path is {}.".format(filepath))
         return send_file(filepath, as_attachment=True), 200
     else:
-        logger.error("Tar File {} Is Not Present in Directory {}.".format(filename, TARBALL))
-        response = "Tar File {} Is Not Present in Directory {}.".format(filename, TARBALL)
+        logger.error("Tar File {} Is Not Present in Directory {}.".format(filename, CONSTANT["FILES"]["TARBALL"]))
+        response = "Tar File {} Is Not Present in Directory {}.".format(filename, CONSTANT["FILES"]["TARBALL"])
         code = 503
         return json.dumps(response), code
     return json.dumps(response), code

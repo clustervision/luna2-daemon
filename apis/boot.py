@@ -115,7 +115,9 @@ Output - Success or Failure
 """
 @boot_blueprint.route("/boot/install/<string:node>", methods=['GET'])
 def boot_install(node=None):
-    install = True
+    row = [{"column": "status", "value": "installer.downloaded"}]
+    where = [{"column": "name", "value": node}]
+    install = Database().update('node', row, where)
     if install:
         logger.info("Installation Script is Started For  NodeID: {}".format(node))
         response = {"message": "Installation Script is Started For  NodeID: {}".format(node)}

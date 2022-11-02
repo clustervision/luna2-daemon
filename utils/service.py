@@ -22,8 +22,8 @@ class Service(object):
     Constructor - Initialize The Service Names.
     """
     def __init__(self):
-        self.DHCP = DHCP
-        self.DNS = DNS
+        self.DHCP = CONSTANT['SERVICES']['DHCP']
+        self.DNS = CONSTANT['SERVICES']['DNS']
         self.logger = Log.get_logger()
 
 
@@ -34,10 +34,10 @@ class Service(object):
     """
     def luna_service(self, name, action):
         match name:
-            case self.DHCP | self.DNS | "luna2-daemon":
+            case self.DHCP | self.DNS | "luna2":
                 match action:
                     case "start" | "stop" | "reload" | "restart" | "status":
-                        command = "{} {} {}".format(COMMAND, action, name) ## Fetch the command from the .ini file
+                        command = "{} {} {}".format(CONSTANT['SERVICES']['COMMAND'], action, name) ## Fetch the command from the .ini file
                         output = Helper().runcommand(command)
                         response, code = self.service_status(name, action, output)
                     case _:
@@ -97,10 +97,12 @@ class Service(object):
             case "status":
                 if "active (running)" in str(output):
                     self.logger.info("Service {} is Active & Running.".format(name))
-                    response = "Service {} is Active & Running.".format(name)
+                    response = {"monitor": {"service": { name: "OK, running"} } }
+                    # response = "Service {} is Active & Running.".format(name)
                     code = 200
                 else:
                     self.logger.error("Service {} is Not Active & Running.".format(name))
-                    response = "Service {} is Not Active & Running.".format(name)
+                    response = {"monitor": {"service": { name: "FAIL, not running"} } }
+                    # response = "Service {} is Not Active & Running.".format(name)
                     code = 500
         return response, code

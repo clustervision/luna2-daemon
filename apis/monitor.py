@@ -35,9 +35,8 @@ def monitor_service(name=None):
     if name == "luna2":
         response, code = checkdbstatus()
         logger.info("Database Status is: {}.".format(str(response)))
-    else:
-        action = "status"
-        response, code = Service().luna_service(name, action)
+    action = "status"
+    response, code = Service().luna_service(name, action)
     return json.dumps(response), code
 
 
@@ -87,21 +86,21 @@ Output - Status of Read & Write.
 def checkdbstatus():
     sqlite, read, write = False, False, False
     code = 503
-    if os.path.isfile(DATABASE):
+    if os.path.isfile(CONSTANT['DATABASE']['DATABASE']):
         sqlite = True
-        if os.access(DATABASE, os.R_OK): 
+        if os.access(CONSTANT['DATABASE']['DATABASE'], os.R_OK): 
             read = True
             code = 500
             try:
-                file = open(DATABASE, "a")
+                file = open(CONSTANT['DATABASE']['DATABASE'], "a")
                 if file.writable():
                     write = True
                     code = 200
                     file.close()
             except Exception as e:
-                logger.error("DATABASE {} is Not Writable.".format(DATABASE))
+                logger.error("DATABASE {} is Not Writable.".format(CONSTANT['DATABASE']['DATABASE']))
             
-            with open(DATABASE,'r', encoding = "ISO-8859-1") as f:
+            with open(CONSTANT['DATABASE']['DATABASE'],'r', encoding = "ISO-8859-1") as f:
                 header = f.read(100)
                 if header.startswith('SQLite format 3'):
                     read, write = True, True
@@ -109,17 +108,17 @@ def checkdbstatus():
                 else:
                     read, write = False, False
                     code = 503
-                    logger.error("DATABASE {} is Not a SQLite3 Database.".format(DATABASE))
+                    logger.error("DATABASE {} is Not a SQLite3 Database.".format(CONSTANT['DATABASE']['DATABASE']))
         else:
-            logger.error("DATABASE {} is Not Readable.".format(DATABASE))
+            logger.error("DATABASE {} is Not Readable.".format(CONSTANT['DATABASE']['DATABASE']))
     else:
-        logger.info("DATABASE {} is Not a SQLite Database.".format(DATABASE))
+        logger.info("DATABASE {} is Not a SQLite Database.".format(CONSTANT['DATABASE']['DATABASE']))
     if not sqlite:
         try:
             Database().get_cursor()
             read, write = True, True
             code = 200
         except pyodbc.Error as error:
-            logger.error("Error While connecting to Database {} is: {}.".format(DATABASE, str(error)))
-    response = {"database": DRIVER, "read": read, "write": write}
+            logger.error("Error While connecting to Database {} is: {}.".format(CONSTANT['DATABASE']['DATABASE'], str(error)))
+    response = {"database": CONSTANT['DATABASE']['DRIVER'], "read": read, "write": write}
     return response, code

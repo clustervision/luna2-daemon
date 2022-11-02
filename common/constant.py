@@ -136,6 +136,7 @@ def checkwritable(filename=None):
 Sanity Checks On LOGFILE, TARBALL, TEMPLATES_DIR
 """
 ### TODO -> Create Universal method for exit, before exit, send message, exit code should be "-1"
+## Bootstrap
 
 check_log_read = checkfile(LOGFILE)
 if check_log_read is not True:

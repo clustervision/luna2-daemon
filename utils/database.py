@@ -186,10 +186,14 @@ class Database(object):
 		try:
 			self.cursor.execute(query)
 			self.connection.commit()
+			if self.cursor.rowcount < 1:
+				return False
+			else:
+				return True
 		except Exception as e:
 			print(e)
 			sys.exit(0)
-		return True
+			return False
 
 
 	"""

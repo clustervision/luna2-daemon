@@ -47,15 +47,16 @@ Output - Status.
 """
 @monitor_blueprint.route("/monitor/status/<string:node>", methods=['GET'])
 def monitor_status_get(node=None):
-    status = True
-    if status:
-        logger.info("Node {} is UP And Running".format(node))
-        response = {"message": "Node {} is UP And Running".format(node)}
-        code = 200
+    NODE = Database().get_record(None, 'node', f' WHERE id = "{node}" OR name = "{node}"')
+    if not NODE:
+        logger.info(f'Node {node} is Down And Not Running')
+        response = {"monitor": {"status": { node: { "status": "Luna installer: Errors", "state": "installer.fail"} } } }
+        code = 500
     else:
-        logger.info("Node {} is Down And Not Running".format(node))
-        response = {"message": "Node {} is Down And Not Running".format(node)}
-        code = 404
+        logger.info("Node {} is UP And Running".format(node))
+        # response = {"monitor": {"status": { node: { "status": NODE[0]['status'], "state": NODE[0]['state']} } } }
+        response = {"monitor": {"status": { node: { "status": "Luna installer: No errors", "state": "installer.ok"} } } }
+        code = 200
     return json.dumps(response), code
 
 
@@ -66,15 +67,16 @@ Output - Status.
 """
 @monitor_blueprint.route("/monitor/status/<string:node>", methods=['POST'])
 def monitor_status_post(node=None):
-    status = True
-    if status:
-        logger.info("Node {} is Updated.".format(node))
-        response = {"message": "Node {} is Updated.".format(node)}
-        code = 200
+    NODE = Database().get_record(None, 'node', f' WHERE id = "{node}" OR name = "{node}"')
+    if not NODE:
+        logger.info(f'Node {node} is Down And Not Running')
+        response = {"monitor": {"status": { node: { "status": "Luna installer: Errors", "state": "installer.fail"} } } }
+        code = 500
     else:
-        logger.info("Node {} is Down And Not Running".format(node))
-        response = {"message": "Node {} is Down And Not Running".format(node)}
-        code = 404
+        logger.info("Node {} is UP And Running".format(node))
+        # response = {"monitor": {"status": { node: { "status": NODE[0]['status'], "state": NODE[0]['state']} } } }
+        response = {"monitor": {"status": { node: { "status": "Luna installer: No errors", "state": "installer.ok"} } } }
+        code = 200
     return json.dumps(response), code
 
 

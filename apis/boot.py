@@ -16,6 +16,7 @@ This File is a A Entry Point of Every Boot Related Activity.
 from flask import Blueprint, request, json, render_template, abort
 from utils.log import *
 from utils.database import *
+from utils.helper import *
 
 logger = Log.get_logger()
 boot_blueprint = Blueprint('boot', __name__, template_folder='../templates') # , template_folder='templates'
@@ -32,7 +33,13 @@ def boot():
     data = {"protocol": "http", "server_ip": "10.141.255.254", "server_port": "7051", "nodes": nodes}
     Template = "templ_boot_ipxe.cfg"
     logger.info("Boot API Serving the {}".format(Template))
-    return render_template(Template, p=data), 200
+    print(boot_blueprint.template_folder)
+    CHECKTEMPLATE = Helper().checkjinja(CONSTANT["TEMPLATES"]["TEMPLATES_DIR"]+'/'+Template)
+    if CHECKTEMPLATE:
+        return render_template(Template, p=data), 200
+    else:
+        abort(404, "Empty")
+
 
 
 """

@@ -15,6 +15,7 @@ This Is a Helper Class, which help the project to provide the common Methods.
 import os
 import sys
 import subprocess
+from jinja2 import Environment
 from utils.log import *
 
 
@@ -98,3 +99,15 @@ class Helper(object):
         else:
             response = None
         return response
+
+    def checkjinja(self, template=None):
+        env = Environment()
+        try:
+            with open(template) as template:
+                env.parse(template.read())
+            return True
+        except Exception as e:
+            print(f'{template} Have Errors.')
+            print(e)
+            return False
+        

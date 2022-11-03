@@ -52,6 +52,7 @@ def files_get(filename=None):
         REQUESTIP = request.environ['REMOTE_ADDR']
     else:
         REQUESTIP = request.environ['HTTP_X_FORWARDED_FOR']
+    logger.debug(f'Request for file: {filename} From IP Address: {REQUESTIP}')
     NODEINTERFACE = Database().get_record(None, 'nodeinterface', f' WHERE ipaddress = "{REQUESTIP}"')
     if NODEINTERFACE:
         row = [{"column": "status", "value": "installer.discovery"}]

@@ -52,7 +52,11 @@ def boot_short():
     data = {"protocol": "http", "server_ip": "10.141.255.254", "server_port": "7051", "nodes": nodes}
     Template = "templ_boot_ipxe_short.cfg"
     logger.info("Boot API Serving the {}".format(Template))
-    return render_template(Template, p=data), 200
+    CHECKTEMPLATE = Helper().checkjinja(CONSTANT["TEMPLATES"]["TEMPLATES_DIR"]+'/'+Template)
+    if CHECKTEMPLATE:
+        return render_template(Template, p=data), 200
+    else:
+        abort(404, "Empty")
 
 
 """
@@ -66,7 +70,11 @@ def boot_disk():
     data = {"protocol": "http", "server_ip": "10.141.255.254", "server_port": "7051", "nodes": nodes}
     Template = "templ_boot_disk.cfg"
     logger.info("Boot API Serving the {}".format(Template))
-    return render_template(Template, p=data), 200
+    CHECKTEMPLATE = Helper().checkjinja(CONSTANT["TEMPLATES"]["TEMPLATES_DIR"]+'/'+Template)
+    if CHECKTEMPLATE:
+        return render_template(Template, p=data), 200
+    else:
+        abort(404, "Empty")
 
 """
 Input - MacID
@@ -86,7 +94,11 @@ def boot_search_mac(mac=None):
     # Database().update('node', row, where)
     Template = "templ_nodeboot.cfg"
     logger.info(f'Node Found with Mac Address {mac}.')
-    return render_template(Template, p=data), 200        
+    CHECKTEMPLATE = Helper().checkjinja(CONSTANT["TEMPLATES"]["TEMPLATES_DIR"]+'/'+Template)
+    if CHECKTEMPLATE:
+        return render_template(Template, p=data), 200
+    else:
+        abort(404, "Empty")      
 
 
 """
@@ -106,7 +118,11 @@ def boot_manual_hostname(hostname=None):
         data['service'] = '1'
     Template = "templ_nodeboot.cfg"
     logger.info(f'Node Found with Hostname {hostname}.')
-    return render_template(Template, p=data), 200    
+    CHECKTEMPLATE = Helper().checkjinja(CONSTANT["TEMPLATES"]["TEMPLATES_DIR"]+'/'+Template)
+    if CHECKTEMPLATE:
+        return render_template(Template, p=data), 200
+    else:
+        abort(404, "Empty") 
 
 """
 Input - NodeID or Node Name
@@ -115,10 +131,11 @@ Output - Success or Failure
 """
 @boot_blueprint.route("/boot/install/<string:node>", methods=['GET'])
 def boot_install(node=None):
+    ##TODO -> If debug mode enabled not to serve 
     row = [{"column": "status", "value": "installer.downloaded"}]
     where = [{"column": "name", "value": node}]
     install = Database().update('node', row, where)
-    if install:
+    if install or CONSTANT['LOGGER']['LEVEL'].lower() == 'debug':
         logger.info("Installation Script is Started For  NodeID: {}".format(node))
         response = {"message": "Installation Script is Started For  NodeID: {}".format(node)}
         code = 200
@@ -127,37 +144,3 @@ def boot_install(node=None):
         response = {"message": "Not Able To Find The NodeID: {}".format(node)}
         code = 404
     return json.dumps(response), code
-
-
-    ## TODO TRIX-39 [Waiting for confirmation]
-    ## Validate Node from Node Table
-    ## Validate BootMenu and NetBoot from group table
-    # node, bootmenu, netboot = check_node_state(nodeparam)
-    # if node == True and bootmenu == False and netboot == True:
-    #     Template = "boot_ipxe_short.cfg"
-    # elif node == True and bootmenu == True and netboot == True:
-    #     Template = "boot_ipxe.cfg"
-    # elif node == True and bootmenu == True and netboot == False:
-    #     Template = "boot_ipxe_disk.cfg"
-    # elif node == False and bootmenu == False and netboot == True:
-    #     Template = "boot_ipxe.cfg"
-    # else:
-    #     Template = "boot_ipxe.cfg"
-# def check_node_state(nodeparam):
-#     node, bootmenu, netboot = False, False, False
-#     table = "node"
-#     where = f' WHERE id = "{nodeparam}" OR name = "{nodeparam}" OR macaddr = "{nodeparam}"'
-#     NODE = Database().get_record(None, table, where)
-#     if NODE:
-#         node = True
-#         logger.info(f'Node {nodeparam} is a Registered Node.')
-#     else:
-#         logger.info(f'Node {nodeparam} is Not a Registered Node.')
-#     GROUP = Database().get_record(None, 'group', None)
-#     if GROUP:
-#         bootmenu = GROUP[0]["bootmenu"]
-#         netboot = GROUP[0]["netboot"]
-#         logger.info(f'Node {nodeparam} Have BootMenu {bootmenu} and NetBoot {netboot}.')
-#     else:
-#         logger.info(f'Node {nodeparam} Do not have the BootMenu and the NetBoot.')
-#     return node, bootmenu, netboot

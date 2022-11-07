@@ -26,8 +26,8 @@ from pprint import pprint
 
 LOGGER = Log.init_log(CONSTANT['LOGGER']['LEVEL'])
 # import common.bootstrap
-from common.bootstrap import bootstrap
-bootstrap()
+from common.bootstrap import checkbootstrap
+checkbootstrap()
 
 from utils.templates import Templates
 TEMP = Templates().validate()

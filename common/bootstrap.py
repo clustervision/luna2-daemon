@@ -140,8 +140,6 @@ def check_ip_network(ipaddr):
         sys.exit(0)
 
 
-
-
 def bootstrap():
     print("Ruuning Bootstrap")
     print(BOOTSTRAP)
@@ -164,32 +162,32 @@ def bootstrap():
     for x in BOOTSTRAP["HOSTS"]:
         if "CONTROLLER"+str(num) in BOOTSTRAP["HOSTS"].keys():
             row = [{"column": "ipaddr", "value": BOOTSTRAP["HOSTS"]["CONTROLLER"+str(num)]}]
-            result = Database().insert("controller", row)
+            # result = Database().insert("controller", row)
         num = num + 1
-    for NodeX in BOOTSTRAP["HOSTS"]["NODELIST"]:
-        row = [
-                {"column": "name", "value": str(NodeX)},
-                {"column": "localboot", "value": "0"},
-                {"column": "service", "value": "0"},
-                {"column": "setupbmc", "value": "1"},
-                {"column": "localinstall ", "value": "0"},
-                {"column": "bootmenu", "value": "0"},
-                {"column": "netboot", "value": "1"},
-                {"column": "provisionmethod", "value": "torrent"},
-                {"column": "provisionfallback ", "value": "http"}
-            ]
-        result = Database().insert("node", row)
-    for NetworkX in BOOTSTRAP["NETWORKS"].keys():
-        row = [
-                {"column": "name", "value": str(NetworkX)},
-                {"column": "network", "value": str(BOOTSTRAP["NETWORKS"][NetworkX])},
-                {"column": "dhcpenable", "value": "0"},
-                {"column": "nshostname", "value": "controller_hostname"},
-                {"column": "nsip", "value": "controller_ip"},
-                {"column": "gateway", "value": "controller_ip"},
-                {"column": "ntp_server", "value": "controller_ip"}
-            ]
-        result = Database().insert("network", row)
+    # for NodeX in BOOTSTRAP["HOSTS"]["NODELIST"]:
+    #     row = [
+    #             {"column": "name", "value": str(NodeX)},
+    #             {"column": "localboot", "value": "0"},
+    #             {"column": "service", "value": "0"},
+    #             {"column": "setupbmc", "value": "1"},
+    #             {"column": "localinstall", "value": "0"},
+    #             {"column": "bootmenu", "value": "0"},
+    #             {"column": "netboot", "value": "1"},
+    #             {"column": "provisionmethod", "value": "torrent"},
+    #             {"column": "provisionfallback", "value": "http"}
+    #         ]
+    #     result = Database().insert("node", row)
+    # for NetworkX in BOOTSTRAP["NETWORKS"].keys():
+    #     row = [
+    #             {"column": "name", "value": str(NetworkX)},
+    #             {"column": "network", "value": str(BOOTSTRAP["NETWORKS"][NetworkX])},
+    #             {"column": "dhcp", "value": "0"},
+    #             {"column": "nshostname", "value": "controller_hostname"},
+    #             {"column": "nsip", "value": "controller_ip"},
+    #             {"column": "gateway", "value": "controller_ip"},
+    #             {"column": "ntp_server", "value": "controller_ip"}
+    #         ]
+    #     result = Database().insert("network", row)
     row = [
             {"column": "name", "value": str(BOOTSTRAP["GROUPS"]["NAME"])},
             {"column": "bmcsetup", "value": "1"},
@@ -202,42 +200,43 @@ def bootstrap():
             {"column": "provisionfallback ", "value": "http"}
         ]
     result = Database().insert("group", row)
-    row = [
-            {"column": "name", "value": str(BOOTSTRAP["OSIMAGE"]["NAME"])},
-            {"column": "dracutmodules", "value": "luna, -18n, -plymouth"},
-            {"column": "grabfilesystems", "value": "/, /boot"},
-            {"column": "initrdfile", "value": "osimagename-initramfs-`uname -r`"},
-            {"column": "kernfile", "value": "osimagename-vmlinuz-`uname -r`"},
-            {"column": "kernmodules", "value": "ipmi_devintf, ipmi_si, ipmi_msghandler"},
-            {"column": "distribution", "value": "redhat"}
-        ]
-    result = Database().insert("osimage", row)
-    row = [{"column": "username", "value": str(BOOTSTRAP["BMCSETUP"]["USERNAME"])}, {"column": "password", "value": str(BOOTSTRAP["BMCSETUP"]["PASSWORD"])}]
-    result = Database().insert("bmcsetup", row)
-    TIME = str(time.time()).replace(".", "")
-    BootStrapNewFile = f"/trinity/local/luna/config/bootstrap-{TIME}.ini"
-    os.rename(BootStrapFile, BootStrapNewFile)
+    # row = [
+    #         {"column": "name", "value": str(BOOTSTRAP["OSIMAGE"]["NAME"])},
+    #         {"column": "dracutmodules", "value": "luna, -18n, -plymouth"},
+    #         {"column": "grabfilesystems", "value": "/, /boot"},
+    #         {"column": "initrdfile", "value": "osimagename-initramfs-`uname -r`"},
+    #         {"column": "kernelfile", "value": "osimagename-vmlinuz-`uname -r`"},
+    #         {"column": "kernelmodules", "value": "ipmi_devintf, ipmi_si, ipmi_msghandler"},
+    #         {"column": "distribution", "value": "redhat"}
+    #     ]
+    # result = Database().insert("osimage", row)
+    # row = [{"column": "username", "value": str(BOOTSTRAP["BMCSETUP"]["USERNAME"])}, {"column": "password", "value": str(BOOTSTRAP["BMCSETUP"]["PASSWORD"])}]
+    # result = Database().insert("bmcsetup", row)
+    
 
-    ## Default Data
+    # row = [
+    #         {"column": "technicalcontacts", "value": "root@localhost"},
+    #         {"column": "provisionmethod", "value": "torrent"},
+    #         {"column": "provisionfallback", "value": "http"},
+    #         {"column": "security", "value": "1"},
+    #         {"column": "debug", "value": "0"}
+    #         ]
+    # result = Database().insert("cluster", row)
 
-    row = [
-            {"column": "technicalcontacts", "value": "root@localhost"},
-            {"column": "provisionmethod", "value": "torrent"},
-            {"column": "provisionfallback", "value": "http"},
-            {"column": "security", "value": "1"},
-            {"column": "debug", "value": "0"}
-            ]
-    result = Database().insert("cluster", row)
-
-    row = [
-            {"column": "oid", "value": ".1.3.6.1.2.1.17.7.1.2.2.1.2"},
-            {"column": "read", "value": "public"},
-            {"column": "rw", "value": "private"}
-            ]
-    result = Database().insert("switch", row)
+    # row = [
+    #         {"column": "oid", "value": ".1.3.6.1.2.1.17.7.1.2.2.1.2"},
+    #         {"column": "read", "value": "public"},
+    #         {"column": "rw", "value": "private"}
+    #         ]
+    # result = Database().insert("switch", row)
 
 
-    print("Finish Bootstrap")
+
+    # TIME = str(time.time()).replace(".", "")
+    # BootStrapNewFile = f"/trinity/local/luna/config/bootstrap-{TIME}.ini"
+    # os.rename(BootStrapFile, BootStrapNewFile)
+
+    # print("Finish Bootstrap")
 
 
 # def checkbootstrap():

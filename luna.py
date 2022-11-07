@@ -22,20 +22,15 @@ from flask import Flask, abort, json, Response
 from common.constant import CONSTANT
 from utils.log import Log
 
+from pprint import pprint
+
 LOGGER = Log.init_log(CONSTANT['LOGGER']['LEVEL'])
-import common.bootstrap
-# from common.bootstrap import checkbootstrap
-# checkbootstrap()
+# import common.bootstrap
+# from common.bootstrap import bootstrap
+# bootstrap()
 
 from utils.templates import Templates
 TEMP = Templates().validate()
-print(TEMP)
-## TODO ->
-# 1. Check Templates for errors
-# 2. If Error Stop with message 
-# 3. Remove Temp Directory
-# 4. Create Temo Directory
-
 
 from apis.auth import auth_blueprint
 from apis.boot import boot_blueprint
@@ -54,14 +49,24 @@ api.register_blueprint(monitor_blueprint)
 # Logger.info('Variable ---------->> {}'.format(CONSTANT))
 
 def on_starting(server):
-    LOGGER.info(f'Templates Check On Start')
+    pprint(vars(server))
+    LOGGER.info(vars(server))
+    print('Templates Check On Start')
+    LOGGER.info('Templates Check On Start')
     return True
-
 
 def on_reload(server):
-    TEMPLATE_CHECK = Templates().validate()
-    LOGGER.info(f'Templates Check Status is: {TEMPLATE_CHECK}')
+    pprint(vars(server))
+    LOGGER.info(vars(server))
+    print('Templates Check On Start')
+    LOGGER.info('Templates Check On Start')
     return True
+
+
+# def on_reload(server):
+#     TEMPLATE_CHECK = Templates().validate()
+#     LOGGER.info(f'Templates Check Status is: {TEMPLATE_CHECK}')
+#     return True
 
 
 @api.route('/')
@@ -114,6 +119,7 @@ def service_unavailable(error):
 
 
 # if __name__ == "__main__":
+#     api.run()
 #     # main()
 #     api.run(host="0.0.0.0", port=7050, debug=True, threaded=True)
 api.run(host="0.0.0.0", port=7050, debug=True)

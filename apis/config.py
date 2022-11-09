@@ -593,24 +593,34 @@ def config_bmcsetup_remove(bmcname=None, **kwargs):
         code = 401
     return json.dumps(response), code
 
-
+######################################################## Switch Configuration #############################################################
 """
 Input - None
 Process - Fetch The List Of Switches.
 Output - Switches.
 """
 @config_blueprint.route("/config/switch", methods=['GET'])
+@token_required
 def config_switch():
-    switch = True
-    if switch:
-        logger.info("Avaiable Switches are {}.".format(switch))
-        response = {"message": "Avaiable Switches are {}.".format(switch)}
-        code = 200
+    SWITCHES = Database().get_record(None, 'switch', None)
+    if SWITCHES:
+        RESPONSE = {'config': {'switch': { } }}
+        for SWITCH in SWITCHES:
+            SWITCHNAME = SWITCH['name']
+            SWITCHIP = Database().get_record(None, 'ipaddress', f' WHERE id = {SWITCH["ipaddress"]}')
+            logger.debug(f'With Switch {SWITCHNAME} attached IP ROWs {SWITCHIP}')
+            if SWITCHIP:
+                SWITCH['ipaddress'] = SWITCHIP[0]["ipaddress"]
+            del SWITCH['id']
+            del SWITCH['name']
+            RESPONSE['config']['switch'][SWITCHNAME] = SWITCH
+        logger.info("Avaiable Switches are {}.".format(SWITCHES))
+        ACCESSCODE = 200
     else:
-        logger.error("No Switch is Avaiable.")
-        response = {"message": "No Switch is Avaiable."}
-        code = 404
-    return json.dumps(response), code
+        logger.error('No Switch is Avaiable.')
+        RESPONSE = {'message': 'No Switch is Avaiable.'}
+        ACCESSCODE = 404
+    return json.dumps(RESPONSE), ACCESSCODE
 
 
 """
@@ -619,18 +629,82 @@ Process - Fetch The Switch Information.
 Output - Switch Details.
 """
 @config_blueprint.route("/config/switch/<string:switch>", methods=['GET'])
+@token_required
 def config_switch_get(switch=None):
-    switchdetails = True
-    if switchdetails:
-        logger.info("Switch {} Details:{}.".format(switch, str(switchdetails)))
-        response = {"message": "Switch {} Details:{}.".format(switch, str(switchdetails))}
-        code = 200
+    SWITCHES = Database().get_record(None, 'switch', f' WHERE name = "{switch}"')
+    if SWITCHES:
+        RESPONSE = {'config': {'switch': { } }}
+        for SWITCH in SWITCHES:
+            SWITCHNAME = SWITCH['name']
+            SWITCHIP = Database().get_record(None, 'ipaddress', f' WHERE id = {SWITCH["ipaddress"]}')
+            logger.debug(f'With Switch {SWITCHNAME} attached IP ROWs {SWITCHIP}')
+            if SWITCHIP:
+                SWITCH['ipaddress'] = SWITCHIP[0]["ipaddress"]
+            del SWITCH['id']
+            del SWITCH['name']
+            RESPONSE['config']['switch'][SWITCHNAME] = SWITCH
+        logger.info("Avaiable Switches are {}.".format(SWITCHES))
+        ACCESSCODE = 200
     else:
-        logger.error("Switch {} Is Not Exist.".format(switch))
-        response = {"message": "Switch {} Is Not Exist.".format(switch)}
-        code = 404
-    return json.dumps(response), code
+        logger.error('No Switch is Avaiable.')
+        RESPONSE = {'message': 'No Switch is Avaiable.'}
+        ACCESSCODE = 404
+    return json.dumps(RESPONSE), ACCESSCODE
 
+
+"""
+Input - Switch ID or Name
+Process - Fetch The Switch Information.
+Output - Switch Details.
+"""
+@config_blueprint.route("/config/switch/<string:switch>", methods=['POST'])
+# @token_required
+def config_switch_post(switch=None):
+    DATA = {}
+    row  = []
+    CREATE, UPDATE = False, False
+    REQUEST = request.get_json(force=True)
+    if REQUEST:
+        DATA = REQUEST['config']['switch'][switch]
+        if 'newswitchname' in DATA:
+            UPDATE = True
+            DATA['name'] = DATA['newswitchname']
+            DATA['action'] = 'update'
+            del DATA['newswitchname']
+        elif 'network' in DATA and 'ipaddress' in DATA and 'newswitchname' not in DATA:
+            CREATE = True
+            DATA['action'] = 'create'
+        else:
+            UPDATE = True
+            DATA['action'] = 'update'
+    if CREATE:
+        for KEY, VALUE in DATA.items():
+            row.append({"column": KEY, "value": VALUE})
+
+    # result = Database().insert("switch", row)
+    response = row
+    # SWITCH = Database().get_record(None, 'switch', f' WHERE name = "{switch}"')
+    # if SWITCH:
+    #     pass
+    return json.dumps(response), 200
+    # if SWITCHES:
+    #     RESPONSE = {'config': {'switch': { } }}
+    #     for SWITCH in SWITCHES:
+    #         SWITCHNAME = SWITCH['name']
+    #         SWITCHIP = Database().get_record(None, 'ipaddress', f' WHERE id = {SWITCH["ipaddress"]}')
+    #         logger.debug(f'With Switch {SWITCHNAME} attached IP ROWs {SWITCHIP}')
+    #         if SWITCHIP:
+    #             SWITCH['ipaddress'] = SWITCHIP[0]["ipaddress"]
+    #         del SWITCH['id']
+    #         del SWITCH['name']
+    #         RESPONSE['config']['switch'][SWITCHNAME] = SWITCH
+    #     logger.info("Avaiable Switches are {}.".format(SWITCHES))
+    #     ACCESSCODE = 200
+    # else:
+    #     logger.error('No Switch is Avaiable.')
+    #     RESPONSE = {'message': 'No Switch is Avaiable.'}
+    #     ACCESSCODE = 404
+    # return json.dumps(RESPONSE), ACCESSCODE
 
 """
 Input - Switch ID or Name

@@ -600,7 +600,7 @@ Process - Fetch The List Of Switches.
 Output - Switches.
 """
 @config_blueprint.route("/config/switch", methods=['GET'])
-@token_required
+# @token_required
 def config_switch():
     SWITCHES = Database().get_record(None, 'switch', None)
     if SWITCHES:
@@ -666,6 +666,15 @@ def config_switch_post(switch=None):
     REQUEST = request.get_json(force=True)
     if REQUEST:
         DATA = REQUEST['config']['switch'][switch]
+        if 'readcommunity' in DATA:
+            DATA['read'] = DATA['readcommunity']
+            del DATA['readcommunity']
+        if 'rwcommunity' in DATA:
+            DATA['rw'] = DATA['rwcommunity']
+            del DATA['rwcommunity']
+        if 'comment' in DATA:
+            DATA['comments'] = DATA['comment']
+            del DATA['comment']
         if 'newswitchname' in DATA:
             UPDATE = True
             DATA['name'] = DATA['newswitchname']
@@ -673,38 +682,47 @@ def config_switch_post(switch=None):
             del DATA['newswitchname']
         elif 'network' in DATA and 'ipaddress' in DATA and 'newswitchname' not in DATA:
             CREATE = True
-            DATA['action'] = 'create'
         else:
             UPDATE = True
             DATA['action'] = 'update'
     if CREATE:
+        if 'ipaddress' in DATA:
+            IPADDR = DATA['ipaddress']
+            IPRECORD = Database().get_record(None, 'ipaddress', f' WHERE `ipaddress` = "{IPADDR}";')
+            if IPRECORD:
+                DATA['ipaddress'] = IPRECORD[0]['id']
+            else:
+                row.append({"column": 'ipaddress', "value": IPADDR})
+                result = Database().insert('ipaddress', row)
+                ### ---------------------->> TODO --------- Last Inset ID With Pyodbc
+                DATA['ipaddress'] = result
         for KEY, VALUE in DATA.items():
             row.append({"column": KEY, "value": VALUE})
-
-    # result = Database().insert("switch", row)
-    response = row
-    # SWITCH = Database().get_record(None, 'switch', f' WHERE name = "{switch}"')
-    # if SWITCH:
-    #     pass
-    return json.dumps(response), 200
-    # if SWITCHES:
-    #     RESPONSE = {'config': {'switch': { } }}
-    #     for SWITCH in SWITCHES:
-    #         SWITCHNAME = SWITCH['name']
-    #         SWITCHIP = Database().get_record(None, 'ipaddress', f' WHERE id = {SWITCH["ipaddress"]}')
-    #         logger.debug(f'With Switch {SWITCHNAME} attached IP ROWs {SWITCHIP}')
-    #         if SWITCHIP:
-    #             SWITCH['ipaddress'] = SWITCHIP[0]["ipaddress"]
-    #         del SWITCH['id']
-    #         del SWITCH['name']
-    #         RESPONSE['config']['switch'][SWITCHNAME] = SWITCH
-    #     logger.info("Avaiable Switches are {}.".format(SWITCHES))
-    #     ACCESSCODE = 200
-    # else:
-    #     logger.error('No Switch is Avaiable.')
-    #     RESPONSE = {'message': 'No Switch is Avaiable.'}
-    #     ACCESSCODE = 404
-    # return json.dumps(RESPONSE), ACCESSCODE
+        result = Database().insert('switch', row)
+        logger.info("Switch Created Successfully")
+        ACCESSCODE = 204
+    elif UPDATE:
+        if 'ipaddress' in DATA:
+            IPADDR = DATA['ipaddress']
+            IPRECORD = Database().get_record(None, 'ipaddress', f' WHERE `ipaddress` = "{IPADDR}";')
+            if IPRECORD:
+                DATA['ipaddress'] = IPRECORD[0]['id']
+            else:
+                row.append({"column": 'ipaddress', "value": IPADDR})
+                result = Database().insert('ipaddress', row)
+                ### ---------------------->> TODO --------- Last Inset ID With Pyodbc
+                DATA['ipaddress'] = result
+        for KEY, VALUE in DATA.items():
+            row.append({"column": KEY, "value": VALUE})
+        where = [{"column": "name", "value": DATA['name']}]
+        result = Database().update('switch', row, where)
+        logger.info("Switch Created Successfully")
+        ACCESSCODE = 204
+    else:
+        logger.error('No Switch is Avaiable.')
+        RESPONSE = {'message': 'No Switch is Avaiable.'}
+        ACCESSCODE = 404
+    return json.dumps(RESPONSE), ACCESSCODE
 
 """
 Input - Switch ID or Name

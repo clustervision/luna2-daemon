@@ -139,8 +139,7 @@ class Database(object):
     Output - Creates Table.
     """
 	def insert(self, table=None, row=None):
-		keys = []
-		values = []
+		keys, values = [], []
 		if row:
 			for x in row:
 				keys.append("'"+str(x["column"])+"'")
@@ -148,11 +147,10 @@ class Database(object):
 		query = "INSERT INTO '{}' ({}) VALUES ({})".format(table, ",".join(keys), ",".join(values))
 		try:
 			self.cursor.execute(query)
-			self.connection.commit()
+			self.cursor.commit()
 		except Exception as e:
 			self.logger.error("Error occur While Executing => {}. Error Is {} .".format(query, str(e)))
 			return None
-		return True
 
 
 	"""

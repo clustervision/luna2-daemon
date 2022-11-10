@@ -18,6 +18,7 @@ import subprocess
 from jinja2 import Environment
 from utils.log import *
 import json
+import ipaddress
 
 
 class Helper(object):
@@ -121,11 +122,32 @@ class Helper(object):
     """
     Input - JSON
     Output - True or False For Errors
+    Usecase - switchcolumn = Database().get_columns('switch')
     """
-    def request_check(self, request=None):
+    def check_json(self, request=None):
         try:
             json.loads(request)
         except Exception as e:
             return False
         return True
-        
+    
+
+    """
+    Input - TWO LISTS 
+    Output - True or False For Errors
+    """
+    def checkin_list(self, list1=None, list2=None):
+        CHECK = True
+        for ITEM in list1:
+            if ITEM not in list2:
+                CHECK = False
+        return CHECK
+
+
+    """
+    Input - IP Address 
+    Output - Subnet
+    """
+    def get_subnet(self, ipaddr=None):
+        net = ipaddress.ip_network(ipaddr, strict=False)
+        return net.netmask

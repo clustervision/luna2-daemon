@@ -150,7 +150,8 @@ class Database(object):
 			self.cursor.commit()
 		except Exception as e:
 			self.logger.error("Error occur While Executing => {}. Error Is {} .".format(query, str(e)))
-			return None
+			return False
+		return True
 
 
 	"""

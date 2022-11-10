@@ -221,3 +221,24 @@ class Database(object):
 		query = "DROP TABLE [IF EXISTS] {}".format(table)
 		cursor.execute(query)     
 		connection.commit()
+
+
+	"""
+    Input - select fields, tablename, where clause 
+    Process - It is SELECT operation on the DB.
+    			select can be comma separated column name or None.
+				table is the table name where the select operation should be happen.
+				where can be None OR complete where condition
+    Output - Fetch rows along with column name.
+    """
+	def get_columns(self, table=None):
+		query = f'SELECT * FROM {table} LIMIT 1;'
+		self.logger.debug(f'Query Executing => {query} .')
+		try:
+			self.cursor.execute(query)
+		except Exception as e:
+			self.logger.error("Error occur While Executing => {}. Error Is {} .".format(query, str(e)))
+			return None
+		
+		response = list(map(lambda x: x[0], self.cursor.description)) # Fetching the Column Names
+		return response

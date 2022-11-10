@@ -17,6 +17,7 @@ import sys
 import subprocess
 from jinja2 import Environment
 from utils.log import *
+import json
 
 
 class Helper(object):
@@ -100,6 +101,11 @@ class Helper(object):
             response = None
         return response
 
+
+    """
+    Input - Path of Template
+    Output - True or False For Errors
+    """
     def checkjinja(self, template=None):
         env = Environment()
         try:
@@ -110,4 +116,16 @@ class Helper(object):
             print(f'{template} Have Errors.')
             print(e)
             return False
+
+
+    """
+    Input - JSON
+    Output - True or False For Errors
+    """
+    def request_check(self, request=None):
+        try:
+            json.loads(request)
+        except Exception as e:
+            return False
+        return True
         

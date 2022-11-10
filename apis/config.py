@@ -20,6 +20,7 @@ This File is a A Entry Point of Every Configuration Related Activity.
 from common.validate_auth import *
 from flask import Blueprint, request, json
 from utils.log import *
+from utils.helper import Helper
 
 logger = Log.get_logger()
 
@@ -600,7 +601,7 @@ Process - Fetch The List Of Switches.
 Output - Switches.
 """
 @config_blueprint.route("/config/switch", methods=['GET'])
-# @token_required
+@token_required
 def config_switch():
     SWITCHES = Database().get_record(None, 'switch', None)
     if SWITCHES:
@@ -663,7 +664,19 @@ def config_switch_post(switch=None):
     DATA = {}
     row  = []
     CREATE, UPDATE = False, False
-    REQUEST = request.get_json(force=True)
+    REQUESTDATA = request.data
+    REQUESTCHECK = Helper().request_check(REQUESTDATA)
+    switchcolumn = Database().get_columns('switch')
+    ACCESSCODE = 200
+    return json.dumps(switchcolumn), ACCESSCODE
+
+
+    if REQUESTCHECK:
+        REQUEST = request.get_json(force=True)
+    else:
+        RESPONSE = {'message': 'Bad Request.'}
+        ACCESSCODE = 400
+        return json.dumps(RESPONSE), ACCESSCODE
     if REQUEST:
         DATA = REQUEST['config']['switch'][switch]
         if 'readcommunity' in DATA:
@@ -701,6 +714,7 @@ def config_switch_post(switch=None):
         result = Database().insert('switch', row)
         logger.info("Switch Created Successfully")
         ACCESSCODE = 204
+        RESPONSE = {'message': 'Created Successfully.'}
     elif UPDATE:
         if 'ipaddress' in DATA:
             IPADDR = DATA['ipaddress']
@@ -718,11 +732,38 @@ def config_switch_post(switch=None):
         result = Database().update('switch', row, where)
         logger.info("Switch Created Successfully")
         ACCESSCODE = 204
+        RESPONSE = {'message': 'Updated Successfully.'}
     else:
         logger.error('No Switch is Avaiable.')
         RESPONSE = {'message': 'No Switch is Avaiable.'}
         ACCESSCODE = 404
     return json.dumps(RESPONSE), ACCESSCODE
+
+"""
+Input - Switch ID or Name
+Process - Delete The Switch.
+Output - Success or Failure.
+"""
+@config_blueprint.route("/config/switch/<string:switch>/_clone", methods=['GET'])
+@validate_access
+def config_switch_clone(switch=None, **kwargs):
+    if "access" in kwargs:
+        access = "admin"
+        remove = True
+        if remove:
+            logger.info("Switch () Is Deleted Successfully.".format(switch))
+            response = {"message": "Switch () Is Deleted Successfully.".format(switch)}
+            code = 200
+        else:
+            logger.error("Switch {} Is Not Exist.".format(switch))
+            response = {"message": "Switch {} Is Not Exist.".format(switch)}
+            code = 404
+    else:
+        logger.error("Need a Valid Token to Perform this action.")
+        response = {"message": "Need a Valid Token to Perform this action."}
+        code = 401
+    return json.dumps(response), code
+
 
 """
 Input - Switch ID or Name
@@ -748,8 +789,7 @@ def config_switch_remove(switch=None, **kwargs):
         response = {"message": "Need a Valid Token to Perform this action."}
         code = 401
     return json.dumps(response), code
-
-
+    
 """
 Input - Device ID or Name
 Process - Fetch The List Of Devices.

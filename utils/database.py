@@ -202,20 +202,21 @@ class Database(object):
 				where can be None for all OR a list of dict ex: where = [{"column": "active", "value": "1"}, {"column": "network", "value": "ib"}]
     Output - Delete the row.
     """
-	def delete_row(self, table=None, row=None, where=None):
+	def delete_row(self, table=None, where=None):
 		Where = []
 		for cols in where:
 			column = ""
 			if 'column' in cols.keys():
 				column = column + cols['column']
 			if 'value' in cols.keys():
-				column = column + ' = ' +cols['value']
+				column = column + ' = "' +str(cols['value']) +'"'
 			Where.append(column)
 			strWhere = ' AND '.join(map(str, Where))
 
 		query = "DELETE FROM {} WHERE {}".format(table, strWhere)
-		cursor.execute(query)     
-		connection.commit()
+		print(query)
+		self.cursor.execute(query)     
+		self.cursor.commit()
 
 
 	def deletetable(self, connection, cursor, table):

@@ -463,23 +463,122 @@ def config_cluster():
 
 
 @config_blueprint.route("/config/cluster", methods=['POST'])
-# @token_required
+@token_required
 def config_cluster_post():
     """
     Input - None
     Process - Fetch The Cluster Information.
     Output - Cluster Information.
     """
-    cluster = True
-    if cluster:
-        logger.info("Cluster Information: {}".format(str(cluster)))
-        response = {"message": "Cluster Information: {}".format(str(cluster))}
-        code = 200
+    REQUESTCHECK = Helper().check_json(request.data)
+    if REQUESTCHECK:
+        REQUEST = request.get_json(force=True)
     else:
-        logger.error("Cluster Is Not Exist.")
-        response = {"message": "Cluster Is Not Exist."}
-        code = 404
-    return json.dumps(response), code
+        RESPONSE = {'message': 'Bad Request.'}
+        ACCESSCODE = 400
+        return json.dumps(RESPONSE), ACCESSCODE
+    if REQUEST:
+        DATA = REQUEST['config']['cluster']
+        CLUSTERCOLUMNS = Database().get_columns('cluster')
+        COLUMNCHECK = Helper().checkin_list(DATA, CLUSTERCOLUMNS)
+        if COLUMNCHECK:
+            CLUSTER = Database().get_record(None, 'cluster', None)
+            if CLUSTER:
+                where = [{"column": "id", "value": CLUSTER[0]['id']}]
+                row = Helper().make_rows(DATA)
+                result = Database().update('cluster', row, where)
+                RESPONSE = {'message': 'Cluster Updated Successfully.'}
+                ACCESSCODE = 204
+            else:
+                RESPONSE = {'message': 'Bad Request; No Cluster is Avaiable to Update.'}
+                ACCESSCODE = 400
+        else:
+            RESPONSE = {'message': 'Bad Request; Columns are Incorrect.'}
+            ACCESSCODE = 400
+    else:
+        RESPONSE = {'message': 'Bad Request; Did not received Data.'}
+        ACCESSCODE = 400
+    return json.dumps(RESPONSE), 200
+
+
+
+    # if CLUSTER:
+    #     CLUSTERID = CLUSTER[0]['id']
+    #     del CLUSTER[0]['id']
+    #     if CLUSTER[0]['debug']:
+    #         CLUSTER[0]['debug'] = True
+    #     else:
+    #         CLUSTER[0]['debug'] = False
+    #     if CLUSTER[0]['security']:
+    #         CLUSTER[0]['security'] = True
+    #     else:
+    #         CLUSTER[0]['security'] = False
+    #     RESPONSE = {'config': {'cluster': CLUSTER[0] }}
+    #     CONTROLLERS = Database().get_record(None, 'controller', f' WHERE clusterid = {CLUSTERID}')
+    #     for CONTROLLER in CONTROLLERS:
+    #         CONTROLLERIP = Database().get_record(None, 'ipaddress', f' WHERE id = {CONTROLLER["ipaddr"]}')
+    #         if CONTROLLERIP:
+    #             CONTROLLER['ipaddress'] = CONTROLLERIP[0]["ipaddress"]
+    #         del CONTROLLER['id']
+    #         del CONTROLLER['clusterid']
+    #         CONTROLLER['luna_config'] = ConfigFile
+    #         RESPONSE['config']['cluster'][CONTROLLER['hostname']] = CONTROLLER
+    #         ACCESSCODE = 200
+    # else:
+    #     logger.error('No Cluster is Avaiable.')
+    #     RESPONSE = {'message': 'No Cluster is Avaiable.'}
+    #     ACCESSCODE = 404
+    # return json.dumps(RESPONSE), ACCESSCODE
+
+
+
+
+
+
+
+
+    
+    # if REQUEST:
+    #     DATA = REQUEST['config']['cluster']
+    #     DATA['name'] = switch
+    #     CHECKSWITCH = Database().get_record(None, 'switch', f' WHERE `name` = "{switch}";')
+    #     if CHECKSWITCH:
+    #         SWITCHID = CHECKSWITCH[0]['id']
+    #         if 'newswitchname' in REQUEST['config']['switch'][switch]:
+    #             DATA['name'] = DATA['newswitchname']
+    #             del DATA['newswitchname']
+    #         UPDATE = True
+    #     else:
+    #         CREATE = True
+    #     SWITCHCOLUMNS = Database().get_columns('switch')
+    #     COLUMNCHECK = Helper().checkin_list(DATA, SWITCHCOLUMNS)
+    #     DATA = Helper().check_ip_exist(DATA)
+    #     if DATA:
+    #         row = Helper().make_rows(DATA)
+    #         if COLUMNCHECK:
+    #             if CREATE:                    
+    #                 result = Database().insert('switch', row)
+    #                 RESPONSE = {'message': 'Switch Created Successfully.'}
+    #                 ACCESSCODE = 204
+    #             if UPDATE:
+    #                 where = [{"column": "id", "value": SWITCHID}]
+    #                 result = Database().update('switch', row, where)
+    #                 RESPONSE = {'message': 'Switch Updated Successfully.'}
+    #                 ACCESSCODE = 204
+    #         else:
+    #             RESPONSE = {'message': 'Bad Request; Columns are Incorrect.'}
+    #             ACCESSCODE = 400
+    #             return json.dumps(RESPONSE), ACCESSCODE
+    #     else:
+    #         RESPONSE = {'message': 'Bad Request; IP Address Already Exist in The Database.'}
+    #         ACCESSCODE = 400
+    #         return json.dumps(RESPONSE), ACCESSCODE
+    # else:
+    #     RESPONSE = {'message': 'Bad Request; Did not received Data.'}
+    #     ACCESSCODE = 400
+    #     return json.dumps(RESPONSE), ACCESSCODE
+
+    # return json.dumps(DATA), ACCESSCODE
 
 
 """

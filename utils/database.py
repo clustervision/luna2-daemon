@@ -170,6 +170,10 @@ class Database(object):
 			if 'column' in cols.keys():
 				column = column+ cols['column']
 			if 'value' in cols.keys():
+				if cols['value'] == True:
+					cols['value'] = 1
+				elif cols['value'] == False:
+					cols['value'] = 0
 				column = column + ' = "' +str(cols['value']) +'"'
 			columns.append(column)
 			strcolumns = ', '.join(map(str, columns))
@@ -178,6 +182,10 @@ class Database(object):
 			if 'column' in cols.keys():
 				column = column + cols['column']
 			if 'value' in cols.keys():
+				if cols['value'] == True:
+					cols['value'] = 1
+				elif cols['value'] == False:
+					cols['value'] = 0
 				column = column + ' = "' +str(cols['value']) +'"'
 			Where.append(column)
 			strWhere = ' AND '.join(map(str, Where))

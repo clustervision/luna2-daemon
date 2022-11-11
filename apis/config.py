@@ -595,14 +595,15 @@ def config_bmcsetup_remove(bmcname=None, **kwargs):
     return json.dumps(response), code
 
 ######################################################## Switch Configuration #############################################################
-"""
-Input - None
-Process - Fetch The List Of Switches.
-Output - Switches.
-"""
+
 @config_blueprint.route("/config/switch", methods=['GET'])
 @token_required
 def config_switch():
+    """
+    Input - None
+    Process - Fetch The List Of Switches.
+    Output - Switches.
+    """
     SWITCHES = Database().get_record(None, 'switch', None)
     if SWITCHES:
         RESPONSE = {'config': {'switch': { } }}
@@ -624,14 +625,14 @@ def config_switch():
     return json.dumps(RESPONSE), ACCESSCODE
 
 
-"""
-Input - Switch ID or Name
-Process - Fetch The Switch Information.
-Output - Switch Details.
-"""
 @config_blueprint.route("/config/switch/<string:switch>", methods=['GET'])
 @token_required
 def config_switch_get(switch=None):
+    """
+    Input - Switch ID or Name
+    Process - Fetch The Switch Information.
+    Output - Switch Details.
+    """
     SWITCHES = Database().get_record(None, 'switch', f' WHERE name = "{switch}"')
     if SWITCHES:
         RESPONSE = {'config': {'switch': { } }}
@@ -653,14 +654,14 @@ def config_switch_get(switch=None):
     return json.dumps(RESPONSE), ACCESSCODE
 
 
-"""
-Input - Switch ID or Name
-Process - Fetch The Switch Information.
-Output - Switch Details.
-"""
 @config_blueprint.route("/config/switch/<string:switch>", methods=['POST'])
-# @token_required
+@token_required
 def config_switch_post(switch=None):
+    """
+    Input - Switch ID or Name
+    Process - Fetch The Switch Information.
+    Output - Switch Details.
+    """
     DATA = {}
     CREATE, UPDATE = False, False
     REQUESTCHECK = Helper().check_json(request.data)
@@ -710,89 +711,18 @@ def config_switch_post(switch=None):
         ACCESSCODE = 400
         return json.dumps(RESPONSE), ACCESSCODE
 
-    ACCESSCODE = 200
     return json.dumps(DATA), ACCESSCODE
 
 
 
-
-
-
-
-
-
-
-
-
-    #     DATA = REQUEST['config']['switch'][switch]
-    #     if 'readcommunity' in DATA:
-    #         DATA['read'] = DATA['readcommunity']
-    #         del DATA['readcommunity']
-    #     if 'rwcommunity' in DATA:
-    #         DATA['rw'] = DATA['rwcommunity']
-    #         del DATA['rwcommunity']
-    #     if 'comment' in DATA:
-    #         DATA['comments'] = DATA['comment']
-    #         del DATA['comment']
-    #     if 'newswitchname' in DATA:
-    #         UPDATE = True
-    #         DATA['name'] = DATA['newswitchname']
-    #         DATA['action'] = 'update'
-    #         del DATA['newswitchname']
-    #     elif 'network' in DATA and 'ipaddress' in DATA and 'newswitchname' not in DATA:
-    #         CREATE = True
-    #     else:
-    #         UPDATE = True
-    #         DATA['action'] = 'update'
-    # if CREATE:
-    #     if 'ipaddress' in DATA:
-    #         IPADDR = DATA['ipaddress']
-    #         IPRECORD = Database().get_record(None, 'ipaddress', f' WHERE `ipaddress` = "{IPADDR}";')
-    #         if IPRECORD:
-    #             DATA['ipaddress'] = IPRECORD[0]['id']
-    #         else:
-    #             row.append({"column": 'ipaddress', "value": IPADDR})
-    #             result = Database().insert('ipaddress', row)
-    #             ### ---------------------->> TODO --------- Last Inset ID With Pyodbc
-    #             DATA['ipaddress'] = result
-    #     for KEY, VALUE in DATA.items():
-    #         row.append({"column": KEY, "value": VALUE})
-    #     result = Database().insert('switch', row)
-    #     logger.info("Switch Created Successfully")
-    #     ACCESSCODE = 204
-    #     RESPONSE = {'message': 'Created Successfully.'}
-    # elif UPDATE:
-    #     if 'ipaddress' in DATA:
-    #         IPADDR = DATA['ipaddress']
-    #         IPRECORD = Database().get_record(None, 'ipaddress', f' WHERE `ipaddress` = "{IPADDR}";')
-    #         if IPRECORD:
-    #             DATA['ipaddress'] = IPRECORD[0]['id']
-    #         else:
-    #             row.append({"column": 'ipaddress', "value": IPADDR})
-    #             result = Database().insert('ipaddress', row)
-    #             ### ---------------------->> TODO --------- Last Inset ID With Pyodbc
-    #             DATA['ipaddress'] = result
-    #     for KEY, VALUE in DATA.items():
-    #         row.append({"column": KEY, "value": VALUE})
-    #     where = [{"column": "name", "value": DATA['name']}]
-    #     result = Database().update('switch', row, where)
-    #     logger.info("Switch Created Successfully")
-    #     ACCESSCODE = 204
-    #     RESPONSE = {'message': 'Updated Successfully.'}
-    # else:
-    #     logger.error('No Switch is Avaiable.')
-    #     RESPONSE = {'message': 'No Switch is Avaiable.'}
-    #     ACCESSCODE = 404
-    # return json.dumps(RESPONSE), ACCESSCODE
-
-"""
-Input - Switch ID or Name
-Process - Delete The Switch.
-Output - Success or Failure.
-"""
-@config_blueprint.route("/config/switch/<string:switch>/_clone", methods=['GET'])
+@config_blueprint.route("/config/switch/<string:switch>/_clone", methods=['POST'])
 # @token_required
 def config_switch_clone(switch=None, **kwargs):
+    """
+    Input - Switch ID or Name
+    Process - Delete The Switch.
+    Output - Success or Failure.
+    """
     DATA = {}
     CREATE = False
     REQUESTCHECK = Helper().check_json(request.data)
@@ -804,42 +734,37 @@ def config_switch_clone(switch=None, **kwargs):
         return json.dumps(RESPONSE), ACCESSCODE
     if REQUEST:
         DATA = REQUEST['config']['switch'][switch]
-        DATA['name'] = switch
-        CHECKSWITCH = Database().get_record(None, 'switch', f' WHERE `name` = "{switch}";')
+        if 'newswitchname' in DATA:
+            DATA['name'] = DATA['newswitchname']
+            NEWSWITCHNAME = DATA['newswitchname']
+            del DATA['newswitchname']
+        else:
+            RESPONSE = {'message': 'Kindly Provide the New Switch Name.'}
+            ACCESSCODE = 400
+            return json.dumps(RESPONSE), ACCESSCODE
+        CHECKSWITCH = Database().get_record(None, 'switch', f' WHERE `name` = "{NEWSWITCHNAME}";')
         if CHECKSWITCH:
-            if 'newswitchname' in REQUEST['config']['switch'][switch]:
-                DATA['name'] = DATA['newswitchname']
-                del DATA['newswitchname']
-            CREATE = True
+            RESPONSE = {'message': f'{NEWSWITCHNAME} Already Present in Database.'}
+            ACCESSCODE = 400
+            return json.dumps(RESPONSE), ACCESSCODE
+        else:
+            CREATE = True           
         SWITCHCOLUMNS = Database().get_columns('switch')
         COLUMNCHECK = Helper().checkin_list(DATA, SWITCHCOLUMNS)
-        if COLUMNCHECK:
-            if CREATE:
-                if 'ipaddress' in DATA:
-                    IPRECORD = Database().get_record(None, 'ipaddress', ' WHERE `ipaddress` = "{}";'.format(DATA['ipaddress']))
-                    if IPRECORD:
-                        RESPONSE = {'message': 'Bad Request; IP Address Already Exist in The Database.'}
-                        ACCESSCODE = 400
-                        return json.dumps(RESPONSE), ACCESSCODE
-                    else:
-                        SUBNET = Helper().get_subnet(DATA['ipaddress'])
-                        row = [
-                                {"column": 'ipaddress', "value": DATA['ipaddress']},
-                                {"column": 'network', "value": DATA['network']},
-                                {"column": 'subnet', "value": SUBNET}
-                                ]
-                        result = Database().insert('ipaddress', row)
-                        SUBNETRECORD = Database().get_record(None, 'ipaddress', ' WHERE `ipaddress` = "{}";'.format(DATA['ipaddress']))
-                        DATA['ipaddress'] = SUBNETRECORD[0]['id']
-                row = []
-                for KEY, VALUE in DATA.items():
-                    row.append({"column": KEY, "value": VALUE})
-                result = Database().insert('switch', row)
-                RESPONSE = {'message': 'Switch Created Successfully.'}
-                ACCESSCODE = 204
-
+        DATA = Helper().check_ip_exist(DATA)
+        if DATA:
+            row = Helper().make_rows(DATA)
+            if COLUMNCHECK:
+                if CREATE:                    
+                    result = Database().insert('switch', row)
+                    RESPONSE = {'message': 'Switch Created Successfully.'}
+                    ACCESSCODE = 204
+            else:
+                RESPONSE = {'message': 'Bad Request; Columns are Incorrect.'}
+                ACCESSCODE = 400
+                return json.dumps(RESPONSE), ACCESSCODE
         else:
-            RESPONSE = {'message': 'Bad Request; Columns are Incorrect.'}
+            RESPONSE = {'message': 'Bad Request; IP Address Already Exist in The Database.'}
             ACCESSCODE = 400
             return json.dumps(RESPONSE), ACCESSCODE
     else:
@@ -847,7 +772,6 @@ def config_switch_clone(switch=None, **kwargs):
         ACCESSCODE = 400
         return json.dumps(RESPONSE), ACCESSCODE
 
-    ACCESSCODE = 200
     return json.dumps(DATA), ACCESSCODE
 
 

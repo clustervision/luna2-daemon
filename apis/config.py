@@ -21,6 +21,7 @@ from common.validate_auth import *
 from flask import Blueprint, request, json
 from utils.log import *
 from utils.helper import Helper
+from common.constant import ConfigFile
 
 logger = Log.get_logger()
 
@@ -451,6 +452,7 @@ def config_cluster():
                 CONTROLLER['ipaddress'] = CONTROLLERIP[0]["ipaddress"]
             del CONTROLLER['id']
             del CONTROLLER['clusterid']
+            CONTROLLER['luna_config'] = ConfigFile
             RESPONSE['config']['cluster'][CONTROLLER['hostname']] = CONTROLLER
             ACCESSCODE = 200
     else:

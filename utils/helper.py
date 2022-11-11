@@ -160,6 +160,9 @@ class Helper(object):
         check if IP address is in database or not True false 
         """
         if 'ipaddress' in DATA:
+            CHECKIP = self.check_ip(DATA['ipaddress'])
+            if not CHECKIP:
+                return None
             IPRECORD = Database().get_record(None, 'ipaddress', ' WHERE `ipaddress` = "{}";'.format(DATA['ipaddress']))
             if IPRECORD:
                 return None
@@ -184,3 +187,11 @@ class Helper(object):
         for KEY, VALUE in data.items():
             row.append({"column": KEY, "value": VALUE})
         return row
+
+
+    def check_ip(self, ipaddr):
+        try:
+            ip = ipaddress.ip_address(ipaddr)
+        except Exception as e:
+            return None
+        return ipaddr

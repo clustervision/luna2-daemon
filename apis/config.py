@@ -833,6 +833,9 @@ def config_switch_delete(switch=None):
     return json.dumps(DATA), ACCESSCODE
     
 
+######################################################## Switch Configuration #############################################################
+
+
 @config_blueprint.route("/config/otherdev", methods=['GET'])
 @token_required
 def config_otherdev():
@@ -870,16 +873,25 @@ def config_otherdev_get(device=None):
     Process - Fetch The List Of Devices.
     Output - Devices.
     """
-    devicedetails = True
-    if devicedetails:
-        logger.info("Other Device List is: {}".format(str(devicedetails)))
-        response = {"message": "Other Device List is: {}".format(str(devicedetails))}
-        code = 200
+    DEVICES = Database().get_record(None, 'otherdevices', f' WHERE name = "{device}"')
+    if DEVICES:
+        RESPONSE = {'config': {'otherdev': { } }}
+        for DEVICE in DEVICES:
+            DEVICENAME = DEVICE['name']
+            DEVICEIP = Database().get_record(None, 'ipaddress', f' WHERE id = {DEVICE["ipaddress"]}')
+            logger.debug(f'With Device {DEVICENAME} attached IP ROWs {DEVICEIP}')
+            if DEVICEIP:
+                DEVICE['ipaddress'] = DEVICEIP[0]["ipaddress"]
+            del DEVICE['id']
+            del DEVICE['name']
+            RESPONSE['config']['otherdev'][DEVICENAME] = DEVICE
+        logger.info("Avaiable Devices are {}.".format(DEVICES))
+        ACCESSCODE = 200
     else:
-        logger.error("Device {} Is Not Exist.".format(switch))
-        response = {"message": "Device {} Is Not Exist.".format(switch)}
-        code = 404
-    return json.dumps(response), code
+        logger.error('No Device is Avaiable.')
+        RESPONSE = {'message': 'No Device is Avaiable.'}
+        ACCESSCODE = 404
+    return json.dumps(RESPONSE), ACCESSCODE
 
 """
 Input - Device ID or Name

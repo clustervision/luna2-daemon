@@ -446,7 +446,11 @@ def config_cluster():
         RESPONSE = {'config': {'cluster': CLUSTER[0] }}
         CONTROLLERS = Database().get_record(None, 'controller', f' WHERE clusterid = {CLUSTERID}')
         for CONTROLLER in CONTROLLERS:
+            CONTROLLERIP = Database().get_record(None, 'ipaddress', f' WHERE id = {CONTROLLER["ipaddr"]}')
+            if CONTROLLERIP:
+                CONTROLLER['ipaddress'] = CONTROLLERIP[0]["ipaddress"]
             del CONTROLLER['id']
+            del CONTROLLER['clusterid']
             RESPONSE['config']['cluster'][CONTROLLER['hostname']] = CONTROLLER
             ACCESSCODE = 200
     else:

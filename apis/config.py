@@ -684,56 +684,25 @@ def config_switch_post(switch=None):
             CREATE = True
         SWITCHCOLUMNS = Database().get_columns('switch')
         COLUMNCHECK = Helper().checkin_list(DATA, SWITCHCOLUMNS)
-        if COLUMNCHECK:
-            if CREATE:
-                if 'ipaddress' in DATA:
-                    IPRECORD = Database().get_record(None, 'ipaddress', ' WHERE `ipaddress` = "{}";'.format(DATA['ipaddress']))
-                    if IPRECORD:
-                        RESPONSE = {'message': 'Bad Request; IP Address Already Exist in The Database.'}
-                        ACCESSCODE = 400
-                        return json.dumps(RESPONSE), ACCESSCODE
-                    else:
-                        SUBNET = Helper().get_subnet(DATA['ipaddress'])
-                        row = [
-                                {"column": 'ipaddress', "value": DATA['ipaddress']},
-                                {"column": 'network', "value": DATA['network']},
-                                {"column": 'subnet', "value": SUBNET}
-                                ]
-                        result = Database().insert('ipaddress', row)
-                        SUBNETRECORD = Database().get_record(None, 'ipaddress', ' WHERE `ipaddress` = "{}";'.format(DATA['ipaddress']))
-                        DATA['ipaddress'] = SUBNETRECORD[0]['id']
-                row = []
-                for KEY, VALUE in DATA.items():
-                    row.append({"column": KEY, "value": VALUE})
-                result = Database().insert('switch', row)
-                RESPONSE = {'message': 'Switch Created Successfully.'}
-                ACCESSCODE = 204
-            if UPDATE:
-                if 'ipaddress' in DATA:
-                    IPRECORD = Database().get_record(None, 'ipaddress', ' WHERE `ipaddress` = "{}";'.format(DATA['ipaddress']))
-                    if IPRECORD:
-                        RESPONSE = {'message': 'Bad Request; IP Address Already Exist in The Database.'}
-                        ACCESSCODE = 400
-                        return json.dumps(RESPONSE), ACCESSCODE
-                    else:
-                        SUBNET = Helper().get_subnet(DATA['ipaddress'])
-                        row = [
-                                {"column": 'ipaddress', "value": DATA['ipaddress']},
-                                {"column": 'network', "value": DATA['network']},
-                                {"column": 'subnet', "value": SUBNET}
-                                ]
-                        result = Database().insert('ipaddress', row)
-                        SUBNETRECORD = Database().get_record(None, 'ipaddress', ' WHERE `ipaddress` = "{}";'.format(DATA['ipaddress']))
-                        DATA['ipaddress'] = SUBNETRECORD[0]['id']
-                row = []
-                for KEY, VALUE in DATA.items():
-                    row.append({"column": KEY, "value": VALUE})
+        DATA = Helper().check_ip_exist(DATA)
+        if DATA:
+            row = Helper().make_rows(DATA)
+            if COLUMNCHECK:
+                if CREATE:                    
+                    result = Database().insert('switch', row)
+                    RESPONSE = {'message': 'Switch Created Successfully.'}
+                    ACCESSCODE = 204
+                if UPDATE:
                     where = [{"column": "id", "value": SWITCHID}]
-                result = Database().update('switch', row, where)
-                RESPONSE = {'message': 'Switch Updated Successfully.'}
-                ACCESSCODE = 204
+                    result = Database().update('switch', row, where)
+                    RESPONSE = {'message': 'Switch Updated Successfully.'}
+                    ACCESSCODE = 204
+            else:
+                RESPONSE = {'message': 'Bad Request; Columns are Incorrect.'}
+                ACCESSCODE = 400
+                return json.dumps(RESPONSE), ACCESSCODE
         else:
-            RESPONSE = {'message': 'Bad Request; Columns are Incorrect.'}
+            RESPONSE = {'message': 'Bad Request; IP Address Already Exist in The Database.'}
             ACCESSCODE = 400
             return json.dumps(RESPONSE), ACCESSCODE
     else:
@@ -822,24 +791,64 @@ Process - Delete The Switch.
 Output - Success or Failure.
 """
 @config_blueprint.route("/config/switch/<string:switch>/_clone", methods=['GET'])
-@validate_access
+# @token_required
 def config_switch_clone(switch=None, **kwargs):
-    if "access" in kwargs:
-        access = "admin"
-        remove = True
-        if remove:
-            logger.info("Switch () Is Deleted Successfully.".format(switch))
-            response = {"message": "Switch () Is Deleted Successfully.".format(switch)}
-            code = 200
-        else:
-            logger.error("Switch {} Is Not Exist.".format(switch))
-            response = {"message": "Switch {} Is Not Exist.".format(switch)}
-            code = 404
+    DATA = {}
+    CREATE = False
+    REQUESTCHECK = Helper().check_json(request.data)
+    if REQUESTCHECK:
+        REQUEST = request.get_json(force=True)
     else:
-        logger.error("Need a Valid Token to Perform this action.")
-        response = {"message": "Need a Valid Token to Perform this action."}
-        code = 401
-    return json.dumps(response), code
+        RESPONSE = {'message': 'Bad Request.'}
+        ACCESSCODE = 400
+        return json.dumps(RESPONSE), ACCESSCODE
+    if REQUEST:
+        DATA = REQUEST['config']['switch'][switch]
+        DATA['name'] = switch
+        CHECKSWITCH = Database().get_record(None, 'switch', f' WHERE `name` = "{switch}";')
+        if CHECKSWITCH:
+            if 'newswitchname' in REQUEST['config']['switch'][switch]:
+                DATA['name'] = DATA['newswitchname']
+                del DATA['newswitchname']
+            CREATE = True
+        SWITCHCOLUMNS = Database().get_columns('switch')
+        COLUMNCHECK = Helper().checkin_list(DATA, SWITCHCOLUMNS)
+        if COLUMNCHECK:
+            if CREATE:
+                if 'ipaddress' in DATA:
+                    IPRECORD = Database().get_record(None, 'ipaddress', ' WHERE `ipaddress` = "{}";'.format(DATA['ipaddress']))
+                    if IPRECORD:
+                        RESPONSE = {'message': 'Bad Request; IP Address Already Exist in The Database.'}
+                        ACCESSCODE = 400
+                        return json.dumps(RESPONSE), ACCESSCODE
+                    else:
+                        SUBNET = Helper().get_subnet(DATA['ipaddress'])
+                        row = [
+                                {"column": 'ipaddress', "value": DATA['ipaddress']},
+                                {"column": 'network', "value": DATA['network']},
+                                {"column": 'subnet', "value": SUBNET}
+                                ]
+                        result = Database().insert('ipaddress', row)
+                        SUBNETRECORD = Database().get_record(None, 'ipaddress', ' WHERE `ipaddress` = "{}";'.format(DATA['ipaddress']))
+                        DATA['ipaddress'] = SUBNETRECORD[0]['id']
+                row = []
+                for KEY, VALUE in DATA.items():
+                    row.append({"column": KEY, "value": VALUE})
+                result = Database().insert('switch', row)
+                RESPONSE = {'message': 'Switch Created Successfully.'}
+                ACCESSCODE = 204
+
+        else:
+            RESPONSE = {'message': 'Bad Request; Columns are Incorrect.'}
+            ACCESSCODE = 400
+            return json.dumps(RESPONSE), ACCESSCODE
+    else:
+        RESPONSE = {'message': 'Bad Request; Did not received Data.'}
+        ACCESSCODE = 400
+        return json.dumps(RESPONSE), ACCESSCODE
+
+    ACCESSCODE = 200
+    return json.dumps(DATA), ACCESSCODE
 
 
 """

@@ -19,24 +19,24 @@ from jinja2 import Environment
 from utils.log import *
 import json
 import ipaddress
+from utils.database import *
 
 
 class Helper(object):
 
-
-    """
-    Constructor - As of now, nothing have to initialize.
-    """
     def __init__(self):
+        """
+        Constructor - As of now, nothing have to initialize.
+        """
         self.logger = Log.get_logger()
 
-
-    """
-    Input - command, which need to be executed
-    Process - Via subprocess, execute the command and wait to receive the complete output.
-    Output - Detailed result.
-    """
+    
     def runcommand(self, command):
+        """
+        Input - command, which need to be executed
+        Process - Via subprocess, execute the command and wait to receive the complete output.
+        Output - Detailed result.
+        """
         process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
         self.logger.debug("Command Executed {}".format(command))
         output = process.communicate()
@@ -45,20 +45,21 @@ class Helper(object):
         return output
 
 
-    """
-    Input - Error Message (String)
-    Output - Stop The Daemon With Error Message .
-    """
     def stop(self, message=None):
+        """
+        Input - Error Message (String)
+        Output - Stop The Daemon With Error Message .
+        """
         self.logger.error(f'Daemon Stopped Because: {message}')
         sys.exit(-1)
         return False
 
-    """
-    Input - Directory
-    Output - Directory Existence, Readability and Writable
-    """
+    
     def checkpathstate(self, path=None):
+        """
+        Input - Directory
+        Output - Directory Existence, Readability and Writable
+        """
         pathtype = self.checkpathtype(path)
         if pathtype == 'File' or pathtype == 'Directory':
             if os.access(path, os.R_OK):
@@ -73,11 +74,11 @@ class Helper(object):
         return False
 
 
-    """
-    Input - Path of File or Directory
-    Output - File or directory or Not Exists
-    """
     def checkpathtype(self, path=None):
+        """
+        Input - Path of File or Directory
+        Output - File or directory or Not Exists
+        """
         pathstatus = self.checkpath(path)
         if pathstatus:
             if os.path.isdir(path):  
@@ -91,11 +92,11 @@ class Helper(object):
         return response
 
 
-    """
-    Input - Path of File or Directory
-    Output - True or False Is exists or not
-    """
     def checkpath(self, path=None):
+        """
+        Input - Path of File or Directory
+        Output - True or False Is exists or not
+        """
         if os.path.exists(path):
             response = True
         else:
@@ -103,11 +104,11 @@ class Helper(object):
         return response
 
 
-    """
-    Input - Path of Template
-    Output - True or False For Errors
-    """
     def checkjinja(self, template=None):
+        """
+        Input - Path of Template
+        Output - True or False For Errors
+        """
         env = Environment()
         try:
             with open(template) as template:
@@ -119,12 +120,12 @@ class Helper(object):
             return False
 
 
-    """
-    Input - JSON
-    Output - True or False For Errors
-    Usecase - switchcolumn = Database().get_columns('switch')
-    """
     def check_json(self, request=None):
+        """
+        Input - JSON
+        Output - True or False For Errors
+        Usecase - switchcolumn = Database().get_columns('switch')
+        """
         try:
             json.loads(request)
         except Exception as e:
@@ -132,11 +133,11 @@ class Helper(object):
         return True
     
 
-    """
-    Input - TWO LISTS 
-    Output - True or False For Errors
-    """
     def checkin_list(self, list1=None, list2=None):
+        """
+        Input - TWO LISTS 
+        Output - True or False For Errors
+        """
         CHECK = True
         for ITEM in list1:
             if ITEM not in list2:
@@ -144,10 +145,42 @@ class Helper(object):
         return CHECK
 
 
-    """
-    Input - IP Address 
-    Output - Subnet
-    """
     def get_subnet(self, ipaddr=None):
+        """
+        Input - IP Address 
+        Output - Subnet
+        """
         net = ipaddress.ip_network(ipaddr, strict=False)
         return net.netmask
+
+
+    def check_ip_exist(self, DATA=None):
+        """
+        check if IP is valid or not 
+        check if IP address is in database or not True false 
+        """
+        if 'ipaddress' in DATA:
+            IPRECORD = Database().get_record(None, 'ipaddress', ' WHERE `ipaddress` = "{}";'.format(DATA['ipaddress']))
+            if IPRECORD:
+                return None
+            else:
+                SUBNET = self.get_subnet(DATA['ipaddress'])
+                row = [
+                        {"column": 'ipaddress', "value": DATA['ipaddress']},
+                        {"column": 'network', "value": DATA['network']},
+                        {"column": 'subnet', "value": SUBNET}
+                        ]
+                result = Database().insert('ipaddress', row)
+                SUBNETRECORD = Database().get_record(None, 'ipaddress', ' WHERE `ipaddress` = "{}";'.format(DATA['ipaddress']))
+                DATA['ipaddress'] = SUBNETRECORD[0]['id']
+        return DATA
+
+    def make_rows(self, data=None):
+        """
+        Input - IP Address 
+        Output - Subnet
+        """
+        row = []
+        for KEY, VALUE in data.items():
+            row.append({"column": KEY, "value": VALUE})
+        return row

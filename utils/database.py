@@ -170,7 +170,7 @@ class Database(object):
 			if 'column' in cols.keys():
 				column = column+ cols['column']
 			if 'value' in cols.keys():
-				column = column + ' = "' +cols['value'] +'"'
+				column = column + ' = "' +str(cols['value']) +'"'
 			columns.append(column)
 			strcolumns = ', '.join(map(str, columns))
 		for cols in where:
@@ -178,7 +178,7 @@ class Database(object):
 			if 'column' in cols.keys():
 				column = column + cols['column']
 			if 'value' in cols.keys():
-				column = column + ' = "' +cols['value'] +'"'
+				column = column + ' = "' +str(cols['value']) +'"'
 			Where.append(column)
 			strWhere = ' AND '.join(map(str, Where))
 		query = "UPDATE '{}' SET {} WHERE {}".format(table, strcolumns, strWhere)

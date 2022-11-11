@@ -898,9 +898,8 @@ def config_otherdev_get(device=None):
 @token_required
 def config_otherdev_post(device=None):
     """
-    Input - Switch ID or Name
-    Process - Fetch The Switch Information.
-    Output - Switch Details.
+    Input - Device Name
+    Output - Create or Update Device.
     """
     DATA = {}
     CREATE, UPDATE = False, False
@@ -955,64 +954,63 @@ def config_otherdev_post(device=None):
 
 
 
-# @config_blueprint.route("/config/switch/<string:switch>/_clone", methods=['POST'])
+@config_blueprint.route("/config/otherdev/<string:device>/_clone", methods=['POST'])
 # @token_required
-# def config_switch_clone(switch=None):
-#     """
-#     Input - Switch ID or Name
-#     Process - Delete The Switch.
-#     Output - Success or Failure.
-#     """
-#     DATA = {}
-#     CREATE = False
-#     REQUESTCHECK = Helper().check_json(request.data)
-#     if REQUESTCHECK:
-#         REQUEST = request.get_json(force=True)
-#     else:
-#         RESPONSE = {'message': 'Bad Request.'}
-#         ACCESSCODE = 400
-#         return json.dumps(RESPONSE), ACCESSCODE
-#     if REQUEST:
-#         DATA = REQUEST['config']['switch'][switch]
-#         if 'newswitchname' in DATA:
-#             DATA['name'] = DATA['newswitchname']
-#             NEWSWITCHNAME = DATA['newswitchname']
-#             del DATA['newswitchname']
-#         else:
-#             RESPONSE = {'message': 'Kindly Provide the New Switch Name.'}
-#             ACCESSCODE = 400
-#             return json.dumps(RESPONSE), ACCESSCODE
-#         CHECKSWITCH = Database().get_record(None, 'switch', f' WHERE `name` = "{NEWSWITCHNAME}";')
-#         if CHECKSWITCH:
-#             RESPONSE = {'message': f'{NEWSWITCHNAME} Already Present in Database.'}
-#             ACCESSCODE = 400
-#             return json.dumps(RESPONSE), ACCESSCODE
-#         else:
-#             CREATE = True           
-#         SWITCHCOLUMNS = Database().get_columns('switch')
-#         COLUMNCHECK = Helper().checkin_list(DATA, SWITCHCOLUMNS)
-#         DATA = Helper().check_ip_exist(DATA)
-#         if DATA:
-#             row = Helper().make_rows(DATA)
-#             if COLUMNCHECK:
-#                 if CREATE:                    
-#                     result = Database().insert('switch', row)
-#                     RESPONSE = {'message': 'Switch Created Successfully.'}
-#                     ACCESSCODE = 204
-#             else:
-#                 RESPONSE = {'message': 'Bad Request; Columns are Incorrect.'}
-#                 ACCESSCODE = 400
-#                 return json.dumps(RESPONSE), ACCESSCODE
-#         else:
-#             RESPONSE = {'message': 'Bad Request; IP Address Already Exist in The Database.'}
-#             ACCESSCODE = 400
-#             return json.dumps(RESPONSE), ACCESSCODE
-#     else:
-#         RESPONSE = {'message': 'Bad Request; Did not received Data.'}
-#         ACCESSCODE = 400
-#         return json.dumps(RESPONSE), ACCESSCODE
+def config_otherdev_clone(device=None):
+    """
+    Input - Device ID or Name
+    Output - Clone The Device.
+    """
+    DATA = {}
+    CREATE = False
+    REQUESTCHECK = Helper().check_json(request.data)
+    if REQUESTCHECK:
+        REQUEST = request.get_json(force=True)
+    else:
+        RESPONSE = {'message': 'Bad Request.'}
+        ACCESSCODE = 400
+        return json.dumps(RESPONSE), ACCESSCODE
+    if REQUEST:
+        DATA = REQUEST['config']['otherdev'][device]
+        if 'newotherdevname' in DATA:
+            DATA['name'] = DATA['newotherdevname']
+            NEWDEVICENAME = DATA['newotherdevname']
+            del DATA['newotherdevname']
+        else:
+            RESPONSE = {'message': 'Kindly Provide the New Device Name.'}
+            ACCESSCODE = 400
+            return json.dumps(RESPONSE), ACCESSCODE
+        CHECKDEVICE = Database().get_record(None, 'otherdevices', f' WHERE `name` = "{NEWDEVICENAME}";')
+        if CHECKDEVICE:
+            RESPONSE = {'message': f'{NEWDEVICENAME} Already Present in Database.'}
+            ACCESSCODE = 400
+            return json.dumps(RESPONSE), ACCESSCODE
+        else:
+            CREATE = True           
+        DEVICECOLUMNS = Database().get_columns('otherdevices')
+        COLUMNCHECK = Helper().checkin_list(DATA, DEVICECOLUMNS)
+        DATA = Helper().check_ip_exist(DATA)
+        if DATA:
+            row = Helper().make_rows(DATA)
+            if COLUMNCHECK:
+                if CREATE:                    
+                    result = Database().insert('otherdevices', row)
+                    RESPONSE = {'message': 'Device Cloned Successfully.'}
+                    ACCESSCODE = 204
+            else:
+                RESPONSE = {'message': 'Bad Request; Columns are Incorrect.'}
+                ACCESSCODE = 400
+                return json.dumps(RESPONSE), ACCESSCODE
+        else:
+            RESPONSE = {'message': 'Bad Request; IP Address Already Exist in The Database.'}
+            ACCESSCODE = 400
+            return json.dumps(RESPONSE), ACCESSCODE
+    else:
+        RESPONSE = {'message': 'Bad Request; Did not received Data.'}
+        ACCESSCODE = 400
+        return json.dumps(RESPONSE), ACCESSCODE
 
-#     return json.dumps(DATA), ACCESSCODE
+    return json.dumps(DATA), ACCESSCODE
 
 
 

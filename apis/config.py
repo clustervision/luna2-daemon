@@ -419,13 +419,51 @@ def config_osimage_kernel_post(name=None):
     return json.dumps(response), code
 
 
-"""
-Input - None
-Process - Fetch The Cluster Information.
-Output - Cluster Information.
-"""
+
+######################################################## Cluster Configuration #############################################################
+
+
 @config_blueprint.route("/config/cluster", methods=['GET'])
+@token_required
 def config_cluster():
+    """
+    Input - None
+    Process - Fetch The Cluster Information.
+    Output - Cluster Information.
+    """
+    CLUSTER = Database().get_record(None, 'cluster', None)
+    if CLUSTER:
+        CLUSTERID = CLUSTER[0]['id']
+        del CLUSTER[0]['id']
+        if CLUSTER[0]['debug']:
+            CLUSTER[0]['debug'] = True
+        else:
+            CLUSTER[0]['debug'] = False
+        if CLUSTER[0]['security']:
+            CLUSTER[0]['security'] = True
+        else:
+            CLUSTER[0]['security'] = False
+        RESPONSE = {'config': {'cluster': CLUSTER[0] }}
+        CONTROLLERS = Database().get_record(None, 'controller', f' WHERE clusterid = {CLUSTERID}')
+        for CONTROLLER in CONTROLLERS:
+            del CONTROLLER['id']
+            RESPONSE['config']['cluster'][CONTROLLER['hostname']] = CONTROLLER
+            ACCESSCODE = 200
+    else:
+        logger.error('No Cluster is Avaiable.')
+        RESPONSE = {'message': 'No Cluster is Avaiable.'}
+        ACCESSCODE = 404
+    return json.dumps(RESPONSE), ACCESSCODE
+
+
+@config_blueprint.route("/config/cluster", methods=['POST'])
+# @token_required
+def config_cluster_post():
+    """
+    Input - None
+    Process - Fetch The Cluster Information.
+    Output - Cluster Information.
+    """
     cluster = True
     if cluster:
         logger.info("Cluster Information: {}".format(str(cluster)))
@@ -796,7 +834,7 @@ def config_switch_delete(switch=None):
     return json.dumps(RESPONSE), ACCESSCODE
     
 
-######################################################## Switch Configuration #############################################################
+######################################################## Other Devices Configuration #############################################################
 
 
 @config_blueprint.route("/config/otherdev", methods=['GET'])

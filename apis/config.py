@@ -784,53 +784,16 @@ def config_switch_delete(switch=None):
     Process - Delete The Switch.
     Output - Success or Failure.
     """
-    DATA = {}
-    DELETE = False
-    REQUESTCHECK = Helper().check_json(request.data)
-    if REQUESTCHECK:
-        REQUEST = request.get_json(force=True)
+    CHECKSWITCH = Database().get_record(None, 'switch', f' WHERE `name` = "{switch}";')
+    if CHECKSWITCH:
+        Database().delete_row('ipaddress', [{"column": "id", "value": CHECKSWITCH[0]['ipaddress']}])
+        Database().delete_row('switch', [{"column": "name", "value": switch}])
+        RESPONSE = {'message': 'Switch Removed Successfully.'}
+        ACCESSCODE = 204
     else:
-        RESPONSE = {'message': 'Bad Request.'}
-        ACCESSCODE = 400
-        return json.dumps(RESPONSE), ACCESSCODE
-    if REQUEST:
-        DATA = REQUEST['config']['switch'][switch]
-        CHECKSWITCH = Database().get_record(None, 'switch', f' WHERE `name` = "{switch}";')
-        if CHECKSWITCH:
-            DELETE = True
-        else:
-            RESPONSE = {'message': f'{switch} Not Present in Database.'}
-            ACCESSCODE = 404
-            return json.dumps(RESPONSE), ACCESSCODE
-        SWITCHCOLUMNS = Database().get_columns('switch')
-        COLUMNCHECK = Helper().checkin_list(DATA, SWITCHCOLUMNS)
-        if DATA:
-            if COLUMNCHECK:
-                if DELETE:
-                    if 'ipaddress' in DATA:
-                        IPRECORD = Database().delete_row('ipaddress', [{"column": "ipaddress", "value": DATA['ipaddress']}])
-                        del DATA['ipaddress']
-                    else:
-                        IPRECORD = Database().delete_row('ipaddress', [{"column": "id", "value": CHECKSWITCH[0]['ipaddress']}])
-                    row = Helper().make_rows(DATA)
-                    # result = Database().delete_row('switch', row)
-                    result = Database().delete_row('switch', [{"column": "name", "value": switch}])
-                    RESPONSE = {'message': 'Switch Removed Successfully.'}
-                    ACCESSCODE = 204
-            else:
-                RESPONSE = {'message': 'Bad Request; Columns are Incorrect.'}
-                ACCESSCODE = 400
-                return json.dumps(RESPONSE), ACCESSCODE
-        else:
-            RESPONSE = {'message': 'Bad Request; IP Address Already Exist in The Database.'}
-            ACCESSCODE = 400
-            return json.dumps(RESPONSE), ACCESSCODE
-    else:
-        RESPONSE = {'message': 'Bad Request; Did not received Data.'}
-        ACCESSCODE = 400
-        return json.dumps(RESPONSE), ACCESSCODE
-
-    return json.dumps(DATA), ACCESSCODE
+        RESPONSE = {'message': f'{switch} Not Present in Database.'}
+        ACCESSCODE = 404
+    return json.dumps(RESPONSE), ACCESSCODE
     
 
 ######################################################## Switch Configuration #############################################################
@@ -955,7 +918,7 @@ def config_otherdev_post(device=None):
 
 
 @config_blueprint.route("/config/otherdev/<string:device>/_clone", methods=['POST'])
-# @token_required
+@token_required
 def config_otherdev_clone(device=None):
     """
     Input - Device ID or Name
@@ -1014,58 +977,21 @@ def config_otherdev_clone(device=None):
 
 
 
-# @config_blueprint.route("/config/switch/<string:switch>/_delete", methods=['POST'])
-# @token_required
-# def config_switch_delete(switch=None):
-#     """
-#     Input - Switch ID or Name
-#     Process - Delete The Switch.
-#     Output - Success or Failure.
-#     """
-#     DATA = {}
-#     DELETE = False
-#     REQUESTCHECK = Helper().check_json(request.data)
-#     if REQUESTCHECK:
-#         REQUEST = request.get_json(force=True)
-#     else:
-#         RESPONSE = {'message': 'Bad Request.'}
-#         ACCESSCODE = 400
-#         return json.dumps(RESPONSE), ACCESSCODE
-#     if REQUEST:
-#         DATA = REQUEST['config']['switch'][switch]
-#         CHECKSWITCH = Database().get_record(None, 'switch', f' WHERE `name` = "{switch}";')
-#         if CHECKSWITCH:
-#             DELETE = True
-#         else:
-#             RESPONSE = {'message': f'{switch} Not Present in Database.'}
-#             ACCESSCODE = 404
-#             return json.dumps(RESPONSE), ACCESSCODE
-#         SWITCHCOLUMNS = Database().get_columns('switch')
-#         COLUMNCHECK = Helper().checkin_list(DATA, SWITCHCOLUMNS)
-#         if DATA:
-#             if COLUMNCHECK:
-#                 if DELETE:
-#                     if 'ipaddress' in DATA:
-#                         IPRECORD = Database().delete_row('ipaddress', [{"column": "ipaddress", "value": DATA['ipaddress']}])
-#                         del DATA['ipaddress']
-#                     else:
-#                         IPRECORD = Database().delete_row('ipaddress', [{"column": "id", "value": CHECKSWITCH[0]['ipaddress']}])
-#                     row = Helper().make_rows(DATA)
-#                     # result = Database().delete_row('switch', row)
-#                     result = Database().delete_row('switch', [{"column": "name", "value": switch}])
-#                     RESPONSE = {'message': 'Switch Removed Successfully.'}
-#                     ACCESSCODE = 204
-#             else:
-#                 RESPONSE = {'message': 'Bad Request; Columns are Incorrect.'}
-#                 ACCESSCODE = 400
-#                 return json.dumps(RESPONSE), ACCESSCODE
-#         else:
-#             RESPONSE = {'message': 'Bad Request; IP Address Already Exist in The Database.'}
-#             ACCESSCODE = 400
-#             return json.dumps(RESPONSE), ACCESSCODE
-#     else:
-#         RESPONSE = {'message': 'Bad Request; Did not received Data.'}
-#         ACCESSCODE = 400
-#         return json.dumps(RESPONSE), ACCESSCODE
-
-#     return json.dumps(DATA), ACCESSCODE
+@config_blueprint.route("/config/otherdev/<string:device>/_delete", methods=['GET'])
+@token_required
+def config_otherdev_delete(device=None):
+    """
+    Input - Device ID or Name
+    Process - Delete The Device.
+    Output - Success or Failure.
+    """
+    CHECKDEVICE = Database().get_record(None, 'otherdevices', f' WHERE `name` = "{device}";')
+    if CHECKDEVICE:
+        Database().delete_row('ipaddress', [{"column": "id", "value": CHECKDEVICE[0]['ipaddress']}])
+        Database().delete_row('otherdevices', [{"column": "name", "value": device}])
+        RESPONSE = {'message': 'Device Removed Successfully.'}
+        ACCESSCODE = 204
+    else:
+        RESPONSE = {'message': f'{device} Not Present in Database.'}
+        ACCESSCODE = 404
+    return json.dumps(RESPONSE), ACCESSCODE

@@ -786,7 +786,7 @@ def config_switch_post(switch=None):
                 if CREATE:                    
                     result = Database().insert('switch', row)
                     RESPONSE = {'message': 'Switch Created Successfully.'}
-                    ACCESSCODE = 204
+                    ACCESSCODE = 201
                 if UPDATE:
                     where = [{"column": "id", "value": SWITCHID}]
                     result = Database().update('switch', row, where)
@@ -988,7 +988,7 @@ def config_otherdev_post(device=None):
                 if CREATE:                    
                     result = Database().insert('otherdevices', row)
                     RESPONSE = {'message': 'Device Created Successfully.'}
-                    ACCESSCODE = 204
+                    ACCESSCODE = 201
                 if UPDATE:
                     where = [{"column": "id", "value": DEVICEID}]
                     result = Database().update('otherdevices', row, where)
@@ -1053,7 +1053,7 @@ def config_otherdev_clone(device=None):
                 if CREATE:                    
                     result = Database().insert('otherdevices', row)
                     RESPONSE = {'message': 'Device Cloned Successfully.'}
-                    ACCESSCODE = 204
+                    ACCESSCODE = 201
             else:
                 RESPONSE = {'message': 'Bad Request; Columns are Incorrect.'}
                 ACCESSCODE = 400

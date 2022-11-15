@@ -504,7 +504,7 @@ def config_cluster_post():
 ######################################################## BMC Setup Configuration #############################################################
 
 @config_blueprint.route("/config/bmcsetup", methods=['GET'])
-@token_required
+# @token_required
 def config_bmcsetup():
     """
     Input - None
@@ -517,6 +517,7 @@ def config_bmcsetup():
         for BMC in BMCSETUP:
             BMCNAME = BMC['name']
             del BMC['name']
+            del BMC['id']
             RESPONSE['config']['bmcsetup'][BMCNAME] = BMC
         ACCESSCODE = 200
     else:
@@ -526,34 +527,29 @@ def config_bmcsetup():
     return json.dumps(RESPONSE), ACCESSCODE
 
 
-"""
-Input - BMC Setup ID or Name
-Process - Fetch The BMC Setup information.
-Output - BMC Setup Information.
-"""
+
 @config_blueprint.route("/config/bmcsetup/<string:bmcname>", methods=['GET'])
-@validate_access
-def config_bmcsetup_get(bmcname=None, **kwargs):
-    bmcsetup = False
-    bmcsetupname = False
-    if "access" in kwargs:
-        access = "admin"
-        bmcsetup = True
+@token_required
+def config_bmcsetup_get(bmcname=None):
+    """
+    Input - BMC Setup ID or Name
+    Process - Fetch The BMC Setup information.
+    Output - BMC Setup Information.
+    """
+    BMCSETUP = Database().get_record(None, 'bmcsetup', f' WHERE name = "{bmcname}"')
+    if BMCSETUP:
+        RESPONSE = {'config': {'bmcsetup': {} }}
+        for BMC in BMCSETUP:
+            BMCNAME = BMC['name']
+            del BMC['name']
+            del BMC['id']
+            RESPONSE['config']['bmcsetup'][BMCNAME] = BMC
+        ACCESSCODE = 200
     else:
-        bmcsetupname = False
-    if bmcsetup:
-        logger.info("BMC Setup is: {}.".format(bmcsetup))
-        response = {"message": "BMC Setup is: {}.".format(bmcsetup)}
-        code = 200
-    elif bmcsetupname:
-        logger.info("BMC Setup Name is: {}.".format(bmcsetup))
-        response = {"message": "BMC Setup Name is: {}.".format(bmcsetup)}
-        code = 200
-    else:
-        logger.error("BMC Setup Is Not Exist.")
-        response = {"message": "BMC Setup Is Not Exist."}
-        code = 404
-    return json.dumps(response), code
+        logger.error('No BMC Setup is Avaiable.')
+        RESPONSE = {'message': 'No BMC Setup is Avaiable.'}
+        ACCESSCODE = 404
+    return json.dumps(RESPONSE), ACCESSCODE
 
 
 """

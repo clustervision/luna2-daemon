@@ -554,7 +554,7 @@ def config_bmcsetup_get(bmcname=None):
 
 
 @config_blueprint.route("/config/bmcsetup/<string:bmcname>", methods=['POST'])
-# @token_required
+@token_required
 def config_bmcsetup_post(bmcname=None):
     """
     Input - BMC Setup ID or Name
@@ -589,7 +589,7 @@ def config_bmcsetup_post(bmcname=None):
             if CREATE:                    
                 result = Database().insert('bmcsetup', row)
                 RESPONSE = {'message': 'BMC Setup Created Successfully.'}
-                ACCESSCODE = 204
+                ACCESSCODE = 201
             if UPDATE:
                 where = [{"column": "id", "value": BMCID}]
                 result = Database().update('bmcsetup', row, where)
@@ -607,50 +607,65 @@ def config_bmcsetup_post(bmcname=None):
     return json.dumps(DATA), ACCESSCODE
 
 
-"""
-Input - BMC Setup ID or Name
-Process - Fetch BMC Setup and Credentials.
-Output - BMC Name And Credentials.
-"""
-@config_blueprint.route("/config/bmcsetup/<string:bmcname>/credentials", methods=['GET'])
-@validate_access
-def config_bmcsetup_credentials_get(bmcname=None, **kwargs):
-    if "access" in kwargs:
-        access = "admin"
-        bmcsetup = True
-        if bmcsetup:
-            logger.info("BMC Setup Name and Credentials is: {}".format(bmcsetup))
-            response = {"message": "BMC Setup Name and Credentials is: {}".format(bmcsetup)}
-            code = 200
-        else:
-            logger.error("BMC Setup Is Not Exist.")
-            response = {"message": "BMC Setup Is Not Exist."}
-            code = 404
-    else:
-        logger.error("Need a Valid Token to Perform this action.")
-        response = {"message": "Need a Valid Token to Perform this action."}
-        code = 401
-    return json.dumps(response), code
 
-
-"""
-Input - BMC Setup ID or Name
-Process - Update The BMC Setup Credentials.
-Output - Success or Failure.
-"""
-@config_blueprint.route("/config/bmcsetup/<string:bmcname>/credentials", methods=['POST'])
+@config_blueprint.route("/config/bmcsetup/<string:bmcname>/_clone", methods=['POST'])
 @token_required
-def config_bmcsetup_credentials_post(bmcname=None):
-    update = True
-    if update:
-        logger.info("BMC Setup Credentials Updated Successfully.")
-        response = {"message": "BMC Setup Credentials Updated Successfully."}
-        code = 200
+def config_bmcsetup_clone(bmcname=None):
+    """
+    Input - BMC Setup ID or Name
+    Process - Fetch BMC Setup and Credentials.
+    Output - BMC Name And Credentials.
+    """
+    DATA = {}
+    CREATE = False
+    REQUESTCHECK = Helper().check_json(request.data)
+    if REQUESTCHECK:
+        REQUEST = request.get_json(force=True)
     else:
-        logger.error("BMC Setup Name is Missing.")
-        response = {"message": "BMC Setup Name is Missing."}
-        code = 404
-    return json.dumps(response), code
+        RESPONSE = {'message': 'Bad Request.'}
+        ACCESSCODE = 400
+        return json.dumps(RESPONSE), ACCESSCODE
+    if REQUEST:
+        DATA = REQUEST['config']['bmcsetup'][bmcname]
+        if 'newbmcname' in DATA:
+            DATA['name'] = DATA['newbmcname']
+            NEWBMCNAME = DATA['newbmcname']
+            del DATA['newbmcname']
+        else:
+            RESPONSE = {'message': 'Kindly Provide the New BMC Name.'}
+            ACCESSCODE = 400
+            return json.dumps(RESPONSE), ACCESSCODE
+        CHECKBMC = Database().get_record(None, 'bmcsetup', f' WHERE `name` = "{bmcname}";')
+        if CHECKBMC:
+            CHECKNEWBMC = Database().get_record(None, 'bmcsetup', f' WHERE `name` = "{NEWBMCNAME}";')
+            if CHECKNEWBMC:
+                RESPONSE = {'message': f'{NEWBMCNAME} Already Present in Database.'}
+                ACCESSCODE = 400
+                return json.dumps(RESPONSE), ACCESSCODE
+            else:
+                CREATE = True  
+        else:
+            RESPONSE = {'message': f'{bmcname} Not Present in Database.'}
+            ACCESSCODE = 400
+            return json.dumps(RESPONSE), ACCESSCODE
+        BMCCOLUMNS = Database().get_columns('bmcsetup')
+        COLUMNCHECK = Helper().checkin_list(DATA, BMCCOLUMNS)
+        row = Helper().make_rows(DATA)
+        if COLUMNCHECK:
+            if CREATE:                    
+                result = Database().insert('bmcsetup', row)
+                RESPONSE = {'message': 'BMC Setup Created Successfully.'}
+                ACCESSCODE = 201
+        else:
+            RESPONSE = {'message': 'Bad Request; Columns are Incorrect.'}
+            ACCESSCODE = 400
+            return json.dumps(RESPONSE), ACCESSCODE
+    else:
+        RESPONSE = {'message': 'Bad Request; Did not received Data.'}
+        ACCESSCODE = 400
+        return json.dumps(RESPONSE), ACCESSCODE
+
+    return json.dumps(DATA), ACCESSCODE
 
 
 """
@@ -842,7 +857,7 @@ def config_switch_clone(switch=None):
                 if CREATE:                    
                     result = Database().insert('switch', row)
                     RESPONSE = {'message': 'Switch Created Successfully.'}
-                    ACCESSCODE = 204
+                    ACCESSCODE = 201
             else:
                 RESPONSE = {'message': 'Bad Request; Columns are Incorrect.'}
                 ACCESSCODE = 400

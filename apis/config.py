@@ -501,114 +501,29 @@ def config_cluster_post():
     return json.dumps(RESPONSE), 200
 
 
+######################################################## BMC Setup Configuration #############################################################
 
-    # if CLUSTER:
-    #     CLUSTERID = CLUSTER[0]['id']
-    #     del CLUSTER[0]['id']
-    #     if CLUSTER[0]['debug']:
-    #         CLUSTER[0]['debug'] = True
-    #     else:
-    #         CLUSTER[0]['debug'] = False
-    #     if CLUSTER[0]['security']:
-    #         CLUSTER[0]['security'] = True
-    #     else:
-    #         CLUSTER[0]['security'] = False
-    #     RESPONSE = {'config': {'cluster': CLUSTER[0] }}
-    #     CONTROLLERS = Database().get_record(None, 'controller', f' WHERE clusterid = {CLUSTERID}')
-    #     for CONTROLLER in CONTROLLERS:
-    #         CONTROLLERIP = Database().get_record(None, 'ipaddress', f' WHERE id = {CONTROLLER["ipaddr"]}')
-    #         if CONTROLLERIP:
-    #             CONTROLLER['ipaddress'] = CONTROLLERIP[0]["ipaddress"]
-    #         del CONTROLLER['id']
-    #         del CONTROLLER['clusterid']
-    #         CONTROLLER['luna_config'] = ConfigFile
-    #         RESPONSE['config']['cluster'][CONTROLLER['hostname']] = CONTROLLER
-    #         ACCESSCODE = 200
-    # else:
-    #     logger.error('No Cluster is Avaiable.')
-    #     RESPONSE = {'message': 'No Cluster is Avaiable.'}
-    #     ACCESSCODE = 404
-    # return json.dumps(RESPONSE), ACCESSCODE
-
-
-
-
-
-
-
-
-    
-    # if REQUEST:
-    #     DATA = REQUEST['config']['cluster']
-    #     DATA['name'] = switch
-    #     CHECKSWITCH = Database().get_record(None, 'switch', f' WHERE `name` = "{switch}";')
-    #     if CHECKSWITCH:
-    #         SWITCHID = CHECKSWITCH[0]['id']
-    #         if 'newswitchname' in REQUEST['config']['switch'][switch]:
-    #             DATA['name'] = DATA['newswitchname']
-    #             del DATA['newswitchname']
-    #         UPDATE = True
-    #     else:
-    #         CREATE = True
-    #     SWITCHCOLUMNS = Database().get_columns('switch')
-    #     COLUMNCHECK = Helper().checkin_list(DATA, SWITCHCOLUMNS)
-    #     DATA = Helper().check_ip_exist(DATA)
-    #     if DATA:
-    #         row = Helper().make_rows(DATA)
-    #         if COLUMNCHECK:
-    #             if CREATE:                    
-    #                 result = Database().insert('switch', row)
-    #                 RESPONSE = {'message': 'Switch Created Successfully.'}
-    #                 ACCESSCODE = 204
-    #             if UPDATE:
-    #                 where = [{"column": "id", "value": SWITCHID}]
-    #                 result = Database().update('switch', row, where)
-    #                 RESPONSE = {'message': 'Switch Updated Successfully.'}
-    #                 ACCESSCODE = 204
-    #         else:
-    #             RESPONSE = {'message': 'Bad Request; Columns are Incorrect.'}
-    #             ACCESSCODE = 400
-    #             return json.dumps(RESPONSE), ACCESSCODE
-    #     else:
-    #         RESPONSE = {'message': 'Bad Request; IP Address Already Exist in The Database.'}
-    #         ACCESSCODE = 400
-    #         return json.dumps(RESPONSE), ACCESSCODE
-    # else:
-    #     RESPONSE = {'message': 'Bad Request; Did not received Data.'}
-    #     ACCESSCODE = 400
-    #     return json.dumps(RESPONSE), ACCESSCODE
-
-    # return json.dumps(DATA), ACCESSCODE
-
-
-"""
-Input - None
-Process - Fetch The list of configured settings.
-Output - List Of BMC Setup.
-"""
 @config_blueprint.route("/config/bmcsetup", methods=['GET'])
-@validate_access
-def config_bmcsetup(**kwargs):
-    bmcsetup = False
-    bmcsetupname = False
-    if "access" in kwargs:
-        access = "admin"
-        bmcsetup = True
+@token_required
+def config_bmcsetup():
+    """
+    Input - None
+    Process - Fetch The list of configured settings.
+    Output - List Of BMC Setup.
+    """
+    BMCSETUP = Database().get_record(None, 'bmcsetup', None)
+    if BMCSETUP:
+        RESPONSE = {'config': {'bmcsetup': {} }}
+        for BMC in BMCSETUP:
+            BMCNAME = BMC['name']
+            del BMC['name']
+            RESPONSE['config']['bmcsetup'][BMCNAME] = BMC
+        ACCESSCODE = 200
     else:
-        bmcsetupname = False
-    if bmcsetup:
-        logger.info("List Of BMC Setup is: {}.".format(bmcsetup))
-        response = {"message": "List Of BMC Setup is: {}.".format(bmcsetup)}
-        code = 200
-    elif bmcsetupname:
-        logger.info("BMC Setup Name is: {}.".format(bmcsetup))
-        response = {"message": "BMC Setup Name is: {}.".format(bmcsetup)}
-        code = 200
-    else:
-        logger.error("BMC Setup Is Not Exist.")
-        response = {"message": "BMC Setup Is Not Exist."}
-        code = 404
-    return json.dumps(response), code
+        logger.error('No BMC Setup is Avaiable.')
+        RESPONSE = {'message': 'No BMC Setup is Avaiable.'}
+        ACCESSCODE = 404
+    return json.dumps(RESPONSE), ACCESSCODE
 
 
 """

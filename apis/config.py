@@ -668,30 +668,25 @@ def config_bmcsetup_clone(bmcname=None):
     return json.dumps(DATA), ACCESSCODE
 
 
-"""
-Input - BMC Setup ID or Name
-Process - Delete The BMC Setup Credentials.
-Output - Success or Failure.
-"""
-@config_blueprint.route("/config/bmcsetup/<string:bmcname>/remove", methods=['GET'])
-@validate_access
-def config_bmcsetup_remove(bmcname=None, **kwargs):
-    if "access" in kwargs:
-        access = "admin"
-        remove = True
-        if remove:
-            logger.info("BMC Setup {} Removed Successfully.".format(bmcname))
-            response = {"message": "BMC Setup {} Removed Successfully.".format(bmcname)}
-            code = 200
-        else:
-            logger.error("BMC Setup Name is Missing.")
-            response = {"message": "BMC Setup Name is Missing."}
-            code = 404
+@config_blueprint.route("/config/bmcsetup/<string:bmcname>/_delete", methods=['GET'])
+@token_required
+def config_bmcsetup_delete(bmcname=None):
+    """
+    Input - BMC Setup ID or Name
+    Process - Delete The BMC Setup Credentials.
+    Output - Success or Failure.
+    """
+    CHECKBMC = Database().get_record(None, 'bmcsetup', f' WHERE `name` = "{bmcname}";')
+    if CHECKBMC:
+        Database().delete_row('bmcsetup', [{"column": "name", "value": bmcname}])
+        RESPONSE = {'message': 'BMC Setup Removed Successfully.'}
+        ACCESSCODE = 204
     else:
-        logger.error("Need a Valid Token to Perform this action.")
-        response = {"message": "Need a Valid Token to Perform this action."}
-        code = 401
-    return json.dumps(response), code
+        RESPONSE = {'message': f'{switch} Not Present in Database.'}
+        ACCESSCODE = 404
+    return json.dumps(RESPONSE), ACCESSCODE
+
+
 
 ######################################################## Switch Configuration #############################################################
 

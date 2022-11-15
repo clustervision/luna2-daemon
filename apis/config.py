@@ -504,7 +504,7 @@ def config_cluster_post():
 ######################################################## BMC Setup Configuration #############################################################
 
 @config_blueprint.route("/config/bmcsetup", methods=['GET'])
-# @token_required
+@token_required
 def config_bmcsetup():
     """
     Input - None
@@ -552,29 +552,59 @@ def config_bmcsetup_get(bmcname=None):
     return json.dumps(RESPONSE), ACCESSCODE
 
 
-"""
-Input - BMC Setup ID or Name
-Process - Create or Update BMC Setup information.
-Output - Success or Failure.
-"""
+
 @config_blueprint.route("/config/bmcsetup/<string:bmcname>", methods=['POST'])
-@token_required
+# @token_required
 def config_bmcsetup_post(bmcname=None):
-    create = True
-    update = False
-    if create:
-        logger.info("BMC Setup {} Created Successfully.".format(bmcname))
-        response = {"message": "BMC Setup {} Created Successfully.".format(bmcname)}
-        code = 201
-    elif update:
-        logger.info("BMC Setup {} Updated Successfully.".format(bmcname))
-        response = {"message": "BMC Setup {} Updated Successfully.".format(bmcname)}
-        code = 200
+    """
+    Input - BMC Setup ID or Name
+    Process - Create or Update BMC Setup information.
+    Output - Success or Failure.
+    """
+    DATA = {}
+    CREATE, UPDATE = False, False
+    REQUESTCHECK = Helper().check_json(request.data)
+    if REQUESTCHECK:
+        REQUEST = request.get_json(force=True)
     else:
-        logger.error("BMC Setup Is Not Exist.")
-        response = {"message": "BMC Setup Is Not Exist."}
-        code = 404
-    return json.dumps(response), code
+        RESPONSE = {'message': 'Bad Request.'}
+        ACCESSCODE = 400
+        return json.dumps(RESPONSE), ACCESSCODE
+    if REQUEST:
+        DATA = REQUEST['config']['bmcsetup'][bmcname]
+        DATA['name'] = bmcname
+        CHECKBMC = Database().get_record(None, 'bmcsetup', f' WHERE `name` = "{bmcname}";')
+        if CHECKBMC:
+            BMCID = CHECKBMC[0]['id']
+            if 'newbmcname' in REQUEST['config']['bmcsetup'][bmcname]:
+                DATA['name'] = DATA['newbmcname']
+                del DATA['newbmcname']
+            UPDATE = True
+        else:
+            CREATE = True
+        BMCCOLUMNS = Database().get_columns('bmcsetup')
+        COLUMNCHECK = Helper().checkin_list(DATA, BMCCOLUMNS)
+        row = Helper().make_rows(DATA)
+        if COLUMNCHECK:
+            if CREATE:                    
+                result = Database().insert('bmcsetup', row)
+                RESPONSE = {'message': 'BMC Setup Created Successfully.'}
+                ACCESSCODE = 204
+            if UPDATE:
+                where = [{"column": "id", "value": BMCID}]
+                result = Database().update('bmcsetup', row, where)
+                RESPONSE = {'message': 'BMC Setup Updated Successfully.'}
+                ACCESSCODE = 204
+        else:
+            RESPONSE = {'message': 'Bad Request; Columns are Incorrect.'}
+            ACCESSCODE = 400
+            return json.dumps(RESPONSE), ACCESSCODE
+    else:
+        RESPONSE = {'message': 'Bad Request; Did not received Data.'}
+        ACCESSCODE = 400
+        return json.dumps(RESPONSE), ACCESSCODE
+
+    return json.dumps(DATA), ACCESSCODE
 
 
 """

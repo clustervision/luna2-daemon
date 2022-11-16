@@ -145,6 +145,30 @@ class Helper(object):
         return CHECK
 
 
+    def check_ip(self, ipaddr=None):
+        """
+        Add Blcaklist filter;
+        https://clustervision.atlassian.net/wiki/spaces/TRIX/pages/52461574/2022-11-11+Development+meeting
+        """
+        try:
+            ip = ipaddress.ip_address(ipaddr)
+        except Exception as e:
+            return None
+        return ipaddr
+
+
+    def get_network(self, ipaddr=None, subnet=None):
+        """
+        Input - IP Address + Subnet
+        Output - Network such as 10.141.0.0/16
+        """
+        if subnet:
+            net = ipaddress.ip_network(ipaddr+'/'+subnet, strict=False)
+        else:
+            net = ipaddress.ip_network(ipaddr, strict=False)
+        return str(net)
+
+
     def get_subnet(self, ipaddr=None):
         """
         Input - IP Address 
@@ -152,6 +176,18 @@ class Helper(object):
         """
         net = ipaddress.ip_network(ipaddr, strict=False)
         return net.netmask
+
+
+    def check_ip_range(self, ipaddr=None, network=None):
+        """
+        Check If IP is in range or not
+        """
+        # try:
+        #     ip = ipaddress.ip_address(ipaddr) in ipaddress.ip_network(network)
+        # except Exception as e:
+        #     return None
+        # return ipaddr
+        pass
 
 
     def check_ip_exist(self, DATA=None):
@@ -189,9 +225,4 @@ class Helper(object):
         return row
 
 
-    def check_ip(self, ipaddr):
-        try:
-            ip = ipaddress.ip_address(ipaddr)
-        except Exception as e:
-            return None
-        return ipaddr
+    

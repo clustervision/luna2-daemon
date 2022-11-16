@@ -1095,7 +1095,7 @@ def config_otherdev_delete(device=None):
 
 
 @config_blueprint.route("/config/network", methods=['GET'])
-# @token_required
+@token_required
 def config_network():
     """
     Input - None
@@ -1106,47 +1106,49 @@ def config_network():
     if NETWORKS:
         RESPONSE = {'config': {'network': {} }}
         for NWK in NETWORKS:
-            
             NWK['network'] = Helper().get_network(NWK['network'], NWK['subnet'])
-            
-            # net = ipaddress.ip_network(NWK['network']+'/'+NWK['subnet'], strict=False)
-            # net = ipaddress.ip_network(NWK['network']+'/16')
             del NWK['id']
             del NWK['subnet']
             if not NWK['dhcp']:
                 del NWK['dhcp_range_begin']
                 del NWK['dhcp_range_end']
-            if NWK['dhcp']:
-                NWK['dhcp'] = True
-            else:
                 NWK['dhcp'] = False
+            else:
+                NWK['dhcp'] = True
             RESPONSE['config']['network'][NWK['name']] = NWK
-        # logger.info(net)
-            # print(net)
-            # print(net.netmask)
-        # CLUSTERID = CLUSTER[0]['id']
-        # del CLUSTER[0]['id']
-        # if CLUSTER[0]['debug']:
-        #     CLUSTER[0]['debug'] = True
-        # else:
-        #     CLUSTER[0]['debug'] = False
-        # if CLUSTER[0]['security']:
-        #     CLUSTER[0]['security'] = True
-        # else:
-        #     CLUSTER[0]['security'] = False
-        # RESPONSE = {'config': {'cluster': CLUSTER[0] }}
-        # CONTROLLERS = Database().get_record(None, 'controller', f' WHERE clusterid = {CLUSTERID}')
-        # for CONTROLLER in CONTROLLERS:
-        #     CONTROLLERIP = Database().get_record(None, 'ipaddress', f' WHERE id = {CONTROLLER["ipaddr"]}')
-        #     if CONTROLLERIP:
-        #         CONTROLLER['ipaddress'] = CONTROLLERIP[0]["ipaddress"]
-        #     del CONTROLLER['id']
-        #     del CONTROLLER['clusterid']
-        #     CONTROLLER['luna_config'] = ConfigFile
-        #     RESPONSE['config']['cluster'][CONTROLLER['hostname']] = CONTROLLER
         ACCESSCODE = 200
     else:
         logger.error('No Networks is Avaiable.')
         RESPONSE = {'message': 'No Networks is Avaiable.'}
+        ACCESSCODE = 404
+    return json.dumps(RESPONSE), ACCESSCODE
+
+
+@config_blueprint.route("/config/network/<string:name>", methods=['GET'])
+@token_required
+def config_network_get(name=None):
+    """
+    Input - Network Name
+    Process - Fetch The Network Information.
+    Output - Network Information.
+    """
+    NETWORKS = Database().get_record(None, 'network', f' WHERE `name` = "{name}";')
+    if NETWORKS:
+        RESPONSE = {'config': {'network': {} }}
+        for NWK in NETWORKS:
+            NWK['network'] = Helper().get_network(NWK['network'], NWK['subnet'])
+            del NWK['id']
+            del NWK['subnet']
+            if not NWK['dhcp']:
+                del NWK['dhcp_range_begin']
+                del NWK['dhcp_range_end']
+                NWK['dhcp'] = False
+            else:
+                NWK['dhcp'] = True
+            RESPONSE['config']['network'][NWK['name']] = NWK
+        ACCESSCODE = 200
+    else:
+        logger.error(f'Network {name} is Not Avaiable.')
+        RESPONSE = {'message': f'Network {name} is Not Avaiable.'}
         ACCESSCODE = 404
     return json.dumps(RESPONSE), ACCESSCODE

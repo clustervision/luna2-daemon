@@ -1380,7 +1380,7 @@ def config_network_clone(name=None):
 
 
 @config_blueprint.route("/config/network/<string:name>/_delete", methods=['GET'])
-# @token_required
+@token_required
 def config_network_delete(name=None):
     """
     Input - Network Name
@@ -1392,6 +1392,53 @@ def config_network_delete(name=None):
         Database().delete_row('network', [{"column": "name", "value": name}])
         RESPONSE = {'message': 'Network Removed Successfully.'}
         ACCESSCODE = 204
+    else:
+        RESPONSE = {'message': f'Network {name} Not Present in Database.'}
+        ACCESSCODE = 404
+    return json.dumps(RESPONSE), ACCESSCODE
+
+
+@config_blueprint.route("/config/network/<string:name>/<string:ipaddr>", methods=['GET'])
+@token_required
+def config_network_ip(name=None, ipaddr=None):
+    """
+    Input - Network Name And IP Address
+    Process - Delete The Network.
+    Output - Success or Failure.
+    """
+    CHECKNWK = Database().get_record(None, 'network', f' WHERE `name` = "{name}";')
+    if CHECKNWK:
+        IPDETAILS = Helper().check_ip_range(ipaddr, CHECKNWK[0]['network']+'/'+CHECKNWK[0]['subnet'])
+        if IPDETAILS:
+            CHECKIP = Database().get_record(None, 'ipaddress', f' WHERE ipaddress = "{ipaddr}"; ')
+            if CHECKIP:
+                RESPONSE = {'config': {'network': {ipaddr: {'status': 'taken'} } } }
+                ACCESSCODE = 200
+            else:
+                RESPONSE = {'config': {'network': {ipaddr: {'status': 'free'} } } }
+                ACCESSCODE = 200
+        else:
+            RESPONSE = {'message': f'{ipaddr} Is Not In The Range.'}
+            ACCESSCODE = 404
+            return json.dumps(RESPONSE), ACCESSCODE
+    else:
+        RESPONSE = {'message': f'Network {name} Not Present in Database.'}
+        ACCESSCODE = 404
+    return json.dumps(RESPONSE), ACCESSCODE
+
+
+@config_blueprint.route("/config/network/<string:name>/_nextfreeip", methods=['GET'])
+@token_required
+def config_network_nextip(name=None):
+    """
+    Input - Network Name
+    Process - Find The Next Available IP on the Netwok.
+    Output - Next Available IP on the Netwok.
+    """
+    RESPONSE = {'config': {'network': {name: {'nextip': '10.141.0.2'} } } }
+    if RESPONSE:
+        RESPONSE = {'config': {'network': {name: {'nextip': '10.141.0.2'} } } }
+        ACCESSCODE = 200
     else:
         RESPONSE = {'message': f'Network {name} Not Present in Database.'}
         ACCESSCODE = 404

@@ -20,7 +20,7 @@ from utils.log import *
 import json
 import ipaddress
 from utils.database import *
-
+from netaddr import IPNetwork
 
 class Helper(object):
 
@@ -150,11 +150,14 @@ class Helper(object):
         Add Blcaklist filter;
         https://clustervision.atlassian.net/wiki/spaces/TRIX/pages/52461574/2022-11-11+Development+meeting
         """
+        IP = ''
         try:
-            ip = ipaddress.ip_address(ipaddr)
+            ip = IPNetwork(ipaddr)
+            IP = ip.ip
+            # IP = ipaddress.ip_address(net)
         except Exception as e:
             return None
-        return ipaddr
+        return str(IP)
 
 
     def get_network(self, ipaddr=None, subnet=None):
@@ -175,9 +178,12 @@ class Helper(object):
         Output - Network and Subnet such as 10.141.0.0 and 255.255.0.0 
         """
         RESPONSE = {}
-        net = ipaddress.ip_network(ipaddr, strict=False)
-        RESPONSE['network'] = str(net)
-        RESPONSE['network'] = str(net.netmask)
+        try:
+            net = ipaddress.ip_network(ipaddr, strict=False)
+            RESPONSE['network'] = str(net)
+            RESPONSE['subnet'] = str(net.netmask)
+        except Exception as e:
+            return None
         return RESPONSE
 
 
@@ -194,12 +200,19 @@ class Helper(object):
         """
         Check If IP is in range or not
         """
-        # try:
-        #     ip = ipaddress.ip_address(ipaddr) in ipaddress.ip_network(network)
-        # except Exception as e:
-        #     return None
-        # return ipaddr
-        pass
+        RESPONSE = False
+        try:
+            CHECKIP = self.check_ip(ipaddr)
+            if CHECKIP:
+                if ipaddress.ip_address(ipaddr) in list(ipaddress.ip_network(network).hosts()):
+                    RESPONSE = True
+                else:
+                    RESPONSE = False
+            else:
+                RESPONSE = False
+        except Exception as e:
+            RESPONSE = False
+        return RESPONSE
 
 
     def check_ip_exist(self, DATA=None):

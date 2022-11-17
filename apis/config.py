@@ -1178,7 +1178,6 @@ def config_network_post(name=None):
         if CHECKNETWORK:
             NETWORKID = CHECKNETWORK[0]['id']
             if 'newnetname' in REQUEST['config']['network'][name]:
-                ## Check If New Network Name already exist in the database
                 NEWNETWORKNAME = REQUEST['config']['network'][name]['newnetname']
                 CHECKNEWNETWORK = Database().get_record(None, 'network', f' WHERE `name` = "{NEWNETWORKNAME}";')
                 if CHECKNEWNETWORK:
@@ -1192,65 +1191,78 @@ def config_network_post(name=None):
         else:
             CREATE = True
         if 'network' in DATA:
-            ## Check Network IP format
-            ## Split into network and subnet
-            pass
+            NWKIP = Helper().check_ip(DATA['network'])
+            if NWKIP:
+                NWKDETAILS = Helper().get_network_details(DATA['network'])
+                DATA['network'] = NWKIP
+                DATA['subnet'] = NWKDETAILS['subnet']
+            else:
+                RESPONSE = {'message': f'Incorrect Network IP: {DATA["network"]}.'}
+                ACCESSCODE = 400
+                return json.dumps(RESPONSE), ACCESSCODE
         if 'gateway' in DATA:
-            ## Check Gateway IP format
-            ## Check if Gateway in range of Network
-            pass
+            GWDETAILS = Helper().check_ip_range(DATA['gateway'], DATA['network']+'/'+DATA['subnet'])
+            if not GWDETAILS:
+                RESPONSE = {'message': f'Incorrect Gateway IP: {DATA["gateway"]}.'}
+                ACCESSCODE = 400
+                return json.dumps(RESPONSE), ACCESSCODE
         if 'ns_ip' in DATA:
-            ## Check ns_ip IP format
-            ## Check if ns_ip in range of Network
-            pass
+            NSIPDETAILS = Helper().check_ip_range(DATA['ns_ip'], DATA['network']+'/'+DATA['subnet'])
+            if not NSIPDETAILS:
+                RESPONSE = {'message': f'Incorrect NS IP: {DATA["ns_ip"]}.'}
+                ACCESSCODE = 400
+                return json.dumps(RESPONSE), ACCESSCODE
         if 'ntp_server' in DATA:
-            ## Check ntp_server IP format
-            ## Check if ntp_server in range of Network
-            pass
+            NTPDETAILS = Helper().check_ip_range(DATA['ntp_server'], DATA['network']+'/'+DATA['subnet'])
+            if not NTPDETAILS:
+                RESPONSE = {'message': f'Incorrect NTP Server IP: {DATA["ntp_server"]}.'}
+                ACCESSCODE = 400
+                return json.dumps(RESPONSE), ACCESSCODE
         if 'dhcp' in DATA:
-            DHCP = True
             if 'dhcp_range_begin' in DATA:
-                ## Check dhcp_range_begin IP format
-                ## Check if dhcp_range_begin in range of Network
-                pass
+                DHCPSTARTDETAILS = Helper().check_ip_range(DATA['dhcp_range_begin'], DATA['network']+'/'+DATA['subnet'])
+                if not DHCPSTARTDETAILS:
+                    RESPONSE = {'message': f'Incorrect DHCP Start Range IP: {DATA["dhcp_range_begin"]}.'}
+                    ACCESSCODE = 400
+                    return json.dumps(RESPONSE), ACCESSCODE
             else:
-                DHCP = False
+                RESPONSE = {'message': f'DHCP Start Range is a Required Parameter.'}
+                ACCESSCODE = 400
+                return json.dumps(RESPONSE), ACCESSCODE
             if 'dhcp_range_end' in DATA:
-                ## Check dhcp_range_end IP format
-                ## Check if dhcp_range_end in range of Network
-                pass
+                DHCPENDDETAILS = Helper().check_ip_range(DATA['dhcp_range_end'], DATA['network']+'/'+DATA['subnet'])
+                if not DHCPENDDETAILS:
+                    RESPONSE = {'message': f'Incorrect DHCP End Range IP: {DATA["dhcp_range_end"]}.'}
+                    ACCESSCODE = 400
+                    return json.dumps(RESPONSE), ACCESSCODE
             else:
-                DHCP = False
-            if DHCP == False:
-                ## Break So Not Return Anything
-                pass
+                RESPONSE = {'message': f'DHCP End Range is a Required Parameter.'}
+                ACCESSCODE = 400
+                return json.dumps(RESPONSE), ACCESSCODE
         else:
             DATA['dhcp'] = False
             DATA['dhcp_range_begin'] = ""
             DATA['dhcp_range_end'] = ""
-        RESPONSE = DATA
-        ACCESSCODE = 200
+        NETWORKCOLUMNS = Database().get_columns('network')
+        COLUMNCHECK = Helper().checkin_list(DATA, NETWORKCOLUMNS)
+        row = Helper().make_rows(DATA)
+        if COLUMNCHECK:
+            if CREATE:                    
+                result = Database().insert('network', row)
+                RESPONSE = {'message': 'Network Created Successfully.'}
+                ACCESSCODE = 201
+            if UPDATE:
+                where = [{"column": "id", "value": NETWORKID}]
+                result = Database().update('network', row, where)
+                RESPONSE = {'message': 'Network Updated Successfully.'}
+                ACCESSCODE = 204
+        else:
+            RESPONSE = {'message': 'Bad Request; Columns are Incorrect.'}
+            ACCESSCODE = 400
+            return json.dumps(RESPONSE), ACCESSCODE
+    else:
+        RESPONSE = {'message': 'Bad Request; Did not received Data.'}
+        ACCESSCODE = 400
         return json.dumps(RESPONSE), ACCESSCODE
-    #     NETWORKCOLUMNS = Database().get_columns('network')
-    #     COLUMNCHECK = Helper().checkin_list(DATA, NETWORKCOLUMNS)
-    #     row = Helper().make_rows(DATA)
-    #     if COLUMNCHECK:
-    #         if CREATE:                    
-    #             result = Database().insert('network', row)
-    #             RESPONSE = {'message': 'Network Created Successfully.'}
-    #             ACCESSCODE = 201
-    #         if UPDATE:
-    #             where = [{"column": "id", "value": NETWORKID}]
-    #             result = Database().update('network', row, where)
-    #             RESPONSE = {'message': 'Network Updated Successfully.'}
-    #             ACCESSCODE = 204
-    #     else:
-    #         RESPONSE = {'message': 'Bad Request; Columns are Incorrect.'}
-    #         ACCESSCODE = 400
-    #         return json.dumps(RESPONSE), ACCESSCODE
-    # else:
-    #     RESPONSE = {'message': 'Bad Request; Did not received Data.'}
-    #     ACCESSCODE = 400
-    #     return json.dumps(RESPONSE), ACCESSCODE
 
-    # return json.dumps(DATA), ACCESSCODE
+    return json.dumps(DATA), ACCESSCODE

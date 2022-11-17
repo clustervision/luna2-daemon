@@ -284,23 +284,53 @@ def config_group_interfaces_post(group=None):
     return json.dumps(response), code
 
 
-"""
-Input - OS Image ID or Name
-Process - Fetch the OS Image information.
-Output - OSImage Info.
-"""
+######################################################## Cluster Configuration #############################################################
+
+@config_blueprint.route("/config/osimage", methods=['GET'])
+def config_osimage():
+    """
+    Input - OS Image ID or Name
+    Process - Fetch the OS Image information.
+    Output - OSImage Info.
+    """
+    OSIMAGES = Database().get_record(None, 'osimage', None)
+    if OSIMAGES:
+        RESPONSE = {'config': {'osimage': {} }}
+        for IMAGE in OSIMAGES:
+            IMAGENAME = IMAGE['name']
+            del IMAGE['id']
+            del IMAGE['name']
+            RESPONSE['config']['osimage'][IMAGENAME] = IMAGE
+        logger.info('Provided List Of All OS Images with Details.')
+        ACCESSCODE = 200
+    else:
+        logger.error('No OS Image is Avaiable.')
+        RESPONSE = {'message': 'No OS Image is Avaiable.'}
+        ACCESSCODE = 404
+    return json.dumps(RESPONSE), ACCESSCODE
+
+
 @config_blueprint.route("/config/osimage/<string:name>", methods=['GET'])
 def config_osimage_get(name=None):
-    osimage = True
-    if osimage:
-        logger.info("OS Image {} information is: {}".format(name, str(osimage)))
-        response = {"message": "OS Image {} information is: {}".format(name, str(osimage))}
-        code = 200
+    """
+    Input - OS Image ID or Name
+    Process - Fetch the OS Image information.
+    Output - OSImage Info.
+    """
+    OSIMAGES = Database().get_record(None, 'osimage', f' WHERE name = "{name}"')
+    if OSIMAGES:
+        RESPONSE = {'config': {'osimage': {} }}
+        for IMAGE in OSIMAGES:
+            del IMAGE['id']
+            del IMAGE['name']
+            RESPONSE['config']['osimage'][name] = IMAGE
+        logger.info(f'Returned OS Images {name} with Details.')
+        ACCESSCODE = 200
     else:
-        logger.error("OS Image Doesn't Exist.")
-        response = {"message": "OS Image Doesn't Exist."}
-        code = 404
-    return json.dumps(response), code
+        logger.error('No OS Image is Avaiable.')
+        RESPONSE = {'message': 'No OS Image is Avaiable.'}
+        ACCESSCODE = 404
+    return json.dumps(RESPONSE), ACCESSCODE
 
 
 """
@@ -1269,7 +1299,7 @@ def config_network_post(name=None):
 
 
 @config_blueprint.route("/config/network/<string:name>/_clone", methods=['POST'])
-@token_required
+# @token_required
 def config_network_clone(name=None):
     """
     Input - Network Name

@@ -1155,7 +1155,7 @@ def config_network_get(name=None):
 
 
 @config_blueprint.route("/config/network/<string:name>", methods=['POST'])
-# @token_required
+@token_required
 def config_network_post(name=None):
     """
     Input - Network Name
@@ -1256,6 +1256,117 @@ def config_network_post(name=None):
                 result = Database().update('network', row, where)
                 RESPONSE = {'message': 'Network Updated Successfully.'}
                 ACCESSCODE = 204
+        else:
+            RESPONSE = {'message': 'Bad Request; Columns are Incorrect.'}
+            ACCESSCODE = 400
+            return json.dumps(RESPONSE), ACCESSCODE
+    else:
+        RESPONSE = {'message': 'Bad Request; Did not received Data.'}
+        ACCESSCODE = 400
+        return json.dumps(RESPONSE), ACCESSCODE
+
+    return json.dumps(DATA), ACCESSCODE
+
+
+@config_blueprint.route("/config/network/<string:name>/_clone", methods=['POST'])
+# @token_required
+def config_network_clone(name=None):
+    """
+    Input - Network Name
+    Process - Create or Update Network information.
+    Output - Success or Failure.
+    """
+    DATA = {}
+    CREATE, UPDATE = False, False
+    REQUESTCHECK = Helper().check_json(request.data)
+    if REQUESTCHECK:
+        REQUEST = request.get_json(force=True)
+    else:
+        RESPONSE = {'message': 'Bad Request.'}
+        ACCESSCODE = 400
+        return json.dumps(RESPONSE), ACCESSCODE
+    if REQUEST:
+        DATA = REQUEST['config']['network'][name]
+        DATA['name'] = name
+        CHECKNETWORK = Database().get_record(None, 'network', f' WHERE `name` = "{name}";')
+        if CHECKNETWORK:
+            NETWORKID = CHECKNETWORK[0]['id']
+            if 'newnetname' in REQUEST['config']['network'][name]:
+                NEWNETWORKNAME = REQUEST['config']['network'][name]['newnetname']
+                CHECKNEWNETWORK = Database().get_record(None, 'network', f' WHERE `name` = "{NEWNETWORKNAME}";')
+                if CHECKNEWNETWORK:
+                    RESPONSE = {'message': f'{NEWNETWORKNAME} Already Present in Database, Choose Another Name Or Delete {NEWNETWORKNAME}.'}
+                    ACCESSCODE = 400
+                    return json.dumps(RESPONSE), ACCESSCODE
+                else:
+                    DATA['name'] = DATA['newnetname']
+                    del DATA['newnetname']
+            CREATE = True
+        else:
+            RESPONSE = {'message': f'Bad Request; Network {name} is Not Present in Database.'}
+            ACCESSCODE = 400
+            return json.dumps(RESPONSE), ACCESSCODE
+        if 'network' in DATA:
+            NWKIP = Helper().check_ip(DATA['network'])
+            if NWKIP:
+                NWKDETAILS = Helper().get_network_details(DATA['network'])
+                DATA['network'] = NWKIP
+                DATA['subnet'] = NWKDETAILS['subnet']
+            else:
+                RESPONSE = {'message': f'Incorrect Network IP: {DATA["network"]}.'}
+                ACCESSCODE = 400
+                return json.dumps(RESPONSE), ACCESSCODE
+        if 'gateway' in DATA:
+            GWDETAILS = Helper().check_ip_range(DATA['gateway'], DATA['network']+'/'+DATA['subnet'])
+            if not GWDETAILS:
+                RESPONSE = {'message': f'Incorrect Gateway IP: {DATA["gateway"]}.'}
+                ACCESSCODE = 400
+                return json.dumps(RESPONSE), ACCESSCODE
+        if 'ns_ip' in DATA:
+            NSIPDETAILS = Helper().check_ip_range(DATA['ns_ip'], DATA['network']+'/'+DATA['subnet'])
+            if not NSIPDETAILS:
+                RESPONSE = {'message': f'Incorrect NS IP: {DATA["ns_ip"]}.'}
+                ACCESSCODE = 400
+                return json.dumps(RESPONSE), ACCESSCODE
+        if 'ntp_server' in DATA:
+            NTPDETAILS = Helper().check_ip_range(DATA['ntp_server'], DATA['network']+'/'+DATA['subnet'])
+            if not NTPDETAILS:
+                RESPONSE = {'message': f'Incorrect NTP Server IP: {DATA["ntp_server"]}.'}
+                ACCESSCODE = 400
+                return json.dumps(RESPONSE), ACCESSCODE
+        if 'dhcp' in DATA:
+            if 'dhcp_range_begin' in DATA:
+                DHCPSTARTDETAILS = Helper().check_ip_range(DATA['dhcp_range_begin'], DATA['network']+'/'+DATA['subnet'])
+                if not DHCPSTARTDETAILS:
+                    RESPONSE = {'message': f'Incorrect DHCP Start Range IP: {DATA["dhcp_range_begin"]}.'}
+                    ACCESSCODE = 400
+                    return json.dumps(RESPONSE), ACCESSCODE
+            else:
+                RESPONSE = {'message': f'DHCP Start Range is a Required Parameter.'}
+                ACCESSCODE = 400
+                return json.dumps(RESPONSE), ACCESSCODE
+            if 'dhcp_range_end' in DATA:
+                DHCPENDDETAILS = Helper().check_ip_range(DATA['dhcp_range_end'], DATA['network']+'/'+DATA['subnet'])
+                if not DHCPENDDETAILS:
+                    RESPONSE = {'message': f'Incorrect DHCP End Range IP: {DATA["dhcp_range_end"]}.'}
+                    ACCESSCODE = 400
+                    return json.dumps(RESPONSE), ACCESSCODE
+            else:
+                RESPONSE = {'message': f'DHCP End Range is a Required Parameter.'}
+                ACCESSCODE = 400
+                return json.dumps(RESPONSE), ACCESSCODE
+        else:
+            DATA['dhcp'] = False
+            DATA['dhcp_range_begin'] = ""
+            DATA['dhcp_range_end'] = ""
+        NETWORKCOLUMNS = Database().get_columns('network')
+        COLUMNCHECK = Helper().checkin_list(DATA, NETWORKCOLUMNS)
+        row = Helper().make_rows(DATA)
+        if COLUMNCHECK:
+            if CREATE:                    
+                result = Database().insert('network', row)
+                RESPONSE = {'message': 'Network Created Successfully.'}
+                ACCESSCODE = 201
         else:
             RESPONSE = {'message': 'Bad Request; Columns are Incorrect.'}
             ACCESSCODE = 400

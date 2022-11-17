@@ -169,6 +169,18 @@ class Helper(object):
         return str(net)
 
 
+    def get_network_details(self, ipaddr=None):
+        """
+        Input - IP Address such as 10.141.0.0/16
+        Output - Network and Subnet such as 10.141.0.0 and 255.255.0.0 
+        """
+        RESPONSE = {}
+        net = ipaddress.ip_network(ipaddr, strict=False)
+        RESPONSE['network'] = str(net)
+        RESPONSE['network'] = str(net.netmask)
+        return RESPONSE
+
+
     def get_subnet(self, ipaddr=None):
         """
         Input - IP Address 

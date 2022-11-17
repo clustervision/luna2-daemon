@@ -1152,3 +1152,105 @@ def config_network_get(name=None):
         RESPONSE = {'message': f'Network {name} is Not Avaiable.'}
         ACCESSCODE = 404
     return json.dumps(RESPONSE), ACCESSCODE
+
+
+@config_blueprint.route("/config/network/<string:name>", methods=['POST'])
+# @token_required
+def config_network_post(name=None):
+    """
+    Input - Network Name
+    Process - Create or Update Network information.
+    Output - Success or Failure.
+    """
+    DATA = {}
+    CREATE, UPDATE = False, False
+    REQUESTCHECK = Helper().check_json(request.data)
+    if REQUESTCHECK:
+        REQUEST = request.get_json(force=True)
+    else:
+        RESPONSE = {'message': 'Bad Request.'}
+        ACCESSCODE = 400
+        return json.dumps(RESPONSE), ACCESSCODE
+    if REQUEST:
+        DATA = REQUEST['config']['network'][name]
+        DATA['name'] = name
+        CHECKNETWORK = Database().get_record(None, 'network', f' WHERE `name` = "{name}";')
+        if CHECKNETWORK:
+            NETWORKID = CHECKNETWORK[0]['id']
+            if 'newnetname' in REQUEST['config']['network'][name]:
+                ## Check If New Network Name already exist in the database
+                NEWNETWORKNAME = REQUEST['config']['network'][name]['newnetname']
+                CHECKNEWNETWORK = Database().get_record(None, 'network', f' WHERE `name` = "{NEWNETWORKNAME}";')
+                if CHECKNEWNETWORK:
+                    RESPONSE = {'message': f'{NEWNETWORKNAME} Already Present in Database, Choose Another Name Or Delete {NEWNETWORKNAME}.'}
+                    ACCESSCODE = 400
+                    return json.dumps(RESPONSE), ACCESSCODE
+                else:
+                    DATA['name'] = DATA['newnetname']
+                    del DATA['newnetname']
+            UPDATE = True
+        else:
+            CREATE = True
+        if 'network' in DATA:
+            ## Check Network IP format
+            ## Split into network and subnet
+            pass
+        if 'gateway' in DATA:
+            ## Check Gateway IP format
+            ## Check if Gateway in range of Network
+            pass
+        if 'ns_ip' in DATA:
+            ## Check ns_ip IP format
+            ## Check if ns_ip in range of Network
+            pass
+        if 'ntp_server' in DATA:
+            ## Check ntp_server IP format
+            ## Check if ntp_server in range of Network
+            pass
+        if 'dhcp' in DATA:
+            DHCP = True
+            if 'dhcp_range_begin' in DATA:
+                ## Check dhcp_range_begin IP format
+                ## Check if dhcp_range_begin in range of Network
+                pass
+            else:
+                DHCP = False
+            if 'dhcp_range_end' in DATA:
+                ## Check dhcp_range_end IP format
+                ## Check if dhcp_range_end in range of Network
+                pass
+            else:
+                DHCP = False
+            if DHCP == False:
+                ## Break So Not Return Anything
+                pass
+        else:
+            DATA['dhcp'] = False
+            DATA['dhcp_range_begin'] = ""
+            DATA['dhcp_range_end'] = ""
+        RESPONSE = DATA
+        ACCESSCODE = 200
+        return json.dumps(RESPONSE), ACCESSCODE
+    #     NETWORKCOLUMNS = Database().get_columns('network')
+    #     COLUMNCHECK = Helper().checkin_list(DATA, NETWORKCOLUMNS)
+    #     row = Helper().make_rows(DATA)
+    #     if COLUMNCHECK:
+    #         if CREATE:                    
+    #             result = Database().insert('network', row)
+    #             RESPONSE = {'message': 'Network Created Successfully.'}
+    #             ACCESSCODE = 201
+    #         if UPDATE:
+    #             where = [{"column": "id", "value": NETWORKID}]
+    #             result = Database().update('network', row, where)
+    #             RESPONSE = {'message': 'Network Updated Successfully.'}
+    #             ACCESSCODE = 204
+    #     else:
+    #         RESPONSE = {'message': 'Bad Request; Columns are Incorrect.'}
+    #         ACCESSCODE = 400
+    #         return json.dumps(RESPONSE), ACCESSCODE
+    # else:
+    #     RESPONSE = {'message': 'Bad Request; Did not received Data.'}
+    #     ACCESSCODE = 400
+    #     return json.dumps(RESPONSE), ACCESSCODE
+
+    # return json.dumps(DATA), ACCESSCODE

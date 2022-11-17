@@ -1269,7 +1269,7 @@ def config_network_post(name=None):
 
 
 @config_blueprint.route("/config/network/<string:name>/_clone", methods=['POST'])
-# @token_required
+@token_required
 def config_network_clone(name=None):
     """
     Input - Network Name
@@ -1377,3 +1377,22 @@ def config_network_clone(name=None):
         return json.dumps(RESPONSE), ACCESSCODE
 
     return json.dumps(DATA), ACCESSCODE
+
+
+@config_blueprint.route("/config/network/<string:name>/_delete", methods=['GET'])
+# @token_required
+def config_network_delete(name=None):
+    """
+    Input - Network Name
+    Process - Delete The Network.
+    Output - Success or Failure.
+    """
+    CHECKNWK = Database().get_record(None, 'network', f' WHERE `name` = "{name}";')
+    if CHECKNWK:
+        Database().delete_row('network', [{"column": "name", "value": name}])
+        RESPONSE = {'message': 'Network Removed Successfully.'}
+        ACCESSCODE = 204
+    else:
+        RESPONSE = {'message': f'Network {name} Not Present in Database.'}
+        ACCESSCODE = 404
+    return json.dumps(RESPONSE), ACCESSCODE

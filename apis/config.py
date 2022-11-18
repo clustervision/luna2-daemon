@@ -324,7 +324,7 @@ def config_osimage_get(name=None):
             del IMAGE['id']
             del IMAGE['name']
             RESPONSE['config']['osimage'][name] = IMAGE
-        logger.info(f'Returned OS Images {name} with Details.')
+        logger.info(f'Returned OS Image {name} with Details.')
         ACCESSCODE = 200
     else:
         logger.error('No OS Image is Avaiable.')
@@ -333,29 +333,47 @@ def config_osimage_get(name=None):
     return json.dumps(RESPONSE), ACCESSCODE
 
 
-"""
-Input - OS Image ID or Name
-Process - Create or Update the OS Image information.
-Output - OSImage Info.
-"""
+
 @config_blueprint.route("/config/osimage/<string:name>", methods=['POST'])
 @token_required
 def config_osimage_post(name=None):
-    create = True
-    update = False
-    if create:
-        logger.info("OS Image {} Created Successfully.".format(name))
-        response = {"message": "OS Image {} Created Successfully.".format(name)}
-        code = 201
-    elif update:
-        logger.info("OS Image {} Updated Successfully.".format(name))
-        response = {"message": "OS Image {} Updated Successfully.".format(name)}
-        code = 200
+    """
+    Input - OS Image Name
+    Process - Create or Update the OS Image information.
+    Output - OSImage Info.
+    """
+    REQUESTCHECK = Helper().check_json(request.data)
+    if REQUESTCHECK:
+        REQUEST = request.get_json(force=True)
     else:
-        logger.error("OS Image Creation Failed.")
-        response = {"message": "OS Image Creation Failed."}
-        code = 404
-    return json.dumps(response), code
+        RESPONSE = {'message': 'Bad Request.'}
+        ACCESSCODE = 400
+        return json.dumps(RESPONSE), ACCESSCODE
+    if REQUEST:
+        DATA = REQUEST['config']['osimage'][name]
+        OSIMAGECOLUMNS = Database().get_columns('osimage')
+        COLUMNCHECK = Helper().checkin_list(DATA, OSIMAGECOLUMNS)
+        if COLUMNCHECK:
+            IMAGE = Database().get_record(None, 'osimage', f' WHERE name = "{name}"')
+            if IMAGE:
+                where = [{"column": "id", "value": IMAGE[0]['id']}]
+                row = Helper().make_rows(DATA)
+                result = Database().update('osimage', row, where)
+                RESPONSE = {'message': f'OS Image {name} Updated Successfully.'}
+                ACCESSCODE = 204
+            else:
+                DATA['name'] = name
+                row = Helper().make_rows(DATA)
+                result = Database().insert('osimage', row)
+                RESPONSE = {'message': f'OS Image {name} Created Successfully.'}
+                ACCESSCODE = 201
+        else:
+            RESPONSE = {'message': 'Bad Request; Columns are Incorrect.'}
+            ACCESSCODE = 400
+    else:
+        RESPONSE = {'message': 'Bad Request; Did not received Data.'}
+        ACCESSCODE = 400
+    return json.dumps(RESPONSE), ACCESSCODE
 
 
 """

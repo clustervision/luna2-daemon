@@ -142,9 +142,11 @@ class Database(object):
 		keys, values = [], []
 		if row:
 			for x in row:
-				keys.append("'"+str(x["column"])+"'")
-				values.append("'"+str(x["value"])+"'")
-		query = "INSERT INTO '{}' ({}) VALUES ({})".format(table, ",".join(keys), ",".join(values))
+				keys.append('"'+str(x["column"])+'"')
+				values.append('"'+str(x["value"])+'"')
+			keys = ','.join(keys)
+			values = ','.join(values)
+		query = f'INSERT INTO "{table}" ({keys}) VALUES ({values});'
 		try:
 			self.cursor.execute(query)
 			self.cursor.commit()

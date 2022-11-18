@@ -376,30 +376,23 @@ def config_osimage_post(name=None):
     return json.dumps(RESPONSE), ACCESSCODE
 
 
-"""
-Input - OS Image ID or Name
-Process - Delete the OS Image.
-Output - OSImage Info.
-"""
-@config_blueprint.route("/config/osimage/<string:name>/remove", methods=['GET'])
-@validate_access
-def config_osimage_remove(name=None, **kwargs):
-    if "access" in kwargs:
-        access = "admin"
-        remove = True
-        if remove:
-            logger.info("OS Image {} Deleted Successfully.".format(name))
-            response = {"message": "OS Image {} Deleted Successfully.".format(name)}
-            code = 204
-        else:
-            logger.error("OS Image Is Not Exist.")
-            response = {"message": "OS Image Is Not Exist."}
-            code = 404
+@config_blueprint.route("/config/osimage/<string:name>/_delete", methods=['GET'])
+@token_required
+def config_osimage_delete(name=None):
+    """
+    Input - OS Image ID or Name
+    Process - Delete the OS Image.
+    Output - Success or Failure.
+    """
+    CHECKOSIMAGE = Database().get_record(None, 'osimage', f' WHERE `name` = "{name}";')
+    if CHECKOSIMAGE:
+        Database().delete_row('osimage', [{"column": "name", "value": name}])
+        RESPONSE = {'message': f'OS Image {name} Removed Successfully.'}
+        ACCESSCODE = 204
     else:
-        logger.error("Need a Valid Token to Perform this action.")
-        response = {"message": "Need a Valid Token to Perform this action."}
-        code = 401
-    return json.dumps(response), code
+        RESPONSE = {'message': f'OS Image {name} Not Present in Database.'}
+        ACCESSCODE = 404
+    return json.dumps(RESPONSE), ACCESSCODE
 
 
 """

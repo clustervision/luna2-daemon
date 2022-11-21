@@ -342,6 +342,8 @@ def config_osimage_post(name=None):
     Process - Create or Update the OS Image information.
     Output - OSImage Info.
     """
+    DATA = {}
+    CREATE, UPDATE = False, False
     REQUESTCHECK = Helper().check_json(request.data)
     if REQUESTCHECK:
         REQUEST = request.get_json(force=True)
@@ -351,17 +353,51 @@ def config_osimage_post(name=None):
         return json.dumps(RESPONSE), ACCESSCODE
     if REQUEST:
         DATA = REQUEST['config']['osimage'][name]
+        IMAGE = Database().get_record(None, 'osimage', f' WHERE name = "{name}"')
+        if IMAGE:
+            IMAGEID = IMAGE[0]['id']
+            if 'newosimage' in DATA:
+                NEWOSNAME = DATA['newosimage']
+                CHECKNEWOS = Database().get_record(None, 'osimage', f' WHERE `name` = "{NEWOSNAME}";')
+                if CHECKNEWOS:
+                    RESPONSE = {'message': f'{NEWOSNAME} Already Present in Database, Choose Another Name Or Delete {NEWOSNAME}.'}
+                    ACCESSCODE = 400
+                    return json.dumps(RESPONSE), ACCESSCODE
+                else:
+                    DATA['name'] = DATA['newosimage']
+                    del DATA['newosimage']
+                UPDATE = True
+            else:
+                RESPONSE = {'message': 'Kindly Pass The New OS Image Name.'}
+                ACCESSCODE = 400
+                return json.dumps(RESPONSE), ACCESSCODE
+        else:
+            if 'newosimage' in DATA:
+                NEWOSNAME = DATA['newosimage']
+                CHECKNEWOS = Database().get_record(None, 'osimage', f' WHERE `name` = "{NEWOSNAME}";')
+                if CHECKNEWOS:
+                    RESPONSE = {'message': f'{NEWOSNAME} Already Present in Database, Choose Another Name Or Delete {NEWOSNAME}.'}
+                    ACCESSCODE = 400
+                    return json.dumps(RESPONSE), ACCESSCODE
+                else:
+                    DATA['name'] = DATA['newosimage']
+                    del DATA['newosimage']
+                CREATE = True
+            else:
+                RESPONSE = {'message': 'Kindly Pass The New OS Image Name.'}
+                ACCESSCODE = 400
+                return json.dumps(RESPONSE), ACCESSCODE
+
         OSIMAGECOLUMNS = Database().get_columns('osimage')
         COLUMNCHECK = Helper().checkin_list(DATA, OSIMAGECOLUMNS)
         if COLUMNCHECK:
-            IMAGE = Database().get_record(None, 'osimage', f' WHERE name = "{name}"')
-            if IMAGE:
-                where = [{"column": "id", "value": IMAGE[0]['id']}]
+            if UPDATE:
+                where = [{"column": "id", "value": IMAGEID}]
                 row = Helper().make_rows(DATA)
                 result = Database().update('osimage', row, where)
                 RESPONSE = {'message': f'OS Image {name} Updated Successfully.'}
                 ACCESSCODE = 204
-            else:
+            if CREATE:
                 DATA['name'] = name
                 row = Helper().make_rows(DATA)
                 result = Database().insert('osimage', row)
@@ -395,49 +431,91 @@ def config_osimage_delete(name=None):
     return json.dumps(RESPONSE), ACCESSCODE
 
 
-"""
-Input - OS Image ID or Name
-Process - Manually Pack the OS Image.
-Output - Success or Failure.
-"""
-@config_blueprint.route("/config/osimage/<string:name>/pack", methods=['GET'])
-@validate_access
-def config_osimage_pack(name=None, **kwargs):
-    if "access" in kwargs:
-        access = "admin"
-        pack = True
-        if pack:
-            logger.info("OS Image {} Packed Successfully.".format(name))
-            response = {"message": "OS Image {} Packed Successfully.".format(name)}
-            code = 204
-        else:
-            logger.error("OS Image Is Not Exist.")
-            response = {"message": "OS Image Is Not Exist."}
-            code = 404
+@config_blueprint.route("/config/osimage/<string:name>/_clone", methods=['POST'])
+@token_required
+def config_osimage_clone(name=None):
+    """
+    Input - OS Image Name
+    Process - Clone OS Image information.
+    Output - OSImage Info.
+    """
+    DATA = {}
+    CREATE = False
+    REQUESTCHECK = Helper().check_json(request.data)
+    if REQUESTCHECK:
+        REQUEST = request.get_json(force=True)
     else:
-        logger.error("Need a Valid Token to Perform this action.")
-        response = {"message": "Need a Valid Token to Perform this action."}
-        code = 401
+        RESPONSE = {'message': 'Bad Request.'}
+        ACCESSCODE = 400
+        return json.dumps(RESPONSE), ACCESSCODE
+    if REQUEST:
+        DATA = REQUEST['config']['osimage'][name]
+        IMAGE = Database().get_record(None, 'osimage', f' WHERE name = "{name}"')
+        if IMAGE:
+            if 'newosimage' in DATA:
+                NEWOSNAME = DATA['newosimage']
+                CHECKNEWOS = Database().get_record(None, 'osimage', f' WHERE `name` = "{NEWOSNAME}";')
+                if CHECKNEWOS:
+                    RESPONSE = {'message': f'{NEWOSNAME} Already Present in Database, Choose Another Name Or Delete {NEWOSNAME}.'}
+                    ACCESSCODE = 400
+                    return json.dumps(RESPONSE), ACCESSCODE
+                else:
+                    DATA['name'] = DATA['newosimage']
+                    del DATA['newosimage']
+                    CREATE = True
+            else:
+                RESPONSE = {'message': 'Kindly Pass The New OS Image Name.'}
+                ACCESSCODE = 400
+                return json.dumps(RESPONSE), ACCESSCODE
+        else:
+            RESPONSE = {'message': f'OS Image {name} Not Present In the Database.'}
+            ACCESSCODE = 400
+            return json.dumps(RESPONSE), ACCESSCODE
+
+        OSIMAGECOLUMNS = Database().get_columns('osimage')
+        COLUMNCHECK = Helper().checkin_list(DATA, OSIMAGECOLUMNS)
+        if COLUMNCHECK:
+            if CREATE:
+                row = Helper().make_rows(DATA)
+                result = Database().insert('osimage', row)
+                RESPONSE = {'message': f'OS Image {name} Clone to {NEWOSNAME} Successfully.'}
+                ACCESSCODE = 201
+        else:
+            RESPONSE = {'message': 'Bad Request; Columns are Incorrect.'}
+            ACCESSCODE = 400
+    else:
+        RESPONSE = {'message': 'Bad Request; Did not received Data.'}
+        ACCESSCODE = 400
+    return json.dumps(RESPONSE), ACCESSCODE
+
+
+
+@config_blueprint.route("/config/osimage/<string:name>/pack", methods=['GET'])
+@token_required
+def config_osimage_pack(name=None):
+    """
+    Input - OS Image ID or Name
+    Process - Manually Pack the OS Image.
+    Output - Success or Failure.
+    """
+    logger.info("OS Image {} Packed Successfully.".format(name))
+    response = {"message": "OS Image {} Packed Successfully.".format(name)}
+    code = 200
     return json.dumps(response), code
 
 
-"""
-Input - OS Image ID or Name
-Process - Fetch The Kernel Version.
-Output - Kernel Version.
-"""
+
 @config_blueprint.route("/config/osimage/<string:name>/kernel", methods=['GET'])
-@validate_access
-def config_osimage_kernel_get(name=None):
-    kernel = True
-    if kernel:
-        logger.info("OS Image {} Kernel is: {}".format(name, str(kernel)))
-        response = {"message": "OS Image {} Kernel is: {}".format(name, str(kernel))}
-        code = 200
-    else:
-        logger.error("OS Image Is Not Exist.")
-        response = {"message": "OS Image Is Not Exist."}
-        code = 404
+@token_required
+def config_osimage_kernel(name=None):
+    """
+    Input - OS Image ID or Name
+    Process - Change Kernel Version Of the OS Image.
+    Output - Success or Failure.
+    """
+    logger.info("OS Image {} kernel version Changed Successfully.".format(name))
+    response = {"message": "OS Image {} kernel version Changed Successfully.".format(name)}
+    code = 200
     return json.dumps(response), code
 
 

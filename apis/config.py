@@ -156,42 +156,74 @@ def config_node_interfaces_post(node=None):
     return json.dumps(response), code
 
 
-"""
-Input - None
-Process - Fetch The List Of Groups.
-Output - Group List.
-"""
+######################################################## Group Configuration #############################################################
+
 @config_blueprint.route("/config/group", methods=['GET'])
 def config_group():
-    groups = True
-    if groups:
-        logger.info("Avaiable Groups => {}".format(str(groups)))
-        response = {"message": "Avaiable Groups => {}".format(str(groups))}
-        code = 200
+    """
+    Input - Group Name
+    Process - Fetch the Group information.
+    Output - Group Info.
+    """
+    GROUPS = Database().get_record(None, 'group', None)
+    if GROUPS:
+        RESPONSE = {'config': {'group': {} }}
+        for GRP in GROUPS:
+            IMAGENAME = GRP['name']
+            del GRP['id']
+            del GRP['name']
+            if GRP['bmcsetup']:
+                GRP['bmcsetup'] = True
+            else:
+                GRP['bmcsetup'] = False
+            if GRP['netboot']:
+                GRP['netboot'] = True
+            else:
+                GRP['netboot'] = False
+            if GRP['localinstall']:
+                GRP['localinstall'] = True
+            else:
+                GRP['localinstall'] = False
+            if GRP['bootmenu']:
+                GRP['bootmenu'] = True
+            else:
+                GRP['bootmenu'] = False
+            RESPONSE['config']['group'][IMAGENAME] = GRP
+        logger.info('Provided List Of All Groups with Details.')
+        ACCESSCODE = 200
     else:
-        logger.error("Groups aren't Avaiable.")
-        response = {"message": "Groups aren't Avaiable."}
-        code = 404
-    return json.dumps(response), code
+        logger.error('No Group is Avaiable.')
+        RESPONSE = {'message': 'No Group is Avaiable.'}
+        ACCESSCODE = 404
+    return json.dumps(RESPONSE), ACCESSCODE
 
 
-"""
-Input - Group ID or Name
-Process - Fetch The Information Of The Groups.
-Output - Group Information.
-"""
-@config_blueprint.route("/config/group/<string:group>", methods=['GET'])
-def config_group_get(group=None):
-    groupdetail = True
-    if groupdetail:
-        logger.info("Group {} Details is {}.".format(group, str(groupdetail)))
-        response = {"message": "Group {} Details is {}.".format(group, str(groupdetail))}
-        code = 200
+@config_blueprint.route("/config/group/<string:name>", methods=['GET'])
+def config_group_get(name=None):
+    """
+    Input - Group Name
+    Process - Fetch the Group information.
+    Output - Group Info.
+    """
+    ID = Database().getid_byname('group', name)
+    print(ID)
+    Name = Database().getname_byid('group', ID)
+    print(Name)
+    GROUPS = Database().get_record(None, 'group', f' WHERE name = "{name}"')
+    if GROUPS:
+        RESPONSE = {'config': {'group': {} }}
+        for GRP in GROUPS:
+            del GRP['id']
+            del GRP['name']
+            RESPONSE['config']['group'][name] = GRP
+        logger.info(f'Returned Group {name} with Details.')
+        ACCESSCODE = 200
     else:
-        logger.error("Group is Not Exist.")
-        response = {"message": "Group is Not Exist."}
-        code = 404
-    return json.dumps(response), code
+        logger.error('No Group is Avaiable.')
+        RESPONSE = {'message': 'No Group is Avaiable.'}
+        ACCESSCODE = 404
+    return json.dumps(RESPONSE), ACCESSCODE
+
 
 
 """

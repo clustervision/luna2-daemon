@@ -254,3 +254,45 @@ class Database(object):
 		
 		response = list(map(lambda x: x[0], self.cursor.description)) # Fetching the Column Names
 		return response
+
+
+
+	def getid_byname(self, table=None, name=None):
+		"""
+	    Input - tablename, name
+	    Output - id.
+	    """
+		query = f'SELECT id FROM "{table}" WHERE `name` == "{name}";'
+		self.logger.debug("Query Executing => {} .".format(query))
+		try:
+			self.cursor.execute(query)
+		except Exception as e:
+			self.logger.error("Error occur While Executing => {}. Error Is {} .".format(query, str(e)))
+			return None
+		
+		response = self.cursor.fetchone()
+		self.logger.debug("Data Set Retrived => {}.".format(str(response)))
+		if response:
+			response = response[0]
+		return response
+
+
+
+	def getname_byid(self, table=None, id=None):
+		"""
+	    Input - tablename, id
+	    Output - name.
+	    """
+		query = f'SELECT name FROM "{table}" WHERE `id` == "{id}";'
+		self.logger.debug("Query Executing => {} .".format(query))
+		try:
+			self.cursor.execute(query)
+		except Exception as e:
+			self.logger.error("Error occur While Executing => {}. Error Is {} .".format(query, str(e)))
+			return None
+		
+		response = self.cursor.fetchone()
+		self.logger.debug("Data Set Retrived => {}.".format(str(response)))
+		if response:
+			response = response[0]
+		return response

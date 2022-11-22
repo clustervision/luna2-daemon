@@ -159,6 +159,7 @@ def config_node_interfaces_post(node=None):
 ######################################################## Group Configuration #############################################################
 
 @config_blueprint.route("/config/group", methods=['GET'])
+@token_required
 def config_group():
     """
     Input - Group Name
@@ -169,7 +170,17 @@ def config_group():
     if GROUPS:
         RESPONSE = {'config': {'group': {} }}
         for GRP in GROUPS:
-            IMAGENAME = GRP['name']
+            GRPNAME = GRP['name']
+            GRPID = GRP['id']
+            GRPINTERFACE = Database().get_record(None, 'groupinterface', f' WHERE groupid = "{GRPID}"')
+            if GRPINTERFACE:
+                GRP['interfaces'] = []
+                for INTERFACE in GRPINTERFACE:
+                    INTERFACE['network'] = Database().getname_byid('network', INTERFACE['networkid'])
+                    del INTERFACE['groupid']
+                    del INTERFACE['id']
+                    del INTERFACE['networkid']
+                    GRP['interfaces'].append(INTERFACE)
             del GRP['id']
             del GRP['name']
             if GRP['bmcsetup']:
@@ -188,7 +199,12 @@ def config_group():
                 GRP['bootmenu'] = True
             else:
                 GRP['bootmenu'] = False
-            RESPONSE['config']['group'][IMAGENAME] = GRP
+            GRP['osimage'] = Database().getname_byid('osimage', GRP['osimageid'])
+            del GRP['osimageid']
+            if GRP['bmcsetupid']:
+                GRP['bmcsetupname'] = Database().getname_byid('bmcsetup', GRP['bmcsetupid'])
+            del GRP['bmcsetupid']
+            RESPONSE['config']['group'][GRPNAME] = GRP
         logger.info('Provided List Of All Groups with Details.')
         ACCESSCODE = 200
     else:
@@ -199,23 +215,52 @@ def config_group():
 
 
 @config_blueprint.route("/config/group/<string:name>", methods=['GET'])
+@token_required
 def config_group_get(name=None):
     """
     Input - Group Name
     Process - Fetch the Group information.
     Output - Group Info.
     """
-    ID = Database().getid_byname('group', name)
-    print(ID)
-    Name = Database().getname_byid('group', ID)
-    print(Name)
     GROUPS = Database().get_record(None, 'group', f' WHERE name = "{name}"')
     if GROUPS:
         RESPONSE = {'config': {'group': {} }}
         for GRP in GROUPS:
+            GRPNAME = GRP['name']
+            GRPID = GRP['id']
+            GRPINTERFACE = Database().get_record(None, 'groupinterface', f' WHERE groupid = "{GRPID}"')
+            if GRPINTERFACE:
+                GRP['interfaces'] = []
+                for INTERFACE in GRPINTERFACE:
+                    INTERFACE['network'] = Database().getname_byid('network', INTERFACE['networkid'])
+                    del INTERFACE['groupid']
+                    del INTERFACE['id']
+                    del INTERFACE['networkid']
+                    GRP['interfaces'].append(INTERFACE)
             del GRP['id']
             del GRP['name']
-            RESPONSE['config']['group'][name] = GRP
+            if GRP['bmcsetup']:
+                GRP['bmcsetup'] = True
+            else:
+                GRP['bmcsetup'] = False
+            if GRP['netboot']:
+                GRP['netboot'] = True
+            else:
+                GRP['netboot'] = False
+            if GRP['localinstall']:
+                GRP['localinstall'] = True
+            else:
+                GRP['localinstall'] = False
+            if GRP['bootmenu']:
+                GRP['bootmenu'] = True
+            else:
+                GRP['bootmenu'] = False
+            GRP['osimage'] = Database().getname_byid('osimage', GRP['osimageid'])
+            del GRP['osimageid']
+            if GRP['bmcsetupid']:
+                GRP['bmcsetupname'] = Database().getname_byid('bmcsetup', GRP['bmcsetupid'])
+            del GRP['bmcsetupid']
+            RESPONSE['config']['group'][GRPNAME] = GRP
         logger.info(f'Returned Group {name} with Details.')
         ACCESSCODE = 200
     else:

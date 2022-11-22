@@ -283,6 +283,10 @@ class Database(object):
 	    Input - tablename, id
 	    Output - name.
 	    """
+	   	# ID = Database().getid_byname('group', name)
+	    # print(ID)
+	    # Name = Database().getname_byid('group', ID)
+	    # print(Name)
 		query = f'SELECT name FROM "{table}" WHERE `id` == "{id}";'
 		self.logger.debug("Query Executing => {} .".format(query))
 		try:

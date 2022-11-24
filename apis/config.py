@@ -486,6 +486,31 @@ def config_group_post_interfaces(name=None):
         ACCESSCODE = 400
     return json.dumps(RESPONSE), ACCESSCODE
 
+
+@config_blueprint.route("/config/group/<string:name>/interface/<string:interface>/_delete", methods=['GET'])
+@token_required
+def config_group_delete_interface(name=None, interface=None):
+    """
+    Input - Group Name & Interface Name
+    Process - Delete the Group Interface.
+    Output - Success or Failure.
+    """
+    CHECKGRP = Database().get_record(None, 'group', f' WHERE `name` = "{name}";')
+    if CHECKGRP:
+        GRPID = CHECKGRP[0]['id']
+        CHECKGRPIFC = Database().get_record(None, 'groupinterface', f' WHERE `interfacename` = "{interface}" AND `groupid` = "{GRPID}";')
+        if CHECKGRPIFC:
+            Database().delete_row('groupinterface', [{"column": "id", "value": CHECKGRPIFC[0]['id']}])
+            RESPONSE = {'message': f'Group {name} interface {interface} Removed Successfully.'}
+            ACCESSCODE = 204
+        else:
+            RESPONSE = {'message': f'Group {name} interface {interface} Not Present in Database.'}
+            ACCESSCODE = 404
+    else:
+        RESPONSE = {'message': f'Group {name} Not Present in Database.'}
+        ACCESSCODE = 404
+    return json.dumps(RESPONSE), ACCESSCODE
+
 ######################################################## Cluster Configuration #############################################################
 
 @config_blueprint.route("/config/osimage", methods=['GET'])

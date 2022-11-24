@@ -183,22 +183,10 @@ def config_group():
                     GRP['interfaces'].append(INTERFACE)
             del GRP['id']
             del GRP['name']
-            if GRP['bmcsetup']:
-                GRP['bmcsetup'] = True
-            else:
-                GRP['bmcsetup'] = False
-            if GRP['netboot']:
-                GRP['netboot'] = True
-            else:
-                GRP['netboot'] = False
-            if GRP['localinstall']:
-                GRP['localinstall'] = True
-            else:
-                GRP['localinstall'] = False
-            if GRP['bootmenu']:
-                GRP['bootmenu'] = True
-            else:
-                GRP['bootmenu'] = False
+            GRP['bmcsetup'] = Helper().bool_revert(GRP['bmcsetup'])
+            GRP['netboot'] = Helper().bool_revert(GRP['netboot'])
+            GRP['localinstall'] = Helper().bool_revert(GRP['localinstall'])
+            GRP['bootmenu'] = Helper().bool_revert(GRP['bootmenu'])
             GRP['osimage'] = Database().getname_byid('osimage', GRP['osimageid'])
             del GRP['osimageid']
             if GRP['bmcsetupid']:
@@ -239,22 +227,10 @@ def config_group_get(name=None):
                     GRP['interfaces'].append(INTERFACE)
             del GRP['id']
             del GRP['name']
-            if GRP['bmcsetup']:
-                GRP['bmcsetup'] = True
-            else:
-                GRP['bmcsetup'] = False
-            if GRP['netboot']:
-                GRP['netboot'] = True
-            else:
-                GRP['netboot'] = False
-            if GRP['localinstall']:
-                GRP['localinstall'] = True
-            else:
-                GRP['localinstall'] = False
-            if GRP['bootmenu']:
-                GRP['bootmenu'] = True
-            else:
-                GRP['bootmenu'] = False
+            GRP['bmcsetup'] = Helper().bool_revert(GRP['bmcsetup'])
+            GRP['netboot'] = Helper().bool_revert(GRP['netboot'])
+            GRP['localinstall'] = Helper().bool_revert(GRP['localinstall'])
+            GRP['bootmenu'] = Helper().bool_revert(GRP['bootmenu'])
             GRP['osimage'] = Database().getname_byid('osimage', GRP['osimageid'])
             del GRP['osimageid']
             if GRP['bmcsetupid']:
@@ -271,29 +247,133 @@ def config_group_get(name=None):
 
 
 
-"""
-Input - Group ID or Name
-Process - Create Or Update The Groups.
-Output - Group Information.
-"""
-@config_blueprint.route("/config/group/<string:group>", methods=['POST'])
-@token_required
-def config_group_post(group=None):
-    create = True
-    update = False
-    if create:
-        logger.info("Group {} Created Successfully.".format(group))
-        response = {"message": "Group {} Created Successfully.".format(group)}
-        code = 201
-    elif update:
-        logger.info("Group {} Updated Successfully.".format(group))
-        response = {"message": "Group {} Updated Successfully.".format(group)}
-        code = 200
+
+@config_blueprint.route("/config/group/<string:name>", methods=['POST'])
+# @token_required
+def config_group_post(name=None):
+    """
+    Input - Group ID or Name
+    Process - Create Or Update The Groups.
+    Output - Group Information.
+    """
+    DATA = {}
+    CREATE, UPDATE = False, False
+
+    REQUESTCHECK = Helper().check_json(request.data)
+    if REQUESTCHECK:
+        REQUEST = request.get_json(force=True)
     else:
-        logger.error("Group is Not Exist.")
-        response = {"message": "Group is Not Exist."}
-        code = 404
-    return json.dumps(response), code
+        RESPONSE = {'message': 'Bad Request.'}
+        ACCESSCODE = 400
+        return json.dumps(RESPONSE), ACCESSCODE
+    if REQUEST:
+        DATA = REQUEST['config']['group'][name]
+        GRP = Database().get_record(None, 'group', f' WHERE name = "{name}"')
+        if GRP:
+            GRPID = GRP[0]['id']
+            if 'newgroupname' in DATA:
+                NEWGRPNAME = DATA['newgroupname']
+                CHECKNEWGRP = Database().get_record(None, 'group', f' WHERE `name` = "{NEWGRPNAME}";')
+                if CHECKNEWGRP:
+                    RESPONSE = {'message': f'{NEWGRPNAME} Already Present in Database, Choose Another Name Or Delete {NEWGRPNAME}.'}
+                    ACCESSCODE = 400
+                    return json.dumps(RESPONSE), ACCESSCODE
+                else:
+                    DATA['name'] = DATA['newgroupname']
+                    del DATA['newgroupname']
+            UPDATE = True
+            if 'bmcsetup' in DATA:
+                DATA['bmcsetup'] = Helper().bool_revert(DATA['bmcsetup'])
+            if 'netboot' in DATA:
+                DATA['netboot'] = Helper().bool_revert(DATA['netboot'])
+            if 'localinstall' in DATA:
+                DATA['localinstall'] = Helper().bool_revert(DATA['localinstall'])
+            if 'bootmenu' in DATA:
+                DATA['bootmenu'] = Helper().bool_revert(DATA['bootmenu'])
+        else:
+            if 'newgroupname' in DATA:
+                RESPONSE = {'message': f'{NEWGRPNAME} is not allwoed while creating a new group.'}
+                ACCESSCODE = 400
+                return json.dumps(RESPONSE), ACCESSCODE
+            if 'bmcsetup' in DATA:
+                DATA['bmcsetup'] = Helper().bool_revert(DATA['bmcsetup'])
+            else:
+                DATA['bmcsetup'] = 0
+            if 'netboot' in DATA:
+                DATA['netboot'] = Helper().bool_revert(DATA['netboot'])
+            else:
+                DATA['netboot'] = 0
+            if 'localinstall' in DATA:
+                DATA['localinstall'] = Helper().bool_revert(DATA['localinstall'])
+            else:
+                DATA['localinstall'] = 0
+            if 'bootmenu' in DATA:
+                DATA['bootmenu'] = Helper().bool_revert(DATA['bootmenu'])
+            else:
+                DATA['bootmenu'] = 0
+            CREATE = True
+        if 'bmcsetupname' in DATA:
+            BMCNAME = DATA['bmcsetupname']
+            DATA['bmcsetupid'] = Database().getid_byname('bmcsetup', DATA['bmcsetupname'])
+            if DATA['bmcsetupid']:
+                del DATA['bmcsetupname']
+            else:
+                RESPONSE = {'message': f'BMC Setup {BMCNAME} does not exist, Choose Another BMC Setup.'}
+                ACCESSCODE = 400
+                return json.dumps(RESPONSE), ACCESSCODE
+        if 'osimage' in DATA:
+            OSNAME = DATA['osimage']
+            del DATA['osimage']
+            DATA['osimageid'] = Database().getid_byname('osimage', OSNAME)
+        if not DATA['bmcsetupid']:
+            RESPONSE = {'message': f'BMC Setup {OSNAME} does not exist, Choose Another BMC Setup.'}
+            ACCESSCODE = 400
+            return json.dumps(RESPONSE), ACCESSCODE
+        if 'interfaces' in DATA:
+            NEWINTERFACE = DATA['interfaces']
+            del DATA['interfaces']
+        
+        GRPCOLUMNS = Database().get_columns('group')
+        COLUMNCHECK = Helper().checkin_list(DATA, GRPCOLUMNS)
+        if COLUMNCHECK:
+            if UPDATE:
+                where = [{"column": "id", "value": GRPID}]
+                row = Helper().make_rows(DATA)
+                UPDATEID = Database().update('group', row, where)
+                RESPONSE = {'message': f'Group {name} Updated Successfully.'}
+                ACCESSCODE = 204
+            if CREATE:
+                DATA['name'] = name
+                row = Helper().make_rows(DATA)
+                GRPID = Database().insert('group', row)
+                RESPONSE = {'message': f'Group {name} Created Successfully.'}
+                ACCESSCODE = 201
+            if NEWINTERFACE:
+                for INTERFACE in NEWINTERFACE:
+                    NWK = Database().getid_byname('network', INTERFACE['network'])
+                    if NWK == None:
+                        RESPONSE = {'message': f'Bad Request; Network {NWK} Not Exist.'}
+                        ACCESSCODE = 400
+                        return json.dumps(RESPONSE), ACCESSCODE
+                    else:
+                        INTERFACE['networkid'] = NWK
+                        INTERFACE['groupid'] = GRPID
+                        del INTERFACE['network']
+                    IFNAME = INTERFACE['interfacename']
+                    where = f' WHERE groupid = "{GRPID}" AND networkid = "{NWK}" AND interfacename = "{IFNAME}"'
+                    CHECKINTERFACE = Database().get_record(None, 'groupinterface', where)
+                    if not CHECKINTERFACE:
+                        row = Helper().make_rows(INTERFACE)
+                        result = Database().insert('groupinterface', row)
+                        logger.info("Interface Created => {} .".format(result))
+
+        else:
+            RESPONSE = {'message': 'Bad Request; Columns are Incorrect.'}
+            ACCESSCODE = 400
+    else:
+        RESPONSE = {'message': 'Bad Request; Did not received Data.'}
+        ACCESSCODE = 400
+    return json.dumps(RESPONSE), ACCESSCODE
 
 
 """

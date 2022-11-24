@@ -139,21 +139,30 @@ class Database(object):
     Output - Creates Table.
     """
 	def insert(self, table=None, row=None):
-		keys, values = [], []
+		keys, values, Where = [], [], []
+		where = ' WHERE '
+		response = False
 		if row:
 			for x in row:
 				keys.append('"'+str(x["column"])+'"')
 				values.append('"'+str(x["value"])+'"')
+			WhereKeys = keys
+			WhereValues = values
 			keys = ','.join(keys)
 			values = ','.join(values)
 		query = f'INSERT INTO "{table}" ({keys}) VALUES ({values});'
 		try:
 			self.cursor.execute(query)
 			self.cursor.commit()
+			for x,y in zip(WhereKeys, WhereValues):
+				Where.append(f'{x} = {y}')
+			where = where + ' AND '.join(Where)
+			result = self.get_record(None, table, where)
+			if result:
+				response = result[0]['id']
 		except Exception as e:
 			self.logger.error("Error occur While Executing => {}. Error Is {} .".format(query, str(e)))
-			return False
-		return True
+		return response
 
 
 	"""
@@ -165,17 +174,12 @@ class Database(object):
     Output - Update the rows.
     """
 	def update(self, table=None, row=None, where=None):
-		columns = []
-		Where = []
+		columns, Where = [], []
 		for cols in row:
 			column = ""
 			if 'column' in cols.keys():
 				column = column+ cols['column']
 			if 'value' in cols.keys():
-				if cols['value'] == True:
-					cols['value'] = 1
-				elif cols['value'] == False:
-					cols['value'] = 0
 				column = column + ' = "' +str(cols['value']) +'"'
 			columns.append(column)
 			strcolumns = ', '.join(map(str, columns))
@@ -184,10 +188,6 @@ class Database(object):
 			if 'column' in cols.keys():
 				column = column + cols['column']
 			if 'value' in cols.keys():
-				if cols['value'] == True:
-					cols['value'] = 1
-				elif cols['value'] == False:
-					cols['value'] = 0
 				column = column + ' = "' +str(cols['value']) +'"'
 			Where.append(column)
 			strWhere = ' AND '.join(map(str, Where))
@@ -244,7 +244,7 @@ class Database(object):
     Output - Fetch rows along with column name.
     """
 	def get_columns(self, table=None):
-		query = f'SELECT * FROM {table} LIMIT 1;'
+		query = f'SELECT * FROM "{table}" LIMIT 1;'
 		self.logger.debug(f'Query Executing => {query} .')
 		try:
 			self.cursor.execute(query)

@@ -250,4 +250,21 @@ class Helper(object):
         return row
 
 
-    
+    def bool_revert(self, variable=None):
+        """
+        Input - string 
+        Output - Boolean
+        """
+        if type(variable) == bool or type(variable) == int:
+            if variable == True:
+                variable = '1'
+            elif variable == False:
+                variable = '0'
+        elif type(variable) == str:
+            if variable == '1':
+                variable = True
+            elif variable == '0':
+                variable = False
+        else:
+            variable = None
+        return variable

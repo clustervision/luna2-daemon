@@ -135,30 +135,146 @@ def config_node_get(name=None):
     return json.dumps(RESPONSE), ACCESSCODE
 
 
-"""
-Input - Node ID or Name
-Process - Create OR Update the Node.
-Output - Create OR Update Info.
-"""
-@config_blueprint.route("/config/node/<string:node>", methods=['POST'])
+@config_blueprint.route("/config/node/<string:name>", methods=['POST'])
 @token_required
-def config_node_post(node=None):
-    create = True
-    update = False
-    if create:
-        logger.info("Node {} Created Successfully.".format(str(node)))
-        response = {"message": "Node {} Created Successfully.".format(str(node))}
-        code = 201
-    elif update:
-        logger.info("Node {} Updated Successfully.".format(str(node)))
-        response = {"message": "Node {} Updated Successfully.".format(str(node))}
-        code = 200
-    else:
-        logger.error("Node Is Not Exist.")
-        response = {"message": "Node Is Not Exist."}
-        code = 404
-    return json.dumps(response), code
+def config_node_post(name=None):
+    """
+    Input - Node Name
+    Process - Create Or Update The Groups.
+    Output - Node Information.
+    """
+    DATA = {}
+    CREATE, UPDATE = False, False
 
+    REQUESTCHECK = Helper().check_json(request.data)
+    if REQUESTCHECK:
+        REQUEST = request.get_json(force=True)
+    else:
+        RESPONSE = {'message': 'Bad Request.'}
+        ACCESSCODE = 400
+        return json.dumps(RESPONSE), ACCESSCODE
+    if REQUEST:
+        DATA = REQUEST['config']['node'][name]
+        NODE = Database().get_record(None, 'node', f' WHERE name = "{name}"')
+        if NODE:
+            NODEID = NODE[0]['id']
+            if 'newnodename' in DATA:
+                NEWNODENAME = DATA['newnodename']
+                CHECKNEWNODE = Database().get_record(None, 'node', f' WHERE `name` = "{NEWNODENAME}";')
+                if CHECKNEWNODE:
+                    RESPONSE = {'message': f'{NEWNODENAME} Already Present in Database, Choose Another Name Or Delete {NEWNODENAME}.'}
+                    ACCESSCODE = 400
+                    return json.dumps(RESPONSE), ACCESSCODE
+                else:
+                    DATA['name'] = DATA['newnodename']
+                    del DATA['newnodename']
+            UPDATE = True
+            if 'bootmenu' in DATA:
+                DATA['bootmenu'] = Helper().bool_revert(DATA['bootmenu'])
+            if 'localboot' in DATA:
+                DATA['localboot'] = Helper().bool_revert(DATA['localboot'])
+            if 'localinstall' in DATA:
+                DATA['localinstall'] = Helper().bool_revert(DATA['localinstall'])
+            if 'netboot' in DATA:
+                DATA['netboot'] = Helper().bool_revert(DATA['netboot'])
+            if 'service' in DATA:
+                DATA['service'] = Helper().bool_revert(DATA['service'])
+            if 'setupbmc' in DATA:
+                DATA['setupbmc'] = Helper().bool_revert(DATA['setupbmc'])
+        else:
+            if 'newnodename' in DATA:
+                RESPONSE = {'message': f'{NEWNODENAME} is not allwoed while creating a new node.'}
+                ACCESSCODE = 400
+                return json.dumps(RESPONSE), ACCESSCODE
+            if 'bootmenu' in DATA:
+                DATA['bootmenu'] = Helper().bool_revert(DATA['bootmenu'])
+            else:
+                DATA['bootmenu'] = 0
+            if 'localboot' in DATA:
+                DATA['localboot'] = Helper().bool_revert(DATA['localboot'])
+            else:
+                DATA['localboot'] = 0
+            if 'localinstall' in DATA:
+                DATA['localinstall'] = Helper().bool_revert(DATA['localinstall'])
+            else:
+                DATA['localinstall'] = 0
+            if 'netboot' in DATA:
+                DATA['netboot'] = Helper().bool_revert(DATA['netboot'])
+            else:
+                DATA['netboot'] = 0
+            if 'service' in DATA:
+                DATA['service'] = Helper().bool_revert(DATA['service'])
+            else:
+                DATA['service'] = 0
+            if 'setupbmc' in DATA:
+                DATA['setupbmc'] = Helper().bool_revert(DATA['setupbmc'])
+            else:
+                DATA['setupbmc'] = 0
+            CREATE = True
+
+        if 'bmcsetup' in DATA:
+            BMCNAME = DATA['bmcsetup']
+            del DATA['bmcsetup']
+            DATA['bmcsetupid'] = Database().getid_byname('bmcsetup', BMCNAME)
+        if 'group' in DATA:
+            GRPNAME = DATA['group']
+            del DATA['group']
+            DATA['groupid'] = Database().getid_byname('group', GRPNAME)
+        if 'osimage' in DATA:
+            OSNAME = DATA['osimage']
+            del DATA['osimage']
+            DATA['osimageid'] = Database().getid_byname('osimage', OSNAME)
+        if 'switch' in DATA:
+            SWITCHNAME = DATA['switch']
+            del DATA['switch']
+            DATA['switchid'] = Database().getid_byname('switch', SWITCHNAME)
+
+        if 'interfaces' in DATA:
+            NEWINTERFACE = DATA['interfaces']
+            del DATA['interfaces']
+        
+        NODECOLUMNS = Database().get_columns('node')
+        COLUMNCHECK = Helper().checkin_list(DATA, NODECOLUMNS)
+        if COLUMNCHECK:
+            if UPDATE:
+                where = [{"column": "id", "value": NODEID}]
+                row = Helper().make_rows(DATA)
+                UPDATEID = Database().update('node', row, where)
+                RESPONSE = {'message': f'Node {name} Updated Successfully.'}
+                ACCESSCODE = 204
+            if CREATE:
+                DATA['name'] = name
+                row = Helper().make_rows(DATA)
+                NODEID = Database().insert('node', row)
+                RESPONSE = {'message': f'Node {name} Created Successfully.'}
+                ACCESSCODE = 201
+            if NEWINTERFACE:
+                for INTERFACE in NEWINTERFACE:
+                    NWK = Database().getid_byname('network', INTERFACE['network'])
+                    if NWK == None:
+                        RESPONSE = {'message': f'Bad Request; Network {NWK} Not Exist.'}
+                        ACCESSCODE = 400
+                        return json.dumps(RESPONSE), ACCESSCODE
+                    else:
+                        INTERFACE['networkid'] = NWK
+                        INTERFACE['nodeid'] = NODEID
+                        del INTERFACE['network']
+                    IFNAME = INTERFACE['interface']
+                    print(INTERFACE)
+                    where = f' WHERE nodeid = "{NODEID}" AND networkid = "{NWK}" AND interface = "{IFNAME}"'
+                    CHECKINTERFACE = Database().get_record(None, 'nodeinterface', where)
+                    if not CHECKINTERFACE:
+                        row = Helper().make_rows(INTERFACE)
+                        result = Database().insert('nodeinterface', row)
+                        logger.info("Interface Created => {} .".format(result))
+
+        else:
+            RESPONSE = {'message': 'Bad Request; Columns are Incorrect.'}
+            ACCESSCODE = 400
+    else:
+        RESPONSE = {'message': 'Bad Request; Did not received Data.'}
+        ACCESSCODE = 400
+    return json.dumps(RESPONSE), ACCESSCODE
 
 """
 Input - Node ID or Name

@@ -246,8 +246,6 @@ def config_group_get(name=None):
     return json.dumps(RESPONSE), ACCESSCODE
 
 
-
-
 @config_blueprint.route("/config/group/<string:name>", methods=['POST'])
 @token_required
 def config_group_post(name=None):
@@ -434,6 +432,59 @@ def config_group_get_interfaces(name=None):
     return json.dumps(RESPONSE), ACCESSCODE
 
 
+@config_blueprint.route("/config/group/<string:name>/interfaces", methods=['POST'])
+@token_required
+def config_group_post_interfaces(name=None):
+    """
+    Input - Group Name
+    Process - Create Or Update The Group Interface.
+    Output - Group Interface.
+    """
+    DATA = {}
+    CREATE, UPDATE = False, False
+
+    REQUESTCHECK = Helper().check_json(request.data)
+    if REQUESTCHECK:
+        REQUEST = request.get_json(force=True)
+    else:
+        RESPONSE = {'message': 'Bad Request.'}
+        ACCESSCODE = 400
+        return json.dumps(RESPONSE), ACCESSCODE
+    if REQUEST:
+        GRP = Database().get_record(None, 'group', f' WHERE name = "{name}"')
+        if GRP:
+            GRPID = GRP[0]['id']
+            if 'interfaces' in REQUEST['config']['group'][name]:
+                for INTERFACE in REQUEST['config']['group'][name]['interfaces']:
+                    NWK = Database().getid_byname('network', INTERFACE['network'])
+                    if NWK == None:
+                        RESPONSE = {'message': f'Bad Request; Network {NWK} Not Exist.'}
+                        ACCESSCODE = 400
+                        return json.dumps(RESPONSE), ACCESSCODE
+                    else:
+                        INTERFACE['networkid'] = NWK
+                        INTERFACE['groupid'] = GRPID
+                        del INTERFACE['network']
+                    IFNAME = INTERFACE['interfacename']
+                    where = f' WHERE groupid = "{GRPID}" AND networkid = "{NWK}" AND interfacename = "{IFNAME}"'
+                    CHECKINTERFACE = Database().get_record(None, 'groupinterface', where)
+                    if not CHECKINTERFACE:
+                        row = Helper().make_rows(INTERFACE)
+                        result = Database().insert('groupinterface', row)
+                    RESPONSE = {'message': 'Interface Updated.'}
+                    ACCESSCODE = 204
+            else:
+                logger.error('Kindly Provide the interface.')
+                RESPONSE = {'message': 'Kindly Provide the interface.'}
+                ACCESSCODE = 404
+        else:
+            logger.error('No Group is Avaiable.')
+            RESPONSE = {'message': 'No Group is Avaiable.'}
+            ACCESSCODE = 404
+    else:
+        RESPONSE = {'message': 'Bad Request; Did not received Data.'}
+        ACCESSCODE = 400
+    return json.dumps(RESPONSE), ACCESSCODE
 
 ######################################################## Cluster Configuration #############################################################
 

@@ -397,50 +397,42 @@ def config_group_delete(name=None):
     return json.dumps(RESPONSE), ACCESSCODE
 
 
-
-"""
-Input - Group ID or Name
-Process - Fetch List the network interfaces of the Group.
-Output - Network Interface List.
-"""
-@config_blueprint.route("/config/group/<string:group>/interfaces", methods=['GET'])
-def config_group_interfaces_get(group=None):
-    interfaces = True
-    if interfaces:
-        logger.info("Group {} Have Network Interfaces => {}.".format(group, str(interfaces)))
-        response = {"message": "Group {} Have Network Interfaces => {}.".format(group, str(interfaces))}
-        code = 200
-    else:
-        logger.error("Group {} Don't Have Any Network Interfaces.".format(group))
-        response = {"message": "Group {} Don't Have Any Network Interfaces.".format(group)}
-        code = 404
-    return json.dumps(response), code
-
-
-"""
-Input - Group ID or Name
-Process - Create or Update network interfaces of the Group. {BOOTIF and BMC are reserved}
-Output - Network Interface Info.
-"""
-@config_blueprint.route("/config/group/<string:group>/interfaces", methods=['POST'])
+@config_blueprint.route("/config/group/<string:name>/interfaces", methods=['GET'])
 @token_required
-def config_group_interfaces_post(group=None):
-    create = True
-    update = False
-    interfaces = True
-    if create:
-        logger.info("Network Interfaces {} Created For The Group {}.".format(str(interfaces), group))
-        response = {"message": "Network Interfaces {} Created For The Group {}.".format(str(interfaces), group)}
-        code = 201
-    elif update:
-        logger.info("Network Interfaces {} Updated For The Group {}.".format(str(interfaces), group))
-        response = {"message": "Network Interfaces {} Updated For The Group {}.".format(str(interfaces), group)}
-        code = 200
+def config_group_get_interfaces(name=None):
+    """
+    Input - Group Name
+    Process - Fetch the Group Interface List.
+    Output - Group Interface List.
+    """
+    GROUPS = Database().get_record(None, 'group', f' WHERE name = "{name}"')
+    if GROUPS:
+        RESPONSE = {'config': {'group': {name: {'interfaces': [] } } } }
+        for GRP in GROUPS:
+            GRPNAME = GRP['name']
+            GRPID = GRP['id']
+            GRPINTERFACE = Database().get_record(None, 'groupinterface', f' WHERE groupid = "{GRPID}"')
+            if GRPINTERFACE:
+                GRPIFC = []
+                for INTERFACE in GRPINTERFACE:
+                    INTERFACE['network'] = Database().getname_byid('network', INTERFACE['networkid'])
+                    del INTERFACE['groupid']
+                    del INTERFACE['id']
+                    del INTERFACE['networkid']
+                    GRPIFC.append(INTERFACE)
+                RESPONSE['config']['group'][GRPNAME]['interfaces'] = GRPIFC
+            else:
+                logger.error(f'No Group {name} dont have any Interface.')
+                RESPONSE = {'message': f'No Group {name} dont have any Interface.'}
+                ACCESSCODE = 404
+        logger.info(f'Returned Group {name} with Details.')
+        ACCESSCODE = 200
     else:
-        logger.error("Group {} Don't Have Any Network Interfaces.".format(group))
-        response = {"message": "Group {} Don't Have Any Network Interfaces.".format(group)}
-        code = 404
-    return json.dumps(response), code
+        logger.error('No Group is Avaiable.')
+        RESPONSE = {'message': 'No Group is Avaiable.'}
+        ACCESSCODE = 404
+    return json.dumps(RESPONSE), ACCESSCODE
+
 
 
 ######################################################## Cluster Configuration #############################################################

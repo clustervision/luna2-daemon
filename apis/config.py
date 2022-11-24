@@ -28,42 +28,111 @@ logger = Log.get_logger()
 config_blueprint = Blueprint('config', __name__)
 
 
-"""
-Input - None
-Process - Fetch the list of avaiable Nodes.
-Output - Return the List Of Nodes.
-"""
+######################################################## Node Configuration #############################################################
+
+
 @config_blueprint.route("/config/node", methods=['GET'])
+@token_required
 def config_node():
-    nodes = True
-    if nodes:
-        logger.info("Avaiable Nodes => {}".format(str(nodes)))
-        response = {"message": "Avaiable Nodes => {}".format(str(nodes))}
-        code = 200
+    """
+    Input - None
+    Output - Return the List Of Nodes.
+    """
+    NODES = Database().get_record(None, 'node', None)
+    if NODES:
+        RESPONSE = {'config': {'node': {} }}
+        for NODE in NODES:
+            NODENAME = NODE['name']
+            NODEID = NODE['id']
+            if NODE['bmcsetupid']:
+                NODE['bmcsetup'] = Database().getname_byid('bmcsetup', NODE['bmcsetupid'])
+            if NODE['groupid']:
+                NODE['group'] = Database().getname_byid('group', NODE['groupid'])
+            if NODE['osimageid']:
+                NODE['osimage'] = Database().getname_byid('osimage', NODE['osimageid'])
+            if NODE['switchid']:
+                NODE['switch'] = Database().getname_byid('switch', NODE['switchid'])
+            del NODE['name']
+            del NODE['id']
+            del NODE['bmcsetupid']
+            del NODE['groupid']
+            del NODE['osimageid']
+            del NODE['switchid']
+            NODE['bootmenu'] = Helper().bool_revert(NODE['bootmenu'])
+            NODE['localboot'] = Helper().bool_revert(NODE['localboot'])
+            NODE['localinstall'] = Helper().bool_revert(NODE['localinstall'])
+            NODE['netboot'] = Helper().bool_revert(NODE['netboot'])
+            NODE['service'] = Helper().bool_revert(NODE['service'])
+            NODE['setupbmc'] = Helper().bool_revert(NODE['setupbmc'])
+            NODEINTERFACE = Database().get_record(None, 'nodeinterface', f' WHERE nodeid = "{NODEID}"')
+            if NODEINTERFACE:
+                NODE['interfaces'] = []
+                for INTERFACE in NODEINTERFACE:
+                    INTERFACE['network'] = Database().getname_byid('network', INTERFACE['networkid'])
+                    del INTERFACE['nodeid']
+                    del INTERFACE['id']
+                    del INTERFACE['networkid']
+                    NODE['interfaces'].append(INTERFACE)
+            RESPONSE['config']['node'][NODENAME] = NODE
+        logger.info('Provided List Of All Nodes.')
+        ACCESSCODE = 200
     else:
-        logger.error("Nodes aren't Avaiable.")
-        response = {"message": "Nodes aren't Avaiable."}
-        code = 404
-    return json.dumps(response), code
+        logger.error('No Node is Avaiable.')
+        RESPONSE = {'message': 'No Node is Avaiable.'}
+        ACCESSCODE = 404
+    return json.dumps(RESPONSE), ACCESSCODE
 
 
-"""
-Input - Node ID or Name
-Process - Fetch the node host information.
-Output - Node Info.
-"""
-@config_blueprint.route("/config/node/<string:node>", methods=['GET'])
-def config_node_get(node=None):
-    nodes = True
-    if nodes:
-        logger.info("Node Information => {}".format(str(nodes)))
-        response = {"message": "Node Information => {}".format(str(nodes))}
-        code = 200
+@config_blueprint.route("/config/node/<string:name>", methods=['GET'])
+@token_required
+def config_node_get(name=None):
+    """
+    Input - None
+    Output - Return the Node Information.
+    """
+    NODE = Database().get_record(None, 'node', f' WHERE name = "{name}"')
+    if NODE:
+        RESPONSE = {'config': {'node': {} }}
+        NODE = NODE[0]
+        NODENAME = NODE['name']
+        NODEID = NODE['id']
+        if NODE['bmcsetupid']:
+            NODE['bmcsetup'] = Database().getname_byid('bmcsetup', NODE['bmcsetupid'])
+        if NODE['groupid']:
+            NODE['group'] = Database().getname_byid('group', NODE['groupid'])
+        if NODE['osimageid']:
+            NODE['osimage'] = Database().getname_byid('osimage', NODE['osimageid'])
+        if NODE['switchid']:
+            NODE['switch'] = Database().getname_byid('switch', NODE['switchid'])
+        del NODE['name']
+        del NODE['id']
+        del NODE['bmcsetupid']
+        del NODE['groupid']
+        del NODE['osimageid']
+        del NODE['switchid']
+        NODE['bootmenu'] = Helper().bool_revert(NODE['bootmenu'])
+        NODE['localboot'] = Helper().bool_revert(NODE['localboot'])
+        NODE['localinstall'] = Helper().bool_revert(NODE['localinstall'])
+        NODE['netboot'] = Helper().bool_revert(NODE['netboot'])
+        NODE['service'] = Helper().bool_revert(NODE['service'])
+        NODE['setupbmc'] = Helper().bool_revert(NODE['setupbmc'])
+        NODEINTERFACE = Database().get_record(None, 'nodeinterface', f' WHERE nodeid = "{NODEID}"')
+        if NODEINTERFACE:
+            NODE['interfaces'] = []
+            for INTERFACE in NODEINTERFACE:
+                INTERFACE['network'] = Database().getname_byid('network', INTERFACE['networkid'])
+                del INTERFACE['nodeid']
+                del INTERFACE['id']
+                del INTERFACE['networkid']
+                NODE['interfaces'].append(INTERFACE)
+        RESPONSE['config']['node'][NODENAME] = NODE
+        logger.info('Provided List Of All Nodes.')
+        ACCESSCODE = 200
     else:
-        logger.error("Node Is Not Exist.")
-        response = {"message": "Node Is Not Exist."}
-        code = 404
-    return json.dumps(response), code
+        logger.error(f'Node {name} is not Avaiable.')
+        RESPONSE = {'message': f'Node {name} is not Avaiable.'}
+        ACCESSCODE = 404
+    return json.dumps(RESPONSE), ACCESSCODE
 
 
 """

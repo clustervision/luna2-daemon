@@ -255,15 +255,15 @@ class Helper(object):
         Input - string 
         Output - Boolean
         """
-        if type(variable) == bool or type(variable) == int:
+        if type(variable) == bool:
             if variable == True:
                 variable = '1'
             elif variable == False:
                 variable = '0'
-        elif type(variable) == str:
-            if variable == '1':
+        elif type(variable) == str  or type(variable) == int:
+            if variable == '1' or variable == 1:
                 variable = True
-            elif variable == '0':
+            elif variable == '0' or variable == 0:
                 variable = False
         else:
             variable = None

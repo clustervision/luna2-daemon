@@ -249,7 +249,7 @@ def config_group_get(name=None):
 
 
 @config_blueprint.route("/config/group/<string:name>", methods=['POST'])
-# @token_required
+@token_required
 def config_group_post(name=None):
     """
     Input - Group ID or Name
@@ -376,24 +376,26 @@ def config_group_post(name=None):
     return json.dumps(RESPONSE), ACCESSCODE
 
 
-"""
-Input - Group ID or Name
-Process - Delete The Groups.
-Output - Group Information.
-"""
-@config_blueprint.route("/config/group/<string:group>/remove", methods=['POST'])
+@config_blueprint.route("/config/group/<string:name>/_delete", methods=['GET'])
 @token_required
-def config_group_remove(group=None):
-    remove = True
-    if remove:
-        logger.info("Group {} Deleted Successfully.".format(group))
-        response = {"message": "Group {} Deleted Successfully.".format(group)}
-        code = 204
+def config_group_delete(name=None):
+    """
+    Input - Group Name
+    Process - Delete the Group and it's interfaces.
+    Output - Success or Failure.
+    """
+    CHECKGRP = Database().get_record(None, 'group', f' WHERE `name` = "{name}";')
+    if CHECKGRP:
+        Database().delete_row('group', [{"column": "name", "value": name}])
+        Database().delete_row('groupinterface', [{"column": "groupid", "value": CHECKGRP[0]['id']}])
+        Database().delete_row('groupsecrets', [{"column": "groupid", "value": CHECKGRP[0]['id']}])
+        RESPONSE = {'message': f'Group {name} with all its interfaces Removed Successfully.'}
+        ACCESSCODE = 204
     else:
-        logger.error("Group is Not Exist.")
-        response = {"message": "Group is Not Exist."}
-        code = 404
-    return json.dumps(response), code
+        RESPONSE = {'message': f'Group {name} Not Present in Database.'}
+        ACCESSCODE = 404
+    return json.dumps(RESPONSE), ACCESSCODE
+
 
 
 """

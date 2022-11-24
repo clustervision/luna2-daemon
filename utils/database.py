@@ -223,8 +223,7 @@ class Database(object):
 			Where.append(column)
 			strWhere = ' AND '.join(map(str, Where))
 
-		query = "DELETE FROM {} WHERE {}".format(table, strWhere)
-		print(query)
+		query = f'DELETE FROM "{table}" WHERE {strWhere};'
 		self.cursor.execute(query)     
 		self.cursor.commit()
 

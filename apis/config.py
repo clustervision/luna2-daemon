@@ -331,49 +331,60 @@ def config_node_get_interfaces(name=None):
         ACCESSCODE = 404
     return json.dumps(RESPONSE), ACCESSCODE
 
-"""
-Input - Node ID or Name
-Process - Fetch the List the network interfaces of the Node.
-Output - Network Interfaces.
-"""
-@config_blueprint.route("/config/node/<string:node>/interfaces", methods=['GET'])
-def config_node_interfaces_get(node=None):
-    interfaces = True
-    if interfaces:
-        logger.info("Node {} Have Network Interfaces {}.".format(str(node), str(interfaces)))
-        response = {"message": "Node {} Have Network Interfaces {}.".format(str(node), str(interfaces))}
-        code = 204
-    else:
-        logger.error("Node {} Doesn't have any Network Interfaces.".format(str(node)))
-        response = {"message": "Node {} Doesn't have any Network Interfaces.".format(str(node))}
-        code = 404
-    return json.dumps(response), code
 
-
-"""
-Input - Node ID or Name
-Process - Updates the interface array for the Node. {Note that this overrides the group}
-Output - Network Interfaces.
-"""
-@config_blueprint.route("/config/node/<string:node>/interfaces", methods=['POST'])
+@config_blueprint.route("/config/node/<string:name>/interfaces", methods=['POST'])
 @token_required
-def config_node_interfaces_post(node=None):
-    create = True
-    update = False
-    interface = True
-    if create:
-        logger.info("Network Interfaces {} Is Created for Node {}.".format(str(interfaces), str(node)))
-        response = {"message": "Network Interfaces {} Is Created for Node {}.".format(str(interfaces), str(node))}
-        code = 201
-    elif update:
-        logger.info("Network Interfaces {} Is Updated for Node {}.".format(str(interfaces), str(node)))
-        response = {"message": "Network Interfaces {} Is Updated for Node {}.".format(str(interfaces), str(node))}
-        code = 200
+def config_node_post_interfaces(name=None):
+    """
+    Input - Node Name
+    Process - Create Or Update The Node Interface.
+    Output - Node Interface.
+    """
+    DATA = {}
+    CREATE, UPDATE = False, False
+
+    REQUESTCHECK = Helper().check_json(request.data)
+    if REQUESTCHECK:
+        REQUEST = request.get_json(force=True)
     else:
-        logger.error("Node {} Doesn't have any Network Interfaces.".format(str(node)))
-        response = {"message": "Node {} Doesn't have any Network Interfaces.".format(str(node))}
-        code = 404
-    return json.dumps(response), code
+        RESPONSE = {'message': 'Bad Request.'}
+        ACCESSCODE = 400
+        return json.dumps(RESPONSE), ACCESSCODE
+    if REQUEST:
+        NODE = Database().get_record(None, 'node', f' WHERE name = "{name}"')
+        if NODE:
+            NODEID = NODE[0]['id']
+            if 'interfaces' in REQUEST['config']['node'][name]:
+                for INTERFACE in REQUEST['config']['node'][name]['interfaces']:
+                    NWK = Database().getid_byname('network', INTERFACE['network'])
+                    if NWK == None:
+                        RESPONSE = {'message': f'Bad Request; Network {NWK} Not Exist.'}
+                        ACCESSCODE = 400
+                        return json.dumps(RESPONSE), ACCESSCODE
+                    else:
+                        INTERFACE['networkid'] = NWK
+                        INTERFACE['nodeid'] = NODEID
+                        del INTERFACE['network']
+                    IFNAME = INTERFACE['interface']
+                    where = f' WHERE nodeid = "{NODEID}" AND networkid = "{NWK}" AND interface = "{IFNAME}"'
+                    CHECKINTERFACE = Database().get_record(None, 'nodeinterface', where)
+                    if not CHECKINTERFACE:
+                        row = Helper().make_rows(INTERFACE)
+                        result = Database().insert('nodeinterface', row)
+                    RESPONSE = {'message': 'Interface Updated.'}
+                    ACCESSCODE = 204
+            else:
+                logger.error('Kindly Provide the interface.')
+                RESPONSE = {'message': 'Kindly Provide the interface.'}
+                ACCESSCODE = 404
+        else:
+            logger.error(f'Node {name} is Not Avaiable.')
+            RESPONSE = {'message': f'Node {name} is Not Avaiable.'}
+            ACCESSCODE = 404
+    else:
+        RESPONSE = {'message': 'Bad Request; Did not received Data.'}
+        ACCESSCODE = 400
+    return json.dumps(RESPONSE), ACCESSCODE
 
 
 ######################################################## Group Configuration #############################################################

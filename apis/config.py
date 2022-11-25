@@ -387,6 +387,30 @@ def config_node_post_interfaces(name=None):
     return json.dumps(RESPONSE), ACCESSCODE
 
 
+@config_blueprint.route("/config/node/<string:name>/interfaces/<string:interface>/_delete", methods=['GET'])
+@token_required
+def config_node_delete_interface(name=None, interface=None):
+    """
+    Input - Node Name & Interface Name
+    Process - Delete the Node Interface.
+    Output - Success or Failure.
+    """
+    NODE = Database().get_record(None, 'node', f' WHERE `name` = "{name}";')
+    if NODE:
+        NODEID = NODE[0]['id']
+        NODEINTERFACE = Database().get_record(None, 'nodeinterface', f' WHERE `interface` = "{interface}" AND `nodeid` = "{NODEID}";')
+        if NODEINTERFACE:
+            Database().delete_row('nodeinterface', [{"column": "id", "value": NODEINTERFACE[0]['id']}])
+            RESPONSE = {'message': f'Node {name} interface {interface} Removed Successfully.'}
+            ACCESSCODE = 204
+        else:
+            RESPONSE = {'message': f'Node {name} interface {interface} Not Present in Database.'}
+            ACCESSCODE = 404
+    else:
+        RESPONSE = {'message': f'Node {name} Not Present in Database.'}
+        ACCESSCODE = 404
+    return json.dumps(RESPONSE), ACCESSCODE
+
 ######################################################## Group Configuration #############################################################
 
 @config_blueprint.route("/config/group", methods=['GET'])

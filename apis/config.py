@@ -387,6 +387,41 @@ def config_node_post_interfaces(name=None):
     return json.dumps(RESPONSE), ACCESSCODE
 
 
+@config_blueprint.route("/config/node/<string:name>/interfaces/<string:interface>", methods=['GET'])
+@token_required
+def config_node_interface_get(name=None, interface=None):
+    """
+    Input - Node Name & Interface Name
+    Process - Get the Node Interface.
+    Output - Success or Failure.
+    """
+    NODE = Database().get_record(None, 'node', f' WHERE name = "{name}"')
+    if NODE:
+        RESPONSE = {'config': {'node': {name: {'interfaces': [] } } } }
+        NODEID = NODE[0]['id']
+        NODEINTERFACE = Database().get_record(None, 'nodeinterface', f' WHERE nodeid = "{NODEID}" AND interface = "{interface}"')
+        if NODEINTERFACE:
+            NODEIFC = []
+            for INTERFACE in NODEINTERFACE:
+                INTERFACE['network'] = Database().getname_byid('network', INTERFACE['networkid'])
+                del INTERFACE['nodeid']
+                del INTERFACE['id']
+                del INTERFACE['networkid']
+                NODEIFC.append(INTERFACE)
+            RESPONSE['config']['node'][name]['interfaces'] = NODEIFC
+            logger.info(f'Returned Group {name} with Details.')
+            ACCESSCODE = 200
+        else:
+            logger.error(f'Node {name} dont have {interface} Interface.')
+            RESPONSE = {'message': f'Node {name} dont have {interface} Interface.'}
+            ACCESSCODE = 404
+    else:
+        logger.error('No Node is Avaiable.')
+        RESPONSE = {'message': 'No Node is Avaiable.'}
+        ACCESSCODE = 404
+    return json.dumps(RESPONSE), ACCESSCODE
+
+
 @config_blueprint.route("/config/node/<string:name>/interfaces/<string:interface>/_delete", methods=['GET'])
 @token_required
 def config_node_delete_interface(name=None, interface=None):

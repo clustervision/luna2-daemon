@@ -422,6 +422,7 @@ def config_node_interface_get(name=None, interface=None):
     return json.dumps(RESPONSE), ACCESSCODE
 
 
+
 @config_blueprint.route("/config/node/<string:name>/interfaces/<string:interface>/_delete", methods=['GET'])
 @token_required
 def config_node_delete_interface(name=None, interface=None):

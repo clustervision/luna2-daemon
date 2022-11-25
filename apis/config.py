@@ -260,7 +260,6 @@ def config_node_post(name=None):
                         INTERFACE['nodeid'] = NODEID
                         del INTERFACE['network']
                     IFNAME = INTERFACE['interface']
-                    print(INTERFACE)
                     where = f' WHERE nodeid = "{NODEID}" AND networkid = "{NWK}" AND interface = "{IFNAME}"'
                     CHECKINTERFACE = Database().get_record(None, 'nodeinterface', where)
                     if not CHECKINTERFACE:
@@ -276,25 +275,26 @@ def config_node_post(name=None):
         ACCESSCODE = 400
     return json.dumps(RESPONSE), ACCESSCODE
 
-"""
-Input - Node ID or Name
-Process - Delete the Node.
-Output - Delete Info.
-"""
-@config_blueprint.route("/config/node/<string:node>/remove", methods=['POST'])
-@token_required
-def config_node_remove(node=None):
-    remove = True
-    if remove:
-        logger.info("Node {} Removed Successfully.".format(str(node)))
-        response = {"message": "Node {} Removed Successfully.".format(str(node))}
-        code = 204
-    else:
-        logger.error("Node Is Not Exist.")
-        response = {"message": "Node Is Not Exist."}
-        code = 404
-    return json.dumps(response), code
 
+@config_blueprint.route("/config/node/<string:name>/_delete", methods=['GET'])
+@token_required
+def config_node_delete(name=None):
+    """
+    Input - Node Name
+    Process - Delete the Node and it's interfaces.
+    Output - Success or Failure.
+    """
+    NODE = Database().get_record(None, 'node', f' WHERE `name` = "{name}";')
+    if NODE:
+        Database().delete_row('node', [{"column": "name", "value": name}])
+        Database().delete_row('nodeinterface', [{"column": "nodeid", "value": NODE[0]['id']}])
+        Database().delete_row('nodesecrets', [{"column": "nodeid", "value": NODE[0]['id']}])
+        RESPONSE = {'message': f'Node {name} with all its interfaces Removed Successfully.'}
+        ACCESSCODE = 204
+    else:
+        RESPONSE = {'message': f'Node {name} Not Present in Database.'}
+        ACCESSCODE = 404
+    return json.dumps(RESPONSE), ACCESSCODE
 
 """
 Input - Node ID or Name
@@ -672,7 +672,7 @@ def config_group_post_interfaces(name=None):
     return json.dumps(RESPONSE), ACCESSCODE
 
 
-@config_blueprint.route("/config/group/<string:name>/interface/<string:interface>/_delete", methods=['GET'])
+@config_blueprint.route("/config/group/<string:name>/interfaces/<string:interface>/_delete", methods=['GET'])
 @token_required
 def config_group_delete_interface(name=None, interface=None):
     """

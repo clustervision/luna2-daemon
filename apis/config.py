@@ -2410,3 +2410,274 @@ def config_node_secret_delete(name=None, secret=None):
         RESPONSE = {'message': f'Node {name} is not Avaiable.'}
         ACCESSCODE = 404
     return json.dumps(RESPONSE), ACCESSCODE
+
+
+@config_blueprint.route("/config/secrets/group/<string:name>", methods=['GET'])
+@token_required
+def config_get_secrets_group(name=None):
+    """
+    Input - GROUP Name
+    Output - Return the Group Secrets.
+    """
+    GROUP = Database().get_record(None, 'group', f' WHERE name = "{name}"')
+    if GROUP:
+        GROUPID  = GROUP[0]['id']
+        GROUPSECRETS = Database().get_record(None, 'groupsecrets', f' WHERE groupid = "{GROUPID}"')
+        if GROUPSECRETS:
+            RESPONSE = {'config': {'secrets': {'group': {name: [] } } } }
+            for GRP in GROUPSECRETS:
+                del GRP['groupid']
+                del GRP['id']
+                GRP['content'] = Helper().decrypt_string(GRP['content'])
+                RESPONSE['config']['secrets']['group'][name].append(GRP)
+                ACCESSCODE = 200
+        else:
+            logger.error(f'Secrets are not Avaiable for Group {name}.')
+            RESPONSE = {'message': f'Secrets are not Avaiable for Group {name}.'}
+            ACCESSCODE = 404
+    else:
+        logger.error(f'Group {name} is not Avaiable.')
+        RESPONSE = {'message': f'Group {name} is not Avaiable.'}
+        ACCESSCODE = 404
+    return json.dumps(RESPONSE), ACCESSCODE
+
+
+# @config_blueprint.route("/config/secrets/node/<string:name>", methods=['POST'])
+# @token_required
+# def config_post_secrets_node(name=None):
+#     """
+#     Input - Node Name & Payload
+#     Process - Create Or Update Node Secrets.
+#     Output - None.
+#     """
+#     DATA,NODESECRETS = {}, []
+#     CREATE, UPDATE = False, False
+#     REQUESTCHECK = Helper().check_json(request.data)
+#     if REQUESTCHECK:
+#         REQUEST = request.get_json(force=True)
+#     else:
+#         RESPONSE = {'message': 'Bad Request.'}
+#         ACCESSCODE = 400
+#         return json.dumps(RESPONSE), ACCESSCODE
+#     if REQUEST:
+#         DATA = REQUEST['config']['secrets']['node'][name]
+#         NODE = Database().get_record(None, 'node', f' WHERE name = "{name}"')
+#         if NODE:
+#             NODEID = NODE[0]['id']
+#             if DATA:
+#                 for SECRET in DATA:
+#                     SECRETNAME = SECRET['name']
+#                     SECRETDATA = Database().get_record(None, 'nodesecrets', f' WHERE nodeid = "{NODEID}" AND name = "{SECRETNAME}";')
+#                     if SECRETDATA:
+#                         NODESECRETSCOLUMNS = Database().get_columns('nodesecrets')
+#                         COLUMNCHECK = Helper().checkin_list(SECRETDATA[0], NODESECRETSCOLUMNS)
+#                         if COLUMNCHECK:
+#                             SECRETID = SECRETDATA[0]['id']
+#                             SECRET['content'] = Helper().encrypt_string(SECRET['content'])
+#                             where = [{"column": "id", "value": SECRETID}, {"column": "nodeid", "value": NODEID}, {"column": "name", "value": SECRETNAME}]
+#                             row = Helper().make_rows(SECRET)
+#                             Database().update('nodesecrets', row, where)
+#                             UPDATE = True
+#                     else:
+#                         SECRET['nodeid'] = NODEID
+#                         SECRET['content'] = Helper().encrypt_string(SECRET['content'])
+#                         row = Helper().make_rows(SECRET)
+#                         Database().insert('nodesecrets', row)
+#                         CREATE = True
+#             else:
+#                 logger.error('Kindly provide at least one secret.')
+#                 RESPONSE = {'message': 'Kindly provide at least one secret.'}
+#                 ACCESSCODE = 404
+#         else:
+#             logger.error(f'Node {name} is not Avaiable.')
+#             RESPONSE = {'message': f'Node {name} is not Avaiable.'}
+#             ACCESSCODE = 404
+
+#         if CREATE == True and UPDATE == True:
+#             RESPONSE = {'message': f'Node {name} Secrets Created & Updated Successfully.'}
+#             ACCESSCODE = 201
+#         elif CREATE == True and UPDATE == False:
+#             RESPONSE = {'message': f'Node {name} Secret Created Successfully.'}
+#             ACCESSCODE = 201
+#         elif CREATE == False and UPDATE == True:
+#             RESPONSE = {'message': f'Node {name} Secret Updated Successfully.'}
+#             ACCESSCODE = 201
+#     else:
+#         RESPONSE = {'message': 'Bad Request; Did not received Data.'}
+#         ACCESSCODE = 400
+#     return json.dumps(RESPONSE), ACCESSCODE
+
+
+# @config_blueprint.route("/config/secrets/node/<string:name>/<string:secret>", methods=['GET'])
+# @token_required
+# def config_get_node_secret(name=None, secret=None):
+#     """
+#     Input - Node Name & Secret Name
+#     Output - Return the Node Secret
+#     """
+#     NODE = Database().get_record(None, 'node', f' WHERE name = "{name}"')
+#     if NODE:
+#         NODEID  = NODE[0]['id']
+#         SECRET = Database().get_record(None, 'nodesecrets', f' WHERE nodeid = "{NODEID}" AND name = "{secret}"')
+#         if SECRET:
+#             RESPONSE = {'config': {'secrets': {'node': {name: [] } } } }
+#             ACCESSCODE = 200
+#             del SECRET[0]['nodeid']
+#             del SECRET[0]['id']
+#             SECRET[0]['content'] = Helper().decrypt_string(SECRET[0]['content'])
+#             RESPONSE['config']['secrets']['node'][name] = SECRET
+#         else:
+#             logger.error(f'Secret {secret} is Unavaiable for Node {name}.')
+#             RESPONSE = {'message': f'Secret {secret} is Unavaiable for Node {name}.'}
+#             ACCESSCODE = 404
+#     else:
+#         logger.error(f'Node {name} is not Avaiable.')
+#         RESPONSE = {'message': f'Node {name} is not Avaiable.'}
+#         ACCESSCODE = 404
+#     return json.dumps(RESPONSE), ACCESSCODE
+
+
+# @config_blueprint.route("/config/secrets/node/<string:name>/<string:secret>", methods=['POST'])
+# @token_required
+# def config_post_node_secret(name=None, secret=None):
+#     """
+#     Input - Node Name & Payload
+#     Process - Create Or Update Node Secrets.
+#     Output - None.
+#     """
+#     DATA = {}
+#     REQUESTCHECK = Helper().check_json(request.data)
+#     if REQUESTCHECK:
+#         REQUEST = request.get_json(force=True)
+#     else:
+#         RESPONSE = {'message': 'Bad Request.'}
+#         ACCESSCODE = 400
+#         return json.dumps(RESPONSE), ACCESSCODE
+#     if REQUEST:
+#         DATA = REQUEST['config']['secrets']['node'][name]
+#         NODE = Database().get_record(None, 'node', f' WHERE name = "{name}"')
+#         if NODE:
+#             NODEID = NODE[0]['id']
+#             if DATA:
+#                 SECRETNAME = DATA[0]['name']
+#                 SECRETDATA = Database().get_record(None, 'nodesecrets', f' WHERE nodeid = "{NODEID}" AND name = "{SECRETNAME}";')
+#                 if SECRETDATA:
+#                     NODESECRETSCOLUMNS = Database().get_columns('nodesecrets')
+#                     COLUMNCHECK = Helper().checkin_list(DATA[0], NODESECRETSCOLUMNS)
+#                     if COLUMNCHECK:
+#                         SECRETID = SECRETDATA[0]['id']
+#                         DATA[0]['content'] = Helper().encrypt_string(DATA[0]['content'])
+#                         where = [{"column": "id", "value": SECRETID}, {"column": "nodeid", "value": NODEID}, {"column": "name", "value": SECRETNAME}]
+#                         row = Helper().make_rows(DATA[0])
+#                         Database().update('nodesecrets', row, where)
+#                         RESPONSE = {'message': f'Node {name} Secret {secret} Updated Successfully.'}
+#                         ACCESSCODE = 204
+#                 else:
+#                     logger.error(f'Node {name}, Secret {secret} is Unavaiable.')
+#                     RESPONSE = {'message': f'Node {name}, Secret {secret} is Unavaiable.'}
+#                     ACCESSCODE = 404
+#             else:
+#                 logger.error('Kindly provide at least one secret.')
+#                 RESPONSE = {'message': 'Kindly provide at least one secret.'}
+#                 ACCESSCODE = 404
+#         else:
+#             logger.error(f'Node {name} is not Avaiable.')
+#             RESPONSE = {'message': f'Node {name} is not Avaiable.'}
+#             ACCESSCODE = 404
+#     else:
+#         RESPONSE = {'message': 'Bad Request; Did not received Data.'}
+#         ACCESSCODE = 400
+#     return json.dumps(RESPONSE), ACCESSCODE
+
+
+# @config_blueprint.route("/config/secrets/node/<string:name>/<string:secret>/_clone", methods=['POST'])
+# @token_required
+# def config_clone_node_secret(name=None, secret=None):
+#     """
+#     Input - Node Name & Payload
+#     Process - Create Or Update Node Secrets.
+#     Output - None.
+#     """
+#     DATA = {}
+#     REQUESTCHECK = Helper().check_json(request.data)
+#     if REQUESTCHECK:
+#         REQUEST = request.get_json(force=True)
+#     else:
+#         RESPONSE = {'message': 'Bad Request.'}
+#         ACCESSCODE = 400
+#         return json.dumps(RESPONSE), ACCESSCODE
+#     if REQUEST:
+#         DATA = REQUEST['config']['secrets']['node'][name]
+#         NODE = Database().get_record(None, 'node', f' WHERE name = "{name}"')
+#         if NODE:
+#             NODEID = NODE[0]['id']
+#             if DATA:
+#                 SECRETNAME = DATA[0]['name']
+#                 SECRETDATA = Database().get_record(None, 'nodesecrets', f' WHERE nodeid = "{NODEID}" AND name = "{SECRETNAME}";')
+#                 if SECRETDATA:
+#                     if 'newsecretname' in DATA[0]:
+#                         NEWSECRETNAME = DATA[0]['newsecretname']
+#                         del DATA[0]['newsecretname']
+#                         DATA[0]['nodeid'] = NODEID
+#                         DATA[0]['name'] = NEWSECRETNAME
+#                         NEWSECRETDATA = Database().get_record(None, 'nodesecrets', f' WHERE nodeid = "{NODEID}" AND name = "{NEWSECRETNAME}";')
+#                         if NEWSECRETDATA:
+#                             logger.error(f'Secret {NEWSECRETNAME} Already Present..')
+#                             RESPONSE = {'message': f'Secret {NEWSECRETNAME} Already Present..'}
+#                             ACCESSCODE = 404 
+#                         else:
+#                             NODESECRETSCOLUMNS = Database().get_columns('nodesecrets')
+#                             COLUMNCHECK = Helper().checkin_list(DATA[0], NODESECRETSCOLUMNS)
+#                             if COLUMNCHECK:
+#                                 SECRETID = SECRETDATA[0]['id']
+#                                 DATA[0]['content'] = Helper().encrypt_string(DATA[0]['content'])
+#                                 row = Helper().make_rows(DATA[0])
+#                                 Database().insert('nodesecrets', row)
+#                                 RESPONSE = {'message': f'Node {name} Secret {secret} Clone Successfully to {NEWSECRETNAME}.'}
+#                                 ACCESSCODE = 204
+#                     else:
+#                         logger.error('Kindly Pass the New Secret Name.')
+#                         RESPONSE = {'message': 'Kindly Pass the New Secret Name.'}
+#                         ACCESSCODE = 404
+#                 else:
+#                     logger.error(f'Node {name}, Secret {secret} is Unavaiable.')
+#                     RESPONSE = {'message': f'Node {name}, Secret {secret} is Unavaiable.'}
+#                     ACCESSCODE = 404
+#             else:
+#                 logger.error('Kindly provide at least one secret.')
+#                 RESPONSE = {'message': 'Kindly provide at least one secret.'}
+#                 ACCESSCODE = 404
+#         else:
+#             logger.error(f'Node {name} is not Avaiable.')
+#             RESPONSE = {'message': f'Node {name} is not Avaiable.'}
+#             ACCESSCODE = 404
+#     else:
+#         RESPONSE = {'message': 'Bad Request; Did not received Data.'}
+#         ACCESSCODE = 400
+#     return json.dumps(RESPONSE), ACCESSCODE
+
+
+# @config_blueprint.route("/config/secrets/node/<string:name>/<string:secret>/_delete", methods=['GET'])
+# @token_required
+# def config_node_secret_delete(name=None, secret=None):
+#     """
+#     Input - Node Name & Secret Name
+#     Output - Success or Failure
+#     """
+#     NODE = Database().get_record(None, 'node', f' WHERE name = "{name}"')
+#     if NODE:
+#         NODEID  = NODE[0]['id']
+#         SECRET = Database().get_record(None, 'nodesecrets', f' WHERE nodeid = "{NODEID}" AND name = "{secret}"')
+#         if SECRET:
+#             Database().delete_row('nodesecrets', [{"column": "nodeid", "value": NODEID}, {"column": "name", "value": secret}])
+#             RESPONSE = {'message': f'Secret {secret} Deleted From Node {name}.'}
+#             ACCESSCODE = 204
+#         else:
+#             logger.error(f'Secret {secret} is Unavaiable for Node {name}.')
+#             RESPONSE = {'message': f'Secret {secret} is Unavaiable for Node {name}.'}
+#             ACCESSCODE = 404
+#     else:
+#         logger.error(f'Node {name} is not Avaiable.')
+#         RESPONSE = {'message': f'Node {name} is not Avaiable.'}
+#         ACCESSCODE = 404
+#     return json.dumps(RESPONSE), ACCESSCODE

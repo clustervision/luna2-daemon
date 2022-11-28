@@ -14,6 +14,7 @@ This Is a Helper Class, which help the project to provide the common Methods.
 """
 import os
 import sys
+import pwd
 import subprocess
 from jinja2 import Environment
 from utils.log import *
@@ -287,9 +288,142 @@ class Helper(object):
         Input - string 
         Output - Decrypt Encoded String
         """
-        print(LUNAKEY)
-        print(string)
         KEY = bytes(LUNAKEY, 'utf-8')
         FERNETOBJ = Fernet(KEY)
         RESPONSE = FERNETOBJ.decrypt(string).decode()
         return RESPONSE
+
+
+    def pack(self, image=None):
+        """
+        Input - OS Image Name (string) 
+        Output - Success/Failure (Boolean)
+        """
+        def mount(source, target, fs):
+            subprocess.Popen(['/usr/bin/mount', '-t', fs, source, target])
+
+        def umount(source):
+            subprocess.Popen(['/usr/bin/umount', source])
+
+        def prepare_mounts(path):
+            mount('devtmpfs', path + '/dev', 'devtmpfs')
+            mount('proc', path + '/proc', 'proc')
+            mount('sysfs', path + '/sys', 'sysfs')
+
+        def cleanup_mounts(path):
+            umount(path + '/dev')
+            umount(path + '/proc')
+            umount(path + '/sys')
+
+        IMAGE = Database().get_record(None, 'osimage', f' WHERE name = "{image}"')
+        if IMAGE:
+            PATHTMP = '/tmp'
+            IMAGENAME = IMAGE[0]['name']
+            IMAGEPATH = IMAGE[0]['path']
+            DRACUTMODULES = IMAGE[0]['dracutmodules']
+            KERNELMODULES = IMAGE[0]['kernelmodules']
+            KERNELVERSION = IMAGE[0]['kernelversion']
+            KERNELFILE = image+'-vmlinuz-'+KERNELVERSION
+            INTRDFILE = image+'-initramfs-'+KERNELVERSION
+
+            PATH = IMAGEPATH
+            CLUSTER = Database().get_record(None, 'cluster', None)
+            if CLUSTER:
+                USER = CLUSTER[0]['user']
+            else:
+                USER = "luna"
+            PATHTOSTORE = IMAGEPATH+'/boot'
+            USERID = pwd.getpwnam(USER).pw_uid
+            GROUPID = pwd.getpwnam(USER).pw_gid
+
+            if not os.path.exists(PATHTOSTORE):
+                os.makedirs(PATHTOSTORE)
+                os.chown(PATHTOSTORE, USERID, GROUPID)
+
+            MODULESADD, MODULESREMOVE, DRIVERSADD, DRIVERSREMOVE = [], [], [], []
+
+            if DRACUTMODULES:
+                for i in DRACUTMODULES.split(','):
+                    if i[0] != '-':
+                        MODULESADD.extend(['--add', i])
+                    else:
+                        MODULESREMOVE.extend(['--omit', i[1:]])
+            if KERNELMODULES:
+                for i in KERNELMODULES.split(','):
+                    if i[0] != '-':
+                        DRIVERSADD.extend(['--add-drivers', i])
+                    else:
+                        DRIVERSREMOVE.extend(['--omit-drivers', i[1:]])
+
+            prepare_mounts(IMAGEPATH)
+            REALROOT = os.open("/", os.O_RDONLY)
+            os.chroot(IMAGEPATH)
+            CHROOTPATH = os.open("/", os.O_DIRECTORY)
+            os.fchdir(CHROOTPATH)
+
+            DRACUTSUCCEED = True
+            CREATE = None
+
+
+            try:
+                print("asdasdasd")
+                DRACUTPROCESS = subprocess.Popen(['/usr/sbin/dracut', '--kver', KERNELVERSION, '--list-modules'], stdout=subprocess.PIPE)
+                LUNAEXISTS = False
+                print(DRACUTPROCESS)
+                print(DRACUTPROCESS.stdout.readline())
+                while DRACUTPROCESS.poll() is None:
+                    line = DRACUTPROCESS.stdout.readline()
+                    print(line)
+                    if line.strip() == 'luna':
+                        LUNAEXISTS = True
+                        break
+
+                if not LUNAEXISTS:
+                    self.logger.error(f'No luna dracut module in OS Image {IMAGENAME}.')
+                    raise RuntimeError(f'No luna dracut module in OS Image {IMAGENAME}.')
+
+                DRACUTCMDPROCESS = (['/usr/sbin/dracut', '--force', '--kver', KERNELVERSION] + MODULESADD + MODULESREMOVE + DRIVERSADD + DRIVERSREMOVE + [PATHTMP + '/' + INTRDFILE])
+
+                CREATE = subprocess.Popen(DRACUTCMDPROCESS, stdout=subprocess.PIPE)
+                while CREATE.poll() is None:
+                    line = CREATE.stdout.readline()
+
+            except:
+                DRACUTSUCCEED = False
+
+            if CREATE and CREATE.returncode:
+                DRACUTSUCCEED = False
+
+            if not CREATE:
+                DRACUTSUCCEED = False
+
+            os.fchdir(REALROOT)
+            os.chroot(".")
+            os.close(REALROOT)
+            os.close(CHROOTPATH)
+            cleanup_mounts(IMAGEPATH)
+
+            if not DRACUTSUCCEED:
+                self.logger.error(f'Error while building initrd for OS Image {IMAGENAME}.')
+                return False
+
+            INTRDPATH = IMAGEPATH + PATHTMP + '/' + INTRDFILE
+            KERNELPATH = IMAGEPATH + '/boot/vmlinuz-' + KERNELVERSION
+
+            if not os.path.isfile(KERNELPATH):
+                self.logger.error(f'Unable to find kernel in {KERNELPATH}.')
+                return False
+
+            if not os.path.isfile(INTRDPATH):
+                self.logger.error(f'Unable to find initrd in {INTRDPATH}.')
+                return False
+
+            # copy initrd file to inherit perms from parent folder
+            shutil.copy(INTRDPATH, PATHTOSTORE + '/' + INTRDFILE)
+            os.remove(INTRDPATH)
+            shutil.copy(KERNELPATH, PATHTOSTORE + '/' + KERNELFILE)
+            os.chown(PATHTOSTORE + '/' + INTRDFILE, USERID, GROUPID)
+            os.chmod(PATHTOSTORE + '/' + INTRDFILE, '0644')
+            os.chown(PATHTOSTORE + '/' + KERNELFILE, USERID, GROUPID)
+            os.chmod(PATHTOSTORE + '/' + KERNELFILE, '0644')
+        return True

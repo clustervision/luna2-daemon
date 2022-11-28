@@ -2129,7 +2129,7 @@ def config_secrets_get():
 def config_get_secrets_node(name=None):
     """
     Input - Node Name
-    Output - Return the Node Secrets.
+    Output - Return the Node Secrets And Group Secrets for the Node.
     """
     NODE = Database().get_record(None, 'node', f' WHERE name = "{name}"')
     if NODE:
@@ -2141,8 +2141,8 @@ def config_get_secrets_node(name=None):
             RESPONSE = {'config': {'secrets': {} }}
             ACCESSCODE = 200
         else:
-            logger.error('Secrets are not Avaiable.')
-            RESPONSE = {'message': 'Secrets are not Avaiable.'}
+            logger.error(f'Secrets are not Avaiable for Node {name}.')
+            RESPONSE = {'message': f'Secrets are not Avaiable for Node {name}.'}
             ACCESSCODE = 404
         if NODESECRETS:
             RESPONSE['config']['secrets']['node'] = {}
@@ -2171,145 +2171,70 @@ def config_get_secrets_node(name=None):
     return json.dumps(RESPONSE), ACCESSCODE
 
 
-# @config_blueprint.route("/config/node/<string:name>", methods=['POST'])
-# @token_required
-# def config_node_post(name=None):
-#     """
-#     Input - Node Name
-#     Process - Create Or Update The Groups.
-#     Output - Node Information.
-#     """
-#     DATA = {}
-#     CREATE, UPDATE = False, False
+@config_blueprint.route("/config/secrets/node/<string:name>", methods=['POST'])
+@token_required
+def config_post_secrets_node(name=None):
+    """
+    Input - Node Name & Payload
+    Process - Create Or Update Node Secrets.
+    Output - None.
+    """
+    DATA,NODESECRETS = {}, []
+    CREATE, UPDATE = False, False
+    REQUESTCHECK = Helper().check_json(request.data)
+    if REQUESTCHECK:
+        REQUEST = request.get_json(force=True)
+    else:
+        RESPONSE = {'message': 'Bad Request.'}
+        ACCESSCODE = 400
+        return json.dumps(RESPONSE), ACCESSCODE
+    if REQUEST:
+        DATA = REQUEST['config']['secrets']['node'][name]
+        NODE = Database().get_record(None, 'node', f' WHERE name = "{name}"')
+        if NODE:
+            NODEID = NODE[0]['id']
+            if DATA:
+                for SECRET in DATA:
+                    SECRETNAME = SECRET['name']
+                    SECRETDATA = Database().get_record(None, 'nodesecrets', f' WHERE nodeid = "{NODEID}" AND name = "{SECRETNAME}";')
+                    if SECRETDATA:
+                        NODESECRETSCOLUMNS = Database().get_columns('nodesecrets')
+                        COLUMNCHECK = Helper().checkin_list(SECRETDATA[0], NODESECRETSCOLUMNS)
+                        if COLUMNCHECK:
+                            SECRETID = SECRETDATA[0]['id']
+                            SECRET['content'] = Helper().encrypt_string(SECRET['content'])
+                            where = [{"column": "id", "value": SECRETID}, {"column": "nodeid", "value": NODEID}, {"column": "name", "value": SECRETNAME}]
+                            row = Helper().make_rows(SECRET)
+                            Database().update('nodesecrets', row, where)
+                            UPDATE = True
+                    else:
+                        SECRET['nodeid'] = NODEID
+                        SECRET['content'] = Helper().encrypt_string(SECRET['content'])
+                        row = Helper().make_rows(SECRET)
+                        Database().insert('nodesecrets', row)
+                        CREATE = True
+            else:
+                logger.error('Kindly provide at least one secret.')
+                RESPONSE = {'message': 'Kindly provide at least one secret.'}
+                ACCESSCODE = 404
+        else:
+            logger.error(f'Node {name} is not Avaiable.')
+            RESPONSE = {'message': f'Node {name} is not Avaiable.'}
+            ACCESSCODE = 404
 
-#     REQUESTCHECK = Helper().check_json(request.data)
-#     if REQUESTCHECK:
-#         REQUEST = request.get_json(force=True)
-#     else:
-#         RESPONSE = {'message': 'Bad Request.'}
-#         ACCESSCODE = 400
-#         return json.dumps(RESPONSE), ACCESSCODE
-#     if REQUEST:
-#         DATA = REQUEST['config']['node'][name]
-#         NODE = Database().get_record(None, 'node', f' WHERE name = "{name}"')
-#         if NODE:
-#             NODEID = NODE[0]['id']
-#             if 'newnodename' in DATA:
-#                 NEWNODENAME = DATA['newnodename']
-#                 CHECKNEWNODE = Database().get_record(None, 'node', f' WHERE `name` = "{NEWNODENAME}";')
-#                 if CHECKNEWNODE:
-#                     RESPONSE = {'message': f'{NEWNODENAME} Already Present in Database, Choose Another Name Or Delete {NEWNODENAME}.'}
-#                     ACCESSCODE = 400
-#                     return json.dumps(RESPONSE), ACCESSCODE
-#                 else:
-#                     DATA['name'] = DATA['newnodename']
-#                     del DATA['newnodename']
-#             UPDATE = True
-#             if 'bootmenu' in DATA:
-#                 DATA['bootmenu'] = Helper().bool_revert(DATA['bootmenu'])
-#             if 'localboot' in DATA:
-#                 DATA['localboot'] = Helper().bool_revert(DATA['localboot'])
-#             if 'localinstall' in DATA:
-#                 DATA['localinstall'] = Helper().bool_revert(DATA['localinstall'])
-#             if 'netboot' in DATA:
-#                 DATA['netboot'] = Helper().bool_revert(DATA['netboot'])
-#             if 'service' in DATA:
-#                 DATA['service'] = Helper().bool_revert(DATA['service'])
-#             if 'setupbmc' in DATA:
-#                 DATA['setupbmc'] = Helper().bool_revert(DATA['setupbmc'])
-#         else:
-#             if 'newnodename' in DATA:
-#                 RESPONSE = {'message': f'{NEWNODENAME} is not allwoed while creating a new node.'}
-#                 ACCESSCODE = 400
-#                 return json.dumps(RESPONSE), ACCESSCODE
-#             if 'bootmenu' in DATA:
-#                 DATA['bootmenu'] = Helper().bool_revert(DATA['bootmenu'])
-#             else:
-#                 DATA['bootmenu'] = 0
-#             if 'localboot' in DATA:
-#                 DATA['localboot'] = Helper().bool_revert(DATA['localboot'])
-#             else:
-#                 DATA['localboot'] = 0
-#             if 'localinstall' in DATA:
-#                 DATA['localinstall'] = Helper().bool_revert(DATA['localinstall'])
-#             else:
-#                 DATA['localinstall'] = 0
-#             if 'netboot' in DATA:
-#                 DATA['netboot'] = Helper().bool_revert(DATA['netboot'])
-#             else:
-#                 DATA['netboot'] = 0
-#             if 'service' in DATA:
-#                 DATA['service'] = Helper().bool_revert(DATA['service'])
-#             else:
-#                 DATA['service'] = 0
-#             if 'setupbmc' in DATA:
-#                 DATA['setupbmc'] = Helper().bool_revert(DATA['setupbmc'])
-#             else:
-#                 DATA['setupbmc'] = 0
-#             CREATE = True
-
-#         if 'bmcsetup' in DATA:
-#             BMCNAME = DATA['bmcsetup']
-#             del DATA['bmcsetup']
-#             DATA['bmcsetupid'] = Database().getid_byname('bmcsetup', BMCNAME)
-#         if 'group' in DATA:
-#             GRPNAME = DATA['group']
-#             del DATA['group']
-#             DATA['groupid'] = Database().getid_byname('group', GRPNAME)
-#         if 'osimage' in DATA:
-#             OSNAME = DATA['osimage']
-#             del DATA['osimage']
-#             DATA['osimageid'] = Database().getid_byname('osimage', OSNAME)
-#         if 'switch' in DATA:
-#             SWITCHNAME = DATA['switch']
-#             del DATA['switch']
-#             DATA['switchid'] = Database().getid_byname('switch', SWITCHNAME)
-
-#         if 'interfaces' in DATA:
-#             NEWINTERFACE = DATA['interfaces']
-#             del DATA['interfaces']
-        
-#         NODECOLUMNS = Database().get_columns('node')
-#         COLUMNCHECK = Helper().checkin_list(DATA, NODECOLUMNS)
-#         if COLUMNCHECK:
-#             if UPDATE:
-#                 where = [{"column": "id", "value": NODEID}]
-#                 row = Helper().make_rows(DATA)
-#                 UPDATEID = Database().update('node', row, where)
-#                 RESPONSE = {'message': f'Node {name} Updated Successfully.'}
-#                 ACCESSCODE = 204
-#             if CREATE:
-#                 DATA['name'] = name
-#                 row = Helper().make_rows(DATA)
-#                 NODEID = Database().insert('node', row)
-#                 RESPONSE = {'message': f'Node {name} Created Successfully.'}
-#                 ACCESSCODE = 201
-#             if NEWINTERFACE:
-#                 for INTERFACE in NEWINTERFACE:
-#                     NWK = Database().getid_byname('network', INTERFACE['network'])
-#                     if NWK == None:
-#                         RESPONSE = {'message': f'Bad Request; Network {NWK} Not Exist.'}
-#                         ACCESSCODE = 400
-#                         return json.dumps(RESPONSE), ACCESSCODE
-#                     else:
-#                         INTERFACE['networkid'] = NWK
-#                         INTERFACE['nodeid'] = NODEID
-#                         del INTERFACE['network']
-#                     IFNAME = INTERFACE['interface']
-#                     where = f' WHERE nodeid = "{NODEID}" AND networkid = "{NWK}" AND interface = "{IFNAME}"'
-#                     CHECKINTERFACE = Database().get_record(None, 'nodeinterface', where)
-#                     if not CHECKINTERFACE:
-#                         row = Helper().make_rows(INTERFACE)
-#                         result = Database().insert('nodeinterface', row)
-#                         logger.info("Interface Created => {} .".format(result))
-
-#         else:
-#             RESPONSE = {'message': 'Bad Request; Columns are Incorrect.'}
-#             ACCESSCODE = 400
-#     else:
-#         RESPONSE = {'message': 'Bad Request; Did not received Data.'}
-#         ACCESSCODE = 400
-#     return json.dumps(RESPONSE), ACCESSCODE
+        if CREATE == True and UPDATE == True:
+            RESPONSE = {'message': f'Node {name} Secrets Created & Updated Successfully.'}
+            ACCESSCODE = 201
+        elif CREATE == True and UPDATE == False:
+            RESPONSE = {'message': f'Node {name} Secret Created Successfully.'}
+            ACCESSCODE = 201
+        elif CREATE == False and UPDATE == True:
+            RESPONSE = {'message': f'Node {name} Secret Updated Successfully.'}
+            ACCESSCODE = 201
+    else:
+        RESPONSE = {'message': 'Bad Request; Did not received Data.'}
+        ACCESSCODE = 400
+    return json.dumps(RESPONSE), ACCESSCODE
 
 
 # @config_blueprint.route("/config/node/<string:name>/_delete", methods=['GET'])

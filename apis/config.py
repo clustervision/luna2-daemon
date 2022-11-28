@@ -2508,33 +2508,33 @@ def config_post_secrets_group(name=None):
     return json.dumps(RESPONSE), ACCESSCODE
 
 
-# @config_blueprint.route("/config/secrets/node/<string:name>/<string:secret>", methods=['GET'])
-# @token_required
-# def config_get_node_secret(name=None, secret=None):
-#     """
-#     Input - Node Name & Secret Name
-#     Output - Return the Node Secret
-#     """
-#     NODE = Database().get_record(None, 'node', f' WHERE name = "{name}"')
-#     if NODE:
-#         NODEID  = NODE[0]['id']
-#         SECRET = Database().get_record(None, 'nodesecrets', f' WHERE nodeid = "{NODEID}" AND name = "{secret}"')
-#         if SECRET:
-#             RESPONSE = {'config': {'secrets': {'node': {name: [] } } } }
-#             ACCESSCODE = 200
-#             del SECRET[0]['nodeid']
-#             del SECRET[0]['id']
-#             SECRET[0]['content'] = Helper().decrypt_string(SECRET[0]['content'])
-#             RESPONSE['config']['secrets']['node'][name] = SECRET
-#         else:
-#             logger.error(f'Secret {secret} is Unavaiable for Node {name}.')
-#             RESPONSE = {'message': f'Secret {secret} is Unavaiable for Node {name}.'}
-#             ACCESSCODE = 404
-#     else:
-#         logger.error(f'Node {name} is not Avaiable.')
-#         RESPONSE = {'message': f'Node {name} is not Avaiable.'}
-#         ACCESSCODE = 404
-#     return json.dumps(RESPONSE), ACCESSCODE
+@config_blueprint.route("/config/secrets/group/<string:name>/<string:secret>", methods=['GET'])
+@token_required
+def config_get_group_secret(name=None, secret=None):
+    """
+    Input - Group Name & Secret Name
+    Output - Return the Group Secret
+    """
+    GROUP = Database().get_record(None, 'group', f' WHERE name = "{name}"')
+    if GROUP:
+        GROUPID  = GROUP[0]['id']
+        SECRET = Database().get_record(None, 'groupsecrets', f' WHERE groupid = "{GROUPID}" AND name = "{secret}"')
+        if SECRET:
+            RESPONSE = {'config': {'secrets': {'group': {name: [] } } } }
+            ACCESSCODE = 200
+            del SECRET[0]['groupid']
+            del SECRET[0]['id']
+            SECRET[0]['content'] = Helper().decrypt_string(SECRET[0]['content'])
+            RESPONSE['config']['secrets']['group'][name] = SECRET
+        else:
+            logger.error(f'Secret {secret} is Unavaiable for Group {name}.')
+            RESPONSE = {'message': f'Secret {secret} is Unavaiable for Group {name}.'}
+            ACCESSCODE = 404
+    else:
+        logger.error(f'Group {name} is not Avaiable.')
+        RESPONSE = {'message': f'Group {name} is not Avaiable.'}
+        ACCESSCODE = 404
+    return json.dumps(RESPONSE), ACCESSCODE
 
 
 # @config_blueprint.route("/config/secrets/node/<string:name>/<string:secret>", methods=['POST'])

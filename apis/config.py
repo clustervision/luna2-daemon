@@ -2537,57 +2537,57 @@ def config_get_group_secret(name=None, secret=None):
     return json.dumps(RESPONSE), ACCESSCODE
 
 
-# @config_blueprint.route("/config/secrets/node/<string:name>/<string:secret>", methods=['POST'])
-# @token_required
-# def config_post_node_secret(name=None, secret=None):
-#     """
-#     Input - Node Name & Payload
-#     Process - Create Or Update Node Secrets.
-#     Output - None.
-#     """
-#     DATA = {}
-#     REQUESTCHECK = Helper().check_json(request.data)
-#     if REQUESTCHECK:
-#         REQUEST = request.get_json(force=True)
-#     else:
-#         RESPONSE = {'message': 'Bad Request.'}
-#         ACCESSCODE = 400
-#         return json.dumps(RESPONSE), ACCESSCODE
-#     if REQUEST:
-#         DATA = REQUEST['config']['secrets']['node'][name]
-#         NODE = Database().get_record(None, 'node', f' WHERE name = "{name}"')
-#         if NODE:
-#             NODEID = NODE[0]['id']
-#             if DATA:
-#                 SECRETNAME = DATA[0]['name']
-#                 SECRETDATA = Database().get_record(None, 'nodesecrets', f' WHERE nodeid = "{NODEID}" AND name = "{SECRETNAME}";')
-#                 if SECRETDATA:
-#                     NODESECRETSCOLUMNS = Database().get_columns('nodesecrets')
-#                     COLUMNCHECK = Helper().checkin_list(DATA[0], NODESECRETSCOLUMNS)
-#                     if COLUMNCHECK:
-#                         SECRETID = SECRETDATA[0]['id']
-#                         DATA[0]['content'] = Helper().encrypt_string(DATA[0]['content'])
-#                         where = [{"column": "id", "value": SECRETID}, {"column": "nodeid", "value": NODEID}, {"column": "name", "value": SECRETNAME}]
-#                         row = Helper().make_rows(DATA[0])
-#                         Database().update('nodesecrets', row, where)
-#                         RESPONSE = {'message': f'Node {name} Secret {secret} Updated Successfully.'}
-#                         ACCESSCODE = 204
-#                 else:
-#                     logger.error(f'Node {name}, Secret {secret} is Unavaiable.')
-#                     RESPONSE = {'message': f'Node {name}, Secret {secret} is Unavaiable.'}
-#                     ACCESSCODE = 404
-#             else:
-#                 logger.error('Kindly provide at least one secret.')
-#                 RESPONSE = {'message': 'Kindly provide at least one secret.'}
-#                 ACCESSCODE = 404
-#         else:
-#             logger.error(f'Node {name} is not Avaiable.')
-#             RESPONSE = {'message': f'Node {name} is not Avaiable.'}
-#             ACCESSCODE = 404
-#     else:
-#         RESPONSE = {'message': 'Bad Request; Did not received Data.'}
-#         ACCESSCODE = 400
-#     return json.dumps(RESPONSE), ACCESSCODE
+@config_blueprint.route("/config/secrets/group/<string:name>/<string:secret>", methods=['POST'])
+@token_required
+def config_post_group_secret(name=None, secret=None):
+    """
+    Input - Group Name & Payload
+    Process - Create Or Update Group Secrets.
+    Output - None.
+    """
+    DATA = {}
+    REQUESTCHECK = Helper().check_json(request.data)
+    if REQUESTCHECK:
+        REQUEST = request.get_json(force=True)
+    else:
+        RESPONSE = {'message': 'Bad Request.'}
+        ACCESSCODE = 400
+        return json.dumps(RESPONSE), ACCESSCODE
+    if REQUEST:
+        DATA = REQUEST['config']['secrets']['group'][name]
+        GROUP = Database().get_record(None, 'group', f' WHERE name = "{name}"')
+        if GROUP:
+            GROUPID = GROUP[0]['id']
+            if DATA:
+                SECRETNAME = DATA[0]['name']
+                SECRETDATA = Database().get_record(None, 'groupsecrets', f' WHERE groupid = "{GROUPID}" AND name = "{SECRETNAME}";')
+                if SECRETDATA:
+                    GRPSECRETSCOLUMNS = Database().get_columns('groupsecrets')
+                    COLUMNCHECK = Helper().checkin_list(DATA[0], GRPSECRETSCOLUMNS)
+                    if COLUMNCHECK:
+                        SECRETID = SECRETDATA[0]['id']
+                        DATA[0]['content'] = Helper().encrypt_string(DATA[0]['content'])
+                        where = [{"column": "id", "value": SECRETID}, {"column": "groupid", "value": GROUPID}, {"column": "name", "value": SECRETNAME}]
+                        row = Helper().make_rows(DATA[0])
+                        Database().update('groupsecrets', row, where)
+                        RESPONSE = {'message': f'Group {name} Secret {secret} Updated Successfully.'}
+                        ACCESSCODE = 204
+                else:
+                    logger.error(f'Group {name}, Secret {secret} is Unavaiable.')
+                    RESPONSE = {'message': f'Group {name}, Secret {secret} is Unavaiable.'}
+                    ACCESSCODE = 404
+            else:
+                logger.error('Kindly provide at least one secret.')
+                RESPONSE = {'message': 'Kindly provide at least one secret.'}
+                ACCESSCODE = 404
+        else:
+            logger.error(f'Group {name} is not Avaiable.')
+            RESPONSE = {'message': f'Group {name} is not Avaiable.'}
+            ACCESSCODE = 404
+    else:
+        RESPONSE = {'message': 'Bad Request; Did not received Data.'}
+        ACCESSCODE = 400
+    return json.dumps(RESPONSE), ACCESSCODE
 
 
 # @config_blueprint.route("/config/secrets/node/<string:name>/<string:secret>/_clone", methods=['POST'])

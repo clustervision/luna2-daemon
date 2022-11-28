@@ -21,6 +21,8 @@ import json
 import ipaddress
 from utils.database import *
 from netaddr import IPNetwork
+from cryptography.fernet import Fernet
+from common.constant import LUNAKEY
 
 class Helper(object):
 
@@ -268,3 +270,26 @@ class Helper(object):
         else:
             variable = None
         return variable
+
+    def encrypt_string(self, string=None):
+        """
+        Input - string 
+        Output - Encrypt String
+        """
+        KEY = bytes(LUNAKEY, 'utf-8')
+        FERNETOBJ = Fernet(KEY)
+        RESPONSE = FERNETOBJ.encrypt(string.encode()).decode()
+        return RESPONSE
+
+
+    def decrypt_string(self, string=None):
+        """
+        Input - string 
+        Output - Decrypt Encoded String
+        """
+        print(LUNAKEY)
+        print(string)
+        KEY = bytes(LUNAKEY, 'utf-8')
+        FERNETOBJ = Fernet(KEY)
+        RESPONSE = FERNETOBJ.decrypt(string).decode()
+        return RESPONSE

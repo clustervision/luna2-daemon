@@ -38,6 +38,7 @@ SECRET_KEY = '004f2af45d3a4e161a7dd2d17fdae47f'
 configParser = RawConfigParser()
 
 ConfigFile = '/trinity/local/luna/config/luna.ini'
+KEYFILE = '/trinity/local/etc/ssl/luna.key'
 
 """
 Input - Filename
@@ -98,6 +99,18 @@ if file_check:
 else:
 	sys.exit(0)
 
+
+global LUNAKEY
+KEYFILECHECK = checkfile(KEYFILE)
+if KEYFILECHECK:
+    try:
+        file = open(KEYFILE, 'r')
+        LUNAKEY = file.read()
+        LUNAKEY = LUNAKEY.replace('\n', '')
+    except Exception as e:
+        print('File {} is Not Readable.'.format(KEYFILE))
+        LUNAKEY = None
+        
 
 """
 Input - Directory

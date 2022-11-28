@@ -1022,42 +1022,47 @@ def config_osimage_pack(name=None):
     return json.dumps(response), code
 
 
-
-@config_blueprint.route("/config/osimage/<string:name>/kernel", methods=['GET'])
-@token_required
-def config_osimage_kernel(name=None):
-    """
-    Input - OS Image ID or Name
-    Process - Change Kernel Version Of the OS Image.
-    Output - Success or Failure.
-    """
-    logger.info("OS Image {} kernel version Changed Successfully.".format(name))
-    response = {"message": "OS Image {} kernel version Changed Successfully.".format(name)}
-    code = 200
-    return json.dumps(response), code
-
-
-"""
-Input - OS Image ID or Name
-Process - Manually change kernel version.
-Output - Kernel Version.
-"""
 @config_blueprint.route("/config/osimage/<string:name>/kernel", methods=['POST'])
 @token_required
 def config_osimage_kernel_post(name=None):
-    kernel = True
-    if kernel:
-        logger.info("OSImage {} Kernel Changed to: {}".format(name, str(kernel)))
-        response = {"message": "OSImage {} Kernel Changed to: {}".format(name, str(kernel))}
-        code = 200
+    """
+    Input - OS Image Name
+    Process - Manually change kernel version.
+    Output - Kernel Version.
+    """
+    DATA = {}
+    REQUESTCHECK = Helper().check_json(request.data)
+    if REQUESTCHECK:
+        REQUEST = request.get_json(force=True)
     else:
-        logger.error("OS Image Is Not Exist.")
-        response = {"message": "OS Image Is Not Exist."}
-        code = 404
-    return json.dumps(response), code
-
-
-
+        RESPONSE = {'message': 'Bad Request.'}
+        ACCESSCODE = 400
+        return json.dumps(RESPONSE), ACCESSCODE
+    if REQUEST:
+        DATA = REQUEST['config']['osimage'][name]
+        IMAGE = Database().get_record(None, 'osimage', f' WHERE name = "{name}"')
+        if IMAGE:
+            IMAGEID = IMAGE[0]['id']
+            OSIMAGECOLUMNS = Database().get_columns('osimage')
+            COLUMNCHECK = Helper().checkin_list(DATA, OSIMAGECOLUMNS)
+            if COLUMNCHECK:
+                where = [{"column": "id", "value": IMAGEID}]
+                row = Helper().make_rows(DATA)
+                result = Database().update('osimage', row, where)
+                print(result)
+                RESPONSE = {'message': f'OS Image {name} Kernel Updated Successfully.'}
+                ACCESSCODE = 204
+            else:
+                RESPONSE = {'message': 'Bad Request; Columns are Incorrect.'}
+                ACCESSCODE = 400
+        else:
+            RESPONSE = {'message': f'OS Image {name} Dose Not Exist.'}
+            ACCESSCODE = 400
+            return json.dumps(RESPONSE), ACCESSCODE
+    else:
+        RESPONSE = {'message': 'Bad Request; Did not received Data.'}
+        ACCESSCODE = 400
+    return json.dumps(RESPONSE), ACCESSCODE
 ######################################################## Cluster Configuration #############################################################
 
 

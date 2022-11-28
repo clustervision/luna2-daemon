@@ -2386,173 +2386,27 @@ def config_clone_node_secret(name=None, secret=None):
     return json.dumps(RESPONSE), ACCESSCODE
 
 
-# @config_blueprint.route("/config/node/<string:name>/_delete", methods=['GET'])
-# @token_required
-# def config_node_delete(name=None):
-#     """
-#     Input - Node Name
-#     Process - Delete the Node and it's interfaces.
-#     Output - Success or Failure.
-#     """
-#     NODE = Database().get_record(None, 'node', f' WHERE `name` = "{name}";')
-#     if NODE:
-#         Database().delete_row('node', [{"column": "name", "value": name}])
-#         Database().delete_row('nodeinterface', [{"column": "nodeid", "value": NODE[0]['id']}])
-#         Database().delete_row('nodesecrets', [{"column": "nodeid", "value": NODE[0]['id']}])
-#         RESPONSE = {'message': f'Node {name} with all its interfaces Removed Successfully.'}
-#         ACCESSCODE = 204
-#     else:
-#         RESPONSE = {'message': f'Node {name} Not Present in Database.'}
-#         ACCESSCODE = 404
-#     return json.dumps(RESPONSE), ACCESSCODE
-
-
-# @config_blueprint.route("/config/node/<string:name>/interfaces", methods=['GET'])
-# @token_required
-# def config_node_get_interfaces(name=None):
-#     """
-#     Input - Node Name
-#     Process - Fetch the Node Interface List.
-#     Output - Node Interface List.
-#     """
-#     NODE = Database().get_record(None, 'node', f' WHERE name = "{name}"')
-#     if NODE:
-#         RESPONSE = {'config': {'node': {name: {'interfaces': [] } } } }
-#         NODEID = NODE[0]['id']
-#         NODEINTERFACE = Database().get_record(None, 'nodeinterface', f' WHERE nodeid = "{NODEID}"')
-#         if NODEINTERFACE:
-#             NODEIFC = []
-#             for INTERFACE in NODEINTERFACE:
-#                 INTERFACE['network'] = Database().getname_byid('network', INTERFACE['networkid'])
-#                 del INTERFACE['nodeid']
-#                 del INTERFACE['id']
-#                 del INTERFACE['networkid']
-#                 NODEIFC.append(INTERFACE)
-#             RESPONSE['config']['node'][name]['interfaces'] = NODEIFC
-#             logger.info(f'Returned Group {name} with Details.')
-#             ACCESSCODE = 200
-#         else:
-#             logger.error(f'Node {name} dont have any Interface.')
-#             RESPONSE = {'message': f'Node {name} dont have any Interface.'}
-#             ACCESSCODE = 404
-#     else:
-#         logger.error('No Node is Avaiable.')
-#         RESPONSE = {'message': 'No Node is Avaiable.'}
-#         ACCESSCODE = 404
-#     return json.dumps(RESPONSE), ACCESSCODE
-
-
-# @config_blueprint.route("/config/node/<string:name>/interfaces", methods=['POST'])
-# @token_required
-# def config_node_post_interfaces(name=None):
-#     """
-#     Input - Node Name
-#     Process - Create Or Update The Node Interface.
-#     Output - Node Interface.
-#     """
-#     DATA = {}
-#     CREATE, UPDATE = False, False
-
-#     REQUESTCHECK = Helper().check_json(request.data)
-#     if REQUESTCHECK:
-#         REQUEST = request.get_json(force=True)
-#     else:
-#         RESPONSE = {'message': 'Bad Request.'}
-#         ACCESSCODE = 400
-#         return json.dumps(RESPONSE), ACCESSCODE
-#     if REQUEST:
-#         NODE = Database().get_record(None, 'node', f' WHERE name = "{name}"')
-#         if NODE:
-#             NODEID = NODE[0]['id']
-#             if 'interfaces' in REQUEST['config']['node'][name]:
-#                 for INTERFACE in REQUEST['config']['node'][name]['interfaces']:
-#                     NWK = Database().getid_byname('network', INTERFACE['network'])
-#                     if NWK == None:
-#                         RESPONSE = {'message': f'Bad Request; Network {NWK} Not Exist.'}
-#                         ACCESSCODE = 400
-#                         return json.dumps(RESPONSE), ACCESSCODE
-#                     else:
-#                         INTERFACE['networkid'] = NWK
-#                         INTERFACE['nodeid'] = NODEID
-#                         del INTERFACE['network']
-#                     IFNAME = INTERFACE['interface']
-#                     where = f' WHERE nodeid = "{NODEID}" AND networkid = "{NWK}" AND interface = "{IFNAME}"'
-#                     CHECKINTERFACE = Database().get_record(None, 'nodeinterface', where)
-#                     if not CHECKINTERFACE:
-#                         row = Helper().make_rows(INTERFACE)
-#                         result = Database().insert('nodeinterface', row)
-#                     RESPONSE = {'message': 'Interface Updated.'}
-#                     ACCESSCODE = 204
-#             else:
-#                 logger.error('Kindly Provide the interface.')
-#                 RESPONSE = {'message': 'Kindly Provide the interface.'}
-#                 ACCESSCODE = 404
-#         else:
-#             logger.error(f'Node {name} is Not Avaiable.')
-#             RESPONSE = {'message': f'Node {name} is Not Avaiable.'}
-#             ACCESSCODE = 404
-#     else:
-#         RESPONSE = {'message': 'Bad Request; Did not received Data.'}
-#         ACCESSCODE = 400
-#     return json.dumps(RESPONSE), ACCESSCODE
-
-
-# @config_blueprint.route("/config/node/<string:name>/interfaces/<string:interface>", methods=['GET'])
-# @token_required
-# def config_node_interface_get(name=None, interface=None):
-#     """
-#     Input - Node Name & Interface Name
-#     Process - Get the Node Interface.
-#     Output - Success or Failure.
-#     """
-#     NODE = Database().get_record(None, 'node', f' WHERE name = "{name}"')
-#     if NODE:
-#         RESPONSE = {'config': {'node': {name: {'interfaces': [] } } } }
-#         NODEID = NODE[0]['id']
-#         NODEINTERFACE = Database().get_record(None, 'nodeinterface', f' WHERE nodeid = "{NODEID}" AND interface = "{interface}"')
-#         if NODEINTERFACE:
-#             NODEIFC = []
-#             for INTERFACE in NODEINTERFACE:
-#                 INTERFACE['network'] = Database().getname_byid('network', INTERFACE['networkid'])
-#                 del INTERFACE['nodeid']
-#                 del INTERFACE['id']
-#                 del INTERFACE['networkid']
-#                 NODEIFC.append(INTERFACE)
-#             RESPONSE['config']['node'][name]['interfaces'] = NODEIFC
-#             logger.info(f'Returned Group {name} with Details.')
-#             ACCESSCODE = 200
-#         else:
-#             logger.error(f'Node {name} dont have {interface} Interface.')
-#             RESPONSE = {'message': f'Node {name} dont have {interface} Interface.'}
-#             ACCESSCODE = 404
-#     else:
-#         logger.error('No Node is Avaiable.')
-#         RESPONSE = {'message': 'No Node is Avaiable.'}
-#         ACCESSCODE = 404
-#     return json.dumps(RESPONSE), ACCESSCODE
-
-
-
-# @config_blueprint.route("/config/node/<string:name>/interfaces/<string:interface>/_delete", methods=['GET'])
-# @token_required
-# def config_node_delete_interface(name=None, interface=None):
-#     """
-#     Input - Node Name & Interface Name
-#     Process - Delete the Node Interface.
-#     Output - Success or Failure.
-#     """
-#     NODE = Database().get_record(None, 'node', f' WHERE `name` = "{name}";')
-#     if NODE:
-#         NODEID = NODE[0]['id']
-#         NODEINTERFACE = Database().get_record(None, 'nodeinterface', f' WHERE `interface` = "{interface}" AND `nodeid` = "{NODEID}";')
-#         if NODEINTERFACE:
-#             Database().delete_row('nodeinterface', [{"column": "id", "value": NODEINTERFACE[0]['id']}])
-#             RESPONSE = {'message': f'Node {name} interface {interface} Removed Successfully.'}
-#             ACCESSCODE = 204
-#         else:
-#             RESPONSE = {'message': f'Node {name} interface {interface} Not Present in Database.'}
-#             ACCESSCODE = 404
-#     else:
-#         RESPONSE = {'message': f'Node {name} Not Present in Database.'}
-#         ACCESSCODE = 404
-#     return json.dumps(RESPONSE), ACCESSCODE
+@config_blueprint.route("/config/secrets/node/<string:name>/<string:secret>/_delete", methods=['GET'])
+@token_required
+def config_node_secret_delete(name=None, secret=None):
+    """
+    Input - Node Name & Secret Name
+    Output - Success or Failure
+    """
+    NODE = Database().get_record(None, 'node', f' WHERE name = "{name}"')
+    if NODE:
+        NODEID  = NODE[0]['id']
+        SECRET = Database().get_record(None, 'nodesecrets', f' WHERE nodeid = "{NODEID}" AND name = "{secret}"')
+        if SECRET:
+            Database().delete_row('nodesecrets', [{"column": "nodeid", "value": NODEID}, {"column": "name", "value": secret}])
+            RESPONSE = {'message': f'Secret {secret} Deleted From Node {name}.'}
+            ACCESSCODE = 204
+        else:
+            logger.error(f'Secret {secret} is Unavaiable for Node {name}.')
+            RESPONSE = {'message': f'Secret {secret} is Unavaiable for Node {name}.'}
+            ACCESSCODE = 404
+    else:
+        logger.error(f'Node {name} is not Avaiable.')
+        RESPONSE = {'message': f'Node {name} is not Avaiable.'}
+        ACCESSCODE = 404
+    return json.dumps(RESPONSE), ACCESSCODE

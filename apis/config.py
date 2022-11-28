@@ -2086,7 +2086,7 @@ def config_network_nextip(name=None):
 
 
 @config_blueprint.route("/config/secrets", methods=['GET'])
-# @token_required
+@token_required
 def config_secrets_get():
     """
     Input - None
@@ -2124,56 +2124,51 @@ def config_secrets_get():
     return json.dumps(RESPONSE), ACCESSCODE
 
 
-# @config_blueprint.route("/config/node/<string:name>", methods=['GET'])
-# @token_required
-# def config_node_get(name=None):
-#     """
-#     Input - None
-#     Output - Return the Node Information.
-#     """
-#     NODE = Database().get_record(None, 'node', f' WHERE name = "{name}"')
-#     if NODE:
-#         RESPONSE = {'config': {'node': {} }}
-#         NODE = NODE[0]
-#         NODENAME = NODE['name']
-#         NODEID = NODE['id']
-#         if NODE['bmcsetupid']:
-#             NODE['bmcsetup'] = Database().getname_byid('bmcsetup', NODE['bmcsetupid'])
-#         if NODE['groupid']:
-#             NODE['group'] = Database().getname_byid('group', NODE['groupid'])
-#         if NODE['osimageid']:
-#             NODE['osimage'] = Database().getname_byid('osimage', NODE['osimageid'])
-#         if NODE['switchid']:
-#             NODE['switch'] = Database().getname_byid('switch', NODE['switchid'])
-#         del NODE['name']
-#         del NODE['id']
-#         del NODE['bmcsetupid']
-#         del NODE['groupid']
-#         del NODE['osimageid']
-#         del NODE['switchid']
-#         NODE['bootmenu'] = Helper().bool_revert(NODE['bootmenu'])
-#         NODE['localboot'] = Helper().bool_revert(NODE['localboot'])
-#         NODE['localinstall'] = Helper().bool_revert(NODE['localinstall'])
-#         NODE['netboot'] = Helper().bool_revert(NODE['netboot'])
-#         NODE['service'] = Helper().bool_revert(NODE['service'])
-#         NODE['setupbmc'] = Helper().bool_revert(NODE['setupbmc'])
-#         NODEINTERFACE = Database().get_record(None, 'nodeinterface', f' WHERE nodeid = "{NODEID}"')
-#         if NODEINTERFACE:
-#             NODE['interfaces'] = []
-#             for INTERFACE in NODEINTERFACE:
-#                 INTERFACE['network'] = Database().getname_byid('network', INTERFACE['networkid'])
-#                 del INTERFACE['nodeid']
-#                 del INTERFACE['id']
-#                 del INTERFACE['networkid']
-#                 NODE['interfaces'].append(INTERFACE)
-#         RESPONSE['config']['node'][NODENAME] = NODE
-#         logger.info('Provided List Of All Nodes.')
-#         ACCESSCODE = 200
-#     else:
-#         logger.error(f'Node {name} is not Avaiable.')
-#         RESPONSE = {'message': f'Node {name} is not Avaiable.'}
-#         ACCESSCODE = 404
-#     return json.dumps(RESPONSE), ACCESSCODE
+@config_blueprint.route("/config/secrets/node/<string:name>", methods=['GET'])
+@token_required
+def config_get_secrets_node(name=None):
+    """
+    Input - Node Name
+    Output - Return the Node Secrets.
+    """
+    NODE = Database().get_record(None, 'node', f' WHERE name = "{name}"')
+    if NODE:
+        NODEID  = NODE[0]['id']
+        GROUPID  = NODE[0]['groupid']
+        NODESECRETS = Database().get_record(None, 'nodesecrets', f' WHERE nodeid = "{NODEID}"')
+        GROUPSECRETS = Database().get_record(None, 'groupsecrets', f' WHERE groupid = "{GROUPID}"')
+        if NODESECRETS or GROUPSECRETS:
+            RESPONSE = {'config': {'secrets': {} }}
+            ACCESSCODE = 200
+        else:
+            logger.error('Secrets are not Avaiable.')
+            RESPONSE = {'message': 'Secrets are not Avaiable.'}
+            ACCESSCODE = 404
+        if NODESECRETS:
+            RESPONSE['config']['secrets']['node'] = {}
+            for NODE in NODESECRETS:
+                NODENAME = Database().getname_byid('node', NODE['nodeid'])
+                if NODENAME not in RESPONSE['config']['secrets']['node']:
+                    RESPONSE['config']['secrets']['node'][NODENAME] = []
+                del NODE['nodeid']
+                del NODE['id']
+                NODE['content'] = Helper().decrypt_string(NODE['content'])
+                RESPONSE['config']['secrets']['node'][NODENAME].append(NODE)
+        if GROUPSECRETS:
+            RESPONSE['config']['secrets']['group'] = {}
+            for GROUP in GROUPSECRETS:
+                GROUPNAME = Database().getname_byid('group', GROUP['groupid'])
+                if GROUPNAME not in RESPONSE['config']['secrets']['group']:
+                    RESPONSE['config']['secrets']['group'][GROUPNAME] = []
+                del GROUP['groupid']
+                del GROUP['id']
+                GROUP['content'] = Helper().decrypt_string(GROUP['content'])
+                RESPONSE['config']['secrets']['group'][GROUPNAME].append(GROUP)
+    else:
+        logger.error(f'Node {name} is not Avaiable.')
+        RESPONSE = {'message': f'Node {name} is not Avaiable.'}
+        ACCESSCODE = 404
+    return json.dumps(RESPONSE), ACCESSCODE
 
 
 # @config_blueprint.route("/config/node/<string:name>", methods=['POST'])

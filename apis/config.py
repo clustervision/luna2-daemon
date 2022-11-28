@@ -2657,27 +2657,27 @@ def config_clone_group_secret(name=None, secret=None):
     return json.dumps(RESPONSE), ACCESSCODE
 
 
-# @config_blueprint.route("/config/secrets/node/<string:name>/<string:secret>/_delete", methods=['GET'])
-# @token_required
-# def config_node_secret_delete(name=None, secret=None):
-#     """
-#     Input - Node Name & Secret Name
-#     Output - Success or Failure
-#     """
-#     NODE = Database().get_record(None, 'node', f' WHERE name = "{name}"')
-#     if NODE:
-#         NODEID  = NODE[0]['id']
-#         SECRET = Database().get_record(None, 'nodesecrets', f' WHERE nodeid = "{NODEID}" AND name = "{secret}"')
-#         if SECRET:
-#             Database().delete_row('nodesecrets', [{"column": "nodeid", "value": NODEID}, {"column": "name", "value": secret}])
-#             RESPONSE = {'message': f'Secret {secret} Deleted From Node {name}.'}
-#             ACCESSCODE = 204
-#         else:
-#             logger.error(f'Secret {secret} is Unavaiable for Node {name}.')
-#             RESPONSE = {'message': f'Secret {secret} is Unavaiable for Node {name}.'}
-#             ACCESSCODE = 404
-#     else:
-#         logger.error(f'Node {name} is not Avaiable.')
-#         RESPONSE = {'message': f'Node {name} is not Avaiable.'}
-#         ACCESSCODE = 404
-#     return json.dumps(RESPONSE), ACCESSCODE
+@config_blueprint.route("/config/secrets/group/<string:name>/<string:secret>/_delete", methods=['GET'])
+@token_required
+def config_group_secret_delete(name=None, secret=None):
+    """
+    Input - Group Name & Secret Name
+    Output - Success or Failure
+    """
+    GROUP = Database().get_record(None, 'group', f' WHERE name = "{name}"')
+    if GROUP:
+        GROUPID  = GROUP[0]['id']
+        SECRET = Database().get_record(None, 'groupsecrets', f' WHERE groupid = "{GROUPID}" AND name = "{secret}"')
+        if SECRET:
+            Database().delete_row('groupsecrets', [{"column": "groupid", "value": GROUPID}, {"column": "name", "value": secret}])
+            RESPONSE = {'message': f'Secret {secret} Deleted From Group {name}.'}
+            ACCESSCODE = 204
+        else:
+            logger.error(f'Secret {secret} is Unavaiable for Group {name}.')
+            RESPONSE = {'message': f'Secret {secret} is Unavaiable for Group {name}.'}
+            ACCESSCODE = 404
+    else:
+        logger.error(f'Group {name} is not Avaiable.')
+        RESPONSE = {'message': f'Group {name} is not Avaiable.'}
+        ACCESSCODE = 404
+    return json.dumps(RESPONSE), ACCESSCODE

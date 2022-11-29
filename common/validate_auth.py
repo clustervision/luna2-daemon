@@ -1,4 +1,10 @@
 #!/usr/bin/env python3
+"""
+This File is a wrapper for the TOKEN verification.
+Correct Token Should be supplied to access any Luna POST API.
+If Get API Has the Token, it will get the access to fetch more data.
+
+"""
 
 __author__      = "Sumit Sharma"
 __copyright__   = "Copyright 2022, Luna2 Project"
@@ -8,12 +14,6 @@ __maintainer__  = "Sumit Sharma"
 __email__       = "sumit.sharma@clustervision.com"
 __status__      = "Development"
 
-"""
-This File is a wrapper for the TOKEN verification.
-Correct Token Should be supplied to access any Luna POST API.
-If Get API Has the Token, it will get the access to fetch more data.
-
-"""
 import os
 from functools import wraps
 from flask import request, json, abort

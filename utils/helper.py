@@ -1,4 +1,8 @@
 #!/usr/bin/env python3
+"""
+This Is a Helper Class, which help the project to provide the common Methods.
+
+"""
 
 __author__      = 'Sumit Sharma'
 __copyright__   = 'Copyright 2022, Luna2 Project'
@@ -8,10 +12,6 @@ __maintainer__  = 'Sumit Sharma'
 __email__       = 'sumit.sharma@clustervision.com'
 __status__      = 'Development'
 
-"""
-This Is a Helper Class, which help the project to provide the common Methods.
-
-"""
 import os
 import sys
 import pwd
@@ -33,7 +33,7 @@ class Helper(object):
         """
         self.logger = Log.get_logger()
 
-    
+
     def runcommand(self, command):
         """
         Input - command, which need to be executed
@@ -57,11 +57,11 @@ class Helper(object):
         sys.exit(-1)
         return False
 
-    
+
     def checkpathstate(self, path=None):
         """
         Input - Directory
-        Output - Directory Existence, Readability and Writable
+        Output - Directory if exists, readable or writable
         """
         pathtype = self.checkpathtype(path)
         if pathtype == 'File' or pathtype == 'Directory':
@@ -69,11 +69,11 @@ class Helper(object):
                 if os.access(path, os.W_OK):
                     return True
                 else:
-                    print(f'{pathtype} {path} Is Writable.')
+                    print(f'{pathtype} {path} is writable.')
             else:
-                print(f'{pathtype} {path} Is Not readable.')
+                print(f'{pathtype} {path} is not readable.')
         else:
-            print(f'{pathtype} {path} Is Not exists.')
+            print(f'{pathtype} {path} is not exists.')
         return False
 
 
@@ -84,14 +84,14 @@ class Helper(object):
         """
         pathstatus = self.checkpath(path)
         if pathstatus:
-            if os.path.isdir(path):  
-                response = 'File'  
-            elif os.path.isfile(path):  
+            if os.path.isdir(path):
+                response = 'File'
+            elif os.path.isfile(path):
                 response = 'Directory'
             else:
-                response = 'socket orFIFO or device'
+                response = 'socket or FIFO or device'
         else:
-            response = 'Not Exists'
+            response = 'Not exists'
         return response
 
 
@@ -134,11 +134,11 @@ class Helper(object):
         except Exception as e:
             return False
         return True
-    
+
 
     def checkin_list(self, list1=None, list2=None):
         """
-        Input - TWO LISTS 
+        Input - TWO LISTS
         Output - True or False For Errors
         """
         CHECK = True
@@ -150,7 +150,7 @@ class Helper(object):
 
     def check_ip(self, ipaddr=None):
         """
-        Add Blcaklist filter;
+        Add blacklist filter;
         https://clustervision.atlassian.net/wiki/spaces/TRIX/pages/52461574/2022-11-11+Development+meeting
         """
         IP = ''
@@ -178,7 +178,7 @@ class Helper(object):
     def get_network_details(self, ipaddr=None):
         """
         Input - IP Address such as 10.141.0.0/16
-        Output - Network and Subnet such as 10.141.0.0 and 255.255.0.0 
+        Output - Network and Subnet such as 10.141.0.0 and 255.255.0.0
         """
         RESPONSE = {}
         try:
@@ -192,7 +192,7 @@ class Helper(object):
 
     def get_subnet(self, ipaddr=None):
         """
-        Input - IP Address 
+        Input - IP Address
         Output - Subnet
         """
         net = ipaddress.ip_network(ipaddr, strict=False)
@@ -220,8 +220,8 @@ class Helper(object):
 
     def check_ip_exist(self, DATA=None):
         """
-        check if IP is valid or not 
-        check if IP address is in database or not True false 
+        check if IP is valid or not
+        check if IP address is in database or not True false
         """
         if 'ipaddress' in DATA:
             CHECKIP = self.check_ip(DATA['ipaddress'])
@@ -244,7 +244,7 @@ class Helper(object):
 
     def make_rows(self, data=None):
         """
-        Input - IP Address 
+        Input - IP Address
         Output - Subnet
         """
         row = []
@@ -255,7 +255,7 @@ class Helper(object):
 
     def bool_revert(self, variable=None):
         """
-        Input - string 
+        Input - string
         Output - Boolean
         """
         if type(variable) == bool:
@@ -274,7 +274,7 @@ class Helper(object):
 
     def encrypt_string(self, string=None):
         """
-        Input - string 
+        Input - string
         Output - Encrypt String
         """
         KEY = bytes(LUNAKEY, 'utf-8')
@@ -285,7 +285,7 @@ class Helper(object):
 
     def decrypt_string(self, string=None):
         """
-        Input - string 
+        Input - string
         Output - Decrypt Encoded String
         """
         KEY = bytes(LUNAKEY, 'utf-8')
@@ -296,7 +296,7 @@ class Helper(object):
 
     def pack(self, image=None):
         """
-        Input - OS Image Name (string) 
+        Input - OS Image Name (string)
         Output - Success/Failure (Boolean)
         """
         def mount(source, target, fs):

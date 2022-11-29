@@ -24,7 +24,7 @@ boot_blueprint = Blueprint('boot', __name__, template_folder='../templates') # ,
 
 """
 Input - None
-Process - Via Jinja2 filled data in template templ_boot_ipxe.cfg 
+Process - Via Jinja2 filled data in template templ_boot_ipxe.cfg
 Output - templ_boot_ipxe.cfg
 """
 @boot_blueprint.route("/boot", methods=['GET'])
@@ -98,7 +98,7 @@ def boot_search_mac(mac=None):
     if CHECKTEMPLATE:
         return render_template(Template, p=data), 200
     else:
-        abort(404, "Empty")      
+        abort(404, "Empty")
 
 
 """
@@ -122,7 +122,7 @@ def boot_manual_hostname(hostname=None):
     if CHECKTEMPLATE:
         return render_template(Template, p=data), 200
     else:
-        abort(404, "Empty") 
+        abort(404, "Empty")
 
 """
 Input - NodeID or Node Name
@@ -131,7 +131,7 @@ Output - Success or Failure
 """
 @boot_blueprint.route("/boot/install/<string:node>", methods=['GET'])
 def boot_install(node=None):
-    ##TODO -> If debug mode enabled not to serve 
+    ##TODO -> If debug mode enabled not to serve
     row = [{"column": "status", "value": "installer.downloaded"}]
     where = [{"column": "name", "value": node}]
     install = Database().update('node', row, where)

@@ -1,4 +1,11 @@
 #!/usr/bin/env python3
+"""
+This file manages the services.
+Mainly two Ssrvices DHCP and DNS, which is mentioned in the .ini file
+@token_required is a wrapper Method to Validate the POST API. It contains arguments and keyword arguments Of The API
+Service Class Have a queue to manage the multiple services.
+
+"""
 
 __author__      = "Sumit Sharma"
 __copyright__   = "Copyright 2022, Luna2 Project"
@@ -8,13 +15,6 @@ __maintainer__  = "Sumit Sharma"
 __email__       = "sumit.sharma@clustervision.com"
 __status__      = "Development"
 
-"""
-This File Manage the Services.
-Mainly Two Services DHCP and DNS, which is mentioned in the .ini file
-@token_required is a Wrapper Method to Validate the POST API. It contains arguments and keyword arguments Of The API
-Service Class Have a Queue to Manage the Multiple Services.
-
-"""
 
 from common.validate_auth import *
 from flask import current_app, Blueprint, request, json
@@ -32,9 +32,11 @@ APIQueue = queue.Queue()
 
 """
 Input - name of service and action need to be perform
-Process - After Validating Token, Check Queue if the same request is enque in last two seconds. If Not Then only execute the action with the Help of Service Class.
+Process - After Validating Token, Check queue if the same request is enque in last two seconds.
+          If not then only execute the action with the help of service Class.
 Output - Success or Failure.
 """
+
 @service_blueprint.route("/service/<string:name>/<string:action>", methods=['POST'])
 @token_required
 def service(name, action):
@@ -52,7 +54,9 @@ def service(name, action):
         logger.info(response)
     return json.dumps(response), code
 
-
+"""
+TODO: Add docs
+"""
 @service_blueprint.route("/service/reload", methods=['GET'])
 def reload():
     check_dir_read = checkdir(TEMPLATES_DIR)

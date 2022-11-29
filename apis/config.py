@@ -28,7 +28,7 @@ logger = Log.get_logger()
 config_blueprint = Blueprint('config', __name__)
 
 
-######################################################## Node Configuration #############################################################
+######################################################## Node configuration #############################################################
 
 
 @config_blueprint.route("/config/node", methods=['GET'])
@@ -77,8 +77,8 @@ def config_node():
         logger.info('Provided List Of All Nodes.')
         ACCESSCODE = 200
     else:
-        logger.error('No Node is Avaiable.')
-        RESPONSE = {'message': 'No Node is Avaiable.'}
+        logger.error('No Node is available.')
+        RESPONSE = {'message': 'No Node is available.'}
         ACCESSCODE = 404
     return json.dumps(RESPONSE), ACCESSCODE
 
@@ -129,8 +129,8 @@ def config_node_get(name=None):
         logger.info('Provided List Of All Nodes.')
         ACCESSCODE = 200
     else:
-        logger.error(f'Node {name} is not Avaiable.')
-        RESPONSE = {'message': f'Node {name} is not Avaiable.'}
+        logger.error(f'Node {name} is not available.')
+        RESPONSE = {'message': f'Node {name} is not available.'}
         ACCESSCODE = 404
     return json.dumps(RESPONSE), ACCESSCODE
 
@@ -232,7 +232,7 @@ def config_node_post(name=None):
         if 'interfaces' in DATA:
             NEWINTERFACE = DATA['interfaces']
             del DATA['interfaces']
-        
+
         NODECOLUMNS = Database().get_columns('node')
         COLUMNCHECK = Helper().checkin_list(DATA, NODECOLUMNS)
         if COLUMNCHECK:
@@ -326,8 +326,8 @@ def config_node_get_interfaces(name=None):
             RESPONSE = {'message': f'Node {name} dont have any Interface.'}
             ACCESSCODE = 404
     else:
-        logger.error('No Node is Avaiable.')
-        RESPONSE = {'message': 'No Node is Avaiable.'}
+        logger.error('No Node is available.')
+        RESPONSE = {'message': 'No Node is available.'}
         ACCESSCODE = 404
     return json.dumps(RESPONSE), ACCESSCODE
 
@@ -378,8 +378,8 @@ def config_node_post_interfaces(name=None):
                 RESPONSE = {'message': 'Kindly Provide the interface.'}
                 ACCESSCODE = 404
         else:
-            logger.error(f'Node {name} is Not Avaiable.')
-            RESPONSE = {'message': f'Node {name} is Not Avaiable.'}
+            logger.error(f'Node {name} is Not available.')
+            RESPONSE = {'message': f'Node {name} is Not available.'}
             ACCESSCODE = 404
     else:
         RESPONSE = {'message': 'Bad Request; Did not received Data.'}
@@ -416,8 +416,8 @@ def config_node_interface_get(name=None, interface=None):
             RESPONSE = {'message': f'Node {name} dont have {interface} Interface.'}
             ACCESSCODE = 404
     else:
-        logger.error('No Node is Avaiable.')
-        RESPONSE = {'message': 'No Node is Avaiable.'}
+        logger.error('No Node is available.')
+        RESPONSE = {'message': 'No Node is available.'}
         ACCESSCODE = 404
     return json.dumps(RESPONSE), ACCESSCODE
 
@@ -447,7 +447,7 @@ def config_node_delete_interface(name=None, interface=None):
         ACCESSCODE = 404
     return json.dumps(RESPONSE), ACCESSCODE
 
-######################################################## Group Configuration #############################################################
+######################################################## Group configuration #############################################################
 
 @config_blueprint.route("/config/group", methods=['GET'])
 @token_required
@@ -487,8 +487,8 @@ def config_group():
         logger.info('Provided List Of All Groups with Details.')
         ACCESSCODE = 200
     else:
-        logger.error('No Group is Avaiable.')
-        RESPONSE = {'message': 'No Group is Avaiable.'}
+        logger.error('No Group is available.')
+        RESPONSE = {'message': 'No Group is available.'}
         ACCESSCODE = 404
     return json.dumps(RESPONSE), ACCESSCODE
 
@@ -531,8 +531,8 @@ def config_group_get(name=None):
         logger.info(f'Returned Group {name} with Details.')
         ACCESSCODE = 200
     else:
-        logger.error('No Group is Avaiable.')
-        RESPONSE = {'message': 'No Group is Avaiable.'}
+        logger.error('No Group is available.')
+        RESPONSE = {'message': 'No Group is available.'}
         ACCESSCODE = 404
     return json.dumps(RESPONSE), ACCESSCODE
 
@@ -621,7 +621,7 @@ def config_group_post(name=None):
         if 'interfaces' in DATA:
             NEWINTERFACE = DATA['interfaces']
             del DATA['interfaces']
-        
+
         GRPCOLUMNS = Database().get_columns('group')
         COLUMNCHECK = Helper().checkin_list(DATA, GRPCOLUMNS)
         if COLUMNCHECK:
@@ -717,8 +717,8 @@ def config_group_get_interfaces(name=None):
         logger.info(f'Returned Group {name} with Details.')
         ACCESSCODE = 200
     else:
-        logger.error('No Group is Avaiable.')
-        RESPONSE = {'message': 'No Group is Avaiable.'}
+        logger.error('No Group is available.')
+        RESPONSE = {'message': 'No Group is available.'}
         ACCESSCODE = 404
     return json.dumps(RESPONSE), ACCESSCODE
 
@@ -769,8 +769,8 @@ def config_group_post_interfaces(name=None):
                 RESPONSE = {'message': 'Kindly Provide the interface.'}
                 ACCESSCODE = 404
         else:
-            logger.error('No Group is Avaiable.')
-            RESPONSE = {'message': 'No Group is Avaiable.'}
+            logger.error('No Group is available.')
+            RESPONSE = {'message': 'No Group is available.'}
             ACCESSCODE = 404
     else:
         RESPONSE = {'message': 'Bad Request; Did not received Data.'}
@@ -802,7 +802,7 @@ def config_group_delete_interface(name=None, interface=None):
         ACCESSCODE = 404
     return json.dumps(RESPONSE), ACCESSCODE
 
-######################################################## Cluster Configuration #############################################################
+######################################################## OSimage configuration #############################################################
 
 @config_blueprint.route("/config/osimage", methods=['GET'])
 def config_osimage():
@@ -822,8 +822,8 @@ def config_osimage():
         logger.info('Provided List Of All OS Images with Details.')
         ACCESSCODE = 200
     else:
-        logger.error('No OS Image is Avaiable.')
-        RESPONSE = {'message': 'No OS Image is Avaiable.'}
+        logger.error('No OS Image is available.')
+        RESPONSE = {'message': 'No OS Image is available.'}
         ACCESSCODE = 404
     return json.dumps(RESPONSE), ACCESSCODE
 
@@ -845,8 +845,8 @@ def config_osimage_get(name=None):
         logger.info(f'Returned OS Image {name} with Details.')
         ACCESSCODE = 200
     else:
-        logger.error('No OS Image is Avaiable.')
-        RESPONSE = {'message': 'No OS Image is Avaiable.'}
+        logger.error('No OS Image is available.')
+        RESPONSE = {'message': 'No OS Image is available.'}
         ACCESSCODE = 404
     return json.dumps(RESPONSE), ACCESSCODE
 
@@ -1066,7 +1066,7 @@ def config_osimage_kernel_post(name=None):
     return json.dumps(RESPONSE), ACCESSCODE
 
 
-######################################################## Cluster Configuration #############################################################
+######################################################## Cluster configuration #############################################################
 
 
 @config_blueprint.route("/config/cluster", methods=['GET'])
@@ -1101,8 +1101,8 @@ def config_cluster():
             RESPONSE['config']['cluster'][CONTROLLER['hostname']] = CONTROLLER
             ACCESSCODE = 200
     else:
-        logger.error('No Cluster is Avaiable.')
-        RESPONSE = {'message': 'No Cluster is Avaiable.'}
+        logger.error('No Cluster is available.')
+        RESPONSE = {'message': 'No Cluster is available.'}
         ACCESSCODE = 404
     return json.dumps(RESPONSE), ACCESSCODE
 
@@ -1135,7 +1135,7 @@ def config_cluster_post():
                 RESPONSE = {'message': 'Cluster Updated Successfully.'}
                 ACCESSCODE = 204
             else:
-                RESPONSE = {'message': 'Bad Request; No Cluster is Avaiable to Update.'}
+                RESPONSE = {'message': 'Bad Request; No Cluster is available to Update.'}
                 ACCESSCODE = 400
         else:
             RESPONSE = {'message': 'Bad Request; Columns are Incorrect.'}
@@ -1146,7 +1146,7 @@ def config_cluster_post():
     return json.dumps(RESPONSE), 200
 
 
-######################################################## BMC Setup Configuration #############################################################
+######################################################## BMC setup configuration #############################################################
 
 @config_blueprint.route("/config/bmcsetup", methods=['GET'])
 @token_required
@@ -1166,8 +1166,8 @@ def config_bmcsetup():
             RESPONSE['config']['bmcsetup'][BMCNAME] = BMC
         ACCESSCODE = 200
     else:
-        logger.error('No BMC Setup is Avaiable.')
-        RESPONSE = {'message': 'No BMC Setup is Avaiable.'}
+        logger.error('No BMC Setup is available.')
+        RESPONSE = {'message': 'No BMC Setup is available.'}
         ACCESSCODE = 404
     return json.dumps(RESPONSE), ACCESSCODE
 
@@ -1191,8 +1191,8 @@ def config_bmcsetup_get(bmcname=None):
             RESPONSE['config']['bmcsetup'][BMCNAME] = BMC
         ACCESSCODE = 200
     else:
-        logger.error('No BMC Setup is Avaiable.')
-        RESPONSE = {'message': 'No BMC Setup is Avaiable.'}
+        logger.error('No BMC Setup is available.')
+        RESPONSE = {'message': 'No BMC Setup is available.'}
         ACCESSCODE = 404
     return json.dumps(RESPONSE), ACCESSCODE
 
@@ -1231,7 +1231,7 @@ def config_bmcsetup_post(bmcname=None):
         COLUMNCHECK = Helper().checkin_list(DATA, BMCCOLUMNS)
         row = Helper().make_rows(DATA)
         if COLUMNCHECK:
-            if CREATE:                    
+            if CREATE:
                 result = Database().insert('bmcsetup', row)
                 RESPONSE = {'message': 'BMC Setup Created Successfully.'}
                 ACCESSCODE = 201
@@ -1288,7 +1288,7 @@ def config_bmcsetup_clone(bmcname=None):
                 ACCESSCODE = 400
                 return json.dumps(RESPONSE), ACCESSCODE
             else:
-                CREATE = True  
+                CREATE = True
         else:
             RESPONSE = {'message': f'{bmcname} Not Present in Database.'}
             ACCESSCODE = 400
@@ -1297,7 +1297,7 @@ def config_bmcsetup_clone(bmcname=None):
         COLUMNCHECK = Helper().checkin_list(DATA, BMCCOLUMNS)
         row = Helper().make_rows(DATA)
         if COLUMNCHECK:
-            if CREATE:                    
+            if CREATE:
                 result = Database().insert('bmcsetup', row)
                 RESPONSE = {'message': 'BMC Setup Created Successfully.'}
                 ACCESSCODE = 201
@@ -1333,7 +1333,7 @@ def config_bmcsetup_delete(bmcname=None):
 
 
 
-######################################################## Switch Configuration #############################################################
+######################################################## Switch configuration #############################################################
 
 @config_blueprint.route("/config/switch", methods=['GET'])
 @token_required
@@ -1355,11 +1355,11 @@ def config_switch():
             del SWITCH['id']
             del SWITCH['name']
             RESPONSE['config']['switch'][SWITCHNAME] = SWITCH
-        logger.info("Avaiable Switches are {}.".format(SWITCHES))
+        logger.info("available Switches are {}.".format(SWITCHES))
         ACCESSCODE = 200
     else:
-        logger.error('No Switch is Avaiable.')
-        RESPONSE = {'message': 'No Switch is Avaiable.'}
+        logger.error('No Switch is available.')
+        RESPONSE = {'message': 'No Switch is available.'}
         ACCESSCODE = 404
     return json.dumps(RESPONSE), ACCESSCODE
 
@@ -1384,11 +1384,11 @@ def config_switch_get(switch=None):
             del SWITCH['id']
             del SWITCH['name']
             RESPONSE['config']['switch'][SWITCHNAME] = SWITCH
-        logger.info("Avaiable Switches are {}.".format(SWITCHES))
+        logger.info("available Switches are {}.".format(SWITCHES))
         ACCESSCODE = 200
     else:
-        logger.error('No Switch is Avaiable.')
-        RESPONSE = {'message': 'No Switch is Avaiable.'}
+        logger.error('No Switch is available.')
+        RESPONSE = {'message': 'No Switch is available.'}
         ACCESSCODE = 404
     return json.dumps(RESPONSE), ACCESSCODE
 
@@ -1428,7 +1428,7 @@ def config_switch_post(switch=None):
         if DATA:
             row = Helper().make_rows(DATA)
             if COLUMNCHECK:
-                if CREATE:                    
+                if CREATE:
                     result = Database().insert('switch', row)
                     RESPONSE = {'message': 'Switch Created Successfully.'}
                     ACCESSCODE = 201
@@ -1487,14 +1487,14 @@ def config_switch_clone(switch=None):
             ACCESSCODE = 400
             return json.dumps(RESPONSE), ACCESSCODE
         else:
-            CREATE = True           
+            CREATE = True
         SWITCHCOLUMNS = Database().get_columns('switch')
         COLUMNCHECK = Helper().checkin_list(DATA, SWITCHCOLUMNS)
         DATA = Helper().check_ip_exist(DATA)
         if DATA:
             row = Helper().make_rows(DATA)
             if COLUMNCHECK:
-                if CREATE:                    
+                if CREATE:
                     result = Database().insert('switch', row)
                     RESPONSE = {'message': 'Switch Created Successfully.'}
                     ACCESSCODE = 201
@@ -1533,9 +1533,9 @@ def config_switch_delete(switch=None):
         RESPONSE = {'message': f'{switch} Not Present in Database.'}
         ACCESSCODE = 404
     return json.dumps(RESPONSE), ACCESSCODE
-    
 
-######################################################## Other Devices Configuration #############################################################
+
+######################################################## Other Devices configuration #############################################################
 
 
 @config_blueprint.route("/config/otherdev", methods=['GET'])
@@ -1558,11 +1558,11 @@ def config_otherdev():
             del DEVICE['id']
             del DEVICE['name']
             RESPONSE['config']['otherdev'][DEVICENAME] = DEVICE
-        logger.info("Avaiable Devices are {}.".format(DEVICES))
+        logger.info("available Devices are {}.".format(DEVICES))
         ACCESSCODE = 200
     else:
-        logger.error('No Device is Avaiable.')
-        RESPONSE = {'message': 'No Device is Avaiable.'}
+        logger.error('No Device is available.')
+        RESPONSE = {'message': 'No Device is available.'}
         ACCESSCODE = 404
     return json.dumps(RESPONSE), ACCESSCODE
 
@@ -1587,11 +1587,11 @@ def config_otherdev_get(device=None):
             del DEVICE['id']
             del DEVICE['name']
             RESPONSE['config']['otherdev'][DEVICENAME] = DEVICE
-        logger.info("Avaiable Devices are {}.".format(DEVICES))
+        logger.info("available Devices are {}.".format(DEVICES))
         ACCESSCODE = 200
     else:
-        logger.error('No Device is Avaiable.')
-        RESPONSE = {'message': 'No Device is Avaiable.'}
+        logger.error('No Device is available.')
+        RESPONSE = {'message': 'No Device is available.'}
         ACCESSCODE = 404
     return json.dumps(RESPONSE), ACCESSCODE
 
@@ -1630,7 +1630,7 @@ def config_otherdev_post(device=None):
         if DATA:
             row = Helper().make_rows(DATA)
             if COLUMNCHECK:
-                if CREATE:                    
+                if CREATE:
                     result = Database().insert('otherdevices', row)
                     RESPONSE = {'message': 'Device Created Successfully.'}
                     ACCESSCODE = 201
@@ -1688,14 +1688,14 @@ def config_otherdev_clone(device=None):
             ACCESSCODE = 400
             return json.dumps(RESPONSE), ACCESSCODE
         else:
-            CREATE = True           
+            CREATE = True
         DEVICECOLUMNS = Database().get_columns('otherdevices')
         COLUMNCHECK = Helper().checkin_list(DATA, DEVICECOLUMNS)
         DATA = Helper().check_ip_exist(DATA)
         if DATA:
             row = Helper().make_rows(DATA)
             if COLUMNCHECK:
-                if CREATE:                    
+                if CREATE:
                     result = Database().insert('otherdevices', row)
                     RESPONSE = {'message': 'Device Cloned Successfully.'}
                     ACCESSCODE = 201
@@ -1736,7 +1736,7 @@ def config_otherdev_delete(device=None):
     return json.dumps(RESPONSE), ACCESSCODE
 
 
-######################################################## Network Configuration #############################################################
+######################################################## Network configuration #############################################################
 
 
 @config_blueprint.route("/config/network", methods=['GET'])
@@ -1763,8 +1763,8 @@ def config_network():
             RESPONSE['config']['network'][NWK['name']] = NWK
         ACCESSCODE = 200
     else:
-        logger.error('No Networks is Avaiable.')
-        RESPONSE = {'message': 'No Networks is Avaiable.'}
+        logger.error('No Networks is available.')
+        RESPONSE = {'message': 'No Networks is available.'}
         ACCESSCODE = 404
     return json.dumps(RESPONSE), ACCESSCODE
 
@@ -1793,8 +1793,8 @@ def config_network_get(name=None):
             RESPONSE['config']['network'][NWK['name']] = NWK
         ACCESSCODE = 200
     else:
-        logger.error(f'Network {name} is Not Avaiable.')
-        RESPONSE = {'message': f'Network {name} is Not Avaiable.'}
+        logger.error(f'Network {name} is Not available.')
+        RESPONSE = {'message': f'Network {name} is Not available.'}
         ACCESSCODE = 404
     return json.dumps(RESPONSE), ACCESSCODE
 
@@ -1892,7 +1892,7 @@ def config_network_post(name=None):
         COLUMNCHECK = Helper().checkin_list(DATA, NETWORKCOLUMNS)
         row = Helper().make_rows(DATA)
         if COLUMNCHECK:
-            if CREATE:                    
+            if CREATE:
                 result = Database().insert('network', row)
                 RESPONSE = {'message': 'Network Created Successfully.'}
                 ACCESSCODE = 201
@@ -2008,7 +2008,7 @@ def config_network_clone(name=None):
         COLUMNCHECK = Helper().checkin_list(DATA, NETWORKCOLUMNS)
         row = Helper().make_rows(DATA)
         if COLUMNCHECK:
-            if CREATE:                    
+            if CREATE:
                 result = Database().insert('network', row)
                 RESPONSE = {'message': 'Network Created Successfully.'}
                 ACCESSCODE = 201
@@ -2090,7 +2090,7 @@ def config_network_nextip(name=None):
     return json.dumps(RESPONSE), ACCESSCODE
 
 
-######################################################## Secrets Configuration #############################################################
+######################################################## Secrets configuration #############################################################
 
 
 @config_blueprint.route("/config/secrets", methods=['GET'])
@@ -2106,8 +2106,8 @@ def config_secrets_get():
         RESPONSE = {'config': {'secrets': {} }}
         ACCESSCODE = 200
     else:
-        logger.error('Secrets are not Avaiable.')
-        RESPONSE = {'message': 'Secrets are not Avaiable.'}
+        logger.error('Secrets are not available.')
+        RESPONSE = {'message': 'Secrets are not available.'}
         ACCESSCODE = 404
     if NODESECRETS:
         RESPONSE['config']['secrets']['node'] = {}
@@ -2149,8 +2149,8 @@ def config_get_secrets_node(name=None):
             RESPONSE = {'config': {'secrets': {} }}
             ACCESSCODE = 200
         else:
-            logger.error(f'Secrets are not Avaiable for Node {name}.')
-            RESPONSE = {'message': f'Secrets are not Avaiable for Node {name}.'}
+            logger.error(f'Secrets are not available for Node {name}.')
+            RESPONSE = {'message': f'Secrets are not available for Node {name}.'}
             ACCESSCODE = 404
         if NODESECRETS:
             RESPONSE['config']['secrets']['node'] = {}
@@ -2173,8 +2173,8 @@ def config_get_secrets_node(name=None):
                 GROUP['content'] = Helper().decrypt_string(GROUP['content'])
                 RESPONSE['config']['secrets']['group'][GROUPNAME].append(GROUP)
     else:
-        logger.error(f'Node {name} is not Avaiable.')
-        RESPONSE = {'message': f'Node {name} is not Avaiable.'}
+        logger.error(f'Node {name} is not available.')
+        RESPONSE = {'message': f'Node {name} is not available.'}
         ACCESSCODE = 404
     return json.dumps(RESPONSE), ACCESSCODE
 
@@ -2226,8 +2226,8 @@ def config_post_secrets_node(name=None):
                 RESPONSE = {'message': 'Kindly provide at least one secret.'}
                 ACCESSCODE = 404
         else:
-            logger.error(f'Node {name} is not Avaiable.')
-            RESPONSE = {'message': f'Node {name} is not Avaiable.'}
+            logger.error(f'Node {name} is not available.')
+            RESPONSE = {'message': f'Node {name} is not available.'}
             ACCESSCODE = 404
 
         if CREATE == True and UPDATE == True:
@@ -2264,12 +2264,12 @@ def config_get_node_secret(name=None, secret=None):
             SECRET[0]['content'] = Helper().decrypt_string(SECRET[0]['content'])
             RESPONSE['config']['secrets']['node'][name] = SECRET
         else:
-            logger.error(f'Secret {secret} is Unavaiable for Node {name}.')
-            RESPONSE = {'message': f'Secret {secret} is Unavaiable for Node {name}.'}
+            logger.error(f'Secret {secret} is unavailable for Node {name}.')
+            RESPONSE = {'message': f'Secret {secret} is unavailable for Node {name}.'}
             ACCESSCODE = 404
     else:
-        logger.error(f'Node {name} is not Avaiable.')
-        RESPONSE = {'message': f'Node {name} is not Avaiable.'}
+        logger.error(f'Node {name} is not available.')
+        RESPONSE = {'message': f'Node {name} is not available.'}
         ACCESSCODE = 404
     return json.dumps(RESPONSE), ACCESSCODE
 
@@ -2310,16 +2310,16 @@ def config_post_node_secret(name=None, secret=None):
                         RESPONSE = {'message': f'Node {name} Secret {secret} Updated Successfully.'}
                         ACCESSCODE = 204
                 else:
-                    logger.error(f'Node {name}, Secret {secret} is Unavaiable.')
-                    RESPONSE = {'message': f'Node {name}, Secret {secret} is Unavaiable.'}
+                    logger.error(f'Node {name}, Secret {secret} is unavailable.')
+                    RESPONSE = {'message': f'Node {name}, Secret {secret} is unavailable.'}
                     ACCESSCODE = 404
             else:
                 logger.error('Kindly provide at least one secret.')
                 RESPONSE = {'message': 'Kindly provide at least one secret.'}
                 ACCESSCODE = 404
         else:
-            logger.error(f'Node {name} is not Avaiable.')
-            RESPONSE = {'message': f'Node {name} is not Avaiable.'}
+            logger.error(f'Node {name} is not available.')
+            RESPONSE = {'message': f'Node {name} is not available.'}
             ACCESSCODE = 404
     else:
         RESPONSE = {'message': 'Bad Request; Did not received Data.'}
@@ -2361,7 +2361,7 @@ def config_clone_node_secret(name=None, secret=None):
                         if NEWSECRETDATA:
                             logger.error(f'Secret {NEWSECRETNAME} Already Present..')
                             RESPONSE = {'message': f'Secret {NEWSECRETNAME} Already Present..'}
-                            ACCESSCODE = 404 
+                            ACCESSCODE = 404
                         else:
                             NODESECRETSCOLUMNS = Database().get_columns('nodesecrets')
                             COLUMNCHECK = Helper().checkin_list(DATA[0], NODESECRETSCOLUMNS)
@@ -2377,16 +2377,16 @@ def config_clone_node_secret(name=None, secret=None):
                         RESPONSE = {'message': 'Kindly Pass the New Secret Name.'}
                         ACCESSCODE = 404
                 else:
-                    logger.error(f'Node {name}, Secret {secret} is Unavaiable.')
-                    RESPONSE = {'message': f'Node {name}, Secret {secret} is Unavaiable.'}
+                    logger.error(f'Node {name}, Secret {secret} is unavailable.')
+                    RESPONSE = {'message': f'Node {name}, Secret {secret} is unavailable.'}
                     ACCESSCODE = 404
             else:
                 logger.error('Kindly provide at least one secret.')
                 RESPONSE = {'message': 'Kindly provide at least one secret.'}
                 ACCESSCODE = 404
         else:
-            logger.error(f'Node {name} is not Avaiable.')
-            RESPONSE = {'message': f'Node {name} is not Avaiable.'}
+            logger.error(f'Node {name} is not available.')
+            RESPONSE = {'message': f'Node {name} is not available.'}
             ACCESSCODE = 404
     else:
         RESPONSE = {'message': 'Bad Request; Did not received Data.'}
@@ -2410,12 +2410,12 @@ def config_node_secret_delete(name=None, secret=None):
             RESPONSE = {'message': f'Secret {secret} Deleted From Node {name}.'}
             ACCESSCODE = 204
         else:
-            logger.error(f'Secret {secret} is Unavaiable for Node {name}.')
-            RESPONSE = {'message': f'Secret {secret} is Unavaiable for Node {name}.'}
+            logger.error(f'Secret {secret} is unavailable for Node {name}.')
+            RESPONSE = {'message': f'Secret {secret} is unavailable for Node {name}.'}
             ACCESSCODE = 404
     else:
-        logger.error(f'Node {name} is not Avaiable.')
-        RESPONSE = {'message': f'Node {name} is not Avaiable.'}
+        logger.error(f'Node {name} is not available.')
+        RESPONSE = {'message': f'Node {name} is not available.'}
         ACCESSCODE = 404
     return json.dumps(RESPONSE), ACCESSCODE
 
@@ -2440,12 +2440,12 @@ def config_get_secrets_group(name=None):
                 RESPONSE['config']['secrets']['group'][name].append(GRP)
                 ACCESSCODE = 200
         else:
-            logger.error(f'Secrets are not Avaiable for Group {name}.')
-            RESPONSE = {'message': f'Secrets are not Avaiable for Group {name}.'}
+            logger.error(f'Secrets are not available for Group {name}.')
+            RESPONSE = {'message': f'Secrets are not available for Group {name}.'}
             ACCESSCODE = 404
     else:
-        logger.error(f'Group {name} is not Avaiable.')
-        RESPONSE = {'message': f'Group {name} is not Avaiable.'}
+        logger.error(f'Group {name} is not available.')
+        RESPONSE = {'message': f'Group {name} is not available.'}
         ACCESSCODE = 404
     return json.dumps(RESPONSE), ACCESSCODE
 
@@ -2497,8 +2497,8 @@ def config_post_secrets_group(name=None):
                 RESPONSE = {'message': 'Kindly provide at least one secret.'}
                 ACCESSCODE = 404
         else:
-            logger.error(f'Group {name} is not Avaiable.')
-            RESPONSE = {'message': f'Group {name} is not Avaiable.'}
+            logger.error(f'Group {name} is not available.')
+            RESPONSE = {'message': f'Group {name} is not available.'}
             ACCESSCODE = 404
 
         if CREATE == True and UPDATE == True:
@@ -2535,12 +2535,12 @@ def config_get_group_secret(name=None, secret=None):
             SECRET[0]['content'] = Helper().decrypt_string(SECRET[0]['content'])
             RESPONSE['config']['secrets']['group'][name] = SECRET
         else:
-            logger.error(f'Secret {secret} is Unavaiable for Group {name}.')
-            RESPONSE = {'message': f'Secret {secret} is Unavaiable for Group {name}.'}
+            logger.error(f'Secret {secret} is unavailable for Group {name}.')
+            RESPONSE = {'message': f'Secret {secret} is unavailable for Group {name}.'}
             ACCESSCODE = 404
     else:
-        logger.error(f'Group {name} is not Avaiable.')
-        RESPONSE = {'message': f'Group {name} is not Avaiable.'}
+        logger.error(f'Group {name} is not available.')
+        RESPONSE = {'message': f'Group {name} is not available.'}
         ACCESSCODE = 404
     return json.dumps(RESPONSE), ACCESSCODE
 
@@ -2581,16 +2581,16 @@ def config_post_group_secret(name=None, secret=None):
                         RESPONSE = {'message': f'Group {name} Secret {secret} Updated Successfully.'}
                         ACCESSCODE = 204
                 else:
-                    logger.error(f'Group {name}, Secret {secret} is Unavaiable.')
-                    RESPONSE = {'message': f'Group {name}, Secret {secret} is Unavaiable.'}
+                    logger.error(f'Group {name}, Secret {secret} is unavailable.')
+                    RESPONSE = {'message': f'Group {name}, Secret {secret} is unavailable.'}
                     ACCESSCODE = 404
             else:
                 logger.error('Kindly provide at least one secret.')
                 RESPONSE = {'message': 'Kindly provide at least one secret.'}
                 ACCESSCODE = 404
         else:
-            logger.error(f'Group {name} is not Avaiable.')
-            RESPONSE = {'message': f'Group {name} is not Avaiable.'}
+            logger.error(f'Group {name} is not available.')
+            RESPONSE = {'message': f'Group {name} is not available.'}
             ACCESSCODE = 404
     else:
         RESPONSE = {'message': 'Bad Request; Did not received Data.'}
@@ -2632,7 +2632,7 @@ def config_clone_group_secret(name=None, secret=None):
                         if NEWSECRETDATA:
                             logger.error(f'Secret {NEWSECRETNAME} Already Present..')
                             RESPONSE = {'message': f'Secret {NEWSECRETNAME} Already Present..'}
-                            ACCESSCODE = 404 
+                            ACCESSCODE = 404
                         else:
                             GRPSECRETSCOLUMNS = Database().get_columns('groupsecrets')
                             COLUMNCHECK = Helper().checkin_list(DATA[0], GRPSECRETSCOLUMNS)
@@ -2648,16 +2648,16 @@ def config_clone_group_secret(name=None, secret=None):
                         RESPONSE = {'message': 'Kindly Pass the New Secret Name.'}
                         ACCESSCODE = 404
                 else:
-                    logger.error(f'Group {name}, Secret {secret} is Unavaiable.')
-                    RESPONSE = {'message': f'Group {name}, Secret {secret} is Unavaiable.'}
+                    logger.error(f'Group {name}, Secret {secret} is unavailable.')
+                    RESPONSE = {'message': f'Group {name}, Secret {secret} is unavailable.'}
                     ACCESSCODE = 404
             else:
                 logger.error('Kindly provide at least one secret.')
                 RESPONSE = {'message': 'Kindly provide at least one secret.'}
                 ACCESSCODE = 404
         else:
-            logger.error(f'Group {name} is not Avaiable.')
-            RESPONSE = {'message': f'Group {name} is not Avaiable.'}
+            logger.error(f'Group {name} is not available.')
+            RESPONSE = {'message': f'Group {name} is not available.'}
             ACCESSCODE = 404
     else:
         RESPONSE = {'message': 'Bad Request; Did not received Data.'}
@@ -2681,11 +2681,11 @@ def config_group_secret_delete(name=None, secret=None):
             RESPONSE = {'message': f'Secret {secret} Deleted From Group {name}.'}
             ACCESSCODE = 204
         else:
-            logger.error(f'Secret {secret} is Unavaiable for Group {name}.')
-            RESPONSE = {'message': f'Secret {secret} is Unavaiable for Group {name}.'}
+            logger.error(f'Secret {secret} is unavailable for Group {name}.')
+            RESPONSE = {'message': f'Secret {secret} is unavailable for Group {name}.'}
             ACCESSCODE = 404
     else:
-        logger.error(f'Group {name} is not Avaiable.')
-        RESPONSE = {'message': f'Group {name} is not Avaiable.'}
+        logger.error(f'Group {name} is not available.')
+        RESPONSE = {'message': f'Group {name} is not available.'}
         ACCESSCODE = 404
     return json.dumps(RESPONSE), ACCESSCODE

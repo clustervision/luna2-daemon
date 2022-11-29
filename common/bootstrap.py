@@ -218,7 +218,7 @@ def bootstrap():
     result = Database().insert("osimage", row)
     row = [{"column": "username", "value": str(BOOTSTRAP["BMCSETUP"]["USERNAME"])}, {"column": "password", "value": str(BOOTSTRAP["BMCSETUP"]["PASSWORD"])}]
     result = Database().insert("bmcsetup", row)
-    
+
 
     row = [
             {"column": "technicalcontacts", "value": "root@localhost"},

@@ -1,4 +1,10 @@
 #!/usr/bin/env python3
+"""
+Files Class is reponsible to validate the TARBALL directory and it's files.
+It can provvide the list of file and a specific file.
+It can only provide files ending with tar.gz and tar.bz2
+
+"""
 
 __author__      = "Sumit Sharma"
 __copyright__   = "Copyright 2022, Luna2 Project"
@@ -8,12 +14,6 @@ __maintainer__  = "Sumit Sharma"
 __email__       = "sumit.sharma@clustervision.com"
 __status__      = "Development"
 
-"""
-Files Class is reponsible to validate the TARBALL directory and it's files.
-It can provvide the list of file and a specific file.
-It can only provide files ending with tar.gz and tar.bz2
-
-"""
 
 import os
 from utils.log import *
@@ -21,7 +21,9 @@ logger = Log.get_logger()
 
 
 class Files(object):
-
+    """
+    TODO: add docs
+    """
     def __init__(self):
         pass
 

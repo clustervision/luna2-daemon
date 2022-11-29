@@ -26,7 +26,7 @@ class Log:
     __logger = None
 
 
-    
+
     @classmethod
     def init_log(cls, log_level):
         """
@@ -51,7 +51,7 @@ class Log:
         cls.__logger.info(f'=============== Luna Logging Level IsSet To [{levels[log_level]}] ===============')
         return cls.__logger
 
-    
+
     @classmethod
     def get_logger(cls):
         """

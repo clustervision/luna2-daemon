@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+"""
+This File is a Service Class, responsible to perform start, stop, reload, status, or restart action on provided service name.
+"""
 
 __author__      = "Sumit Sharma"
 __copyright__   = "Copyright 2022, Luna2 Project"
@@ -8,9 +11,6 @@ __maintainer__  = "Sumit Sharma"
 __email__       = "sumit.sharma@clustervision.com"
 __status__      = "Development"
 
-"""
-This File is a Service Class, responsible to perform start, stop, reload, status, or restart action on provided service name.
-"""
 
 from utils.helper import *
 from utils.log import *

@@ -1,3 +1,8 @@
+#!/usr/bin/env python3
+
+"""
+Start luna daemon
+"""
 import luna
 # The IP address (typically localhost) and port that the Netbox WSGI process should listen on
 bind = '0.0.0.0:7050'
@@ -20,6 +25,9 @@ workers = 1
 # reload_engine = 'auto'
 # on_starting = luna.on_starting
 # on_reload = luna.on_reload
+"""
+TODO: add docs
+"""
 def on_reload(server):
     # pprint(vars(server))
     # LOGGER.info(vars(server))

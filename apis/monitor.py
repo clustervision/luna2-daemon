@@ -1,4 +1,8 @@
 #!/usr/bin/env python3
+"""
+This File is a A Entry Point to Monitor the services.
+
+"""
 
 __author__      = "Sumit Sharma"
 __copyright__   = "Copyright 2022, Luna2 Project"
@@ -8,10 +12,6 @@ __maintainer__  = "Sumit Sharma"
 __email__       = "sumit.sharma@clustervision.com"
 __status__      = "Development"
 
-"""
-This File is a A Entry Point to Monitor the services.
-
-"""
 
 import os
 import sys
@@ -90,7 +90,7 @@ def checkdbstatus():
     code = 503
     if os.path.isfile(CONSTANT['DATABASE']['DATABASE']):
         sqlite = True
-        if os.access(CONSTANT['DATABASE']['DATABASE'], os.R_OK): 
+        if os.access(CONSTANT['DATABASE']['DATABASE'], os.R_OK):
             read = True
             code = 500
             try:
@@ -101,7 +101,7 @@ def checkdbstatus():
                     file.close()
             except Exception as e:
                 logger.error("DATABASE {} is Not Writable.".format(CONSTANT['DATABASE']['DATABASE']))
-            
+
             with open(CONSTANT['DATABASE']['DATABASE'],'r', encoding = "ISO-8859-1") as f:
                 header = f.read(100)
                 if header.startswith('SQLite format 3'):

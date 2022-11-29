@@ -1,4 +1,8 @@
 #!/usr/bin/env python3
+"""
+This File is use for authentication purpose.
+
+"""
 
 __author__      = "Sumit Sharma"
 __copyright__   = "Copyright 2022, Luna2 Project"
@@ -8,10 +12,6 @@ __maintainer__  = "Sumit Sharma"
 __email__       = "sumit.sharma@clustervision.com"
 __status__      = "Development"
 
-"""
-This File is use for authentication purpose.
-
-"""
 import jwt
 import hashlib
 import datetime
@@ -41,7 +41,7 @@ auth_blueprint = Blueprint('auth', __name__)
 
 """
 Input - username and password
-Process - Validate the username and password from the conf file. On the success, create a token, which is valid for Exipy time mentioned in conf. 
+Process - Validate the username and password from the conf file. On the success, create a token, which is valid for Exipy time mentioned in conf.
 Output - Token.
 """
 @auth_blueprint.route("/token", methods=['POST'])

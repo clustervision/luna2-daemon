@@ -1,4 +1,9 @@
 #!/usr/bin/env python3
+"""
+This Is a Template Class.
+It will help to validate the templates.
+It will responsible to create the tmp dir for templates
+"""
 
 __author__      = 'Sumit Sharma'
 __copyright__   = 'Copyright 2022, Luna2 Project'
@@ -8,11 +13,6 @@ __maintainer__  = 'Sumit Sharma'
 __email__       = 'sumit.sharma@clustervision.com'
 __status__      = 'Development'
 
-"""
-This Is a Template Class.
-It will help to validate the templates.
-It will responsible to create the tmp dir for templates
-"""
 import os
 import json
 import subprocess

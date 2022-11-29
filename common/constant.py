@@ -40,11 +40,11 @@ configParser = RawConfigParser()
 ConfigFile = '/trinity/local/luna/config/luna.ini'
 KEYFILE = '/trinity/local/etc/ssl/luna.key'
 
-"""
-Input - Filename
-Output - Check File Existence And Readability
-"""
 def checkfile(filename=None):
+    """
+    Input - Filename
+    Output - Check File Existence And Readability
+    """
     ConfigFilePath = Path(filename)
     if ConfigFilePath.is_file():
         if os.access(filename, os.R_OK):
@@ -56,6 +56,9 @@ def checkfile(filename=None):
     return False
 
 def checksection():
+    """
+    TODO: add docs
+    """
     for item in list(CONSTANT.keys()):
         if item not in configParser.sections():
             print('ERROR :: Section {} Is Missing, Kindly Check The File {}.'.format(item, filename))
@@ -63,12 +66,18 @@ def checksection():
 
 
 def checkoption(each_section):
+    """
+    TODO: add docs
+    """
     for item in list(CONSTANT[each_section].keys()):
         if item.lower() not in list(dict(configParser.items(each_section)).keys()):
             print('ERROR :: Section {} Do not Have Option {}, Kindly Check The File {}.'.format(each_section, each_key.upper(), filename))
             sys.exit(0)
 
 def getconfig(filename=None):
+    """
+    TODO: add docs
+    """
     configParser.read(filename)
     checksection()
     for each_section in configParser.sections():
@@ -92,12 +101,12 @@ def getconfig(filename=None):
                 CONSTANT[each_section] = {}
                 CONSTANT[each_section][each_key.upper()] = each_val
 
-file_check = checkfile(ConfigFile)
-if file_check:
-	getconfig(ConfigFile)
-	# LOGGER = Log.init_log(CONSTANT['LOGGER']['LEVEL'])
-else:
-	sys.exit(0)
+    file_check = checkfile(ConfigFile)
+    if file_check:
+        getconfig(ConfigFile)
+    # LOGGER = Log.init_log(CONSTANT['LOGGER']['LEVEL'])
+    else:
+        sys.exit(0)
 
 
 global LUNAKEY
@@ -110,13 +119,13 @@ if KEYFILECHECK:
     except Exception as e:
         print('File {} is Not Readable.'.format(KEYFILE))
         LUNAKEY = None
-        
 
-"""
-Input - Directory
-Output - Directory Existence, Readability and Writable
-"""
+
 def checkdir(directory=None):
+    """
+    Input - Directory
+    Output - Directory Existence, Readability and Writable
+    """
     if os.path.exists(directory):
         if os.access(directory, os.R_OK):
             if os.access(directory, os.W_OK):
@@ -130,19 +139,19 @@ def checkdir(directory=None):
     return False
 
 
-"""
-Input - Filename and Default File True or False
-Output - Check If File Writable
-"""
 def checkwritable(filename=None):
-	write = False
-	try:
-		file = open(filename, 'a')
-		if file.writable():
-			write = True
-	except Exception as e:
-		print('File {} is Not Writable.'.format(filename))
-	return write
+    """
+    Input - Filename and Default File True or False
+    Output - Check If File Writable
+    """
+    write = False
+    try:
+        file = open(filename, 'a')
+        if file.writable():
+            write = True
+    except Exception as e:
+        print('File {} is Not Writable.'.format(filename))
+    return write
 
 
 """
@@ -201,5 +210,3 @@ if check_dir_write is not True:
 # with open(cronfile, "w") as file:
 #     file.write(crondata)
 ######################## SET CRON JOB TO MONITOR ###########################
-
-

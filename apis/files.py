@@ -25,7 +25,7 @@ files_blueprint = Blueprint('files', __name__)
 
 """
 Input - None
-Process - Search TARBALLS for *.tar.gz. *.tar.bz2 files. 
+Process - Search TARBALLS for *.tar.gz. *.tar.bz2 files.
 Output - List of available files.
 """
 @files_blueprint.route("/files", methods=['GET'])

@@ -28,7 +28,7 @@ def checkdbstatus():
     code = 503
     if os.path.isfile(CONSTANT['DATABASE']['DATABASE']):
         sqlite = True
-        if os.access(CONSTANT['DATABASE']['DATABASE'], os.R_OK): 
+        if os.access(CONSTANT['DATABASE']['DATABASE'], os.R_OK):
             read = True
             code = 500
             try:
@@ -39,7 +39,7 @@ def checkdbstatus():
                     file.close()
             except Exception as e:
                 logger.error("DATABASE {} is Not Writable.".format(CONSTANT['DATABASE']['DATABASE']))
-            
+
             with open(CONSTANT['DATABASE']['DATABASE'],'r', encoding = "ISO-8859-1") as f:
                 header = f.read(100)
                 if header.startswith('SQLite format 3'):
@@ -66,3 +66,4 @@ def checkdbstatus():
 
 if __name__ == "__main__":
     response, code = checkdbstatus()
+

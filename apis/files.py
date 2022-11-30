@@ -1,4 +1,10 @@
 #!/usr/bin/env python3
+"""
+This endpoint is serving files. 
+The location is defined in the configuration file,
+see luna2.ini
+
+"""
 
 __author__      = "Sumit Sharma"
 __copyright__   = "Copyright 2022, Luna2 Project"
@@ -8,11 +14,6 @@ __maintainer__  = "Sumit Sharma"
 __email__       = "sumit.sharma@clustervision.com"
 __status__      = "Development"
 
-"""
-This File is Serving the TarBalls Files.
-TarBalls Default Location is mentioned in Conf file.
-
-"""
 
 from common.validate_auth import *
 from flask import Blueprint, request, send_file, json
@@ -42,8 +43,8 @@ def files():
 
 
 """
-Input - Tar File Name
-Process - Make Available File to Download. 
+Input - Filename
+Process - Make available file to download. 
 Output - File
 """
 @files_blueprint.route("/files/<string:filename>", methods=['GET'])

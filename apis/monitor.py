@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-This File is a A Entry Point to Monitor the services.
+This endpoint can be contacted to obtain service status.
 
 """
 
@@ -27,8 +27,9 @@ monitor_blueprint = Blueprint('monitor', __name__)
 
 """
 Input - name of service
-Process - With the help of Serive Class, we can get the exact status of the service. which is DHCP, DNS and luna2
-Output - Status.
+Process - With the help of service class, the status of the service can be obtained. 
+   Currently supported services are DHCP, DNS and luna2 itself.
+Output - Status
 """
 @monitor_blueprint.route("/monitor/service/<string:name>", methods=['GET'])
 def monitor_service(name=None):
@@ -41,8 +42,8 @@ def monitor_service(name=None):
 
 
 """
-Input - NodeID or Node Name
-Process - Validate if the Node is Exists and UP
+Input - NodeID or node name
+Process - Validate if the node exists and what the state is
 Output - Status.
 """
 @monitor_blueprint.route("/monitor/status/<string:node>", methods=['GET'])

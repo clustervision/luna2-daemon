@@ -41,7 +41,8 @@ auth_blueprint = Blueprint('auth', __name__)
 
 """
 Input - username and password
-Process - Validate the username and password from the conf file. On the success, create a token, which is valid for Exipy time mentioned in conf.
+Process - Validate the username and password from the conf file.
+  On the success, create a token, which is valid for expiry time mentioned in configuration.
 Output - Token.
 """
 @auth_blueprint.route("/token", methods=['POST'])

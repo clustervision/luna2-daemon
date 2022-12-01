@@ -26,7 +26,7 @@ CONSTANT = {
 	'LOGGER': { 'LEVEL': None, 'LOGFILE': None },
 	'API': { 'USERNAME': None, 'PASSWORD': None, 'EXPIRY': None },
 	'DATABASE': { 'DRIVER': None, 'DATABASE': None, 'DBUSER': None, 'DBPASSWORD': None, 'HOST': None, 'PORT': None },
-	'FILES': { 'TARBALL': None },
+	'FILES': { 'TARBALL': None, 'IMAGE_DIRECTORY': None, 'MAXPACKAGINGTIME': None },
 	'SERVICES': { 'DHCP': None, 'DNS': None, 'CONTROL': None, 'COOLDOWN': None, 'COMMAND': None },
 	'TEMPLATES': { 'TEMPLATES_DIR': None }
 }
@@ -95,6 +95,11 @@ def getconfig(filename=None):
                         CONSTANT[each_section][each_key.upper()] = int(each_val.replace('s', ''))
                     else:
                         CONSTANT[each_section][each_key.upper()] = 2
+                elif each_key.upper() == 'MAXPACKAGINGTIME':
+                    if each_val:
+                        CONSTANT[each_section][each_key.upper()] = int(each_val.replace('m', ''))*60
+                    else:
+                        CONSTANT[each_section][each_key.upper()] = 10*60
                 else:
                     CONSTANT[each_section][each_key.upper()] = each_val
             else:

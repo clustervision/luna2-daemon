@@ -395,12 +395,11 @@ class Helper(object):
                 DRACUTPROCESS = subprocess.check_output(['/usr/sbin/dracut', '--kver', KERNELVERSION, '--list-modules'], universal_newlines=True)
                 self.logger.info(f'DRACUTPROCESS ==> {DRACUTPROCESS}.')
                 DRACUTCMDPROCESS = (['/usr/sbin/dracut', '--force', '--kver', KERNELVERSION] + MODULESADD + MODULESREMOVE + DRIVERSADD + DRIVERSREMOVE + [PATHTMP + '/' + INTRDFILE])
-                CREATE = subprocess.check_output(DRACUTCMDPROCESS, timeout=600, universal_newlines=True)
+                CREATE = subprocess.check_output(DRACUTCMDPROCESS, timeout=CONSTANT['FILES']['MAXPACKAGINGTIME'], universal_newlines=True)
                 self.logger.info(f'CREATE ==> {CREATE}.')
             except Exception as exp:
                 self.logger.error(f'Exception ==> {exp}.')
                 DRACUTSUCCEED = False
-
 
             ################### OLD CODE ########################
             # # ## Nested, time count ; should be 10 minutes
@@ -426,13 +425,13 @@ class Helper(object):
             #     print(exp)
             #     DRACUTSUCCEED = False
             # #  ## Nested, time count ; should be 10 minutes
+
+            # if CREATE and CREATE.returncode:
+            #     DRACUTSUCCEED = False
+
+            # if not CREATE:
+            #     DRACUTSUCCEED = False
             ################### OLD CODE ########################
-
-            if CREATE and CREATE.returncode:
-                DRACUTSUCCEED = False
-
-            if not CREATE:
-                DRACUTSUCCEED = False
 
             os.fchdir(REALROOT)
             os.chroot(".")

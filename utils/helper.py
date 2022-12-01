@@ -17,6 +17,7 @@ import sys
 import pwd
 import subprocess
 import shutil
+import queue
 from jinja2 import Environment
 from utils.log import *
 import json
@@ -33,6 +34,7 @@ class Helper(object):
         Constructor - As of now, nothing have to initialize.
         """
         self.logger = Log.get_logger()
+        self.packing = queue.Queue()
 
 
     def runcommand(self, command):
@@ -293,9 +295,20 @@ class Helper(object):
         FERNETOBJ = Fernet(KEY)
         RESPONSE = FERNETOBJ.decrypt(string).decode()
         return RESPONSE
-
+    
 
     def pack(self, image=None):
+        if {"packing": image} in self.packing.queue:
+            logger.warning(f'Image {image} packing is ongoing, request is in Queue.')
+            response = f'Image {image} packing is ongoing, request is in Queue.'
+        else:
+            self.packing.put({"packing": image})
+            response = self.packimage(image)
+            logger.info(response)
+        return response
+
+
+    def packimage(self, image=None):
         """
         Input - OS Image Name (string)
         Output - Success/Failure (Boolean)
@@ -429,4 +442,6 @@ class Helper(object):
             os.chmod(PATHTOSTORE + '/' + INTRDFILE, int('0644'))
             os.chown(PATHTOSTORE + '/' + KERNELFILE, USERID, GROUPID)
             os.chmod(PATHTOSTORE + '/' + KERNELFILE, int('0644'))
+            self.packing.get() ## Get the Last same Element from Queue
+            self.packing.empty() ## Deque the same element from the Queue
         return True

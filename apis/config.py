@@ -1047,10 +1047,9 @@ def config_osimage_kernel_post(name=None):
             COLUMNCHECK = Helper().checkin_list(DATA, OSIMAGECOLUMNS)
             if COLUMNCHECK:
                 REQUESTCHECK = Helper().pack(name)
-                print(f'REQUESTCHECK===> {REQUESTCHECK} ')
                 where = [{"column": "id", "value": IMAGEID}]
                 row = Helper().make_rows(DATA)
-                # result = Database().update('osimage', row, where)
+                result = Database().update('osimage', row, where)
                 RESPONSE = {'message': f'OS Image {name} Kernel Updated Successfully.'}
                 ACCESSCODE = 204
             else:

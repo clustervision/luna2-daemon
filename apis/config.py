@@ -1023,7 +1023,7 @@ def config_osimage_pack(name=None):
 
 
 @config_blueprint.route("/config/osimage/<string:name>/kernel", methods=['POST'])
-# @token_required
+@token_required
 def config_osimage_kernel_post(name=None):
     """
     Input - OS Image Name

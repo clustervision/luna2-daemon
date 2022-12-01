@@ -1,53 +1,60 @@
 #!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 """
-This Class Identify the specified Database Connection from Configuration and return the Cursor of correct Database.
-Database have the default methods for CRUD. In case of changing database model dosn't impact the application.
-
+This Class Identify the specified Database Connection from Configuration
+and return the Cursor of correct Database.
+Database have the default methods for CRUD. In case of changing database
+model dosn't impact the application.
 """
 
-__author__      = "Sumit Sharma"
-__copyright__   = "Copyright 2022, Luna2 Project"
-__license__     = "GPL"
-__version__     = "1.0"
-__maintainer__  = "Sumit Sharma"
-__email__       = "sumit.sharma@clustervision.com"
-__status__      = "Production"
+__author__      = 'Sumit Sharma'
+__copyright__   = 'Copyright 2022, Luna2 Project'
+__license__     = 'GPL'
+__version__     = '2.0'
+__maintainer__  = 'Sumit Sharma'
+__email__       = 'sumit.sharma@clustervision.com'
+__status__      = 'Development'
 
-import sys
+
 import pyodbc
-from utils.log import *
+from utils.log import Log
+from common.constant import CONSTANT
 
 class Database(object):
 
     """
-    Constructor - Initialize The Coorect Database from the conf file.
+    Database Connector Class with all basic functions.
     """
+
     def __init__(self):
+        """
+        Constructor - Initialize The Correct Database from the conf file.
+        """
         self.logger = Log.get_logger()
-        self.connection = pyodbc.connect("DRIVER={};SERVER={};DATABASE={};UID={};PWD={};charset=utf8mb4;PORT={};".format(CONSTANT['DATABASE']['DRIVER'], CONSTANT['DATABASE']['HOST'], CONSTANT['DATABASE']['DATABASE'], CONSTANT['DATABASE']['DBUSER'], CONSTANT['DATABASE']['DBPASSWORD'], CONSTANT['DATABASE']['PORT']))
+        self.connection = pyodbc.connect(f'DRIVER={CONSTANT["DATABASE"]["DRIVER"]};SERVER={CONSTANT["DATABASE"]["HOST"]};DATABASE={CONSTANT["DATABASE"]["DATABASE"]};UID={CONSTANT["DATABASE"]["DBUSER"]};PWD={CONSTANT["DATABASE"]["DBPASSWORD"]};charset=utf8mb4;PORT={CONSTANT["DATABASE"]["PORT"]};')
         self.cursor = self.connection.cursor()
-
-
-    """
-    Input - None 
-    Output - Return Cursor Od Database.
-    """
+    
     def get_cursor(self):
+        """
+        Input - None
+        Output - Return Cursor Od Database.
+        """
         return self.cursor
 
 
-    """
-    Input - None
-    Process - Check If Database is Active, Readable and Writable.
-    Output - Result/None.
-    """
     def check_db(self):
+        """
+        Input - None
+        Process - Check If Database is Active, Readable and Writable.
+        Output - Result/None.
+        """
         try:
-            self.cursor.execute("SELECT * FROM user")
+            self.cursor.execute('SELECT * FROM user')
             result = self.cursor.fetchone()
-        except Exception as e:
+        except pyodbc.Error as exp:
+            self.logger.error(f'Error While Checking Database => {exp}.')
             result = None
-            return result
+        return result
 
 
     def get_record(self, select=None, table=None, where=None):
@@ -86,18 +93,20 @@ class Database(object):
         return response
 
 
-    """
-    Input - tablename and column
-    Process - It is Create operation on the DB.
-      table is the table name which need to be created.
-      column is a list of dict ex: 
-      where = [{"column": "id", "datatype": "INTEGER", "length": "10", "key": "PRIMARY Key"}, {"column": "name", "datatype": "VARCHAR", "length": "40"}]
-    Output - Creates Table.
-    """
     def create(self, table=None, column=None):
+        """
+        Input - tablename and column
+        Process - It is Create operation on the DB.
+                    table is the table name which need to be created.
+                    column is a list of dict ex:
+                    where = [
+                        {"column": "id", "datatype": "INTEGER", "length": "10", "key": "PRIMARY"},
+                        {"column": "name", "datatype": "VARCHAR", "length": "40"}]
+        Output - Creates Table.
+        """
         columns = []
         for cols in column:
-            strcolumn = ""
+            strcolumn = ''
             if 'column' in cols.keys():
                 strcolumn = strcolumn + ' [' + cols['column'] + '] '
             if 'datatype' in cols.keys():
@@ -106,196 +115,210 @@ class Database(object):
                 strcolumn = strcolumn + ' (' +cols['length'] + ') '
             if 'key'in cols.keys():
                 strcolumn = strcolumn + ' ' +cols['key'] + ' '
-
             columns.append(strcolumn)
             strcolumns = ', '.join(map(str, columns))
-            query = "CREATE TABLE IF NOT EXISTS `{}` ({})".format(table, strcolumns)
-            try:
-                self.cursor.execute(query)
-                self.connection.commit()
-            except Exception as e:
-                print(e)
-                sys.exit(0)
-
-    """
-    Input - tablename
-    Process - Truncate the table.
-    Output - Success or Failure.
-    """
-    def truncate(self, table=None):
-        if self.name == "sqlite":
-            self.logger.debug("Truncate Operation Performed on {}.".format(SQLDB))
-            result = SQLite.SQLite()
-            return result
-
-
-    """
-    Input - tablename and row
-    Process - It is Create operation on the DB.
-      table is the table name which need to be created.
-      row is a list of dict ex: row = [{"column": "name", "value": "node004"}, {"column": "ip", "value": "10.141.0.1"}]
-    Output - Creates Table.
-    """
-    def insert(self, table=None, row=None):
-        keys, values, Where = [], [], []
-        where = ' WHERE '
-        response = False
-        if row:
-            for x in row:
-                keys.append('"'+str(x["column"])+'"')
-                values.append('"'+str(x["value"])+'"')
-                WhereKeys = keys
-                WhereValues = values
-                keys = ','.join(keys)
-                values = ','.join(values)
-                query = f'INSERT INTO "{table}" ({keys}) VALUES ({values});'
+        query = f'CREATE TABLE IF NOT EXISTS `{table}` ({strcolumns})'
         try:
             self.cursor.execute(query)
-            self.cursor.commit()
-            for x,y in zip(WhereKeys, WhereValues):
-                Where.append(f'{x} = {y}')
-                where = where + ' AND '.join(Where)
-                result = self.get_record(None, table, where)
-                if result:
-                    response = result[0]['id']
-        except Exception as e:
-            self.logger.error("Error occur While Executing => {}. Error Is {} .".format(query, str(e)))
+            self.connection.commit()
+            response = True
+        except pyodbc.Error as exp:
+            self.logger.error(f'Error While Creating Table {table}. Error: {exp}')
+            response = False
         return response
 
 
-    """
-    Input - tablename, row, and where clause 
-    Process - It is SELECT operation on the DB.
-      table is the table name where the update operation should be happen.
-      row can be None for all OR a list of dict ex: where = [{"column": "name", "value": "cluster"}, {"column": "network", "value": "ib"}]
-      where can be None for all OR a list of dict ex: where = [{"column": "active", "value": "1"}, {"column": "network", "value": "ib"}]
-    Output - Update the rows.
-    """
+    def truncate(self, table=None):
+        """
+        Input - tablename
+        Process - Truncate the table.
+        Output - Success or Failure.
+        """
+        try:
+            query = f'DELETE * FROM "{table}";'
+            self.cursor.execute(query)     
+            self.cursor.commit()
+            response = True
+        except pyodbc.Error as exp:
+            self.logger.error(f'Error occur While Executing => {query}. Error Is {exp}.')
+            response = False
+        return response
+
+
+    def insert(self, table=None, row=None):
+        """
+        Input - tablename and row
+        Process - It is Create operation on the DB.
+                    table is the table name which need to be created.
+                    row is a list of dict ex: row = [{"column": "name", "value": "node004"}, {"column": "ip", "value": "10.141.0.1"}]
+        Output - Creates Table.
+        """
+        keys, values, wherelist = [], [], []
+        where = ' WHERE '
+        response = False
+        if row:
+            for nrow in row:
+                keys.append('"'+str(nrow["column"])+'"')
+                values.append('"'+str(nrow["value"])+'"')
+            wherekeys = keys
+            wherevalues = values
+            keys = ','.join(keys)
+            values = ','.join(values)
+        query = f'INSERT INTO "{table}" ({keys}) VALUES ({values});'
+        try:
+            self.cursor.execute(query)
+            self.cursor.commit()
+            for key,value in zip(wherekeys, wherevalues):
+                wherelist.append(f'{key} = {value}')
+            where = where + ' AND '.join(wherelist)
+            result = self.get_record(None, table, where)
+            if result:
+                response = result[0]['id']
+        except pyodbc.Error as exp:
+            self.logger.error(f'Error occur While Executing => {query}. Error Is {exp} .')
+        return response
+
+
     def update(self, table=None, row=None, where=None):
-        columns, Where = [], []
+        """
+        Input - tablename, row, and where clause
+        Process - It is SELECT operation on the DB.
+                    table is the table name where the update operation should be happen.
+                    row can be None for all OR a list of dict ex: where =
+                    [{"column": "name", "value": "cluster"}, {"column": "network", "value": "ib"}]
+                    where can be None for all OR a list of dict ex: where =
+                    [{"column": "active", "value": "1"}, {"column": "network", "value": "ib"}]
+        Output - Update the rows.
+        """
+        columns, wherelist = [], []
         for cols in row:
-            column = ""
+            column = ''
             if 'column' in cols.keys():
                 column = column+ cols['column']
             if 'value' in cols.keys():
                 column = column + ' = "' +str(cols['value']) +'"'
-                columns.append(column)
-                strcolumns = ', '.join(map(str, columns))
-            for cols in where:
-                column = ""
-                if 'column' in cols.keys():
-                    column = column + cols['column']
-                if 'value' in cols.keys():
-                    column = column + ' = "' +str(cols['value']) +'"'
-                Where.append(column)
-                strWhere = ' AND '.join(map(str, Where))
-            query = "UPDATE '{}' SET {} WHERE {}".format(table, strcolumns, strWhere)
-            try:
-                self.cursor.execute(query)
-                self.connection.commit()
-                if self.cursor.rowcount < 1:
-                    return False
-                else:
-                    return True
-            except Exception as e:
-                print(e)
-                sys.exit(0)
-                return False
-
-
-    """
-    Input - tablename and where clause 
-    Process - It is SELECT operation on the DB.
-      table is the table name where the update operation should be happen.
-      where can be None for all OR a list of dict ex: where = [{"column": "active", "value": "1"}, {"column": "network", "value": "ib"}]
-    Output - Delete the row.
-    """
-    def delete_row(self, table=None, where=None):
-        Where = []
+            columns.append(column)
+            strcolumns = ', '.join(map(str, columns))
         for cols in where:
-            column = ""
+            column = ''
             if 'column' in cols.keys():
                 column = column + cols['column']
             if 'value' in cols.keys():
                 column = column + ' = "' +str(cols['value']) +'"'
-            Where.append(column)
-            strWhere = ' AND '.join(map(str, Where))
+            wherelist.append(column)
+            strWhere = ' AND '.join(map(str, wherelist))
+        query = f'UPDATE "{table}" SET {strcolumns} WHERE {strWhere};'
+        try:
+            self.cursor.execute(query)
+            self.connection.commit()
+            if self.cursor.rowcount < 1:
+                response = False
+            else:
+                response = True
+        except pyodbc.Error as exp:
+            self.logger.error(f'Error occur While Executing => {query}. Error Is {exp}.')
+            response = False
+        return response
 
-            query = f'DELETE FROM "{table}" WHERE {strWhere};'
+
+    def delete_row(self, table=None, where=None):
+        """
+        Input - tablename and where clause 
+        Process - It is SELECT operation on the DB.
+                    table is the table name where the update operation should be happen.
+                    where can be None for all OR a list of dict ex: where = [{"column": "active", "value": "1"}, {"column": "network", "value": "ib"}]
+        Output - Delete the row.
+        """
+        wherelist = []
+        for cols in where:
+            column = ''
+            if 'column' in cols.keys():
+                column = column + cols['column']
+            if 'value' in cols.keys():
+                column = column + ' = "' +str(cols['value']) +'"'
+            wherelist.append(column)
+            strwhere = ' AND '.join(map(str, wherelist))
+        try:
+            query = f'DELETE FROM "{table}" WHERE {strwhere};'
             self.cursor.execute(query)
             self.cursor.commit()
+            response = True
+        except pyodbc.Error as exp:
+            self.logger.error(f'Error occur While Executing => {query}. Error Is {exp}.')
+            response = False
+        return response
 
-    """
-    TODO: add docs
-    """
+
     def deletetable(self, connection, cursor, table):
-        query = "DROP TABLE [IF EXISTS] {}".format(table)
-        cursor.execute(query)
-        connection.commit()
+        """
+        Input - tablename
+        Process - Delete The Table
+        Output - Success/Failure.
+        """
+        try:
+            query = f'DROP TABLE [IF EXISTS] {table}'
+            cursor.execute(query)     
+            connection.commit()
+            response = True
+        except pyodbc.Error as exp:
+            self.logger.error(f'Error occur While Executing => {query}. Error Is {exp}.')
+            response = False
+        return response
 
 
-    """
-    Input - select fields, tablename, where clause 
-    Process - It is SELECT operation on the DB.
-      select can be comma separated column name or None.
-      table is the table name where the select operation should be happen.
-      where can be None OR complete where condition
-    Output - Fetch rows along with column name.
-    """
     def get_columns(self, table=None):
+        """
+        Input - select fields, tablename, where clause 
+        Process - It is SELECT operation on the DB.
+                    select can be comma separated column name or None.
+                    table is the table name where the select operation should be happen.
+                    where can be None OR complete where condition
+        Output - Fetch rows along with column name.
+        """
         query = f'SELECT * FROM "{table}" LIMIT 1;'
         self.logger.debug(f'Query Executing => {query} .')
         try:
             self.cursor.execute(query)
-        except Exception as e:
-            self.logger.error("Error occur While Executing => {}. Error Is {} .".format(query, str(e)))
-            return None
-
-        response = list(map(lambda x: x[0], self.cursor.description)) # Fetching the Column Names
+            response = list(map(lambda x: x[0], self.cursor.description)) # Fetching the Column Names
+        except pyodbc.Error as exp:
+            self.logger.error(f'Error occur While Executing => {query}. Error Is {exp}.')
+            response = None
         return response
 
 
-
-    """
-    Input - tablename, name
-    Output - id.
-    """
     def getid_byname(self, table=None, name=None):
+        """
+        Input - tablename, name
+        Output - id.
+        """
         query = f'SELECT id FROM "{table}" WHERE `name` == "{name}";'
-        self.logger.debug("Query Executing => {} .".format(query))
+        self.logger.debug(f'Query Executing => {query}.')
         try:
             self.cursor.execute(query)
-        except Exception as e:
-            self.logger.error("Error occur While Executing => {}. Error Is {} .".format(query, str(e)))
-            return None
-
-        response = self.cursor.fetchone()
-        self.logger.debug("Data Set Retrived => {}.".format(str(response)))
-        if response:
-            response = response[0]
+            response = self.cursor.fetchone()
+            self.logger.debug(f'Data Set Retrived => {response}.')
+            if response:
+                response = response[0]
+        except pyodbc.Error as exp:
+            self.logger.error(f'Error occur While Executing => {query}. Error Is {exp}.')
+            response = None
         return response
 
 
-
-    """
-    Input - tablename, id
-    Output - name.
-    """
-    def getname_byid(self, table=None, id=None):
-        # ID = Database().getid_byname('group', name)
-        # print(ID)
-        # Name = Database().getname_byid('group', ID)
-        # print(Name)
-        query = f'SELECT name FROM "{table}" WHERE `id` == "{id}";'
-        self.logger.debug("Query Executing => {} .".format(query))
+    def getname_byid(self, table=None, tableid=None):
+        """
+        Input - tablename, id
+        Output - name.
+        """
+        query = f'SELECT name FROM "{table}" WHERE `id` == "{tableid}";'
+        self.logger.debug(f'Query Executing => {query}.')
         try:
             self.cursor.execute(query)
-        except Exception as e:
-            self.logger.error("Error occur While Executing => {}. Error Is {} .".format(query, str(e)))
-            return None
-
-        response = self.cursor.fetchone()
-        self.logger.debug("Data Set Retrived => {}.".format(str(response)))
-        if response:
-            response = response[0]
+            response = self.cursor.fetchone()
+            self.logger.debug(f'Data Set Retrived => {response}.')
+            if response:
+                response = response[0]
+        except pyodbc.Error as exp:
+            self.logger.error(f'Error occur While Executing => {query}. Error Is {exp}.')
+            response = None
         return response

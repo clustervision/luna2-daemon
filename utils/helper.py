@@ -391,36 +391,42 @@ class Helper(object):
             DRACUTSUCCEED = True
             CREATE = None
 
-            ## TODO : Nested, time count ; should be 10 minutes
-
             try:
-                DRACUTPROCESS = subprocess.Popen(['/usr/sbin/dracut', '--kver', KERNELVERSION, '--list-modules'], stdout=subprocess.PIPE,stderr=subprocess.STDOUT)
-                LUNAEXISTS = False
-                while DRACUTPROCESS.poll() is None:
-                    ### TODO : Remove, only check only if process is running 
-                    line = DRACUTPROCESS.stdout.readline()
-                    if line.strip() == 'luna':
-                        LUNAEXISTS = True
-                        break
-                    ### TODO : Remove, only check only if process is running 
-
-                # if not LUNAEXISTS:
-                #     self.logger.error(f'No luna dracut module in OS Image {IMAGENAME}.')
-                #     raise RuntimeError(f'No luna dracut module in OS Image {IMAGENAME}.')
-
+                DRACUTPROCESS = subprocess.check_output(['/usr/sbin/dracut', '--kver', KERNELVERSION, '--list-modules'], universal_newlines=True)
+                self.logger.info(f'DRACUTPROCESS ==> {DRACUTPROCESS}.')
                 DRACUTCMDPROCESS = (['/usr/sbin/dracut', '--force', '--kver', KERNELVERSION] + MODULESADD + MODULESREMOVE + DRIVERSADD + DRIVERSREMOVE + [PATHTMP + '/' + INTRDFILE])
-
-                CREATE = subprocess.Popen(DRACUTCMDPROCESS, stdout=subprocess.PIPE)
-                while CREATE.poll() is None:
-                    line = CREATE.stdout.readline()
-
+                CREATE = subprocess.check_output(DRACUTCMDPROCESS, timeout=600, universal_newlines=True)
+                self.logger.info(f'CREATE ==> {CREATE}.')
             except Exception as exp:
-                print(exp)
+                self.logger.error(f'Exception ==> {exp}.')
                 DRACUTSUCCEED = False
 
 
-             ## TODO : Nested, time count ; should be 10 minutes
+            ################### OLD CODE ########################
+            # # ## Nested, time count ; should be 10 minutes
+            # try:
+            #     DRACUTPROCESS = subprocess.Popen(['/usr/sbin/dracut', '--kver', KERNELVERSION, '--list-modules'], stdout=subprocess.PIPE,stderr=subprocess.STDOUT)
+            #     LUNAEXISTS = False
+            #     while DRACUTPROCESS.poll() is None:
+            #         ### Remove, only check only if process is running 
+            #         line = DRACUTPROCESS.stdout.readline()
+            #         if line.strip() == 'luna':
+            #             LUNAEXISTS = True
+            #             break
+            #         ### Remove, only check only if process is running 
+            #     # if not LUNAEXISTS:
+            #     #     self.logger.error(f'No luna dracut module in OS Image {IMAGENAME}.')
+            #     #     raise RuntimeError(f'No luna dracut module in OS Image {IMAGENAME}.')
 
+            #     DRACUTCMDPROCESS = (['/usr/sbin/dracut', '--force', '--kver', KERNELVERSION] + MODULESADD + MODULESREMOVE + DRIVERSADD + DRIVERSREMOVE + [PATHTMP + '/' + INTRDFILE])
+            #     CREATE = subprocess.Popen(DRACUTCMDPROCESS, stdout=subprocess.PIPE)
+            #     while CREATE.poll() is None:
+            #         line = CREATE.stdout.readline()
+            # except Exception as exp:
+            #     print(exp)
+            #     DRACUTSUCCEED = False
+            # #  ## Nested, time count ; should be 10 minutes
+            ################### OLD CODE ########################
 
             if CREATE and CREATE.returncode:
                 DRACUTSUCCEED = False

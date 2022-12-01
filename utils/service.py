@@ -1,108 +1,115 @@
 #!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
 """
-This File is a Service Class, responsible to perform start, stop, reload, status, or restart action on provided service name.
+This File is a Service Class, responsible to perform start, stop, reload, status,
+or restart action on provided service name.
 """
 
-__author__      = "Sumit Sharma"
-__copyright__   = "Copyright 2022, Luna2 Project"
-__license__     = "GPL"
-__version__     = "2.0"
-__maintainer__  = "Sumit Sharma"
-__email__       = "sumit.sharma@clustervision.com"
-__status__      = "Development"
+__author__      = 'Sumit Sharma'
+__copyright__   = 'Copyright 2022, Luna2 Project'
+__license__     = 'GPL'
+__version__     = '2.0'
+__maintainer__  = 'Sumit Sharma'
+__email__       = 'sumit.sharma@clustervision.com'
+__status__      = 'Development'
 
-
-from utils.helper import *
-from utils.log import *
-
+from utils.helper import Helper
+from utils.log import Log
+from common.constant import CONSTANT
 
 class Service(object):
+    """
+    Manage All service operations.
+    """
 
-    """
-    Constructor - Initialize The Service Names.
-    """
     def __init__(self):
-        self.DHCP = CONSTANT['SERVICES']['DHCP']
-        self.DNS = CONSTANT['SERVICES']['DNS']
+        """
+        Constructor - Initialize The Service Names.
+        """
+        self.dhcp = CONSTANT['SERVICES']['DHCP']
+        self.dns = CONSTANT['SERVICES']['DNS']
         self.logger = Log.get_logger()
 
 
-    """
-    Input - name of service and action need to be perform
-    Process - Validate the Service Name and Action and perform the action with the help of runcommand method from Helper Class.
-    Output - Success or Failure.
-    """
     def luna_service(self, name, action):
+        """
+        Input - name of service and action need to be perform
+        Process - Validate the Service Name and Action and perform the action
+                with the help of runcommand method from Helper Class.
+        Output - Success or Failure.
+        """
+
         match name:
-            case self.DHCP | self.DNS | "luna2":
+            case self.dhcp | self.dns | 'luna2':
                 match action:
-                    case "start" | "stop" | "reload" | "restart" | "status":
-                        command = "{} {} {}".format(CONSTANT['SERVICES']['COMMAND'], action, name) ## Fetch the command from the .ini file
+                    case 'start' | 'stop' | 'reload' | 'restart' | 'status':
+                        command = f'{CONSTANT["SERVICES"]["COMMAND"]} {action} {name}'
                         output = Helper().runcommand(command)
                         response, code = self.service_status(name, action, output)
                     case _:
-                        self.logger.error("Service Action {} Is Not Recognized.".format(name))
-                        response = {"error": "Service Action {} Is Not Recognized.".format(action)}
+                        self.logger.error(f'Service Action {name} Is Not Recognized')
+                        response = {'error': f'Service Action {action} Is Not Recognized.'}
                         code = 404
             case _:
-                self.logger.error("Service Name {} Is Not Recognized.".format(name))
-                response = {"error": "Service Name {} Is Not Recognized.".format(name)}
+                self.logger.error(f'Service Name {name} Is Not Recognized.')
+                response = {'error': 'Service Name {name} Is Not Recognized.'}
                 code = 404
         return response, code
 
 
-    """
-    Input - name of service and action need to be perform
-    Process - After Validating Token, Check Queue if the same request is enque in last two seconds. If Not Then only execute the action with the Help of Service Class.
-    Output - Success or Failure.
-    """
     def service_status(self, name, action, output):
+        """
+        Input - name of service and action need to be perform
+        Process - After Validating Token, Check Queue if the same request is enque in last two
+                seconds. If Not Then only execute the action with the Help of Service Class.
+        Output - Success or Failure.
+        """
+
         match action:
-            case "start":
+            case 'start':
                 if "(b'', b'')" in str(output):
-                    self.logger.info("Service {} is {}ed.".format(name, action))
-                    response = "Service {} is {}ed.".format(name, action)
+                    self.logger.info(f'Service {name} is {action}ed.')
+                    response = f'Service {name} is {action}ed.'
                     code = 200
                 else:
-                    self.logger.error("Service {} is Failed to {}.".format(name, action))
-                    response = "Service {} is Failed to {}.".format(name, action)
+                    self.logger.error(f'Service {name} is Failed to {action}.')
+                    response = f'Service {name} is Failed to {action}.'
                     code = 500
-            case "stop":
+            case 'stop':
                 if "(b'', b'')" in str(output):
-                    self.logger.info("Service {} is {}ped.".format(name, action))
-                    response = "Service {} is {}ped.".format(name, action)
+                    self.logger.info(f'Service {name} is {action}ped.')
+                    response = f'Service {name} is {action}ped.'
                     code = 200
                 else:
-                    self.logger.error("Service {} is Failed to {}.".format(name, action))
-                    response = "Service {} is Failed to {}.".format(name, action)
+                    self.logger.error(f'Service {name} is Failed to {action}.')
+                    response = f'Service {name} is Failed to {action}.'
                     code = 500
-            case "reload":
+            case 'reload':
                 if "Failed" in str(output):
-                    self.logger.error("Service {} is Failed to {}.".format(name, action))
-                    response = "Service {} is Failed to {}.".format(name, action)
+                    self.logger.error(f'Service {name} is Failed to {action}.')
+                    response = f'Service {name} is Failed to {action}.'
                     code = 500
                 else:
-                    self.logger.info("Service {} is {}ed.".format(name, action))
-                    response = "Service {} is {}ed.".format(name, action)
+                    self.logger.info(f'Service {name} is {action}ed.')
+                    response = f'Service {name} is {action}ed.'
                     code = 200
-            case "restart":
+            case 'restart':
                 if "(b'', b'')" in str(output):
-                    self.logger.info("Service {} is {}ed.".format(name, action))
-                    response = "Service {} is {}ed.".format(name, action)
+                    self.logger.info(f'Service {name} is {action}ed.')
+                    response = f'Service {name} is {action}ed.'
                     code = 200
                 else:
-                    self.logger.error("Service {} is Failed to {}.".format(name, action))
-                    response = "Service {} is Failed to {}.".format(name, action)
+                    self.logger.error(f'Service {name} is Failed to {action}.')
+                    response = f'Service {name} is Failed to {action}.'
                     code = 500
-            case "status":
-                if "active (running)" in str(output):
-                    self.logger.info("Service {} is Active & Running.".format(name))
-                    response = {"monitor": {"service": { name: "OK, running"} } }
-                    # response = "Service {} is Active & Running.".format(name)
+            case 'status':
+                if 'active (running)' in str(output):
+                    self.logger.info(f'Service {name} is Active & Running.')
+                    response = {'monitor': {'Service': { name: 'OK, running'} } }
                     code = 200
                 else:
-                    self.logger.error("Service {} is Not Active & Running.".format(name))
-                    response = {"monitor": {"service": { name: "FAIL, not running"} } }
-                    # response = "Service {} is Not Active & Running.".format(name)
+                    self.logger.error('Service {name} is Not Active & Running.')
+                    response = {'monitor': {'Service': { name: 'FAIL, not running'} } }
                     code = 500
         return response, code

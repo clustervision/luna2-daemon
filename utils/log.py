@@ -37,18 +37,18 @@ class Log:
         if not log_level:
             log_level = 20
         else:
-            levels = {"NOTSET": 0, "DEBUG": 10, "INFO": 20, "WARNING": 30, "ERROR": 40, "CRITICAL": 50}
+            levels = {'NOTSET': 0, 'DEBUG': 10, 'INFO': 20, 'WARNING': 30, 'ERROR': 40, 'CRITICAL': 50}
             log_level = levels[log_level.upper()]
         logging.basicConfig(filename=BASE_DIR+"/"+CONSTANT['LOGGER']['LOGFILE'], format='[%(levelname)s]:[%(asctime)s]:[%(threadName)s]:[%(filename)s:%(funcName)s@%(lineno)d] - %(message)s', filemode='a', level=log_level)
-        cls.__logger = logging.getLogger("luna2-daemon")
+        cls.__logger = logging.getLogger('luna2-daemon')
         cls.__logger.setLevel(log_level)
         formatter = logging.Formatter('[%(levelname)s]:[%(asctime)s]:[%(threadName)s]:[%(filename)s:%(funcName)s@%(lineno)d] - %(message)s')
         cnsl = logging.StreamHandler(sys.stdout)
         cnsl.setLevel(log_level)
         cnsl.setFormatter(formatter)
         cls.__logger.addHandler(cnsl)
-        levels = {0: "NOTSET", 10: "DEBUG", 20: "INFO", 30: "WARNING", 40: "ERROR", 50: "CRITICAL"}
-        cls.__logger.info(f'=============== Luna Logging Level IsSet To [{levels[log_level]}] ===============')
+        levels = {0: 'NOTSET', 10: 'DEBUG', 20: 'INFO', 30: 'WARNING', 40: 'ERROR', 50: 'CRITICAL'}
+        cls.__logger.info(f'########## Luna Logging Level IsSet To [{levels[log_level]}] ##########')
         return cls.__logger
 
 

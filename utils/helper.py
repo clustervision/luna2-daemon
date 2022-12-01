@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
 """
 This Is a Helper Class, which help the project to provide the common Methods.
 
@@ -19,15 +21,18 @@ import subprocess
 import shutil
 import queue
 from jinja2 import Environment
-from utils.log import *
+from utils.log import Log
 import json
 import ipaddress
-from utils.database import *
+from utils.database import Database
 from netaddr import IPNetwork
 from cryptography.fernet import Fernet
 from common.constant import LUNAKEY
 
 class Helper(object):
+    """
+    All kind of helper methods.
+    """
 
     def __init__(self):
         """
@@ -44,10 +49,10 @@ class Helper(object):
         Output - Detailed result.
         """
         process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
-        self.logger.debug("Command Executed {}".format(command))
+        self.logger.debug(f'Command Executed {command}')
         output = process.communicate()
         process.wait()
-        self.logger.debug("Output Of Command {} ".format(str(output)))
+        self.logger.debug(f'Output Of Command {output}')
         return output
 
 
@@ -117,7 +122,7 @@ class Helper(object):
         """
         env = Environment()
         try:
-            with open(template) as template:
+            with open(template, encoding='utf-8') as template:
                 env.parse(template.read())
             return True
         except Exception as e:
@@ -299,12 +304,12 @@ class Helper(object):
 
     def pack(self, image=None):
         if {"packing": image} in self.packing.queue:
-            logger.warning(f'Image {image} packing is ongoing, request is in Queue.')
+            self.logger.warning(f'Image {image} packing is ongoing, request is in Queue.')
             response = f'Image {image} packing is ongoing, request is in Queue.'
         else:
             self.packing.put({"packing": image})
             response = self.packimage(image)
-            logger.info(response)
+            self.logger.info(response)
         return response
 
 

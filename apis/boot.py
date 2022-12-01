@@ -13,34 +13,33 @@ __status__      = "Development"
 
 
 from flask import Blueprint, request, json, render_template, abort
-from utils.log import *
-from utils.database import *
-from utils.helper import *
+from utils.log import Log
+from utils.database import Database
+from utils.helper import Helper
+from common.constant import CONSTANT
 
-logger = Log.get_logger()
+LOGGER = Log.get_logger()
 boot_blueprint = Blueprint('boot', __name__, template_folder='../templates')
 
 # , template_folder='templates'
 
 
-@boot_blueprint.route("/boot", methods=['GET'])
+@boot_blueprint.route('/boot', methods=['GET'])
 def boot():
     """
     Input - None
     Process - Via jinja2 filled data in template templ_boot_ipxe.cfg
     Output - templ_boot_ipxe.cfg
     """
-
-    nodes = ["node001", "node002", "node003", "node004"]
-    data = {"protocol": "http", "server_ip": "10.141.255.254", "server_port": "7051", "nodes": nodes}
-    Template = "templ_boot_ipxe.cfg"
-    logger.info("Boot API Serving the {}".format(Template))
-    CHECKTEMPLATE = Helper().checkjinja(CONSTANT["TEMPLATES"]["TEMPLATES_DIR"]+'/'+Template)
+    nodes = ['node001', 'node002', 'node003', 'node004']
+    data = {'protocol': 'http', 'server_ip': '10.141.255.254', 'server_port': '7051', 'nodes': nodes}
+    Template = 'templ_boot_ipxe.cfg'
+    LOGGER.info(f'Boot API Serving the {Template}')
+    CHECKTEMPLATE = Helper().checkjinja(f'{CONSTANT["TEMPLATES"]["TEMPLATES_DIR"]}/{Template}')
     if CHECKTEMPLATE:
         return render_template(Template, p=data), 200
     else:
-        abort(404, "Empty")
-
+        abort(404, 'Empty')
 
 
 @boot_blueprint.route("/boot/short", methods=['GET'])
@@ -54,7 +53,7 @@ def boot_short():
     nodes = ["node001", "node002", "node003", "node004"]
     data = {"protocol": "http", "server_ip": "10.141.255.254", "server_port": "7051", "nodes": nodes}
     Template = "templ_boot_ipxe_short.cfg"
-    logger.info("Boot API Serving the {}".format(Template))
+    LOGGER.info("Boot API Serving the {}".format(Template))
     CHECKTEMPLATE = Helper().checkjinja(CONSTANT["TEMPLATES"]["TEMPLATES_DIR"]+'/'+Template)
     if CHECKTEMPLATE:
         return render_template(Template, p=data), 200
@@ -73,7 +72,7 @@ def boot_disk():
     nodes = ["node001", "node002", "node003", "node004"]
     data = {"protocol": "http", "server_ip": "10.141.255.254", "server_port": "7051", "nodes": nodes}
     Template = "templ_boot_disk.cfg"
-    logger.info("Boot API Serving the {}".format(Template))
+    LOGGER.info("Boot API Serving the {}".format(Template))
     CHECKTEMPLATE = Helper().checkjinja(CONSTANT["TEMPLATES"]["TEMPLATES_DIR"]+'/'+Template)
     if CHECKTEMPLATE:
         return render_template(Template, p=data), 200
@@ -92,13 +91,13 @@ def boot_search_mac(mac=None):
     NODE = Database().get_record(None, 'node', f' WHERE macaddr = "{mac}"')
     # TODO: Switch Configuration Needs to be checked before response
     if not NODE:
-        logger.debug(f'Mac Address {mac} Not Found.')
+        LOGGER.debug(f'Mac Address {mac} Not Found.')
         abort(404, "Empty")
     # row = [{"column": "status", "value": "installer.discovery"}]
     # where = [{"column": "id", "value": NODE[0]["id"]}]
     # Database().update('node', row, where)
     Template = "templ_nodeboot.cfg"
-    logger.info(f'Node Found with Mac Address {mac}.')
+    LOGGER.info(f'Node Found with Mac Address {mac}.')
     CHECKTEMPLATE = Helper().checkjinja(CONSTANT["TEMPLATES"]["TEMPLATES_DIR"]+'/'+Template)
     if CHECKTEMPLATE:
         return render_template(Template, p=data), 200
@@ -118,12 +117,12 @@ def boot_manual_hostname(hostname=None):
     NODE = Database().get_record(None, 'node', f' WHERE hostname = "{hostname}"')
     # TOODO: Switch Configuration Needs to be checked before response
     if not NODE:
-        logger.debug(f'Hostname {hostname} Not Found.')
+        LOGGER.debug(f'Hostname {hostname} Not Found.')
         abort(404, "Empty")
     if NODE[0]['service'] == True:
         data['service'] = '1'
     Template = "templ_nodeboot.cfg"
-    logger.info(f'Node Found with Hostname {hostname}.')
+    LOGGER.info(f'Node Found with Hostname {hostname}.')
     CHECKTEMPLATE = Helper().checkjinja(CONSTANT["TEMPLATES"]["TEMPLATES_DIR"]+'/'+Template)
     if CHECKTEMPLATE:
         return render_template(Template, p=data), 200
@@ -142,11 +141,11 @@ def boot_install(node=None):
     where = [{"column": "name", "value": node}]
     install = Database().update('node', row, where)
     if install or CONSTANT['LOGGER']['LEVEL'].lower() == 'debug':
-        logger.info("Installation Script is Started For  NodeID: {}".format(node))
+        LOGGER.info("Installation Script is Started For  NodeID: {}".format(node))
         response = {"message": "Installation Script is Started For  NodeID: {}".format(node)}
         code = 200
     else:
-        logger.error("Not Able To Find The NodeID: {}".format(node))
+        LOGGER.error("Not Able To Find The NodeID: {}".format(node))
         response = {"message": "Not Able To Find The NodeID: {}".format(node)}
         code = 404
     return json.dumps(response), code

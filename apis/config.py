@@ -1023,7 +1023,7 @@ def config_osimage_pack(name=None):
 
 
 @config_blueprint.route("/config/osimage/<string:name>/kernel", methods=['POST'])
-@token_required
+# @token_required
 def config_osimage_kernel_post(name=None):
     """
     Input - OS Image Name
@@ -1047,9 +1047,10 @@ def config_osimage_kernel_post(name=None):
             COLUMNCHECK = Helper().checkin_list(DATA, OSIMAGECOLUMNS)
             if COLUMNCHECK:
                 REQUESTCHECK = Helper().pack(name)
-                where = [{"column": "id", "value": IMAGEID}]
-                row = Helper().make_rows(DATA)
-                result = Database().update('osimage', row, where)
+                print(f'REQUESTCHECK=======>> {REQUESTCHECK}')
+                # where = [{"column": "id", "value": IMAGEID}]
+                # row = Helper().make_rows(DATA)
+                # result = Database().update('osimage', row, where)
                 RESPONSE = {'message': f'OS Image {name} Kernel Updated Successfully.'}
                 ACCESSCODE = 204
             else:

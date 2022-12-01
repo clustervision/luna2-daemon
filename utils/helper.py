@@ -27,7 +27,7 @@ import ipaddress
 from utils.database import Database
 from netaddr import IPNetwork
 from cryptography.fernet import Fernet
-from common.constant import LUNAKEY
+from common.constant import CONSTANT, LUNAKEY
 
 class Helper(object):
     """
@@ -342,12 +342,15 @@ class Helper(object):
             DRACUTMODULES = IMAGE[0]['dracutmodules']
             KERNELMODULES = IMAGE[0]['kernelmodules']
             KERNELVERSION = IMAGE[0]['kernelversion']
-            if '`' in KERNELVERSION:
-                KERNELVERSION = KERNELVERSION.replace('`', '')
-                KERNELVERSION = self.runcommand(KERNELVERSION)
-                KERNELVERSION = str(KERNELVERSION[0])
-                KERNELVERSION = KERNELVERSION.replace("b'", '')
-                KERNELVERSION = KERNELVERSION.replace("\\n'", '')
+            OSKERNELVERSION = self.runcommand('uname -r')
+            OSKERNELVERSION = str(OSKERNELVERSION[0])
+            OSKERNELVERSION = OSKERNELVERSION.replace("b'", '')
+            OSKERNELVERSION = OSKERNELVERSION.replace("\\n'", '')
+            
+            if OSKERNELVERSION != KERNELVERSION:
+                self.logger.error(f'OS Kernel Version {OSKERNELVERSION} is not matching with the image kernel version {KERNELVERSION}.')
+                return False
+
             KERNELFILE = image+'-vmlinuz-'+KERNELVERSION
             INTRDFILE = image+'-initramfs-'+KERNELVERSION
 
@@ -356,9 +359,8 @@ class Helper(object):
             if CLUSTER:
                 USER = CLUSTER[0]['user']
             else:
-                USER = "luna"
-            PATHTOSTORE = '/trinity/local/luna/files'
-            # PATHTOSTORE = IMAGEPATH+'/boot'
+                USER = 'luna'
+            PATHTOSTORE = CONSTANT['FILES']['TARBALL']
             USERID = pwd.getpwnam(USER).pw_uid
             GROUPID = pwd.getpwnam(USER).pw_gid
 
@@ -389,14 +391,18 @@ class Helper(object):
             DRACUTSUCCEED = True
             CREATE = None
 
+            ## TODO : Nested, time count ; should be 10 minutes
+
             try:
                 DRACUTPROCESS = subprocess.Popen(['/usr/sbin/dracut', '--kver', KERNELVERSION, '--list-modules'], stdout=subprocess.PIPE,stderr=subprocess.STDOUT)
                 LUNAEXISTS = False
                 while DRACUTPROCESS.poll() is None:
+                    ### TODO : Remove, only check only if process is running 
                     line = DRACUTPROCESS.stdout.readline()
                     if line.strip() == 'luna':
                         LUNAEXISTS = True
                         break
+                    ### TODO : Remove, only check only if process is running 
 
                 # if not LUNAEXISTS:
                 #     self.logger.error(f'No luna dracut module in OS Image {IMAGENAME}.')
@@ -408,9 +414,13 @@ class Helper(object):
                 while CREATE.poll() is None:
                     line = CREATE.stdout.readline()
 
-            except Exception as e:
-                print(e)
+            except Exception as exp:
+                print(exp)
                 DRACUTSUCCEED = False
+
+
+             ## TODO : Nested, time count ; should be 10 minutes
+
 
             if CREATE and CREATE.returncode:
                 DRACUTSUCCEED = False

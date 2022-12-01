@@ -101,12 +101,12 @@ def getconfig(filename=None):
                 CONSTANT[each_section] = {}
                 CONSTANT[each_section][each_key.upper()] = each_val
 
-    file_check = checkfile(ConfigFile)
-    if file_check:
-        getconfig(ConfigFile)
-    # LOGGER = Log.init_log(CONSTANT['LOGGER']['LEVEL'])
-    else:
-        sys.exit(0)
+file_check = checkfile(ConfigFile)
+if file_check:
+    getconfig(ConfigFile)
+# LOGGER = Log.init_log(CONSTANT['LOGGER']['LEVEL'])
+else:
+    sys.exit(0)
 
 
 global LUNAKEY

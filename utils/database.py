@@ -50,40 +50,39 @@ class Database(object):
             return result
 
 
-    """
-    Input - select fields, tablename, where clause 
-    Process - It is SELECT operation on the DB.
-    			select can be comma separated column name or None.
-				table is the table name where the select operation should be happen.
-				where can be None OR complete where condition
-    Output - Fetch rows along with column name.
-    """
     def get_record(self, select=None, table=None, where=None):
+        """
+        Input - select fields, tablename, where clause 
+        Process - It is SELECT operation on the DB.
+                    select can be comma separated column name or None.
+                    table is the table name where the select operation should be happen.
+                    where can be None OR complete where condition
+        Output - Fetch rows along with column name.
+        """
         if select:
             strcolumn = ','.join(map(str, select))
         else:
             strcolumn = "*"
         if where:
-            query = "SELECT {} FROM '{}' {}".format(strcolumn, table, where)
+            query = f'SELECT {strcolumn} FROM "{table}" {where};'
         else:
-            query = "SELECT {} FROM '{}'".format(strcolumn, table)
-            self.logger.debug("Query Executing => {} .".format(query))
+            query = f'SELECT {strcolumn} FROM "{table}";'
+        self.logger.debug(f'Query Executing => {query}.')
         try:
             self.cursor.execute(query)
-        except Exception as e:
-            self.logger.error("Error occur While Executing => {}. Error Is {} .".format(query, str(e)))
-            return None
-
-        names = list(map(lambda x: x[0], self.cursor.description)) # Fetching the Column Names
-        data = self.cursor.fetchall()
-        self.logger.debug("Data Set Retrieved => {}.".format(str(data)))
-        rowdict = {}
-        response = []
-        for row in data:
-            for key, value in zip(names,row):
-                rowdict[key] = value
+            names = list(map(lambda x: x[0], self.cursor.description)) # Fetching the Column Names
+            data = self.cursor.fetchall()
+            self.logger.debug(f'Data Set Retrived => {data}.')
+            rowdict = {}
+            response = []
+            for row in data:
+                for key, value in zip(names,row):
+                    rowdict[key] = value
                 response.append(rowdict)
                 rowdict = {}
+        except pyodbc.Error as exp:
+            self.logger.error(f'Error occur While Executing => {query}. Error Is {exp}.')
+            response = None
         return response
 
 

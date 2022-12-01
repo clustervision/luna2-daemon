@@ -16,6 +16,7 @@ import os
 import sys
 import pwd
 import subprocess
+import shutil
 from jinja2 import Environment
 from utils.log import *
 import json
@@ -323,6 +324,12 @@ class Helper(object):
             DRACUTMODULES = IMAGE[0]['dracutmodules']
             KERNELMODULES = IMAGE[0]['kernelmodules']
             KERNELVERSION = IMAGE[0]['kernelversion']
+            if '`' in KERNELVERSION:
+                KERNELVERSION = KERNELVERSION.replace('`', '')
+                KERNELVERSION = self.runcommand(KERNELVERSION)
+                KERNELVERSION = str(KERNELVERSION[0])
+                KERNELVERSION = KERNELVERSION.replace("b'", '')
+                KERNELVERSION = KERNELVERSION.replace("\\n'", '')
             KERNELFILE = image+'-vmlinuz-'+KERNELVERSION
             INTRDFILE = image+'-initramfs-'+KERNELVERSION
 
@@ -332,7 +339,8 @@ class Helper(object):
                 USER = CLUSTER[0]['user']
             else:
                 USER = "luna"
-            PATHTOSTORE = IMAGEPATH+'/boot'
+            PATHTOSTORE = '/trinity/local/luna/files'
+            # PATHTOSTORE = IMAGEPATH+'/boot'
             USERID = pwd.getpwnam(USER).pw_uid
             GROUPID = pwd.getpwnam(USER).pw_gid
 
@@ -360,62 +368,47 @@ class Helper(object):
             os.chroot(IMAGEPATH)
             CHROOTPATH = os.open("/", os.O_DIRECTORY)
             os.fchdir(CHROOTPATH)
+            DRACUTSUCCEED = True
+            CREATE = None
 
-            # DRACUTSUCCEED = True
-            # CREATE = None
+            try:
+                DRACUTPROCESS = subprocess.Popen(['/usr/sbin/dracut', '--kver', KERNELVERSION, '--list-modules'], stdout=subprocess.PIPE,stderr=subprocess.STDOUT)
+                LUNAEXISTS = False
+                while DRACUTPROCESS.poll() is None:
+                    line = DRACUTPROCESS.stdout.readline()
+                    if line.strip() == 'luna':
+                        LUNAEXISTS = True
+                        break
 
+                # if not LUNAEXISTS:
+                #     self.logger.error(f'No luna dracut module in OS Image {IMAGENAME}.')
+                #     raise RuntimeError(f'No luna dracut module in OS Image {IMAGENAME}.')
 
-            # DRACUTPROCESS = subprocess.Popen(['/usr/sbin/dracut', '--kver', KERNELVERSION, '--list-modules'], stdout=subprocess.PIPE,stderr=subprocess.STDOUT)
-            # LUNAEXISTS = False
-            # print("processstart")
-            # print(DRACUTPROCESS)
-            # print("processstart")
-            # print("output")
-            # print(DRACUTPROCESS.stdout.readlines())
-            # print("output")
-            # print("error")
-            # print(DRACUTPROCESS.stderr.readlines())
-            # print("error")
+                DRACUTCMDPROCESS = (['/usr/sbin/dracut', '--force', '--kver', KERNELVERSION] + MODULESADD + MODULESREMOVE + DRIVERSADD + DRIVERSREMOVE + [PATHTMP + '/' + INTRDFILE])
 
+                CREATE = subprocess.Popen(DRACUTCMDPROCESS, stdout=subprocess.PIPE)
+                while CREATE.poll() is None:
+                    line = CREATE.stdout.readline()
 
-            # try:
-            #     DRACUTPROCESS = subprocess.Popen(['/usr/sbin/dracut', '--kver', KERNELVERSION, '--list-modules'], stdout=subprocess.PIPE,stderr=subprocess.STDOUT)
-            #     LUNAEXISTS = False
-            #     while DRACUTPROCESS.poll() is None:
-            #         line = DRACUTPROCESS.stdout.readline()
-            #         if line.strip() == 'luna':
-            #             LUNAEXISTS = True
-            #             break
+            except Exception as e:
+                print(e)
+                DRACUTSUCCEED = False
 
-            #     if not LUNAEXISTS:
-            #         self.logger.error(f'No luna dracut module in OS Image {IMAGENAME}.')
-            #         raise RuntimeError(f'No luna dracut module in OS Image {IMAGENAME}.')
+            if CREATE and CREATE.returncode:
+                DRACUTSUCCEED = False
 
-            #     DRACUTCMDPROCESS = (['/usr/sbin/dracut', '--force', '--kver', KERNELVERSION] + MODULESADD + MODULESREMOVE + DRIVERSADD + DRIVERSREMOVE + [PATHTMP + '/' + INTRDFILE])
+            if not CREATE:
+                DRACUTSUCCEED = False
 
-            #     CREATE = subprocess.Popen(DRACUTCMDPROCESS, stdout=subprocess.PIPE)
-            #     while CREATE.poll() is None:
-            #         line = CREATE.stdout.readline()
+            os.fchdir(REALROOT)
+            os.chroot(".")
+            os.close(REALROOT)
+            os.close(CHROOTPATH)
+            cleanup_mounts(IMAGEPATH)
 
-            # except Exception as e:
-            #     print(e)
-            #     DRACUTSUCCEED = False
-
-            # if CREATE and CREATE.returncode:
-            #     DRACUTSUCCEED = False
-
-            # if not CREATE:
-            #     DRACUTSUCCEED = False
-
-            # os.fchdir(REALROOT)
-            # os.chroot(".")
-            # os.close(REALROOT)
-            # os.close(CHROOTPATH)
-            # cleanup_mounts(IMAGEPATH)
-
-            # if not DRACUTSUCCEED:
-            #     self.logger.error(f'Error while building initrd for OS Image {IMAGENAME}.')
-            #     return False
+            if not DRACUTSUCCEED:
+                self.logger.error(f'Error while building initrd for OS Image {IMAGENAME}.')
+                return False
 
             INTRDPATH = IMAGEPATH + PATHTMP + '/' + INTRDFILE
             KERNELPATH = IMAGEPATH + '/boot/vmlinuz-' + KERNELVERSION
@@ -433,7 +426,7 @@ class Helper(object):
             os.remove(INTRDPATH)
             shutil.copy(KERNELPATH, PATHTOSTORE + '/' + KERNELFILE)
             os.chown(PATHTOSTORE + '/' + INTRDFILE, USERID, GROUPID)
-            os.chmod(PATHTOSTORE + '/' + INTRDFILE, '0644')
+            os.chmod(PATHTOSTORE + '/' + INTRDFILE, int('0644'))
             os.chown(PATHTOSTORE + '/' + KERNELFILE, USERID, GROUPID)
-            os.chmod(PATHTOSTORE + '/' + KERNELFILE, '0644')
+            os.chmod(PATHTOSTORE + '/' + KERNELFILE, int('0644'))
         return True

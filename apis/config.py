@@ -1047,7 +1047,7 @@ def config_osimage_kernel_post(name=None):
             COLUMNCHECK = Helper().checkin_list(DATA, OSIMAGECOLUMNS)
             if COLUMNCHECK:
                 REQUESTCHECK = Helper().pack(name)
-                print(REQUESTCHECK)
+                print(f'REQUESTCHECK===> {REQUESTCHECK} ')
                 where = [{"column": "id", "value": IMAGEID}]
                 row = Helper().make_rows(DATA)
                 # result = Database().update('osimage', row, where)

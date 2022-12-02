@@ -83,5 +83,9 @@ echo 'CwSQcHNqiLSHXQaCDtAF2414e3muXgmpht6ocVA2xGs=' > /trinity/local/etc/ssl/lun
 mkdir /trinity/local/luna/log
 touch /trinity/local/luna/log/luna2-daemon.log
 
+cp /trinity/local/luna/config/luna2-daemon.service /etc/systemd/system/
+setenforce 0
+systemctl status luna2-daemon.service
+systemctl enable luna2-daemon.service
 ```
 http://127.0.0.1:7050

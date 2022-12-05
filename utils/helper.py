@@ -300,7 +300,7 @@ class Helper(object):
         FERNETOBJ = Fernet(KEY)
         RESPONSE = FERNETOBJ.decrypt(string).decode()
         return RESPONSE
-    
+
 
     def pack(self, image=None):
         if {"packing": image} in self.packing.queue:
@@ -346,7 +346,7 @@ class Helper(object):
             OSKERNELVERSION = str(OSKERNELVERSION[0])
             OSKERNELVERSION = OSKERNELVERSION.replace("b'", '')
             OSKERNELVERSION = OSKERNELVERSION.replace("\\n'", '')
-            
+
             if OSKERNELVERSION != KERNELVERSION:
                 self.logger.error(f'OS Kernel Version {OSKERNELVERSION} is not matching with the image kernel version {KERNELVERSION}.')
                 return False
@@ -407,12 +407,12 @@ class Helper(object):
             #     DRACUTPROCESS = subprocess.Popen(['/usr/sbin/dracut', '--kver', KERNELVERSION, '--list-modules'], stdout=subprocess.PIPE,stderr=subprocess.STDOUT)
             #     LUNAEXISTS = False
             #     while DRACUTPROCESS.poll() is None:
-            #         ### Remove, only check only if process is running 
+            #         ### Remove, only check only if process is running
             #         line = DRACUTPROCESS.stdout.readline()
             #         if line.strip() == 'luna':
             #             LUNAEXISTS = True
             #             break
-            #         ### Remove, only check only if process is running 
+            #         ### Remove, only check only if process is running
             #     # if not LUNAEXISTS:
             #     #     self.logger.error(f'No luna dracut module in OS Image {IMAGENAME}.')
             #     #     raise RuntimeError(f'No luna dracut module in OS Image {IMAGENAME}.')

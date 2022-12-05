@@ -33,7 +33,7 @@ class Database(object):
         self.logger = Log.get_logger()
         self.connection = pyodbc.connect(f'DRIVER={CONSTANT["DATABASE"]["DRIVER"]};SERVER={CONSTANT["DATABASE"]["HOST"]};DATABASE={CONSTANT["DATABASE"]["DATABASE"]};UID={CONSTANT["DATABASE"]["DBUSER"]};PWD={CONSTANT["DATABASE"]["DBPASSWORD"]};charset=utf8mb4;PORT={CONSTANT["DATABASE"]["PORT"]};')
         self.cursor = self.connection.cursor()
-    
+
     def get_cursor(self):
         """
         Input - None
@@ -59,7 +59,7 @@ class Database(object):
 
     def get_record(self, select=None, table=None, where=None):
         """
-        Input - select fields, tablename, where clause 
+        Input - select fields, tablename, where clause
         Process - It is SELECT operation on the DB.
                     select can be comma separated column name or None.
                     table is the table name where the select operation should be happen.
@@ -136,7 +136,7 @@ class Database(object):
         """
         try:
             query = f'DELETE * FROM "{table}";'
-            self.cursor.execute(query)     
+            self.cursor.execute(query)
             self.cursor.commit()
             response = True
         except pyodbc.Error as exp:
@@ -223,7 +223,7 @@ class Database(object):
 
     def delete_row(self, table=None, where=None):
         """
-        Input - tablename and where clause 
+        Input - tablename and where clause
         Process - It is SELECT operation on the DB.
                     table is the table name where the update operation should be happen.
                     where can be None for all OR a list of dict ex: where = [{"column": "active", "value": "1"}, {"column": "network", "value": "ib"}]
@@ -257,7 +257,7 @@ class Database(object):
         """
         try:
             query = f'DROP TABLE [IF EXISTS] {table}'
-            cursor.execute(query)     
+            cursor.execute(query)
             connection.commit()
             response = True
         except pyodbc.Error as exp:
@@ -268,7 +268,7 @@ class Database(object):
 
     def get_columns(self, table=None):
         """
-        Input - select fields, tablename, where clause 
+        Input - select fields, tablename, where clause
         Process - It is SELECT operation on the DB.
                     select can be comma separated column name or None.
                     table is the table name where the select operation should be happen.

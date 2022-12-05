@@ -30,11 +30,11 @@ class Files(object):
         """
         self.logger = Log.get_logger()
 
-    
+
     def check_file(self, filename):
         """
         Input - filename
-        Process - It will check if file is available or not 
+        Process - It will check if file is available or not
         Output - filepath
         """
         filepath = f'{CONSTANT["FILES"]["TARBALL"]}/{filename}'

@@ -5,6 +5,14 @@
 This File is responsible to Check & Perform all bootstrap related activity.
 """
 
+__author__ = 'Sumit Sharma'
+__copyright__ = 'Copyright 2022, Luna2 Project'
+__license__ = 'GPL'
+__version__ = '2.0'
+__maintainer__ = 'Sumit Sharma'
+__email__ = 'sumit.sharma@clustervision.com'
+__status__ = 'Development'
+
 from common.dbcheck import checkdbstatus
 from configparser import RawConfigParser
 from pathlib import Path
@@ -14,35 +22,24 @@ import os
 import ipaddress
 import time
 from utils.database import *
-__author__ = 'Sumit Sharma'
-__copyright__ = 'Copyright 2022, Luna2 Project'
-__license__ = 'GPL'
-__version__ = '2.0'
-__maintainer__ = 'Sumit Sharma'
-__email__ = 'sumit.sharma@clustervision.com'
-__status__ = 'Development'
 
 
 configParser = RawConfigParser()
-# from utils.log import Log
-# logger = Log.get_logger()
 Bootstrap = False
-# >>>>>>............. DEVELOPMENT PURPOSE ------>> Remove Line 20 and 21 When Feature is Developed, And Uncomment Next Line --> BootStrapFile
-# BootStrapFile = '/trinity/local/luna/config/bootstrapDEV.ini'
-# >>>>>>............. DEVELOPMENT PURPOSE
 BootStrapFile = "/trinity/local/luna/config/bootstrap.ini"
 BootStrapFilePath = Path(BootStrapFile)
 
 
-bootstrap_file, database_ready = False, False
+bootstrap_file, database_ready, error = False, False, False
+error_message = []
 
 if BootStrapFilePath.is_file():
-    print(f'INFO :: Bootstrp file is present {BootStrapFile}.')
+    print(f'INFO :: Bootstrap file is present {BootStrapFile}.')
     if os.access(BootStrapFile, os.R_OK):
-        print(f'INFO :: Bootstrp file is readable {BootStrapFile}.')
+        print(f'INFO :: Bootstrap file is readable {BootStrapFile}.')
         bootstrap_file = True
     else:
-        print(f'ERROR :: Bootstrp file is not readable {BootStrapFile}.')
+        print(f'ERROR :: Bootstrap file is not readable {BootStrapFile}.')
 
 if bootstrap_file:
     checkdb, code = checkdbstatus()
@@ -54,7 +51,8 @@ if bootstrap_file:
         for tableX in table:
             result = Database().get_record(None, tableX, None)
             if result is None:
-                sys.exit(0)
+                error = True
+                error_message.append(f'Database table {tableX} already have data.')
             if result:
                 num = num+1
         if num == 0:
@@ -77,17 +75,15 @@ BOOTSTRAP = {
 def checksection():
     for item in list(BOOTSTRAP.keys()):
         if item not in configParser.sections():
-            print(
-                f'ERROR :: Section {item} Is Missing, Kindly Check The File {filename}.')
-            sys.exit(0)
+            error = True
+            error_message.append(f'ERROR :: Section {item} Is Missing, Kindly Check The File {filename}.')
 
 
 def checkoption(each_section):
     for item in list(BOOTSTRAP[each_section].keys()):
         if item.lower() not in list(dict(configParser.items(each_section)).keys()):
-            print(
-                f'ERROR :: Section {each_section} Do not Have Option {each_key.upper()}, Kindly Check The File {filename}.')
-            sys.exit(0)
+            error = True
+            error_message.append(f'ERROR :: Section {each_section} Do not Have Option {each_key.upper()}, Kindly Check The File {filename}.')
 
 
 def getconfig(filename=None):
@@ -112,9 +108,9 @@ def getconfig(filename=None):
                     try:
                         each_val = hostlist.expand_hostlist(each_val)
                         BOOTSTRAP[each_section][each_key.upper()] = each_val
-                    except Exception as e:
-                        print("Invalid Node List range: {}, Kindly use the Numbers in incremental order.".format(each_val))
-                        sys.exit(0)
+                    except Exception as exp:
+                        error = True
+                        error_message.append(f'Invalid Node List range: {each_val}, Kindly use the Numbers in incremental order.')
                 elif 'NETWORKS' in each_section:
                     check_ip_network(each_val)
                     BOOTSTRAP[each_section][each_key.upper()] = each_val
@@ -127,22 +123,21 @@ def getconfig(filename=None):
 def check_ip(ipaddr):
     try:
         ip = ipaddress.ip_address(ipaddr)
-    except Exception as e:
-        print("Invalid IP Address: {} ".format(ipaddr))
-        sys.exit(0)
+    except Exception as exp:
+        error = True
+        error_message.append(f'Invalid IP Address: {ipaddr}.')
 
 
 def check_ip_network(ipaddr):
     try:
         subnet = ipaddress.ip_network(ipaddr)
-    except Exception as e:
-        print("Invalid Subnet: {} ".format(ipaddr))
-        sys.exit(0)
+    except Exception as exp:
+        error = True
+        error_message.append(f'Invalid Subnet: {ipaddr} .')
 
 
 def bootstrap():
-    print("Ruuning Bootstrap")
-    print(BOOTSTRAP)
+    print('###################### Bootstrap Start ######################')
     """
     DELETE FROM "controller";
     DELETE FROM "cluster";
@@ -159,13 +154,13 @@ def bootstrap():
     DELETE FROM "nodesecrets";
     """
     num  = 1
-    for x in BOOTSTRAP["HOSTS"]:
+    for hosts in BOOTSTRAP["HOSTS"]:
         if "CONTROLLER"+str(num) in BOOTSTRAP["HOSTS"].keys():
-            row = [{"column": "ipaddr", "value": BOOTSTRAP["HOSTS"]["CONTROLLER"+str(num)]}]
-            result = Database().insert("controller", row)
+            default_controller = [{"column": "ipaddr", "value": BOOTSTRAP["HOSTS"]["CONTROLLER"+str(num)]}]
+            result = Database().insert("controller", default_controller)
         num = num + 1
     for NodeX in BOOTSTRAP["HOSTS"]["NODELIST"]:
-        row = [
+        default_node = [
                 {"column": "name", "value": str(NodeX)},
                 {"column": "localboot", "value": "0"},
                 {"column": "service", "value": "0"},
@@ -176,9 +171,9 @@ def bootstrap():
                 {"column": "provisionmethod", "value": "torrent"},
                 {"column": "provisionfallback", "value": "http"}
             ]
-        result = Database().insert("node", row)
+        result = Database().insert("node", default_node)
     for NetworkX in BOOTSTRAP["NETWORKS"].keys():
-        row = [
+        default_network = [
                 {"column": "name", "value": str(NetworkX)},
                 {"column": "network", "value": str(BOOTSTRAP["NETWORKS"][NetworkX])},
                 {"column": "dhcp", "value": "0"},
@@ -187,8 +182,8 @@ def bootstrap():
                 {"column": "gateway", "value": "controller_ip"},
                 {"column": "ntp_server", "value": "controller_ip"}
             ]
-        result = Database().insert("network", row)
-    row = [
+        result = Database().insert("network", default_network)
+    default_group = [
             {"column": "name", "value": str(BOOTSTRAP["GROUPS"]["NAME"])},
             {"column": "bmcsetup", "value": "1"},
             {"column": "domain", "value": "cluster"},
@@ -198,15 +193,13 @@ def bootstrap():
             {"column": "provisionmethod", "value": "torrent"},
             {"column": "provisionfallback", "value": "http"}
         ]
-    result = Database().insert("group", row)
 
-    row = [
+    default_group_interface = [
             {"column": "groupid", "value": "1"},
             {"column": "interfacename", "value": "BOOTIF"}
         ]
-    result = Database().insert("groupinterface", row)
 
-    row = [
+    default_osimage = [
             {"column": "name", "value": str(BOOTSTRAP["OSIMAGE"]["NAME"])},
             {"column": "dracutmodules", "value": "luna, -18n, -plymouth"},
             {"column": "grabfilesystems", "value": "/, /boot"},
@@ -215,45 +208,51 @@ def bootstrap():
             {"column": "kernelmodules", "value": "ipmi_devintf, ipmi_si, ipmi_msghandler"},
             {"column": "distribution", "value": "redhat"}
         ]
-    result = Database().insert("osimage", row)
-    row = [{"column": "username", "value": str(BOOTSTRAP["BMCSETUP"]["USERNAME"])}, {"column": "password", "value": str(BOOTSTRAP["BMCSETUP"]["PASSWORD"])}]
-    result = Database().insert("bmcsetup", row)
+    
+    default_bmcsetup = [
+            {"column": "username", "value": str(BOOTSTRAP["BMCSETUP"]["USERNAME"])},
+            {"column": "password", "value": str(BOOTSTRAP["BMCSETUP"]["PASSWORD"])}
+        ]
+    
 
-
-    row = [
+    default_cluster = [
             {"column": "technicalcontacts", "value": "root@localhost"},
             {"column": "provisionmethod", "value": "torrent"},
             {"column": "provisionfallback", "value": "http"},
             {"column": "security", "value": "1"},
             {"column": "debug", "value": "0"}
-            ]
-    result = Database().insert("cluster", row)
+        ]
+    
 
-    row = [
+    default_switch = [
             {"column": "oid", "value": ".1.3.6.1.2.1.17.7.1.2.2.1.2"},
             {"column": "read", "value": "public"},
             {"column": "rw", "value": "private"}
             ]
-    result = Database().insert("switch", row)
+    result = Database().insert("group", default_group)
+    result = Database().insert("groupinterface", default_group_interface)
+    result = Database().insert("osimage", default_osimage)
+    result = Database().insert("bmcsetup", default_bmcsetup)
+    result = Database().insert("cluster", default_cluster)
+    result = Database().insert("switch", default_switch)
 
 
 
     TIME = str(time.time()).replace(".", "")
     BootStrapNewFile = f"/trinity/local/luna/config/bootstrap-{TIME}.ini"
     os.rename(BootStrapFile, BootStrapNewFile)
-
-    print("Finish Bootstrap")
+    print('###################### Bootstrap Finish ######################')
 
 
 def checkbootstrap():
-    if bootstrap_file:
+    if error:
+        print('###################### Bootstrap Error(s) ######################')
+        for ERR in error_message:
+            print(ERR)
+        print('###################### Bootstrap Error(s) ######################')
+        return None
+    elif bootstrap_file:
         getconfig(BootStrapFile)
         bootstrap()
     else:
         return True
-
-# >>>>>>>>>>............ Database Insert Activity; Still not Finalize
-
-
-# if __name__ == '__main__':
-#     checkbootstrap()

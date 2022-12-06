@@ -29,17 +29,15 @@ logger = Log.get_logger()
 service_blueprint = Blueprint('service', __name__)
 APIQueue = queue.Queue()
 
-
-"""
-Input - name of service and action need to be perform
-Process - After Validating Token, Check queue if the same request is enque in last two seconds.
-          If not then only execute the action with the help of service Class.
-Output - Success or Failure.
-"""
-
 @service_blueprint.route("/service/<string:name>/<string:action>", methods=['POST'])
 @token_required
 def service(name, action):
+    """
+    Input - name of service and action need to be perform
+    Process - After Validating Token, Check queue if the same request is enque in last two seconds.
+              If not then only execute the action with the help of service Class.
+    Output - Success or Failure.
+    """
     currentTime = round(time.time())
     if {"name": name, "action": action, "time": currentTime} in APIQueue.queue or {"name": name, "action": action, "time": currentTime-1} in APIQueue.queue:
         APIQueue.get() ## Get the Last same Element from Queue
@@ -54,11 +52,12 @@ def service(name, action):
         logger.info(response)
     return json.dumps(response), code
 
-"""
-TODO: Add docs
-"""
+
 @service_blueprint.route("/service/reload", methods=['GET'])
 def reload():
+    """
+    TODO: Add docs
+    """
     check_dir_read = checkdir(TEMPLATES_DIR)
     if check_dir_read is not True:
         print("TEMPLATES_DIR Directory: {} Is Not Readable.".format(TEMPLATES_DIR))

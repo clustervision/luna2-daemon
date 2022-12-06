@@ -85,6 +85,8 @@ touch /trinity/local/luna/log/luna2-daemon.log
 
 cp /trinity/local/luna/config/luna2-daemon.service /etc/systemd/system/
 setenforce 0
+firewall-cmd --zone=public --permanent --add-port 7050/tcp
+firewall-cmd --reload
 systemctl status luna2-daemon.service
 systemctl enable luna2-daemon.service
 ```

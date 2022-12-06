@@ -28,12 +28,12 @@ workers = 1
 """
 TODO: add docs
 """
-def on_reload(server):
+#def on_reload(server):
     # pprint(vars(server))
     # LOGGER.info(vars(server))
-    print('Templates Check On Start')
+   # print('Templates Check On Start')
     # LOGGER.info('Templates Check On Start')
-    return True
+   # return True
 
 # on_starting = luna.on_starting
 # def on_starting(server):

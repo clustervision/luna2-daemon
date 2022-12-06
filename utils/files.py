@@ -61,7 +61,7 @@ class Files(object):
                 for file in os.listdir(filepath):
                     if file.endswith('.tar.gz') or file.endswith('.tar.bz2'):
                         files.append(file)
-                        response = file
+            response = files
         except FileNotFoundError:
             self.logger.debug(f'File Path {filepath} Is Not exists.')
             response = None

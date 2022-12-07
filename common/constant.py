@@ -19,10 +19,13 @@ import sys
 from configparser import RawConfigParser
 from pathlib import Path
 
+error = False
+error_message = []
+
 global CONSTANT
 CONSTANT = {
 	'LOGGER': { 'LEVEL': None, 'LOGFILE': None },
-	'API': { 'USERNAME': None, 'PASSWORD': None, 'EXPIRY': None },
+	'API': { 'USERNAME': None, 'PASSWORD': None, 'EXPIRY': None, 'SECRET_KEY': None },
 	'DATABASE': { 'DRIVER': None, 'DATABASE': None, 'DBUSER': None, 'DBPASSWORD': None, 'HOST': None, 'PORT': None },
 	'FILES': { 'TARBALL': None, 'IMAGE_DIRECTORY': None, 'MAXPACKAGINGTIME': None },
 	'SERVICES': { 'DHCP': None, 'DNS': None, 'CONTROL': None, 'COOLDOWN': None, 'COMMAND': None },
@@ -32,7 +35,6 @@ CONSTANT = {
 CurrentDir = os.path.dirname(os.path.realpath(__file__))
 UTILSDIR = Path(CurrentDir)
 BASE_DIR = str(UTILSDIR.parent)
-SECRET_KEY = '004f2af45d3a4e161a7dd2d17fdae47f'
 configParser = RawConfigParser()
 
 ConfigFile = '/trinity/local/luna/config/luna.ini'
@@ -104,24 +106,6 @@ def getconfig(filename=None):
                 CONSTANT[each_section] = {}
                 CONSTANT[each_section][each_key.upper()] = each_val
 
-file_check = checkfile(ConfigFile)
-if file_check:
-    getconfig(ConfigFile)
-# LOGGER = Log.init_log(CONSTANT['LOGGER']['LEVEL'])
-else:
-    sys.exit(0)
-
-
-global LUNAKEY
-KEYFILECHECK = checkfile(KEYFILE)
-if KEYFILECHECK:
-    try:
-        file = open(KEYFILE, 'r')
-        LUNAKEY = file.read()
-        LUNAKEY = LUNAKEY.replace('\n', '')
-    except Exception as e:
-        print('File {} is Not Readable.'.format(KEYFILE))
-        LUNAKEY = None
 
 
 def checkdir(directory=None):
@@ -157,11 +141,31 @@ def checkwritable(filename=None):
     return write
 
 
+
+file_check = checkfile(ConfigFile)
+if file_check:
+    getconfig(ConfigFile)
+# LOGGER = Log.init_log(CONSTANT['LOGGER']['LEVEL'])
+else:
+    sys.exit(0)
+
+
+global LUNAKEY
+KEYFILECHECK = checkfile(KEYFILE)
+if KEYFILECHECK:
+    try:
+        file = open(KEYFILE, 'r')
+        LUNAKEY = file.read()
+        LUNAKEY = LUNAKEY.replace('\n', '')
+    except Exception as e:
+        print('File {} is Not Readable.'.format(KEYFILE))
+        LUNAKEY = None
+
+
+
 """
 Sanity Checks On LOGFILE, TARBALL, TEMPLATES_DIR
 """
-### TODO -> Create Universal method for exit, before exit, send message, exit code should be "-1"
-## Bootstrap
 
 check_log_read = checkfile(LOGFILE)
 if check_log_read is not True:

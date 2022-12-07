@@ -44,7 +44,7 @@ if BootStrapFilePath.is_file():
 if bootstrap_file:
     checkdb, code = checkdbstatus()
     if checkdb["read"] == True and checkdb["write"] == True:
-        print(f'INFO :: Database {checkdb["database"]} READ WRITE Check TRUE.')
+        print(f'INFO :: Database {checkdb["database"]} READ WRITE check TRUE.')
         table = ["cluster", "bmcsetup", "group", "groupinterface", "groupsecrets",
                  "network", "osimage", "switch", "tracker", "node", "nodeinterface", "nodesecrets"]
         num = 0
@@ -56,12 +56,12 @@ if bootstrap_file:
             if result:
                 num = num+1
         if num == 0:
-            print(f'INFO :: Database {checkdb["database"]} Is Empty and Daemon Ready for BootStrapping.')
+            print(f'INFO :: Database {checkdb["database"]} is empty and daemon ready for bootstrap.')
             database_ready = True
         else:
-            print(f'INFO :: Database {checkdb["database"]} Already Filled with Data.')
+            print(f'INFO :: Database {checkdb["database"]} already filled with data.')
     else:
-        print(f'ERROR :: Database {checkdb["database"]} READ {checkdb["read"]} WRITE {checkdb["write"]} Is not correct.')
+        print(f'ERROR :: Database {checkdb["database"]} READ {checkdb["read"]} WRITE {checkdb["write"]} is not correct.')
 
 BOOTSTRAP = {
     'HOSTS': {'HOSTNAME': None, 'CONTROLLER1': None, 'CONTROLLER2': None, 'NODELIST': None},
@@ -73,86 +73,95 @@ BOOTSTRAP = {
 
 
 def checksection():
+    """
+    Compare bootstrap section with the predefined dictionary sections.
+    """
     for item in list(BOOTSTRAP.keys()):
         if item not in configParser.sections():
             error = True
-            error_message.append(f'ERROR :: Section {item} Is Missing, Kindly Check The File {filename}.')
+            error_message.append(f'ERROR :: Section {item} is missing, kindly check the file {filename}.')
 
 
-def checkoption(each_section):
-    for item in list(BOOTSTRAP[each_section].keys()):
-        if item.lower() not in list(dict(configParser.items(each_section)).keys()):
+def checkoption(section):
+    """
+    Compare bootstrap option with the predefined dictionary optionss.
+    """
+    for item in list(BOOTSTRAP[section].keys()):
+        if item.lower() not in list(dict(configParser.items(section)).keys()):
             error = True
-            error_message.append(f'ERROR :: Section {each_section} Do not Have Option {each_key.upper()}, Kindly Check The File {filename}.')
+            error_message.append(f'ERROR :: Section {section} do not have option {option.upper()}, kindly check the file {filename}.')
 
 
 def getconfig(filename=None):
+    """
+    From ini file Section Name is section here, Option Name is option here and Option Value is item here.
+    Example: sections[HOSTS, NETWORKS], options[HOSTNAME, NODELIST], and vlaues of options are item(10.141.255.254, node[001-004])
+    """
     configParser.read(filename)
     checksection()
-    for each_section in configParser.sections():
-        for (each_key, each_val) in configParser.items(each_section):
-            globals()[each_key.upper()] = each_val
-            if each_section in list(BOOTSTRAP.keys()):
-                checkoption(each_section)
-                if 'CONTROLLER1' in each_key.upper():
-                    check_ip(each_val)
-                    BOOTSTRAP[each_section][each_key.upper()] = each_val
-                elif 'CONTROLLER' in each_key.upper() and 'CONTROLLER1' not in each_key.upper():
-                    if "." in each_val:
-                        check_ip(each_val)
-                        BOOTSTRAP[each_section][each_key.upper()] = each_val
+    for section in configParser.sections():
+        for (option, item) in configParser.items(section):
+            globals()[option.upper()] = item
+            if section in list(BOOTSTRAP.keys()):
+                checkoption(section)
+                if 'CONTROLLER1' in option.upper():
+                    check_ip(item)
+                    BOOTSTRAP[section][option.upper()] = item
+                elif 'CONTROLLER' in option.upper() and 'CONTROLLER1' not in option.upper():
+                    if "." in item:
+                        check_ip(item)
+                        BOOTSTRAP[section][option.upper()] = item
                     else:
-                        # BOOTSTRAP[each_section].pop(each_key.upper())
-                        del BOOTSTRAP[each_section][each_key.upper()]
-                elif 'NODELIST' in each_key.upper():
+                        del BOOTSTRAP[section][option.upper()]
+                elif 'NODELIST' in option.upper():
                     try:
-                        each_val = hostlist.expand_hostlist(each_val)
-                        BOOTSTRAP[each_section][each_key.upper()] = each_val
+                        item = hostlist.expand_hostlist(item)
+                        BOOTSTRAP[section][option.upper()] = item
                     except Exception as exp:
                         error = True
-                        error_message.append(f'Invalid Node List range: {each_val}, Kindly use the Numbers in incremental order.')
-                elif 'NETWORKS' in each_section:
-                    check_ip_network(each_val)
-                    BOOTSTRAP[each_section][each_key.upper()] = each_val
+                        error_message.append(f'Invalid node list range: {item}, kindly use the numbers in incremental order.')
+                elif 'NETWORKS' in section:
+                    check_ip_network(item)
+                    BOOTSTRAP[section][option.upper()] = item
                 else:
-                    BOOTSTRAP[each_section][each_key.upper()] = each_val
+                    BOOTSTRAP[section][option.upper()] = item
             else:
-                BOOTSTRAP[each_section] = {}
-                BOOTSTRAP[each_section][each_key.upper()] = each_val
+                BOOTSTRAP[section] = {}
+                BOOTSTRAP[section][option.upper()] = item
 
 def check_ip(ipaddr):
+    """
+    Check if IP address is a valid IP or not.
+    """
+    check = False
     try:
         ip = ipaddress.ip_address(ipaddr)
+        check = True
     except Exception as exp:
         error = True
-        error_message.append(f'Invalid IP Address: {ipaddr}.')
+        error_message.append(f'Invalid IP address: {ipaddr}.')
+    return check
 
 
 def check_ip_network(ipaddr):
+    """
+    Check if the subnets are correct.
+    """
+    check = False
     try:
         subnet = ipaddress.ip_network(ipaddr)
+        check = True
     except Exception as exp:
         error = True
-        error_message.append(f'Invalid Subnet: {ipaddr} .')
+        error_message.append(f'Invalid subnet: {ipaddr}.')
+    return check
 
 
 def bootstrap():
+    """
+    Insert default data into the database.
+    """
     print('###################### Bootstrap Start ######################')
-    """
-    DELETE FROM "controller";
-    DELETE FROM "cluster";
-    DELETE FROM "bmcsetup";
-    DELETE FROM "group";
-    DELETE FROM "groupinterface";
-    DELETE FROM "groupsecrets";
-    DELETE FROM "network";
-    DELETE FROM "osimage";
-    DELETE FROM "switch";
-    DELETE FROM "tracker";
-    DELETE FROM "node";
-    DELETE FROM "nodeinterface";
-    DELETE FROM "nodesecrets";
-    """
     num  = 1
     for hosts in BOOTSTRAP["HOSTS"]:
         if "CONTROLLER"+str(num) in BOOTSTRAP["HOSTS"].keys():
@@ -242,17 +251,22 @@ def bootstrap():
     BootStrapNewFile = f"/trinity/local/luna/config/bootstrap-{TIME}.ini"
     os.rename(BootStrapFile, BootStrapNewFile)
     print('###################### Bootstrap Finish ######################')
+    return True
 
 
 def checkbootstrap():
+    """
+    Main method, should be called from outside.
+    To perform and check the bootstrap.
+    """
+    bootstarping = None
     if error:
         print('###################### Bootstrap Error(s) ######################')
         for ERR in error_message:
             print(ERR)
         print('###################### Bootstrap Error(s) ######################')
-        return None
     elif bootstrap_file:
         getconfig(BootStrapFile)
         bootstrap()
-    else:
-        return True
+        bootstarping = True
+    return bootstarping

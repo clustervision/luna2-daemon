@@ -32,7 +32,8 @@ from apis.service import service_blueprint
 from apis.monitor import monitor_blueprint
 
 
-checkbootstrap()
+status = checkbootstrap()
+# print(f'status {status}')
 TEMP = Templates().validate()
 
 
@@ -116,12 +117,4 @@ def service_unavailable(error):
     return json.dumps(error), 503
 
 
-# def main():
-#     api.run(host="0.0.0.0", port=7050, debug=True, threaded=True)
-
-
-# if __name__ == "__main__":
-#     api.run()
-#     # main()
-#     api.run(host="0.0.0.0", port=7050, debug=True, threaded=True)
-#api.run(host='0.0.0.0', port=7050, debug=True)
+# api.run(host='0.0.0.0', port=7050, debug=True)

@@ -19,27 +19,6 @@ import sys
 from configparser import RawConfigParser
 from pathlib import Path
 
-error = False
-error_message = []
-
-global CONSTANT
-CONSTANT = {
-	'LOGGER': { 'LEVEL': None, 'LOGFILE': None },
-	'API': { 'USERNAME': None, 'PASSWORD': None, 'EXPIRY': None, 'SECRET_KEY': None },
-	'DATABASE': { 'DRIVER': None, 'DATABASE': None, 'DBUSER': None, 'DBPASSWORD': None, 'HOST': None, 'PORT': None },
-	'FILES': { 'TARBALL': None, 'IMAGE_DIRECTORY': None, 'MAXPACKAGINGTIME': None },
-	'SERVICES': { 'DHCP': None, 'DNS': None, 'CONTROL': None, 'COOLDOWN': None, 'COMMAND': None },
-	'TEMPLATES': { 'TEMPLATES_DIR': None }
-}
-
-CurrentDir = os.path.dirname(os.path.realpath(__file__))
-UTILSDIR = Path(CurrentDir)
-BASE_DIR = str(UTILSDIR.parent)
-configParser = RawConfigParser()
-
-ConfigFile = '/trinity/local/luna/config/luna.ini'
-KEYFILE = '/trinity/local/etc/ssl/luna.key'
-
 def checkfile(filename=None):
     """
     Input - Filename
@@ -109,7 +88,6 @@ def getconfig(filename=None):
                 CONSTANT[section][option.upper()] = item
 
 
-
 def checkdir(directory=None):
     """
     Input - Directory
@@ -144,6 +122,27 @@ def checkwritable(filename=None):
     return write
 
 
+
+error = False
+error_message = []
+
+global CONSTANT
+CONSTANT = {
+    'LOGGER': { 'LEVEL': None, 'LOGFILE': None },
+    'API': { 'USERNAME': None, 'PASSWORD': None, 'EXPIRY': None, 'SECRET_KEY': None },
+    'DATABASE': { 'DRIVER': None, 'DATABASE': None, 'DBUSER': None, 'DBPASSWORD': None, 'HOST': None, 'PORT': None },
+    'FILES': { 'TARBALL': None, 'IMAGE_DIRECTORY': None, 'MAXPACKAGINGTIME': None },
+    'SERVICES': { 'DHCP': None, 'DNS': None, 'CONTROL': None, 'COOLDOWN': None, 'COMMAND': None },
+    'TEMPLATES': { 'TEMPLATES_DIR': None }
+}
+
+CurrentDir = os.path.dirname(os.path.realpath(__file__))
+UTILSDIR = Path(CurrentDir)
+BASE_DIR = str(UTILSDIR.parent)
+configParser = RawConfigParser()
+
+ConfigFile = '/trinity/local/luna/config/luna.ini'
+KEYFILE = '/trinity/local/etc/ssl/luna.key'
 
 file_check = checkfile(ConfigFile)
 if file_check:

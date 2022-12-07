@@ -21,55 +21,45 @@ import sys
 import os
 import ipaddress
 import time
-from utils.database import *
-
+from utils.database import Database
+from utils.log import Log
 
 configParser = RawConfigParser()
-Bootstrap = False
-BootStrapFile = "/trinity/local/luna/config/bootstrap.ini"
-BootStrapFilePath = Path(BootStrapFile)
+logger = Log.get_logger()
 
 
-bootstrap_file, database_ready, error = False, False, False
-error_message = []
-
-if BootStrapFilePath.is_file():
-    print(f'INFO :: Bootstrap file is present {BootStrapFile}.')
-    if os.access(BootStrapFile, os.R_OK):
-        print(f'INFO :: Bootstrap file is readable {BootStrapFile}.')
-        bootstrap_file = True
-    else:
-        print(f'ERROR :: Bootstrap file is not readable {BootStrapFile}.')
-
-if bootstrap_file:
-    checkdb, code = checkdbstatus()
-    if checkdb["read"] == True and checkdb["write"] == True:
-        print(f'INFO :: Database {checkdb["database"]} READ WRITE check TRUE.')
-        table = ["cluster", "bmcsetup", "group", "groupinterface", "groupsecrets",
-                 "network", "osimage", "switch", "tracker", "node", "nodeinterface", "nodesecrets"]
-        num = 0
-        for tableX in table:
-            result = Database().get_record(None, tableX, None)
-            if result is None:
-                error = True
-                error_message.append(f'Database table {tableX} already have data.')
-            if result:
-                num = num+1
-        if num == 0:
-            print(f'INFO :: Database {checkdb["database"]} is empty and daemon ready for bootstrap.')
-            database_ready = True
+def check_bootstrapfile(bootstrapfile=None):
+    """
+    This method validates if the bootstrap file is exists and readable
+    """
+    checkfile = False
+    if Path(bootstrapfile).is_file():
+        logger.info(f'Bootstrap file is present {bootstrapfile}.')
+        if os.access(bootstrapfile, os.R_OK):
+            logger.info(f'Bootstrap file is readable {bootstrapfile}.')
+            checkfile = True
         else:
-            print(f'INFO :: Database {checkdb["database"]} already filled with data.')
-    else:
-        print(f'ERROR :: Database {checkdb["database"]} READ {checkdb["read"]} WRITE {checkdb["write"]} is not correct.')
+            logger.error(f'Bootstrap file is not readable {bootstrapfile}.')
+    return checkfile
 
-BOOTSTRAP = {
-    'HOSTS': {'HOSTNAME': None, 'CONTROLLER1': None, 'CONTROLLER2': None, 'NODELIST': None},
-    'NETWORKS': {'INTERNAL': None, 'BMC': None, 'IB': None},
-    'GROUPS': {'NAME': None},
-    'OSIMAGE': {'NAME': None},
-    'BMCSETUP': {'USERNAME': None, 'PASSWORD': None}
-}
+
+def check_db():
+    """
+    This methos will check the database is empty or not.
+    """
+    dbcheck = False
+    table = ["cluster", "bmcsetup", "group", "groupinterface", "groupsecrets",
+             "network", "osimage", "switch", "tracker", "node", "nodeinterface", "nodesecrets"]
+    num = 0
+    for tableX in table:
+        result = Database().get_record(None, tableX, None)
+        if result is None:
+            logger.error(f'ERROR :: Database table {tableX} already have data.')
+        if result:
+            num = num+1
+    if num == 0:
+        dbcheck = True
+    return dbcheck
 
 
 def checksection():
@@ -78,8 +68,7 @@ def checksection():
     """
     for item in list(BOOTSTRAP.keys()):
         if item not in configParser.sections():
-            error = True
-            error_message.append(f'ERROR :: Section {item} is missing, kindly check the file {filename}.')
+            logger.error(f'Section {item} is missing, kindly check the file {filename}.')
 
 
 def checkoption(section):
@@ -88,8 +77,7 @@ def checkoption(section):
     """
     for item in list(BOOTSTRAP[section].keys()):
         if item.lower() not in list(dict(configParser.items(section)).keys()):
-            error = True
-            error_message.append(f'ERROR :: Section {section} do not have option {option.upper()}, kindly check the file {filename}.')
+            logger.error(f'Section {section} do not have option {option.upper()}, kindly check the file {filename}.')
 
 
 def getconfig(filename=None):
@@ -118,10 +106,9 @@ def getconfig(filename=None):
                         item = hostlist.expand_hostlist(item)
                         BOOTSTRAP[section][option.upper()] = item
                     except Exception as exp:
-                        error = True
-                        error_message.append(f'Invalid node list range: {item}, kindly use the numbers in incremental order.')
+                        logger.error(f'Invalid node list range: {item}, kindly use the numbers in incremental order.')
                 elif 'NETWORKS' in section:
-                    check_ip_network(item)
+                    check_subnet(item)
                     BOOTSTRAP[section][option.upper()] = item
                 else:
                     BOOTSTRAP[section][option.upper()] = item
@@ -138,12 +125,11 @@ def check_ip(ipaddr):
         ip = ipaddress.ip_address(ipaddr)
         check = True
     except Exception as exp:
-        error = True
-        error_message.append(f'Invalid IP address: {ipaddr}.')
+        logger.error(f'Invalid IP address: {ipaddr}.')
     return check
 
 
-def check_ip_network(ipaddr):
+def check_subnet(ipaddr):
     """
     Check if the subnets are correct.
     """
@@ -152,16 +138,16 @@ def check_ip_network(ipaddr):
         subnet = ipaddress.ip_network(ipaddr)
         check = True
     except Exception as exp:
-        error = True
-        error_message.append(f'Invalid subnet: {ipaddr}.')
+        logger.error(f'Invalid subnet: {ipaddr}.')
     return check
 
 
-def bootstrap():
+def bootstrap(bootstrapfile=None):
     """
     Insert default data into the database.
     """
-    print('###################### Bootstrap Start ######################')
+    getconfig(bootstrapfile)
+    logger.info('###################### Bootstrap Start ######################')
     num  = 1
     for hosts in BOOTSTRAP["HOSTS"]:
         if "CONTROLLER"+str(num) in BOOTSTRAP["HOSTS"].keys():
@@ -245,12 +231,10 @@ def bootstrap():
     result = Database().insert("cluster", default_cluster)
     result = Database().insert("switch", default_switch)
 
-
-
-    TIME = str(time.time()).replace(".", "")
-    BootStrapNewFile = f"/trinity/local/luna/config/bootstrap-{TIME}.ini"
-    os.rename(BootStrapFile, BootStrapNewFile)
-    print('###################### Bootstrap Finish ######################')
+    # TIME = str(time.time()).replace(".", "")
+    # new_bootstrapfile = f"/trinity/local/luna/config/bootstrap-{TIME}.ini"
+    # os.rename(bootstrapfile, new_bootstrapfile)
+    logger.info('###################### Bootstrap Finish ######################')
     return True
 
 
@@ -259,14 +243,28 @@ def checkbootstrap():
     Main method, should be called from outside.
     To perform and check the bootstrap.
     """
-    bootstarping = None
-    if error:
-        print('###################### Bootstrap Error(s) ######################')
-        for ERR in error_message:
-            print(ERR)
-        print('###################### Bootstrap Error(s) ######################')
-    elif bootstrap_file:
-        getconfig(BootStrapFile)
-        bootstrap()
-        bootstarping = True
-    return bootstarping
+    bootstrapfile = "/trinity/local/luna/config/bootstrap.ini"
+    BOOTSTRAP = {
+        'HOSTS': {'HOSTNAME': None, 'CONTROLLER1': None, 'CONTROLLER2': None, 'NODELIST': None},
+        'NETWORKS': {'INTERNAL': None, 'BMC': None, 'IB': None},
+        'GROUPS': {'NAME': None},
+        'OSIMAGE': {'NAME': None},
+        'BMCSETUP': {'USERNAME': None, 'PASSWORD': None}
+    }
+    bootstrapfile_check = check_bootstrapfile(bootstrapfile)
+    dbstatus, dbcode = checkdbstatus()
+    if dbcode == 200:
+        db_check = check_db()
+
+    if bootstrapfile_check == True and dbcode == 200:
+        if db_check == True:
+            bootstrap(bootstrapfile)
+        else:
+            logger.warning(f'WARNING :: Bootstrap file {bootstrapfile} is still present, Kindly remove the file manually.')
+    elif bootstrapfile_check == True and db_check == False:
+        logger.error(f'ERROR :: Database {dbstatus["database"]} is unavailable.')
+    elif bootstrapfile_check == False and dbcode == 200:
+        pass
+    elif bootstrapfile_check == False and dbcode != 200:
+        logger.error(f'ERROR :: Bootstrap file {bootstrapfile} and Database {dbstatus["database"]} is unavailable.')
+    return True

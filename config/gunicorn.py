@@ -3,7 +3,7 @@
 """
 Start luna daemon
 """
-import luna
+# import luna
 # The IP address (typically localhost) and port that the Netbox WSGI process should listen on
 bind = '0.0.0.0:7050'
 

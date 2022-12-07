@@ -45,66 +45,68 @@ def checkfile(filename=None):
     Input - Filename
     Output - Check File Existence And Readability
     """
+    check = False
     ConfigFilePath = Path(filename)
     if ConfigFilePath.is_file():
         if os.access(filename, os.R_OK):
-            return True
+            check = True
         else:
-            print('File {} Is Not readable.'.format(filename))
+            print(f'File {filename} is not readable.')
     else:
-        print('File {} Is Abesnt.'.format(filename))
-    return False
+        print(f'File {filename} is abesnt.')
+    return check
 
 def checksection():
     """
-    TODO: add docs
+    Compare ini section with the predefined dictionary sections.
     """
     for item in list(CONSTANT.keys()):
         if item not in configParser.sections():
-            print('ERROR :: Section {} Is Missing, Kindly Check The File {}.'.format(item, filename))
-            sys.exit(0)
+            error = True
+            error_message.append(f'ERROR :: Section {item} is missing, kindly check the file {filename}.')
 
 
-def checkoption(each_section):
+def checkoption(section):
     """
-    TODO: add docs
+    Compare ini section with the predefined dictionary sections.
     """
-    for item in list(CONSTANT[each_section].keys()):
-        if item.lower() not in list(dict(configParser.items(each_section)).keys()):
-            print('ERROR :: Section {} Do not Have Option {}, Kindly Check The File {}.'.format(each_section, each_key.upper(), filename))
-            sys.exit(0)
+    for item in list(CONSTANT[section].keys()):
+        if item.lower() not in list(dict(configParser.items(section)).keys()):
+            error = True
+            error_message.append(f'ERROR :: Section {section} do not have option {option.upper()}, kindly check the file {filename}.')
 
 def getconfig(filename=None):
     """
-    TODO: add docs
+    From ini file Section Name is section here, Option Name is option here and Option Value is item here.
+    Example: sections[HOSTS, NETWORKS], options[HOSTNAME, NODELIST], and vlaues of options are item(10.141.255.254, node[001-004])
     """
     configParser.read(filename)
     checksection()
-    for each_section in configParser.sections():
-        for (each_key, each_val) in configParser.items(each_section):
-            globals()[each_key.upper()] = each_val
-            if each_section in list(CONSTANT.keys()):
-                checkoption(each_section)
-                if each_key.upper() == 'EXPIRY':
-                    if each_val:
-                        CONSTANT[each_section][each_key.upper()] = int(each_val.replace('h', ''))*60*60
+    for section in configParser.sections():
+        for (option, item) in configParser.items(section):
+            globals()[option.upper()] = item
+            if section in list(CONSTANT.keys()):
+                checkoption(section)
+                if option.upper() == 'EXPIRY':
+                    if item:
+                        CONSTANT[section][option.upper()] = int(item.replace('h', ''))*60*60
                     else:
-                        CONSTANT[each_section][each_key.upper()] = 24*60*60
-                elif each_key.upper() == 'COOLDOWN':
-                    if each_val:
-                        CONSTANT[each_section][each_key.upper()] = int(each_val.replace('s', ''))
+                        CONSTANT[section][option.upper()] = 24*60*60
+                elif option.upper() == 'COOLDOWN':
+                    if item:
+                        CONSTANT[section][option.upper()] = int(item.replace('s', ''))
                     else:
-                        CONSTANT[each_section][each_key.upper()] = 2
-                elif each_key.upper() == 'MAXPACKAGINGTIME':
-                    if each_val:
-                        CONSTANT[each_section][each_key.upper()] = int(each_val.replace('m', ''))*60
+                        CONSTANT[section][option.upper()] = 2
+                elif option.upper() == 'MAXPACKAGINGTIME':
+                    if item:
+                        CONSTANT[section][option.upper()] = int(item.replace('m', ''))*60
                     else:
-                        CONSTANT[each_section][each_key.upper()] = 10*60
+                        CONSTANT[section][option.upper()] = 10*60
                 else:
-                    CONSTANT[each_section][each_key.upper()] = each_val
+                    CONSTANT[section][option.upper()] = item
             else:
-                CONSTANT[each_section] = {}
-                CONSTANT[each_section][each_key.upper()] = each_val
+                CONSTANT[section] = {}
+                CONSTANT[section][option.upper()] = item
 
 
 
@@ -113,17 +115,18 @@ def checkdir(directory=None):
     Input - Directory
     Output - Directory Existence, Readability and Writable
     """
+    check = False
     if os.path.exists(directory):
         if os.access(directory, os.R_OK):
             if os.access(directory, os.W_OK):
-                return True
+                check = True
             else:
-                print('Directory {} Is Writable.'.format(directory))
+                print(f'Directory {directory} is writable.')
         else:
-            print('Directory {} Is Not readable.'.format(directory))
+            print(f'Directory {directory} is not readable.')
     else:
-        print('Directory {} Is Not exists.'.format(directory))
-    return False
+        print(f'Directory {directory} is not exists.')
+    return check
 
 
 def checkwritable(filename=None):
@@ -145,9 +148,9 @@ def checkwritable(filename=None):
 file_check = checkfile(ConfigFile)
 if file_check:
     getconfig(ConfigFile)
-# LOGGER = Log.init_log(CONSTANT['LOGGER']['LEVEL'])
 else:
-    sys.exit(0)
+    error = True
+    error_message.append(f'ERROR :: Section {section} do not have option {option.upper()}, kindly check the file {filename}.')
 
 
 global LUNAKEY
@@ -169,47 +172,34 @@ Sanity Checks On LOGFILE, TARBALL, TEMPLATES_DIR
 
 check_log_read = checkfile(LOGFILE)
 if check_log_read is not True:
-    print('Log File: {} Is Not Readable.'.format(LOGFILE))
-    sys.exit(-1)
+    error = True
+    error_message.append(f'Log File: {LOGFILE} is not readable.')
 
 check_log_write = checkwritable(LOGFILE)
 if check_log_write is not True:
-    print('Log File: {} Is Not Writable.'.format(LOGFILE))
-    sys.exit(0)
+    error = True
+    error_message.append(f'Log File: {LOGFILE} is not writable.')
 
 check_dir_read = checkdir(TARBALL)
 if check_dir_read is not True:
-    print('TARBALL Directory: {} Is Not Readable.'.format(TARBALL))
-    sys.exit(0)
+    error = True
+    error_message.append(f'TARBALL directory: {TARBALL} is not readable.')
 
 check_dir_write = checkdir(TARBALL)
 if check_dir_write is not True:
-    print('TARBALL Directory: {} Is Not Writable.'.format(TARBALL))
-    sys.exit(0)
+    error = True
+    error_message.append(f'TARBALL directory: {TARBALL} is not writable.')
 
 check_dir_read = checkdir(TEMPLATES_DIR)
 if check_dir_read is not True:
-    print('TEMPLATES_DIR Directory: {} Is Not Readable.'.format(TEMPLATES_DIR))
-    sys.exit(0)
+    error = True
+    error_message.append(f'TEMPLATES_DIR directory: {TEMPLATES_DIR} is not readable.')
 
 check_dir_write = checkdir(TEMPLATES_DIR)
 if check_dir_write is not True:
-    print('TEMPLATES_DIR Directory: {} Is Not Writable.'.format(TEMPLATES_DIR))
-    sys.exit(0)
+    error = True
+    error_message.append(f'TEMPLATES_DIR directory: {TEMPLATES_DIR} is not writable.')
 
-# check_boot_ipxe_read = checkfile(TEMPLATES_DIR+'/boot_ipxe.cfg')
-# if check_boot_ipxe_read is not True:
-#     print('Boot PXE File: {} Is Not Readable.'.format(TEMPLATES_DIR+'/boot_ipxe.cfg'))
-#     sys.exit(0)
-
-# check_boot_ipxe_write = checkwritable(TEMPLATES_DIR+'/boot_ipxe.cfg')
-# if check_boot_ipxe_write is not True:
-#     print('Boot PXE File: {} Is Not Writable.'.format(TEMPLATES_DIR+'/boot_ipxe.cfg'))
-#     sys.exit(0)
-
-# if check_boot_ipxe_read and check_boot_ipxe_write:
-#     with open(TEMPLATES_DIR+'/boot_ipxe.cfg', 'r') as bootfile:
-#         bootfile = bootfile.readlines()
 
 ######################## SET CRON JOB TO MONITOR ###########################
 # cronfile = "/etc/cron.d/luna2-daemon.monitor"

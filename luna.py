@@ -21,7 +21,7 @@ from flask import Flask, abort, json, Response
 from common.constant import CONSTANT
 from utils.log import Log
 LOGGER = Log.init_log(CONSTANT['LOGGER']['LEVEL'])
-from common.bootstrap import checkbootstrap
+from common.bootstrap import validatebootstrap
 from utils.templates import Templates
 
 from apis.auth import auth_blueprint
@@ -32,8 +32,7 @@ from apis.service import service_blueprint
 from apis.monitor import monitor_blueprint
 
 
-status = checkbootstrap()
-# print(f'status {status}')
+validatebootstrap()
 TEMP = Templates().validate()
 
 

@@ -34,6 +34,8 @@ def boot():
     nodes = ['node001', 'node002', 'node003', 'node004']
     data = {'protocol': 'http', 'server_ip': '10.141.255.254', 'server_port': '7051', 'nodes': nodes}
     template = 'templ_boot_ipxe.cfg'
+    LVL = Log().check_loglevel()
+    LOGGER.info(LVL)
     LOGGER.info(f'Boot API Serving the {template}')
     check_template = Helper().checkjinja(f'{CONSTANT["TEMPLATES"]["TEMPLATES_DIR"]}/{template}')
     if not check_template:

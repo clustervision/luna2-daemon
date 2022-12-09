@@ -59,3 +59,28 @@ class Log:
         Output - Logger Object.
         """
         return cls.__logger
+
+    @classmethod
+    def set_logger(cls, log_level=None):
+        """
+        Input - None
+        Process - Update the exsisting Log Level
+        Output - Logger Object.
+        """
+        # logger = logging.getLogger('luna2-daemon')
+        # for handler in logger.handlers:
+        #     handler.setLevel(logging.DEBUG)
+        logging.getLogger('luna2-daemon').setLevel(log_level)
+        # print(log_level)
+        # print(cls.__logger)
+        # return cls.__logger
+
+    @classmethod
+    def check_loglevel(cls):
+        """
+        Input - None
+        Process - Update the exsisting Log Level
+        Output - Logger Object.
+        """
+        
+        return logging.root.level

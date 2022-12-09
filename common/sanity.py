@@ -24,10 +24,72 @@ import time
 import hostlist
 from common.dbcheck import checkdbstatus
 from utils.database import Database
-from utils.log import Log
+# from utils.log import Log
 
 configParser = RawConfigParser()
-logger = Log.get_logger()
+# logger = Log.get_logger()
+
+
+
+# Check Sanity check on luna.ini file and on content
+# Open luna.ini get and set constants
+# Sanity checks on Templates and all rest things
+#  
+# check first luna.ini > logfile if readable, writable > start logging with info log level 
+# get content from luna.ini and call constants to set vaiables > overright the log level if not correct or something else 
+# check template folder, temp dir, exsists, readable and writable
+# check content of templates via jina2 helper
+# check the temp dir and create with templates
+#
+#
+# NOTE: temp_dir comes from luna.ini
+#
+#
+#
+#
+## check 1: get content from luna.ini and call constants to set vaiables
+# check 2: luna.ini file exsists, readable
+# check 3: check log file if readable and writable 
+# check 4: check template folder, temp dir, exsists, readable and writable
+# check 5: check content of templates via jina2 helper
+#   
+#
+#
+#
+#
+#
+
+
+
+# from utils.log import Log
+# LOGGER = Log().init_log('info')
+# LOGGER = Log().set_logger('debug')
+
+
+# logging.getLogger().setLevel(logging.DEBUG)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 def check_bootstrapfile(bootstrapfile=None):

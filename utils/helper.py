@@ -120,15 +120,16 @@ class Helper(object):
         Input - Path of Template
         Output - True or False For Errors
         """
+        check = False
         env = Environment()
         try:
             with open(template, encoding='utf-8') as template:
                 env.parse(template.read())
-            return True
-        except Exception as e:
+            check = True
+        except Exception as exp:
             print(f'{template} Have Errors.')
-            print(e)
-            return False
+            print(exp)
+        return check
 
 
     def check_json(self, request=None):

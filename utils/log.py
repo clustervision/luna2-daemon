@@ -28,7 +28,7 @@ class Log:
 
 
     @classmethod
-    def init_log(cls, log_level):
+    def init_log(cls, log_level=None):
         """
         Input - log_level
         Process - Validate the Log Level, Set it to INFO if not correct.

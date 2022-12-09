@@ -15,7 +15,6 @@ __email__       = 'sumit.sharma@clustervision.com'
 __status__      = 'Development'
 
 import os
-import sys
 from configparser import RawConfigParser
 from pathlib import Path
 
@@ -25,14 +24,13 @@ def checkfile(filename=None):
     Output - Check File Existence And Readability
     """
     check = False
-    ConfigFilePath = Path(filename)
-    if ConfigFilePath.is_file():
+    if Path(filename).is_file():
         if os.access(filename, os.R_OK):
             check = True
         else:
             print(f'File {filename} is not readable.')
     else:
-        print(f'File {filename} is abesnt.')
+        print(f'File {filename} is absent.')
     return check
 
 def checksection():

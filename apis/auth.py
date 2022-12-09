@@ -1,66 +1,50 @@
 #!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
 """
 This File is use for authentication purpose.
-
 """
 
-__author__      = "Sumit Sharma"
-__copyright__   = "Copyright 2022, Luna2 Project"
-__license__     = "GPL"
-__version__     = "2.0"
-__maintainer__  = "Sumit Sharma"
-__email__       = "sumit.sharma@clustervision.com"
-__status__      = "Development"
+__author__      = 'Sumit Sharma'
+__copyright__   = 'Copyright 2022, Luna2 Project'
+__license__     = 'GPL'
+__version__     = '2.0'
+__maintainer__  = 'Sumit Sharma'
+__email__       = 'sumit.sharma@clustervision.com'
+__status__      = 'Development'
 
-import jwt
 import hashlib
 import datetime
+import jwt
 from flask import Blueprint, request, json
-from utils.log import *
-from utils.database import *
+from utils.log import Log
+from utils.database import Database
 
-logger = Log.get_logger()
+LOGGER = Log.get_logger()
 auth_blueprint = Blueprint('auth', __name__)
 
-
-
-        # select = "*"
-        # table = "user"
-        # where = [{"column": "username", "value": auth["username"]}]
-        # user = Database().get_record(select, table, where)
-        # if user:
-        #     userID = user[0]["id"]
-        #     password = user[0]["password"]
-        #     if check_password_hash(password, auth["password"]):
-        #         token = jwt.encode({'id': userID, 'exp': datetime.datetime.utcnow() + datetime.timedelta(minutes=int(EXPIRY))}, SECRET_KEY, "HS256")
-        #         response = {'token' : token}
-        #         code = 200
-        #         return json.dumps(response), code
-
-
-
-"""
-Input - username and password
-Process - Validate the username and password from the conf file.
-  On the success, create a token, which is valid for expiry time mentioned in configuration.
-Output - Token.
-"""
 @auth_blueprint.route("/token", methods=['POST'])
 def token():
+    """
+    Input - username and password
+    Process - Validate the username and password from the conf file.
+    On the success, create a token, which is valid for expiry time mentioned in configuration.
+    Output - Token.
+    """
     username, password = "", ""
     auth = request.get_json(force=True)
     if not auth:
-        logger.error("Login Required")
+        LOGGER.error("Login Required")
         response = {"message" : "Login Required"}
         code = 401
     if "username" not in auth:
-        logger.error("Username Is Required")
+        LOGGER.error("Username Is Required")
         response = {"message" : "Login Required"}
         code = 401
     else:
         username = auth["username"]
     if "password" not in auth:
-        logger.error("Password Is Required")
+        LOGGER.error("Password Is Required")
         response = {"message" : "Login Required"}
         code = 401
     else:

@@ -1,12 +1,4 @@
 {
-    "python.linting.enabled": true,
-    "python.linting.pylintArgs": [
-        // "--errors-only",
-        // "--disable=W0312",
-        "--load-plugins",
-        "pylint_quotes",
-    ],
-    "python.linting.pylintEnabled": true,
-    // "python.linting.pycodestyleEnabled": false,
-    // "python.linting.flake8Enabled": false
+
+    "python.linting.pylintEnabled": true
 }

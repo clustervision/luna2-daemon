@@ -2,7 +2,10 @@
 # -*- coding: utf-8 -*-
 
 """
-This File is responsible to Check & Perform all bootstrap-related activity.
+This file is a preload method and called by the gunicorn on_starting hook.
+This file is responsible for:
+1. Checking the Sanity.
+2. Read constants for log level and database
 """
 
 __author__ = 'Sumit Sharma'

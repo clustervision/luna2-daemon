@@ -169,7 +169,8 @@ class Helper(object):
             ip = IPNetwork(ipaddr)
             IP = ip.ip
             # IP = ipaddress.ip_address(net)
-        except Exception as e:
+        except Exception as exp:
+            self.logger.error(f'Invalid IP address: {ipaddr}.')
             return None
         return str(IP)
 
@@ -206,8 +207,13 @@ class Helper(object):
         Input - IP Address
         Output - Subnet
         """
-        net = ipaddress.ip_network(ipaddr, strict=False)
-        return net.netmask
+        try:
+            net = ipaddress.ip_network(ipaddr, strict=False)
+            RESPONSE = net.netmask
+        except Exception as exp:
+            self.logger.error(f'Invalid subnet: {ipaddr}.')
+            RESPONSE = None
+        return RESPONSE
 
 
     def check_ip_range(self, ipaddr=None, network=None):

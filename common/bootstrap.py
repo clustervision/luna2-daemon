@@ -27,22 +27,6 @@ from utils.log import Log
 configParser = RawConfigParser()
 logger = Log.get_logger()
 
-
-def check_bootstrapfile(bootstrapfile=None):
-    """
-    This method validates if the bootstrap file is exists and readable
-    """
-    checkfile = False
-    if Path(bootstrapfile).is_file():
-        logger.debug(f'Bootstrap file is present {bootstrapfile}.')
-        if os.access(bootstrapfile, os.R_OK):
-            logger.debug(f'Bootstrap file is readable {bootstrapfile}.')
-            checkfile = True
-        else:
-            logger.error(f'Bootstrap file is not readable {bootstrapfile}.')
-    return checkfile
-
-
 def check_db():
     """
     This method will check whether the database is empty or not.
@@ -77,11 +61,11 @@ def getconfig(filename=None):
                 # checkoption(filename, section, option.upper())
                 Helper().checkoption(filename, section, option.upper(), BOOTSTRAP)
                 if 'CONTROLLER1' in option.upper():
-                    check_ip(item)
+                    Helper().check_ip(item)
                     BOOTSTRAP[section][option.upper()] = item
                 elif 'CONTROLLER' in option.upper() and 'CONTROLLER1' not in option.upper():
                     if '.' in item:
-                        check_ip(item)
+                        Helper().check_ip(item)
                         BOOTSTRAP[section][option.upper()] = item
                     else:
                         del BOOTSTRAP[section][option.upper()]
@@ -93,38 +77,13 @@ def getconfig(filename=None):
                     except Exception:
                         logger.error(f'Invalid node list range: {item}, kindly use the numbers in incremental order.')
                 elif 'NETWORKS' in section:
-                    check_subnet(item)
+                    Helper().get_subnet(item)
                     BOOTSTRAP[section][option.upper()] = item
                 else:
                     BOOTSTRAP[section][option.upper()] = item
             else:
                 BOOTSTRAP[section] = {}
                 BOOTSTRAP[section][option.upper()] = item
-
-def check_ip(ipaddr):
-    """
-    Check if the IP address is a valid IP or not.
-    """
-    check = False
-    try:
-        ipaddress.ip_address(ipaddr)
-        check = True
-    except Exception:
-        logger.error(f'Invalid IP address: {ipaddr}.')
-    return check
-
-
-def check_subnet(ipaddr):
-    """
-    Check if the subnets are correct.
-    """
-    check = False
-    try:
-        ipaddress.ip_network(ipaddr)
-        check = True
-    except Exception:
-        logger.error(f'Invalid subnet: {ipaddr}.')
-    return check
 
 
 def bootstrap(bootstrapfile=None):
@@ -235,8 +194,7 @@ def validatebootstrap():
         'OSIMAGE': {'NAME': None},
         'BMCSETUP': {'USERNAME': None, 'PASSWORD': None}
     }
-    bootstrapfile_check = check_bootstrapfile(bootstrapfile)
-    # dbstatus, dbcode = checkdbstatus()checkdbstatus
+    bootstrapfile_check = Helper().checkpathstate(bootstrapfile)
     dbstatus, dbcode = Helper().checkdbstatus()
     if dbcode == 200:
         db_check = check_db()

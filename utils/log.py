@@ -19,28 +19,24 @@ __status__      = 'Development'
 
 import sys
 import logging
-from common.constant import CONSTANT, BASE_DIR
+# from common.constant import CONSTANT, BASE_DIR
 
 class Log:
     """This Log Class is responsible to start the Logger depend on the Level."""
     __logger = None
-    
+
 
     @classmethod
-    def init_log(cls, log_level=None):
+    def init_log(cls, log_level=None, logfile=None):
         """
         Input - log_level
         Process - Validate the Log Level, Set it to INFO if not correct.
         Output - Logger Object.
         """
-        if cls.__logger:
-            cls.__logger = None
-        if not log_level:
-            log_level = 20
-        else:
-            levels = {'NOTSET': 0, 'DEBUG': 10, 'INFO': 20, 'WARNING': 30, 'ERROR': 40, 'CRITICAL': 50}
-            log_level = levels[log_level.upper()]
-        logging.basicConfig(filename=BASE_DIR+"/"+CONSTANT['LOGGER']['LOGFILE'], format='[%(levelname)s]:[%(asctime)s]:[%(threadName)s]:[%(filename)s:%(funcName)s@%(lineno)d] - %(message)s', filemode='a', level=log_level)
+        levels = {'NOTSET': 0, 'DEBUG': 10, 'INFO': 20, 'WARNING': 30, 'ERROR': 40, 'CRITICAL': 50}
+        log_level = levels[log_level.upper()]
+        logging.basicConfig(filename=logfile, format='[%(levelname)s]:[%(asctime)s]:[%(threadName)s]:[%(filename)s:%(funcName)s@%(lineno)d] - %(message)s', filemode='a', level=log_level)
+        # logging.basicConfig(filename=BASE_DIR+"/"+CONSTANT['LOGGER']['LOGFILE'], format='[%(levelname)s]:[%(asctime)s]:[%(threadName)s]:[%(filename)s:%(funcName)s@%(lineno)d] - %(message)s', filemode='a', level=log_level)
         cls.__logger = logging.getLogger('luna2-daemon')
         cls.__logger.setLevel(log_level)
         formatter = logging.Formatter('[%(levelname)s]:[%(asctime)s]:[%(threadName)s]:[%(filename)s:%(funcName)s@%(lineno)d] - %(message)s')
@@ -68,6 +64,8 @@ class Log:
         Process - Update the exsisting Log Level
         Output - Logger Object.
         """
+        levels = {'NOTSET': 0, 'DEBUG': 10, 'INFO': 20, 'WARNING': 30, 'ERROR': 40, 'CRITICAL': 50}
+        log_level = levels[log_level.upper()]
         cls.__logger.setLevel(log_level)
         return cls.__logger
 

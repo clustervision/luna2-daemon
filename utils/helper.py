@@ -20,13 +20,15 @@ import pwd
 import subprocess
 import shutil
 import queue
-from jinja2 import Environment
-from utils.log import Log
 import json
 import ipaddress
-from utils.database import Database
+from configparser import RawConfigParser
 from netaddr import IPNetwork
 from cryptography.fernet import Fernet
+from jinja2 import Environment
+from utils.log import Log
+from utils.database import Database
+
 from common.constant import CONSTANT, LUNAKEY
 
 class Helper(object):
@@ -475,3 +477,31 @@ class Helper(object):
                 self.logger.error("Error While connecting to Database {} is: {}.".format(CONSTANT['DATABASE']['DATABASE'], str(error)))
         response = {"database": CONSTANT['DATABASE']['DRIVER'], "read": read, "write": write}
         return response, code
+
+
+    def checksection(self, filename=None, parent_dict=None):
+        """
+        Compare the bootstrap/constants section with the predefined dictionary sections.
+        """
+        check = True
+        configParser = RawConfigParser()
+        configParser.read(filename)
+        for item in list(parent_dict.keys()):
+            if item not in configParser.sections():
+                self.logger.error(f'Section {item} is missing, kindly check the file {filename}.')
+                check = False
+        return check
+
+
+    def checkoption(self, filename=None, section=None, option=None, parent_dict=None):
+        """
+        Compare the bootstrap/constants option with the predefined dictionary options.
+        """
+        check = True
+        configParser = RawConfigParser()
+        configParser.read(filename)
+        for item in list(parent_dict[section].keys()):
+            if item.lower() not in list(dict(configParser.items(section)).keys()):
+                self.logger.error(f'Section {section} do not have option {option}, kindly check the file {filename}.')
+                check = False
+        return check

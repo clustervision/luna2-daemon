@@ -62,36 +62,20 @@ def check_db():
     return dbcheck
 
 
-def checksection(filename=None):
-    """
-    Compare the bootstrap section with the predefined dictionary sections.
-    """
-    for item in list(BOOTSTRAP.keys()):
-        if item not in configParser.sections():
-            logger.error(f'Section {item} is missing, kindly check the file {filename}.')
-
-
-def checkoption(filename=None, section=None, option=None):
-    """
-    Compare the bootstrap option with the predefined dictionary options.
-    """
-    for item in list(BOOTSTRAP[section].keys()):
-        if item.lower() not in list(dict(configParser.items(section)).keys()):
-            logger.error(f'Section {section} do not have option {option}, kindly check the file {filename}.')
-
-
 def getconfig(filename=None):
     """
     From ini file Section Name is a section here, Option Name is an option here and Option Value is an item here.
     Example: sections[HOSTS, NETWORKS], options[HOSTNAME, NODELIST], and vlaues of options are item(10.141.255.254, node[001-004])
     """
     configParser.read(filename)
-    checksection(filename)
+    # checksection(filename)
+    Helper().checksection(filename, BOOTSTRAP)
     for section in configParser.sections():
         for (option, item) in configParser.items(section):
             globals()[option.upper()] = item
             if section in list(BOOTSTRAP.keys()):
-                checkoption(filename, section, option.upper())
+                # checkoption(filename, section, option.upper())
+                Helper().checkoption(filename, section, option.upper(), BOOTSTRAP)
                 if 'CONTROLLER1' in option.upper():
                     check_ip(item)
                     BOOTSTRAP[section][option.upper()] = item

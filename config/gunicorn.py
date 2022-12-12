@@ -16,6 +16,7 @@ accesslog = 'log/luna2-daemon.log'
 errorlog = 'log/luna2-daemon.log'
 errorlog = 'log/luna2-daemon.log'
 loglevel = 'info'
+logger_class = 'gunicorn.glogging.Logger'
 # Number of threads per worker process
 #threads = 3
 

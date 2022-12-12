@@ -24,8 +24,7 @@ from common.constant import CONSTANT, BASE_DIR
 class Log:
     """This Log Class is responsible to start the Logger depend on the Level."""
     __logger = None
-
-
+    
 
     @classmethod
     def init_log(cls, log_level=None):
@@ -34,6 +33,8 @@ class Log:
         Process - Validate the Log Level, Set it to INFO if not correct.
         Output - Logger Object.
         """
+        if cls.__logger:
+            cls.__logger = None
         if not log_level:
             log_level = 20
         else:
@@ -67,13 +68,8 @@ class Log:
         Process - Update the exsisting Log Level
         Output - Logger Object.
         """
-        # logger = logging.getLogger('luna2-daemon')
-        # for handler in logger.handlers:
-        #     handler.setLevel(logging.DEBUG)
-        logging.getLogger('luna2-daemon').setLevel(log_level)
-        # print(log_level)
-        # print(cls.__logger)
-        # return cls.__logger
+        cls.__logger.setLevel(log_level)
+        return cls.__logger
 
     @classmethod
     def check_loglevel(cls):

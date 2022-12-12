@@ -402,38 +402,6 @@ class Helper(object):
                 self.logger.error(f'Exception ==> {exp}.')
                 DRACUTSUCCEED = False
 
-            ################### OLD CODE ########################
-            # # ## Nested, time count ; should be 10 minutes
-            # try:
-            #     DRACUTPROCESS = subprocess.Popen(['/usr/sbin/dracut', '--kver', KERNELVERSION, '--list-modules'], stdout=subprocess.PIPE,stderr=subprocess.STDOUT)
-            #     LUNAEXISTS = False
-            #     while DRACUTPROCESS.poll() is None:
-            #         ### Remove, only check only if process is running
-            #         line = DRACUTPROCESS.stdout.readline()
-            #         if line.strip() == 'luna':
-            #             LUNAEXISTS = True
-            #             break
-            #         ### Remove, only check only if process is running
-            #     # if not LUNAEXISTS:
-            #     #     self.logger.error(f'No luna dracut module in OS Image {IMAGENAME}.')
-            #     #     raise RuntimeError(f'No luna dracut module in OS Image {IMAGENAME}.')
-
-            #     DRACUTCMDPROCESS = (['/usr/sbin/dracut', '--force', '--kver', KERNELVERSION] + MODULESADD + MODULESREMOVE + DRIVERSADD + DRIVERSREMOVE + [PATHTMP + '/' + INTRDFILE])
-            #     CREATE = subprocess.Popen(DRACUTCMDPROCESS, stdout=subprocess.PIPE)
-            #     while CREATE.poll() is None:
-            #         line = CREATE.stdout.readline()
-            # except Exception as exp:
-            #     print(exp)
-            #     DRACUTSUCCEED = False
-            # #  ## Nested, time count ; should be 10 minutes
-
-            # if CREATE and CREATE.returncode:
-            #     DRACUTSUCCEED = False
-
-            # if not CREATE:
-            #     DRACUTSUCCEED = False
-            ################### OLD CODE ########################
-
             os.fchdir(REALROOT)
             os.chroot(".")
             os.close(REALROOT)
@@ -466,3 +434,44 @@ class Helper(object):
             self.packing.get() ## Get the Last same Element from Queue
             self.packing.empty() ## Deque the same element from the Queue
         return True
+
+
+    def checkdbstatus(self):
+        sqlite, read, write = False, False, False
+        code = 503
+        if os.path.isfile(CONSTANT['DATABASE']['DATABASE']):
+            sqlite = True
+            if os.access(CONSTANT['DATABASE']['DATABASE'], os.R_OK):
+                read = True
+                code = 500
+                try:
+                    file = open(CONSTANT['DATABASE']['DATABASE'], "a")
+                    if file.writable():
+                        write = True
+                        code = 200
+                        file.close()
+                except Exception as e:
+                    self.logger.error("DATABASE {} is Not Writable.".format(CONSTANT['DATABASE']['DATABASE']))
+
+                with open(CONSTANT['DATABASE']['DATABASE'],'r', encoding = "ISO-8859-1") as f:
+                    header = f.read(100)
+                    if header.startswith('SQLite format 3'):
+                        read, write = True, True
+                        code = 200
+                    else:
+                        read, write = False, False
+                        code = 503
+                        self.logger.error("DATABASE {} is Not a SQLite3 Database.".format(CONSTANT['DATABASE']['DATABASE']))
+            else:
+                self.logger.error("DATABASE {} is Not Readable.".format(CONSTANT['DATABASE']['DATABASE']))
+        else:
+            self.logger.info("DATABASE {} is Not a SQLite Database.".format(CONSTANT['DATABASE']['DATABASE']))
+        if not sqlite:
+            try:
+                Database().get_cursor()
+                read, write = True, True
+                code = 200
+            except pyodbc.Error as error:
+                self.logger.error("Error While connecting to Database {} is: {}.".format(CONSTANT['DATABASE']['DATABASE'], str(error)))
+        response = {"database": CONSTANT['DATABASE']['DRIVER'], "read": read, "write": write}
+        return response, code

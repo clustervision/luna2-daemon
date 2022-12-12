@@ -18,6 +18,7 @@ import os
 from configparser import RawConfigParser
 from pathlib import Path
 
+
 def checkfile(filename=None):
     """
     Input - Filename

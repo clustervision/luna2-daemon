@@ -9,5 +9,6 @@ cd /trinity/local/luna/
 # 	gunicorn --config /trinity/local/luna/config/gunicorn.py 'luna:api' &
 # fi  
 # nohup gunicorn --config /trinity/local/luna/config/gunicorn.py 'luna:api' >/dev/null 2>&1
-gunicorn --config /trinity/local/luna/config/gunicorn.py 'luna:api' &
+# /usr/local/bin/gunicorn --config /trinity/local/luna/config/gunicorn.py 'luna:api' &
+gunicorn --config /trinity/local/luna/config/gunicorn.py 'luna:api'
 # nohup gunicorn --config config/gunicorn.py luna:api >/dev/null 2>&1

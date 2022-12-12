@@ -16,30 +16,12 @@ __version__     = '2.0'
 __maintainer__  = 'Sumit Sharma'
 __email__       = 'sumit.sharma@clustervision.com'
 __status__      = 'Development'
-import logging
+
 from flask import Flask, abort, json, Response
 from common.constant import CONSTANT
 from utils.log import Log
+LOGGER = Log.init_log(CONSTANT['LOGGER']['LEVEL'])
 
-LOGGER = Log().init_log('debug')
-LOGGER.debug("A Debug Logging Message")
-LOGGER.info("A Info Logging Message")
-LOGGER.warning("A Warning Logging Message")
-LOGGER.error("An Error Logging Message")
-LOGGER.critical("A Critical Logging Message")
-
-LOGGER = Log().init_log('info')
-LOGGER.debug("A Debug Logging Message")
-LOGGER.info("A Info Logging Message")
-LOGGER.warning("A Warning Logging Message")
-LOGGER.error("An Error Logging Message")
-LOGGER.critical("A Critical Logging Message")
-# LOGGER = Log().init_log('info')
-# Log().set_logger(logging.DEBUG)
-LVL = Log().check_loglevel()
-LOGGER.info(LVL)
-# from utils.log import Log
-# LOGGER = Log.init_log(CONSTANT['LOGGER']['LEVEL'])
 from common.bootstrap import validatebootstrap
 from utils.templates import Templates
 
@@ -54,23 +36,11 @@ from apis.monitor import monitor_blueprint
 validatebootstrap()
 TEMP = Templates().validate()
 
-
-api = Flask(__name__)
-api.register_blueprint(auth_blueprint)
-api.register_blueprint(boot_blueprint)
-api.register_blueprint(config_blueprint)
-api.register_blueprint(files_blueprint)
-api.register_blueprint(service_blueprint)
-api.register_blueprint(monitor_blueprint)
-
-# Logger.info('Variable ---------->> {}'.format(CONSTANT))
-
 def on_starting(server):
     """
     A Testing Method for Gunicorn on_starting.
     """
     LOGGER.info(vars(server))
-    print('Templates Check On Start')
     LOGGER.info('Templates Check On Start')
     return True
 
@@ -79,15 +49,17 @@ def on_reload(server):
     A Testing Method for Gunicorn on_reload.
     """
     LOGGER.info(vars(server))
-    print('Templates Check On Start')
     LOGGER.info('Templates Check On Start')
     return True
 
 
-# def on_reload(server):
-#     TEMPLATE_CHECK = Templates().validate()
-#     LOGGER.info(f'Templates Check Status is: {TEMPLATE_CHECK}')
-#     return True
+api = Flask(__name__)
+api.register_blueprint(auth_blueprint)
+api.register_blueprint(boot_blueprint)
+api.register_blueprint(config_blueprint)
+api.register_blueprint(files_blueprint)
+api.register_blueprint(service_blueprint)
+api.register_blueprint(monitor_blueprint)
 
 
 @api.route('/')
@@ -135,4 +107,4 @@ def service_unavailable(error):
     return json.dumps(error), 503
 
 
-api.run(host='0.0.0.0', port=7050, debug=True)
+# api.run(host='0.0.0.0', port=7050, debug=True)

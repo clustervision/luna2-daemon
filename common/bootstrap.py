@@ -19,7 +19,8 @@ import os
 import ipaddress
 import time
 import hostlist
-from common.dbcheck import checkdbstatus
+# from common.dbcheck import checkdbstatus
+from utils.helper import Helper
 from utils.database import Database
 from utils.log import Log
 
@@ -251,7 +252,8 @@ def validatebootstrap():
         'BMCSETUP': {'USERNAME': None, 'PASSWORD': None}
     }
     bootstrapfile_check = check_bootstrapfile(bootstrapfile)
-    dbstatus, dbcode = checkdbstatus()
+    # dbstatus, dbcode = checkdbstatus()checkdbstatus
+    dbstatus, dbcode = Helper().checkdbstatus()
     if dbcode == 200:
         db_check = check_db()
 

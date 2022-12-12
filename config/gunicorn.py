@@ -3,7 +3,7 @@
 """
 Start luna daemon
 """
-# import luna
+import luna
 # The IP address (typically localhost) and port that the Netbox WSGI process should listen on
 bind = '0.0.0.0:7050'
 
@@ -12,6 +12,10 @@ bind = '0.0.0.0:7050'
 # workers = 4
 workers = 1
 
+accesslog = 'log/luna2-daemon.log'
+errorlog = 'log/luna2-daemon.log'
+errorlog = 'log/luna2-daemon.log'
+loglevel = 'info'
 # Number of threads per worker process
 #threads = 3
 
@@ -23,28 +27,6 @@ workers = 1
 #max_requests_jitter = 500
 
 # reload_engine = 'auto'
-# on_starting = luna.on_starting
+on_starting = luna.on_starting
 # on_reload = luna.on_reload
-"""
-TODO: add docs
-"""
-#def on_reload(server):
-    # pprint(vars(server))
-    # LOGGER.info(vars(server))
-   # print('Templates Check On Start')
-    # LOGGER.info('Templates Check On Start')
-   # return True
 
-# on_starting = luna.on_starting
-# def on_starting(server):
-    # print('Templates Check On Start')
-
-# def on_reload(server):
-#     """
-#      Do something on reload
-#     """
-#     print("Server has reloaded")
-# logfile = '/trinity/local/luna/log/luna2-daemon.log'
-# loglevel = 'debug'
-# accesslogfile = '/trinity/local/luna/log/gunicorn-access.log'
-# errorlogfile = '/trinity/local/luna/log/gunicorn-error.log'

@@ -18,10 +18,9 @@ __email__       = 'sumit.sharma@clustervision.com'
 __status__      = 'Development'
 
 from flask import Flask, abort, json, Response
-from common.constant import CONSTANT
-from utils.log import Log
-LOGGER = Log.init_log(CONSTANT['LOGGER']['LEVEL'])
-
+from common.constant import CONSTANT, LOGGER
+# from utils.log import Log
+# LOGGER = Log.init_log(CONSTANT['LOGGER']['LEVEL'])
 from common.bootstrap import validatebootstrap
 from utils.templates import Templates
 
@@ -33,13 +32,14 @@ from apis.service import service_blueprint
 from apis.monitor import monitor_blueprint
 
 
-validatebootstrap()
-TEMP = Templates().validate()
+
 
 def on_starting(server):
     """
     A Testing Method for Gunicorn on_starting.
     """
+    validatebootstrap()
+    TEMP = Templates().validate()
     LOGGER.info(vars(server))
     LOGGER.info('Templates Check On Start')
     return True

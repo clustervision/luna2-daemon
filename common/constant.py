@@ -132,7 +132,7 @@ CONSTANT = {
     'DATABASE': { 'DRIVER': None, 'DATABASE': None, 'DBUSER': None, 'DBPASSWORD': None, 'HOST': None, 'PORT': None },
     'FILES': { 'TARBALL': None, 'IMAGE_DIRECTORY': None, 'MAXPACKAGINGTIME': None },
     'SERVICES': { 'DHCP': None, 'DNS': None, 'CONTROL': None, 'COOLDOWN': None, 'COMMAND': None },
-    'TEMPLATES': { 'TEMPLATES_DIR': None }
+    'TEMPLATES': { 'TEMPLATES_DIR': None, 'TEMPLATELIST': None,  'TEMP_DIR': None }
 }
 
 CurrentDir = os.path.dirname(os.path.realpath(__file__))
@@ -163,6 +163,9 @@ if KEYFILECHECK:
         LUNAKEY = None
 
 
+if CONSTANT['LOGGER']['LEVEL']:
+    from utils.log import Log
+    LOGGER = Log.init_log(CONSTANT['LOGGER']['LEVEL'])
 
 """
 Sanity Checks On LOGFILE, TARBALL, TEMPLATES_DIR

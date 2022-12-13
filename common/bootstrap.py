@@ -52,13 +52,11 @@ def getconfig(filename=None):
     Example: sections[HOSTS, NETWORKS], options[HOSTNAME, NODELIST], and vlaues of options are item(10.141.255.254, node[001-004])
     """
     configParser.read(filename)
-    # checksection(filename)
     Helper().checksection(filename, BOOTSTRAP)
     for section in configParser.sections():
         for (option, item) in configParser.items(section):
             globals()[option.upper()] = item
             if section in list(BOOTSTRAP.keys()):
-                # checkoption(filename, section, option.upper())
                 Helper().checkoption(filename, section, option.upper(), BOOTSTRAP)
                 if 'CONTROLLER1' in option.upper():
                     Helper().check_ip(item)

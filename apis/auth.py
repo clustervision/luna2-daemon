@@ -19,11 +19,12 @@ import jwt
 from flask import Blueprint, request, json
 from utils.log import Log
 from utils.database import Database
+from common.constant import CONSTANT
 
 LOGGER = Log.get_logger()
 auth_blueprint = Blueprint('auth', __name__)
 
-@auth_blueprint.route("/token", methods=['POST'])
+@auth_blueprint.route('/token', methods=['POST'])
 def token():
     """
     Input - username and password
@@ -31,56 +32,55 @@ def token():
     On the success, create a token, which is valid for expiry time mentioned in configuration.
     Output - Token.
     """
-    username, password = "", ""
+    username, password = '', ''
     auth = request.get_json(force=True)
     if not auth:
-        LOGGER.error("Login Required")
-        response = {"message" : "Login Required"}
+        LOGGER.error('Login Required')
+        response = {'message' : 'Login Required'}
         code = 401
-    if "username" not in auth:
-        LOGGER.error("Username Is Required")
-        response = {"message" : "Login Required"}
-        code = 401
-    else:
-        username = auth["username"]
-    if "password" not in auth:
-        LOGGER.error("Password Is Required")
-        response = {"message" : "Login Required"}
+    if 'username' not in auth:
+        LOGGER.error('Username Is Required')
+        response = {'message' : 'Login Required'}
         code = 401
     else:
-        password = auth["password"]
+        username = auth['username']
+    if 'password' not in auth:
+        LOGGER.error('Password Is Required')
+        response = {'message' : 'Login Required'}
+        code = 401
+    else:
+        password = auth['password']
 
-    if USERNAME != username:
-        logger.info("Username {} Not belongs to INI.".format(username))
-        table = "user"
-        where = " WHERE username = '{}' AND roleid = '1'".format(username)
-        user = Database().get_record(None, table, where)
+    if CONSTANT['API']['USERNAME'] != username:
+        LOGGER.info(f'Username {username} Not belongs to INI.')
+        where = f" WHERE username = '{username}' AND roleid = '1';"
+        user = Database().get_record(None, 'user', where)
         if user:
-            UserID = user[0]["id"]
-            UserPassword = user[0]["password"]
-            if UserPassword == hashlib.md5(password.encode()).hexdigest():
-                token = jwt.encode({'id': UserID, 'exp': datetime.datetime.utcnow() + datetime.timedelta(minutes=int(EXPIRY))}, SECRET_KEY, "HS256")
-                logger.debug("Login Token generated Successfully, Token {}".format(token))
+            userid = user[0]["id"]
+            userpassword = user[0]["password"]
+            if userpassword == hashlib.md5(password.encode()).hexdigest():
+                token = jwt.encode({'id': userid, 'exp': datetime.datetime.utcnow() + datetime.timedelta(minutes=int(CONSTANT['API']['EXPIRY']))}, CONSTANT['API']['SECRET_KEY'], 'HS256')
+                LOGGER.debug(f'Login Token generated Successfully, Token {token}.')
                 response = {'token' : token}
                 code = 200
-                return json.dumps(response), code
             else:
-                logger.warning("Incorrect Password {} for the user {}.".format(password, username))
-                response = {"message" : 'Incorrect Password {} for the user {}.'.format(password, username)}
+                LOGGER.warning(f'Incorrect Password {password} for the user {username}.')
+                response = {'message' : f'Incorrect Password {password} for the user {username}.'}
                 code = 401
         else:
-            logger.error("User {} Is Not Exists.".format(username))
-            response = {"message" : "User {} Is Not Exists.".format(username)}
+            LOGGER.error(f'User {username} is not exists.')
+            response = {'message' : f'User {username} is not exists.'}
             code = 401
     else:
-        if PASSWORD != password:
-            logger.warning("Incorrect Password {}, Kindly check the INI.".format(password))
-            response = {"message" : 'Incorrect Password {}, Kindly check the INI.'.format(password)}
+        if CONSTANT['API']['PASSWORD'] != password:
+            LOGGER.warning(f'Incorrect Password {password}, Kindly check the INI.')
+            response = {'message' : f'Incorrect Password {password}, Kindly check the INI.'}
             code = 401
         else:
-            # Creating Token via JWT with default id =1, expiry time and Secret Key from conf file, and algo Sha 256
-            token = jwt.encode({'id': 0, 'exp': datetime.datetime.utcnow() + datetime.timedelta(minutes=int(EXPIRY))}, SECRET_KEY, "HS256")
-            logger.debug("Login Token generated Successfully, Token {}".format(token))
+            # Creating Token via JWT with default id =1, expiry time
+            # and Secret Key from conf file, and algo Sha 256
+            token = jwt.encode({'id': 0, 'exp': datetime.datetime.utcnow() + datetime.timedelta(minutes=int(CONSTANT['API']['EXPIRY']))}, CONSTANT['API']['SECRET_KEY'], 'HS256')
+            LOGGER.debug(f'Login Token generated Successfully, Token {token}')
             response = {"token" : token}
             code = 201
     return json.dumps(response), code

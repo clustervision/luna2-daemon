@@ -12,22 +12,17 @@ bind = '0.0.0.0:7050'
 # workers = 4
 workers = 1
 
-accesslog = 'log/luna2-daemon.log'
-errorlog = 'log/luna2-daemon.log'
-errorlog = 'log/luna2-daemon.log'
-loglevel = 'info'
-logger_class = 'gunicorn.glogging.Logger'
 # Number of threads per worker process
-#threads = 3
+# threads = 3
 
 # Timeout (in seconds) for a request to complete
-#timeout = 120
+# timeout = 120
 
 # The maximum number of requests a worker can handle before being respawned
-#max_requests = 5000
-#max_requests_jitter = 500
+# max_requests = 5000
+# max_requests_jitter = 500
 
-# reload_engine = 'auto'
+reload_engine = 'auto'
 on_starting = luna.on_starting
 # on_reload = luna.on_reload
 

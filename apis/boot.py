@@ -22,7 +22,7 @@ from common.constant import CONSTANT
 
 LOGGER = Log.get_logger()
 boot_blueprint = Blueprint('boot', __name__, template_folder='../templates')
-# Add folder by -> template_folder='templates'
+
 
 @boot_blueprint.route('/boot', methods=['GET'])
 def boot():

@@ -14,38 +14,40 @@ __maintainer__  = "Sumit Sharma"
 __email__       = "sumit.sharma@clustervision.com"
 __status__      = "Development"
 
-import os
 from functools import wraps
 from flask import request, json, abort
-from utils.log import *
-from utils.database import *
+from utils.log import Log
+from utils.database import Database
+from common.constant import CONSTANT
 import jwt
 
-logger = Log.get_logger()
+
+LOGGER = Log.get_logger()
 
 
-"""
-Input - Token
-Process - After validate the Token, Return the arguments and keyword arguments Of The API.
-Output - Success or Failure.
-"""
 def token_required(f):
+    """
+    Input - Token
+    Process - After validate the Token, Return the arguments
+    and keyword arguments Of The API.
+    Output - Success or Failure.
+    """
     @wraps(f)
     def decorator(*args, **kwargs):
         token = None
         if 'x-access-tokens' in request.headers:
             token = request.headers['x-access-tokens']
         if not token:
-            logger.error("A Valid Token Is Missing.")
+            LOGGER.error("A Valid Token Is Missing.")
             response = {"message": "A Valid Token Is Missing."}
             code = 401
             return json.dumps(response), code
         try:
-            data = jwt.decode(token, SECRET_KEY, algorithms=["HS256"]) ## Decoding Token
+            data = jwt.decode(token, CONSTANT['API']['SECRET_KEY'], algorithms=["HS256"]) ## Decoding Token
             if data["id"] == 1:
                 current_user = data["id"]
-        except:
-            logger.error("Token Is Invalid.")
+        except Exception as exp:
+            LOGGER.error("Token Is Invalid.")
             response = {"message": "Token Is Invalid."}
             code = 401
             return json.dumps(response), code
@@ -53,12 +55,13 @@ def token_required(f):
     return decorator
 
 
-"""
-Input - Token
-Process - After validate the Token, Return the arguments and keyword arguments Of The API Along access key with admin value to use further.
-Output - With/Without Access.
-"""
 def validate_access(f):
+    """
+    Input - Token
+    Process - After validate the Token, Return the arguments and keyword
+    arguments Of The API Along access key with admin value to use further.
+    Output - With/Without Access.
+    """
     @wraps(f)
     def decorator(*args, **kwargs):
         access = "anonymous"
@@ -68,7 +71,7 @@ def validate_access(f):
         if not token:
             access = "anonymous"
         try:
-            data = jwt.decode(token, SECRET_KEY, algorithms=["HS256"]) ## Decoding Token
+            data = jwt.decode(token, CONSTANT['API']['SECRET_KEY'], algorithms=["HS256"]) ## Decoding Token
             if data["id"] == 1:
                 current_user = data["id"]
                 access = "admin"  ## Adding Access admin to retirve the full data set or perform the admin level action.
@@ -78,19 +81,19 @@ def validate_access(f):
     return decorator
 
 
-"""
-Input - None
-Process - Verify If Database is present & Active and Working.
-Output - Success OR Abort to 503.
-"""
 def dbcheck(f):
+    """
+    Input - None
+    Process - Verify If Database is present & Active and Working.
+    Output - Success OR Abort to 503.
+    """
     @wraps(f)
     def decorator(*args, **kwargs):
         result = Database().check_db()
         if result:
-            logger.info("Database Is Ready For The Transaction.")
+            LOGGER.info("Database Is Ready For The Transaction.")
         else:
-            logger.error("Database Is Not Ready.")
+            LOGGER.error("Database Is Not Ready.")
             abort(503, "Database")
 
         return f(**kwargs)

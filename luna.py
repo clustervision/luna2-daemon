@@ -18,11 +18,8 @@ __email__       = 'sumit.sharma@clustervision.com'
 __status__      = 'Development'
 
 from flask import Flask, abort, json, Response
-from common.constant import CONSTANT, LOGGER
-# from utils.log import Log
-# LOGGER = Log.init_log(CONSTANT['LOGGER']['LEVEL'])
+from common.constant import LOGGER
 from common.bootstrap import validatebootstrap
-from utils.templates import Templates
 
 from apis.auth import auth_blueprint
 from apis.boot import boot_blueprint
@@ -31,27 +28,36 @@ from apis.files import files_blueprint
 from apis.service import service_blueprint
 from apis.monitor import monitor_blueprint
 
-
-
+############# Gunicorn Server Hooks #############
 
 def on_starting(server):
     """
     A Testing Method for Gunicorn on_starting.
     """
     validatebootstrap()
-    TEMP = Templates().validate()
-    LOGGER.info(vars(server))
-    LOGGER.info('Templates Check On Start')
+    LOGGER.debug(vars(server))
+    LOGGER.debug('Gunicorn server hook on start')
     return True
+
 
 def on_reload(server):
     """
     A Testing Method for Gunicorn on_reload.
     """
-    LOGGER.info(vars(server))
-    LOGGER.info('Templates Check On Start')
+    LOGGER.debug(vars(server))
+    LOGGER.debug('Gunicorn server hook on reload')
     return True
 
+
+def on_exit(server):
+    """
+    A Testing Method for Gunicorn on_reload.
+    """
+    LOGGER.info(vars(server))
+    LOGGER.debug('Gunicorn server hook on exit')
+    return True
+
+############# Gunicorn Server Hooks #############
 
 api = Flask(__name__)
 api.register_blueprint(auth_blueprint)
@@ -105,6 +111,3 @@ def service_unavailable(error):
     """ Abort All 503"""
     error = {'message': f'{error} Service Unavailable'}
     return json.dumps(error), 503
-
-
-# api.run(host='0.0.0.0', port=7050, debug=True)

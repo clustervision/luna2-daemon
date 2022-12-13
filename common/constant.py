@@ -15,27 +15,89 @@ __email__       = 'sumit.sharma@clustervision.com'
 __status__      = 'Development'
 
 import os
+import subprocess
+import json
 from configparser import RawConfigParser
 from pathlib import Path
 from utils.log import Log
+
 LOGGER = Log.init_log('debug', '/trinity/local/luna/log/luna2-daemon.log')
-# from utils.helper import Helper
+CurrentDir = os.path.dirname(os.path.realpath(__file__))
+UTILSDIR = Path(CurrentDir)
+BASE_DIR = str(UTILSDIR.parent)
+configParser = RawConfigParser()
+CONFIGFILE = '/trinity/local/luna/config/luna.ini'
 
-def checkfile(filename=None):
+def checkpathstate(path=None):
     """
-    Input - Filename
-    Output - Check File Existence And Readability
+    Input - Directory
+    Output - Directory if exists, readable or writable
     """
-    check = False
-    if Path(filename).is_file():
-        if os.access(filename, os.R_OK):
-            check = True
+    path_check = False
+    pathtype = checkpathtype(path)
+    if pathtype in ('File', 'Directory'):
+        if os.access(path, os.R_OK):
+            if os.access(path, os.W_OK):
+                path_check = True
+            else:
+                LOGGER.error(f'{pathtype} {path} is writable.')
         else:
-            print(f'File {filename} is not readable.')
+            LOGGER.error(f'{pathtype} {path} is not readable.')
     else:
-        print(f'File {filename} is absent.')
-    return check
+        LOGGER.error(f'{pathtype} {path} is not exists.')
+    return path_check
 
+
+def checkpathtype(path=None):
+    """
+    Input - Path of File or Directory
+    Output - File or directory or Not Exists
+    """
+    pathstatus = checkpath(path)
+    if pathstatus:
+        if os.path.isdir(path):
+            response = 'File'
+        elif os.path.isfile(path):
+            response = 'Directory'
+        else:
+            response = 'socket or FIFO or device'
+    else:
+        response = 'Not exists'
+    return response
+
+
+def checkpath(path=None):
+    """
+    Input - Path of File or Directory
+    Output - True or False Is exists or not
+    """
+    if os.path.exists(path):
+        response = True
+    else:
+        response = None
+    return response
+
+def runcommand(command):
+    """
+    Input - command, which need to be executed
+    Process - Via subprocess, execute the command and wait to receive the complete output.
+    Output - Detailed result.
+    """
+    with subprocess.Popen(command, stdout=subprocess.PIPE, shell=True) as process:
+        LOGGER.debug(f'Command Executed {command}')
+        output = process.communicate()
+        process.wait()
+        LOGGER.debug(f'Output Of Command {output}')
+    return output
+
+def getlist(dictionary):
+    """
+    Get Section List
+    """
+    key_list = []
+    for key in dictionary.keys():
+        key_list.append(key)
+    return key_list
 
 def checksection(filename=None):
     """
@@ -43,7 +105,7 @@ def checksection(filename=None):
     """
     for item in list(CONSTANT.keys()):
         if item not in configParser.sections():
-            logger.error(f'Section {item} is missing, kindly check the file {filename}.')
+            LOGGER.error(f'Section {item} is missing, kindly check the file {filename}.')
 
 
 def checkoption(filename=None, section=None, option=None):
@@ -52,195 +114,108 @@ def checkoption(filename=None, section=None, option=None):
     """
     for item in list(CONSTANT[section].keys()):
         if item.lower() not in list(dict(configParser.items(section)).keys()):
-            logger.error(f'Section {section} do not have option {option}, kindly check the file {filename}.')
+            LOGGER.error(f'{option} is not available in {section}, kindly check {filename}.')
+
+def set_constants(section=None, option=None, item=None):
+    """
+    This method set the value in the Constant.
+    """
+    if option == 'EXPIRY':
+        if item:
+            CONSTANT[section][option] = int(item.replace('h', ''))*60*60
+        else:
+            CONSTANT[section][option] = 24*60*60
+    elif option.upper() == 'COOLDOWN':
+        if item:
+            CONSTANT[section][option] = int(item.replace('s', ''))
+        else:
+            CONSTANT[section][option] = 2
+    elif option.upper() == 'MAXPACKAGINGTIME':
+        if item:
+            CONSTANT[section][option] = int(item.replace('m', ''))*60
+        else:
+            CONSTANT[section][option] = 10*60
+    else:
+        CONSTANT[section][option] = item
+    return CONSTANT
+
 
 def getconfig(filename=None):
     """
-    From ini file Section Name is section here, Option Name is option here and Option Value is item here.
-    Example: sections[HOSTS, NETWORKS], options[HOSTNAME, NODELIST], and vlaues of options are item(10.141.255.254, node[001-004])
+    From ini file Section Name is section here, Option Name is option here
+    and Option Value is item here.
+    Example: sections[HOSTS, NETWORKS], options[HOSTNAME, NODELIST], and vlaues
+    of options are item(10.141.255.254, node[001-004])
     """
     configParser.read(filename)
     checksection(filename)
     for section in configParser.sections():
         for (option, item) in configParser.items(section):
-            # globals()[option.upper()] = item
-            if section in list(CONSTANT.keys()):
+            if section in getlist(CONSTANT):
+            # if section in [section_name for section_name in CONSTANT]:
                 checkoption(filename, section, option.upper())
-                if option.upper() == 'EXPIRY':
-                    if item:
-                        CONSTANT[section][option.upper()] = int(item.replace('h', ''))*60*60
-                        globals()[option.upper()] = int(item.replace('h', ''))*60*60
-                    else:
-                        CONSTANT[section][option.upper()] = 24*60*60
-                        globals()[option.upper()] = 24*60*60
-                elif option.upper() == 'COOLDOWN':
-                    if item:
-                        CONSTANT[section][option.upper()] = int(item.replace('s', ''))
-                        globals()[option.upper()] = int(item.replace('s', ''))
-                    else:
-                        CONSTANT[section][option.upper()] = 2
-                        globals()[option.upper()] = 2
-                elif option.upper() == 'MAXPACKAGINGTIME':
-                    if item:
-                        CONSTANT[section][option.upper()] = int(item.replace('m', ''))*60
-                        globals()[option.upper()] = int(item.replace('m', ''))*60
-                    else:
-                        CONSTANT[section][option.upper()] = 10*60
-                        globals()[option.upper()] = 10*60
-                else:
-                    CONSTANT[section][option.upper()] = item
-                    globals()[option.upper()] = item
+                set_constants(section, option.upper(), item)
             else:
                 CONSTANT[section] = {}
                 CONSTANT[section][option.upper()] = item
 
 
-def checkdir(directory=None):
-    """
-    Input - Directory
-    Output - Directory Existence, Readability and Writable
-    """
-    check = False
-    if os.path.exists(directory):
-        if os.access(directory, os.R_OK):
-            if os.access(directory, os.W_OK):
-                check = True
-            else:
-                print(f'Directory {directory} is writable.')
-        else:
-            print(f'Directory {directory} is not readable.')
-    else:
-        print(f'Directory {directory} is not exists.')
-    return check
-
-
-def checkwritable(filename=None):
-    """
-    Input - Filename and Default File True or False
-    Output - Check If File Writable
-    """
-    write = False
-    try:
-        file = open(filename, 'a')
-        if file.writable():
-            write = True
-    except Exception as e:
-        print('File {} is Not Writable.'.format(filename))
-    return write
-
-
-def get_constants():
-    pass
-
-error = False
-error_message = []
 
 global CONSTANT
+global LUNAKEY
+
 CONSTANT = {
-    'LOGGER': { 'LEVEL': None, 'LOGFILE': None },
-    'API': { 'USERNAME': None, 'PASSWORD': None, 'EXPIRY': None, 'SECRET_KEY': None },
-    'DATABASE': { 'DRIVER': None, 'DATABASE': None, 'DBUSER': None, 'DBPASSWORD': None, 'HOST': None, 'PORT': None },
-    'FILES': { 'TARBALL': None, 'IMAGE_DIRECTORY': None, 'MAXPACKAGINGTIME': None },
-    'SERVICES': { 'DHCP': None, 'DNS': None, 'CONTROL': None, 'COOLDOWN': None, 'COMMAND': None },
-    'TEMPLATES': { 'TEMPLATES_DIR': None, 'TEMPLATELIST': None,  'TEMP_DIR': None }
+    'LOGGER': {'LEVEL': None, 'LOGFILE': None},
+    'API': {'USERNAME': None, 'PASSWORD': None, 'EXPIRY': None, 'SECRET_KEY': None},
+    'DATABASE': {'DRIVER': None, 'DATABASE': None, 'DBUSER': None,
+                'DBPASSWORD': None, 'HOST': None, 'PORT': None},
+    'FILES': {'KEYFILE': None, 'TARBALL': None, 'IMAGE_DIRECTORY': None, 'MAXPACKAGINGTIME': None},
+    'SERVICES': {'DHCP': None, 'DNS': None, 'CONTROL': None, 'COOLDOWN': None, 'COMMAND': None},
+    'TEMPLATES': {'TEMPLATES_DIR': None, 'TEMPLATELIST': None,  'TEMP_DIR': None}
 }
 
-CurrentDir = os.path.dirname(os.path.realpath(__file__))
-UTILSDIR = Path(CurrentDir)
-BASE_DIR = str(UTILSDIR.parent)
-configParser = RawConfigParser()
 
-ConfigFile = '/trinity/local/luna/config/luna.ini'
-KEYFILE = '/trinity/local/etc/ssl/luna.key'
 
-file_check = checkfile(ConfigFile)
-if file_check:
-    getconfig(ConfigFile)
+if checkpathstate(CONFIGFILE):
+    getconfig(CONFIGFILE)
 else:
-    error = True
-    error_message.append(f'ERROR :: Section {section} do not have option {option.upper()}, kindly check the file {filename}.')
+    LOGGER.error(f'Unable to get configurations from {CONFIGFILE} file')
 
+
+## Sanity Checks On LOGFILE, TARBALL, TEMPLATES_DIR, TEMPLATELIST, KEYFILE
+
+sanitize = [
+                CONSTANT['LOGGER']['LOGFILE'],
+                CONSTANT['FILES']['TARBALL'],
+                CONSTANT['TEMPLATES']['TEMPLATES_DIR'],
+                CONSTANT['TEMPLATES']['TEMPLATELIST'],
+                CONSTANT['FILES']['KEYFILE']
+            ]
+for sanity in sanitize:
+    checkpathstate(sanity)
 
 if CONSTANT['LOGGER']['LEVEL']:
-    # LOGGER = Log.init_log(LEVEL, LOGFILE)
-    LOGGER = Log.set_logger(LEVEL)
-    print(Log.check_loglevel())
+    LOGGER = Log.set_logger(CONSTANT['LOGGER']['LEVEL'])
 
+with open(CONSTANT['FILES']['KEYFILE'], 'r', encoding='utf-8') as key_file:
+    LUNAKEY = key_file.read()
+    LUNAKEY = LUNAKEY.replace('\n', '')
 
-global LUNAKEY
-KEYFILECHECK = checkfile(KEYFILE)
-if KEYFILECHECK:
-    try:
-        file = open(KEYFILE, 'r')
-        LUNAKEY = file.read()
-        LUNAKEY = LUNAKEY.replace('\n', '')
-    except Exception as e:
-        print('File {} is Not Readable.'.format(KEYFILE))
-        LUNAKEY = None
-
-
-
-
-"""
-Sanity Checks On LOGFILE, TARBALL, TEMPLATES_DIR
-"""
-
-check_log_read = checkfile(LOGFILE)
-if check_log_read is not True:
-    error = True
-    error_message.append(f'Log File: {LOGFILE} is not readable.')
-
-check_log_write = checkwritable(LOGFILE)
-if check_log_write is not True:
-    error = True
-    error_message.append(f'Log File: {LOGFILE} is not writable.')
-
-check_dir_read = checkdir(TARBALL)
-if check_dir_read is not True:
-    error = True
-    error_message.append(f'TARBALL directory: {TARBALL} is not readable.')
-
-check_dir_write = checkdir(TARBALL)
-if check_dir_write is not True:
-    error = True
-    error_message.append(f'TARBALL directory: {TARBALL} is not writable.')
-
-check_dir_read = checkdir(TEMPLATES_DIR)
-if check_dir_read is not True:
-    error = True
-    error_message.append(f'TEMPLATES_DIR directory: {TEMPLATES_DIR} is not readable.')
-
-check_dir_write = checkdir(TEMPLATES_DIR)
-if check_dir_write is not True:
-    error = True
-    error_message.append(f'TEMPLATES_DIR directory: {TEMPLATES_DIR} is not writable.')
-
-
-# def validate():
-#     """
-#     Input - None
-#     Process - Create TEMP_DIR with template files.
-#     Output - Success OR Failure.
-#     """
-#     temp = False
-#     if Helper().checkpathstate(TEMPLATES_DIR) and Helper().checkpathstate(TEMPLATELIST):
-#         file = open(TEMPLATELIST, encoding='utf-8')
-#         data = json.load(file)
-#         file.close()
-#         if 'files' in data.keys():
-#             Helper().runcommand(f'rm -rf {TEMP_DIR}')
-#             Helper().runcommand(f'mkdir {TEMP_DIR}')
-#             for templatefiles in data['files']:
-#                 if Helper().checkpathstate(f'{TEMPLATES_DIR}/{templatefiles}'):
-#                     Helper().runcommand(f'cp {TEMPLATES_DIR}/{templatefiles} /var/tmp/luna2/')
-#                     temp = True
-#                 else:
-#                     logger.error(f'{TEMPLATES_DIR}/{templatefiles} is Not Present.')
-#         else:
-#             logger.error(f'{CONSTANT["TEMPLATES"]["TEMPLATELIST"]} Do Not have file list.')
-#     else:
-#         logger.error('TEMPLATES_DIR and TEMPLATELIST Not Present in the INI File.')
-#     return temp
+with open(CONSTANT['TEMPLATES']['TEMPLATELIST'], 'r', encoding='utf-8') as template_json:
+    data = json.load(template_json)
+if 'files' in data.keys():
+    runcommand(f'rm -rf {CONSTANT["TEMPLATES"]["TEMP_DIR"]}')
+    runcommand(f'mkdir {CONSTANT["TEMPLATES"]["TEMP_DIR"]}')
+    for templatefiles in data['files']:
+        if checkpathstate(f'{CONSTANT["TEMPLATES"]["TEMPLATES_DIR"]}/{templatefiles}'):
+            copy_source = f'{CONSTANT["TEMPLATES"]["TEMPLATES_DIR"]}/{templatefiles}'
+            copy_destination = f'{CONSTANT["TEMPLATES"]["TEMP_DIR"]}'
+            runcommand(f'cp {copy_source} {copy_destination}')
+        else:
+            error_msg = f'{CONSTANT["TEMPLATES"]["TEMPLATES_DIR"]}/{templatefiles} is not present.'
+            LOGGER.error(error_msg)
+else:
+    LOGGER.error(f'{CONSTANT["TEMPLATES"]["TEMPLATELIST"]} have no files.')
 
 
 ######################## SET CRON JOB TO MONITOR ###########################

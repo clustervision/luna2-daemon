@@ -24,5 +24,6 @@ workers = 1
 
 reload_engine = 'auto'
 on_starting = luna.on_starting
+on_exit = luna.on_exit
 # on_reload = luna.on_reload
 

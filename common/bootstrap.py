@@ -14,18 +14,15 @@ __email__ = 'sumit.sharma@clustervision.com'
 __status__ = 'Development'
 
 from configparser import RawConfigParser
-from pathlib import Path
 import os
-import ipaddress
 import time
 import hostlist
-# from common.dbcheck import checkdbstatus
 from utils.helper import Helper
 from utils.database import Database
 from utils.log import Log
 
 configParser = RawConfigParser()
-logger = Log.get_logger()
+LOGGER = Log.get_logger()
 
 def check_db():
     """
@@ -38,7 +35,7 @@ def check_db():
     for tablex in table:
         result = Database().get_record(None, tablex, None)
         if result is None:
-            logger.error(f'ERROR :: Database table {tablex} already have data.')
+            LOGGER.error(f'ERROR :: Database table {tablex} already have data.')
         if result:
             num = num+1
     if num == 0:
@@ -48,8 +45,10 @@ def check_db():
 
 def getconfig(filename=None):
     """
-    From ini file Section Name is a section here, Option Name is an option here and Option Value is an item here.
-    Example: sections[HOSTS, NETWORKS], options[HOSTNAME, NODELIST], and vlaues of options are item(10.141.255.254, node[001-004])
+    From ini file Section Name is a section here, Option Name is an
+    option here and Option Value is an item here.
+    Example: sections[HOSTS, NETWORKS], options[HOSTNAME, NODELIST],
+    and vlaues of options are item(10.141.255.254, node[001-004])
     """
     configParser.read(filename)
     Helper().checksection(filename, BOOTSTRAP)
@@ -73,7 +72,7 @@ def getconfig(filename=None):
                         item = hostlist.expand_hostlist(item)
                         BOOTSTRAP[section][option.upper()] = item
                     except Exception:
-                        logger.error(f'Invalid node list range: {item}, kindly use the numbers in incremental order.')
+                        LOGGER.error(f'Invalid node list range: {item}, kindly use the numbers in incremental order.')
                 elif 'NETWORKS' in section:
                     Helper().get_subnet(item)
                     BOOTSTRAP[section][option.upper()] = item
@@ -89,7 +88,7 @@ def bootstrap(bootstrapfile=None):
     Insert default data into the database.
     """
     getconfig(bootstrapfile)
-    logger.info('###################### Bootstrap Start ######################')
+    LOGGER.info('###################### Bootstrap Start ######################')
     num  = 1
     for hosts in BOOTSTRAP['HOSTS']:
         if f'CONTROLLER{num}' in BOOTSTRAP['HOSTS'].keys():
@@ -174,7 +173,7 @@ def bootstrap(bootstrapfile=None):
     current_time = str(time.time()).replace('.', '')
     new_bootstrapfile = f'/trinity/local/luna/config/bootstrap-{current_time}.ini'
     os.rename(bootstrapfile, new_bootstrapfile)
-    logger.info('###################### Bootstrap Finish ######################')
+    LOGGER.info('###################### Bootstrap Finish ######################')
     return True
 
 
@@ -201,11 +200,11 @@ def validatebootstrap():
         if db_check is True:
             bootstrap(bootstrapfile)
         else:
-            logger.warning(f'Bootstrap file {bootstrapfile} is still present, Kindly remove the file.')
+            LOGGER.warning(f'Bootstrap file {bootstrapfile} is still present, Kindly remove the file.')
     elif bootstrapfile_check is True and db_check is False:
-        logger.error(f'Database {dbstatus["database"]} is unavailable.')
+        LOGGER.error(f'Database {dbstatus["database"]} is unavailable.')
     elif bootstrapfile_check is False and dbcode == 200:
         pass
     elif bootstrapfile_check is False and dbcode != 200:
-        logger.error(f'Bootstrap file {bootstrapfile} and Database {dbstatus["database"]} is unavailable.')
+        LOGGER.error(f'Bootstrap file {bootstrapfile} and Database {dbstatus["database"]} is unavailable.')
     return True

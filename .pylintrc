@@ -1,2 +1,2 @@
 [MASTER]
-init-hook='import sys; sys.path.append("/trinity/local/luna")'
+init-hook='import sys; sys.path.append(".")'

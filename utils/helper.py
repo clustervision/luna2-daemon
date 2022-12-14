@@ -15,7 +15,6 @@ __email__       = 'sumit.sharma@clustervision.com'
 __status__      = 'Development'
 
 import os
-import sys
 import pwd
 import subprocess
 import shutil
@@ -23,6 +22,7 @@ import queue
 import json
 import ipaddress
 from configparser import RawConfigParser
+import pyodbc
 from netaddr import IPNetwork
 from cryptography.fernet import Fernet
 from jinja2 import Environment
@@ -50,11 +50,12 @@ class Helper(object):
         Process - Via subprocess, execute the command and wait to receive the complete output.
         Output - Detailed result.
         """
-        process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
-        self.logger.debug(f'Command Executed {command}')
-        output = process.communicate()
-        process.wait()
-        self.logger.debug(f'Output Of Command {output}')
+        output = None
+        with subprocess.Popen(command, stdout=subprocess.PIPE, shell=True) as process:
+            self.logger.debug(f'Command Executed {command}')
+            output = process.communicate()
+            process.wait()
+            self.logger.debug(f'Output Of Command {output}')
         return output
 
 
@@ -64,7 +65,6 @@ class Helper(object):
         Output - Stop The Daemon With Error Message .
         """
         self.logger.error(f'Daemon Stopped Because: {message}')
-        sys.exit(-1)
         return False
 
 
@@ -73,18 +73,19 @@ class Helper(object):
         Input - Directory
         Output - Directory if exists, readable or writable
         """
+        state = False
         pathtype = self.checkpathtype(path)
-        if pathtype == 'File' or pathtype == 'Directory':
+        if pathtype in('File', 'Directory'):
             if os.access(path, os.R_OK):
                 if os.access(path, os.W_OK):
-                    return True
+                    state = True
                 else:
-                    print(f'{pathtype} {path} is writable.')
+                    self.logger.debug(f'{pathtype} {path} is writable.')
             else:
-                print(f'{pathtype} {path} is not readable.')
+                self.logger.debug(f'{pathtype} {path} is not readable.')
         else:
-            print(f'{pathtype} {path} is not exists.')
-        return False
+            self.logger.debug(f'{pathtype} {path} is not exists.')
+        return state
 
 
     def checkpathtype(self, path=None):
@@ -128,9 +129,8 @@ class Helper(object):
             with open(template, encoding='utf-8') as template:
                 env.parse(template.read())
             check = True
-        except Exception as exp:
-            print(f'{template} Have Errors.')
-            print(exp)
+        except OSError as exp:
+            self.logger.error(f'{template} Have Errors {exp}.')
         return check
 
 
@@ -140,23 +140,34 @@ class Helper(object):
         Output - True or False For Errors
         Usecase - switchcolumn = Database().get_columns('switch')
         """
+        check = False
         try:
             json.loads(request)
-        except Exception as e:
-            return False
-        return True
+            check = True
+        except ValueError as exp:
+            self.logger.error(f'Exception in JSON data: {exp}.')
+        return check
 
+
+    def getlist(self, dictionary=None):
+        """
+        Get Section List
+        """
+        key_list = []
+        for key in dictionary.keys():
+            key_list.append(key)
+        return key_list
 
     def checkin_list(self, list1=None, list2=None):
         """
         Input - TWO LISTS
         Output - True or False For Errors
         """
-        CHECK = True
-        for ITEM in list1:
-            if ITEM not in list2:
-                CHECK = False
-        return CHECK
+        check = True
+        for item in list1:
+            if item not in list2:
+                check = False
+        return check
 
 
     def check_ip(self, ipaddr=None):
@@ -164,15 +175,13 @@ class Helper(object):
         Add blacklist filter;
         https://clustervision.atlassian.net/wiki/spaces/TRIX/pages/52461574/2022-11-11+Development+meeting
         """
-        IP = ''
+        response = ''
         try:
-            ip = IPNetwork(ipaddr)
-            IP = ip.ip
-            # IP = ipaddress.ip_address(net)
+            ip_address = IPNetwork(ipaddr)
+            response = str(ip_address.ip)
         except Exception as exp:
-            self.logger.error(f'Invalid IP address: {ipaddr}.')
-            return None
-        return str(IP)
+            self.logger.error(f'Invalid IP address: {ipaddr}, Exception is {exp}.')
+        return response
 
 
     def get_network(self, ipaddr=None, subnet=None):
@@ -192,14 +201,14 @@ class Helper(object):
         Input - IP Address such as 10.141.0.0/16
         Output - Network and Subnet such as 10.141.0.0 and 255.255.0.0
         """
-        RESPONSE = {}
+        response = {}
         try:
             net = ipaddress.ip_network(ipaddr, strict=False)
-            RESPONSE['network'] = str(net)
-            RESPONSE['subnet'] = str(net.netmask)
-        except Exception as e:
-            return None
-        return RESPONSE
+            response['network'] = str(net)
+            response['subnet'] = str(net.netmask)
+        except (ValueError, TypeError) as exp:
+            self.logger.error(f'Invalid IP address: {ipaddr}, Exception is {exp}.')
+        return response
 
 
     def get_subnet(self, ipaddr=None):
@@ -207,57 +216,48 @@ class Helper(object):
         Input - IP Address
         Output - Subnet
         """
+        response = None
         try:
             net = ipaddress.ip_network(ipaddr, strict=False)
-            RESPONSE = net.netmask
-        except Exception as exp:
-            self.logger.error(f'Invalid subnet: {ipaddr}.')
-            RESPONSE = None
-        return RESPONSE
+            response = net.netmask
+        except (ValueError, TypeError) as exp:
+            self.logger.error(f'Invalid subnet: {ipaddr}, Exception is {exp}.')
+        return response
 
 
     def check_ip_range(self, ipaddr=None, network=None):
         """
         Check If IP is in range or not
         """
-        RESPONSE = False
+        response = False
         try:
-            CHECKIP = self.check_ip(ipaddr)
-            if CHECKIP:
+            if self.check_ip(ipaddr):
                 if ipaddress.ip_address(ipaddr) in list(ipaddress.ip_network(network).hosts()):
-                    RESPONSE = True
-                else:
-                    RESPONSE = False
-            else:
-                RESPONSE = False
-        except Exception as e:
-            RESPONSE = False
-        return RESPONSE
+                    response = True
+        except Exception as exp:
+            self.logger.error(f'Invalid subnet: {ipaddr}, Exception is {exp}.')
+        return response
 
 
-    def check_ip_exist(self, DATA=None):
+    def check_ip_exist(self, data=None):
         """
         check if IP is valid or not
         check if IP address is in database or not True false
         """
-        if 'ipaddress' in DATA:
-            CHECKIP = self.check_ip(DATA['ipaddress'])
-            if not CHECKIP:
-                return None
-            IPRECORD = Database().get_record(None, 'ipaddress', ' WHERE `ipaddress` = "{}";'.format(DATA['ipaddress']))
-            if IPRECORD:
-                return None
-            else:
-                SUBNET = self.get_subnet(DATA['ipaddress'])
-                row = [
-                        {"column": 'ipaddress', "value": DATA['ipaddress']},
-                        {"column": 'network', "value": DATA['network']},
-                        {"column": 'subnet', "value": SUBNET}
-                        ]
-                result = Database().insert('ipaddress', row)
-                SUBNETRECORD = Database().get_record(None, 'ipaddress', ' WHERE `ipaddress` = "{}";'.format(DATA['ipaddress']))
-                DATA['ipaddress'] = SUBNETRECORD[0]['id']
-        return DATA
+        if 'ipaddress' in data:
+            if self.check_ip(data['ipaddress']):
+                record = Database().get_record(None, 'ipaddress', ' WHERE `ipaddress` = "{}";'.format(data["ipaddress"]))
+                if not record:
+                    subnet = self.get_subnet(data['ipaddress'])
+                    row = [
+                            {"column": 'ipaddress', "value": data['ipaddress']},
+                            {"column": 'network', "value": data['network']},
+                            {"column": 'subnet', "value": subnet}
+                            ]
+                    Database().insert('ipaddress', row)
+                    subnet_record = Database().get_record(None, 'ipaddress', ' WHERE `ipaddress` = "{}";'.format(data['ipaddress']))
+                    data['ipaddress'] = subnet_record[0]['id']
+        return data
 
     def make_rows(self, data=None):
         """
@@ -265,8 +265,8 @@ class Helper(object):
         Output - Subnet
         """
         row = []
-        for KEY, VALUE in data.items():
-            row.append({"column": KEY, "value": VALUE})
+        for column, value in data.items():
+            row.append({"column": column, "value": value})
         return row
 
 
@@ -275,15 +275,15 @@ class Helper(object):
         Input - string
         Output - Boolean
         """
-        if type(variable) == bool:
-            if variable == True:
+        if isinstance(variable, bool):
+            if variable is True:
                 variable = '1'
-            elif variable == False:
+            elif variable is False:
                 variable = '0'
-        elif type(variable) == str  or type(variable) == int:
-            if variable == '1' or variable == 1:
+        elif isinstance(variable, (str, int)):
+            if variable in ('1', 1):
                 variable = True
-            elif variable == '0' or variable == 0:
+            elif variable in ('0', 0):
                 variable = False
         else:
             variable = None
@@ -294,10 +294,9 @@ class Helper(object):
         Input - string
         Output - Encrypt String
         """
-        KEY = bytes(LUNAKEY, 'utf-8')
-        FERNETOBJ = Fernet(KEY)
-        RESPONSE = FERNETOBJ.encrypt(string.encode()).decode()
-        return RESPONSE
+        fernetobj = Fernet(bytes(LUNAKEY, 'utf-8'))
+        response = fernetobj.encrypt(string.encode()).decode()
+        return response
 
 
     def decrypt_string(self, string=None):
@@ -305,13 +304,15 @@ class Helper(object):
         Input - string
         Output - Decrypt Encoded String
         """
-        KEY = bytes(LUNAKEY, 'utf-8')
-        FERNETOBJ = Fernet(KEY)
-        RESPONSE = FERNETOBJ.decrypt(string).decode()
-        return RESPONSE
+        fernetobj = Fernet(bytes(LUNAKEY, 'utf-8'))
+        response = fernetobj.decrypt(string).decode()
+        return response
 
 
     def pack(self, image=None):
+        """
+        OS Image Packing method with queue checking
+        """
         if {"packing": image} in self.packing.queue:
             self.logger.warning(f'Image {image} packing is ongoing, request is in Queue.')
             response = f'Image {image} packing is ongoing, request is in Queue.'
@@ -327,8 +328,8 @@ class Helper(object):
         Input - OS Image Name (string)
         Output - Success/Failure (Boolean)
         """
-        def mount(source, target, fs):
-            subprocess.Popen(['/usr/bin/mount', '-t', fs, source, target])
+        def mount(source, target, file_system):
+            subprocess.Popen(['/usr/bin/mount', '-t', file_system, source, target])
 
         def umount(source):
             subprocess.Popen(['/usr/bin/umount', source])
@@ -343,108 +344,110 @@ class Helper(object):
             umount(path + '/proc')
             umount(path + '/sys')
 
-        IMAGE = Database().get_record(None, 'osimage', f' WHERE name = "{image}"')
-        if IMAGE:
-            PATHTMP = '/tmp'
-            IMAGENAME = IMAGE[0]['name']
-            IMAGEPATH = IMAGE[0]['path']
-            DRACUTMODULES = IMAGE[0]['dracutmodules']
-            KERNELMODULES = IMAGE[0]['kernelmodules']
-            KERNELVERSION = IMAGE[0]['kernelversion']
-            OSKERNELVERSION = self.runcommand('uname -r')
-            OSKERNELVERSION = str(OSKERNELVERSION[0])
-            OSKERNELVERSION = OSKERNELVERSION.replace("b'", '')
-            OSKERNELVERSION = OSKERNELVERSION.replace("\\n'", '')
+        osimage = Database().get_record(None, 'osimage', f' WHERE name = "{image}"')
+        if osimage:
+            temp_path = '/tmp'
+            image_name = osimage[0]['name']
+            image_path = osimage[0]['path']
+            dracutmodules = osimage[0]['dracutmodules']
+            kernelmodules = osimage[0]['kernelmodules']
+            kernelversion = osimage[0]['kernelversion']
+            kernelversion_os = self.runcommand('uname -r')
+            kernelversion_os = str(kernelversion_os[0])
+            kernelversion_os = kernelversion_os.replace("b'", '')
+            kernelversion_os = kernelversion_os.replace("\\n'", '')
 
-            if OSKERNELVERSION != KERNELVERSION:
-                self.logger.error(f'OS Kernel Version {OSKERNELVERSION} is not matching with the image kernel version {KERNELVERSION}.')
+            if kernelversion_os != kernelversion:
+                self.logger.error(f'OS Kernel Version {kernelversion_os} is not matching with the image kernel version {kernelversion}.')
                 return False
 
-            KERNELFILE = image+'-vmlinuz-'+KERNELVERSION
-            INTRDFILE = image+'-initramfs-'+KERNELVERSION
+            kernel_file = image+'-vmlinuz-'+kernelversion
+            intrd_file = image+'-initramfs-'+kernelversion
 
-            PATH = IMAGEPATH
-            CLUSTER = Database().get_record(None, 'cluster', None)
-            if CLUSTER:
-                USER = CLUSTER[0]['user']
+            cluster = Database().get_record(None, 'cluster', None)
+            if cluster:
+                user = cluster[0]['user']
             else:
-                USER = 'luna'
-            PATHTOSTORE = CONSTANT['FILES']['TARBALL']
-            USERID = pwd.getpwnam(USER).pw_uid
-            GROUPID = pwd.getpwnam(USER).pw_gid
+                user = 'luna'
+            destination = CONSTANT['FILES']['TARBALL']
+            userid = pwd.getpwnam(user).pw_uid
+            groupid = pwd.getpwnam(user).pw_gid
 
-            if not os.path.exists(PATHTOSTORE):
-                os.makedirs(PATHTOSTORE)
-                os.chown(PATHTOSTORE, USERID, GROUPID)
+            if not os.path.exists(destination):
+                os.makedirs(destination)
+                os.chown(destination, userid, groupid)
 
-            MODULESADD, MODULESREMOVE, DRIVERSADD, DRIVERSREMOVE = [], [], [], []
+            module_add, module_remove, driver_add, driver_remove = [], [], [], []
 
-            if DRACUTMODULES:
-                for i in DRACUTMODULES.split(','):
+            if dracutmodules:
+                for i in dracutmodules.split(','):
                     if i[0] != '-':
-                        MODULESADD.extend(['--add', i])
+                        module_add.extend(['--add', i])
                     else:
-                        MODULESREMOVE.extend(['--omit', i[1:]])
-            if KERNELMODULES:
-                for i in KERNELMODULES.split(','):
+                        module_remove.extend(['--omit', i[1:]])
+            if kernelmodules:
+                for i in kernelmodules.split(','):
                     if i[0] != '-':
-                        DRIVERSADD.extend(['--add-drivers', i])
+                        driver_add.extend(['--add-drivers', i])
                     else:
-                        DRIVERSREMOVE.extend(['--omit-drivers', i[1:]])
+                        driver_remove.extend(['--omit-drivers', i[1:]])
 
-            prepare_mounts(IMAGEPATH)
-            REALROOT = os.open("/", os.O_RDONLY)
-            os.chroot(IMAGEPATH)
-            CHROOTPATH = os.open("/", os.O_DIRECTORY)
-            os.fchdir(CHROOTPATH)
-            DRACUTSUCCEED = True
-            CREATE = None
+            prepare_mounts(image_path)
+            root_path = os.open("/", os.O_RDONLY)
+            os.chroot(image_path)
+            chroot_path = os.open("/", os.O_DIRECTORY)
+            os.fchdir(chroot_path)
+            dracut = True
+            create = None
 
             try:
-                DRACUTPROCESS = subprocess.check_output(['/usr/sbin/dracut', '--kver', KERNELVERSION, '--list-modules'], universal_newlines=True)
-                self.logger.info(f'DRACUTPROCESS ==> {DRACUTPROCESS}.')
-                DRACUTCMDPROCESS = (['/usr/sbin/dracut', '--force', '--kver', KERNELVERSION] + MODULESADD + MODULESREMOVE + DRIVERSADD + DRIVERSREMOVE + [PATHTMP + '/' + INTRDFILE])
-                CREATE = subprocess.check_output(DRACUTCMDPROCESS, timeout=CONSTANT['FILES']['MAXPACKAGINGTIME'], universal_newlines=True)
-                self.logger.info(f'CREATE ==> {CREATE}.')
+                with subprocess.check_output(['/usr/sbin/dracut', '--kver', kernelversion, '--list-modules'], universal_newlines=True) as dracut_process:
+                    self.logger.info(f'DRACUTPROCESS ==> {dracut_process}.')
+                dracut_cmd_process = (['/usr/sbin/dracut', '--force', '--kver', kernelversion] + module_add + module_remove + driver_add + driver_remove + [temp_path + '/' + intrd_file])
+                with subprocess.check_output(dracut_cmd_process, timeout=CONSTANT['FILES']['MAXPACKAGINGTIME'], universal_newlines=True) as create:
+                    self.logger.info(f'CREATE ==> {create}.')
             except Exception as exp:
                 self.logger.error(f'Exception ==> {exp}.')
-                DRACUTSUCCEED = False
+                dracut = False
 
-            os.fchdir(REALROOT)
+            os.fchdir(root_path)
             os.chroot(".")
-            os.close(REALROOT)
-            os.close(CHROOTPATH)
-            cleanup_mounts(IMAGEPATH)
+            os.close(root_path)
+            os.close(chroot_path)
+            cleanup_mounts(image_path)
 
-            if not DRACUTSUCCEED:
-                self.logger.error(f'Error while building initrd for OS Image {IMAGENAME}.')
+            if not dracut:
+                self.logger.error(f'Error while building initrd for OS Image {image_name}.')
                 return False
 
-            INTRDPATH = IMAGEPATH + PATHTMP + '/' + INTRDFILE
-            KERNELPATH = IMAGEPATH + '/boot/vmlinuz-' + KERNELVERSION
+            intrd_path = image_path + temp_path + '/' + intrd_file
+            kernel_path = image_path + '/boot/vmlinuz-' + kernelversion
 
-            if not os.path.isfile(KERNELPATH):
-                self.logger.error(f'Unable to find kernel in {KERNELPATH}.')
+            if not os.path.isfile(kernel_path):
+                self.logger.error(f'Unable to find kernel in {kernel_path}.')
                 return False
 
-            if not os.path.isfile(INTRDPATH):
-                self.logger.error(f'Unable to find initrd in {INTRDPATH}.')
+            if not os.path.isfile(intrd_path):
+                self.logger.error(f'Unable to find initrd in {intrd_path}.')
                 return False
 
             # copy initrd file to inherit perms from parent folder
-            shutil.copy(INTRDPATH, PATHTOSTORE + '/' + INTRDFILE)
-            os.remove(INTRDPATH)
-            shutil.copy(KERNELPATH, PATHTOSTORE + '/' + KERNELFILE)
-            os.chown(PATHTOSTORE + '/' + INTRDFILE, USERID, GROUPID)
-            os.chmod(PATHTOSTORE + '/' + INTRDFILE, int('0644'))
-            os.chown(PATHTOSTORE + '/' + KERNELFILE, USERID, GROUPID)
-            os.chmod(PATHTOSTORE + '/' + KERNELFILE, int('0644'))
+            shutil.copy(intrd_path, destination + '/' + intrd_file)
+            os.remove(intrd_path)
+            shutil.copy(kernel_path, destination + '/' + kernel_file)
+            os.chown(destination + '/' + intrd_file, userid, groupid)
+            os.chmod(destination + '/' + intrd_file, int('0644'))
+            os.chown(destination + '/' + kernel_file, userid, groupid)
+            os.chmod(destination + '/' + kernel_file, int('0644'))
             self.packing.get() ## Get the Last same Element from Queue
             self.packing.empty() ## Deque the same element from the Queue
         return True
 
 
     def checkdbstatus(self):
+        """
+        A validation method to check which db is configured.
+        """
         sqlite, read, write = False, False, False
         code = 503
         if os.path.isfile(CONSTANT['DATABASE']['DATABASE']):
@@ -453,13 +456,13 @@ class Helper(object):
                 read = True
                 code = 500
                 try:
-                    file = open(CONSTANT['DATABASE']['DATABASE'], "a")
+                    file = open(CONSTANT['DATABASE']['DATABASE'], "a", encoding='utf-8')
                     if file.writable():
                         write = True
                         code = 200
                         file.close()
-                except Exception as e:
-                    self.logger.error("DATABASE {} is Not Writable.".format(CONSTANT['DATABASE']['DATABASE']))
+                except Exception as exp:
+                    self.logger.error(f"DATABASE {CONSTANT['DATABASE']['DATABASE']} have Exception is {exp}.")
 
                 with open(CONSTANT['DATABASE']['DATABASE'],'r', encoding = "ISO-8859-1") as f:
                     header = f.read(100)
@@ -469,18 +472,18 @@ class Helper(object):
                     else:
                         read, write = False, False
                         code = 503
-                        self.logger.error("DATABASE {} is Not a SQLite3 Database.".format(CONSTANT['DATABASE']['DATABASE']))
+                        self.logger.error(f"DATABASE {CONSTANT['DATABASE']['DATABASE']} is not a SQLite3 Database.")
             else:
-                self.logger.error("DATABASE {} is Not Readable.".format(CONSTANT['DATABASE']['DATABASE']))
+                self.logger.error(f"DATABASE {CONSTANT['DATABASE']['DATABASE']} is Not Readable.")
         else:
-            self.logger.info("DATABASE {} is Not a SQLite Database.".format(CONSTANT['DATABASE']['DATABASE']))
+            self.logger.info(f"DATABASE {CONSTANT['DATABASE']['DATABASE']} is Not a SQLite Database.")
         if not sqlite:
             try:
                 Database().get_cursor()
                 read, write = True, True
                 code = 200
             except pyodbc.Error as error:
-                self.logger.error("Error While connecting to Database {} is: {}.".format(CONSTANT['DATABASE']['DATABASE'], str(error)))
+                self.logger.error(f"Error While connecting to Database {CONSTANT['DATABASE']['DATABASE']} is: {error}.")
         response = {"database": CONSTANT['DATABASE']['DRIVER'], "read": read, "write": write}
         return response, code
 
@@ -490,10 +493,10 @@ class Helper(object):
         Compare the bootstrap/constants section with the predefined dictionary sections.
         """
         check = True
-        configParser = RawConfigParser()
-        configParser.read(filename)
+        parser = RawConfigParser()
+        parser.read(filename)
         for item in list(parent_dict.keys()):
-            if item not in configParser.sections():
+            if item not in parser.sections():
                 self.logger.error(f'Section {item} is missing, kindly check the file {filename}.')
                 check = False
         return check
@@ -504,10 +507,10 @@ class Helper(object):
         Compare the bootstrap/constants option with the predefined dictionary options.
         """
         check = True
-        configParser = RawConfigParser()
-        configParser.read(filename)
+        parser = RawConfigParser()
+        parser.read(filename)
         for item in list(parent_dict[section].keys()):
-            if item.lower() not in list(dict(configParser.items(section)).keys()):
+            if item.lower() not in list(dict(parser.items(section)).keys()):
                 self.logger.error(f'Section {section} do not have option {option}, kindly check the file {filename}.')
                 check = False
         return check

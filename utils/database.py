@@ -150,7 +150,8 @@ class Database(object):
         Input - tablename and row
         Process - It is Create operation on the DB.
                     table is the table name which need to be created.
-                    row is a list of dict ex: row = [{"column": "name", "value": "node004"}, {"column": "ip", "value": "10.141.0.1"}]
+                    row is a list of dict ex: row =
+        [{"column": "name", "value": "node004"}, {"column": "ip", "value": "10.141.0.1"}]
         Output - Creates Table.
         """
         keys, values, wherelist = [], [], []
@@ -226,7 +227,8 @@ class Database(object):
         Input - tablename and where clause
         Process - It is SELECT operation on the DB.
                     table is the table name where the update operation should be happen.
-                    where can be None for all OR a list of dict ex: where = [{"column": "active", "value": "1"}, {"column": "network", "value": "ib"}]
+                    where can be None for all OR a list of dict ex: where =
+        [{"column": "active", "value": "1"}, {"column": "network", "value": "ib"}]
         Output - Delete the row.
         """
         wherelist = []

@@ -152,13 +152,11 @@ def getconfig(filename=None):
     for section in configParser.sections():
         for (option, item) in configParser.items(section):
             if section in getlist(CONSTANT):
-            # if section in [section_name for section_name in CONSTANT]:
                 checkoption(filename, section, option.upper())
                 set_constants(section, option.upper(), item)
             else:
                 CONSTANT[section] = {}
                 CONSTANT[section][option.upper()] = item
-
 
 
 global CONSTANT
@@ -173,7 +171,6 @@ CONSTANT = {
     'SERVICES': {'DHCP': None, 'DNS': None, 'CONTROL': None, 'COOLDOWN': None, 'COMMAND': None},
     'TEMPLATES': {'TEMPLATES_DIR': None, 'TEMPLATELIST': None,  'TEMP_DIR': None}
 }
-
 
 
 if checkpathstate(CONFIGFILE):

@@ -144,21 +144,22 @@ def config_node_post(name=None):
     create, update = False, False
 
     if Helper().check_json(request.data):
-        REQUEST = request.get_json(force=True)
+        request_data = request.get_json(force=True)
     else:
         response = {'message': 'Bad Request.'}
         access_code = 400
         return json.dumps(response), access_code
-    if REQUEST:
-        data = REQUEST['config']['node'][name]
+    if request_data:
+        data = request_data['config']['node'][name]
         node = Database().get_record(None, 'node', f' WHERE name = "{name}"')
         if node:
             nodeid = node[0]['id']
             if 'newnodename' in data:
                 nodename_new = data['newnodename']
-                newnode_check = Database().get_record(None, 'node', f' WHERE `name` = "{nodename_new}";')
+                where = f' WHERE `name` = "{nodename_new}";'
+                newnode_check = Database().get_record(None, 'node', where)
                 if newnode_check:
-                    response = {'message': f'{nodename_new} Already Present in Database, Choose Another Name Or Delete {nodename_new}.'}
+                    response = {'message': f'{nodename_new} already present in database.'}
                     access_code = 400
                     return json.dumps(response), access_code
                 else:
@@ -247,7 +248,7 @@ def config_node_post(name=None):
             if interfaces:
                 for interface in interfaces:
                     networkid = Database().getid_byname('network', interface['network'])
-                    if networkid == None:
+                    if networkid is None:
                         response = {'message': f'Bad Request; Network {networkid} Not Exist.'}
                         access_code = 400
                         return json.dumps(response), access_code
@@ -256,12 +257,15 @@ def config_node_post(name=None):
                         interface['nodeid'] = nodeid
                         del interface['network']
                     interface_name = interface['interface']
-                    where = f' WHERE nodeid = "{nodeid}" AND networkid = "{networkid}" AND interface = "{interface_name}"'
+                    node_clause = f'nodeid = "{nodeid}"'
+                    network_clause = f'networkid = "{networkid}"'
+                    interface_clause = f'interface = "{interface_name}"'
+                    where = f' WHERE {node_clause} AND {network_clause} AND {interface_clause}'
                     check_interface = Database().get_record(None, 'nodeinterface', where)
                     if not check_interface:
                         row = Helper().make_rows(interface)
                         result = Database().insert('nodeinterface', row)
-                        LOGGER.info("Interface Created => {} .".format(result))
+                        LOGGER.info(f"Interface Created => {result} .")
 
         else:
             response = {'message': 'Bad Request; Columns are Incorrect.'}
@@ -305,7 +309,8 @@ def config_node_get_interfaces(name=None):
     if node:
         response = {'config': {'node': {name: {'interfaces': [] } } } }
         nodeid = node[0]['id']
-        node_interfaces = Database().get_record(None, 'nodeinterface', f' WHERE nodeid = "{nodeid}"')
+        where = f' WHERE nodeid = "{nodeid}"'
+        node_interfaces = Database().get_record(None, 'nodeinterface', where)
         if node_interfaces:
             new_interfaces = []
             for interface in node_interfaces:
@@ -336,36 +341,36 @@ def config_node_post_interfaces(name=None):
     Process - Create Or Update The Node Interface.
     Output - Node Interface.
     """
-    DATA = {}
-    CREATE, UPDATE = False, False
-
     if Helper().check_json(request.data):
-        REQUEST = request.get_json(force=True)
+        request_data = request.get_json(force=True)
     else:
         response = {'message': 'Bad Request.'}
         access_code = 400
         return json.dumps(response), access_code
-    if REQUEST:
-        NODE = Database().get_record(None, 'node', f' WHERE name = "{name}"')
-        if NODE:
-            NODEID = NODE[0]['id']
-            if 'interfaces' in REQUEST['config']['node'][name]:
-                for INTERFACE in REQUEST['config']['node'][name]['interfaces']:
-                    NWK = Database().getid_byname('network', INTERFACE['network'])
-                    if NWK == None:
-                        response = {'message': f'Bad Request; Network {NWK} Not Exist.'}
+    if request_data:
+        node = Database().get_record(None, 'node', f' WHERE name = "{name}"')
+        if node:
+            nodeid = node[0]['id']
+            if 'interfaces' in request_data['config']['node'][name]:
+                for interface in request_data['config']['node'][name]['interfaces']:
+                    networkid = Database().getid_byname('network', interface['network'])
+                    if networkid is None:
+                        response = {'message': f'Bad Request; Network {networkid} Not Exist.'}
                         access_code = 400
                         return json.dumps(response), access_code
                     else:
-                        INTERFACE['networkid'] = NWK
-                        INTERFACE['nodeid'] = NODEID
-                        del INTERFACE['network']
-                    IFNAME = INTERFACE['interface']
-                    where = f' WHERE nodeid = "{NODEID}" AND networkid = "{NWK}" AND interface = "{IFNAME}"'
-                    CHECKINTERFACE = Database().get_record(None, 'nodeinterface', where)
-                    if not CHECKINTERFACE:
-                        row = Helper().make_rows(INTERFACE)
-                        result = Database().insert('nodeinterface', row)
+                        interface['networkid'] = networkid
+                        interface['nodeid'] = nodeid
+                        del interface['network']
+                    interface_name = interface['interface']
+                    node_clause = f'nodeid = "{nodeid}"'
+                    network_clause = f'networkid = "{networkid}"'
+                    interface_clause = f'interface = "{interface_name}"'
+                    where = f' WHERE {node_clause} AND {network_clause} AND {interface_clause}'
+                    interface_check = Database().get_record(None, 'nodeinterface', where)
+                    if not interface_check:
+                        row = Helper().make_rows(interface)
+                        Database().insert('nodeinterface', row)
                     response = {'message': 'Interface Updated.'}
                     access_code = 204
             else:
@@ -390,20 +395,21 @@ def config_node_interface_get(name=None, interface=None):
     Process - Get the Node Interface.
     Output - Success or Failure.
     """
-    NODE = Database().get_record(None, 'node', f' WHERE name = "{name}"')
-    if NODE:
+    node = Database().get_record(None, 'node', f' WHERE name = "{name}"')
+    if node:
         response = {'config': {'node': {name: {'interfaces': [] } } } }
-        NODEID = NODE[0]['id']
-        NODEINTERFACE = Database().get_record(None, 'nodeinterface', f' WHERE nodeid = "{NODEID}" AND interface = "{interface}"')
-        if NODEINTERFACE:
-            NODEIFC = []
-            for INTERFACE in NODEINTERFACE:
-                INTERFACE['network'] = Database().getname_byid('network', INTERFACE['networkid'])
-                del INTERFACE['nodeid']
-                del INTERFACE['id']
-                del INTERFACE['networkid']
-                NODEIFC.append(INTERFACE)
-            response['config']['node'][name]['interfaces'] = NODEIFC
+        nodeid = node[0]['id']
+        where = f' WHERE nodeid = "{nodeid}" AND interface = "{interface}"'
+        node_interfaces = Database().get_record(None, 'nodeinterface', where)
+        if node_interfaces:
+            new_interface = []
+            for ifx in node_interfaces:
+                ifx['network'] = Database().getname_byid('network', ifx['networkid'])
+                del ifx['nodeid']
+                del ifx['id']
+                del ifx['networkid']
+                new_interface.append(ifx)
+            response['config']['node'][name]['interfaces'] = new_interface
             LOGGER.info(f'Returned Group {name} with Details.')
             access_code = 200
         else:
@@ -426,12 +432,12 @@ def config_node_delete_interface(name=None, interface=None):
     Process - Delete the Node Interface.
     Output - Success or Failure.
     """
-    NODE = Database().get_record(None, 'node', f' WHERE `name` = "{name}";')
-    if NODE:
-        NODEID = NODE[0]['id']
-        NODEINTERFACE = Database().get_record(None, 'nodeinterface', f' WHERE `interface` = "{interface}" AND `nodeid` = "{NODEID}";')
-        if NODEINTERFACE:
-            Database().delete_row('nodeinterface', [{"column": "id", "value": NODEINTERFACE[0]['id']}])
+    node = Database().get_record(None, 'node', f' WHERE `name` = "{name}";')
+    if node:
+        nodeid = node[0]['id']
+        node_interface = Database().get_record(None, 'nodeinterface', f' WHERE `interface` = "{interface}" AND `nodeid` = "{nodeid}";')
+        if node_interface:
+            Database().delete_row('nodeinterface', [{"column": "id", "value": node_interface[0]['id']}])
             response = {'message': f'Node {name} interface {interface} Removed Successfully.'}
             access_code = 204
         else:
@@ -452,33 +458,33 @@ def config_group():
     Process - Fetch the Group information.
     Output - Group Info.
     """
-    GROUPS = Database().get_record(None, 'group', None)
-    if GROUPS:
+    groups = Database().get_record(None, 'group', None)
+    if groups:
         response = {'config': {'group': {} }}
-        for GRP in GROUPS:
-            GRPNAME = GRP['name']
-            GRPID = GRP['id']
-            GRPINTERFACE = Database().get_record(None, 'groupinterface', f' WHERE groupid = "{GRPID}"')
-            if GRPINTERFACE:
-                GRP['interfaces'] = []
-                for INTERFACE in GRPINTERFACE:
-                    INTERFACE['network'] = Database().getname_byid('network', INTERFACE['networkid'])
-                    del INTERFACE['groupid']
-                    del INTERFACE['id']
-                    del INTERFACE['networkid']
-                    GRP['interfaces'].append(INTERFACE)
-            del GRP['id']
-            del GRP['name']
-            GRP['bmcsetup'] = Helper().bool_revert(GRP['bmcsetup'])
-            GRP['netboot'] = Helper().bool_revert(GRP['netboot'])
-            GRP['localinstall'] = Helper().bool_revert(GRP['localinstall'])
-            GRP['bootmenu'] = Helper().bool_revert(GRP['bootmenu'])
-            GRP['osimage'] = Database().getname_byid('osimage', GRP['osimageid'])
-            del GRP['osimageid']
-            if GRP['bmcsetupid']:
-                GRP['bmcsetupname'] = Database().getname_byid('bmcsetup', GRP['bmcsetupid'])
-            del GRP['bmcsetupid']
-            response['config']['group'][GRPNAME] = GRP
+        for grp in groups:
+            grpname = grp['name']
+            grpid = grp['id']
+            grp_interface = Database().get_record(None, 'groupinterface', f' WHERE groupid = "{grpid}"')
+            if grp_interface:
+                grp['interfaces'] = []
+                for interface in grp_interface:
+                    interface['network'] = Database().getname_byid('network', interface['networkid'])
+                    del interface['groupid']
+                    del interface['id']
+                    del interface['networkid']
+                    grp['interfaces'].append(interface)
+            del grp['id']
+            del grp['name']
+            grp['bmcsetup'] = Helper().bool_revert(grp['bmcsetup'])
+            grp['netboot'] = Helper().bool_revert(grp['netboot'])
+            grp['localinstall'] = Helper().bool_revert(grp['localinstall'])
+            grp['bootmenu'] = Helper().bool_revert(grp['bootmenu'])
+            grp['osimage'] = Database().getname_byid('osimage', grp['osimageid'])
+            del grp['osimageid']
+            if grp['bmcsetupid']:
+                grp['bmcsetupname'] = Database().getname_byid('bmcsetup', grp['bmcsetupid'])
+            del grp['bmcsetupid']
+            response['config']['group'][grpname] = grp
         LOGGER.info('Provided List Of All Groups with Details.')
         access_code = 200
     else:
@@ -496,33 +502,33 @@ def config_group_get(name=None):
     Process - Fetch the Group information.
     Output - Group Info.
     """
-    GROUPS = Database().get_record(None, 'group', f' WHERE name = "{name}"')
-    if GROUPS:
+    groups = Database().get_record(None, 'group', f' WHERE name = "{name}"')
+    if groups:
         response = {'config': {'group': {} }}
-        for GRP in GROUPS:
-            GRPNAME = GRP['name']
-            GRPID = GRP['id']
-            GRPINTERFACE = Database().get_record(None, 'groupinterface', f' WHERE groupid = "{GRPID}"')
-            if GRPINTERFACE:
-                GRP['interfaces'] = []
-                for INTERFACE in GRPINTERFACE:
-                    INTERFACE['network'] = Database().getname_byid('network', INTERFACE['networkid'])
-                    del INTERFACE['groupid']
-                    del INTERFACE['id']
-                    del INTERFACE['networkid']
-                    GRP['interfaces'].append(INTERFACE)
-            del GRP['id']
-            del GRP['name']
-            GRP['bmcsetup'] = Helper().bool_revert(GRP['bmcsetup'])
-            GRP['netboot'] = Helper().bool_revert(GRP['netboot'])
-            GRP['localinstall'] = Helper().bool_revert(GRP['localinstall'])
-            GRP['bootmenu'] = Helper().bool_revert(GRP['bootmenu'])
-            GRP['osimage'] = Database().getname_byid('osimage', GRP['osimageid'])
-            del GRP['osimageid']
-            if GRP['bmcsetupid']:
-                GRP['bmcsetupname'] = Database().getname_byid('bmcsetup', GRP['bmcsetupid'])
-            del GRP['bmcsetupid']
-            response['config']['group'][GRPNAME] = GRP
+        for grp in groups:
+            grpname = grp['name']
+            grpid = grp['id']
+            grp_interface = Database().get_record(None, 'groupinterface', f' WHERE groupid = "{grpid}"')
+            if grp_interface:
+                grp['interfaces'] = []
+                for interface in grp_interface:
+                    interface['network'] = Database().getname_byid('network', interface['networkid'])
+                    del interface['groupid']
+                    del interface['id']
+                    del interface['networkid']
+                    grp['interfaces'].append(interface)
+            del grp['id']
+            del grp['name']
+            grp['bmcsetup'] = Helper().bool_revert(grp['bmcsetup'])
+            grp['netboot'] = Helper().bool_revert(grp['netboot'])
+            grp['localinstall'] = Helper().bool_revert(grp['localinstall'])
+            grp['bootmenu'] = Helper().bool_revert(grp['bootmenu'])
+            grp['osimage'] = Database().getname_byid('osimage', grp['osimageid'])
+            del grp['osimageid']
+            if grp['bmcsetupid']:
+                grp['bmcsetupname'] = Database().getname_byid('bmcsetup', grp['bmcsetupid'])
+            del grp['bmcsetupid']
+            response['config']['group'][grpname] = grp
         LOGGER.info(f'Returned Group {name} with Details.')
         access_code = 200
     else:

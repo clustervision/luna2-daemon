@@ -435,9 +435,11 @@ def config_node_delete_interface(name=None, interface=None):
     node = Database().get_record(None, 'node', f' WHERE `name` = "{name}";')
     if node:
         nodeid = node[0]['id']
-        node_interface = Database().get_record(None, 'nodeinterface', f' WHERE `interface` = "{interface}" AND `nodeid` = "{nodeid}";')
+        where = f' WHERE `interface` = "{interface}" AND `nodeid` = "{nodeid}";'
+        node_interface = Database().get_record(None, 'nodeinterface', where)
         if node_interface:
-            Database().delete_row('nodeinterface', [{"column": "id", "value": node_interface[0]['id']}])
+            where = [{"column": "id", "value": node_interface[0]['id']}]
+            Database().delete_row('nodeinterface', where)
             response = {'message': f'Node {name} interface {interface} Removed Successfully.'}
             access_code = 204
         else:
@@ -448,7 +450,7 @@ def config_node_delete_interface(name=None, interface=None):
         access_code = 404
     return json.dumps(response), access_code
 
-######################################################## Group configuration #############################################################
+############################# Group configuration #############################
 
 @config_blueprint.route("/config/group", methods=['GET'])
 @token_required
@@ -464,15 +466,16 @@ def config_group():
         for grp in groups:
             grpname = grp['name']
             grpid = grp['id']
-            grp_interface = Database().get_record(None, 'groupinterface', f' WHERE groupid = "{grpid}"')
+            where = f' WHERE groupid = "{grpid}"'
+            grp_interface = Database().get_record(None, 'groupinterface', where)
             if grp_interface:
                 grp['interfaces'] = []
-                for interface in grp_interface:
-                    interface['network'] = Database().getname_byid('network', interface['networkid'])
-                    del interface['groupid']
-                    del interface['id']
-                    del interface['networkid']
-                    grp['interfaces'].append(interface)
+                for ifx in grp_interface:
+                    ifx['network'] = Database().getname_byid('network', ifx['networkid'])
+                    del ifx['groupid']
+                    del ifx['id']
+                    del ifx['networkid']
+                    grp['interfaces'].append(ifx)
             del grp['id']
             del grp['name']
             grp['bmcsetup'] = Helper().bool_revert(grp['bmcsetup'])
@@ -508,15 +511,16 @@ def config_group_get(name=None):
         for grp in groups:
             grpname = grp['name']
             grpid = grp['id']
-            grp_interface = Database().get_record(None, 'groupinterface', f' WHERE groupid = "{grpid}"')
+            where = f' WHERE groupid = "{grpid}"'
+            grp_interface = Database().get_record(None, 'groupinterface', where)
             if grp_interface:
                 grp['interfaces'] = []
-                for interface in grp_interface:
-                    interface['network'] = Database().getname_byid('network', interface['networkid'])
-                    del interface['groupid']
-                    del interface['id']
-                    del interface['networkid']
-                    grp['interfaces'].append(interface)
+                for ifx in grp_interface:
+                    ifx['network'] = Database().getname_byid('network', ifx['networkid'])
+                    del ifx['groupid']
+                    del ifx['id']
+                    del ifx['networkid']
+                    grp['interfaces'].append(ifx)
             del grp['id']
             del grp['name']
             grp['bmcsetup'] = Helper().bool_revert(grp['bmcsetup'])
@@ -546,115 +550,116 @@ def config_group_post(name=None):
     Process - Create Or Update The Groups.
     Output - Group Information.
     """
-    DATA = {}
-    CREATE, UPDATE = False, False
+    data = {}
+    create, update = False, False
 
     if Helper().check_json(request.data):
-        REQUEST = request.get_json(force=True)
+        request_data = request.get_json(force=True)
     else:
         response = {'message': 'Bad Request.'}
         access_code = 400
         return json.dumps(response), access_code
-    if REQUEST:
-        DATA = REQUEST['config']['group'][name]
-        GRP = Database().get_record(None, 'group', f' WHERE name = "{name}"')
-        if GRP:
-            GRPID = GRP[0]['id']
-            if 'newgroupname' in DATA:
-                NEWGRPNAME = DATA['newgroupname']
-                CHECKNEWGRP = Database().get_record(None, 'group', f' WHERE `name` = "{NEWGRPNAME}";')
-                if CHECKNEWGRP:
-                    response = {'message': f'{NEWGRPNAME} Already Present in Database, Choose Another Name Or Delete {NEWGRPNAME}.'}
+    if request_data:
+        data = request_data['config']['group'][name]
+        grp = Database().get_record(None, 'group', f' WHERE name = "{name}"')
+        if grp:
+            grpid = grp[0]['id']
+            if 'newgroupname' in data:
+                newgrpname = data['newgroupname']
+                where = f' WHERE `name` = "{newgrpname}";'
+                checknewgrp = Database().get_record(None, 'group', where)
+                if checknewgrp:
+                    response = {'message': f'{newgrpname} Already present in database.'}
                     access_code = 400
                     return json.dumps(response), access_code
                 else:
-                    DATA['name'] = DATA['newgroupname']
-                    del DATA['newgroupname']
-            UPDATE = True
-            if 'bmcsetup' in DATA:
-                DATA['bmcsetup'] = Helper().bool_revert(DATA['bmcsetup'])
-            if 'netboot' in DATA:
-                DATA['netboot'] = Helper().bool_revert(DATA['netboot'])
-            if 'localinstall' in DATA:
-                DATA['localinstall'] = Helper().bool_revert(DATA['localinstall'])
-            if 'bootmenu' in DATA:
-                DATA['bootmenu'] = Helper().bool_revert(DATA['bootmenu'])
+                    data['name'] = data['newgroupname']
+                    del data['newgroupname']
+            update = True
+            if 'bmcsetup' in data:
+                data['bmcsetup'] = Helper().bool_revert(data['bmcsetup'])
+            if 'netboot' in data:
+                data['netboot'] = Helper().bool_revert(data['netboot'])
+            if 'localinstall' in data:
+                data['localinstall'] = Helper().bool_revert(data['localinstall'])
+            if 'bootmenu' in data:
+                data['bootmenu'] = Helper().bool_revert(data['bootmenu'])
         else:
-            if 'newgroupname' in DATA:
-                response = {'message': f'{NEWGRPNAME} is not allwoed while creating a new group.'}
+            if 'newgroupname' in data:
+                response = {'message': f'{newgrpname} is not allwoed while creating a new group.'}
                 access_code = 400
                 return json.dumps(response), access_code
-            if 'bmcsetup' in DATA:
-                DATA['bmcsetup'] = Helper().bool_revert(DATA['bmcsetup'])
+            if 'bmcsetup' in data:
+                data['bmcsetup'] = Helper().bool_revert(data['bmcsetup'])
             else:
-                DATA['bmcsetup'] = 0
-            if 'netboot' in DATA:
-                DATA['netboot'] = Helper().bool_revert(DATA['netboot'])
+                data['bmcsetup'] = 0
+            if 'netboot' in data:
+                data['netboot'] = Helper().bool_revert(data['netboot'])
             else:
-                DATA['netboot'] = 0
-            if 'localinstall' in DATA:
-                DATA['localinstall'] = Helper().bool_revert(DATA['localinstall'])
+                data['netboot'] = 0
+            if 'localinstall' in data:
+                data['localinstall'] = Helper().bool_revert(data['localinstall'])
             else:
-                DATA['localinstall'] = 0
-            if 'bootmenu' in DATA:
-                DATA['bootmenu'] = Helper().bool_revert(DATA['bootmenu'])
+                data['localinstall'] = 0
+            if 'bootmenu' in data:
+                data['bootmenu'] = Helper().bool_revert(data['bootmenu'])
             else:
-                DATA['bootmenu'] = 0
-            CREATE = True
-        if 'bmcsetupname' in DATA:
-            BMCNAME = DATA['bmcsetupname']
-            DATA['bmcsetupid'] = Database().getid_byname('bmcsetup', DATA['bmcsetupname'])
-            if DATA['bmcsetupid']:
-                del DATA['bmcsetupname']
+                data['bootmenu'] = 0
+            create = True
+        if 'bmcsetupname' in data:
+            bmcname = data['bmcsetupname']
+            data['bmcsetupid'] = Database().getid_byname('bmcsetup', data['bmcsetupname'])
+            if data['bmcsetupid']:
+                del data['bmcsetupname']
             else:
-                response = {'message': f'BMC Setup {BMCNAME} does not exist, Choose Another BMC Setup.'}
+                response = {'message': f'BMC Setup {bmcname} does not exist, Choose Another BMC Setup.'}
                 access_code = 400
                 return json.dumps(response), access_code
-        if 'osimage' in DATA:
-            OSNAME = DATA['osimage']
-            del DATA['osimage']
-            DATA['osimageid'] = Database().getid_byname('osimage', OSNAME)
-        if not DATA['bmcsetupid']:
-            response = {'message': f'BMC Setup {OSNAME} does not exist, Choose Another BMC Setup.'}
+        if 'osimage' in data:
+            osname = data['osimage']
+            del data['osimage']
+            data['osimageid'] = Database().getid_byname('osimage', osname)
+        if not data['bmcsetupid']:
+            response = {'message': f'BMC Setup {osname} does not exist, Choose Another BMC Setup.'}
             access_code = 400
             return json.dumps(response), access_code
-        if 'interfaces' in DATA:
-            NEWINTERFACE = DATA['interfaces']
-            del DATA['interfaces']
+        if 'interfaces' in data:
+            newinterface = data['interfaces']
+            del data['interfaces']
 
-        GRPCOLUMNS = Database().get_columns('group')
-        COLUMNCHECK = Helper().checkin_list(DATA, GRPCOLUMNS)
-        if COLUMNCHECK:
-            if UPDATE:
-                where = [{"column": "id", "value": GRPID}]
-                row = Helper().make_rows(DATA)
-                UPDATEID = Database().update('group', row, where)
+        grpcolumns = Database().get_columns('group')
+        columncheck = Helper().checkin_list(data, grpcolumns)
+        if columncheck:
+            if update:
+                where = [{"column": "id", "value": grpid}]
+                row = Helper().make_rows(data)
+                Database().update('group', row, where)
                 response = {'message': f'Group {name} Updated Successfully.'}
                 access_code = 204
-            if CREATE:
-                DATA['name'] = name
-                row = Helper().make_rows(DATA)
-                GRPID = Database().insert('group', row)
+            if create:
+                data['name'] = name
+                row = Helper().make_rows(data)
+                grpid = Database().insert('group', row)
                 response = {'message': f'Group {name} Created Successfully.'}
                 access_code = 201
-            if NEWINTERFACE:
-                for INTERFACE in NEWINTERFACE:
-                    NWK = Database().getid_byname('network', INTERFACE['network'])
-                    if NWK == None:
-                        response = {'message': f'Bad Request; Network {NWK} Not Exist.'}
+            if newinterface:
+                for ifx in newinterface:
+                    network = Database().getid_byname('network', ifx['network'])
+                    if network is None:
+                        response = {'message': f'Bad Request; Network {network} not exist.'}
                         access_code = 400
                         return json.dumps(response), access_code
                     else:
-                        INTERFACE['networkid'] = NWK
-                        INTERFACE['groupid'] = GRPID
-                        del INTERFACE['network']
-                    IFNAME = INTERFACE['interfacename']
-                    where = f' WHERE groupid = "{GRPID}" AND networkid = "{NWK}" AND interfacename = "{IFNAME}"'
-                    CHECKINTERFACE = Database().get_record(None, 'groupinterface', where)
-                    if not CHECKINTERFACE:
-                        row = Helper().make_rows(INTERFACE)
+                        ifx['networkid'] = network
+                        ifx['groupid'] = grpid
+                        del ifx['network']
+                    ifname = ifx['interfacename']
+                    where = f' WHERE groupid = "{grpid}" AND networkid = "{network}" AND interfacename = "{ifname}"'
+                    check_interface = Database().get_record(None, 'groupinterface', where)
+                    if not check_interface:
+                        row = Helper().make_rows(ifx)
                         result = Database().insert('groupinterface', row)
-                        LOGGER.info("Interface Created => {} .".format(result))
+                        LOGGER.info(f'Interface Created => {result} .')
 
         else:
             response = {'message': 'Bad Request; Columns are Incorrect.'}
@@ -673,11 +678,11 @@ def config_group_delete(name=None):
     Process - Delete the Group and it's interfaces.
     Output - Success or Failure.
     """
-    CHECKGRP = Database().get_record(None, 'group', f' WHERE `name` = "{name}";')
-    if CHECKGRP:
+    group = Database().get_record(None, 'group', f' WHERE `name` = "{name}";')
+    if group:
         Database().delete_row('group', [{"column": "name", "value": name}])
-        Database().delete_row('groupinterface', [{"column": "groupid", "value": CHECKGRP[0]['id']}])
-        Database().delete_row('groupsecrets', [{"column": "groupid", "value": CHECKGRP[0]['id']}])
+        Database().delete_row('groupinterface', [{"column": "groupid", "value": group[0]['id']}])
+        Database().delete_row('groupsecrets', [{"column": "groupid", "value": group[0]['id']}])
         response = {'message': f'Group {name} with all its interfaces Removed Successfully.'}
         access_code = 204
     else:
@@ -694,22 +699,23 @@ def config_group_get_interfaces(name=None):
     Process - Fetch the Group Interface List.
     Output - Group Interface List.
     """
-    GROUPS = Database().get_record(None, 'group', f' WHERE name = "{name}"')
-    if GROUPS:
+    groups = Database().get_record(None, 'group', f' WHERE name = "{name}"')
+    if groups:
         response = {'config': {'group': {name: {'interfaces': [] } } } }
-        for GRP in GROUPS:
-            GRPNAME = GRP['name']
-            GRPID = GRP['id']
-            GRPINTERFACE = Database().get_record(None, 'groupinterface', f' WHERE groupid = "{GRPID}"')
-            if GRPINTERFACE:
-                GRPIFC = []
-                for INTERFACE in GRPINTERFACE:
-                    INTERFACE['network'] = Database().getname_byid('network', INTERFACE['networkid'])
-                    del INTERFACE['groupid']
-                    del INTERFACE['id']
-                    del INTERFACE['networkid']
-                    GRPIFC.append(INTERFACE)
-                response['config']['group'][GRPNAME]['interfaces'] = GRPIFC
+        for grp in groups:
+            groupname = grp['name']
+            groupid = grp['id']
+            where = f' WHERE groupid = "{groupid}"'
+            grp_interface = Database().get_record(None, 'groupinterface', where)
+            if grp_interface:
+                grp_interfaces = []
+                for ifx in grp_interface:
+                    ifx['network'] = Database().getname_byid('network', ifx['networkid'])
+                    del ifx['groupid']
+                    del ifx['id']
+                    del ifx['networkid']
+                    grp_interfaces.append(ifx)
+                response['config']['group'][groupname]['interfaces'] = grp_interfaces
             else:
                 LOGGER.error(f'No Group {name} dont have any Interface.')
                 response = {'message': f'No Group {name} dont have any Interface.'}
@@ -731,36 +737,33 @@ def config_group_post_interfaces(name=None):
     Process - Create Or Update The Group Interface.
     Output - Group Interface.
     """
-    DATA = {}
-    CREATE, UPDATE = False, False
-
     if Helper().check_json(request.data):
-        REQUEST = request.get_json(force=True)
+        request_data = request.get_json(force=True)
     else:
         response = {'message': 'Bad Request.'}
         access_code = 400
         return json.dumps(response), access_code
-    if REQUEST:
-        GRP = Database().get_record(None, 'group', f' WHERE name = "{name}"')
-        if GRP:
-            GRPID = GRP[0]['id']
-            if 'interfaces' in REQUEST['config']['group'][name]:
-                for INTERFACE in REQUEST['config']['group'][name]['interfaces']:
-                    NWK = Database().getid_byname('network', INTERFACE['network'])
-                    if NWK == None:
-                        response = {'message': f'Bad Request; Network {NWK} Not Exist.'}
+    if request_data:
+        grp = Database().get_record(None, 'group', f' WHERE name = "{name}"')
+        if grp:
+            grpid = grp[0]['id']
+            if 'interfaces' in request_data['config']['group'][name]:
+                for ifx in request_data['config']['group'][name]['interfaces']:
+                    network = Database().getid_byname('network', ifx['network'])
+                    if network is None:
+                        response = {'message': f'Bad Request; Network {network} Not Exist.'}
                         access_code = 400
                         return json.dumps(response), access_code
                     else:
-                        INTERFACE['networkid'] = NWK
-                        INTERFACE['groupid'] = GRPID
-                        del INTERFACE['network']
-                    IFNAME = INTERFACE['interfacename']
-                    where = f' WHERE groupid = "{GRPID}" AND networkid = "{NWK}" AND interfacename = "{IFNAME}"'
-                    CHECKINTERFACE = Database().get_record(None, 'groupinterface', where)
-                    if not CHECKINTERFACE:
-                        row = Helper().make_rows(INTERFACE)
-                        result = Database().insert('groupinterface', row)
+                        ifx['networkid'] = network
+                        ifx['groupid'] = grpid
+                        del ifx['network']
+                    interfacename = ifx['interfacename']
+                    where = f' WHERE groupid = "{grpid}" AND networkid = "{network}" AND interfacename = "{interfacename}"'
+                    interface_check = Database().get_record(None, 'groupinterface', where)
+                    if not interface_check:
+                        row = Helper().make_rows(ifx)
+                        Database().insert('groupinterface', row)
                     response = {'message': 'Interface Updated.'}
                     access_code = 204
             else:
@@ -785,12 +788,12 @@ def config_group_delete_interface(name=None, interface=None):
     Process - Delete the Group Interface.
     Output - Success or Failure.
     """
-    CHECKGRP = Database().get_record(None, 'group', f' WHERE `name` = "{name}";')
-    if CHECKGRP:
-        GRPID = CHECKGRP[0]['id']
-        CHECKGRPIFC = Database().get_record(None, 'groupinterface', f' WHERE `interfacename` = "{interface}" AND `groupid` = "{GRPID}";')
-        if CHECKGRPIFC:
-            Database().delete_row('groupinterface', [{"column": "id", "value": CHECKGRPIFC[0]['id']}])
+    group = Database().get_record(None, 'group', f' WHERE `name` = "{name}";')
+    if group:
+        groupid = group[0]['id']
+        group_interface = Database().get_record(None, 'groupinterface', f' WHERE `interfacename` = "{interface}" AND `groupid` = "{groupid}";')
+        if group_interface:
+            Database().delete_row('groupinterface', [{"column": "id", "value": group_interface[0]['id']}])
             response = {'message': f'Group {name} interface {interface} Removed Successfully.'}
             access_code = 204
         else:
@@ -801,7 +804,7 @@ def config_group_delete_interface(name=None, interface=None):
         access_code = 404
     return json.dumps(response), access_code
 
-######################################################## OSimage configuration #############################################################
+############################# OSimage configuration #############################
 
 @config_blueprint.route("/config/osimage", methods=['GET'])
 def config_osimage():
@@ -810,14 +813,14 @@ def config_osimage():
     Process - Fetch the OS Image information.
     Output - OSImage Info.
     """
-    OSIMAGES = Database().get_record(None, 'osimage', None)
-    if OSIMAGES:
+    osimages = Database().get_record(None, 'osimage', None)
+    if osimages:
         response = {'config': {'osimage': {} }}
-        for IMAGE in OSIMAGES:
-            IMAGENAME = IMAGE['name']
-            del IMAGE['id']
-            del IMAGE['name']
-            response['config']['osimage'][IMAGENAME] = IMAGE
+        for image in osimages:
+            image_name = image['name']
+            del image['id']
+            del image['name']
+            response['config']['osimage'][image_name] = image
         LOGGER.info('Provided List Of All OS Images with Details.')
         access_code = 200
     else:
@@ -834,13 +837,13 @@ def config_osimage_get(name=None):
     Process - Fetch the OS Image information.
     Output - OSImage Info.
     """
-    OSIMAGES = Database().get_record(None, 'osimage', f' WHERE name = "{name}"')
-    if OSIMAGES:
+    osimages = Database().get_record(None, 'osimage', f' WHERE name = "{name}"')
+    if osimages:
         response = {'config': {'osimage': {} }}
-        for IMAGE in OSIMAGES:
-            del IMAGE['id']
-            del IMAGE['name']
-            response['config']['osimage'][name] = IMAGE
+        for image in osimages:
+            del image['id']
+            del image['name']
+            response['config']['osimage'][name] = image
         LOGGER.info(f'Returned OS Image {name} with Details.')
         access_code = 200
     else:
@@ -848,7 +851,6 @@ def config_osimage_get(name=None):
         response = {'message': 'No OS Image is available.'}
         access_code = 404
     return json.dumps(response), access_code
-
 
 
 @config_blueprint.route("/config/osimage/<string:name>", methods=['POST'])
@@ -859,64 +861,64 @@ def config_osimage_post(name=None):
     Process - Create or Update the OS Image information.
     Output - OSImage Info.
     """
-    DATA = {}
-    CREATE, UPDATE = False, False
+    data = {}
+    create, update = False, False
     if Helper().check_json(request.data):
-        REQUEST = request.get_json(force=True)
+        request_data = request.get_json(force=True)
     else:
         response = {'message': 'Bad Request.'}
         access_code = 400
         return json.dumps(response), access_code
-    if REQUEST:
-        DATA = REQUEST['config']['osimage'][name]
-        IMAGE = Database().get_record(None, 'osimage', f' WHERE name = "{name}"')
-        if IMAGE:
-            IMAGEID = IMAGE[0]['id']
-            if 'newosimage' in DATA:
-                NEWOSNAME = DATA['newosimage']
-                CHECKNEWOS = Database().get_record(None, 'osimage', f' WHERE `name` = "{NEWOSNAME}";')
-                if CHECKNEWOS:
-                    response = {'message': f'{NEWOSNAME} Already Present in Database, Choose Another Name Or Delete {NEWOSNAME}.'}
+    if request_data:
+        data = request_data['config']['osimage'][name]
+        image = Database().get_record(None, 'osimage', f' WHERE name = "{name}"')
+        if image:
+            imageid = image[0]['id']
+            if 'newosimage' in data:
+                newosname = data['newosimage']
+                newoscheck = Database().get_record(None, 'osimage', f' WHERE `name` = "{newosname}";')
+                if newoscheck:
+                    response = {'message': f'{newosname} Already present in database.'}
                     access_code = 400
                     return json.dumps(response), access_code
                 else:
-                    DATA['name'] = DATA['newosimage']
-                    del DATA['newosimage']
-                UPDATE = True
+                    data['name'] = data['newosimage']
+                    del data['newosimage']
+                update = True
             else:
                 response = {'message': 'Kindly Pass The New OS Image Name.'}
                 access_code = 400
                 return json.dumps(response), access_code
         else:
-            if 'newosimage' in DATA:
-                NEWOSNAME = DATA['newosimage']
-                CHECKNEWOS = Database().get_record(None, 'osimage', f' WHERE `name` = "{NEWOSNAME}";')
-                if CHECKNEWOS:
-                    response = {'message': f'{NEWOSNAME} Already Present in Database, Choose Another Name Or Delete {NEWOSNAME}.'}
+            if 'newosimage' in data:
+                newosname = data['newosimage']
+                newoscheck = Database().get_record(None, 'osimage', f' WHERE `name` = "{newosname}";')
+                if newoscheck:
+                    response = {'message': f'{newosname} Already present in database.'}
                     access_code = 400
                     return json.dumps(response), access_code
                 else:
-                    DATA['name'] = DATA['newosimage']
-                    del DATA['newosimage']
-                CREATE = True
+                    data['name'] = data['newosimage']
+                    del data['newosimage']
+                create = True
             else:
                 response = {'message': 'Kindly Pass The New OS Image Name.'}
                 access_code = 400
                 return json.dumps(response), access_code
 
-        OSIMAGECOLUMNS = Database().get_columns('osimage')
-        COLUMNCHECK = Helper().checkin_list(DATA, OSIMAGECOLUMNS)
-        if COLUMNCHECK:
-            if UPDATE:
-                where = [{"column": "id", "value": IMAGEID}]
-                row = Helper().make_rows(DATA)
-                result = Database().update('osimage', row, where)
+        osimagecolumns = Database().get_columns('osimage')
+        columncheck = Helper().checkin_list(data, osimagecolumns)
+        if columncheck:
+            if update:
+                where = [{"column": "id", "value": imageid}]
+                row = Helper().make_rows(data)
+                Database().update('osimage', row, where)
                 response = {'message': f'OS Image {name} Updated Successfully.'}
                 access_code = 204
-            if CREATE:
-                DATA['name'] = name
-                row = Helper().make_rows(DATA)
-                result = Database().insert('osimage', row)
+            if create:
+                data['name'] = name
+                row = Helper().make_rows(data)
+                Database().insert('osimage', row)
                 response = {'message': f'OS Image {name} Created Successfully.'}
                 access_code = 201
         else:
@@ -936,8 +938,8 @@ def config_osimage_delete(name=None):
     Process - Delete the OS Image.
     Output - Success or Failure.
     """
-    CHECKOSIMAGE = Database().get_record(None, 'osimage', f' WHERE `name` = "{name}";')
-    if CHECKOSIMAGE:
+    osimage = Database().get_record(None, 'osimage', f' WHERE `name` = "{name}";')
+    if osimage:
         Database().delete_row('osimage', [{"column": "name", "value": name}])
         response = {'message': f'OS Image {name} Removed Successfully.'}
         access_code = 204
@@ -955,29 +957,29 @@ def config_osimage_clone(name=None):
     Process - Clone OS Image information.
     Output - OSImage Info.
     """
-    DATA = {}
-    CREATE = False
+    data = {}
+    create = False
     if Helper().check_json(request.data):
-        REQUEST = request.get_json(force=True)
+        request_data = request.get_json(force=True)
     else:
         response = {'message': 'Bad Request.'}
         access_code = 400
         return json.dumps(response), access_code
-    if REQUEST:
-        DATA = REQUEST['config']['osimage'][name]
-        IMAGE = Database().get_record(None, 'osimage', f' WHERE name = "{name}"')
-        if IMAGE:
-            if 'newosimage' in DATA:
-                NEWOSNAME = DATA['newosimage']
-                CHECKNEWOS = Database().get_record(None, 'osimage', f' WHERE `name` = "{NEWOSNAME}";')
-                if CHECKNEWOS:
-                    response = {'message': f'{NEWOSNAME} Already Present in Database, Choose Another Name Or Delete {NEWOSNAME}.'}
+    if request_data:
+        data = request_data['config']['osimage'][name]
+        image = Database().get_record(None, 'osimage', f' WHERE name = "{name}"')
+        if image:
+            if 'newosimage' in data:
+                newosname = data['newosimage']
+                checknewos = Database().get_record(None, 'osimage', f' WHERE `name` = "{newosname}";')
+                if checknewos:
+                    response = {'message': f'{newosname} Already present in database.'}
                     access_code = 400
                     return json.dumps(response), access_code
                 else:
-                    DATA['name'] = DATA['newosimage']
-                    del DATA['newosimage']
-                    CREATE = True
+                    data['name'] = data['newosimage']
+                    del data['newosimage']
+                    create = True
             else:
                 response = {'message': 'Kindly Pass The New OS Image Name.'}
                 access_code = 400
@@ -987,13 +989,13 @@ def config_osimage_clone(name=None):
             access_code = 400
             return json.dumps(response), access_code
 
-        OSIMAGECOLUMNS = Database().get_columns('osimage')
-        COLUMNCHECK = Helper().checkin_list(DATA, OSIMAGECOLUMNS)
-        if COLUMNCHECK:
-            if CREATE:
-                row = Helper().make_rows(DATA)
-                result = Database().insert('osimage', row)
-                response = {'message': f'OS Image {name} Clone to {NEWOSNAME} Successfully.'}
+        osimagecolumns = Database().get_columns('osimage')
+        columncheck = Helper().checkin_list(data, osimagecolumns)
+        if columncheck:
+            if create:
+                row = Helper().make_rows(data)
+                Database().insert('osimage', row)
+                response = {'message': f'OS Image {name} Clone to {newosname} Successfully.'}
                 access_code = 201
         else:
             response = {'message': 'Bad Request; Columns are Incorrect.'}
@@ -1013,39 +1015,39 @@ def config_osimage_pack(name=None):
     Process - Manually Pack the OS Image.
     Output - Success or Failure.
     """
-    LOGGER.info("OS Image {} Packed Successfully.".format(name))
-    response = {"message": "OS Image {} Packed Successfully.".format(name)}
+    LOGGER.info(f'OS image {name} packed successfully.')
+    response = {"message": f'OS image {name} packed successfully.'}
     code = 200
     return json.dumps(response), code
 
 
 @config_blueprint.route("/config/osimage/<string:name>/kernel", methods=['POST'])
-# @token_required
+@token_required
 def config_osimage_kernel_post(name=None):
     """
     Input - OS Image Name
     Process - Manually change kernel version.
     Output - Kernel Version.
     """
-    DATA = {}
+    data = {}
     if Helper().check_json(request.data):
-        REQUEST = request.get_json(force=True)
+        request_data = request.get_json(force=True)
     else:
         response = {'message': 'Bad Request.'}
         access_code = 400
         return json.dumps(response), access_code
-    if REQUEST:
-        DATA = REQUEST['config']['osimage'][name]
-        IMAGE = Database().get_record(None, 'osimage', f' WHERE name = "{name}"')
-        if IMAGE:
-            IMAGEID = IMAGE[0]['id']
-            OSIMAGECOLUMNS = Database().get_columns('osimage')
-            COLUMNCHECK = Helper().checkin_list(DATA, OSIMAGECOLUMNS)
-            if COLUMNCHECK:
-                REQUESTCHECK = Helper().pack(name)
-                print(f'REQUESTCHECK=======>> {REQUESTCHECK}')
-                # where = [{"column": "id", "value": IMAGEID}]
-                # row = Helper().make_rows(DATA)
+    if request_data:
+        data = request_data['config']['osimage'][name]
+        image = Database().get_record(None, 'osimage', f' WHERE name = "{name}"')
+        if image:
+            # imageid = image[0]['id']
+            osimagecolumns = Database().get_columns('osimage')
+            columncheck = Helper().checkin_list(data, osimagecolumns)
+            if columncheck:
+                requestcheck = Helper().pack(name)
+                print(f'REQUESTCHECK=======>> {requestcheck}')
+                # where = [{"column": "id", "value": imageid}]
+                # row = Helper().make_rows(data)
                 # result = Database().update('osimage', row, where)
                 response = {'message': f'OS Image {name} Kernel Updated Successfully.'}
                 access_code = 204
@@ -1062,7 +1064,7 @@ def config_osimage_kernel_post(name=None):
     return json.dumps(response), access_code
 
 
-######################################################## Cluster configuration #############################################################
+############################# Cluster configuration #############################
 
 
 @config_blueprint.route("/config/cluster", methods=['GET'])
@@ -1073,28 +1075,28 @@ def config_cluster():
     Process - Fetch The Cluster Information.
     Output - Cluster Information.
     """
-    CLUSTER = Database().get_record(None, 'cluster', None)
-    if CLUSTER:
-        CLUSTERID = CLUSTER[0]['id']
-        del CLUSTER[0]['id']
-        if CLUSTER[0]['debug']:
-            CLUSTER[0]['debug'] = True
+    cluster = Database().get_record(None, 'cluster', None)
+    if cluster:
+        clusterid = cluster[0]['id']
+        del cluster[0]['id']
+        if cluster[0]['debug']:
+            cluster[0]['debug'] = True
         else:
-            CLUSTER[0]['debug'] = False
-        if CLUSTER[0]['security']:
-            CLUSTER[0]['security'] = True
+            cluster[0]['debug'] = False
+        if cluster[0]['security']:
+            cluster[0]['security'] = True
         else:
-            CLUSTER[0]['security'] = False
-        response = {'config': {'cluster': CLUSTER[0] }}
-        CONTROLLERS = Database().get_record(None, 'controller', f' WHERE clusterid = {CLUSTERID}')
-        for CONTROLLER in CONTROLLERS:
-            CONTROLLERIP = Database().get_record(None, 'ipaddress', f' WHERE id = {CONTROLLER["ipaddr"]}')
-            if CONTROLLERIP:
-                CONTROLLER['ipaddress'] = CONTROLLERIP[0]["ipaddress"]
-            del CONTROLLER['id']
-            del CONTROLLER['clusterid']
-            CONTROLLER['luna_config'] = CONFIGFILE
-            response['config']['cluster'][CONTROLLER['hostname']] = CONTROLLER
+            cluster[0]['security'] = False
+        response = {'config': {'cluster': cluster[0] }}
+        controllers = Database().get_record(None, 'controller', f' WHERE clusterid = {clusterid}')
+        for controller in controllers:
+            controllerip = Database().get_record(None, 'ipaddress', f' WHERE id = {controller["ipaddr"]}')
+            if controllerip:
+                controller['ipaddress'] = controllerip[0]["ipaddress"]
+            del controller['id']
+            del controller['clusterid']
+            controller['luna_config'] = CONFIGFILE
+            response['config']['cluster'][controller['hostname']] = controller
             access_code = 200
     else:
         LOGGER.error('No Cluster is available.')
@@ -1112,21 +1114,21 @@ def config_cluster_post():
     Output - Cluster Information.
     """
     if Helper().check_json(request.data):
-        REQUEST = request.get_json(force=True)
+        request_data = request.get_json(force=True)
     else:
         response = {'message': 'Bad Request.'}
         access_code = 400
         return json.dumps(response), access_code
-    if REQUEST:
-        DATA = REQUEST['config']['cluster']
-        CLUSTERCOLUMNS = Database().get_columns('cluster')
-        COLUMNCHECK = Helper().checkin_list(DATA, CLUSTERCOLUMNS)
-        if COLUMNCHECK:
-            CLUSTER = Database().get_record(None, 'cluster', None)
-            if CLUSTER:
-                where = [{"column": "id", "value": CLUSTER[0]['id']}]
-                row = Helper().make_rows(DATA)
-                result = Database().update('cluster', row, where)
+    if request_data:
+        data = request_data['config']['cluster']
+        clustercolumns = Database().get_columns('cluster')
+        clustercheck = Helper().checkin_list(data, clustercolumns)
+        if clustercheck:
+            cluster = Database().get_record(None, 'cluster', None)
+            if cluster:
+                where = [{"column": "id", "value": cluster[0]['id']}]
+                row = Helper().make_rows(data)
+                Database().update('cluster', row, where)
                 response = {'message': 'Cluster Updated Successfully.'}
                 access_code = 204
             else:
@@ -1226,12 +1228,12 @@ def config_bmcsetup_post(bmcname=None):
         row = Helper().make_rows(DATA)
         if COLUMNCHECK:
             if CREATE:
-                result = Database().insert('bmcsetup', row)
+                Database().insert('bmcsetup', row)
                 response = {'message': 'BMC Setup Created Successfully.'}
                 access_code = 201
             if UPDATE:
                 where = [{"column": "id", "value": BMCID}]
-                result = Database().update('bmcsetup', row, where)
+                Database().update('bmcsetup', row, where)
                 response = {'message': 'BMC Setup Updated Successfully.'}
                 access_code = 204
         else:

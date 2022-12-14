@@ -76,5 +76,4 @@ class Log:
         Process - Update the exsisting Log Level
         Output - Logger Object.
         """
-        
         return logging.root.level

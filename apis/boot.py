@@ -23,6 +23,10 @@ from common.constant import CONSTANT
 LOGGER = Log.get_logger()
 boot_blueprint = Blueprint('boot', __name__, template_folder='../templates')
 
+################ Example Data(Need to remove when have real data) ################
+nodes = ['node001', 'node002', 'node003', 'node004']
+data = {'protocol': 'http', 'server_ip': '10.141.255.254', 'server_port': '7051', 'nodes': nodes}
+################ Example Data(Need to remove when have real data) ################
 
 @boot_blueprint.route('/boot', methods=['GET'])
 def boot():
@@ -31,8 +35,6 @@ def boot():
     Process - Via jinja2 filled data in template templ_boot_ipxe.cfg
     Output - templ_boot_ipxe.cfg
     """
-    nodes = ['node001', 'node002', 'node003', 'node004']
-    data = {'protocol': 'http', 'server_ip': '10.141.255.254', 'server_port': '7051', 'nodes': nodes}
     template = 'templ_boot_ipxe.cfg'
     LOGGER.info(f'Boot API Serving the {template}')
     check_template = Helper().checkjinja(f'{CONSTANT["TEMPLATES"]["TEMPLATES_DIR"]}/{template}')
@@ -48,8 +50,6 @@ def boot_short():
     Process - Via jinja2 filled data in template templ_boot_ipxe_short.cfg
     Output - templ_boot_ipxe_short.cfg
     """
-    nodes = ['node001', 'node002', 'node003', 'node004']
-    data = {'protocol': 'http', 'server_ip': '10.141.255.254', 'server_port': '7051', 'nodes': nodes}
     template = 'templ_boot_ipxe_short.cfg'
     LOGGER.info(f'Boot API Serving the {template}')
     check_template = Helper().checkjinja(f'{CONSTANT["TEMPLATES"]["TEMPLATES_DIR"]}/{template}')
@@ -65,8 +65,6 @@ def boot_disk():
     Process - Via jinja2 filled data in template templ_boot_disk.cfg
     Output - templ_boot_disk.cfg
     """
-    nodes = ['node001', 'node002', 'node003', 'node004']
-    data = {'protocol': 'http', 'server_ip': '10.141.255.254', 'server_port': '7051', 'nodes': nodes}
     template = 'templ_boot_disk.cfg'
     LOGGER.info(f'Boot API Serving the {template}')
     check_template = Helper().checkjinja(f'{CONSTANT["TEMPLATES"]["TEMPLATES_DIR"]}/{template}')
@@ -83,11 +81,9 @@ def boot_search_mac(mac=None):
     port-detection has been enabled
     Output - iPXE Template
     """
-    data = {"protocol": "http", "server_ip": "10.141.255.254", "server_port": "7051", "nodes": None}
     node = Database().get_record(None, 'node', f' WHERE macaddr = "{mac}"')
-    # TODO: Switch Configuration Needs to be checked before response
     if not node:
-        LOGGER.debug(f'Mac Address {mac} Not Found.')
+        LOGGER.debug(f'Mac Address {mac} not found.')
         abort(404, "Empty")
     # row = [{"column": "status", "value": "installer.discovery"}]
     # where = [{"column": "id", "value": node[0]["id"]}]
@@ -108,9 +104,7 @@ def boot_manual_hostname(hostname=None):
     if SNMP port-detection has been enabled
     Output - iPXE Template
     """
-    data = {'protocol': 'http', 'server_ip': '10.141.255.254', 'server_port': '7051', 'service': '0'}
     node = Database().get_record(None, 'node', f' WHERE hostname = "{hostname}"')
-    # TOODO: Switch Configuration Needs to be checked before response
     if not node:
         LOGGER.debug(f'Hostname {hostname} Not Found.')
         abort(404, "Empty")
@@ -130,11 +124,10 @@ def boot_install(node=None):
     Process - Call the installation script for this node.
     Output - Success or failure
     """
-    # TODO: If debug mode enabled not to serve
     row = [{'column': 'status', 'value': 'installer.downloaded'}]
     where = [{"column": 'name', 'value': node}]
     install = Database().update('node', row, where)
-    if install or CONSTANT['LOGGER']['LEVEL'].lower() == 'debug':
+    if install or Log.check_loglevel() != 10:
         LOGGER.info(f'Installation Script is Started For NodeID: {node}')
         response = {'message': f'Installation Script is Started For  NodeID: {node}'}
         code = 200

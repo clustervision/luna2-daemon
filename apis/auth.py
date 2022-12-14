@@ -34,6 +34,9 @@ def token():
     """
     username, password = '', ''
     auth = request.get_json(force=True)
+    api_expiry = datetime.timedelta(minutes=int(CONSTANT['API']['EXPIRY']))
+    expiry_time = datetime.datetime.utcnow() + api_expiry
+    api_key = CONSTANT['API']['SECRET_KEY']
     if not auth:
         LOGGER.error('Login Required')
         response = {'message' : 'Login Required'}
@@ -59,9 +62,9 @@ def token():
             userid = user[0]["id"]
             userpassword = user[0]["password"]
             if userpassword == hashlib.md5(password.encode()).hexdigest():
-                token = jwt.encode({'id': userid, 'exp': datetime.datetime.utcnow() + datetime.timedelta(minutes=int(CONSTANT['API']['EXPIRY']))}, CONSTANT['API']['SECRET_KEY'], 'HS256')
-                LOGGER.debug(f'Login Token generated Successfully, Token {token}.')
-                response = {'token' : token}
+                jwt_token = jwt.encode({'id': userid, 'exp': expiry_time}, api_key, 'HS256')
+                LOGGER.debug(f'Login Token generated Successfully, Token {jwt_token}.')
+                response = {'token' : jwt_token}
                 code = 200
             else:
                 LOGGER.warning(f'Incorrect Password {password} for the user {username}.')
@@ -79,8 +82,8 @@ def token():
         else:
             # Creating Token via JWT with default id =1, expiry time
             # and Secret Key from conf file, and algo Sha 256
-            token = jwt.encode({'id': 0, 'exp': datetime.datetime.utcnow() + datetime.timedelta(minutes=int(CONSTANT['API']['EXPIRY']))}, CONSTANT['API']['SECRET_KEY'], 'HS256')
-            LOGGER.debug(f'Login Token generated Successfully, Token {token}')
-            response = {"token" : token}
+            jwt_token = jwt.encode({'id': 0, 'exp': expiry_time}, api_key, 'HS256')
+            LOGGER.debug(f'Login Token generated Successfully, Token {jwt_token}')
+            response = {"token" : jwt_token}
             code = 201
     return json.dumps(response), code

@@ -21,7 +21,7 @@ from configparser import RawConfigParser
 from pathlib import Path
 from utils.log import Log
 
-LOGGER = Log.init_log('debug', '/trinity/local/luna/log/luna2-daemon.log')
+LOGGER = Log.init_log('info', '/trinity/local/luna/log/luna2-daemon.log')
 CurrentDir = os.path.dirname(os.path.realpath(__file__))
 UTILSDIR = Path(CurrentDir)
 BASE_DIR = str(UTILSDIR.parent)

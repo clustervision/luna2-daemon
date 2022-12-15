@@ -612,7 +612,7 @@ def config_group_post(name=None):
             if data['bmcsetupid']:
                 del data['bmcsetupname']
             else:
-                response = {'message': f'BMC Setup {bmcname} does not exist, Choose Another BMC Setup.'}
+                response = {'message': f'BMC Setup {bmcname} does not exist.'}
                 access_code = 400
                 return json.dumps(response), access_code
         if 'osimage' in data:
@@ -654,7 +654,10 @@ def config_group_post(name=None):
                         ifx['groupid'] = grpid
                         del ifx['network']
                     ifname = ifx['interfacename']
-                    where = f' WHERE groupid = "{grpid}" AND networkid = "{network}" AND interfacename = "{ifname}"'
+                    grp_clause = f'groupid = "{grpid}"'
+                    network_clause = f'networkid = "{network}"'
+                    interface_clause = f'interfacename = "{ifname}"'
+                    where = f' WHERE {grp_clause} AND {network_clause} AND {interface_clause}'
                     check_interface = Database().get_record(None, 'groupinterface', where)
                     if not check_interface:
                         row = Helper().make_rows(ifx)
@@ -759,7 +762,10 @@ def config_group_post_interfaces(name=None):
                         ifx['groupid'] = grpid
                         del ifx['network']
                     interfacename = ifx['interfacename']
-                    where = f' WHERE groupid = "{grpid}" AND networkid = "{network}" AND interfacename = "{interfacename}"'
+                    grp_clause = f'groupid = "{grpid}"'
+                    network_clause = f'networkid = "{network}"'
+                    interface_clause = f'interfacename = "{interfacename}"'
+                    where = f' WHERE {grp_clause} AND {network_clause} AND {interface_clause}'
                     interface_check = Database().get_record(None, 'groupinterface', where)
                     if not interface_check:
                         row = Helper().make_rows(ifx)
@@ -791,9 +797,11 @@ def config_group_delete_interface(name=None, interface=None):
     group = Database().get_record(None, 'group', f' WHERE `name` = "{name}";')
     if group:
         groupid = group[0]['id']
-        group_interface = Database().get_record(None, 'groupinterface', f' WHERE `interfacename` = "{interface}" AND `groupid` = "{groupid}";')
+        where = f' WHERE `interfacename` = "{interface}" AND `groupid` = "{groupid}";'
+        group_interface = Database().get_record(None, 'groupinterface', where)
         if group_interface:
-            Database().delete_row('groupinterface', [{"column": "id", "value": group_interface[0]['id']}])
+            where = [{"column": "id", "value": group_interface[0]['id']}]
+            Database().delete_row('groupinterface', where)
             response = {'message': f'Group {name} interface {interface} Removed Successfully.'}
             access_code = 204
         else:
@@ -876,7 +884,8 @@ def config_osimage_post(name=None):
             imageid = image[0]['id']
             if 'newosimage' in data:
                 newosname = data['newosimage']
-                newoscheck = Database().get_record(None, 'osimage', f' WHERE `name` = "{newosname}";')
+                where = f' WHERE `name` = "{newosname}";'
+                newoscheck = Database().get_record(None, 'osimage', where)
                 if newoscheck:
                     response = {'message': f'{newosname} Already present in database.'}
                     access_code = 400
@@ -892,7 +901,8 @@ def config_osimage_post(name=None):
         else:
             if 'newosimage' in data:
                 newosname = data['newosimage']
-                newoscheck = Database().get_record(None, 'osimage', f' WHERE `name` = "{newosname}";')
+                where = f' WHERE `name` = "{newosname}";'
+                newoscheck = Database().get_record(None, 'osimage', where)
                 if newoscheck:
                     response = {'message': f'{newosname} Already present in database.'}
                     access_code = 400
@@ -971,7 +981,8 @@ def config_osimage_clone(name=None):
         if image:
             if 'newosimage' in data:
                 newosname = data['newosimage']
-                checknewos = Database().get_record(None, 'osimage', f' WHERE `name` = "{newosname}";')
+                where = f' WHERE `name` = "{newosname}";'
+                checknewos = Database().get_record(None, 'osimage', where)
                 if checknewos:
                     response = {'message': f'{newosname} Already present in database.'}
                     access_code = 400
@@ -1090,7 +1101,8 @@ def config_cluster():
         response = {'config': {'cluster': cluster[0] }}
         controllers = Database().get_record(None, 'controller', f' WHERE clusterid = {clusterid}')
         for controller in controllers:
-            controllerip = Database().get_record(None, 'ipaddress', f' WHERE id = {controller["ipaddr"]}')
+            where = f' WHERE id = {controller["ipaddr"]}'
+            controllerip = Database().get_record(None, 'ipaddress', where)
             if controllerip:
                 controller['ipaddress'] = controllerip[0]["ipaddress"]
             del controller['id']
@@ -1143,7 +1155,7 @@ def config_cluster_post():
     return json.dumps(response), 200
 
 
-######################################################## BMC setup configuration #############################################################
+############################# BMC setup configuration #############################
 
 @config_blueprint.route("/config/bmcsetup", methods=['GET'])
 @token_required
@@ -1153,21 +1165,20 @@ def config_bmcsetup():
     Process - Fetch The list of configured settings.
     Output - List Of BMC Setup.
     """
-    BMCSETUP = Database().get_record(None, 'bmcsetup', None)
-    if BMCSETUP:
+    bmcsetup = Database().get_record(None, 'bmcsetup', None)
+    if bmcsetup:
         response = {'config': {'bmcsetup': {} }}
-        for BMC in BMCSETUP:
-            BMCNAME = BMC['name']
-            del BMC['name']
-            del BMC['id']
-            response['config']['bmcsetup'][BMCNAME] = BMC
+        for bmc in bmcsetup:
+            bmcname = bmc['name']
+            del bmc['name']
+            del bmc['id']
+            response['config']['bmcsetup'][bmcname] = bmc
         access_code = 200
     else:
         LOGGER.error('No BMC Setup is available.')
         response = {'message': 'No BMC Setup is available.'}
         access_code = 404
     return json.dumps(response), access_code
-
 
 
 @config_blueprint.route("/config/bmcsetup/<string:bmcname>", methods=['GET'])
@@ -1178,21 +1189,20 @@ def config_bmcsetup_get(bmcname=None):
     Process - Fetch The BMC Setup information.
     Output - BMC Setup Information.
     """
-    BMCSETUP = Database().get_record(None, 'bmcsetup', f' WHERE name = "{bmcname}"')
-    if BMCSETUP:
+    bmcsetup = Database().get_record(None, 'bmcsetup', f' WHERE name = "{bmcname}"')
+    if bmcsetup:
         response = {'config': {'bmcsetup': {} }}
-        for BMC in BMCSETUP:
-            BMCNAME = BMC['name']
-            del BMC['name']
-            del BMC['id']
-            response['config']['bmcsetup'][BMCNAME] = BMC
+        for bmc in bmcsetup:
+            name = bmc['name']
+            del bmc['name']
+            del bmc['id']
+            response['config']['bmcsetup'][name] = bmc
         access_code = 200
     else:
         LOGGER.error('No BMC Setup is available.')
         response = {'message': 'No BMC Setup is available.'}
         access_code = 404
     return json.dumps(response), access_code
-
 
 
 @config_blueprint.route("/config/bmcsetup/<string:bmcname>", methods=['POST'])
@@ -1203,36 +1213,36 @@ def config_bmcsetup_post(bmcname=None):
     Process - Create or Update BMC Setup information.
     Output - Success or Failure.
     """
-    DATA = {}
-    CREATE, UPDATE = False, False
+    data = {}
+    create, update = False, False
     if Helper().check_json(request.data):
-        REQUEST = request.get_json(force=True)
+        request_data = request.get_json(force=True)
     else:
         response = {'message': 'Bad Request.'}
         access_code = 400
         return json.dumps(response), access_code
-    if REQUEST:
-        DATA = REQUEST['config']['bmcsetup'][bmcname]
-        DATA['name'] = bmcname
-        CHECKBMC = Database().get_record(None, 'bmcsetup', f' WHERE `name` = "{bmcname}";')
-        if CHECKBMC:
-            BMCID = CHECKBMC[0]['id']
-            if 'newbmcname' in REQUEST['config']['bmcsetup'][bmcname]:
-                DATA['name'] = DATA['newbmcname']
-                del DATA['newbmcname']
-            UPDATE = True
+    if request_data:
+        data = request_data['config']['bmcsetup'][bmcname]
+        data['name'] = bmcname
+        bmc = Database().get_record(None, 'bmcsetup', f' WHERE `name` = "{bmcname}";')
+        if bmc:
+            bmcid = bmc[0]['id']
+            if 'newbmcname' in request_data['config']['bmcsetup'][bmcname]:
+                data['name'] = data['newbmcname']
+                del data['newbmcname']
+            update = True
         else:
-            CREATE = True
-        BMCCOLUMNS = Database().get_columns('bmcsetup')
-        COLUMNCHECK = Helper().checkin_list(DATA, BMCCOLUMNS)
-        row = Helper().make_rows(DATA)
-        if COLUMNCHECK:
-            if CREATE:
+            create = True
+        bmccolumns = Database().get_columns('bmcsetup')
+        columncheck = Helper().checkin_list(data, bmccolumns)
+        row = Helper().make_rows(data)
+        if columncheck:
+            if create:
                 Database().insert('bmcsetup', row)
                 response = {'message': 'BMC Setup Created Successfully.'}
                 access_code = 201
-            if UPDATE:
-                where = [{"column": "id", "value": BMCID}]
+            if update:
+                where = [{"column": "id", "value": bmcid}]
                 Database().update('bmcsetup', row, where)
                 response = {'message': 'BMC Setup Updated Successfully.'}
                 access_code = 204
@@ -1245,8 +1255,7 @@ def config_bmcsetup_post(bmcname=None):
         access_code = 400
         return json.dumps(response), access_code
 
-    return json.dumps(DATA), access_code
-
+    return json.dumps(data), access_code
 
 
 @config_blueprint.route("/config/bmcsetup/<string:bmcname>/_clone", methods=['POST'])
@@ -1257,43 +1266,43 @@ def config_bmcsetup_clone(bmcname=None):
     Process - Fetch BMC Setup and Credentials.
     Output - BMC Name And Credentials.
     """
-    DATA = {}
-    CREATE = False
+    data = {}
+    create = False
     if Helper().check_json(request.data):
-        REQUEST = request.get_json(force=True)
+        request_data = request.get_json(force=True)
     else:
         response = {'message': 'Bad Request.'}
         access_code = 400
         return json.dumps(response), access_code
-    if REQUEST:
-        DATA = REQUEST['config']['bmcsetup'][bmcname]
-        if 'newbmcname' in DATA:
-            DATA['name'] = DATA['newbmcname']
-            NEWBMCNAME = DATA['newbmcname']
-            del DATA['newbmcname']
+    if request_data:
+        data = request_data['config']['bmcsetup'][bmcname]
+        if 'newbmcname' in data:
+            data['name'] = data['newbmcname']
+            newbmc = data['newbmcname']
+            del data['newbmcname']
         else:
             response = {'message': 'Kindly Provide the New BMC Name.'}
             access_code = 400
             return json.dumps(response), access_code
-        CHECKBMC = Database().get_record(None, 'bmcsetup', f' WHERE `name` = "{bmcname}";')
-        if CHECKBMC:
-            CHECKNEWBMC = Database().get_record(None, 'bmcsetup', f' WHERE `name` = "{NEWBMCNAME}";')
-            if CHECKNEWBMC:
-                response = {'message': f'{NEWBMCNAME} Already Present in Database.'}
+        checkbmc = Database().get_record(None, 'bmcsetup', f' WHERE `name` = "{bmcname}";')
+        if checkbmc:
+            checnewkbmc = Database().get_record(None, 'bmcsetup', f' WHERE `name` = "{newbmc}";')
+            if checnewkbmc:
+                response = {'message': f'{newbmc} Already Present in Database.'}
                 access_code = 400
                 return json.dumps(response), access_code
             else:
-                CREATE = True
+                create = True
         else:
             response = {'message': f'{bmcname} Not Present in Database.'}
             access_code = 400
             return json.dumps(response), access_code
-        BMCCOLUMNS = Database().get_columns('bmcsetup')
-        COLUMNCHECK = Helper().checkin_list(DATA, BMCCOLUMNS)
-        row = Helper().make_rows(DATA)
-        if COLUMNCHECK:
-            if CREATE:
-                result = Database().insert('bmcsetup', row)
+        bmccolumns = Database().get_columns('bmcsetup')
+        columncheck = Helper().checkin_list(data, bmccolumns)
+        row = Helper().make_rows(data)
+        if columncheck:
+            if create:
+                Database().insert('bmcsetup', row)
                 response = {'message': 'BMC Setup Created Successfully.'}
                 access_code = 201
         else:
@@ -1305,7 +1314,7 @@ def config_bmcsetup_clone(bmcname=None):
         access_code = 400
         return json.dumps(response), access_code
 
-    return json.dumps(DATA), access_code
+    return json.dumps(data), access_code
 
 
 @config_blueprint.route("/config/bmcsetup/<string:bmcname>/_delete", methods=['GET'])
@@ -1316,8 +1325,8 @@ def config_bmcsetup_delete(bmcname=None):
     Process - Delete The BMC Setup Credentials.
     Output - Success or Failure.
     """
-    CHECKBMC = Database().get_record(None, 'bmcsetup', f' WHERE `name` = "{bmcname}";')
-    if CHECKBMC:
+    bmc = Database().get_record(None, 'bmcsetup', f' WHERE `name` = "{bmcname}";')
+    if bmc:
         Database().delete_row('bmcsetup', [{"column": "name", "value": bmcname}])
         response = {'message': 'BMC Setup Removed Successfully.'}
         access_code = 204
@@ -1328,7 +1337,7 @@ def config_bmcsetup_delete(bmcname=None):
 
 
 
-######################################################## Switch configuration #############################################################
+############################# Switch configuration #############################
 
 @config_blueprint.route("/config/switch", methods=['GET'])
 @token_required
@@ -1338,19 +1347,20 @@ def config_switch():
     Process - Fetch The List Of Switches.
     Output - Switches.
     """
-    SWITCHES = Database().get_record(None, 'switch', None)
-    if SWITCHES:
+    switches = Database().get_record(None, 'switch', None)
+    if switches:
         response = {'config': {'switch': { } }}
-        for SWITCH in SWITCHES:
-            SWITCHNAME = SWITCH['name']
-            SWITCHIP = Database().get_record(None, 'ipaddress', f' WHERE id = {SWITCH["ipaddress"]}')
-            LOGGER.debug(f'With Switch {SWITCHNAME} attached IP ROWs {SWITCHIP}')
-            if SWITCHIP:
-                SWITCH['ipaddress'] = SWITCHIP[0]["ipaddress"]
-            del SWITCH['id']
-            del SWITCH['name']
-            response['config']['switch'][SWITCHNAME] = SWITCH
-        LOGGER.info("available Switches are {}.".format(SWITCHES))
+        for switch in switches:
+            switchname = switch['name']
+            where = f' WHERE id = {switch["ipaddress"]}'
+            switchip = Database().get_record(None, 'ipaddress', where)
+            LOGGER.debug(f'With Switch {switchname} attached IP ROWs {switchip}')
+            if switchip:
+                switch['ipaddress'] = switchip[0]["ipaddress"]
+            del switch['id']
+            del switch['name']
+            response['config']['switch'][switchname] = switch
+        LOGGER.info(f'available Switches are {switches}.')
         access_code = 200
     else:
         LOGGER.error('No Switch is available.')
@@ -1367,19 +1377,20 @@ def config_switch_get(switch=None):
     Process - Fetch The Switch Information.
     Output - Switch Details.
     """
-    SWITCHES = Database().get_record(None, 'switch', f' WHERE name = "{switch}"')
-    if SWITCHES:
+    switches = Database().get_record(None, 'switch', f' WHERE name = "{switch}"')
+    if switches:
         response = {'config': {'switch': { } }}
-        for SWITCH in SWITCHES:
-            SWITCHNAME = SWITCH['name']
-            SWITCHIP = Database().get_record(None, 'ipaddress', f' WHERE id = {SWITCH["ipaddress"]}')
-            LOGGER.debug(f'With Switch {SWITCHNAME} attached IP ROWs {SWITCHIP}')
-            if SWITCHIP:
-                SWITCH['ipaddress'] = SWITCHIP[0]["ipaddress"]
-            del SWITCH['id']
-            del SWITCH['name']
-            response['config']['switch'][SWITCHNAME] = SWITCH
-        LOGGER.info("available Switches are {}.".format(SWITCHES))
+        for switch in switches:
+            switchname = switch['name']
+            where = f' WHERE id = {switch["ipaddress"]}'
+            switchip = Database().get_record(None, 'ipaddress', where)
+            LOGGER.debug(f'With Switch {switchname} attached IP ROWs {switchip}')
+            if switchip:
+                switch['ipaddress'] = switchip[0]["ipaddress"]
+            del switch['id']
+            del switch['name']
+            response['config']['switch'][switchname] = switch
+        LOGGER.info(f'available Switches are {switches}.')
         access_code = 200
     else:
         LOGGER.error('No Switch is available.')
@@ -1396,39 +1407,39 @@ def config_switch_post(switch=None):
     Process - Fetch The Switch Information.
     Output - Switch Details.
     """
-    DATA = {}
-    CREATE, UPDATE = False, False
+    data = {}
+    create, update = False, False
     if Helper().check_json(request.data):
-        REQUEST = request.get_json(force=True)
+        request_data = request.get_json(force=True)
     else:
         response = {'message': 'Bad Request.'}
         access_code = 400
         return json.dumps(response), access_code
-    if REQUEST:
-        DATA = REQUEST['config']['switch'][switch]
-        DATA['name'] = switch
-        CHECKSWITCH = Database().get_record(None, 'switch', f' WHERE `name` = "{switch}";')
-        if CHECKSWITCH:
-            SWITCHID = CHECKSWITCH[0]['id']
-            if 'newswitchname' in REQUEST['config']['switch'][switch]:
-                DATA['name'] = DATA['newswitchname']
-                del DATA['newswitchname']
-            UPDATE = True
+    if request_data:
+        data = request_data['config']['switch'][switch]
+        data['name'] = switch
+        checkswitch = Database().get_record(None, 'switch', f' WHERE `name` = "{switch}";')
+        if checkswitch:
+            switchid = checkswitch[0]['id']
+            if 'newswitchname' in request_data['config']['switch'][switch]:
+                data['name'] = data['newswitchname']
+                del data['newswitchname']
+            update = True
         else:
-            CREATE = True
-        SWITCHCOLUMNS = Database().get_columns('switch')
-        COLUMNCHECK = Helper().checkin_list(DATA, SWITCHCOLUMNS)
-        DATA = Helper().check_ip_exist(DATA)
-        if DATA:
-            row = Helper().make_rows(DATA)
-            if COLUMNCHECK:
-                if CREATE:
-                    result = Database().insert('switch', row)
+            create = True
+        switchcolumns = Database().get_columns('switch')
+        columncheck = Helper().checkin_list(data, switchcolumns)
+        data = Helper().check_ip_exist(data)
+        if data:
+            row = Helper().make_rows(data)
+            if columncheck:
+                if create:
+                    Database().insert('switch', row)
                     response = {'message': 'Switch Created Successfully.'}
                     access_code = 201
-                if UPDATE:
-                    where = [{"column": "id", "value": SWITCHID}]
-                    result = Database().update('switch', row, where)
+                if update:
+                    where = [{"column": "id", "value": switchid}]
+                    Database().update('switch', row, where)
                     response = {'message': 'Switch Updated Successfully.'}
                     access_code = 204
             else:
@@ -1444,7 +1455,7 @@ def config_switch_post(switch=None):
         access_code = 400
         return json.dumps(response), access_code
 
-    return json.dumps(DATA), access_code
+    return json.dumps(data), access_code
 
 
 
@@ -1456,39 +1467,39 @@ def config_switch_clone(switch=None):
     Process - Delete The Switch.
     Output - Success or Failure.
     """
-    DATA = {}
-    CREATE = False
+    data = {}
+    create = False
     if Helper().check_json(request.data):
-        REQUEST = request.get_json(force=True)
+        request_data = request.get_json(force=True)
     else:
         response = {'message': 'Bad Request.'}
         access_code = 400
         return json.dumps(response), access_code
-    if REQUEST:
-        DATA = REQUEST['config']['switch'][switch]
-        if 'newswitchname' in DATA:
-            DATA['name'] = DATA['newswitchname']
-            NEWSWITCHNAME = DATA['newswitchname']
-            del DATA['newswitchname']
+    if request_data:
+        data = request_data['config']['switch'][switch]
+        if 'newswitchname' in data:
+            data['name'] = data['newswitchname']
+            newswitchname = data['newswitchname']
+            del data['newswitchname']
         else:
             response = {'message': 'Kindly Provide the New Switch Name.'}
             access_code = 400
             return json.dumps(response), access_code
-        CHECKSWITCH = Database().get_record(None, 'switch', f' WHERE `name` = "{NEWSWITCHNAME}";')
-        if CHECKSWITCH:
-            response = {'message': f'{NEWSWITCHNAME} Already Present in Database.'}
+        checkswitch = Database().get_record(None, 'switch', f' WHERE `name` = "{newswitchname}";')
+        if checkswitch:
+            response = {'message': f'{newswitchname} Already Present in Database.'}
             access_code = 400
             return json.dumps(response), access_code
         else:
-            CREATE = True
-        SWITCHCOLUMNS = Database().get_columns('switch')
-        COLUMNCHECK = Helper().checkin_list(DATA, SWITCHCOLUMNS)
-        DATA = Helper().check_ip_exist(DATA)
-        if DATA:
-            row = Helper().make_rows(DATA)
-            if COLUMNCHECK:
-                if CREATE:
-                    result = Database().insert('switch', row)
+            create = True
+        switchcolumns = Database().get_columns('switch')
+        columncheck = Helper().checkin_list(data, switchcolumns)
+        data = Helper().check_ip_exist(data)
+        if data:
+            row = Helper().make_rows(data)
+            if columncheck:
+                if create:
+                    Database().insert('switch', row)
                     response = {'message': 'Switch Created Successfully.'}
                     access_code = 201
             else:
@@ -1504,7 +1515,7 @@ def config_switch_clone(switch=None):
         access_code = 400
         return json.dumps(response), access_code
 
-    return json.dumps(DATA), access_code
+    return json.dumps(data), access_code
 
 
 
@@ -1516,9 +1527,9 @@ def config_switch_delete(switch=None):
     Process - Delete The Switch.
     Output - Success or Failure.
     """
-    CHECKSWITCH = Database().get_record(None, 'switch', f' WHERE `name` = "{switch}";')
-    if CHECKSWITCH:
-        Database().delete_row('ipaddress', [{"column": "id", "value": CHECKSWITCH[0]['ipaddress']}])
+    checkswitch = Database().get_record(None, 'switch', f' WHERE `name` = "{switch}";')
+    if checkswitch:
+        Database().delete_row('ipaddress', [{"column": "id", "value": checkswitch[0]['ipaddress']}])
         Database().delete_row('switch', [{"column": "name", "value": switch}])
         response = {'message': 'Switch Removed Successfully.'}
         access_code = 204
@@ -1528,7 +1539,7 @@ def config_switch_delete(switch=None):
     return json.dumps(response), access_code
 
 
-######################################################## Other Devices configuration #############################################################
+############################# Other Devices configuration #############################
 
 
 @config_blueprint.route("/config/otherdev", methods=['GET'])
@@ -1539,19 +1550,19 @@ def config_otherdev():
     Process - Fetch The List Of Devices.
     Output - Devices.
     """
-    DEVICES = Database().get_record(None, 'otherdevices', None)
-    if DEVICES:
+    devices = Database().get_record(None, 'otherdevices', None)
+    if devices:
         response = {'config': {'otherdev': { } }}
-        for DEVICE in DEVICES:
-            DEVICENAME = DEVICE['name']
-            DEVICEIP = Database().get_record(None, 'ipaddress', f' WHERE id = {DEVICE["ipaddress"]}')
-            LOGGER.debug(f'With Device {DEVICENAME} attached IP ROWs {DEVICEIP}')
-            if DEVICEIP:
-                DEVICE['ipaddress'] = DEVICEIP[0]["ipaddress"]
-            del DEVICE['id']
-            del DEVICE['name']
-            response['config']['otherdev'][DEVICENAME] = DEVICE
-        LOGGER.info("available Devices are {}.".format(DEVICES))
+        for device in devices:
+            devicename = device['name']
+            deviceip = Database().get_record(None, 'ipaddress', f' WHERE id = {device["ipaddress"]}')
+            LOGGER.debug(f'With Device {devicename} attached IP ROWs {deviceip}')
+            if deviceip:
+                device['ipaddress'] = deviceip[0]["ipaddress"]
+            del device['id']
+            del device['name']
+            response['config']['otherdev'][devicename] = device
+        LOGGER.info(f'available Devices are {devices}.')
         access_code = 200
     else:
         LOGGER.error('No Device is available.')
@@ -1568,19 +1579,19 @@ def config_otherdev_get(device=None):
     Process - Fetch The List Of Devices.
     Output - Devices.
     """
-    DEVICES = Database().get_record(None, 'otherdevices', f' WHERE name = "{device}"')
-    if DEVICES:
+    devices = Database().get_record(None, 'otherdevices', f' WHERE name = "{device}"')
+    if devices:
         response = {'config': {'otherdev': { } }}
-        for DEVICE in DEVICES:
-            DEVICENAME = DEVICE['name']
-            DEVICEIP = Database().get_record(None, 'ipaddress', f' WHERE id = {DEVICE["ipaddress"]}')
-            LOGGER.debug(f'With Device {DEVICENAME} attached IP ROWs {DEVICEIP}')
-            if DEVICEIP:
-                DEVICE['ipaddress'] = DEVICEIP[0]["ipaddress"]
-            del DEVICE['id']
-            del DEVICE['name']
-            response['config']['otherdev'][DEVICENAME] = DEVICE
-        LOGGER.info("available Devices are {}.".format(DEVICES))
+        for device in devices:
+            devicename = device['name']
+            deviceip = Database().get_record(None, 'ipaddress', f' WHERE id = {device["ipaddress"]}')
+            LOGGER.debug(f'With Device {devicename} attached IP ROWs {deviceip}')
+            if deviceip:
+                device['ipaddress'] = deviceip[0]["ipaddress"]
+            del device['id']
+            del device['name']
+            response['config']['otherdev'][devicename] = device
+        LOGGER.info(f'available Devices are {devices}.')
         access_code = 200
     else:
         LOGGER.error('No Device is available.')
@@ -1596,39 +1607,39 @@ def config_otherdev_post(device=None):
     Input - Device Name
     Output - Create or Update Device.
     """
-    DATA = {}
-    CREATE, UPDATE = False, False
+    data = {}
+    create, update = False, False
     if Helper().check_json(request.data):
-        REQUEST = request.get_json(force=True)
+        request_data = request.get_json(force=True)
     else:
         response = {'message': 'Bad Request.'}
         access_code = 400
         return json.dumps(response), access_code
-    if REQUEST:
-        DATA = REQUEST['config']['otherdev'][device]
-        DATA['name'] = device
-        CHECKDEVICE = Database().get_record(None, 'otherdevices', f' WHERE `name` = "{device}";')
-        if CHECKDEVICE:
-            DEVICEID = CHECKDEVICE[0]['id']
-            if 'newotherdevname' in REQUEST['config']['otherdev'][device]:
-                DATA['name'] = DATA['newotherdevname']
-                del DATA['newotherdevname']
-            UPDATE = True
+    if request_data:
+        data = request_data['config']['otherdev'][device]
+        data['name'] = device
+        checkdevice = Database().get_record(None, 'otherdevices', f' WHERE `name` = "{device}";')
+        if checkdevice:
+            deviceid = checkdevice[0]['id']
+            if 'newotherdevname' in request_data['config']['otherdev'][device]:
+                data['name'] = data['newotherdevname']
+                del data['newotherdevname']
+            update = True
         else:
-            CREATE = True
-        DEVICECOLUMNS = Database().get_columns('otherdevices')
-        COLUMNCHECK = Helper().checkin_list(DATA, DEVICECOLUMNS)
-        DATA = Helper().check_ip_exist(DATA)
-        if DATA:
-            row = Helper().make_rows(DATA)
-            if COLUMNCHECK:
-                if CREATE:
-                    result = Database().insert('otherdevices', row)
+            create = True
+        devicecolumns = Database().get_columns('otherdevices')
+        columncheck = Helper().checkin_list(data, devicecolumns)
+        data = Helper().check_ip_exist(data)
+        if data:
+            row = Helper().make_rows(data)
+            if columncheck:
+                if create:
+                    Database().insert('otherdevices', row)
                     response = {'message': 'Device Created Successfully.'}
                     access_code = 201
-                if UPDATE:
-                    where = [{"column": "id", "value": DEVICEID}]
-                    result = Database().update('otherdevices', row, where)
+                if update:
+                    where = [{"column": "id", "value": deviceid}]
+                    Database().update('otherdevices', row, where)
                     response = {'message': 'Device Updated Successfully.'}
                     access_code = 204
             else:
@@ -1644,7 +1655,7 @@ def config_otherdev_post(device=None):
         access_code = 400
         return json.dumps(response), access_code
 
-    return json.dumps(DATA), access_code
+    return json.dumps(data), access_code
 
 
 
@@ -1655,39 +1666,39 @@ def config_otherdev_clone(device=None):
     Input - Device ID or Name
     Output - Clone The Device.
     """
-    DATA = {}
-    CREATE = False
+    data = {}
+    create = False
     if Helper().check_json(request.data):
-        REQUEST = request.get_json(force=True)
+        request_data = request.get_json(force=True)
     else:
         response = {'message': 'Bad Request.'}
         access_code = 400
         return json.dumps(response), access_code
-    if REQUEST:
-        DATA = REQUEST['config']['otherdev'][device]
-        if 'newotherdevname' in DATA:
-            DATA['name'] = DATA['newotherdevname']
-            NEWDEVICENAME = DATA['newotherdevname']
-            del DATA['newotherdevname']
+    if request_data:
+        data = request_data['config']['otherdev'][device]
+        if 'newotherdevname' in data:
+            data['name'] = data['newotherdevname']
+            newdevicename = data['newotherdevname']
+            del data['newotherdevname']
         else:
             response = {'message': 'Kindly Provide the New Device Name.'}
             access_code = 400
             return json.dumps(response), access_code
-        CHECKDEVICE = Database().get_record(None, 'otherdevices', f' WHERE `name` = "{NEWDEVICENAME}";')
-        if CHECKDEVICE:
-            response = {'message': f'{NEWDEVICENAME} Already Present in Database.'}
+        checkdevice = Database().get_record(None, 'otherdevices', f' WHERE `name` = "{newdevicename}";')
+        if checkdevice:
+            response = {'message': f'{newdevicename} Already Present in Database.'}
             access_code = 400
             return json.dumps(response), access_code
         else:
-            CREATE = True
-        DEVICECOLUMNS = Database().get_columns('otherdevices')
-        COLUMNCHECK = Helper().checkin_list(DATA, DEVICECOLUMNS)
-        DATA = Helper().check_ip_exist(DATA)
-        if DATA:
-            row = Helper().make_rows(DATA)
-            if COLUMNCHECK:
-                if CREATE:
-                    result = Database().insert('otherdevices', row)
+            create = True
+        devicecolumns = Database().get_columns('otherdevices')
+        columncheck = Helper().checkin_list(data, devicecolumns)
+        data = Helper().check_ip_exist(data)
+        if data:
+            row = Helper().make_rows(data)
+            if columncheck:
+                if create:
+                    Database().insert('otherdevices', row)
                     response = {'message': 'Device Cloned Successfully.'}
                     access_code = 201
             else:
@@ -1703,7 +1714,7 @@ def config_otherdev_clone(device=None):
         access_code = 400
         return json.dumps(response), access_code
 
-    return json.dumps(DATA), access_code
+    return json.dumps(data), access_code
 
 
 
@@ -1715,9 +1726,9 @@ def config_otherdev_delete(device=None):
     Process - Delete The Device.
     Output - Success or Failure.
     """
-    CHECKDEVICE = Database().get_record(None, 'otherdevices', f' WHERE `name` = "{device}";')
-    if CHECKDEVICE:
-        Database().delete_row('ipaddress', [{"column": "id", "value": CHECKDEVICE[0]['ipaddress']}])
+    checkdevice = Database().get_record(None, 'otherdevices', f' WHERE `name` = "{device}";')
+    if checkdevice:
+        Database().delete_row('ipaddress', [{"column": "id", "value": checkdevice[0]['ipaddress']}])
         Database().delete_row('otherdevices', [{"column": "name", "value": device}])
         response = {'message': 'Device Removed Successfully.'}
         access_code = 204
@@ -1727,7 +1738,7 @@ def config_otherdev_delete(device=None):
     return json.dumps(response), access_code
 
 
-######################################################## Network configuration #############################################################
+############################# Network configuration #############################
 
 
 @config_blueprint.route("/config/network", methods=['GET'])
@@ -1738,20 +1749,20 @@ def config_network():
     Process - Fetch The Network Information.
     Output - Network Information.
     """
-    NETWORKS = Database().get_record(None, 'network', None)
-    if NETWORKS:
+    networks = Database().get_record(None, 'network', None)
+    if networks:
         response = {'config': {'network': {} }}
-        for NWK in NETWORKS:
-            NWK['network'] = Helper().get_network(NWK['network'], NWK['subnet'])
-            del NWK['id']
-            del NWK['subnet']
-            if not NWK['dhcp']:
-                del NWK['dhcp_range_begin']
-                del NWK['dhcp_range_end']
-                NWK['dhcp'] = False
+        for nwk in networks:
+            nwk['network'] = Helper().get_network(nwk['network'], nwk['subnet'])
+            del nwk['id']
+            del nwk['subnet']
+            if not nwk['dhcp']:
+                del nwk['dhcp_range_begin']
+                del nwk['dhcp_range_end']
+                nwk['dhcp'] = False
             else:
-                NWK['dhcp'] = True
-            response['config']['network'][NWK['name']] = NWK
+                nwk['dhcp'] = True
+            response['config']['network'][nwk['name']] = nwk
         access_code = 200
     else:
         LOGGER.error('No Networks is available.')
@@ -1768,20 +1779,20 @@ def config_network_get(name=None):
     Process - Fetch The Network Information.
     Output - Network Information.
     """
-    NETWORKS = Database().get_record(None, 'network', f' WHERE `name` = "{name}";')
-    if NETWORKS:
+    networks = Database().get_record(None, 'network', f' WHERE `name` = "{name}";')
+    if networks:
         response = {'config': {'network': {} }}
-        for NWK in NETWORKS:
-            NWK['network'] = Helper().get_network(NWK['network'], NWK['subnet'])
-            del NWK['id']
-            del NWK['subnet']
-            if not NWK['dhcp']:
-                del NWK['dhcp_range_begin']
-                del NWK['dhcp_range_end']
-                NWK['dhcp'] = False
+        for nwk in networks:
+            nwk['network'] = Helper().get_network(nwk['network'], nwk['subnet'])
+            del nwk['id']
+            del nwk['subnet']
+            if not nwk['dhcp']:
+                del nwk['dhcp_range_begin']
+                del nwk['dhcp_range_end']
+                nwk['dhcp'] = False
             else:
-                NWK['dhcp'] = True
-            response['config']['network'][NWK['name']] = NWK
+                nwk['dhcp'] = True
+            response['config']['network'][nwk['name']] = nwk
         access_code = 200
     else:
         LOGGER.error(f'Network {name} is Not available.')
@@ -1798,97 +1809,97 @@ def config_network_post(name=None):
     Process - Create or Update Network information.
     Output - Success or Failure.
     """
-    DATA = {}
-    CREATE, UPDATE = False, False
+    data = {}
+    create, update = False, False
     if Helper().check_json(request.data):
-        REQUEST = request.get_json(force=True)
+        request_data = request.get_json(force=True)
     else:
         response = {'message': 'Bad Request.'}
         access_code = 400
         return json.dumps(response), access_code
-    if REQUEST:
-        DATA = REQUEST['config']['network'][name]
-        DATA['name'] = name
-        CHECKNETWORK = Database().get_record(None, 'network', f' WHERE `name` = "{name}";')
-        if CHECKNETWORK:
-            NETWORKID = CHECKNETWORK[0]['id']
-            if 'newnetname' in REQUEST['config']['network'][name]:
-                NEWNETWORKNAME = REQUEST['config']['network'][name]['newnetname']
-                CHECKNEWNETWORK = Database().get_record(None, 'network', f' WHERE `name` = "{NEWNETWORKNAME}";')
-                if CHECKNEWNETWORK:
-                    response = {'message': f'{NEWNETWORKNAME} Already Present in Database, Choose Another Name Or Delete {NEWNETWORKNAME}.'}
+    if request_data:
+        data = request_data['config']['network'][name]
+        data['name'] = name
+        checknetwork = Database().get_record(None, 'network', f' WHERE `name` = "{name}";')
+        if checknetwork:
+            networkid = checknetwork[0]['id']
+            if 'newnetname' in request_data['config']['network'][name]:
+                newnetworkname = request_data['config']['network'][name]['newnetname']
+                checknewnetwork = Database().get_record(None, 'network', f' WHERE `name` = "{newnetworkname}";')
+                if checknewnetwork:
+                    response = {'message': f'{newnetworkname} Already Present in Database, Choose Another Name Or Delete {newnetworkname}.'}
                     access_code = 400
                     return json.dumps(response), access_code
                 else:
-                    DATA['name'] = DATA['newnetname']
-                    del DATA['newnetname']
-            UPDATE = True
+                    data['name'] = data['newnetname']
+                    del data['newnetname']
+            update = True
         else:
-            CREATE = True
-        if 'network' in DATA:
-            NWKIP = Helper().check_ip(DATA['network'])
-            if NWKIP:
-                NWKDETAILS = Helper().get_network_details(DATA['network'])
-                DATA['network'] = NWKIP
-                DATA['subnet'] = NWKDETAILS['subnet']
+            create = True
+        if 'network' in data:
+            nwkip = Helper().check_ip(data['network'])
+            if nwkip:
+                nwkdetails = Helper().get_network_details(data['network'])
+                data['network'] = nwkip
+                data['subnet'] = nwkdetails['subnet']
             else:
-                response = {'message': f'Incorrect Network IP: {DATA["network"]}.'}
+                response = {'message': f'Incorrect Network IP: {data["network"]}.'}
                 access_code = 400
                 return json.dumps(response), access_code
-        if 'gateway' in DATA:
-            GWDETAILS = Helper().check_ip_range(DATA['gateway'], DATA['network']+'/'+DATA['subnet'])
-            if not GWDETAILS:
-                response = {'message': f'Incorrect Gateway IP: {DATA["gateway"]}.'}
+        if 'gateway' in data:
+            gwdetails = Helper().check_ip_range(data['gateway'], data['network']+'/'+data['subnet'])
+            if not gwdetails:
+                response = {'message': f'Incorrect Gateway IP: {data["gateway"]}.'}
                 access_code = 400
                 return json.dumps(response), access_code
-        if 'ns_ip' in DATA:
-            NSIPDETAILS = Helper().check_ip_range(DATA['ns_ip'], DATA['network']+'/'+DATA['subnet'])
-            if not NSIPDETAILS:
-                response = {'message': f'Incorrect NS IP: {DATA["ns_ip"]}.'}
+        if 'ns_ip' in data:
+            nsipdetails = Helper().check_ip_range(data['ns_ip'], data['network']+'/'+data['subnet'])
+            if not nsipdetails:
+                response = {'message': f'Incorrect NS IP: {data["ns_ip"]}.'}
                 access_code = 400
                 return json.dumps(response), access_code
-        if 'ntp_server' in DATA:
-            NTPDETAILS = Helper().check_ip_range(DATA['ntp_server'], DATA['network']+'/'+DATA['subnet'])
-            if not NTPDETAILS:
-                response = {'message': f'Incorrect NTP Server IP: {DATA["ntp_server"]}.'}
+        if 'ntp_server' in data:
+            ntpdetails = Helper().check_ip_range(data['ntp_server'], data['network']+'/'+data['subnet'])
+            if not ntpdetails:
+                response = {'message': f'Incorrect NTP Server IP: {data["ntp_server"]}.'}
                 access_code = 400
                 return json.dumps(response), access_code
-        if 'dhcp' in DATA:
-            if 'dhcp_range_begin' in DATA:
-                DHCPSTARTDETAILS = Helper().check_ip_range(DATA['dhcp_range_begin'], DATA['network']+'/'+DATA['subnet'])
-                if not DHCPSTARTDETAILS:
-                    response = {'message': f'Incorrect DHCP Start Range IP: {DATA["dhcp_range_begin"]}.'}
+        if 'dhcp' in data:
+            if 'dhcp_range_begin' in data:
+                dhcpstartdetails = Helper().check_ip_range(data['dhcp_range_begin'], data['network']+'/'+data['subnet'])
+                if not dhcpstartdetails:
+                    response = {'message': f'Incorrect DHCP Start Range IP: {data["dhcp_range_begin"]}.'}
                     access_code = 400
                     return json.dumps(response), access_code
             else:
-                response = {'message': f'DHCP Start Range is a Required Parameter.'}
+                response = {'message': 'DHCP Start Range is a Required Parameter.'}
                 access_code = 400
                 return json.dumps(response), access_code
-            if 'dhcp_range_end' in DATA:
-                DHCPENDDETAILS = Helper().check_ip_range(DATA['dhcp_range_end'], DATA['network']+'/'+DATA['subnet'])
-                if not DHCPENDDETAILS:
-                    response = {'message': f'Incorrect DHCP End Range IP: {DATA["dhcp_range_end"]}.'}
+            if 'dhcp_range_end' in data:
+                dhcpenddetails = Helper().check_ip_range(data['dhcp_range_end'], data['network']+'/'+data['subnet'])
+                if not dhcpenddetails:
+                    response = {'message': f'Incorrect DHCP End Range IP: {data["dhcp_range_end"]}.'}
                     access_code = 400
                     return json.dumps(response), access_code
             else:
-                response = {'message': f'DHCP End Range is a Required Parameter.'}
+                response = {'message': 'DHCP End Range is a Required Parameter.'}
                 access_code = 400
                 return json.dumps(response), access_code
         else:
-            DATA['dhcp'] = False
-            DATA['dhcp_range_begin'] = ""
-            DATA['dhcp_range_end'] = ""
-        NETWORKCOLUMNS = Database().get_columns('network')
-        COLUMNCHECK = Helper().checkin_list(DATA, NETWORKCOLUMNS)
-        row = Helper().make_rows(DATA)
-        if COLUMNCHECK:
-            if CREATE:
-                result = Database().insert('network', row)
+            data['dhcp'] = False
+            data['dhcp_range_begin'] = ""
+            data['dhcp_range_end'] = ""
+        networkcolumns = Database().get_columns('network')
+        columncheck = Helper().checkin_list(data, networkcolumns)
+        row = Helper().make_rows(data)
+        if columncheck:
+            if create:
+                Database().insert('network', row)
                 response = {'message': 'Network Created Successfully.'}
                 access_code = 201
-            if UPDATE:
-                where = [{"column": "id", "value": NETWORKID}]
-                result = Database().update('network', row, where)
+            if update:
+                where = [{"column": "id", "value": networkid}]
+                Database().update('network', row, where)
                 response = {'message': 'Network Updated Successfully.'}
                 access_code = 204
         else:
@@ -1900,7 +1911,7 @@ def config_network_post(name=None):
         access_code = 400
         return json.dumps(response), access_code
 
-    return json.dumps(DATA), access_code
+    return json.dumps(data), access_code
 
 
 @config_blueprint.route("/config/network/<string:name>/_clone", methods=['POST'])
@@ -1911,94 +1922,93 @@ def config_network_clone(name=None):
     Process - Create or Update Network information.
     Output - Success or Failure.
     """
-    DATA = {}
-    CREATE, UPDATE = False, False
+    data = {}
+    create = False
     if Helper().check_json(request.data):
-        REQUEST = request.get_json(force=True)
+        request_data = request.get_json(force=True)
     else:
         response = {'message': 'Bad Request.'}
         access_code = 400
         return json.dumps(response), access_code
-    if REQUEST:
-        DATA = REQUEST['config']['network'][name]
-        DATA['name'] = name
-        CHECKNETWORK = Database().get_record(None, 'network', f' WHERE `name` = "{name}";')
-        if CHECKNETWORK:
-            NETWORKID = CHECKNETWORK[0]['id']
-            if 'newnetname' in REQUEST['config']['network'][name]:
-                NEWNETWORKNAME = REQUEST['config']['network'][name]['newnetname']
-                CHECKNEWNETWORK = Database().get_record(None, 'network', f' WHERE `name` = "{NEWNETWORKNAME}";')
-                if CHECKNEWNETWORK:
-                    response = {'message': f'{NEWNETWORKNAME} Already Present in Database, Choose Another Name Or Delete {NEWNETWORKNAME}.'}
+    if request_data:
+        data = request_data['config']['network'][name]
+        data['name'] = name
+        checknetwork = Database().get_record(None, 'network', f' WHERE `name` = "{name}";')
+        if checknetwork:
+            if 'newnetname' in request_data['config']['network'][name]:
+                newnetworkname = request_data['config']['network'][name]['newnetname']
+                checknewnetwork = Database().get_record(None, 'network', f' WHERE `name` = "{newnetworkname}";')
+                if checknewnetwork:
+                    response = {'message': f'{newnetworkname} Already Present in Database, Choose Another Name Or Delete {newnetworkname}.'}
                     access_code = 400
                     return json.dumps(response), access_code
                 else:
-                    DATA['name'] = DATA['newnetname']
-                    del DATA['newnetname']
-            CREATE = True
+                    data['name'] = data['newnetname']
+                    del data['newnetname']
+            create = True
         else:
             response = {'message': f'Bad Request; Network {name} is Not Present in Database.'}
             access_code = 400
             return json.dumps(response), access_code
-        if 'network' in DATA:
-            NWKIP = Helper().check_ip(DATA['network'])
-            if NWKIP:
-                NWKDETAILS = Helper().get_network_details(DATA['network'])
-                DATA['network'] = NWKIP
-                DATA['subnet'] = NWKDETAILS['subnet']
+        if 'network' in data:
+            nwkip = Helper().check_ip(data['network'])
+            if nwkip:
+                nwkdetails = Helper().get_network_details(data['network'])
+                data['network'] = nwkip
+                data['subnet'] = nwkdetails['subnet']
             else:
-                response = {'message': f'Incorrect Network IP: {DATA["network"]}.'}
+                response = {'message': f'Incorrect Network IP: {data["network"]}.'}
                 access_code = 400
                 return json.dumps(response), access_code
-        if 'gateway' in DATA:
-            GWDETAILS = Helper().check_ip_range(DATA['gateway'], DATA['network']+'/'+DATA['subnet'])
-            if not GWDETAILS:
-                response = {'message': f'Incorrect Gateway IP: {DATA["gateway"]}.'}
+        if 'gateway' in data:
+            gwdetails = Helper().check_ip_range(data['gateway'], data['network']+'/'+data['subnet'])
+            if not gwdetails:
+                response = {'message': f'Incorrect Gateway IP: {data["gateway"]}.'}
                 access_code = 400
                 return json.dumps(response), access_code
-        if 'ns_ip' in DATA:
-            NSIPDETAILS = Helper().check_ip_range(DATA['ns_ip'], DATA['network']+'/'+DATA['subnet'])
-            if not NSIPDETAILS:
-                response = {'message': f'Incorrect NS IP: {DATA["ns_ip"]}.'}
+        if 'ns_ip' in data:
+            nsipdetails = Helper().check_ip_range(data['ns_ip'], data['network']+'/'+data['subnet'])
+            if not nsipdetails:
+                response = {'message': f'Incorrect NS IP: {data["ns_ip"]}.'}
                 access_code = 400
                 return json.dumps(response), access_code
-        if 'ntp_server' in DATA:
-            NTPDETAILS = Helper().check_ip_range(DATA['ntp_server'], DATA['network']+'/'+DATA['subnet'])
-            if not NTPDETAILS:
-                response = {'message': f'Incorrect NTP Server IP: {DATA["ntp_server"]}.'}
+        if 'ntp_server' in data:
+            ntpdetails = Helper().check_ip_range(data['ntp_server'], data['network']+'/'+data['subnet'])
+            if not ntpdetails:
+                response = {'message': f'Incorrect NTP Server IP: {data["ntp_server"]}.'}
                 access_code = 400
                 return json.dumps(response), access_code
-        if 'dhcp' in DATA:
-            if 'dhcp_range_begin' in DATA:
-                DHCPSTARTDETAILS = Helper().check_ip_range(DATA['dhcp_range_begin'], DATA['network']+'/'+DATA['subnet'])
-                if not DHCPSTARTDETAILS:
-                    response = {'message': f'Incorrect DHCP Start Range IP: {DATA["dhcp_range_begin"]}.'}
+        if 'dhcp' in data:
+            if 'dhcp_range_begin' in data:
+                dhcpstartdetails = Helper().check_ip_range(data['dhcp_range_begin'], data['network']+'/'+data['subnet'])
+                if not dhcpstartdetails:
+                    response = {'message': f'Incorrect DHCP Start Range IP: {data["dhcp_range_begin"]}.'}
                     access_code = 400
                     return json.dumps(response), access_code
             else:
-                response = {'message': f'DHCP Start Range is a Required Parameter.'}
+                response = {'message': 'DHCP Start Range is a Required Parameter.'}
                 access_code = 400
                 return json.dumps(response), access_code
-            if 'dhcp_range_end' in DATA:
-                DHCPENDDETAILS = Helper().check_ip_range(DATA['dhcp_range_end'], DATA['network']+'/'+DATA['subnet'])
-                if not DHCPENDDETAILS:
-                    response = {'message': f'Incorrect DHCP End Range IP: {DATA["dhcp_range_end"]}.'}
+            if 'dhcp_range_end' in data:
+                dhcpenddetails = Helper().check_ip_range(data['dhcp_range_end'], data['network']+'/'+data['subnet'])
+                if not dhcpenddetails:
+                    response = {'message': f'Incorrect DHCP End Range IP: {data["dhcp_range_end"]}.'}
                     access_code = 400
                     return json.dumps(response), access_code
             else:
-                response = {'message': f'DHCP End Range is a Required Parameter.'}
+                response = {'message': 'DHCP End Range is a Required Parameter.'}
                 access_code = 400
                 return json.dumps(response), access_code
         else:
-            DATA['dhcp'] = False
-            DATA['dhcp_range_begin'] = ""
-            DATA['dhcp_range_end'] = ""
-        NETWORKCOLUMNS = Database().get_columns('network')
-        COLUMNCHECK = Helper().checkin_list(DATA, NETWORKCOLUMNS)
-        row = Helper().make_rows(DATA)
-        if COLUMNCHECK:
-            if CREATE:
-                result = Database().insert('network', row)
+            data['dhcp'] = False
+            data['dhcp_range_begin'] = ""
+            data['dhcp_range_end'] = ""
+        networkcolumns = Database().get_columns('network')
+        columncheck = Helper().checkin_list(data, networkcolumns)
+        row = Helper().make_rows(data)
+        if columncheck:
+            if create:
+                Database().insert('network', row)
                 response = {'message': 'Network Created Successfully.'}
                 access_code = 201
         else:
@@ -2010,7 +2020,7 @@ def config_network_clone(name=None):
         access_code = 400
         return json.dumps(response), access_code
 
-    return json.dumps(DATA), access_code
+    return json.dumps(data), access_code
 
 
 @config_blueprint.route("/config/network/<string:name>/_delete", methods=['GET'])
@@ -2021,8 +2031,8 @@ def config_network_delete(name=None):
     Process - Delete The Network.
     Output - Success or Failure.
     """
-    CHECKNWK = Database().get_record(None, 'network', f' WHERE `name` = "{name}";')
-    if CHECKNWK:
+    network = Database().get_record(None, 'network', f' WHERE `name` = "{name}";')
+    if network:
         Database().delete_row('network', [{"column": "name", "value": name}])
         response = {'message': 'Network Removed Successfully.'}
         access_code = 204
@@ -2040,12 +2050,12 @@ def config_network_ip(name=None, ipaddr=None):
     Process - Delete The Network.
     Output - Success or Failure.
     """
-    CHECKNWK = Database().get_record(None, 'network', f' WHERE `name` = "{name}";')
-    if CHECKNWK:
-        IPDETAILS = Helper().check_ip_range(ipaddr, CHECKNWK[0]['network']+'/'+CHECKNWK[0]['subnet'])
-        if IPDETAILS:
-            CHECKIP = Database().get_record(None, 'ipaddress', f' WHERE ipaddress = "{ipaddr}"; ')
-            if CHECKIP:
+    network = Database().get_record(None, 'network', f' WHERE `name` = "{name}";')
+    if network:
+        ipdetails = Helper().check_ip_range(ipaddr, network[0]['network']+'/'+network[0]['subnet'])
+        if ipdetails:
+            checkip = Database().get_record(None, 'ipaddress', f' WHERE ipaddress = "{ipaddr}"; ')
+            if checkip:
                 response = {'config': {'network': {ipaddr: {'status': 'taken'} } } }
                 access_code = 200
             else:
@@ -2079,7 +2089,7 @@ def config_network_nextip(name=None):
     return json.dumps(response), access_code
 
 
-######################################################## Secrets configuration #############################################################
+############################# Secrets configuration #############################
 
 
 @config_blueprint.route("/config/secrets", methods=['GET'])
@@ -2089,35 +2099,35 @@ def config_secrets_get():
     Input - None
     Output - Return the List Of All Secrets.
     """
-    NODESECRETS = Database().get_record(None, 'nodesecrets', None)
-    GROUPSECRETS = Database().get_record(None, 'groupsecrets', None)
-    if NODESECRETS or GROUPSECRETS:
+    nodesecrets = Database().get_record(None, 'nodesecrets', None)
+    groupsecrets = Database().get_record(None, 'groupsecrets', None)
+    if nodesecrets or groupsecrets:
         response = {'config': {'secrets': {} }}
         access_code = 200
     else:
         LOGGER.error('Secrets are not available.')
         response = {'message': 'Secrets are not available.'}
         access_code = 404
-    if NODESECRETS:
+    if nodesecrets:
         response['config']['secrets']['node'] = {}
-        for NODE in NODESECRETS:
-            NODENAME = Database().getname_byid('node', NODE['nodeid'])
-            if NODENAME not in response['config']['secrets']['node']:
-                response['config']['secrets']['node'][NODENAME] = []
-            del NODE['nodeid']
-            del NODE['id']
-            NODE['content'] = Helper().decrypt_string(NODE['content'])
-            response['config']['secrets']['node'][NODENAME].append(NODE)
-    if GROUPSECRETS:
+        for node in nodesecrets:
+            nodename = Database().getname_byid('node', node['nodeid'])
+            if nodename not in response['config']['secrets']['node']:
+                response['config']['secrets']['node'][nodename] = []
+            del node['nodeid']
+            del node['id']
+            node['content'] = Helper().decrypt_string(node['content'])
+            response['config']['secrets']['node'][nodename].append(node)
+    if groupsecrets:
         response['config']['secrets']['group'] = {}
-        for GROUP in GROUPSECRETS:
-            GROUPNAME = Database().getname_byid('group', GROUP['groupid'])
-            if GROUPNAME not in response['config']['secrets']['group']:
-                response['config']['secrets']['group'][GROUPNAME] = []
-            del GROUP['groupid']
-            del GROUP['id']
-            GROUP['content'] = Helper().decrypt_string(GROUP['content'])
-            response['config']['secrets']['group'][GROUPNAME].append(GROUP)
+        for group in groupsecrets:
+            groupname = Database().getname_byid('group', group['groupid'])
+            if groupname not in response['config']['secrets']['group']:
+                response['config']['secrets']['group'][groupname] = []
+            del group['groupid']
+            del group['id']
+            group['content'] = Helper().decrypt_string(group['content'])
+            response['config']['secrets']['group'][groupname].append(group)
     return json.dumps(response), access_code
 
 
@@ -2128,39 +2138,39 @@ def config_get_secrets_node(name=None):
     Input - Node Name
     Output - Return the Node Secrets And Group Secrets for the Node.
     """
-    NODE = Database().get_record(None, 'node', f' WHERE name = "{name}"')
-    if NODE:
-        NODEID  = NODE[0]['id']
-        GROUPID  = NODE[0]['groupid']
-        NODESECRETS = Database().get_record(None, 'nodesecrets', f' WHERE nodeid = "{NODEID}"')
-        GROUPSECRETS = Database().get_record(None, 'groupsecrets', f' WHERE groupid = "{GROUPID}"')
-        if NODESECRETS or GROUPSECRETS:
+    node = Database().get_record(None, 'node', f' WHERE name = "{name}"')
+    if node:
+        nodeid  = node[0]['id']
+        groupid  = node[0]['groupid']
+        nodesecrets = Database().get_record(None, 'nodesecrets', f' WHERE nodeid = "{nodeid}"')
+        groupsecrets = Database().get_record(None, 'groupsecrets', f' WHERE groupid = "{groupid}"')
+        if nodesecrets or groupsecrets:
             response = {'config': {'secrets': {} }}
             access_code = 200
         else:
             LOGGER.error(f'Secrets are not available for Node {name}.')
             response = {'message': f'Secrets are not available for Node {name}.'}
             access_code = 404
-        if NODESECRETS:
+        if nodesecrets:
             response['config']['secrets']['node'] = {}
-            for NODE in NODESECRETS:
-                NODENAME = Database().getname_byid('node', NODE['nodeid'])
-                if NODENAME not in response['config']['secrets']['node']:
-                    response['config']['secrets']['node'][NODENAME] = []
-                del NODE['nodeid']
-                del NODE['id']
-                NODE['content'] = Helper().decrypt_string(NODE['content'])
-                response['config']['secrets']['node'][NODENAME].append(NODE)
-        if GROUPSECRETS:
+            for node in nodesecrets:
+                nodename = Database().getname_byid('node', node['nodeid'])
+                if nodename not in response['config']['secrets']['node']:
+                    response['config']['secrets']['node'][nodename] = []
+                del node['nodeid']
+                del node['id']
+                node['content'] = Helper().decrypt_string(node['content'])
+                response['config']['secrets']['node'][nodename].append(node)
+        if groupsecrets:
             response['config']['secrets']['group'] = {}
-            for GROUP in GROUPSECRETS:
-                GROUPNAME = Database().getname_byid('group', GROUP['groupid'])
-                if GROUPNAME not in response['config']['secrets']['group']:
-                    response['config']['secrets']['group'][GROUPNAME] = []
-                del GROUP['groupid']
-                del GROUP['id']
-                GROUP['content'] = Helper().decrypt_string(GROUP['content'])
-                response['config']['secrets']['group'][GROUPNAME].append(GROUP)
+            for group in groupsecrets:
+                groupname = Database().getname_byid('group', group['groupid'])
+                if groupname not in response['config']['secrets']['group']:
+                    response['config']['secrets']['group'][groupname] = []
+                del group['groupid']
+                del group['id']
+                group['content'] = Helper().decrypt_string(group['content'])
+                response['config']['secrets']['group'][groupname].append(group)
     else:
         LOGGER.error(f'Node {name} is not available.')
         response = {'message': f'Node {name} is not available.'}
@@ -2176,39 +2186,39 @@ def config_post_secrets_node(name=None):
     Process - Create Or Update Node Secrets.
     Output - None.
     """
-    DATA,NODESECRETS = {}, []
-    CREATE, UPDATE = False, False
+    data, = {}
+    create, update = False, False
     if Helper().check_json(request.data):
-        REQUEST = request.get_json(force=True)
+        request_data = request.get_json(force=True)
     else:
         response = {'message': 'Bad Request.'}
         access_code = 400
         return json.dumps(response), access_code
-    if REQUEST:
-        DATA = REQUEST['config']['secrets']['node'][name]
-        NODE = Database().get_record(None, 'node', f' WHERE name = "{name}"')
-        if NODE:
-            NODEID = NODE[0]['id']
-            if DATA:
-                for SECRET in DATA:
-                    SECRETNAME = SECRET['name']
-                    SECRETDATA = Database().get_record(None, 'nodesecrets', f' WHERE nodeid = "{NODEID}" AND name = "{SECRETNAME}";')
-                    if SECRETDATA:
-                        NODESECRETSCOLUMNS = Database().get_columns('nodesecrets')
-                        COLUMNCHECK = Helper().checkin_list(SECRETDATA[0], NODESECRETSCOLUMNS)
-                        if COLUMNCHECK:
-                            SECRETID = SECRETDATA[0]['id']
-                            SECRET['content'] = Helper().encrypt_string(SECRET['content'])
-                            where = [{"column": "id", "value": SECRETID}, {"column": "nodeid", "value": NODEID}, {"column": "name", "value": SECRETNAME}]
-                            row = Helper().make_rows(SECRET)
+    if request_data:
+        data = request_data['config']['secrets']['node'][name]
+        node = Database().get_record(None, 'node', f' WHERE name = "{name}"')
+        if node:
+            nodeid = node[0]['id']
+            if data:
+                for secret in data:
+                    secretname = secret['name']
+                    secretdata = Database().get_record(None, 'nodesecrets', f' WHERE nodeid = "{nodeid}" AND name = "{secretname}";')
+                    if secretdata:
+                        nodesecretcolumns = Database().get_columns('nodesecrets')
+                        columncheck = Helper().checkin_list(secretdata[0], nodesecretcolumns)
+                        if columncheck:
+                            secretid = secretdata[0]['id']
+                            secret['content'] = Helper().encrypt_string(secret['content'])
+                            where = [{"column": "id", "value": secretid}, {"column": "nodeid", "value": nodeid}, {"column": "name", "value": secretname}]
+                            row = Helper().make_rows(secret)
                             Database().update('nodesecrets', row, where)
-                            UPDATE = True
+                            update = True
                     else:
-                        SECRET['nodeid'] = NODEID
-                        SECRET['content'] = Helper().encrypt_string(SECRET['content'])
-                        row = Helper().make_rows(SECRET)
+                        secret['nodeid'] = nodeid
+                        secret['content'] = Helper().encrypt_string(secret['content'])
+                        row = Helper().make_rows(secret)
                         Database().insert('nodesecrets', row)
-                        CREATE = True
+                        create = True
             else:
                 LOGGER.error('Kindly provide at least one secret.')
                 response = {'message': 'Kindly provide at least one secret.'}
@@ -2218,13 +2228,13 @@ def config_post_secrets_node(name=None):
             response = {'message': f'Node {name} is not available.'}
             access_code = 404
 
-        if CREATE == True and UPDATE == True:
+        if create is True and update is True:
             response = {'message': f'Node {name} Secrets Created & Updated Successfully.'}
             access_code = 201
-        elif CREATE == True and UPDATE == False:
+        elif create is True and update is False:
             response = {'message': f'Node {name} Secret Created Successfully.'}
             access_code = 201
-        elif CREATE == False and UPDATE == True:
+        elif create is False and update is True:
             response = {'message': f'Node {name} Secret Updated Successfully.'}
             access_code = 201
     else:
@@ -2240,17 +2250,17 @@ def config_get_node_secret(name=None, secret=None):
     Input - Node Name & Secret Name
     Output - Return the Node Secret
     """
-    NODE = Database().get_record(None, 'node', f' WHERE name = "{name}"')
-    if NODE:
-        NODEID  = NODE[0]['id']
-        SECRET = Database().get_record(None, 'nodesecrets', f' WHERE nodeid = "{NODEID}" AND name = "{secret}"')
-        if SECRET:
+    node = Database().get_record(None, 'node', f' WHERE name = "{name}"')
+    if node:
+        nodeid  = node[0]['id']
+        secret_data = Database().get_record(None, 'nodesecrets', f' WHERE nodeid = "{nodeid}" AND name = "{secret}"')
+        if secret_data:
             response = {'config': {'secrets': {'node': {name: [] } } } }
             access_code = 200
-            del SECRET[0]['nodeid']
-            del SECRET[0]['id']
-            SECRET[0]['content'] = Helper().decrypt_string(SECRET[0]['content'])
-            response['config']['secrets']['node'][name] = SECRET
+            del secret_data[0]['nodeid']
+            del secret_data[0]['id']
+            secret_data[0]['content'] = Helper().decrypt_string(secret_data[0]['content'])
+            response['config']['secrets']['node'][name] = secret_data
         else:
             LOGGER.error(f'Secret {secret} is unavailable for Node {name}.')
             response = {'message': f'Secret {secret} is unavailable for Node {name}.'}
@@ -2270,29 +2280,29 @@ def config_post_node_secret(name=None, secret=None):
     Process - Create Or Update Node Secrets.
     Output - None.
     """
-    DATA = {}
+    data = {}
     if Helper().check_json(request.data):
-        REQUEST = request.get_json(force=True)
+        request_data = request.get_json(force=True)
     else:
         response = {'message': 'Bad Request.'}
         access_code = 400
         return json.dumps(response), access_code
-    if REQUEST:
-        DATA = REQUEST['config']['secrets']['node'][name]
-        NODE = Database().get_record(None, 'node', f' WHERE name = "{name}"')
-        if NODE:
-            NODEID = NODE[0]['id']
-            if DATA:
-                SECRETNAME = DATA[0]['name']
-                SECRETDATA = Database().get_record(None, 'nodesecrets', f' WHERE nodeid = "{NODEID}" AND name = "{SECRETNAME}";')
-                if SECRETDATA:
-                    NODESECRETSCOLUMNS = Database().get_columns('nodesecrets')
-                    COLUMNCHECK = Helper().checkin_list(DATA[0], NODESECRETSCOLUMNS)
-                    if COLUMNCHECK:
-                        SECRETID = SECRETDATA[0]['id']
-                        DATA[0]['content'] = Helper().encrypt_string(DATA[0]['content'])
-                        where = [{"column": "id", "value": SECRETID}, {"column": "nodeid", "value": NODEID}, {"column": "name", "value": SECRETNAME}]
-                        row = Helper().make_rows(DATA[0])
+    if request_data:
+        data = request_data['config']['secrets']['node'][name]
+        node = Database().get_record(None, 'node', f' WHERE name = "{name}"')
+        if node:
+            nodeid = node[0]['id']
+            if data:
+                secretname = data[0]['name']
+                secret_data = Database().get_record(None, 'nodesecrets', f' WHERE nodeid = "{nodeid}" AND name = "{secretname}";')
+                if secret_data:
+                    nodesecretcolumns = Database().get_columns('nodesecrets')
+                    columncheck = Helper().checkin_list(data[0], nodesecretcolumns)
+                    if columncheck:
+                        secretid = secret_data[0]['id']
+                        data[0]['content'] = Helper().encrypt_string(data[0]['content'])
+                        where = [{"column": "id", "value": secretid}, {"column": "nodeid", "value": nodeid}, {"column": "name", "value": secretname}]
+                        row = Helper().make_rows(data[0])
                         Database().update('nodesecrets', row, where)
                         response = {'message': f'Node {name} Secret {secret} Updated Successfully.'}
                         access_code = 204
@@ -2322,41 +2332,40 @@ def config_clone_node_secret(name=None, secret=None):
     Process - Create Or Update Node Secrets.
     Output - None.
     """
-    DATA = {}
+    data = {}
     if Helper().check_json(request.data):
-        REQUEST = request.get_json(force=True)
+        request_data = request.get_json(force=True)
     else:
         response = {'message': 'Bad Request.'}
         access_code = 400
         return json.dumps(response), access_code
-    if REQUEST:
-        DATA = REQUEST['config']['secrets']['node'][name]
-        NODE = Database().get_record(None, 'node', f' WHERE name = "{name}"')
-        if NODE:
-            NODEID = NODE[0]['id']
-            if DATA:
-                SECRETNAME = DATA[0]['name']
-                SECRETDATA = Database().get_record(None, 'nodesecrets', f' WHERE nodeid = "{NODEID}" AND name = "{SECRETNAME}";')
-                if SECRETDATA:
-                    if 'newsecretname' in DATA[0]:
-                        NEWSECRETNAME = DATA[0]['newsecretname']
-                        del DATA[0]['newsecretname']
-                        DATA[0]['nodeid'] = NODEID
-                        DATA[0]['name'] = NEWSECRETNAME
-                        NEWSECRETDATA = Database().get_record(None, 'nodesecrets', f' WHERE nodeid = "{NODEID}" AND name = "{NEWSECRETNAME}";')
-                        if NEWSECRETDATA:
-                            LOGGER.error(f'Secret {NEWSECRETNAME} Already Present..')
-                            response = {'message': f'Secret {NEWSECRETNAME} Already Present..'}
+    if request_data:
+        data = request_data['config']['secrets']['node'][name]
+        node = Database().get_record(None, 'node', f' WHERE name = "{name}"')
+        if node:
+            nodeid = node[0]['id']
+            if data:
+                secretname = data[0]['name']
+                secretdata = Database().get_record(None, 'nodesecrets', f' WHERE nodeid = "{nodeid}" AND name = "{secretname}";')
+                if secretdata:
+                    if 'newsecretname' in data[0]:
+                        newsecretname = data[0]['newsecretname']
+                        del data[0]['newsecretname']
+                        data[0]['nodeid'] = nodeid
+                        data[0]['name'] = newsecretname
+                        newsecretdata = Database().get_record(None, 'nodesecrets', f' WHERE nodeid = "{nodeid}" AND name = "{newsecretname}";')
+                        if newsecretdata:
+                            LOGGER.error(f'Secret {newsecretname} Already Present..')
+                            response = {'message': f'Secret {newsecretname} Already Present..'}
                             access_code = 404
                         else:
-                            NODESECRETSCOLUMNS = Database().get_columns('nodesecrets')
-                            COLUMNCHECK = Helper().checkin_list(DATA[0], NODESECRETSCOLUMNS)
-                            if COLUMNCHECK:
-                                SECRETID = SECRETDATA[0]['id']
-                                DATA[0]['content'] = Helper().encrypt_string(DATA[0]['content'])
-                                row = Helper().make_rows(DATA[0])
+                            nodesecretcolumns = Database().get_columns('nodesecrets')
+                            columncheck = Helper().checkin_list(data[0], nodesecretcolumns)
+                            if columncheck:
+                                data[0]['content'] = Helper().encrypt_string(data[0]['content'])
+                                row = Helper().make_rows(data[0])
                                 Database().insert('nodesecrets', row)
-                                response = {'message': f'Node {name} Secret {secret} Clone Successfully to {NEWSECRETNAME}.'}
+                                response = {'message': f'Node {name} Secret {secret} Clone Successfully to {newsecretname}.'}
                                 access_code = 204
                     else:
                         LOGGER.error('Kindly Pass the New Secret Name.')
@@ -2387,12 +2396,12 @@ def config_node_secret_delete(name=None, secret=None):
     Input - Node Name & Secret Name
     Output - Success or Failure
     """
-    NODE = Database().get_record(None, 'node', f' WHERE name = "{name}"')
-    if NODE:
-        NODEID  = NODE[0]['id']
-        SECRET = Database().get_record(None, 'nodesecrets', f' WHERE nodeid = "{NODEID}" AND name = "{secret}"')
-        if SECRET:
-            Database().delete_row('nodesecrets', [{"column": "nodeid", "value": NODEID}, {"column": "name", "value": secret}])
+    node = Database().get_record(None, 'node', f' WHERE name = "{name}"')
+    if node:
+        nodeid  = node[0]['id']
+        secret_data = Database().get_record(None, 'nodesecrets', f' WHERE nodeid = "{nodeid}" AND name = "{secret}"')
+        if secret_data:
+            Database().delete_row('nodesecrets', [{"column": "nodeid", "value": nodeid}, {"column": "name", "value": secret}])
             response = {'message': f'Secret {secret} Deleted From Node {name}.'}
             access_code = 204
         else:
@@ -2413,17 +2422,17 @@ def config_get_secrets_group(name=None):
     Input - Group Name
     Output - Return the Group Secrets.
     """
-    GROUP = Database().get_record(None, 'group', f' WHERE name = "{name}"')
-    if GROUP:
-        GROUPID  = GROUP[0]['id']
-        GROUPSECRETS = Database().get_record(None, 'groupsecrets', f' WHERE groupid = "{GROUPID}"')
-        if GROUPSECRETS:
+    group = Database().get_record(None, 'group', f' WHERE name = "{name}"')
+    if group:
+        groupid  = group[0]['id']
+        groupsecrets = Database().get_record(None, 'groupsecrets', f' WHERE groupid = "{groupid}"')
+        if groupsecrets:
             response = {'config': {'secrets': {'group': {name: [] } } } }
-            for GRP in GROUPSECRETS:
-                del GRP['groupid']
-                del GRP['id']
-                GRP['content'] = Helper().decrypt_string(GRP['content'])
-                response['config']['secrets']['group'][name].append(GRP)
+            for grp in groupsecrets:
+                del grp['groupid']
+                del grp['id']
+                grp['content'] = Helper().decrypt_string(grp['content'])
+                response['config']['secrets']['group'][name].append(grp)
                 access_code = 200
         else:
             LOGGER.error(f'Secrets are not available for Group {name}.')
@@ -2444,39 +2453,39 @@ def config_post_secrets_group(name=None):
     Process - Create Or Update Group Secrets.
     Output - None.
     """
-    DATA = {}
-    CREATE, UPDATE = False, False
+    data = {}
+    create, update = False, False
     if Helper().check_json(request.data):
-        REQUEST = request.get_json(force=True)
+        request_data = request.get_json(force=True)
     else:
         response = {'message': 'Bad Request.'}
         access_code = 400
         return json.dumps(response), access_code
-    if REQUEST:
-        DATA = REQUEST['config']['secrets']['group'][name]
-        GROUP = Database().get_record(None, 'group', f' WHERE name = "{name}"')
-        if GROUP:
-            GROUPID = GROUP[0]['id']
-            if DATA:
-                for SECRET in DATA:
-                    SECRETNAME = SECRET['name']
-                    SECRETDATA = Database().get_record(None, 'groupsecrets', f' WHERE groupid = "{GROUPID}" AND name = "{SECRETNAME}";')
-                    if SECRETDATA:
-                        GRPSECRETSCOLUMNS = Database().get_columns('groupsecrets')
-                        COLUMNCHECK = Helper().checkin_list(SECRETDATA[0], GRPSECRETSCOLUMNS)
-                        if COLUMNCHECK:
-                            SECRETID = SECRETDATA[0]['id']
-                            SECRET['content'] = Helper().encrypt_string(SECRET['content'])
-                            where = [{"column": "id", "value": SECRETID}, {"column": "groupid", "value": GROUPID}, {"column": "name", "value": SECRETNAME}]
-                            row = Helper().make_rows(SECRET)
+    if request_data:
+        data = request_data['config']['secrets']['group'][name]
+        group = Database().get_record(None, 'group', f' WHERE name = "{name}"')
+        if group:
+            groupid = group[0]['id']
+            if data:
+                for secret in data:
+                    secretname = secret['name']
+                    secretdata = Database().get_record(None, 'groupsecrets', f' WHERE groupid = "{groupid}" AND name = "{secretname}";')
+                    if secretdata:
+                        grpsecretcolumns = Database().get_columns('groupsecrets')
+                        columncheck = Helper().checkin_list(secretdata[0], grpsecretcolumns)
+                        if columncheck:
+                            secretid = secretdata[0]['id']
+                            secret['content'] = Helper().encrypt_string(secret['content'])
+                            where = [{"column": "id", "value": secretid}, {"column": "groupid", "value": groupid}, {"column": "name", "value": secretname}]
+                            row = Helper().make_rows(secret)
                             Database().update('groupsecrets', row, where)
-                            UPDATE = True
+                            update = True
                     else:
-                        SECRET['groupid'] = GROUPID
-                        SECRET['content'] = Helper().encrypt_string(SECRET['content'])
-                        row = Helper().make_rows(SECRET)
+                        secret['groupid'] = groupid
+                        secret['content'] = Helper().encrypt_string(secret['content'])
+                        row = Helper().make_rows(secret)
                         Database().insert('groupsecrets', row)
-                        CREATE = True
+                        create = True
             else:
                 LOGGER.error('Kindly provide at least one secret.')
                 response = {'message': 'Kindly provide at least one secret.'}
@@ -2486,13 +2495,13 @@ def config_post_secrets_group(name=None):
             response = {'message': f'Group {name} is not available.'}
             access_code = 404
 
-        if CREATE == True and UPDATE == True:
+        if create is True and update is True:
             response = {'message': f'Group {name} Secrets Created & Updated Successfully.'}
             access_code = 204
-        elif CREATE == True and UPDATE == False:
+        elif create is True and update is False:
             response = {'message': f'Group {name} Secret Created Successfully.'}
             access_code = 201
-        elif CREATE == False and UPDATE == True:
+        elif create is False and update is True:
             response = {'message': f'Group {name} Secret Updated Successfully.'}
             access_code = 204
     else:
@@ -2508,17 +2517,17 @@ def config_get_group_secret(name=None, secret=None):
     Input - Group Name & Secret Name
     Output - Return the Group Secret
     """
-    GROUP = Database().get_record(None, 'group', f' WHERE name = "{name}"')
-    if GROUP:
-        GROUPID  = GROUP[0]['id']
-        SECRET = Database().get_record(None, 'groupsecrets', f' WHERE groupid = "{GROUPID}" AND name = "{secret}"')
-        if SECRET:
+    group = Database().get_record(None, 'group', f' WHERE name = "{name}"')
+    if group:
+        groupid  = group[0]['id']
+        secretdata = Database().get_record(None, 'groupsecrets', f' WHERE groupid = "{groupid}" AND name = "{secret}"')
+        if secretdata:
             response = {'config': {'secrets': {'group': {name: [] } } } }
             access_code = 200
-            del SECRET[0]['groupid']
-            del SECRET[0]['id']
-            SECRET[0]['content'] = Helper().decrypt_string(SECRET[0]['content'])
-            response['config']['secrets']['group'][name] = SECRET
+            del secretdata[0]['groupid']
+            del secretdata[0]['id']
+            secretdata[0]['content'] = Helper().decrypt_string(secretdata[0]['content'])
+            response['config']['secrets']['group'][name] = secretdata
         else:
             LOGGER.error(f'Secret {secret} is unavailable for Group {name}.')
             response = {'message': f'Secret {secret} is unavailable for Group {name}.'}
@@ -2538,29 +2547,29 @@ def config_post_group_secret(name=None, secret=None):
     Process - Create Or Update Group Secrets.
     Output - None.
     """
-    DATA = {}
+    data = {}
     if Helper().check_json(request.data):
-        REQUEST = request.get_json(force=True)
+        request_data = request.get_json(force=True)
     else:
         response = {'message': 'Bad Request.'}
         access_code = 400
         return json.dumps(response), access_code
-    if REQUEST:
-        DATA = REQUEST['config']['secrets']['group'][name]
-        GROUP = Database().get_record(None, 'group', f' WHERE name = "{name}"')
-        if GROUP:
-            GROUPID = GROUP[0]['id']
-            if DATA:
-                SECRETNAME = DATA[0]['name']
-                SECRETDATA = Database().get_record(None, 'groupsecrets', f' WHERE groupid = "{GROUPID}" AND name = "{SECRETNAME}";')
-                if SECRETDATA:
-                    GRPSECRETSCOLUMNS = Database().get_columns('groupsecrets')
-                    COLUMNCHECK = Helper().checkin_list(DATA[0], GRPSECRETSCOLUMNS)
-                    if COLUMNCHECK:
-                        SECRETID = SECRETDATA[0]['id']
-                        DATA[0]['content'] = Helper().encrypt_string(DATA[0]['content'])
-                        where = [{"column": "id", "value": SECRETID}, {"column": "groupid", "value": GROUPID}, {"column": "name", "value": SECRETNAME}]
-                        row = Helper().make_rows(DATA[0])
+    if request_data:
+        data = request_data['config']['secrets']['group'][name]
+        group = Database().get_record(None, 'group', f' WHERE name = "{name}"')
+        if group:
+            groupid = group[0]['id']
+            if data:
+                secretname = data[0]['name']
+                secretdata = Database().get_record(None, 'groupsecrets', f' WHERE groupid = "{groupid}" AND name = "{secretname}";')
+                if secretdata:
+                    grpsecretcolumns = Database().get_columns('groupsecrets')
+                    columncheck = Helper().checkin_list(data[0], grpsecretcolumns)
+                    if columncheck:
+                        secretid = secretdata[0]['id']
+                        data[0]['content'] = Helper().encrypt_string(data[0]['content'])
+                        where = [{"column": "id", "value": secretid}, {"column": "groupid", "value": groupid}, {"column": "name", "value": secretname}]
+                        row = Helper().make_rows(data[0])
                         Database().update('groupsecrets', row, where)
                         response = {'message': f'Group {name} Secret {secret} Updated Successfully.'}
                         access_code = 204
@@ -2590,41 +2599,40 @@ def config_clone_group_secret(name=None, secret=None):
     Process - Clone Group Secrets.
     Output - None.
     """
-    DATA = {}
+    data = {}
     if Helper().check_json(request.data):
-        REQUEST = request.get_json(force=True)
+        request_data = request.get_json(force=True)
     else:
         response = {'message': 'Bad Request.'}
         access_code = 400
         return json.dumps(response), access_code
-    if REQUEST:
-        DATA = REQUEST['config']['secrets']['group'][name]
-        GROUP = Database().get_record(None, 'group', f' WHERE name = "{name}"')
-        if GROUP:
-            GROUPID = GROUP[0]['id']
-            if DATA:
-                SECRETNAME = DATA[0]['name']
-                SECRETDATA = Database().get_record(None, 'groupsecrets', f' WHERE groupid = "{GROUPID}" AND name = "{SECRETNAME}";')
-                if SECRETDATA:
-                    if 'newsecretname' in DATA[0]:
-                        NEWSECRETNAME = DATA[0]['newsecretname']
-                        del DATA[0]['newsecretname']
-                        DATA[0]['groupid'] = GROUPID
-                        DATA[0]['name'] = NEWSECRETNAME
-                        NEWSECRETDATA = Database().get_record(None, 'groupsecrets', f' WHERE groupid = "{GROUPID}" AND name = "{NEWSECRETNAME}";')
-                        if NEWSECRETDATA:
-                            LOGGER.error(f'Secret {NEWSECRETNAME} Already Present..')
-                            response = {'message': f'Secret {NEWSECRETNAME} Already Present..'}
+    if request_data:
+        data = request_data['config']['secrets']['group'][name]
+        group = Database().get_record(None, 'group', f' WHERE name = "{name}"')
+        if group:
+            groupid = group[0]['id']
+            if data:
+                secretname = data[0]['name']
+                secretdata = Database().get_record(None, 'groupsecrets', f' WHERE groupid = "{groupid}" AND name = "{secretname}";')
+                if secretdata:
+                    if 'newsecretname' in data[0]:
+                        newsecretname = data[0]['newsecretname']
+                        del data[0]['newsecretname']
+                        data[0]['groupid'] = groupid
+                        data[0]['name'] = newsecretname
+                        newsecretdata = Database().get_record(None, 'groupsecrets', f' WHERE groupid = "{groupid}" AND name = "{newsecretname}";')
+                        if newsecretdata:
+                            LOGGER.error(f'Secret {newsecretname} Already Present..')
+                            response = {'message': f'Secret {newsecretname} Already Present..'}
                             access_code = 404
                         else:
-                            GRPSECRETSCOLUMNS = Database().get_columns('groupsecrets')
-                            COLUMNCHECK = Helper().checkin_list(DATA[0], GRPSECRETSCOLUMNS)
-                            if COLUMNCHECK:
-                                SECRETID = SECRETDATA[0]['id']
-                                DATA[0]['content'] = Helper().encrypt_string(DATA[0]['content'])
-                                row = Helper().make_rows(DATA[0])
+                            grpsecretcolumns = Database().get_columns('groupsecrets')
+                            columncheck = Helper().checkin_list(data[0], grpsecretcolumns)
+                            if columncheck:
+                                data[0]['content'] = Helper().encrypt_string(data[0]['content'])
+                                row = Helper().make_rows(data[0])
                                 Database().insert('groupsecrets', row)
-                                response = {'message': f'Group {name} Secret {secret} Clone Successfully to {NEWSECRETNAME}.'}
+                                response = {'message': f'Group {name} Secret {secret} Clone Successfully to {newsecretname}.'}
                                 access_code = 204
                     else:
                         LOGGER.error('Kindly Pass the New Secret Name.')

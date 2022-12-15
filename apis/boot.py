@@ -36,7 +36,7 @@ def boot():
     Output - templ_boot_ipxe.cfg
     """
     template = 'templ_boot_ipxe.cfg'
-    LOGGER.info(f'Boot API Serving the {template}')
+    LOGGER.info(f'Boot API serving the {template}')
     check_template = Helper().checkjinja(f'{CONSTANT["TEMPLATES"]["TEMPLATES_DIR"]}/{template}')
     if not check_template:
         abort(404, 'Empty')
@@ -51,7 +51,7 @@ def boot_short():
     Output - templ_boot_ipxe_short.cfg
     """
     template = 'templ_boot_ipxe_short.cfg'
-    LOGGER.info(f'Boot API Serving the {template}')
+    LOGGER.info(f'Boot API serving the {template}')
     check_template = Helper().checkjinja(f'{CONSTANT["TEMPLATES"]["TEMPLATES_DIR"]}/{template}')
     if not check_template:
         abort(404, 'Empty')
@@ -66,7 +66,7 @@ def boot_disk():
     Output - templ_boot_disk.cfg
     """
     template = 'templ_boot_disk.cfg'
-    LOGGER.info(f'Boot API Serving the {template}')
+    LOGGER.info(f'Boot API serving the {template}')
     check_template = Helper().checkjinja(f'{CONSTANT["TEMPLATES"]["TEMPLATES_DIR"]}/{template}')
     if not check_template:
         abort(404, 'Empty')
@@ -89,7 +89,7 @@ def boot_search_mac(mac=None):
     # where = [{"column": "id", "value": node[0]["id"]}]
     # Database().update('node', row, where)
     template = 'templ_nodeboot.cfg'
-    LOGGER.info(f'Boot API Serving the {template}')
+    LOGGER.info(f'Boot API serving the {template}')
     check_template = Helper().checkjinja(f'{CONSTANT["TEMPLATES"]["TEMPLATES_DIR"]}/{template}')
     if not check_template:
         abort(404, 'Empty')
@@ -106,12 +106,12 @@ def boot_manual_hostname(hostname=None):
     """
     node = Database().get_record(None, 'node', f' WHERE hostname = "{hostname}"')
     if not node:
-        LOGGER.debug(f'Hostname {hostname} Not Found.')
+        LOGGER.debug(f'Hostname {hostname} not found.')
         abort(404, "Empty")
     if node[0]['service'] is True:
         data['service'] = '1'
     template = 'templ_nodeboot.cfg'
-    LOGGER.info(f'Node Found with Hostname {hostname}.')
+    LOGGER.info(f'Node found with hostname {hostname}.')
     check_template = Helper().checkjinja(f'{CONSTANT["TEMPLATES"]["TEMPLATES_DIR"]}/{template}')
     if not check_template:
         abort(404, 'Empty')
@@ -128,11 +128,11 @@ def boot_install(node=None):
     where = [{"column": 'name', 'value': node}]
     install = Database().update('node', row, where)
     if install or Log.check_loglevel() != 10:
-        LOGGER.info(f'Installation Script is Started For NodeID: {node}')
-        response = {'message': f'Installation Script is Started For  NodeID: {node}'}
+        LOGGER.info(f'Installation script is started for nodeid: {node}')
+        response = {'message': f'Installation script is started for nodeid: {node}'}
         code = 200
     else:
-        LOGGER.error(f'Not Able To Find The NodeID: {node}')
-        response = {'message': f'Not Able To Find The NodeID: {node}'}
+        LOGGER.error(f'Not able to find the nodeid: {node}')
+        response = {'message': f'Not able to find the nodeid: {node}'}
         code = 404
     return json.dumps(response), code

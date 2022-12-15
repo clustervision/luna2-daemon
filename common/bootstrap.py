@@ -206,5 +206,5 @@ def validatebootstrap():
     elif bootstrapfile_check is False and dbcode == 200:
         pass
     elif bootstrapfile_check is False and dbcode != 200:
-        LOGGER.error(f'Bootstrap file {bootstrapfile} and Database {dbstatus["database"]} is unavailable.')
+        LOGGER.error(f'{bootstrapfile} and database {dbstatus["database"]} is unavailable.')
     return True

@@ -31,7 +31,16 @@ class Database(object):
         Constructor - Initialize The Correct Database from the conf file.
         """
         self.logger = Log.get_logger()
-        self.connection = pyodbc.connect(f'DRIVER={CONSTANT["DATABASE"]["DRIVER"]};SERVER={CONSTANT["DATABASE"]["HOST"]};DATABASE={CONSTANT["DATABASE"]["DATABASE"]};UID={CONSTANT["DATABASE"]["DBUSER"]};PWD={CONSTANT["DATABASE"]["DBPASSWORD"]};charset=utf8mb4;PORT={CONSTANT["DATABASE"]["PORT"]};')
+        self.driver = f'DRIVER={CONSTANT["DATABASE"]["DRIVER"]};'
+        self.server = f'SERVER={CONSTANT["DATABASE"]["HOST"]};'
+        self.database = f'DATABASE={CONSTANT["DATABASE"]["DATABASE"]};'
+        self.uid = f'UID={CONSTANT["DATABASE"]["DBUSER"]};'
+        self.pswd = f'PWD={CONSTANT["DATABASE"]["DBPASSWORD"]};'
+        self.encoding = 'charset=utf8mb4;'
+        self.port = f'PORT={CONSTANT["DATABASE"]["PORT"]};'
+        self.connection_string = f'{self.driver}{self.server}{self.database}{self.uid}{self.pswd}'
+        self.connection_string = f'{self.connection_string}{self.encoding}{self.port}'
+        self.connection = pyodbc.connect(self.connection_string)
         self.cursor = self.connection.cursor()
 
     def get_cursor(self):
@@ -52,7 +61,7 @@ class Database(object):
             self.cursor.execute('SELECT * FROM user')
             result = self.cursor.fetchone()
         except pyodbc.Error as exp:
-            self.logger.error(f'Error While Checking Database => {exp}.')
+            self.logger.error(f'Error while checking database => {exp}.')
             result = None
         return result
 
@@ -74,12 +83,12 @@ class Database(object):
             query = f'SELECT {strcolumn} FROM "{table}" {where};'
         else:
             query = f'SELECT {strcolumn} FROM "{table}";'
-        self.logger.debug(f'Query Executing => {query}.')
+        self.logger.debug(f'Query executing => {query}.')
         try:
             self.cursor.execute(query)
             names = list(map(lambda x: x[0], self.cursor.description)) # Fetching the Column Names
             data = self.cursor.fetchall()
-            self.logger.debug(f'Data Set Retrived => {data}.')
+            self.logger.debug(f'Dataset retrived => {data}.')
             rowdict = {}
             response = []
             for row in data:
@@ -88,7 +97,7 @@ class Database(object):
                 response.append(rowdict)
                 rowdict = {}
         except pyodbc.Error as exp:
-            self.logger.error(f'Error occur While Executing => {query}. Error Is {exp}.')
+            self.logger.error(f'Error occur while executing => {query}. error is {exp}.')
             response = None
         return response
 
@@ -123,7 +132,7 @@ class Database(object):
             self.connection.commit()
             response = True
         except pyodbc.Error as exp:
-            self.logger.error(f'Error While Creating Table {table}. Error: {exp}')
+            self.logger.error(f'Error while creating table {table}. Error: {exp}')
             response = False
         return response
 
@@ -140,7 +149,7 @@ class Database(object):
             self.cursor.commit()
             response = True
         except pyodbc.Error as exp:
-            self.logger.error(f'Error occur While Executing => {query}. Error Is {exp}.')
+            self.logger.error(f'Error occur while executing => {query}. error is {exp}.')
             response = False
         return response
 
@@ -176,7 +185,7 @@ class Database(object):
             if result:
                 response = result[0]['id']
         except pyodbc.Error as exp:
-            self.logger.error(f'Error occur While Executing => {query}. Error Is {exp} .')
+            self.logger.error(f'Error occur while executing => {query}. error is {exp}.')
         return response
 
 
@@ -207,8 +216,8 @@ class Database(object):
             if 'value' in cols.keys():
                 column = column + ' = "' +str(cols['value']) +'"'
             wherelist.append(column)
-            strWhere = ' AND '.join(map(str, wherelist))
-        query = f'UPDATE "{table}" SET {strcolumns} WHERE {strWhere};'
+            strwhere = ' AND '.join(map(str, wherelist))
+        query = f'UPDATE "{table}" SET {strcolumns} WHERE {strwhere};'
         try:
             self.cursor.execute(query)
             self.connection.commit()
@@ -217,7 +226,7 @@ class Database(object):
             else:
                 response = True
         except pyodbc.Error as exp:
-            self.logger.error(f'Error occur While Executing => {query}. Error Is {exp}.')
+            self.logger.error(f'Error occur while executing => {query}. error is {exp}.')
             response = False
         return response
 
@@ -246,7 +255,7 @@ class Database(object):
             self.cursor.commit()
             response = True
         except pyodbc.Error as exp:
-            self.logger.error(f'Error occur While Executing => {query}. Error Is {exp}.')
+            self.logger.error(f'Error occur while executing => {query}. error is {exp}.')
             response = False
         return response
 
@@ -263,7 +272,7 @@ class Database(object):
             connection.commit()
             response = True
         except pyodbc.Error as exp:
-            self.logger.error(f'Error occur While Executing => {query}. Error Is {exp}.')
+            self.logger.error(f'Error occur while executing => {query}. error is {exp}.')
             response = False
         return response
 
@@ -281,9 +290,10 @@ class Database(object):
         self.logger.debug(f'Query Executing => {query} .')
         try:
             self.cursor.execute(query)
-            response = list(map(lambda x: x[0], self.cursor.description)) # Fetching the Column Names
+            # Fetching the Column Names
+            response = list(map(lambda x: x[0], self.cursor.description))
         except pyodbc.Error as exp:
-            self.logger.error(f'Error occur While Executing => {query}. Error Is {exp}.')
+            self.logger.error(f'Error occur while executing => {query}. error is {exp}.')
             response = None
         return response
 
@@ -294,15 +304,15 @@ class Database(object):
         Output - id.
         """
         query = f'SELECT id FROM "{table}" WHERE `name` == "{name}";'
-        self.logger.debug(f'Query Executing => {query}.')
+        self.logger.debug(f'Query executing => {query}.')
         try:
             self.cursor.execute(query)
             response = self.cursor.fetchone()
-            self.logger.debug(f'Data Set Retrived => {response}.')
+            self.logger.debug(f'Dataeet retrived => {response}.')
             if response:
                 response = response[0]
         except pyodbc.Error as exp:
-            self.logger.error(f'Error occur While Executing => {query}. Error Is {exp}.')
+            self.logger.error(f'Error occur while executing => {query}. error is {exp}.')
             response = None
         return response
 
@@ -313,14 +323,14 @@ class Database(object):
         Output - name.
         """
         query = f'SELECT name FROM "{table}" WHERE `id` == "{tableid}";'
-        self.logger.debug(f'Query Executing => {query}.')
+        self.logger.debug(f'Query executing => {query}.')
         try:
             self.cursor.execute(query)
             response = self.cursor.fetchone()
-            self.logger.debug(f'Data Set Retrived => {response}.')
+            self.logger.debug(f'Dataset retrived => {response}.')
             if response:
                 response = response[0]
         except pyodbc.Error as exp:
-            self.logger.error(f'Error occur While Executing => {query}. Error Is {exp}.')
+            self.logger.error(f'Error occur while executing => {query}. error is {exp}.')
             response = None
         return response

@@ -63,12 +63,12 @@ def token():
             userpassword = user[0]["password"]
             if userpassword == hashlib.md5(password.encode()).hexdigest():
                 jwt_token = jwt.encode({'id': userid, 'exp': expiry_time}, api_key, 'HS256')
-                LOGGER.debug(f'Login Token generated Successfully, Token {jwt_token}.')
+                LOGGER.debug(f'Login token generated successfully, Token {jwt_token}.')
                 response = {'token' : jwt_token}
                 code = 200
             else:
-                LOGGER.warning(f'Incorrect Password {password} for the user {username}.')
-                response = {'message' : f'Incorrect Password {password} for the user {username}.'}
+                LOGGER.warning(f'Incorrect password {password} for the user {username}.')
+                response = {'message' : f'Incorrect password {password} for the user {username}.'}
                 code = 401
         else:
             LOGGER.error(f'User {username} is not exists.')
@@ -76,14 +76,14 @@ def token():
             code = 401
     else:
         if CONSTANT['API']['PASSWORD'] != password:
-            LOGGER.warning(f'Incorrect Password {password}, Kindly check the INI.')
-            response = {'message' : f'Incorrect Password {password}, Kindly check the INI.'}
+            LOGGER.warning(f'Incorrect password {password}, Kindly check the INI.')
+            response = {'message' : f'Incorrect password {password}, Kindly check the INI.'}
             code = 401
         else:
             # Creating Token via JWT with default id =1, expiry time
             # and Secret Key from conf file, and algo Sha 256
             jwt_token = jwt.encode({'id': 0, 'exp': expiry_time}, api_key, 'HS256')
-            LOGGER.debug(f'Login Token generated Successfully, Token {jwt_token}')
+            LOGGER.debug(f'Login token generated successfully, Token {jwt_token}')
             response = {"token" : jwt_token}
             code = 201
     return json.dumps(response), code

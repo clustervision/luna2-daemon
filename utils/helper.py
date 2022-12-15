@@ -246,7 +246,8 @@ class Helper(object):
         """
         if 'ipaddress' in data:
             if self.check_ip(data['ipaddress']):
-                record = Database().get_record(None, 'ipaddress', ' WHERE `ipaddress` = "{}";'.format(data["ipaddress"]))
+                where = ' WHERE `ipaddress` = "{}";'.format(data["ipaddress"])
+                record = Database().get_record(None, 'ipaddress', where)
                 if not record:
                     subnet = self.get_subnet(data['ipaddress'])
                     row = [
@@ -255,7 +256,8 @@ class Helper(object):
                             {"column": 'subnet', "value": subnet}
                             ]
                     Database().insert('ipaddress', row)
-                    subnet_record = Database().get_record(None, 'ipaddress', ' WHERE `ipaddress` = "{}";'.format(data['ipaddress']))
+                    where = ' WHERE `ipaddress` = "{}";'.format(data['ipaddress'])
+                    subnet_record = Database().get_record(None, 'ipaddress', where)
                     data['ipaddress'] = subnet_record[0]['id']
         return data
 
@@ -358,7 +360,7 @@ class Helper(object):
             kernelversion_os = kernelversion_os.replace("\\n'", '')
 
             if kernelversion_os != kernelversion:
-                self.logger.error(f'OS Kernel Version {kernelversion_os} is not matching with the image kernel version {kernelversion}.')
+                self.logger.error(f'OS kernel {kernelversion_os} not match with {kernelversion}.')
                 return False
 
             kernel_file = image+'-vmlinuz-'+kernelversion
@@ -398,15 +400,17 @@ class Helper(object):
             chroot_path = os.open("/", os.O_DIRECTORY)
             os.fchdir(chroot_path)
             dracut = True
-            create = None
+            make = None
 
             try:
-                with subprocess.check_output(['/usr/sbin/dracut', '--kver', kernelversion, '--list-modules'], universal_newlines=True) as dracut_process:
+                cmd = ['/usr/sbin/dracut', '--kver', kernelversion, '--list-modules']
+                with subprocess.check_output(cmd, universal_newlines=True) as dracut_process:
                     self.logger.info(f'DRACUTPROCESS ==> {dracut_process}.')
-                dracut_cmd_process = (['/usr/sbin/dracut', '--force', '--kver', kernelversion] + module_add + module_remove + driver_add + driver_remove + [temp_path + '/' + intrd_file])
-                with subprocess.check_output(dracut_cmd_process, timeout=CONSTANT['FILES']['MAXPACKAGINGTIME'], universal_newlines=True) as create:
-                    self.logger.info(f'CREATE ==> {create}.')
-            except Exception as exp:
+                dc_run = (['/usr/sbin/dracut', '--force', '--kver', kernelversion] + module_add + module_remove + driver_add + driver_remove + [temp_path + '/' + intrd_file])
+                tout=CONSTANT['FILES']['MAXPACKAGINGTIME']
+                with subprocess.check_output(dc_run, timeout=tout, universal_newlines=True) as make:
+                    self.logger.info(f'CREATE ==> {make}.')
+            except subprocess.CalledProcessError as exp:
                 self.logger.error(f'Exception ==> {exp}.')
                 dracut = False
 
@@ -462,28 +466,28 @@ class Helper(object):
                         code = 200
                         file.close()
                 except Exception as exp:
-                    self.logger.error(f"DATABASE {CONSTANT['DATABASE']['DATABASE']} have Exception is {exp}.")
+                    self.logger.error(f"{CONSTANT['DATABASE']['DATABASE']} has exception {exp}.")
 
-                with open(CONSTANT['DATABASE']['DATABASE'],'r', encoding = "ISO-8859-1") as f:
-                    header = f.read(100)
+                with open(CONSTANT['DATABASE']['DATABASE'],'r', encoding = "ISO-8859-1") as dbfile:
+                    header = dbfile.read(100)
                     if header.startswith('SQLite format 3'):
                         read, write = True, True
                         code = 200
                     else:
                         read, write = False, False
                         code = 503
-                        self.logger.error(f"DATABASE {CONSTANT['DATABASE']['DATABASE']} is not a SQLite3 Database.")
+                        self.logger.error(f"{CONSTANT['DATABASE']['DATABASE']} is not SQLite3.")
             else:
-                self.logger.error(f"DATABASE {CONSTANT['DATABASE']['DATABASE']} is Not Readable.")
+                self.logger.error(f"DATABASE {CONSTANT['DATABASE']['DATABASE']} is not readable.")
         else:
-            self.logger.info(f"DATABASE {CONSTANT['DATABASE']['DATABASE']} is Not a SQLite Database.")
+            self.logger.info(f"{CONSTANT['DATABASE']['DATABASE']} is not a SQLite database.")
         if not sqlite:
             try:
                 Database().get_cursor()
                 read, write = True, True
                 code = 200
             except pyodbc.Error as error:
-                self.logger.error(f"Error While connecting to Database {CONSTANT['DATABASE']['DATABASE']} is: {error}.")
+                self.logger.error(f"{CONSTANT['DATABASE']['DATABASE']} connection error: {error}.")
         response = {"database": CONSTANT['DATABASE']['DRIVER'], "read": read, "write": write}
         return response, code
 
@@ -497,7 +501,7 @@ class Helper(object):
         parser.read(filename)
         for item in list(parent_dict.keys()):
             if item not in parser.sections():
-                self.logger.error(f'Section {item} is missing, kindly check the file {filename}.')
+                self.logger.error(f'{item} is missing, kindly check {filename}.')
                 check = False
         return check
 
@@ -511,6 +515,6 @@ class Helper(object):
         parser.read(filename)
         for item in list(parent_dict[section].keys()):
             if item.lower() not in list(dict(parser.items(section)).keys()):
-                self.logger.error(f'Section {section} do not have option {option}, kindly check the file {filename}.')
+                self.logger.error(f'{section} do not have {option}, kindly check {filename}.')
                 check = False
         return check

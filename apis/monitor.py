@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 """
 This endpoint can be contacted to obtain service status.
-
 """
 
 __author__      = "Sumit Sharma"
@@ -13,115 +13,71 @@ __email__       = "sumit.sharma@clustervision.com"
 __status__      = "Development"
 
 
-import os
-import sys
-from common.validate_auth import *
-from flask import Blueprint, request, json
-from utils.log import *
-from utils.service import *
-from utils.database import *
+from flask import Blueprint, json
+from utils.log import Log
+from utils.service import Service
+from utils.helper import Helper
+from utils.database import Database
 
-logger = Log.get_logger()
+LOGGER = Log.get_logger()
 monitor_blueprint = Blueprint('monitor', __name__)
 
 
-"""
-Input - name of service
-Process - With the help of service class, the status of the service can be obtained. 
-   Currently supported services are DHCP, DNS and luna2 itself.
-Output - Status
-"""
-@monitor_blueprint.route("/monitor/service/<string:name>", methods=['GET'])
+@monitor_blueprint.route('/monitor/service/<string:name>', methods=['GET'])
 def monitor_service(name=None):
+    """
+    Input - name of service
+    Process - With the help of service class, the status of the service can be obtained.
+    Currently supported services are DHCP, DNS and luna2 itself.
+    Output - Status
+    """
     if name == "luna2":
-        response, code = checkdbstatus()
-        logger.info("Database Status is: {}.".format(str(response)))
-    action = "status"
-    response, code = Service().luna_service(name, action)
+        response, code = Helper().checkdbstatus()
+        LOGGER.info(f'Database status is: {response}.')
+    response, code = Service().luna_service(name, 'status')
     return json.dumps(response), code
 
 
-"""
-Input - NodeID or node name
-Process - Validate if the node exists and what the state is
-Output - Status.
-"""
 @monitor_blueprint.route("/monitor/status/<string:node>", methods=['GET'])
 def monitor_status_get(node=None):
-    NODE = Database().get_record(None, 'node', f' WHERE id = "{node}" OR name = "{node}"')
-    if not NODE:
-        logger.info(f'Node {node} is Down And Not Running')
-        response = {"monitor": {"status": { node: { "status": "Luna installer: Errors", "state": "installer.fail"} } } }
+    """
+    Input - NodeID or node name
+    Process - Validate if the node exists and what the state is
+    Output - Status.
+    """
+    response = {"monitor": {"status": { node: { } } } }
+    nodes = Database().get_record(None, 'node', f' WHERE id = "{node}" OR name = "{node}"')
+    if not nodes:
+        LOGGER.info(f'Node {node} is down and not running')
+        response['monitor']['status'][node]['status'] = 'Luna installer: Errors'
+        response['monitor']['status'][node]['state'] = 'installer.fail'
         code = 500
     else:
-        logger.info("Node {} is UP And Running".format(node))
-        # response = {"monitor": {"status": { node: { "status": NODE[0]['status'], "state": NODE[0]['state']} } } }
-        response = {"monitor": {"status": { node: { "status": "Luna installer: No errors", "state": "installer.ok"} } } }
+        LOGGER.info(f'Node {node} is up and running')
+        response['monitor']['status'][node]['status'] = 'Luna installer: No errors'
+        response['monitor']['status'][node]['state'] = 'installer.ok'
         code = 200
     return json.dumps(response), code
 
 
-"""
-Input - NodeID or Node Name
-Process - Update the Node Status
-Output - Status.
-"""
+
 @monitor_blueprint.route("/monitor/status/<string:node>", methods=['POST'])
 def monitor_status_post(node=None):
-    NODE = Database().get_record(None, 'node', f' WHERE id = "{node}" OR name = "{node}"')
-    if not NODE:
-        logger.info(f'Node {node} is Down And Not Running')
-        response = {"monitor": {"status": { node: { "status": "Luna installer: Errors", "state": "installer.fail"} } } }
+    """
+    Input - NodeID or Node Name
+    Process - Update the Node Status
+    Output - Status.
+    """
+    response = {"monitor": {"status": { node: { } } } }
+    nodes = Database().get_record(None, 'node', f' WHERE id = "{node}" OR name = "{node}"')
+    if not nodes:
+        LOGGER.info(f'Node {node} is down and not running')
+        response['monitor']['status'][node]['status'] = 'Luna installer: Errors'
+        response['monitor']['status'][node]['state'] = 'installer.fail'
         code = 500
     else:
-        logger.info("Node {} is UP And Running".format(node))
-        # response = {"monitor": {"status": { node: { "status": NODE[0]['status'], "state": NODE[0]['state']} } } }
-        response = {"monitor": {"status": { node: { "status": "Luna installer: No errors", "state": "installer.ok"} } } }
+        LOGGER.info(f'Node {node} is up and running')
+        response['monitor']['status'][node]['status'] = 'Luna installer: No errors'
+        response['monitor']['status'][node]['state'] = 'installer.ok'
         code = 200
     return json.dumps(response), code
-
-
-"""
-Input - None
-Process - Check the Current Database condition.
-Output - Status of Read & Write.
-"""
-def checkdbstatus():
-    sqlite, read, write = False, False, False
-    code = 503
-    if os.path.isfile(CONSTANT['DATABASE']['DATABASE']):
-        sqlite = True
-        if os.access(CONSTANT['DATABASE']['DATABASE'], os.R_OK):
-            read = True
-            code = 500
-            try:
-                file = open(CONSTANT['DATABASE']['DATABASE'], "a")
-                if file.writable():
-                    write = True
-                    code = 200
-                    file.close()
-            except Exception as e:
-                logger.error("DATABASE {} is Not Writable.".format(CONSTANT['DATABASE']['DATABASE']))
-
-            with open(CONSTANT['DATABASE']['DATABASE'],'r', encoding = "ISO-8859-1") as f:
-                header = f.read(100)
-                if header.startswith('SQLite format 3'):
-                    read, write = True, True
-                    code = 200
-                else:
-                    read, write = False, False
-                    code = 503
-                    logger.error("DATABASE {} is Not a SQLite3 Database.".format(CONSTANT['DATABASE']['DATABASE']))
-        else:
-            logger.error("DATABASE {} is Not Readable.".format(CONSTANT['DATABASE']['DATABASE']))
-    else:
-        logger.info("DATABASE {} is Not a SQLite Database.".format(CONSTANT['DATABASE']['DATABASE']))
-    if not sqlite:
-        try:
-            Database().get_cursor()
-            read, write = True, True
-            code = 200
-        except pyodbc.Error as error:
-            logger.error("Error While connecting to Database {} is: {}.".format(CONSTANT['DATABASE']['DATABASE'], str(error)))
-    response = {"database": CONSTANT['DATABASE']['DRIVER'], "read": read, "write": write}
-    return response, code

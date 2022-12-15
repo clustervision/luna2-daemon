@@ -40,10 +40,10 @@ class Files(object):
         filepath = f'{CONSTANT["FILES"]["TARBALL"]}/{filename}'
         try:
             if os.path.exists(filepath):
-                self.logger.debug(f'File Path {filepath} Is exists.')
+                self.logger.debug(f'Filepath {filepath} is exists.')
                 response = filepath
         except FileNotFoundError:
-            self.logger.debug(f'File Path {filepath} Is Not exists.')
+            self.logger.debug(f'Filepath {filepath} is not exists.')
             response = False
         return response
 
@@ -63,6 +63,6 @@ class Files(object):
                         files.append(file)
             response = files
         except FileNotFoundError:
-            self.logger.debug(f'File Path {filepath} Is Not exists.')
+            self.logger.debug(f'Filepath {filepath} is not exists.')
             response = None
         return response

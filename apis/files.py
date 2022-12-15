@@ -34,11 +34,11 @@ def files():
     """
     filelist = Files().list_files()
     if filelist:
-        LOGGER.info(f'Available Tar file in {CONSTANT["FILES"]["TARBALL"]} are {filelist}.')
+        LOGGER.info(f'Available tar file in {CONSTANT["FILES"]["TARBALL"]} are {filelist}.')
         return filelist, 200
     else:
-        LOGGER.error(f'No Tar file is present in {CONSTANT["FILES"]["TARBALL"]}.')
-        response = {'message': f'No Tar file is present in {CONSTANT["FILES"]["TARBALL"]}.'}
+        LOGGER.error(f'No tar file is present in {CONSTANT["FILES"]["TARBALL"]}.')
+        response = {'message': f'No tar file is present in {CONSTANT["FILES"]["TARBALL"]}.'}
         code = 503
         return json.dumps(response), code
 
@@ -54,8 +54,9 @@ def files_get(filename=None):
         request_ip = request.environ['REMOTE_ADDR']
     else:
         request_ip = request.environ['HTTP_X_FORWARDED_FOR']
-    LOGGER.debug(f'Request for file: {filename} From IP Address: {request_ip}')
-    node_interface = Database().get_record(None, 'nodeinterface', f' WHERE ipaddress = "{request_ip}"')
+    LOGGER.debug(f'Request for file: {filename} from IP Address: {request_ip}')
+    where = f' WHERE ipaddress = "{request_ip}"'
+    node_interface = Database().get_record(None, 'nodeinterface', where)
     if node_interface:
         row = [{"column": "status", "value": "installer.discovery"}]
         where = [{"column": "id", "value": node_interface[0]["id"]}]
@@ -65,7 +66,7 @@ def files_get(filename=None):
         LOGGER.info(f'Tar File Path is {filepath}.')
         return send_file(filepath, as_attachment=True), 200
     else:
-        LOGGER.error(f'Tar File {filename} is not present in directory {CONSTANT["FILES"]["TARBALL"]}.')
-        response = {'message': f'Tar File {filename} Iis not present in directory {CONSTANT["FILES"]["TARBALL"]}.'}
+        LOGGER.error(f'{filename} is not present in {CONSTANT["FILES"]["TARBALL"]}.')
+        response = {'message': f'{filename} is not present in {CONSTANT["FILES"]["TARBALL"]}.'}
         code = 503
     return json.dumps(response), code

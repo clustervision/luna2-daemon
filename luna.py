@@ -27,6 +27,7 @@ from apis.config import config_blueprint
 from apis.files import files_blueprint
 from apis.service import service_blueprint
 from apis.monitor import monitor_blueprint
+from apis.control import control_blueprint
 
 ############# Gunicorn Server Hooks #############
 
@@ -66,6 +67,7 @@ api.register_blueprint(config_blueprint)
 api.register_blueprint(files_blueprint)
 api.register_blueprint(service_blueprint)
 api.register_blueprint(monitor_blueprint)
+api.register_blueprint(control_blueprint)
 
 
 @api.route('/')

@@ -21,6 +21,7 @@ import shutil
 import queue
 import json
 import ipaddress
+import hostlist
 from configparser import RawConfigParser
 import pyodbc
 from netaddr import IPNetwork
@@ -518,3 +519,28 @@ class Helper(object):
                 self.logger.error(f'{section} do not have {option}, kindly check {filename}.')
                 check = False
         return check
+
+    def ipmi_action(self, hostname=None, action=None, username=None, password=None):
+        """
+        This method will perform power option on node.
+        """
+        response = False
+        # TODO use library python-ipmi and perform action.
+        # Reference https://pypi.org/project/python-ipmi/0.3.0/
+        # https://github.com/kontron/python-ipmi
+        self.logger.info(f'Received hostname: {hostname}.')
+        self.logger.info(f'Received action: {action}.')
+        self.logger.info(f'Received username: {username}.')
+        self.logger.info(f'Received password: {password}.')
+        return response
+
+    def get_hostlist(self, rawhosts=None):
+        """
+        This method will perform power option on node.
+        """
+        response = []
+        # TODO use library hostlist and validate the rawhosts & return a list of hosts.
+        self.logger.info(f'Received hostlist: {rawhosts}.')
+        response = hostlist.expand_hostlist(rawhosts)
+        self.logger.info(f'Expanded hostlist: {response}.')
+        return response

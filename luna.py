@@ -20,7 +20,6 @@ __status__      = 'Development'
 from flask import Flask, abort, json, Response
 from common.constant import LOGGER
 from common.bootstrap import validatebootstrap
-
 from apis.auth import auth_blueprint
 from apis.boot import boot_blueprint
 from apis.config import config_blueprint

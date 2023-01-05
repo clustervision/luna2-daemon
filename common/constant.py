@@ -135,6 +135,11 @@ def set_constants(section=None, option=None, item=None):
             CONSTANT[section][option] = int(item.replace('m', ''))*60
         else:
             CONSTANT[section][option] = 10*60
+    elif option.upper() == 'BMC_BATCH_DELAY':
+        if item:
+            CONSTANT[section][option] = int(item.replace('s', ''))
+        else:
+            CONSTANT[section][option] = 1
     else:
         CONSTANT[section][option] = item
     return CONSTANT
@@ -169,6 +174,7 @@ CONSTANT = {
                 'DBPASSWORD': None, 'HOST': None, 'PORT': None},
     'FILES': {'KEYFILE': None, 'TARBALL': None, 'IMAGE_DIRECTORY': None, 'MAXPACKAGINGTIME': None},
     'SERVICES': {'DHCP': None, 'DNS': None, 'CONTROL': None, 'COOLDOWN': None, 'COMMAND': None},
+    'BMCCONTROL': {'BMC_BATCH_SIZE': None, 'BMC_BATCH_DELAY': None},
     'TEMPLATES': {'TEMPLATES_DIR': None, 'TEMPLATELIST': None,  'TEMP_DIR': None}
 }
 

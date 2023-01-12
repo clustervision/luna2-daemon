@@ -536,6 +536,7 @@ class Helper(object):
         output = self.runcommand(command)
         if output:
             response = str(output[0].decode())
+            response = response.replace('Chassis Power is ', '')
             response = response.replace('\n', '')
         else:
             response = "Command execution failed."
@@ -550,6 +551,10 @@ class Helper(object):
         response = []
         # TODO use library hostlist and validate the rawhosts & return a list of hosts.
         self.logger.info(f'Received hostlist: {rawhosts}.')
-        response = hostlist.expand_hostlist(rawhosts)
-        self.logger.info(f'Expanded hostlist: {response}.')
+        try:
+            response = hostlist.expand_hostlist(rawhosts)
+            self.logger.info(f'Expanded hostlist: {response}.')
+        except Exception:
+            response = ''
+            self.logger.error(f'Hostlist is incorrect: {rawhosts}.')
         return response

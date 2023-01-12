@@ -81,7 +81,7 @@ def control_post():
             rawhosts = request_data['control']['power'][action]['hostlist']
             hostlist = Helper().get_hostlist(rawhosts)
             for hostname in hostlist:
-                node = Database().get_record(None, 'node', f' WHERE hostname = "{hostname}"')
+                node = Database().get_record(None, 'node', f' WHERE name = "{hostname}"')
                 if node:
                     groupid = node[0]['groupid']
                     group = Database().get_record(None, 'group', f' WHERE id = "{groupid}"')
@@ -89,8 +89,8 @@ def control_post():
                         bmcsetupid = group[0]['bmcsetupid']
                         bmcsetup = Database().get_record(None, 'bmcsetup', f' WHERE id = "{bmcsetupid}"')
                         if bmcsetup:
-                            username = group[0]['userid']
-                            password = group[0]['password']
+                            username = bmcsetup[0]['userid']
+                            password = bmcsetup[0]['password']
                             control_node = Helper().ipmi_action(hostname, action, username, password)
                             access_code = 204
                             if control_node is True:

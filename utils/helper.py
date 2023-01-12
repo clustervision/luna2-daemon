@@ -522,17 +522,26 @@ class Helper(object):
 
     def ipmi_action(self, hostname=None, action=None, username=None, password=None):
         """
-        This method will perform power option on node.
+        This method will perform below operations on node:
+        on, off, reset, identify, noidentify, status
+        RAW Command:
+        ipmitool -U admin -P password chassis power status -H 127.0.0.1 -I lanplus -C3
         """
-        response = False
-        # TODO use library python-ipmi and perform action.
-        # Reference https://pypi.org/project/python-ipmi/0.3.0/
-        # https://github.com/kontron/python-ipmi
-        self.logger.info(f'Received hostname: {hostname}.')
-        self.logger.info(f'Received action: {action}.')
-        self.logger.info(f'Received username: {username}.')
-        self.logger.info(f'Received password: {password}.')
+        ## TODO
+        ## Uncomment line 534 with real hostname, and remove line 535.
+        ## Line 535 is for testing purpose.
+        # command = f'ipmitool -U {username} -P {password} chassis power {action} -H {hostname} -I lanplus -C3'
+        command = f'ipmitool -U {username} -P {password} chassis power {action} -H 127.0.0.1 -I lanplus -C3'
+        self.logger.info(f'IPMI command to be executed: {command}.')
+        output = self.runcommand(command)
+        if output:
+            response = str(output[0].decode())
+            response = response.replace('\n', '')
+        else:
+            response = "Command execution failed."
+        self.logger.info(f'response: {response}.')
         return response
+
 
     def get_hostlist(self, rawhosts=None):
         """

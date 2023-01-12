@@ -26,14 +26,14 @@ control_blueprint = Blueprint('control', __name__)
 
 
 @control_blueprint.route('/control/power/<string:hostname>/<string:action>', methods=['GET'])
-@token_required
+# @token_required
 def control_get(hostname=None, action=None):
     """
     Input - hostname & action
     Process - Use to perform on, off, reset operations on one node.
     Output - Success or failure
     """
-    node = Database().get_record(None, 'node', f' WHERE hostname = "{hostname}"')
+    node = Database().get_record(None, 'node', f' WHERE name = "{hostname}"')
     if node:
         groupid = node[0]['groupid']
         group = Database().get_record(None, 'group', f' WHERE id = "{groupid}"')
@@ -41,24 +41,16 @@ def control_get(hostname=None, action=None):
             bmcsetupid = group[0]['bmcsetupid']
             bmcsetup = Database().get_record(None, 'bmcsetup', f' WHERE id = "{bmcsetupid}"')
             if bmcsetup:
-                username = group[0]['userid']
-                password = group[0]['password']
+                username = bmcsetup[0]['username']
+                password = bmcsetup[0]['password']
+                action = action.replace('_', '')
                 control_node = Helper().ipmi_action(hostname, action, username, password)
-                access_code = 204
-                if control_node is True:
-                    if action == 'status':
-                        LOGGER.info(f'{hostname} is on')
-                        response = {'control': {action: 'on' } }
-                    else:
-                        LOGGER.info(f'{hostname} has been {action}')
-                        response = {'message': f'{hostname} has been {action}'}
+                if 'status' in action:
+                    response = {'control': {action : control_node } }
+                    access_code = 200
                 else:
-                    if action == 'status':
-                        LOGGER.info(f'{hostname} is off')
-                        response = {'control': {action: 'off' } }
-                    else:
-                        LOGGER.info(f'{hostname} failed to {action}')
-                        response = {'message': f'{hostname} has been {action}'}
+                    response = {}
+                    access_code = 204
             else:
                 LOGGER.info(f'{hostname} not have any bmcsetup.')
                 response = {'message': f'{hostname} not have any bmcsetup.'}

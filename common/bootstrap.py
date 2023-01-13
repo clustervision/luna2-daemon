@@ -89,15 +89,43 @@ def bootstrap(bootstrapfile=None):
     """
     getconfig(bootstrapfile)
     LOGGER.info('###################### Bootstrap Start ######################')
+    default_cluster = [
+            {'column': 'technical_contacts', 'value': 'root@localhost'},
+            {'column': 'provision_method', 'value': 'torrent'},
+            {'column': 'provision_fallback', 'value': 'http'},
+            {'column': 'security', 'value': '1'},
+            {'column': 'debug', 'value': '0'}
+        ]
+    Database().insert('cluster', default_cluster)
+    cluster = Database().get_record(None, 'cluster', None)
+    clusterid = cluster[0]['id']
     num  = 1
     for hosts in BOOTSTRAP['HOSTS']:
         if f'CONTROLLER{num}' in BOOTSTRAP['HOSTS'].keys():
-            default_controller = [{'column': 'ipaddr', 'value': BOOTSTRAP['HOSTS'][f'CONTROLLER{num}']}]
+            default_controller = [
+                {'column': 'ipaddr', 'value': BOOTSTRAP['HOSTS'][f'CONTROLLER{num}']},
+                {'column': 'hostname', 'value': BOOTSTRAP['HOSTS']['HOSTNAME']},
+                {'column': 'clusterid', 'value': clusterid}
+                ]
             Database().insert('controller', default_controller)
         num = num + 1
+    default_group = [
+            {'column': 'name', 'value': str(BOOTSTRAP['GROUPS']['NAME'])},
+            {'column': 'bmcsetup', 'value': '1'},
+            {'column': 'domain', 'value': 'cluster'},
+            {'column': 'netboot', 'value': '1'},
+            {'column': 'localinstall', 'value': '0'},
+            {'column': 'bootmenu', 'value': '0'},
+            {'column': 'provisionmethod', 'value': 'torrent'},
+            {'column': 'provisionfallback', 'value': 'http'}
+        ]
+    Database().insert('group', default_group)
+    group = Database().get_record(None, 'group', None)
+    groupid = group[0]['id']
     for nodex in BOOTSTRAP['HOSTS']['NODELIST']:
         default_node = [
                 {'column': 'name', 'value': str(nodex)},
+                {'column': 'groupid', 'value': str(groupid)},
                 {'column': 'localboot', 'value': '0'},
                 {'column': 'service', 'value': '0'},
                 {'column': 'setupbmc', 'value': '1'},
@@ -113,26 +141,18 @@ def bootstrap(bootstrapfile=None):
                 {'column': 'name', 'value': str(nwkx)},
                 {'column': 'network', 'value': str(BOOTSTRAP['NETWORKS'][nwkx])},
                 {'column': 'dhcp', 'value': '0'},
-                {'column': 'ns_hostname', 'value': 'controller_hostname'},
-                {'column': 'ns_ip', 'value': 'controller_ip'},
-                {'column': 'gateway', 'value': 'controller_ip'},
-                {'column': 'ntp_server', 'value': 'controller_ip'}
+                {'column': 'ns_hostname', 'value': BOOTSTRAP['HOSTS']['HOSTNAME']},
+                {'column': 'ns_ip', 'value': BOOTSTRAP['HOSTS']['CONTROLLER1']},
+                {'column': 'gateway', 'value': BOOTSTRAP['HOSTS']['CONTROLLER1']},
+                {'column': 'ntp_server', 'value': BOOTSTRAP['HOSTS']['CONTROLLER1']}
             ]
         Database().insert('network', default_network)
-    default_group = [
-            {'column': 'name', 'value': str(BOOTSTRAP['GROUPS']['NAME'])},
-            {'column': 'bmcsetup', 'value': '1'},
-            {'column': 'domain', 'value': 'cluster'},
-            {'column': 'netboot', 'value': '1'},
-            {'column': 'localinstall', 'value': '0'},
-            {'column': 'bootmenu', 'value': '0'},
-            {'column': 'provisionmethod', 'value': 'torrent'},
-            {'column': 'provisionfallback', 'value': 'http'}
-        ]
-
+    network = Database().get_record(None, 'network', None)
+    networkid = network[0]['id']
     default_group_interface = [
             {'column': 'groupid', 'value': '1'},
-            {'column': 'interfacename', 'value': 'BOOTIF'}
+            {'column': 'interfacename', 'value': 'BOOTIF'},
+            {'column': 'networkid', 'value': networkid}
         ]
 
     default_osimage = [
@@ -149,27 +169,17 @@ def bootstrap(bootstrapfile=None):
             {'column': 'username', 'value': str(BOOTSTRAP['BMCSETUP']['USERNAME'])},
             {'column': 'password', 'value': str(BOOTSTRAP['BMCSETUP']['PASSWORD'])}
         ]
-
-    default_cluster = [
-            {'column': 'technical_contacts', 'value': 'root@localhost'},
-            {'column': 'provision_method', 'value': 'torrent'},
-            {'column': 'provision_fallback', 'value': 'http'},
-            {'column': 'security', 'value': '1'},
-            {'column': 'debug', 'value': '0'}
-        ]
-
     default_switch = [
             {'column': 'oid', 'value': '.1.3.6.1.2.1.17.7.1.2.2.1.2'},
             {'column': 'read', 'value': 'public'},
-            {'column': 'rw', 'value': 'private'}
+            {'column': 'rw', 'value': 'private'},
+            {'column': 'network', 'value': networkid}
             ]
-    Database().insert('group', default_group)
+    
     Database().insert('groupinterface', default_group_interface)
     Database().insert('osimage', default_osimage)
     Database().insert('bmcsetup', default_bmcsetup)
-    Database().insert('cluster', default_cluster)
     Database().insert('switch', default_switch)
-
     current_time = str(time.time()).replace('.', '')
     new_bootstrapfile = f'/trinity/local/luna/config/bootstrap-{current_time}.ini'
     os.rename(bootstrapfile, new_bootstrapfile)

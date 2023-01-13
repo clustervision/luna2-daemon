@@ -544,6 +544,12 @@ class Helper(object):
         return response
 
 
+    def chunks(self, lst, n):
+        """Yield successive n-sized chunks from lst."""
+        for i in range(0, len(lst), n):
+            yield lst[i:i + n]
+
+
     def get_hostlist(self, rawhosts=None):
         """
         This method will perform power option on node.
@@ -555,6 +561,40 @@ class Helper(object):
             response = hostlist.expand_hostlist(rawhosts)
             self.logger.info(f'Expanded hostlist: {response}.')
         except Exception:
-            response = ''
+            response = False
             self.logger.error(f'Hostlist is incorrect: {rawhosts}.')
         return response
+    
+
+    def dhcp_overwrite(self):
+        """
+        This method collect dhcp enabled networks,
+        node interfaces belongs to the networks and
+        other devices which have the mac address.
+        write and validates the /var/tmp/luna/dhcpd.conf
+        """
+        networks = Database().get_record(None, 'network', ' WHERE `dhcp` = "1";')
+        if networks:
+            for nwk in networks:
+                nwkid = nwk['id']
+                nwkname = nwk['name']
+                nwknetwork = nwk['network']
+                node_interface = Database().get_record(None, 'nodeinterface', f' WHERE networkid = "{nwkid}";')
+                if node_interface:
+                    pass
+                else:
+                    self.logger.error(f'No Nodes available for this network {nwkname}  {nwknetwork}')
+                
+                devices = Database().get_record(None, 'otherdevices', ' WHERE macaddr IS NOT NULL;')
+                if devices:
+                    pass
+                else:
+                    self.logger.error(f'No Nodes available for this network {nwkname}  {nwknetwork}')
+        
+        ## TODO
+        ## Get Template -> Fill Values
+        ## Place at var/tmp/luna2
+        ## validate the service & restart
+        else:
+            self.logger.error('No Networks have the DHCP enabled')
+        return True

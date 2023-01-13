@@ -35,6 +35,8 @@ def boot():
     Process - Via jinja2 filled data in template templ_boot_ipxe.cfg
     Output - templ_boot_ipxe.cfg
     """
+    ## TODO for testing purpose 
+    testing = Helper().dhcp_overwrite()
     template = 'templ_boot_ipxe.cfg'
     LOGGER.info(f'Boot API serving the {template}')
     check_template = Helper().checkjinja(f'{CONSTANT["TEMPLATES"]["TEMPLATES_DIR"]}/{template}')

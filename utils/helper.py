@@ -573,7 +573,10 @@ class Helper(object):
         other devices which have the mac address.
         write and validates the /var/tmp/luna/dhcpd.conf
         """
-        networks = Database().get_record(None, 'network', ' WHERE `dhcp` = "1";')
+        networks = Database().get_record(None, 'network', ' WHERE `dhcp` = 1;')
+        dhcpfile = f"{CONSTANT['TEMPLATES']['TEMPLATES_DIR']}/dhcp.conf"
+        # self.logger.info(networks)
+        # self.logger.info(dhcpfile)
         if networks:
             for nwk in networks:
                 nwkid = nwk['id']
@@ -581,13 +584,13 @@ class Helper(object):
                 nwknetwork = nwk['network']
                 node_interface = Database().get_record(None, 'nodeinterface', f' WHERE networkid = "{nwkid}";')
                 if node_interface:
-                    pass
+                    self.logger.info(node_interface)
                 else:
                     self.logger.error(f'No Nodes available for this network {nwkname}  {nwknetwork}')
                 
-                devices = Database().get_record(None, 'otherdevices', ' WHERE macaddr IS NOT NULL;')
+                devices = Database().get_record(None, 'otherdevices', f' WHERE network = "{nwkid}" and macaddr IS NOT NULL;')
                 if devices:
-                    pass
+                    self.logger.info(devices)
                 else:
                     self.logger.error(f'No Nodes available for this network {nwkname}  {nwknetwork}')
         
@@ -595,6 +598,6 @@ class Helper(object):
         ## Get Template -> Fill Values
         ## Place at var/tmp/luna2
         ## validate the service & restart
-        else:
-            self.logger.error('No Networks have the DHCP enabled')
+        # else:
+        #     self.logger.error('No Networks have the DHCP enabled')
         return True

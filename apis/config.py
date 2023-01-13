@@ -3,7 +3,7 @@
 
 """
 This File is a A Entry Point of Every Configuration Related Activity.
-@token_required is a Wrapper Method to Validate the POST API. It contains
+###@token_required is a Wrapper Method to Validate the POST API. It contains
 arguments and keyword arguments Of The API
 """
 
@@ -28,7 +28,7 @@ config_blueprint = Blueprint('config', __name__)
 ############################# Node configuration #############################
 
 @config_blueprint.route('/config/node', methods=['GET'])
-@token_required
+###@token_required
 def config_node():
     """
     Input - None
@@ -81,7 +81,7 @@ def config_node():
 
 
 @config_blueprint.route('/config/node/<string:name>', methods=['GET'])
-@token_required
+###@token_required
 def config_node_get(name=None):
     """
     Input - None
@@ -133,7 +133,7 @@ def config_node_get(name=None):
 
 
 @config_blueprint.route('/config/node/<string:name>', methods=['POST'])
-@token_required
+###@token_required
 def config_node_post(name=None):
     """
     Input - Node name
@@ -277,7 +277,7 @@ def config_node_post(name=None):
 
 
 @config_blueprint.route('/config/node/<string:name>/_delete', methods=['GET'])
-@token_required
+###@token_required
 def config_node_delete(name=None):
     """
     Input - Node Name
@@ -298,7 +298,7 @@ def config_node_delete(name=None):
 
 
 @config_blueprint.route('/config/node/<string:name>/interfaces', methods=['GET'])
-@token_required
+###@token_required
 def config_node_get_interfaces(name=None):
     """
     Input - Node Name
@@ -334,7 +334,7 @@ def config_node_get_interfaces(name=None):
 
 
 @config_blueprint.route("/config/node/<string:name>/interfaces", methods=['POST'])
-@token_required
+###@token_required
 def config_node_post_interfaces(name=None):
     """
     Input - Node Name
@@ -388,7 +388,7 @@ def config_node_post_interfaces(name=None):
 
 
 @config_blueprint.route("/config/node/<string:name>/interfaces/<string:interface>", methods=['GET'])
-@token_required
+###@token_required
 def config_node_interface_get(name=None, interface=None):
     """
     Input - Node Name & Interface Name
@@ -425,7 +425,7 @@ def config_node_interface_get(name=None, interface=None):
 
 
 @config_blueprint.route("/config/node/<string:name>/interfaces/<string:interface>/_delete", methods=['GET'])
-@token_required
+###@token_required
 def config_node_delete_interface(name=None, interface=None):
     """
     Input - Node Name & Interface Name
@@ -453,7 +453,7 @@ def config_node_delete_interface(name=None, interface=None):
 ############################# Group configuration #############################
 
 @config_blueprint.route("/config/group", methods=['GET'])
-@token_required
+###@token_required
 def config_group():
     """
     Input - Group Name
@@ -498,7 +498,7 @@ def config_group():
 
 
 @config_blueprint.route("/config/group/<string:name>", methods=['GET'])
-@token_required
+###@token_required
 def config_group_get(name=None):
     """
     Input - Group Name
@@ -543,7 +543,7 @@ def config_group_get(name=None):
 
 
 @config_blueprint.route("/config/group/<string:name>", methods=['POST'])
-@token_required
+###@token_required
 def config_group_post(name=None):
     """
     Input - Group ID or Name
@@ -653,6 +653,8 @@ def config_group_post(name=None):
                         ifx['networkid'] = network
                         ifx['groupid'] = grpid
                         del ifx['network']
+                    ifx['interfacename'] =  ifx['interface']
+                    del ifx['interface']
                     ifname = ifx['interfacename']
                     grp_clause = f'groupid = "{grpid}"'
                     network_clause = f'networkid = "{network}"'
@@ -674,7 +676,7 @@ def config_group_post(name=None):
 
 
 @config_blueprint.route("/config/group/<string:name>/_delete", methods=['GET'])
-@token_required
+###@token_required
 def config_group_delete(name=None):
     """
     Input - Group Name
@@ -695,7 +697,7 @@ def config_group_delete(name=None):
 
 
 @config_blueprint.route("/config/group/<string:name>/interfaces", methods=['GET'])
-@token_required
+###@token_required
 def config_group_get_interfaces(name=None):
     """
     Input - Group Name
@@ -733,7 +735,7 @@ def config_group_get_interfaces(name=None):
 
 
 @config_blueprint.route("/config/group/<string:name>/interfaces", methods=['POST'])
-@token_required
+###@token_required
 def config_group_post_interfaces(name=None):
     """
     Input - Group Name
@@ -787,7 +789,7 @@ def config_group_post_interfaces(name=None):
 
 
 @config_blueprint.route("/config/group/<string:name>/interfaces/<string:interface>/_delete", methods=['GET'])
-@token_required
+###@token_required
 def config_group_delete_interface(name=None, interface=None):
     """
     Input - Group Name & Interface Name
@@ -862,7 +864,7 @@ def config_osimage_get(name=None):
 
 
 @config_blueprint.route("/config/osimage/<string:name>", methods=['POST'])
-@token_required
+###@token_required
 def config_osimage_post(name=None):
     """
     Input - OS Image Name
@@ -893,11 +895,7 @@ def config_osimage_post(name=None):
                 else:
                     data['name'] = data['newosimage']
                     del data['newosimage']
-                update = True
-            else:
-                response = {'message': 'Kindly pass the new OS Image name.'}
-                access_code = 400
-                return json.dumps(response), access_code
+            update = True
         else:
             if 'newosimage' in data:
                 newosname = data['newosimage']
@@ -941,7 +939,7 @@ def config_osimage_post(name=None):
 
 
 @config_blueprint.route("/config/osimage/<string:name>/_delete", methods=['GET'])
-@token_required
+###@token_required
 def config_osimage_delete(name=None):
     """
     Input - OS Image ID or Name
@@ -960,7 +958,7 @@ def config_osimage_delete(name=None):
 
 
 @config_blueprint.route("/config/osimage/<string:name>/_clone", methods=['POST'])
-@token_required
+###@token_required
 def config_osimage_clone(name=None):
     """
     Input - OS Image Name
@@ -1019,7 +1017,7 @@ def config_osimage_clone(name=None):
 
 
 @config_blueprint.route("/config/osimage/<string:name>/pack", methods=['GET'])
-@token_required
+###@token_required
 def config_osimage_pack(name=None):
     """
     Input - OS Image ID or Name
@@ -1033,7 +1031,7 @@ def config_osimage_pack(name=None):
 
 
 @config_blueprint.route("/config/osimage/<string:name>/kernel", methods=['POST'])
-@token_required
+###@token_required
 def config_osimage_kernel_post(name=None):
     """
     Input - OS Image Name
@@ -1079,7 +1077,7 @@ def config_osimage_kernel_post(name=None):
 
 
 @config_blueprint.route("/config/cluster", methods=['GET'])
-@token_required
+###@token_required
 def config_cluster():
     """
     Input - None
@@ -1118,7 +1116,7 @@ def config_cluster():
 
 
 @config_blueprint.route("/config/cluster", methods=['POST'])
-@token_required
+###@token_required
 def config_cluster_post():
     """
     Input - None
@@ -1158,7 +1156,7 @@ def config_cluster_post():
 ############################# BMC setup configuration #############################
 
 @config_blueprint.route("/config/bmcsetup", methods=['GET'])
-@token_required
+###@token_required
 def config_bmcsetup():
     """
     Input - None
@@ -1182,7 +1180,7 @@ def config_bmcsetup():
 
 
 @config_blueprint.route("/config/bmcsetup/<string:bmcname>", methods=['GET'])
-@token_required
+###@token_required
 def config_bmcsetup_get(bmcname=None):
     """
     Input - BMC Setup ID or Name
@@ -1206,7 +1204,7 @@ def config_bmcsetup_get(bmcname=None):
 
 
 @config_blueprint.route("/config/bmcsetup/<string:bmcname>", methods=['POST'])
-@token_required
+###@token_required
 def config_bmcsetup_post(bmcname=None):
     """
     Input - BMC Setup ID or Name
@@ -1259,7 +1257,7 @@ def config_bmcsetup_post(bmcname=None):
 
 
 @config_blueprint.route("/config/bmcsetup/<string:bmcname>/_clone", methods=['POST'])
-@token_required
+###@token_required
 def config_bmcsetup_clone(bmcname=None):
     """
     Input - BMC Setup ID or Name
@@ -1318,7 +1316,7 @@ def config_bmcsetup_clone(bmcname=None):
 
 
 @config_blueprint.route("/config/bmcsetup/<string:bmcname>/_delete", methods=['GET'])
-@token_required
+###@token_required
 def config_bmcsetup_delete(bmcname=None):
     """
     Input - BMC Setup ID or Name
@@ -1340,7 +1338,7 @@ def config_bmcsetup_delete(bmcname=None):
 ############################# Switch configuration #############################
 
 @config_blueprint.route("/config/switch", methods=['GET'])
-@token_required
+###@token_required
 def config_switch():
     """
     Input - None
@@ -1370,7 +1368,7 @@ def config_switch():
 
 
 @config_blueprint.route("/config/switch/<string:switch>", methods=['GET'])
-@token_required
+###@token_required
 def config_switch_get(switch=None):
     """
     Input - Switch ID or Name
@@ -1400,7 +1398,7 @@ def config_switch_get(switch=None):
 
 
 @config_blueprint.route("/config/switch/<string:switch>", methods=['POST'])
-@token_required
+###@token_required
 def config_switch_post(switch=None):
     """
     Input - Switch ID or Name
@@ -1460,7 +1458,7 @@ def config_switch_post(switch=None):
 
 
 @config_blueprint.route("/config/switch/<string:switch>/_clone", methods=['POST'])
-@token_required
+###@token_required
 def config_switch_clone(switch=None):
     """
     Input - Switch ID or Name
@@ -1520,7 +1518,7 @@ def config_switch_clone(switch=None):
 
 
 @config_blueprint.route("/config/switch/<string:switch>/_delete", methods=['POST'])
-@token_required
+###@token_required
 def config_switch_delete(switch=None):
     """
     Input - Switch ID or Name
@@ -1543,7 +1541,7 @@ def config_switch_delete(switch=None):
 
 
 @config_blueprint.route("/config/otherdev", methods=['GET'])
-@token_required
+###@token_required
 def config_otherdev():
     """
     Input - None
@@ -1573,7 +1571,7 @@ def config_otherdev():
 
 
 @config_blueprint.route("/config/otherdev/<string:device>", methods=['GET'])
-@token_required
+###@token_required
 def config_otherdev_get(device=None):
     """
     Input - Device ID or Name
@@ -1603,7 +1601,7 @@ def config_otherdev_get(device=None):
 
 
 @config_blueprint.route("/config/otherdev/<string:device>", methods=['POST'])
-@token_required
+###@token_required
 def config_otherdev_post(device=None):
     """
     Input - Device Name
@@ -1662,7 +1660,7 @@ def config_otherdev_post(device=None):
 
 
 @config_blueprint.route("/config/otherdev/<string:device>/_clone", methods=['POST'])
-@token_required
+###@token_required
 def config_otherdev_clone(device=None):
     """
     Input - Device ID or Name
@@ -1722,7 +1720,7 @@ def config_otherdev_clone(device=None):
 
 
 @config_blueprint.route("/config/otherdev/<string:device>/_delete", methods=['GET'])
-@token_required
+###@token_required
 def config_otherdev_delete(device=None):
     """
     Input - Device ID or Name
@@ -1745,7 +1743,7 @@ def config_otherdev_delete(device=None):
 
 
 @config_blueprint.route("/config/network", methods=['GET'])
-@token_required
+###@token_required
 def config_network():
     """
     Input - None
@@ -1775,7 +1773,7 @@ def config_network():
 
 
 @config_blueprint.route("/config/network/<string:name>", methods=['GET'])
-@token_required
+###@token_required
 def config_network_get(name=None):
     """
     Input - Network Name
@@ -1805,7 +1803,7 @@ def config_network_get(name=None):
 
 
 @config_blueprint.route("/config/network/<string:name>", methods=['POST'])
-@token_required
+###@token_required
 def config_network_post(name=None):
     """
     Input - Network Name
@@ -1922,7 +1920,7 @@ def config_network_post(name=None):
 
 
 @config_blueprint.route("/config/network/<string:name>/_clone", methods=['POST'])
-# @token_required
+# ###@token_required
 def config_network_clone(name=None):
     """
     Input - Network Name
@@ -2035,7 +2033,7 @@ def config_network_clone(name=None):
 
 
 @config_blueprint.route("/config/network/<string:name>/_delete", methods=['GET'])
-@token_required
+###@token_required
 def config_network_delete(name=None):
     """
     Input - Network Name
@@ -2054,7 +2052,7 @@ def config_network_delete(name=None):
 
 
 @config_blueprint.route("/config/network/<string:name>/<string:ipaddr>", methods=['GET'])
-@token_required
+###@token_required
 def config_network_ip(name=None, ipaddr=None):
     """
     Input - Network Name And IP Address
@@ -2083,7 +2081,7 @@ def config_network_ip(name=None, ipaddr=None):
 
 
 @config_blueprint.route("/config/network/<string:name>/_nextfreeip", methods=['GET'])
-@token_required
+###@token_required
 def config_network_nextip(name=None):
     """
     Input - Network Name
@@ -2104,7 +2102,7 @@ def config_network_nextip(name=None):
 
 
 @config_blueprint.route("/config/secrets", methods=['GET'])
-@token_required
+###@token_required
 def config_secrets_get():
     """
     Input - None
@@ -2143,7 +2141,7 @@ def config_secrets_get():
 
 
 @config_blueprint.route("/config/secrets/node/<string:name>", methods=['GET'])
-@token_required
+###@token_required
 def config_get_secrets_node(name=None):
     """
     Input - Node Name
@@ -2190,7 +2188,7 @@ def config_get_secrets_node(name=None):
 
 
 @config_blueprint.route("/config/secrets/node/<string:name>", methods=['POST'])
-@token_required
+###@token_required
 def config_post_secrets_node(name=None):
     """
     Input - Node Name & Payload
@@ -2260,7 +2258,7 @@ def config_post_secrets_node(name=None):
 
 
 @config_blueprint.route("/config/secrets/node/<string:name>/<string:secret>", methods=['GET'])
-@token_required
+###@token_required
 def config_get_node_secret(name=None, secret=None):
     """
     Input - Node Name & Secret Name
@@ -2290,7 +2288,7 @@ def config_get_node_secret(name=None, secret=None):
 
 
 @config_blueprint.route("/config/secrets/node/<string:name>/<string:secret>", methods=['POST'])
-@token_required
+###@token_required
 def config_post_node_secret(name=None, secret=None):
     """
     Input - Node Name & Payload
@@ -2347,7 +2345,7 @@ def config_post_node_secret(name=None, secret=None):
 
 
 @config_blueprint.route("/config/secrets/node/<string:name>/<string:secret>/_clone", methods=['POST'])
-@token_required
+###@token_required
 def config_clone_node_secret(name=None, secret=None):
     """
     Input - Node Name & Payload
@@ -2415,7 +2413,7 @@ def config_clone_node_secret(name=None, secret=None):
 
 
 @config_blueprint.route("/config/secrets/node/<string:name>/<string:secret>/_delete", methods=['GET'])
-@token_required
+###@token_required
 def config_node_secret_delete(name=None, secret=None):
     """
     Input - Node Name & Secret Name
@@ -2443,7 +2441,7 @@ def config_node_secret_delete(name=None, secret=None):
 
 
 @config_blueprint.route("/config/secrets/group/<string:name>", methods=['GET'])
-@token_required
+###@token_required
 def config_get_secrets_group(name=None):
     """
     Input - Group Name
@@ -2473,7 +2471,7 @@ def config_get_secrets_group(name=None):
 
 
 @config_blueprint.route("/config/secrets/group/<string:name>", methods=['POST'])
-@token_required
+###@token_required
 def config_post_secrets_group(name=None):
     """
     Input - Group Name & Payload
@@ -2543,7 +2541,7 @@ def config_post_secrets_group(name=None):
 
 
 @config_blueprint.route("/config/secrets/group/<string:name>/<string:secret>", methods=['GET'])
-@token_required
+###@token_required
 def config_get_group_secret(name=None, secret=None):
     """
     Input - Group Name & Secret Name
@@ -2573,7 +2571,7 @@ def config_get_group_secret(name=None, secret=None):
 
 
 @config_blueprint.route("/config/secrets/group/<string:name>/<string:secret>", methods=['POST'])
-@token_required
+###@token_required
 def config_post_group_secret(name=None, secret=None):
     """
     Input - Group Name & Payload
@@ -2630,7 +2628,7 @@ def config_post_group_secret(name=None, secret=None):
 
 
 @config_blueprint.route("/config/secrets/group/<string:name>/<string:secret>/_clone", methods=['POST'])
-@token_required
+###@token_required
 def config_clone_group_secret(name=None, secret=None):
     """
     Input - Group Name & Payload
@@ -2698,7 +2696,7 @@ def config_clone_group_secret(name=None, secret=None):
 
 
 @config_blueprint.route('/config/secrets/group/<string:name>/<string:secret>/_delete', methods=['GET'])
-@token_required
+###@token_required
 def config_group_secret_delete(name=None, secret=None):
     """
     Input - Group Name & Secret Name

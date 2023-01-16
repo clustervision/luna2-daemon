@@ -573,8 +573,8 @@ class Helper(object):
         other devices which have the mac address.
         write and validates the /var/tmp/luna/dhcpd.conf
         """
+        result = False
         ntpserver, dhcp_subnet_block = '', ''
-        
         cluster = Database().get_record(None, 'network', None)
         if cluster:
             ntpserver = cluster[0]['ntp_server']
@@ -585,7 +585,7 @@ class Helper(object):
                 nwkid = nwk['id']
                 nwkname = nwk['name']
                 nwknetwork = nwk['network']
-                subnet_block = self.dhcp_subnet(nwk['network'], nwk['subnet'], ntpserver, nwk['gateway'], nwk['dhcp_range_begin'], nwk['dhcp_range_end'])
+                subnet_block = self.dhcp_subnet(nwk['network'], nwk['subnet'], nwk['gateway'], nwk['dhcp_range_begin'], nwk['dhcp_range_end'])
                 dhcp_subnet_block = f'{dhcp_subnet_block}{subnet_block}'
 
                 node_interface = Database().get_record(None, 'nodeinterface', f' WHERE networkid = "{nwkid}" and macaddress IS NOT NULL;')
@@ -602,27 +602,32 @@ class Helper(object):
                     for device in devices:
                         device_block.append(self.dhcp_node(device['name'], device['macaddr'], device['ipaddress']))
                 else:
-                    self.logger.info(f'No Devices available for this network {nwkname}  {nwknetwork}')
-        
+                    self.logger.info(f'Device not available for {nwkname} {nwknetwork}')
+
         config = self.dhcp_config(ntpserver)
         config = f'{config}{dhcp_subnet_block}'
         for node in node_block:
             config = f'{config}{node}'
         for dev in device_block:
             config = f'{config}{dev}'
-        
+
         with open(dhcpfile, 'w') as dhcp:
             dhcp.write(config)
-        self.logger.info(f'DHCP File created : {dhcpfile}')
-        return True
-    
+        validate_config = subprocess.run(["dhcpd", "-t", "-cf", dhcpfile])
+        if validate_config.returncode:
+            self.logger.error(f'DHCP File : {dhcpfile} containing errors.')
+        else:
+            result = True
+            self.logger.info(f'DHCP File created : {dhcpfile}')
+        return result
+
 
     def dhcp_config(self, ntpserver=None):
         """
         This method will prepare DHCP configuration."""
         if ntpserver:
             ntpserver = f'option domain-name-servers {ntpserver};'
-            secretkey = '38u6saDS8cm1kta2L/RCsy87vvD38YgVwcGBNs5D5As='
+            secretkey = CONSTANT['DHCP']['OMAPIKEY']
         config = f"""
 #
 # DHCP Server Configuration file.
@@ -651,9 +656,10 @@ key omapi_key {{
 #
 """
         return config
-    
 
-    def dhcp_subnet(self, subnet=None, netmask=None, netpserver=None, nextserver=None, dhcp_range_start=None, dhcp_range_end=None):
+
+    def dhcp_subnet(self, subnet=None, netmask=None, nextserver=None,
+                    dhcp_range_start=None, dhcp_range_end=None):
         """
         This method prepare the netwok block
         for all DHCP enabled networks
@@ -662,7 +668,7 @@ key omapi_key {{
 subnet {subnet} netmask {netmask} {{
     max-lease-time 28800;
     if exists user-class and option user-class = "iPXE" {{
-        filename "http://{netpserver}:7050/luna?step=boot";
+        filename "http://{{{{ boot_server }}}}:7050/luna?step=boot";
     }} else {{
         if option client-architecture = 00:07 {{
             filename "luna_ipxe.efi";
@@ -681,9 +687,9 @@ subnet {subnet} netmask {netmask} {{
 }}
 """
         return subnet_block
-    
 
-    def dhcp_node(self, node=None, macaddress=None, ipaddress=None):
+
+    def dhcp_node(self, node=None, macaddress=None, ipaddr=None):
         """
         This method will generate node and
         otherdecices configuration for the DHCP
@@ -691,7 +697,7 @@ subnet {subnet} netmask {netmask} {{
         node_block = f"""
 host {node}  {{
     hardware ethernet {macaddress};
-    fixed-address {ipaddress};
+    fixed-address {ipaddr};
 }}
 """
         return node_block

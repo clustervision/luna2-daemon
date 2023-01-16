@@ -45,9 +45,13 @@ class Service(object):
                 match action:
                     case 'start' | 'stop' | 'reload' | 'restart':
                         command = f'{CONSTANT["SERVICES"]["COMMAND"]} {action} {name}'
-                        Helper().dhcp_overwrite()
-                        output = Helper().runcommand(command)
-                        response, code = self.service_status(name, action, output)
+                        check_dhcp = Helper().dhcp_overwrite()
+                        if check_dhcp:
+                            output = Helper().runcommand(command)
+                            response, code = self.service_status(name, action, output)
+                        else:
+                            response = f'{name} service file have errors.'
+                            code = 500
                     case 'status':
                         command = f'{CONSTANT["SERVICES"]["COMMAND"]} {action} {name}'
                         output = Helper().runcommand(command)

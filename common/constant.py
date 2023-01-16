@@ -174,6 +174,7 @@ CONSTANT = {
                 'DBPASSWORD': None, 'HOST': None, 'PORT': None},
     'FILES': {'KEYFILE': None, 'TARBALL': None, 'IMAGE_DIRECTORY': None, 'MAXPACKAGINGTIME': None},
     'SERVICES': {'DHCP': None, 'DNS': None, 'CONTROL': None, 'COOLDOWN': None, 'COMMAND': None},
+    'DHCP': {'OMAPIKEY': None},
     'BMCCONTROL': {'BMC_BATCH_SIZE': None, 'BMC_BATCH_DELAY': None},
     'TEMPLATES': {'TEMPLATES_DIR': None, 'TEMPLATELIST': None,  'TEMP_DIR': None}
 }

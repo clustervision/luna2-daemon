@@ -43,7 +43,12 @@ class Service(object):
         match name:
             case self.dhcp | self.dns | 'luna2':
                 match action:
-                    case 'start' | 'stop' | 'reload' | 'restart' | 'status':
+                    case 'start' | 'stop' | 'reload' | 'restart':
+                        command = f'{CONSTANT["SERVICES"]["COMMAND"]} {action} {name}'
+                        Helper().dhcp_overwrite()
+                        output = Helper().runcommand(command)
+                        response, code = self.service_status(name, action, output)
+                    case 'status':
                         command = f'{CONSTANT["SERVICES"]["COMMAND"]} {action} {name}'
                         output = Helper().runcommand(command)
                         response, code = self.service_status(name, action, output)
@@ -53,7 +58,7 @@ class Service(object):
                         code = 404
             case _:
                 self.logger.error(f'Service Name {name} Is Not Recognized.')
-                response = {'error': 'Service Name {name} Is Not Recognized.'}
+                response = {'error': f'Service Name {name} Is Not Recognized.'}
                 code = 404
         return response, code
 

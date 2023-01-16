@@ -55,10 +55,4 @@ def service(name, action):
         ## Cool Down to Manage the Service itself.
         time.sleep(CONSTANT['SERVICES']['COOLDOWN'])
         LOGGER.info(response)
-        ## TODO
-        ## Call DHCP_Overwrite method from helper before restart service dns and dhcp
-        ## 
-
-
-
     return json.dumps(response), code

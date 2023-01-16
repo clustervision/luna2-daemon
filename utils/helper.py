@@ -575,7 +575,7 @@ class Helper(object):
         """
         result = False
         ntpserver, dhcp_subnet_block = '', ''
-        cluster = Database().get_record(None, 'network', None)
+        cluster = Database().get_record(None, 'cluster', None)
         if cluster:
             ntpserver = cluster[0]['ntp_server']
         networks = Database().get_record(None, 'network', ' WHERE `dhcp` = 1;')
@@ -596,7 +596,6 @@ class Helper(object):
                         node_block.append(self.dhcp_node(nodename, interface['macaddress'], interface['ipaddress']))
                 else:
                     self.logger.info(f'No Nodes available for this network {nwkname}  {nwknetwork}')
-                
                 devices = Database().get_record(None, 'otherdevices', f' WHERE network = "{nwkid}" and macaddr IS NOT NULL;')
                 if devices:
                     for device in devices:
@@ -701,3 +700,86 @@ host {node}  {{
 }}
 """
         return node_block
+    
+
+    def dns_configure(self):
+        """
+        This method will write /etc/named.conf
+        and zone files for every network
+        """
+        cluster = Database().get_record(None, 'cluster', None)
+        ns_ip = cluster[0]['ns_ip']
+        if ns_ip:
+            forwarder = ns_ip
+        else:
+            ns_ip = Database().get_record('ns_ip', 'network', None)
+            forwarder = ns_ip
+        config = f"""
+//
+// named.conf
+//
+// Provided by Red Hat bind package to configure the ISC BIND named(8) DNS
+// server as a caching only nameserver (as a localhost DNS resolver only).
+//
+// See /usr/share/doc/bind*/sample/ for example named configuration files.
+//
+
+options {{
+        listen-on port 53 {{ any; }};
+        listen-on-v6 port 53 {{ any; }};
+        directory       "/trinity/local/var/lib/named";
+        dump-file       "/trinity/local/var/lib/named/data/cache_dump.db";
+        statistics-file "/trinity/local/var/lib/named/data/named_stats.txt";
+        memstatistics-file "/trinity/local/var/lib/named/data/named_mem_stats.txt";
+        secroots-file   "/trinity/local/var/lib/named/data/named.secroots";
+        recursing-file  "/trinity/local/var/lib/named/data/named.recursing";
+        allow-query     {{ any; }};
+
+        /*
+         - If you are building an AUTHORITATIVE DNS server, do NOT enable recursion.
+         - If you are building a RECURSIVE (caching) DNS server, you need to enable
+           recursion.
+         - If your recursive DNS server has a public IP address, you MUST enable access
+           control to limit queries to your legitimate users. Failing to do so will
+           cause your server to become part of large scale DNS amplification
+           attacks. Implementing BCP38 within your network would greatly
+           reduce such attack surface
+        */
+        recursion yes;
+// BEGIN forwarders
+    forwarders {{
+              {forwarder};
+    }};
+// END forwarders
+
+dnssec-enable no;
+dnssec-validation no;
+
+        managed-keys-directory "/trinity/local/var/lib/named/dynamic";
+
+        pid-file "/run/named/named.pid";
+        session-keyfile "/run/named/session.key";
+
+        /* https://fedoraproject.org/wiki/Changes/CryptoPolicy */
+        include "/etc/crypto-policies/back-ends/bind.config";
+}};
+
+logging {{
+        channel default_debug {{
+                file "data/named.run";
+                severity dynamic;
+        }};
+}};
+
+zone "." IN {{
+        type hint;
+        file "named.ca";
+}};
+
+include "/etc/named.rfc1912.zones";
+include "/etc/named.root.key";
+
+include "/etc/named.luna.zones";
+        """
+        self.logger.info(f'DNS File created : {config}')
+        return True

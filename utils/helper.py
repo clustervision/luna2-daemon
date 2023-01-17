@@ -20,7 +20,10 @@ import subprocess
 import shutil
 import queue
 import json
+import time
+import re
 import ipaddress
+from ipaddress import ip_address
 import hostlist
 from configparser import RawConfigParser
 import pyodbc
@@ -610,7 +613,7 @@ class Helper(object):
         for dev in device_block:
             config = f'{config}{dev}'
 
-        with open(dhcpfile, 'w') as dhcp:
+        with open(dhcpfile, 'w', encoding='utf-8') as dhcp:
             dhcp.write(config)
         validate_config = subprocess.run(["dhcpd", "-t", "-cf", dhcpfile])
         if validate_config.returncode:
@@ -707,22 +710,60 @@ host {node}  {{
         This method will write /etc/named.conf
         and zone files for every network
         """
+        ns_ip = []
+        zone_config, rev_ip = '', ''
+        nodelist, ptrnodelist = [], []
         cluster = Database().get_record(None, 'cluster', None)
         ns_ip = cluster[0]['ns_ip']
+        controllerip = cluster[0]['ntp_server']
         if ns_ip:
             forwarder = ns_ip
-        else:
-            network = Database().get_record(None, 'network', None)
-            ns_ip = []
-            for ip in network:
-                if ip['ns_ip']:
-                    ns_ip.append(ip['ns_ip'])
-            forwarder = ';'.join(ns_ip)
+        networks = Database().get_record(None, 'network', None)
+        for nwk in networks:
+            nwkid = nwk['id']
+            if nwk['ns_ip'] and ns_ip is None:
+                ns_ip.append(nwk['ns_ip'])
+            if nwk['network'] and nwk['name']:
+                networkname = nwk['name']
+                rev_ip = ip_address(nwk['network']).reverse_pointer
+                rev_ip = rev_ip.split('.')
+                rev_ip = rev_ip[2:]
+                rev_ip = '.'.join(rev_ip)
+                zone_config = f'{zone_config}{self.dns_zone_config(networkname, rev_ip)}'
+            node_interface = Database().get_record(None, 'nodeinterface', f' WHERE networkid = "{nwkid}";')
+            if node_interface:
+                for interface in node_interface:
+                    nodeip = interface['ipaddress']
+                    nodename = Database().getname_byid('node', interface['nodeid'])
+                    nodelist.append(f'{nodename}                 IN A {nodeip}')
+                    nodeptr = int(re.sub('\D', '', nodename))
+                    nodeptr = f'{nodeptr}.0'
+                    ptrnodelist.append(f'{nodeptr}                    IN PTR {nodename}.{networkname}.')
+
+            zone_name_config = self.dns_zone_name(networkname, controllerip, nodelist)
+            zone_ptr_config = self.dns_zone_ptr(networkname, ptrnodelist)
+            namefile = f'/var/named/{networkname}.luna.zone'
+            ptrfile = f'/var/named/{rev_ip}.luna.zone'
+            with open(namefile, 'w', encoding='utf-8') as filename:
+                filename.write(zone_name_config)
+            self.logger.info(f'DNS zone name config file : {namefile}')
+
+            with open(ptrfile, 'w', encoding='utf-8') as fileptr:
+                fileptr.write(zone_ptr_config)
+            self.logger.info(f'DNS PTR zone config file : {ptrfile}')
+            if ns_ip is None:
+                forwarder = ';'.join(ns_ip)
+
         config = self.dns_config(forwarder)
-        self.logger.info(f'DNS Config : {config}')
         dnsfile = '/etc/named.conf'
-        with open(dnsfile, 'w') as dns:
+        with open(dnsfile, 'w', encoding='utf-8') as dns:
             dns.write(config)
+        self.logger.info(f'DNS config file : {dnsfile}')
+
+        dnszonefile = '/trinity/local/etc/named.luna.zones'
+        with open(dnszonefile, 'w', encoding='utf-8') as dnszone:
+            dnszone.write(zone_config)
+        self.logger.info(f'DNS zone config file : {dnszonefile}')
         return True
 
 
@@ -803,5 +844,77 @@ include "/etc/named.root.key";
 
 include "/etc/named.luna.zones";
         """
-        self.logger.info(f'DNS File created : {config}')
         return config
+
+
+    def dns_zone_config(self, networkname=None, reverseip=None):
+        """
+        This method will generate the configuration
+        for zone file
+        """
+        zone_config = f"""
+zone "{networkname}" IN {{
+    type master;
+    file "/var/named/{networkname}.luna.zone";
+    allow-update {{ none; }};
+    allow-transfer {{none; }};
+}};
+zone "{reverseip}" IN {{
+    type master;
+    file "/var/named/{reverseip}.luna.zone";
+    allow-update {{ none; }};
+    allow-transfer {{none; }};
+}};
+        """
+        return zone_config
+
+
+    def dns_zone_name(self, networkname=None, controllerip=None, nodelist=None):
+        """
+        This method will generate the DNS network
+        name zone file.
+        """
+        unixtime = int(time.time())
+        if nodelist:
+            nodelist = '\n'.join(nodelist)
+        zone_name_config = f"""
+$TTL 604800
+@ IN SOA                controller.{networkname}. root.controller.{networkname}. ( ; domain email
+                        {unixtime}        ; serial number
+                        86400       ; refresh
+                        14400       ; retry
+                        3628800       ; expire
+                        604800 )     ; min TTL
+
+                        IN NS controller.{networkname}
+                        IN A {controllerip}
+
+
+{nodelist}
+        """
+        return zone_name_config
+    
+
+    def dns_zone_ptr(self, networkname=None, nodelist=None):
+        """
+        This method will generate the DNS network
+        name zone file.
+        """
+        unixtime = int(time.time())
+        if nodelist:
+            nodelist = '\n'.join(nodelist)
+        zone_name_config = f"""
+$TTL 604800
+@ IN SOA                controller.{networkname} .root.controller.{networkname}. ( ; domain email
+                        {unixtime}        ; serial number
+                        86400       ; refresh
+                        14400       ; retry
+                        3628800       ; expire
+                        604800 )     ; min TTL
+
+                        IN NS controller.{networkname}.
+
+
+{nodelist}
+        """
+        return zone_name_config

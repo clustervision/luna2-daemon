@@ -712,8 +712,34 @@ host {node}  {{
         if ns_ip:
             forwarder = ns_ip
         else:
-            ns_ip = Database().get_record('ns_ip', 'network', None)
-            forwarder = ns_ip
+            network = Database().get_record(None, 'network', None)
+            ns_ip = []
+            for ip in network:
+                if ip['ns_ip']:
+                    ns_ip.append(ip['ns_ip'])
+            forwarder = ';'.join(ns_ip)
+        config = self.dns_config(forwarder)
+        self.logger.info(f'DNS Config : {config}')
+        dnsfile = '/etc/named.conf'
+        with open(dnsfile, 'w') as dns:
+            dns.write(config)
+        return True
+
+
+    def dns_config(self, forwarder=None):
+        """
+        This method prepare the dns configuration
+        with forwarder IP's
+        """
+        if forwarder:
+            forwarder = f"""
+// BEGIN forwarders
+    forwarders {{
+              {forwarder};
+    }};
+// END forwarders
+            """
+
         config = f"""
 //
 // named.conf
@@ -746,11 +772,7 @@ options {{
            reduce such attack surface
         */
         recursion yes;
-// BEGIN forwarders
-    forwarders {{
-              {forwarder};
-    }};
-// END forwarders
+{forwarder}
 
 dnssec-enable no;
 dnssec-validation no;
@@ -782,4 +804,4 @@ include "/etc/named.root.key";
 include "/etc/named.luna.zones";
         """
         self.logger.info(f'DNS File created : {config}')
-        return True
+        return config

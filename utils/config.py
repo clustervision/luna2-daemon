@@ -20,7 +20,6 @@ import subprocess
 import shutil
 import time
 import re
-import shutil
 from ipaddress import ip_address
 from utils.log import Log
 from utils.database import Database
@@ -46,7 +45,7 @@ class Config(object):
         other devices which have the mac address.
         write and validates the /var/tmp/luna/dhcpd.conf
         """
-        result = False
+        validate = True
         ntpserver, dhcp_subnet_block = '', ''
         cluster = Database().get_record(None, 'cluster', None)
         if cluster:
@@ -85,13 +84,14 @@ class Config(object):
 
         with open(dhcpfile, 'w', encoding='utf-8') as dhcp:
             dhcp.write(config)
-        validate_config = subprocess.run(["dhcpd", "-t", "-cf", dhcpfile])
+        validate_config = subprocess.run(["dhcpd", "-t", "-cf", dhcpfile], check=True)
         if validate_config.returncode:
-            self.logger.error(f'DHCP File : {dhcpfile} containing errors.')
+            validate = False
+            self.logger.error(f'DHCP file : {dhcpfile} containing errors.')
         else:
-            result = True
+            shutil.copyfile(dhcpfile, '/etc/dhcp/dhcpd.conf')
             self.logger.info(f'DHCP File created : {dhcpfile}')
-        return result
+        return validate
 
 
     def dhcp_config(self, ntpserver=None):

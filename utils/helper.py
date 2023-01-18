@@ -843,6 +843,7 @@ include "/etc/named.rfc1912.zones";
 include "/etc/named.root.key";
 
 include "/etc/named.luna.zones";
+
         """
         return config
 
@@ -865,6 +866,7 @@ zone "{reverseip}" IN {{
     allow-update {{ none; }};
     allow-transfer {{none; }};
 }};
+
         """
         return zone_config
 
@@ -889,8 +891,8 @@ $TTL 604800
                         IN NS controller.{networkname}
                         IN A {controllerip}
 
-
 {nodelist}
+
         """
         return zone_name_config
     
@@ -916,5 +918,6 @@ $TTL 604800
 
 
 {nodelist}
+
         """
         return zone_name_config

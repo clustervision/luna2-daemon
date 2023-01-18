@@ -20,10 +20,7 @@ import subprocess
 import shutil
 import queue
 import json
-import time
-import re
 import ipaddress
-from ipaddress import ip_address
 import hostlist
 from configparser import RawConfigParser
 import pyodbc

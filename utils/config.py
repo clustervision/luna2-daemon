@@ -16,26 +16,16 @@ __email__       = 'sumit.sharma@clustervision.com'
 __status__      = 'Development'
 
 import os
-import pwd
 import subprocess
 import shutil
-import queue
-import json
 import time
 import re
-import ipaddress
+import shutil
 from ipaddress import ip_address
-import hostlist
-from configparser import RawConfigParser
-import pyodbc
-from netaddr import IPNetwork
-from cryptography.fernet import Fernet
-from jinja2 import Environment
 from utils.log import Log
-from utils.helper import Helper
 from utils.database import Database
 
-from common.constant import CONSTANT, LUNAKEY
+from common.constant import CONSTANT
 
 class Config(object):
     """
@@ -47,7 +37,6 @@ class Config(object):
         Constructor - As of now, nothing have to initialize.
         """
         self.logger = Log.get_logger()
-        self.logger.error('Config+++++++++++++++++++++++++++++++++++++++++++++')
 
 
     def dhcp_overwrite(self):
@@ -191,9 +180,9 @@ host {node}  {{
         This method will write /etc/named.conf
         and zone files for every network
         """
-        ns_ip = []
+        validate = True
+        files, ns_ip, nodelist, ptrnodelist= [], [], [], []
         zone_config, rev_ip = '', ''
-        nodelist, ptrnodelist = [], []
         cluster = Database().get_record(None, 'cluster', None)
         ns_ip = cluster[0]['ns_ip']
         controllerip = cluster[0]['ntp_server']
@@ -223,29 +212,41 @@ host {node}  {{
 
             zone_name_config = self.dns_zone_name(networkname, controllerip, nodelist)
             zone_ptr_config = self.dns_zone_ptr(networkname, ptrnodelist)
-            namefile = f'/var/named/{networkname}.luna.zone'
-            ptrfile = f'/var/named/{rev_ip}.luna.zone'
-            with open(namefile, 'w', encoding='utf-8') as filename:
+            namefile = {'source': f'/var/tmp/luna2/{networkname}.luna.zone', 'destination': f'/var/named/{networkname}.luna.zone'}
+            ptrfile = {'source': f'/var/tmp/luna2/{networkname}.luna.zone', 'destination': f'/var/named/{rev_ip}.luna.zone'}
+            files.append(namefile)
+            files.append(ptrfile)
+            with open(namefile['source'], 'w', encoding='utf-8') as filename:
                 filename.write(zone_name_config)
-            self.logger.info(f'DNS zone name config file : {namefile}')
-
-            with open(ptrfile, 'w', encoding='utf-8') as fileptr:
+            with open(ptrfile['source'], 'w', encoding='utf-8') as fileptr:
                 fileptr.write(zone_ptr_config)
-            self.logger.info(f'DNS PTR zone config file : {ptrfile}')
+            validate_zone_name = subprocess.run(['named-checkzone', f'luna.{networkname}', namefile['source']], check = True)
+            if validate_zone_name.returncode:
+                validate = False
+                self.logger.error(f'DNS zone file: {namefile["source"]} containing errors.')
+            validate_ptr_name = subprocess.run(['named-checkzone', f'luna.{networkname}', ptrfile['source']], check = True)
+            if validate_ptr_name.returncode:
+                validate = False
+                self.logger.error(f'DNS zone file: {ptrfile["source"]} containing errors.')
             if ns_ip is None:
                 forwarder = ';'.join(ns_ip)
 
         config = self.dns_config(forwarder)
-        dnsfile = '/etc/named.conf'
-        with open(dnsfile, 'w', encoding='utf-8') as dns:
+        dnsfile = {'source': '/var/tmp/luna2/named.conf', 'destination': '/etc/named.conf'}
+        files.append(dnsfile)
+        with open(dnsfile["source"], 'w', encoding='utf-8') as dns:
             dns.write(config)
-        self.logger.info(f'DNS config file : {dnsfile}')
-
-        dnszonefile = '/trinity/local/etc/named.luna.zones'
-        with open(dnszonefile, 'w', encoding='utf-8') as dnszone:
+        dnszonefile = {'source': '/var/tmp/luna2/named.luna.zones', 'destination': '/trinity/local/etc/named.luna.zones'}
+        files.append(dnszonefile)
+        with open(dnszonefile["source"], 'w', encoding='utf-8') as dnszone:
             dnszone.write(zone_config)
-        self.logger.info(f'DNS zone config file : {dnszonefile}')
-        return True
+        self.logger.info(f'DNS files : {files}')
+        if validate:
+            if not os.path.exists('/var/named'):
+                os.makedirs('/var/named')
+            for dnsfiles in files:
+                shutil.copyfile(dnsfiles["source"], dnsfiles["destination"])
+        return validate
 
 
     def dns_config(self, forwarder=None):
@@ -325,7 +326,7 @@ include "/etc/named.root.key";
 
 include "/etc/named.luna.zones";
 
-        """
+"""
         return config
 
 
@@ -348,7 +349,7 @@ zone "{reverseip}" IN {{
     allow-transfer {{none; }};
 }};
 
-        """
+"""
         return zone_config
 
 
@@ -369,12 +370,12 @@ $TTL 604800
                         3628800       ; expire
                         604800 )     ; min TTL
 
-                        IN NS controller.{networkname}
+                        IN NS controller.{networkname}.
                         IN A {controllerip}
 
 {nodelist}
 
-        """
+"""
         return zone_name_config
     
 
@@ -388,7 +389,7 @@ $TTL 604800
             nodelist = '\n'.join(nodelist)
         zone_name_config = f"""
 $TTL 604800
-@ IN SOA                controller.{networkname} .root.controller.{networkname}. ( ; domain email
+@ IN SOA                controller.{networkname}. root.controller.{networkname}. ( ; domain email
                         {unixtime}        ; serial number
                         86400       ; refresh
                         14400       ; retry
@@ -400,7 +401,7 @@ $TTL 604800
 
 {nodelist}
 
-        """
+"""
         return zone_name_config
 
 

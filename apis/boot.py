@@ -37,8 +37,9 @@ def boot():
     Output - templ_boot_ipxe.cfg
     """
     ## TODO for testing purpose
-    # testing  = Helper().dhcp_overwrite()
-    testing = Config().dns_configure()
+    testdhcp  = Config().dhcp_overwrite()
+    testdns = Config().dns_configure()
+    ## TODO for testing purpose
     template = 'templ_boot_ipxe.cfg'
     LOGGER.info(f'Boot API serving the {template}')
     check_template = Helper().checkjinja(f'{CONSTANT["TEMPLATES"]["TEMPLATES_DIR"]}/{template}')

@@ -213,7 +213,7 @@ host {node}  {{
             zone_name_config = self.dns_zone_name(networkname, controllerip, nodelist)
             zone_ptr_config = self.dns_zone_ptr(networkname, ptrnodelist)
             namefile = {'source': f'/var/tmp/luna2/{networkname}.luna.zone', 'destination': f'/var/named/{networkname}.luna.zone'}
-            ptrfile = {'source': f'/var/tmp/luna2/{networkname}.luna.zone', 'destination': f'/var/named/{rev_ip}.luna.zone'}
+            ptrfile = {'source': f'/var/tmp/luna2/{rev_ip}.luna.zone', 'destination': f'/var/named/{rev_ip}.luna.zone'}
             files.append(namefile)
             files.append(ptrfile)
             with open(namefile['source'], 'w', encoding='utf-8') as filename:

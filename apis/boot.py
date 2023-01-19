@@ -20,6 +20,8 @@ from utils.database import Database
 from utils.helper import Helper
 from utils.config import Config
 from common.constant import CONSTANT
+import jinja2
+import jinja2schema
 
 LOGGER = Log.get_logger()
 boot_blueprint = Blueprint('boot', __name__, template_folder='../templates')
@@ -27,6 +29,8 @@ boot_blueprint = Blueprint('boot', __name__, template_folder='../templates')
 ################ Example Data(Need to remove when have real data) ################
 nodes = ['node001', 'node002', 'node003', 'node004']
 data = {'protocol': 'http', 'server_ip': '10.141.255.254', 'server_port': '7051', 'nodes': nodes}
+# testdhcp  = Config().dhcp_overwrite()
+# testdns = Config().dns_configure()
 ################ Example Data(Need to remove when have real data) ################
 
 @boot_blueprint.route('/boot', methods=['GET'])
@@ -36,16 +40,17 @@ def boot():
     Process - Via jinja2 filled data in template templ_boot_ipxe.cfg
     Output - templ_boot_ipxe.cfg
     """
-    ## TODO for testing purpose
-    testdhcp  = Config().dhcp_overwrite()
-    testdns = Config().dns_configure()
-    ## TODO for testing purpose
     template = 'templ_boot_ipxe.cfg'
     LOGGER.info(f'Boot API serving the {template}')
     check_template = Helper().checkjinja(f'{CONSTANT["TEMPLATES"]["TEMPLATES_DIR"]}/{template}')
     if not check_template:
         abort(404, 'Empty')
-    return render_template(template, p=data), 200
+    # return render_template(template, p=data), 200
+    LUNA_CONTROLLER="sumit"
+    LUNA_API_PORT="sharma"
+    variables = jinja2schema.infer('/trinity/local/luna/templates/'+template)
+    LOGGER.info(variables)
+    return render_template(template, **locals()), 200
 
 
 @boot_blueprint.route('/boot/short', methods=['GET'])

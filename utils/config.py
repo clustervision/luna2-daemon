@@ -189,7 +189,7 @@ host {node}  {{
         and zone files for every network
         """
         validate = True
-        files, ns_ip, nodelist, ptrnodelist= [], [], [], []
+        files, ns_ip = [], []
         zone_config, rev_ip = '', ''
         cluster = Database().get_record(None, 'cluster', None)
         ns_ip = cluster[0]['ns_ip']
@@ -210,6 +210,7 @@ host {node}  {{
                 zone_config = f'{zone_config}{self.dns_zone_config(networkname, rev_ip)}'
             where = f' WHERE networkid = "{nwkid}";'
             node_interface = Database().get_record(None, 'nodeinterface', where)
+            nodelist, ptrnodelist= [], []
             if node_interface:
                 for interface in node_interface:
                     nodeip = interface['ipaddress']
@@ -381,6 +382,8 @@ zone "{reverseip}" IN {{
         unixtime = int(time.time())
         if nodelist:
             nodelist = '\n'.join(nodelist)
+        else:
+            nodelist = ''
         zone_name_config = f"""
 $TTL 604800
 @ IN SOA                controller.{networkname}. root.controller.{networkname}. ( ; domain email
@@ -407,6 +410,8 @@ $TTL 604800
         unixtime = int(time.time())
         if nodelist:
             nodelist = '\n'.join(nodelist)
+        else:
+            nodelist = ''
         zone_name_config = f"""
 $TTL 604800
 @ IN SOA                controller.{networkname}. root.controller.{networkname}. ( ; domain email

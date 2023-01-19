@@ -57,21 +57,29 @@ class Config(object):
                 nwkid = nwk['id']
                 nwkname = nwk['name']
                 nwknetwork = nwk['network']
-                subnet_block = self.dhcp_subnet(nwk['network'], nwk['subnet'], nwk['gateway'], nwk['dhcp_range_begin'], nwk['dhcp_range_end'])
+                subnet_block = self.dhcp_subnet(
+                    nwk['network'], nwk['subnet'], nwk['gateway'],
+                    nwk['dhcp_range_begin'], nwk['dhcp_range_end']
+                )
                 dhcp_subnet_block = f'{dhcp_subnet_block}{subnet_block}'
-
-                node_interface = Database().get_record(None, 'nodeinterface', f' WHERE networkid = "{nwkid}" and macaddress IS NOT NULL;')
+                where = f' WHERE networkid = "{nwkid}" and macaddress IS NOT NULL;'
+                node_interface = Database().get_record(None, 'nodeinterface', where)
                 node_block, device_block = [] , []
                 if node_interface:
                     for interface in node_interface:
                         nodename = Database().getname_byid('node', interface['nodeid'])
-                        node_block.append(self.dhcp_node(nodename, interface['macaddress'], interface['ipaddress']))
+                        node_block.append(
+                            self.dhcp_node(nodename, interface['macaddress'],interface['ipaddress'])
+                        )
                 else:
                     self.logger.info(f'No Nodes available for this network {nwkname}  {nwknetwork}')
-                devices = Database().get_record(None, 'otherdevices', f' WHERE network = "{nwkid}" and macaddr IS NOT NULL;')
+                where = f' WHERE network = "{nwkid}" and macaddr IS NOT NULL;'
+                devices = Database().get_record(None, 'otherdevices', where)
                 if devices:
                     for device in devices:
-                        device_block.append(self.dhcp_node(device['name'], device['macaddr'], device['ipaddress']))
+                        device_block.append(
+                            self.dhcp_node(device['name'], device['macaddr'], device['ipaddress'])
+                        )
                 else:
                     self.logger.info(f'Device not available for {nwkname} {nwknetwork}')
 
@@ -173,7 +181,7 @@ host {node}  {{
 }}
 """
         return node_block
-    
+
 
     def dns_configure(self):
         """
@@ -200,31 +208,40 @@ host {node}  {{
                 rev_ip = rev_ip[2:]
                 rev_ip = '.'.join(rev_ip)
                 zone_config = f'{zone_config}{self.dns_zone_config(networkname, rev_ip)}'
-            node_interface = Database().get_record(None, 'nodeinterface', f' WHERE networkid = "{nwkid}";')
+            where = f' WHERE networkid = "{nwkid}";'
+            node_interface = Database().get_record(None, 'nodeinterface', where)
             if node_interface:
                 for interface in node_interface:
                     nodeip = interface['ipaddress']
-                    nodename = Database().getname_byid('node', interface['nodeid'])
-                    nodelist.append(f'{nodename}                 IN A {nodeip}')
-                    nodeptr = int(re.sub('\D', '', nodename))
+                    name = Database().getname_byid('node', interface['nodeid'])
+                    nodelist.append(f'{name}                 IN A {nodeip}')
+                    nodeptr = int(re.sub('\D', '', name))
                     nodeptr = f'{nodeptr}.0'
-                    ptrnodelist.append(f'{nodeptr}                    IN PTR {nodename}.{networkname}.')
+                    ptrnodelist.append(f'{nodeptr}                    IN PTR {name}.{networkname}.')
 
             zone_name_config = self.dns_zone_name(networkname, controllerip, nodelist)
             zone_ptr_config = self.dns_zone_ptr(networkname, ptrnodelist)
-            namefile = {'source': f'/var/tmp/luna2/{networkname}.luna.zone', 'destination': f'/var/named/{networkname}.luna.zone'}
-            ptrfile = {'source': f'/var/tmp/luna2/{rev_ip}.luna.zone', 'destination': f'/var/named/{rev_ip}.luna.zone'}
+            namefile = {
+                'source': f'/var/tmp/luna2/{networkname}.luna.zone',
+                'destination': f'/var/named/{networkname}.luna.zone'
+            }
+            ptrfile = {
+                'source': f'/var/tmp/luna2/{rev_ip}.luna.zone',
+                'destination': f'/var/named/{rev_ip}.luna.zone'
+            }
             files.append(namefile)
             files.append(ptrfile)
             with open(namefile['source'], 'w', encoding='utf-8') as filename:
                 filename.write(zone_name_config)
             with open(ptrfile['source'], 'w', encoding='utf-8') as fileptr:
                 fileptr.write(zone_ptr_config)
-            validate_zone_name = subprocess.run(['named-checkzone', f'luna.{networkname}', namefile['source']], check = True)
+            zone_cmd = ['named-checkzone', f'luna.{networkname}', namefile['source']]
+            validate_zone_name = subprocess.run(zone_cmd, check = True)
             if validate_zone_name.returncode:
                 validate = False
                 self.logger.error(f'DNS zone file: {namefile["source"]} containing errors.')
-            validate_ptr_name = subprocess.run(['named-checkzone', f'luna.{networkname}', ptrfile['source']], check = True)
+            ptr_cmd = ['named-checkzone', f'luna.{networkname}', ptrfile['source']]
+            validate_ptr_name = subprocess.run(ptr_cmd, check = True)
             if validate_ptr_name.returncode:
                 validate = False
                 self.logger.error(f'DNS zone file: {ptrfile["source"]} containing errors.')
@@ -236,7 +253,10 @@ host {node}  {{
         files.append(dnsfile)
         with open(dnsfile["source"], 'w', encoding='utf-8') as dns:
             dns.write(config)
-        dnszonefile = {'source': '/var/tmp/luna2/named.luna.zones', 'destination': '/trinity/local/etc/named.luna.zones'}
+        dnszonefile = {
+            'source': '/var/tmp/luna2/named.luna.zones',
+            'destination': '/trinity/local/etc/named.luna.zones'
+        }
         files.append(dnszonefile)
         with open(dnszonefile["source"], 'w', encoding='utf-8') as dnszone:
             dnszone.write(zone_config)
@@ -377,7 +397,7 @@ $TTL 604800
 
 """
         return zone_name_config
-    
+
 
     def dns_zone_ptr(self, networkname=None, nodelist=None):
         """
@@ -403,5 +423,3 @@ $TTL 604800
 
 """
         return zone_name_config
-
-

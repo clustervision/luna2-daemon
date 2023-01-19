@@ -16,6 +16,7 @@ __status__      = 'Development'
 
 from utils.helper import Helper
 from utils.log import Log
+from utils.config import Config
 from common.constant import CONSTANT
 
 class Service(object):
@@ -45,8 +46,15 @@ class Service(object):
                 match action:
                     case 'start' | 'stop' | 'reload' | 'restart':
                         command = f'{CONSTANT["SERVICES"]["COMMAND"]} {action} {name}'
-                        check_dhcp = Helper().dhcp_overwrite()
+                        check_dhcp = Config().dhcp_overwrite()
                         if check_dhcp:
+                            output = Helper().runcommand(command)
+                            response, code = self.service_status(name, action, output)
+                        else:
+                            response = f'{name} service file have errors.'
+                            code = 500
+                        check_dns = Config().dns_configure()
+                        if check_dns:
                             output = Helper().runcommand(command)
                             response, code = self.service_status(name, action, output)
                         else:

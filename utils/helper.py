@@ -21,8 +21,8 @@ import shutil
 import queue
 import json
 import ipaddress
-import hostlist
 from configparser import RawConfigParser
+import hostlist
 import pyodbc
 from netaddr import IPNetwork
 from cryptography.fernet import Fernet

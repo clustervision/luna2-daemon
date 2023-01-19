@@ -47,6 +47,7 @@ class Config(object):
         """
         validate = True
         ntpserver, dhcp_subnet_block = '', ''
+        node_block, device_block = [] , []
         cluster = Database().get_record(None, 'cluster', None)
         if cluster:
             ntpserver = cluster[0]['ntp_server']
@@ -64,7 +65,6 @@ class Config(object):
                 dhcp_subnet_block = f'{dhcp_subnet_block}{subnet_block}'
                 where = f' WHERE networkid = "{nwkid}" and macaddress IS NOT NULL;'
                 node_interface = Database().get_record(None, 'nodeinterface', where)
-                node_block, device_block = [] , []
                 if node_interface:
                     for interface in node_interface:
                         nodename = Database().getname_byid('node', interface['nodeid'])

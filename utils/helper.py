@@ -26,10 +26,9 @@ import hostlist
 import pyodbc
 from netaddr import IPNetwork
 from cryptography.fernet import Fernet
-from jinja2 import Environment
+from jinja2 import Environment, meta, FileSystemLoader
 from utils.log import Log
 from utils.database import Database
-
 from common.constant import CONSTANT, LUNAKEY
 
 class Helper(object):
@@ -43,7 +42,21 @@ class Helper(object):
         """
         self.logger = Log.get_logger()
         self.packing = queue.Queue()
+    
+################### ---> Experiment to compare the logic
 
+    def get_template_vars(self, template=None):
+        """
+        This method will return all the variables used
+        in the templates.
+        """
+        env = Environment(loader=FileSystemLoader('templates'))
+        template_source = env.loader.get_source(env, template)[0]
+        parsed_content = env.parse(template_source)
+        variables = meta.find_undeclared_variables(parsed_content)
+        self.logger.info(variables)
+        return variables
+################### ---> Experiment to compare the logic
 
     def runcommand(self, command):
         """

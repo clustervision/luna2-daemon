@@ -20,8 +20,7 @@ from utils.database import Database
 from utils.helper import Helper
 from utils.config import Config
 from common.constant import CONSTANT
-import jinja2
-import jinja2schema
+
 
 LOGGER = Log.get_logger()
 boot_blueprint = Blueprint('boot', __name__, template_folder='../templates')
@@ -46,11 +45,52 @@ def boot():
     if not check_template:
         abort(404, 'Empty')
     # return render_template(template, p=data), 200
-    LUNA_CONTROLLER="sumit"
-    LUNA_API_PORT="sharma"
-    variables = jinja2schema.infer('/trinity/local/luna/templates/'+template)
-    LOGGER.info(variables)
+    LUNA_CONTROLLER="10.141.255.254"
+    LUNA_API_PORT="7050"
     return render_template(template, **locals()), 200
+
+
+
+################### ---> Experiment to compare the logic
+
+
+@boot_blueprint.route('/boot1', methods=['GET'])
+def boot1():
+    """
+    Input - None
+    Process - Via jinja2 filled data in template templ_boot_ipxe.cfg
+    Output - templ_boot_ipxe.cfg
+    """
+    template = 'templ_boot_ipxe.cfg'
+    LOGGER.info(f'Boot API serving the {template}')
+    check_template = Helper().checkjinja(f'{CONSTANT["TEMPLATES"]["TEMPLATES_DIR"]}/{template}')
+    if not check_template:
+        abort(404, 'Empty')
+    # return render_template(template, p=data), 200
+    LUNA_CONTROLLER="10.141.255.254"
+    LUNA_API_PORT="7050"
+    return render_template(template, **locals()), 200
+
+
+
+@boot_blueprint.route('/boot2', methods=['GET'])
+def boot2():
+    """
+    Input - None
+    Process - Via jinja2 filled data in template templ_boot_ipxe.cfg
+    Output - templ_boot_ipxe.cfg
+    """
+    template = 'templ_boot_ipxe.cfg'
+    LOGGER.info(f'Boot API serving the {template}')
+    check_template = Helper().checkjinja(f'{CONSTANT["TEMPLATES"]["TEMPLATES_DIR"]}/{template}')
+    if not check_template:
+        abort(404, 'Empty')
+    variables = Helper().get_template_vars(template)
+    LOGGER.info(variables)
+    return render_template(template), 200
+
+
+################### ---> Experiment to compare the logic
 
 
 @boot_blueprint.route('/boot/short', methods=['GET'])

@@ -62,6 +62,7 @@ class Helper(object):
                 if dbrecord:
                     dbcol[vars] = dbrecord[0][varsplit[1]]
         return dbcol
+
 ################### ---> Experiment to compare the logic
 
     def runcommand(self, command):

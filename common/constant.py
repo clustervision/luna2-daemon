@@ -220,3 +220,19 @@ if 'files' in data.keys():
             LOGGER.error(error_msg)
 else:
     LOGGER.error(f'{CONSTANT["TEMPLATES"]["TEMPLATELIST"]} have no files.')
+
+
+
+##### TODO
+##
+## Add Template Variables in CONSTANT["TEMPLATES"]["VARS"] = {LUNA_CONTROLLER: cluster.ns_ip , LUNA_API_PORT: cluster.port}
+## When Read Templates get the variable name from there and match with CONSTANTS Variables and get db table and field name
+## Fetch the exact column value base on the above logic
+## Render the template with that value(s)
+## Can also create a API or Method to change and add the variable name or value to the CONSTANTS (Problem But it requires a luna2-daemon service restart)
+
+CONSTANT["TEMPLATES"]["VARS"] = {
+    'LUNA_CONTROLLER': 'controller.ipaddr',
+    'LUNA_API_PORT': 'controller.srverport',
+    'asda': 'we.cv'
+    }

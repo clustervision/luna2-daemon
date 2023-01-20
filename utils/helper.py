@@ -50,12 +50,18 @@ class Helper(object):
         This method will return all the variables used
         in the templates.
         """
+        dbcol = {}
         env = Environment(loader=FileSystemLoader('templates'))
         template_source = env.loader.get_source(env, template)[0]
         parsed_content = env.parse(template_source)
-        variables = meta.find_undeclared_variables(parsed_content)
-        self.logger.info(variables)
-        return variables
+        variables = list(meta.find_undeclared_variables(parsed_content))
+        for vars in variables:
+            if vars in CONSTANT["TEMPLATES"]["VARS"]:
+                varsplit = CONSTANT["TEMPLATES"]["VARS"][vars].split('.')
+                dbrecord = Database().get_record(None, varsplit[0], None)
+                if dbrecord:
+                    dbcol[vars] = dbrecord[0][varsplit[1]]
+        return dbcol
 ################### ---> Experiment to compare the logic
 
     def runcommand(self, command):

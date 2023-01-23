@@ -163,7 +163,11 @@ def boot_search_mac(mac=None):
     nodeinterface = Database().get_record(None, 'nodeinterface', f' WHERE macaddress = "{mac}"')
     if nodeinterface:
         data['nodeid'] = nodeinterface[0]['nodeid']
-        data['nodeip'] = nodeinterface[0]['ipaddress']
+        nwk = Database().get_record(None, 'network', f' WHERE id = "{nodeinterface[0]["networkid"]}"')
+        data['nodeip'] = Helper().get_network(nodeinterface[0]['ipaddress'], nwk[0]['subnet'])
+        subnet = data['nodeip'].split('/')
+        subnet = subnet[1]
+        data['nodeip'] = f'{nodeinterface[0]["ipaddress"]}/{subnet}'
     if data['nodeid']:
         node = Database().get_record(None, 'node', f' WHERE id = {data["nodeid"]}')
         if node:
@@ -201,26 +205,86 @@ def boot_search_mac(mac=None):
         ), access_code
 
 
-@boot_blueprint.route('/boot/manual/hostname/<string:hostname>', methods=['GET'])
-def boot_manual_hostname(hostname=None):
+@boot_blueprint.route('/boot/manual/hostname/<string:hostname>/<string:mac>', methods=['GET'])
+def boot_manual_hostname(hostname=None, mac=None):
     """
     Input - Hostname
     Process - Discovery on hostname, server will lookup the MAC
     if SNMP port-detection has been enabled
     Output - iPXE Template
     """
-    node = Database().get_record(None, 'node', f' WHERE hostname = "{hostname}"')
-    if not node:
-        LOGGER.debug(f'Hostname {hostname} not found.')
-        abort(404, "Empty")
-    if node[0]['service'] is True:
-        data['service'] = '1'
+
     template = 'templ_nodeboot.cfg'
-    LOGGER.info(f'Node found with hostname {hostname}.')
+    data = {
+        'nodeid': None,
+        'osimageid': None,
+        'ipaddr': None,
+        'serverport': None,
+        'intrdfile': None,
+        'kernelfile': None,
+        'nodename': None,
+        'nodehostname': None,
+        'nodeservice': None,
+        'nodeip': None
+    }
     check_template = Helper().checkjinja(f'{CONSTANT["TEMPLATES"]["TEMPLATES_DIR"]}/{template}')
     if not check_template:
         abort(404, 'Empty')
-    return render_template(template, p=data), 200
+    where = ' WHERE hostname = "controller.cluster"'
+    controller = Database().get_record(None, 'controller', where)
+    if controller:
+        data['ipaddr'] = controller[0]['ipaddr']
+        data['serverport'] = controller[0]['srverport']
+
+    node = Database().get_record(None, 'node', f' WHERE name = "{hostname}"')
+    if node:
+        data['osimageid'] = node[0]['osimageid']
+        data['nodename'] = node[0]['name']
+        data['nodehostname'] = node[0]['hostname']
+        data['nodeservice'] = node[0]['service']
+        data['nodeid'] = node[0]['id']
+    if data['nodeid']:
+        nodeinterface = Database().get_record(None, 'nodeinterface', f' WHERE nodeid = {data["nodeid"]} AND interface = "BOOTIF";')
+        if nodeinterface:
+            row = [{"column": "macaddress", "value": mac}]
+            where = [{"column": "id", "value": data["nodeid"]}, {"column": "interface", "value": "BOOTIF"}]
+            Database().update('nodeinterface', row, where)
+            nodeinterface = Database().get_record(None, 'nodeinterface', f' WHERE nodeid = {data["nodeid"]} AND interface = "BOOTIF";')
+        nwk = Database().get_record(None, 'network', f' WHERE id = "{nodeinterface[0]["networkid"]}"')
+        data['nodeip'] = Helper().get_network(nodeinterface[0]['ipaddress'], nwk[0]['subnet'])
+        subnet = data['nodeip'].split('/')
+        subnet = subnet[1]
+        data['nodeip'] = f'{nodeinterface[0]["ipaddress"]}/{subnet}'
+
+    if data['osimageid']:
+        osimage = Database().get_record(None, 'osimage', f' WHERE id = {data["osimageid"]}')
+        if osimage:
+            data['intrdfile'] = osimage[0]['initrdfile']
+            data['kernelfile'] = osimage[0]['kernelfile']
+
+    if None not in data.values():
+        access_code = 200
+        row = [{"column": "status", "value": "installer.discovery"}]
+        where = [{"column": "id", "value": data["nodeid"]}]
+        Database().update('node', row, where)
+    else:
+        environment = jinja2.Environment()
+        template = environment.from_string('No Node is available for this mac address.')
+        access_code = 404
+    LOGGER.info(f'Boot API serving the {template}')
+    return render_template(
+        template,
+        LUNA_CONTROLLER=data['ipaddr'],
+        LUNA_API_PORT=data['serverport'],
+        NODE_MAC_ADDRESS=mac,
+        OSIMAGE_INTRDFILE= data['intrdfile'],
+        OSIMAGE_KERNELFILE= data['kernelfile'],
+        NODE_NAME= data['nodename'],
+        NODE_HOSTNAME= data['nodehostname'],
+        NODE_SERVICE= data['nodeservice'],
+        NODE_IPADDRESS= data['nodeip']
+        ), access_code
+
 
 @boot_blueprint.route('/boot/install/<string:node>', methods=['GET'])
 def boot_install(node=None):

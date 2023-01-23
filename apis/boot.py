@@ -18,7 +18,6 @@ from flask import Blueprint, json, render_template, abort
 from utils.log import Log
 from utils.database import Database
 from utils.helper import Helper
-from utils.config import Config
 from common.constant import CONSTANT
 import jinja2
 
@@ -29,8 +28,6 @@ boot_blueprint = Blueprint('boot', __name__, template_folder='../templates')
 ################ Example Data(Need to remove when have real data) ################
 nodes = ['node001', 'node002', 'node003', 'node004']
 data = {'protocol': 'http', 'server_ip': '10.141.255.254', 'server_port': '7051', 'nodes': nodes}
-# testdhcp  = Config().dhcp_overwrite()
-# testdns = Config().dns_configure()
 ################ Example Data(Need to remove when have real data) ################
 
 @boot_blueprint.route('/boot', methods=['GET'])

@@ -216,7 +216,7 @@ host {node}  {{
                     nodeip = interface['ipaddress']
                     name = Database().getname_byid('node', interface['nodeid'])
                     nodelist.append(f'{name}                 IN A {nodeip}')
-                    nodeptr = int(re.sub('\D', '', name))
+                    nodeptr = int(re.sub(r'\D', '', name))
                     nodeptr = f'{nodeptr}.0'
                     ptrnodelist.append(f'{nodeptr}                    IN PTR {name}.{networkname}.')
 

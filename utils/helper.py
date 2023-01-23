@@ -42,7 +42,7 @@ class Helper(object):
         """
         self.logger = Log.get_logger()
         self.packing = queue.Queue()
-    
+
 ################### ---> Experiment to compare the logic
 
     def get_template_vars(self, template=None):
@@ -55,12 +55,12 @@ class Helper(object):
         template_source = env.loader.get_source(env, template)[0]
         parsed_content = env.parse(template_source)
         variables = list(meta.find_undeclared_variables(parsed_content))
-        for vars in variables:
-            if vars in CONSTANT["TEMPLATES"]["VARS"]:
-                varsplit = CONSTANT["TEMPLATES"]["VARS"][vars].split('.')
+        for varn in variables:
+            if varn in CONSTANT["TEMPLATES"]["VARS"]:
+                varsplit = CONSTANT["TEMPLATES"]["VARS"][varn].split('.')
                 dbrecord = Database().get_record(None, varsplit[0], None)
                 if dbrecord:
-                    dbcol[vars] = dbrecord[0][varsplit[1]]
+                    dbcol[varn] = dbrecord[0][varsplit[1]]
         return dbcol
 
 ################### ---> Experiment to compare the logic
@@ -267,7 +267,8 @@ class Helper(object):
         """
         if 'ipaddress' in data:
             if self.check_ip(data['ipaddress']):
-                where = ' WHERE `ipaddress` = "{}";'.format(data["ipaddress"])
+                ipaddr = data["ipaddress"]
+                where = f' WHERE `ipaddress` = "{ipaddr}";'
                 record = Database().get_record(None, 'ipaddress', where)
                 if not record:
                     subnet = self.get_subnet(data['ipaddress'])
@@ -277,7 +278,6 @@ class Helper(object):
                             {"column": 'subnet', "value": subnet}
                             ]
                     Database().insert('ipaddress', row)
-                    where = ' WHERE `ipaddress` = "{}";'.format(data['ipaddress'])
                     subnet_record = Database().get_record(None, 'ipaddress', where)
                     data['ipaddress'] = subnet_record[0]['id']
         return data
@@ -550,7 +550,9 @@ class Helper(object):
         ## TODO
         ## Uncomment line 534 with real hostname, and remove line 535.
         ## Line 535 is for testing purpose.
-        # command = f'ipmitool -U {username} -P {password} chassis power {action} -H {hostname} -I lanplus -C3'
+        # command =
+        # ipmitool -U {username} -P {password} chassis power {action} -H {hostname} -I lanplus -C3
+        self.logger.info(f'hostname: {hostname}.')
         command = f'ipmitool -U {username} -P {password} chassis power {action} -H 127.0.0.1 -I lanplus -C3'
         self.logger.info(f'IPMI command to be executed: {command}.')
         output = self.runcommand(command)
@@ -564,10 +566,10 @@ class Helper(object):
         return response
 
 
-    def chunks(self, lst, n):
+    def chunks(self, lst, num):
         """Yield successive n-sized chunks from lst."""
-        for i in range(0, len(lst), n):
-            yield lst[i:i + n]
+        for i in range(0, len(lst), num):
+            yield lst[i:i + num]
 
 
     def get_hostlist(self, rawhosts=None):

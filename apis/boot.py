@@ -139,19 +139,66 @@ def boot_search_mac(mac=None):
     port-detection has been enabled
     Output - iPXE Template
     """
-    node = Database().get_record(None, 'node', f' WHERE macaddr = "{mac}"')
-    if not node:
-        LOGGER.debug(f'Mac Address {mac} not found.')
-        abort(404, "Empty")
-    # row = [{"column": "status", "value": "installer.discovery"}]
-    # where = [{"column": "id", "value": node[0]["id"]}]
-    # Database().update('node', row, where)
     template = 'templ_nodeboot.cfg'
-    LOGGER.info(f'Boot API serving the {template}')
+    data = {
+        'nodeid': None,
+        'osimageid': None,
+        'ipaddr': None,
+        'serverport': None,
+        'intrdfile': None,
+        'kernelfile': None,
+        'nodename': None,
+        'nodehostname': None,
+        'nodeservice': None,
+        'nodeip': None
+    }
     check_template = Helper().checkjinja(f'{CONSTANT["TEMPLATES"]["TEMPLATES_DIR"]}/{template}')
     if not check_template:
         abort(404, 'Empty')
-    return render_template(template, p=data), 200
+    where = ' WHERE hostname = "controller.cluster"'
+    controller = Database().get_record(None, 'controller', where)
+    if controller:
+        data['ipaddr'] = controller[0]['ipaddr']
+        data['serverport'] = controller[0]['srverport']
+    nodeinterface = Database().get_record(None, 'nodeinterface', f' WHERE macaddress = "{mac}"')
+    if nodeinterface:
+        data['nodeid'] = nodeinterface[0]['nodeid']
+        data['nodeip'] = nodeinterface[0]['ipaddress']
+    if data['nodeid']:
+        node = Database().get_record(None, 'node', f' WHERE id = {data["nodeid"]}')
+        if node:
+            data['osimageid'] = node[0]['osimageid']
+            data['nodename'] = node[0]['name']
+            data['nodehostname'] = node[0]['hostname']
+            data['nodeservice'] = node[0]['service']
+    if data['osimageid']:
+        osimage = Database().get_record(None, 'osimage', f' WHERE id = {data["osimageid"]}')
+        if osimage:
+            data['intrdfile'] = osimage[0]['initrdfile']
+            data['kernelfile'] = osimage[0]['kernelfile']
+
+    if None not in data.values():
+        access_code = 200
+        row = [{"column": "status", "value": "installer.discovery"}]
+        where = [{"column": "id", "value": data["nodeid"]}]
+        Database().update('node', row, where)
+    else:
+        environment = jinja2.Environment()
+        template = environment.from_string('No Node is available for this mac address.')
+        access_code = 404
+    LOGGER.info(f'Boot API serving the {template}')
+    return render_template(
+        template,
+        LUNA_CONTROLLER=data['ipaddr'],
+        LUNA_API_PORT=data['serverport'],
+        NODE_MAC_ADDRESS=mac,
+        OSIMAGE_INTRDFILE= data['intrdfile'],
+        OSIMAGE_KERNELFILE= data['kernelfile'],
+        NODE_NAME= data['nodename'],
+        NODE_HOSTNAME= data['nodehostname'],
+        NODE_SERVICE= data['nodeservice'],
+        NODE_IPADDRESS= data['nodeip']
+        ), access_code
 
 
 @boot_blueprint.route('/boot/manual/hostname/<string:hostname>', methods=['GET'])
@@ -186,11 +233,11 @@ def boot_install(node=None):
     where = [{"column": 'name', 'value': node}]
     install = Database().update('node', row, where)
     if install or Log.check_loglevel() != 10:
-        LOGGER.info(f'Installation script is started for nodeid: {node}')
-        response = {'message': f'Installation script is started for nodeid: {node}'}
+        LOGGER.info(f'Installation script is started for node: {node}')
+        response = {'message': f'Installation script is started for node: {node}'}
         code = 200
     else:
-        LOGGER.error(f'Not able to find the nodeid: {node}')
-        response = {'message': f'Not able to find the nodeid: {node}'}
+        LOGGER.error(f'Not able to find the node: {node}')
+        response = {'message': f'Not able to find the node: {node}'}
         code = 404
     return json.dumps(response), code

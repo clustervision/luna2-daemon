@@ -102,6 +102,34 @@ class Database(object):
         return response
 
 
+    def get_record_join(self, query=None):
+        """
+        Input - Complete SQL query with Joins
+        Process - It is SELECT operation on the DB.
+                    select can be comma separated column name or None.
+                    table is the table name where the select operation should be happen.
+                    where can be None OR complete where condition
+        Output - Fetch rows along with column name.
+        """
+        self.logger.debug(f'Query executing => {query}.')
+        try:
+            self.cursor.execute(query)
+            names = list(map(lambda x: x[0], self.cursor.description)) # Fetching the Column Names
+            data = self.cursor.fetchall()
+            self.logger.debug(f'Dataset retrived => {data}.')
+            rowdict = {}
+            response = []
+            for row in data:
+                for key, value in zip(names,row):
+                    rowdict[key] = value
+                response.append(rowdict)
+                rowdict = {}
+        except pyodbc.Error as exp:
+            self.logger.error(f'Error occur while executing => {query}. error is {exp}.')
+            response = None
+        return response
+
+
     def create(self, table=None, column=None):
         """
         Input - tablename and column

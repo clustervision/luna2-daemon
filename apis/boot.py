@@ -295,15 +295,21 @@ def boot_install(node=None):
     Process - Call the installation script for this node.
     Output - Success or failure
     """
+    template = 'templ_install.cfg'
+    check_template = Helper().checkjinja(f'{CONSTANT["TEMPLATES"]["TEMPLATES_DIR"]}/{template}')
+    if not check_template:
+        abort(404, 'Empty')
     row = [{'column': 'status', 'value': 'installer.downloaded'}]
     where = [{"column": 'name', 'value': node}]
     install = Database().update('node', row, where)
-    if install or Log.check_loglevel() != 10:
-        LOGGER.info(f'Installation script is started for node: {node}')
-        response = {'message': f'Installation script is started for node: {node}'}
-        code = 200
+    if install and Log.check_loglevel() != 10:
+        var1 = "Testing Variable 1"
+        var2 = "Testing Variable 2"
+        access_code = 200
     else:
-        LOGGER.error(f'Not able to find the node: {node}')
-        response = {'message': f'Not able to find the node: {node}'}
-        code = 404
-    return json.dumps(response), code
+        environment = jinja2.Environment()
+        template = environment.from_string('Node not found.')
+        var1, var2 = '', ''
+        access_code = 404
+    LOGGER.info(f'Boot API serving the {template}')
+    return render_template(template, TESTVAR1=var1, TESTVAR2=var2), access_code

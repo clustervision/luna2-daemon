@@ -586,3 +586,14 @@ class Helper(object):
             response = False
             self.logger.error(f'Hostlist is incorrect: {rawhosts}.')
         return response
+
+
+    def update_nodestate(self, nodeid=None, state=None):
+        """
+        This method will update the node status
+        while booting.
+        """
+        row = [{"column": "status", "value": state}]
+        where = [{"column": "id", "value": nodeid}]
+        status = Database().update('node', row, where)
+        return status

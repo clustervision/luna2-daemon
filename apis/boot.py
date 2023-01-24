@@ -141,16 +141,16 @@ def boot_search_mac(mac=None):
     """
     template = 'templ_nodeboot.cfg'
     data = {
-        'nodeid': None,
-        'osimageid': None,
-        'ipaddr': None,
-        'serverport': None,
-        'intrdfile': None,
-        'kernelfile': None,
-        'nodename': None,
-        'nodehostname': None,
-        'nodeservice': None,
-        'nodeip': None
+        'nodeid'        : None,
+        'osimageid'     : None,
+        'ipaddr'        : None,
+        'serverport'    : None,
+        'intrdfile'     : None,
+        'kernelfile'    : None,
+        'nodename'      : None,
+        'nodehostname'  : None,
+        'nodeservice'   : None,
+        'nodeip'        : None
     }
     check_template = Helper().checkjinja(f'{CONSTANT["TEMPLATES"]["TEMPLATES_DIR"]}/{template}')
     if not check_template:
@@ -163,7 +163,8 @@ def boot_search_mac(mac=None):
     nodeinterface = Database().get_record(None, 'nodeinterface', f' WHERE macaddress = "{mac}"')
     if nodeinterface:
         data['nodeid'] = nodeinterface[0]['nodeid']
-        nwk = Database().get_record(None, 'network', f' WHERE id = "{nodeinterface[0]["networkid"]}"')
+        where = f' WHERE id = "{nodeinterface[0]["networkid"]}"'
+        nwk = Database().get_record(None, 'network', where)
         data['nodeip'] = Helper().get_network(nodeinterface[0]['ipaddress'], nwk[0]['subnet'])
         subnet = data['nodeip'].split('/')
         subnet = subnet[1]
@@ -183,9 +184,10 @@ def boot_search_mac(mac=None):
 
     if None not in data.values():
         access_code = 200
-        row = [{"column": "status", "value": "installer.discovery"}]
-        where = [{"column": "id", "value": data["nodeid"]}]
-        Database().update('node', row, where)
+        Helper().update_nodestate(data["nodeid"], "installer.discovery")
+        # row = [{"column": "status", "value": "installer.discovery"}]
+        # where = [{"column": "id", "value": data["nodeid"]}]
+        # Database().update('node', row, where)
     else:
         environment = jinja2.Environment()
         template = environment.from_string('No Node is available for this mac address.')
@@ -193,16 +195,16 @@ def boot_search_mac(mac=None):
     LOGGER.info(f'Boot API serving the {template}')
     return render_template(
         template,
-        LUNA_CONTROLLER=data['ipaddr'],
-        LUNA_API_PORT=data['serverport'],
-        NODE_MAC_ADDRESS=mac,
-        OSIMAGE_INTRDFILE= data['intrdfile'],
-        OSIMAGE_KERNELFILE= data['kernelfile'],
-        NODE_NAME= data['nodename'],
-        NODE_HOSTNAME= data['nodehostname'],
-        NODE_SERVICE= data['nodeservice'],
-        NODE_IPADDRESS= data['nodeip']
-        ), access_code
+        LUNA_CONTROLLER     = data['ipaddr'],
+        LUNA_API_PORT       = data['serverport'],
+        NODE_MAC_ADDRESS    = mac,
+        OSIMAGE_INTRDFILE   = data['intrdfile'],
+        OSIMAGE_KERNELFILE  = data['kernelfile'],
+        NODE_NAME           = data['nodename'],
+        NODE_HOSTNAME       = data['nodehostname'],
+        NODE_SERVICE        = data['nodeservice'],
+        NODE_IPADDRESS      = data['nodeip']
+    ), access_code
 
 
 @boot_blueprint.route('/boot/manual/hostname/<string:hostname>/<string:mac>', methods=['GET'])
@@ -216,16 +218,16 @@ def boot_manual_hostname(hostname=None, mac=None):
 
     template = 'templ_nodeboot.cfg'
     data = {
-        'nodeid': None,
-        'osimageid': None,
-        'ipaddr': None,
-        'serverport': None,
-        'intrdfile': None,
-        'kernelfile': None,
-        'nodename': None,
-        'nodehostname': None,
-        'nodeservice': None,
-        'nodeip': None
+        'nodeid'        : None,
+        'osimageid'     : None,
+        'ipaddr'        : None,
+        'serverport'    : None,
+        'intrdfile'     : None,
+        'kernelfile'    : None,
+        'nodename'      : None,
+        'nodehostname'  : None,
+        'nodeservice'   : None,
+        'nodeip'        : None
     }
     check_template = Helper().checkjinja(f'{CONSTANT["TEMPLATES"]["TEMPLATES_DIR"]}/{template}')
     if not check_template:
@@ -244,13 +246,19 @@ def boot_manual_hostname(hostname=None, mac=None):
         data['nodeservice'] = node[0]['service']
         data['nodeid'] = node[0]['id']
     if data['nodeid']:
-        nodeinterface = Database().get_record(None, 'nodeinterface', f' WHERE nodeid = {data["nodeid"]} AND interface = "BOOTIF";')
+        where = f' WHERE nodeid = {data["nodeid"]} AND interface = "BOOTIF";'
+        nodeinterface = Database().get_record(None, 'nodeinterface', where)
         if nodeinterface:
             row = [{"column": "macaddress", "value": mac}]
-            where = [{"column": "id", "value": data["nodeid"]}, {"column": "interface", "value": "BOOTIF"}]
+            where = [
+                {"column": "id", "value": data["nodeid"]},
+                {"column": "interface", "value": "BOOTIF"}
+                ]
             Database().update('nodeinterface', row, where)
-            nodeinterface = Database().get_record(None, 'nodeinterface', f' WHERE nodeid = {data["nodeid"]} AND interface = "BOOTIF";')
-        nwk = Database().get_record(None, 'network', f' WHERE id = "{nodeinterface[0]["networkid"]}"')
+            where = f' WHERE nodeid = {data["nodeid"]} AND interface = "BOOTIF";'
+            nodeinterface = Database().get_record(None, 'nodeinterface', where)
+        where = f' WHERE id = "{nodeinterface[0]["networkid"]}"'
+        nwk = Database().get_record(None, 'network', where)
         data['nodeip'] = Helper().get_network(nodeinterface[0]['ipaddress'], nwk[0]['subnet'])
         subnet = data['nodeip'].split('/')
         subnet = subnet[1]
@@ -264,9 +272,10 @@ def boot_manual_hostname(hostname=None, mac=None):
 
     if None not in data.values():
         access_code = 200
-        row = [{"column": "status", "value": "installer.discovery"}]
-        where = [{"column": "id", "value": data["nodeid"]}]
-        Database().update('node', row, where)
+        Helper().update_nodestate(data["nodeid"], "installer.discovery")
+        # row = [{"column": "status", "value": "installer.discovery"}]
+        # where = [{"column": "id", "value": data["nodeid"]}]
+        # Database().update('node', row, where)
     else:
         environment = jinja2.Environment()
         template = environment.from_string('No Node is available for this mac address.')
@@ -274,16 +283,16 @@ def boot_manual_hostname(hostname=None, mac=None):
     LOGGER.info(f'Boot API serving the {template}')
     return render_template(
         template,
-        LUNA_CONTROLLER=data['ipaddr'],
-        LUNA_API_PORT=data['serverport'],
-        NODE_MAC_ADDRESS=mac,
-        OSIMAGE_INTRDFILE= data['intrdfile'],
-        OSIMAGE_KERNELFILE= data['kernelfile'],
-        NODE_NAME= data['nodename'],
-        NODE_HOSTNAME= data['nodehostname'],
-        NODE_SERVICE= data['nodeservice'],
-        NODE_IPADDRESS= data['nodeip']
-        ), access_code
+        LUNA_CONTROLLER     = data['ipaddr'],
+        LUNA_API_PORT       = data['serverport'],
+        NODE_MAC_ADDRESS    = mac,
+        OSIMAGE_INTRDFILE   = data['intrdfile'],
+        OSIMAGE_KERNELFILE  = data['kernelfile'],
+        NODE_NAME           = data['nodename'],
+        NODE_HOSTNAME       = data['nodehostname'],
+        NODE_SERVICE        = data['nodeservice'],
+        NODE_IPADDRESS      = data['nodeip']
+    ), access_code
 
 
 @boot_blueprint.route('/boot/install/<string:node>', methods=['GET'])

@@ -26,7 +26,7 @@ control_blueprint = Blueprint('control', __name__)
 
 
 @control_blueprint.route('/control/power/<string:hostname>/<string:action>', methods=['GET'])
-# @token_required
+@token_required
 def control_get(hostname=None, action=None):
     """
     Input - hostname & action
@@ -67,7 +67,7 @@ def control_get(hostname=None, action=None):
 
 
 @control_blueprint.route('/control/power', methods=['POST'])
-# @token_required
+@token_required
 def control_post():
     """
     Input - hostname & action
@@ -84,7 +84,7 @@ def control_post():
     ## if use threading only then execution will happen one-by-one.
     ## Maybe with a loop with delay and multiproccessing can be execute in-time.
     ## But also need to apply some restriction for batch size and delay.
-    
+
     if Helper().check_json(request.data):
         request_data = request.get_json(force=True)
         if request_data:
@@ -96,7 +96,7 @@ def control_post():
 
                 batch_size = int(CONSTANT['BMCCONTROL']['BMC_BATCH_SIZE'])
                 batch_delay = CONSTANT['BMCCONTROL']['BMC_BATCH_DELAY']
-                
+
                 list_for_queue = list(Helper().chunks(hostlist, batch_size))
                 response = f'Hostlistcount {len(hostlist)}, batch_size {batch_size} batch_delay {batch_delay} list_for_queue {list_for_queue}'
                 # if hostcount > batch_size:

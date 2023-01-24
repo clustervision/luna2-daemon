@@ -21,14 +21,8 @@ from utils.helper import Helper
 from common.constant import CONSTANT
 import jinja2
 
-
 LOGGER = Log.get_logger()
 boot_blueprint = Blueprint('boot', __name__, template_folder='../templates')
-
-################ Example Data(Need to remove when have real data) ################
-nodes = ['node001', 'node002', 'node003', 'node004']
-data = {'protocol': 'http', 'server_ip': '10.141.255.254', 'server_port': '7051', 'nodes': nodes}
-################ Example Data(Need to remove when have real data) ################
 
 @boot_blueprint.route('/boot', methods=['GET'])
 def boot():
@@ -54,7 +48,6 @@ def boot():
         access_code = 404
     LOGGER.info(f'Boot API serving the {template}')
     return render_template(template, LUNA_CONTROLLER=ipaddr, LUNA_API_PORT=serverport), access_code
-
 
 
 # ################### ---> Experiment to compare the logic

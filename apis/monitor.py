@@ -92,7 +92,6 @@ def monitor_status_post(node=None):
     Output - Status.
     """
     update = False
-    # response = None
     if Helper().check_json(request.data):
         request_data = request.get_json(force=True)
     else:
@@ -112,7 +111,7 @@ def monitor_status_post(node=None):
                     update = True
                 else:
                     response = {'message': f'State {state} is not belongs to Node states.'}
-                    access_code = 400
+                    access_code = 204
             else:
                 response = {'message': 'Node is not present.'}
                 access_code = 404

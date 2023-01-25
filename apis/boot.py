@@ -295,10 +295,35 @@ def boot_install(node=None):
     Process - Call the installation script for this node.
     Output - Success or failure
     """
+    data = {
+        'nodeid'        : None,
+        'osimageid'     : None,
+        'ipaddr'        : None,
+        'serverport'    : None,
+        'intrdfile'     : None,
+        'kernelfile'    : None,
+        'nodename'      : None,
+        'nodehostname'  : None,
+        'nodeservice'   : None,
+        'nodeip'        : None
+    }
     template = 'templ_install.cfg'
     check_template = Helper().checkjinja(f'{CONSTANT["TEMPLATES"]["TEMPLATES_DIR"]}/{template}')
     if not check_template:
         abort(404, 'Empty')
+    where = ' WHERE hostname = "controller.cluster"'
+    controller = Database().get_record(None, 'controller', where)
+    if controller:
+        data['ipaddr'] = controller[0]['ipaddr']
+        data['serverport'] = controller[0]['srverport']
+    node_details = Database().get_record(None, 'node', f' WHERE name = "{node}"')
+    if node:
+        data['osimageid'] = node_details[0]['osimageid']
+        data['nodename'] = node_details[0]['name']
+        data['nodehostname'] = node_details[0]['hostname']
+        data['nodeservice'] = node_details[0]['service']
+        data['nodeid'] = node_details[0]['id']
+    
     row = [{'column': 'status', 'value': 'installer.downloaded'}]
     where = [{"column": 'name', 'value': node}]
     install = Database().update('node', row, where)
@@ -312,4 +337,20 @@ def boot_install(node=None):
         var1, var2 = '', ''
         access_code = 404
     LOGGER.info(f'Boot API serving the {template}')
-    return render_template(template, TESTVAR1=var1, TESTVAR2=var2), access_code
+
+
+
+
+
+    return render_template(
+        template,
+        LUNA_CONTROLLER     = data['ipaddr'],
+        LUNA_API_PORT       = data['serverport'],
+        NODE_MAC_ADDRESS    = mac,
+        OSIMAGE_INTRDFILE   = data['intrdfile'],
+        OSIMAGE_KERNELFILE  = data['kernelfile'],
+        NODE_NAME           = data['nodename'],
+        NODE_HOSTNAME       = data['nodehostname'],
+        NODE_SERVICE        = data['nodeservice'],
+        NODE_IPADDRESS      = data['nodeip']
+    ), access_code

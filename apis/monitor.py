@@ -105,7 +105,7 @@ def monitor_status_post(node=None):
             dbnode = Database().get_record(None, 'node', where)
             if dbnode:
                 if state in node_status[204]:
-                    access_code = 200
+                    access_code = 204
                     update = True
                 elif state in node_status[500]:
                     access_code = 500
@@ -115,7 +115,7 @@ def monitor_status_post(node=None):
                     access_code = 400
             else:
                 response = {'message': 'Node is not present.'}
-                access_code = 400
+                access_code = 404
         except KeyError:
             response = {'message': 'URL Node is not matching with requested node.'}
             access_code = 400

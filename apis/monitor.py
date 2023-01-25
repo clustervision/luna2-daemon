@@ -13,15 +13,33 @@ __email__       = "sumit.sharma@clustervision.com"
 __status__      = "Development"
 
 
-from flask import Blueprint, json
+from flask import Blueprint, json, request
 from utils.log import Log
 from utils.service import Service
 from utils.helper import Helper
 from utils.database import Database
+from common.validate_auth import token_required
 
 LOGGER = Log.get_logger()
 monitor_blueprint = Blueprint('monitor', __name__)
 
+node_status = {
+    204: [
+        "installer.discovery",
+        "installer.downloaded",
+        "installer.started",
+        "installer.completed",
+        "installer.prescript",
+        "installer.partscript",
+        "installer.postscript",
+        "installer.image",
+        "installer.finalizing"
+    ],
+    500: [
+        "installer.finalizing",
+        "installer.error"
+    ]
+}
 
 @monitor_blueprint.route('/monitor/service/<string:name>', methods=['GET'])
 def monitor_service(name=None):
@@ -47,37 +65,64 @@ def monitor_status_get(node=None):
     """
     response = {"monitor": {"status": { node: { } } } }
     nodes = Database().get_record(None, 'node', f' WHERE id = "{node}" OR name = "{node}"')
-    if not nodes:
-        LOGGER.info(f'Node {node} is down and not running')
-        response['monitor']['status'][node]['status'] = 'Luna installer: Errors'
-        response['monitor']['status'][node]['state'] = 'installer.fail'
-        code = 500
+    if nodes:
+        if nodes[0]['status'] in node_status[204]:
+            status = nodes[0]['status'].replace("installer.", '')
+            response['monitor']['status'][node]['status'] = f'Luna installer: {status}'
+            response['monitor']['status'][node]['state'] = nodes[0]['status']
+            access_code = 200
+        elif nodes[0]['status'] in node_status[500]:
+            status = nodes[0]['status'].replace("installer.", '')
+            response['monitor']['status'][node]['status'] = f'Luna installer: {status}'
+            response['monitor']['status'][node]['state'] = nodes[0]['status']
+            access_code = 500
     else:
-        LOGGER.info(f'Node {node} is up and running')
-        response['monitor']['status'][node]['status'] = 'Luna installer: No errors'
-        response['monitor']['status'][node]['state'] = 'installer.ok'
-        code = 200
-    return json.dumps(response), code
+        response = None
+        access_code = 404
+    return json.dumps(response), access_code
 
 
 
 @monitor_blueprint.route("/monitor/status/<string:node>", methods=['POST'])
+@token_required
 def monitor_status_post(node=None):
     """
     Input - NodeID or Node Name
     Process - Update the Node Status
     Output - Status.
     """
-    response = {"monitor": {"status": { node: { } } } }
-    nodes = Database().get_record(None, 'node', f' WHERE id = "{node}" OR name = "{node}"')
-    if not nodes:
-        LOGGER.info(f'Node {node} is down and not running')
-        response['monitor']['status'][node]['status'] = 'Luna installer: Errors'
-        response['monitor']['status'][node]['state'] = 'installer.fail'
-        code = 500
+    update = False
+    # response = None
+    if Helper().check_json(request.data):
+        request_data = request.get_json(force=True)
     else:
-        LOGGER.info(f'Node {node} is up and running')
-        response['monitor']['status'][node]['status'] = 'Luna installer: No errors'
-        response['monitor']['status'][node]['state'] = 'installer.ok'
-        code = 200
-    return json.dumps(response), code
+        response = {'message': 'Bad Request.'}
+        access_code = 400
+    if request_data:
+        try:
+            state = request_data['monitor']['status'][node]['state']
+            where = f' WHERE id = "{node}" OR name = "{node}";'
+            dbnode = Database().get_record(None, 'node', where)
+            if dbnode:
+                if state in node_status[204]:
+                    access_code = 200
+                    update = True
+                elif state in node_status[500]:
+                    access_code = 500
+                    update = True
+                else:
+                    response = {'message': f'State {state} is not belongs to Node states.'}
+                    access_code = 400
+            else:
+                response = {'message': 'Node is not present.'}
+                access_code = 400
+        except KeyError:
+            response = {'message': 'URL Node is not matching with requested node.'}
+            access_code = 400
+    if update:
+        row = [{"column": "status", "value": state}]
+        where = [{"column": "name", "value": node}]
+        Database().update('node', row, where)
+        response = {'message': f'Node {node} updated.'}
+
+    return json.dumps(response), access_code

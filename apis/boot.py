@@ -314,43 +314,70 @@ def boot_install(node=None):
     where = ' WHERE hostname = "controller.cluster"'
     controller = Database().get_record(None, 'controller', where)
     if controller:
-        data['ipaddr'] = controller[0]['ipaddr']
-        data['serverport'] = controller[0]['srverport']
+        data['ipaddr']      = controller[0]['ipaddr']
+        data['serverport']  = controller[0]['srverport']
     node_details = Database().get_record(None, 'node', f' WHERE name = "{node}"')
     if node:
-        data['osimageid'] = node_details[0]['osimageid']
-        data['nodename'] = node_details[0]['name']
-        data['nodehostname'] = node_details[0]['hostname']
+        data['osimageid']   = node_details[0]['osimageid']
+        data['groupid']     = node_details[0]['groupid']
+        data['nodename']    = node_details[0]['name']
+        data['nodehostname']= node_details[0]['hostname']
         data['nodeservice'] = node_details[0]['service']
-        data['nodeid'] = node_details[0]['id']
-    
-    row = [{'column': 'status', 'value': 'installer.downloaded'}]
-    where = [{"column": 'name', 'value': node}]
-    install = Database().update('node', row, where)
-    if install and Log.check_loglevel() != 10:
-        var1 = "Testing Variable 1"
-        var2 = "Testing Variable 2"
+        data['nodeid']      = node_details[0]['id']
+        data['setupbmc']    = node_details[0]['setupbmc']
+
+    if data['groupid']:
+        group = Database().get_record(None, 'group', f' WHERE id = {data["groupid"]}')
+        if group:
+            data['groupname'] = group[0]['name']
+
+    if data['osimageid']:
+        osimage = Database().get_record(None, 'osimage', f' WHERE id = {data["osimageid"]}')
+        if osimage:
+            data['osimagename'] = osimage[0]['name']
+            data['tarball'] = osimage[0]['tarball']
+
+    if data['nodeid']:
+        where = f' WHERE nodeid = {data["nodeid"]};'
+        nodeinterface = Database().get_record(None, 'nodeinterface', where)
+        if nodeinterface:
+            row = [{"column": "macaddress", "value": mac}]
+            where = [
+                {"column": "id", "value": data["nodeid"]},
+                {"column": "interface", "value": "BOOTIF"}
+                ]
+            Database().update('nodeinterface', row, where)
+            where = f' WHERE nodeid = {data["nodeid"]} AND interface = "BOOTIF";'
+            nodeinterface = Database().get_record(None, 'nodeinterface', where)
+        where = f' WHERE id = "{nodeinterface[0]["networkid"]}"'
+        nwk = Database().get_record(None, 'network', where)
+        data['nodeip'] = Helper().get_network(nodeinterface[0]['ipaddress'], nwk[0]['subnet'])
+        subnet = data['nodeip'].split('/')
+        subnet = subnet[1]
+        data['nodeip'] = f'{nodeinterface[0]["ipaddress"]}/{subnet}'
+
+
+
+    if None not in data.values():
         access_code = 200
+        Helper().update_nodestate(data["nodeid"], "installer.downloaded")
     else:
         environment = jinja2.Environment()
-        template = environment.from_string('Node not found.')
-        var1, var2 = '', ''
+        template = environment.from_string('No Node is available for this mac address.')
         access_code = 404
-    LOGGER.info(f'Boot API serving the {template}')
-
-
-
-
 
     return render_template(
         template,
-        LUNA_CONTROLLER     = data['ipaddr'],
-        LUNA_API_PORT       = data['serverport'],
-        NODE_MAC_ADDRESS    = mac,
-        OSIMAGE_INTRDFILE   = data['intrdfile'],
-        OSIMAGE_KERNELFILE  = data['kernelfile'],
-        NODE_NAME           = data['nodename'],
-        NODE_HOSTNAME       = data['nodehostname'],
-        NODE_SERVICE        = data['nodeservice'],
-        NODE_IPADDRESS      = data['nodeip']
+        LUNA_CONTROLLER         = data['ipaddr'],
+        LUNA_API_PORT           = data['serverport'],
+        LUNA_HOSTNAME           = data['nodehostname'],
+        LUNA_OSIMAGE            = data['osimagename'],
+        LUNA_FILE               = data['tarball'],
+
+        LUNA_BOOTLOADER         = data['aaaaaaa'],
+        LUNA_LOCALINSTALL       = data['aaaaaaa'],
+        LUNA_SELINUX_ENABLED    = data['aaaaaaa'],
+        LUNA_BMCSETUP           = data['setupbmc'],
+        LUNA_UNMANAGED_BMC_USERS= '',
+        LUNA_INTERFACES         = data['aaaaaaa']
     ), access_code

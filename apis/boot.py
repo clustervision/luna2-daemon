@@ -296,41 +296,56 @@ def boot_install(node=None):
     Output - Success or failure
     """
     data = {
-        'nodeid'        : None,
-        'osimageid'     : None,
-        'ipaddr'        : None,
-        'serverport'    : None,
-        'intrdfile'     : None,
-        'kernelfile'    : None,
-        'nodename'      : None,
-        'nodehostname'  : None,
-        'nodeservice'   : None,
-        'nodeip'        : None
+        'osimageid'             : None,
+        'groupid'               : None,
+        'nodeid'                : None,
+        'ipaddr'                : None,
+        'serverport'            : None,
+        'nodehostname'          : None,
+        'osimagename'           : None,
+        'tarball'               : None,
+        'selinux'               : None,
+        'setupbmc'              : None,
+        'localinstall'          : None,
+        'unmanaged_bmc_users'   : None,
+        'interfaces'            : {}
     }
     template = 'templ_install.cfg'
     check_template = Helper().checkjinja(f'{CONSTANT["TEMPLATES"]["TEMPLATES_DIR"]}/{template}')
     if not check_template:
         abort(404, 'Empty')
-    where = ' WHERE hostname = "controller.cluster"'
+    
+    cluster = Database().get_record(None, 'cluster', None)
+    if cluster:
+        data['selinux']      = Helper().bool_revert(cluster[0]['security'])
+        where = ' WHERE hostname = "controller.cluster"'
     controller = Database().get_record(None, 'controller', where)
     if controller:
         data['ipaddr']      = controller[0]['ipaddr']
         data['serverport']  = controller[0]['srverport']
     node_details = Database().get_record(None, 'node', f' WHERE name = "{node}"')
     if node:
-        data['osimageid']   = node_details[0]['osimageid']
-        data['groupid']     = node_details[0]['groupid']
-        data['nodename']    = node_details[0]['name']
-        data['nodehostname']= node_details[0]['hostname']
-        data['nodeservice'] = node_details[0]['service']
-        data['nodeid']      = node_details[0]['id']
-        data['setupbmc']    = node_details[0]['setupbmc']
+        data['osimageid']           = node_details[0]['osimageid']
+        data['groupid']             = node_details[0]['groupid']
+        data['nodehostname']        = node_details[0]['hostname']
+        data['nodeid']              = node_details[0]['id']
+        data['setupbmc']            = Helper().bool_revert(node_details[0]['setupbmc'])
+        data['localinstall']        = node_details[0]['localinstall']
+        data['unmanaged_bmc_users'] = node_details[0]['unmanaged_bmc_users']
 
     if data['groupid']:
         group = Database().get_record(None, 'group', f' WHERE id = {data["groupid"]}')
         if group:
-            data['groupname'] = group[0]['name']
-
+            if data['localinstall'] is None:
+                data['localinstall'] = group[0]['localinstall']
+            if data['unmanaged_bmc_users'] is None:
+                data['unmanaged_bmc_users'] = group[0]['unmanaged_bmc_users']
+    if data['unmanaged_bmc_users'] is None:
+        data['unmanaged_bmc_users'] = ''
+    if data['localinstall'] is None:
+        LOGGER.error('localinstall is not set')
+    else:
+        data['localinstall'] = Helper().bool_revert(data['localinstall'])
     if data['osimageid']:
         osimage = Database().get_record(None, 'osimage', f' WHERE id = {data["osimageid"]}')
         if osimage:
@@ -341,22 +356,19 @@ def boot_install(node=None):
         where = f' WHERE nodeid = {data["nodeid"]};'
         nodeinterface = Database().get_record(None, 'nodeinterface', where)
         if nodeinterface:
-            row = [{"column": "macaddress", "value": mac}]
-            where = [
-                {"column": "id", "value": data["nodeid"]},
-                {"column": "interface", "value": "BOOTIF"}
-                ]
-            Database().update('nodeinterface', row, where)
-            where = f' WHERE nodeid = {data["nodeid"]} AND interface = "BOOTIF";'
-            nodeinterface = Database().get_record(None, 'nodeinterface', where)
-        where = f' WHERE id = "{nodeinterface[0]["networkid"]}"'
-        nwk = Database().get_record(None, 'network', where)
-        data['nodeip'] = Helper().get_network(nodeinterface[0]['ipaddress'], nwk[0]['subnet'])
-        subnet = data['nodeip'].split('/')
-        subnet = subnet[1]
-        data['nodeip'] = f'{nodeinterface[0]["ipaddress"]}/{subnet}'
-
-
+            for nwkif in nodeinterface:
+                data['interfaces'][nwkif['interface']] = {}
+                where = f' WHERE id = "{nwkif["networkid"]}"'
+                nwk = Database().get_record(None, 'network', where)
+                node_nwk = Helper().get_network(nwkif['ipaddress'], nwk[0]['subnet'])
+                subnet = node_nwk.split('/')
+                subnet = subnet[1]
+                node_nwk = f'{nwkif["ipaddress"]}/{subnet}'
+                data['interfaces'][nwkif['interface']]['interface'] = nwkif['interface']
+                data['interfaces'][nwkif['interface']]['ip'] = nwkif['ipaddress']
+                data['interfaces'][nwkif['interface']]['network'] = node_nwk
+                data['interfaces'][nwkif['interface']]['netmask'] = nwk[0]['subnet']
+                data['interfaces'][nwkif['interface']]['networkname'] = nwk[0]['name']
 
     if None not in data.values():
         access_code = 200
@@ -364,8 +376,8 @@ def boot_install(node=None):
     else:
         environment = jinja2.Environment()
         template = environment.from_string('No Node is available for this mac address.')
-        access_code = 404
-
+        access_code = 500
+    LOGGER.info(data)
     return render_template(
         template,
         LUNA_CONTROLLER         = data['ipaddr'],
@@ -373,11 +385,10 @@ def boot_install(node=None):
         LUNA_HOSTNAME           = data['nodehostname'],
         LUNA_OSIMAGE            = data['osimagename'],
         LUNA_FILE               = data['tarball'],
-
-        LUNA_BOOTLOADER         = data['aaaaaaa'],
-        LUNA_LOCALINSTALL       = data['aaaaaaa'],
-        LUNA_SELINUX_ENABLED    = data['aaaaaaa'],
+        LUNA_SELINUX_ENABLED    = data['selinux'],
         LUNA_BMCSETUP           = data['setupbmc'],
-        LUNA_UNMANAGED_BMC_USERS= '',
-        LUNA_INTERFACES         = data['aaaaaaa']
+        LUNA_BOOTLOADER         = data['localinstall'],
+        LUNA_LOCALINSTALL       = data['localinstall'],
+        LUNA_UNMANAGED_BMC_USERS= data['unmanaged_bmc_users'],
+        LUNA_INTERFACES         = data['interfaces']
     ), access_code

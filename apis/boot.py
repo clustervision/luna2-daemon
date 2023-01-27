@@ -314,7 +314,7 @@ def boot_install(node=None):
     check_template = Helper().checkjinja(f'{CONSTANT["TEMPLATES"]["TEMPLATES_DIR"]}/{template}')
     if not check_template:
         abort(404, 'Empty')
-    
+
     cluster = Database().get_record(None, 'cluster', None)
     if cluster:
         data['selinux']      = Helper().bool_revert(cluster[0]['security'])

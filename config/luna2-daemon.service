@@ -1,14 +1,15 @@
 [Unit]
-Description=Luna 2 Daemon
-Documentation=https://clustervision.com
+Description = Luna 2 Daemon
+After = network.target
 
 [Service]
-Type=oneshot
-RemainAfterExit=true
-ExecStart=/trinity/local/luna/config/server.sh
-ExecReload=/trinity/local/luna/config/server.sh
+PIDFile = /run/trinity/luna.pid
+WorkingDirectory = /trinity/local/luna
+ExecStartPre = /bin/mkdir /run/trinity
+ExecStart = /usr/local/bin/gunicorn --config /trinity/local/luna/config/gunicorn.py 'luna:api' --pid /run/trinity/luna.pid
+ExecReload = /bin/kill -s HUP $MAINPID
+ExecStop = /bin/kill -s TERM $MAINPID
+ExecStopPost = /bin/rm -rf /run/trinity
 
 [Install]
-WantedBy=multi-user.target
-
-# Always setenforce 0 or /sbin/setenforce 0
+WantedBy = multi-user.target

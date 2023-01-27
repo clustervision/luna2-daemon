@@ -14,7 +14,7 @@ __email__       = 'sumit.sharma@clustervision.com'
 __status__      = 'Development'
 
 
-from flask import Blueprint, json, render_template, abort
+from flask import Blueprint, render_template, abort
 from utils.log import Log
 from utils.database import Database
 from utils.helper import Helper

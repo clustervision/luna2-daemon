@@ -35,8 +35,8 @@ def on_starting(server):
     A Testing Method for Gunicorn on_starting.
     """
     validatebootstrap()
-    LOGGER.debug(vars(server))
-    LOGGER.debug('Gunicorn server hook on start')
+    LOGGER.info(vars(server))
+    LOGGER.info('Gunicorn server hook on start')
     return True
 
 
@@ -44,8 +44,8 @@ def on_reload(server):
     """
     A Testing Method for Gunicorn on_reload.
     """
-    LOGGER.debug(vars(server))
-    LOGGER.debug('Gunicorn server hook on reload')
+    LOGGER.info(vars(server))
+    LOGGER.info('Gunicorn server hook on reload')
     return True
 
 
@@ -54,7 +54,7 @@ def on_exit(server):
     A Testing Method for Gunicorn on_reload.
     """
     LOGGER.info(vars(server))
-    LOGGER.debug('Gunicorn server hook on exit')
+    LOGGER.info('Gunicorn server hook on exit')
     return True
 
 ############# Gunicorn Server Hooks #############

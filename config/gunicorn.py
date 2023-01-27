@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 """
-Start luna daemon
+Start Luna 2 Daemon as a service luna2-daemon.service
 """
 import luna
 # The IP address (typically localhost) and port that the Netbox WSGI process should listen on
@@ -23,7 +23,9 @@ workers = 1
 # max_requests_jitter = 500
 
 reload_engine = 'auto'
-on_starting = luna.on_starting
-on_exit = luna.on_exit
-# on_reload = luna.on_reload
 
+#### Automated Process ####
+on_starting = luna.on_starting      ## Called when service starts
+on_exit = luna.on_exit              ## Called when service exits
+on_reload = luna.on_reload           ## Called when service reload
+#### Automated Process ####

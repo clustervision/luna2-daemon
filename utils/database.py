@@ -172,7 +172,10 @@ class Database(object):
         Output - Success or Failure.
         """
         try:
-            query = f'DELETE * FROM "{table}";'
+            query = f'DELETE FROM "{table}";'
+            self.cursor.execute(query)
+            self.cursor.commit()
+            query = f'DELETE FROM sqlite_sequence WHERE name ="{table}";'
             self.cursor.execute(query)
             self.cursor.commit()
             response = True

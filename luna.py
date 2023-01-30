@@ -17,7 +17,7 @@ __maintainer__  = 'Sumit Sharma'
 __email__       = 'sumit.sharma@clustervision.com'
 __status__      = 'Development'
 
-from flask import Flask, abort, json, Response
+from flask import Flask, abort, json, Response, request
 from common.constant import LOGGER
 from common.bootstrap import validatebootstrap
 from apis.auth import auth_blueprint
@@ -67,6 +67,24 @@ api.register_blueprint(files_blueprint)
 api.register_blueprint(service_blueprint)
 api.register_blueprint(monitor_blueprint)
 api.register_blueprint(control_blueprint)
+
+
+@api.route('/all-routes')
+def all_routes():
+    """This method will print all the API"""
+    routes = []
+    for rule in api.url_map.iter_rules():
+        apimethod = str(rule.methods).replace("'", "")
+        apimethod = apimethod.replace("}", "")
+        apimethod = apimethod.replace("{", "")
+        apimethod = apimethod.replace("HEAD", "")
+        apimethod = apimethod.replace("OPTIONS", "")
+        apimethod = apimethod.replace(", ", "")
+        route = f"http://{request.environ['HTTP_HOST']}{rule}"
+        if "static" != str(rule.endpoint):
+            routes.append({"route": route, "function": str(rule.endpoint), "method": apimethod})
+    LOGGER.info(routes)
+    return routes, 200
 
 
 @api.route('/')

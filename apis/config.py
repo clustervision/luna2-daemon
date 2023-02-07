@@ -48,7 +48,7 @@ def config_node():
                 node['osimage'] = Database().getname_byid('osimage', node['osimageid'])
             if node['switchid']:
                 node['switch'] = Database().getname_byid('switch', node['switchid'])
-            del node['name']
+            # del node['name']
             del node['id']
             del node['bmcsetupid']
             del node['groupid']
@@ -101,7 +101,7 @@ def config_node_get(name=None):
             node['osimage'] = Database().getname_byid('osimage', node['osimageid'])
         if node['switchid']:
             node['switch'] = Database().getname_byid('switch', node['switchid'])
-        del node['name']
+        # del node['name']
         del node['id']
         del node['bmcsetupid']
         del node['groupid']
@@ -477,7 +477,7 @@ def config_group():
                     del ifx['networkid']
                     grp['interfaces'].append(ifx)
             del grp['id']
-            del grp['name']
+            # del grp['name']
             grp['bmcsetup'] = Helper().bool_revert(grp['bmcsetup'])
             grp['netboot'] = Helper().bool_revert(grp['netboot'])
             grp['localinstall'] = Helper().bool_revert(grp['localinstall'])
@@ -522,7 +522,7 @@ def config_group_get(name=None):
                     del ifx['networkid']
                     grp['interfaces'].append(ifx)
             del grp['id']
-            del grp['name']
+            # del grp['name']
             grp['bmcsetup'] = Helper().bool_revert(grp['bmcsetup'])
             grp['netboot'] = Helper().bool_revert(grp['netboot'])
             grp['localinstall'] = Helper().bool_revert(grp['localinstall'])
@@ -1168,7 +1168,7 @@ def config_bmcsetup():
         response = {'config': {'bmcsetup': {} }}
         for bmc in bmcsetup:
             bmcname = bmc['name']
-            del bmc['name']
+            # del bmc['name']
             del bmc['id']
             response['config']['bmcsetup'][bmcname] = bmc
         access_code = 200
@@ -1192,7 +1192,7 @@ def config_bmcsetup_get(bmcname=None):
         response = {'config': {'bmcsetup': {} }}
         for bmc in bmcsetup:
             name = bmc['name']
-            del bmc['name']
+            # del bmc['name']
             del bmc['id']
             response['config']['bmcsetup'][name] = bmc
         access_code = 200
@@ -1356,7 +1356,7 @@ def config_switch():
             if switchip:
                 switch['ipaddress'] = switchip[0]["ipaddress"]
             del switch['id']
-            del switch['name']
+            # del switch['name']
             response['config']['switch'][switchname] = switch
         LOGGER.info(f'available Switches are {switches}.')
         access_code = 200
@@ -1386,7 +1386,7 @@ def config_switch_get(switch=None):
             if switchip:
                 switch['ipaddress'] = switchip[0]["ipaddress"]
             del switch['id']
-            del switch['name']
+            # del switch['name']
             response['config']['switch'][switchname] = switch
         LOGGER.info(f'available Switches are {switches}.')
         access_code = 200
@@ -1559,7 +1559,7 @@ def config_otherdev():
             if deviceip:
                 device['ipaddress'] = deviceip[0]["ipaddress"]
             del device['id']
-            del device['name']
+            # del device['name']
             response['config']['otherdev'][devicename] = device
         LOGGER.info(f'available devices are {devices}.')
         access_code = 200
@@ -1589,7 +1589,7 @@ def config_otherdev_get(device=None):
             if deviceip:
                 device['ipaddress'] = deviceip[0]["ipaddress"]
             del device['id']
-            del device['name']
+            # del device['name']
             response['config']['otherdev'][devicename] = device
         LOGGER.info(f'available Devices are {devices}.')
         access_code = 200

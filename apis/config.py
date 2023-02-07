@@ -829,7 +829,7 @@ def config_osimage():
         for image in osimages:
             image_name = image['name']
             del image['id']
-            del image['name']
+            # del image['name']
             response['config']['osimage'][image_name] = image
         LOGGER.info('Provided list of all osimages with details.')
         access_code = 200
@@ -852,7 +852,7 @@ def config_osimage_get(name=None):
         response = {'config': {'osimage': {} }}
         for image in osimages:
             del image['id']
-            del image['name']
+            # del image['name']
             response['config']['osimage'][name] = image
         LOGGER.info(f'Returned OS Image {name} with details.')
         access_code = 200

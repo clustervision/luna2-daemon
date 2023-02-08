@@ -169,7 +169,7 @@ global LUNAKEY
 
 CONSTANT = {
     'LOGGER': {'LEVEL': None, 'LOGFILE': None},
-    'API': {'USERNAME': None, 'PASSWORD': None, 'EXPIRY': None, 'SECRET_KEY': None},
+    'API': {'USERNAME': None, 'PASSWORD': None, 'EXPIRY': None, 'SECRET_KEY': None, 'ENDPOINT': None},
     'DATABASE': {'DRIVER': None, 'DATABASE': None, 'DBUSER': None,
                 'DBPASSWORD': None, 'HOST': None, 'PORT': None},
     'FILES': {'KEYFILE': None, 'TARBALL': None, 'IMAGE_DIRECTORY': None, 'MAXPACKAGINGTIME': None},

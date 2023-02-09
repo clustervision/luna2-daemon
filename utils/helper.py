@@ -30,6 +30,10 @@ from jinja2 import Environment, meta, FileSystemLoader
 from utils.log import Log
 from utils.database import Database
 from common.constant import CONSTANT, LUNAKEY
+import concurrent.futures
+import threading
+from time import sleep
+from datetime import datetime
 
 class Helper(object):
     """
@@ -65,18 +69,31 @@ class Helper(object):
 
 ################### ---> Experiment to compare the logic
 
-    def runcommand(self, command):
+    def runcommand(self, command, return_exit_code=False, timeout_sec=7200):
         """
         Input - command, which need to be executed
         Process - Via subprocess, execute the command and wait to receive the complete output.
         Output - Detailed result.
         """
+
+        kill = lambda process: process.kill()
         output = None
-        with subprocess.Popen(command, stdout=subprocess.PIPE, shell=True) as process:
-            self.logger.debug(f'Command Executed {command}')
-            output = process.communicate()
-            process.wait()
-            self.logger.debug(f'Output Of Command {output}')
+        self.logger.debug(f'Command Executed [{command}]')
+        my_process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
+        my_timer = threading.Timer(timeout_sec,kill,[my_process])
+        try:
+            my_timer.start()
+            output = my_process.communicate()
+            exit_code = my_process.wait()
+        finally:
+            my_timer.cancel()
+
+#        with subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True) as process:
+#            output = process.communicate()
+#            exit_code = process.wait()
+        self.logger.debug(f'Output Of Command [{output[0]}], [{output[1]}]')
+        if return_exit_code:
+            return output,exit_code
         return output
 
 
@@ -555,14 +572,14 @@ class Helper(object):
         self.logger.info(f'hostname: {hostname}.')
         command = f'ipmitool -U {username} -P {password} chassis power {action} -H 127.0.0.1 -I lanplus -C3'
         self.logger.info(f'IPMI command to be executed: {command}.')
-        output = self.runcommand(command)
-        if output:
+        output,exit_code = self.runcommand(command,True,10)
+        if output and exit_code == 0:
             response = str(output[0].decode())
             response = response.replace('Chassis Power is ', '')
             response = response.replace('\n', '')
         else:
-            response = "Command execution failed."
-        self.logger.info(f'response: {response}.')
+            response = f"Command execution failed with exit code {exit_code}"
+        self.logger.info(f'response: [{response}]')
         return response
 
 
@@ -597,3 +614,119 @@ class Helper(object):
         where = [{"column": "id", "value": nodeid}]
         status = Database().update('node', row, where)
         return status
+
+    # -----------------------------------------------------------------
+    """ 
+    Below Classes/Functions maintained by Antoine
+    antoine.schonewille@clustervision.com
+    """
+
+    class Pipeline():
+        """
+        Class to allow a single element pipeline between mainthread and childs.
+        Antoine Jan 2023
+        """
+        def __init__(self):
+            self.message = {}
+            self.nodes   = {}
+            self._lock    = threading.Lock()
+
+        def get_messages(self):
+            with self._lock:
+                message = self.message
+            return message
+
+        def add_message(self, message):
+            with self._lock:
+                self.message.update(message)
+
+        def del_message(self, _key):
+            with self._lock:
+                self.message.pop(_key, None)
+
+        def get_node(self):
+            with self._lock:
+                if len(self.nodes)>0:
+                    node = self.nodes.popitem()
+                    return (node[0],node[1])
+                return
+
+        def add_nodes(self,nodes=[]):
+            with self._lock:
+                self.nodes.update(nodes)
+
+        def get_nodes(self):
+            with self._lock:
+                return self.nodes
+
+        def has_nodes(self):
+            with self._lock:
+                if len(self.nodes) > 0:
+                    return True
+                return False
+
+
+    # -----------------------------------------------------------------
+
+    def control_child(self,pipeline,t=0):
+         run=1
+         while run:
+             hostname,action=pipeline.get_node()
+             if hostname:
+                 self.logger.info("control_child thread "+str(t)+": "+hostname+" -> called for "+action)
+                 node = Database().get_record(None, 'node', f' WHERE name = "{hostname}"')
+                 if node:
+                     groupid = node[0]['groupid']
+                     group = Database().get_record(None, 'group', f' WHERE id = "{groupid}"')
+                     if group:
+                         bmcsetupid = group[0]['bmcsetupid']
+                         bmcsetup = Database().get_record(None, 'bmcsetup', f' WHERE id = "{bmcsetupid}"')
+                         if bmcsetup:
+                             self.logger.info("control_child thread "+str(t)+": bmcsetup: "+str(bmcsetup))
+                             try:
+                                 username = bmcsetup[0]['username']
+                                 password = bmcsetup[0]['password']
+                                 #self.logger.info("control_child thread "+str(t)+": "+hostname+" -> performing "+action+", with user/pass "+username+"/"+password)
+                                 status = self.ipmi_action(hostname, action, username, password) or 'no response or timeout'
+                             except:
+                                 status='bmc credentials not found'
+                             pipeline.add_message({hostname: status})
+                         else:
+                             self.logger.info(f'{hostname} not have any bmcsetup.')
+                             pipeline.add_message({hostname: 'does not have any bmcsetup'})
+                     else:
+                         self.logger.info(f'{hostname} not have any group.')
+                         pipeline.add_message({hostname: 'does not have any group'})
+                 else:
+                     self.logger.info(f'{hostname} not have any node.')
+                     pipeline.add_message({hostname: 'does not have any node information'})
+                 run=0 # setting this to 0 means we only do one iteration. we can do loops, but we let mother control this
+             else:
+                 run=0
+
+    # -----------------------------------------------------------------
+
+    def control_mother(self,pipeline,request_id,batch=10,delay=10):
+        #self.logger.info("control_mother called")
+        while(pipeline.has_nodes()):
+
+            with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
+                 _ = [executor.submit(self.control_child, pipeline,t) for t in range(1,batch)]
+
+            sleep(0.1) # not needed but just in case a child does a lock right after i fetch the list.
+            current_datetime=datetime.now()
+            results=pipeline.get_messages()
+
+            for key in list(results):
+                self.logger.info(f"control_mother result: {key}: {results[key]}")
+                row=[{"column": "request_id", "value": request_id}, 
+                     {"column": "created", "value": "current_datetime"}, 
+                     {"column": "username_initiator", "value": "lpower"}, 
+                     {"column": "message", "value": f"{key}:{results[key]}"}]
+                Database().insert('status', row)
+                pipeline.del_message(key)
+            sleep(delay)
+
+    # -----------------------------------------------------------------
+
+

@@ -102,7 +102,7 @@ class Database(object):
         return response
 
 
-    def get_record_join(self, query=None):
+    def get_record_join(self, select=None, joinon=None, where=None):
         """
         Input - Complete SQL query with Joins
         Process - It is SELECT operation on the DB.
@@ -111,7 +111,40 @@ class Database(object):
                     where can be None OR complete where condition
         Output - Fetch rows along with column name.
         """
+        if select:
+            strcolumn = ','.join(map(str, select))
+        else:
+            strcolumn = "*"
+        if joinon:
+            strjoin = ' AND '.join(map(str, joinon))
+            tables=[]
+            for eachjoin in joinon:
+                left,right=eachjoin.split('=')
+                print(f" ----> [{left}], [{right}]")
+                lefttable=left.split('.')[0]
+                righttable=right.split('.')[0]
+                if lefttable not in tables:
+                    tables.append(lefttable)
+                if righttable not in tables:
+                    tables.append(righttable)
+            print(f"{strjoin}")
+            print(tables)
+            #tablestr = ','.join(joinon.map(lambda x:x.split('.',1)[0])) #    map(lambda x:x.split('.', 1)[0])
+            tablestr = '`,`'.join(tables)
+        else:
+            response = None
+            return response
+        if where:
+            strwhere = ' AND '.join(map(str, where))
+        if where and joinon:
+            query = f'SELECT {strcolumn} FROM `{tablestr}` WHERE {strjoin} AND {strwhere};'
+        elif joinon:
+            query = f'SELECT {strcolumn} FROM `{tablestr}` WHERE {strjoin};'
+        else:       
+            response = None
+            return response
         self.logger.debug(f'Query executing => {query}.')
+        print(f'Query executing => {query}.')
         try:
             self.cursor.execute(query)
             names = list(map(lambda x: x[0], self.cursor.description)) # Fetching the Column Names

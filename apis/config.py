@@ -34,18 +34,21 @@ def config_node():
     Input - None
     Output - Return the list of nodes.
     """
+    # we need two queries as a join is great but not holy. as soon as we know the absolute minimum/mandatory field/attributes for a node we can finetune
     nodes = Database().get_record(None, 'node', None)
+    nodesfull = Database().get_record_join(['node.*','group.name AS group','osimage.name AS osimage'], ['group.id=node.groupid','osimage.id=group.osimageid'])
+    nodes+=nodesfull
     if nodes:
         response = {'config': {'node': {} }}
         for node in nodes:
             node_name = node['name']
             nodeid = node['id']
-            if node['bmcsetupid']:
-                node['bmcsetup'] = Database().getname_byid('bmcsetup', node['bmcsetupid'])
-            if node['groupid']:
-                node['group'] = Database().getname_byid('group', node['groupid'])
-            if node['osimageid']:
-                node['osimage'] = Database().getname_byid('osimage', node['osimageid'])
+#            if node['bmcsetupid']:
+#                node['bmcsetup'] = Database().getname_byid('bmcsetup', node['bmcsetupid'])
+#            if node['groupid']:
+#                node['group'] = Database().getname_byid('group', node['groupid'])
+#            if node['osimageid']:
+#                node['osimage'] = Database().getname_byid('osimage', node['osimageid'])
             if node['switchid']:
                 node['switch'] = Database().getname_byid('switch', node['switchid'])
             # del node['name']
@@ -60,15 +63,16 @@ def config_node():
             node['netboot'] = Helper().bool_revert(node['netboot'])
             node['service'] = Helper().bool_revert(node['service'])
             node['setupbmc'] = Helper().bool_revert(node['setupbmc'])
-            where = f' WHERE nodeid = "{nodeid}"'
-            node_interface = Database().get_record(None, 'nodeinterface', where)
+#            where = f' WHERE nodeid = "{nodeid}"'
+#            node_interface = Database().get_record(None, 'nodeinterface', where)
+            node_interface = Database().get_record_join(['nodeinterface.interface','ipaddress.ipaddress','nodeinterface.macaddress','network.name as network'], ['network.id=ipaddress.networkid','ipaddress.tablerefid=nodeinterface.id'],['tableref="nodeinterface"',f"nodeinterface.nodeid='{nodeid}'"])
             if node_interface:
                 node['interfaces'] = []
                 for interface in node_interface:
-                    interface['network'] = Database().getname_byid('network',interface['networkid'])
-                    del interface['nodeid']
-                    del interface['id']
-                    del interface['networkid']
+#                    interface['network'] = Database().getname_byid('network',interface['networkid'])
+#                    del interface['nodeid']
+#                    del interface['id']
+#                    del interface['networkid']
                     node['interfaces'].append(interface)
             response['config']['node'][node_name] = node
         LOGGER.info('Provided list of all nodes.')
@@ -88,17 +92,19 @@ def config_node_get(name=None):
     Output - Return the node information.
     """
     node = Database().get_record(None, 'node', f' WHERE name = "{name}"')
+    nodefull = Database().get_record_join(['node.*','group.name AS group','osimage.name AS osimage'], ['group.id=node.groupid','osimage.id=group.osimageid'],f"node.name='{name}'")
+    node+=nodefull
     if node:
         response = {'config': {'node': {} }}
         node = node[0]
         nodename = node['name']
         nodeid = node['id']
-        if node['bmcsetupid']:
-            node['bmcsetup'] = Database().getname_byid('bmcsetup', node['bmcsetupid'])
-        if node['groupid']:
-            node['group'] = Database().getname_byid('group', node['groupid'])
-        if node['osimageid']:
-            node['osimage'] = Database().getname_byid('osimage', node['osimageid'])
+#        if node['bmcsetupid']:
+#            node['bmcsetup'] = Database().getname_byid('bmcsetup', node['bmcsetupid'])
+#        if node['groupid']:
+#            node['group'] = Database().getname_byid('group', node['groupid'])
+#        if node['osimageid']:
+#            node['osimage'] = Database().getname_byid('osimage', node['osimageid'])
         if node['switchid']:
             node['switch'] = Database().getname_byid('switch', node['switchid'])
         # del node['name']
@@ -113,14 +119,15 @@ def config_node_get(name=None):
         node['netboot'] = Helper().bool_revert(node['netboot'])
         node['service'] = Helper().bool_revert(node['service'])
         node['setupbmc'] = Helper().bool_revert(node['setupbmc'])
-        node_interface = Database().get_record(None, 'nodeinterface', f' WHERE nodeid = "{nodeid}"')
+        #node_interface = Database().get_record(None, 'nodeinterface', f' WHERE nodeid = "{nodeid}"')
+        node_interface = Database().get_record_join(['nodeinterface.interface','ipaddress.ipaddress','nodeinterface.macaddress','network.name as network'], ['network.id=ipaddress.networkid','ipaddress.tablerefid=nodeinterface.id'],['tableref="nodeinterface"',f"nodeinterface.nodeid='{nodeid}'"])
         if node_interface:
             node['interfaces'] = []
             for interface in node_interface:
-                interface['network'] = Database().getname_byid('network', interface['networkid'])
-                del interface['nodeid']
-                del interface['id']
-                del interface['networkid']
+#                interface['network'] = Database().getname_byid('network', interface['networkid'])
+#                del interface['nodeid']
+#                del interface['id']
+#                del interface['networkid']
                 node['interfaces'].append(interface)
         response['config']['node'][nodename] = node
         LOGGER.info('Provided list of all nodes.')

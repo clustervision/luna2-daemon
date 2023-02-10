@@ -114,7 +114,11 @@ class Database(object):
         """
         if select:
             #strcolumn = ','.join(map(str, select))
-            cols=[] 
+            cols=[]
+            if type(select) == type('string'):
+                t=select
+                select=[]
+                select.append(str(t))
             for eachselect in select:
                 table,col=eachselect.split('.',1)
                 #str_output = re.sub(regex_search_term, regex_replacement, str_input)
@@ -128,6 +132,10 @@ class Database(object):
             strcolumn = "*"
         if joinon:
             #strjoin = ' AND '.join(map(str, joinon))
+            if type(joinon) == type('string'):
+                t=joinon
+                joinon=[]
+                joinon.append(str(t))
             joins=[]
             tables=[]
             for eachjoin in joinon:
@@ -149,6 +157,10 @@ class Database(object):
             response = None
             return response
         if where:
+            if type(where) == type('string'):
+                t=where
+                where=[]
+                where.append(str(t))
             strwhere = ' AND '.join(map(str, where))
         if where and joinon:
             query = f'SELECT {strcolumn} FROM `{tablestr}` WHERE {strjoin} AND {strwhere};'

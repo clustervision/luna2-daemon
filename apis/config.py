@@ -1517,7 +1517,7 @@ def config_switch_clone(switch=None):
 
 
 
-@config_blueprint.route("/config/switch/<string:switch>/_delete", methods=['POST'])
+@config_blueprint.route("/config/switch/<string:switch>/_delete", methods=['GET'])
 ###@token_required
 def config_switch_delete(switch=None):
     """

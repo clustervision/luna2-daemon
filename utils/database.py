@@ -19,6 +19,7 @@ __status__      = 'Development'
 import pyodbc
 from utils.log import Log
 from common.constant import CONSTANT
+import re
 
 class Database(object):
 
@@ -112,25 +113,38 @@ class Database(object):
         Output - Fetch rows along with column name.
         """
         if select:
-            strcolumn = ','.join(map(str, select))
+            #strcolumn = ','.join(map(str, select))
+            cols=[] 
+            for eachselect in select:
+                table,col=eachselect.split('.',1)
+                #str_output = re.sub(regex_search_term, regex_replacement, str_input)
+                col = re.sub('(as|AS) (.+)', r"AS `\2`", col)
+                if col:
+                    cols.append(f"`{table}`.{col}")
+                else:
+                    cols.append(f"`{table}`")
+            strcolumn = ','.join(cols)
         else:
             strcolumn = "*"
         if joinon:
-            strjoin = ' AND '.join(map(str, joinon))
+            #strjoin = ' AND '.join(map(str, joinon))
+            joins=[]
             tables=[]
             for eachjoin in joinon:
                 left,right=eachjoin.split('=')
                 print(f" ----> [{left}], [{right}]")
-                lefttable=left.split('.')[0]
-                righttable=right.split('.')[0]
+                lefttable,leftcol=left.split('.')
+                righttable,rightcol=right.split('.')
+                joins.append(f"`{lefttable}`.{leftcol}=`{righttable}`.{rightcol}")
                 if lefttable not in tables:
                     tables.append(lefttable)
                 if righttable not in tables:
                     tables.append(righttable)
-            print(f"{strjoin}")
             print(tables)
             #tablestr = ','.join(joinon.map(lambda x:x.split('.',1)[0])) #    map(lambda x:x.split('.', 1)[0])
             tablestr = '`,`'.join(tables)
+            strjoin = ' AND '.join(joins)
+            print(f"{strjoin}")
         else:
             response = None
             return response

@@ -161,7 +161,7 @@ def config_node_post(name=None):
         node = Database().get_record(None, 'node', f' WHERE name = "{name}"')
         if node:
             nodeid = node[0]['id']
-            if 'newnodename' in data:
+            if 'newnodename' in data:  # is mentioned as newhostname in design documents!
                 nodename_new = data['newnodename']
                 where = f' WHERE `name` = "{nodename_new}";'
                 newnode_check = Database().get_record(None, 'node', where)
@@ -260,19 +260,43 @@ def config_node_post(name=None):
                         access_code = 400
                         return json.dumps(response), access_code
                     else:
-                        interface['networkid'] = networkid
+#                        interface['networkid'] = networkid
                         interface['nodeid'] = nodeid
                         del interface['network']
+#                    interface_name = interface['interface']
+#                    node_clause = f'nodeid = "{nodeid}"'
+#                    network_clause = f'networkid = "{networkid}"'
+#                    interface_clause = f'interface = "{interface_name}"'
+#                    where = f' WHERE {node_clause} AND {network_clause} AND {interface_clause}'
+#                    check_interface = Database().get_record(None, 'nodeinterface', where)
+#                    if not check_interface:
+#                        row = Helper().make_rows(interface)
+#                        result = Database().insert('nodeinterface', row)
+#                        LOGGER.info(f"Interface created => {result} .")
+
+                    # Antoine
                     interface_name = interface['interface']
-                    node_clause = f'nodeid = "{nodeid}"'
-                    network_clause = f'networkid = "{networkid}"'
-                    interface_clause = f'interface = "{interface_name}"'
-                    where = f' WHERE {node_clause} AND {network_clause} AND {interface_clause}'
-                    check_interface = Database().get_record(None, 'nodeinterface', where)
+                    if ipaddress in interface:
+                        ipaddress['ipaddress']=interface['ipaddress']
+                        del interface['ipaddress']
+                    ipaddress['networkid']=networkid
+                    check_interface = Database().get_record(None, 'nodeinterface', f'nodeid = "{nodeid}" AND interface = "{interface_name}"')
                     if not check_interface:
                         row = Helper().make_rows(interface)
-                        result = Database().insert('nodeinterface', row)
-                        LOGGER.info(f"Interface created => {result} .")
+                        tablerefid = Database().insert('nodeinterface', row)
+                        ipaddress['tableref']='nodeinterface'
+                        ipaddress['tablerefid']=tablerefid
+                        row = Helper().make_rows(ipaddress)
+                        result_ip = Database().insert('ipaddress', row)
+                        LOGGER.info(f"Interface created => {tablerefid}+{result_ip} .")
+                    else: # interface already exists so we tread lightly
+                        #TWAN
+                        ipaddress['tableref']='nodeinterface'
+        		ipaddress['tablerefid']=check_interface['id']  # <-- this is the id in the table nodeinterface that belongs to the row with nodeid
+                        row = Helper().make_rows(ipaddress)
+                        result_ip = Database().update('ipaddress', row)
+                        LOGGER.info(f"Interface updated => {result_ip} .")
+
 
         else:
             response = {'message': 'Bad Request; Columns are incorrect.'}

@@ -20,6 +20,7 @@ import hostlist
 from utils.helper import Helper
 from utils.database import Database
 from utils.log import Log
+from database_layout import *
 
 configParser = RawConfigParser()
 LOGGER = Log.get_logger()
@@ -81,6 +82,27 @@ def getconfig(filename=None):
             else:
                 BOOTSTRAP[section] = {}
                 BOOTSTRAP[section][option.upper()] = item
+
+
+def create_database_tables():
+    Database().create("status",DATABASE_LAYOUT_status)
+    Database().create("osimage",DATABASE_LAYOUT_osimage)
+    Database().create("nodesecrets",DATABASE_LAYOUT_nodesecrets)
+    Database().create("nodeinterface",DATABASE_LAYOUT_nodeinterface)
+    Database().create("bmcsetup",DATABASE_LAYOUT_bmcsetup)
+    Database().create("monitor",DATABASE_LAYOUT_monitor)
+    Database().create("ipaddress",DATABASE_LAYOUT_ipaddress)
+    Database().create("groupinterface",DATABASE_LAYOUT_groupinterface)
+    Database().create("roles",DATABASE_LAYOUT_roles)
+    Database().create("group",DATABASE_LAYOUT_group)
+    Database().create("network",DATABASE_LAYOUT_network)
+    Database().create("user",DATABASE_LAYOUT_user)
+    Database().create("switch",DATABASE_LAYOUT_switch)
+    Database().create("otherdevices",DATABASE_LAYOUT_otherdevices)
+    Database().create("controller",DATABASE_LAYOUT_controller)
+    Database().create("groupsecrets",DATABASE_LAYOUT_groupsecrets)
+    Database().create("node",DATABASE_LAYOUT_node)
+    Database().create("cluster",DATABASE_LAYOUT_cluster)
 
 
 def bootstrap(bootstrapfile=None):

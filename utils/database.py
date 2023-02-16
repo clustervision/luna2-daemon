@@ -226,11 +226,13 @@ class Database(object):
                     table is the table name which need to be created.
                     column is a list of dict ex:
                     where = [
-                        {"column": "id", "datatype": "INTEGER", "length": "10", "key": "PRIMARY"},
+                        {"column": "id", "datatype": "INTEGER", "length": "10", "key": "PRIMARY", "keyadd": "autoincrement"},
+                        {"column": "id", "datatype": "INTEGER", "length": "20", "key": "UNIQUE"},
                         {"column": "name", "datatype": "VARCHAR", "length": "40"}]
         Output - Creates Table.
         """
         columns = []
+        index   = []
         for cols in column:
             strcolumn = ''
             if 'column' in cols.keys():
@@ -239,10 +241,18 @@ class Database(object):
                 strcolumn = strcolumn + ' ' +cols['datatype'] + ' '
             if 'length' in cols.keys():
                 strcolumn = strcolumn + ' (' +cols['length'] + ') '
-            if 'key'in cols.keys():
-                strcolumn = strcolumn + ' ' +cols['key'] + ' '
+            if 'key' in cols.keys() and 'column' in cols.keys():
+                if cols['key'] == "PRIMARY":
+                    if 'keyadd' in cols.keys():
+                        indici.append(f"PRIMARY KEY (`{cols['column']}` {cols['keyadd']})")
+                    else:
+                        indici.append(f"PRIMARY KEY (`{cols['column']}`)")
+                else:
+                    indici.append(f"{cols['key']} (`{cols['column']}`)")
             columns.append(strcolumn)
-            strcolumns = ', '.join(map(str, columns))
+        strkeys = ', '.join(map(str, indici))
+        columns.append(strkeys)
+        strcolumns = ', '.join(map(str, columns))
         query = f'CREATE TABLE IF NOT EXISTS `{table}` ({strcolumns})'
         try:
             self.cursor.execute(query)

@@ -317,9 +317,14 @@ def config_node_delete(name=None):
     """
     node = Database().get_record(None, 'node', f' WHERE `name` = "{name}";')
     if node:
+        nodeid=node[0]['id']
         Database().delete_row('node', [{"column": "name", "value": name}])
-        Database().delete_row('nodeinterface', [{"column": "nodeid", "value": node[0]['id']}])
-        Database().delete_row('nodesecrets', [{"column": "nodeid", "value": node[0]['id']}])
+        ipaddress = Database().get_record_join(['ipaddress.id'], ['ipaddress.tablerefid=nodeinterface.id'],['tableref="nodeinterface"',f"nodeinterface.nodeid='{nodeid}'"])
+        if ipaddress:
+            for ip in ipaddress:
+                Database().delete_row('ipaddress', [{"column": "id", "value": ip[id]}])
+        Database().delete_row('nodeinterface', [{"column": "nodeid", "value": nodeid}])
+        Database().delete_row('nodesecrets', [{"column": "nodeid", "value": nodeid}])
         response = {'message': f'Node {name} with all its interfaces removed.'}
         access_code = 204
     else:

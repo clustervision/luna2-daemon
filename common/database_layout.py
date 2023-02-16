@@ -16,187 +16,187 @@ __status__      = 'Development'
 
 
 DATABASE_LAYOUT_status = [
-{"column": "id",                   "datatype": "integer", "length": "autoincrement", "key": "PRIMARY", "keyadd": "autoincrement"}
-{"column": "request_id",           "datatype": "text"}
-{"column": "username_initiator",   "datatype": "text"}
-{"column": "created",              "datatype": "numeric"}
+{"column": "id",                   "datatype": "integer", "length": "10", "key": "PRIMARY", "keyadd": "autoincrement"},
+{"column": "request_id",           "datatype": "text"},
+{"column": "username_initiator",   "datatype": "text"},
+{"column": "created",              "datatype": "numeric"},
 {"column": "message",              "datatype": "text"}]
 
 DATABASE_LAYOUT_osimage = [
-{"column": "id",                   "datatype": "INTEGER", "key": "PRIMARY", "keyadd": "AUTOINCREMENT"}
-{"column": "name",                 "datatype": "VARCHAR", "length": "20"}
-{"column": "dracutmodules",        "datatype": "VARCHAR", "length": "100"}
-{"column": "grab_filesystems",     "datatype": "VARCHAR", "length": "60"}
-{"column": "grab_exclude",         "datatype": "TEXT"}
-{"column": "initrdfile",           "datatype": "VARCHAR", "length": "100"}
-{"column": "kernelfile",           "datatype": "VARCHAR", "length": "100"}
-{"column": "kernelmodules",        "datatype": "VARCHAR", "length": "100"}
-{"column": "kerneloptions",        "datatype": "VARCHAR", "length": "60"}
-{"column": "kernelversion",        "datatype": "VARCHAR", "length": "60"}
-{"column": "path",                 "datatype": "VARCHAR", "length": "60"}
-{"column": "tarball",              "datatype": "VARCHAR", "length": "100"}
-{"column": "torrent",              "datatype": "VARCHAR", "length": "100"}
-{"column": "distribution",         "datatype": "VARCHAR", "length": "20"}
+{"column": "id",                   "datatype": "INTEGER", "key": "PRIMARY", "keyadd": "AUTOINCREMENT"},
+{"column": "name",                 "datatype": "VARCHAR", "length": "20"},
+{"column": "dracutmodules",        "datatype": "VARCHAR", "length": "100"},
+{"column": "grab_filesystems",     "datatype": "VARCHAR", "length": "60"},
+{"column": "grab_exclude",         "datatype": "TEXT"},
+{"column": "initrdfile",           "datatype": "VARCHAR", "length": "100"},
+{"column": "kernelfile",           "datatype": "VARCHAR", "length": "100"},
+{"column": "kernelmodules",        "datatype": "VARCHAR", "length": "100"},
+{"column": "kerneloptions",        "datatype": "VARCHAR", "length": "60"},
+{"column": "kernelversion",        "datatype": "VARCHAR", "length": "60"},
+{"column": "path",                 "datatype": "VARCHAR", "length": "60"},
+{"column": "tarball",              "datatype": "VARCHAR", "length": "100"},
+{"column": "torrent",              "datatype": "VARCHAR", "length": "100"},
+{"column": "distribution",         "datatype": "VARCHAR", "length": "20"},
 {"column": "comment",              "datatype": "VARCHAR", "length": "20"}]
 
 DATABASE_LAYOUT_nodesecrets = [
-{"column": "id",                   "datatype": "INTEGER", "key": "PRIMARY", "keyadd": "AUTOINCREMENT"}
-{"column": "nodeid",               "datatype": "INTEGER", "length": "10"}
-{"column": "name",                 "datatype": "VARCHAR", "length": "50"}
-{"column": "content",              "datatype": "TEXT"}
+{"column": "id",                   "datatype": "INTEGER", "key": "PRIMARY", "keyadd": "AUTOINCREMENT"},
+{"column": "nodeid",               "datatype": "INTEGER", "length": "10"},
+{"column": "name",                 "datatype": "VARCHAR", "length": "50"},
+{"column": "content",              "datatype": "TEXT"},
 {"column": "path",                 "datatype": "VARCHAR", "length": "200"}]
 
 DATABASE_LAYOUT_nodeinterface = [
-{"column": "id",                   "datatype": "INTEGER", "key": "PRIMARY", "keyadd": "AUTOINCREMENT"}
-{"column": "nodeid",               "datatype": "INTEGER", "length": "10"}
-{"column": "macaddress",           "datatype": "VARCHAR", "length": "200"}
+{"column": "id",                   "datatype": "INTEGER", "key": "PRIMARY", "keyadd": "AUTOINCREMENT"},
+{"column": "nodeid",               "datatype": "INTEGER", "length": "10"},
+{"column": "macaddress",           "datatype": "VARCHAR", "length": "200"},
 {"column": "interface",            "datatype": "VARCHAR", "length": "50"}]
 
 DATABASE_LAYOUT_bmcsetup = [
-{"column": "id",                   "datatype": "INTEGER", "key": "PRIMARY", "keyadd": "AUTOINCREMENT"}
-{"column": "name",                 "datatype": "VARCHAR", "length": "20"}
-{"column": "userid",               "datatype": "INTEGER", "length": "10"}
-{"column": "username",             "datatype": "VARCHAR", "length": "20"}
-{"column": "password",             "datatype": "VARCHAR", "length": "60"}
-{"column": "netchannel",           "datatype": "INTEGER", "length": "10"}
-{"column": "mgmtchannel",          "datatype": "INTEGER", "length": "10"}
-{"column": "comment",              "datatype": "TEXT"}
+{"column": "id",                   "datatype": "INTEGER", "key": "PRIMARY", "keyadd": "AUTOINCREMENT"},
+{"column": "name",                 "datatype": "VARCHAR", "length": "20"},
+{"column": "userid",               "datatype": "INTEGER", "length": "10"},
+{"column": "username",             "datatype": "VARCHAR", "length": "20"},
+{"column": "password",             "datatype": "VARCHAR", "length": "60"},
+{"column": "netchannel",           "datatype": "INTEGER", "length": "10"},
+{"column": "mgmtchannel",          "datatype": "INTEGER", "length": "10"},
+{"column": "comment",              "datatype": "TEXT"},
 {"column": "unmanaged_bmc_users",  "datatype": "VARCHAR", "length": "30"}]
 
 DATABASE_LAYOUT_monitor = [
-{"column": "id",                   "datatype": "INTEGER", "key": "PRIMARY", "keyadd": "AUTOINCREMENT"}
-{"column": "nodeid",               "datatype": "INTEGER", "length": "10"}
-{"column": "status",               "datatype": "VARCHAR", "length": "100"}
+{"column": "id",                   "datatype": "INTEGER", "key": "PRIMARY", "keyadd": "AUTOINCREMENT"},
+{"column": "nodeid",               "datatype": "INTEGER", "length": "10"},
+{"column": "status",               "datatype": "VARCHAR", "length": "100"},
 {"column": "state",                "datatype": "VARCHAR", "length": "50"}]
 
 DATABASE_LAYOUT_ipaddress = [
-{"column": "id",                   "datatype": "INTEGER", "key": "PRIMARY", "keyadd": "AUTOINCREMENT"}
-{"column": "ipaddress",            "datatype": "VARCHAR", "length": "60", "key": "UNIQUE"}
-{"column": "tableref",             "datatype": "VARCHAR", "length": "100"}
-{"column": "tablerefid",           "datatype": "integer", "length": "10"}
+{"column": "id",                   "datatype": "INTEGER", "key": "PRIMARY", "keyadd": "AUTOINCREMENT"},
+{"column": "ipaddress",            "datatype": "VARCHAR", "length": "60", "key": "UNIQUE"},
+{"column": "tableref",             "datatype": "VARCHAR", "length": "100"},
+{"column": "tablerefid",           "datatype": "integer", "length": "10"},
 {"column": "networkid",            "datatype": "interger", "length": "10"}]
 
 DATABASE_LAYOUT_groupinterface = [
-{"column": "id",                   "datatype": "INTEGER", "key": "PRIMARY", "keyadd": "AUTOINCREMENT"}
-{"column": "groupid",              "datatype": "INTEGER", "length": "10"}
-{"column": "interfacename",        "datatype": "VARCHAR", "length": "60"}
+{"column": "id",                   "datatype": "INTEGER", "key": "PRIMARY", "keyadd": "AUTOINCREMENT"},
+{"column": "groupid",              "datatype": "INTEGER", "length": "10"},
+{"column": "interfacename",        "datatype": "VARCHAR", "length": "60"},
 {"column": "networkid",            "datatype": "INTEGER", "length": "10"}]
 
 DATABASE_LAYOUT_roles = [
-{"column": "id",                   "datatype": "INTEGER", "key": "PRIMARY", "keyadd": "AUTOINCREMENT"}
-{"column": "name",                 "datatype": "VARCHAR", "length": "50"}
+{"column": "id",                   "datatype": "INTEGER", "key": "PRIMARY", "keyadd": "AUTOINCREMENT"},
+{"column": "name",                 "datatype": "VARCHAR", "length": "50"},
 {"column": "modules",              "datatype": "VARCHAR", "length": "200"}]
 
 DATABASE_LAYOUT_group = [
-{"column": "id",                   "datatype": "INTEGER", "key": "PRIMARY", "keyadd": "AUTOINCREMENT"}
-{"column": "name",                 "datatype": "VARCHAR", "length": "20"}
-{"column": "bmcsetupid",           "datatype": "INTEGER", "length": "10"}
-{"column": "bmcsetup",             "datatype": "INTEGER", "length": "10"}
-{"column": "domain",               "datatype": "VARCHAR", "length": "20"}
-{"column": "osimageid",            "datatype": "INTEGER", "length": "10"}
-{"column": "prescript",            "datatype": "TEXT"}
-{"column": "partscript",           "datatype": "TEXT"}
-{"column": "postscript",           "datatype": "TEXT"}
-{"column": "netboot",              "datatype": "VARCHAR", "length": "20"}
-{"column": "localinstall",         "datatype": "VARCHAR", "length": "20"}
-{"column": "bootmenu",             "datatype": "VARCHAR", "length": "20"}
-{"column": "comment",              "datatype": "VARCHAR", "length": "20"}
-{"column": "provisioninterface",   "datatype": "VARCHAR", "length": "20"}
-{"column": "provisionmethod",      "datatype": "VARCHAR", "length": "20"}
-{"column": "provisionfallback",    "datatype": "VARCHAR", "length": "20"}
+{"column": "id",                   "datatype": "INTEGER", "key": "PRIMARY", "keyadd": "AUTOINCREMENT"},
+{"column": "name",                 "datatype": "VARCHAR", "length": "20"},
+{"column": "bmcsetupid",           "datatype": "INTEGER", "length": "10"},
+{"column": "bmcsetup",             "datatype": "INTEGER", "length": "10"},
+{"column": "domain",               "datatype": "VARCHAR", "length": "20"},
+{"column": "osimageid",            "datatype": "INTEGER", "length": "10"},
+{"column": "prescript",            "datatype": "TEXT"},
+{"column": "partscript",           "datatype": "TEXT"},
+{"column": "postscript",           "datatype": "TEXT"},
+{"column": "netboot",              "datatype": "VARCHAR", "length": "20"},
+{"column": "localinstall",         "datatype": "VARCHAR", "length": "20"},
+{"column": "bootmenu",             "datatype": "VARCHAR", "length": "20"},
+{"column": "comment",              "datatype": "VARCHAR", "length": "20"},
+{"column": "provisioninterface",   "datatype": "VARCHAR", "length": "20"},
+{"column": "provisionmethod",      "datatype": "VARCHAR", "length": "20"},
+{"column": "provisionfallback",    "datatype": "VARCHAR", "length": "20"},
 {"column": "unmanaged_bmc_users",  "datatype": "VARCHAR", "length": "30"}]
 
 DATABASE_LAYOUT_network = [
-{"column": "id",                   "datatype": "INTEGER", "key": "PRIMARY", "keyadd": "AUTOINCREMENT"}
-{"column": "name",                 "datatype": "VARCHAR", "length": "20"}
-{"column": "network",              "datatype": "VARCHAR", "length": "20"}
-{"column": "subnet",               "datatype": "VARCHAR", "length": "20"}
-{"column": "gateway",              "datatype": "VARCHAR", "length": "60"}
-{"column": "ns_hostname",          "datatype": "VARCHAR", "length": "20"}
-{"column": "ns_ip",                "datatype": "VARCHAR", "length": "20"}
-{"column": "ntp_server",           "datatype": "VARCHAR", "length": "60"}
-{"column": "dhcp",                 "datatype": "INTEGER", "length": "10"}
-{"column": "dhcp_range_begin",     "datatype": "VARCHAR", "length": "20"}
-{"column": "dhcp_range_end",       "datatype": "VARCHAR", "length": "60"}
+{"column": "id",                   "datatype": "INTEGER", "key": "PRIMARY", "keyadd": "AUTOINCREMENT"},
+{"column": "name",                 "datatype": "VARCHAR", "length": "20"},
+{"column": "network",              "datatype": "VARCHAR", "length": "20"},
+{"column": "subnet",               "datatype": "VARCHAR", "length": "20"},
+{"column": "gateway",              "datatype": "VARCHAR", "length": "60"},
+{"column": "ns_hostname",          "datatype": "VARCHAR", "length": "20"},
+{"column": "ns_ip",                "datatype": "VARCHAR", "length": "20"},
+{"column": "ntp_server",           "datatype": "VARCHAR", "length": "60"},
+{"column": "dhcp",                 "datatype": "INTEGER", "length": "10"},
+{"column": "dhcp_range_begin",     "datatype": "VARCHAR", "length": "20"},
+{"column": "dhcp_range_end",       "datatype": "VARCHAR", "length": "60"},
 {"column": "comment",              "datatype": "VARCHAR", "length": "60"}]
 
 DATABASE_LAYOUT_user = [
-{"column": "id",                   "datatype": "INTEGER", "key": "PRIMARY", "keyadd": "AUTOINCREMENT"}
-{"column": "username",             "datatype": "VARCHAR", "length": "50"}
-{"column": "password",             "datatype": "VARCHAR", "length": "100"}
-{"column": "roleid",               "datatype": "INTEGER", "length": "10"}
-{"column": "createdby",            "datatype": "INTEGER", "length": "10"}
-{"column": "lastlogin",            "datatype": "VARCHAR", "length": "50"}
+{"column": "id",                   "datatype": "INTEGER", "key": "PRIMARY", "keyadd": "AUTOINCREMENT"},
+{"column": "username",             "datatype": "VARCHAR", "length": "50"},
+{"column": "password",             "datatype": "VARCHAR", "length": "100"},
+{"column": "roleid",               "datatype": "INTEGER", "length": "10"},
+{"column": "createdby",            "datatype": "INTEGER", "length": "10"},
+{"column": "lastlogin",            "datatype": "VARCHAR", "length": "50"},
 {"column": "created",              "datatype": "VARCHAR", "length": "50"}]
 
 DATABASE_LAYOUT_switch = [
-{"column": "id",                   "datatype": "INTEGER", "key": "PRIMARY", "keyadd": "AUTOINCREMENT"}
-{"column": "name",                 "datatype": "VARCHAR", "length": "60"}
-{"column": "network",              "datatype": "VARCHAR", "length": "60"}
-{"column": "oid",                  "datatype": "VARCHAR", "length": "60"}
-{"column": "read",                 "datatype": "VARCHAR", "length": "60"}
-{"column": "rw",                   "datatype": "VARCHAR", "length": "60"}
+{"column": "id",                   "datatype": "INTEGER", "key": "PRIMARY", "keyadd": "AUTOINCREMENT"},
+{"column": "name",                 "datatype": "VARCHAR", "length": "60"},
+{"column": "network",              "datatype": "VARCHAR", "length": "60"},
+{"column": "oid",                  "datatype": "VARCHAR", "length": "60"},
+{"column": "read",                 "datatype": "VARCHAR", "length": "60"},
+{"column": "rw",                   "datatype": "VARCHAR", "length": "60"},
 {"column": "comment",              "datatype": "VARCHAR", "length": "60"}]
 
 DATABASE_LAYOUT_otherdevices = [
-{"column": "id",                   "datatype": "INTEGER", "key": "PRIMARY", "keyadd": "AUTOINCREMENT"}
-{"column": "name",                 "datatype": "VARCHAR", "length": "60"}
-{"column": "macaddr",              "datatype": "VARCHAR", "length": "60"}
+{"column": "id",                   "datatype": "INTEGER", "key": "PRIMARY", "keyadd": "AUTOINCREMENT"},
+{"column": "name",                 "datatype": "VARCHAR", "length": "60"},
+{"column": "macaddr",              "datatype": "VARCHAR", "length": "60"},
 {"column": "comment",              "datatype": "VARCHAR", "length": "60"}]
 
 DATABASE_LAYOUT_controller = [
-{"column": "id",                   "datatype": "INTEGER", "key": "PRIMARY", "keyadd": "AUTOINCREMENT"}
-{"column": "clusterid",            "datatype": "INTEGER", "length": "10"}
-{"column": "hostname",             "datatype": "VARCHAR", "length": "100"}
-{"column": "status",               "datatype": "VARCHAR", "length": "20"}
-{"column": "ipaddr",               "datatype": "VARCHAR", "length": "20"}
+{"column": "id",                   "datatype": "INTEGER", "key": "PRIMARY", "keyadd": "AUTOINCREMENT"},
+{"column": "clusterid",            "datatype": "INTEGER", "length": "10"},
+{"column": "hostname",             "datatype": "VARCHAR", "length": "100"},
+{"column": "status",               "datatype": "VARCHAR", "length": "20"},
+{"column": "ipaddr",               "datatype": "VARCHAR", "length": "20"},
 {"column": "srverport",            "datatype": "INTEGER", "length": "10"}]
 
 DATABASE_LAYOUT_groupsecrets = [
-{"column": "id",                   "datatype": "INTEGER", "key": "PRIMARY", "keyadd": "AUTOINCREMENT"}
-{"column": "groupid",              "datatype": "INTEGER", "length": "10"}
-{"column": "name",                 "datatype": "VARCHAR", "length": "50"}
-{"column": "content",              "datatype": "TEXT"}
+{"column": "id",                   "datatype": "INTEGER", "key": "PRIMARY", "keyadd": "AUTOINCREMENT"},
+{"column": "groupid",              "datatype": "INTEGER", "length": "10"},
+{"column": "name",                 "datatype": "VARCHAR", "length": "50"},
+{"column": "content",              "datatype": "TEXT"},
 {"column": "path",                 "datatype": "VARCHAR", "length": "200"}]
 
 DATABASE_LAYOUT_node = [
-{"column": "hostname",             "datatype": "VARCHAR", "length": "60"}
-{"column": "groupid",              "datatype": "INTEGER", "length": "10"}
-{"column": "localboot",            "datatype": "INTEGER", "length": "10"}
-{"column": "macaddr",              "datatype": "VARCHAR", "length": "60"}
-{"column": "osimageid",            "datatype": "INTEGER", "length": "10"}
-{"column": "switchport",           "datatype": "INTEGER", "length": "10"}
-{"column": "service",              "datatype": "INTEGER", "length": "10"}
-{"column": "bmcsetupid",           "datatype": "INTEGER", "length": "10"}
-{"column": "setupbmc",             "datatype": "INTEGER", "length": "10"}
-{"column": "status",               "datatype": "VARCHAR", "length": "20"}
-{"column": "switchid",             "datatype": "INTEGER", "length": "10"}
-{"column": "comment",              "datatype": "TEXT"}
-{"column": "prescript",            "datatype": "TEXT"}
-{"column": "partscript",           "datatype": "TEXT"}
-{"column": "postscript",           "datatype": "TEXT"}
-{"column": "netboot",              "datatype": "INTEGER", "length": "10"}
-{"column": "localinstall",         "datatype": "INTEGER", "length": "10"}
-{"column": "bootmenu",             "datatype": "INTEGER", "length": "10"}
-{"column": "provisioninterface",   "datatype": "VARCHAR", "length": "60"}
-{"column": "provisionmethod",      "datatype": "VARCHAR", "length": "60"}
-{"column": "provisionfallback",    "datatype": "VARCHAR", "length": "60"}
-{"column": "tpmuuid",              "datatype": "VARCHAR", "length": "60"}
-{"column": "tpmpubkey",            "datatype": "BLOB"}
-{"column": "tpmsha256",            "datatype": "VARCHAR", "length": "100"}
-{"column": "unmanaged_bmc_users",  "datatype": "VARCHAR", "length": "30"}
-{"column": "id",                   "datatype": "INTEGER", "key": "PRIMARY", "keyadd": "AUTOINCREMENT"}
+{"column": "hostname",             "datatype": "VARCHAR", "length": "60"},
+{"column": "groupid",              "datatype": "INTEGER", "length": "10"},
+{"column": "localboot",            "datatype": "INTEGER", "length": "10"},
+{"column": "macaddr",              "datatype": "VARCHAR", "length": "60"},
+{"column": "osimageid",            "datatype": "INTEGER", "length": "10"},
+{"column": "switchport",           "datatype": "INTEGER", "length": "10"},
+{"column": "service",              "datatype": "INTEGER", "length": "10"},
+{"column": "bmcsetupid",           "datatype": "INTEGER", "length": "10"},
+{"column": "setupbmc",             "datatype": "INTEGER", "length": "10"},
+{"column": "status",               "datatype": "VARCHAR", "length": "20"},
+{"column": "switchid",             "datatype": "INTEGER", "length": "10"},
+{"column": "comment",              "datatype": "TEXT"},
+{"column": "prescript",            "datatype": "TEXT"},
+{"column": "partscript",           "datatype": "TEXT"},
+{"column": "postscript",           "datatype": "TEXT"},
+{"column": "netboot",              "datatype": "INTEGER", "length": "10"},
+{"column": "localinstall",         "datatype": "INTEGER", "length": "10"},
+{"column": "bootmenu",             "datatype": "INTEGER", "length": "10"},
+{"column": "provisioninterface",   "datatype": "VARCHAR", "length": "60"},
+{"column": "provisionmethod",      "datatype": "VARCHAR", "length": "60"},
+{"column": "provisionfallback",    "datatype": "VARCHAR", "length": "60"},
+{"column": "tpmuuid",              "datatype": "VARCHAR", "length": "60"},
+{"column": "tpmpubkey",            "datatype": "BLOB"},
+{"column": "tpmsha256",            "datatype": "VARCHAR", "length": "100"},
+{"column": "unmanaged_bmc_users",  "datatype": "VARCHAR", "length": "30"},
+{"column": "id",                   "datatype": "INTEGER", "key": "PRIMARY", "keyadd": "AUTOINCREMENT"},
 {"column": "name",                 "datatype": "VARCHAR", "length": "10"}]
 
 DATABASE_LAYOUT_cluster = [
-{"column": "id",                   "datatype": "INTEGER", "key": "PRIMARY", "keyadd": "AUTOINCREMENT"}
-{"column": "name",                 "datatype": "VARCHAR", "length": "20"}
-{"column": "user",                 "datatype": "VARCHAR", "length": "20"}
-{"column": "ns_ip",                "datatype": "VARCHAR", "length": "20"}
-{"column": "ntp_server",           "datatype": "VARCHAR", "length": "20"}
-{"column": "technical_contacts",   "datatype": "VARCHAR", "length": "50"}
-{"column": "provision_method",     "datatype": "VARCHAR", "length": "20"}
-{"column": "provision_fallback",   "datatype": "VARCHAR", "length": "20"}
-{"column": "debug",                "datatype": "INTEGER", "length": "10"}
+{"column": "id",                   "datatype": "INTEGER", "key": "PRIMARY", "keyadd": "AUTOINCREMENT"},
+{"column": "name",                 "datatype": "VARCHAR", "length": "20"},
+{"column": "user",                 "datatype": "VARCHAR", "length": "20"},
+{"column": "ns_ip",                "datatype": "VARCHAR", "length": "20"},
+{"column": "ntp_server",           "datatype": "VARCHAR", "length": "20"},
+{"column": "technical_contacts",   "datatype": "VARCHAR", "length": "50"},
+{"column": "provision_method",     "datatype": "VARCHAR", "length": "20"},
+{"column": "provision_fallback",   "datatype": "VARCHAR", "length": "20"},
+{"column": "debug",                "datatype": "INTEGER", "length": "10"},
 {"column": "security",             "datatype": "INTEGER", "length": "10"}]
 

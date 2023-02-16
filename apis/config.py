@@ -345,7 +345,7 @@ def config_node_get_interfaces(name=None):
     if node:
         response = {'config': {'node': {name: {'interfaces': [] } } } }
         nodeid = node[0]['id']
-        node_interfaces = Database().get_record_join(['network.name','nodeinterface.macaddress','nodeinterface.interface','ipaddress.ipaddress'], ['ipaddress.tablerefid=nodeinterface.id','network.id=ipaddress.networkid'], ['tableref="nodeinterface"',f"nodeinterface.nodeid='{nodeid}'"])
+        node_interfaces = Database().get_record_join(['network.name as network','nodeinterface.macaddress','nodeinterface.interface','ipaddress.ipaddress'], ['ipaddress.tablerefid=nodeinterface.id','network.id=ipaddress.networkid'], ['tableref="nodeinterface"',f"nodeinterface.nodeid='{nodeid}'"])
         if node_interfaces:
             my_interface = []
             for interface in node_interfaces:

@@ -319,7 +319,7 @@ def config_node_delete(name=None):
     if node:
         nodeid=node[0]['id']
         Database().delete_row('node', [{"column": "name", "value": name}])
-        ipaddress = Database().get_record_join(['ipaddress.id'], ['ipaddress.tablerefid=nodeinterface.id'],['tableref="nodeinterface"',f"nodeinterface.nodeid='{nodeid}'"])
+        ipaddress = Database().get_record_join(['ipaddress.id'], ['ipaddress.tablerefid=nodeinterface.id'], ['tableref="nodeinterface"',f"nodeinterface.nodeid='{nodeid}'"])
         if ipaddress:
             for ip in ipaddress:
                 Database().delete_row('ipaddress', [{"column": "id", "value": ip[id]}])
@@ -345,17 +345,25 @@ def config_node_get_interfaces(name=None):
     if node:
         response = {'config': {'node': {name: {'interfaces': [] } } } }
         nodeid = node[0]['id']
-        where = f' WHERE nodeid = "{nodeid}"'
-        node_interfaces = Database().get_record(None, 'nodeinterface', where)
+        node_interfaces = Database().get_record_join(['network.name','nodeinterface.macaddress','nodeinterface.interface','ipaddress.ipaddress'], ['ipaddress.tablerefid=nodeinterface.id','network.id=ipaddress.networkid'], ['tableref="nodeinterface"',f"nodeinterface.nodeid='{nodeid}'"])
         if node_interfaces:
-            new_interfaces = []
+            my_interface = []
             for interface in node_interfaces:
-                interface['network'] = Database().getname_byid('network', interface['networkid'])
-                del interface['nodeid']
-                del interface['id']
-                del interface['networkid']
-                new_interfaces.append(interface)
-            response['config']['node'][name]['interfaces'] = new_interfaces
+                my_interface.append(interface)
+                response['config']['node'][name]['interfaces'] = my_interface
+
+#        where = f' WHERE nodeid = "{nodeid}"'
+#        node_interfaces = Database().get_record(None, 'nodeinterface', where)
+#        if node_interfaces:
+#            new_interfaces = []
+#            for interface in node_interfaces:
+#                interface['network'] = Database().getname_byid('network', interface['networkid'])
+#                del interface['nodeid']
+#                del interface['id']
+#                del interface['networkid']
+#                new_interfaces.append(interface)
+#            response['config']['node'][name]['interfaces'] = new_interfaces
+
             LOGGER.info(f'Returned group {name} with details.')
             access_code = 200
         else:

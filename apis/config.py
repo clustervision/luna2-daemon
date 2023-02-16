@@ -275,6 +275,7 @@ def config_node_post(name=None):
 #                        LOGGER.info(f"Interface created => {result} .")
 
                     # Antoine
+                    ipaddress=[]
                     interface_name = interface['interface']
                     if ipaddress in interface:
                         ipaddress['ipaddress']=interface['ipaddress']
@@ -395,6 +396,8 @@ def config_node_post_interfaces(name=None):
         node = Database().get_record(None, 'node', f' WHERE name = "{name}"')
         if node:
             nodeid = node[0]['id']
+
+
             if 'interfaces' in request_data['config']['node'][name]:
                 for interface in request_data['config']['node'][name]['interfaces']:
                     networkid = Database().getid_byname('network', interface['network'])
@@ -406,15 +409,39 @@ def config_node_post_interfaces(name=None):
                         interface['networkid'] = networkid
                         interface['nodeid'] = nodeid
                         del interface['network']
+
+                    # Antoine
+                    ipaddress=[]
                     interface_name = interface['interface']
-                    node_clause = f'nodeid = "{nodeid}"'
-                    network_clause = f'networkid = "{networkid}"'
-                    interface_clause = f'interface = "{interface_name}"'
-                    where = f' WHERE {node_clause} AND {network_clause} AND {interface_clause}'
-                    interface_check = Database().get_record(None, 'nodeinterface', where)
-                    if not interface_check:
+                    if ipaddress in interface:
+                        ipaddress['ipaddress']=interface['ipaddress']
+                        del interface['ipaddress']
+                    ipaddress['networkid']=networkid
+                    check_interface = Database().get_record(None, 'nodeinterface', f'nodeid = "{nodeid}" AND interface = "{interface_name}"')
+                    if not check_interface:
                         row = Helper().make_rows(interface)
-                        Database().insert('nodeinterface', row)
+                        tablerefid = Database().insert('nodeinterface', row)
+                        ipaddress['tableref']='nodeinterface'
+                        ipaddress['tablerefid']=tablerefid
+                        row = Helper().make_rows(ipaddress)
+                        result_ip = Database().insert('ipaddress', row)
+                        LOGGER.info(f"Interface created => {tablerefid}+{result_ip} .")
+                    else: # interface already exists so we tread lightly
+                        #TWAN
+                        ipaddress['tableref']='nodeinterface'
+        		ipaddress['tablerefid']=check_interface['id']  # <-- this is the id in the table nodeinterface that belongs to the row with nodeid
+                        row = Helper().make_rows(ipaddress)
+                        result_ip = Database().update('ipaddress', row)
+
+#                    interface_name = interface['interface']
+#                    node_clause = f'nodeid = "{nodeid}"'
+#                    network_clause = f'networkid = "{networkid}"'
+#                    interface_clause = f'interface = "{interface_name}"'
+#                    where = f' WHERE {node_clause} AND {network_clause} AND {interface_clause}'
+#                    interface_check = Database().get_record(None, 'nodeinterface', where)
+#                    if not interface_check:
+#                        row = Helper().make_rows(interface)
+#                        Database().insert('nodeinterface', row)
                     response = {'message': 'Interface updated.'}
                     access_code = 204
             else:
@@ -443,17 +470,24 @@ def config_node_interface_get(name=None, interface=None):
     if node:
         response = {'config': {'node': {name: {'interfaces': [] } } } }
         nodeid = node[0]['id']
-        where = f' WHERE nodeid = "{nodeid}" AND interface = "{interface}"'
-        node_interfaces = Database().get_record(None, 'nodeinterface', where)
+        node_interfaces = Database().get_record_join(['network.name as network','nodeinterface.macaddress','nodeinterface.interface','ipaddress.ipaddress'], ['ipaddress.tablerefid=nodeinterface.id','network.id=ipaddress.networkid'], ['tableref="nodeinterface"',f"nodeinterface.nodeid='{nodeid}'"])
         if node_interfaces:
-            new_interface = []
-            for ifx in node_interfaces:
-                ifx['network'] = Database().getname_byid('network', ifx['networkid'])
-                del ifx['nodeid']
-                del ifx['id']
-                del ifx['networkid']
-                new_interface.append(ifx)
-            response['config']['node'][name]['interfaces'] = new_interface
+            my_interface = []
+            for interface in node_interfaces:
+                my_interface.append(interface)
+                response['config']['node'][name]['interfaces'] = my_interface
+
+#        where = f' WHERE nodeid = "{nodeid}" AND interface = "{interface}"'
+#        node_interfaces = Database().get_record(None, 'nodeinterface', where)
+#        if node_interfaces:
+#            new_interface = []
+#            for ifx in node_interfaces:
+#                ifx['network'] = Database().getname_byid('network', ifx['networkid'])
+#                del ifx['nodeid']
+#                del ifx['id']
+#                del ifx['networkid']
+#                new_interface.append(ifx)
+#            response['config']['node'][name]['interfaces'] = new_interface
             LOGGER.info(f'Returned group {name} with details.')
             access_code = 200
         else:

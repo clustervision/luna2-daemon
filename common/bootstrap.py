@@ -20,12 +20,22 @@ import hostlist
 from utils.helper import Helper
 from utils.database import Database
 from utils.log import Log
-from database_layout import *
+#from database_layout import *
+from common.constant import CONSTANT
 
 configParser = RawConfigParser()
 LOGGER = Log.get_logger()
 
 def check_db():
+    """
+    some incredibly ugly stuff happens here
+    """
+    return True
+
+if check_db():
+    from database_layout import *
+
+def check_db_tables():
     """
     This method will check whether the database is empty or not.
     """

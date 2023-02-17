@@ -231,20 +231,26 @@ class Database(object):
                         {"column": "name", "datatype": "VARCHAR", "length": "40"}]
         Output - Creates Table.
         """
+        driver=f'DRIVER={CONSTANT["DATABASE"]["DRIVER"]};' # either MySQL, SQLite, or...
         columns = []
-        index   = []
+        indici  = []
         for cols in column:
             strcolumn = ''
             if 'column' in cols.keys():
-                strcolumn = strcolumn + ' [' + cols['column'] + '] '
+                strcolumn = strcolumn + ' `' + cols['column'] + '` '
             if 'datatype' in cols.keys():
-                strcolumn = strcolumn + ' ' +cols['datatype'] + ' '
+                strcolumn = strcolumn + ' ' +cols['datatype'].upper() + ' '
             if 'length' in cols.keys():
                 strcolumn = strcolumn + ' (' +cols['length'] + ') '
             if 'key' in cols.keys() and 'column' in cols.keys():
                 if cols['key'] == "PRIMARY":
                     if 'keyadd' in cols.keys():
-                        indici.append(f"PRIMARY KEY (`{cols['column']}` {cols['keyadd']})")
+                        indici.append(f"PRIMARY KEY (`{cols['column']}` {cols['keyadd'].upper()})")
+                        if cols['keyadd'].upper() == "AUTOINCREMENT": # then it must a an INT or FLOAT
+                            if driver == "SQLite":
+                                strcolumn = strcolumn + " NOT NULL AUTOINCREMENT "
+                            else:
+                                strcolumn = strcolumn + " NOT NULL AUTO_INCREMENT "
                     else:
                         indici.append(f"PRIMARY KEY (`{cols['column']}`)")
                 else:

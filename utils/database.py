@@ -241,25 +241,53 @@ class Database(object):
             if 'datatype' in cols.keys():
                 strcolumn = strcolumn + ' ' +cols['datatype'].upper() + ' '
             if 'length' in cols.keys():
-                strcolumn = strcolumn + ' (' +cols['length'] + ') '
+                if driver != "SQLite" and 'key' in cols.keys() and 'keyadd' in cols.keys() and cols['keyadd'].upper() == "AUTOINCREMENT":
+                    strcolumn = strcolumn + ' (' +cols['length'] + ') '
             if 'key' in cols.keys() and 'column' in cols.keys():
+#                if driver == "SQLite":
+#                    if cols['key'] == "PRIMARY":
+#                        if 'keyadd' in cols.keys():
+#                            if cols['keyadd'].upper() == "AUTOINCREMENT": # then it must a an INT or FLOAT
+#                                strcolumn = strcolumn + " NOT NULL "
+#                            indici.append(f"PRIMARY KEY (`{cols['column']}` {cols['keyadd'].upper()})")
+#                        else:
+#                            indici.append(f"PRIMARY KEY (`{cols['column']}`)")
+#                    else:
+#                        indici.append(f"{cols['key'].upper()} (`{cols['column']}`)")
+#                else: # we assume mysql....
+#                    if cols['key'] == "PRIMARY":
+#                        if 'keyadd' in cols.keys():
+#                            if cols['keyadd'].upper() == "AUTOINCREMENT": # then it must a an INT or FLOAT
+#                                strcolumn = strcolumn + " NOT NULL AUTO_INCREMENT "
+#                        indici.append(f"PRIMARY KEY (`{cols['column']}`)")
+#                    else:
+#                        indici.append(f"{cols['key'].upper()} (`{cols['column']}`)")
+
+#---------
                 if cols['key'] == "PRIMARY":
                     if 'keyadd' in cols.keys():
-                        indici.append(f"PRIMARY KEY (`{cols['column']}` {cols['keyadd'].upper()})")
                         if cols['keyadd'].upper() == "AUTOINCREMENT": # then it must a an INT or FLOAT
-                            if driver == "SQLite":
-                                strcolumn = strcolumn + " NOT NULL AUTOINCREMENT "
-                            else:
-                                strcolumn = strcolumn + " NOT NULL AUTO_INCREMENT "
+                            strcolumn = strcolumn + " NOT NULL "
+                            if driver != "SQLite":
+                                strcolumn = strcolumn + "AUTO_INCREMENT "
+                        if driver == "SQLite":
+                            indici.append(f"PRIMARY KEY (`{cols['column']}` {cols['keyadd'].upper()})")
+                        else:
+                            indici.append(f"PRIMARY KEY (`{cols['column']}`)")
                     else:
                         indici.append(f"PRIMARY KEY (`{cols['column']}`)")
                 else:
-                    indici.append(f"{cols['key']} (`{cols['column']}`)")
+                    indici.append(f"{cols['key'].upper()} (`{cols['column']}`)")
+
+
+#---------
+
             columns.append(strcolumn)
         strkeys = ', '.join(map(str, indici))
         columns.append(strkeys)
         strcolumns = ', '.join(map(str, columns))
         query = f'CREATE TABLE IF NOT EXISTS `{table}` ({strcolumns})'
+        self.logger.error(f'QUERY: {query}')
         try:
             self.cursor.execute(query)
             self.connection.commit()

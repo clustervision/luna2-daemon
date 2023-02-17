@@ -32,8 +32,9 @@ def checkdbstatus():
     """
     sqlite, read, write = False, False, False
     code = 503
-    if os.path.isfile(CONSTANT['DATABASE']['DATABASE']):
-        sqlite = True  # not entirely true but good enough for now
+    if CONSTANT['DATABASE']['DRIVER'] == "SQLite":
+        sqlite = True
+    if sqlite and os.path.isfile(CONSTANT['DATABASE']['DATABASE']):
         if os.access(CONSTANT['DATABASE']['DATABASE'], os.R_OK):
             read = True
             code = 500
@@ -43,6 +44,7 @@ def checkdbstatus():
                     write = True
                     code = 200
                     file.close()
+                    sys.stderr.write(f"checkdbstatus: I can read the database file.\n")
             except Exception as exp:
                 sys.stderr.write(f"{CONSTANT['DATABASE']['DATABASE']} has exception {exp}.\n")
 
@@ -51,24 +53,27 @@ def checkdbstatus():
                 if header.startswith('SQLite format 3'):
                     read, write = True, True
                     code = 200
+                    sys.stderr.write(f"checkdbstatus: I see SQLite3 header.\n")
                 else:
                     read, write = False, False
                     code = 503
-                    sys.stderr.write(f"{CONSTANT['DATABASE']['DATABASE']} is not SQLite3.\n")
+                    sys.stderr.write(f"checkdbstatus: {CONSTANT['DATABASE']['DATABASE']} is not SQLite3.\n")
         else:
-            sys.stderr.write(f"DATABASE {CONSTANT['DATABASE']['DATABASE']} is not readable.\n")
+            sys.stderr.write(f"checkdbstatus: DATABASE {CONSTANT['DATABASE']['DATABASE']} is not readable.\n")
     else:
-        sys.stderr.write(f"{CONSTANT['DATABASE']['DATABASE']} does not exist.\n")
         code = 501
+        sys.stderr.write(f"checkdbstatus: {CONSTANT['DATABASE']['DATABASE']} does not exist.\n")
     if not sqlite:
         try:
             from utils.database import Database
             Database().get_cursor()
             read, write = True, True
             code = 200
+            sys.stderr.write(f"checkdbstatus: Successfully tried to test a non-sqlite database\n")
         except pyodbc.Error as error:
             sys.stderr.write(f"{CONSTANT['DATABASE']['DATABASE']} connection error: {error}.\n")
     response = {"driver": CONSTANT['DATABASE']['DRIVER'], "database": CONSTANT['DATABASE']['DATABASE'], "read": read, "write": write}
+    sys.stderr.write(f"checkdbstatus: returning code = [{code}]\n")
     return response, code
 
 def check_db():
@@ -85,7 +90,7 @@ def check_db():
         kill = lambda process: process.kill()
         output = None
         if dbstatus["driver"] == "SQLite":
-            my_process = subprocess.Popen(f"sqlite3 {dbstatus['database']} \"VACUUM;\"", stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
+            my_process = subprocess.Popen(f"sqlite3 {dbstatus['database']} \"create table init (id int); drop table init;\"", stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
             my_timer = threading.Timer(10,kill,[my_process])
             try:
                 my_timer.start()
@@ -116,19 +121,17 @@ def check_db_tables():
     """
     This method will check whether the database is empty or not.
     """
-    dbcheck = False
-    table = ['cluster', 'bmcsetup', 'group', 'groupinterface', 'groupsecrets',
+    table = ['cluster', 'bmcsetup', 'group', 'groupinterface', 'groupsecrets', 'status',
              'network', 'osimage', 'switch', 'tracker', 'node', 'nodeinterface', 'nodesecrets']
     num = 0
     for tablex in table:
         result = Database().get_record(None, tablex, None)
-        if result is None:
-            LOGGER.error(f'ERROR :: Database table {tablex} already have data.')
         if result:
+            LOGGER.error(f'ERROR :: Database table {tablex} already have data.')
             num = num+1
     if num == 0:
-        dbcheck = True
-    return dbcheck
+        return False
+    return True
 
 
 def getconfig(filename=None):
@@ -198,6 +201,7 @@ def bootstrap(bootstrapfile=None):
     """
     getconfig(bootstrapfile)
     LOGGER.info('###################### Bootstrap Start ######################')
+    create_database_tables()
     default_cluster = [
             {'column': 'technical_contacts', 'value': 'root@localhost'},
             {'column': 'provision_method', 'value': 'torrent'},
@@ -311,18 +315,20 @@ def validatebootstrap():
         'BMCSETUP': {'USERNAME': None, 'PASSWORD': None}
     }
     bootstrapfile_check = Helper().checkpathstate(bootstrapfile)
-    if check_db:
-        db_tables_check=check_db_tables
+    db_check=check_db()
+    if db_check is True:
+        db_tables_check=check_db_tables()
 
-    if bootstrapfile_check is True and check_db:
-        if db_tables_check is True:
+    LOGGER.warning(f'db_check = [{db_check}], db_tables_check = [{db_tables_check}]')
+    if bootstrapfile_check is True and db_check is True:
+        if db_tables_check is False:
             bootstrap(bootstrapfile)
         else:
             LOGGER.warning(f'Bootstrap file {bootstrapfile} is still present, Kindly remove the file.')
     elif bootstrapfile_check is True and db_check is False:
-        LOGGER.error(f'Database {dbstatus["database"]} is unavailable.')
-    elif bootstrapfile_check is False and dbcode == 200:
+        LOGGER.error(f'Database is unavailable.')
+    elif bootstrapfile_check is False and db_tables_check is True:
         pass
-    elif bootstrapfile_check is False and dbcode != 200:
-        LOGGER.error(f'{bootstrapfile} and database {dbstatus["database"]} is unavailable.')
+    elif bootstrapfile_check is False and db_tables_check is False:
+        LOGGER.error(f'{bootstrapfile} and database is unavailable.')
     return True

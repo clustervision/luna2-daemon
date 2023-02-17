@@ -62,6 +62,7 @@ def checkdbstatus():
         code = 501
     if not sqlite:
         try:
+            from utils.database import Database
             Database().get_cursor()
             read, write = True, True
             code = 200
@@ -76,14 +77,16 @@ def check_db():
     for now only sqlite is supported as mysql requires a bit more work.... quite a bit.
     """
     dbstatus, dbcode = checkdbstatus()
+    sys.stderr.write(f"Got this back from checkdbstatus: {dbcode} {dbstatus}\n")
     if dbcode == 200:
         return True
     if dbcode == 501: # means DB does not exist and we will create it
+        sys.stderr.write(f"Will try to create {dbstatus['database']} with {dbstatus['driver']}\n")
         kill = lambda process: process.kill()
         output = None
-        if dbstatus["SQLite"]:
+        if dbstatus["driver"] == "SQLite":
             my_process = subprocess.Popen(f"sqlite3 {dbstatus['database']} \"VACUUM;\"", stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
-            my_timer = threading.Timer(timeout_sec,kill,[my_process])
+            my_timer = threading.Timer(10,kill,[my_process])
             try:
                 my_timer.start()
                 output = my_process.communicate()
@@ -91,8 +94,8 @@ def check_db():
             finally:
                 my_timer.cancel()
 
-            if exit_code != 0:
-                return False
+            if exit_code == 0:
+                return True
     return False
 
 # --------------------------------------------------------------------------------
@@ -308,11 +311,10 @@ def validatebootstrap():
         'BMCSETUP': {'USERNAME': None, 'PASSWORD': None}
     }
     bootstrapfile_check = Helper().checkpathstate(bootstrapfile)
-    dbstatus, dbcode = checkdbstatus()
-    if dbcode == 200:
+    if check_db:
         db_tables_check=check_db_tables
 
-    if bootstrapfile_check is True and dbcode == 200:
+    if bootstrapfile_check is True and check_db:
         if db_tables_check is True:
             bootstrap(bootstrapfile)
         else:

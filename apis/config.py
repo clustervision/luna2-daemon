@@ -81,6 +81,7 @@ def config_node():
         LOGGER.error('No nodes are available.')
         response = {'message': 'No nodes are available.'}
         access_code = 404
+    LOGGER.info(f"my response: [{response}]")
     return json.dumps(response), access_code
 
 
@@ -256,7 +257,7 @@ def config_node_post(name=None):
                 for interface in interfaces:
                     networkid = Database().getid_byname('network', interface['network'])
                     if networkid is None:
-                        response = {'message': f'Bad Request; Network {networkid} not exist.'}
+                        response = {'message': f"Bad Request; Network {interface['network']} not exist."}
                         access_code = 400
                         return json.dumps(response), access_code
                     else:
@@ -275,13 +276,13 @@ def config_node_post(name=None):
 #                        LOGGER.info(f"Interface created => {result} .")
 
                     # Antoine
-                    ipaddress=[]
+                    ipaddress={}
                     interface_name = interface['interface']
-                    if ipaddress in interface:
+                    if 'ipaddress' in interface:
                         ipaddress['ipaddress']=interface['ipaddress']
                         del interface['ipaddress']
                     ipaddress['networkid']=networkid
-                    check_interface = Database().get_record(None, 'nodeinterface', f'nodeid = "{nodeid}" AND interface = "{interface_name}"')
+                    check_interface = Database().get_record(None, 'nodeinterface', f'WHERE nodeid = "{nodeid}" AND interface = "{interface_name}"')
                     if not check_interface:
                         row = Helper().make_rows(interface)
                         tablerefid = Database().insert('nodeinterface', row)
@@ -292,10 +293,11 @@ def config_node_post(name=None):
                         LOGGER.info(f"Interface created => {tablerefid}+{result_ip} .")
                     else: # interface already exists so we tread lightly
                         #TWAN
-                        ipaddress['tableref']='nodeinterface'
-                        ipaddress['tablerefid']=check_interface['id']  # <-- this is the id in the table nodeinterface that belongs to the row with nodeid
+                        #ipaddress['tableref']='nodeinterface'
+                        #ipaddress['tablerefid']=check_interface[0]['id']  # <-- this is the id in the table nodeinterface that belongs to the row with nodeid
                         row = Helper().make_rows(ipaddress)
-                        result_ip = Database().update('ipaddress', row)
+                        where = [{"column": "tableref", "value": "nodeinterface"}, {"column": "tablerefid", "value": check_interface[0]['id']}]
+                        result_ip = Database().update('ipaddress', row, where)
                         LOGGER.info(f"Interface updated => {result_ip} .")
 
 
@@ -411,9 +413,9 @@ def config_node_post_interfaces(name=None):
                         del interface['network']
 
                     # Antoine
-                    ipaddress=[]
+                    ipaddress={}
                     interface_name = interface['interface']
-                    if ipaddress in interface:
+                    if 'ipaddress' in interface:
                         ipaddress['ipaddress']=interface['ipaddress']
                         del interface['ipaddress']
                     ipaddress['networkid']=networkid
@@ -428,10 +430,11 @@ def config_node_post_interfaces(name=None):
                         LOGGER.info(f"Interface created => {tablerefid}+{result_ip} .")
                     else: # interface already exists so we tread lightly
                         #TWAN
-                        ipaddress['tableref']='nodeinterface'
-                        ipaddress['tablerefid']=check_interface['id']  # <-- this is the id in the table nodeinterface that belongs to the row with nodeid
+                        #ipaddress['tableref']='nodeinterface'
+                        #ipaddress['tablerefid']=check_interface[0]['id']  # <-- this is the id in the table nodeinterface that belongs to the row with nodeid
                         row = Helper().make_rows(ipaddress)
-                        result_ip = Database().update('ipaddress', row)
+                        where = [{"column": "tableref", "value": "nodeinterface"}, {"column": "tablerefid", "value": check_interface[0]['id']}]
+                        result_ip = Database().update('ipaddress', row, where)
 
 #                    interface_name = interface['interface']
 #                    node_clause = f'nodeid = "{nodeid}"'

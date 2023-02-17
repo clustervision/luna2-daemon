@@ -205,6 +205,7 @@ class Helper(object):
         for item in list1:
             if item not in list2:
                 check = False
+                self.logger.debug(f"{item} not in {list2}")
         return check
 
 

@@ -2,12 +2,12 @@
 # -*- coding: utf-8 -*-
 
 """
-This Is a Helper Class, which help the project to provide the common Methods.
-
+The database table layouts are listed below
+supposedly both SQLite and MySQL compliant
 """
 
 __author__      = 'Antoine Schonewille'
-__copyright__   = 'Copyright 2022, Luna2 Project'
+__copyright__   = 'Copyright 2023, Luna2 Project'
 __license__     = 'GPL'
 __version__     = '2.0'
 __maintainer__  = 'Antoine Schonewille'
@@ -182,8 +182,8 @@ DATABASE_LAYOUT_node = [
 {"column": "provisionmethod",      "datatype": "VARCHAR", "length": "60"},
 {"column": "provisionfallback",    "datatype": "VARCHAR", "length": "60"},
 {"column": "tpmuuid",              "datatype": "VARCHAR", "length": "60"},
-{"column": "tpmpubkey",            "datatype": "BLOB"},
-{"column": "tpmsha256",            "datatype": "VARCHAR", "length": "100"},
+{"column": "tpmpubkey",            "datatype": "VARCHAR", "length": "1024"},
+{"column": "tpmsha256",            "datatype": "VARCHAR", "length": "256"},
 {"column": "unmanaged_bmc_users",  "datatype": "VARCHAR", "length": "30"},
 {"column": "id",                   "datatype": "INTEGER", "key": "PRIMARY", "keyadd": "AUTOINCREMENT"},
 {"column": "name",                 "datatype": "VARCHAR", "length": "10"}]

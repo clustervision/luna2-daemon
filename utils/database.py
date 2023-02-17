@@ -231,7 +231,7 @@ class Database(object):
                         {"column": "name", "datatype": "VARCHAR", "length": "40"}]
         Output - Creates Table.
         """
-        driver=f'DRIVER={CONSTANT["DATABASE"]["DRIVER"]};' # either MySQL, SQLite, or...
+        driver=f'{CONSTANT["DATABASE"]["DRIVER"]}' # either MySQL, SQLite, or...
         columns = []
         indici  = []
         for cols in column:

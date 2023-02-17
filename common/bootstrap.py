@@ -22,6 +22,7 @@ from utils.database import Database
 from utils.log import Log
 #from database_layout import *
 from common.constant import CONSTANT
+import os.path
 
 configParser = RawConfigParser()
 LOGGER = Log.get_logger()
@@ -29,7 +30,15 @@ LOGGER = Log.get_logger()
 def check_db():
     """
     some incredibly ugly stuff happens here
+    for now only sqlite is supported as mysql requires a bit more work.... quite a bit.
     """
+    driver=f'{CONSTANT["DATABASE"]["DRIVER"]}'
+    if driver == "SQLite":
+        database=f'{CONSTANT["DATABASE"]["DATABASE"]}'
+        if not (database and os.path.isfile(database)):
+            LOGGER.error(f'ERROR :: Database {database} does not exist and will be created.')
+            result,ret=Helper().runcommand(f"sqlite3 {database} \"VACUUM;\"",True)
+            return ret
     return True
 
 if check_db():

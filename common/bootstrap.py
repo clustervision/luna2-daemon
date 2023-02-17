@@ -127,8 +127,9 @@ def check_db_tables():
     for tablex in table:
         result = Database().get_record(None, tablex, None)
         if result:
-            LOGGER.error(f'ERROR :: Database table {tablex} already have data.')
             num = num+1
+        else:
+            LOGGER.error(f'ERROR :: Database table {tablex} does not seem to exist.')
     if num == 0:
         return False
     return True
@@ -193,6 +194,7 @@ def create_database_tables():
     Database().create("groupsecrets",DATABASE_LAYOUT_groupsecrets)
     Database().create("node",DATABASE_LAYOUT_node)
     Database().create("cluster",DATABASE_LAYOUT_cluster)
+    Database().create("tracker",DATABASE_LAYOUT_tracker)
 
 
 def bootstrap(bootstrapfile=None):

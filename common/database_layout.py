@@ -200,3 +200,15 @@ DATABASE_LAYOUT_cluster = [
 {"column": "debug",                "datatype": "INTEGER", "length": "10"},
 {"column": "security",             "datatype": "INTEGER", "length": "10"}]
 
+DATABASE_LAYOUT_tracker = [
+{"column": "id",                   "datatype": "INTEGER", "key": "PRIMARY", "keyadd": "AUTOINCREMENT"},
+{"column": "infohash",             "datatype": "VARCHAR", "length": "80"},
+{"column": "peer",                 "datatype": "VARCHAR", "length": "80"},
+{"column": "ipaddress",            "datatype": "VARCHAR", "length": "60"},
+{"column": "port",                 "datatype": "INTEGER", "length": "10"},
+{"column": "download",             "datatype": "INTEGER", "length": "10"},
+{"column": "upload",               "datatype": "INTEGER", "length": "10"},
+{"column": "left",                 "datatype": "INTEGER", "length": "10"},
+{"column": "updated",              "datatype": "VARCHAR", "length": "60"},
+{"column": "status",               "datatype": "VARCHAR", "length": "20"}]
+

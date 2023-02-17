@@ -293,7 +293,7 @@ def config_node_post(name=None):
                     else: # interface already exists so we tread lightly
                         #TWAN
                         ipaddress['tableref']='nodeinterface'
-        		ipaddress['tablerefid']=check_interface['id']  # <-- this is the id in the table nodeinterface that belongs to the row with nodeid
+                        ipaddress['tablerefid']=check_interface['id']  # <-- this is the id in the table nodeinterface that belongs to the row with nodeid
                         row = Helper().make_rows(ipaddress)
                         result_ip = Database().update('ipaddress', row)
                         LOGGER.info(f"Interface updated => {result_ip} .")
@@ -429,7 +429,7 @@ def config_node_post_interfaces(name=None):
                     else: # interface already exists so we tread lightly
                         #TWAN
                         ipaddress['tableref']='nodeinterface'
-        		ipaddress['tablerefid']=check_interface['id']  # <-- this is the id in the table nodeinterface that belongs to the row with nodeid
+                        ipaddress['tablerefid']=check_interface['id']  # <-- this is the id in the table nodeinterface that belongs to the row with nodeid
                         row = Helper().make_rows(ipaddress)
                         result_ip = Database().update('ipaddress', row)
 

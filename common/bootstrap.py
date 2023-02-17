@@ -23,7 +23,52 @@ import sys
 from common.constant import CONSTANT
 
 configParser = RawConfigParser()
-LOGGER = Log.get_logger()
+
+# -----------------------------------------------------------------------------------
+
+def checkdbstatus():
+    """
+    A validation method to check which db is configured.
+    """
+    sqlite, read, write = False, False, False
+    code = 503
+    if os.path.isfile(CONSTANT['DATABASE']['DATABASE']):
+        sqlite = True  # not entirely true but good enough for now
+        if os.access(CONSTANT['DATABASE']['DATABASE'], os.R_OK):
+            read = True
+            code = 500
+            try:
+                file = open(CONSTANT['DATABASE']['DATABASE'], "a", encoding='utf-8')
+                if file.writable():
+                    write = True
+                    code = 200
+                    file.close()
+            except Exception as exp:
+                sys.stderr.write(f"{CONSTANT['DATABASE']['DATABASE']} has exception {exp}.\n")
+
+            with open(CONSTANT['DATABASE']['DATABASE'],'r', encoding = "ISO-8859-1") as dbfile:
+                header = dbfile.read(100)
+                if header.startswith('SQLite format 3'):
+                    read, write = True, True
+                    code = 200
+                else:
+                    read, write = False, False
+                    code = 503
+                    sys.stderr.write(f"{CONSTANT['DATABASE']['DATABASE']} is not SQLite3.\n")
+        else:
+            sys.stderr.write(f"DATABASE {CONSTANT['DATABASE']['DATABASE']} is not readable.\n")
+    else:
+        sys.stderr.write(f"{CONSTANT['DATABASE']['DATABASE']} does not exist.\n")
+        code = 501
+    if not sqlite:
+        try:
+            Database().get_cursor()
+            read, write = True, True
+            code = 200
+        except pyodbc.Error as error:
+            sys.stderr.write(f"{CONSTANT['DATABASE']['DATABASE']} connection error: {error}.\n")
+    response = {"driver": CONSTANT['DATABASE']['DRIVER'], "database": CONSTANT['DATABASE']['DATABASE'], "read": read, "write": write}
+    return response, code
 
 def check_db():
     """
@@ -37,7 +82,7 @@ def check_db():
         kill = lambda process: process.kill()
         output = None
         if dbstatus["SQLite"]:
-            my_process = subprocess.Popen(f"sqlite3 {dbstatus["database"]} \"VACUUM;\"", stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
+            my_process = subprocess.Popen(f"sqlite3 {dbstatus['database']} \"VACUUM;\"", stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
             my_timer = threading.Timer(timeout_sec,kill,[my_process])
             try:
                 my_timer.start()
@@ -54,10 +99,11 @@ def check_db():
 # Key call as we cannot import anything until we know for sure we have a database!
 # --------------------------------------------------------------------------------
 if check_db():
-    from database_layout import *
+    from common.database_layout import *
     from utils.helper import Helper
     from utils.database import Database
     from utils.log import Log
+    LOGGER = Log.get_logger()
 else:
     sys.stderr.write("ERROR: i cannot initialize my database. This is fatal.\n")
     exit(127)
@@ -246,50 +292,6 @@ def bootstrap(bootstrapfile=None):
     LOGGER.info('###################### Bootstrap Finish ######################')
     return True
 
-def checkdbstatus():
-    """
-    A validation method to check which db is configured.
-    """
-    sqlite, read, write = False, False, False
-    code = 503
-    if os.path.isfile(CONSTANT['DATABASE']['DATABASE']):
-        sqlite = True  # not entirely true but good enough for now
-        if os.access(CONSTANT['DATABASE']['DATABASE'], os.R_OK):
-            read = True
-            code = 500
-            try:
-                file = open(CONSTANT['DATABASE']['DATABASE'], "a", encoding='utf-8')
-                if file.writable():
-                    write = True
-                    code = 200
-                    file.close()
-            except Exception as exp:
-                sys.stderr.write(f"{CONSTANT['DATABASE']['DATABASE']} has exception {exp}.\n")
-
-            with open(CONSTANT['DATABASE']['DATABASE'],'r', encoding = "ISO-8859-1") as dbfile:
-                header = dbfile.read(100)
-                if header.startswith('SQLite format 3'):
-                    read, write = True, True
-                    code = 200
-                else:
-                    read, write = False, False
-                    code = 503
-                    sys.stderr.write(f"{CONSTANT['DATABASE']['DATABASE']} is not SQLite3.\n")
-        else:
-            sys.stderr.write(f"DATABASE {CONSTANT['DATABASE']['DATABASE']} is not readable.\n")
-    else:
-        sys.stderr.write(f"{CONSTANT['DATABASE']['DATABASE']} does not exist.\n")
-        code = 501
-    if not sqlite:
-        try:
-            Database().get_cursor()
-            read, write = True, True
-            code = 200
-        except pyodbc.Error as error:
-            sys.stderr.write(f"{CONSTANT['DATABASE']['DATABASE']} connection error: {error}.\n")
-    response = {"driver": CONSTANT['DATABASE']['DRIVER'], "database": CONSTANT['DATABASE']['DATABASE'], "read": read, "write": write}
-    return response, code
-
 
 def validatebootstrap():
     """
@@ -311,7 +313,7 @@ def validatebootstrap():
         db_tables_check=check_db_tables
 
     if bootstrapfile_check is True and dbcode == 200:
-        if db_check is True:
+        if db_tables_check is True:
             bootstrap(bootstrapfile)
         else:
             LOGGER.warning(f'Bootstrap file {bootstrapfile} is still present, Kindly remove the file.')

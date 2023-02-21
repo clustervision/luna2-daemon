@@ -63,16 +63,10 @@ def config_node():
             node['netboot'] = Helper().bool_revert(node['netboot'])
             node['service'] = Helper().bool_revert(node['service'])
             node['setupbmc'] = Helper().bool_revert(node['setupbmc'])
-#            where = f' WHERE nodeid = "{nodeid}"'
-#            node_interface = Database().get_record(None, 'nodeinterface', where)
             node_interface = Database().get_record_join(['nodeinterface.interface','ipaddress.ipaddress','nodeinterface.macaddress','network.name as network'], ['network.id=ipaddress.networkid','ipaddress.tablerefid=nodeinterface.id'],['tableref="nodeinterface"',f"nodeinterface.nodeid='{nodeid}'"])
             if node_interface:
                 node['interfaces'] = []
                 for interface in node_interface:
-#                    interface['network'] = Database().getname_byid('network',interface['networkid'])
-#                    del interface['nodeid']
-#                    del interface['id']
-#                    del interface['networkid']
                     node['interfaces'].append(interface)
             response['config']['node'][node_name] = node
         LOGGER.info('Provided list of all nodes.')
@@ -120,15 +114,10 @@ def config_node_get(name=None):
         node['netboot'] = Helper().bool_revert(node['netboot'])
         node['service'] = Helper().bool_revert(node['service'])
         node['setupbmc'] = Helper().bool_revert(node['setupbmc'])
-        #node_interface = Database().get_record(None, 'nodeinterface', f' WHERE nodeid = "{nodeid}"')
         node_interface = Database().get_record_join(['nodeinterface.interface','ipaddress.ipaddress','nodeinterface.macaddress','network.name as network'], ['network.id=ipaddress.networkid','ipaddress.tablerefid=nodeinterface.id'],['tableref="nodeinterface"',f"nodeinterface.nodeid='{nodeid}'"])
         if node_interface:
             node['interfaces'] = []
             for interface in node_interface:
-#                interface['network'] = Database().getname_byid('network', interface['networkid'])
-#                del interface['nodeid']
-#                del interface['id']
-#                del interface['networkid']
                 node['interfaces'].append(interface)
         response['config']['node'][nodename] = node
         LOGGER.info('Provided list of all nodes.')
@@ -141,7 +130,7 @@ def config_node_get(name=None):
 
 
 @config_blueprint.route('/config/node/<string:name>', methods=['POST'])
-###@token_required
+@token_required
 def config_node_post(name=None):
     """
     Input - Node name
@@ -273,7 +262,16 @@ def config_node_post(name=None):
                         my_interface['macaddress']=interface['macaddress'] 
                     if 'ipaddress' in interface.keys():
                         my_ipaddress['ipaddress']=interface['ipaddress']
-                        my_ipaddress['networkid']=networkid
+                        network_details = Database().get_record(None, 'network', f'WHERE id={networkid}')
+                        network_range,network_subnet=network_details[0]['network'].split('/')
+                        if (not network_subnet) and network_details[0]['subnet']:
+                            network_subnet=network_details[0]['subnet']
+                        valid_ip = Helper().check_ip_range(interface['ipaddress'], f"{network_range}/{network_subnet}")
+                        if valid_ip is False:
+                            response = {'message': f"invalid IP address for {interface_name}. Network {network_details[0]['name']}: {network_range}/{network_subnet}"}
+                            access_code = 500
+                            break
+                    my_ipaddress['networkid']=networkid
                     result_ip=False
                     check_interface = Database().get_record(None, 'nodeinterface', f'WHERE nodeid = "{nodeid}" AND interface = "{interface_name}"')
                     if not check_interface:
@@ -309,7 +307,7 @@ def config_node_post(name=None):
 
 
 @config_blueprint.route('/config/node/<string:name>/_delete', methods=['GET'])
-###@token_required
+@token_required
 def config_node_delete(name=None):
     """
     Input - Node Name
@@ -353,18 +351,6 @@ def config_node_get_interfaces(name=None):
                 my_interface.append(interface)
                 response['config']['node'][name]['interfaces'] = my_interface
 
-#        where = f' WHERE nodeid = "{nodeid}"'
-#        node_interfaces = Database().get_record(None, 'nodeinterface', where)
-#        if node_interfaces:
-#            new_interfaces = []
-#            for interface in node_interfaces:
-#                interface['network'] = Database().getname_byid('network', interface['networkid'])
-#                del interface['nodeid']
-#                del interface['id']
-#                del interface['networkid']
-#                new_interfaces.append(interface)
-#            response['config']['node'][name]['interfaces'] = new_interfaces
-
             LOGGER.info(f'Returned group {name} with details.')
             access_code = 200
         else:
@@ -379,7 +365,7 @@ def config_node_get_interfaces(name=None):
 
 
 @config_blueprint.route("/config/node/<string:name>/interfaces", methods=['POST'])
-###@token_required
+@token_required
 def config_node_post_interfaces(name=None):
     """
     Input - Node Name
@@ -420,7 +406,16 @@ def config_node_post_interfaces(name=None):
                         my_interface['macaddress']=interface['macaddress'] 
                     if 'ipaddress' in interface.keys():
                         my_ipaddress['ipaddress']=interface['ipaddress']
-                        my_ipaddress['networkid']=networkid
+                        network_details = Database().get_record(None, 'network', f'WHERE id={networkid}')
+                        network_range,network_subnet=network_details[0]['network'].split('/')
+                        if (not network_subnet) and network_details[0]['subnet']:
+                            network_subnet=network_details[0]['subnet']
+                        valid_ip = Helper().check_ip_range(interface['ipaddress'], f"{network_range}/{network_subnet}")
+                        if valid_ip is False:
+                            response = {'message': f"invalid IP address for {interface_name}. Network {network_details[0]['name']}: {network_range}/{network_subnet}"}
+                            access_code = 500
+                            break
+                    my_ipaddress['networkid']=networkid
                     result_ip=False
                     check_interface = Database().get_record(None, 'nodeinterface', f'WHERE nodeid = "{nodeid}" AND interface = "{interface_name}"')
                     if not check_interface:
@@ -479,17 +474,6 @@ def config_node_interface_get(name=None, interface=None):
                 my_interface.append(interface)
                 response['config']['node'][name]['interfaces'] = my_interface
 
-#        where = f' WHERE nodeid = "{nodeid}" AND interface = "{interface}"'
-#        node_interfaces = Database().get_record(None, 'nodeinterface', where)
-#        if node_interfaces:
-#            new_interface = []
-#            for ifx in node_interfaces:
-#                ifx['network'] = Database().getname_byid('network', ifx['networkid'])
-#                del ifx['nodeid']
-#                del ifx['id']
-#                del ifx['networkid']
-#                new_interface.append(ifx)
-#            response['config']['node'][name]['interfaces'] = new_interface
             LOGGER.info(f'Returned group {name} with details.')
             access_code = 200
         else:
@@ -505,7 +489,7 @@ def config_node_interface_get(name=None, interface=None):
 
 
 @config_blueprint.route("/config/node/<string:name>/interfaces/<string:interface>/_delete", methods=['GET'])
-###@token_required
+@token_required
 def config_node_delete_interface(name=None, interface=None):
     """
     Input - Node Name & Interface Name
@@ -516,8 +500,7 @@ def config_node_delete_interface(name=None, interface=None):
     if node:
         nodeid = node[0]['id']
         where = f' WHERE `interface` = "{interface}" AND `nodeid` = "{nodeid}";'
-#        node_interface = Database().get_record(None, 'nodeinterface', where)
-        node_interface = Database().get_record_join(['nodeinterface.id as ifid','ipaddress.id as ipid'], ['ipaddress.tablerefid=nodeinterface.id'], ['tableref="nodeinterface"',f"nodeinterface.nodeid='{nodeid}'",f"nodeinterface.name={interface}"])
+        node_interface = Database().get_record_join(['nodeinterface.id as ifid','ipaddress.id as ipid'], ['ipaddress.tablerefid=nodeinterface.id'], ['tableref="nodeinterface"',f"nodeinterface.nodeid='{nodeid}'",f"nodeinterface.interface={interface}"])
         if node_interface:
             where = [{"column": "id", "value": node_interface[0]['ipid']}]
             Database().delete_row('ipaddress', where)

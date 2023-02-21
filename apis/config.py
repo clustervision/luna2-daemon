@@ -419,15 +419,22 @@ def config_node_post_interfaces(name=None):
                         ipaddress['ipaddress']=interface['ipaddress']
                         del interface['ipaddress']
                     ipaddress['networkid']=networkid
-                    check_interface = Database().get_record(None, 'nodeinterface', f'nodeid = "{nodeid}" AND interface = "{interface_name}"')
+                    check_interface = Database().get_record(None, 'nodeinterface', f'WHERE nodeid = "{nodeid}" AND interface = "{interface_name}"')
                     if not check_interface:
-                        row = Helper().make_rows(interface)
+                        my_interface={}
+                        my_interface['interface']=interface['interface']                
+                        my_interface['macaddress']=interface['macaddress']                
+                        my_interface['nodeid']=nodeid                
+                        row = Helper().make_rows(my_interface)
                         tablerefid = Database().insert('nodeinterface', row)
-                        ipaddress['tableref']='nodeinterface'
-                        ipaddress['tablerefid']=tablerefid
-                        row = Helper().make_rows(ipaddress)
-                        result_ip = Database().insert('ipaddress', row)
-                        LOGGER.info(f"Interface created => {tablerefid}+{result_ip} .")
+                        if tablerefid:
+                            ipaddress['tableref']='nodeinterface'
+                            ipaddress['tablerefid']=tablerefid
+                            row = Helper().make_rows(ipaddress)
+                            result_ip = Database().insert('ipaddress', row)
+                            LOGGER.info(f"Interface created => {tablerefid}+{result_ip} .")
+                        else:
+                            LOGGER.info(f"Interface create failure => {tablerefid}.")
                     else: # interface already exists so we tread lightly
                         #TWAN
                         #ipaddress['tableref']='nodeinterface'
@@ -435,6 +442,7 @@ def config_node_post_interfaces(name=None):
                         row = Helper().make_rows(ipaddress)
                         where = [{"column": "tableref", "value": "nodeinterface"}, {"column": "tablerefid", "value": check_interface[0]['id']}]
                         result_ip = Database().update('ipaddress', row, where)
+                        LOGGER.info(f"Interface updated => {result_ip} .")
 
 #                    interface_name = interface['interface']
 #                    node_clause = f'nodeid = "{nodeid}"'
@@ -517,9 +525,12 @@ def config_node_delete_interface(name=None, interface=None):
     if node:
         nodeid = node[0]['id']
         where = f' WHERE `interface` = "{interface}" AND `nodeid` = "{nodeid}";'
-        node_interface = Database().get_record(None, 'nodeinterface', where)
+#        node_interface = Database().get_record(None, 'nodeinterface', where)
+        node_interface = Database().get_record_join(['nodeinterface.id as ifid','ipaddress.id as ipid'], ['ipaddress.tablerefid=nodeinterface.id'], ['tableref="nodeinterface"',f"nodeinterface.nodeid='{nodeid}'",f"nodeinterface.name={interface}"])
         if node_interface:
-            where = [{"column": "id", "value": node_interface[0]['id']}]
+            where = [{"column": "id", "value": node_interface[0]['ipid']}]
+            Database().delete_row('ipaddress', where)
+            where = [{"column": "id", "value": node_interface[0]['ifid']}]
             Database().delete_row('nodeinterface', where)
             response = {'message': f'Node {name} interface {interface} removed successfully.'}
             access_code = 204

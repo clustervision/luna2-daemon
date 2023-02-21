@@ -228,6 +228,7 @@ class Database(object):
                     where = [
                         {"column": "id", "datatype": "INTEGER", "length": "10", "key": "PRIMARY", "keyadd": "autoincrement"},
                         {"column": "id", "datatype": "INTEGER", "length": "20", "key": "UNIQUE"},
+                        {"column": "id", "datatype": "INTEGER", "length": "20", "key": "UNIQUE", "with": "name"},
                         {"column": "name", "datatype": "VARCHAR", "length": "40"}]
         Output - Creates Table.
         """
@@ -258,7 +259,10 @@ class Database(object):
                     else:
                         indici.append(f"PRIMARY KEY (`{cols['column']}`)")
                 else:
-                    indici.append(f"{cols['key'].upper()} (`{cols['column']}`)")
+                    if 'with' not in cols:
+                        indici.append(f"{cols['key'].upper()} (`{cols['column']}`)")
+            if 'with' in cols.keys() and 'column' in cols.keys():
+                indici.append(f"UNIQUE (`{cols['column']}`,`{cols['with']}`)")
             columns.append(strcolumn)
         strkeys = ', '.join(map(str, indici))
         columns.append(strkeys)

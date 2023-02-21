@@ -72,7 +72,7 @@ DATABASE_LAYOUT_monitor = [
 DATABASE_LAYOUT_ipaddress = [
 {"column": "id",                   "datatype": "INTEGER", "key": "PRIMARY", "keyadd": "AUTOINCREMENT"},
 {"column": "ipaddress",            "datatype": "VARCHAR", "length": "60", "key": "UNIQUE"},
-{"column": "tableref",             "datatype": "VARCHAR", "length": "100"},
+{"column": "tableref",             "datatype": "VARCHAR", "length": "100", "key": "UNIQUE", "with": "tablerefid"},
 {"column": "tablerefid",           "datatype": "integer", "length": "10"},
 {"column": "networkid",            "datatype": "interger", "length": "10"}]
 

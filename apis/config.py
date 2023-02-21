@@ -500,7 +500,7 @@ def config_node_delete_interface(name=None, interface=None):
     if node:
         nodeid = node[0]['id']
         where = f' WHERE `interface` = "{interface}" AND `nodeid` = "{nodeid}";'
-        node_interface = Database().get_record_join(['nodeinterface.id as ifid','ipaddress.id as ipid'], ['ipaddress.tablerefid=nodeinterface.id'], ['tableref="nodeinterface"',f"nodeinterface.nodeid='{nodeid}'",f"nodeinterface.interface={interface}"])
+        node_interface = Database().get_record_join(['nodeinterface.id as ifid','ipaddress.id as ipid'], ['ipaddress.tablerefid=nodeinterface.id'], ['tableref="nodeinterface"',f"nodeinterface.nodeid='{nodeid}'",f"nodeinterface.interface='{interface}'"])
         if node_interface:
             where = [{"column": "id", "value": node_interface[0]['ipid']}]
             Database().delete_row('ipaddress', where)
@@ -855,7 +855,7 @@ def config_group_post_interfaces(name=None):
 
 
 @config_blueprint.route("/config/group/<string:name>/interfaces/<string:interface>/_delete", methods=['GET'])
-###@token_required
+@token_required
 def config_group_delete_interface(name=None, interface=None):
     """
     Input - Group Name & Interface Name
@@ -930,7 +930,7 @@ def config_osimage_get(name=None):
 
 
 @config_blueprint.route("/config/osimage/<string:name>", methods=['POST'])
-###@token_required
+@token_required
 def config_osimage_post(name=None):
     """
     Input - OS Image Name
@@ -1005,7 +1005,7 @@ def config_osimage_post(name=None):
 
 
 @config_blueprint.route("/config/osimage/<string:name>/_delete", methods=['GET'])
-###@token_required
+@token_required
 def config_osimage_delete(name=None):
     """
     Input - OS Image ID or Name
@@ -1024,7 +1024,7 @@ def config_osimage_delete(name=None):
 
 
 @config_blueprint.route("/config/osimage/<string:name>/_clone", methods=['POST'])
-###@token_required
+@token_required
 def config_osimage_clone(name=None):
     """
     Input - OS Image Name
@@ -1083,7 +1083,7 @@ def config_osimage_clone(name=None):
 
 
 @config_blueprint.route("/config/osimage/<string:name>/pack", methods=['GET'])
-###@token_required
+@token_required
 def config_osimage_pack(name=None):
     """
     Input - OS Image ID or Name
@@ -1097,7 +1097,7 @@ def config_osimage_pack(name=None):
 
 
 @config_blueprint.route("/config/osimage/<string:name>/kernel", methods=['POST'])
-###@token_required
+@token_required
 def config_osimage_kernel_post(name=None):
     """
     Input - OS Image Name
@@ -1182,7 +1182,7 @@ def config_cluster():
 
 
 @config_blueprint.route("/config/cluster", methods=['POST'])
-###@token_required
+@token_required
 def config_cluster_post():
     """
     Input - None
@@ -1270,7 +1270,7 @@ def config_bmcsetup_get(bmcname=None):
 
 
 @config_blueprint.route("/config/bmcsetup/<string:bmcname>", methods=['POST'])
-###@token_required
+@token_required
 def config_bmcsetup_post(bmcname=None):
     """
     Input - BMC Setup ID or Name
@@ -1323,7 +1323,7 @@ def config_bmcsetup_post(bmcname=None):
 
 
 @config_blueprint.route("/config/bmcsetup/<string:bmcname>/_clone", methods=['POST'])
-###@token_required
+@token_required
 def config_bmcsetup_clone(bmcname=None):
     """
     Input - BMC Setup ID or Name
@@ -1382,7 +1382,7 @@ def config_bmcsetup_clone(bmcname=None):
 
 
 @config_blueprint.route("/config/bmcsetup/<string:bmcname>/_delete", methods=['GET'])
-###@token_required
+@token_required
 def config_bmcsetup_delete(bmcname=None):
     """
     Input - BMC Setup ID or Name
@@ -1416,14 +1416,12 @@ def config_switch():
         response = {'config': {'switch': { } }}
         for switch in switches:
             switchname = switch['name']
-            where = f' WHERE id = {switch["ipaddress"]}'
-            switchip = Database().get_record(None, 'ipaddress', where)
-            LOGGER.debug(f'With Switch {switchname} attached IP ROWs {switchip}')
-            if switchip:
-                switch['ipaddress'] = switchip[0]["ipaddress"]
-            del switch['id']
-            # del switch['name']
             response['config']['switch'][switchname] = switch
+            #Antoine
+            switch_ips = Database().get_record_join(['network.name as network','ipaddress.ipaddress'], ['ipaddress.tablerefid=switch.id','network.id=ipaddress.networkid'], ['tableref="switch"',f"tablerefid='{switch['id']}'"])
+            if switch_ips:
+                response['config']['switch'][switchname]['ipaddress'] = switch_ips[0]['ipaddress']
+                response['config']['switch'][switchname]['network'] = switch_ips[0]['network']
         LOGGER.info(f'available Switches are {switches}.')
         access_code = 200
     else:
@@ -1446,14 +1444,12 @@ def config_switch_get(switch=None):
         response = {'config': {'switch': { } }}
         for switch in switches:
             switchname = switch['name']
-            where = f' WHERE id = {switch["ipaddress"]}'
-            switchip = Database().get_record(None, 'ipaddress', where)
-            LOGGER.debug(f'With Switch {switchname} attached IP ROWs {switchip}')
-            if switchip:
-                switch['ipaddress'] = switchip[0]["ipaddress"]
-            del switch['id']
-            # del switch['name']
             response['config']['switch'][switchname] = switch
+            #Antoine
+            switch_ips = Database().get_record_join(['network.name as network','ipaddress.ipaddress'], ['ipaddress.tablerefid=switch.id','network.id=ipaddress.networkid'], ['tableref="switch"',f"tablerefid='{switch['id']}'"])
+            if switch_ips:
+                response['config']['switch'][switchname]['ipaddress'] = switch_ips[0]['ipaddress']
+                response['config']['switch'][switchname]['network'] = switch_ips[0]['network']
         LOGGER.info(f'available Switches are {switches}.')
         access_code = 200
     else:
@@ -1493,12 +1489,18 @@ def config_switch_post(switch=None):
             create = True
         switchcolumns = Database().get_columns('switch')
         columncheck = Helper().checkin_list(data, switchcolumns)
+        if 'ipaddress' in data.keys():
+            ipaddress=data['ipaddress']
+            del data['ipaddress']
+        if 'network' in data.keys():
+            network=data['network']
+            del data['network']
         data = Helper().check_ip_exist(data)
         if data:
             row = Helper().make_rows(data)
             if columncheck:
                 if create:
-                    Database().insert('switch', row)
+                    switchid=Database().insert('switch', row)
                     response = {'message': 'Switch created.'}
                     access_code = 201
                 if update:
@@ -1509,11 +1511,50 @@ def config_switch_post(switch=None):
             else:
                 response = {'message': 'Bad Request; Columns are incorrect.'}
                 access_code = 400
-                return json.dumps(response), access_code
+        #Antoine
+        # ----------- interface(s) update/create -------------
+        if network:
+            networkid = Database().getid_byname('network', network)
         else:
-            response = {'message': 'Bad Request; IP address already exist in the database.'}
-            access_code = 400
-            return json.dumps(response), access_code
+            network_details = Database().get_record_join(['network.name as network','network.id'], ['ipaddress.tablerefid=switch.id','network.id=ipaddress.networkid'], ['tableref="switch"',f"switch.name='{switch}'"])
+            if network_details:
+                networkid=network_details[0]['id']
+            else:
+                response = {'message': f'Bad Request; Network not specified.'}
+                access_code = 400
+                return json.dumps(response), access_code
+        LOGGER.info(f"IP for switch => networkid = {networkid} .")
+        if ipaddress and switchid:
+            my_ipaddress={}
+            my_ipaddress['networkid']=networkid
+            result_ip=False
+            network_details = Database().get_record(None, 'network', f'WHERE id={networkid}')
+            network_range,network_subnet=network_details[0]['network'].split('/')
+            if (not network_subnet) and network_details[0]['subnet']:
+                network_subnet=network_details[0]['subnet']
+                valid_ip = Helper().check_ip_range(ipaddress, f"{network_range}/{network_subnet}")
+                if valid_ip is False:
+                    response = {'message': f"invalid IP address for {interface_name}. Network {network_details[0]['name']}: {network_range}/{network_subnet}"}
+                    access_code = 500
+                    return json.dumps(response), access_code
+            my_ipaddress['ipaddress']=ipaddress
+            LOGGER.info(f"IP for switch => ipaddress = {ipaddress} .")
+            check_ip = Database().get_record(None, 'ipaddress', f'WHERE tablerefid = "{switchid}" AND tableref = "switch"')
+            if check_ip:
+                row = Helper().make_rows(my_ipaddress)
+                where = [{"column": "tablerefid", "value": switchid},{"column": "tableref", "value": "switch"}]
+                Database().update('ipaddress', row, where)
+            else:
+                my_ipaddress['tableref']='switch'
+                my_ipaddress['tablerefid']=switchid
+                row = Helper().make_rows(my_ipaddress)
+                result_ip=Database().insert('ipaddress', row)
+                LOGGER.info(f"IP for switch created => {result_ip}.")
+
+                if result_ip is False:
+                    response = {'message': 'Bad Request; IP address assignment failed.'}
+                    access_code = 400
+                    return json.dumps(response), access_code
     else:
         response = {'message': 'Bad Request; Did not received data.'}
         access_code = 400

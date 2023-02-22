@@ -174,8 +174,7 @@ class Database(object):
         else:       
             response = None
             return response
-#        self.logger.debug(f'Query executing => {query}.')
-        print(f'Query executing => {query}.')
+        self.logger.debug(f'Query executing => {query}.')
         try:
             self.cursor.execute(query)
             names = list(map(lambda x: x[0], self.cursor.description)) # Fetching the Column Names

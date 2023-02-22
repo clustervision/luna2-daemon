@@ -146,11 +146,10 @@ DATABASE_LAYOUT_otherdevices = [
 
 DATABASE_LAYOUT_controller = [
 {"column": "id",                   "datatype": "INTEGER", "key": "PRIMARY", "keyadd": "AUTOINCREMENT"},
+{"column": "hostname",             "datatype": "VARCHAR", "length": "100", "key": "UNIQUE"},
 {"column": "clusterid",            "datatype": "INTEGER", "length": "10"},
-{"column": "hostname",             "datatype": "VARCHAR", "length": "100"},
 {"column": "status",               "datatype": "VARCHAR", "length": "20"},
-{"column": "ipaddr",               "datatype": "VARCHAR", "length": "20"},
-{"column": "srverport",            "datatype": "INTEGER", "length": "10"}]
+{"column": "serverport",           "datatype": "INTEGER", "length": "10"}]
 
 DATABASE_LAYOUT_groupsecrets = [
 {"column": "id",                   "datatype": "INTEGER", "key": "PRIMARY", "keyadd": "AUTOINCREMENT"},

@@ -35,11 +35,12 @@ def boot():
     check_template = Helper().checkjinja(f'{CONSTANT["TEMPLATES"]["TEMPLATES_DIR"]}/{template}')
     if not check_template:
         abort(404, 'Empty')
-    where = ' WHERE hostname = "controller.cluster"'
-    controller = Database().get_record(None, 'controller', where)
+#    where = ' WHERE hostname = "controller.cluster"'
+#    controller = Database().get_record(None, 'controller', where)
+    controller = Database().get_record_join(['controller.*','ipaddress.ipaddress'], ['ipaddress.tablerefid=controller.id'],['tableref="controller"','controller.hostname="controller.cluster"'])
     if controller:
-        ipaddr = controller[0]['ipaddr']
-        serverport = controller[0]['srverport']
+        ipaddress = controller[0]['ipaddress']
+        serverport = controller[0]['serverport']
         access_code = 200
     else:
         environment = jinja2.Environment()
@@ -83,19 +84,20 @@ def boot_short():
     check_template = Helper().checkjinja(f'{CONSTANT["TEMPLATES"]["TEMPLATES_DIR"]}/{template}')
     if not check_template:
         abort(404, 'Empty')
-    where = ' WHERE hostname = "controller.cluster"'
-    controller = Database().get_record(None, 'controller', where)
+#    where = ' WHERE hostname = "controller.cluster"'
+#    controller = Database().get_record(None, 'controller', where)
+    controller = Database().get_record_join(['controller.*','ipaddress.ipaddress'], ['ipaddress.tablerefid=controller.id'],['tableref="controller"','controller.hostname="controller.cluster"'])
     if controller:
-        ipaddr = controller[0]['ipaddr']
-        serverport = controller[0]['srverport']
+        ipaddress = controller[0]['ipaddress']
+        serverport = controller[0]['serverport']
         access_code = 200
     else:
         environment = jinja2.Environment()
         template = environment.from_string('No Controller is available.')
-        ipaddr, serverport = '', ''
+        ipaddress, serverport = '', ''
         access_code = 404
     LOGGER.info(f'Boot API serving the {template}')
-    return render_template(template, LUNA_CONTROLLER=ipaddr, LUNA_API_PORT=serverport), access_code
+    return render_template(template, LUNA_CONTROLLER=ipaddress, LUNA_API_PORT=serverport), access_code
 
 
 @boot_blueprint.route('/boot/disk', methods=['GET'])
@@ -109,19 +111,20 @@ def boot_disk():
     check_template = Helper().checkjinja(f'{CONSTANT["TEMPLATES"]["TEMPLATES_DIR"]}/{template}')
     if not check_template:
         abort(404, 'Empty')
-    where = ' WHERE hostname = "controller.cluster"'
-    controller = Database().get_record(None, 'controller', where)
+#    where = ' WHERE hostname = "controller.cluster"'
+#    controller = Database().get_record(None, 'controller', where)
+    controller = Database().get_record_join(['controller.*','ipaddress.ipaddress'], ['ipaddress.tablerefid=controller.id'],['tableref="controller"','controller.hostname="controller.cluster"'])
     if controller:
-        ipaddr = controller[0]['ipaddr']
-        serverport = controller[0]['srverport']
+        ipaddress = controller[0]['ipaddress']
+        serverport = controller[0]['serverport']
         access_code = 200
     else:
         environment = jinja2.Environment()
         template = environment.from_string('No Controller is available.')
-        ipaddr, serverport = '', ''
+        ipaddress, serverport = '', ''
         access_code = 404
     LOGGER.info(f'Boot API serving the {template}')
-    return render_template(template, LUNA_CONTROLLER=ipaddr, LUNA_API_PORT=serverport), access_code
+    return render_template(template, LUNA_CONTROLLER=ipaddress, LUNA_API_PORT=serverport), access_code
 
 
 @boot_blueprint.route('/boot/search/mac/<string:mac>', methods=['GET'])
@@ -136,7 +139,7 @@ def boot_search_mac(mac=None):
     data = {
         'nodeid'        : None,
         'osimageid'     : None,
-        'ipaddress      : None,
+        'ipaddress'     : None,
         'serverport'    : None,
         'intrdfile'     : None,
         'kernelfile'    : None,
@@ -151,7 +154,7 @@ def boot_search_mac(mac=None):
 #    where = ' WHERE hostname = "controller.cluster"'
 #    controller = Database().get_record(None, 'controller', where)
     #Antoine
-    controller = Database().get_record_join(['controller.*','ipaddress.ipaddress'], ['ipaddress.tablerefid=controller.id'],['tableref="controller"',f"controller.name='{controller}'"])
+    controller = Database().get_record_join(['controller.*','ipaddress.ipaddress'], ['ipaddress.tablerefid=controller.id'],['tableref="controller"','controller.hostname="controller.cluster"'])
     if controller:
         data['ipaddress'] = controller[0]['ipaddress']
         data['serverport'] = controller[0]['serverport']
@@ -219,7 +222,7 @@ def boot_manual_hostname(hostname=None, mac=None):
     data = {
         'nodeid'        : None,
         'osimageid'     : None,
-        'ipaddress      : None,
+        'ipaddress'     : None,
         'serverport'    : None,
         'intrdfile'     : None,
         'kernelfile'    : None,
@@ -234,7 +237,7 @@ def boot_manual_hostname(hostname=None, mac=None):
 #    where = ' WHERE hostname = "controller.cluster"'
 #    controller = Database().get_record(None, 'controller', where)
     #Antoine
-    controller = Database().get_record_join(['controller.*','ipaddress.ipaddress'], ['ipaddress.tablerefid=controller.id'],['tableref="controller"',f"controller.name='{controller}'"])
+    controller = Database().get_record_join(['controller.*','ipaddress.ipaddress'], ['ipaddress.tablerefid=controller.id'],['tableref="controller"','controller.hostname="controller.cluster"'])
     if controller:
         data['ipaddress'] = controller[0]['ipaddress']
         data['serverport'] = controller[0]['serverport']
@@ -265,10 +268,13 @@ def boot_manual_hostname(hostname=None, mac=None):
 #        data['nodeip'] = Helper().get_network(nodeinterface[0]['ipaddress'], nwk[0]['subnet'])
 #        subnet = data['nodeip'].split('/')
 #        subnet = subnet[1]
-        iprange,subnet=nodeinterface[0]['iprange'].split('/')
-        if (not subnet) and nodeinterface[0]['subnet']:
-            subnet=nodeinterface[0]['subnet']
-        data['nodeip'] = f'{nodeinterface[0]["ipaddress"]}/{subnet}'
+            iprange,subnet=nodeinterface[0]['iprange'].split('/')
+            if (not subnet) and nodeinterface[0]['subnet']:
+                subnet=nodeinterface[0]['subnet']
+            data['nodeip'] = f'{nodeinterface[0]["ipaddress"]}/{subnet}'
+        else:
+            #uh oh... no bootif??
+            data['nodeip'] = ''
 
     if data['osimageid']:
         osimage = Database().get_record(None, 'osimage', f' WHERE id = {data["osimageid"]}')
@@ -312,7 +318,7 @@ def boot_install(node=None):
         'osimageid'             : None,
         'groupid'               : None,
         'nodeid'                : None,
-        'ipaddr'                : None,
+        'ipaddress'             : None,
         'serverport'            : None,
         'nodehostname'          : None,
         'osimagename'           : None,
@@ -331,11 +337,13 @@ def boot_install(node=None):
     cluster = Database().get_record(None, 'cluster', None)
     if cluster:
         data['selinux']      = Helper().bool_revert(cluster[0]['security'])
-        where = ' WHERE hostname = "controller.cluster"'
-    controller = Database().get_record(None, 'controller', where)
+    #    where = ' WHERE hostname = "controller.cluster"'
+    #controller = Database().get_record(None, 'controller', where)
+    #Antoine
+    controller = Database().get_record_join(['controller.*','ipaddress.ipaddress'], ['ipaddress.tablerefid=controller.id'],['tableref="controller"','controller.hostname="controller.cluster"'])
     if controller:
-        data['ipaddr']      = controller[0]['ipaddr']
-        data['serverport']  = controller[0]['srverport']
+        data['ipaddress']   = controller[0]['ipaddress']
+        data['serverport']  = controller[0]['serverport']
     node_details = Database().get_record(None, 'node', f' WHERE name = "{node}"')
     if node:
         data['osimageid']           = node_details[0]['osimageid']
@@ -366,22 +374,32 @@ def boot_install(node=None):
             data['tarball'] = osimage[0]['tarball']
 
     if data['nodeid']:
-        where = f' WHERE nodeid = {data["nodeid"]};'
-        nodeinterface = Database().get_record(None, 'nodeinterface', where)
+#        where = f' WHERE nodeid = {data["nodeid"]};'
+#        nodeinterface = Database().get_record(None, 'nodeinterface', where)
+        nodeinterface = Database().get_record_join(['nodeinterface.nodeid','nodeinterface.interface','nodeinterface.macaddress','ipaddress.ipaddress','network.name as network','network.network as iprange','network.subnet'], ['network.id=ipaddress.networkid','ipaddress.tablerefid=nodeinterface.id'],['tableref="nodeinterface"',f"nodeinterface.nodeid='{data['nodeid']}'"])
         if nodeinterface:
             for nwkif in nodeinterface:
                 data['interfaces'][nwkif['interface']] = {}
-                where = f' WHERE id = "{nwkif["networkid"]}"'
-                nwk = Database().get_record(None, 'network', where)
-                node_nwk = Helper().get_network(nwkif['ipaddress'], nwk[0]['subnet'])
-                subnet = node_nwk.split('/')
-                subnet = subnet[1]
+#                where = f' WHERE id = "{nwkif["networkid"]}"'
+#                nwk = Database().get_record(None, 'network', where)
+#                node_nwk = Helper().get_network(nwkif['ipaddress'], nwk[0]['subnet'])
+#                subnet = node_nwk.split('/')
+#                subnet = subnet[1]
+#                node_nwk = f'{nwkif["ipaddress"]}/{subnet}'
+
+                iprange,subnet=nwkif['iprange'].split('/')
+                if (not subnet) and nwkif['subnet']:
+                    subnet=nwkif['subnet']
                 node_nwk = f'{nwkif["ipaddress"]}/{subnet}'
+
+                netmask=Helper().cidr_to_netmask(subnet)
+ 
                 data['interfaces'][nwkif['interface']]['interface'] = nwkif['interface']
-                data['interfaces'][nwkif['interface']]['ip'] = nwkif['ipaddress']
+                data['interfaces'][nwkif['interface']]['ipaddress'] = nwkif['ipaddress']
                 data['interfaces'][nwkif['interface']]['network'] = node_nwk
-                data['interfaces'][nwkif['interface']]['netmask'] = nwk[0]['subnet']
-                data['interfaces'][nwkif['interface']]['networkname'] = nwk[0]['name']
+                data['interfaces'][nwkif['interface']]['netmask'] = netmask
+                data['interfaces'][nwkif['interface']]['networkname'] = nwkif['network']
+
 
     if None not in data.values():
         access_code = 200
@@ -393,7 +411,7 @@ def boot_install(node=None):
     LOGGER.info(data)
     return render_template(
         template,
-        LUNA_CONTROLLER         = data['ipaddr'],
+        LUNA_CONTROLLER         = data['ipaddress'],
         LUNA_API_PORT           = data['serverport'],
         LUNA_HOSTNAME           = data['nodehostname'],
         LUNA_OSIMAGE            = data['osimagename'],

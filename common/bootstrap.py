@@ -288,8 +288,7 @@ def bootstrap(bootstrapfile=None):
             {'column': 'name', 'value': 'switch01'},
             {'column': 'oid', 'value': '.1.3.6.1.2.1.17.7.1.2.2.1.2'},
             {'column': 'read', 'value': 'public'},
-            {'column': 'rw', 'value': 'private'},
-            {'column': 'network', 'value': networkid}
+            {'column': 'rw', 'value': 'private'}
             ]
     
     Database().insert('groupinterface', default_group_interface)

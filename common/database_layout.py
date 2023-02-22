@@ -24,7 +24,7 @@ DATABASE_LAYOUT_status = [
 
 DATABASE_LAYOUT_osimage = [
 {"column": "id",                   "datatype": "INTEGER", "key": "PRIMARY", "keyadd": "AUTOINCREMENT"},
-{"column": "name",                 "datatype": "VARCHAR", "length": "20"},
+{"column": "name",                 "datatype": "VARCHAR", "length": "20", "key": "UNIQUE"},
 {"column": "dracutmodules",        "datatype": "VARCHAR", "length": "100"},
 {"column": "grab_filesystems",     "datatype": "VARCHAR", "length": "60"},
 {"column": "grab_exclude",         "datatype": "TEXT"},
@@ -89,7 +89,7 @@ DATABASE_LAYOUT_roles = [
 
 DATABASE_LAYOUT_group = [
 {"column": "id",                   "datatype": "INTEGER", "key": "PRIMARY", "keyadd": "AUTOINCREMENT"},
-{"column": "name",                 "datatype": "VARCHAR", "length": "20"},
+{"column": "name",                 "datatype": "VARCHAR", "length": "20", "key": "UNIQUE"},
 {"column": "bmcsetupid",           "datatype": "INTEGER", "length": "10"},
 {"column": "bmcsetup",             "datatype": "INTEGER", "length": "10"},
 {"column": "domain",               "datatype": "VARCHAR", "length": "20"},
@@ -108,7 +108,7 @@ DATABASE_LAYOUT_group = [
 
 DATABASE_LAYOUT_network = [
 {"column": "id",                   "datatype": "INTEGER", "key": "PRIMARY", "keyadd": "AUTOINCREMENT"},
-{"column": "name",                 "datatype": "VARCHAR", "length": "20"},
+{"column": "name",                 "datatype": "VARCHAR", "length": "20", "key": "UNIQUE"},
 {"column": "network",              "datatype": "VARCHAR", "length": "20"},
 {"column": "subnet",               "datatype": "VARCHAR", "length": "20"},
 {"column": "gateway",              "datatype": "VARCHAR", "length": "60"},
@@ -131,7 +131,7 @@ DATABASE_LAYOUT_user = [
 
 DATABASE_LAYOUT_switch = [
 {"column": "id",                   "datatype": "INTEGER", "key": "PRIMARY", "keyadd": "AUTOINCREMENT"},
-{"column": "name",                 "datatype": "VARCHAR", "length": "60"},
+{"column": "name",                 "datatype": "VARCHAR", "length": "60", "key": "UNIQUE"},
 {"column": "macaddress",           "datatype": "VARCHAR", "length": "60"},
 {"column": "oid",                  "datatype": "VARCHAR", "length": "60"},
 {"column": "read",                 "datatype": "VARCHAR", "length": "60"},
@@ -140,7 +140,7 @@ DATABASE_LAYOUT_switch = [
 
 DATABASE_LAYOUT_otherdevices = [
 {"column": "id",                   "datatype": "INTEGER", "key": "PRIMARY", "keyadd": "AUTOINCREMENT"},
-{"column": "name",                 "datatype": "VARCHAR", "length": "60"},
+{"column": "name",                 "datatype": "VARCHAR", "length": "60", "key": "UNIQUE"},
 {"column": "macaddress",           "datatype": "VARCHAR", "length": "60"},
 {"column": "comment",              "datatype": "VARCHAR", "length": "60"}]
 
@@ -160,7 +160,9 @@ DATABASE_LAYOUT_groupsecrets = [
 {"column": "path",                 "datatype": "VARCHAR", "length": "200"}]
 
 DATABASE_LAYOUT_node = [
-{"column": "hostname",             "datatype": "VARCHAR", "length": "60"},
+{"column": "id",                   "datatype": "INTEGER", "key": "PRIMARY", "keyadd": "AUTOINCREMENT"},
+{"column": "name",                 "datatype": "VARCHAR", "length": "10", "key": "UNIQUE"},
+{"column": "hostname",             "datatype": "VARCHAR", "length": "120", "key": "UNIQUE"},
 {"column": "groupid",              "datatype": "INTEGER", "length": "10"},
 {"column": "localboot",            "datatype": "INTEGER", "length": "10"},
 {"column": "osimageid",            "datatype": "INTEGER", "length": "10"},
@@ -183,13 +185,11 @@ DATABASE_LAYOUT_node = [
 {"column": "tpmuuid",              "datatype": "VARCHAR", "length": "60"},
 {"column": "tpmpubkey",            "datatype": "VARCHAR", "length": "1024"},
 {"column": "tpmsha256",            "datatype": "VARCHAR", "length": "256"},
-{"column": "unmanaged_bmc_users",  "datatype": "VARCHAR", "length": "30"},
-{"column": "id",                   "datatype": "INTEGER", "key": "PRIMARY", "keyadd": "AUTOINCREMENT"},
-{"column": "name",                 "datatype": "VARCHAR", "length": "10"}]
+{"column": "unmanaged_bmc_users",  "datatype": "VARCHAR", "length": "30"}]
 
 DATABASE_LAYOUT_cluster = [
 {"column": "id",                   "datatype": "INTEGER", "key": "PRIMARY", "keyadd": "AUTOINCREMENT"},
-{"column": "name",                 "datatype": "VARCHAR", "length": "20"},
+{"column": "name",                 "datatype": "VARCHAR", "length": "20", "key": "UNIQUE"},
 {"column": "user",                 "datatype": "VARCHAR", "length": "20"},
 {"column": "ns_ip",                "datatype": "VARCHAR", "length": "20"},
 {"column": "ntp_server",           "datatype": "VARCHAR", "length": "20"},

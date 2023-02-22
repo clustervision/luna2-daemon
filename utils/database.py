@@ -120,7 +120,11 @@ class Database(object):
         Output - Fetch rows along with column name.
         """
 
-
+        ## ------------------------- NOTE NOTE NOTE -------------------------------
+        ## The code below is actively used and works as intended. it looks a bit messy
+        ## but optimizing will most probably obscure what's happening. i therefor left it as is for now.
+        ## Antoine
+        ## ------------------------------------------------------------------------
 
         if select:
             #strcolumn = ','.join(map(str, select))
@@ -146,7 +150,6 @@ class Database(object):
             tables=[]
             for eachjoin in joinon:
                 left,right=eachjoin.split('=')
-#                print(f" ----> [{left}], [{right}]")
                 lefttable,leftcol=left.split('.')
                 righttable,rightcol=right.split('.')
                 joins.append(f"`{lefttable}`.{leftcol}=`{righttable}`.{rightcol}")
@@ -158,7 +161,6 @@ class Database(object):
             #tablestr = ','.join(joinon.map(lambda x:x.split('.',1)[0])) #    map(lambda x:x.split('.', 1)[0])
             tablestr = '`,`'.join(tables)
             strjoin = ' AND '.join(joins)
-            print(f"{strjoin}")
         else: # no join? we give up. this function is called _join so you better specify one
             response = None
             return response
@@ -172,7 +174,7 @@ class Database(object):
         else:       
             response = None
             return response
-        self.logger.debug(f'Query executing => {query}.')
+#        self.logger.debug(f'Query executing => {query}.')
         print(f'Query executing => {query}.')
         try:
             self.cursor.execute(query)

@@ -1600,6 +1600,10 @@ def config_switch_clone(switch=None):
             return json.dumps(response), access_code
         else:
             create = True
+        if 'ipaddress' in data:
+            del data['ipaddress']
+        if 'network' in data:
+            del data['network']
         switchcolumns = Database().get_columns('switch')
         columncheck = Helper().checkin_list(data, switchcolumns)
         data = Helper().check_ip_exist(data)
@@ -1847,9 +1851,13 @@ def config_otherdev_clone(device=None):
             return json.dumps(response), access_code
         else:
             create = True
+        if 'ipaddress' in data:
+            del data['ipaddress']
+        if 'network' in data:
+            del data['network']
         devicecolumns = Database().get_columns('otherdevices')
         columncheck = Helper().checkin_list(data, devicecolumns)
-        data = Helper().check_ip_exist(data)
+#        data = Helper().check_ip_exist(data)
         if data:
             row = Helper().make_rows(data)
             if columncheck:

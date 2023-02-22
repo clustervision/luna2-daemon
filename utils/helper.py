@@ -205,6 +205,7 @@ class Helper(object):
         for item in list1:
             if item not in list2:
                 check = False
+                self.logger.debug(f"{item} not in {list2}")
         return check
 
 
@@ -485,49 +486,6 @@ class Helper(object):
             self.packing.empty() ## Deque the same element from the Queue
         return True
 
-
-    def checkdbstatus(self):
-        """
-        A validation method to check which db is configured.
-        """
-        sqlite, read, write = False, False, False
-        code = 503
-        if os.path.isfile(CONSTANT['DATABASE']['DATABASE']):
-            sqlite = True
-            if os.access(CONSTANT['DATABASE']['DATABASE'], os.R_OK):
-                read = True
-                code = 500
-                try:
-                    file = open(CONSTANT['DATABASE']['DATABASE'], "a", encoding='utf-8')
-                    if file.writable():
-                        write = True
-                        code = 200
-                        file.close()
-                except Exception as exp:
-                    self.logger.error(f"{CONSTANT['DATABASE']['DATABASE']} has exception {exp}.")
-
-                with open(CONSTANT['DATABASE']['DATABASE'],'r', encoding = "ISO-8859-1") as dbfile:
-                    header = dbfile.read(100)
-                    if header.startswith('SQLite format 3'):
-                        read, write = True, True
-                        code = 200
-                    else:
-                        read, write = False, False
-                        code = 503
-                        self.logger.error(f"{CONSTANT['DATABASE']['DATABASE']} is not SQLite3.")
-            else:
-                self.logger.error(f"DATABASE {CONSTANT['DATABASE']['DATABASE']} is not readable.")
-        else:
-            self.logger.info(f"{CONSTANT['DATABASE']['DATABASE']} is not a SQLite database.")
-        if not sqlite:
-            try:
-                Database().get_cursor()
-                read, write = True, True
-                code = 200
-            except pyodbc.Error as error:
-                self.logger.error(f"{CONSTANT['DATABASE']['DATABASE']} connection error: {error}.")
-        response = {"database": CONSTANT['DATABASE']['DRIVER'], "read": read, "write": write}
-        return response, code
 
 
     def checksection(self, filename=None, parent_dict=None):

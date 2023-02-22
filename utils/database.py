@@ -19,6 +19,7 @@ __status__      = 'Development'
 import pyodbc
 from utils.log import Log
 from common.constant import CONSTANT
+import re
 
 class Database(object):
 
@@ -101,8 +102,98 @@ class Database(object):
             response = None
         return response
 
+    def convert_string_to_list(self,myitem):
+        if type(myitem) == type('string'):
+            mylist=[]
+            mylist.append(str(myitem))
+        else:
+            mylist=myitem
+        return mylist
 
-    def get_record_join(self, query=None):
+    def get_record_join(self, select=None, joinon=None, where=None):
+        """
+        Input - Complete SQL query with Joins
+        Process - It is SELECT operation on the DB.
+                    select can be comma separated column name or None.
+                    table is the table name where the select operation should be happen.
+                    where can be None OR complete where condition
+        Output - Fetch rows along with column name.
+        """
+
+        ## ------------------------- NOTE NOTE NOTE -------------------------------
+        ## The code below is actively used and works as intended. it looks a bit messy
+        ## but optimizing will most probably obscure what's happening. i therefor left it as is for now.
+        ## Antoine
+        ## ------------------------------------------------------------------------
+
+        if select:
+            #strcolumn = ','.join(map(str, select))
+            cols=[]
+            select=self.convert_string_to_list(select)
+            for eachselect in select:
+                table,col=eachselect.split('.',1)
+                #str_output = re.sub(regex_search_term, regex_replacement, str_input)
+                col = re.sub('(as|AS) (.+)', r"AS `\2`", col)
+                if col:
+                    cols.append(f"`{table}`.{col}")
+                else:
+                    cols.append(f"`{table}`")
+            strcolumn = ','.join(cols)
+        else:
+            strcolumn = "*"
+        if joinon:
+            """
+            in here we do two things. we disect the joins, polish them (`) and we gather the involved tables
+            """
+            joinon=self.convert_string_to_list(joinon)
+            joins=[]
+            tables=[]
+            for eachjoin in joinon:
+                left,right=eachjoin.split('=')
+                lefttable,leftcol=left.split('.')
+                righttable,rightcol=right.split('.')
+                joins.append(f"`{lefttable}`.{leftcol}=`{righttable}`.{rightcol}")
+                if lefttable not in tables:
+                    tables.append(lefttable)
+                if righttable not in tables:
+                    tables.append(righttable)
+            #print(tables)
+            #tablestr = ','.join(joinon.map(lambda x:x.split('.',1)[0])) #    map(lambda x:x.split('.', 1)[0])
+            tablestr = '`,`'.join(tables)
+            strjoin = ' AND '.join(joins)
+        else: # no join? we give up. this function is called _join so you better specify one
+            response = None
+            return response
+        if where:
+            where=self.convert_string_to_list(where)
+            strwhere = ' AND '.join(map(str, where))
+        if where and joinon:
+            query = f'SELECT {strcolumn} FROM `{tablestr}` WHERE {strjoin} AND {strwhere};'
+        elif joinon:
+            query = f'SELECT {strcolumn} FROM `{tablestr}` WHERE {strjoin};'
+        else:       
+            response = None
+            return response
+#        self.logger.debug(f'Query executing => {query}.')
+        print(f'Query executing => {query}.')
+        try:
+            self.cursor.execute(query)
+            names = list(map(lambda x: x[0], self.cursor.description)) # Fetching the Column Names
+            data = self.cursor.fetchall()
+            self.logger.debug(f'Dataset retrived => {data}.')
+            rowdict = {}
+            response = []
+            for row in data:
+                for key, value in zip(names,row):
+                    rowdict[key] = value
+                response.append(rowdict)
+                rowdict = {}
+        except pyodbc.Error as exp:
+            self.logger.error(f'Error occur while executing => {query}. error is {exp}.')
+            response = None
+        return response
+
+    def get_record_query(self, query=None):
         """
         Input - Complete SQL query with Joins
         Process - It is SELECT operation on the DB.
@@ -137,23 +228,47 @@ class Database(object):
                     table is the table name which need to be created.
                     column is a list of dict ex:
                     where = [
-                        {"column": "id", "datatype": "INTEGER", "length": "10", "key": "PRIMARY"},
+                        {"column": "id", "datatype": "INTEGER", "length": "10", "key": "PRIMARY", "keyadd": "autoincrement"},
+                        {"column": "id", "datatype": "INTEGER", "length": "20", "key": "UNIQUE"},
+                        {"column": "id", "datatype": "INTEGER", "length": "20", "key": "UNIQUE", "with": "name"},
                         {"column": "name", "datatype": "VARCHAR", "length": "40"}]
         Output - Creates Table.
         """
+        driver=f'{CONSTANT["DATABASE"]["DRIVER"]}' # either MySQL, SQLite, or...
         columns = []
+        indici  = []
         for cols in column:
             strcolumn = ''
             if 'column' in cols.keys():
-                strcolumn = strcolumn + ' [' + cols['column'] + '] '
+                strcolumn = strcolumn + ' `' + cols['column'] + '` '
             if 'datatype' in cols.keys():
-                strcolumn = strcolumn + ' ' +cols['datatype'] + ' '
+                strcolumn = strcolumn + ' ' +cols['datatype'].upper() + ' '
             if 'length' in cols.keys():
-                strcolumn = strcolumn + ' (' +cols['length'] + ') '
-            if 'key'in cols.keys():
-                strcolumn = strcolumn + ' ' +cols['key'] + ' '
+                if driver != "SQLite" and 'keyadd' in cols.keys() and cols['keyadd'].upper() == "AUTOINCREMENT":
+                    #YES! sqlite does not allow e.g. INTEGER(10) to be an auto increment... _has_ to be INTEGER
+                    strcolumn = strcolumn + ' (' +cols['length'] + ') '
+            if 'key' in cols.keys() and 'column' in cols.keys():
+                if cols['key'] == "PRIMARY":
+                    if 'keyadd' in cols.keys():
+                        if cols['keyadd'].upper() == "AUTOINCREMENT": # then it must a an INT or FLOAT
+                            strcolumn = strcolumn + " NOT NULL "
+                            if driver != "SQLite": # e.g. Mysql
+                                strcolumn = strcolumn + "AUTO_INCREMENT "
+                        if driver == "SQLite":
+                            indici.append(f"PRIMARY KEY (`{cols['column']}` {cols['keyadd'].upper()})")
+                        else:
+                            indici.append(f"PRIMARY KEY (`{cols['column']}`)")
+                    else:
+                        indici.append(f"PRIMARY KEY (`{cols['column']}`)")
+                else:
+                    if 'with' not in cols:
+                        indici.append(f"{cols['key'].upper()} (`{cols['column']}`)")
+            if 'with' in cols.keys() and 'column' in cols.keys():
+                indici.append(f"UNIQUE (`{cols['column']}`,`{cols['with']}`)")
             columns.append(strcolumn)
-            strcolumns = ', '.join(map(str, columns))
+        strkeys = ', '.join(map(str, indici))
+        columns.append(strkeys)
+        strcolumns = ', '.join(map(str, columns))
         query = f'CREATE TABLE IF NOT EXISTS `{table}` ({strcolumns})'
         try:
             self.cursor.execute(query)

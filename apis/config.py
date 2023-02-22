@@ -34,18 +34,24 @@ def config_node():
     Input - None
     Output - Return the list of nodes.
     """
+    # ---------------------------- NOTE NOTE NOTE ---------------------------
+    # we need two queries as a join is great but not holy. as soon as we know the absolute minimum/mandatory field/attributes for a node we can finetune
+    # this is also for the other functions/methods/or_whatever_you_call_These_in_python down below. it needs updating or finetuning. pending. -Antoine
+    # -----------------------------------------------------------------------
     nodes = Database().get_record(None, 'node', None)
+    nodesfull = Database().get_record_join(['node.*','group.name AS group','osimage.name AS osimage'], ['group.id=node.groupid','osimage.id=group.osimageid'])
+    nodes+=nodesfull
     if nodes:
         response = {'config': {'node': {} }}
         for node in nodes:
             node_name = node['name']
             nodeid = node['id']
-            if node['bmcsetupid']:
-                node['bmcsetup'] = Database().getname_byid('bmcsetup', node['bmcsetupid'])
-            if node['groupid']:
-                node['group'] = Database().getname_byid('group', node['groupid'])
-            if node['osimageid']:
-                node['osimage'] = Database().getname_byid('osimage', node['osimageid'])
+#            if node['bmcsetupid']:
+#                node['bmcsetup'] = Database().getname_byid('bmcsetup', node['bmcsetupid'])
+#            if node['groupid']:
+#                node['group'] = Database().getname_byid('group', node['groupid'])
+#            if node['osimageid']:
+#                node['osimage'] = Database().getname_byid('osimage', node['osimageid'])
             if node['switchid']:
                 node['switch'] = Database().getname_byid('switch', node['switchid'])
             # del node['name']
@@ -60,15 +66,10 @@ def config_node():
             node['netboot'] = Helper().bool_revert(node['netboot'])
             node['service'] = Helper().bool_revert(node['service'])
             node['setupbmc'] = Helper().bool_revert(node['setupbmc'])
-            where = f' WHERE nodeid = "{nodeid}"'
-            node_interface = Database().get_record(None, 'nodeinterface', where)
+            node_interface = Database().get_record_join(['nodeinterface.interface','ipaddress.ipaddress','nodeinterface.macaddress','network.name as network'], ['network.id=ipaddress.networkid','ipaddress.tablerefid=nodeinterface.id'],['tableref="nodeinterface"',f"nodeinterface.nodeid='{nodeid}'"])
             if node_interface:
                 node['interfaces'] = []
                 for interface in node_interface:
-                    interface['network'] = Database().getname_byid('network',interface['networkid'])
-                    del interface['nodeid']
-                    del interface['id']
-                    del interface['networkid']
                     node['interfaces'].append(interface)
             response['config']['node'][node_name] = node
         LOGGER.info('Provided list of all nodes.')
@@ -77,6 +78,7 @@ def config_node():
         LOGGER.error('No nodes are available.')
         response = {'message': 'No nodes are available.'}
         access_code = 404
+    LOGGER.info(f"my response: [{response}]")
     return json.dumps(response), access_code
 
 
@@ -88,17 +90,19 @@ def config_node_get(name=None):
     Output - Return the node information.
     """
     node = Database().get_record(None, 'node', f' WHERE name = "{name}"')
+    nodefull = Database().get_record_join(['node.*','group.name AS group','osimage.name AS osimage'], ['group.id=node.groupid','osimage.id=group.osimageid'],f"node.name='{name}'")
+    node+=nodefull
     if node:
         response = {'config': {'node': {} }}
         node = node[0]
         nodename = node['name']
         nodeid = node['id']
-        if node['bmcsetupid']:
-            node['bmcsetup'] = Database().getname_byid('bmcsetup', node['bmcsetupid'])
-        if node['groupid']:
-            node['group'] = Database().getname_byid('group', node['groupid'])
-        if node['osimageid']:
-            node['osimage'] = Database().getname_byid('osimage', node['osimageid'])
+#        if node['bmcsetupid']:
+#            node['bmcsetup'] = Database().getname_byid('bmcsetup', node['bmcsetupid'])
+#        if node['groupid']:
+#            node['group'] = Database().getname_byid('group', node['groupid'])
+#        if node['osimageid']:
+#            node['osimage'] = Database().getname_byid('osimage', node['osimageid'])
         if node['switchid']:
             node['switch'] = Database().getname_byid('switch', node['switchid'])
         # del node['name']
@@ -113,14 +117,10 @@ def config_node_get(name=None):
         node['netboot'] = Helper().bool_revert(node['netboot'])
         node['service'] = Helper().bool_revert(node['service'])
         node['setupbmc'] = Helper().bool_revert(node['setupbmc'])
-        node_interface = Database().get_record(None, 'nodeinterface', f' WHERE nodeid = "{nodeid}"')
+        node_interface = Database().get_record_join(['nodeinterface.interface','ipaddress.ipaddress','nodeinterface.macaddress','network.name as network'], ['network.id=ipaddress.networkid','ipaddress.tablerefid=nodeinterface.id'],['tableref="nodeinterface"',f"nodeinterface.nodeid='{nodeid}'"])
         if node_interface:
             node['interfaces'] = []
             for interface in node_interface:
-                interface['network'] = Database().getname_byid('network', interface['networkid'])
-                del interface['nodeid']
-                del interface['id']
-                del interface['networkid']
                 node['interfaces'].append(interface)
         response['config']['node'][nodename] = node
         LOGGER.info('Provided list of all nodes.')
@@ -133,7 +133,7 @@ def config_node_get(name=None):
 
 
 @config_blueprint.route('/config/node/<string:name>', methods=['POST'])
-###@token_required
+@token_required
 def config_node_post(name=None):
     """
     Input - Node name
@@ -154,7 +154,7 @@ def config_node_post(name=None):
         node = Database().get_record(None, 'node', f' WHERE name = "{name}"')
         if node:
             nodeid = node[0]['id']
-            if 'newnodename' in data:
+            if 'newnodename' in data:  # is mentioned as newhostname in design documents!
                 nodename_new = data['newnodename']
                 where = f' WHERE `name` = "{nodename_new}";'
                 newnode_check = Database().get_record(None, 'node', where)
@@ -249,24 +249,57 @@ def config_node_post(name=None):
                 for interface in interfaces:
                     networkid = Database().getid_byname('network', interface['network'])
                     if networkid is None:
-                        response = {'message': f'Bad Request; Network {networkid} not exist.'}
+                        response = {'message': f"Bad Request; Network {interface['network']} not exist."}
                         access_code = 400
                         return json.dumps(response), access_code
                     else:
-                        interface['networkid'] = networkid
                         interface['nodeid'] = nodeid
-                        del interface['network']
-                    interface_name = interface['interface']
-                    node_clause = f'nodeid = "{nodeid}"'
-                    network_clause = f'networkid = "{networkid}"'
-                    interface_clause = f'interface = "{interface_name}"'
-                    where = f' WHERE {node_clause} AND {network_clause} AND {interface_clause}'
-                    check_interface = Database().get_record(None, 'nodeinterface', where)
-                    if not check_interface:
-                        row = Helper().make_rows(interface)
-                        result = Database().insert('nodeinterface', row)
-                        LOGGER.info(f"Interface created => {result} .")
 
+                    # Antoine
+                    interface_name = interface['interface']
+                    my_ipaddress={}
+                    my_interface={}
+                    my_interface['interface']=interface['interface']                
+                    my_interface['nodeid']=nodeid                
+                    if 'macaddress' in interface.keys():
+                        my_interface['macaddress']=interface['macaddress'] 
+                    if 'ipaddress' in interface.keys():
+                        my_ipaddress['ipaddress']=interface['ipaddress']
+                        network_details = Database().get_record(None, 'network', f'WHERE id={networkid}')
+                        network_range,network_subnet=network_details[0]['network'].split('/')
+                        if (not network_subnet) and network_details[0]['subnet']:
+                            network_subnet=network_details[0]['subnet']
+                        valid_ip = Helper().check_ip_range(interface['ipaddress'], f"{network_range}/{network_subnet}")
+                        if valid_ip is False:
+                            response = {'message': f"invalid IP address for {interface_name}. Network {network_details[0]['name']}: {network_range}/{network_subnet}"}
+                            access_code = 500
+                            break
+                    my_ipaddress['networkid']=networkid
+                    result_ip=False
+                    check_interface = Database().get_record(None, 'nodeinterface', f'WHERE nodeid = "{nodeid}" AND interface = "{interface_name}"')
+                    if not check_interface:
+                        row = Helper().make_rows(my_interface)
+                        tablerefid = Database().insert('nodeinterface', row)
+                        if tablerefid:
+                            my_ipaddress['tableref']='nodeinterface'
+                            my_ipaddress['tablerefid']=tablerefid
+                            row = Helper().make_rows(my_ipaddress)
+                            result_ip = Database().insert('ipaddress', row)
+                            LOGGER.info(f"Interface created => {tablerefid}+{result_ip} .")
+                        else:
+                            LOGGER.info(f"Interface create failure => {tablerefid}.")
+                    else: # interface already exists so we tread lightly
+                        row = Helper().make_rows(my_ipaddress)
+                        where = [{"column": "tableref", "value": "nodeinterface"}, {"column": "tablerefid", "value": check_interface[0]['id']}]
+                        result_ip = Database().update('ipaddress', row, where)
+                        LOGGER.info(f"Interface updated => {result_ip} .")
+                    if result_ip is False:
+                        response = {'message': f'unable to add/update interface {interface_name}.'}
+                        access_code = 500
+                        break
+                    else :
+                        response = {'message': 'Interface updated.'}
+                        access_code = 204
         else:
             response = {'message': 'Bad Request; Columns are incorrect.'}
             access_code = 400
@@ -277,7 +310,7 @@ def config_node_post(name=None):
 
 
 @config_blueprint.route('/config/node/<string:name>/_delete', methods=['GET'])
-###@token_required
+@token_required
 def config_node_delete(name=None):
     """
     Input - Node Name
@@ -286,9 +319,14 @@ def config_node_delete(name=None):
     """
     node = Database().get_record(None, 'node', f' WHERE `name` = "{name}";')
     if node:
+        nodeid=node[0]['id']
         Database().delete_row('node', [{"column": "name", "value": name}])
-        Database().delete_row('nodeinterface', [{"column": "nodeid", "value": node[0]['id']}])
-        Database().delete_row('nodesecrets', [{"column": "nodeid", "value": node[0]['id']}])
+        ipaddress = Database().get_record_join(['ipaddress.id'], ['ipaddress.tablerefid=nodeinterface.id'], ['tableref="nodeinterface"',f"nodeinterface.nodeid='{nodeid}'"])
+        if ipaddress:
+            for ip in ipaddress:
+                Database().delete_row('ipaddress', [{"column": "id", "value": ip[id]}])
+        Database().delete_row('nodeinterface', [{"column": "nodeid", "value": nodeid}])
+        Database().delete_row('nodesecrets', [{"column": "nodeid", "value": nodeid}])
         response = {'message': f'Node {name} with all its interfaces removed.'}
         access_code = 204
     else:
@@ -309,17 +347,13 @@ def config_node_get_interfaces(name=None):
     if node:
         response = {'config': {'node': {name: {'interfaces': [] } } } }
         nodeid = node[0]['id']
-        where = f' WHERE nodeid = "{nodeid}"'
-        node_interfaces = Database().get_record(None, 'nodeinterface', where)
+        node_interfaces = Database().get_record_join(['network.name as network','nodeinterface.macaddress','nodeinterface.interface','ipaddress.ipaddress'], ['ipaddress.tablerefid=nodeinterface.id','network.id=ipaddress.networkid'], ['tableref="nodeinterface"',f"nodeinterface.nodeid='{nodeid}'"])
         if node_interfaces:
-            new_interfaces = []
+            my_interface = []
             for interface in node_interfaces:
-                interface['network'] = Database().getname_byid('network', interface['networkid'])
-                del interface['nodeid']
-                del interface['id']
-                del interface['networkid']
-                new_interfaces.append(interface)
-            response['config']['node'][name]['interfaces'] = new_interfaces
+                my_interface.append(interface)
+                response['config']['node'][name]['interfaces'] = my_interface
+
             LOGGER.info(f'Returned group {name} with details.')
             access_code = 200
         else:
@@ -334,7 +368,7 @@ def config_node_get_interfaces(name=None):
 
 
 @config_blueprint.route("/config/node/<string:name>/interfaces", methods=['POST'])
-###@token_required
+@token_required
 def config_node_post_interfaces(name=None):
     """
     Input - Node Name
@@ -351,6 +385,8 @@ def config_node_post_interfaces(name=None):
         node = Database().get_record(None, 'node', f' WHERE name = "{name}"')
         if node:
             nodeid = node[0]['id']
+
+
             if 'interfaces' in request_data['config']['node'][name]:
                 for interface in request_data['config']['node'][name]['interfaces']:
                     networkid = Database().getid_byname('network', interface['network'])
@@ -362,17 +398,52 @@ def config_node_post_interfaces(name=None):
                         interface['networkid'] = networkid
                         interface['nodeid'] = nodeid
                         del interface['network']
+
+                    # Antoine
                     interface_name = interface['interface']
-                    node_clause = f'nodeid = "{nodeid}"'
-                    network_clause = f'networkid = "{networkid}"'
-                    interface_clause = f'interface = "{interface_name}"'
-                    where = f' WHERE {node_clause} AND {network_clause} AND {interface_clause}'
-                    interface_check = Database().get_record(None, 'nodeinterface', where)
-                    if not interface_check:
-                        row = Helper().make_rows(interface)
-                        Database().insert('nodeinterface', row)
-                    response = {'message': 'Interface updated.'}
-                    access_code = 204
+                    my_ipaddress={}
+                    my_interface={}
+                    my_interface['interface']=interface['interface']                
+                    my_interface['nodeid']=nodeid                
+                    if 'macaddress' in interface.keys():
+                        my_interface['macaddress']=interface['macaddress'] 
+                    if 'ipaddress' in interface.keys():
+                        my_ipaddress['ipaddress']=interface['ipaddress']
+                        network_details = Database().get_record(None, 'network', f'WHERE id={networkid}')
+                        network_range,network_subnet=network_details[0]['network'].split('/')
+                        if (not network_subnet) and network_details[0]['subnet']:
+                            network_subnet=network_details[0]['subnet']
+                        valid_ip = Helper().check_ip_range(interface['ipaddress'], f"{network_range}/{network_subnet}")
+                        if valid_ip is False:
+                            response = {'message': f"invalid IP address for {interface_name}. Network {network_details[0]['name']}: {network_range}/{network_subnet}"}
+                            access_code = 500
+                            break
+                    my_ipaddress['networkid']=networkid
+                    result_ip=False
+                    check_interface = Database().get_record(None, 'nodeinterface', f'WHERE nodeid = "{nodeid}" AND interface = "{interface_name}"')
+                    if not check_interface:
+                        row = Helper().make_rows(my_interface)
+                        tablerefid = Database().insert('nodeinterface', row)
+                        if tablerefid:
+                            my_ipaddress['tableref']='nodeinterface'
+                            my_ipaddress['tablerefid']=tablerefid
+                            row = Helper().make_rows(my_ipaddress)
+                            result_ip = Database().insert('ipaddress', row)
+                            LOGGER.info(f"Interface created => {tablerefid}+{result_ip} .")
+                        else:
+                            LOGGER.info(f"Interface create failure => {tablerefid}.")
+                    else: # interface already exists so we tread lightly
+                        row = Helper().make_rows(my_ipaddress)
+                        where = [{"column": "tableref", "value": "nodeinterface"}, {"column": "tablerefid", "value": check_interface[0]['id']}]
+                        result_ip = Database().update('ipaddress', row, where)
+                        LOGGER.info(f"Interface updated => {result_ip} .")
+                    if result_ip is False:
+                        response = {'message': f'unable to add/update interface {interface_name}.'}
+                        access_code = 500
+                        break
+                    else :
+                        response = {'message': 'Interface updated.'}
+                        access_code = 204
             else:
                 LOGGER.error('Kindly provide the interface.')
                 response = {'message': 'Kindly provide the interface.'}
@@ -399,17 +470,13 @@ def config_node_interface_get(name=None, interface=None):
     if node:
         response = {'config': {'node': {name: {'interfaces': [] } } } }
         nodeid = node[0]['id']
-        where = f' WHERE nodeid = "{nodeid}" AND interface = "{interface}"'
-        node_interfaces = Database().get_record(None, 'nodeinterface', where)
+        node_interfaces = Database().get_record_join(['network.name as network','nodeinterface.macaddress','nodeinterface.interface','ipaddress.ipaddress'], ['ipaddress.tablerefid=nodeinterface.id','network.id=ipaddress.networkid'], ['tableref="nodeinterface"',f"nodeinterface.nodeid='{nodeid}'"])
         if node_interfaces:
-            new_interface = []
-            for ifx in node_interfaces:
-                ifx['network'] = Database().getname_byid('network', ifx['networkid'])
-                del ifx['nodeid']
-                del ifx['id']
-                del ifx['networkid']
-                new_interface.append(ifx)
-            response['config']['node'][name]['interfaces'] = new_interface
+            my_interface = []
+            for interface in node_interfaces:
+                my_interface.append(interface)
+                response['config']['node'][name]['interfaces'] = my_interface
+
             LOGGER.info(f'Returned group {name} with details.')
             access_code = 200
         else:
@@ -425,7 +492,7 @@ def config_node_interface_get(name=None, interface=None):
 
 
 @config_blueprint.route("/config/node/<string:name>/interfaces/<string:interface>/_delete", methods=['GET'])
-###@token_required
+@token_required
 def config_node_delete_interface(name=None, interface=None):
     """
     Input - Node Name & Interface Name
@@ -436,9 +503,11 @@ def config_node_delete_interface(name=None, interface=None):
     if node:
         nodeid = node[0]['id']
         where = f' WHERE `interface` = "{interface}" AND `nodeid` = "{nodeid}";'
-        node_interface = Database().get_record(None, 'nodeinterface', where)
+        node_interface = Database().get_record_join(['nodeinterface.id as ifid','ipaddress.id as ipid'], ['ipaddress.tablerefid=nodeinterface.id'], ['tableref="nodeinterface"',f"nodeinterface.nodeid='{nodeid}'",f"nodeinterface.interface='{interface}'"])
         if node_interface:
-            where = [{"column": "id", "value": node_interface[0]['id']}]
+            where = [{"column": "id", "value": node_interface[0]['ipid']}]
+            Database().delete_row('ipaddress', where)
+            where = [{"column": "id", "value": node_interface[0]['ifid']}]
             Database().delete_row('nodeinterface', where)
             response = {'message': f'Node {name} interface {interface} removed successfully.'}
             access_code = 204
@@ -789,7 +858,7 @@ def config_group_post_interfaces(name=None):
 
 
 @config_blueprint.route("/config/group/<string:name>/interfaces/<string:interface>/_delete", methods=['GET'])
-###@token_required
+@token_required
 def config_group_delete_interface(name=None, interface=None):
     """
     Input - Group Name & Interface Name
@@ -864,7 +933,7 @@ def config_osimage_get(name=None):
 
 
 @config_blueprint.route("/config/osimage/<string:name>", methods=['POST'])
-###@token_required
+@token_required
 def config_osimage_post(name=None):
     """
     Input - OS Image Name
@@ -939,7 +1008,7 @@ def config_osimage_post(name=None):
 
 
 @config_blueprint.route("/config/osimage/<string:name>/_delete", methods=['GET'])
-###@token_required
+@token_required
 def config_osimage_delete(name=None):
     """
     Input - OS Image ID or Name
@@ -958,7 +1027,7 @@ def config_osimage_delete(name=None):
 
 
 @config_blueprint.route("/config/osimage/<string:name>/_clone", methods=['POST'])
-###@token_required
+@token_required
 def config_osimage_clone(name=None):
     """
     Input - OS Image Name
@@ -1017,7 +1086,7 @@ def config_osimage_clone(name=None):
 
 
 @config_blueprint.route("/config/osimage/<string:name>/pack", methods=['GET'])
-###@token_required
+@token_required
 def config_osimage_pack(name=None):
     """
     Input - OS Image ID or Name
@@ -1031,7 +1100,7 @@ def config_osimage_pack(name=None):
 
 
 @config_blueprint.route("/config/osimage/<string:name>/kernel", methods=['POST'])
-###@token_required
+@token_required
 def config_osimage_kernel_post(name=None):
     """
     Input - OS Image Name
@@ -1116,7 +1185,7 @@ def config_cluster():
 
 
 @config_blueprint.route("/config/cluster", methods=['POST'])
-###@token_required
+@token_required
 def config_cluster_post():
     """
     Input - None
@@ -1204,7 +1273,7 @@ def config_bmcsetup_get(bmcname=None):
 
 
 @config_blueprint.route("/config/bmcsetup/<string:bmcname>", methods=['POST'])
-###@token_required
+@token_required
 def config_bmcsetup_post(bmcname=None):
     """
     Input - BMC Setup ID or Name
@@ -1257,7 +1326,7 @@ def config_bmcsetup_post(bmcname=None):
 
 
 @config_blueprint.route("/config/bmcsetup/<string:bmcname>/_clone", methods=['POST'])
-###@token_required
+@token_required
 def config_bmcsetup_clone(bmcname=None):
     """
     Input - BMC Setup ID or Name
@@ -1316,7 +1385,7 @@ def config_bmcsetup_clone(bmcname=None):
 
 
 @config_blueprint.route("/config/bmcsetup/<string:bmcname>/_delete", methods=['GET'])
-###@token_required
+@token_required
 def config_bmcsetup_delete(bmcname=None):
     """
     Input - BMC Setup ID or Name
@@ -1350,14 +1419,12 @@ def config_switch():
         response = {'config': {'switch': { } }}
         for switch in switches:
             switchname = switch['name']
-            where = f' WHERE id = {switch["ipaddress"]}'
-            switchip = Database().get_record(None, 'ipaddress', where)
-            LOGGER.debug(f'With Switch {switchname} attached IP ROWs {switchip}')
-            if switchip:
-                switch['ipaddress'] = switchip[0]["ipaddress"]
-            del switch['id']
-            # del switch['name']
             response['config']['switch'][switchname] = switch
+            #Antoine
+            switch_ips = Database().get_record_join(['network.name as network','ipaddress.ipaddress'], ['ipaddress.tablerefid=switch.id','network.id=ipaddress.networkid'], ['tableref="switch"',f"tablerefid='{switch['id']}'"])
+            if switch_ips:
+                response['config']['switch'][switchname]['ipaddress'] = switch_ips[0]['ipaddress']
+                response['config']['switch'][switchname]['network'] = switch_ips[0]['network']
         LOGGER.info(f'available Switches are {switches}.')
         access_code = 200
     else:
@@ -1380,14 +1447,12 @@ def config_switch_get(switch=None):
         response = {'config': {'switch': { } }}
         for switch in switches:
             switchname = switch['name']
-            where = f' WHERE id = {switch["ipaddress"]}'
-            switchip = Database().get_record(None, 'ipaddress', where)
-            LOGGER.debug(f'With Switch {switchname} attached IP ROWs {switchip}')
-            if switchip:
-                switch['ipaddress'] = switchip[0]["ipaddress"]
-            del switch['id']
-            # del switch['name']
             response['config']['switch'][switchname] = switch
+            #Antoine
+            switch_ips = Database().get_record_join(['network.name as network','ipaddress.ipaddress'], ['ipaddress.tablerefid=switch.id','network.id=ipaddress.networkid'], ['tableref="switch"',f"tablerefid='{switch['id']}'"])
+            if switch_ips:
+                response['config']['switch'][switchname]['ipaddress'] = switch_ips[0]['ipaddress']
+                response['config']['switch'][switchname]['network'] = switch_ips[0]['network']
         LOGGER.info(f'available Switches are {switches}.')
         access_code = 200
     else:
@@ -1405,6 +1470,7 @@ def config_switch_post(switch=None):
     Process - Fetch The Switch Information.
     Output - Switch Details.
     """
+    network=False
     data = {}
     create, update = False, False
     if Helper().check_json(request.data):
@@ -1426,13 +1492,19 @@ def config_switch_post(switch=None):
         else:
             create = True
         switchcolumns = Database().get_columns('switch')
+        if 'ipaddress' in data.keys():
+            ipaddress=data['ipaddress']
+            del data['ipaddress']
+        if 'network' in data.keys():
+            network=data['network']
+            del data['network']
         columncheck = Helper().checkin_list(data, switchcolumns)
         data = Helper().check_ip_exist(data)
         if data:
             row = Helper().make_rows(data)
             if columncheck:
                 if create:
-                    Database().insert('switch', row)
+                    switchid=Database().insert('switch', row)
                     response = {'message': 'Switch created.'}
                     access_code = 201
                 if update:
@@ -1443,11 +1515,49 @@ def config_switch_post(switch=None):
             else:
                 response = {'message': 'Bad Request; Columns are incorrect.'}
                 access_code = 400
-                return json.dumps(response), access_code
+        #Antoine
+        # ----------- interface(s) update/create -------------
+        if network:
+            networkid = Database().getid_byname('network', network)
         else:
-            response = {'message': 'Bad Request; IP address already exist in the database.'}
-            access_code = 400
-            return json.dumps(response), access_code
+            network_details = Database().get_record_join(['network.name as network','network.id'], ['ipaddress.tablerefid=switch.id','network.id=ipaddress.networkid'], ['tableref="switch"',f"switch.name='{switch}'"])
+            if network_details:
+                networkid=network_details[0]['id']
+            else:
+                response = {'message': f'Bad Request; Network not specified.'}
+                access_code = 400
+                return json.dumps(response), access_code
+        if ipaddress and switchid:
+            my_ipaddress={}
+            my_ipaddress['networkid']=networkid
+            result_ip=False
+            network_details = Database().get_record(None, 'network', f'WHERE id={networkid}')
+            network_range,network_subnet=network_details[0]['network'].split('/')
+            if (not network_subnet) and network_details[0]['subnet']:
+                network_subnet=network_details[0]['subnet']
+            valid_ip = Helper().check_ip_range(ipaddress, f"{network_range}/{network_subnet}")
+            LOGGER.info(f"Ipaddress {ipaddress} for switch {switch} is [{valid_ip}]")
+            if valid_ip is False:
+                response = {'message': f"invalid IP address for {switch}. Network {network_details[0]['name']}: {network_range}/{network_subnet}"}
+                access_code = 500
+                return json.dumps(response), access_code
+            my_ipaddress['ipaddress']=ipaddress
+            check_ip = Database().get_record(None, 'ipaddress', f'WHERE tablerefid = "{switchid}" AND tableref = "switch"')
+            if check_ip:
+                row = Helper().make_rows(my_ipaddress)
+                where = [{"column": "tablerefid", "value": switchid},{"column": "tableref", "value": "switch"}]
+                Database().update('ipaddress', row, where)
+            else:
+                my_ipaddress['tableref']='switch'
+                my_ipaddress['tablerefid']=switchid
+                row = Helper().make_rows(my_ipaddress)
+                result_ip=Database().insert('ipaddress', row)
+                LOGGER.info(f"IP for switch created => {result_ip}.")
+
+                if result_ip is False:
+                    response = {'message': 'Bad Request; IP address assignment failed.'}
+                    access_code = 400
+                    return json.dumps(response), access_code
     else:
         response = {'message': 'Bad Request; Did not received data.'}
         access_code = 400
@@ -1490,6 +1600,10 @@ def config_switch_clone(switch=None):
             return json.dumps(response), access_code
         else:
             create = True
+        if 'ipaddress' in data:
+            del data['ipaddress']
+        if 'network' in data:
+            del data['network']
         switchcolumns = Database().get_columns('switch')
         columncheck = Helper().checkin_list(data, switchcolumns)
         data = Helper().check_ip_exist(data)
@@ -1527,8 +1641,8 @@ def config_switch_delete(switch=None):
     """
     checkswitch = Database().get_record(None, 'switch', f' WHERE `name` = "{switch}";')
     if checkswitch:
-        Database().delete_row('ipaddress', [{"column": "id", "value": checkswitch[0]['ipaddress']}])
-        Database().delete_row('switch', [{"column": "name", "value": switch}])
+        Database().delete_row('ipaddress', [{"column": "tablerefid", "value": checkswitch[0]['id']},{"column": "tableref", "value": "switch"}])
+        Database().delete_row('switch', [{"column": "id", "value": checkswitch[0]['id']}])
         response = {'message': 'Switch removed.'}
         access_code = 204
     else:
@@ -1553,14 +1667,12 @@ def config_otherdev():
         response = {'config': {'otherdev': { } }}
         for device in devices:
             devicename = device['name']
-            where = f' WHERE id = {device["ipaddress"]}'
-            deviceip = Database().get_record(None, 'ipaddress', where)
-            LOGGER.debug(f'With device {devicename} attached IP ROWs {deviceip}')
-            if deviceip:
-                device['ipaddress'] = deviceip[0]["ipaddress"]
-            del device['id']
-            # del device['name']
             response['config']['otherdev'][devicename] = device
+            #Antoine
+            otherdev_ips = Database().get_record_join(['network.name as network','ipaddress.ipaddress'], ['ipaddress.tablerefid=otherdevices.id','network.id=ipaddress.networkid'], ['tableref="otherdevices"',f"tablerefid='{device['id']}'"])
+            if otherdev_ips:
+                response['config']['otherdev'][devicename]['ipaddress'] = otherdev_ips[0]['ipaddress']
+                response['config']['otherdev'][devicename]['network'] = otherdev_ips[0]['network']
         LOGGER.info(f'available devices are {devices}.')
         access_code = 200
     else:
@@ -1583,14 +1695,12 @@ def config_otherdev_get(device=None):
         response = {'config': {'otherdev': { } }}
         for device in devices:
             devicename = device['name']
-            where = f' WHERE id = {device["ipaddress"]}'
-            deviceip = Database().get_record(None, 'ipaddress', where)
-            LOGGER.debug(f'With device {devicename} attached IP ROWs {deviceip}')
-            if deviceip:
-                device['ipaddress'] = deviceip[0]["ipaddress"]
-            del device['id']
-            # del device['name']
             response['config']['otherdev'][devicename] = device
+            #Antoine
+            otherdev_ips = Database().get_record_join(['network.name as network','ipaddress.ipaddress'], ['ipaddress.tablerefid=otherdevices.id','network.id=ipaddress.networkid'], ['tableref="otherdevices"',f"tablerefid='{device['id']}'"])
+            if otherdev_ips:
+                response['config']['otherdev'][devicename]['ipaddress'] = otherdev_ips[0]['ipaddress']
+                response['config']['otherdev'][devicename]['network'] = otherdev_ips[0]['network']
         LOGGER.info(f'available Devices are {devices}.')
         access_code = 200
     else:
@@ -1628,13 +1738,19 @@ def config_otherdev_post(device=None):
         else:
             create = True
         devicecolumns = Database().get_columns('otherdevices')
+        if 'ipaddress' in data.keys():
+            ipaddress=data['ipaddress']
+            del data['ipaddress']
+        if 'network' in data.keys():
+            network=data['network']
+            del data['network']
         columncheck = Helper().checkin_list(data, devicecolumns)
         data = Helper().check_ip_exist(data)
         if data:
             row = Helper().make_rows(data)
             if columncheck:
                 if create:
-                    Database().insert('otherdevices', row)
+                    deviceid=Database().insert('otherdevices', row)
                     response = {'message': 'Device created.'}
                     access_code = 201
                 if update:
@@ -1646,6 +1762,49 @@ def config_otherdev_post(device=None):
                 response = {'message': 'Bad Request; Columns are incorrect.'}
                 access_code = 400
                 return json.dumps(response), access_code
+        #Antoine
+        # ----------- interface(s) update/create -------------
+        if network:
+            networkid = Database().getid_byname('network', network)
+        else:
+            network_details = Database().get_record_join(['network.name as network','network.id'], ['ipaddress.tablerefid=otherdevices.id','network.id=ipaddress.networkid'], ['tableref="otherdevices"',f"switch.name='{device}'"])
+            if network_details:
+                networkid=network_details[0]['id']
+            else:
+                response = {'message': f'Bad Request; Network not specified.'}
+                access_code = 400
+                return json.dumps(response), access_code
+        if ipaddress and deviceid:
+            my_ipaddress={}
+            my_ipaddress['networkid']=networkid
+            result_ip=False
+            network_details = Database().get_record(None, 'network', f'WHERE id={networkid}')
+            network_range,network_subnet=network_details[0]['network'].split('/')
+            if (not network_subnet) and network_details[0]['subnet']:
+                network_subnet=network_details[0]['subnet']
+            valid_ip = Helper().check_ip_range(ipaddress, f"{network_range}/{network_subnet}")
+            LOGGER.info(f"Ipaddress {ipaddress} for otherdevice {device} is [{valid_ip}]")
+            if valid_ip is False:
+                response = {'message': f"invalid IP address for {device}. Network {network_details[0]['name']}: {network_range}/{network_subnet}"}
+                access_code = 500
+                return json.dumps(response), access_code
+            my_ipaddress['ipaddress']=ipaddress
+            check_ip = Database().get_record(None, 'ipaddress', f'WHERE tablerefid = "{deviceid}" AND tableref = "otherdevices"')
+            if check_ip:
+                row = Helper().make_rows(my_ipaddress)
+                where = [{"column": "tablerefid", "value": deviceid},{"column": "tableref", "value": "otherdevices"}]
+                Database().update('ipaddress', row, where)
+            else:
+                my_ipaddress['tableref']='otherdevices'
+                my_ipaddress['tablerefid']=deviceid
+                row = Helper().make_rows(my_ipaddress)
+                result_ip=Database().insert('ipaddress', row)
+                LOGGER.info(f"IP for switch created => {result_ip}.")
+
+                if result_ip is False:
+                    response = {'message': 'Bad Request; IP address assignment failed.'}
+                    access_code = 400
+
         else:
             response = {'message': 'Bad Request; IP address already exist in the database.'}
             access_code = 400
@@ -1692,9 +1851,13 @@ def config_otherdev_clone(device=None):
             return json.dumps(response), access_code
         else:
             create = True
+        if 'ipaddress' in data:
+            del data['ipaddress']
+        if 'network' in data:
+            del data['network']
         devicecolumns = Database().get_columns('otherdevices')
         columncheck = Helper().checkin_list(data, devicecolumns)
-        data = Helper().check_ip_exist(data)
+#        data = Helper().check_ip_exist(data)
         if data:
             row = Helper().make_rows(data)
             if columncheck:
@@ -1729,8 +1892,8 @@ def config_otherdev_delete(device=None):
     """
     checkdevice = Database().get_record(None, 'otherdevices', f' WHERE `name` = "{device}";')
     if checkdevice:
-        Database().delete_row('ipaddress', [{"column": "id", "value": checkdevice[0]['ipaddress']}])
-        Database().delete_row('otherdevices', [{"column": "name", "value": device}])
+        Database().delete_row('ipaddress', [{"column": "tablerefid", "value": checkdevice[0]['id']},{"column": "tableref", "value": "otherdevices"}])
+        Database().delete_row('otherdevices', [{"column": "id", "value": checkdevice[0]['id']}])
         response = {'message': 'Device removed.'}
         access_code = 204
     else:

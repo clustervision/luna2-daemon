@@ -687,4 +687,8 @@ class Helper(object):
 
     # -----------------------------------------------------------------
 
+    def cidr_to_netmask(self,subnet):
+        ip = IPNetwork(f'0.0.0.0/{subnet}')
+        return str(ip.netmask)
+
 

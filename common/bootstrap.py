@@ -214,15 +214,36 @@ def bootstrap(bootstrapfile=None):
     Database().insert('cluster', default_cluster)
     cluster = Database().get_record(None, 'cluster', None)
     clusterid = cluster[0]['id']
+    for nwkx in BOOTSTRAP['NETWORKS'].keys():
+        default_network = [
+                {'column': 'name', 'value': str(nwkx)},
+                {'column': 'network', 'value': str(BOOTSTRAP['NETWORKS'][nwkx])},
+                {'column': 'dhcp', 'value': '0'},
+                {'column': 'ns_hostname', 'value': BOOTSTRAP['HOSTS']['HOSTNAME']},
+                {'column': 'ns_ip', 'value': BOOTSTRAP['HOSTS']['CONTROLLER1']},
+                {'column': 'gateway', 'value': BOOTSTRAP['HOSTS']['CONTROLLER1']},
+                {'column': 'ntp_server', 'value': BOOTSTRAP['HOSTS']['CONTROLLER1']}
+            ]
+        Database().insert('network', default_network)
+    network = Database().get_record(None, 'network', None)
+    networkid = network[0]['id']
     num  = 1
     for hosts in BOOTSTRAP['HOSTS']:
         if f'CONTROLLER{num}' in BOOTSTRAP['HOSTS'].keys():
             default_controller = [
-                {'column': 'ipaddr', 'value': BOOTSTRAP['HOSTS'][f'CONTROLLER{num}']},
                 {'column': 'hostname', 'value': BOOTSTRAP['HOSTS']['HOSTNAME']},
+                {'column': 'serverport', 'value': BOOTSTRAP['HOSTS']['SERVERPORT']},
                 {'column': 'clusterid', 'value': clusterid}
                 ]
-            Database().insert('controller', default_controller)
+            controller_id=Database().insert('controller', default_controller)
+            if controller_id:
+                controller_ip = [
+                    {'column': 'tableref', 'value': 'controller'},
+                    {'column': 'tablerefid', 'value': controller_id},
+                    {'column': 'ipaddress', 'value': BOOTSTRAP['HOSTS'][f'CONTROLLER{num}']}
+                ]
+                # we did not specify a network! this means that we will not use it. not a biggy but we cannot verify nor use this kind of info --> api/boot.py
+                Database().insert('ipaddress', controller_ip)
         num = num + 1
     default_group = [
             {'column': 'name', 'value': str(BOOTSTRAP['GROUPS']['NAME'])},
@@ -251,19 +272,6 @@ def bootstrap(bootstrapfile=None):
                 {'column': 'provisionfallback', 'value': 'http'}
             ]
         Database().insert('node', default_node)
-    for nwkx in BOOTSTRAP['NETWORKS'].keys():
-        default_network = [
-                {'column': 'name', 'value': str(nwkx)},
-                {'column': 'network', 'value': str(BOOTSTRAP['NETWORKS'][nwkx])},
-                {'column': 'dhcp', 'value': '0'},
-                {'column': 'ns_hostname', 'value': BOOTSTRAP['HOSTS']['HOSTNAME']},
-                {'column': 'ns_ip', 'value': BOOTSTRAP['HOSTS']['CONTROLLER1']},
-                {'column': 'gateway', 'value': BOOTSTRAP['HOSTS']['CONTROLLER1']},
-                {'column': 'ntp_server', 'value': BOOTSTRAP['HOSTS']['CONTROLLER1']}
-            ]
-        Database().insert('network', default_network)
-    network = Database().get_record(None, 'network', None)
-    networkid = network[0]['id']
     default_group_interface = [
             {'column': 'groupid', 'value': '1'},
             {'column': 'interfacename', 'value': 'BOOTIF'},

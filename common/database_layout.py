@@ -49,7 +49,7 @@ DATABASE_LAYOUT_nodesecrets = [
 DATABASE_LAYOUT_nodeinterface = [
 {"column": "id",                   "datatype": "INTEGER", "key": "PRIMARY", "keyadd": "AUTOINCREMENT"},
 {"column": "nodeid",               "datatype": "INTEGER", "length": "10", "key": "UNIQUE", "with": "interface"},
-{"column": "macaddress",           "datatype": "VARCHAR", "length": "200"},
+{"column": "macaddress",           "datatype": "VARCHAR", "length": "200", "key": "UNIQUE"},
 {"column": "interface",            "datatype": "VARCHAR", "length": "50"}]
 
 DATABASE_LAYOUT_bmcsetup = [
@@ -146,11 +146,10 @@ DATABASE_LAYOUT_otherdevices = [
 
 DATABASE_LAYOUT_controller = [
 {"column": "id",                   "datatype": "INTEGER", "key": "PRIMARY", "keyadd": "AUTOINCREMENT"},
+{"column": "hostname",             "datatype": "VARCHAR", "length": "100", "key": "UNIQUE"},
 {"column": "clusterid",            "datatype": "INTEGER", "length": "10"},
-{"column": "hostname",             "datatype": "VARCHAR", "length": "100"},
 {"column": "status",               "datatype": "VARCHAR", "length": "20"},
-{"column": "ipaddr",               "datatype": "VARCHAR", "length": "20"},
-{"column": "srverport",            "datatype": "INTEGER", "length": "10"}]
+{"column": "serverport",           "datatype": "INTEGER", "length": "10"}]
 
 DATABASE_LAYOUT_groupsecrets = [
 {"column": "id",                   "datatype": "INTEGER", "key": "PRIMARY", "keyadd": "AUTOINCREMENT"},

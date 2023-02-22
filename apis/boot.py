@@ -45,10 +45,10 @@ def boot():
     else:
         environment = jinja2.Environment()
         template = environment.from_string('No Controller is available.')
-        ipaddr, serverport = '', ''
+        ipaddress, serverport = '', ''
         access_code = 404
     LOGGER.info(f'Boot API serving the {template}')
-    return render_template(template, LUNA_CONTROLLER=ipaddr, LUNA_API_PORT=serverport), access_code
+    return render_template(template, LUNA_CONTROLLER=ipaddress, LUNA_API_PORT=serverport), access_code
 
 
 # ################### ---> Experiment to compare the logic
@@ -172,11 +172,12 @@ def boot_search_mac(mac=None):
             subnet=nodeinterface[0]['subnet']
         data['nodeip'] = f'{nodeinterface[0]["ipaddress"]}/{subnet}'
     if data['nodeid']:
-        node = Database().get_record(None, 'node', f' WHERE id = {data["nodeid"]}')
+        node = Database().get_record_join(['node.*','group.osimageid as grouposimageid'],['group.id=node.groupid'],[f'node.id={data["nodeid"]}'])
         if node:
-            data['osimageid'] = node[0]['osimageid']
+            data['osimageid'] = node[0]['osimageid'] or node[0]['grouposimageid']
             data['nodename'] = node[0]['name']
-            data['nodehostname'] = node[0]['hostname']
+#            data['nodehostname'] = node[0]['hostname']
+            data['nodehostname'] = node[0]['name'] # + fqdn - pending
             data['nodeservice'] = node[0]['service']
     if data['osimageid']:
         osimage = Database().get_record(None, 'osimage', f' WHERE id = {data["osimageid"]}')
@@ -194,6 +195,7 @@ def boot_search_mac(mac=None):
         environment = jinja2.Environment()
         template = environment.from_string('No Node is available for this mac address.')
         access_code = 404
+        LOGGER.info(f'template mac search data: {data}')
     LOGGER.info(f'Boot API serving the {template}')
     return render_template(
         template,

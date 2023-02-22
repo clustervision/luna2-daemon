@@ -363,6 +363,7 @@ class Database(object):
             wherelist.append(column)
             strwhere = ' AND '.join(map(str, wherelist))
         query = f'UPDATE "{table}" SET {strcolumns} WHERE {strwhere};'
+        self.logger.debug(f"Update Query ---> {query}")
         try:
             self.cursor.execute(query)
             self.connection.commit()

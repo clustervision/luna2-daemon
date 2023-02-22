@@ -274,6 +274,7 @@ def config_node_post(name=None):
                             response = {'message': f"invalid IP address for {interface_name}. Network {network_details[0]['name']}: {network_range}/{network_subnet}"}
                             access_code = 500
                             break
+
                     my_ipaddress['networkid']=networkid
                     result_ip=False
                     check_interface = Database().get_record(None, 'nodeinterface', f'WHERE nodeid = "{nodeid}" AND interface = "{interface_name}"')
@@ -289,12 +290,23 @@ def config_node_post(name=None):
                         else:
                             LOGGER.info(f"Interface create failure => {tablerefid}.")
                     else: # interface already exists so we tread lightly
+                        # --- first update ip related things -------------
                         row = Helper().make_rows(my_ipaddress)
                         where = [{"column": "tableref", "value": "nodeinterface"}, {"column": "tablerefid", "value": check_interface[0]['id']}]
                         result_ip = Database().update('ipaddress', row, where)
-                        LOGGER.info(f"Interface updated => {result_ip} .")
+                        LOGGER.info(f"Interface ipaddress updated => {result_ip} .")
+                        # --- then update if related things --------------
+                        row = Helper().make_rows(my_interface)
+                        where = [{"column": "id", "value": check_interface[0]['id']}]
+                        result_if=Database().update('nodeinterface', row, where)
+                        LOGGER.info(f"Interface nodeinterface updated => {result_if} .")
+
                     if result_ip is False:
-                        response = {'message': f'unable to add/update interface {interface_name}.'}
+                        response = {'message': f'unable to add/update ip info for interface {interface_name}.'}
+                        access_code = 500
+                        break
+                    elif result_if is False:
+                        response = {'message': f'unable to add/update interface info for interface {interface_name}.'}
                         access_code = 500
                         break
                     else :

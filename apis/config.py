@@ -34,7 +34,10 @@ def config_node():
     Input - None
     Output - Return the list of nodes.
     """
+    # ---------------------------- NOTE NOTE NOTE ---------------------------
     # we need two queries as a join is great but not holy. as soon as we know the absolute minimum/mandatory field/attributes for a node we can finetune
+    # this is also for the other functions/methods/or_whatever_you_call_These_in_python down below. it needs updating or finetuning. pending. -Antoine
+    # -----------------------------------------------------------------------
     nodes = Database().get_record(None, 'node', None)
     nodesfull = Database().get_record_join(['node.*','group.name AS group','osimage.name AS osimage'], ['group.id=node.groupid','osimage.id=group.osimageid'])
     nodes+=nodesfull
@@ -1467,6 +1470,7 @@ def config_switch_post(switch=None):
     Process - Fetch The Switch Information.
     Output - Switch Details.
     """
+    network=False
     data = {}
     create, update = False, False
     if Helper().check_json(request.data):
@@ -1488,13 +1492,13 @@ def config_switch_post(switch=None):
         else:
             create = True
         switchcolumns = Database().get_columns('switch')
-        columncheck = Helper().checkin_list(data, switchcolumns)
         if 'ipaddress' in data.keys():
             ipaddress=data['ipaddress']
             del data['ipaddress']
         if 'network' in data.keys():
             network=data['network']
             del data['network']
+        columncheck = Helper().checkin_list(data, switchcolumns)
         data = Helper().check_ip_exist(data)
         if data:
             row = Helper().make_rows(data)
@@ -1523,7 +1527,6 @@ def config_switch_post(switch=None):
                 response = {'message': f'Bad Request; Network not specified.'}
                 access_code = 400
                 return json.dumps(response), access_code
-        LOGGER.info(f"IP for switch => networkid = {networkid} .")
         if ipaddress and switchid:
             my_ipaddress={}
             my_ipaddress['networkid']=networkid
@@ -1532,13 +1535,13 @@ def config_switch_post(switch=None):
             network_range,network_subnet=network_details[0]['network'].split('/')
             if (not network_subnet) and network_details[0]['subnet']:
                 network_subnet=network_details[0]['subnet']
-                valid_ip = Helper().check_ip_range(ipaddress, f"{network_range}/{network_subnet}")
-                if valid_ip is False:
-                    response = {'message': f"invalid IP address for {interface_name}. Network {network_details[0]['name']}: {network_range}/{network_subnet}"}
-                    access_code = 500
-                    return json.dumps(response), access_code
+            valid_ip = Helper().check_ip_range(ipaddress, f"{network_range}/{network_subnet}")
+            LOGGER.info(f"Ipaddress {ipaddress} for switch {switch} is [{valid_ip}]")
+            if valid_ip is False:
+                response = {'message': f"invalid IP address for {switch}. Network {network_details[0]['name']}: {network_range}/{network_subnet}"}
+                access_code = 500
+                return json.dumps(response), access_code
             my_ipaddress['ipaddress']=ipaddress
-            LOGGER.info(f"IP for switch => ipaddress = {ipaddress} .")
             check_ip = Database().get_record(None, 'ipaddress', f'WHERE tablerefid = "{switchid}" AND tableref = "switch"')
             if check_ip:
                 row = Helper().make_rows(my_ipaddress)
@@ -1634,8 +1637,8 @@ def config_switch_delete(switch=None):
     """
     checkswitch = Database().get_record(None, 'switch', f' WHERE `name` = "{switch}";')
     if checkswitch:
-        Database().delete_row('ipaddress', [{"column": "id", "value": checkswitch[0]['ipaddress']}])
-        Database().delete_row('switch', [{"column": "name", "value": switch}])
+        Database().delete_row('ipaddress', [{"column": "tablerefid", "value": checkswitch[0]['id']},{"column": "tableref", "value": "switch"}])
+        Database().delete_row('switch', [{"column": "id", "value": checkswitch[0]['id']}])
         response = {'message': 'Switch removed.'}
         access_code = 204
     else:
@@ -1660,14 +1663,12 @@ def config_otherdev():
         response = {'config': {'otherdev': { } }}
         for device in devices:
             devicename = device['name']
-            where = f' WHERE id = {device["ipaddress"]}'
-            deviceip = Database().get_record(None, 'ipaddress', where)
-            LOGGER.debug(f'With device {devicename} attached IP ROWs {deviceip}')
-            if deviceip:
-                device['ipaddress'] = deviceip[0]["ipaddress"]
-            del device['id']
-            # del device['name']
             response['config']['otherdev'][devicename] = device
+            #Antoine
+            otherdev_ips = Database().get_record_join(['network.name as network','ipaddress.ipaddress'], ['ipaddress.tablerefid=otherdevices.id','network.id=ipaddress.networkid'], ['tableref="otherdevices"',f"tablerefid='{device['id']}'"])
+            if otherdev_ips:
+                response['config']['otherdev'][devicename]['ipaddress'] = otherdev_ips[0]['ipaddress']
+                response['config']['otherdev'][devicename]['network'] = otherdev_ips[0]['network']
         LOGGER.info(f'available devices are {devices}.')
         access_code = 200
     else:
@@ -1690,14 +1691,12 @@ def config_otherdev_get(device=None):
         response = {'config': {'otherdev': { } }}
         for device in devices:
             devicename = device['name']
-            where = f' WHERE id = {device["ipaddress"]}'
-            deviceip = Database().get_record(None, 'ipaddress', where)
-            LOGGER.debug(f'With device {devicename} attached IP ROWs {deviceip}')
-            if deviceip:
-                device['ipaddress'] = deviceip[0]["ipaddress"]
-            del device['id']
-            # del device['name']
             response['config']['otherdev'][devicename] = device
+            #Antoine
+            otherdev_ips = Database().get_record_join(['network.name as network','ipaddress.ipaddress'], ['ipaddress.tablerefid=otherdevices.id','network.id=ipaddress.networkid'], ['tableref="otherdevices"',f"tablerefid='{device['id']}'"])
+            if otherdev_ips:
+                response['config']['otherdev'][devicename]['ipaddress'] = otherdev_ips[0]['ipaddress']
+                response['config']['otherdev'][devicename]['network'] = otherdev_ips[0]['network']
         LOGGER.info(f'available Devices are {devices}.')
         access_code = 200
     else:
@@ -1735,13 +1734,19 @@ def config_otherdev_post(device=None):
         else:
             create = True
         devicecolumns = Database().get_columns('otherdevices')
+        if 'ipaddress' in data.keys():
+            ipaddress=data['ipaddress']
+            del data['ipaddress']
+        if 'network' in data.keys():
+            network=data['network']
+            del data['network']
         columncheck = Helper().checkin_list(data, devicecolumns)
         data = Helper().check_ip_exist(data)
         if data:
             row = Helper().make_rows(data)
             if columncheck:
                 if create:
-                    Database().insert('otherdevices', row)
+                    deviceid=Database().insert('otherdevices', row)
                     response = {'message': 'Device created.'}
                     access_code = 201
                 if update:
@@ -1753,6 +1758,49 @@ def config_otherdev_post(device=None):
                 response = {'message': 'Bad Request; Columns are incorrect.'}
                 access_code = 400
                 return json.dumps(response), access_code
+        #Antoine
+        # ----------- interface(s) update/create -------------
+        if network:
+            networkid = Database().getid_byname('network', network)
+        else:
+            network_details = Database().get_record_join(['network.name as network','network.id'], ['ipaddress.tablerefid=otherdevices.id','network.id=ipaddress.networkid'], ['tableref="otherdevices"',f"switch.name='{device}'"])
+            if network_details:
+                networkid=network_details[0]['id']
+            else:
+                response = {'message': f'Bad Request; Network not specified.'}
+                access_code = 400
+                return json.dumps(response), access_code
+        if ipaddress and deviceid:
+            my_ipaddress={}
+            my_ipaddress['networkid']=networkid
+            result_ip=False
+            network_details = Database().get_record(None, 'network', f'WHERE id={networkid}')
+            network_range,network_subnet=network_details[0]['network'].split('/')
+            if (not network_subnet) and network_details[0]['subnet']:
+                network_subnet=network_details[0]['subnet']
+            valid_ip = Helper().check_ip_range(ipaddress, f"{network_range}/{network_subnet}")
+            LOGGER.info(f"Ipaddress {ipaddress} for otherdevice {device} is [{valid_ip}]")
+            if valid_ip is False:
+                response = {'message': f"invalid IP address for {device}. Network {network_details[0]['name']}: {network_range}/{network_subnet}"}
+                access_code = 500
+                return json.dumps(response), access_code
+            my_ipaddress['ipaddress']=ipaddress
+            check_ip = Database().get_record(None, 'ipaddress', f'WHERE tablerefid = "{deviceid}" AND tableref = "otherdevices"')
+            if check_ip:
+                row = Helper().make_rows(my_ipaddress)
+                where = [{"column": "tablerefid", "value": deviceid},{"column": "tableref", "value": "otherdevices"}]
+                Database().update('ipaddress', row, where)
+            else:
+                my_ipaddress['tableref']='otherdevices'
+                my_ipaddress['tablerefid']=deviceid
+                row = Helper().make_rows(my_ipaddress)
+                result_ip=Database().insert('ipaddress', row)
+                LOGGER.info(f"IP for switch created => {result_ip}.")
+
+                if result_ip is False:
+                    response = {'message': 'Bad Request; IP address assignment failed.'}
+                    access_code = 400
+
         else:
             response = {'message': 'Bad Request; IP address already exist in the database.'}
             access_code = 400
@@ -1836,8 +1884,8 @@ def config_otherdev_delete(device=None):
     """
     checkdevice = Database().get_record(None, 'otherdevices', f' WHERE `name` = "{device}";')
     if checkdevice:
-        Database().delete_row('ipaddress', [{"column": "id", "value": checkdevice[0]['ipaddress']}])
-        Database().delete_row('otherdevices', [{"column": "name", "value": device}])
+        Database().delete_row('ipaddress', [{"column": "tablerefid", "value": checkdevice[0]['id']},{"column": "tableref", "value": "otherdevices"}])
+        Database().delete_row('otherdevices', [{"column": "id", "value": checkdevice[0]['id']}])
         response = {'message': 'Device removed.'}
         access_code = 204
     else:

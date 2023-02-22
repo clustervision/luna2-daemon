@@ -132,7 +132,7 @@ DATABASE_LAYOUT_user = [
 DATABASE_LAYOUT_switch = [
 {"column": "id",                   "datatype": "INTEGER", "key": "PRIMARY", "keyadd": "AUTOINCREMENT"},
 {"column": "name",                 "datatype": "VARCHAR", "length": "60"},
-{"column": "network",              "datatype": "VARCHAR", "length": "60"},
+{"column": "macaddress",           "datatype": "VARCHAR", "length": "60"},
 {"column": "oid",                  "datatype": "VARCHAR", "length": "60"},
 {"column": "read",                 "datatype": "VARCHAR", "length": "60"},
 {"column": "rw",                   "datatype": "VARCHAR", "length": "60"},
@@ -141,7 +141,7 @@ DATABASE_LAYOUT_switch = [
 DATABASE_LAYOUT_otherdevices = [
 {"column": "id",                   "datatype": "INTEGER", "key": "PRIMARY", "keyadd": "AUTOINCREMENT"},
 {"column": "name",                 "datatype": "VARCHAR", "length": "60"},
-{"column": "macaddr",              "datatype": "VARCHAR", "length": "60"},
+{"column": "macaddress",           "datatype": "VARCHAR", "length": "60"},
 {"column": "comment",              "datatype": "VARCHAR", "length": "60"}]
 
 DATABASE_LAYOUT_controller = [
@@ -163,7 +163,6 @@ DATABASE_LAYOUT_node = [
 {"column": "hostname",             "datatype": "VARCHAR", "length": "60"},
 {"column": "groupid",              "datatype": "INTEGER", "length": "10"},
 {"column": "localboot",            "datatype": "INTEGER", "length": "10"},
-{"column": "macaddr",              "datatype": "VARCHAR", "length": "60"},
 {"column": "osimageid",            "datatype": "INTEGER", "length": "10"},
 {"column": "switchport",           "datatype": "INTEGER", "length": "10"},
 {"column": "service",              "datatype": "INTEGER", "length": "10"},

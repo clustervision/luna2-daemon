@@ -49,7 +49,7 @@ DATABASE_LAYOUT_nodesecrets = [
 DATABASE_LAYOUT_nodeinterface = [
 {"column": "id",                   "datatype": "INTEGER", "key": "PRIMARY", "keyadd": "AUTOINCREMENT"},
 {"column": "nodeid",               "datatype": "INTEGER", "length": "10", "key": "UNIQUE", "with": "interface"},
-{"column": "macaddress",           "datatype": "VARCHAR", "length": "200"},
+{"column": "macaddress",           "datatype": "VARCHAR", "length": "200", "key": "UNIQUE"},
 {"column": "interface",            "datatype": "VARCHAR", "length": "50"}]
 
 DATABASE_LAYOUT_bmcsetup = [

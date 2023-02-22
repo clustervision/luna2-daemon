@@ -277,6 +277,7 @@ def config_node_post(name=None):
 
                     my_ipaddress['networkid']=networkid
                     result_ip=False
+                    result_if=False
                     check_interface = Database().get_record(None, 'nodeinterface', f'WHERE nodeid = "{nodeid}" AND interface = "{interface_name}"')
                     if not check_interface:
                         row = Helper().make_rows(my_interface)
@@ -286,6 +287,7 @@ def config_node_post(name=None):
                             my_ipaddress['tablerefid']=tablerefid
                             row = Helper().make_rows(my_ipaddress)
                             result_ip = Database().insert('ipaddress', row)
+                            result_if=True
                             LOGGER.info(f"Interface created => {tablerefid}+{result_ip} .")
                         else:
                             LOGGER.info(f"Interface create failure => {tablerefid}.")

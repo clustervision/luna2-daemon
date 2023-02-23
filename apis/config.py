@@ -2307,8 +2307,8 @@ def config_network_nextip(name=None):
 
     ret=0
     while(max>0 and ret!=1):
-        ips.append(avail)
         avail=Helper().get_available_ip(network[0]['network'],network[0]['subnet'],ips)
+        ips.append(avail)
         output,ret=Helper().runcommand(f"ping -w1 -c1 {avail}", True, 3)
         max-=1
 

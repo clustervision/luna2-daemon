@@ -308,10 +308,12 @@ class Helper(object):
             takenips=[]
         if subnet:
             network+=str('/'+subnet)
-        net = ipaddress.ip_network(f"{network}")
-        avail = (str(ip) for ip in net.hosts() if str(ip) not in takenips)
-        return str(next(avail))
-
+        try:
+            net = ipaddress.ip_network(f"{network}")
+            avail = (str(ip) for ip in net.hosts() if str(ip) not in takenips)
+            return str(next(avail))
+        except:
+            return
 
     def make_rows(self, data=None):
         """

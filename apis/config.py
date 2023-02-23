@@ -150,6 +150,11 @@ def config_node_post(name=None):
         access_code = 400
         return json.dumps(response), access_code
     if request_data:
+        if 'node' not in request_data['config'].keys():
+            response = {'message': 'Bad Request.'}
+            access_code = 400
+            return json.dumps(response), access_code
+
         data = request_data['config']['node'][name]
         node = Database().get_record(None, 'node', f' WHERE name = "{name}"')
         if node:
@@ -273,29 +278,48 @@ def config_node_post(name=None):
                         if valid_ip is False:
                             response = {'message': f"invalid IP address for {interface_name}. Network {network_details[0]['name']}: {network_details[0]['network']}/{network_details[0]['subnet']}"}
                             access_code = 500
+                            #return json.dumps(response), access_code
                             break
 
                     my_ipaddress['networkid']=networkid
                     result_ip=False
                     result_if=False
                     check_interface = Database().get_record(None, 'nodeinterface', f'WHERE nodeid = "{nodeid}" AND interface = "{interface_name}"')
-                    if not check_interface:
+                    LOGGER.info(f"in node post config. check_interface: [{check_interface}]")
+
+                    # ----------------------------------------------------------------
+                    # The below block handles 3 situations:
+                    # - no interface yet defined
+                    # - interface defined but no ip details yet
+                    # - interface defined and already ip info present
+                    # ----------------------------------------------------------------
+
+                    if not check_interface: # ----> easy. both the interface as ipaddress do not exist
                         row = Helper().make_rows(my_interface)
-                        tablerefid = Database().insert('nodeinterface', row)
-                        if tablerefid:
+                        result_if = Database().insert('nodeinterface', row)
+                        if result_if:
                             my_ipaddress['tableref']='nodeinterface'
-                            my_ipaddress['tablerefid']=tablerefid
+                            my_ipaddress['tablerefid']=result_if # yes. the tablerefid is in result_if
                             row = Helper().make_rows(my_ipaddress)
                             result_ip = Database().insert('ipaddress', row)
-                            result_if=True
-                            LOGGER.info(f"Interface created => {tablerefid}+{result_ip} .")
+                            LOGGER.info(f"Interface created => {result_if}+{result_ip} .")
                         else:
-                            LOGGER.info(f"Interface create failure => {tablerefid}.")
-                    else: # interface already exists so we tread lightly
+                            LOGGER.info(f"Interface create failure => {result_if}.")
+                    else:                   # -----> interface already exists so we tread lightly
                         # --- first update ip related things -------------
-                        row = Helper().make_rows(my_ipaddress)
-                        where = [{"column": "tableref", "value": "nodeinterface"}, {"column": "tablerefid", "value": check_interface[0]['id']}]
-                        result_ip = Database().update('ipaddress', row, where)
+                        check_ipaddress = Database().get_record(None, 'ipaddress', f"WHERE tablerefid = \"{check_interface[0]['id']}\" AND tableref = 'nodeinterface'")
+                        LOGGER.info(f"in node post config. check_ipaddress = [{check_ipaddress}]")
+
+                        if check_ipaddress: # -----> we do already have ip info. just update then
+                            row = Helper().make_rows(my_ipaddress)
+                            where = [{"column": "tableref", "value": "nodeinterface"}, {"column": "tablerefid", "value": check_interface[0]['id']}]
+                            result_ip = Database().update('ipaddress', row, where)
+                        else:               # -----> we did not have ip stuff set, we do it now
+                            my_ipaddress['tableref']='nodeinterface'
+                            my_ipaddress['tablerefid']=check_interface[0]['id']
+                            row = Helper().make_rows(my_ipaddress)
+                            result_ip = Database().insert('ipaddress', row)
+
                         LOGGER.info(f"Interface ipaddress updated => {result_ip} .")
                         # --- then update if related things --------------
                         row = Helper().make_rows(my_interface)
@@ -338,7 +362,7 @@ def config_node_delete(name=None):
         ipaddress = Database().get_record_join(['ipaddress.id'], ['ipaddress.tablerefid=nodeinterface.id'], ['tableref="nodeinterface"',f"nodeinterface.nodeid='{nodeid}'"])
         if ipaddress:
             for ip in ipaddress:
-                Database().delete_row('ipaddress', [{"column": "id", "value": ip[id]}])
+                Database().delete_row('ipaddress', [{"column": "id", "value": ip['id']}])
         Database().delete_row('nodeinterface', [{"column": "nodeid", "value": nodeid}])
         Database().delete_row('nodesecrets', [{"column": "nodeid", "value": nodeid}])
         response = {'message': f'Node {name} with all its interfaces removed.'}

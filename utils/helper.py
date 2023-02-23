@@ -291,7 +291,7 @@ class Helper(object):
                 where = f' WHERE `ipaddress` = "{ipaddr}";'
                 record = Database().get_record(None, 'ipaddress', where)
                 if not record:
-                    subnet = self.get_subnet(data['ipaddress'])
+                    subnet = self.get_netmask(data['ipaddress'])
                     row = [
                             {"column": 'ipaddress', "value": data['ipaddress']},
                             {"column": 'network', "value": data['network']},

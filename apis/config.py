@@ -285,7 +285,6 @@ def config_node_post(name=None):
                     result_ip=False
                     result_if=False
                     check_interface = Database().get_record(None, 'nodeinterface', f'WHERE nodeid = "{nodeid}" AND interface = "{interface_name}"')
-                    LOGGER.info(f"in node post config. check_interface: [{check_interface}]")
 
                     # ----------------------------------------------------------------
                     # The below block handles 3 situations:
@@ -308,7 +307,6 @@ def config_node_post(name=None):
                     else:                   # -----> interface already exists so we tread lightly
                         # --- first update ip related things -------------
                         check_ipaddress = Database().get_record(None, 'ipaddress', f"WHERE tablerefid = \"{check_interface[0]['id']}\" AND tableref = 'nodeinterface'")
-                        LOGGER.info(f"in node post config. check_ipaddress = [{check_ipaddress}]")
 
                         if check_ipaddress: # -----> we do already have ip info. just update then
                             row = Helper().make_rows(my_ipaddress)

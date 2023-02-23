@@ -266,12 +266,12 @@ def config_node_post(name=None):
                     if 'ipaddress' in interface.keys():
                         my_ipaddress['ipaddress']=interface['ipaddress']
                         network_details = Database().get_record(None, 'network', f'WHERE id={networkid}')
-                        network_range,network_subnet=network_details[0]['network'].split('/')
-                        if (not network_subnet) and network_details[0]['subnet']:
-                            network_subnet=network_details[0]['subnet']
-                        valid_ip = Helper().check_ip_range(interface['ipaddress'], f"{network_range}/{network_subnet}")
+#                        network_range,network_subnet=network_details[0]['network'].split('/')
+#                        if (not network_subnet) and network_details[0]['subnet']:
+#                            network_subnet=network_details[0]['subnet']
+                        valid_ip = Helper().check_ip_range(interface['ipaddress'], f"{network_details[0]['network']}/{network_details[0]['subnet']}")
                         if valid_ip is False:
-                            response = {'message': f"invalid IP address for {interface_name}. Network {network_details[0]['name']}: {network_range}/{network_subnet}"}
+                            response = {'message': f"invalid IP address for {interface_name}. Network {network_details[0]['name']}: {network_details[0]['network']}/{network_details[0]['subnet']}"}
                             access_code = 500
                             break
 
@@ -424,12 +424,13 @@ def config_node_post_interfaces(name=None):
                     if 'ipaddress' in interface.keys():
                         my_ipaddress['ipaddress']=interface['ipaddress']
                         network_details = Database().get_record(None, 'network', f'WHERE id={networkid}')
-                        network_range,network_subnet=network_details[0]['network'].split('/')
-                        if (not network_subnet) and network_details[0]['subnet']:
-                            network_subnet=network_details[0]['subnet']
-                        valid_ip = Helper().check_ip_range(interface['ipaddress'], f"{network_range}/{network_subnet}")
+#                        network_range,network_subnet=network_details[0]['network'].split('/')
+#                        if (not network_subnet) and network_details[0]['subnet']:
+#                            network_subnet=network_details[0]['subnet']
+#                        valid_ip = Helper().check_ip_range(interface['ipaddress'], f"{network_range}/{network_subnet}")
+                        valid_ip = Helper().check_ip_range(interface['ipaddress'], f"{network_details[0]['network']}/{network_details[0]['subnet']}")
                         if valid_ip is False:
-                            response = {'message': f"invalid IP address for {interface_name}. Network {network_details[0]['name']}: {network_range}/{network_subnet}"}
+                            response = {'message': f"invalid IP address for {interface_name}. Network {network_details[0]['name']}: {network_details[0]['network']}/{network_details[0]['subnet']}"}
                             access_code = 500
                             break
                     my_ipaddress['networkid']=networkid
@@ -1546,13 +1547,14 @@ def config_switch_post(switch=None):
             my_ipaddress['networkid']=networkid
             result_ip=False
             network_details = Database().get_record(None, 'network', f'WHERE id={networkid}')
-            network_range,network_subnet=network_details[0]['network'].split('/')
-            if (not network_subnet) and network_details[0]['subnet']:
-                network_subnet=network_details[0]['subnet']
-            valid_ip = Helper().check_ip_range(ipaddress, f"{network_range}/{network_subnet}")
+#            network_range,network_subnet=network_details[0]['network'].split('/')
+#            if (not network_subnet) and network_details[0]['subnet']:
+#                network_subnet=network_details[0]['subnet']
+#            valid_ip = Helper().check_ip_range(ipaddress, f"{network_range}/{network_subnet}")
+            valid_ip = Helper().check_ip_range(ipaddress, f"{network_details[0]['network']}/{network_details[0]['subnet']}")
             LOGGER.info(f"Ipaddress {ipaddress} for switch {switch} is [{valid_ip}]")
             if valid_ip is False:
-                response = {'message': f"invalid IP address for {switch}. Network {network_details[0]['name']}: {network_range}/{network_subnet}"}
+                response = {'message': f"invalid IP address for {switch}. Network {network_details[0]['name']}: {network_details[0]['network']}/{network_details[0]['subnet']}"}
                 access_code = 500
                 return json.dumps(response), access_code
             my_ipaddress['ipaddress']=ipaddress
@@ -1793,13 +1795,14 @@ def config_otherdev_post(device=None):
             my_ipaddress['networkid']=networkid
             result_ip=False
             network_details = Database().get_record(None, 'network', f'WHERE id={networkid}')
-            network_range,network_subnet=network_details[0]['network'].split('/')
-            if (not network_subnet) and network_details[0]['subnet']:
-                network_subnet=network_details[0]['subnet']
-            valid_ip = Helper().check_ip_range(ipaddress, f"{network_range}/{network_subnet}")
+#            network_range,network_subnet=network_details[0]['network'].split('/')
+#            if (not network_subnet) and network_details[0]['subnet']:
+#                network_subnet=network_details[0]['subnet']
+#            valid_ip = Helper().check_ip_range(ipaddress, f"{network_range}/{network_subnet}")
+            valid_ip = Helper().check_ip_range(ipaddress, f"{network_details[0]['network']}/{network_details[0]['subnet']}")
             LOGGER.info(f"Ipaddress {ipaddress} for otherdevice {device} is [{valid_ip}]")
             if valid_ip is False:
-                response = {'message': f"invalid IP address for {device}. Network {network_details[0]['name']}: {network_range}/{network_subnet}"}
+                response = {'message': f"invalid IP address for {device}. Network {network_details[0]['name']}: {network_details[0]['network']}/{network_details[0]['subnet']}"}
                 access_code = 500
                 return json.dumps(response), access_code
             my_ipaddress['ipaddress']=ipaddress

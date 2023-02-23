@@ -166,7 +166,7 @@ def getconfig(filename=None):
                     except Exception:
                         LOGGER.error(f'Invalid node list range: {item}, kindly use the numbers in incremental order.')
                 elif 'NETWORKS' in section:
-                    Helper().get_subnet(item)
+                    #Helper().get_netmask(item)  # <-- not used?
                     BOOTSTRAP[section][option.upper()] = item
                 else:
                     BOOTSTRAP[section][option.upper()] = item
@@ -215,9 +215,11 @@ def bootstrap(bootstrapfile=None):
     cluster = Database().get_record(None, 'cluster', None)
     clusterid = cluster[0]['id']
     for nwkx in BOOTSTRAP['NETWORKS'].keys():
+        network_details=Helper().get_network_details(BOOTSTRAP['NETWORKS'][nwkx])
         default_network = [
                 {'column': 'name', 'value': str(nwkx)},
-                {'column': 'network', 'value': str(BOOTSTRAP['NETWORKS'][nwkx])},
+                {'column': 'network', 'value': network_details['network']},
+                {'column': 'subnet', 'value': network_details['subnet']},
                 {'column': 'dhcp', 'value': '0'},
                 {'column': 'ns_hostname', 'value': BOOTSTRAP['HOSTS']['HOSTNAME']},
                 {'column': 'ns_ip', 'value': BOOTSTRAP['HOSTS']['CONTROLLER1']},

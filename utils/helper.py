@@ -238,19 +238,21 @@ class Helper(object):
     def get_network_details(self, ipaddr=None):
         """
         Input - IP Address such as 10.141.0.0/16
-        Output - Network and Subnet such as 10.141.0.0 and 255.255.0.0
+        Output - Network and Subnet such as 10.141.0.0 and 16 (we settled for a cidr notation to be ipv6 compliant in the future)
         """
         response = {}
         try:
-            net = ipaddress.ip_network(ipaddr, strict=False)
-            response['network'] = str(net)
-            response['subnet'] = str(net.netmask)
+#            net = ipaddress.ip_network(ipaddr, strict=False)
+#            response['network'] = str(net)
+#            response['subnet'] = str(net.netmask)
+             net = IPNetwork(f"{ipaddr}")
+             response['network'],response['subnet'] = str(net).split('/') 
         except (ValueError, TypeError) as exp:
             self.logger.error(f'Invalid IP address: {ipaddr}, Exception is {exp}.')
         return response
 
 
-    def get_subnet(self, ipaddr=None):
+    def get_netmask(self, ipaddr=None):
         """
         Input - IP Address
         Output - Subnet
@@ -687,8 +689,5 @@ class Helper(object):
 
     # -----------------------------------------------------------------
 
-    def cidr_to_netmask(self,subnet):
-        ip = IPNetwork(f'0.0.0.0/{subnet}')
-        return str(ip.netmask)
 
 

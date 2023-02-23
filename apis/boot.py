@@ -375,7 +375,7 @@ def boot_install(node=None):
                     subnet=nwkif['subnet']
                 node_nwk = f'{nwkif["ipaddress"]}/{subnet}'
 
-                netmask=Helper().cidr_to_netmask(subnet)
+                netmask=Helper().get_netmask(node_nwk)
  
                 data['interfaces'][nwkif['interface']]['interface'] = nwkif['interface']
                 data['interfaces'][nwkif['interface']]['ipaddress'] = nwkif['ipaddress']

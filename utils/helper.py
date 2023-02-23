@@ -260,7 +260,7 @@ class Helper(object):
         response = None
         try:
             net = ipaddress.ip_network(ipaddr, strict=False)
-            response = net.netmask
+            response = str(net.netmask)
         except (ValueError, TypeError) as exp:
             self.logger.error(f'Invalid subnet: {ipaddr}, Exception is {exp}.')
         return response

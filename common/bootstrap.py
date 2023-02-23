@@ -247,6 +247,18 @@ def bootstrap(bootstrapfile=None):
                 # we did not specify a network! this means that we will not use it. not a biggy but we cannot verify nor use this kind of info --> api/boot.py
                 Database().insert('ipaddress', controller_ip)
         num = num + 1
+
+    default_osimage = [
+            {'column': 'name', 'value': str(BOOTSTRAP['OSIMAGE']['NAME'])},
+            {'column': 'dracutmodules', 'value': 'luna, -18n, -plymouth'},
+            {'column': 'grab_filesystems', 'value': '/, /boot'},
+            {'column': 'initrdfile', 'value': 'osimagename-initramfs-`uname -r`'},
+            {'column': 'kernelfile', 'value': 'osimagename-vmlinuz-`uname -r`'},
+            {'column': 'kernelmodules', 'value': 'ipmi_devintf, ipmi_si, ipmi_msghandler'},
+            {'column': 'distribution', 'value': 'redhat'}
+        ]
+    osimage = Database().insert('osimage', default_osimage)
+
     default_group = [
             {'column': 'name', 'value': str(BOOTSTRAP['GROUPS']['NAME'])},
             {'column': 'bmcsetup', 'value': '1'},
@@ -255,7 +267,8 @@ def bootstrap(bootstrapfile=None):
             {'column': 'localinstall', 'value': '0'},
             {'column': 'bootmenu', 'value': '0'},
             {'column': 'provisionmethod', 'value': 'torrent'},
-            {'column': 'provisionfallback', 'value': 'http'}
+            {'column': 'provisionfallback', 'value': 'http'},
+            {'column': 'osimageid', 'value': osimage}
         ]
     Database().insert('group', default_group)
     group = Database().get_record(None, 'group', None)
@@ -280,16 +293,6 @@ def bootstrap(bootstrapfile=None):
             {'column': 'networkid', 'value': networkid}
         ]
 
-    default_osimage = [
-            {'column': 'name', 'value': str(BOOTSTRAP['OSIMAGE']['NAME'])},
-            {'column': 'dracutmodules', 'value': 'luna, -18n, -plymouth'},
-            {'column': 'grab_filesystems', 'value': '/, /boot'},
-            {'column': 'initrdfile', 'value': 'osimagename-initramfs-`uname -r`'},
-            {'column': 'kernelfile', 'value': 'osimagename-vmlinuz-`uname -r`'},
-            {'column': 'kernelmodules', 'value': 'ipmi_devintf, ipmi_si, ipmi_msghandler'},
-            {'column': 'distribution', 'value': 'redhat'}
-        ]
-
     default_bmcsetup = [
             {'column': 'username', 'value': str(BOOTSTRAP['BMCSETUP']['USERNAME'])},
             {'column': 'password', 'value': str(BOOTSTRAP['BMCSETUP']['PASSWORD'])}
@@ -302,7 +305,6 @@ def bootstrap(bootstrapfile=None):
             ]
     
     Database().insert('groupinterface', default_group_interface)
-    Database().insert('osimage', default_osimage)
     Database().insert('bmcsetup', default_bmcsetup)
     Database().insert('switch', default_switch)
     current_time = str(time.time()).replace('.', '')

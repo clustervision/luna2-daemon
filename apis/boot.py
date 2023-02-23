@@ -150,13 +150,10 @@ def boot_search_mac(mac=None):
     if controller:
         data['ipaddress'] = controller[0]['ipaddress']
         data['serverport'] = controller[0]['serverport']
-    nodeinterface = Database().get_record_join(['nodeinterface.nodeid','nodeinterface.interface','ipaddress.ipaddress','network.name as network','network.network as iprange','network.subnet'], ['network.id=ipaddress.networkid','ipaddress.tablerefid=nodeinterface.id'],['tableref="nodeinterface"',f"nodeinterface.macaddress='{mac}'"])
+    nodeinterface = Database().get_record_join(['nodeinterface.nodeid','nodeinterface.interface','ipaddress.ipaddress','network.name as network','network.network as networkip','network.subnet'], ['network.id=ipaddress.networkid','ipaddress.tablerefid=nodeinterface.id'],['tableref="nodeinterface"',f"nodeinterface.macaddress='{mac}'"])
     if nodeinterface:
         data['nodeid'] = nodeinterface[0]['nodeid']
-        iprange,subnet=nodeinterface[0]['iprange'].split('/')
-        if (not subnet) and nodeinterface[0]['subnet']:
-            subnet=nodeinterface[0]['subnet']
-        data['nodeip'] = f'{nodeinterface[0]["ipaddress"]}/{subnet}'
+        data['nodeip'] = f'{nodeinterface[0]["ipaddress"]}/{nodeinterface[0]["subnet"]}'
     if data['nodeid']:
         node = Database().get_record_join(['node.*','group.osimageid as grouposimageid'],['group.id=node.groupid'],[f'node.id={data["nodeid"]}'])
         if node:
@@ -240,7 +237,7 @@ def boot_manual_hostname(hostname=None, mac=None):
     if data['nodeid']:
         #where = f' WHERE nodeid = {data["nodeid"]} AND interface = "BOOTIF";'
         #nodeinterface = Database().get_record(None, 'nodeinterface', where)
-        nodeinterface = Database().get_record_join(['nodeinterface.nodeid','nodeinterface.interface','nodeinterface.macaddress','ipaddress.ipaddress','network.name as network','network.network as iprange','network.subnet'], ['network.id=ipaddress.networkid','ipaddress.tablerefid=nodeinterface.id'],['tableref="nodeinterface"',f"nodeinterface.nodeid='{data['nodeid']}'",f'nodeinterface.macaddress="{mac}"'])
+        nodeinterface = Database().get_record_join(['nodeinterface.nodeid','nodeinterface.interface','nodeinterface.macaddress','ipaddress.ipaddress','network.name as network','network.network as networkip','network.subnet'], ['network.id=ipaddress.networkid','ipaddress.tablerefid=nodeinterface.id'],['tableref="nodeinterface"',f"nodeinterface.nodeid='{data['nodeid']}'",f'nodeinterface.macaddress="{mac}"'])
         if nodeinterface:
 #            row = [{"column": "macaddress", "value": nodeinterface[0]['macaddress']}]
 #            # not sure if below is really needed.....
@@ -256,10 +253,7 @@ def boot_manual_hostname(hostname=None, mac=None):
 #        data['nodeip'] = Helper().get_network(nodeinterface[0]['ipaddress'], nwk[0]['subnet'])
 #        subnet = data['nodeip'].split('/')
 #        subnet = subnet[1]
-            iprange,subnet=nodeinterface[0]['iprange'].split('/')
-            if (not subnet) and nodeinterface[0]['subnet']:
-                subnet=nodeinterface[0]['subnet']
-            data['nodeip'] = f'{nodeinterface[0]["ipaddress"]}/{subnet}'
+            data['nodeip'] = f'{nodeinterface[0]["ipaddress"]}/{nodeinterface[0]["subnet"]}'
         else:
             #uh oh... no bootif??
             data['nodeip'] = ''
@@ -366,15 +360,11 @@ def boot_install(node=None):
             data['tarball'] = osimage[0]['tarball']
 
     if data['nodeid']:
-        nodeinterface = Database().get_record_join(['nodeinterface.nodeid','nodeinterface.interface','nodeinterface.macaddress','ipaddress.ipaddress','network.name as network','network.network as iprange','network.subnet'], ['network.id=ipaddress.networkid','ipaddress.tablerefid=nodeinterface.id'],['tableref="nodeinterface"',f"nodeinterface.nodeid='{data['nodeid']}'"])
+        nodeinterface = Database().get_record_join(['nodeinterface.nodeid','nodeinterface.interface','nodeinterface.macaddress','ipaddress.ipaddress','network.name as network','network.network as networkip','network.subnet'], ['network.id=ipaddress.networkid','ipaddress.tablerefid=nodeinterface.id'],['tableref="nodeinterface"',f"nodeinterface.nodeid='{data['nodeid']}'"])
         if nodeinterface:
             for nwkif in nodeinterface:
                 data['interfaces'][nwkif['interface']] = {}
-                iprange,subnet=nwkif['iprange'].split('/')
-                if (not subnet) and nwkif['subnet']:
-                    subnet=nwkif['subnet']
-                node_nwk = f'{nwkif["ipaddress"]}/{subnet}'
-
+                node_nwk = f'{nwkif["ipaddress"]}/{nwkif["subnet"]}'
                 netmask=Helper().get_netmask(node_nwk)
  
                 data['interfaces'][nwkif['interface']]['interface'] = nwkif['interface']

@@ -302,6 +302,19 @@ class Helper(object):
                     data['ipaddress'] = subnet_record[0]['id']
         return data
 
+
+    def get_available_ip(self, network, subnet=None, takenips=None):
+        if not takenips:
+            takenips=[]
+        if subnet:
+            network+=str('/'+subnet)
+        try:
+            net = ipaddress.ip_network(f"{network}")
+            avail = (str(ip) for ip in net.hosts() if str(ip) not in takenips)
+            return str(next(avail))
+        except:
+            return
+
     def make_rows(self, data=None):
         """
         Input - IP Address

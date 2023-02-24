@@ -2295,7 +2295,6 @@ def config_network_nextip(name=None):
     access_code = 404
 
     #Antoine
-    max=10 # we try to ping for 10 ips, if none of these are free, something else is going on (read: rogue devices)....
     ips=[]
     avail=None
     network = Database().get_record_join(['ipaddress.ipaddress','network.id','network.network','network.subnet'], ['network.id=ipaddress.networkid'], [f"network.name='{name}'"])
@@ -2305,12 +2304,16 @@ def config_network_nextip(name=None):
     else:
         network = Database().get_record(None, 'network', f' WHERE `name` = "{name}";')
 
-    ret=0
-    while(max>0 and ret!=1):
-        avail=Helper().get_available_ip(network[0]['network'],network[0]['subnet'],ips)
-        ips.append(avail)
-        output,ret=Helper().runcommand(f"ping -w1 -c1 {avail}", True, 3)
-        max-=1
+    if network:
+        access_code = 500
+        response = {'message': f'Network {name} has no free addresses.'}
+        ret=0
+        max=10 # we try to ping for 10 ips, if none of these are free, something else is going on (read: rogue devices)....
+        while(max>0 and ret!=1):
+            avail=Helper().get_available_ip(network[0]['network'],network[0]['subnet'],ips)
+            ips.append(avail)
+            output,ret=Helper().runcommand(f"ping -w1 -c1 {avail}", True, 3)
+            max-=1
 
     if avail:
         response = {'config': {'network': {name: {'nextip': avail} } } }

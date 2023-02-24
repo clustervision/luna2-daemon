@@ -30,7 +30,7 @@ LOGGER = Log.get_logger()
 service_blueprint = Blueprint('service', __name__)
 APIQueue = queue.Queue()
 
-@service_blueprint.route("/service/<string:name>/<string:action>", methods=['POST'])
+@service_blueprint.route("/service/<string:name>/<string:action>", methods=['GET'])
 @token_required
 def service(name, action):
     """
@@ -56,3 +56,4 @@ def service(name, action):
         time.sleep(CONSTANT['SERVICES']['COOLDOWN'])
         LOGGER.info(response)
     return json.dumps(response), code
+

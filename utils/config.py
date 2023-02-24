@@ -23,6 +23,7 @@ import re
 from ipaddress import ip_address
 from utils.log import Log
 from utils.database import Database
+from utils.helper import Helper
 
 from common.constant import CONSTANT
 
@@ -37,7 +38,6 @@ class Config(object):
         """
         self.logger = Log.get_logger()
 
-
     def dhcp_overwrite(self):
         """
         This method collect dhcp enabled networks,
@@ -49,8 +49,9 @@ class Config(object):
         ntpserver, dhcp_subnet_block = '', ''
         node_block, device_block = [] , []
         cluster = Database().get_record(None, 'cluster', None)
-        if cluster:
+        if cluster and ('ntp_server' in cluster[0]):
             ntpserver = cluster[0]['ntp_server']
+        controller = Database().get_record_join(['ipaddress.ipaddress'], ['ipaddress.tablerefid=controller.id'], ['tableref="controller"','controller.hostname="controller"'])
         networks = Database().get_record(None, 'network', ' WHERE `dhcp` = 1;')
         dhcpfile = f"{CONSTANT['TEMPLATES']['TEMP_DIR']}/dhcpd.conf"
         if networks:
@@ -58,28 +59,37 @@ class Config(object):
                 nwkid = nwk['id']
                 nwkname = nwk['name']
                 nwknetwork = nwk['network']
+                netmask = Helper().get_netmask(f"{nwk['network']}/{nwk['subnet']}")
                 subnet_block = self.dhcp_subnet(
-                    nwk['network'], nwk['subnet'], nwk['gateway'],
+                    nwk['network'], netmask, nwk['gateway'], controller[0]['ipaddress'],
                     nwk['dhcp_range_begin'], nwk['dhcp_range_end']
                 )
                 dhcp_subnet_block = f'{dhcp_subnet_block}{subnet_block}'
-                where = f' WHERE networkid = "{nwkid}" and macaddress IS NOT NULL;'
-                node_interface = Database().get_record(None, 'nodeinterface', where)
+#                where = f' WHERE networkid = "{nwkid}" and macaddress IS NOT NULL;'
+#                #node_interface = Database().get_record(None, 'nodeinterface', where)
+
+                node_interface = Database().get_record_join(['node.name as nodename','ipaddress.ipaddress','nodeinterface.macaddress'], ['ipaddress.tablerefid=nodeinterface.id'], ['tableref="nodeinterface"','ipaddress.networkid="{nwkid}"'])
                 if node_interface:
                     for interface in node_interface:
-                        nodename = Database().getname_byid('node', interface['nodeid'])
-                        node_block.append(
-                            self.dhcp_node(nodename, interface['macaddress'],interface['ipaddress'])
-                        )
+#                        nodename = Database().getname_byid('node', interface['nodeid'])
+                        if node_interface['macaddress']: 
+                            node_block.append(
+#                                self.dhcp_node(nodename, interface['macaddress'],interface['ipaddress'])
+                                self.dhcp_node(interface['nodename'], interface['macaddress'],interface['ipaddress'])
+                            )
                 else:
                     self.logger.info(f'No Nodes available for this network {nwkname}  {nwknetwork}')
-                where = f' WHERE network = "{nwkid}" and macaddr IS NOT NULL;'
-                devices = Database().get_record(None, 'otherdevices', where)
-                if devices:
-                    for device in devices:
-                        device_block.append(
-                            self.dhcp_node(device['name'], device['macaddr'], device['ipaddress'])
-                        )
+#                where = f' WHERE network = "{nwkid}" and macaddr IS NOT NULL;'
+#                devices = Database().get_record(None, 'otherdevices', where)
+                for item in ['otherdevices','switch']:
+                    devices = Database().get_record_join([f'{item}.name','ipaddress.ipaddress',f'{item}.macaddress'], [f'ipaddress.tablerefid={item}.id'], [f'tableref="{item}"','ipaddress.networkid="{nwkid}"'])
+                    if devices:
+                        for device in devices:
+                            if device['macaddress']: 
+                                device_block.append(
+#                                    self.dhcp_node(device['name'], device['macaddr'], device['ipaddress'])
+                                    self.dhcp_node(device['name'], device['macaddress'], device['ipaddress'])
+                                )
                 else:
                     self.logger.info(f'Device not available for {nwkname} {nwknetwork}')
 
@@ -92,9 +102,12 @@ class Config(object):
 
         with open(dhcpfile, 'w', encoding='utf-8') as dhcp:
             dhcp.write(config)
-        validate_config = subprocess.run(["dhcpd", "-t", "-cf", dhcpfile], check=True)
-        if validate_config.returncode:
-            validate = False
+        try:
+            validate_config = subprocess.run(["dhcpd", "-t", "-cf", dhcpfile], check=True)
+            if validate_config.returncode:
+                validate = False
+                self.logger.error(f'DHCP file : {dhcpfile} containing errors.')
+        except:
             self.logger.error(f'DHCP file : {dhcpfile} containing errors.')
         else:
             shutil.copyfile(dhcpfile, '/etc/dhcp/dhcpd.conf')
@@ -107,7 +120,21 @@ class Config(object):
         This method will prepare DHCP configuration."""
         if ntpserver:
             ntpserver = f'option domain-name-servers {ntpserver};'
-            secretkey = CONSTANT['DHCP']['OMAPIKEY']
+        else:
+            ntpserver=''
+
+        omapi_key=''
+        if CONSTANT['DHCP']['OMAPIKEY']:
+           omapi_key = f"""
+omapi-port 7911;
+omapi-key omapi_key;
+
+key omapi_key {{
+    algorithm hmac-md5;
+    secret {CONSTANT['DHCP']['OMAPIKEY']};
+}}
+"""
+
         config = f"""
 #
 # DHCP Server Configuration file.
@@ -118,13 +145,7 @@ option luna-id code 129 = text;
 option client-architecture code 93 = unsigned integer 16;
 {ntpserver}
 
-omapi-port 7911;
-omapi-key omapi_key;
-
-key omapi_key {{
-    algorithm hmac-md5;
-    secret {secretkey};
-}}
+{omapi_key}
 
 # how to get luna_ipxe.efi and luna_undionly.kpxe :
 # git clone git://git.ipxe.org/ipxe.git
@@ -138,17 +159,17 @@ key omapi_key {{
         return config
 
 
-    def dhcp_subnet(self, subnet=None, netmask=None, nextserver=None,
+    def dhcp_subnet(self, network=None, netmask=None, nextserver=None, gateway=None,
                     dhcp_range_start=None, dhcp_range_end=None):
         """
         This method prepare the netwok block
         for all DHCP enabled networks
         """
         subnet_block = f"""
-subnet {subnet} netmask {netmask} {{
+subnet {network} netmask {netmask} {{
     max-lease-time 28800;
     if exists user-class and option user-class = "iPXE" {{
-        filename "http://{{{{ boot_server }}}}:7050/luna?step=boot";
+        filename "http://{{{{ boot_server }}}}:7050/boot";
     }} else {{
         if option client-architecture = 00:07 {{
             filename "luna_ipxe.efi";
@@ -162,7 +183,7 @@ subnet {subnet} netmask {netmask} {{
     next-server {nextserver};
     range {dhcp_range_start} {dhcp_range_end};
 
-    option routers 10.141.255.254;
+    option routers {gateway};
     option luna-id "lunaclient";
 }}
 """
@@ -192,10 +213,11 @@ host {node}  {{
         files, ns_ip = [], []
         zone_config, rev_ip = '', ''
         cluster = Database().get_record(None, 'cluster', None)
-        ns_ip = cluster[0]['ns_ip']
+        if cluster and 'ns_ip' in cluster[0]:
+            ns_ip.append(cluster[0]['ns_ip'])
         controllerip = cluster[0]['ntp_server']
-        if ns_ip:
-            forwarder = ns_ip
+#        if ns_ip:
+#            forwarder = ns_ip
         networks = Database().get_record(None, 'network', None)
         for nwk in networks:
             nwkid = nwk['id']
@@ -236,20 +258,27 @@ host {node}  {{
                 filename.write(zone_name_config)
             with open(ptrfile['source'], 'w', encoding='utf-8') as fileptr:
                 fileptr.write(zone_ptr_config)
-            zone_cmd = ['named-checkzone', f'luna.{networkname}', namefile['source']]
-            validate_zone_name = subprocess.run(zone_cmd, check = True)
-            if validate_zone_name.returncode:
-                validate = False
+            try:
+                zone_cmd = ['named-checkzone', f'luna.{networkname}', namefile['source']]
+                validate_zone_name = subprocess.run(zone_cmd, check = True)
+                if validate_zone_name.returncode:
+                    validate = False
+                    self.logger.error(f'DNS zone file: {namefile["source"]} containing errors.')
+            except:
                 self.logger.error(f'DNS zone file: {namefile["source"]} containing errors.')
-            ptr_cmd = ['named-checkzone', f'luna.{networkname}', ptrfile['source']]
-            validate_ptr_name = subprocess.run(ptr_cmd, check = True)
-            if validate_ptr_name.returncode:
-                validate = False
+            try:
+                ptr_cmd = ['named-checkzone', f'luna.{networkname}', ptrfile['source']]
+                validate_ptr_name = subprocess.run(ptr_cmd, check = True)
+                if validate_ptr_name.returncode:
+                    validate = False
+                    self.logger.error(f'DNS zone file: {ptrfile["source"]} containing errors.')
+            except:
                 self.logger.error(f'DNS zone file: {ptrfile["source"]} containing errors.')
-            if ns_ip is None:
-                forwarder = ';'.join(ns_ip)
+#            if ns_ip is None:
+#                forwarder = ';'.join(ns_ip)
 
-        config = self.dns_config(forwarder)
+#        config = self.dns_config(forwarder)
+        config = self.dns_config()  # < ------------  we call this one without any forwarder as that forwarder thing above here has to be revised
         dnsfile = {'source': '/var/tmp/luna2/named.conf', 'destination': '/etc/named.conf'}
         files.append(dnsfile)
         with open(dnsfile["source"], 'w', encoding='utf-8') as dns:

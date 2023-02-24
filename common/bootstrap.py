@@ -166,7 +166,7 @@ def getconfig(filename=None):
                     except Exception:
                         LOGGER.error(f'Invalid node list range: {item}, kindly use the numbers in incremental order.')
                 elif 'NETWORKS' in section:
-                    Helper().get_subnet(item)
+                    #Helper().get_netmask(item)  # <-- not used?
                     BOOTSTRAP[section][option.upper()] = item
                 else:
                     BOOTSTRAP[section][option.upper()] = item
@@ -215,9 +215,11 @@ def bootstrap(bootstrapfile=None):
     cluster = Database().get_record(None, 'cluster', None)
     clusterid = cluster[0]['id']
     for nwkx in BOOTSTRAP['NETWORKS'].keys():
+        network_details=Helper().get_network_details(BOOTSTRAP['NETWORKS'][nwkx])
         default_network = [
                 {'column': 'name', 'value': str(nwkx)},
-                {'column': 'network', 'value': str(BOOTSTRAP['NETWORKS'][nwkx])},
+                {'column': 'network', 'value': network_details['network']},
+                {'column': 'subnet', 'value': network_details['subnet']},
                 {'column': 'dhcp', 'value': '0'},
                 {'column': 'ns_hostname', 'value': BOOTSTRAP['HOSTS']['HOSTNAME']},
                 {'column': 'ns_ip', 'value': BOOTSTRAP['HOSTS']['CONTROLLER1']},
@@ -245,6 +247,18 @@ def bootstrap(bootstrapfile=None):
                 # we did not specify a network! this means that we will not use it. not a biggy but we cannot verify nor use this kind of info --> api/boot.py
                 Database().insert('ipaddress', controller_ip)
         num = num + 1
+
+    default_osimage = [
+            {'column': 'name', 'value': str(BOOTSTRAP['OSIMAGE']['NAME'])},
+            {'column': 'dracutmodules', 'value': 'luna, -18n, -plymouth'},
+            {'column': 'grab_filesystems', 'value': '/, /boot'},
+            {'column': 'initrdfile', 'value': 'osimagename-initramfs-`uname -r`'},
+            {'column': 'kernelfile', 'value': 'osimagename-vmlinuz-`uname -r`'},
+            {'column': 'kernelmodules', 'value': 'ipmi_devintf, ipmi_si, ipmi_msghandler'},
+            {'column': 'distribution', 'value': 'redhat'}
+        ]
+    osimage = Database().insert('osimage', default_osimage)
+
     default_group = [
             {'column': 'name', 'value': str(BOOTSTRAP['GROUPS']['NAME'])},
             {'column': 'bmcsetup', 'value': '1'},
@@ -253,7 +267,8 @@ def bootstrap(bootstrapfile=None):
             {'column': 'localinstall', 'value': '0'},
             {'column': 'bootmenu', 'value': '0'},
             {'column': 'provisionmethod', 'value': 'torrent'},
-            {'column': 'provisionfallback', 'value': 'http'}
+            {'column': 'provisionfallback', 'value': 'http'},
+            {'column': 'osimageid', 'value': osimage}
         ]
     Database().insert('group', default_group)
     group = Database().get_record(None, 'group', None)
@@ -278,16 +293,6 @@ def bootstrap(bootstrapfile=None):
             {'column': 'networkid', 'value': networkid}
         ]
 
-    default_osimage = [
-            {'column': 'name', 'value': str(BOOTSTRAP['OSIMAGE']['NAME'])},
-            {'column': 'dracutmodules', 'value': 'luna, -18n, -plymouth'},
-            {'column': 'grab_filesystems', 'value': '/, /boot'},
-            {'column': 'initrdfile', 'value': 'osimagename-initramfs-`uname -r`'},
-            {'column': 'kernelfile', 'value': 'osimagename-vmlinuz-`uname -r`'},
-            {'column': 'kernelmodules', 'value': 'ipmi_devintf, ipmi_si, ipmi_msghandler'},
-            {'column': 'distribution', 'value': 'redhat'}
-        ]
-
     default_bmcsetup = [
             {'column': 'username', 'value': str(BOOTSTRAP['BMCSETUP']['USERNAME'])},
             {'column': 'password', 'value': str(BOOTSTRAP['BMCSETUP']['PASSWORD'])}
@@ -300,7 +305,6 @@ def bootstrap(bootstrapfile=None):
             ]
     
     Database().insert('groupinterface', default_group_interface)
-    Database().insert('osimage', default_osimage)
     Database().insert('bmcsetup', default_bmcsetup)
     Database().insert('switch', default_switch)
     current_time = str(time.time()).replace('.', '')

@@ -31,6 +31,10 @@ import concurrent.futures
 import threading
 from time import sleep
 from datetime import datetime
+import sys
+import uuid
+import shutil
+
 
 class OsImage(object):
     """Class for operating with osimages records"""
@@ -49,7 +53,7 @@ class OsImage(object):
         """
 
         self.logger = Log.get_logger()
-        self.packing = queue.Queue()
+        #self.packing = queue.Queue()
         #self.log.debug("function args {}".format(self._debug_function()))
 
         # Define the schema used to represent osimage objects
@@ -65,74 +69,127 @@ class OsImage(object):
         # Check if this osimage is already present in the datastore
         # Read it if that is the case
 
-    def pack(self, osimage):
+    def create_tarball(self,osimage):
+        image = Database().get_record(None, 'osimage', f"WHERE name='{osimage}'")
+        #TARBALL = /trinity/local/luna/files
+        if 'FILES' not in CONSTANT:
+            return False,"FILES config setting not defined"
+        if 'TARBALL' not in CONSTANT['FILES']:
+            return False,"TARBALL config setting not defined in FILES"
+        path = CONSTANT['FILES']['TARBALL']
+        #user = cluster.get('user')
+        user_id = pwd.getpwnam('root').pw_uid
+        grp_id = pwd.getpwnam('root').pw_gid
 
-        osimage = self._get_object(name, mongo_db, create, id)
+        #path_to_store = path + "/torrents"
+        #if not os.path.exists(path_to_store):
+        #    os.makedirs(path_to_store)
+        #    os.chown(path_to_store, user_id, grp_id)
+        #    os.chmod(path_to_store, 0644)
 
-        if bool(kernopts) and type(kernopts) is not str:
-            err_msg = "Kernel options should be 'str' type"
-            self.log.error(err_msg)
-            raise RuntimeError, err_msg
+        if 'path' not in image[0]:
+            return False,"Image path not defined"
+        if image[0]['path'] is None:
+            return False,"Image path not defined"
+        image_path = image[0]['path']
 
-        if create:
-            cluster = Cluster(mongo_db=self._mongo_db)
-            path = os.path.abspath(path)
+        real_root = os.open("/", os.O_RDONLY)
+        os.chroot(image_path)
 
-            duplicate = self._mongo_collection.find_one({'path': path})
-            if duplicate:
-                err_msg = ("Path belongs to osimage '{}'"
-                           .format(duplicate['name']))
-                self.log.error(err_msg)
-                raise RuntimeError, err_msg
+        os.chdir('/')
+        os.system('mount -t proc none /proc')
 
-            if not os.path.isdir(path):
-                err_msg = "'{}' is not a valid directory".format(path)
-                self.log.error(err_msg)
-                raise RuntimeError, err_msg
+        uid = str(uuid.uuid4())
+        tarfile = uid + ".tar.bz2"
 
-            kernels = self.get_package_ver(path, 'kernel')
-            if not kernels:
-                err_msg = "No kernels installed in '{}'".format(path)
-                self.log.error(err_msg)
-                raise RuntimeError, err_msg
-            elif not kernver:
-                kernver = kernels[0]
-            elif kernver not in kernels:
-                err_msg = "Available kernels are '{}'".format(kernels)
-                self.log.error(err_msg)
-                raise RuntimeError, err_msg
+        try:
+            # dirty, but 4 times faster
+            tar_out = subprocess.Popen(
+                [
+                    '/usr/bin/tar',
+                    '-C', '/',
+                    '--one-file-system',
+                    '--xattrs',
+                    '--selinux',
+                    '--acls',
+                    '--checkpoint=100',
+                    '--exclude=./tmp/' + tarfile,
+                    '--use-compress-program=/usr/bin/lbzip2',
+                    '-c', '-f', '/tmp/' + tarfile, '.'
+                ],
+                stderr=subprocess.PIPE
+            )
 
-            grab_list_path = cluster.get('path') + '/templates/' + grab_list
-            if not os.path.isfile(grab_list_path):
-                err_msg = "'{}' is not a file.".format(grab_list_path)
-                self.log.error(err_msg)
-                raise RuntimeError, err_msg
+            stat_symb = ['\\', '|', '/', '-']
+            i = 0
+            while True:
+                line = tar_out.stderr.readline()
+                if line == '':
+                    break
+                i = i + 1
+                sys.stdout.write(stat_symb[i % len(stat_symb)])
+                sys.stdout.write('\r')
 
-            with open(grab_list_path) as lst:
-                grab_list_content = lst.read()
+        except:
+            exc_type, exc_value, exc_traceback = sys.exc_info()
+            if exc_type == exceptions.KeyboardInterrupt:
+                self.logger.error('Keyboard interrupt.')
+            else:
+                self.logger.error(exc_value)
+                self.logger.debug(traceback.format_exc())
 
-            # Store the new osimage in the datastore
+            if os.path.isfile('/tmp/' + tarfile):
+                os.remove('/tmp/' + tarfile)
 
-            osimage = {'name': name, 'path': path,
-                       'kernver': kernver, 'kernopts': kernopts,
-                       'kernfile': '', 'initrdfile': '',
-                       'dracutmodules': 'luna,-i18n,-plymouth',
-                       'kernmodules': 'ipmi_devintf,ipmi_si,ipmi_msghandler',
-                       'grab_exclude_list': grab_list_content,
-                       'grab_filesystems': '/,/boot', 'comment': comment}
+            sys.stdout.write('\r')
 
-            self.log.debug("Saving osimage '{}' to the datastore"
-                           .format(osimage))
+            os.fchdir(real_root)
+            os.chroot(".")
+            os.close(real_root)
 
-            self.store(osimage)
+            return False
 
-            # Link this osimage to its dependencies and the current cluster
+        os.system('umount /proc || umount -lf /proc')
 
-            self.link(cluster)
+        os.fchdir(real_root)
+        os.chroot(".")
+        os.close(real_root)
 
-        self.log = logging.getLogger(__name__ + '.' + self._name)
+        # copy image, so permissions and selinux contexts
+        # will be inherited from parent folder
+        shutil.copy(image_path + '/tmp/' + tarfile, path_to_store)
+        os.remove(image_path + '/tmp/' + tarfile)
+        os.chown(path_to_store + '/' + tarfile, user_id, grp_id)
+        os.chmod(path_to_store + '/' + tarfile, stat.S_IREAD)
+        os.chmod(path_to_store + '/' + tarfile, stat.S_IWRITE)
+        os.chmod(path_to_store + '/' + tarfile, stat.S_IRGRP)
+        os.chmod(path_to_store + '/' + tarfile, stat.S_IROTH )
+        #self.set('tarball', str(uid))
 
-    def pack_boot(self):
+        return True
+
+
+    """
+    `id`  INTEGER  NOT NULL ,  
+    `name`  VARCHAR ,  
+    `dracutmodules`  VARCHAR ,  
+    `grab_filesystems`  VARCHAR ,  
+    `grab_exclude`  TEXT ,  
+    `initrdfile`  VARCHAR ,  
+    `kernelfile`  VARCHAR ,  
+    `kernelmodules`  VARCHAR ,  
+    `kerneloptions`  VARCHAR ,  
+    `kernelversion`  VARCHAR ,  
+    `path`  VARCHAR ,  
+    `tarball`  VARCHAR ,  
+    `torrent`  VARCHAR ,  
+    `distribution`  VARCHAR ,  
+    `comment`  VARCHAR , 
+    PRIMARY KEY (`id` AUTOINCREMENT), UNIQUE (`name`)
+    """
+
+    def pack_image(self,osimage):
+
         def mount(source, target, fs):
             subprocess.Popen(['/usr/bin/mount', '-t', fs, source, target])
 
@@ -140,49 +197,69 @@ class OsImage(object):
             subprocess.Popen(['/usr/bin/umount', source])
 
         def prepare_mounts(path):
-            mount('devtmpfs', path + '/dev', 'devtmpfs')
-            mount('proc', path + '/proc', 'proc')
-            mount('sysfs', path + '/sys', 'sysfs')
+            mount('devtmpfs', f"{path}/dev", 'devtmpfs')
+            mount('proc', f"{path}/proc", 'proc')
+            mount('sysfs', f"{path}/sys", 'sysfs')
 
         def cleanup_mounts(path):
-            umount(path + '/dev')
-            umount(path + '/proc')
-            umount(path + '/sys')
+            umount(f"{path}/dev")
+            umount(f"{path}/proc")
+            umount(f"{path}/sys")
+
+        image = Database().get_record(None, 'osimage', f"WHERE name='{osimage}'")
+
+        if 'path' not in image[0]:
+            return False,"Image path not defined"
+        if image[0]['path'] is None:
+            return False,"Image path not defined"
+        if 'kernelversion' not in image[0]:
+            return False,"Kernel version not defined"
+        if image[0]['kernelversion'] is None:
+            return False,"Kernel version not defined"
 
         tmp_path = '/tmp'  # in chroot env
-        image_path = self.get('path')
-        kernver = self.get('kernver')
-        kernfile = self.name + '-vmlinuz-' + kernver
-        initrdfile = self.name + '-initramfs-' + kernver
+        image_path = str(image[0]['path'])
+        kernver = str(image[0]['kernelversion'])
+        kernfile = f"{osimage}-vmlinuz-{kernver}"
+        initrdfile = f"{osimage}-initramfs-{kernver}"
 
-        cluster = Cluster(mongo_db=self._mongo_db)
-        path = cluster.get('path')
-        user = cluster.get('user')
-
-        path_to_store = path + "/boot"
-        user_id = pwd.getpwnam(user).pw_uid
-        grp_id = pwd.getpwnam(user).pw_gid
+        path_to_store = f"{image[0]['path']}/boot"
+        #user_id = pwd.getpwnam(user).pw_uid
+        #grp_id = pwd.getpwnam(user).pw_gid
 
         if not os.path.exists(path_to_store):
             os.makedirs(path_to_store)
-            os.chown(path_to_store, user_id, grp_id)
+            #os.chown(path_to_store, user_id, grp_id)
 
-        modules_add = []
+        modules_add = ['ipmi_devintf','ipmi_si','ipmi_msghandler']
         modules_remove = []
-        drivers_add = []
-        drivers_remove = []
+        drivers_add = ['luna','-plymouth']
+        drivers_remove = ['-i18n']
+        grab_filesystems = ['/','/boot']
 
-        dracutmodules = self.get('dracutmodules')
-        if dracutmodules:
-            for i in dracutmodules.split(','):
+        """
+            osimage = {'name': name, 'path': path,
+                       'kernver': kernver, 'kernopts': kernopts,
+                       'kernfile': '', 'initrdfile': '',
+                       'dracutmodules': 'luna,-i18n,-plymouth',
+                       'kernmodules': 'ipmi_devintf,ipmi_si,ipmi_msghandler',
+                       'grab_exclude_list': grab_list_content,
+                       'grab_filesystems': '/,/boot', 'comment': comment}
+        """
+
+        #dracutmodules = self.get('dracutmodules')
+        #if dracutmodules:
+        if 'dracutmodules' in image[0]:
+            for i in image[0]['dracutmodules'].split(','):
                 if i[0] != '-':
                     modules_add.extend(['--add', i])
                 else:
                     modules_remove.extend(['--omit', i[1:]])
 
-        kernmodules = self.get('kernmodules')
-        if kernmodules:
-            for i in kernmodules.split(','):
+        #kernmodules = self.get('kernmodules')
+        #if kernmodules:
+        if 'kernelmodules' in image[0]:
+            for i in image[0]['kernelmodules'].split(','):
                 if i[0] != '-':
                     drivers_add.extend(['--add-drivers', i])
                 else:
@@ -211,10 +288,9 @@ class OsImage(object):
                     break
 
             if not luna_exists:
-                err_msg = ("No luna dracut module in osimage '{}'"
-                           .format(self.name))
-                self.log.error(err_msg)
-                raise RuntimeError, err_msg
+                self.logger.info = (f"No luna dracut module in osimage 'osimage'")
+                return False,"No luna dracut module in osimage"
+                #raise RuntimeError, err_msg
 
             dracut_cmd = (['/usr/bin/dracut', '--force', '--kver', kernver] +
                           modules_add + modules_remove + drivers_add +
@@ -227,8 +303,8 @@ class OsImage(object):
 
         except:
             exc_type, exc_value, exc_traceback = sys.exc_info()
-            self.log.error(exc_value)
-            self.log.debug(traceback.format_exc())
+            self.logger.info(exc_value)
+            #self.logger.debug(traceback.format_exc())
             dracut_succeed = False
 
         if create and create.returncode:
@@ -244,18 +320,18 @@ class OsImage(object):
         cleanup_mounts(image_path)
 
         if not dracut_succeed:
-            self.log.error("Error while building initrd.")
+            self.logger.info("Error while building initrd.")
             return False
 
         initrd_path = image_path + tmp_path + '/' + initrdfile
         kernel_path = image_path + '/boot/vmlinuz-' + kernver
 
         if not os.path.isfile(kernel_path):
-            self.log.error("Unable to find kernel in {}".format(kernel_path))
+            self.logger.info("Unable to find kernel in {}".format(kernel_path))
             return False
 
         if not os.path.isfile(initrd_path):
-            self.log.error("Unable to find initrd in {}".format(initrd_path))
+            self.logger.info("Unable to find initrd in {}".format(initrd_path))
             return False
 
         # copy initrd file to inherit perms from parent folder
@@ -263,12 +339,12 @@ class OsImage(object):
         os.remove(initrd_path)
         shutil.copy(kernel_path, path_to_store + '/' + kernfile)
         os.chown(path_to_store + '/' + initrdfile, user_id, grp_id)
-        os.chmod(path_to_store + '/' + initrdfile, 0644)
+        os.chmod(path_to_store + '/' + initrdfile, 0o644)
         os.chown(path_to_store + '/' + kernfile, user_id, grp_id)
-        os.chmod(path_to_store + '/' + kernfile, 0644)
+        os.chmod(path_to_store + '/' + kernfile, 0o644)
 
-        self.set('kernfile', kernfile)
-        self.set('initrdfile', initrdfile)
+        #self.set('kernfile', kernfile)
+        #self.set('initrdfile', initrdfile)
 
         return True
 

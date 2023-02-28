@@ -208,13 +208,9 @@ class OsImage(object):
 
         image = Database().get_record(None, 'osimage', f"WHERE name='{osimage}'")
 
-        if 'path' not in image[0]:
+        if ('path' not in image[0]) or (image[0]['path'] is None):
             return False,"Image path not defined"
-        if image[0]['path'] is None:
-            return False,"Image path not defined"
-        if 'kernelversion' not in image[0]:
-            return False,"Kernel version not defined"
-        if image[0]['kernelversion'] is None:
+        if ('kernelversion' not in image[0]) or (image[0]['kernelversion'] is None):
             return False,"Kernel version not defined"
 
         tmp_path = '/tmp'  # in chroot env
@@ -224,18 +220,20 @@ class OsImage(object):
         initrdfile = f"{osimage}-initramfs-{kernver}"
 
         path_to_store = f"{image[0]['path']}/boot"
-        #user_id = pwd.getpwnam(user).pw_uid
-        #grp_id = pwd.getpwnam(user).pw_gid
+        user_id = pwd.getpwnam('root').pw_uid
+        grp_id = pwd.getpwnam('root').pw_gid
 
         if not os.path.exists(path_to_store):
             os.makedirs(path_to_store)
             #os.chown(path_to_store, user_id, grp_id)
 
-        modules_add = ['ipmi_devintf','ipmi_si','ipmi_msghandler']
+        modules_add = []
         modules_remove = []
-        drivers_add = ['luna','-plymouth']
-        drivers_remove = ['-i18n']
+        drivers_add = []
+        drivers_remove = []
         grab_filesystems = ['/','/boot']
+        # = ['luna','-plymouth']
+        
 
         """
             osimage = {'name': name, 'path': path,
@@ -247,23 +245,28 @@ class OsImage(object):
                        'grab_filesystems': '/,/boot', 'comment': comment}
         """
 
+        print(f"{image[0]}")
+
         #dracutmodules = self.get('dracutmodules')
         #if dracutmodules:
         if 'dracutmodules' in image[0]:
             for i in image[0]['dracutmodules'].split(','):
-                if i[0] != '-':
-                    modules_add.extend(['--add', i])
+                s=i.replace(" ", "")
+                print(f" module: [{s[0]}] [{s}]")
+                if s[0] != '-':
+                    modules_add.extend(['--add', s])
                 else:
-                    modules_remove.extend(['--omit', i[1:]])
+                    modules_remove.extend(['--omit', s[1:]])
 
         #kernmodules = self.get('kernmodules')
         #if kernmodules:
         if 'kernelmodules' in image[0]:
             for i in image[0]['kernelmodules'].split(','):
-                if i[0] != '-':
-                    drivers_add.extend(['--add-drivers', i])
+                s=i.replace(" ", "")
+                if s[0] != '-':
+                    drivers_add.extend(['--add-drivers', s])
                 else:
-                    drivers_remove.extend(['--omit-drivers', i[1:]])
+                    drivers_remove.extend(['--omit-drivers', s[1:]])
 
         prepare_mounts(image_path)
         real_root = os.open("/", os.O_RDONLY)
@@ -283,19 +286,22 @@ class OsImage(object):
 
             while dracut_modules.poll() is None:
                 line = dracut_modules.stdout.readline()
-                if line.strip() == 'luna':
+                line_clean=line.strip()
+                line_clean=line_clean.decode('ASCII')
+                #print(f" readline = [{line}] [{line.strip()}] [{line_clean}]")
+                if line_clean == 'luna':
                     luna_exists = True
                     break
 
             if not luna_exists:
-                self.logger.info = (f"No luna dracut module in osimage 'osimage'")
+                self.logger.info = (f"No luna dracut module in osimage '{osimage}'")
                 return False,"No luna dracut module in osimage"
                 #raise RuntimeError, err_msg
 
             dracut_cmd = (['/usr/bin/dracut', '--force', '--kver', kernver] +
                           modules_add + modules_remove + drivers_add +
                           drivers_remove + [tmp_path + '/' + initrdfile])
-#            print dracut_cmd
+            print(f"{dracut_cmd}")
 
             create = subprocess.Popen(dracut_cmd, stdout=subprocess.PIPE)
             while create.poll() is None:
@@ -321,18 +327,18 @@ class OsImage(object):
 
         if not dracut_succeed:
             self.logger.info("Error while building initrd.")
-            return False
+            return False,"Problem building initrd"
 
         initrd_path = image_path + tmp_path + '/' + initrdfile
         kernel_path = image_path + '/boot/vmlinuz-' + kernver
 
         if not os.path.isfile(kernel_path):
             self.logger.info("Unable to find kernel in {}".format(kernel_path))
-            return False
+            return False,f"Unable to find kernel in {kernel_path}"
 
         if not os.path.isfile(initrd_path):
             self.logger.info("Unable to find initrd in {}".format(initrd_path))
-            return False
+            return False,f"Unable to find initrd in {initrd_path}"
 
         # copy initrd file to inherit perms from parent folder
         shutil.copy(initrd_path, path_to_store + '/' + initrdfile)
@@ -346,5 +352,5 @@ class OsImage(object):
         #self.set('kernfile', kernfile)
         #self.set('initrdfile', initrdfile)
 
-        return True
+        return True,"Success"
 

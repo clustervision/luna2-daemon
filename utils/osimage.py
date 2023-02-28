@@ -70,37 +70,46 @@ class OsImage(object):
         # Read it if that is the case
 
     def create_tarball(self,osimage):
-        image = Database().get_record(None, 'osimage', f"WHERE name='{osimage}'")
-        #TARBALL = /trinity/local/luna/files
+
         if 'FILES' not in CONSTANT:
             return False,"FILES config setting not defined"
         if 'TARBALL' not in CONSTANT['FILES']:
             return False,"TARBALL config setting not defined in FILES"
-        path = CONSTANT['FILES']['TARBALL']
+        path_to_store = CONSTANT['FILES']['TARBALL']
+
         #user = cluster.get('user')
         user_id = pwd.getpwnam('root').pw_uid
         grp_id = pwd.getpwnam('root').pw_gid
 
-        #path_to_store = path + "/torrents"
-        #if not os.path.exists(path_to_store):
-        #    os.makedirs(path_to_store)
-        #    os.chown(path_to_store, user_id, grp_id)
-        #    os.chmod(path_to_store, 0644)
+        if not os.path.exists(path_to_store):
+            os.makedirs(path_to_store)
+            os.chown(path_to_store, user_id, grp_id)
+            os.chmod(path_to_store, 0o755)
 
-        if 'path' not in image[0]:
+        image = Database().get_record(None, 'osimage', f"WHERE name='{osimage}'")
+        if ('path' not in image[0]) or (image[0]['path'] is None):
             return False,"Image path not defined"
-        if image[0]['path'] is None:
-            return False,"Image path not defined"
+
         image_path = image[0]['path']
+        if image_path[0] != '/': # means that we don't have an absolute path. good, let's prepand what's in luna.ini
+            if 'IMAGE_DIRECTORY' in CONSTANT['FILES']:
+                image_path = f"{CONSTANT['FILES']['IMAGE_DIRECTORY']}/{image[0]['path']}"
+            else:
+                return False,f"image path {image_path} is not an absolute path while IMAGE_DIRECTORY setting in FILES is not defined"
 
-        real_root = os.open("/", os.O_RDONLY)
-        os.chroot(image_path)
+        if not os.path.exists(image_path):
+            return False,"Image path {image_path} does not exist"
 
-        os.chdir('/')
-        os.system('mount -t proc none /proc')
+        #real_root = os.open("/", os.O_RDONLY)
+        #os.chroot(image_path)
+
+        #os.chdir('/')
+        #os.system('mount -t proc none /proc')
 
         uid = str(uuid.uuid4())
         tarfile = uid + ".tar.bz2"
+
+        os.chdir(f"{image_path}") # needed for tar to not have leading dirs in path
 
         try:
             # dirty, but 4 times faster
@@ -143,30 +152,27 @@ class OsImage(object):
 
             sys.stdout.write('\r')
 
-            os.fchdir(real_root)
-            os.chroot(".")
-            os.close(real_root)
+            #os.fchdir(real_root)
+            #os.chroot(".")
+            #os.close(real_root)
 
-            return False
+            return False,"Tar went bonkers"
 
-        os.system('umount /proc || umount -lf /proc')
+        #os.system('umount /proc || umount -lf /proc')
 
-        os.fchdir(real_root)
-        os.chroot(".")
-        os.close(real_root)
+        #os.fchdir(real_root)
+        #os.chroot(".")
+        #os.close(real_root)
 
         # copy image, so permissions and selinux contexts
         # will be inherited from parent folder
-        shutil.copy(image_path + '/tmp/' + tarfile, path_to_store)
-        os.remove(image_path + '/tmp/' + tarfile)
+        shutil.copy(f"/tmp/{tarfile}", path_to_store)
+        os.remove(f"/tmp/{tarfile}")
         os.chown(path_to_store + '/' + tarfile, user_id, grp_id)
-        os.chmod(path_to_store + '/' + tarfile, stat.S_IREAD)
-        os.chmod(path_to_store + '/' + tarfile, stat.S_IWRITE)
-        os.chmod(path_to_store + '/' + tarfile, stat.S_IRGRP)
-        os.chmod(path_to_store + '/' + tarfile, stat.S_IROTH )
+        os.chmod(path_to_store + '/' + tarfile, 0o644)
         #self.set('tarball', str(uid))
 
-        return True
+        return True,"Success for {tarfile}"
 
 
     """

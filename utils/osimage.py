@@ -109,9 +109,17 @@ class OsImage(object):
         uid = str(uuid.uuid4())
         tarfile = uid + ".tar.bz2"
 
+        if not os.path.exists('/usr/bin/tar'):
+            return False,"/usr/bin/tar does not exist. please install tar"
+        if not os.path.exists('/usr/bin/lbzip2'):
+            return False,"/usr/bin/lbzip2 does not exist. please install lbzip2"
+
         os.chdir(f"{image_path}") # needed for tar to not have leading dirs in path
 
         try:
+
+            print(f"/usr/bin/tar -C / --one-file-system --xattrs --selinux --acls --checkpoint=100 --exclude=./tmp/{tarfile} --use-compress-program=/usr/bin/lbzip2 -c -f /tmp/{tarfile} .")
+
             # dirty, but 4 times faster
             tar_out = subprocess.Popen(
                 [
@@ -129,6 +137,16 @@ class OsImage(object):
                 stderr=subprocess.PIPE
             )
 
+            """
+            while True:
+                line = tar_out.stderr.readline()
+                if line == '':
+                    break
+                sys.stdout.write(".")
+                sys.stdout.write('\r')
+                sleep(1)
+            """
+ 
             stat_symb = ['\\', '|', '/', '-']
             i = 0
             while True:
@@ -138,6 +156,7 @@ class OsImage(object):
                 i = i + 1
                 sys.stdout.write(stat_symb[i % len(stat_symb)])
                 sys.stdout.write('\r')
+                sleep(0.1)
 
         except:
             exc_type, exc_value, exc_traceback = sys.exc_info()

@@ -53,21 +53,7 @@ class OsImage(object):
         """
 
         self.logger = Log.get_logger()
-        #self.packing = queue.Queue()
-        #self.log.debug("function args {}".format(self._debug_function()))
 
-        # Define the schema used to represent osimage objects
-
-#        self._collection_name = 'osimage'
-#        self._keylist = {'path': type(''), 'kernver': type(''),
-#                         'kernopts': type(''), 'kernmodules': type(''),
-#                         'dracutmodules': type(''), 'tarball': type(''),
-#                         'torrent': type(''), 'kernfile': type(''),
-#                         'initrdfile': type(''), 'grab_exclude_list': type(''),
-#                         'grab_filesystems': type(''), 'comment': type('')}
-
-        # Check if this osimage is already present in the datastore
-        # Read it if that is the case
 
     def create_tarball(self,osimage):
 
@@ -100,12 +86,6 @@ class OsImage(object):
         if not os.path.exists(image_path):
             return False,"Image path {image_path} does not exist"
 
-        #real_root = os.open("/", os.O_RDONLY)
-        #os.chroot(image_path)
-
-        #os.chdir('/')
-        #os.system('mount -t proc none /proc')
-
         uid = str(uuid.uuid4())
         tarfile = uid + ".tar.bz2"
 
@@ -118,7 +98,7 @@ class OsImage(object):
 
         try:
 
-            print(f"/usr/bin/tar -C / --one-file-system --xattrs --selinux --acls --checkpoint=100 --exclude=./tmp/{tarfile} --use-compress-program=/usr/bin/lbzip2 -c -f /tmp/{tarfile} .")
+            self.logger.debug(f"/usr/bin/tar -C / --one-file-system --xattrs --selinux --acls --checkpoint=10000 --use-compress-program=/usr/bin/lbzip2 -c -f /tmp/{tarfile} .")
 
             # dirty, but 4 times faster
             tar_out = subprocess.Popen(
@@ -129,34 +109,21 @@ class OsImage(object):
                     '--xattrs',
                     '--selinux',
                     '--acls',
-                    '--checkpoint=100',
-                    '--exclude=./tmp/' + tarfile,
+                    '--checkpoint=10000',
                     '--use-compress-program=/usr/bin/lbzip2',
                     '-c', '-f', '/tmp/' + tarfile, '.'
                 ],
-                stderr=subprocess.PIPE
+                stderr=subprocess.PIPE,
+                stdout=subprocess.PIPE
             )
 
-            """
-            while True:
-                line = tar_out.stderr.readline()
-                if line == '':
-                    break
-                sys.stdout.write(".")
-                sys.stdout.write('\r')
-                sleep(1)
-            """
- 
-            stat_symb = ['\\', '|', '/', '-']
-            i = 0
-            while True:
-                line = tar_out.stderr.readline()
-                if line == '':
-                    break
-                i = i + 1
-                sys.stdout.write(stat_symb[i % len(stat_symb)])
-                sys.stdout.write('\r')
-                sleep(0.1)
+            exit_code = tar_out.wait()
+            if exit_code != "0":
+                output=tar_out.communicate()
+                if os.path.isfile('/tmp/' + tarfile):
+                    os.remove('/tmp/' + tarfile)
+                return False,output[1][:-5].decode('ASCII')
+                #return False,f"Tarring failed with exit code {exit_code}"
 
         except:
             exc_type, exc_value, exc_traceback = sys.exc_info()
@@ -171,17 +138,7 @@ class OsImage(object):
 
             sys.stdout.write('\r')
 
-            #os.fchdir(real_root)
-            #os.chroot(".")
-            #os.close(real_root)
-
             return False,"Tar went bonkers"
-
-        #os.system('umount /proc || umount -lf /proc')
-
-        #os.fchdir(real_root)
-        #os.chroot(".")
-        #os.close(real_root)
 
         # copy image, so permissions and selinux contexts
         # will be inherited from parent folder
@@ -189,7 +146,6 @@ class OsImage(object):
         os.remove(f"/tmp/{tarfile}")
         os.chown(path_to_store + '/' + tarfile, user_id, grp_id)
         os.chmod(path_to_store + '/' + tarfile, 0o644)
-        #self.set('tarball', str(uid))
 
         return True,"Success for {tarfile}"
 
@@ -257,7 +213,6 @@ class OsImage(object):
         drivers_add = []
         drivers_remove = []
         grab_filesystems = ['/','/boot']
-        # = ['luna','-plymouth']
         
 
         """
@@ -272,8 +227,6 @@ class OsImage(object):
 
         print(f"{image[0]}")
 
-        #dracutmodules = self.get('dracutmodules')
-        #if dracutmodules:
         if 'dracutmodules' in image[0]:
             for i in image[0]['dracutmodules'].split(','):
                 s=i.replace(" ", "")
@@ -283,8 +236,6 @@ class OsImage(object):
                 else:
                     modules_remove.extend(['--omit', s[1:]])
 
-        #kernmodules = self.get('kernmodules')
-        #if kernmodules:
         if 'kernelmodules' in image[0]:
             for i in image[0]['kernelmodules'].split(','):
                 s=i.replace(" ", "")
@@ -313,7 +264,6 @@ class OsImage(object):
                 line = dracut_modules.stdout.readline()
                 line_clean=line.strip()
                 line_clean=line_clean.decode('ASCII')
-                #print(f" readline = [{line}] [{line.strip()}] [{line_clean}]")
                 if line_clean == 'luna':
                     luna_exists = True
                     break
@@ -321,7 +271,6 @@ class OsImage(object):
             if not luna_exists:
                 self.logger.info = (f"No luna dracut module in osimage '{osimage}'")
                 return False,"No luna dracut module in osimage"
-                #raise RuntimeError, err_msg
 
             dracut_cmd = (['/usr/bin/dracut', '--force', '--kver', kernver] +
                           modules_add + modules_remove + drivers_add +
@@ -373,9 +322,6 @@ class OsImage(object):
         os.chmod(path_to_store + '/' + initrdfile, 0o644)
         os.chown(path_to_store + '/' + kernfile, user_id, grp_id)
         os.chmod(path_to_store + '/' + kernfile, 0o644)
-
-        #self.set('kernfile', kernfile)
-        #self.set('initrdfile', initrdfile)
 
         return True,"Success"
 

@@ -177,6 +177,7 @@ def getconfig(filename=None):
 
 def create_database_tables():
     Database().create("status",DATABASE_LAYOUT_status)
+    Database().create("queue",DATABASE_LAYOUT_queue)
     Database().create("osimage",DATABASE_LAYOUT_osimage)
     Database().create("nodesecrets",DATABASE_LAYOUT_nodesecrets)
     Database().create("nodeinterface",DATABASE_LAYOUT_nodeinterface)

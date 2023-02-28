@@ -22,6 +22,14 @@ DATABASE_LAYOUT_status = [
 {"column": "created",              "datatype": "numeric"},
 {"column": "message",              "datatype": "text"}]
 
+DATABASE_LAYOUT_queue = [
+{"column": "id",                   "datatype": "integer", "length": "10", "key": "PRIMARY", "keyadd": "autoincrement"},
+{"column": "request_id",           "datatype": "text"},
+{"column": "username_initiator",   "datatype": "text"},
+{"column": "created",              "datatype": "numeric"},
+{"column": "subsystem",            "datatype": "varchar", "length": "128"},
+{"column": "task",                 "datatype": "text"}]
+
 DATABASE_LAYOUT_osimage = [
 {"column": "id",                   "datatype": "INTEGER", "key": "PRIMARY", "keyadd": "AUTOINCREMENT"},
 {"column": "name",                 "datatype": "VARCHAR", "length": "20", "key": "UNIQUE"},

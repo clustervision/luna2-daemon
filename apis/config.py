@@ -21,6 +21,11 @@ from utils.log import Log
 from utils.helper import Helper
 from common.validate_auth import token_required
 from common.constant import CONFIGFILE
+from random import randint
+from time import sleep,time
+from os import getpid
+import concurrent.futures
+from utils.osimage import OsImage
 
 LOGGER = Log.get_logger()
 config_blueprint = Blueprint('config', __name__)
@@ -1138,18 +1143,22 @@ def config_osimage_pack(name=None):
     request_id=str(time())+str(randint(1001,9999))+str(getpid())
 
     executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
-    executor.submit(OsImage().pack_n_tar_mother, request_id)
+    executor.submit(OsImage().pack_n_tar_mother, name, request_id)
     executor.shutdown(wait=False)
+#    OsImage().pack_n_tar_mother(name,request_id)
 
     # we should check after a few seconds if there is a status update for us.
     # if so, that means mother is taking care of things
 
     sleep(1)
-    status = Database().get_record(None , 'status', f' WHERE request_id = "{request_id}"')
-    if status:
-        code=204
-        response = {"message": "osimage pack queue", "request_id": request_id}
-
+    try:
+        status = Database().get_record(None , 'status', f' WHERE request_id = "{request_id}"')
+        if status:
+            code=204
+            response = {"message": "osimage pack queue", "request_id": request_id}
+    except:
+        pass
+    
     return json.dumps(response), code
 
 

@@ -121,7 +121,7 @@ def check_db_tables():
     """
     This method will check whether the database is empty or not.
     """
-    table = ['cluster', 'bmcsetup', 'group', 'groupinterface', 'groupsecrets', 'status',
+    table = ['cluster', 'bmcsetup', 'group', 'groupinterface', 'groupsecrets', 'status', 'queue',
              'network', 'osimage', 'switch', 'tracker', 'node', 'nodeinterface', 'nodesecrets']
     num = 0
     for tablex in table:
@@ -134,6 +134,9 @@ def check_db_tables():
         return False
     return True
 
+def cleanup_queue_and_status():
+    Database().clear('queue')
+    Database().clear('status')
 
 def getconfig(filename=None):
     """
@@ -342,8 +345,11 @@ def validatebootstrap():
             LOGGER.warning(f'Bootstrap file {bootstrapfile} is still present, Kindly remove the file.')
     elif bootstrapfile_check is True and db_check is False:
         LOGGER.error(f'Database is unavailable.')
+        return False
     elif bootstrapfile_check is False and db_tables_check is True:
         pass
     elif bootstrapfile_check is False and db_tables_check is False:
         LOGGER.error(f'{bootstrapfile} and database is unavailable.')
+        return False
+    cleanup_queue_and_status()
     return True

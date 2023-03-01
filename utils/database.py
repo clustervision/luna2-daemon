@@ -405,6 +405,16 @@ class Database(object):
             response = False
         return response
 
+    def clear(self, table):
+        try:
+            query = f'DELETE FROM "{table}";'
+            self.cursor.execute(query)
+            self.cursor.commit()
+            response = True
+        except pyodbc.Error as exp:
+            self.logger.error(f'Error occur while executing => {query}. error is {exp}.')
+            response = False
+        return response
 
     def deletetable(self, connection, cursor, table):
         """

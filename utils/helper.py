@@ -703,11 +703,13 @@ class Helper(object):
     # -----------------------------------------------------------------
 
     def add_task_to_queue(self,task,subsystem=None):
-        row=[{"column": "request_id", "value": request_id}, 
-             {"column": "created", "value": "current_datetime"}, 
-             {"column": "username_initiator", "value": "lpower"}, 
+        if subsystem is None:
+            subsystem="anonymous"
+        row=[{"column": "created", "value": "current_datetime"}, 
+             {"column": "username_initiator", "value": "{subsystem}"}, 
              {"column": "task", "value": f"{task}"},
-             {"column": "subsystem", "value": f"{subsystem}"}]
+             {"column": "subsystem", "value": f"{subsystem}"},
+             {"column": "status", "value": "queued"}]
         id=Database().insert('queue', row)
         # the id is supposed to be kept bij de caller so it can update the status, either directly or after other pending stuff is done
         return id
@@ -724,7 +726,7 @@ class Helper(object):
 
     def update_task_status_in_queue(self,taskid,status):
         row = [{"column": "status", "value": f"{status}"}]
-        where = [{"column": "id", "value": f"{task[0]['id']}"}]
+        where = [{"column": "id", "value": f"{taskid}"}]
         status = Database().update('queue', row, where)
 
     def remove_task_from_queue(self,taskid):

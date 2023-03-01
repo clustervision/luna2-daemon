@@ -1130,30 +1130,28 @@ def config_osimage_pack(name=None):
     Process - Manually Pack the OS Image.
     Output - Success or Failure.
     """
-                # Antoine -------------------------------------------------------------------
-                pipeline = Helper().Pipeline()
-                for hostname in hostlist:
-                    pipeline.add_nodes({hostname: action})
 
-                request_id=str(time())+str(randint(1001,9999))+str(getpid())
+    code=500
+    response= {"message": f'OS image {name} packing failed. No sign of life of spawned thread.'}
 
-                executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
-                executor.submit(Helper().control_mother, pipeline, request_id, batch_size, batch_delay)
-                executor.shutdown(wait=False)
-                # use below to not spawn a thread. easy for debugging.
-                #Helper().control_mother(pipeline, request_id, batch_size, batch_delay)
+    #Antoine
+    request_id=str(time())+str(randint(1001,9999))+str(getpid())
 
-                # though we won't wait till all scheduled tasks are done, we wait a bit and return what we have.
-                # the client/lpower will then have to inquire to see what's done hereafter
-                wait_count=3
-                while(pipeline.has_nodes() and wait_count > 0):
-                    sleep(1)
-                    wait_count-=1
+    executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
+    executor.submit(OsImage().pack_n_tar_mother, request_id)
+    executor.shutdown(wait=False)
 
-    LOGGER.info(f'OS image {name} packed successfully.')
-    response = {"message": f'OS image {name} packed successfully.'}
-    code = 200
+    # we should check after a few seconds if there is a status update for us.
+    # if so, that means mother is taking care of things
+
+    sleep(1)
+    status = Database().get_record(None , 'status', f' WHERE request_id = "{request_id}"')
+    if status:
+        code=204
+        response = {"message": "osimage pack queue", "request_id": request_id}
+
     return json.dumps(response), code
+
 
 
 @config_blueprint.route("/config/osimage/<string:name>/kernel", methods=['POST'])

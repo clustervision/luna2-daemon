@@ -730,14 +730,23 @@ class Helper(object):
     def remove_task_from_queue(self,taskid):
         Database().delete_row('queue', [{"column": "id", "value": task[0]['id']}])
 
-    def subsystem_task_exist_in_queue(self,subsystem):
-        where=f" WHERE subsystem='{subsystem'} LIMIT 1"
+    def subsystem_task_exist_in_queue(self,subsystem,taskid=None):
+        where=f" WHERE subsystem='{subsystem}'"
+        if taskid:
+            where+=f" AND id!='{taskid}'"  # yes, we want to see if somebody else's task is there, not my own
+        where+=" LIMIT 1"
         task = Database().get_record(None , 'queue', where)
         if task:
             return True
         return False
 
-
+ 
+    def insert_mesg_in_status(self,request_id,username_initiator,message):
+        row=[{"column": "request_id", "value": f"{request_id}"}, 
+             {"column": "created", "value": "current_datetime"}, 
+             {"column": "username_initiator", "value": f"{username_initiator}"}, 
+             {"column": "message", "value": f"{message}"}]
+        Database().insert('status', row)
 
 
 

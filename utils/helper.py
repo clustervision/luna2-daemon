@@ -702,5 +702,42 @@ class Helper(object):
 
     # -----------------------------------------------------------------
 
+    def add_task_to_queue(self,task,subsystem=None):
+        row=[{"column": "request_id", "value": request_id}, 
+             {"column": "created", "value": "current_datetime"}, 
+             {"column": "username_initiator", "value": "lpower"}, 
+             {"column": "task", "value": f"{task}"},
+             {"column": "subsystem", "value": f"{subsystem}"}]
+        id=Database().insert('queue', row)
+        # the id is supposed to be kept bij de caller so it can update the status, either directly or after other pending stuff is done
+        return id
+
+#    def claim_task_from_queue(self,subsystem=None):
+#        where='ORDER BY ID DESC LIMIT 1'
+#        if subsystem:
+#            where=f" WHERE subsystem='{subsystem'} {where}"
+#        task = Database().get_record(None , 'queue', where)
+#        row = [{"column": "status", "value": "inprogress"}]
+#        where = [{"column": "id", "value": f"{task[0]['id']}"}]
+#        status = Database().update('queue', row, where)
+#        return task[0]['id'],task[0]['task']
+
+    def update_task_status_in_queue(self,taskid,status):
+        row = [{"column": "status", "value": f"{status}"}]
+        where = [{"column": "id", "value": f"{task[0]['id']}"}]
+        status = Database().update('queue', row, where)
+
+    def remove_task_from_queue(self,taskid):
+        Database().delete_row('queue', [{"column": "id", "value": task[0]['id']}])
+
+    def subsystem_task_exist_in_queue(self,subsystem):
+        where=f" WHERE subsystem='{subsystem'} LIMIT 1"
+        task = Database().get_record(None , 'queue', where)
+        if task:
+            return True
+        return False
+
+
+
 
 

@@ -329,45 +329,46 @@ class OsImage(object):
         return True,"Success"
 
   
-    def pack_n_tar_mother(self,osimage,request_id):
+    def pack_n_tar_mother(self):
   
-        queue_id = Helper().add_task_to_queue(f'pack_n_tar_image_{osimage}','osimage')
-        self.logger.info(f"pack_n_tar_mother added task to queue: {queue_id}")
-        if not queue_id:
-            Helper().insert_mesg_in_status(request_id,"luna",f"error queuing my task: {queue_id}")
-            return
-        Helper().insert_mesg_in_status(request_id,"luna",f"queued pack osimage {osimage} with queue_id {queue_id}")
+#        queue_id = Helper().add_task_to_queue(f'pack_n_tar_image_{osimage}','osimage')
+#        self.logger.info(f"pack_n_tar_mother added task to queue: {queue_id}")
+#        if not queue_id:
+#            Helper().insert_mesg_in_status(request_id,"luna",f"error queuing my task: {queue_id}")
+#            return
+#        Helper().insert_mesg_in_status(request_id,"luna",f"queued pack osimage {osimage} with queue_id {queue_id}")
 
-        # --- now we wait till it's our turn
+        while Helper().tasks_in_queue('osimage'):
+            next_id = Helper().next_task_in_queue('osimage')
+            self.logger.info(f"pack_n_tar_mother sees job in queue as next: {next_id}")
+            details=Helper().get_task_details(next_id)
+            request_id=details['request_id']
+            action,osimage=details['task'].split(':')
 
-        queue=True
-        while queue:
-            queue = Helper().subsystem_task_exist_in_queue('osimage',queue_id)
-            self.logger.info(f"pack_n_tar_mother sees other job in queue: {queue}")
-            if queue is False:
-                break
-            sleep(10)
- 
-        Helper().update_task_status_in_queue(queue_id,'in progress')
-        Helper().insert_mesg_in_status(request_id,"luna",f"packing osimage {osimage}")
+            if action == "pack_n_tar_osimage":
 
-        # --- let's pack and rack
+                Helper().update_task_status_in_queue(next_id,'in progress')
+                Helper().insert_mesg_in_status(request_id,"luna",f"packing osimage {osimage}")
 
-        ret,mesg=self.pack_image(osimage)
-        if ret is True:
-            self.logger.info(f'OS image {osimage} packed successfully.')
-            Helper().insert_mesg_in_status(request_id,"luna",f"finished packing osimage {osimage}")
+            # --- let's pack and rack
 
-            rett,mesgt=self.create_tarball(osimage)
-            if rett is True:
-                self.logger.info(f'OS image {osimage} tarred successfully.')
-                Helper().insert_mesg_in_status(request_id,"luna",f"finished tarring osimage {osimage}")
-            else:
-                Helper().insert_mesg_in_status(request_id,"luna",f"error tarring osimage {osimage}: {mesgt}")
-        else:
-            Helper().insert_mesg_in_status(request_id,"luna",f"error packing osimage {osimage}: {mesgt}")
+                ret,mesg=self.pack_image(osimage)
+                if ret is True:
+                    self.logger.info(f'OS image {osimage} packed successfully.')
+                    Helper().insert_mesg_in_status(request_id,"luna",f"finished packing osimage {osimage}")
 
-        Helper().remove_task_from_queue(queue_id)
-        #Helper().insert_mesg_in_status(request_id,"luna","EOF")
+                    rett,mesgt=self.create_tarball(osimage)
+                    if rett is True:
+                        self.logger.info(f'OS image {osimage} tarred successfully.')
+                        Helper().insert_mesg_in_status(request_id,"luna",f"finished tarring osimage {osimage}")
+                    else:
+                        Helper().insert_mesg_in_status(request_id,"luna",f"error tarring osimage {osimage}: {mesgt}")
+                else:
+                    Helper().insert_mesg_in_status(request_id,"luna",f"error packing osimage {osimage}: {mesg}")
+
+                Helper().remove_task_from_queue(next_id)
+
+
+
 
 

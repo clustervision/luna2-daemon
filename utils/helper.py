@@ -702,27 +702,20 @@ class Helper(object):
 
     # -----------------------------------------------------------------
 
-    def add_task_to_queue(self,task,subsystem=None):
+    def add_task_to_queue(self,task,subsystem=None,request_id=None):
         if subsystem is None:
             subsystem="anonymous"
+        if request_id is None:
+            request_id="n/a"
         row=[{"column": "created", "value": "current_datetime"}, 
              {"column": "username_initiator", "value": "{subsystem}"}, 
              {"column": "task", "value": f"{task}"},
              {"column": "subsystem", "value": f"{subsystem}"},
+             {"column": "request_id", "value": f"{request_id}"},
              {"column": "status", "value": "queued"}]
         id=Database().insert('queue', row)
         # the id is supposed to be kept bij de caller so it can update the status, either directly or after other pending stuff is done
         return id
-
-#    def claim_task_from_queue(self,subsystem=None):
-#        where='ORDER BY ID DESC LIMIT 1'
-#        if subsystem:
-#            where=f" WHERE subsystem='{subsystem'} {where}"
-#        task = Database().get_record(None , 'queue', where)
-#        row = [{"column": "status", "value": "inprogress"}]
-#        where = [{"column": "id", "value": f"{task[0]['id']}"}]
-#        status = Database().update('queue', row, where)
-#        return task[0]['id'],task[0]['task']
 
     def update_task_status_in_queue(self,taskid,status):
         row = [{"column": "status", "value": f"{status}"}]
@@ -730,18 +723,32 @@ class Helper(object):
         status = Database().update('queue', row, where)
 
     def remove_task_from_queue(self,taskid):
-        Database().delete_row('queue', [{"column": "id", "value": task[0]['id']}])
+        Database().delete_row('queue', [{"column": "id", "value": taskid}])
 
-    def subsystem_task_exist_in_queue(self,subsystem,taskid=None):
-        where=f" WHERE subsystem='{subsystem}'"
-        if taskid:
-            where+=f" AND id!='{taskid}'"  # yes, we want to see if somebody else's task is there, not my own
-        where+=" LIMIT 1"
+    def next_task_in_queue(self,subsystem):
+        where=f" WHERE subsystem='{subsystem}' ORDER BY id ASC LIMIT 1"
         task = Database().get_record(None , 'queue', where)
         if task:
+            return task[0]['id']
+        return False
+
+    def get_task_details(self,taskid):
+        where=f" WHERE id='{taskid}'"
+        task = Database().get_record(None , 'queue', where)
+        if task:
+            return task[0]
+        return False
+
+    def tasks_in_queue(self,subsystem=None):
+        where=''
+        if subsystem:
+            where=f" WHERE subsystem='{subsystem}' LIMIT 1"
+        tasks = Database().get_record(None , 'queue', where)
+        if tasks:
             return True
         return False
 
+    # ---------------------------------------------------------
  
     def insert_mesg_in_status(self,request_id,username_initiator,message):
         row=[{"column": "request_id", "value": f"{request_id}"}, 

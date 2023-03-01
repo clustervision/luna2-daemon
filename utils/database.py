@@ -279,7 +279,7 @@ class Database(object):
         query = f'CREATE TABLE IF NOT EXISTS `{table}` ({strcolumns})'
         try:
             mylocal.cursor.execute(query)
-            self.connection.commit()
+            mylocal.connection.commit()
             response = True
         except pyodbc.Error as exp:
             self.logger.error(f'Error while creating table {table}. Error: {exp}')
@@ -374,7 +374,7 @@ class Database(object):
         self.logger.debug(f"Update Query ---> {query}")
         try:
             mylocal.cursor.execute(query)
-            self.connection.commit()
+            mylocal.connection.commit()
             if mylocal.cursor.rowcount < 1:
                 response = False
             else:

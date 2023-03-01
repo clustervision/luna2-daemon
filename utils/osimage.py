@@ -100,7 +100,7 @@ class OsImage(object):
 
         try:
 
-            self.logger.debug(f"/usr/bin/tar -C / --one-file-system --xattrs --selinux --acls --checkpoint=10000 --use-compress-program=/usr/bin/lbzip2 -c -f /tmp/{tarfile} .")
+            self.logger.debug(f"/usr/bin/tar -C / --one-file-system --xattrs --selinux --acls --checkpoint=100000 --use-compress-program=/usr/bin/lbzip2 -c -f /tmp/{tarfile} .")
 
             # dirty, but 4 times faster
             tar_out = subprocess.Popen(
@@ -111,7 +111,7 @@ class OsImage(object):
                     '--xattrs',
                     '--selinux',
                     '--acls',
-                    '--checkpoint=10000',
+                    '--checkpoint=100000',
                     '--use-compress-program=/usr/bin/lbzip2',
                     '-c', '-f', '/tmp/' + tarfile, '.'
                 ],
@@ -122,10 +122,11 @@ class OsImage(object):
             exit_code = tar_out.wait()
             if exit_code != "0":
                 output=tar_out.communicate()
+                self.logger.debug(f"Tarring of {image_path} failed: {output}")
                 if os.path.isfile('/tmp/' + tarfile):
                     os.remove('/tmp/' + tarfile)
-                return False,output[1][:-5].decode('ASCII')
-                #return False,f"Tarring failed with exit code {exit_code}"
+                #return False,output[1][:-5].decode('ASCII')
+                return False,f"Tarring failed with exit code {exit_code}"
 
         except:
             exc_type, exc_value, exc_traceback = sys.exc_info()
@@ -366,7 +367,7 @@ class OsImage(object):
         else:
             Helper().insert_mesg_in_status(request_id,"luna",f"error packing osimage {osimage}: {mesgt}")
 
-        remove_task_from_queue(queue_id)
-        Helper().insert_mesg_in_status(request_id,"luna","EOF")
+        Helper().remove_task_from_queue(queue_id)
+        #Helper().insert_mesg_in_status(request_id,"luna","EOF")
 
 

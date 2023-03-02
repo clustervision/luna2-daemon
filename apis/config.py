@@ -1142,39 +1142,20 @@ def config_osimage_pack(name=None):
     #Antoine
     request_id=str(time())+str(randint(1001,9999))+str(getpid())
 
-    queue_id = Helper().add_task_to_queue(f'pack_n_tar_osimage:{name}','osimage',request_id)
-    LOGGER.info(f"config_osimage_pack POST added task to queue: {queue_id}")
-    if not queue_id:
-        response= {"message": f'OS image {name} queue packing failed.'}
-        return json.dumps(response), code
+    executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
+    executor.submit(OsImage().pack_n_tar_mother,name,request_id)
+    executor.shutdown(wait=False)
+#    OsImage().pack_n_tar_mother()
 
-    Helper().insert_mesg_in_status(request_id,"luna",f"queued pack osimage {name} with queue_id {queue_id} and request_id {request_id}")
+    # we should check after a few seconds if there is a status update for us.
+    # if so, that means mother is taking care of things
 
-    next_id = Helper().next_task_in_queue('osimage')
-    LOGGER.info(f"config_osimage_pack POST {queue_id} see {next_id} as first in line")
-    if next_id == queue_id:
-
-        executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
-        executor.submit(OsImage().pack_n_tar_mother)
-        executor.shutdown(wait=False)
-#        OsImage().pack_n_tar_mother()
-
-        # we should check after a few seconds if there is a status update for us.
-        # if so, that means mother is taking care of things
-
-        sleep(1)
-        try:
-            status = Database().get_record(None , 'status', f' WHERE request_id = "{request_id}"')
-            if status:
-                code=204
-                response = {"message": "osimage pack queue and spawned thread", "request_id": request_id}
-        except:
-            pass
-    
-    else:
+    sleep(1)
+    status = Database().get_record(None , 'status', f' WHERE request_id = "{request_id}"')
+    if status:
         code=204
-        response = {"message": "osimage pack queue", "request_id": request_id}
-
+        response = {"message": "osimage pack for {name} queued", "request_id": request_id}
+    
     return json.dumps(response), code
 
 

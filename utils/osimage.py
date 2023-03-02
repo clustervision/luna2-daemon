@@ -328,24 +328,35 @@ class OsImage(object):
 
         return True,"Success"
 
-  
-    def pack_n_tar_mother(self):
-  
-#        queue_id = Helper().add_task_to_queue(f'pack_n_tar_image_{osimage}','osimage')
-#        self.logger.info(f"pack_n_tar_mother added task to queue: {queue_id}")
-#        if not queue_id:
-#            Helper().insert_mesg_in_status(request_id,"luna",f"error queuing my task: {queue_id}")
-#            return
-#        Helper().insert_mesg_in_status(request_id,"luna",f"queued pack osimage {osimage} with queue_id {queue_id}")
 
+    def pack_n_tar_mother(self,osimage,request_id):
+
+        queue_id = Helper().add_task_to_queue(f'pack_n_tar_osimage:{osimage}','osimage',request_id)
+        self.logger.info(f"pack_n_tar_mother added task to queue: {queue_id}")
+        if not queue_id:
+            Helper().insert_mesg_in_status(request_id,"luna",f"error queuing my task: {queue_id}")
+            return
+        Helper().insert_mesg_in_status(request_id,"luna",f"queued pack osimage {osimage} with queue_id {queue_id}")
+
+        next_id = Helper().next_task_in_queue('osimage')
+        if queue_id != next_id:
+            # little tricky. we assume that another mother proces was spawned that took care of the runs... 
+            # we need a check based on last hear queue entry, then we continue. pending in next_task_in_queue.
+            return
+
+        self.logger.info(f'I AM HERE 1')
         while Helper().tasks_in_queue('osimage'):
+            self.logger.info(f'I AM HERE 2')
             next_id = Helper().next_task_in_queue('osimage')
             self.logger.info(f"pack_n_tar_mother sees job in queue as next: {next_id}")
             details=Helper().get_task_details(next_id)
             request_id=details['request_id']
             action,osimage=details['task'].split(':')
+            self.logger.info(f'I AM HERE 3')
 
             if action == "pack_n_tar_osimage":
+                sleep(11)
+                self.logger.info(f'I AM HERE 4')
 
                 Helper().update_task_status_in_queue(next_id,'in progress')
                 Helper().insert_mesg_in_status(request_id,"luna",f"packing osimage {osimage}")
@@ -367,6 +378,11 @@ class OsImage(object):
                     Helper().insert_mesg_in_status(request_id,"luna",f"error packing osimage {osimage}: {mesg}")
 
                 Helper().remove_task_from_queue(next_id)
+                self.logger.info(f'OS image {osimage} done successfully.')
+                self.logger.info(f'I AM HERE 5')
+            else:
+                self.logger.info(f"{details['task']} is not for us.")
+                sleep(10)
 
 
 

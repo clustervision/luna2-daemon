@@ -708,7 +708,7 @@ class Helper(object):
         if request_id is None:
             request_id="n/a"
         row=[{"column": "created", "value": "current_datetime"}, 
-             {"column": "username_initiator", "value": "{subsystem}"}, 
+             {"column": "username_initiator", "value": "luna"}, 
              {"column": "task", "value": f"{task}"},
              {"column": "subsystem", "value": f"{subsystem}"},
              {"column": "request_id", "value": f"{request_id}"},

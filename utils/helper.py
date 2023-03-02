@@ -639,6 +639,17 @@ class Helper(object):
                 return False
 
 
+    # ---------------------------------------------------------
+ 
+    def insert_mesg_in_status(self,request_id,username_initiator,message):
+        row=[{"column": "request_id", "value": f"{request_id}"}, 
+             {"column": "created", "value": "current_datetime"}, 
+             {"column": "username_initiator", "value": f"{username_initiator}"}, 
+             {"column": "read", "value": "0"}, 
+             {"column": "message", "value": f"{message}"}]
+        Database().insert('status', row)
+
+
     # -----------------------------------------------------------------
 
     def control_child(self,pipeline,t=0):
@@ -692,13 +703,10 @@ class Helper(object):
 
             for key in list(results):
                 self.logger.info(f"control_mother result: {key}: {results[key]}")
-                row=[{"column": "request_id", "value": request_id}, 
-                     {"column": "created", "value": "current_datetime"}, 
-                     {"column": "username_initiator", "value": "lpower"}, 
-                     {"column": "message", "value": f"{key}:{results[key]}"}]
-                Database().insert('status', row)
+                self.insert_mesg_in_status(request_id,"lpower",f"{key}:{results[key]}")
                 pipeline.del_message(key)
             sleep(delay)
+
 
     # -----------------------------------------------------------------
 
@@ -747,16 +755,4 @@ class Helper(object):
         if tasks:
             return True
         return False
-
-    # ---------------------------------------------------------
- 
-    def insert_mesg_in_status(self,request_id,username_initiator,message):
-        row=[{"column": "request_id", "value": f"{request_id}"}, 
-             {"column": "created", "value": "current_datetime"}, 
-             {"column": "username_initiator", "value": f"{username_initiator}"}, 
-             {"column": "read", "value": "0"}, 
-             {"column": "message", "value": f"{message}"}]
-        Database().insert('status', row)
-
-
 

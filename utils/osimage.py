@@ -154,6 +154,7 @@ class OsImage(object):
 
 
     """
+    Antoine: kept here so i know how the columns are named
     `id`  INTEGER  NOT NULL ,  
     `name`  VARCHAR ,  
     `dracutmodules`  VARCHAR ,  
@@ -217,16 +218,6 @@ class OsImage(object):
         drivers_remove = []
         grab_filesystems = ['/','/boot']
         
-
-        """
-            osimage = {'name': name, 'path': path,
-                       'kernver': kernver, 'kernopts': kernopts,
-                       'kernfile': '', 'initrdfile': '',
-                       'dracutmodules': 'luna,-i18n,-plymouth',
-                       'kernmodules': 'ipmi_devintf,ipmi_si,ipmi_msghandler',
-                       'grab_exclude_list': grab_list_content,
-                       'grab_filesystems': '/,/boot', 'comment': comment}
-        """
 
         print(f"{image[0]}")
 
@@ -331,7 +322,8 @@ class OsImage(object):
 
     def pack_n_tar_mother(self,osimage,request_id):
 
-        self.logger.info(f"pack_n_tar_mother called <-----------------------")
+        self.logger.info(f"pack_n_tar_mother called")
+#        Below section is already done in config/pack GET call but kept here in case we want to move it back
 #        try:
 #            queue_id = Helper().add_task_to_queue(f'pack_n_tar_osimage:{osimage}','osimage',request_id)
 #        except:

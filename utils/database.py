@@ -43,12 +43,14 @@ class Database(object):
         self.encoding = 'charset=utf8mb4;'
         self.port = f'PORT={CONSTANT["DATABASE"]["PORT"]};'
         self.connection_string = f'{self.driver}{self.server}{self.database}{self.uid}{self.pswd}'
-        self.connection_string = f'{self.connection_string}{self.encoding}{self.port};MultipleActiveResultSets=True;MARS_Connection=yes'
+        self.connection_string = f'{self.connection_string}{self.encoding}{self.port}'
+        ##self.connection_string = f'{self.connection_string}{self.encoding}{self.port};MultipleActiveResultSets=True;MARS_Connection=yes'
 
         # the below 5 lines ensure that each thread gets it's own connection. it's a MUST for pyodbc - Antoine
         connection = getattr(mylocal, 'connection', None)
         if connection is None:
             mylocal.connection = pyodbc.connect(self.connection_string)
+            mylocal.connection.autocommit = True
             mylocal.cursor = mylocal.connection.cursor()
             self.logger.info(f"====> Establised DB connection for {threading.current_thread().name} <====")
 
@@ -71,6 +73,7 @@ class Database(object):
             mylocal.cursor.execute('SELECT * FROM user')
             result = mylocal.cursor.fetchone()
             mylocal.cursor.commit()
+            mylocal.connection.commit()
         except pyodbc.Error as exp:
             self.logger.error(f'Error while checking database => {exp}.')
             result = None
@@ -108,6 +111,7 @@ class Database(object):
                 response.append(rowdict)
                 rowdict = {}
             mylocal.cursor.commit()
+            mylocal.connection.commit()
         except pyodbc.Error as exp:
             self.logger.error(f'Error occur while executing => {query}. error is {exp}.')
             response = None
@@ -199,6 +203,7 @@ class Database(object):
                 response.append(rowdict)
                 rowdict = {}
             mylocal.cursor.commit()
+            mylocal.connection.commit()
         except pyodbc.Error as exp:
             self.logger.error(f'Error occur while executing => {query}. error is {exp}.')
             response = None
@@ -227,6 +232,7 @@ class Database(object):
                 response.append(rowdict)
                 rowdict = {}
             mylocal.cursor.commit()
+            mylocal.connection.commit()
         except pyodbc.Error as exp:
             self.logger.error(f'Error occur while executing => {query}. error is {exp}.')
             response = None
@@ -285,6 +291,7 @@ class Database(object):
         try:
             mylocal.cursor.execute(query)
             mylocal.cursor.commit()
+            mylocal.connection.commit()
             response = True
         except pyodbc.Error as exp:
             self.logger.error(f'Error while creating table {table}. Error: {exp}')
@@ -302,9 +309,11 @@ class Database(object):
             query = f'DELETE FROM "{table}";'
             mylocal.cursor.execute(query)
             mylocal.cursor.commit()
+            mylocal.connection.commit()
             query = f'DELETE FROM sqlite_sequence WHERE name ="{table}";'
             mylocal.cursor.execute(query)
             mylocal.cursor.commit()
+            mylocal.connection.commit()
             response = True
         except pyodbc.Error as exp:
             self.logger.error(f'Error occur while executing => {query}. error is {exp}.')
@@ -336,6 +345,7 @@ class Database(object):
         try:
             mylocal.cursor.execute(query)
             mylocal.cursor.commit()
+            mylocal.connection.commit()
             for key,value in zip(wherekeys, wherevalues):
                 wherelist.append(f'{key} = {value}')
             where = where + ' AND '.join(wherelist)
@@ -379,11 +389,12 @@ class Database(object):
         self.logger.debug(f"Update Query ---> {query}")
         try:
             mylocal.cursor.execute(query)
-            mylocal.cursor.commit()
             if mylocal.cursor.rowcount < 1:
                 response = False
             else:
                 response = True
+            mylocal.cursor.commit()
+            mylocal.connection.commit()
         except pyodbc.Error as exp:
             self.logger.error(f'Error occur while executing => {query}. error is {exp}.')
             response = False
@@ -412,6 +423,7 @@ class Database(object):
             query = f'DELETE FROM "{table}" WHERE {strwhere};'
             mylocal.cursor.execute(query)
             mylocal.cursor.commit()
+            mylocal.connection.commit()
             response = True
         except pyodbc.Error as exp:
             self.logger.error(f'Error occur while executing => {query}. error is {exp}.')
@@ -423,6 +435,7 @@ class Database(object):
             query = f'DELETE FROM "{table}";'
             mylocal.cursor.execute(query)
             mylocal.cursor.commit()
+            mylocal.connection.commit()
             response = True
         except pyodbc.Error as exp:
             self.logger.error(f'Error occur while executing => {query}. error is {exp}.')
@@ -439,6 +452,7 @@ class Database(object):
             query = f'DROP TABLE [IF EXISTS] {table}'
             mylocal.cursor.execute(query)
             mylocal.cursor.commit()
+            mylocal.connection.commit()
             response = True
         except pyodbc.Error as exp:
             self.logger.error(f'Error occur while executing => {query}. error is {exp}.')
@@ -462,6 +476,7 @@ class Database(object):
             # Fetching the Column Names
             response = list(map(lambda x: x[0], mylocal.cursor.description))
             mylocal.cursor.commit()
+            mylocal.connection.commit()
         except pyodbc.Error as exp:
             self.logger.error(f'Error occur while executing => {query}. error is {exp}.')
             response = None
@@ -482,6 +497,7 @@ class Database(object):
             if response:
                 response = response[0]
             mylocal.cursor.commit()
+            mylocal.connection.commit()
         except pyodbc.Error as exp:
             self.logger.error(f'Error occur while executing => {query}. error is {exp}.')
             response = None
@@ -502,6 +518,7 @@ class Database(object):
             if response:
                 response = response[0]
             mylocal.cursor.commit()
+            mylocal.connection.commit()
         except pyodbc.Error as exp:
             self.logger.error(f'Error occur while executing => {query}. error is {exp}.')
             response = None

@@ -707,6 +707,8 @@ class Helper(object):
                 pipeline.del_message(key)
             sleep(delay)
 
+        self.insert_mesg_in_status(request_id,"lpower",f"EOF")
+
 
     # -----------------------------------------------------------------
 

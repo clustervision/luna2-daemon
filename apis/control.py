@@ -122,16 +122,19 @@ def control_post():
                     failed_nodes=[]
                     for record in status:
                         if 'message' in record:
-                            node,result=record['message'].split(':',1)  #data is message is like 'nodexxx:message'
-                            LOGGER.info(f"control POST regexp match: [{result}]")
-                            if result == "on":
-                                on_nodes.append(node)
-                            elif result == "off":
-                                off_nodes.append(node)
-                            else:
-                                failed_nodes.append(node)
-                            Database().delete_row('status', [{"column": "id", "value": record['id']}])
+                            if record['read'] == 0:
+                                node,result=record['message'].split(':',1)  #data is message is like 'nodexxx:message'
+                                LOGGER.info(f"control POST regexp match: [{result}]")
+                                if result == "on":
+                                    on_nodes.append(node)
+                                elif result == "off":
+                                    off_nodes.append(node)
+                                else:
+                                    failed_nodes.append(node)
                     response={'control': {'power': {'on': { 'hostlist': ','.join(on_nodes) }, 'off': { 'hostlist': ','.join(off_nodes) }, 'failed': { 'hostlist': ','.join(failed_nodes) }, 'request_id': request_id } }}
+                    where = [{"column": "request_id", "value": request_id}]
+                    row = [{"column": "read", "value": "1"}]
+                    Database().update('status', row, where)
                 else:
                     response = {'control': {'power': {'request_id': request_id} } }
                 # end Antoine ---------------------------------------------------------------
@@ -163,15 +166,21 @@ def control_status(request_id=None):
         failed_nodes=[]
         for record in status:
             if 'message' in record:
-                node,result=record['message'].split(':',1)  #data is message is like 'nodexxx:message'
-                if result == "on":
-                    on_nodes.append(node)
-                elif result == "off":
-                    off_nodes.append(node)
-                else:
-                    failed_nodes.append(node)
-                Database().delete_row('status', [{"column": "id", "value": record['id']}])
+                if record['read']==0:
+                    if record['message'] == "EOF":
+                        Database().delete_row('status', [{"column": "request_id", "value": request_id}])
+                    else:
+                        node,result=record['message'].split(':',1)  #data is message is like 'nodexxx:message'
+                        if result == "on":
+                            on_nodes.append(node)
+                        elif result == "off":
+                            off_nodes.append(node)
+                        else:
+                            failed_nodes.append(node)
         response={'control': {'power': {'on': { 'hostlist': ','.join(on_nodes) }, 'off': { 'hostlist': ','.join(off_nodes) }, 'failed': { 'hostlist': ','.join(failed_nodes) }} }}
+        where = [{"column": "request_id", "value": request_id}]
+        row = [{"column": "read", "value": "1"}]
+        Database().update('status', row, where)
         access_code = 200
     return json.dumps(response), access_code
 

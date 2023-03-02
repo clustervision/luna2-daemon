@@ -754,6 +754,7 @@ class Helper(object):
         row=[{"column": "request_id", "value": f"{request_id}"}, 
              {"column": "created", "value": "current_datetime"}, 
              {"column": "username_initiator", "value": f"{username_initiator}"}, 
+             {"column": "read", "value": "0"}, 
              {"column": "message", "value": f"{message}"}]
         Database().insert('status', row)
 

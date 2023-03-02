@@ -32,7 +32,7 @@ def checkdbstatus():
     """
     sqlite, read, write = False, False, False
     code = 503
-    if CONSTANT['DATABASE']['DRIVER'] == "SQLite":
+    if CONSTANT['DATABASE']['DRIVER'] == "SQLite3" or CONSTANT['DATABASE']['DRIVER'] == "SQLite":
         sqlite = True
     if sqlite and os.path.isfile(CONSTANT['DATABASE']['DATABASE']):
         if os.access(CONSTANT['DATABASE']['DATABASE'], os.R_OK):
@@ -70,7 +70,7 @@ def checkdbstatus():
             read, write = True, True
             code = 200
             sys.stderr.write(f"checkdbstatus: Successfully tried to test a non-sqlite database\n")
-        except pyodbc.Error as error:
+        except Exception as error:
             sys.stderr.write(f"{CONSTANT['DATABASE']['DATABASE']} connection error: {error}.\n")
     response = {"driver": CONSTANT['DATABASE']['DRIVER'], "database": CONSTANT['DATABASE']['DATABASE'], "read": read, "write": write}
     sys.stderr.write(f"checkdbstatus: returning code = [{code}]\n")

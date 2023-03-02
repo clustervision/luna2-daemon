@@ -1142,11 +1142,7 @@ def config_osimage_pack(name=None):
     #Antoine
     request_id=str(time())+str(randint(1001,9999))+str(getpid())
 
-    try:
-        queue_id = Helper().add_task_to_queue(f'pack_n_tar_osimage:{name}','osimage',request_id)
-    except:
-        exc_type, exc_value, exc_traceback = sys.exc_info()
-        LOGGER.info(f"--------> {exc_type} {exc_value} {exc_traceback}")
+    queue_id = Helper().add_task_to_queue(f'pack_n_tar_osimage:{name}','osimage',request_id)
     if not queue_id:
         LOGGER.info(f"config_osimage_pack GET cannot get queue_id")
         response= {"message": f'OS image {name} pack queuing failed.'}
@@ -1168,9 +1164,9 @@ def config_osimage_pack(name=None):
     sleep(1)
     status = Database().get_record(None , 'status', f' WHERE request_id = "{request_id}"')
     if status:
-        code=204
+        code=200
         response = {"message": "osimage pack for {name} queued", "request_id": request_id}
-    
+    LOGGER.info(f"my repsonse [{response}]")
     return json.dumps(response), code
 
 
@@ -2985,3 +2981,34 @@ def config_group_secret_delete(name=None, secret=None):
         response = {'message': f'Group {name} is not available.'}
         access_code = 404
     return json.dumps(response), access_code
+
+
+@config_blueprint.route('/config/status/<string:request_id>', methods=['GET'])
+def control_status(request_id=None):
+    """
+    Input - request_id
+    Process - gets the list from status table. renders this into a response.
+    Output - Success or failure
+    """
+
+    LOGGER.info(f"control STATUS: request_id: [{request_id}]")
+    access_code = 400
+    response = {'message': 'Bad Request.'}
+    status = Database().get_record(None , 'status', f' WHERE request_id = "{request_id}"')
+    if status:
+        message=[]
+        for record in status:
+            if 'read' in record:
+                if record['read']==0:
+                    if 'message' in record:
+                        if record['message'] == "EOF":
+                            Database().delete_row('status', [{"column": "request_id", "value": request_id}])
+                        else:
+                            message.append(record['message'])
+        response={'message': (';;').join(message) }
+        where = [{"column": "request_id", "value": request_id}]
+        row = [{"column": "read", "value": "1"}]
+        Database().update('status', row, where)
+        access_code = 200
+    return json.dumps(response), access_code
+

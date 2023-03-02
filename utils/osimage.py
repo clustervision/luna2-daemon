@@ -381,6 +381,7 @@ class OsImage(object):
                     Helper().insert_mesg_in_status(request_id,"luna",f"error packing osimage {osimage}: {mesg}")
 
                 Helper().remove_task_from_queue(next_id)
+                Helper().insert_mesg_in_status(request_id,"luna",f"EOF")
             else:
                 self.logger.info(f"{details['task']} is not for us.")
                 sleep(10)

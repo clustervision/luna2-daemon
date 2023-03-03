@@ -223,9 +223,7 @@ host {node}  {{
                 rev_ip = rev_ip[2:]
                 rev_ip = '.'.join(rev_ip)
                 zone_config = f'{zone_config}{self.dns_zone_config(networkname, rev_ip)}'
-            #where = f' WHERE networkid = "{nwkid}";'
             #TWAN
-            #node_interface = Database().get_record(None, 'nodeinterface', where)
             node_interface = Database().get_record_join(['node.name as nodename','ipaddress.ipaddress','network.name as networkname'], ['ipaddress.tablerefid=nodeinterface.id','nodeinterface.nodeid=node.id','network.id=ipaddress.networkid'], ['tableref="nodeinterface"',f'ipaddress.networkid="{nwkid}"'])
             nodelist, ptrnodelist= [], []
             if node_interface:
@@ -235,6 +233,16 @@ host {node}  {{
                     sub_ip = interface['ipaddress'].split('.')  # NOT IPv6 COMPLIANT!! needs overhaul. PENDING
                     nodeptr = sub_ip[2]+'.'+sub_ip[3]
                     ptrnodelist.append(f"{nodeptr}                    IN PTR {interface['nodename']}.{interface['networkname']}.")
+
+            for item in ['otherdevices','switch']:
+                devices = Database().get_record_join([f'{item}.name as devname','ipaddress.ipaddress','network.name as networkname'], [f'ipaddress.tablerefid={item}.id','network.id=ipaddress.networkid'], [f'tableref="{item}"',f'ipaddress.networkid="{nwkid}"'])
+                if devices:
+                    for device in devices:
+                        devip = device['ipaddress']
+                        nodelist.append(f"{device['devname']}                 IN A {device['ipaddress']}")
+                        sub_ip = device['ipaddress'].split('.')  # NOT IPv6 COMPLIANT!! needs overhaul. PENDING
+                        nodeptr = sub_ip[2]+'.'+sub_ip[3]
+                        ptrnodelist.append(f"{nodeptr}                    IN PTR {device['devname']}.{device['networkname']}.")
 
             zone_name_config = self.dns_zone_name(networkname, controllerip, nodelist)
             zone_ptr_config = self.dns_zone_ptr(networkname, ptrnodelist)

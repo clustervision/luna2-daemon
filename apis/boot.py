@@ -35,7 +35,7 @@ def boot():
     check_template = Helper().checkjinja(f'{CONSTANT["TEMPLATES"]["TEMPLATES_DIR"]}/{template}')
     if not check_template:
         abort(404, 'Empty')
-    controller = Database().get_record_join(['controller.*','ipaddress.ipaddress'], ['ipaddress.tablerefid=controller.id'],['tableref="controller"','controller.hostname="controller.cluster"'])
+    controller = Database().get_record_join(['controller.*','ipaddress.ipaddress'], ['ipaddress.tablerefid=controller.id'],['tableref="controller"','controller.hostname="controller"'])
     if controller:
         ipaddress = controller[0]['ipaddress']
         serverport = controller[0]['serverport']
@@ -82,7 +82,7 @@ def boot_short():
     check_template = Helper().checkjinja(f'{CONSTANT["TEMPLATES"]["TEMPLATES_DIR"]}/{template}')
     if not check_template:
         abort(404, 'Empty')
-    controller = Database().get_record_join(['controller.*','ipaddress.ipaddress'], ['ipaddress.tablerefid=controller.id'],['tableref="controller"','controller.hostname="controller.cluster"'])
+    controller = Database().get_record_join(['controller.*','ipaddress.ipaddress'], ['ipaddress.tablerefid=controller.id'],['tableref="controller"','controller.hostname="controller"'])
     if controller:
         ipaddress = controller[0]['ipaddress']
         serverport = controller[0]['serverport']
@@ -107,7 +107,7 @@ def boot_disk():
     check_template = Helper().checkjinja(f'{CONSTANT["TEMPLATES"]["TEMPLATES_DIR"]}/{template}')
     if not check_template:
         abort(404, 'Empty')
-    controller = Database().get_record_join(['controller.*','ipaddress.ipaddress'], ['ipaddress.tablerefid=controller.id'],['tableref="controller"','controller.hostname="controller.cluster"'])
+    controller = Database().get_record_join(['controller.*','ipaddress.ipaddress'], ['ipaddress.tablerefid=controller.id'],['tableref="controller"','controller.hostname="controller"'])
     if controller:
         ipaddress = controller[0]['ipaddress']
         serverport = controller[0]['serverport']
@@ -146,7 +146,8 @@ def boot_search_mac(mac=None):
     if not check_template:
         abort(404, 'Empty')
     #Antoine
-    controller = Database().get_record_join(['controller.*','ipaddress.ipaddress'], ['ipaddress.tablerefid=controller.id'],['tableref="controller"','controller.hostname="controller.cluster"'])
+    #LOGGER.info(f"BOOT/SEARCH/MAC received for {mac}")
+    controller = Database().get_record_join(['controller.*','ipaddress.ipaddress'], ['ipaddress.tablerefid=controller.id'],['tableref="controller"','controller.hostname="controller"'])
     if controller:
         data['ipaddress'] = controller[0]['ipaddress']
         data['serverport'] = controller[0]['serverport']
@@ -185,7 +186,7 @@ def boot_search_mac(mac=None):
         LUNA_CONTROLLER     = data['ipaddress'],
         LUNA_API_PORT       = data['serverport'],
         NODE_MAC_ADDRESS    = mac,
-        OSIMAGE_INTRDFILE   = data['intrdfile'],
+        OSIMAGE_INITRDFILE  = data['intrdfile'],
         OSIMAGE_KERNELFILE  = data['kernelfile'],
         NODE_NAME           = data['nodename'],
         NODE_HOSTNAME       = data['nodehostname'],
@@ -220,7 +221,7 @@ def boot_manual_hostname(hostname=None, mac=None):
     if not check_template:
         abort(404, 'Empty')
     #Antoine
-    controller = Database().get_record_join(['controller.*','ipaddress.ipaddress'], ['ipaddress.tablerefid=controller.id'],['tableref="controller"','controller.hostname="controller.cluster"'])
+    controller = Database().get_record_join(['controller.*','ipaddress.ipaddress'], ['ipaddress.tablerefid=controller.id'],['tableref="controller"','controller.hostname="controller"'])
     if controller:
         data['ipaddress'] = controller[0]['ipaddress']
         data['serverport'] = controller[0]['serverport']
@@ -282,7 +283,7 @@ def boot_manual_hostname(hostname=None, mac=None):
         LUNA_CONTROLLER     = data['ipaddress'],
         LUNA_API_PORT       = data['serverport'],
         NODE_MAC_ADDRESS    = mac,
-        OSIMAGE_INTRDFILE   = data['intrdfile'],
+        OSIMAGE_INITRDFILE   = data['intrdfile'],
         OSIMAGE_KERNELFILE  = data['kernelfile'],
         NODE_NAME           = data['nodename'],
         NODE_HOSTNAME       = data['nodehostname'],
@@ -322,7 +323,7 @@ def boot_install(node=None):
     if cluster:
         data['selinux']      = Helper().bool_revert(cluster[0]['security'])
     #Antoine
-    controller = Database().get_record_join(['controller.*','ipaddress.ipaddress'], ['ipaddress.tablerefid=controller.id'],['tableref="controller"','controller.hostname="controller.cluster"'])
+    controller = Database().get_record_join(['controller.*','ipaddress.ipaddress'], ['ipaddress.tablerefid=controller.id'],['tableref="controller"','controller.hostname="controller"'])
     if controller:
         data['ipaddress']   = controller[0]['ipaddress']
         data['serverport']  = controller[0]['serverport']

@@ -264,6 +264,8 @@ class Database(object):
         Output - Creates Table.
         """
         driver=f'{CONSTANT["DATABASE"]["DRIVER"]}' # either MySQL, SQLite, or...
+        if driver == "SQLite3":
+           driver="SQLite"
         columns = []
         indici  = []
         for cols in column:

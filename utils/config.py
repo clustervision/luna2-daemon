@@ -52,7 +52,7 @@ class Config(object):
         if cluster and ('ntp_server' in cluster[0]):
             ntpserver = cluster[0]['ntp_server']
         controller = Database().get_record_join(['ipaddress.ipaddress'], ['ipaddress.tablerefid=controller.id'], ['tableref="controller"','controller.hostname="controller"'])
-        networks = Database().get_record(None, 'network', ' WHERE `dhcp` = 1;')
+        networks = Database().get_record(None, 'network', ' WHERE `dhcp` = 1')
         dhcpfile = f"{CONSTANT['TEMPLATES']['TEMP_DIR']}/dhcpd.conf"
         if networks:
             for nwk in networks:
@@ -65,7 +65,7 @@ class Config(object):
                     nwk['dhcp_range_begin'], nwk['dhcp_range_end']
                 )
                 dhcp_subnet_block = f'{dhcp_subnet_block}{subnet_block}'
-#                where = f' WHERE networkid = "{nwkid}" and macaddress IS NOT NULL;'
+#                where = f' WHERE networkid = "{nwkid}" and macaddress IS NOT NULL'
 #                #node_interface = Database().get_record(None, 'nodeinterface', where)
 
                 node_interface = Database().get_record_join(['node.name as nodename','ipaddress.ipaddress','nodeinterface.macaddress'], ['ipaddress.tablerefid=nodeinterface.id'], ['tableref="nodeinterface"','ipaddress.networkid="{nwkid}"'])
@@ -79,7 +79,7 @@ class Config(object):
                             )
                 else:
                     self.logger.info(f'No Nodes available for this network {nwkname}  {nwknetwork}')
-#                where = f' WHERE network = "{nwkid}" and macaddr IS NOT NULL;'
+#                where = f' WHERE network = "{nwkid}" and macaddr IS NOT NULL'
 #                devices = Database().get_record(None, 'otherdevices', where)
                 for item in ['otherdevices','switch']:
                     devices = Database().get_record_join([f'{item}.name','ipaddress.ipaddress',f'{item}.macaddress'], [f'ipaddress.tablerefid={item}.id'], [f'tableref="{item}"','ipaddress.networkid="{nwkid}"'])

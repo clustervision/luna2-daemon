@@ -54,6 +54,7 @@ class Config(object):
         controller = Database().get_record_join(['ipaddress.ipaddress'], ['ipaddress.tablerefid=controller.id'], ['tableref="controller"','controller.hostname="controller"'])
         networks = Database().get_record(None, 'network', ' WHERE `dhcp` = 1')
         dhcpfile = f"{CONSTANT['TEMPLATES']['TEMP_DIR']}/dhcpd.conf"
+        self.logger.info("HERE 0")
         if networks:
             for nwk in networks:
                 nwkid = nwk['id']
@@ -64,15 +65,16 @@ class Config(object):
                     nwk['network'], netmask, nwk['gateway'], controller[0]['ipaddress'],
                     nwk['dhcp_range_begin'], nwk['dhcp_range_end']
                 )
+                self.logger.info(f"HERE 1 [{subnet_block}]")
                 dhcp_subnet_block = f'{dhcp_subnet_block}{subnet_block}'
 #                where = f' WHERE networkid = "{nwkid}" and macaddress IS NOT NULL'
 #                #node_interface = Database().get_record(None, 'nodeinterface', where)
 
-                node_interface = Database().get_record_join(['node.name as nodename','ipaddress.ipaddress','nodeinterface.macaddress'], ['ipaddress.tablerefid=nodeinterface.id'], ['tableref="nodeinterface"','ipaddress.networkid="{nwkid}"'])
+                node_interface = Database().get_record_join(['node.name as nodename','ipaddress.ipaddress','nodeinterface.macaddress'], ['ipaddress.tablerefid=nodeinterface.id','nodeinterface.nodeid=node.id'], ['tableref="nodeinterface"',f'ipaddress.networkid="{nwkid}"'])
                 if node_interface:
                     for interface in node_interface:
 #                        nodename = Database().getname_byid('node', interface['nodeid'])
-                        if node_interface['macaddress']: 
+                        if interface['macaddress']: 
                             node_block.append(
 #                                self.dhcp_node(nodename, interface['macaddress'],interface['ipaddress'])
                                 self.dhcp_node(interface['nodename'], interface['macaddress'],interface['ipaddress'])
@@ -82,7 +84,7 @@ class Config(object):
 #                where = f' WHERE network = "{nwkid}" and macaddr IS NOT NULL'
 #                devices = Database().get_record(None, 'otherdevices', where)
                 for item in ['otherdevices','switch']:
-                    devices = Database().get_record_join([f'{item}.name','ipaddress.ipaddress',f'{item}.macaddress'], [f'ipaddress.tablerefid={item}.id'], [f'tableref="{item}"','ipaddress.networkid="{nwkid}"'])
+                    devices = Database().get_record_join([f'{item}.name','ipaddress.ipaddress',f'{item}.macaddress'], [f'ipaddress.tablerefid={item}.id'], [f'tableref="{item}"',f'ipaddress.networkid="{nwkid}"'])
                     if devices:
                         for device in devices:
                             if device['macaddress']: 

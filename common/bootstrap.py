@@ -159,6 +159,7 @@ def getconfig(filename=None):
                     if 'CONTROLLER'+str(num) in option.upper():
                         BOOTSTRAP[section][option.upper()]={}
                         hostname,ip,*_=(item.split(':')+[None])
+                        hostname,*_=(hostname.split('.')+[None]) # we don't expect a fqdn anywhere in the code! we generally look for 'controller'. BEWARE!
                         if hostname and not ip and '.' in hostname:  # i guess we only have an IP and no hostname?
                             ip=hostname
                             hostname=option.lower()
@@ -167,6 +168,7 @@ def getconfig(filename=None):
                             BOOTSTRAP[section][option.upper()]['HOSTNAME'] = hostname
                 if 'CONTROLLER' in option.upper() and 'CONTROLLER1' not in option.upper():  # we assume we do not have H/A setup. no Virtual IP
                     hostname,ip,*_=(item.split(':')+[None])
+                    hostname,*_=(hostname.split('.')+[None])
                     if hostname and not ip and '.' in hostname:  # i guess we only have an IP and no hostname?
                         ip=hostname
                         hostname=option.lower()
@@ -244,11 +246,11 @@ def bootstrap(bootstrapfile=None):
                 {'column': 'name', 'value': str(nwkx)},
                 {'column': 'network', 'value': network_details['network']},
                 {'column': 'subnet', 'value': network_details['subnet']},
-                {'column': 'dhcp', 'value': '{dhcp}'},
-                {'column': 'ns_hostname', 'value': BOOTSTRAP['HOSTS']['HOSTNAME']},
-                {'column': 'ns_ip', 'value': BOOTSTRAP['HOSTS']['CONTROLLER1']},
-                {'column': 'gateway', 'value': BOOTSTRAP['HOSTS']['CONTROLLER1']},
-                {'column': 'ntp_server', 'value': BOOTSTRAP['HOSTS']['CONTROLLER1']}
+                {'column': 'dhcp', 'value': dhcp},
+                {'column': 'ns_hostname', 'value': BOOTSTRAP['HOSTS']['CONTROLLER']['HOSTNAME']},
+                {'column': 'ns_ip', 'value': BOOTSTRAP['HOSTS']['CONTROLLER']['IP']},
+                {'column': 'gateway', 'value': BOOTSTRAP['HOSTS']['CONTROLLER']['IP']},
+                {'column': 'ntp_server', 'value': BOOTSTRAP['HOSTS']['CONTROLLER']['IP']}
             ]
         Database().insert('network', default_network)
     network = Database().get_record(None, 'network', None)

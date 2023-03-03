@@ -639,6 +639,17 @@ class Helper(object):
                 return False
 
 
+    # ---------------------------------------------------------
+ 
+    def insert_mesg_in_status(self,request_id,username_initiator,message):
+        row=[{"column": "request_id", "value": f"{request_id}"}, 
+             {"column": "created", "value": "current_datetime"}, 
+             {"column": "username_initiator", "value": f"{username_initiator}"}, 
+             {"column": "read", "value": "0"}, 
+             {"column": "message", "value": f"{message}"}]
+        Database().insert('status', row)
+
+
     # -----------------------------------------------------------------
 
     def control_child(self,pipeline,t=0):
@@ -692,15 +703,58 @@ class Helper(object):
 
             for key in list(results):
                 self.logger.info(f"control_mother result: {key}: {results[key]}")
-                row=[{"column": "request_id", "value": request_id}, 
-                     {"column": "created", "value": "current_datetime"}, 
-                     {"column": "username_initiator", "value": "lpower"}, 
-                     {"column": "message", "value": f"{key}:{results[key]}"}]
-                Database().insert('status', row)
+                self.insert_mesg_in_status(request_id,"lpower",f"{key}:{results[key]}")
                 pipeline.del_message(key)
             sleep(delay)
 
+        self.insert_mesg_in_status(request_id,"lpower",f"EOF")
+
+
     # -----------------------------------------------------------------
 
+    def add_task_to_queue(self,task,subsystem=None,request_id=None):
+        if subsystem is None:
+            subsystem="anonymous"
+        if request_id is None:
+            request_id="n/a"
+        row=[{"column": "created", "value": "current_datetime"}, 
+             {"column": "username_initiator", "value": "luna"}, 
+             {"column": "task", "value": f"{task}"},
+             {"column": "subsystem", "value": f"{subsystem}"},
+             {"column": "request_id", "value": f"{request_id}"},
+             {"column": "status", "value": "queued"}]
+        id=Database().insert('queue', row)
+        # the id is supposed to be kept bij de caller so it can update the status, either directly or after other pending stuff is done
+        return id
 
+    def update_task_status_in_queue(self,taskid,status):
+        row = [{"column": "status", "value": f"{status}"}]
+        where = [{"column": "id", "value": f"{taskid}"}]
+        status = Database().update('queue', row, where)
+
+    def remove_task_from_queue(self,taskid):
+        Database().delete_row('queue', [{"column": "id", "value": taskid}])
+
+    def next_task_in_queue(self,subsystem):
+        where=f" WHERE subsystem='{subsystem}' ORDER BY id ASC LIMIT 1"
+        task = Database().get_record(None , 'queue', where)
+        if task:
+            return task[0]['id']
+        return False
+
+    def get_task_details(self,taskid):
+        where=f" WHERE id='{taskid}'"
+        task = Database().get_record(None , 'queue', where)
+        if task:
+            return task[0]
+        return False
+
+    def tasks_in_queue(self,subsystem=None):
+        where=''
+        if subsystem:
+            where=f" WHERE subsystem='{subsystem}' LIMIT 1"
+        tasks = Database().get_record(None , 'queue', where)
+        if tasks:
+            return True
+        return False
 

@@ -32,7 +32,7 @@ def checkdbstatus():
     """
     sqlite, read, write = False, False, False
     code = 503
-    if CONSTANT['DATABASE']['DRIVER'] == "SQLite":
+    if CONSTANT['DATABASE']['DRIVER'] == "SQLite3" or CONSTANT['DATABASE']['DRIVER'] == "SQLite":
         sqlite = True
     if sqlite and os.path.isfile(CONSTANT['DATABASE']['DATABASE']):
         if os.access(CONSTANT['DATABASE']['DATABASE'], os.R_OK):
@@ -70,7 +70,7 @@ def checkdbstatus():
             read, write = True, True
             code = 200
             sys.stderr.write(f"checkdbstatus: Successfully tried to test a non-sqlite database\n")
-        except pyodbc.Error as error:
+        except Exception as error:
             sys.stderr.write(f"{CONSTANT['DATABASE']['DATABASE']} connection error: {error}.\n")
     response = {"driver": CONSTANT['DATABASE']['DRIVER'], "database": CONSTANT['DATABASE']['DATABASE'], "read": read, "write": write}
     sys.stderr.write(f"checkdbstatus: returning code = [{code}]\n")
@@ -89,7 +89,7 @@ def check_db():
         sys.stderr.write(f"Will try to create {dbstatus['database']} with {dbstatus['driver']}\n")
         kill = lambda process: process.kill()
         output = None
-        if dbstatus["driver"] == "SQLite":
+        if dbstatus["driver"] == "SQLite" or dbstatus["driver"] == "SQLite3":
             my_process = subprocess.Popen(f"sqlite3 {dbstatus['database']} \"create table init (id int); drop table init;\"", stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
             my_timer = threading.Timer(10,kill,[my_process])
             try:
@@ -121,7 +121,7 @@ def check_db_tables():
     """
     This method will check whether the database is empty or not.
     """
-    table = ['cluster', 'bmcsetup', 'group', 'groupinterface', 'groupsecrets', 'status',
+    table = ['cluster', 'bmcsetup', 'group', 'groupinterface', 'groupsecrets', 'status', 'queue',
              'network', 'osimage', 'switch', 'tracker', 'node', 'nodeinterface', 'nodesecrets']
     num = 0
     for tablex in table:
@@ -134,6 +134,9 @@ def check_db_tables():
         return False
     return True
 
+def cleanup_queue_and_status():
+    Database().clear('queue')
+    Database().clear('status')
 
 def getconfig(filename=None):
     """
@@ -141,6 +144,9 @@ def getconfig(filename=None):
     option here and Option Value is an item here.
     Example: sections[HOSTS, NETWORKS], options[HOSTNAME, NODELIST],
     and vlaues of options are item(10.141.255.254, node[001-004])
+    CONTROLLER  = controller.cluster:10.141.255.251  <---- virtual IP
+    CONTROLLER1 = controller1.cluster:10.141.255.254
+    CONTROLLER2 = None
     """
     configParser.read(filename)
     Helper().checksection(filename, BOOTSTRAP)
@@ -149,15 +155,27 @@ def getconfig(filename=None):
             globals()[option.upper()] = item
             if section in list(BOOTSTRAP.keys()):
                 Helper().checkoption(filename, section, option.upper(), BOOTSTRAP)
-                if 'CONTROLLER1' in option.upper():
-                    Helper().check_ip(item)
-                    BOOTSTRAP[section][option.upper()] = item
-                elif 'CONTROLLER' in option.upper() and 'CONTROLLER1' not in option.upper():
-                    if '.' in item:
-                        Helper().check_ip(item)
-                        BOOTSTRAP[section][option.upper()] = item
-                    else:
-                        del BOOTSTRAP[section][option.upper()]
+                for num in range(1, 10):
+                    if 'CONTROLLER'+str(num) in option.upper():
+                        BOOTSTRAP[section][option.upper()]={}
+                        hostname,ip,*_=(item.split(':')+[None])
+                        hostname,*_=(hostname.split('.')+[None]) # we don't expect a fqdn anywhere in the code! we generally look for 'controller'. BEWARE!
+                        if hostname and not ip and '.' in hostname:  # i guess we only have an IP and no hostname?
+                            ip=hostname
+                            hostname=option.lower()
+                        if Helper().check_ip(ip):
+                            BOOTSTRAP[section][option.upper()]['IP'] = ip
+                            BOOTSTRAP[section][option.upper()]['HOSTNAME'] = hostname
+                if 'CONTROLLER' in option.upper() and 'CONTROLLER1' not in option.upper():  # we assume we do not have H/A setup. no Virtual IP
+                    hostname,ip,*_=(item.split(':')+[None])
+                    hostname,*_=(hostname.split('.')+[None])
+                    if hostname and not ip and '.' in hostname:  # i guess we only have an IP and no hostname?
+                        ip=hostname
+                        hostname=option.lower()
+                    if Helper().check_ip(ip):
+                        BOOTSTRAP[section][option.upper()] = {}
+                        BOOTSTRAP[section][option.upper()]['IP'] = ip
+                        BOOTSTRAP[section][option.upper()]['HOSTNAME'] = hostname
                 elif 'NODELIST' in option.upper():
                     ### TODO Nodelist also check for the length
                     try:
@@ -166,8 +184,12 @@ def getconfig(filename=None):
                     except Exception:
                         LOGGER.error(f'Invalid node list range: {item}, kindly use the numbers in incremental order.')
                 elif 'NETWORKS' in section:
+                    network,dhcp,*_ = (item.split(':')+[None])
                     #Helper().get_netmask(item)  # <-- not used?
-                    BOOTSTRAP[section][option.upper()] = item
+                    BOOTSTRAP[section][option.upper()]={}
+                    BOOTSTRAP[section][option.upper()]['NETWORK'] = network
+                    if dhcp:
+                        BOOTSTRAP[section][option.upper()]['DHCP'] = 1
                 else:
                     BOOTSTRAP[section][option.upper()] = item
             else:
@@ -177,6 +199,7 @@ def getconfig(filename=None):
 
 def create_database_tables():
     Database().create("status",DATABASE_LAYOUT_status)
+    Database().create("queue",DATABASE_LAYOUT_queue)
     Database().create("osimage",DATABASE_LAYOUT_osimage)
     Database().create("nodesecrets",DATABASE_LAYOUT_nodesecrets)
     Database().create("nodeinterface",DATABASE_LAYOUT_nodeinterface)
@@ -215,16 +238,19 @@ def bootstrap(bootstrapfile=None):
     cluster = Database().get_record(None, 'cluster', None)
     clusterid = cluster[0]['id']
     for nwkx in BOOTSTRAP['NETWORKS'].keys():
-        network_details=Helper().get_network_details(BOOTSTRAP['NETWORKS'][nwkx])
+        network_details=Helper().get_network_details(BOOTSTRAP['NETWORKS'][nwkx]['NETWORK'])
+        dhcp=0
+        if 'DHCP' in BOOTSTRAP['NETWORKS'][nwkx]:
+            dhcp=1
         default_network = [
                 {'column': 'name', 'value': str(nwkx)},
                 {'column': 'network', 'value': network_details['network']},
                 {'column': 'subnet', 'value': network_details['subnet']},
-                {'column': 'dhcp', 'value': '0'},
-                {'column': 'ns_hostname', 'value': BOOTSTRAP['HOSTS']['HOSTNAME']},
-                {'column': 'ns_ip', 'value': BOOTSTRAP['HOSTS']['CONTROLLER1']},
-                {'column': 'gateway', 'value': BOOTSTRAP['HOSTS']['CONTROLLER1']},
-                {'column': 'ntp_server', 'value': BOOTSTRAP['HOSTS']['CONTROLLER1']}
+                {'column': 'dhcp', 'value': dhcp},
+                {'column': 'ns_hostname', 'value': BOOTSTRAP['HOSTS']['CONTROLLER']['HOSTNAME']},
+                {'column': 'ns_ip', 'value': BOOTSTRAP['HOSTS']['CONTROLLER']['IP']},
+                {'column': 'gateway', 'value': BOOTSTRAP['HOSTS']['CONTROLLER']['IP']},
+                {'column': 'ntp_server', 'value': BOOTSTRAP['HOSTS']['CONTROLLER']['IP']}
             ]
         Database().insert('network', default_network)
     network = Database().get_record(None, 'network', None)
@@ -232,13 +258,22 @@ def bootstrap(bootstrapfile=None):
 
     # -------------------
     # section here to add the virtual controller named "controller"
+    # Added. we are very flexible, as long as at least one host is called 'controller'(.cluster?)
     # ------------------
-
+    """
+    CONTROLLER  = controller.cluster:10.141.255.251  <---- virtual IP
+    CONTROLLER1 = controller1.cluster:10.141.255.254
+    CONTROLLER2 = None
+                            BOOTSTRAP[section][option.upper()]['ip'] = ip
+                            BOOTSTRAP[section][option.upper()]['hostname'] = hostname
+    """
     num  = 1
-    for hosts in BOOTSTRAP['HOSTS']:
-        if f'CONTROLLER{num}' in BOOTSTRAP['HOSTS'].keys():
+    for host in BOOTSTRAP['HOSTS']:
+        if 'CONTROLLER' in BOOTSTRAP['HOSTS'].keys():  # the virtual host+ip
+            hostname=BOOTSTRAP['HOSTS']['CONTROLLER']['HOSTNAME']
+            ip=BOOTSTRAP['HOSTS']['CONTROLLER']['IP']
             default_controller = [
-                {'column': 'hostname', 'value': BOOTSTRAP['HOSTS']['HOSTNAME']},
+                {'column': 'hostname', 'value': hostname},
                 {'column': 'serverport', 'value': BOOTSTRAP['HOSTS']['SERVERPORT']},
                 {'column': 'clusterid', 'value': clusterid}
                 ]
@@ -247,10 +282,26 @@ def bootstrap(bootstrapfile=None):
                 controller_ip = [
                     {'column': 'tableref', 'value': 'controller'},
                     {'column': 'tablerefid', 'value': controller_id},
-                    {'column': 'ipaddress', 'value': BOOTSTRAP['HOSTS'][f'CONTROLLER{num}']}
+                    {'column': 'ipaddress', 'value': ip}
                 ]
                 Database().insert('ipaddress', controller_ip)
-        num = num + 1
+        elif f'CONTROLLER{num}' in BOOTSTRAP['HOSTS'].keys():
+            hostname=BOOTSTRAP['HOSTS'][f'CONTROLLER{num}']['HOSTNAME']
+            ip=BOOTSTRAP['HOSTS'][f'CONTROLLER{num}']['IP']
+            default_controller = [
+                {'column': 'hostname', 'value': hostname},
+                {'column': 'serverport', 'value': BOOTSTRAP['HOSTS']['SERVERPORT']},
+                {'column': 'clusterid', 'value': clusterid}
+                ]
+            controller_id=Database().insert('controller', default_controller)
+            if controller_id:
+                controller_ip = [
+                    {'column': 'tableref', 'value': 'controller'},
+                    {'column': 'tablerefid', 'value': controller_id},
+                    {'column': 'ipaddress', 'value': ip}
+                ]
+                Database().insert('ipaddress', controller_ip)
+            num = num + 1
 
     default_osimage = [
             {'column': 'name', 'value': str(BOOTSTRAP['OSIMAGE']['NAME'])},
@@ -345,8 +396,11 @@ def validatebootstrap():
             LOGGER.warning(f'Bootstrap file {bootstrapfile} is still present, Kindly remove the file.')
     elif bootstrapfile_check is True and db_check is False:
         LOGGER.error(f'Database is unavailable.')
+        return False
     elif bootstrapfile_check is False and db_tables_check is True:
         pass
     elif bootstrapfile_check is False and db_tables_check is False:
         LOGGER.error(f'{bootstrapfile} and database is unavailable.')
+        return False
+    cleanup_queue_and_status()
     return True

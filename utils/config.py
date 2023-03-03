@@ -52,7 +52,7 @@ class Config(object):
         if cluster and ('ntp_server' in cluster[0]):
             ntpserver = cluster[0]['ntp_server']
         controller = Database().get_record_join(['ipaddress.ipaddress'], ['ipaddress.tablerefid=controller.id'], ['tableref="controller"','controller.hostname="controller"'])
-        networks = Database().get_record(None, 'network', ' WHERE `dhcp` = 1;')
+        networks = Database().get_record(None, 'network', ' WHERE `dhcp` = 1')
         dhcpfile = f"{CONSTANT['TEMPLATES']['TEMP_DIR']}/dhcpd.conf"
         if networks:
             for nwk in networks:
@@ -65,29 +65,22 @@ class Config(object):
                     nwk['dhcp_range_begin'], nwk['dhcp_range_end']
                 )
                 dhcp_subnet_block = f'{dhcp_subnet_block}{subnet_block}'
-#                where = f' WHERE networkid = "{nwkid}" and macaddress IS NOT NULL;'
-#                #node_interface = Database().get_record(None, 'nodeinterface', where)
 
-                node_interface = Database().get_record_join(['node.name as nodename','ipaddress.ipaddress','nodeinterface.macaddress'], ['ipaddress.tablerefid=nodeinterface.id'], ['tableref="nodeinterface"','ipaddress.networkid="{nwkid}"'])
+                node_interface = Database().get_record_join(['node.name as nodename','ipaddress.ipaddress','nodeinterface.macaddress'], ['ipaddress.tablerefid=nodeinterface.id','nodeinterface.nodeid=node.id'], ['tableref="nodeinterface"',f'ipaddress.networkid="{nwkid}"'])
                 if node_interface:
                     for interface in node_interface:
-#                        nodename = Database().getname_byid('node', interface['nodeid'])
-                        if node_interface['macaddress']: 
+                        if interface['macaddress']: 
                             node_block.append(
-#                                self.dhcp_node(nodename, interface['macaddress'],interface['ipaddress'])
                                 self.dhcp_node(interface['nodename'], interface['macaddress'],interface['ipaddress'])
                             )
                 else:
                     self.logger.info(f'No Nodes available for this network {nwkname}  {nwknetwork}')
-#                where = f' WHERE network = "{nwkid}" and macaddr IS NOT NULL;'
-#                devices = Database().get_record(None, 'otherdevices', where)
                 for item in ['otherdevices','switch']:
-                    devices = Database().get_record_join([f'{item}.name','ipaddress.ipaddress',f'{item}.macaddress'], [f'ipaddress.tablerefid={item}.id'], [f'tableref="{item}"','ipaddress.networkid="{nwkid}"'])
+                    devices = Database().get_record_join([f'{item}.name','ipaddress.ipaddress',f'{item}.macaddress'], [f'ipaddress.tablerefid={item}.id'], [f'tableref="{item}"',f'ipaddress.networkid="{nwkid}"'])
                     if devices:
                         for device in devices:
                             if device['macaddress']: 
                                 device_block.append(
-#                                    self.dhcp_node(device['name'], device['macaddr'], device['ipaddress'])
                                     self.dhcp_node(device['name'], device['macaddress'], device['ipaddress'])
                                 )
                 else:
@@ -230,17 +223,26 @@ host {node}  {{
                 rev_ip = rev_ip[2:]
                 rev_ip = '.'.join(rev_ip)
                 zone_config = f'{zone_config}{self.dns_zone_config(networkname, rev_ip)}'
-            where = f' WHERE networkid = "{nwkid}";'
-            node_interface = Database().get_record(None, 'nodeinterface', where)
+            #TWAN
+            node_interface = Database().get_record_join(['node.name as nodename','ipaddress.ipaddress','network.name as networkname'], ['ipaddress.tablerefid=nodeinterface.id','nodeinterface.nodeid=node.id','network.id=ipaddress.networkid'], ['tableref="nodeinterface"',f'ipaddress.networkid="{nwkid}"'])
             nodelist, ptrnodelist= [], []
             if node_interface:
                 for interface in node_interface:
                     nodeip = interface['ipaddress']
-                    name = Database().getname_byid('node', interface['nodeid'])
-                    nodelist.append(f'{name}                 IN A {nodeip}')
-                    nodeptr = int(re.sub(r'\D', '', name))
-                    nodeptr = f'{nodeptr}.0'
-                    ptrnodelist.append(f'{nodeptr}                    IN PTR {name}.{networkname}.')
+                    nodelist.append(f"{interface['nodename']}                 IN A {interface['ipaddress']}")
+                    sub_ip = interface['ipaddress'].split('.')  # NOT IPv6 COMPLIANT!! needs overhaul. PENDING
+                    nodeptr = sub_ip[2]+'.'+sub_ip[3]
+                    ptrnodelist.append(f"{nodeptr}                    IN PTR {interface['nodename']}.{interface['networkname']}.")
+
+            for item in ['otherdevices','switch']:
+                devices = Database().get_record_join([f'{item}.name as devname','ipaddress.ipaddress','network.name as networkname'], [f'ipaddress.tablerefid={item}.id','network.id=ipaddress.networkid'], [f'tableref="{item}"',f'ipaddress.networkid="{nwkid}"'])
+                if devices:
+                    for device in devices:
+                        devip = device['ipaddress']
+                        nodelist.append(f"{device['devname']}                 IN A {device['ipaddress']}")
+                        sub_ip = device['ipaddress'].split('.')  # NOT IPv6 COMPLIANT!! needs overhaul. PENDING
+                        nodeptr = sub_ip[2]+'.'+sub_ip[3]
+                        ptrnodelist.append(f"{nodeptr}                    IN PTR {device['devname']}.{device['networkname']}.")
 
             zone_name_config = self.dns_zone_name(networkname, controllerip, nodelist)
             zone_ptr_config = self.dns_zone_ptr(networkname, ptrnodelist)

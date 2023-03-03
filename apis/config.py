@@ -21,6 +21,11 @@ from utils.log import Log
 from utils.helper import Helper
 from common.validate_auth import token_required
 from common.constant import CONFIGFILE
+from random import randint
+from time import sleep,time
+from os import getpid
+import concurrent.futures
+from utils.osimage import OsImage
 
 LOGGER = Log.get_logger()
 config_blueprint = Blueprint('config', __name__)
@@ -1130,10 +1135,40 @@ def config_osimage_pack(name=None):
     Process - Manually Pack the OS Image.
     Output - Success or Failure.
     """
-    LOGGER.info(f'OS image {name} packed successfully.')
-    response = {"message": f'OS image {name} packed successfully.'}
-    code = 200
+
+    code=500
+    response= {"message": f'OS image {name} packing failed. No sign of life of spawned thread.'}
+
+    #Antoine
+    request_id=str(time())+str(randint(1001,9999))+str(getpid())
+
+    queue_id = Helper().add_task_to_queue(f'pack_n_tar_osimage:{name}','osimage',request_id)
+    if not queue_id:
+        LOGGER.info(f"config_osimage_pack GET cannot get queue_id")
+        response= {"message": f'OS image {name} pack queuing failed.'}
+        return json.dumps(response), code
+ 
+    LOGGER.info(f"config_osimage_pack GET added task to queue: {queue_id}")
+    Helper().insert_mesg_in_status(request_id,"luna",f"queued pack osimage {name} with queue_id {queue_id}")
+
+    next_id = Helper().next_task_in_queue('osimage')
+    if queue_id == next_id:
+        executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
+        executor.submit(OsImage().pack_n_tar_mother,name,request_id)
+        executor.shutdown(wait=False)
+#        OsImage().pack_n_tar_mother(name,request_id)
+
+    # we should check after a few seconds if there is a status update for us.
+    # if so, that means mother is taking care of things
+
+    sleep(1)
+    status = Database().get_record(None , 'status', f' WHERE request_id = "{request_id}"')
+    if status:
+        code=200
+        response = {"message": "osimage pack for {name} queued", "request_id": request_id}
+    LOGGER.info(f"my repsonse [{response}]")
     return json.dumps(response), code
+
 
 
 @config_blueprint.route("/config/osimage/<string:name>/kernel", methods=['POST'])
@@ -2947,3 +2982,34 @@ def config_group_secret_delete(name=None, secret=None):
         response = {'message': f'Group {name} is not available.'}
         access_code = 404
     return json.dumps(response), access_code
+
+
+@config_blueprint.route('/config/status/<string:request_id>', methods=['GET'])
+def control_status(request_id=None):
+    """
+    Input - request_id
+    Process - gets the list from status table. renders this into a response.
+    Output - Success or failure
+    """
+
+    LOGGER.info(f"control STATUS: request_id: [{request_id}]")
+    access_code = 400
+    response = {'message': 'Bad Request.'}
+    status = Database().get_record(None , 'status', f' WHERE request_id = "{request_id}"')
+    if status:
+        message=[]
+        for record in status:
+            if 'read' in record:
+                if record['read']==0:
+                    if 'message' in record:
+                        if record['message'] == "EOF":
+                            Database().delete_row('status', [{"column": "request_id", "value": request_id}])
+                        else:
+                            message.append(record['message'])
+        response={'message': (';;').join(message) }
+        where = [{"column": "request_id", "value": request_id}]
+        row = [{"column": "read", "value": "1"}]
+        Database().update('status', row, where)
+        access_code = 200
+    return json.dumps(response), access_code
+

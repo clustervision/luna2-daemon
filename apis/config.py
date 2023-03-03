@@ -2106,7 +2106,8 @@ def config_network_post(name=None):
                 return json.dumps(response), access_code
         if 'dhcp' in data:
             if 'dhcp_range_begin' in data:
-                subnet = data['network']+'/'+data['subnet']
+                #subnet = data['network']+'/'+data['subnet']
+            # --------- we have to check if it is supplied er else get it from the DB
                 dhcpstartdetails = Helper().check_ip_range(data['dhcp_range_begin'], subnet)
                 if not dhcpstartdetails:
                     response = {'message': f'Incorrect dhcp start: {data["dhcp_range_begin"]}.'}

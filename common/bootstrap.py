@@ -233,6 +233,11 @@ def bootstrap(bootstrapfile=None):
         Database().insert('network', default_network)
     network = Database().get_record(None, 'network', None)
     networkid = network[0]['id']
+
+    # -------------------
+    # section here to add the virtual controller named "controller"
+    # ------------------
+
     num  = 1
     for hosts in BOOTSTRAP['HOSTS']:
         if f'CONTROLLER{num}' in BOOTSTRAP['HOSTS'].keys():
@@ -248,7 +253,6 @@ def bootstrap(bootstrapfile=None):
                     {'column': 'tablerefid', 'value': controller_id},
                     {'column': 'ipaddress', 'value': BOOTSTRAP['HOSTS'][f'CONTROLLER{num}']}
                 ]
-                # we did not specify a network! this means that we will not use it. not a biggy but we cannot verify nor use this kind of info --> api/boot.py
                 Database().insert('ipaddress', controller_ip)
         num = num + 1
 

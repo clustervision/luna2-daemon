@@ -59,8 +59,9 @@ def files_get(filename=None):
     response = {'message': ''}
     code=500
     LOGGER.debug(f'Request for file: {filename} from IP Address: {request_ip}')
-    where = f' WHERE ipaddress = "{request_ip}"'
-    node_interface = Database().get_record(None, 'nodeinterface', where)
+#    where = f' WHERE ipaddress = "{request_ip}"'
+#    node_interface = Database().get_record(None, 'nodeinterface', where)
+    nodeinterface = Database().get_record_join(['nodeinterface.nodeid'], ['ipaddress.tablerefid=nodeinterface.id'],['tableref="nodeinterface"',f"ipaddress.ipaddress='{request_ip}'"])
     if node_interface:
         row = [{"column": "status", "value": "installer.discovery"}]
         where = [{"column": "id", "value": node_interface[0]["id"]}]

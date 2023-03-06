@@ -120,7 +120,7 @@ class OsImage(object):
             )
 
             exit_code = tar_out.wait()
-            if exit_code != "0":
+            if exit_code != 0:
                 output=tar_out.communicate()
                 self.logger.debug(f"Tarring of {image_path} failed: {output}")
                 if os.path.isfile('/tmp/' + tarfile):
@@ -198,13 +198,23 @@ class OsImage(object):
         if ('kernelversion' not in image[0]) or (image[0]['kernelversion'] is None):
             return False,"Kernel version not defined"
 
+        ##path_to_store = f"{image[0]['path']}/boot"  # <-- we will store all files in this path, but add the name of the image to it.
+        if 'FILES' not in CONSTANT:
+            return False,"FILES config setting not defined"
+        if 'TARBALL' not in CONSTANT['FILES']:
+            return False,"TARBALL config setting not defined in FILES"
+        path_to_store = CONSTANT['FILES']['TARBALL']
+
         tmp_path = '/tmp'  # in chroot env
         image_path = str(image[0]['path'])
         kernver = str(image[0]['kernelversion'])
         kernfile = f"{osimage}-vmlinuz-{kernver}"
         initrdfile = f"{osimage}-initramfs-{kernver}"
+        if ('kernelfile' in image[0]) and (image[0]['kernelfile']):
+            kernfile = f"{osimage}-{image[0]['kernelfile']}"
+        if ('initrdfile' in image[0]) and (image[0]['initrdfile']):
+            initrdfile = f"{osimage}-{image[0]['initrdfile']}"
 
-        path_to_store = f"{image[0]['path']}/boot"
         user_id = pwd.getpwnam('root').pw_uid
         grp_id = pwd.getpwnam('root').pw_gid
 
@@ -360,6 +370,7 @@ class OsImage(object):
                 if ret is True:
                     self.logger.info(f'OS image {osimage} packed successfully.')
                     Helper().insert_mesg_in_status(request_id,"luna",f"finished packing osimage {osimage}")
+                    Helper().insert_mesg_in_status(request_id,"luna",f"tarring osimage {osimage}")
 
                     rett,mesgt=self.create_tarball(osimage)
                     if rett is True:

@@ -59,8 +59,6 @@ def files_get(filename=None):
     response = {'message': ''}
     code=500
     LOGGER.debug(f'Request for file: {filename} from IP Address: {request_ip}')
-#    where = f' WHERE ipaddress = "{request_ip}"'
-#    node_interface = Database().get_record(None, 'nodeinterface', where)
     nodeinterface = Database().get_record_join(['nodeinterface.nodeid'], ['ipaddress.tablerefid=nodeinterface.id'],['tableref="nodeinterface"',f"ipaddress.ipaddress='{request_ip}'"])
     if node_interface:
         row = [{"column": "status", "value": "installer.discovery"}]
@@ -72,50 +70,6 @@ def files_get(filename=None):
         return send_file(filepath, as_attachment=True), 200
     else:
         LOGGER.error(f'{filename} is not present in {CONSTANT["FILES"]["TARBALL"]}.')
-        response = {'message': f'{filename} is not present in {CONSTANT["FILES"]["TARBALL"]}.'}
-        code = 503
-    return json.dumps(response), code
-
-
-## below is needed to server kernel + ramdisk !!!!
-
-@files_blueprint.route('/files/boot/<string:node>/<string:filename>', methods=['GET'])
-def osimage_files_get(filename=None,node=None):
-    """
-    Input - Filename
-    Process - Make available file to download.
-    Output - File
-    """
-    if request.environ.get('HTTP_X_FORWARDED_FOR') is None:
-        request_ip = request.environ['REMOTE_ADDR']
-    else:
-        request_ip = request.environ['HTTP_X_FORWARDED_FOR']
-
-    response = {'message': ''}
-    code=500
-    LOGGER.debug(f'Request for file: {node}/osimage/{filename} from IP Address: {request_ip}')
-    where = f' WHERE ipaddress = "{request_ip}"'
-    node_interface = Database().get_record(None, 'nodeinterface', where)
-    if node_interface:
-        row = [{"column": "status", "value": "installer.discovery"}]
-        where = [{"column": "id", "value": node_interface[0]["id"]}]
-        Database().update('node', row, where)
-    try:
-        details = Database().get_record_join(['osimage.*','osimage.name AS osimage'], ['group.id=node.groupid','osimage.id=group.osimageid'],[f"node.name='{node}'"])
-        nodedetails = Database().get_record_join(['osimage.*','osimage.name AS osimage'], ['osimage.id=node.osimageid'],[f"node.name='{node}'"])
-        details+=nodedetails
-        if 'path' in details[0]:
-            filepath=f"{details[0]['path']}/boot/{filename}"
-            if os.path.exists(filepath):
-                LOGGER.debug(f'Filepath {filepath} is exists.')
-                LOGGER.info(f'Osimage File Path is {filepath}.')
-                return send_file(filepath, as_attachment=True), 200
-        else:
-            LOGGER.info(f'Path is not in the osimage for {node} !.')
-    except:
-        LOGGER.info(f'incorrect osimage File Path is requested {filepath}.')
-    else:
-        LOGGER.error(f'{filename} is not present in {node}/osimage/{filename}.')
         response = {'message': f'{filename} is not present in {CONSTANT["FILES"]["TARBALL"]}.'}
         code = 503
     return json.dumps(response), code

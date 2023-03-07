@@ -75,6 +75,11 @@ class OsImage(object):
             os.chmod(path_to_store, 0o755)
 
         image = Database().get_record(None, 'osimage', f"WHERE name='{osimage}'")
+        if not image:
+            return False,f"Image {osimage} does not exist?"
+
+        image_id=image[0]['id']  # we might need it later. at least once at the bottom
+
         if ('path' not in image[0]) or (image[0]['path'] is None):
             return False,"Image path not defined"
 
@@ -157,6 +162,11 @@ class OsImage(object):
             os.chmod(path_to_store + '/' + tarfile, 0o644)
         except Exception as error:
             return False,f"Moving {osimage} tarbal failed with {error}"
+
+        row = [{"column": "tarball", "value": f"{tarfile}"}]
+        where = [{"column": "id", "value": f"{image_id}"}]
+        status = Database().update('osimage', row, where)
+
         return True,"Success for {tarfile}"
 
 

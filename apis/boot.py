@@ -344,6 +344,7 @@ def boot_install(node=None):
         else:
             data['osimageid']       = node_details[0]['grouposimageid']
         data['groupid']             = node_details[0]['groupid']
+        data['nodename']            = node_details[0]['name']
 #        data['nodehostname']        = node_details[0]['hostname']
         data['nodehostname']        = node_details[0]['name'] # + fqdn
         data['nodeid']              = node_details[0]['id']
@@ -397,11 +398,15 @@ def boot_install(node=None):
         template,
         LUNA_CONTROLLER         = data['ipaddress'],
         LUNA_API_PORT           = data['serverport'],
-        LUNA_HOSTNAME           = data['nodehostname'],
+        NODE_HOSTNAME           = data['nodehostname'],
+        NODE_NAME               = data['nodename'],
         LUNA_OSIMAGE            = data['osimagename'],
+        LUNA_TORRENT            = data['tarball'],  # has to be changed into torrent??
+        LUNA_TARBALL            = data['tarball'],
         LUNA_FILE               = data['tarball'],
         LUNA_SELINUX_ENABLED    = data['selinux'],
-        LUNA_BMCSETUP           = data['setupbmc'],
+        LUNA_SETUPBMC           = data['setupbmc'],
+        LUNA_BMC                = "empty", # has to contain stuff related to BMC general config like channels e.d.
         LUNA_BOOTLOADER         = data['localinstall'],
         LUNA_LOCALINSTALL       = data['localinstall'],
         LUNA_UNMANAGED_BMC_USERS= data['unmanaged_bmc_users'],

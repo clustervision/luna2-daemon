@@ -126,7 +126,7 @@ class OsImage(object):
                     os.remove('/tmp/' + tarfile)
                 output=f"{exc.output}"
                 outputs=output.split("\n")
-                joined='. '.join(f"{outputs[-5:]}")
+                joined='. '.join(outputs[-5:])
                 return False,f"Tarring {osimage} failed with exit code {exc.returncode}: {joined}"
             else:
                 self.logger.info(f"Tarring {osimage} successful.")

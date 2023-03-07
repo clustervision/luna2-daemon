@@ -1127,7 +1127,7 @@ def config_osimage_clone(name=None):
 
 
 
-@config_blueprint.route("/config/osimage/<string:name>/pack", methods=['GET'])
+@config_blueprint.route("/config/osimage/<string:name>/_pack", methods=['GET'])
 @token_required
 def config_osimage_pack(name=None):
     """

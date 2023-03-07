@@ -61,7 +61,7 @@ class Config(object):
                 nwknetwork = nwk['network']
                 netmask = Helper().get_netmask(f"{nwk['network']}/{nwk['subnet']}")
                 subnet_block = self.dhcp_subnet(
-                    nwk['network'], netmask, nwk['gateway'], controller[0]['ipaddress'],
+                    nwk['network'], netmask, controller[0]['ipaddress'], nwk['gateway'],
                     nwk['dhcp_range_begin'], nwk['dhcp_range_end']
                 )
                 dhcp_subnet_block = f'{dhcp_subnet_block}{subnet_block}'
@@ -162,7 +162,7 @@ option client-architecture code 93 = unsigned integer 16;
 subnet {network} netmask {netmask} {{
     max-lease-time 28800;
     if exists user-class and option user-class = "iPXE" {{
-        filename "http://{{{{ boot_server }}}}:7050/boot";
+        filename "http://{nextserver}:7050/boot";
     }} else {{
         if option client-architecture = 00:07 {{
             filename "luna_ipxe.efi";

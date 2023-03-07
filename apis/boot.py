@@ -35,7 +35,7 @@ def boot():
     check_template = Helper().checkjinja(f'{CONSTANT["TEMPLATES"]["TEMPLATES_DIR"]}/{template}')
     if not check_template:
         abort(404, 'Empty')
-    controller = Database().get_record_join(['controller.*','ipaddress.ipaddress'], ['ipaddress.tablerefid=controller.id'],['tableref="controller"','controller.hostname="controller.cluster"'])
+    controller = Database().get_record_join(['controller.*','ipaddress.ipaddress'], ['ipaddress.tablerefid=controller.id'],['tableref="controller"','controller.hostname="controller"'])
     if controller:
         ipaddress = controller[0]['ipaddress']
         serverport = controller[0]['serverport']
@@ -82,7 +82,7 @@ def boot_short():
     check_template = Helper().checkjinja(f'{CONSTANT["TEMPLATES"]["TEMPLATES_DIR"]}/{template}')
     if not check_template:
         abort(404, 'Empty')
-    controller = Database().get_record_join(['controller.*','ipaddress.ipaddress'], ['ipaddress.tablerefid=controller.id'],['tableref="controller"','controller.hostname="controller.cluster"'])
+    controller = Database().get_record_join(['controller.*','ipaddress.ipaddress'], ['ipaddress.tablerefid=controller.id'],['tableref="controller"','controller.hostname="controller"'])
     if controller:
         ipaddress = controller[0]['ipaddress']
         serverport = controller[0]['serverport']
@@ -107,7 +107,7 @@ def boot_disk():
     check_template = Helper().checkjinja(f'{CONSTANT["TEMPLATES"]["TEMPLATES_DIR"]}/{template}')
     if not check_template:
         abort(404, 'Empty')
-    controller = Database().get_record_join(['controller.*','ipaddress.ipaddress'], ['ipaddress.tablerefid=controller.id'],['tableref="controller"','controller.hostname="controller.cluster"'])
+    controller = Database().get_record_join(['controller.*','ipaddress.ipaddress'], ['ipaddress.tablerefid=controller.id'],['tableref="controller"','controller.hostname="controller"'])
     if controller:
         ipaddress = controller[0]['ipaddress']
         serverport = controller[0]['serverport']
@@ -135,7 +135,7 @@ def boot_search_mac(mac=None):
         'osimageid'     : None,
         'ipaddress'     : None,
         'serverport'    : None,
-        'intrdfile'     : None,
+        'initrdfile'    : None,
         'kernelfile'    : None,
         'nodename'      : None,
         'nodehostname'  : None,
@@ -146,7 +146,8 @@ def boot_search_mac(mac=None):
     if not check_template:
         abort(404, 'Empty')
     #Antoine
-    controller = Database().get_record_join(['controller.*','ipaddress.ipaddress'], ['ipaddress.tablerefid=controller.id'],['tableref="controller"','controller.hostname="controller.cluster"'])
+    #LOGGER.info(f"BOOT/SEARCH/MAC received for {mac}")
+    controller = Database().get_record_join(['controller.*','ipaddress.ipaddress'], ['ipaddress.tablerefid=controller.id'],['tableref="controller"','controller.hostname="controller"'])
     if controller:
         data['ipaddress'] = controller[0]['ipaddress']
         data['serverport'] = controller[0]['serverport']
@@ -165,8 +166,18 @@ def boot_search_mac(mac=None):
     if data['osimageid']:
         osimage = Database().get_record(None, 'osimage', f' WHERE id = {data["osimageid"]}')
         if osimage:
-            data['intrdfile'] = osimage[0]['initrdfile']
-            data['kernelfile'] = osimage[0]['kernelfile']
+            if ('kernelfile' in osimage[0]) and (osimage[0]['kernelfile']):
+                data['kernelfile'] = f"{osimage[0]['name']}-{osimage[0]['kernelfile']}"
+            elif ('kernelversion' in osimage[0]) and (osimage[0]['kernelversion']):
+                data['kernelfile'] = f"{osimage[0]['name']}-vmlinuz-{osimage[0]['kernelversion']}"
+
+            if ('initrdfile' in osimage[0]) and (osimage[0]['initrdfile']):
+                data['initrdfile'] = f"{osimage[0]['name']}-{osimage[0]['initrdfile']}"
+            elif ('kernelversion' in osimage[0]) and (osimage[0]['kernelversion']):
+                data['initrdfile'] = f"{osimage[0]['name']}-initramfs-{osimage[0]['kernelversion']}"
+            
+#            data['initrdfile'] = osimage[0]['initrdfile']
+#            data['kernelfile'] = osimage[0]['kernelfile']
 
     if None not in data.values():
         access_code = 200
@@ -185,7 +196,7 @@ def boot_search_mac(mac=None):
         LUNA_CONTROLLER     = data['ipaddress'],
         LUNA_API_PORT       = data['serverport'],
         NODE_MAC_ADDRESS    = mac,
-        OSIMAGE_INTRDFILE   = data['intrdfile'],
+        OSIMAGE_INITRDFILE  = data['initrdfile'],
         OSIMAGE_KERNELFILE  = data['kernelfile'],
         NODE_NAME           = data['nodename'],
         NODE_HOSTNAME       = data['nodehostname'],
@@ -209,7 +220,7 @@ def boot_manual_hostname(hostname=None, mac=None):
         'osimageid'     : None,
         'ipaddress'     : None,
         'serverport'    : None,
-        'intrdfile'     : None,
+        'initrdfile'    : None,
         'kernelfile'    : None,
         'nodename'      : None,
         'nodehostname'  : None,
@@ -220,7 +231,7 @@ def boot_manual_hostname(hostname=None, mac=None):
     if not check_template:
         abort(404, 'Empty')
     #Antoine
-    controller = Database().get_record_join(['controller.*','ipaddress.ipaddress'], ['ipaddress.tablerefid=controller.id'],['tableref="controller"','controller.hostname="controller.cluster"'])
+    controller = Database().get_record_join(['controller.*','ipaddress.ipaddress'], ['ipaddress.tablerefid=controller.id'],['tableref="controller"','controller.hostname="controller"'])
     if controller:
         data['ipaddress'] = controller[0]['ipaddress']
         data['serverport'] = controller[0]['serverport']
@@ -261,7 +272,7 @@ def boot_manual_hostname(hostname=None, mac=None):
     if data['osimageid']:
         osimage = Database().get_record(None, 'osimage', f' WHERE id = {data["osimageid"]}')
         if osimage:
-            data['intrdfile'] = osimage[0]['initrdfile']
+            data['initrdfile'] = osimage[0]['initrdfile']
             data['kernelfile'] = osimage[0]['kernelfile']
 
     LOGGER.info(f"manual boot template date: [{data}]")
@@ -282,7 +293,7 @@ def boot_manual_hostname(hostname=None, mac=None):
         LUNA_CONTROLLER     = data['ipaddress'],
         LUNA_API_PORT       = data['serverport'],
         NODE_MAC_ADDRESS    = mac,
-        OSIMAGE_INTRDFILE   = data['intrdfile'],
+        OSIMAGE_INITRDFILE   = data['initrdfile'],
         OSIMAGE_KERNELFILE  = data['kernelfile'],
         NODE_NAME           = data['nodename'],
         NODE_HOSTNAME       = data['nodehostname'],
@@ -322,7 +333,7 @@ def boot_install(node=None):
     if cluster:
         data['selinux']      = Helper().bool_revert(cluster[0]['security'])
     #Antoine
-    controller = Database().get_record_join(['controller.*','ipaddress.ipaddress'], ['ipaddress.tablerefid=controller.id'],['tableref="controller"','controller.hostname="controller.cluster"'])
+    controller = Database().get_record_join(['controller.*','ipaddress.ipaddress'], ['ipaddress.tablerefid=controller.id'],['tableref="controller"','controller.hostname="controller"'])
     if controller:
         data['ipaddress']   = controller[0]['ipaddress']
         data['serverport']  = controller[0]['serverport']
@@ -333,6 +344,7 @@ def boot_install(node=None):
         else:
             data['osimageid']       = node_details[0]['grouposimageid']
         data['groupid']             = node_details[0]['groupid']
+        data['nodename']            = node_details[0]['name']
 #        data['nodehostname']        = node_details[0]['hostname']
         data['nodehostname']        = node_details[0]['name'] # + fqdn
         data['nodeid']              = node_details[0]['id']
@@ -386,11 +398,15 @@ def boot_install(node=None):
         template,
         LUNA_CONTROLLER         = data['ipaddress'],
         LUNA_API_PORT           = data['serverport'],
-        LUNA_HOSTNAME           = data['nodehostname'],
+        NODE_HOSTNAME           = data['nodehostname'],
+        NODE_NAME               = data['nodename'],
         LUNA_OSIMAGE            = data['osimagename'],
+        LUNA_TORRENT            = data['tarball'],  # has to be changed into torrent??
+        LUNA_TARBALL            = data['tarball'],
         LUNA_FILE               = data['tarball'],
         LUNA_SELINUX_ENABLED    = data['selinux'],
-        LUNA_BMCSETUP           = data['setupbmc'],
+        LUNA_SETUPBMC           = data['setupbmc'],
+        LUNA_BMC                = "empty", # has to contain stuff related to BMC general config like channels e.d.
         LUNA_BOOTLOADER         = data['localinstall'],
         LUNA_LOCALINSTALL       = data['localinstall'],
         LUNA_UNMANAGED_BMC_USERS= data['unmanaged_bmc_users'],

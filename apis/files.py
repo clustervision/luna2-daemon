@@ -20,6 +20,7 @@ from utils.log import Log
 from utils.files import Files
 from utils.database import Database
 from common.constant import CONSTANT
+import os
 
 LOGGER = Log.get_logger()
 files_blueprint = Blueprint('files', __name__)
@@ -54,9 +55,11 @@ def files_get(filename=None):
         request_ip = request.environ['REMOTE_ADDR']
     else:
         request_ip = request.environ['HTTP_X_FORWARDED_FOR']
+
+    response = {'message': ''}
+    code=500
     LOGGER.debug(f'Request for file: {filename} from IP Address: {request_ip}')
-    where = f' WHERE ipaddress = "{request_ip}"'
-    node_interface = Database().get_record(None, 'nodeinterface', where)
+    node_interface = Database().get_record_join(['nodeinterface.nodeid as id'], ['ipaddress.tablerefid=nodeinterface.id'],['tableref="nodeinterface"',f"ipaddress.ipaddress='{request_ip}'"])
     if node_interface:
         row = [{"column": "status", "value": "installer.discovery"}]
         where = [{"column": "id", "value": node_interface[0]["id"]}]
@@ -70,3 +73,4 @@ def files_get(filename=None):
         response = {'message': f'{filename} is not present in {CONSTANT["FILES"]["TARBALL"]}.'}
         code = 503
     return json.dumps(response), code
+

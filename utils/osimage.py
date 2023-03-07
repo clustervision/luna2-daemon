@@ -79,7 +79,7 @@ class OsImage(object):
             return False,"Image path not defined"
 
         image_path = image[0]['path']
-        if image_path[0] != '/': # means that we don't have an absolute path. good, let's prepand what's in luna.ini
+        if image_path[0] != '/': # means that we don't have an absolute path. good, let's prepend what's in luna.ini
             if 'IMAGE_DIRECTORY' in CONSTANT['FILES']:
                 image_path = f"{CONSTANT['FILES']['IMAGE_DIRECTORY']}/{image[0]['path']}"
             else:
@@ -96,37 +96,41 @@ class OsImage(object):
         if not os.path.exists('/usr/bin/lbzip2'):
             return False,"/usr/bin/lbzip2 does not exist. please install lbzip2"
 
-        os.chdir(f"{image_path}") # needed for tar to not have leading dirs in path
+#        os.chdir(f"{image_path}") # needed for tar to not have leading dirs in path
 
         try:
+            self.logger.debug(f"/usr/bin/tar -C {image_path} --one-file-system --xattrs --selinux --acls --checkpoint=100000 --use-compress-program=/usr/bin/lbzip2 -c -f /tmp/{tarfile} .")
 
-            self.logger.debug(f"/usr/bin/tar -C / --one-file-system --xattrs --selinux --acls --checkpoint=100000 --use-compress-program=/usr/bin/lbzip2 -c -f /tmp/{tarfile} .")
-
-            # dirty, but 4 times faster
-            tar_out = subprocess.Popen(
-                [
-                    '/usr/bin/tar',
-                    '-C', '/',
-                    '--one-file-system',
-                    '--xattrs',
-                    '--selinux',
-                    '--acls',
-                    '--checkpoint=100000',
-                    '--use-compress-program=/usr/bin/lbzip2',
-                    '-c', '-f', '/tmp/' + tarfile, '.'
-                ],
-                stderr=subprocess.PIPE,
-                stdout=subprocess.PIPE
-            )
-
-            exit_code = tar_out.wait()
-            if exit_code != 0:
-                output=tar_out.communicate()
-                self.logger.debug(f"Tarring of {image_path} failed: {output}")
+            try:
+                output = subprocess.check_output(
+                    [
+                        '/usr/bin/tar',
+                        '-C', f"{image_path}",
+                        '--one-file-system',
+                        '--xattrs',
+                        '--selinux',
+                        '--acls',
+                        '--ignore-failed-read',
+                        '--exclude=/proc/*',
+                        '--exclude=/dev/*',
+                        '--exclude=/sys/*',
+                        '--checkpoint=100000',
+                        '--use-compress-program=/usr/bin/lbzip2',
+                        '-c', '-f', '/tmp/' + tarfile, '.'
+                    ],
+                    stderr=subprocess.STDOUT,
+                    universal_newlines=True)
+            except subprocess.CalledProcessError as exc:
+                self.logger.info(f"Tarring failed with exit code {exc.returncode} {exc.output}:")
                 if os.path.isfile('/tmp/' + tarfile):
                     os.remove('/tmp/' + tarfile)
-                #return False,output[1][:-5].decode('ASCII')
-                return False,f"Tarring failed with exit code {exit_code}"
+                output=f"{exc.output}"
+                outputs=output.split("\n")
+                joined='. '.join(f"{outputs[-5:]}")
+                return False,f"Tarring {osimage} failed with exit code {exc.returncode}: {joined}"
+            else:
+                self.logger.info(f"Tarring {osimage} successful.")
+
 
         except:
             exc_type, exc_value, exc_traceback = sys.exc_info()
@@ -145,11 +149,14 @@ class OsImage(object):
 
         # copy image, so permissions and selinux contexts
         # will be inherited from parent folder
-        shutil.copy(f"/tmp/{tarfile}", path_to_store)
-        os.remove(f"/tmp/{tarfile}")
-        os.chown(path_to_store + '/' + tarfile, user_id, grp_id)
-        os.chmod(path_to_store + '/' + tarfile, 0o644)
 
+        try:
+            shutil.copy(f"/tmp/{tarfile}", path_to_store)
+            os.remove(f"/tmp/{tarfile}")
+            os.chown(path_to_store + '/' + tarfile, user_id, grp_id)
+            os.chmod(path_to_store + '/' + tarfile, 0o644)
+        except Exception as error:
+            return False,f"Moving {osimage} tarbal failed with {error}"
         return True,"Success for {tarfile}"
 
 
@@ -176,10 +183,16 @@ class OsImage(object):
     def pack_image(self,osimage):
 
         def mount(source, target, fs):
-            subprocess.Popen(['/usr/bin/mount', '-t', fs, source, target])
+            try:
+                subprocess.Popen(['/usr/bin/mount', '-t', fs, source, target])
+            except Exception as error:
+                self.logger(f"Mount {target} failed with {error}")
 
         def umount(source):
-            subprocess.Popen(['/usr/bin/umount', source])
+            try:
+                subprocess.Popen(['/usr/bin/umount', source])
+            except Exception as error:
+                self.logger(f"Umount {target} failed with {error}")
 
         def prepare_mounts(path):
             mount('devtmpfs', f"{path}/dev", 'devtmpfs')

@@ -184,12 +184,14 @@ def getconfig(filename=None):
                     except Exception:
                         LOGGER.error(f'Invalid node list range: {item}, kindly use the numbers in incremental order.')
                 elif 'NETWORKS' in section:
-                    network,dhcp,*_ = (item.split(':')+[None])
+                    network,dhcp,dhcprange,*_ = (item.split(':')+[None]+[None])
                     #Helper().get_netmask(item)  # <-- not used?
-                    BOOTSTRAP[section][option.upper()]={}
-                    BOOTSTRAP[section][option.upper()]['NETWORK'] = network
+                    BOOTSTRAP[section][option.lower()]={}
+                    BOOTSTRAP[section][option.lower()]['NETWORK'] = network
                     if dhcp:
-                        BOOTSTRAP[section][option.upper()]['DHCP'] = 1
+                        BOOTSTRAP[section][option.lower()]['DHCP'] = 1
+                        if dhcprange:
+                            BOOTSTRAP[section][option.lower()]['RANGE'] = dhcprange
                 else:
                     BOOTSTRAP[section][option.upper()] = item
             else:
@@ -238,15 +240,22 @@ def bootstrap(bootstrapfile=None):
     cluster = Database().get_record(None, 'cluster', None)
     clusterid = cluster[0]['id']
     for nwkx in BOOTSTRAP['NETWORKS'].keys():
+        LOGGER.info(f" NWKX: {nwkx}, {BOOTSTRAP['NETWORKS']}")
         network_details=Helper().get_network_details(BOOTSTRAP['NETWORKS'][nwkx]['NETWORK'])
-        dhcp=0
+        dhcp,dhcp_range_begin,dhcp_range_end=0,None,None
         if 'DHCP' in BOOTSTRAP['NETWORKS'][nwkx]:
             dhcp=1
+            if 'RANGE' in BOOTSTRAP['NETWORKS'][nwkx]:
+                dhcp_range_begin,dhcp_range_end,*_=(BOOTSTRAP['NETWORKS'][nwkx]['RANGE'].split('-')+[None])
+                if dhcp_range_end is None:
+                    dhcp_range_begin=None
         default_network = [
                 {'column': 'name', 'value': str(nwkx)},
                 {'column': 'network', 'value': network_details['network']},
                 {'column': 'subnet', 'value': network_details['subnet']},
                 {'column': 'dhcp', 'value': dhcp},
+                {'column': 'dhcp_range_begin', 'value': dhcp_range_begin},
+                {'column': 'dhcp_range_end', 'value': dhcp_range_end},
                 {'column': 'ns_hostname', 'value': BOOTSTRAP['HOSTS']['CONTROLLER']['HOSTNAME']},
                 {'column': 'ns_ip', 'value': BOOTSTRAP['HOSTS']['CONTROLLER']['IP']},
                 {'column': 'gateway', 'value': BOOTSTRAP['HOSTS']['CONTROLLER']['IP']},
@@ -255,6 +264,7 @@ def bootstrap(bootstrapfile=None):
         Database().insert('network', default_network)
     network = Database().get_record(None, 'network', None)
     networkid = network[0]['id']
+    networkname = network[0]['name']
 
     # -------------------
     # section here to add the virtual controller named "controller"
@@ -264,14 +274,14 @@ def bootstrap(bootstrapfile=None):
     CONTROLLER  = controller.cluster:10.141.255.251  <---- virtual IP
     CONTROLLER1 = controller1.cluster:10.141.255.254
     CONTROLLER2 = None
-                            BOOTSTRAP[section][option.upper()]['ip'] = ip
-                            BOOTSTRAP[section][option.upper()]['hostname'] = hostname
     """
+    taken_ips=[]
     num  = 1
     for host in BOOTSTRAP['HOSTS']:
         if 'CONTROLLER' in BOOTSTRAP['HOSTS'].keys():  # the virtual host+ip
             hostname=BOOTSTRAP['HOSTS']['CONTROLLER']['HOSTNAME']
             ip=BOOTSTRAP['HOSTS']['CONTROLLER']['IP']
+            taken_ips.append(ip)
             default_controller = [
                 {'column': 'hostname', 'value': hostname},
                 {'column': 'serverport', 'value': BOOTSTRAP['HOSTS']['SERVERPORT']},
@@ -288,6 +298,7 @@ def bootstrap(bootstrapfile=None):
         elif f'CONTROLLER{num}' in BOOTSTRAP['HOSTS'].keys():
             hostname=BOOTSTRAP['HOSTS'][f'CONTROLLER{num}']['HOSTNAME']
             ip=BOOTSTRAP['HOSTS'][f'CONTROLLER{num}']['IP']
+            taken_ips.append(ip)
             default_controller = [
                 {'column': 'hostname', 'value': hostname},
                 {'column': 'serverport', 'value': BOOTSTRAP['HOSTS']['SERVERPORT']},
@@ -303,15 +314,23 @@ def bootstrap(bootstrapfile=None):
                 Database().insert('ipaddress', controller_ip)
             num = num + 1
 
+    osimage_path,osimage_kernelversion=None,None
+    if 'PATH' in BOOTSTRAP['OSIMAGE']:
+        osimage_path=BOOTSTRAP['OSIMAGE']['PATH']
+        osimage_kernelversion,exit_code = Helper().runcommand(f"chroot {osimage_path} /bin/sh -c 'uname -r'")
+        osimage_kernelversion=osimage_kernelversion.strip()
+        osimage_kernelversion=osimage_kernelversion.decode('utf-8')
     default_osimage = [
-            {'column': 'name', 'value': str(BOOTSTRAP['OSIMAGE']['NAME'])},
-            {'column': 'dracutmodules', 'value': 'luna, -18n, -plymouth'},
-            {'column': 'grab_filesystems', 'value': '/, /boot'},
-            {'column': 'initrdfile', 'value': 'osimagename-initramfs-`uname -r`'},
-            {'column': 'kernelfile', 'value': 'osimagename-vmlinuz-`uname -r`'},
-            {'column': 'kernelmodules', 'value': 'ipmi_devintf, ipmi_si, ipmi_msghandler'},
-            {'column': 'distribution', 'value': 'redhat'}
-        ]
+        {'column': 'name', 'value': str(BOOTSTRAP['OSIMAGE']['NAME'])},
+        {'column': 'dracutmodules', 'value': 'luna, -18n, -plymouth'},
+        {'column': 'grab_filesystems', 'value': '/, /boot'},
+#        {'column': 'initrdfile', 'value': 'osimagename-initramfs-`uname -r`'},
+#        {'column': 'kernelfile', 'value': 'osimagename-vmlinuz-`uname -r`'},
+        {'column': 'kernelversion', 'value': f'{osimage_kernelversion}'},
+        {'column': 'path', 'value': f'{osimage_path}'},
+        {'column': 'kernelmodules', 'value': 'ipmi_devintf, ipmi_si, ipmi_msghandler'},
+        {'column': 'distribution', 'value': 'redhat'}
+     ]
     osimage = Database().insert('osimage', default_osimage)
 
     default_group = [
@@ -341,7 +360,23 @@ def bootstrap(bootstrapfile=None):
                 {'column': 'provisionmethod', 'value': 'torrent'},
                 {'column': 'provisionfallback', 'value': 'http'}
             ]
-        Database().insert('node', default_node)
+        node_id=Database().insert('node', default_node)
+        network_details=Helper().get_network_details(BOOTSTRAP['NETWORKS'][networkname]['NETWORK'])
+        avail_ip=Helper().get_available_ip(network_details['network'],network_details['subnet'],taken_ips)
+        taken_ips.append(avail_ip)
+        default_int = [
+                {'column': 'nodeid', 'value': str(node_id)},
+                {'column': 'interface', 'value': 'BOOTIF'}
+             ]
+        if_id = Database().insert('nodeinterface', default_int)
+        default_ip = [
+                {'column': 'tableref', 'value': 'nodeinterface'},
+                {'column': 'tablerefid', 'value': str(if_id)},
+                {'column': 'ipaddress', 'value': str(avail_ip)},
+                {'column': 'networkid', 'value': networkid}
+             ]
+        ip_id = Database().insert('ipaddress', default_ip)
+
     default_group_interface = [
             {'column': 'groupid', 'value': '1'},
             {'column': 'interfacename', 'value': 'BOOTIF'},
@@ -378,7 +413,7 @@ def validatebootstrap():
     global BOOTSTRAP
     BOOTSTRAP = {
         'HOSTS': {'HOSTNAME': None, 'CONTROLLER1': None, 'CONTROLLER2': None, 'NODELIST': None},
-        'NETWORKS': {'INTERNAL': None, 'BMC': None, 'IB': None},
+        'NETWORKS': {'cluster': None, 'ipmi': None, 'ib': None},
         'GROUPS': {'NAME': None},
         'OSIMAGE': {'NAME': None},
         'BMCSETUP': {'USERNAME': None, 'PASSWORD': None}

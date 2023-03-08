@@ -238,6 +238,9 @@ class OsImage(object):
         if ('initrdfile' in image[0]) and (image[0]['initrdfile']):
             initrdfile = f"{osimage}-{image[0]['initrdfile']}"
 
+        # naming convention has to be worked out based on distribution. Above assumes RHEL naming standards if no explicit name for either kernel or ramdisk is given.
+        # pending: add a switch based n distro. e.g. RHEL, Debian, etc.... - Antoine
+
         user_id = pwd.getpwnam('root').pw_uid
         grp_id = pwd.getpwnam('root').pw_gid
 

@@ -194,9 +194,10 @@ def boot_search_mac(mac=None):
     if None not in data.values():
         access_code = 200
         Helper().update_nodestate(data["nodeid"], "installer.discovery")
-        # row = [{"column": "status", "value": "installer.discovery"}]
-        # where = [{"column": "id", "value": data["nodeid"]}]
-        # Database().update('node', row, where)
+        # reintroduced below section as if we serve files through e.g. nginx, we won't update anything
+        row = [{"column": "status", "value": "installer.discovery"}]
+        where = [{"column": "id", "value": data['nodeid']}]
+        Database().update('node', row, where)
     else:
         environment = jinja2.Environment()
         template = environment.from_string('No Node is available for this mac address.')
@@ -297,9 +298,10 @@ def boot_manual_hostname(hostname=None, mac=None):
     if None not in data.values():
         access_code = 200
         Helper().update_nodestate(data["nodeid"], "installer.discovery")
-        # row = [{"column": "status", "value": "installer.discovery"}]
-        # where = [{"column": "id", "value": data["nodeid"]}]
-        # Database().update('node', row, where)
+        # reintroduced below section as if we serve files through e.g. nginx, we won't update anything
+        row = [{"column": "status", "value": "installer.discovery"}]
+        where = [{"column": "id", "value": data['nodeid']}]
+        Database().update('node', row, where)
     else:
         environment = jinja2.Environment()
         template = environment.from_string('No Node is available for this mac address.')

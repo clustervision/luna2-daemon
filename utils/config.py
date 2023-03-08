@@ -208,7 +208,9 @@ host {node}  {{
         cluster = Database().get_record(None, 'cluster', None)
         if cluster and 'ns_ip' in cluster[0]:
             ns_ip.append(cluster[0]['ns_ip'])
-        controllerip = cluster[0]['ntp_server']
+#	TWAN
+        controller = Database().get_record_join(['ipaddress.ipaddress'], ['ipaddress.tablerefid=controller.id'], ['tableref="controller"','controller.hostname="controller"'])
+        controllerip = controller[0]['ipaddress']
 #        if ns_ip:
 #            forwarder = ns_ip
         networks = Database().get_record(None, 'network', None)
@@ -287,7 +289,8 @@ host {node}  {{
             dns.write(config)
         dnszonefile = {
             'source': '/var/tmp/luna2/named.luna.zones',
-            'destination': '/trinity/local/etc/named.luna.zones'
+#            'destination': '/trinity/local/etc/named.luna.zones'
+            'destination': '/etc/named.luna.zones'
         }
         files.append(dnszonefile)
         with open(dnszonefile["source"], 'w', encoding='utf-8') as dnszone:
@@ -314,6 +317,8 @@ host {node}  {{
     }};
 // END forwarders
             """
+        else:
+            forwarder=''
 
         config = f"""
 //
@@ -328,12 +333,14 @@ host {node}  {{
 options {{
         listen-on port 53 {{ any; }};
         listen-on-v6 port 53 {{ any; }};
-        directory       "/trinity/local/var/lib/named";
+        /* BELOW NEEDS REVISION IN utils/config.py !!! */
+        /*directory       "/trinity/local/var/lib/named";
         dump-file       "/trinity/local/var/lib/named/data/cache_dump.db";
         statistics-file "/trinity/local/var/lib/named/data/named_stats.txt";
         memstatistics-file "/trinity/local/var/lib/named/data/named_mem_stats.txt";
         secroots-file   "/trinity/local/var/lib/named/data/named.secroots";
-        recursing-file  "/trinity/local/var/lib/named/data/named.recursing";
+        recursing-file  "/trinity/local/var/lib/named/data/named.recursing";*/
+        directory       "/var/named";
         allow-query     {{ any; }};
 
         /*
@@ -351,8 +358,15 @@ options {{
 
 dnssec-enable no;
 dnssec-validation no;
+"""
 
+#TWAN
+        if os.path.exists("/trinity/local/var/lib/named/dynamic"):
+            config += f"""
         managed-keys-directory "/trinity/local/var/lib/named/dynamic";
+"""
+
+        config += f"""
 
         pid-file "/run/named/named.pid";
         session-keyfile "/run/named/session.key";
@@ -377,6 +391,7 @@ include "/etc/named.rfc1912.zones";
 include "/etc/named.root.key";
 
 include "/etc/named.luna.zones";
+/*include "/trinity/local/etc/named.luna.zones";*/
 
 """
         return config
@@ -425,8 +440,12 @@ $TTL 604800
                         604800 )     ; min TTL
 
                         IN NS controller.{networkname}.
-                        IN A {controllerip}
-
+"""
+        if controllerip is not None:
+            zone_name_config += f"""
+controller              IN A {controllerip}
+"""
+        zone_name_config += f"""
 {nodelist}
 
 """

@@ -135,3 +135,59 @@ class Service(object):
                     response = {'monitor': {'Service': { name: 'FAIL, not running'} } }
                     code = 500
         return response, code
+
+    def service_mother(self,service,action,request_id):  # service and action not really mandatory unless we use the below commented block
+
+        self.logger.info(f"service_mother called")
+#        Below section is already done in config/pack GET call but kept here in case we want to move it back
+#        try:
+#            queue_id = Helper().add_task_to_queue(f'{service}:{action}','service',request_id)
+#        except:
+#            exc_type, exc_value, exc_traceback = sys.exc_info()
+#            self.logger.info(f"--------> {exc_type} {exc_value} {exc_traceback}")
+#        if not queue_id:
+#            self.logger.info(f"service_mother cannot get queue_id")
+#            Helper().insert_mesg_in_status(request_id,"luna",f"error queuing my task")
+#            return
+#        self.logger.info(f"service_mother added task to queue: {queue_id}")
+#        Helper().insert_mesg_in_status(request_id,"luna",f"queued pack service {service} with queue_id {queue_id}")
+#
+#        next_id = Helper().next_task_in_queue('service')
+#        if queue_id != next_id:
+#            # little tricky. we assume that another mother proces was spawned that took care of the runs... 
+#            # we need a check based on last hear queue entry, then we continue. pending in next_task_in_queue.
+#            return
+
+        while Helper().tasks_in_queue('service'):
+            next_id = Helper().next_task_in_queue('service')
+            self.logger.info(f"service_mother sees job in queue as next: {next_id}")
+            details=Helper().get_task_details(next_id)
+            request_id=details['request_id']
+            service,action=details['task'].split(':')
+
+            if action and service:
+
+                Helper().update_task_status_in_queue(next_id,'in progress')
+                Helper().insert_mesg_in_status(request_id,"luna",f"{action} service {service}")
+
+            # --- let's pack and rack
+
+                response, code = self.luna_service(service, action)
+
+                if code == 200:
+                    self.logger.info(f'service {service} {action} successful.')
+                    Helper().insert_mesg_in_status(request_id,"luna",f"finished {action} service {service}")
+                else:
+                    self.logger.info(f'service {service} {action} error: {response}.')
+                    Helper().insert_mesg_in_status(request_id,"luna",f"error {action} service {service}: {response}")
+
+                Helper().remove_task_from_queue(next_id)
+                Helper().insert_mesg_in_status(request_id,"luna",f"EOF")
+            else:
+                self.logger.info(f"{details['task']} is not for us.")
+                sleep(10)
+
+
+
+
+

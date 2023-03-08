@@ -21,6 +21,7 @@ from utils.helper import Helper
 from common.constant import CONSTANT
 import jinja2
 from utils.service import Service
+import concurrent.futures
 
 LOGGER = Log.get_logger()
 boot_blueprint = Blueprint('boot', __name__, template_folder='../templates')
@@ -279,8 +280,17 @@ def boot_manual_hostname(hostname=None, mac=None):
                 {"column": "nodeid", "value": data["nodeid"]},
                 {"column": "interface", "value": "BOOTIF"}
                 ]
-            Database().update('nodeinterface', row, where)
-            response, code = Service().luna_service('dhcp', 'restart')
+            result_if=Database().update('nodeinterface', row, where)
+            queue_id = Helper().add_task_to_queue('dhcp:restart','service','__internal__')
+            if queue_id:
+                next_id = Helper().next_task_in_queue('service')
+                if queue_id == next_id:
+                    executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
+                    executor.submit(Service().service_mother,'dhcp','restart','__internal__')
+                    executor.shutdown(wait=False)
+                    #Service().service_mother('dhcp','restart','__internal__')
+            else: # fallback, worst case
+                response, code = Service().luna_service('dhcp', 'restart')
 
         nodeinterface = Database().get_record_join(['nodeinterface.nodeid','nodeinterface.interface','nodeinterface.macaddress','ipaddress.ipaddress','network.name as network','network.network as networkip','network.subnet'], ['network.id=ipaddress.networkid','ipaddress.tablerefid=nodeinterface.id'],['tableref="nodeinterface"',f"nodeinterface.nodeid='{data['nodeid']}'",f'nodeinterface.macaddress="{mac}"'])
         if nodeinterface:

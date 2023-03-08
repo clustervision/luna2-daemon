@@ -30,7 +30,7 @@ from common.constant import CONSTANT, LUNAKEY
 from utils.helper import Helper
 import concurrent.futures
 import threading
-from time import sleep
+from time import sleep, time
 from datetime import datetime
 import sys
 import uuid
@@ -65,7 +65,7 @@ class OsImage(object):
             return False,"TARBALL config setting not defined in FILES"
         path_to_store = CONSTANT['FILES']['TARBALL']
 
-        #user = cluster.get('user')
+        #user = cluster.get('user')  # left in for future use if we want to run the daemon as non-root
         user_id = pwd.getpwnam('root').pw_uid
         grp_id = pwd.getpwnam('root').pw_gid
 
@@ -93,8 +93,9 @@ class OsImage(object):
         if not os.path.exists(image_path):
             return False,"Image path {image_path} does not exist"
 
-        uid = str(uuid.uuid4())
-        tarfile = uid + ".tar.bz2"
+        #uid = str(uuid.uuid4())
+        epoch_time = int(time())
+        tarfile = f"{osimage}-{epoch_time}.tar.bz2"
 
         if not os.path.exists('/usr/bin/tar'):
             return False,"/usr/bin/tar does not exist. please install tar"

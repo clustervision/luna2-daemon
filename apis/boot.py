@@ -39,6 +39,10 @@ def boot():
     if controller:
         ipaddress = controller[0]['ipaddress']
         serverport = controller[0]['serverport']
+        webserverport = serverport
+        if 'WEBSERVER' in CONSTANT.keys():
+           if 'PORT' in CONSTANT['WEBSERVER']:
+               webserverport = CONSTANT['WEBSERVER']['PORT']
         access_code = 200
     else:
         environment = jinja2.Environment()
@@ -46,7 +50,7 @@ def boot():
         ipaddress, serverport = '', ''
         access_code = 404
     LOGGER.info(f'Boot API serving the {template}')
-    return render_template(template, LUNA_CONTROLLER=ipaddress, LUNA_API_PORT=serverport), access_code
+    return render_template(template, LUNA_CONTROLLER=ipaddress, LUNA_API_PORT=serverport, WEBSERVER_PORT=webserverport), access_code
 
 
 # ################### ---> Experiment to compare the logic
@@ -86,6 +90,10 @@ def boot_short():
     if controller:
         ipaddress = controller[0]['ipaddress']
         serverport = controller[0]['serverport']
+        webserverport = serverport
+        if 'WEBSERVER' in CONSTANT.keys():
+           if 'PORT' in CONSTANT['WEBSERVER']:
+               webserverport = CONSTANT['WEBSERVER']['PORT']
         access_code = 200
     else:
         environment = jinja2.Environment()
@@ -93,7 +101,7 @@ def boot_short():
         ipaddress, serverport = '', ''
         access_code = 404
     LOGGER.info(f'Boot API serving the {template}')
-    return render_template(template, LUNA_CONTROLLER=ipaddress, LUNA_API_PORT=serverport), access_code
+    return render_template(template, LUNA_CONTROLLER=ipaddress, LUNA_API_PORT=serverport, WEBSERVER_PORT=webserverport), access_code
 
 
 @boot_blueprint.route('/boot/disk', methods=['GET'])
@@ -151,6 +159,10 @@ def boot_search_mac(mac=None):
     if controller:
         data['ipaddress'] = controller[0]['ipaddress']
         data['serverport'] = controller[0]['serverport']
+        data['webserverport'] = data['serverport']
+        if 'WEBSERVER' in CONSTANT.keys():
+           if 'PORT' in CONSTANT['WEBSERVER']:
+               data['webserverport'] = CONSTANT['WEBSERVER']['PORT']
     nodeinterface = Database().get_record_join(['nodeinterface.nodeid','nodeinterface.interface','ipaddress.ipaddress','network.name as network','network.network as networkip','network.subnet'], ['network.id=ipaddress.networkid','ipaddress.tablerefid=nodeinterface.id'],['tableref="nodeinterface"',f"nodeinterface.macaddress='{mac}'"])
     if nodeinterface:
         data['nodeid'] = nodeinterface[0]['nodeid']
@@ -182,9 +194,10 @@ def boot_search_mac(mac=None):
     if None not in data.values():
         access_code = 200
         Helper().update_nodestate(data["nodeid"], "installer.discovery")
-        # row = [{"column": "status", "value": "installer.discovery"}]
-        # where = [{"column": "id", "value": data["nodeid"]}]
-        # Database().update('node', row, where)
+        # reintroduced below section as if we serve files through e.g. nginx, we won't update anything
+        row = [{"column": "status", "value": "installer.discovery"}]
+        where = [{"column": "id", "value": data['nodeid']}]
+        Database().update('node', row, where)
     else:
         environment = jinja2.Environment()
         template = environment.from_string('No Node is available for this mac address.')
@@ -195,6 +208,7 @@ def boot_search_mac(mac=None):
         template,
         LUNA_CONTROLLER     = data['ipaddress'],
         LUNA_API_PORT       = data['serverport'],
+        WEBSERVER_PORT      = data['webserverport'],
         NODE_MAC_ADDRESS    = mac,
         OSIMAGE_INITRDFILE  = data['initrdfile'],
         OSIMAGE_KERNELFILE  = data['kernelfile'],
@@ -235,6 +249,10 @@ def boot_manual_hostname(hostname=None, mac=None):
     if controller:
         data['ipaddress'] = controller[0]['ipaddress']
         data['serverport'] = controller[0]['serverport']
+        data['webserverport'] = data['serverport']
+        if 'WEBSERVER' in CONSTANT.keys():
+           if 'PORT' in CONSTANT['WEBSERVER']:
+               data['webserverport'] = CONSTANT['WEBSERVER']['PORT']
 
     # we probably have to cut the fqdn off of hostname?
     node = Database().get_record_join(['node.*','group.osimageid as grouposimageid'],['group.id=node.groupid'],[f'node.name="{hostname}"'])
@@ -280,9 +298,10 @@ def boot_manual_hostname(hostname=None, mac=None):
     if None not in data.values():
         access_code = 200
         Helper().update_nodestate(data["nodeid"], "installer.discovery")
-        # row = [{"column": "status", "value": "installer.discovery"}]
-        # where = [{"column": "id", "value": data["nodeid"]}]
-        # Database().update('node', row, where)
+        # reintroduced below section as if we serve files through e.g. nginx, we won't update anything
+        row = [{"column": "status", "value": "installer.discovery"}]
+        where = [{"column": "id", "value": data['nodeid']}]
+        Database().update('node', row, where)
     else:
         environment = jinja2.Environment()
         template = environment.from_string('No Node is available for this mac address.')
@@ -292,6 +311,7 @@ def boot_manual_hostname(hostname=None, mac=None):
         template,
         LUNA_CONTROLLER     = data['ipaddress'],
         LUNA_API_PORT       = data['serverport'],
+        WEBSERVER_PORT      = data['webserverport'],
         NODE_MAC_ADDRESS    = mac,
         OSIMAGE_INITRDFILE   = data['initrdfile'],
         OSIMAGE_KERNELFILE  = data['kernelfile'],
@@ -337,6 +357,10 @@ def boot_install(node=None):
     if controller:
         data['ipaddress']   = controller[0]['ipaddress']
         data['serverport']  = controller[0]['serverport']
+        data['webserverport'] = data['serverport']
+        if 'WEBSERVER' in CONSTANT.keys():
+           if 'PORT' in CONSTANT['WEBSERVER']:
+               data['webserverport'] = CONSTANT['WEBSERVER']['PORT']
     node_details = Database().get_record_join(['node.*','group.osimageid as grouposimageid'],['group.id=node.groupid'],[f'node.name="{node}"'])
     if node_details:
         if node_details[0]['osimageid']:
@@ -398,6 +422,7 @@ def boot_install(node=None):
         template,
         LUNA_CONTROLLER         = data['ipaddress'],
         LUNA_API_PORT           = data['serverport'],
+        WEBSERVER_PORT          = data['webserverport'],
         NODE_HOSTNAME           = data['nodehostname'],
         NODE_NAME               = data['nodename'],
         LUNA_OSIMAGE            = data['osimagename'],

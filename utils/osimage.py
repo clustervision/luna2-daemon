@@ -30,7 +30,7 @@ from common.constant import CONSTANT, LUNAKEY
 from utils.helper import Helper
 import concurrent.futures
 import threading
-from time import sleep
+from time import sleep, time
 from datetime import datetime
 import sys
 import uuid
@@ -65,7 +65,7 @@ class OsImage(object):
             return False,"TARBALL config setting not defined in FILES"
         path_to_store = CONSTANT['FILES']['TARBALL']
 
-        #user = cluster.get('user')
+        #user = cluster.get('user')  # left in for future use if we want to run the daemon as non-root
         user_id = pwd.getpwnam('root').pw_uid
         grp_id = pwd.getpwnam('root').pw_gid
 
@@ -75,6 +75,11 @@ class OsImage(object):
             os.chmod(path_to_store, 0o755)
 
         image = Database().get_record(None, 'osimage', f"WHERE name='{osimage}'")
+        if not image:
+            return False,f"Image {osimage} does not exist?"
+
+        image_id=image[0]['id']  # we might need it later. at least once at the bottom
+
         if ('path' not in image[0]) or (image[0]['path'] is None):
             return False,"Image path not defined"
 
@@ -88,8 +93,9 @@ class OsImage(object):
         if not os.path.exists(image_path):
             return False,"Image path {image_path} does not exist"
 
-        uid = str(uuid.uuid4())
-        tarfile = uid + ".tar.bz2"
+        #uid = str(uuid.uuid4())
+        epoch_time = int(time())
+        tarfile = f"{osimage}-{epoch_time}.tar.bz2"
 
         if not os.path.exists('/usr/bin/tar'):
             return False,"/usr/bin/tar does not exist. please install tar"
@@ -157,6 +163,11 @@ class OsImage(object):
             os.chmod(path_to_store + '/' + tarfile, 0o644)
         except Exception as error:
             return False,f"Moving {osimage} tarbal failed with {error}"
+
+        row = [{"column": "tarball", "value": f"{tarfile}"}]
+        where = [{"column": "id", "value": f"{image_id}"}]
+        status = Database().update('osimage', row, where)
+
         return True,"Success for {tarfile}"
 
 
@@ -227,6 +238,9 @@ class OsImage(object):
             kernfile = f"{osimage}-{image[0]['kernelfile']}"
         if ('initrdfile' in image[0]) and (image[0]['initrdfile']):
             initrdfile = f"{osimage}-{image[0]['initrdfile']}"
+
+        # naming convention has to be worked out based on distribution. Above assumes RHEL naming standards if no explicit name for either kernel or ramdisk is given.
+        # pending: add a switch based n distro. e.g. RHEL, Debian, etc.... - Antoine
 
         user_id = pwd.getpwnam('root').pw_uid
         grp_id = pwd.getpwnam('root').pw_gid

@@ -20,6 +20,7 @@ from utils.database import Database
 from utils.helper import Helper
 from common.constant import CONSTANT
 import jinja2
+from utils.service import Service
 
 LOGGER = Log.get_logger()
 boot_blueprint = Blueprint('boot', __name__, template_folder='../templates')
@@ -43,6 +44,13 @@ def boot():
         if 'WEBSERVER' in CONSTANT.keys():
            if 'PORT' in CONSTANT['WEBSERVER']:
                webserverport = CONSTANT['WEBSERVER']['PORT']
+
+        nodes=[]
+        allnodes = Database().get_record(None, 'node')
+        if allnodes:
+            for node in allnodes:
+                nodes.append(node['name'])
+
         access_code = 200
     else:
         environment = jinja2.Environment()
@@ -50,7 +58,7 @@ def boot():
         ipaddress, serverport = '', ''
         access_code = 404
     LOGGER.info(f'Boot API serving the {template}')
-    return render_template(template, LUNA_CONTROLLER=ipaddress, LUNA_API_PORT=serverport, WEBSERVER_PORT=webserverport), access_code
+    return render_template(template, LUNA_CONTROLLER=ipaddress, LUNA_API_PORT=serverport, WEBSERVER_PORT=webserverport, NODES=nodes), access_code
 
 
 # ################### ---> Experiment to compare the logic
@@ -264,24 +272,18 @@ def boot_manual_hostname(hostname=None, mac=None):
         data['nodeservice'] = node[0]['service']
         data['nodeid'] = node[0]['id']
     if data['nodeid']:
-        #where = f' WHERE nodeid = {data["nodeid"]} AND interface = "BOOTIF";'
-        #nodeinterface = Database().get_record(None, 'nodeinterface', where)
+        nodeinterface_check = Database().get_record_join(['nodeinterface.nodeid','nodeinterface.interface','ipaddress.ipaddress','network.name as network','network.network as networkip','network.subnet'], ['network.id=ipaddress.networkid','ipaddress.tablerefid=nodeinterface.id'],['tableref="nodeinterface"',f'nodeinterface.macaddress="{mac}"'])
+        if not nodeinterface_check: # we check if we already have a node with this config!! we overwrite? i guess not! why? because we hard config ip-s inside the node after boot, as such a node will never update itself. clash danger!
+            row = [{"column": "macaddress", "value": mac}]
+            where = [
+                {"column": "nodeid", "value": data["nodeid"]},
+                {"column": "interface", "value": "BOOTIF"}
+                ]
+            Database().update('nodeinterface', row, where)
+            response, code = Service().luna_service('dhcp', 'restart')
+
         nodeinterface = Database().get_record_join(['nodeinterface.nodeid','nodeinterface.interface','nodeinterface.macaddress','ipaddress.ipaddress','network.name as network','network.network as networkip','network.subnet'], ['network.id=ipaddress.networkid','ipaddress.tablerefid=nodeinterface.id'],['tableref="nodeinterface"',f"nodeinterface.nodeid='{data['nodeid']}'",f'nodeinterface.macaddress="{mac}"'])
         if nodeinterface:
-#            row = [{"column": "macaddress", "value": nodeinterface[0]['macaddress']}]
-#            # not sure if below is really needed.....
-#            where = [
-#                {"column": "nodeid", "value": data["nodeid"]},
-#                {"column": "interface", "value": "BOOTIF"}
-#                ]
-#            Database().update('nodeinterface', row, where)
-#            where = f' WHERE nodeid = {data["nodeid"]} AND interface = "BOOTIF";'
-#            nodeinterface = Database().get_record(None, 'nodeinterface', where)
-#        where = f' WHERE id = "{nodeinterface[0]["networkid"]}"'
-#        nwk = Database().get_record(None, 'network', where)
-#        data['nodeip'] = Helper().get_network(nodeinterface[0]['ipaddress'], nwk[0]['subnet'])
-#        subnet = data['nodeip'].split('/')
-#        subnet = subnet[1]
             data['nodeip'] = f'{nodeinterface[0]["ipaddress"]}/{nodeinterface[0]["subnet"]}'
         else:
             #uh oh... no bootif??
@@ -290,10 +292,17 @@ def boot_manual_hostname(hostname=None, mac=None):
     if data['osimageid']:
         osimage = Database().get_record(None, 'osimage', f' WHERE id = {data["osimageid"]}')
         if osimage:
-            data['initrdfile'] = osimage[0]['initrdfile']
-            data['kernelfile'] = osimage[0]['kernelfile']
+            if ('kernelfile' in osimage[0]) and (osimage[0]['kernelfile']):
+                data['kernelfile'] = f"{osimage[0]['name']}-{osimage[0]['kernelfile']}"
+            elif ('kernelversion' in osimage[0]) and (osimage[0]['kernelversion']):
+                data['kernelfile'] = f"{osimage[0]['name']}-vmlinuz-{osimage[0]['kernelversion']}"  # RHEL convention. needs revision to allow for distribution switch. pending
 
-    LOGGER.info(f"manual boot template date: [{data}]")
+            if ('initrdfile' in osimage[0]) and (osimage[0]['initrdfile']):
+                data['initrdfile'] = f"{osimage[0]['name']}-{osimage[0]['initrdfile']}"
+            elif ('kernelversion' in osimage[0]) and (osimage[0]['kernelversion']):
+                data['initrdfile'] = f"{osimage[0]['name']}-initramfs-{osimage[0]['kernelversion']}"
+
+    LOGGER.info(f"manual boot template data: [{data}]")
 
     if None not in data.values():
         access_code = 200

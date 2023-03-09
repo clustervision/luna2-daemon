@@ -26,6 +26,7 @@ from time import sleep,time
 from os import getpid
 import concurrent.futures
 from utils.osimage import OsImage
+from utils.config import Config
 
 LOGGER = Log.get_logger()
 config_blueprint = Blueprint('config', __name__)
@@ -166,7 +167,7 @@ def config_node_post(name=None):
             nodeid = node[0]['id']
             if 'newnodename' in data:  # is mentioned as newhostname in design documents!
                 nodename_new = data['newnodename']
-                where = f' WHERE `name` = "{nodename_new}";'
+                where = f' WHERE `name` = "{nodename_new}"'
                 newnode_check = Database().get_record(None, 'node', where)
                 if newnode_check:
                     response = {'message': f'{nodename_new} already present in database.'}
@@ -358,7 +359,7 @@ def config_node_delete(name=None):
     Process - Delete the Node and it's interfaces.
     Output - Success or Failure.
     """
-    node = Database().get_record(None, 'node', f' WHERE `name` = "{name}";')
+    node = Database().get_record(None, 'node', f' WHERE `name` = "{name}"')
     if node:
         nodeid=node[0]['id']
         Database().delete_row('node', [{"column": "name", "value": name}])
@@ -541,10 +542,10 @@ def config_node_delete_interface(name=None, interface=None):
     Process - Delete the Node Interface.
     Output - Success or Failure.
     """
-    node = Database().get_record(None, 'node', f' WHERE `name` = "{name}";')
+    node = Database().get_record(None, 'node', f' WHERE `name` = "{name}"')
     if node:
         nodeid = node[0]['id']
-        where = f' WHERE `interface` = "{interface}" AND `nodeid` = "{nodeid}";'
+        where = f' WHERE `interface` = "{interface}" AND `nodeid` = "{nodeid}"'
         node_interface = Database().get_record_join(['nodeinterface.id as ifid','ipaddress.id as ipid'], ['ipaddress.tablerefid=nodeinterface.id'], ['tableref="nodeinterface"',f"nodeinterface.nodeid='{nodeid}'",f"nodeinterface.interface='{interface}'"])
         if node_interface:
             where = [{"column": "id", "value": node_interface[0]['ipid']}]
@@ -677,7 +678,7 @@ def config_group_post(name=None):
             grpid = grp[0]['id']
             if 'newgroupname' in data:
                 newgrpname = data['newgroupname']
-                where = f' WHERE `name` = "{newgrpname}";'
+                where = f' WHERE `name` = "{newgrpname}"'
                 checknewgrp = Database().get_record(None, 'group', where)
                 if checknewgrp:
                     response = {'message': f'{newgrpname} Already present in database.'}
@@ -794,7 +795,7 @@ def config_group_delete(name=None):
     Process - Delete the Group and it's interfaces.
     Output - Success or Failure.
     """
-    group = Database().get_record(None, 'group', f' WHERE `name` = "{name}";')
+    group = Database().get_record(None, 'group', f' WHERE `name` = "{name}"')
     if group:
         Database().delete_row('group', [{"column": "name", "value": name}])
         Database().delete_row('groupinterface', [{"column": "groupid", "value": group[0]['id']}])
@@ -907,10 +908,10 @@ def config_group_delete_interface(name=None, interface=None):
     Process - Delete the Group Interface.
     Output - Success or Failure.
     """
-    group = Database().get_record(None, 'group', f' WHERE `name` = "{name}";')
+    group = Database().get_record(None, 'group', f' WHERE `name` = "{name}"')
     if group:
         groupid = group[0]['id']
-        where = f' WHERE `interfacename` = "{interface}" AND `groupid` = "{groupid}";'
+        where = f' WHERE `interfacename` = "{interface}" AND `groupid` = "{groupid}"'
         group_interface = Database().get_record(None, 'groupinterface', where)
         if group_interface:
             where = [{"column": "id", "value": group_interface[0]['id']}]
@@ -997,7 +998,7 @@ def config_osimage_post(name=None):
             imageid = image[0]['id']
             if 'newosimage' in data:
                 newosname = data['newosimage']
-                where = f' WHERE `name` = "{newosname}";'
+                where = f' WHERE `name` = "{newosname}"'
                 newoscheck = Database().get_record(None, 'osimage', where)
                 if newoscheck:
                     response = {'message': f'{newosname} Already present in database.'}
@@ -1010,7 +1011,7 @@ def config_osimage_post(name=None):
         else:
             if 'newosimage' in data:
                 newosname = data['newosimage']
-                where = f' WHERE `name` = "{newosname}";'
+                where = f' WHERE `name` = "{newosname}"'
                 newoscheck = Database().get_record(None, 'osimage', where)
                 if newoscheck:
                     response = {'message': f'{newosname} Already present in database.'}
@@ -1057,7 +1058,7 @@ def config_osimage_delete(name=None):
     Process - Delete the OS Image.
     Output - Success or Failure.
     """
-    osimage = Database().get_record(None, 'osimage', f' WHERE `name` = "{name}";')
+    osimage = Database().get_record(None, 'osimage', f' WHERE `name` = "{name}"')
     if osimage:
         Database().delete_row('osimage', [{"column": "name", "value": name}])
         response = {'message': f'OS Image {name} removed.'}
@@ -1090,7 +1091,7 @@ def config_osimage_clone(name=None):
         if image:
             if 'newosimage' in data:
                 newosname = data['newosimage']
-                where = f' WHERE `name` = "{newosname}";'
+                where = f' WHERE `name` = "{newosname}"'
                 checknewos = Database().get_record(None, 'osimage', where)
                 if checknewos:
                     response = {'message': f'{newosname} Already present in database.'}
@@ -1360,7 +1361,7 @@ def config_bmcsetup_post(bmcname=None):
     if request_data:
         data = request_data['config']['bmcsetup'][bmcname]
         data['name'] = bmcname
-        bmc = Database().get_record(None, 'bmcsetup', f' WHERE `name` = "{bmcname}";')
+        bmc = Database().get_record(None, 'bmcsetup', f' WHERE `name` = "{bmcname}"')
         if bmc:
             bmcid = bmc[0]['id']
             if 'newbmcname' in request_data['config']['bmcsetup'][bmcname]:
@@ -1420,9 +1421,9 @@ def config_bmcsetup_clone(bmcname=None):
             response = {'message': 'Kindly provide the new bmc name.'}
             access_code = 400
             return json.dumps(response), access_code
-        checkbmc = Database().get_record(None, 'bmcsetup', f' WHERE `name` = "{bmcname}";')
+        checkbmc = Database().get_record(None, 'bmcsetup', f' WHERE `name` = "{bmcname}"')
         if checkbmc:
-            checnewkbmc = Database().get_record(None, 'bmcsetup', f' WHERE `name` = "{newbmc}";')
+            checnewkbmc = Database().get_record(None, 'bmcsetup', f' WHERE `name` = "{newbmc}"')
             if checnewkbmc:
                 response = {'message': f'{newbmc} Already present in database.'}
                 access_code = 400
@@ -1461,7 +1462,7 @@ def config_bmcsetup_delete(bmcname=None):
     Process - Delete The BMC Setup Credentials.
     Output - Success or Failure.
     """
-    bmc = Database().get_record(None, 'bmcsetup', f' WHERE `name` = "{bmcname}";')
+    bmc = Database().get_record(None, 'bmcsetup', f' WHERE `name` = "{bmcname}"')
     if bmc:
         Database().delete_row('bmcsetup', [{"column": "name", "value": bmcname}])
         response = {'message': 'BMC Setup removed.'}
@@ -1551,7 +1552,7 @@ def config_switch_post(switch=None):
     if request_data:
         data = request_data['config']['switch'][switch]
         data['name'] = switch
-        checkswitch = Database().get_record(None, 'switch', f' WHERE `name` = "{switch}";')
+        checkswitch = Database().get_record(None, 'switch', f' WHERE `name` = "{switch}"')
         if checkswitch:
             switchid = checkswitch[0]['id']
             if 'newswitchname' in request_data['config']['switch'][switch]:
@@ -1586,48 +1587,13 @@ def config_switch_post(switch=None):
                 access_code = 400
         #Antoine
         # ----------- interface(s) update/create -------------
-        if network:
-            networkid = Database().getid_byname('network', network)
-        else:
-            network_details = Database().get_record_join(['network.name as network','network.id'], ['ipaddress.tablerefid=switch.id','network.id=ipaddress.networkid'], ['tableref="switch"',f"switch.name='{switch}'"])
-            if network_details:
-                networkid=network_details[0]['id']
-            else:
-                response = {'message': f'Bad Request; Network not specified.'}
-                access_code = 400
-                return json.dumps(response), access_code
-        if ipaddress and switchid:
-            my_ipaddress={}
-            my_ipaddress['networkid']=networkid
-            result_ip=False
-            network_details = Database().get_record(None, 'network', f'WHERE id={networkid}')
-#            network_range,network_subnet=network_details[0]['network'].split('/')
-#            if (not network_subnet) and network_details[0]['subnet']:
-#                network_subnet=network_details[0]['subnet']
-#            valid_ip = Helper().check_ip_range(ipaddress, f"{network_range}/{network_subnet}")
-            valid_ip = Helper().check_ip_range(ipaddress, f"{network_details[0]['network']}/{network_details[0]['subnet']}")
-            LOGGER.info(f"Ipaddress {ipaddress} for switch {switch} is [{valid_ip}]")
-            if valid_ip is False:
-                response = {'message': f"invalid IP address for {switch}. Network {network_details[0]['name']}: {network_details[0]['network']}/{network_details[0]['subnet']}"}
-                access_code = 500
-                return json.dumps(response), access_code
-            my_ipaddress['ipaddress']=ipaddress
-            check_ip = Database().get_record(None, 'ipaddress', f'WHERE tablerefid = "{switchid}" AND tableref = "switch"')
-            if check_ip:
-                row = Helper().make_rows(my_ipaddress)
-                where = [{"column": "tablerefid", "value": switchid},{"column": "tableref", "value": "switch"}]
-                Database().update('ipaddress', row, where)
-            else:
-                my_ipaddress['tableref']='switch'
-                my_ipaddress['tablerefid']=switchid
-                row = Helper().make_rows(my_ipaddress)
-                result_ip=Database().insert('ipaddress', row)
-                LOGGER.info(f"IP for switch created => {result_ip}.")
+        result,mesg=Config().device_ipaddress_config(switchid,'switch',ipaddress,network)
+        response = {'message': f"{mesg}"}
 
-                if result_ip is False:
-                    response = {'message': 'Bad Request; IP address assignment failed.'}
-                    access_code = 400
-                    return json.dumps(response), access_code
+        if result is False:
+            access_code=500
+        return json.dumps(response), access_code
+
     else:
         response = {'message': 'Bad Request; Did not received data.'}
         access_code = 400
@@ -1663,7 +1629,7 @@ def config_switch_clone(switch=None):
             response = {'message': 'Kindly provide the new switch name.'}
             access_code = 400
             return json.dumps(response), access_code
-        checkswitch = Database().get_record(None, 'switch', f' WHERE `name` = "{newswitchname}";')
+        checkswitch = Database().get_record(None, 'switch', f' WHERE `name` = "{newswitchname}"')
         if checkswitch:
             response = {'message': f'{newswitchname} already present in database.'}
             access_code = 400
@@ -1709,7 +1675,7 @@ def config_switch_delete(switch=None):
     Process - Delete The Switch.
     Output - Success or Failure.
     """
-    checkswitch = Database().get_record(None, 'switch', f' WHERE `name` = "{switch}";')
+    checkswitch = Database().get_record(None, 'switch', f' WHERE `name` = "{switch}"')
     if checkswitch:
         Database().delete_row('ipaddress', [{"column": "tablerefid", "value": checkswitch[0]['id']},{"column": "tableref", "value": "switch"}])
         Database().delete_row('switch', [{"column": "id", "value": checkswitch[0]['id']}])
@@ -1798,7 +1764,7 @@ def config_otherdev_post(device=None):
     if request_data:
         data = request_data['config']['otherdev'][device]
         data['name'] = device
-        checkdevice = Database().get_record(None, 'otherdevices', f' WHERE `name` = "{device}";')
+        checkdevice = Database().get_record(None, 'otherdevices', f' WHERE `name` = "{device}"')
         if checkdevice:
             deviceid = checkdevice[0]['id']
             if 'newotherdevname' in request_data['config']['otherdev'][device]:
@@ -1834,52 +1800,13 @@ def config_otherdev_post(device=None):
                 return json.dumps(response), access_code
         #Antoine
         # ----------- interface(s) update/create -------------
-        if network:
-            networkid = Database().getid_byname('network', network)
-        else:
-            network_details = Database().get_record_join(['network.name as network','network.id'], ['ipaddress.tablerefid=otherdevices.id','network.id=ipaddress.networkid'], ['tableref="otherdevices"',f"switch.name='{device}'"])
-            if network_details:
-                networkid=network_details[0]['id']
-            else:
-                response = {'message': f'Bad Request; Network not specified.'}
-                access_code = 400
-                return json.dumps(response), access_code
-        if ipaddress and deviceid:
-            my_ipaddress={}
-            my_ipaddress['networkid']=networkid
-            result_ip=False
-            network_details = Database().get_record(None, 'network', f'WHERE id={networkid}')
-#            network_range,network_subnet=network_details[0]['network'].split('/')
-#            if (not network_subnet) and network_details[0]['subnet']:
-#                network_subnet=network_details[0]['subnet']
-#            valid_ip = Helper().check_ip_range(ipaddress, f"{network_range}/{network_subnet}")
-            valid_ip = Helper().check_ip_range(ipaddress, f"{network_details[0]['network']}/{network_details[0]['subnet']}")
-            LOGGER.info(f"Ipaddress {ipaddress} for otherdevice {device} is [{valid_ip}]")
-            if valid_ip is False:
-                response = {'message': f"invalid IP address for {device}. Network {network_details[0]['name']}: {network_details[0]['network']}/{network_details[0]['subnet']}"}
-                access_code = 500
-                return json.dumps(response), access_code
-            my_ipaddress['ipaddress']=ipaddress
-            check_ip = Database().get_record(None, 'ipaddress', f'WHERE tablerefid = "{deviceid}" AND tableref = "otherdevices"')
-            if check_ip:
-                row = Helper().make_rows(my_ipaddress)
-                where = [{"column": "tablerefid", "value": deviceid},{"column": "tableref", "value": "otherdevices"}]
-                Database().update('ipaddress', row, where)
-            else:
-                my_ipaddress['tableref']='otherdevices'
-                my_ipaddress['tablerefid']=deviceid
-                row = Helper().make_rows(my_ipaddress)
-                result_ip=Database().insert('ipaddress', row)
-                LOGGER.info(f"IP for switch created => {result_ip}.")
+        result,mesg=Config().device_ipaddress_config(deviceid,'otherdevices',ipaddress,network)
+        response = {'message': f"{mesg}"}
 
-                if result_ip is False:
-                    response = {'message': 'Bad Request; IP address assignment failed.'}
-                    access_code = 400
+        if result is False:
+            access_code=500
+        return json.dumps(response), access_code
 
-        else:
-            response = {'message': 'Bad Request; IP address already exist in the database.'}
-            access_code = 400
-            return json.dumps(response), access_code
     else:
         response = {'message': 'Bad Request; Did not received data.'}
         access_code = 400
@@ -1914,7 +1841,7 @@ def config_otherdev_clone(device=None):
             response = {'message': 'Kindly provide the new device name.'}
             access_code = 400
             return json.dumps(response), access_code
-        where = f' WHERE `name` = "{newdevicename}";'
+        where = f' WHERE `name` = "{newdevicename}"'
         checkdevice = Database().get_record(None, 'otherdevices', where)
         if checkdevice:
             response = {'message': f'{newdevicename} already present in database.'}
@@ -1961,7 +1888,7 @@ def config_otherdev_delete(device=None):
     Process - Delete The Device.
     Output - Success or Failure.
     """
-    checkdevice = Database().get_record(None, 'otherdevices', f' WHERE `name` = "{device}";')
+    checkdevice = Database().get_record(None, 'otherdevices', f' WHERE `name` = "{device}"')
     if checkdevice:
         Database().delete_row('ipaddress', [{"column": "tablerefid", "value": checkdevice[0]['id']},{"column": "tableref", "value": "otherdevices"}])
         Database().delete_row('otherdevices', [{"column": "id", "value": checkdevice[0]['id']}])
@@ -2014,7 +1941,7 @@ def config_network_get(name=None):
     Process - Fetch The Network Information.
     Output - Network Information.
     """
-    networks = Database().get_record(None, 'network', f' WHERE `name` = "{name}";')
+    networks = Database().get_record(None, 'network', f' WHERE `name` = "{name}"')
     if networks:
         response = {'config': {'network': {} }}
         for nwk in networks:
@@ -2055,12 +1982,12 @@ def config_network_post(name=None):
     if request_data:
         data = request_data['config']['network'][name]
         data['name'] = name
-        checknetwork = Database().get_record(None, 'network', f' WHERE `name` = "{name}";')
+        checknetwork = Database().get_record(None, 'network', f' WHERE `name` = "{name}"')
         if checknetwork:
             networkid = checknetwork[0]['id']
             if 'newnetname' in request_data['config']['network'][name]:
                 newnetworkname = request_data['config']['network'][name]['newnetname']
-                where = f' WHERE `name` = "{newnetworkname}";'
+                where = f' WHERE `name` = "{newnetworkname}"'
                 checknewnetwork = Database().get_record(None, 'network', where)
                 if checknewnetwork:
                     response = {'message': f'{newnetworkname} already present in database.'}
@@ -2173,11 +2100,11 @@ def config_network_clone(name=None):
     if request_data:
         data = request_data['config']['network'][name]
         data['name'] = name
-        checknetwork = Database().get_record(None, 'network', f' WHERE `name` = "{name}";')
+        checknetwork = Database().get_record(None, 'network', f' WHERE `name` = "{name}"')
         if checknetwork:
             if 'newnetname' in request_data['config']['network'][name]:
                 newnetworkname = request_data['config']['network'][name]['newnetname']
-                where = f' WHERE `name` = "{newnetworkname}";'
+                where = f' WHERE `name` = "{newnetworkname}"'
                 checknewnetwork = Database().get_record(None, 'network', where)
                 if checknewnetwork:
                     response = {'message': f'{newnetworkname} already present in database.'}
@@ -2275,7 +2202,7 @@ def config_network_delete(name=None):
     Process - Delete The Network.
     Output - Success or Failure.
     """
-    network = Database().get_record(None, 'network', f' WHERE `name` = "{name}";')
+    network = Database().get_record(None, 'network', f' WHERE `name` = "{name}"')
     if network:
         Database().delete_row('network', [{"column": "name", "value": name}])
         response = {'message': 'Network removed.'}
@@ -2294,7 +2221,7 @@ def config_network_ip(name=None, ipaddr=None):
     Process - Delete The Network.
     Output - Success or Failure.
     """
-    network = Database().get_record(None, 'network', f' WHERE `name` = "{name}";')
+    network = Database().get_record(None, 'network', f' WHERE `name` = "{name}"')
     if network:
         ipdetails = Helper().check_ip_range(ipaddr, network[0]['network']+'/'+network[0]['subnet'])
         if ipdetails:
@@ -2335,7 +2262,7 @@ def config_network_nextip(name=None):
         for ip in network:
             ips.append(ip['ipaddress'])
     else:
-        network = Database().get_record(None, 'network', f' WHERE `name` = "{name}";')
+        network = Database().get_record(None, 'network', f' WHERE `name` = "{name}"')
 
     if network:
         access_code = 500
@@ -2469,7 +2396,7 @@ def config_post_secrets_node(name=None):
             if data:
                 for secret in data:
                     secretname = secret['name']
-                    where = f' WHERE nodeid = "{nodeid}" AND name = "{secretname}";'
+                    where = f' WHERE nodeid = "{nodeid}" AND name = "{secretname}"'
                     secretdata = Database().get_record(None, 'nodesecrets', where)
                     if secretdata:
                         nodesecretcolumns = Database().get_columns('nodesecrets')
@@ -2567,7 +2494,7 @@ def config_post_node_secret(name=None, secret=None):
             nodeid = node[0]['id']
             if data:
                 secretname = data[0]['name']
-                where = f' WHERE nodeid = "{nodeid}" AND name = "{secretname}";'
+                where = f' WHERE nodeid = "{nodeid}" AND name = "{secretname}"'
                 secret_data = Database().get_record(None, 'nodesecrets', where)
                 if secret_data:
                     nodesecretcolumns = Database().get_columns('nodesecrets')
@@ -2624,7 +2551,7 @@ def config_clone_node_secret(name=None, secret=None):
             nodeid = node[0]['id']
             if data:
                 secretname = data[0]['name']
-                where = f' WHERE nodeid = "{nodeid}" AND name = "{secretname}";'
+                where = f' WHERE nodeid = "{nodeid}" AND name = "{secretname}"'
                 secretdata = Database().get_record(None, 'nodesecrets', where)
                 if secretdata:
                     if 'newsecretname' in data[0]:
@@ -2632,7 +2559,7 @@ def config_clone_node_secret(name=None, secret=None):
                         del data[0]['newsecretname']
                         data[0]['nodeid'] = nodeid
                         data[0]['name'] = newsecretname
-                        where = f' WHERE nodeid = "{nodeid}" AND name = "{newsecretname}";'
+                        where = f' WHERE nodeid = "{nodeid}" AND name = "{newsecretname}"'
                         newsecretdata = Database().get_record(None, 'nodesecrets', where)
                         if newsecretdata:
                             LOGGER.error(f'Secret {newsecretname} already present.')
@@ -2752,7 +2679,7 @@ def config_post_secrets_group(name=None):
             if data:
                 for secret in data:
                     secretname = secret['name']
-                    where = f' WHERE groupid = "{groupid}" AND name = "{secretname}";'
+                    where = f' WHERE groupid = "{groupid}" AND name = "{secretname}"'
                     secretdata = Database().get_record(None, 'groupsecrets', where)
                     if secretdata:
                         grpsecretcolumns = Database().get_columns('groupsecrets')
@@ -2850,7 +2777,7 @@ def config_post_group_secret(name=None, secret=None):
             groupid = group[0]['id']
             if data:
                 secretname = data[0]['name']
-                where = f' WHERE groupid = "{groupid}" AND name = "{secretname}";'
+                where = f' WHERE groupid = "{groupid}" AND name = "{secretname}"'
                 secretdata = Database().get_record(None, 'groupsecrets', where)
                 if secretdata:
                     grpsecretcolumns = Database().get_columns('groupsecrets')
@@ -2907,7 +2834,7 @@ def config_clone_group_secret(name=None, secret=None):
             groupid = group[0]['id']
             if data:
                 secretname = data[0]['name']
-                where = f' WHERE groupid = "{groupid}" AND name = "{secretname}";'
+                where = f' WHERE groupid = "{groupid}" AND name = "{secretname}"'
                 secretdata = Database().get_record(None, 'groupsecrets', where)
                 if secretdata:
                     if 'newsecretname' in data[0]:
@@ -2915,7 +2842,7 @@ def config_clone_group_secret(name=None, secret=None):
                         del data[0]['newsecretname']
                         data[0]['groupid'] = groupid
                         data[0]['name'] = newsecretname
-                        where = f' WHERE groupid = "{groupid}" AND name = "{newsecretname}";'
+                        where = f' WHERE groupid = "{groupid}" AND name = "{newsecretname}"'
                         newsecretdata = Database().get_record(None, 'groupsecrets', where)
                         if newsecretdata:
                             LOGGER.error(f'Secret {newsecretname} already present.')

@@ -191,9 +191,9 @@ DATABASE_LAYOUT_node = [
 {"column": "provisioninterface",   "datatype": "VARCHAR", "length": "60"},
 {"column": "provisionmethod",      "datatype": "VARCHAR", "length": "60"},
 {"column": "provisionfallback",    "datatype": "VARCHAR", "length": "60"},
-{"column": "tpmuuid",              "datatype": "VARCHAR", "length": "60"},
-{"column": "tpmpubkey",            "datatype": "VARCHAR", "length": "1024"},
-{"column": "tpmsha256",            "datatype": "VARCHAR", "length": "256"},
+{"column": "tpm_uuid",             "datatype": "VARCHAR", "length": "60"},
+{"column": "tpm_pubkey",           "datatype": "VARCHAR", "length": "1024"},
+{"column": "tpm_sha256",           "datatype": "VARCHAR", "length": "256"},
 {"column": "unmanaged_bmc_users",  "datatype": "VARCHAR", "length": "30"}]
 
 DATABASE_LAYOUT_cluster = [

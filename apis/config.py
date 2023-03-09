@@ -1135,7 +1135,6 @@ def config_cluster():
         else:
             cluster[0]['security'] = False
         response = {'config': {'cluster': cluster[0] }}
-        #controllers = Database().get_record(None, 'controller', f' WHERE clusterid = {clusterid}')
         controllers = Database().get_record_join(['controller.*','ipaddress.ipaddress'], ['ipaddress.tablerefid=controller.id','cluster.id=controller.clusterid'], ['tableref="controller"',f'cluster.id="{clusterid}"'])
         for controller in controllers:
             del controller['id']

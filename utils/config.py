@@ -479,6 +479,7 @@ $TTL 604800
 """
         return zone_name_config
 
+    # ----------------------------------------------------------------
 
     def device_ipaddress_config(self,deviceid,device,ipaddress,network=None):
         if network:
@@ -519,14 +520,8 @@ $TTL 604800
         return False,"not enough details"
 
 
-        # ----------------------------------------------------------------
-        # The below block handles 3 situations:
-        # - no interface yet defined
-        # - interface defined but no ip details yet
-        # - interface defined and already ip info present
-        # ----------------------------------------------------------------
+    # ----------------------------------------------------------------
 
-    #def node_interface_ipaddress_config(self,nodeid,interface_name,ipaddress,network=None):
     def node_interface_config(self,nodeid,interface_name,macaddress=None):
 
         check_interface = Database().get_record(None, 'nodeinterface', f'WHERE nodeid = "{nodeid}" AND interface = "{interface_name}"')
@@ -553,8 +548,10 @@ $TTL 604800
                 result_if=True
 
         if result_if:
+            self.logger.info(f"interface {interface_name} created or changed with result {result_if}")
             return True,f"interface {interface_name} created or changed with result {result_if}"
 
+        self.logger.info(f"interface {interface_name} config failed with result {result_if}")
         return False,f"interface {interface_name} config failed with result {result_if}"
 
 
@@ -571,6 +568,7 @@ $TTL 604800
             network_details = Database().get_record_join(['network.*'], ['ipaddress.tablerefid=nodeinterface.id','network.id=ipaddress.networkid'], ['tableref="nodeinterface"',f'nodeinterface.id="{nodeid}"',f'nodeinterface.interface="{interface_name}"'])
                 
         if not network_details:
+            self.logger.info(f"not enough information provided. network name incorrect or need network name if there is no existing ipaddress")
             return False,f"not enough information provided. network name incorrect or need network name if there is no existing ipaddress"
 
         my_ipaddress['networkid']=network_details[0]['id']
@@ -579,6 +577,7 @@ $TTL 604800
             valid_ip = Helper().check_ip_range(ipaddress, f"{network_details[0]['network']}/{network_details[0]['subnet']}")
 
         if not valid_ip:
+            self.logger.info(f"invalid IP address for {interface_name}. Network {network_details[0]['name']}: {network_details[0]['network']}/{network_details[0]['subnet']}")
             return False,f"invalid IP address for {interface_name}. Network {network_details[0]['name']}: {network_details[0]['network']}/{network_details[0]['subnet']}"
 
         ipaddress_check = Database().get_record_join(['ipaddress.*'], ['ipaddress.tablerefid=nodeinterface.id'], ['tableref="nodeinterface"',f'nodeinterface.nodeid="{nodeid}"',f'nodeinterface.interface="{interface_name}"'])
@@ -597,8 +596,10 @@ $TTL 604800
                 result_ip = Database().insert('ipaddress', row)
 
         if result_ip:
+            self.logger.info(f"ipaddress for {interface_name} configured with result {result_ip}")
             return True,f"ipaddress for {interface_name} configured with result {result_ip}"
         
+        self.logger.info(f"ipaddress for {interface_name} config failed with result {result_ip}")
         return False,f"ipaddress for {interface_name} config failed with result {result_ip}"
 
     # -----------------

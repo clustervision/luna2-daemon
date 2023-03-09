@@ -478,3 +478,48 @@ $TTL 604800
 
 """
         return zone_name_config
+
+    def device_ipaddress_config(deviceid,device,ipaddress,network=None):
+        if network:
+            networkid = Database().getid_byname('network', network)
+        else:
+            network_details = Database().get_record_join(['network.name as network','network.id'], ['ipaddress.tablerefid=switch.id','network.id=ipaddress.networkid'], [f'tableref="{device}"',f"switch.name='{deviceid}'"])
+            if network_details:
+                networkid=network_details[0]['id']
+            else:
+                return False,"Network not specified"
+        if ipaddress and deviceid:
+            my_ipaddress={}
+            my_ipaddress['networkid']=networkid
+            result_ip=False
+            network_details = Database().get_record(None, 'network', f'WHERE id={networkid}')
+#            network_range,network_subnet=network_details[0]['network'].split('/')
+#            if (not network_subnet) and network_details[0]['subnet']:
+#                network_subnet=network_details[0]['subnet']
+#            valid_ip = Helper().check_ip_range(ipaddress, f"{network_range}/{network_subnet}")
+            valid_ip = Helper().check_ip_range(ipaddress, f"{network_details[0]['network']}/{network_details[0]['subnet']}")
+            LOGGER.info(f"Ipaddress {ipaddress} for switch {switch} is [{valid_ip}]")
+            if valid_ip is False:
+                response = {'message': f"invalid IP address for {switch}. Network {network_details[0]['name']}: {network_details[0]['network']}/{network_details[0]['subnet']}"}
+                access_code = 500
+                return json.dumps(response), access_code
+            my_ipaddress['ipaddress']=ipaddress
+            check_ip = Database().get_record(None, 'ipaddress', f'WHERE tablerefid = "{switchid}" AND tableref = "switch"')
+            if check_ip:
+                row = Helper().make_rows(my_ipaddress)
+                where = [{"column": "tablerefid", "value": switchid},{"column": "tableref", "value": "switch"}]
+                Database().update('ipaddress', row, where)
+            else:
+                my_ipaddress['tableref']='switch'
+                my_ipaddress['tablerefid']=switchid
+                row = Helper().make_rows(my_ipaddress)
+                result_ip=Database().insert('ipaddress', row)
+                LOGGER.info(f"IP for switch created => {result_ip}.")
+
+                if result_ip is False:
+                    response = {'message': 'Bad Request; IP address assignment failed.'}
+                    access_code = 400
+                    return json.dumps(response), access_code
+
+
+

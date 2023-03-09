@@ -25,6 +25,7 @@ from time import sleep,time
 from random import randint
 from os import getpid
 import re
+from utils.control import Control
 
 LOGGER = Log.get_logger()
 control_blueprint = Blueprint('control', __name__)
@@ -102,10 +103,10 @@ def control_post():
                 request_id=str(time())+str(randint(1001,9999))+str(getpid())
 
                 executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
-                executor.submit(Helper().control_mother, pipeline, request_id, batch_size, batch_delay)
+                executor.submit(Control().control_mother, pipeline, request_id, batch_size, batch_delay)
                 executor.shutdown(wait=False)
                 # use below to not spawn a thread. easy for debugging.
-                #Helper().control_mother(pipeline, request_id, batch_size, batch_delay)
+                #Control().control_mother(pipeline, request_id, batch_size, batch_delay)
 
                 # though we won't wait till all scheduled tasks are done, we wait a bit and return what we have.
                 # the client/lpower will then have to inquire to see what's done hereafter

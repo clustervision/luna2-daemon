@@ -276,26 +276,28 @@ def bootstrap(bootstrapfile=None):
     CONTROLLER2 = None
     """
     taken_ips=[]
+    if 'CONTROLLER' in BOOTSTRAP['HOSTS'].keys():  # the virtual host+ip
+        hostname=BOOTSTRAP['HOSTS']['CONTROLLER']['HOSTNAME']
+        ip=BOOTSTRAP['HOSTS']['CONTROLLER']['IP']
+        taken_ips.append(ip)
+        default_controller = [
+            {'column': 'hostname', 'value': hostname},
+            {'column': 'serverport', 'value': BOOTSTRAP['HOSTS']['SERVERPORT']},
+            {'column': 'clusterid', 'value': clusterid}
+            ]
+        controller_id=Database().insert('controller', default_controller)
+        if controller_id:
+            controller_ip = [
+                {'column': 'tableref', 'value': 'controller'},
+                {'column': 'tablerefid', 'value': controller_id},
+                {'column': 'ipaddress', 'value': ip}
+            ]
+            Database().insert('ipaddress', controller_ip)
     num  = 1
     for host in BOOTSTRAP['HOSTS']:
-        if 'CONTROLLER' in BOOTSTRAP['HOSTS'].keys():  # the virtual host+ip
-            hostname=BOOTSTRAP['HOSTS']['CONTROLLER']['HOSTNAME']
-            ip=BOOTSTRAP['HOSTS']['CONTROLLER']['IP']
-            taken_ips.append(ip)
-            default_controller = [
-                {'column': 'hostname', 'value': hostname},
-                {'column': 'serverport', 'value': BOOTSTRAP['HOSTS']['SERVERPORT']},
-                {'column': 'clusterid', 'value': clusterid}
-                ]
-            controller_id=Database().insert('controller', default_controller)
-            if controller_id:
-                controller_ip = [
-                    {'column': 'tableref', 'value': 'controller'},
-                    {'column': 'tablerefid', 'value': controller_id},
-                    {'column': 'ipaddress', 'value': ip}
-                ]
-                Database().insert('ipaddress', controller_ip)
-        elif f'CONTROLLER{num}' in BOOTSTRAP['HOSTS'].keys():
+        if f'CONTROLLER{num}' in BOOTSTRAP['HOSTS'].keys():
+            if BOOTSTRAP['HOSTS'][f'CONTROLLER{num}'] is None:
+                break
             hostname=BOOTSTRAP['HOSTS'][f'CONTROLLER{num}']['HOSTNAME']
             ip=BOOTSTRAP['HOSTS'][f'CONTROLLER{num}']['IP']
             taken_ips.append(ip)

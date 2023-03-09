@@ -478,3 +478,129 @@ $TTL 604800
 
 """
         return zone_name_config
+
+    # ----------------------------------------------------------------
+
+    def device_ipaddress_config(self,deviceid,device,ipaddress,network=None):
+        if network:
+            networkid = Database().getid_byname('network', network)
+        else:
+            network_details = Database().get_record_join(['network.name as network','network.id'], ['ipaddress.tablerefid=switch.id','network.id=ipaddress.networkid'], [f'tableref="{device}"',f"switch.name='{deviceid}'"])
+            if network_details:
+                networkid=network_details[0]['id']
+            else:
+                return False,"Network not specified"
+        if ipaddress and deviceid:
+            my_ipaddress={}
+            my_ipaddress['networkid']=networkid
+            result_ip=False
+            network_details = Database().get_record(None, 'network', f'WHERE id={networkid}')
+            valid_ip = Helper().check_ip_range(ipaddress, f"{network_details[0]['network']}/{network_details[0]['subnet']}")
+            self.logger.info(f"Ipaddress {ipaddress} for {device} is [{valid_ip}]")
+            if valid_ip is False:
+                return False,f"invalid IP address for {device}. Network {network_details[0]['name']}: {network_details[0]['network']}/{network_details[0]['subnet']}"
+
+            my_ipaddress['ipaddress']=ipaddress
+            check_ip = Database().get_record(None, 'ipaddress', f'WHERE tablerefid = "{deviceid}" AND tableref = "{device}"')
+            if check_ip:
+                row = Helper().make_rows(my_ipaddress)
+                where = [{"column": "tablerefid", "value": deviceid},{"column": "tableref", "value": device}]
+                Database().update('ipaddress', row, where)
+            else:
+                my_ipaddress['tableref']=device
+                my_ipaddress['tablerefid']=deviceid
+                row = Helper().make_rows(my_ipaddress)
+                result_ip=Database().insert('ipaddress', row)
+                self.logger.info(f"IP for {device} created => {result_ip}.")
+                if result_ip is False:
+                    return False,"IP address assignment failed"
+
+            return True,"ip address changed"
+
+        return False,"not enough details"
+
+
+    # ----------------------------------------------------------------
+
+    def node_interface_config(self,nodeid,interface_name,macaddress=None):
+
+        check_interface = Database().get_record(None, 'nodeinterface', f'WHERE nodeid = "{nodeid}" AND interface = "{interface_name}"')
+
+        result_if=False
+        my_interface={}
+
+        if not check_interface: # ----> easy. both the interface as ipaddress do not exist
+            my_interface['interface']=interface_name
+            my_interface['nodeid']=nodeid                
+            if macaddress is not None:
+                my_interface['macaddress']=interface['macaddress'] 
+            row = Helper().make_rows(my_interface)
+            result_if = Database().insert('nodeinterface', row)
+
+        else: # we have to update the interface
+            if macaddress is not None:
+                my_interface['macaddress']=macaddress
+            if my_interface:
+                row = Helper().make_rows(my_interface)
+                where = [{"column": "id", "value": check_interface[0]['id']}]
+                result_if = Database().update('nodeinterface', row, where)
+            else: # no change here, we bail
+                result_if=True
+
+        if result_if:
+            self.logger.info(f"interface {interface_name} created or changed with result {result_if}")
+            return True,f"interface {interface_name} created or changed with result {result_if}"
+
+        self.logger.info(f"interface {interface_name} config failed with result {result_if}")
+        return False,f"interface {interface_name} config failed with result {result_if}"
+
+
+    # -----------------
+
+    def node_interface_ipaddress_config(self,nodeid,interface_name,ipaddress,network=None):
+
+        ipaddress_check,valid_ip,result_ip=False,False,False
+        my_ipaddress={}
+
+        if network:
+            network_details = Database().get_record(None, 'network', f'WHERE name="{network}"')
+        else:
+            network_details = Database().get_record_join(['network.*'], ['ipaddress.tablerefid=nodeinterface.id','network.id=ipaddress.networkid'], ['tableref="nodeinterface"',f'nodeinterface.id="{nodeid}"',f'nodeinterface.interface="{interface_name}"'])
+                
+        if not network_details:
+            self.logger.info(f"not enough information provided. network name incorrect or need network name if there is no existing ipaddress")
+            return False,f"not enough information provided. network name incorrect or need network name if there is no existing ipaddress"
+
+        my_ipaddress['networkid']=network_details[0]['id']
+        if ipaddress:
+            my_ipaddress['ipaddress']=ipaddress
+            valid_ip = Helper().check_ip_range(ipaddress, f"{network_details[0]['network']}/{network_details[0]['subnet']}")
+
+        if not valid_ip:
+            self.logger.info(f"invalid IP address for {interface_name}. Network {network_details[0]['name']}: {network_details[0]['network']}/{network_details[0]['subnet']}")
+            return False,f"invalid IP address for {interface_name}. Network {network_details[0]['name']}: {network_details[0]['network']}/{network_details[0]['subnet']}"
+
+        ipaddress_check = Database().get_record_join(['ipaddress.*'], ['ipaddress.tablerefid=nodeinterface.id'], ['tableref="nodeinterface"',f'nodeinterface.nodeid="{nodeid}"',f'nodeinterface.interface="{interface_name}"'])
+
+        if ipaddress_check: # existing ip config we need to modify
+            row = Helper().make_rows(my_ipaddress)
+            where = [{"column": "id", "value": f"{ipaddress_check[0]['id']}"}]
+            result_ip = Database().update('ipaddress', row, where)
+
+        else: # no ip set yet for the interface
+            check_interface = Database().get_record(None, 'nodeinterface', f'WHERE nodeid = "{nodeid}" AND interface = "{interface_name}"')
+            if check_interface:
+                my_ipaddress['tableref']='nodeinterface'
+                my_ipaddress['tablerefid']=check_interface[0]['id']
+                row = Helper().make_rows(my_ipaddress)
+                result_ip = Database().insert('ipaddress', row)
+
+        if result_ip:
+            self.logger.info(f"ipaddress for {interface_name} configured with result {result_ip}")
+            return True,f"ipaddress for {interface_name} configured with result {result_ip}"
+        
+        self.logger.info(f"ipaddress for {interface_name} config failed with result {result_ip}")
+        return False,f"ipaddress for {interface_name} config failed with result {result_ip}"
+
+    # -----------------
+

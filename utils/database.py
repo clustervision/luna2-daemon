@@ -111,6 +111,7 @@ class Database(object):
         else:
             strcolumn = "*"
         if where:
+            where=re.sub(';$', '', where)
             query = f'SELECT {strcolumn} FROM "{table}" {where};'
         else:
             query = f'SELECT {strcolumn} FROM "{table}";'

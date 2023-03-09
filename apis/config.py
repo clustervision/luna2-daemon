@@ -257,91 +257,25 @@ def config_node_post(name=None):
                 response = {'message': f'Node {name} created successfully.'}
                 access_code = 201
             if interfaces:
+                access_code = 204
                 for interface in interfaces:
-                    networkid = Database().getid_byname('network', interface['network'])
-                    if networkid is None:
-                        response = {'message': f"Bad Request; Network {interface['network']} not exist."}
-                        access_code = 400
-                        return json.dumps(response), access_code
-                    else:
-                        interface['nodeid'] = nodeid
-
                     # Antoine
                     interface_name = interface['interface']
-                    my_ipaddress={}
-                    my_interface={}
-                    my_interface['interface']=interface['interface']                
-                    my_interface['nodeid']=nodeid                
+                    macaddress,network=None,None
                     if 'macaddress' in interface.keys():
-                        my_interface['macaddress']=interface['macaddress'] 
-                    if 'ipaddress' in interface.keys():
-                        my_ipaddress['ipaddress']=interface['ipaddress']
-                        network_details = Database().get_record(None, 'network', f'WHERE id={networkid}')
-#                        network_range,network_subnet=network_details[0]['network'].split('/')
-#                        if (not network_subnet) and network_details[0]['subnet']:
-#                            network_subnet=network_details[0]['subnet']
-                        valid_ip = Helper().check_ip_range(interface['ipaddress'], f"{network_details[0]['network']}/{network_details[0]['subnet']}")
-                        if valid_ip is False:
-                            response = {'message': f"invalid IP address for {interface_name}. Network {network_details[0]['name']}: {network_details[0]['network']}/{network_details[0]['subnet']}"}
-                            access_code = 500
-                            #return json.dumps(response), access_code
-                            break
+                        macaddress=interface['macaddress']
+                    result,mesg = Config().node_interface_config(nodeid,interface_name,macaddress)
+                    if result and 'ipaddress' in interface.keys():
+                        ipaddress=interface['ipaddress']
+                        if 'network' in interface.keys():
+                            network=interface['network']
+                        result,mesg = Config().node_interface_ipaddress_config(nodeid,interface_name,ipaddress,network)
 
-                    my_ipaddress['networkid']=networkid
-                    result_ip=False
-                    result_if=False
-                    check_interface = Database().get_record(None, 'nodeinterface', f'WHERE nodeid = "{nodeid}" AND interface = "{interface_name}"')
-
-                    # ----------------------------------------------------------------
-                    # The below block handles 3 situations:
-                    # - no interface yet defined
-                    # - interface defined but no ip details yet
-                    # - interface defined and already ip info present
-                    # ----------------------------------------------------------------
-
-                    if not check_interface: # ----> easy. both the interface as ipaddress do not exist
-                        row = Helper().make_rows(my_interface)
-                        result_if = Database().insert('nodeinterface', row)
-                        if result_if:
-                            my_ipaddress['tableref']='nodeinterface'
-                            my_ipaddress['tablerefid']=result_if # yes. the tablerefid is in result_if
-                            row = Helper().make_rows(my_ipaddress)
-                            result_ip = Database().insert('ipaddress', row)
-                            LOGGER.info(f"Interface created => {result_if}+{result_ip} .")
-                        else:
-                            LOGGER.info(f"Interface create failure => {result_if}.")
-                    else:                   # -----> interface already exists so we tread lightly
-                        # --- first update ip related things -------------
-                        check_ipaddress = Database().get_record(None, 'ipaddress', f"WHERE tablerefid = \"{check_interface[0]['id']}\" AND tableref = 'nodeinterface'")
-
-                        if check_ipaddress: # -----> we do already have ip info. just update then
-                            row = Helper().make_rows(my_ipaddress)
-                            where = [{"column": "tableref", "value": "nodeinterface"}, {"column": "tablerefid", "value": check_interface[0]['id']}]
-                            result_ip = Database().update('ipaddress', row, where)
-                        else:               # -----> we did not have ip stuff set, we do it now
-                            my_ipaddress['tableref']='nodeinterface'
-                            my_ipaddress['tablerefid']=check_interface[0]['id']
-                            row = Helper().make_rows(my_ipaddress)
-                            result_ip = Database().insert('ipaddress', row)
-
-                        LOGGER.info(f"Interface ipaddress updated => {result_ip} .")
-                        # --- then update if related things --------------
-                        row = Helper().make_rows(my_interface)
-                        where = [{"column": "id", "value": check_interface[0]['id']}]
-                        result_if=Database().update('nodeinterface', row, where)
-                        LOGGER.info(f"Interface nodeinterface updated => {result_if} .")
-
-                    if result_ip is False:
-                        response = {'message': f'unable to add/update ip info for interface {interface_name}.'}
+                    if result is False:
+                        response = {'message': f"{mesg}"}
                         access_code = 500
-                        break
-                    elif result_if is False:
-                        response = {'message': f'unable to add/update interface info for interface {interface_name}.'}
-                        access_code = 500
-                        break
-                    else :
-                        response = {'message': 'Interface updated.'}
-                        access_code = 204
+                        return json.dumps(response), access_code
+
         else:
             response = {'message': 'Bad Request; Columns are incorrect.'}
             access_code = 400
@@ -431,59 +365,21 @@ def config_node_post_interfaces(name=None):
 
             if 'interfaces' in request_data['config']['node'][name]:
                 for interface in request_data['config']['node'][name]['interfaces']:
-                    networkid = Database().getid_byname('network', interface['network'])
-                    if networkid is None:
-                        response = {'message': f'Bad Request; Network {networkid} not exists.'}
-                        access_code = 400
-                        return json.dumps(response), access_code
-                    else:
-                        interface['networkid'] = networkid
-                        interface['nodeid'] = nodeid
-                        del interface['network']
-
                     # Antoine
                     interface_name = interface['interface']
-                    my_ipaddress={}
-                    my_interface={}
-                    my_interface['interface']=interface['interface']                
-                    my_interface['nodeid']=nodeid                
+                    macaddress,network=None,None
                     if 'macaddress' in interface.keys():
-                        my_interface['macaddress']=interface['macaddress'] 
-                    if 'ipaddress' in interface.keys():
-                        my_ipaddress['ipaddress']=interface['ipaddress']
-                        network_details = Database().get_record(None, 'network', f'WHERE id={networkid}')
-#                        network_range,network_subnet=network_details[0]['network'].split('/')
-#                        if (not network_subnet) and network_details[0]['subnet']:
-#                            network_subnet=network_details[0]['subnet']
-#                        valid_ip = Helper().check_ip_range(interface['ipaddress'], f"{network_range}/{network_subnet}")
-                        valid_ip = Helper().check_ip_range(interface['ipaddress'], f"{network_details[0]['network']}/{network_details[0]['subnet']}")
-                        if valid_ip is False:
-                            response = {'message': f"invalid IP address for {interface_name}. Network {network_details[0]['name']}: {network_details[0]['network']}/{network_details[0]['subnet']}"}
-                            access_code = 500
-                            break
-                    my_ipaddress['networkid']=networkid
-                    result_ip=False
-                    check_interface = Database().get_record(None, 'nodeinterface', f'WHERE nodeid = "{nodeid}" AND interface = "{interface_name}"')
-                    if not check_interface:
-                        row = Helper().make_rows(my_interface)
-                        tablerefid = Database().insert('nodeinterface', row)
-                        if tablerefid:
-                            my_ipaddress['tableref']='nodeinterface'
-                            my_ipaddress['tablerefid']=tablerefid
-                            row = Helper().make_rows(my_ipaddress)
-                            result_ip = Database().insert('ipaddress', row)
-                            LOGGER.info(f"Interface created => {tablerefid}+{result_ip} .")
-                        else:
-                            LOGGER.info(f"Interface create failure => {tablerefid}.")
-                    else: # interface already exists so we tread lightly
-                        row = Helper().make_rows(my_ipaddress)
-                        where = [{"column": "tableref", "value": "nodeinterface"}, {"column": "tablerefid", "value": check_interface[0]['id']}]
-                        result_ip = Database().update('ipaddress', row, where)
-                        LOGGER.info(f"Interface updated => {result_ip} .")
-                    if result_ip is False:
-                        response = {'message': f'unable to add/update interface {interface_name}.'}
+                        macaddress=interface['macaddress']
+                    result,mesg = Config().node_interface_config(nodeid,interface_name,macaddress)
+                    if result and 'ipaddress' in interface.keys():
+                        ipaddress=interface['ipaddress']
+                        if 'network' in interface.keys():
+                            network=interface['network']
+                        result,mesg = Config().node_interface_ipaddress_config(nodeid,interface_name,ipaddress,network)
+
+                    if result is False:
+                        response = {'message': f"{mesg}"}
                         access_code = 500
-                        break
                     else :
                         response = {'message': 'Interface updated.'}
                         access_code = 204

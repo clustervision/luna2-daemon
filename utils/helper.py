@@ -345,6 +345,23 @@ class Helper(object):
             variable = None
         return variable
 
+    def make_bool(self, variable=None):
+        """
+        Input - string
+        Output - Boolean
+        """
+        if isinstance(variable, bool):
+            pass
+        elif isinstance(variable, (str, int)):
+            if variable in ('1', 1):
+                variable = True
+            elif variable in ('0', 0):
+                variable = False
+        else:
+            variable = None
+        return variable
+
+
     def encrypt_string(self, string=None):
         """
         Input - string

@@ -86,7 +86,6 @@ class Control(object):
                  _ = [executor.submit(self.control_child, pipeline,t) for t in range(1,batch)]
 
             sleep(0.1) # not needed but just in case a child does a lock right after i fetch the list.
-            current_datetime=datetime.now()
             results=pipeline.get_messages()
 
             for key in list(results):

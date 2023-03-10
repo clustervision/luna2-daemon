@@ -659,8 +659,9 @@ class Helper(object):
     # ---------------------------------------------------------
  
     def insert_mesg_in_status(self,request_id,username_initiator,message):
+        current_datetime=datetime.now()
         row=[{"column": "request_id", "value": f"{request_id}"}, 
-             {"column": "created", "value": "current_datetime"}, 
+             {"column": "created", "value": str(current_datetime)}, 
              {"column": "username_initiator", "value": f"{username_initiator}"}, 
              {"column": "read", "value": "0"}, 
              {"column": "message", "value": f"{message}"}]

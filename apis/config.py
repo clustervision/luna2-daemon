@@ -2866,7 +2866,8 @@ def control_status(request_id=None):
                         if record['message'] == "EOF":
                             Database().delete_row('status', [{"column": "request_id", "value": request_id}])
                         else:
-                            message.append(record['message'])
+                            created,*_=(record['created'].split('.')+[None])
+                            message.append(created+" :: "+record['message'])
         response={'message': (';;').join(message) }
         where = [{"column": "request_id", "value": request_id}]
         row = [{"column": "read", "value": "1"}]

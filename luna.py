@@ -34,7 +34,9 @@ def on_starting(server):
     """
     A Testing Method for Gunicorn on_starting.
     """
-    validatebootstrap()
+    result=validatebootstrap()
+    if result is False:
+        exit(1)
     LOGGER.info(vars(server))
     LOGGER.info('Gunicorn server hook on start')
     return True

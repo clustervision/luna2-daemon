@@ -129,7 +129,7 @@ def check_db_tables():
         if result:
             num = num+1
         else:
-            LOGGER.error(f'ERROR :: Database table {tablex} does not seem to exist.')
+            LOGGER.error(f'ERROR :: Database table {tablex} does not seem to exist or is empty.')
     if num == 0:
         return False
     return True
@@ -240,7 +240,6 @@ def bootstrap(bootstrapfile=None):
     cluster = Database().get_record(None, 'cluster', None)
     clusterid = cluster[0]['id']
     for nwkx in BOOTSTRAP['NETWORKS'].keys():
-        LOGGER.info(f" NWKX: {nwkx}, {BOOTSTRAP['NETWORKS']}")
         network_details=Helper().get_network_details(BOOTSTRAP['NETWORKS'][nwkx]['NETWORK'])
         dhcp,dhcp_range_begin,dhcp_range_end=0,None,None
         if 'DHCP' in BOOTSTRAP['NETWORKS'][nwkx]:
@@ -431,13 +430,12 @@ def validatebootstrap():
             bootstrap(bootstrapfile)
         else:
             LOGGER.warning(f'Bootstrap file {bootstrapfile} is still present, Kindly remove the file.')
-    elif bootstrapfile_check is True and db_check is False:
+    elif db_check is False:
         LOGGER.error(f'Database is unavailable.')
         return False
-    elif bootstrapfile_check is False and db_tables_check is True:
-        pass
-    elif bootstrapfile_check is False and db_tables_check is False:
-        LOGGER.error(f'{bootstrapfile} and database is unavailable.')
+    elif db_tables_check is False:
+        LOGGER.error(f'Database requires initialization but bootstrap.ini file is missing.')
         return False
+
     cleanup_queue_and_status()
     return True

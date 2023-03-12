@@ -95,38 +95,80 @@ def config_node_get(name=None):
     Input - None
     Output - Return the node information.
     """
-    node = Database().get_record(None, 'node', f' WHERE name = "{name}"')
-    nodefull = Database().get_record_join(['node.*','group.name AS group','osimage.name AS osimage'], ['group.id=node.groupid','osimage.id=group.osimageid'],f"node.name='{name}'")
-    node+=nodefull
+    nodes = Database().get_record(None, 'node', f' WHERE name = "{name}"')
+    nodefull = Database().get_record_join(['node.*',
+                                           'group.name AS group',
+                                           'osimage.name AS group_osimage',
+                                           'group.bmcsetupid AS group_bmcsetupid',
+                                           'group.prescript AS group_prescript',
+                                           'group.partscript AS group_partscript',
+                                           'group.postscript AS group_postscript',
+                                           'group.netboot AS group_netboot',
+                                           'group.localinstall AS group_localinstall',
+                                           'group.bootmenu AS group_bootmenu',
+                                           'group.provisioninterface AS group_provisioninterface'], ['group.id=node.groupid','osimage.id=group.osimageid'],f"node.name='{name}'")
+    nodes[0].update(nodefull[0])
+    node=nodes[0]
     if node:
         response = {'config': {'node': {} }}
-        node = node[0]
         nodename = node['name']
         nodeid = node['id']
-#        if node['bmcsetupid']:
-#            node['bmcsetup'] = Database().getname_byid('bmcsetup', node['bmcsetupid'])
-#        if node['groupid']:
-#            node['group'] = Database().getname_byid('group', node['groupid'])
-#        if node['osimageid']:
-#            node['osimage'] = Database().getname_byid('osimage', node['osimageid'])
+
+        if node['bmcsetupid']:
+            node['bmcsetup'] = Database().getname_byid('bmcsetup', node['bmcsetupid'])
+        elif node['group_bmcsetupid']:
+            node['bmcsetup']= Database().getname_byid('bmcsetup', node['group_bmcsetupid']) + f" ({node['group']})"
+        del node['group_bmcsetupid']
+
+        if node['osimageid']:
+            node['osimage'] = Database().getname_byid('osimage', node['osimageid'])
+        elif node['group_osimage']:
+            node['osimage']=node['group_osimage']+f" ({node['group']})"
+        del node['group_osimage']
+
         if node['switchid']:
             node['switch'] = Database().getname_byid('switch', node['switchid'])
-        # del node['name']
+
+        # below section shows what's configured for the node, or the group, or a default fallback
+
+        items={
+           'prescript':'<empty>',
+           'partscript':'<empty>',
+           'postscript':'<empty>',
+           'netboot':False,
+           'localinstall':False,
+           'bootmenu':False,
+           'provisioninterface':'BOOTIF'}
+
+        for item in items.keys():
+           if 'group_'+item in node and node['group_'+item] and not node[item]:
+               if isinstance(items[item], bool):
+                   node['group_'+item] = str(Helper().make_bool(node['group_'+item]))
+               node['group_'+item] += f" ({node['group']})"
+               node[item] = node[item] or node['group_'+item] or str(items[item]+' (default)')
+           else:
+               if isinstance(items[item], bool):
+                   node[item] = str(Helper().make_bool(node[item]))
+               node[item] = node[item] or str(items[item]+' (default)')
+           if 'group_'+item in node:
+               del node['group_'+item]
+
         del node['id']
         del node['bmcsetupid']
         del node['groupid']
         del node['osimageid']
         del node['switchid']
-        node['bootmenu'] = Helper().bool_revert(node['bootmenu'])
-        node['localboot'] = Helper().bool_revert(node['localboot'])
-        node['localinstall'] = Helper().bool_revert(node['localinstall'])
-        node['netboot'] = Helper().bool_revert(node['netboot'])
-        node['service'] = Helper().bool_revert(node['service'])
-        node['setupbmc'] = Helper().bool_revert(node['setupbmc'])
+        node['service'] = Helper().make_bool(node['service'])
+        node['setupbmc'] = Helper().make_bool(node['setupbmc'])
+        node['localboot'] = Helper().make_bool(node['localboot'])
+
         node_interface = Database().get_record_join(['nodeinterface.interface','ipaddress.ipaddress','nodeinterface.macaddress','network.name as network'], ['network.id=ipaddress.networkid','ipaddress.tablerefid=nodeinterface.id'],['tableref="nodeinterface"',f"nodeinterface.nodeid='{nodeid}'"])
         if node_interface:
             node['interfaces'] = []
             for interface in node_interface:
+                interfacename,*_ = (node['provisioninterface'].split(' ')+[None]) # we skim off parts that we added for clarity in above section (e.g. (default)). also works if there's no additional info
+                if interface['interface'] == interfacename and interface['network']: # if it is my prov interf then it will get that domain as a FQDN.
+                    node['hostname'] = nodename + '.' + interface['network']
                 node['interfaces'].append(interface)
         response['config']['node'][nodename] = node
         LOGGER.info('Provided list of all nodes.')
@@ -2824,7 +2866,8 @@ def control_status(request_id=None):
                         if record['message'] == "EOF":
                             Database().delete_row('status', [{"column": "request_id", "value": request_id}])
                         else:
-                            message.append(record['message'])
+                            created,*_=(record['created'].split('.')+[None])
+                            message.append(created+" :: "+record['message'])
         response={'message': (';;').join(message) }
         where = [{"column": "request_id", "value": request_id}]
         row = [{"column": "read", "value": "1"}]

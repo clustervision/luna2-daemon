@@ -345,6 +345,23 @@ class Helper(object):
             variable = None
         return variable
 
+    def make_bool(self, variable=None):
+        """
+        Input - string
+        Output - Boolean
+        """
+        if isinstance(variable, bool):
+            pass
+        elif isinstance(variable, (str, int)):
+            if variable in ('1', 1):
+                variable = True
+            elif variable in ('0', 0):
+                variable = False
+        else:
+            variable = None
+        return variable
+
+
     def encrypt_string(self, string=None):
         """
         Input - string
@@ -642,8 +659,9 @@ class Helper(object):
     # ---------------------------------------------------------
  
     def insert_mesg_in_status(self,request_id,username_initiator,message):
+        current_datetime=datetime.now()
         row=[{"column": "request_id", "value": f"{request_id}"}, 
-             {"column": "created", "value": "current_datetime"}, 
+             {"column": "created", "value": str(current_datetime)}, 
              {"column": "username_initiator", "value": f"{username_initiator}"}, 
              {"column": "read", "value": "0"}, 
              {"column": "message", "value": f"{message}"}]

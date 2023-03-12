@@ -27,6 +27,7 @@ from os import getpid
 import concurrent.futures
 from utils.osimage import OsImage
 from utils.config import Config
+from utils.status import Status
 
 LOGGER = Log.get_logger()
 config_blueprint = Blueprint('config', __name__)
@@ -1088,7 +1089,7 @@ def config_osimage_pack(name=None):
         return json.dumps(response), code
  
     LOGGER.info(f"config_osimage_pack GET added task to queue: {queue_id}")
-    Helper().insert_mesg_in_status(request_id,"luna",f"queued pack osimage {name} with queue_id {queue_id}")
+    Status().add_message(request_id,"luna",f"queued pack osimage {name} with queue_id {queue_id}")
 
     next_id = Helper().next_task_in_queue('osimage')
     if queue_id == next_id:
@@ -2864,14 +2865,16 @@ def control_status(request_id=None):
                 if record['read']==0:
                     if 'message' in record:
                         if record['message'] == "EOF":
-                            Database().delete_row('status', [{"column": "request_id", "value": request_id}])
+                            #Database().delete_row('status', [{"column": "request_id", "value": request_id}])
+                            Status().del_messages(request_id)
                         else:
                             created,*_=(record['created'].split('.')+[None])
                             message.append(created+" :: "+record['message'])
         response={'message': (';;').join(message) }
-        where = [{"column": "request_id", "value": request_id}]
-        row = [{"column": "read", "value": "1"}]
-        Database().update('status', row, where)
+        Status().mark_messages_read(request_id)
+#        where = [{"column": "request_id", "value": request_id}]
+#        row = [{"column": "read", "value": "1"}]
+#        Database().update('status', row, where)
         access_code = 200
     return json.dumps(response), access_code
 

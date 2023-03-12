@@ -20,6 +20,7 @@ __status__      = 'Development'
 import sys
 import logging
 
+
 class Log:
     """This Log Class is responsible to start the Logger depend on the Level."""
     __logger = None

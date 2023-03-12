@@ -26,6 +26,7 @@ from random import randint
 from os import getpid
 import re
 from utils.control import Control
+from utils.status import Status
 
 LOGGER = Log.get_logger()
 control_blueprint = Blueprint('control', __name__)
@@ -169,7 +170,8 @@ def control_status(request_id=None):
             if 'message' in record:
                 if record['read']==0:
                     if record['message'] == "EOF":
-                        Database().delete_row('status', [{"column": "request_id", "value": request_id}])
+                        #Database().delete_row('status', [{"column": "request_id", "value": request_id}])
+                        Status().del_messages(request_id)
                     else:
                         node,result=record['message'].split(':',1)  #data is message is like 'nodexxx:message'
                         if result == "on":
@@ -179,9 +181,10 @@ def control_status(request_id=None):
                         else:
                             failed_nodes.append(node)
         response={'control': {'power': {'on': { 'hostlist': ','.join(on_nodes) }, 'off': { 'hostlist': ','.join(off_nodes) }, 'failed': { 'hostlist': ','.join(failed_nodes) }} }}
-        where = [{"column": "request_id", "value": request_id}]
-        row = [{"column": "read", "value": "1"}]
-        Database().update('status', row, where)
+        Status().mark_messages_read(request_id)
+#        where = [{"column": "request_id", "value": request_id}]
+#        row = [{"column": "read", "value": "1"}]
+#        Database().update('status', row, where)
         access_code = 200
     return json.dumps(response), access_code
 

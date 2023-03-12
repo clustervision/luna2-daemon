@@ -93,18 +93,21 @@ class Config(object):
         for dev in device_block:
             config = f'{config}{dev}'
 
-        with open(dhcpfile, 'w', encoding='utf-8') as dhcp:
-            dhcp.write(config)
         try:
-            validate_config = subprocess.run(["dhcpd", "-t", "-cf", dhcpfile], check=True)
-            if validate_config.returncode:
-                validate = False
+            with open(dhcpfile, 'w', encoding='utf-8') as dhcp:
+                dhcp.write(config)
+            try:
+                validate_config = subprocess.run(["dhcpd", "-t", "-cf", dhcpfile], check=True)
+                if validate_config.returncode:
+                    validate = False
+                    self.logger.error(f'DHCP file : {dhcpfile} containing errors.')
+            except:
                 self.logger.error(f'DHCP file : {dhcpfile} containing errors.')
-        except:
-            self.logger.error(f'DHCP file : {dhcpfile} containing errors.')
-        else:
-            shutil.copyfile(dhcpfile, '/etc/dhcp/dhcpd.conf')
-            self.logger.info(f'DHCP File created : {dhcpfile}')
+            else:
+                shutil.copyfile(dhcpfile, '/etc/dhcp/dhcpd.conf')
+                self.logger.info(f'DHCP File created : {dhcpfile}')
+        except Exception as exp:
+            self.logger.info(f"Uh oh... {exp}")
         return validate
 
 
@@ -258,49 +261,55 @@ host {node}  {{
             }
             files.append(namefile)
             files.append(ptrfile)
-            with open(namefile['source'], 'w', encoding='utf-8') as filename:
-                filename.write(zone_name_config)
-            with open(ptrfile['source'], 'w', encoding='utf-8') as fileptr:
-                fileptr.write(zone_ptr_config)
             try:
-                zone_cmd = ['named-checkzone', f'luna.{networkname}', namefile['source']]
-                validate_zone_name = subprocess.run(zone_cmd, check = True)
-                if validate_zone_name.returncode:
-                    validate = False
+                with open(namefile['source'], 'w', encoding='utf-8') as filename:
+                    filename.write(zone_name_config)
+                with open(ptrfile['source'], 'w', encoding='utf-8') as fileptr:
+                    fileptr.write(zone_ptr_config)
+                try:
+                    zone_cmd = ['named-checkzone', f'luna.{networkname}', namefile['source']]
+                    validate_zone_name = subprocess.run(zone_cmd, check = True)
+                    if validate_zone_name.returncode:
+                        validate = False
+                        self.logger.error(f'DNS zone file: {namefile["source"]} containing errors.')
+                except:
                     self.logger.error(f'DNS zone file: {namefile["source"]} containing errors.')
-            except:
-                self.logger.error(f'DNS zone file: {namefile["source"]} containing errors.')
-            try:
-                ptr_cmd = ['named-checkzone', f'luna.{networkname}', ptrfile['source']]
-                validate_ptr_name = subprocess.run(ptr_cmd, check = True)
-                if validate_ptr_name.returncode:
-                    validate = False
+                try:
+                    ptr_cmd = ['named-checkzone', f'luna.{networkname}', ptrfile['source']]
+                    validate_ptr_name = subprocess.run(ptr_cmd, check = True)
+                    if validate_ptr_name.returncode:
+                        validate = False
+                        self.logger.error(f'DNS zone file: {ptrfile["source"]} containing errors.')
+                except:
                     self.logger.error(f'DNS zone file: {ptrfile["source"]} containing errors.')
-            except:
-                self.logger.error(f'DNS zone file: {ptrfile["source"]} containing errors.')
+            except Exception as exp:
+                self.logger.info(f"Uh oh... {exp}")
 #            if ns_ip is None:
 #                forwarder = ';'.join(ns_ip)
 
 #        config = self.dns_config(forwarder)
         config = self.dns_config()  # < ------------  we call this one without any forwarder as that forwarder thing above here has to be revised
         dnsfile = {'source': '/var/tmp/luna2/named.conf', 'destination': '/etc/named.conf'}
-        files.append(dnsfile)
-        with open(dnsfile["source"], 'w', encoding='utf-8') as dns:
-            dns.write(config)
-        dnszonefile = {
-            'source': '/var/tmp/luna2/named.luna.zones',
-#            'destination': '/trinity/local/etc/named.luna.zones'
-            'destination': '/etc/named.luna.zones'
-        }
-        files.append(dnszonefile)
-        with open(dnszonefile["source"], 'w', encoding='utf-8') as dnszone:
-            dnszone.write(zone_config)
-        self.logger.info(f'DNS files : {files}')
-        if validate:
-            if not os.path.exists('/var/named'):
-                os.makedirs('/var/named')
-            for dnsfiles in files:
-                shutil.copyfile(dnsfiles["source"], dnsfiles["destination"])
+        try:
+            files.append(dnsfile)
+            with open(dnsfile["source"], 'w', encoding='utf-8') as dns:
+                dns.write(config)
+            dnszonefile = {
+                'source': '/var/tmp/luna2/named.luna.zones',
+#                'destination': '/trinity/local/etc/named.luna.zones'
+                'destination': '/etc/named.luna.zones'
+            }
+            files.append(dnszonefile)
+            with open(dnszonefile["source"], 'w', encoding='utf-8') as dnszone:
+                dnszone.write(zone_config)
+            self.logger.info(f'DNS files : {files}')
+            if validate:
+                if not os.path.exists('/var/named'):
+                    os.makedirs('/var/named')
+                for dnsfiles in files:
+                    shutil.copyfile(dnsfiles["source"], dnsfiles["destination"])
+        except Exception as exp:
+            self.logger.info(f"Uh oh... {exp}")
         return validate
 
 

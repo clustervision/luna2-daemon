@@ -22,6 +22,7 @@ from utils.log import Log
 from common.constant import CONSTANT
 import re
 import threading
+from time import sleep
 
 mylocal = threading.local()
 
@@ -56,10 +57,18 @@ class Database(object):
             if "DATABASE" in CONSTANT and "DRIVER" in CONSTANT["DATABASE"] and CONSTANT["DATABASE"]["DRIVER"] == "SQLite3":
                 self.logger.info(f"====> Trying SQLite3 driver {threading.current_thread().name} <====")
                 if "DATABASE" in CONSTANT["DATABASE"]:
-                   mylocal.connection = sqlite3.connect(CONSTANT["DATABASE"]["DATABASE"])
-                   mylocal.connection.execute('pragma journal_mode=wal')
-                   mylocal.connection.isolation_level = None
-                   mylocal.cursor = mylocal.connection.cursor()
+                   attempt=0
+                   while attempt < 100:
+                       try:
+                           mylocal.connection = sqlite3.connect(CONSTANT["DATABASE"]["DATABASE"])
+                           mylocal.connection.execute('pragma journal_mode=wal')
+                           mylocal.connection.isolation_level = None
+                           mylocal.cursor = mylocal.connection.cursor()
+                           break
+                       except Exception as exp:
+                           self.logger.info(f"Problem connecting to Database on attempt {attempt}... i try again in a few seconds...")
+                           sleep(10)
+                           attempt+=1
             else:
                 self.logger.info(f"====> Trying pyodbc driver {threading.current_thread().name} <====")
                 mylocal.connection = pyodbc.connect(self.connection_string)

@@ -26,6 +26,7 @@ import threading
 from time import sleep
 from datetime import datetime
 from utils.helper import Helper
+from utils.status import Status
 
     # -----------------------------------------------------------------
 
@@ -80,20 +81,24 @@ class Control(object):
 
     def control_mother(self,pipeline,request_id,batch=10,delay=10):
         #self.logger.info("control_mother called")
-        while(pipeline.has_nodes()):
+        try:
+            while(pipeline.has_nodes()):
 
-            with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
-                 _ = [executor.submit(self.control_child, pipeline,t) for t in range(1,batch)]
+                with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
+                     _ = [executor.submit(self.control_child, pipeline,t) for t in range(1,batch)]
 
-            sleep(0.1) # not needed but just in case a child does a lock right after i fetch the list.
-            results=pipeline.get_messages()
+                sleep(0.1) # not needed but just in case a child does a lock right after i fetch the list.
+                results=pipeline.get_messages()
 
-            for key in list(results):
-                self.logger.info(f"control_mother result: {key}: {results[key]}")
-                Helper().insert_mesg_in_status(request_id,"lpower",f"{key}:{results[key]}")
-                pipeline.del_message(key)
-            sleep(delay)
+                for key in list(results):
+                    self.logger.info(f"control_mother result: {key}: {results[key]}")
+                    Status().add_message(request_id,"lpower",f"{key}:{results[key]}")
+                    pipeline.del_message(key)
+                sleep(delay)
 
-        Helper().insert_mesg_in_status(request_id,"lpower",f"EOF")
+            Status().add_message(request_id,"lpower",f"EOF")
+
+        except Exception as exp:
+            self.logger.error(f"service_mother has problems: {exp}")
 
 

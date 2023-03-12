@@ -30,6 +30,7 @@ from os import getpid
 from utils.helper import Helper
 import concurrent.futures
 from utils.database import Database
+from utils.status import Status
 
 
 LOGGER = Log.get_logger()
@@ -59,7 +60,7 @@ def service(name, action):
         return json.dumps(response), code
  
     LOGGER.info(f"service GET added task to queue: {queue_id}")
-    Helper().insert_mesg_in_status(request_id,"luna",f"queued service {name} {action} with queue_id {queue_id}")
+    Status().add_message(request_id,"luna",f"queued service {name} {action} with queue_id {queue_id}")
 
     next_id = Helper().next_task_in_queue('service')
     if queue_id == next_id:
@@ -67,6 +68,8 @@ def service(name, action):
         executor.submit(Service().service_mother,name,action,request_id)
         executor.shutdown(wait=False)
 #        Service().service_mother(name,action,request_id)
+    else:
+        LOGGER.info(f"We are not next in queue: {queue_id} != {next_id}")
 
     # we should check after a few seconds if there is a status update for us.
     # if so, that means mother is taking care of things
@@ -116,13 +119,15 @@ def service_status(request_id=None):
                 if record['read']==0:
                     if 'message' in record:
                         if record['message'] == "EOF":
-                            Database().delete_row('status', [{"column": "request_id", "value": request_id}])
+                            #Database().delete_row('status', [{"column": "request_id", "value": request_id}])
+                            Status().del_messages(request_id)
                         else:
                             message.append(record['message'])
         response={'message': (';;').join(message) }
-        where = [{"column": "request_id", "value": request_id}]
-        row = [{"column": "read", "value": "1"}]
-        Database().update('status', row, where)
+        Status().mark_messages_read(request_id)
+#        where = [{"column": "request_id", "value": request_id}]
+#        row = [{"column": "read", "value": "1"}]
+#        Database().update('status', row, where)
         access_code = 200
     return json.dumps(response), access_code
 

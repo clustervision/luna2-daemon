@@ -133,10 +133,8 @@ def control_post():
                                     off_nodes.append(node)
                                 else:
                                     failed_nodes.append(node)
+                    Status().mark_messages_read(request_id)
                     response={'control': {'power': {'on': { 'hostlist': ','.join(on_nodes) }, 'off': { 'hostlist': ','.join(off_nodes) }, 'failed': { 'hostlist': ','.join(failed_nodes) }, 'request_id': request_id } }}
-                    where = [{"column": "request_id", "value": request_id}]
-                    row = [{"column": "read", "value": "1"}]
-                    Database().update('status', row, where)
                 else:
                     response = {'control': {'power': {'request_id': request_id} } }
                 # end Antoine ---------------------------------------------------------------
@@ -144,10 +142,6 @@ def control_post():
                 response = {'message': 'invalid hostlist.'}
                 access_code = 404
            
-            # no longer used functions:         
-            #  list_for_queue = list(Helper().chunks(hostlist, batch_size))
-            #  response = f'Hostlistcount {len(hostlist)}, batch_size {batch_size} batch_delay {batch_delay} list_for_queue {list_for_queue}'
-
     return json.dumps(response), access_code
 
 @control_blueprint.route('/control/status/<string:request_id>', methods=['GET'])
@@ -182,9 +176,6 @@ def control_status(request_id=None):
                             failed_nodes.append(node)
         response={'control': {'power': {'on': { 'hostlist': ','.join(on_nodes) }, 'off': { 'hostlist': ','.join(off_nodes) }, 'failed': { 'hostlist': ','.join(failed_nodes) }} }}
         Status().mark_messages_read(request_id)
-#        where = [{"column": "request_id", "value": request_id}]
-#        row = [{"column": "read", "value": "1"}]
-#        Database().update('status', row, where)
         access_code = 200
     return json.dumps(response), access_code
 

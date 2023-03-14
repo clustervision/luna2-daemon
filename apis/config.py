@@ -1931,10 +1931,10 @@ def config_network_post(name=None):
                 response = {'message': f'Incorrect gateway IP: {data["gateway"]}.'}
                 access_code = 400
                 return json.dumps(response), access_code
-        if 'ns_ip' in data:
-            nsipdetails = Helper().check_ip_range(data['ns_ip'], data['network']+'/'+data['subnet'])
+        if 'nameserver_ip' in data:
+            nsipdetails = Helper().check_ip_range(data['nameserver_ip'], data['network']+'/'+data['subnet'])
             if not nsipdetails:
-                response = {'message': f'Incorrect NS IP: {data["ns_ip"]}.'}
+                response = {'message': f'Incorrect Nameserver IP: {data["nameserver_ip"]}.'}
                 access_code = 400
                 return json.dumps(response), access_code
         if 'ntp_server' in data:
@@ -2050,10 +2050,10 @@ def config_network_clone(name=None):
                 response = {'message': f'Incorrect gateway IP: {data["gateway"]}.'}
                 access_code = 400
                 return json.dumps(response), access_code
-        if 'ns_ip' in data:
-            nsipdetails = Helper().check_ip_range(data['ns_ip'], data['network']+'/'+data['subnet'])
+        if 'nameserver_ip' in data:
+            nsipdetails = Helper().check_ip_range(data['nameserver_ip'], data['network']+'/'+data['subnet'])
             if not nsipdetails:
-                response = {'message': f'Incorrect NS IP: {data["ns_ip"]}.'}
+                response = {'message': f'Incorrect Nameserver IP: {data["nameserver_ip"]}.'}
                 access_code = 400
                 return json.dumps(response), access_code
         if 'ntp_server' in data:

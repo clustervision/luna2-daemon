@@ -206,21 +206,20 @@ host {node}  {{
         and zone files for every network
         """
         validate = True
-        files, ns_ip = [], []
+        files, nameserver_ip = [], []
         zone_config, rev_ip = '', ''
         cluster = Database().get_record(None, 'cluster', None)
-        if cluster and 'ns_ip' in cluster[0]:
-            ns_ip.append(cluster[0]['ns_ip'])
-#	TWAN
+        if cluster and 'nameserver_ip' in cluster[0]:
+            nameserver_ip.append(cluster[0]['nameserver_ip'])
         controller = Database().get_record_join(['ipaddress.ipaddress'], ['ipaddress.tablerefid=controller.id'], ['tableref="controller"','controller.hostname="controller"'])
         controllerip = controller[0]['ipaddress']
-#        if ns_ip:
-#            forwarder = ns_ip
+        if 'forwardserver_ip' in cluster[0]:
+            forwarder = cluster[0]['forwardserver_ip']
         networks = Database().get_record(None, 'network', None)
         for nwk in networks:
             nwkid = nwk['id']
-            if nwk['ns_ip'] and ns_ip is None:
-                ns_ip.append(nwk['ns_ip'])
+            if nwk['nameserver_ip']: # this technically may mean that the authoritative server is outside our cluster
+                nameserver_ip.append(nwk['nameserver_ip'])
             if nwk['network'] and nwk['name']:
                 networkname = nwk['name']
                 rev_ip = ip_address(nwk['network']).reverse_pointer
@@ -284,11 +283,8 @@ host {node}  {{
                     self.logger.error(f'DNS zone file: {ptrfile["source"]} containing errors.')
             except Exception as exp:
                 self.logger.error(f"Uh oh... {exp}")
-#            if ns_ip is None:
-#                forwarder = ';'.join(ns_ip)
 
-#        config = self.dns_config(forwarder)
-        config = self.dns_config()  # < ------------  we call this one without any forwarder as that forwarder thing above here has to be revised
+        config = self.dns_config(forwarder)
         dnsfile = {'source': '/var/tmp/luna2/named.conf', 'destination': '/etc/named.conf'}
         try:
             files.append(dnsfile)
@@ -302,7 +298,7 @@ host {node}  {{
             files.append(dnszonefile)
             with open(dnszonefile["source"], 'w', encoding='utf-8') as dnszone:
                 dnszone.write(zone_config)
-            self.logger.info(f'DNS files : {files}')
+#            self.logger.info(f'DNS files : {files}')
             if validate:
                 if not os.path.exists('/var/named'):
                     os.makedirs('/var/named')
@@ -321,9 +317,9 @@ host {node}  {{
         if forwarder:
             forwarder = f"""
 // BEGIN forwarders
-    forwarders {{
-              {forwarder};
-    }};
+forwarders {{
+          {forwarder};
+}};
 // END forwarders
             """
         else:

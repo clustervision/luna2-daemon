@@ -225,7 +225,7 @@ else:
 
 ##### TODO
 ##
-## Add Template Variables in CONSTANT["TEMPLATES"]["VARS"] = {LUNA_CONTROLLER: cluster.ns_ip , LUNA_API_PORT: cluster.port}
+## Add Template Variables in CONSTANT["TEMPLATES"]["VARS"] = {LUNA_CONTROLLER: cluster.nameserver_ip , LUNA_API_PORT: cluster.port}
 ## When Read Templates get the variable name from there and match with CONSTANTS Variables and get db table and field name
 ## Fetch the exact column value base on the above logic
 ## Render the template with that value(s)

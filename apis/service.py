@@ -68,8 +68,6 @@ def service(name, action):
         executor.submit(Service().service_mother,name,action,request_id)
         executor.shutdown(wait=False)
 #        Service().service_mother(name,action,request_id)
-    else:
-        LOGGER.info(f"We are not next in queue: {queue_id} != {next_id}")
 
     # we should check after a few seconds if there is a status update for us.
     # if so, that means mother is taking care of things
@@ -125,9 +123,6 @@ def service_status(request_id=None):
                             message.append(record['message'])
         response={'message': (';;').join(message) }
         Status().mark_messages_read(request_id)
-#        where = [{"column": "request_id", "value": request_id}]
-#        row = [{"column": "read", "value": "1"}]
-#        Database().update('status', row, where)
         access_code = 200
     return json.dumps(response), access_code
 

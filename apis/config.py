@@ -2872,9 +2872,6 @@ def control_status(request_id=None):
                             message.append(created+" :: "+record['message'])
         response={'message': (';;').join(message) }
         Status().mark_messages_read(request_id)
-#        where = [{"column": "request_id", "value": request_id}]
-#        row = [{"column": "read", "value": "1"}]
-#        Database().update('status', row, where)
         access_code = 200
     return json.dumps(response), access_code
 

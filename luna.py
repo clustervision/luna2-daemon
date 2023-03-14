@@ -20,6 +20,9 @@ __status__      = 'Development'
 from flask import Flask, abort, json, Response, request
 from common.constant import LOGGER
 from common.bootstrap import validatebootstrap
+from utils.status import Status
+import concurrent.futures
+from threading import Event
 from apis.auth import auth_blueprint
 from apis.boot import boot_blueprint
 from apis.config import config_blueprint
@@ -27,6 +30,8 @@ from apis.files import files_blueprint
 from apis.service import service_blueprint
 from apis.monitor import monitor_blueprint
 from apis.control import control_blueprint
+
+event = Event()
 
 ############# Gunicorn Server Hooks #############
 
@@ -37,6 +42,11 @@ def on_starting(server):
     result=validatebootstrap()
     if result is False:
         exit(1)
+    # --------------- status message cleanup thread ----------------
+    executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
+    executor.submit(Status().cleanup_mother,event)
+    executor.shutdown(wait=False)
+    # --------------------------------------------------------------
     LOGGER.info(vars(server))
     LOGGER.info('Gunicorn server hook on start')
     return True
@@ -55,6 +65,7 @@ def on_exit(server):
     """
     A Testing Method for Gunicorn on_reload.
     """
+    event.set()  # stops the threads like cleanup
     LOGGER.info(vars(server))
     LOGGER.info('Gunicorn server hook on exit')
     return True

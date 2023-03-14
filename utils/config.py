@@ -107,7 +107,7 @@ class Config(object):
                 shutil.copyfile(dhcpfile, '/etc/dhcp/dhcpd.conf')
                 self.logger.info(f'DHCP File created : {dhcpfile}')
         except Exception as exp:
-            self.logger.info(f"Uh oh... {exp}")
+            self.logger.error(f"Uh oh... {exp}")
         return validate
 
 
@@ -283,7 +283,7 @@ host {node}  {{
                 except:
                     self.logger.error(f'DNS zone file: {ptrfile["source"]} containing errors.')
             except Exception as exp:
-                self.logger.info(f"Uh oh... {exp}")
+                self.logger.error(f"Uh oh... {exp}")
 #            if ns_ip is None:
 #                forwarder = ';'.join(ns_ip)
 
@@ -309,7 +309,7 @@ host {node}  {{
                 for dnsfiles in files:
                     shutil.copyfile(dnsfiles["source"], dnsfiles["destination"])
         except Exception as exp:
-            self.logger.info(f"Uh oh... {exp}")
+            self.logger.error(f"Uh oh... {exp}")
         return validate
 
 

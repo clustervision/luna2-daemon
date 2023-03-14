@@ -60,7 +60,7 @@ class Control(object):
                                  username = bmcsetup[0]['username']
                                  password = bmcsetup[0]['password']
                                  #self.logger.info("control_child thread "+str(t)+": "+hostname+" -> performing "+action+", with user/pass "+username+"/"+password)
-                                 status = self.ipmi_action(hostname, action, username, password) or 'no response or timeout'
+                                 status = Helper().ipmi_action(hostname, action, username, password) or 'no response or timeout'
                              except:
                                  status='bmc credentials not found'
                              pipeline.add_message({hostname: status})

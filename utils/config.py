@@ -49,8 +49,10 @@ class Config(object):
         ntpserver, dhcp_subnet_block = '', ''
         node_block, device_block = [] , []
         cluster = Database().get_record(None, 'cluster', None)
-        if cluster and ('ntp_server' in cluster[0]):
+        if cluster and 'ntp_server' in cluster[0] and cluster[0]['ntp_server']:
             ntpserver = cluster[0]['ntp_server']
+            ntpserver=ntpserver.replace(' ',',')
+            ntpserver=ntpserver.replace(',,',',')
         controller = Database().get_record_join(['ipaddress.ipaddress'], ['ipaddress.tablerefid=controller.id'], ['tableref="controller"','controller.hostname="controller"'])
         networks = Database().get_record(None, 'network', ' WHERE `dhcp` = 1')
         dhcpfile = f"{CONSTANT['TEMPLATES']['TEMP_DIR']}/dhcpd.conf"
@@ -115,7 +117,7 @@ class Config(object):
         """
         This method will prepare DHCP configuration."""
         if ntpserver:
-            ntpserver = f'option domain-name-servers {ntpserver};'
+            ntpserver = f'option time-servers {ntpserver};'
         else:
             ntpserver=''
 

@@ -318,6 +318,8 @@ host {node}  {{
         This method prepare the dns configuration
         with forwarder IP's
         """
+        caching=""
+        # -------------
         if forwarder:
             forwarder = f"""
         // BEGIN forwarders
@@ -326,7 +328,7 @@ host {node}  {{
         }};
         // END forwarders
             """
-            caching=""
+        # -------------
         else:
             forwarder=''
             caching=f"""
@@ -335,6 +337,7 @@ host {node}  {{
                 file "named.ca";
         }};
             """
+        # -------------
         managed_keys=''
         if os.path.exists("/trinity/local/var/lib/named/dynamic"):
             managed_keys="managed-keys-directory \"/trinity/local/var/lib/named/dynamic\";"

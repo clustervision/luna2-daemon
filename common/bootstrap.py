@@ -255,8 +255,7 @@ def bootstrap(bootstrapfile=None):
                 {'column': 'dhcp', 'value': dhcp},
                 {'column': 'dhcp_range_begin', 'value': dhcp_range_begin},
                 {'column': 'dhcp_range_end', 'value': dhcp_range_end},
-                {'column': 'ns_hostname', 'value': BOOTSTRAP['HOSTS']['CONTROLLER']['HOSTNAME']},
-                {'column': 'ns_ip', 'value': BOOTSTRAP['HOSTS']['CONTROLLER']['IP']},
+                {'column': 'nameserver_ip', 'value': BOOTSTRAP['HOSTS']['CONTROLLER']['IP']},
                 {'column': 'gateway', 'value': BOOTSTRAP['HOSTS']['CONTROLLER']['IP']},
                 {'column': 'ntp_server', 'value': BOOTSTRAP['HOSTS']['CONTROLLER']['IP']}
             ]

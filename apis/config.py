@@ -136,6 +136,7 @@ def config_node_get(name=None):
            'prescript':'<empty>',
            'partscript':'<empty>',
            'postscript':'<empty>',
+           'setupbmc':False,
            'netboot':False,
            'localinstall':False,
            'bootmenu':False,
@@ -517,22 +518,23 @@ def config_group():
         for grp in groups:
             grpname = grp['name']
             grpid = grp['id']
-            where = f' WHERE groupid = "{grpid}"'
-            grp_interface = Database().get_record(None, 'groupinterface', where)
+            grp_interface = Database().get_record_join(['groupinterface.interface','network.name as network'], ['network.id=groupinterface.networkid'], [f"groupid = '{grpid}'"])
+#            where = f' WHERE groupid = "{grpid}"'
+#            grp_interface = Database().get_record(None, 'groupinterface', where)
             if grp_interface:
                 grp['interfaces'] = []
                 for ifx in grp_interface:
-                    ifx['network'] = Database().getname_byid('network', ifx['networkid'])
-                    del ifx['groupid']
-                    del ifx['id']
-                    del ifx['networkid']
+#                    ifx['network'] = Database().getname_byid('network', ifx['networkid'])
+#                    del ifx['groupid']
+#                    del ifx['id']
+#                    del ifx['networkid']
                     grp['interfaces'].append(ifx)
             del grp['id']
             # del grp['name']
-            grp['bmcsetup'] = Helper().bool_revert(grp['bmcsetup'])
-            grp['netboot'] = Helper().bool_revert(grp['netboot'])
-            grp['localinstall'] = Helper().bool_revert(grp['localinstall'])
-            grp['bootmenu'] = Helper().bool_revert(grp['bootmenu'])
+            grp['setupbmc'] = Helper().make_bool(grp['setupbmc'])
+            grp['netboot'] = Helper().make_bool(grp['netboot'])
+            grp['localinstall'] = Helper().make_bool(grp['localinstall'])
+            grp['bootmenu'] = Helper().make_bool(grp['bootmenu'])
             grp['osimage'] = Database().getname_byid('osimage', grp['osimageid'])
             del grp['osimageid']
             if grp['bmcsetupid']:
@@ -562,22 +564,23 @@ def config_group_get(name=None):
         for grp in groups:
             grpname = grp['name']
             grpid = grp['id']
-            where = f' WHERE groupid = "{grpid}"'
-            grp_interface = Database().get_record(None, 'groupinterface', where)
+#            where = f' WHERE groupid = "{grpid}"'
+#            grp_interface = Database().get_record(None, 'groupinterface', where)
+            grp_interface = Database().get_record_join(['groupinterface.interface','network.name as network'], ['network.id=groupinterface.networkid'], [f"groupid = '{grpid}'"])
             if grp_interface:
                 grp['interfaces'] = []
                 for ifx in grp_interface:
-                    ifx['network'] = Database().getname_byid('network', ifx['networkid'])
-                    del ifx['groupid']
-                    del ifx['id']
-                    del ifx['networkid']
+#                    ifx['network'] = Database().getname_byid('network', ifx['networkid'])
+#                    del ifx['groupid']
+#                    del ifx['id']
+#                    del ifx['networkid']
                     grp['interfaces'].append(ifx)
             del grp['id']
             # del grp['name']
-            grp['bmcsetup'] = Helper().bool_revert(grp['bmcsetup'])
-            grp['netboot'] = Helper().bool_revert(grp['netboot'])
-            grp['localinstall'] = Helper().bool_revert(grp['localinstall'])
-            grp['bootmenu'] = Helper().bool_revert(grp['bootmenu'])
+            grp['setupbmc'] = Helper().make_bool(grp['setupbmc'])
+            grp['netboot'] = Helper().make_bool(grp['netboot'])
+            grp['localinstall'] = Helper().make_bool(grp['localinstall'])
+            grp['bootmenu'] = Helper().make_bool(grp['bootmenu'])
             grp['osimage'] = Database().getname_byid('osimage', grp['osimageid'])
             del grp['osimageid']
             if grp['bmcsetupid']:

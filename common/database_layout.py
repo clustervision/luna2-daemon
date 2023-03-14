@@ -89,7 +89,7 @@ DATABASE_LAYOUT_ipaddress = [
 DATABASE_LAYOUT_groupinterface = [
 {"column": "id",                   "datatype": "INTEGER", "key": "PRIMARY", "keyadd": "AUTOINCREMENT"},
 {"column": "groupid",              "datatype": "INTEGER", "length": "10"},
-{"column": "interfacename",        "datatype": "VARCHAR", "length": "60"},
+{"column": "interface",            "datatype": "VARCHAR", "length": "60"},
 {"column": "networkid",            "datatype": "INTEGER", "length": "10"}]
 
 DATABASE_LAYOUT_roles = [
@@ -101,7 +101,7 @@ DATABASE_LAYOUT_group = [
 {"column": "id",                   "datatype": "INTEGER", "key": "PRIMARY", "keyadd": "AUTOINCREMENT"},
 {"column": "name",                 "datatype": "VARCHAR", "length": "20", "key": "UNIQUE"},
 {"column": "bmcsetupid",           "datatype": "INTEGER", "length": "10"},
-{"column": "bmcsetup",             "datatype": "INTEGER", "length": "10"},
+{"column": "setupbmc",             "datatype": "INTEGER", "length": "10"},
 {"column": "domain",               "datatype": "VARCHAR", "length": "20"},
 {"column": "osimageid",            "datatype": "INTEGER", "length": "10"},
 {"column": "prescript",            "datatype": "TEXT"},

@@ -136,6 +136,7 @@ def config_node_get(name=None):
            'prescript':'<empty>',
            'partscript':'<empty>',
            'postscript':'<empty>',
+           'setupbmc':False,
            'netboot':False,
            'localinstall':False,
            'bootmenu':False,
@@ -517,22 +518,16 @@ def config_group():
         for grp in groups:
             grpname = grp['name']
             grpid = grp['id']
-            where = f' WHERE groupid = "{grpid}"'
-            grp_interface = Database().get_record(None, 'groupinterface', where)
+            grp_interface = Database().get_record_join(['groupinterface.interface','network.name as network'], ['network.id=groupinterface.networkid'], [f"groupid = '{grpid}'"])
             if grp_interface:
                 grp['interfaces'] = []
                 for ifx in grp_interface:
-                    ifx['network'] = Database().getname_byid('network', ifx['networkid'])
-                    del ifx['groupid']
-                    del ifx['id']
-                    del ifx['networkid']
                     grp['interfaces'].append(ifx)
             del grp['id']
-            # del grp['name']
-            grp['bmcsetup'] = Helper().bool_revert(grp['bmcsetup'])
-            grp['netboot'] = Helper().bool_revert(grp['netboot'])
-            grp['localinstall'] = Helper().bool_revert(grp['localinstall'])
-            grp['bootmenu'] = Helper().bool_revert(grp['bootmenu'])
+            grp['setupbmc'] = Helper().make_bool(grp['setupbmc'])
+            grp['netboot'] = Helper().make_bool(grp['netboot'])
+            grp['localinstall'] = Helper().make_bool(grp['localinstall'])
+            grp['bootmenu'] = Helper().make_bool(grp['bootmenu'])
             grp['osimage'] = Database().getname_byid('osimage', grp['osimageid'])
             del grp['osimageid']
             if grp['bmcsetupid']:
@@ -562,22 +557,16 @@ def config_group_get(name=None):
         for grp in groups:
             grpname = grp['name']
             grpid = grp['id']
-            where = f' WHERE groupid = "{grpid}"'
-            grp_interface = Database().get_record(None, 'groupinterface', where)
+            grp_interface = Database().get_record_join(['groupinterface.interface','network.name as network'], ['network.id=groupinterface.networkid'], [f"groupid = '{grpid}'"])
             if grp_interface:
                 grp['interfaces'] = []
                 for ifx in grp_interface:
-                    ifx['network'] = Database().getname_byid('network', ifx['networkid'])
-                    del ifx['groupid']
-                    del ifx['id']
-                    del ifx['networkid']
                     grp['interfaces'].append(ifx)
             del grp['id']
-            # del grp['name']
-            grp['bmcsetup'] = Helper().bool_revert(grp['bmcsetup'])
-            grp['netboot'] = Helper().bool_revert(grp['netboot'])
-            grp['localinstall'] = Helper().bool_revert(grp['localinstall'])
-            grp['bootmenu'] = Helper().bool_revert(grp['bootmenu'])
+            grp['setupbmc'] = Helper().make_bool(grp['setupbmc'])
+            grp['netboot'] = Helper().make_bool(grp['netboot'])
+            grp['localinstall'] = Helper().make_bool(grp['localinstall'])
+            grp['bootmenu'] = Helper().make_bool(grp['bootmenu'])
             grp['osimage'] = Database().getname_byid('osimage', grp['osimageid'])
             del grp['osimageid']
             if grp['bmcsetupid']:
@@ -627,8 +616,8 @@ def config_group_post(name=None):
                     data['name'] = data['newgroupname']
                     del data['newgroupname']
             update = True
-            if 'bmcsetup' in data:
-                data['bmcsetup'] = Helper().bool_revert(data['bmcsetup'])
+            if 'setupbmc' in data:
+                data['setupbmc'] = Helper().bool_revert(data['setupbmc'])
             if 'netboot' in data:
                 data['netboot'] = Helper().bool_revert(data['netboot'])
             if 'localinstall' in data:
@@ -640,10 +629,10 @@ def config_group_post(name=None):
                 response = {'message': f'{newgrpname} is not allwoed while creating a new group.'}
                 access_code = 400
                 return json.dumps(response), access_code
-            if 'bmcsetup' in data:
-                data['bmcsetup'] = Helper().bool_revert(data['bmcsetup'])
+            if 'setupbmc' in data:
+                data['setupbmc'] = Helper().bool_revert(data['setupbmc'])
             else:
-                data['bmcsetup'] = 0
+                data['setupbmc'] = 0
             if 'netboot' in data:
                 data['netboot'] = Helper().bool_revert(data['netboot'])
             else:
@@ -704,12 +693,10 @@ def config_group_post(name=None):
                         ifx['networkid'] = network
                         ifx['groupid'] = grpid
                         del ifx['network']
-                    ifx['interfacename'] =  ifx['interface']
-                    del ifx['interface']
-                    ifname = ifx['interfacename']
+                    ifname = ifx['interface']
                     grp_clause = f'groupid = "{grpid}"'
                     network_clause = f'networkid = "{network}"'
-                    interface_clause = f'interfacename = "{ifname}"'
+                    interface_clause = f'interface = "{ifname}"'
                     where = f' WHERE {grp_clause} AND {network_clause} AND {interface_clause}'
                     check_interface = Database().get_record(None, 'groupinterface', where)
                     if not check_interface:
@@ -761,15 +748,10 @@ def config_group_get_interfaces(name=None):
         for grp in groups:
             groupname = grp['name']
             groupid = grp['id']
-            where = f' WHERE groupid = "{groupid}"'
-            grp_interface = Database().get_record(None, 'groupinterface', where)
+            grp_interface = Database().get_record_join(['groupinterface.interface','network.name as network'], ['network.id=groupinterface.networkid'], [f"groupid = '{groupid}'"])
             if grp_interface:
                 grp_interfaces = []
                 for ifx in grp_interface:
-                    ifx['network'] = Database().getname_byid('network', ifx['networkid'])
-                    del ifx['groupid']
-                    del ifx['id']
-                    del ifx['networkid']
                     grp_interfaces.append(ifx)
                 response['config']['group'][groupname]['interfaces'] = grp_interfaces
             else:
@@ -814,10 +796,12 @@ def config_group_post_interfaces(name=None):
                         ifx['networkid'] = network
                         ifx['groupid'] = grpid
                         del ifx['network']
-                    interfacename = ifx['interfacename']
+                    ifx['interface'] = ifx['interfacename']
+                    interface = ifx['interface']
+                    del ifx['interfacename']
                     grp_clause = f'groupid = "{grpid}"'
                     network_clause = f'networkid = "{network}"'
-                    interface_clause = f'interfacename = "{interfacename}"'
+                    interface_clause = f'interface = "{interface}"'
                     where = f' WHERE {grp_clause} AND {network_clause} AND {interface_clause}'
                     interface_check = Database().get_record(None, 'groupinterface', where)
                     if not interface_check:
@@ -880,7 +864,6 @@ def config_osimage():
         for image in osimages:
             image_name = image['name']
             del image['id']
-            # del image['name']
             response['config']['osimage'][image_name] = image
         LOGGER.info('Provided list of all osimages with details.')
         access_code = 200
@@ -903,7 +886,6 @@ def config_osimage_get(name=None):
         response = {'config': {'osimage': {} }}
         for image in osimages:
             del image['id']
-            # del image['name']
             response['config']['osimage'][name] = image
         LOGGER.info(f'Returned OS Image {name} with details.')
         access_code = 200
@@ -1135,10 +1117,6 @@ def config_osimage_kernel_post(name=None):
             columncheck = Helper().checkin_list(data, osimagecolumns)
             if columncheck:
                 requestcheck = Helper().pack(name)
-                print(f'REQUESTCHECK=======>> {requestcheck}')
-                # where = [{"column": "id", "value": imageid}]
-                # row = Helper().make_rows(data)
-                # result = Database().update('osimage', row, where)
                 response = {'message': f'OS Image {name} Kernel updated.'}
                 access_code = 204
             else:

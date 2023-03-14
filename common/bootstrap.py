@@ -336,7 +336,8 @@ def bootstrap(bootstrapfile=None):
 
     default_group = [
             {'column': 'name', 'value': str(BOOTSTRAP['GROUPS']['NAME'])},
-            {'column': 'bmcsetup', 'value': '1'},
+            {'column': 'setupbmc', 'value': '1'},
+            {'column': 'bmcsetupid', 'value': '1'},
             {'column': 'domain', 'value': 'cluster'},
             {'column': 'netboot', 'value': '1'},
             {'column': 'localinstall', 'value': '0'},
@@ -380,11 +381,15 @@ def bootstrap(bootstrapfile=None):
 
     default_group_interface = [
             {'column': 'groupid', 'value': '1'},
-            {'column': 'interfacename', 'value': 'BOOTIF'},
+            {'column': 'interface', 'value': 'BOOTIF'},
             {'column': 'networkid', 'value': networkid}
         ]
 
+    bmcsetup_name='compute'
+    if 'NAME' in BOOTSTRAP['BMCSETUP'] and BOOTSTRAP['BMCSETUP']['NAME']:
+        bmcsetup_name=str(BOOTSTRAP['BMCSETUP']['NAME'])
     default_bmcsetup = [
+            {'column': 'name', 'value': bmcsetup_name},
             {'column': 'username', 'value': str(BOOTSTRAP['BMCSETUP']['USERNAME'])},
             {'column': 'password', 'value': str(BOOTSTRAP['BMCSETUP']['PASSWORD'])}
         ]

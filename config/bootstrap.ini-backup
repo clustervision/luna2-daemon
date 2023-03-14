@@ -24,5 +24,6 @@ NAME = compute
 PATH = /trinity/images/compute
 
 [BMCSETUP]
+NAME = compute
 USERNAME = admin
 PASSWORD = password

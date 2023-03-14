@@ -206,7 +206,7 @@ host {node}  {{
         and zone files for every network
         """
         validate = True
-        files, nameserver_ip = [], []
+        files, nameserver_ip, forwarder = [], [], None
         zone_config, rev_ip = '', ''
         cluster = Database().get_record(None, 'cluster', None)
         if cluster and 'nameserver_ip' in cluster[0]:

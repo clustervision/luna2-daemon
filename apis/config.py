@@ -1087,7 +1087,7 @@ def config_osimage_pack(name=None):
     status = Database().get_record(None , 'status', f' WHERE request_id = "{request_id}"')
     if status:
         code=200
-        response = {"message": "osimage pack for {name} queued", "request_id": request_id}
+        response = {"message": f"osimage pack for {name} queued", "request_id": request_id}
     LOGGER.info(f"my repsonse [{response}]")
     return json.dumps(response), code
 

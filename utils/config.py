@@ -215,8 +215,10 @@ host {node}  {{
             nameserver_ip.append(cluster[0]['nameserver_ip'])
         controller = Database().get_record_join(['ipaddress.ipaddress'], ['ipaddress.tablerefid=controller.id'], ['tableref="controller"','controller.hostname="controller"'])
         controllerip = controller[0]['ipaddress']
-        if 'forwardserver_ip' in cluster[0]:
+        if 'forwardserver_ip' in cluster[0] and cluster[0]['forwardserver_ip']:
             forwarder = cluster[0]['forwardserver_ip']
+            forwarder=forwarder.replace(' ',',')
+            forwarder=forwarder.replace(',,',',')
         networks = Database().get_record(None, 'network', None)
         for nwk in networks:
             nwkid = nwk['id']
@@ -318,14 +320,24 @@ host {node}  {{
         """
         if forwarder:
             forwarder = f"""
-// BEGIN forwarders
-forwarders {{
-          {forwarder};
-}};
-// END forwarders
+        // BEGIN forwarders
+        forwarders {{
+                  {forwarder};
+        }};
+        // END forwarders
             """
+            caching=""
         else:
             forwarder=''
+            caching=f"""
+        zone "." IN {{
+                type hint;
+                file "named.ca";
+        }};
+            """
+        managed_keys=''
+        if os.path.exists("/trinity/local/var/lib/named/dynamic"):
+            managed_keys="managed-keys-directory \"/trinity/local/var/lib/named/dynamic\";"
 
         config = f"""
 //
@@ -361,19 +373,12 @@ options {{
            reduce such attack surface
         */
         recursion yes;
-{forwarder}
+        {forwarder}
 
-dnssec-enable no;
-dnssec-validation no;
-"""
+        dnssec-enable no;
+        dnssec-validation no;
 
-#TWAN
-        if os.path.exists("/trinity/local/var/lib/named/dynamic"):
-            config += f"""
-        managed-keys-directory "/trinity/local/var/lib/named/dynamic";
-"""
-
-        config += f"""
+        {managed_keys}
 
         pid-file "/run/named/named.pid";
         session-keyfile "/run/named/session.key";
@@ -389,10 +394,7 @@ logging {{
         }};
 }};
 
-zone "." IN {{
-        type hint;
-        file "named.ca";
-}};
+{caching}
 
 include "/etc/named.rfc1912.zones";
 include "/etc/named.root.key";

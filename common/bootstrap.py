@@ -230,6 +230,7 @@ def bootstrap(bootstrapfile=None):
     LOGGER.info('###################### Bootstrap Start ######################')
     create_database_tables()
     default_cluster = [
+            {'column': 'name', 'value': 'mycluster'},
             {'column': 'technical_contacts', 'value': 'root@localhost'},
             {'column': 'provision_method', 'value': 'torrent'},
             {'column': 'provision_fallback', 'value': 'http'},

@@ -51,8 +51,6 @@ class Config(object):
         cluster = Database().get_record(None, 'cluster', None)
         if cluster and 'ntp_server' in cluster[0] and cluster[0]['ntp_server']:
             ntpserver = cluster[0]['ntp_server']
-            ntpserver=ntpserver.replace(' ',',')
-            ntpserver=ntpserver.replace(',,',',')
         controller = Database().get_record_join(['ipaddress.ipaddress'], ['ipaddress.tablerefid=controller.id'], ['tableref="controller"','controller.hostname="controller"'])
         networks = Database().get_record(None, 'network', ' WHERE `dhcp` = 1')
         dhcpfile = f"{CONSTANT['TEMPLATES']['TEMP_DIR']}/dhcpd.conf"
@@ -208,7 +206,7 @@ host {node}  {{
         and zone files for every network
         """
         validate = True
-        files, nameserver_ip, forwarder = [], [], None
+        files, nameserver_ip, forwarder, network = [], [], [], []
         zone_config, rev_ip = '', ''
         cluster = Database().get_record(None, 'cluster', None)
         if cluster and 'nameserver_ip' in cluster[0]:
@@ -216,15 +214,14 @@ host {node}  {{
         controller = Database().get_record_join(['ipaddress.ipaddress'], ['ipaddress.tablerefid=controller.id'], ['tableref="controller"','controller.hostname="controller"'])
         controllerip = controller[0]['ipaddress']
         if 'forwardserver_ip' in cluster[0] and cluster[0]['forwardserver_ip']:
-            forwarder = cluster[0]['forwardserver_ip']
-            forwarder=forwarder.replace(' ',',')
-            forwarder=forwarder.replace(',,',',')
+            forwarder = cluster[0]['forwardserver_ip'].split(',')
         networks = Database().get_record(None, 'network', None)
         for nwk in networks:
             nwkid = nwk['id']
             if nwk['nameserver_ip']: # this technically may mean that the authoritative server is outside our cluster
                 nameserver_ip.append(nwk['nameserver_ip'])
             if nwk['network'] and nwk['name']:
+                network.append(nwk['network']+"/"+nwk['subnet']) # used for e.g. named. allow query
                 networkname = nwk['name']
                 rev_ip = ip_address(nwk['network']).reverse_pointer
                 rev_ip = rev_ip.split('.')
@@ -288,7 +285,7 @@ host {node}  {{
             except Exception as exp:
                 self.logger.error(f"Uh oh... {exp}")
 
-        config = self.dns_config(forwarder)
+        config = self.dns_config(forwarder,network)
         dnsfile = {'source': '/var/tmp/luna2/named.conf', 'destination': '/etc/named.conf'}
         try:
             files.append(dnsfile)
@@ -313,7 +310,7 @@ host {node}  {{
         return validate
 
 
-    def dns_config(self, forwarder=None):
+    def dns_config(self, forwarder=None, network=None):
         """
         This method prepare the dns configuration
         with forwarder IP's
@@ -321,16 +318,19 @@ host {node}  {{
         caching=""
         # -------------
         if forwarder:
-            forwarder = f"""
+            forwarders = f"""
         // BEGIN forwarders
         forwarders {{
-                  {forwarder};
+            """
+            for ip in forwarder:
+                forwarders+=f"{ip};"
+            forwarders += f"""
         }};
         // END forwarders
             """
         # -------------
         else:
-            forwarder=''
+            forwarders=''
             caching=f"""
         zone "." IN {{
                 type hint;
@@ -341,6 +341,12 @@ host {node}  {{
         managed_keys=''
         if os.path.exists("/trinity/local/var/lib/named/dynamic"):
             managed_keys="managed-keys-directory \"/trinity/local/var/lib/named/dynamic\";"
+        # -------------
+        allow="any;"
+        if network:
+           allow="127.0.0.0/8; "
+           for ip in network:
+               allow+=ip+"; "
 
         config = f"""
 //
@@ -363,7 +369,7 @@ options {{
         secroots-file   "/trinity/local/var/lib/named/data/named.secroots";
         recursing-file  "/trinity/local/var/lib/named/data/named.recursing";*/
         directory       "/var/named";
-        allow-query     {{ any; }};
+        allow-query     {{ {allow} }};
 
         /*
          - If you are building an AUTHORITATIVE DNS server, do NOT enable recursion.
@@ -376,7 +382,7 @@ options {{
            reduce such attack surface
         */
         recursion yes;
-        {forwarder}
+        {forwarders}
 
         dnssec-enable no;
         dnssec-validation no;

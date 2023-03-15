@@ -46,11 +46,14 @@ def boot():
            if 'PORT' in CONSTANT['WEBSERVER']:
                webserverport = CONSTANT['WEBSERVER']['PORT']
 
-        nodes=[]
-        allnodes = Database().get_record(None, 'node')
+        nodes,availnodes=[],[]
+        #allnodes = Database().get_record(None, 'node')
+        allnodes = Database().get_record_leftjoin(['node.name','nodeinterface.macaddress'], ['nodeinterface.nodeid=node.id'], ["nodeinterface.interface='BOOTIF'"])  # BOOTIF is not entirely true but for now it will do. pending
         if allnodes:
             for node in allnodes:
                 nodes.append(node['name'])
+                if not node['macaddress']:
+                    availnodes.append(node['name'])
 
         access_code = 200
     else:
@@ -59,7 +62,7 @@ def boot():
         ipaddress, serverport = '', ''
         access_code = 404
     LOGGER.info(f'Boot API serving the {template}')
-    return render_template(template, LUNA_CONTROLLER=ipaddress, LUNA_API_PORT=serverport, WEBSERVER_PORT=webserverport, NODES=nodes), access_code
+    return render_template(template, LUNA_CONTROLLER=ipaddress, LUNA_API_PORT=serverport, WEBSERVER_PORT=webserverport, NODES=nodes, AVAILABLE_NODES=availnodes), access_code
 
 
 # ################### ---> Experiment to compare the logic
@@ -273,14 +276,40 @@ def boot_manual_hostname(hostname=None, mac=None):
         data['nodeservice'] = node[0]['service']
         data['nodeid'] = node[0]['id']
     if data['nodeid']:
-        nodeinterface_check = Database().get_record_join(['nodeinterface.nodeid','nodeinterface.interface','ipaddress.ipaddress','network.name as network','network.network as networkip','network.subnet'], ['network.id=ipaddress.networkid','ipaddress.tablerefid=nodeinterface.id'],['tableref="nodeinterface"',f'nodeinterface.macaddress="{mac}"'])
-        if not nodeinterface_check: # we check if we already have a node with this config!! we overwrite? i guess not! why? because we hard config ip-s inside the node after boot, as such a node will never update itself. clash danger!
+        we_need_dhcpd_restart=False
+        nodeinterface_check = Database().get_record_join(['nodeinterface.nodeid as nodeid','nodeinterface.interface'], 
+                                                         ['nodeinterface.nodeid=node.id'],
+                                                         [f'nodeinterface.macaddress="{mac}"'])
+        if nodeinterface_check:
+            # this means there is already a node with this mac. let's first check if it's our own.
+            if nodeinterface_check[0]['nodeid'] != data['nodeid']:
+                # we are NOT !!! though we shouldn't, we will remove the other node's MAC and assign this mac to us.
+                # note to other developers: We hard assign a node's IP address (hard config inside image/node) we must be careful - Antoine
+                LOGGER.info(f"Warning: node with id {nodeinterface_check[0]['nodeid']} will have its MAC cleared and node {hostname} with id {data['nodeid']} will use MAC {mac}")
+                row = [{"column": "macaddress", "value": ""}]
+                where = [
+                    {"column": "nodeid", "value": nodeinterface_check[0]['nodeid']},
+                    {"column": "interface", "value": "BOOTIF"}
+                    ]
+                result_if=Database().update('nodeinterface', row, where)
+                row = [{"column": "macaddress", "value": mac}]
+                where = [
+                    {"column": "nodeid", "value": data["nodeid"]},
+                    {"column": "interface", "value": "BOOTIF"}
+                    ]
+                result_if=Database().update('nodeinterface', row, where)
+                we_need_dhcpd_restart=True
+        else:
+            # we do not have anyone with this mac yet. we can safely move ahead.
             row = [{"column": "macaddress", "value": mac}]
             where = [
                 {"column": "nodeid", "value": data["nodeid"]},
                 {"column": "interface", "value": "BOOTIF"}
                 ]
             result_if=Database().update('nodeinterface', row, where)
+            we_need_dhcpd_restart=True
+
+        if we_need_dhcpd_restart is True:
             queue_id = Helper().add_task_to_queue('dhcp:restart','service','__internal__')
             if queue_id:
                 next_id = Helper().next_task_in_queue('service')
@@ -292,7 +321,9 @@ def boot_manual_hostname(hostname=None, mac=None):
             else: # fallback, worst case
                 response, code = Service().luna_service('dhcp', 'restart')
 
-        nodeinterface = Database().get_record_join(['nodeinterface.nodeid','nodeinterface.interface','nodeinterface.macaddress','ipaddress.ipaddress','network.name as network','network.network as networkip','network.subnet'], ['network.id=ipaddress.networkid','ipaddress.tablerefid=nodeinterface.id'],['tableref="nodeinterface"',f"nodeinterface.nodeid='{data['nodeid']}'",f'nodeinterface.macaddress="{mac}"'])
+        nodeinterface = Database().get_record_join(['nodeinterface.nodeid','nodeinterface.interface','nodeinterface.macaddress','ipaddress.ipaddress','network.name as network','network.network as networkip','network.subnet'], 
+                                                   ['network.id=ipaddress.networkid','ipaddress.tablerefid=nodeinterface.id'],
+                                                   ['tableref="nodeinterface"',f"nodeinterface.nodeid='{data['nodeid']}'",f'nodeinterface.macaddress="{mac}"'])
         if nodeinterface:
             data['nodeip'] = f'{nodeinterface[0]["ipaddress"]}/{nodeinterface[0]["subnet"]}'
         else:

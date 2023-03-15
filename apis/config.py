@@ -1220,7 +1220,7 @@ def config_cluster_post():
     else:
         response = {'message': 'Bad Request; Did not received data.'}
         access_code = 400
-    return json.dumps(response), 200
+    return json.dumps(response), access_code
 
 
 ############################# BMC setup configuration #############################

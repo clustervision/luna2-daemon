@@ -46,11 +46,14 @@ def boot():
            if 'PORT' in CONSTANT['WEBSERVER']:
                webserverport = CONSTANT['WEBSERVER']['PORT']
 
-        nodes=[]
-        allnodes = Database().get_record(None, 'node')
+        nodes,availnodes=[],[]
+        #allnodes = Database().get_record(None, 'node')
+        allnodes = Database().get_record_leftjoin(['node.name','nodeinterface.macaddress'], ['nodeinterface.nodeid=node.id'], ["nodeinterface.interface='BOOTIF'"])  # BOOTIF is not entirely true but for now it will do. pending
         if allnodes:
             for node in allnodes:
                 nodes.append(node['name'])
+                if not node['macaddress']:
+                    availnodes.append(node['name'])
 
         access_code = 200
     else:
@@ -59,7 +62,7 @@ def boot():
         ipaddress, serverport = '', ''
         access_code = 404
     LOGGER.info(f'Boot API serving the {template}')
-    return render_template(template, LUNA_CONTROLLER=ipaddress, LUNA_API_PORT=serverport, WEBSERVER_PORT=webserverport, NODES=nodes), access_code
+    return render_template(template, LUNA_CONTROLLER=ipaddress, LUNA_API_PORT=serverport, WEBSERVER_PORT=webserverport, NODES=nodes, AVAILABLE_NODES=availnodes), access_code
 
 
 # ################### ---> Experiment to compare the logic
@@ -273,14 +276,40 @@ def boot_manual_hostname(hostname=None, mac=None):
         data['nodeservice'] = node[0]['service']
         data['nodeid'] = node[0]['id']
     if data['nodeid']:
-        nodeinterface_check = Database().get_record_join(['nodeinterface.nodeid','nodeinterface.interface','ipaddress.ipaddress','network.name as network','network.network as networkip','network.subnet'], ['network.id=ipaddress.networkid','ipaddress.tablerefid=nodeinterface.id'],['tableref="nodeinterface"',f'nodeinterface.macaddress="{mac}"'])
-        if not nodeinterface_check: # we check if we already have a node with this config!! we overwrite? i guess not! why? because we hard config ip-s inside the node after boot, as such a node will never update itself. clash danger!
+        we_need_dhcpd_restart=False
+        nodeinterface_check = Database().get_record_join(['nodeinterface.nodeid as nodeid','nodeinterface.interface'], 
+                                                         ['nodeinterface.nodeid=node.id'],
+                                                         [f'nodeinterface.macaddress="{mac}"'])
+        if nodeinterface_check:
+            # this means there is already a node with this mac. let's first check if it's our own.
+            if nodeinterface_check[0]['nodeid'] != data['nodeid']:
+                # we are NOT !!! though we shouldn't, we will remove the other node's MAC and assign this mac to us.
+                # note to other developers: We hard assign a node's IP address (hard config inside image/node) we must be careful - Antoine
+                LOGGER.info(f"Warning: node with id {nodeinterface_check[0]['nodeid']} will have its MAC cleared and node {hostname} with id {data['nodeid']} will use MAC {mac}")
+                row = [{"column": "macaddress", "value": ""}]
+                where = [
+                    {"column": "nodeid", "value": nodeinterface_check[0]['nodeid']},
+                    {"column": "interface", "value": "BOOTIF"}
+                    ]
+                result_if=Database().update('nodeinterface', row, where)
+                row = [{"column": "macaddress", "value": mac}]
+                where = [
+                    {"column": "nodeid", "value": data["nodeid"]},
+                    {"column": "interface", "value": "BOOTIF"}
+                    ]
+                result_if=Database().update('nodeinterface', row, where)
+                we_need_dhcpd_restart=True
+        else:
+            # we do not have anyone with this mac yet. we can safely move ahead.
             row = [{"column": "macaddress", "value": mac}]
             where = [
                 {"column": "nodeid", "value": data["nodeid"]},
                 {"column": "interface", "value": "BOOTIF"}
                 ]
             result_if=Database().update('nodeinterface', row, where)
+            we_need_dhcpd_restart=True
+
+        if we_need_dhcpd_restart is True:
             queue_id = Helper().add_task_to_queue('dhcp:restart','service','__internal__')
             if queue_id:
                 next_id = Helper().next_task_in_queue('service')
@@ -292,7 +321,9 @@ def boot_manual_hostname(hostname=None, mac=None):
             else: # fallback, worst case
                 response, code = Service().luna_service('dhcp', 'restart')
 
-        nodeinterface = Database().get_record_join(['nodeinterface.nodeid','nodeinterface.interface','nodeinterface.macaddress','ipaddress.ipaddress','network.name as network','network.network as networkip','network.subnet'], ['network.id=ipaddress.networkid','ipaddress.tablerefid=nodeinterface.id'],['tableref="nodeinterface"',f"nodeinterface.nodeid='{data['nodeid']}'",f'nodeinterface.macaddress="{mac}"'])
+        nodeinterface = Database().get_record_join(['nodeinterface.nodeid','nodeinterface.interface','nodeinterface.macaddress','ipaddress.ipaddress','network.name as network','network.network as networkip','network.subnet'], 
+                                                   ['network.id=ipaddress.networkid','ipaddress.tablerefid=nodeinterface.id'],
+                                                   ['tableref="nodeinterface"',f"nodeinterface.nodeid='{data['nodeid']}'",f'nodeinterface.macaddress="{mac}"'])
         if nodeinterface:
             data['nodeip'] = f'{nodeinterface[0]["ipaddress"]}/{nodeinterface[0]["subnet"]}'
         else:
@@ -391,23 +422,57 @@ def boot_install(node=None):
 #        data['nodehostname']        = node_details[0]['hostname']
         data['nodehostname']        = node_details[0]['name'] # + fqdn
         data['nodeid']              = node_details[0]['id']
-        data['setupbmc']            = Helper().bool_revert(node_details[0]['setupbmc'])
-        data['localinstall']        = node_details[0]['localinstall']
-        data['unmanaged_bmc_users'] = node_details[0]['unmanaged_bmc_users']
+#        data['unmanaged_bmc_users'] = node_details[0]['unmanaged_bmc_users']
+#        data['setupbmc']            = Helper().bool_revert(node_details[0]['setupbmc'])
+#        data['localinstall']        = node_details[0]['localinstall']
+#        data['prescript']           = node_details[0]['prescript']
+#        data['partscript']          = node_details[0]['partscript']
+#        data['postscript']          = node_details[0]['postscript']
+#        data['netboot']             = node_details[0]['netboot']
+#        data['bootmenu']            = node_details[0]['bootmenu']
+
+        items={
+           'prescript':'',
+           'partscript':"mount -t tmpfs tmpfs /sysroot",
+           'postscript':"echo 'tmpfs / tmpfs defaults 0 0' >> /sysroot/etc/fstab",
+           'setupbmc':False,
+           'netboot':False,
+           'localinstall':False,
+           'bootmenu':False,
+           'provisioninterface':'BOOTIF',
+           'unmanaged_bmc_users': '' }
+
+        for item in items.keys():
+            data[item] = node_details[0][item]
 
     if data['groupid']:
         group = Database().get_record(None, 'group', f' WHERE id = {data["groupid"]}')
         if group:
-            if data['localinstall'] is None:
-                data['localinstall'] = group[0]['localinstall']
-            if data['unmanaged_bmc_users'] is None:
-                data['unmanaged_bmc_users'] = group[0]['unmanaged_bmc_users']
+            # below section shows what's configured for the node, or the group, or a default fallback
+ 
+            for item in items.keys():
+               if item in data and item in group[0] and group[0][item] and not data[item]:
+                   if isinstance(items[item], bool):
+                       group[0][item] = str(Helper().make_bool(group[0][item]))
+                   data[item] = data[item] or group[0][item] or str(items[item])
+               else:
+                   if isinstance(items[item], bool):
+                       data[item] = str(Helper().make_bool(data[item]))
+                   data[item] = data[item] or str(items[item])
+
+#        if group:
+#            if data['localinstall'] is None:
+#                data['localinstall'] = group[0]['localinstall']
+#            if data['unmanaged_bmc_users'] is None:
+#                data['unmanaged_bmc_users'] = group[0]['unmanaged_bmc_users']
+            
     if data['unmanaged_bmc_users'] is None:
         data['unmanaged_bmc_users'] = ''
-    if data['localinstall'] is None:
-        LOGGER.error('localinstall is not set')
-    else:
-        data['localinstall'] = Helper().bool_revert(data['localinstall'])
+
+#    if data['localinstall'] is None:
+#        LOGGER.error('localinstall is not set')
+#    else:
+#        data['localinstall'] = Helper().bool_revert(data['localinstall'])
     if data['osimageid']:
         osimage = Database().get_record(None, 'osimage', f' WHERE id = {data["osimageid"]}')
         if osimage:
@@ -454,6 +519,9 @@ def boot_install(node=None):
         LUNA_BOOTLOADER         = data['localinstall'],
         LUNA_LOCALINSTALL       = data['localinstall'],
         LUNA_UNMANAGED_BMC_USERS= data['unmanaged_bmc_users'],
-        LUNA_INTERFACES         = data['interfaces']
+        LUNA_INTERFACES         = data['interfaces'],
+        LUNA_PRESCRIPT          = data['prescript'],
+        LUNA_PARTSCRIPT         = data['partscript'],
+        LUNA_POSTSCRIPT         = data['postscript']
     ), access_code
 

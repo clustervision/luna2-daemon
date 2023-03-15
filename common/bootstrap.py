@@ -344,7 +344,9 @@ def bootstrap(bootstrapfile=None):
             {'column': 'bootmenu', 'value': '0'},
             {'column': 'provisionmethod', 'value': 'torrent'},
             {'column': 'provisionfallback', 'value': 'http'},
-            {'column': 'osimageid', 'value': osimage}
+            {'column': 'osimageid', 'value': osimage},
+            {'column': 'partscript', 'value': "mount -t tmpfs tmpfs /sysroot"},
+            {'column': 'postscript', 'value': "echo 'tmpfs / tmpfs defaults 0 0' >> /sysroot/etc/fstab"}
         ]
     Database().insert('group', default_group)
     group = Database().get_record(None, 'group', None)

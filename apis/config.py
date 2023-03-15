@@ -1191,6 +1191,21 @@ def config_cluster_post():
         if clustercheck:
             cluster = Database().get_record(None, 'cluster', None)
             if cluster:
+                if 'ntp_server' in data and data['ntp_server']:
+                    temp=data['ntp_server'];
+                    temp=temp.replace(' ',',')
+                    temp=temp.replace(',,',',')
+                    data['ntp_server']=temp
+                if 'nameserver_ip' in data and data['nameserver_ip']:
+                    temp=data['nameserver_ip'];
+                    temp=temp.replace(' ',',')
+                    temp=temp.replace(',,',',')
+                    data['nameserver_ip']=temp
+                if 'forwardserver_ip' in data and data['forwardserver_ip']:
+                    temp=data['forwardserver_ip'];
+                    temp=temp.replace(' ',',')
+                    temp=temp.replace(',,',',')
+                    data['forwardserver_ip']=temp
                 where = [{"column": "id", "value": cluster[0]['id']}]
                 row = Helper().make_rows(data)
                 Database().update('cluster', row, where)

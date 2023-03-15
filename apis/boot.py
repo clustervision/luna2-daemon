@@ -391,23 +391,57 @@ def boot_install(node=None):
 #        data['nodehostname']        = node_details[0]['hostname']
         data['nodehostname']        = node_details[0]['name'] # + fqdn
         data['nodeid']              = node_details[0]['id']
-        data['setupbmc']            = Helper().bool_revert(node_details[0]['setupbmc'])
-        data['localinstall']        = node_details[0]['localinstall']
-        data['unmanaged_bmc_users'] = node_details[0]['unmanaged_bmc_users']
+#        data['unmanaged_bmc_users'] = node_details[0]['unmanaged_bmc_users']
+#        data['setupbmc']            = Helper().bool_revert(node_details[0]['setupbmc'])
+#        data['localinstall']        = node_details[0]['localinstall']
+#        data['prescript']           = node_details[0]['prescript']
+#        data['partscript']          = node_details[0]['partscript']
+#        data['postscript']          = node_details[0]['postscript']
+#        data['netboot']             = node_details[0]['netboot']
+#        data['bootmenu']            = node_details[0]['bootmenu']
+
+        items={
+           'prescript':'',
+           'partscript':"mount -t tmpfs tmpfs /sysroot",
+           'postscript':"echo 'tmpfs / tmpfs defaults 0 0' >> /sysroot/etc/fstab",
+           'setupbmc':False,
+           'netboot':False,
+           'localinstall':False,
+           'bootmenu':False,
+           'provisioninterface':'BOOTIF',
+           'unmanaged_bmc_users': '' }
+
+        for item in items.keys():
+            data[item] = node_details[0][item]
 
     if data['groupid']:
         group = Database().get_record(None, 'group', f' WHERE id = {data["groupid"]}')
         if group:
-            if data['localinstall'] is None:
-                data['localinstall'] = group[0]['localinstall']
-            if data['unmanaged_bmc_users'] is None:
-                data['unmanaged_bmc_users'] = group[0]['unmanaged_bmc_users']
+            # below section shows what's configured for the node, or the group, or a default fallback
+ 
+            for item in items.keys():
+               if item in data and item in group[0] and group[0][item] and not data[item]:
+                   if isinstance(items[item], bool):
+                       group[0][item] = str(Helper().make_bool(group[0][item]))
+                   data[item] = data[item] or group[0][item] or str(items[item])
+               else:
+                   if isinstance(items[item], bool):
+                       data[item] = str(Helper().make_bool(data[item]))
+                   data[item] = data[item] or str(items[item])
+
+#        if group:
+#            if data['localinstall'] is None:
+#                data['localinstall'] = group[0]['localinstall']
+#            if data['unmanaged_bmc_users'] is None:
+#                data['unmanaged_bmc_users'] = group[0]['unmanaged_bmc_users']
+            
     if data['unmanaged_bmc_users'] is None:
         data['unmanaged_bmc_users'] = ''
-    if data['localinstall'] is None:
-        LOGGER.error('localinstall is not set')
-    else:
-        data['localinstall'] = Helper().bool_revert(data['localinstall'])
+
+#    if data['localinstall'] is None:
+#        LOGGER.error('localinstall is not set')
+#    else:
+#        data['localinstall'] = Helper().bool_revert(data['localinstall'])
     if data['osimageid']:
         osimage = Database().get_record(None, 'osimage', f' WHERE id = {data["osimageid"]}')
         if osimage:
@@ -454,6 +488,9 @@ def boot_install(node=None):
         LUNA_BOOTLOADER         = data['localinstall'],
         LUNA_LOCALINSTALL       = data['localinstall'],
         LUNA_UNMANAGED_BMC_USERS= data['unmanaged_bmc_users'],
-        LUNA_INTERFACES         = data['interfaces']
+        LUNA_INTERFACES         = data['interfaces'],
+        LUNA_PRESCRIPT          = data['prescript'],
+        LUNA_PARTSCRIPT         = data['partscript'],
+        LUNA_POSTSCRIPT         = data['postscript']
     ), access_code
 

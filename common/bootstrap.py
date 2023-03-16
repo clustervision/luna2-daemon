@@ -235,7 +235,8 @@ def bootstrap(bootstrapfile=None):
             {'column': 'provision_method', 'value': 'torrent'},
             {'column': 'provision_fallback', 'value': 'http'},
             {'column': 'security', 'value': '1'},
-            {'column': 'debug', 'value': '0'}
+            {'column': 'debug', 'value': '0'},
+            {'column': 'createnode_ondemand', 'value': '1'}
         ]
     Database().insert('cluster', default_cluster)
     cluster = Database().get_record(None, 'cluster', None)

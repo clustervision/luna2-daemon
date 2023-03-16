@@ -199,14 +199,15 @@ DATABASE_LAYOUT_cluster = [
 {"column": "id",                   "datatype": "INTEGER", "key": "PRIMARY", "keyadd": "AUTOINCREMENT"},
 {"column": "name",                 "datatype": "VARCHAR", "length": "20", "key": "UNIQUE"},
 {"column": "user",                 "datatype": "VARCHAR", "length": "20"},
-{"column": "nameserver_ip",        "datatype": "VARCHAR", "length": "20"},
-{"column": "forwardserver_ip",     "datatype": "VARCHAR", "length": "20"},
-{"column": "ntp_server",           "datatype": "VARCHAR", "length": "20"},
+{"column": "nameserver_ip",        "datatype": "VARCHAR", "length": "200"},
+{"column": "forwardserver_ip",     "datatype": "VARCHAR", "length": "200"},
+{"column": "ntp_server",           "datatype": "VARCHAR", "length": "200"},
 {"column": "technical_contacts",   "datatype": "VARCHAR", "length": "50"},
 {"column": "provision_method",     "datatype": "VARCHAR", "length": "20"},
 {"column": "provision_fallback",   "datatype": "VARCHAR", "length": "20"},
 {"column": "debug",                "datatype": "INTEGER", "length": "10"},
-{"column": "security",             "datatype": "INTEGER", "length": "10"}]
+{"column": "security",             "datatype": "INTEGER", "length": "10"},
+{"column": "createnode_ondemand",  "datatype": "INTEGER", "length": "10"}]
 
 DATABASE_LAYOUT_tracker = [
 {"column": "id",                   "datatype": "INTEGER", "key": "PRIMARY", "keyadd": "AUTOINCREMENT"},

@@ -266,7 +266,9 @@ def boot_manual_group(groupname=None, mac=None):
     #Antoine
     networkname=None # used below
     network=None     # used below
+    createnode_ondemand = True
 
+    # get controller and cluster info
     controller = Database().get_record_join(['controller.*','ipaddress.ipaddress','network.name as networkname'], ['ipaddress.tablerefid=controller.id','network.id=ipaddress.networkid'],['tableref="controller"','controller.hostname="controller"'])
     if controller:
         data['ipaddress'] = controller[0]['ipaddress']
@@ -276,6 +278,9 @@ def boot_manual_group(groupname=None, mac=None):
            if 'PORT' in CONSTANT['WEBSERVER']:
                data['webserverport'] = CONSTANT['WEBSERVER']['PORT']
         networkname=controller[0]['networkname']
+        cluster=Database().get_record(None,'cluster',f" WHERE id='{controller[0]['clusterid']}'")
+        if cluster and 'createnode_ondemand' in cluster[0]:
+            createnode_ondemand=Helper().bool_revert(cluster[0]['createnode_ondemand'])
 
     # clear mac if it already exists. let's check
     nodeinterface_check = Database().get_record_join(['nodeinterface.nodeid as nodeid','nodeinterface.interface'], 
@@ -320,11 +325,10 @@ def boot_manual_group(groupname=None, mac=None):
             for ip in network:
                 ips.append(ip['ipaddress'])
 
-    create_new_node=True # pending. needs to be a flag in cluster config table
     hostname=None # we use it further down below.
     checked=[]
-    if (not list) or (create_new_node is True):
-        # we have no spare or free nodes in here.
+    if (not list) or (createnode_ondemand is True):
+        # we have no spare or free nodes in here -or- we create one on demand.
         newdata={}
         if list2:
             # we fetch the node with highest 'number' - sort

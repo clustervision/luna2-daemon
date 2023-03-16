@@ -1073,15 +1073,15 @@ def config_osimage_pack(name=None):
     #Antoine
     request_id=str(time())+str(randint(1001,9999))+str(getpid())
 
-    queue_id,response = Helper().add_task_to_queue(f'pack_n_tar_osimage:{name}','osimage',request_id)
+    queue_id,queue_response = Helper().add_task_to_queue(f'pack_n_tar_osimage:{name}','osimage',request_id)
     if not queue_id:
         LOGGER.info(f"config_osimage_pack GET cannot get queue_id")
         response= {"message": f'OS image {name} pack queuing failed.'}
         return json.dumps(response), code
  
-    if response != "added": # this means we already have an equal request in the queue
+    if queue_response != "added": # this means we already have an equal request in the queue
         code=200
-        response = {"message": f"osimage pack for {name} already queued", "request_id": response}
+        response = {"message": f"osimage pack for {name} already queued", "request_id": queue_response}
         LOGGER.info(f"my repsonse [{response}]")
         return json.dumps(response), code
 
@@ -1102,7 +1102,7 @@ def config_osimage_pack(name=None):
     if status:
         code=200
         response = {"message": f"osimage pack for {name} queued", "request_id": request_id}
-    LOGGER.info(f"my repsonse [{response}]")
+    LOGGER.info(f"my response [{response}]")
     return json.dumps(response), code
 
 

@@ -53,15 +53,15 @@ def service(name, action):
     #Antoine
     request_id=str(time())+str(randint(1001,9999))+str(getpid())
 
-    queue_id, response = Helper().add_task_to_queue(f'{name}:{action}','service',request_id)
+    queue_id, queue_response = Helper().add_task_to_queue(f'{name}:{action}','service',request_id)
     if not queue_id:
         LOGGER.info(f"service GET cannot get queue_id")
         response= {"message": f'Service {name} {action} queuing failed.'}
         return json.dumps(response), code
 
-    if response != "added": # this means we already have an equal request in the queue
+    if queue_response != "added": # this means we already have an equal request in the queue
         code=200
-        response = {"message": f"service for {name} {action} already queued", "request_id": response}
+        response = {"message": f"service for {name} {action} already queued", "request_id": queue_response}
         LOGGER.info(f"my repsonse [{response}]")
         return json.dumps(response), code
 

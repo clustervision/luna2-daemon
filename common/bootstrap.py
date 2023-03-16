@@ -289,7 +289,8 @@ def bootstrap(bootstrapfile=None):
             controller_ip = [
                 {'column': 'tableref', 'value': 'controller'},
                 {'column': 'tablerefid', 'value': controller_id},
-                {'column': 'ipaddress', 'value': ip}
+                {'column': 'ipaddress', 'value': ip},
+                {'column': 'networkid', 'value': networkid}
             ]
             Database().insert('ipaddress', controller_ip)
     num  = 1
@@ -310,7 +311,8 @@ def bootstrap(bootstrapfile=None):
                 controller_ip = [
                     {'column': 'tableref', 'value': 'controller'},
                     {'column': 'tablerefid', 'value': controller_id},
-                    {'column': 'ipaddress', 'value': ip}
+                    {'column': 'ipaddress', 'value': ip},
+                    {'column': 'networkid', 'value': networkid}
                 ]
                 Database().insert('ipaddress', controller_ip)
             num = num + 1

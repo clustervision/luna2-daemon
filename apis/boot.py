@@ -50,14 +50,20 @@ def boot():
         allnodes = Database().get_record(None, 'node')
         mostnodes = Database().get_record_join(['node.name','nodeinterface.macaddress'], ['nodeinterface.nodeid=node.id'], ["nodeinterface.interface='BOOTIF'"])  # BOOTIF is not entirely true but for now it will do. pending
         allnodes+=mostnodes
-        checked={}
+        checked=[]
         if allnodes:
             for node in allnodes:
                 if node['name'] not in checked:
                     checked.append(node['name'])
                     nodes.append(node['name'])
-                    if not node['macaddress']:
+                    if (not 'macaddress' in node) or (not node['macaddress']):
                         availnodes.append(node['name'])
+
+        groups=[]
+        allgroups=Database().get_record_join(['group.name'], ['osimage.id=group.osimageid'])
+        if allgroups:
+            for group in allgroups:
+                groups.append(group['name'])
 
         access_code = 200
     else:
@@ -66,7 +72,7 @@ def boot():
         ipaddress, serverport = '', ''
         access_code = 404
     LOGGER.info(f'Boot API serving the {template}')
-    return render_template(template, LUNA_CONTROLLER=ipaddress, LUNA_API_PORT=serverport, WEBSERVER_PORT=webserverport, NODES=nodes, AVAILABLE_NODES=availnodes), access_code
+    return render_template(template, LUNA_CONTROLLER=ipaddress, LUNA_API_PORT=serverport, WEBSERVER_PORT=webserverport, NODES=nodes, AVAILABLE_NODES=availnodes, GROUPS=groups), access_code
 
 
 # ################### ---> Experiment to compare the logic
@@ -231,6 +237,7 @@ def boot_search_mac(mac=None):
         NODE_IPADDRESS      = data['nodeip']
     ), access_code
 
+
 @boot_blueprint.route('/boot/manual/group/<string:groupname>/<string:mac>', methods=['GET'])
 def boot_manual_group(groupname=None, mac=None):
     """
@@ -264,10 +271,10 @@ def boot_manual_group(groupname=None, mac=None):
         data['ipaddress'] = controller[0]['ipaddress']
         data['serverport'] = controller[0]['serverport']
         data['webserverport'] = data['serverport']
-        networkname=controller[0]['networkname']
         if 'WEBSERVER' in CONSTANT.keys():
            if 'PORT' in CONSTANT['WEBSERVER']:
                data['webserverport'] = CONSTANT['WEBSERVER']['PORT']
+        networkname=controller[0]['networkname']
 
     list1=Database().get_record_join(['node.*','group.name as groupname','nodeinterface.interface','nodeinterface.macaddress'],['nodeinterface.nodeid=node.id','group.id=node.groupid'])
     list2=Database().get_record_join(['node.*','group.name as groupname'],['group.id=node.groupid'])
@@ -281,7 +288,7 @@ def boot_manual_group(groupname=None, mac=None):
                 ips.append(ip['ipaddress'])
 
     hostname=None # we use it further down below.
-    checked={}
+    checked=[]
     if not list:
         # we have no spare or free nodes in here.
         pass
@@ -329,7 +336,7 @@ def boot_manual_group(groupname=None, mac=None):
             if nodeinterface_check[0]['nodeid'] != data['nodeid']:
                 # we are NOT !!! though we shouldn't, we will remove the other node's MAC and assign this mac to us.
                 # note to other developers: We hard assign a node's IP address (hard config inside image/node) we must be careful - Antoine
-                LOGGER.info(f"Warning: node with id {nodeinterface_check[0]['nodeid']} will have its MAC cleared and node {hostname} with id {data['nodeid']} will use MAC {mac}")
+                LOGGER.warning(f"node with id {nodeinterface_check[0]['nodeid']} will have its MAC cleared and node {hostname} with id {data['nodeid']} will use MAC {mac}")
                 row = [{"column": "macaddress", "value": ""}]
                 where = [
                     {"column": "nodeid", "value": nodeinterface_check[0]['nodeid']},

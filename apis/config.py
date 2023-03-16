@@ -314,11 +314,14 @@ def config_node_post(name=None):
                         if 'network' in interface.keys():
                             network=interface['network']
                         result,mesg = Config().node_interface_ipaddress_config(nodeid,interface_name,ipaddress,network)
-
+                        
                     if result is False:
                         response = {'message': f"{mesg}"}
                         access_code = 500
                         return json.dumps(response), access_code
+                    else:
+                        Service().queue('dhcp','restart')
+                        Service().queue('dns','restart')
 
         else:
             response = {'message': 'Bad Request; Columns are incorrect.'}

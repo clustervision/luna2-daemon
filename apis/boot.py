@@ -367,12 +367,13 @@ def boot_manual_group(groupname=None, mac=None):
 
         if nodeid:
             hostname=newdata['name']
-
             # we need to pick the currect network in a smart way. we assume the default network, the network where controller is in.
             avail_ip=Helper().get_available_ip(network[0]['network'],network[0]['subnet'],ips)
             result,mesg = Config().node_interface_config(nodeid,provisioninterface,mac)
             if result:
                 result,mesg = Config().node_interface_ipaddress_config(nodeid,provisioninterface,avail_ip,networkname)
+            Service().queue('dns','restart')
+
     else:
         # we already have some nodes in the list. let's see if we can re-use
         for node in list:
@@ -413,16 +414,7 @@ def boot_manual_group(groupname=None, mac=None):
 
     if data['nodeid']:
 
-        queue_id = Helper().add_task_to_queue('dhcp:restart','service','__internal__')
-        if queue_id:
-            next_id = Helper().next_task_in_queue('service')
-            if queue_id == next_id:
-                executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
-                executor.submit(Service().service_mother,'dhcp','restart','__internal__')
-                executor.shutdown(wait=False)
-                #Service().service_mother('dhcp','restart','__internal__')
-        else: # fallback, worst case
-            response, code = Service().luna_service('dhcp', 'restart')
+        Service().queue('dhcp','restart')
 
         nodeinterface = Database().get_record_join(['nodeinterface.nodeid','nodeinterface.interface','nodeinterface.macaddress','ipaddress.ipaddress','network.name as network','network.network as networkip','network.subnet'], 
                                                    ['network.id=ipaddress.networkid','ipaddress.tablerefid=nodeinterface.id'],
@@ -554,16 +546,7 @@ def boot_manual_hostname(hostname=None, mac=None):
             we_need_dhcpd_restart=True
 
         if we_need_dhcpd_restart is True:
-            queue_id = Helper().add_task_to_queue('dhcp:restart','service','__internal__')
-            if queue_id:
-                next_id = Helper().next_task_in_queue('service')
-                if queue_id == next_id:
-                    executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
-                    executor.submit(Service().service_mother,'dhcp','restart','__internal__')
-                    executor.shutdown(wait=False)
-                    #Service().service_mother('dhcp','restart','__internal__')
-            else: # fallback, worst case
-                response, code = Service().luna_service('dhcp', 'restart')
+            Service().queue('dhcp','restart')
 
         nodeinterface = Database().get_record_join(['nodeinterface.nodeid','nodeinterface.interface','nodeinterface.macaddress','ipaddress.ipaddress','network.name as network','network.network as networkip','network.subnet'], 
                                                    ['network.id=ipaddress.networkid','ipaddress.tablerefid=nodeinterface.id'],

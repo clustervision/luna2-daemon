@@ -19,6 +19,7 @@ from utils.log import Log
 from utils.config import Config
 from common.constant import CONSTANT
 from utils.status import Status
+import concurrent.futures
 
 class Service(object):
     """
@@ -46,8 +47,9 @@ class Service(object):
             name = CONSTANT['SERVICES']['DHCP']
         if "dns" == name:
             name = CONSTANT['SERVICES']['DNS']
+        
         match name:
-            case self.dhcp | self.dns | 'luna2':
+            case self.dhcp:
                 match action:
                     case 'start' | 'stop' | 'reload' | 'restart':
                         command = f'{CONSTANT["SERVICES"]["COMMAND"]} {action} {name}'
@@ -59,7 +61,20 @@ class Service(object):
                         else:
                             response = f'{name} service file have errors.'
                             code = 500
+                    case 'status':
+                        command = f'{CONSTANT["SERVICES"]["COMMAND"]} {action} {name}'
+                        output = Helper().runcommand(command)
+                        response, code = self.service_status(name, action, output)
+                    case _:
+                        self.logger.error(f'Service Action {name} Is Not Recognized')
+                        response = {'error': f'Service Action {action} Is Not Recognized.'}
+                        code = 404
+            case self.dns:
+                match action:
+                    case 'start' | 'stop' | 'reload' | 'restart':
+                        command = f'{CONSTANT["SERVICES"]["COMMAND"]} {action} {name}'
                         check_dns = Config().dns_configure()
+                        self.logger.info(f"---> inside service {name}: {check_dns}")
                         if check_dns:
                             output = Helper().runcommand(command)
                             response, code = self.service_status(name, action, output)
@@ -70,6 +85,18 @@ class Service(object):
                         command = f'{CONSTANT["SERVICES"]["COMMAND"]} {action} {name}'
                         output = Helper().runcommand(command)
                         response, code = self.service_status(name, action, output)
+                    case _:
+                        self.logger.error(f'Service Action {name} Is Not Recognized')
+                        response = {'error': f'Service Action {action} Is Not Recognized.'}
+                        code = 404
+            case 'luna2':
+                match action:
+                    case 'start' | 'stop' | 'reload' | 'restart':
+                        response = {'info': 'not implemented'}
+                        code = 204
+                    case 'status':
+                        response = {'info': 'not implemented'}
+                        code = 204
                     case _:
                         self.logger.error(f'Service Action {name} Is Not Recognized')
                         response = {'error': f'Service Action {action} Is Not Recognized.'}
@@ -187,5 +214,14 @@ class Service(object):
             self.logger.error(f"service_mother has problems: {exp}")
 
 
-
+    def queue(self,service,action):
+        queue_id = Helper().add_task_to_queue(f'{service}:{action}','service','__internal__')
+        if queue_id:
+            next_id = Helper().next_task_in_queue('service')
+            if queue_id == next_id:
+                executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
+                executor.submit(self.service_mother,service,action,'__internal__')
+                executor.shutdown(wait=False)
+        else: # fallback, worst case
+            response, code = self.luna_service(service, action)
 

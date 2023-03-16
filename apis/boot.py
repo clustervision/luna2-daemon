@@ -22,6 +22,7 @@ from common.constant import CONSTANT
 import jinja2
 from utils.service import Service
 import concurrent.futures
+from utils.config import Config
 
 LOGGER = Log.get_logger()
 boot_blueprint = Blueprint('boot', __name__, template_folder='../templates')
@@ -47,13 +48,23 @@ def boot():
                webserverport = CONSTANT['WEBSERVER']['PORT']
 
         nodes,availnodes=[],[]
-        #allnodes = Database().get_record(None, 'node')
-        allnodes = Database().get_record_leftjoin(['node.name','nodeinterface.macaddress'], ['nodeinterface.nodeid=node.id'], ["nodeinterface.interface='BOOTIF'"])  # BOOTIF is not entirely true but for now it will do. pending
+        allnodes = Database().get_record(None, 'node')
+        mostnodes = Database().get_record_join(['node.name','nodeinterface.macaddress'], ['nodeinterface.nodeid=node.id'], ["nodeinterface.interface='BOOTIF'"])  # BOOTIF is not entirely true but for now it will do. pending
+        allnodes=mostnodes+allnodes
+        checked=[]
         if allnodes:
             for node in allnodes:
-                nodes.append(node['name'])
-                if not node['macaddress']:
-                    availnodes.append(node['name'])
+                if node['name'] not in checked:
+                    checked.append(node['name'])
+                    nodes.append(node['name'])
+                    if (not 'macaddress' in node) or (not node['macaddress']):
+                        availnodes.append(node['name'])
+
+        groups=[]
+        allgroups=Database().get_record_join(['group.name'], ['osimage.id=group.osimageid'])
+        if allgroups:
+            for group in allgroups:
+                groups.append(group['name'])
 
         access_code = 200
     else:
@@ -62,7 +73,7 @@ def boot():
         ipaddress, serverport = '', ''
         access_code = 404
     LOGGER.info(f'Boot API serving the {template}')
-    return render_template(template, LUNA_CONTROLLER=ipaddress, LUNA_API_PORT=serverport, WEBSERVER_PORT=webserverport, NODES=nodes, AVAILABLE_NODES=availnodes), access_code
+    return render_template(template, LUNA_CONTROLLER=ipaddress, LUNA_API_PORT=serverport, WEBSERVER_PORT=webserverport, NODES=nodes, AVAILABLE_NODES=availnodes, GROUPS=groups), access_code
 
 
 # ################### ---> Experiment to compare the logic
@@ -200,9 +211,6 @@ def boot_search_mac(mac=None):
             elif ('kernelversion' in osimage[0]) and (osimage[0]['kernelversion']):
                 data['initrdfile'] = f"{osimage[0]['name']}-initramfs-{osimage[0]['kernelversion']}"
             
-#            data['initrdfile'] = osimage[0]['initrdfile']
-#            data['kernelfile'] = osimage[0]['kernelfile']
-
     if None not in data.values():
         access_code = 200
         Helper().update_nodestate(data["nodeid"], "installer.discovery")
@@ -223,6 +231,234 @@ def boot_search_mac(mac=None):
         WEBSERVER_PORT      = data['webserverport'],
         NODE_MAC_ADDRESS    = mac,
         OSIMAGE_INITRDFILE  = data['initrdfile'],
+        OSIMAGE_KERNELFILE  = data['kernelfile'],
+        NODE_NAME           = data['nodename'],
+        NODE_HOSTNAME       = data['nodehostname'],
+        NODE_SERVICE        = data['nodeservice'],
+        NODE_IPADDRESS      = data['nodeip']
+    ), access_code
+
+
+@boot_blueprint.route('/boot/manual/group/<string:groupname>/<string:mac>', methods=['GET'])
+def boot_manual_group(groupname=None, mac=None):
+    """
+    Input - Group
+    Process - pick first available node in the choosen group, or create one if there is none available.
+    Output - iPXE Template
+    """
+
+    template = 'templ_nodeboot.cfg'
+    data = {
+        'nodeid'        : None,
+        'osimageid'     : None,
+        'ipaddress'     : None,
+        'serverport'    : None,
+        'initrdfile'    : None,
+        'kernelfile'    : None,
+        'nodename'      : None,
+        'nodehostname'  : None,
+        'nodeservice'   : None,
+        'nodeip'        : None
+    }
+    check_template = Helper().checkjinja(f'{CONSTANT["TEMPLATES"]["TEMPLATES_DIR"]}/{template}')
+    if not check_template:
+        abort(404, 'Empty')
+    #Antoine
+    networkname=None # used below
+    network=None     # used below
+    createnode_ondemand = True
+
+    # get controller and cluster info
+    controller = Database().get_record_join(['controller.*','ipaddress.ipaddress','network.name as networkname'], ['ipaddress.tablerefid=controller.id','network.id=ipaddress.networkid'],['tableref="controller"','controller.hostname="controller"'])
+    if controller:
+        data['ipaddress'] = controller[0]['ipaddress']
+        data['serverport'] = controller[0]['serverport']
+        data['webserverport'] = data['serverport']
+        if 'WEBSERVER' in CONSTANT.keys():
+           if 'PORT' in CONSTANT['WEBSERVER']:
+               data['webserverport'] = CONSTANT['WEBSERVER']['PORT']
+        networkname=controller[0]['networkname']
+        cluster=Database().get_record(None,'cluster',f" WHERE id='{controller[0]['clusterid']}'")
+        if cluster and 'createnode_ondemand' in cluster[0]:
+            createnode_ondemand=Helper().bool_revert(cluster[0]['createnode_ondemand'])
+
+    # clear mac if it already exists. let's check
+    nodeinterface_check = Database().get_record_join(['nodeinterface.nodeid as nodeid','nodeinterface.interface'], 
+                                                     ['nodeinterface.nodeid=node.id'],
+                                                     [f'nodeinterface.macaddress="{mac}"'])
+    if nodeinterface_check:
+        # this means there is already a node with this mac.
+        # though we shouldn't, we will remove the other node's MAC so we can proceed
+        LOGGER.warning(f"node with id {nodeinterface_check[0]['nodeid']} will have its MAC cleared and this <to be declared>-node  will use MAC {mac}")
+        row = [{"column": "macaddress", "value": ""}]
+        where = [{"column": "macaddress", "value": mac}]
+        result_if=Database().update('nodeinterface', row, where)
+
+    # then we fetch a list of all nodes that we have, with or without interface config
+    list1=Database().get_record_join(['node.*','group.name as groupname','group.provisioninterface','nodeinterface.interface','nodeinterface.macaddress'],['nodeinterface.nodeid=node.id','group.id=node.groupid'])
+    list2=Database().get_record_join(['node.*','group.name as groupname'],['group.id=node.groupid'])
+    list=list1+list2
+
+    # general group info and details. needed below
+    groupdetails=Database().get_record(None,'group',f" WHERE name='{groupname}'")
+    provisioninterface='BOOTIF'
+    if groupdetails and 'provisioninterface' in groupdetails[0] and groupdetails[0]['provisioninterface']:
+        provisioninterface=str(groupdetails[0]['provisioninterface'])
+
+    # things we have to set if we 'clone' or create a node
+    items={
+       'prescript':'',
+       'partscript':'',
+       'postscript':'',
+       'setupbmc':False,
+       'netboot':False,
+       'localinstall':False,
+       'bootmenu':False,
+       'service':False,
+       'provisioninterface':'BOOTIF'}
+
+    # first we generate a list of taken ips. we might need it later
+    ips=[]
+    if networkname:
+        network = Database().get_record_join(['ipaddress.ipaddress','network.network','network.subnet'], ['network.id=ipaddress.networkid'], [f"network.name='{networkname}'"])
+        if network:
+            for ip in network:
+                ips.append(ip['ipaddress'])
+
+    hostname=None # we use it further down below.
+    checked=[]
+    if (not list) or (createnode_ondemand is True):
+        # we have no spare or free nodes in here -or- we create one on demand.
+        newdata={}
+        if list2:
+            # we fetch the node with highest 'number' - sort
+            names=[]
+            for node in list2:
+                names.append(node['name'])
+            names.sort(reverse=True)
+         
+            example_node=names[0]
+            ename=example_node.rstrip('0123456789')  # this assumes a convention like <name><number> as node name
+            enumber=example_node[len(ename):]
+            if ename and enumber:
+                newenumber=str(int(enumber)+1)
+                newenumber=newenumber.zfill(len(enumber))
+                newdata['name'] = f"{ename}{newenumber}"
+            elif ename:
+                newenumber='001'
+                newdata['name'] = f"{ename}{newenumber}"
+            else:  # we have to create a name ourselves
+                newdata['name'] = f"{groupname}001"
+        else: # we have to create a name ourselves
+            newdata['name'] = f"{groupname}001"
+
+        LOGGER.info(f"Group boot intelligence: we came up with the following node name: [{newdata['name']}]")
+
+        if groupdetails:
+            newdata['groupid']=groupdetails[0]['id']
+
+        for item in items:
+            if list2 and item in list2[0] and list2[0][item]:  # we copy from another node. not sure if this is really correct. pending
+                newdata[item] = list2[0][item]
+            else:
+                newdata[item] = items[item]
+        row = Helper().make_rows(newdata)
+        nodeid = Database().insert('node', row)
+
+        if nodeid:
+            hostname=newdata['name']
+            # we need to pick the currect network in a smart way. we assume the default network, the network where controller is in.
+            avail_ip=Helper().get_available_ip(network[0]['network'],network[0]['subnet'],ips)
+            result,mesg = Config().node_interface_config(nodeid,provisioninterface,mac)
+            if result:
+                result,mesg = Config().node_interface_ipaddress_config(nodeid,provisioninterface,avail_ip,networkname)
+            Service().queue('dns','restart')
+
+    else:
+        # we already have some nodes in the list. let's see if we can re-use
+        for node in list:
+            if node['name'] not in checked:
+                checked.append(node['name'])
+                if 'interface' in node and 'macaddress' in node and not node['macaddress']:
+                    # mac is empty. candidate!
+                    hostname=node['name']
+                    result,mesg = Config().node_interface_config(node['id'],provisioninterface,mac)
+                    break
+                elif not 'interface' in node:
+                    # node is there but no interface. we'll take it!
+                    hostname=node['name']
+                    # we need to pick the currect network in a smart way. we assume the default network where controller is in as well
+                    avail_ip=Helper().get_available_ip(network[0]['network'],network[0]['subnet'],ips)
+                    result,mesg = Config().node_interface_config(node['id'],provisioninterface,mac)
+                    if result:
+                        result,mesg = Config().node_interface_ipaddress_config(node['id'],provisioninterface,avail_ip,networkname)
+                    break
+
+    if not hostname:
+        # we bail out because we could not re-use a node or create one. something above did not work out.
+        environment = jinja2.Environment()
+        template = environment.from_string('No Node is available for this group.')
+        access_code = 404
+        return template,access_code
+
+    # below here is almost identical to a manual node selection boot -------------------------------------------
+
+    node = Database().get_record_join(['node.*','group.osimageid as grouposimageid'],['group.id=node.groupid'],[f'node.name="{hostname}"'])
+    if node:
+        data['osimageid'] = node[0]['osimageid'] or node[0]['grouposimageid']
+        data['nodename'] = node[0]['name']
+#        data['nodehostname'] = node[0]['hostname']
+        data['nodehostname'] = node[0]['name'] # + fqdn ?
+        data['nodeservice'] = node[0]['service']
+        data['nodeid'] = node[0]['id']
+
+    if data['nodeid']:
+
+        Service().queue('dhcp','restart')
+
+        nodeinterface = Database().get_record_join(['nodeinterface.nodeid','nodeinterface.interface','nodeinterface.macaddress','ipaddress.ipaddress','network.name as network','network.network as networkip','network.subnet'], 
+                                                   ['network.id=ipaddress.networkid','ipaddress.tablerefid=nodeinterface.id'],
+                                                   ['tableref="nodeinterface"',f"nodeinterface.nodeid='{data['nodeid']}'",f'nodeinterface.macaddress="{mac}"'])
+        if nodeinterface:
+            data['nodeip'] = f'{nodeinterface[0]["ipaddress"]}/{nodeinterface[0]["subnet"]}'
+        else:
+            #uh oh... no bootif??
+            data['nodeip'] = None
+
+    if data['osimageid']:
+        osimage = Database().get_record(None, 'osimage', f' WHERE id = {data["osimageid"]}')
+        if osimage:
+            if ('kernelfile' in osimage[0]) and (osimage[0]['kernelfile']):
+                data['kernelfile'] = f"{osimage[0]['name']}-{osimage[0]['kernelfile']}"
+            elif ('kernelversion' in osimage[0]) and (osimage[0]['kernelversion']):
+                data['kernelfile'] = f"{osimage[0]['name']}-vmlinuz-{osimage[0]['kernelversion']}"  # RHEL convention. needs revision to allow for distribution switch. pending
+
+            if ('initrdfile' in osimage[0]) and (osimage[0]['initrdfile']):
+                data['initrdfile'] = f"{osimage[0]['name']}-{osimage[0]['initrdfile']}"
+            elif ('kernelversion' in osimage[0]) and (osimage[0]['kernelversion']):
+                data['initrdfile'] = f"{osimage[0]['name']}-initramfs-{osimage[0]['kernelversion']}"
+
+    LOGGER.info(f"manual group boot template data: [{data}]")
+
+    if None not in data.values():
+        access_code = 200
+        Helper().update_nodestate(data["nodeid"], "installer.discovery")
+        # reintroduced below section as if we serve files through e.g. nginx, we won't update anything
+        row = [{"column": "status", "value": "installer.discovery"}]
+        where = [{"column": "id", "value": data['nodeid']}]
+        Database().update('node', row, where)
+    else:
+        environment = jinja2.Environment()
+        template = environment.from_string('No Node is available for this mac address.')
+        access_code = 404
+    LOGGER.info(f'Boot API serving the {template}')
+    return render_template(
+        template,
+        LUNA_CONTROLLER     = data['ipaddress'],
+        LUNA_API_PORT       = data['serverport'],
+        WEBSERVER_PORT      = data['webserverport'],
+        NODE_MAC_ADDRESS    = mac,
+        OSIMAGE_INITRDFILE   = data['initrdfile'],
         OSIMAGE_KERNELFILE  = data['kernelfile'],
         NODE_NAME           = data['nodename'],
         NODE_HOSTNAME       = data['nodehostname'],
@@ -289,7 +525,7 @@ def boot_manual_hostname(hostname=None, mac=None):
                 row = [{"column": "macaddress", "value": ""}]
                 where = [
                     {"column": "nodeid", "value": nodeinterface_check[0]['nodeid']},
-                    {"column": "interface", "value": "BOOTIF"}
+                    {"column": "interface", "value": nodeinterface_check[0]['interface']}
                     ]
                 result_if=Database().update('nodeinterface', row, where)
                 row = [{"column": "macaddress", "value": mac}]
@@ -310,16 +546,7 @@ def boot_manual_hostname(hostname=None, mac=None):
             we_need_dhcpd_restart=True
 
         if we_need_dhcpd_restart is True:
-            queue_id = Helper().add_task_to_queue('dhcp:restart','service','__internal__')
-            if queue_id:
-                next_id = Helper().next_task_in_queue('service')
-                if queue_id == next_id:
-                    executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
-                    executor.submit(Service().service_mother,'dhcp','restart','__internal__')
-                    executor.shutdown(wait=False)
-                    #Service().service_mother('dhcp','restart','__internal__')
-            else: # fallback, worst case
-                response, code = Service().luna_service('dhcp', 'restart')
+            Service().queue('dhcp','restart')
 
         nodeinterface = Database().get_record_join(['nodeinterface.nodeid','nodeinterface.interface','nodeinterface.macaddress','ipaddress.ipaddress','network.name as network','network.network as networkip','network.subnet'], 
                                                    ['network.id=ipaddress.networkid','ipaddress.tablerefid=nodeinterface.id'],
@@ -328,7 +555,7 @@ def boot_manual_hostname(hostname=None, mac=None):
             data['nodeip'] = f'{nodeinterface[0]["ipaddress"]}/{nodeinterface[0]["subnet"]}'
         else:
             #uh oh... no bootif??
-            data['nodeip'] = ''
+            data['nodeip'] = None
 
     if data['osimageid']:
         osimage = Database().get_record(None, 'osimage', f' WHERE id = {data["osimageid"]}')
@@ -343,7 +570,7 @@ def boot_manual_hostname(hostname=None, mac=None):
             elif ('kernelversion' in osimage[0]) and (osimage[0]['kernelversion']):
                 data['initrdfile'] = f"{osimage[0]['name']}-initramfs-{osimage[0]['kernelversion']}"
 
-    LOGGER.info(f"manual boot template data: [{data}]")
+    LOGGER.info(f"manual node boot template data: [{data}]")
 
     if None not in data.values():
         access_code = 200

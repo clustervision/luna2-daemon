@@ -551,7 +551,7 @@ $TTL 604800
             my_interface['interface']=interface_name
             my_interface['nodeid']=nodeid                
             if macaddress is not None:
-                my_interface['macaddress']=interface['macaddress'] 
+                my_interface['macaddress']=macaddress 
             row = Helper().make_rows(my_interface)
             result_if = Database().insert('nodeinterface', row)
 

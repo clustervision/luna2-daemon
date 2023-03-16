@@ -235,7 +235,8 @@ def bootstrap(bootstrapfile=None):
             {'column': 'provision_method', 'value': 'torrent'},
             {'column': 'provision_fallback', 'value': 'http'},
             {'column': 'security', 'value': '1'},
-            {'column': 'debug', 'value': '0'}
+            {'column': 'debug', 'value': '0'},
+            {'column': 'createnode_ondemand', 'value': '1'}
         ]
     Database().insert('cluster', default_cluster)
     cluster = Database().get_record(None, 'cluster', None)
@@ -289,7 +290,8 @@ def bootstrap(bootstrapfile=None):
             controller_ip = [
                 {'column': 'tableref', 'value': 'controller'},
                 {'column': 'tablerefid', 'value': controller_id},
-                {'column': 'ipaddress', 'value': ip}
+                {'column': 'ipaddress', 'value': ip},
+                {'column': 'networkid', 'value': networkid}
             ]
             Database().insert('ipaddress', controller_ip)
     num  = 1
@@ -310,7 +312,8 @@ def bootstrap(bootstrapfile=None):
                 controller_ip = [
                     {'column': 'tableref', 'value': 'controller'},
                     {'column': 'tablerefid', 'value': controller_id},
-                    {'column': 'ipaddress', 'value': ip}
+                    {'column': 'ipaddress', 'value': ip},
+                    {'column': 'networkid', 'value': networkid}
                 ]
                 Database().insert('ipaddress', controller_ip)
             num = num + 1

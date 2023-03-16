@@ -21,6 +21,7 @@ from flask import Flask, abort, json, Response, request
 from common.constant import LOGGER
 from common.bootstrap import validatebootstrap
 from utils.status import Status
+from utils.service import Service
 import concurrent.futures
 from threading import Event
 from apis.auth import auth_blueprint
@@ -42,6 +43,9 @@ def on_starting(server):
     result=validatebootstrap()
     if result is False:
         exit(1)
+    # we generate initial dhcpd and dns configs
+    Service().luna_service('dhcp', 'restart')
+    Service().luna_service('dns', 'restart')
     # --------------- status message cleanup thread ----------------
     executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
     executor.submit(Status().cleanup_mother,event)

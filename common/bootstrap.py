@@ -229,6 +229,10 @@ def bootstrap(bootstrapfile=None):
     getconfig(bootstrapfile)
     LOGGER.info('###################### Bootstrap Start ######################')
     create_database_tables()
+
+    defaultserver_ip=None
+    if 'CONTROLLER' in BOOTSTRAP['HOSTS'].keys():  # the virtual host+ip
+        defaultserver_ip=BOOTSTRAP['HOSTS']['CONTROLLER']['IP']
     default_cluster = [
             {'column': 'name', 'value': 'mycluster'},
             {'column': 'technical_contacts', 'value': 'root@localhost'},
@@ -236,7 +240,9 @@ def bootstrap(bootstrapfile=None):
             {'column': 'provision_fallback', 'value': 'http'},
             {'column': 'security', 'value': '1'},
             {'column': 'debug', 'value': '0'},
-            {'column': 'createnode_ondemand', 'value': '1'}
+            {'column': 'createnode_ondemand', 'value': '1'},
+            {'column': 'nameserver_ip', 'value': defaultserver_ip},
+            {'column': 'ntp_server', 'value': defaultserver_ip}
         ]
     Database().insert('cluster', default_cluster)
     cluster = Database().get_record(None, 'cluster', None)
@@ -257,9 +263,7 @@ def bootstrap(bootstrapfile=None):
                 {'column': 'dhcp', 'value': dhcp},
                 {'column': 'dhcp_range_begin', 'value': dhcp_range_begin},
                 {'column': 'dhcp_range_end', 'value': dhcp_range_end},
-                {'column': 'nameserver_ip', 'value': BOOTSTRAP['HOSTS']['CONTROLLER']['IP']},
-                {'column': 'gateway', 'value': BOOTSTRAP['HOSTS']['CONTROLLER']['IP']},
-                {'column': 'ntp_server', 'value': BOOTSTRAP['HOSTS']['CONTROLLER']['IP']}
+                {'column': 'gateway', 'value': defaultserver_ip}
             ]
         Database().insert('network', default_network)
     network = Database().get_record(None, 'network', None)

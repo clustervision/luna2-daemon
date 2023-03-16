@@ -53,12 +53,18 @@ def service(name, action):
     #Antoine
     request_id=str(time())+str(randint(1001,9999))+str(getpid())
 
-    queue_id = Helper().add_task_to_queue(f'{name}:{action}','service',request_id)
+    queue_id, response = Helper().add_task_to_queue(f'{name}:{action}','service',request_id)
     if not queue_id:
         LOGGER.info(f"service GET cannot get queue_id")
         response= {"message": f'Service {name} {action} queuing failed.'}
         return json.dumps(response), code
- 
+
+    if response != "added": # this means we already have an equal request in the queue
+        code=200
+        response = {"message": f"service for {name} {action} already queued", "request_id": response}
+        LOGGER.info(f"my repsonse [{response}]")
+        return json.dumps(response), code
+
     LOGGER.info(f"service GET added task to queue: {queue_id}")
     Status().add_message(request_id,"luna",f"queued service {name} {action} with queue_id {queue_id}")
 
@@ -80,23 +86,6 @@ def service(name, action):
     LOGGER.info(f"my repsonse [{response}]")
     return json.dumps(response), code
 
-#    current_time = round(time.time())
-#    current_minute = {"name": name, "action": action, "time": current_time}
-#    last_minute = {"name": name, "action": action, "time": current_time-1}
-#    if  current_minute in APIQueue.queue or last_minute in APIQueue.queue:
-#        APIQueue.get() ## Get the Last same Element from Queue
-#        APIQueue.empty() ## Deque the same element from the Queue
-#        LOGGER.warning(f'Service {name} is already {action}.')
-#        response = f'Service {name} is already {action}.'
-#        code = 204
-#    else:
-#        ## Enque the fresh request to the Queue.
-#        APIQueue.put({"name": name, "action": action, "time": current_time})
-#        response, code = Service().luna_service(name, action)
-#        ## Cool Down to Manage the Service itself.
-#        time.sleep(CONSTANT['SERVICES']['COOLDOWN'])
-#        LOGGER.info(response)
-#    return json.dumps(response), code
 
 @service_blueprint.route('/service/status/<string:request_id>', methods=['GET'])
 def service_status(request_id=None):

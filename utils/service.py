@@ -169,7 +169,7 @@ class Service(object):
         self.logger.info(f"service_mother called")
         try:
 #            # Below section is already done in config/pack GET call but kept here in case we want to move it back
-#            queue_id = Helper().add_task_to_queue(f'{service}:{action}','service',request_id)
+#            queue_id,response = Helper().add_task_to_queue(f'{service}:{action}','service',request_id)
 #            if not queue_id:
 #                self.logger.info(f"service_mother cannot get queue_id")
 #                Status().add_message(request_id,"luna",f"error queuing my task")
@@ -215,7 +215,7 @@ class Service(object):
 
 
     def queue(self,service,action):
-        queue_id = Helper().add_task_to_queue(f'{service}:{action}','service','__internal__')
+        queue_id,response = Helper().add_task_to_queue(f'{service}:{action}','service','__internal__')
         if queue_id:
             next_id = Helper().next_task_in_queue('service')
             if queue_id == next_id:

@@ -1223,6 +1223,7 @@ def config_cluster_post():
                 where = [{"column": "id", "value": cluster[0]['id']}]
                 row = Helper().make_rows(data)
                 Database().update('cluster', row, where)
+                Service().queue('dns','restart')
                 response = {'message': 'Cluster updated.'}
                 access_code = 204
             else:

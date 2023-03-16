@@ -283,6 +283,18 @@ def boot_manual_group(groupname=None, mac=None):
 
     groupdetails=Database().get_record(None,'group',f" WHERE name='{groupname}'")
 
+    # things we have to set if we 'clone' or create a node
+    items={
+       'prescript':'',
+       'partscript':'',
+       'postscript':'',
+       'setupbmc':False,
+       'netboot':False,
+       'localinstall':False,
+       'bootmenu':False,
+       'service':False,
+       'provisioninterface':'BOOTIF'}
+
     # first we generate a list of taken ips. we might need it later
     ips=[]
     if networkname:
@@ -318,13 +330,8 @@ def boot_manual_group(groupname=None, mac=None):
             example_node=names[0]
             ename=example_node.rstrip('0123456789')  # this assumes a convention like <name><number> as node name
             enumber=example_node[len(ename):]
-#            match = re.match(r"([a-z\_\-]+)([0-9]+)", example_name, re.I)
-#            if match:
-#                items = match.groups()
-#                print(items)
             if ename and enumber:
                 newenumber=str(int(enumber)+1)
-#                newenumber=f'{newenumber:0>len(enumber)}'
                 newenumber=newenumber.zfill(len(enumber))
                 newdata['name'] = f"{ename}{newenumber}"
             elif ename:
@@ -340,7 +347,11 @@ def boot_manual_group(groupname=None, mac=None):
         if groupdetails:
             newdata['groupid']=groupdetails[0]['id']
 
-        newdata['service']=False
+        for item in items:
+            if list2 and item in list2[0] and list2[0][item]:  # we copy from another node. not sure if this is really correct. pending
+                newdata[item] = list2[0][item]
+            else:
+                newdata[item] = items[item]
         row = Helper().make_rows(newdata)
         nodeid = Database().insert('node', row)
 
@@ -356,6 +367,7 @@ def boot_manual_group(groupname=None, mac=None):
             if result:
                 result,mesg = Config().node_interface_ipaddress_config(nodeid,provisioninterface,avail_ip,networkname)
     else:
+        # we already have some nodes in the list. let's see if we can re-use
         for node in list:
             if node['name'] not in checked:
                 checked.append(node['name'])
@@ -378,7 +390,7 @@ def boot_manual_group(groupname=None, mac=None):
                     break
 
     if not hostname:
-        # we bail out
+        # we bail out because we could not re-use a node or create one. something above did not work out.
         environment = jinja2.Environment()
         template = environment.from_string('No Node is available for this group.')
         access_code = 404

@@ -675,6 +675,15 @@ class Helper(object):
             subsystem="anonymous"
         if request_id is None:
             request_id="n/a"
+
+        # pending. these datatime calls might not be mysql compliant.
+        where=f" WHERE subsystem='{subsystem}' AND task='{task}' AND created>datetime('now','-10 minute') ORDER BY id ASC LIMIT 1"
+        check = Database().get_record(None , 'queue', where)
+        if check:
+            # we already have the same task in the queue
+            self.logger.info(f"We already have similar job in the queue ({check[0]['id']}) and i will return the matching request_id: {check[0]['request_id']}")
+            return check[0]['id'],check[0]['request_id']
+
         row=[{"column": "created", "value": "current_datetime"}, 
              {"column": "username_initiator", "value": "luna"}, 
              {"column": "task", "value": f"{task}"},
@@ -683,7 +692,7 @@ class Helper(object):
              {"column": "status", "value": "queued"}]
         id=Database().insert('queue', row)
         # the id is supposed to be kept bij de caller so it can update the status, either directly or after other pending stuff is done
-        return id
+        return id,'added'
 
     def update_task_status_in_queue(self,taskid,status):
         row = [{"column": "status", "value": f"{status}"}]
@@ -694,7 +703,7 @@ class Helper(object):
         Database().delete_row('queue', [{"column": "id", "value": taskid}])
 
     def next_task_in_queue(self,subsystem):
-        where=f" WHERE subsystem='{subsystem}' ORDER BY id ASC LIMIT 1"
+        where=f" WHERE subsystem='{subsystem}' AND created>datetime('now','-10 minute') ORDER BY id ASC LIMIT 1"
         task = Database().get_record(None , 'queue', where)
         if task:
             return task[0]['id']

@@ -350,6 +350,8 @@ def config_node_delete(name=None):
                 Database().delete_row('ipaddress', [{"column": "id", "value": ip['id']}])
         Database().delete_row('nodeinterface', [{"column": "nodeid", "value": nodeid}])
         Database().delete_row('nodesecrets', [{"column": "nodeid", "value": nodeid}])
+        Service().queue('dns','restart')
+        Service().queue('dhcp','restart')
         response = {'message': f'Node {name} with all its interfaces removed.'}
         access_code = 204
     else:
@@ -427,7 +429,9 @@ def config_node_post_interfaces(name=None):
                     if result is False:
                         response = {'message': f"{mesg}"}
                         access_code = 500
-                    else :
+                    else:
+                        Service().queue('dhcp','restart')
+                        Service().queue('dns','restart')
                         response = {'message': 'Interface updated.'}
                         access_code = 204
             else:
@@ -495,6 +499,8 @@ def config_node_delete_interface(name=None, interface=None):
             Database().delete_row('ipaddress', where)
             where = [{"column": "id", "value": node_interface[0]['ifid']}]
             Database().delete_row('nodeinterface', where)
+            Service().queue('dhcp','restart')
+            Service().queue('dns','restart')
             response = {'message': f'Node {name} interface {interface} removed successfully.'}
             access_code = 204
         else:
@@ -1067,12 +1073,18 @@ def config_osimage_pack(name=None):
     #Antoine
     request_id=str(time())+str(randint(1001,9999))+str(getpid())
 
-    queue_id = Helper().add_task_to_queue(f'pack_n_tar_osimage:{name}','osimage',request_id)
+    queue_id,response = Helper().add_task_to_queue(f'pack_n_tar_osimage:{name}','osimage',request_id)
     if not queue_id:
         LOGGER.info(f"config_osimage_pack GET cannot get queue_id")
         response= {"message": f'OS image {name} pack queuing failed.'}
         return json.dumps(response), code
  
+    if response != "added": # this means we already have an equal request in the queue
+        code=200
+        response = {"message": f"osimage pack for {name} already queued", "request_id": response}
+        LOGGER.info(f"my repsonse [{response}]")
+        return json.dumps(response), code
+
     LOGGER.info(f"config_osimage_pack GET added task to queue: {queue_id}")
     Status().add_message(request_id,"luna",f"queued pack osimage {name} with queue_id {queue_id}")
 
@@ -1081,7 +1093,6 @@ def config_osimage_pack(name=None):
         executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
         executor.submit(OsImage().pack_n_tar_mother,name,request_id)
         executor.shutdown(wait=False)
-#        OsImage().pack_n_tar_mother(name,request_id)
 
     # we should check after a few seconds if there is a status update for us.
     # if so, that means mother is taking care of things
@@ -1526,6 +1537,9 @@ def config_switch_post(switch=None):
 
         if result is False:
             access_code=500
+        else:
+            Service().queue('dhcp','restart')
+            Service().queue('dns','restart')
         return json.dumps(response), access_code
 
     else:
@@ -1739,6 +1753,9 @@ def config_otherdev_post(device=None):
 
         if result is False:
             access_code=500
+        else:
+            Service().queue('dhcp','restart')
+            Service().queue('dns','restart')
         return json.dumps(response), access_code
 
     else:
@@ -2003,6 +2020,7 @@ def config_network_post(name=None):
                 Database().update('network', row, where)
                 response = {'message': 'Network updated.'}
                 access_code = 204
+            Service().queue('dns','restart')
         else:
             response = {'message': 'Bad Request; Columns are incorrect.'}
             access_code = 400
@@ -2139,6 +2157,7 @@ def config_network_delete(name=None):
     network = Database().get_record(None, 'network', f' WHERE `name` = "{name}"')
     if network:
         Database().delete_row('network', [{"column": "name", "value": name}])
+        Service().queue('dns','restart')
         response = {'message': 'Network removed.'}
         access_code = 204
     else:

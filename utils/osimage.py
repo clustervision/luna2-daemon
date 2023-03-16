@@ -301,8 +301,9 @@ class OsImage(object):
                     break
 
             if not luna_exists:
-                self.logger.info = (f"No luna dracut module in osimage '{osimage}'")
-                return False,"No luna dracut module in osimage"
+                self.logger.info = (f"No luna dracut module in osimage '{osimage}'. I add it as a safe meassure.")
+                #return False,"No luna dracut module in osimage"
+                modules_add.extend(['--add', 'luna']) # this part is debatable. for now i add this. pending
 
             dracut_cmd = (['/usr/bin/dracut', '--force', '--kver', kernver] +
                           modules_add + modules_remove + drivers_add +
@@ -363,7 +364,7 @@ class OsImage(object):
         self.logger.info(f"pack_n_tar_mother called")
         try:
 #            # Below section is already done in config/pack GET call but kept here in case we want to move it back
-#            queue_id = Helper().add_task_to_queue(f'pack_n_tar_osimage:{osimage}','osimage',request_id)
+#            queue_id,response = Helper().add_task_to_queue(f'pack_n_tar_osimage:{osimage}','osimage',request_id)
 #            if not queue_id:
 #                self.logger.info(f"pack_n_tar_mother cannot get queue_id")
 #                Status().add_message(request_id,"luna",f"error queuing my task")

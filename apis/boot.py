@@ -47,13 +47,17 @@ def boot():
                webserverport = CONSTANT['WEBSERVER']['PORT']
 
         nodes,availnodes=[],[]
-        #allnodes = Database().get_record(None, 'node')
-        allnodes = Database().get_record_leftjoin(['node.name','nodeinterface.macaddress'], ['nodeinterface.nodeid=node.id'], ["nodeinterface.interface='BOOTIF'"])  # BOOTIF is not entirely true but for now it will do. pending
+        allnodes = Database().get_record(None, 'node')
+        mostnodes = Database().get_record_join(['node.name','nodeinterface.macaddress'], ['nodeinterface.nodeid=node.id'], ["nodeinterface.interface='BOOTIF'"])  # BOOTIF is not entirely true but for now it will do. pending
+        allnodes+=mostnodes
+        checked={}
         if allnodes:
             for node in allnodes:
-                nodes.append(node['name'])
-                if not node['macaddress']:
-                    availnodes.append(node['name'])
+                if node['name'] not in checked:
+                    checked.append(node['name'])
+                    nodes.append(node['name'])
+                    if not node['macaddress']:
+                        availnodes.append(node['name'])
 
         access_code = 200
     else:

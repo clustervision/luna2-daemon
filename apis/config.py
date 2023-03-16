@@ -28,6 +28,7 @@ import concurrent.futures
 from utils.osimage import OsImage
 from utils.config import Config
 from utils.status import Status
+from utils.service import Service
 
 LOGGER = Log.get_logger()
 config_blueprint = Blueprint('config', __name__)
@@ -1169,6 +1170,10 @@ def config_cluster():
             cluster[0]['security'] = True
         else:
             cluster[0]['security'] = False
+        if cluster[0]['createnode_ondemand']:
+            cluster[0]['createnode_ondemand'] = True
+        else:
+            cluster[0]['createnode_ondemand'] = False
         response = {'config': {'cluster': cluster[0] }}
         controllers = Database().get_record_join(['controller.*','ipaddress.ipaddress'], ['ipaddress.tablerefid=controller.id','cluster.id=controller.clusterid'], ['tableref="controller"',f'cluster.id="{clusterid}"'])
         for controller in controllers:

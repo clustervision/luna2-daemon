@@ -277,11 +277,28 @@ def boot_manual_group(groupname=None, mac=None):
                data['webserverport'] = CONSTANT['WEBSERVER']['PORT']
         networkname=controller[0]['networkname']
 
+    # clear mac if it already exists. let's check
+    nodeinterface_check = Database().get_record_join(['nodeinterface.nodeid as nodeid','nodeinterface.interface'], 
+                                                     ['nodeinterface.nodeid=node.id'],
+                                                     [f'nodeinterface.macaddress="{mac}"'])
+    if nodeinterface_check:
+        # this means there is already a node with this mac.
+        # though we shouldn't, we will remove the other node's MAC so we can proceed
+        LOGGER.warning(f"node with id {nodeinterface_check[0]['nodeid']} will have its MAC cleared and this <to be declared>-node  will use MAC {mac}")
+        row = [{"column": "macaddress", "value": ""}]
+        where = [{"column": "macaddress", "value": mac}]
+        result_if=Database().update('nodeinterface', row, where)
+
+    # then we fetch a list of all nodes that we have, with or without interface config
     list1=Database().get_record_join(['node.*','group.name as groupname','group.provisioninterface','nodeinterface.interface','nodeinterface.macaddress'],['nodeinterface.nodeid=node.id','group.id=node.groupid'])
     list2=Database().get_record_join(['node.*','group.name as groupname'],['group.id=node.groupid'])
     list=list1+list2
 
+    # general group info and details. needed below
     groupdetails=Database().get_record(None,'group',f" WHERE name='{groupname}'")
+    provisioninterface='BOOTIF'
+    if groupdetails and 'provisioninterface' in groupdetails[0] and groupdetails[0]['provisioninterface']:
+        provisioninterface=str(groupdetails[0]['provisioninterface'])
 
     # things we have to set if we 'clone' or create a node
     items={
@@ -302,17 +319,6 @@ def boot_manual_group(groupname=None, mac=None):
         if network:
             for ip in network:
                 ips.append(ip['ipaddress'])
-
-    nodeinterface_check = Database().get_record_join(['nodeinterface.nodeid as nodeid','nodeinterface.interface'], 
-                                                     ['nodeinterface.nodeid=node.id'],
-                                                     [f'nodeinterface.macaddress="{mac}"'])
-    if nodeinterface_check:
-        # this means there is already a node with this mac.
-        # though we shouldn't, we will remove the other node's MAC so we can proceed
-        LOGGER.warning(f"node with id {nodeinterface_check[0]['nodeid']} will have its MAC cleared and this <to be declared>-node  will use MAC {mac}")
-        row = [{"column": "macaddress", "value": ""}]
-        where = [{"column": "macaddress", "value": mac}]
-        result_if=Database().update('nodeinterface', row, where)
 
     create_new_node=True # pending. needs to be a flag in cluster config table
     hostname=None # we use it further down below.
@@ -360,9 +366,6 @@ def boot_manual_group(groupname=None, mac=None):
 
             # we need to pick the currect network in a smart way. we assume the default network, the network where controller is in.
             avail_ip=Helper().get_available_ip(network[0]['network'],network[0]['subnet'],ips)
-            provisioninterface='BOOTIF'
-            if groupdetails and 'provisioninterface' in groupdetails[0] and groupdetails[0]['provisioninterface']:
-                provisioninterface=str(groupdetails[0]['provisioninterface'])
             result,mesg = Config().node_interface_config(nodeid,provisioninterface,mac)
             if result:
                 result,mesg = Config().node_interface_ipaddress_config(nodeid,provisioninterface,avail_ip,networkname)
@@ -374,16 +377,13 @@ def boot_manual_group(groupname=None, mac=None):
                 if 'interface' in node and 'macaddress' in node and not node['macaddress']:
                     # mac is empty. candidate!
                     hostname=node['name']
+                    result,mesg = Config().node_interface_config(node['id'],provisioninterface,mac)
                     break
                 elif not 'interface' in node:
                     # node is there but no interface. we'll take it!
                     hostname=node['name']
-#TWAN
-                    # we need to pick the currect network in a smart way. we assume the default network.
+                    # we need to pick the currect network in a smart way. we assume the default network where controller is in as well
                     avail_ip=Helper().get_available_ip(network[0]['network'],network[0]['subnet'],ips)
-                    provisioninterface='BOOTIF'
-                    if groupdetails and 'provisioninterface' in groupdetails[0] and groupdetails[0]['provisioninterface']:
-                        provisioninterface=str(groupdetails[0]['provisioninterface'])
                     result,mesg = Config().node_interface_config(node['id'],provisioninterface,mac)
                     if result:
                         result,mesg = Config().node_interface_ipaddress_config(node['id'],provisioninterface,avail_ip,networkname)
@@ -395,6 +395,8 @@ def boot_manual_group(groupname=None, mac=None):
         template = environment.from_string('No Node is available for this group.')
         access_code = 404
         return template,access_code
+
+    # below here is almost identical to a manual node selection boot -------------------------------------------
 
     node = Database().get_record_join(['node.*','group.osimageid as grouposimageid'],['group.id=node.groupid'],[f'node.name="{hostname}"'])
     if node:
@@ -440,7 +442,7 @@ def boot_manual_group(groupname=None, mac=None):
             elif ('kernelversion' in osimage[0]) and (osimage[0]['kernelversion']):
                 data['initrdfile'] = f"{osimage[0]['name']}-initramfs-{osimage[0]['kernelversion']}"
 
-    LOGGER.info(f"manual boot template data: [{data}]")
+    LOGGER.info(f"manual group boot template data: [{data}]")
 
     if None not in data.values():
         access_code = 200
@@ -566,7 +568,7 @@ def boot_manual_hostname(hostname=None, mac=None):
             data['nodeip'] = f'{nodeinterface[0]["ipaddress"]}/{nodeinterface[0]["subnet"]}'
         else:
             #uh oh... no bootif??
-            data['nodeip'] = ''
+            data['nodeip'] = None
 
     if data['osimageid']:
         osimage = Database().get_record(None, 'osimage', f' WHERE id = {data["osimageid"]}')
@@ -581,7 +583,7 @@ def boot_manual_hostname(hostname=None, mac=None):
             elif ('kernelversion' in osimage[0]) and (osimage[0]['kernelversion']):
                 data['initrdfile'] = f"{osimage[0]['name']}-initramfs-{osimage[0]['kernelversion']}"
 
-    LOGGER.info(f"manual boot template data: [{data}]")
+    LOGGER.info(f"manual node boot template data: [{data}]")
 
     if None not in data.values():
         access_code = 200

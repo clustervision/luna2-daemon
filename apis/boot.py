@@ -22,6 +22,7 @@ from common.constant import CONSTANT
 import jinja2
 from utils.service import Service
 import concurrent.futures
+from utils.config import Config
 
 LOGGER = Log.get_logger()
 boot_blueprint = Blueprint('boot', __name__, template_folder='../templates')
@@ -276,10 +277,13 @@ def boot_manual_group(groupname=None, mac=None):
                data['webserverport'] = CONSTANT['WEBSERVER']['PORT']
         networkname=controller[0]['networkname']
 
-    list1=Database().get_record_join(['node.*','group.name as groupname','nodeinterface.interface','nodeinterface.macaddress'],['nodeinterface.nodeid=node.id','group.id=node.groupid'])
+    list1=Database().get_record_join(['node.*','group.name as groupname','group.provisioninterface','nodeinterface.interface','nodeinterface.macaddress'],['nodeinterface.nodeid=node.id','group.id=node.groupid'])
     list2=Database().get_record_join(['node.*','group.name as groupname'],['group.id=node.groupid'])
     list=list1+list2
 
+    groupdetails=Database().get_record(None,'group',f" WHERE name='{groupname}'")
+
+    # first we generate a list of taken ips. we might need it later
     ips=[]
     if networkname:
         network = Database().get_record_join(['ipaddress.ipaddress','network.network','network.subnet'], ['network.id=ipaddress.networkid'], [f"network.name='{networkname}'"])
@@ -287,11 +291,70 @@ def boot_manual_group(groupname=None, mac=None):
             for ip in network:
                 ips.append(ip['ipaddress'])
 
+    nodeinterface_check = Database().get_record_join(['nodeinterface.nodeid as nodeid','nodeinterface.interface'], 
+                                                     ['nodeinterface.nodeid=node.id'],
+                                                     [f'nodeinterface.macaddress="{mac}"'])
+    if nodeinterface_check:
+        # this means there is already a node with this mac.
+        # though we shouldn't, we will remove the other node's MAC so we can proceed
+        LOGGER.warning(f"node with id {nodeinterface_check[0]['nodeid']} will have its MAC cleared and this <to be declared>-node  will use MAC {mac}")
+        row = [{"column": "macaddress", "value": ""}]
+        where = [{"column": "macaddress", "value": mac}]
+        result_if=Database().update('nodeinterface', row, where)
+
+    create_new_node=True # pending. needs to be a flag in cluster config table
     hostname=None # we use it further down below.
     checked=[]
-    if not list:
+    if (not list) or (create_new_node is True):
         # we have no spare or free nodes in here.
-        pass
+        newdata={}
+        if list2:
+            # we fetch the node with highest 'number' - sort
+            names=[]
+            for node in list2:
+                names.append(node['name'])
+            names.sort(reverse=True)
+         
+            example_node=names[0]
+            ename=example_node.rstrip('0123456789')  # this assumes a convention like <name><number> as node name
+            enumber=example_node[len(ename):]
+#            match = re.match(r"([a-z\_\-]+)([0-9]+)", example_name, re.I)
+#            if match:
+#                items = match.groups()
+#                print(items)
+            if ename and enumber:
+                newenumber=str(int(enumber)+1)
+#                newenumber=f'{newenumber:0>len(enumber)}'
+                newenumber=newenumber.zfill(len(enumber))
+                newdata['name'] = f"{ename}{newenumber}"
+            elif ename:
+                newenumber='001'
+                newdata['name'] = f"{ename}{newenumber}"
+            else:  # we have to create a name ourselves
+                newdata['name'] = f"{groupname}001"
+        else: # we have to create a name ourselves
+            newdata['name'] = f"{groupname}001"
+
+        LOGGER.info(f"Group boot intelligence: we came up with the following node name: [{newdata['name']}]")
+
+        if groupdetails:
+            newdata['groupid']=groupdetails[0]['id']
+
+        newdata['service']=False
+        row = Helper().make_rows(newdata)
+        nodeid = Database().insert('node', row)
+
+        if nodeid:
+            hostname=newdata['name']
+
+            # we need to pick the currect network in a smart way. we assume the default network, the network where controller is in.
+            avail_ip=Helper().get_available_ip(network[0]['network'],network[0]['subnet'],ips)
+            provisioninterface='BOOTIF'
+            if groupdetails and 'provisioninterface' in groupdetails[0] and groupdetails[0]['provisioninterface']:
+                provisioninterface=str(groupdetails[0]['provisioninterface'])
+            result,mesg = Config().node_interface_config(nodeid,provisioninterface,mac)
+            if result:
+                result,mesg = Config().node_interface_ipaddress_config(nodeid,provisioninterface,avail_ip,networkname)
     else:
         for node in list:
             if node['name'] not in checked:
@@ -305,10 +368,13 @@ def boot_manual_group(groupname=None, mac=None):
                     hostname=node['name']
 #TWAN
                     # we need to pick the currect network in a smart way. we assume the default network.
-                    avail_ip=Helper().get_available_ip(network['network'],network['subnet'],taken_ips)
-                    result,mesg = Config().node_interface_config(node['id'],'BOOTIF',mac)  # boot if not sufficient/ pending
+                    avail_ip=Helper().get_available_ip(network[0]['network'],network[0]['subnet'],ips)
+                    provisioninterface='BOOTIF'
+                    if groupdetails and 'provisioninterface' in groupdetails[0] and groupdetails[0]['provisioninterface']:
+                        provisioninterface=str(groupdetails[0]['provisioninterface'])
+                    result,mesg = Config().node_interface_config(node['id'],provisioninterface,mac)
                     if result:
-                        result,mesg = Config().node_interface_ipaddress_config(node['id'],'BOOTIF',avail_ip,networkname)
+                        result,mesg = Config().node_interface_ipaddress_config(node['id'],provisioninterface,avail_ip,networkname)
                     break
 
     if not hostname:
@@ -328,27 +394,6 @@ def boot_manual_group(groupname=None, mac=None):
         data['nodeid'] = node[0]['id']
 
     if data['nodeid']:
-        nodeinterface_check = Database().get_record_join(['nodeinterface.nodeid as nodeid','nodeinterface.interface'], 
-                                                         ['nodeinterface.nodeid=node.id'],
-                                                         [f'nodeinterface.macaddress="{mac}"'])
-        if nodeinterface_check:
-            # this means there is already a node with this mac. let's first check if it's our own.
-            if nodeinterface_check[0]['nodeid'] != data['nodeid']:
-                # we are NOT !!! though we shouldn't, we will remove the other node's MAC and assign this mac to us.
-                # note to other developers: We hard assign a node's IP address (hard config inside image/node) we must be careful - Antoine
-                LOGGER.warning(f"node with id {nodeinterface_check[0]['nodeid']} will have its MAC cleared and node {hostname} with id {data['nodeid']} will use MAC {mac}")
-                row = [{"column": "macaddress", "value": ""}]
-                where = [
-                    {"column": "nodeid", "value": nodeinterface_check[0]['nodeid']},
-                    {"column": "interface", "value": "BOOTIF"}
-                    ]
-                result_if=Database().update('nodeinterface', row, where)
-                row = [{"column": "macaddress", "value": mac}]
-                where = [
-                    {"column": "nodeid", "value": data["nodeid"]},
-                    {"column": "interface", "value": "BOOTIF"}
-                    ]
-                result_if=Database().update('nodeinterface', row, where)
 
         queue_id = Helper().add_task_to_queue('dhcp:restart','service','__internal__')
         if queue_id:
@@ -368,7 +413,7 @@ def boot_manual_group(groupname=None, mac=None):
             data['nodeip'] = f'{nodeinterface[0]["ipaddress"]}/{nodeinterface[0]["subnet"]}'
         else:
             #uh oh... no bootif??
-            data['nodeip'] = ''
+            data['nodeip'] = None
 
     if data['osimageid']:
         osimage = Database().get_record(None, 'osimage', f' WHERE id = {data["osimageid"]}')

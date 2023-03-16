@@ -301,7 +301,7 @@ class OsImage(object):
                     break
 
             if not luna_exists:
-                self.logger.info = (f"No luna dracut module in osimage '{osimage}'. I add it as a safe meassure.")
+                self.logger.info(f"No luna dracut module in osimage '{osimage}'. I add it as a safe meassure.")
                 #return False,"No luna dracut module in osimage"
                 modules_add.extend(['--add', 'luna']) # this part is debatable. for now i add this. pending
 

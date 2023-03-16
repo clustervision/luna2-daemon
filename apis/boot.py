@@ -515,7 +515,7 @@ def boot_manual_hostname(hostname=None, mac=None):
                 row = [{"column": "macaddress", "value": ""}]
                 where = [
                     {"column": "nodeid", "value": nodeinterface_check[0]['nodeid']},
-                    {"column": "interface", "value": "BOOTIF"}
+                    {"column": "interface", "value": nodeinterface_check[0]['interface']}
                     ]
                 result_if=Database().update('nodeinterface', row, where)
                 row = [{"column": "macaddress", "value": mac}]

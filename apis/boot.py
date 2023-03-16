@@ -50,7 +50,7 @@ def boot():
         nodes,availnodes=[],[]
         allnodes = Database().get_record(None, 'node')
         mostnodes = Database().get_record_join(['node.name','nodeinterface.macaddress'], ['nodeinterface.nodeid=node.id'], ["nodeinterface.interface='BOOTIF'"])  # BOOTIF is not entirely true but for now it will do. pending
-        allnodes+=mostnodes
+        allnodes=mostnodes+allnodes
         checked=[]
         if allnodes:
             for node in allnodes:

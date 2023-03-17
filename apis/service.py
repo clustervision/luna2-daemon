@@ -95,7 +95,7 @@ def service_status(request_id=None):
     Output - Success or failure
     """
 
-    LOGGER.info(f"service STATUS: request_id: [{request_id}]")
+    LOGGER.debug(f"service STATUS: request_id: [{request_id}]")
     access_code = 400
     response = {'message': 'Bad Request.'}
     status = Database().get_record(None , 'status', f' WHERE request_id = "{request_id}"')

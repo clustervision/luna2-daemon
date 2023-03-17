@@ -2875,7 +2875,7 @@ def control_status(request_id=None):
     Output - Success or failure
     """
 
-    LOGGER.info(f"control STATUS: request_id: [{request_id}]")
+    LOGGER.debug(f"control STATUS: request_id: [{request_id}]")
     access_code = 400
     response = {'message': 'Bad Request.'}
     status = Database().get_record(None , 'status', f' WHERE request_id = "{request_id}"')

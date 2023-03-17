@@ -152,7 +152,7 @@ def control_status(request_id=None):
     Output - Success or failure
     """
 
-    LOGGER.info(f"control STATUS: request_id: [{request_id}]")
+    LOGGER.debug(f"control STATUS: request_id: [{request_id}]")
     access_code = 400
     response = {'message': 'Bad Request.'}
     status = Database().get_record(None , 'status', f' WHERE request_id = "{request_id}"')
@@ -164,7 +164,6 @@ def control_status(request_id=None):
             if 'message' in record:
                 if record['read']==0:
                     if record['message'] == "EOF":
-                        #Database().delete_row('status', [{"column": "request_id", "value": request_id}])
                         Status().del_messages(request_id)
                     else:
                         node,result=record['message'].split(':',1)  #data is message is like 'nodexxx:message'

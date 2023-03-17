@@ -91,37 +91,37 @@ def monitor_status_post(node=None):
     Process - Update the Node Status
     Output - Status.
     """
-    update = False
+    access_code = 400
+    response = {'message': 'Bad Request.'}
     if Helper().check_json(request.data):
         request_data = request.get_json(force=True)
-    else:
-        response = {'message': 'Bad Request.'}
-        access_code = 400
     if request_data:
         try:
             state = request_data['monitor']['status'][node]['state']
             where = f' WHERE id = "{node}" OR name = "{node}";'
             dbnode = Database().get_record(None, 'node', where)
             if dbnode:
-                if state in node_status[204]:
-                    access_code = 204
-                    update = True
-                elif state in node_status[500]:
-                    access_code = 500
-                    update = True
-                else:
-                    response = {'message': f'State {state} is not belongs to Node states.'}
-                    access_code = 204
+                LOGGER.info(f"node {node}: {state}")
+                row = [{"column": "status", "value": state}]
+                where = [{"column": "name", "value": node}]
+                Database().update('node', row, where)
+                access_code = 204
+                response = {'message': f'Node {node} updated.'}
+
+#                if state in node_status[204]:
+#                    access_code = 204
+#                    update = True
+#                elif state in node_status[500]:
+#                    access_code = 500
+#                    update = True
+#                else:
+#                    response = {'message': f'State {state} does not belong to Node states.'}
+#                    access_code = 204
             else:
                 response = {'message': 'Node is not present.'}
                 access_code = 404
         except KeyError:
             response = {'message': 'URL Node is not matching with requested node.'}
             access_code = 400
-    if update:
-        row = [{"column": "status", "value": state}]
-        where = [{"column": "name", "value": node}]
-        Database().update('node', row, where)
-        response = {'message': f'Node {node} updated.'}
 
     return json.dumps(response), access_code

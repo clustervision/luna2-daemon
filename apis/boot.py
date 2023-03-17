@@ -392,6 +392,7 @@ def boot_manual_group(groupname=None, mac=None):
                     result,mesg = Config().node_interface_config(node['id'],provisioninterface,mac)
                     if result:
                         result,mesg = Config().node_interface_ipaddress_config(node['id'],provisioninterface,avail_ip,networkname)
+                        Service().queue('dns','restart')
                     break
 
     if not hostname:

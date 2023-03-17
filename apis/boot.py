@@ -23,6 +23,9 @@ import jinja2
 from utils.service import Service
 import concurrent.futures
 from utils.config import Config
+import hashlib
+import datetime
+import jwt
 
 LOGGER = Log.get_logger()
 boot_blueprint = Blueprint('boot', __name__, template_folder='../templates')
@@ -731,11 +734,15 @@ def boot_install(node=None):
         access_code = 500
     LOGGER.info(data)
 
-    API_USERNAME, API_PASSWORD = "",""
-    if 'API' in CONSTANT and 'USERNAME' in CONSTANT["API"]:
-        API_USERNAME = CONSTANT["API"]["USERNAME"]
-    if 'API' in CONSTANT and 'PASSWORD' in CONSTANT["API"]:
-        API_PASSWORD = CONSTANT["API"]["PASSWORD"]
+    jwt_token=None
+    try:
+        api_key = CONSTANT['API']['SECRET_KEY']
+        api_expiry = datetime.timedelta(minutes=int(CONSTANT['API']['EXPIRY']))
+        api_expiry = datetime.timedelta(minutes=int(60))
+        expiry_time = datetime.datetime.utcnow() + api_expiry
+        jwt_token = jwt.encode({'id': 0, 'exp': expiry_time}, api_key, 'HS256')
+    except Exception as exp:
+        LOGGER.info(f"Token creation error: {exp}")
 
     return render_template(
         template,
@@ -758,7 +765,6 @@ def boot_install(node=None):
         LUNA_PRESCRIPT          = data['prescript'],
         LUNA_PARTSCRIPT         = data['partscript'],
         LUNA_POSTSCRIPT         = data['postscript'],
-        LUNA_API_USERNAME       = API_USERNAME,
-        LUNA_API_PASSWORD       = API_PASSWORD
+        LUNA_TOKEN              = jwt_token
     ), access_code
 

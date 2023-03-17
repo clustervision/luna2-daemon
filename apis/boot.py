@@ -730,6 +730,13 @@ def boot_install(node=None):
         template = environment.from_string('No Node is available for this mac address.')
         access_code = 500
     LOGGER.info(data)
+
+    API_USERNAME, API_PASSWORD = "",""
+    if 'API' in CONSTANT and 'USERNAME' in CONSTANT["API"]:
+        API_USERNAME = CONSTANT["API"]["USERNAME"]
+    if 'API' in CONSTANT and 'PASSWORD' in CONSTANT["API"]:
+        API_PASSWORD = CONSTANT["API"]["PASSWORD"]
+
     return render_template(
         template,
         LUNA_CONTROLLER         = data['ipaddress'],
@@ -750,6 +757,8 @@ def boot_install(node=None):
         LUNA_INTERFACES         = data['interfaces'],
         LUNA_PRESCRIPT          = data['prescript'],
         LUNA_PARTSCRIPT         = data['partscript'],
-        LUNA_POSTSCRIPT         = data['postscript']
+        LUNA_POSTSCRIPT         = data['postscript'],
+        LUNA_API_USERNAME       = API_USERNAME,
+        LUNA_API_PASSWORD       = API_PASSWORD
     ), access_code
 

@@ -63,6 +63,7 @@ def monitor_status_get(node=None):
     Process - Validate if the node exists and what the state is
     Output - Status.
     """
+    access_code = 404
     response = {"monitor": {"status": { node: { } } } }
     nodes = Database().get_record(None, 'node', f' WHERE id = "{node}" OR name = "{node}"')
     if nodes:

@@ -26,6 +26,7 @@ from utils.config import Config
 import hashlib
 import datetime
 import jwt
+from common.validate_auth import token_required
 
 LOGGER = Log.get_logger()
 boot_blueprint = Blueprint('boot', __name__, template_folder='../templates')
@@ -604,6 +605,7 @@ def boot_manual_hostname(hostname=None, mac=None):
 
 
 @boot_blueprint.route('/boot/install/<string:node>', methods=['GET'])
+@token_required
 def boot_install(node=None):
     """
     Input - NodeID or node name

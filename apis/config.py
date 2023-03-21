@@ -1567,6 +1567,8 @@ def config_switch_clone(switch=None):
     """
     data = {}
     create = False
+    srcswitch=None
+    ipaddress,networkname = None,None
     if Helper().check_json(request.data):
         request_data = request.get_json(force=True)
     else:
@@ -1575,6 +1577,7 @@ def config_switch_clone(switch=None):
         return json.dumps(response), access_code
     if request_data:
         data = request_data['config']['switch'][switch]
+        srcswitch=data['name']
         if 'newswitchname' in data:
             data['name'] = data['newswitchname']
             newswitchname = data['newswitchname']
@@ -1590,20 +1593,74 @@ def config_switch_clone(switch=None):
             return json.dumps(response), access_code
         else:
             create = True
+#TWAN
         if 'ipaddress' in data:
+            ipaddress=data['ipaddress']
             del data['ipaddress']
         if 'network' in data:
+            networkname=data['network']
             del data['network']
+
         switchcolumns = Database().get_columns('switch')
         columncheck = Helper().checkin_list(data, switchcolumns)
         data = Helper().check_ip_exist(data)
         if data:
-            row = Helper().make_rows(data)
             if columncheck:
                 if create:
-                    Database().insert('switch', row)
-                    response = {'message': 'Switch created.'}
+                    switch = Database().get_record(None, 'switch', f' WHERE `name` = "{srcswitch}"')
+                    del switch[0]['id']
+                    for key in switch[0]:
+                        if key not in data:
+                            data[key]=switch[0][key]
+
+                    row = Helper().make_rows(data)
+                    newswitchid=Database().insert('switch', row)
                     access_code = 201
+
+                    network=None
+                    if networkname:
+                        network = Database().get_record_join(['ipaddress.ipaddress','ipaddress.networkid as networkid','network.network','network.subnet'], ['network.id=ipaddress.networkid'], [f"network.name='{networkname}'"])
+                    else:
+                        network = Database().get_record_join(['ipaddress.ipaddress','ipaddress.networkid as networkid','network.name as networkname','network.network','network.subnet'],['network.id=ipaddress.networkid','ipaddress.tablerefid=switch.id'],[f'switch.name="{srcswitch}"','ipaddress.tableref="switch"'])
+                        if network:
+                            data['network'] = network[0]['networkname']
+                            networkname=data['network']
+
+                    if not ipaddress:
+                        ips=[]
+                        avail=None
+                        if network:
+                            for ip in network:
+                                ips.append(ip['ipaddress'])
+                        else:
+                            network = Database().get_record(None, 'network', f' WHERE `name` = "{networkname}"')
+
+                        if network:
+                            ret=0
+                            max=10 # we try to ping for 10 ips, if none of these are free, something else is going on (read: rogue devices)....
+                            while(max>0 and ret!=1):
+                                avail=Helper().get_available_ip(network[0]['network'],network[0]['subnet'],ips)
+                                ips.append(avail)
+                                output,ret=Helper().runcommand(f"ping -w1 -c1 {avail}", True, 3)
+                                max-=1
+    
+                            if avail:
+                                ipaddress=avail
+                        else:
+                            response = {'message': 'Bad Request; please supply network and ipaddress.'}
+                            access_code = 400
+                            return json.dumps(response), access_code
+
+                    result,mesg=Config().device_ipaddress_config(newswitchid,'switch',ipaddress,networkname)
+
+                    if result is False:
+                        access_code=500
+                        response = {'message': f"{mesg}"}
+                    else:
+                        Service().queue('dhcp','restart')
+                        Service().queue('dns','restart')
+                        response = {'message': 'Switch created.'}
+
             else:
                 response = {'message': 'Bad Request; Columns are incorrect.'}
                 access_code = 400

@@ -47,6 +47,11 @@ def service(name, action):
     Output - Success or Failure.
     """
 
+    # we do not need the queue for e.g. status
+    if action == "status":
+        response,code = Service().luna_service(name, action)
+        return json.dumps(response), code
+        
     code=500
     response= {"message": f'service {name} {action} failed. No sign of life of spawned thread.'}
 

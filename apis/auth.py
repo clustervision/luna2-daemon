@@ -87,3 +87,55 @@ def token():
             response = {"token" : jwt_token}
             code = 201
     return json.dumps(response), code
+
+@auth_blueprint.route('/tpm/<string:nodename>', methods=['POST'])
+def tpm(nodename=None):
+    """
+    Input - TPM string
+    Process - Validate the TPM string to match a node.
+    On the success, create a token, which is valid for expiry time mentioned in configuration.
+    Output - Token.
+    """
+    auth = request.get_json(force=True)
+    api_expiry = datetime.timedelta(minutes=int(CONSTANT['API']['EXPIRY']))
+    expiry_time = datetime.datetime.utcnow() + api_expiry
+    api_key = CONSTANT['API']['SECRET_KEY']
+
+    code=401
+    response = {'message' : 'no result'}
+    create_token=False
+
+    LOGGER.info(f"auth: {auth}")
+
+    cluster = Database().get_record(None, 'cluster', None)
+    if cluster and 'security' in cluster[0] and cluster[0]['security']:
+        if 'tpm_sha256' in auth:
+            node = Database().get_record(None, 'node', f' WHERE name = "{nodename}"')
+            if node:
+                if 'tpm_sha256' in node[0]:
+                    if auth['tpm_sha256'] == node[0]['tpm_sha256']:
+                        create_token=True
+                    else:
+                        response = {'message' : 'invalid TPM information'}
+                else:
+                    response = {'message' : 'node does not have TPM information'}
+            else:
+                response = {'message' : 'invalid node'}
+    else:
+        # we do not enforce security. just return the token
+        # we store the string though
+        if nodename and 'tpm_sha256' in auth:
+            where = [{"column": "name", "value": nodename}]
+            row = [{"column": "tpm_sha256", "value": auth['tpm_sha256']}]
+            Database().update('node', row, where)
+        create_token=True
+
+    if create_token:
+        jwt_token = jwt.encode({'id': 0, 'exp': expiry_time}, api_key, 'HS256')
+        LOGGER.debug(f'Node token generated successfully, Token {jwt_token}')
+        code=200
+        response = {"token" : jwt_token}
+
+    LOGGER.info(f"my response: {response}")
+    return json.dumps(response), code
+

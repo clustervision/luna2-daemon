@@ -238,7 +238,7 @@ def bootstrap(bootstrapfile=None):
             {'column': 'technical_contacts', 'value': 'root@localhost'},
             {'column': 'provision_method', 'value': 'torrent'},
             {'column': 'provision_fallback', 'value': 'http'},
-            {'column': 'security', 'value': '1'},
+            {'column': 'security', 'value': '0'},
             {'column': 'debug', 'value': '0'},
             {'column': 'createnode_ondemand', 'value': '1'},
             {'column': 'nameserver_ip', 'value': defaultserver_ip},

@@ -113,7 +113,7 @@ def tpm(nodename=None):
             node = Database().get_record(None, 'node', f' WHERE name = "{nodename}"')
             if node:
                 if 'tpm_sha256' in node[0]:
-                    if tpm == node[0]['tpm_sha256']:
+                    if auth['tpm_sha256'] == node[0]['tpm_sha256']:
                         create_token=True
                     else:
                         response = {'message' : 'invalid TPM information'}

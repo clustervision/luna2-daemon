@@ -165,14 +165,31 @@ def config_node_get(name=None):
         node['setupbmc'] = Helper().make_bool(node['setupbmc'])
         node['localboot'] = Helper().make_bool(node['localboot'])
 
+        node['interfaces'] = []
+
         node_interface = Database().get_record_join(['nodeinterface.interface','ipaddress.ipaddress','nodeinterface.macaddress','network.name as network'], ['network.id=ipaddress.networkid','ipaddress.tablerefid=nodeinterface.id'],['tableref="nodeinterface"',f"nodeinterface.nodeid='{nodeid}'"])
         if node_interface:
-            node['interfaces'] = []
             for interface in node_interface:
                 interfacename,*_ = (node['provisioninterface'].split(' ')+[None]) # we skim off parts that we added for clarity in above section (e.g. (default)). also works if there's no additional info
                 if interface['interface'] == interfacename and interface['network']: # if it is my prov interf then it will get that domain as a FQDN.
                     node['hostname'] = nodename + '.' + interface['network']
                 node['interfaces'].append(interface)
+
+        group_interface = Database().get_record_join(['nodeinterface.interface','ipaddress.ipaddress','nodeinterface.macaddress','network.name as network'], ['network.id=ipaddress.networkid','ipaddress.tablerefid=nodeinterface.id'],['tableref="nodeinterface"',f"nodeinterface.nodeid='{nodeid}'"])
+        if group_interface:
+            for interface in group_interface:
+                add_if=True
+                for check_interface in node['interfaces']:
+                    if check_interface['interface'] == interface['interface']:
+                        # the node has the same interface so we ditch the group one
+                        add_if=False
+                        break
+                if add_if:
+                    interfacename,*_ = (node['provisioninterface'].split(' ')+[None]) # we skim off parts that we added for clarity in above section (e.g. (default)). also works if there's no additional info
+                    if interface['interface'] == interfacename and interface['network']: # if it is my prov interf then it will get that domain as a FQDN.
+                        node['hostname'] = nodename + '.' + interface['network'] + f" ({node['group']})"
+                    node['interfaces'].append(interface)
+
         response['config']['node'][nodename] = node
         LOGGER.info('Provided list of all nodes.')
         access_code = 200
@@ -349,11 +366,7 @@ def config_node_clone(name=None):
        'localinstall':False,
        'bootmenu':False,
        'service':False,
-       'localboot':False,
-       'prescript':'',
-       'postscript':'',
-       'partscript':'',
-       'provisioninterface':''
+       'localboot':False
     }
 
     if Helper().check_json(request.data):
@@ -390,7 +403,6 @@ def config_node_clone(name=None):
             access_code = 400
             return json.dumps(response), access_code
 
-#TWAN
         del node[0]['id']
         for item in node[0]:
             if item in data:  # we copy from another node unless we supply

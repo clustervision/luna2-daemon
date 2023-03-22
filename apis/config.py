@@ -320,9 +320,9 @@ def config_node_post(name=None):
                         response = {'message': f"{mesg}"}
                         access_code = 500
                         return json.dumps(response), access_code
-                    else:
-                        Service().queue('dhcp','restart')
-                        Service().queue('dns','restart')
+ 
+            Service().queue('dhcp','restart')
+            Service().queue('dns','restart')
 
         else:
             response = {'message': 'Bad Request; Columns are incorrect.'}
@@ -343,7 +343,18 @@ def config_node_clone(name=None):
     Output - Node information.
     """
     data = {}
-    create, update = False, False
+    items={
+       'setupbmc':False,
+       'netboot':False,
+       'localinstall':False,
+       'bootmenu':False,
+       'service':False,
+       'localboot':False,
+       'prescript':'',
+       'postscript':'',
+       'partscript':'',
+       'provisioninterface':''
+    }
 
     if Helper().check_json(request.data):
         request_data = request.get_json(force=True)
@@ -362,42 +373,35 @@ def config_node_clone(name=None):
         data = request_data['config']['node'][name]
         node = Database().get_record(None, 'node', f' WHERE name = "{name}"')
         if node:
-            create = True
             nodeid = node[0]['id']
             if 'newnodename' in data: 
                 newnodename = data['newnodename']
                 where = f' WHERE `name` = "{newnodename}"'
                 newnode_check = Database().get_record(None, 'node', where)
                 if newnode_check:
-                    response = {'message': f'{nodename_new} already present in database.'}
+                    response = {'message': f'{newnodename} already present in database.'}
                     access_code = 400
                     return json.dumps(response), access_code
                 else:
                     data['name'] = data['newnodename']
                     del data['newnodename']
+        else:
+            response = {'message': f'Bad Request; Source node {name} does not exist.'}
+            access_code = 400
+            return json.dumps(response), access_code
 
 #TWAN
-
-        # things we have to set if we 'clone' or create a node
-        items={
-           'prescript':'',
-           'partscript':'',
-           'postscript':'',
-           'setupbmc':False,
-           'netboot':False,
-           'localinstall':False,
-           'localboot':False,
-           'bootmenu':False,
-           'service':False,
-           'provisioninterface':'BOOTIF'
-        }
-
-        for item in items:
-            if item in data and item in node[0]:  # we copy from another node. not sure if this is really correct. pending
-                data[item] = data[item] or node[0][item]
+        del node[0]['id']
+        for item in node[0]:
+            if item in data:  # we copy from another node unless we supply
+                data[item] = data[item] or node[0][item] or None
             else:
-                data[item] = items[item]
-            if isinstance(items[item], bool):
+                data[item] = node[0][item] or None
+            if item in items:
+                data[item] = data[item] or items[item]
+            if not data[item]:
+                del data[item]
+            elif isinstance(data[item], bool):
                 data[item]=str(Helper().make_boolnum(data[item]))
 
         if 'bmcsetup' in data:
@@ -417,6 +421,7 @@ def config_node_clone(name=None):
             del data['switch']
             data['switchid'] = Database().getid_byname('switch', switch_name)
 
+        interfaces=None
         if 'interfaces' in data:
             interfaces = data['interfaces']
             del data['interfaces']
@@ -425,27 +430,31 @@ def config_node_clone(name=None):
         node_columns = Database().get_columns('node')
         columns_check = Helper().checkin_list(data, node_columns)
         if columns_check:
-            if update:
-                where = [{"column": "id", "value": nodeid}]
-                row = Helper().make_rows(data)
-                Database().update('node', row, where)
-                response = {'message': f'Node {name} updated successfully.'}
-                access_code = 204
-            if create:
-                data['name'] = name
-                row = Helper().make_rows(data)
-                nodeid = Database().insert('node', row)
-                response = {'message': f'Node {name} created successfully.'}
-                access_code = 201
+            newnodeid=None
+            row = Helper().make_rows(data)
+            newnodeid = Database().insert('node', row)
+            if not newnodeid:
+                response = {'message': f'Node {newnodename} could not be created due to possible property clash.'}
+                access_code = 500
+                return json.dumps(response), access_code
+
+            response = {'message': f'Node {name} created successfully.'}
+            access_code = 201
+
+            node_interfaces = Database().get_record_join(['nodeinterface.interface','ipaddress.ipaddress','nodeinterface.macaddress','network.name as network'], ['network.id=ipaddress.networkid','ipaddress.tablerefid=nodeinterface.id'],['tableref="nodeinterface"',f"nodeinterface.nodeid='{nodeid}'"])
+
             if interfaces:
-                access_code = 204
                 for interface in interfaces:
                     # Antoine
                     interface_name = interface['interface']
+                    for node_interface in node_interfaces:
+                        # delete interfaces we overwrite
+                        if interface_name == node_interface['interface']:
+                            del node_interfaces[node_interface] 
                     macaddress,network=None,None
                     if 'macaddress' in interface.keys():
                         macaddress=interface['macaddress']
-                    result,mesg = Config().node_interface_config(nodeid,interface_name,macaddress)
+                    result,mesg = Config().node_interface_config(newnodeid,interface_name,macaddress)
                     if result and 'ipaddress' in interface.keys():
                         ipaddress=interface['ipaddress']
                         if 'network' in interface.keys():
@@ -456,9 +465,38 @@ def config_node_clone(name=None):
                         response = {'message': f"{mesg}"}
                         access_code = 500
                         return json.dumps(response), access_code
-                    else:
-                        Service().queue('dhcp','restart')
-                        Service().queue('dns','restart')
+
+            for node_interface in node_interfaces:       
+                interface_name = node_interface['interface']
+                result,mesg = Config().node_interface_config(newnodeid,interface_name)
+                if result and 'ipaddress' in node_interface.keys():
+                    if 'network' in node_interface.keys():
+                        networkname=node_interface['network']
+                        ips=[]
+                        avail=None
+                        network = Database().get_record_join(['ipaddress.ipaddress','ipaddress.networkid as networkid','network.network','network.subnet'], ['network.id=ipaddress.networkid'], [f"network.name='{networkname}'"])
+                        if network:
+                            for ip in network:
+                                ips.append(ip['ipaddress'])
+                            ret=0
+                            max=5 # we try to ping for X ips, if none of these are free, something else is going on (read: rogue devices)....
+                            while(max>0 and ret!=1):
+                                avail=Helper().get_available_ip(network[0]['network'],network[0]['subnet'],ips)
+                                ips.append(avail)
+                                output,ret=Helper().runcommand(f"ping -w1 -c1 {avail}", True, 3)
+                                max-=1
+    
+                            if avail:
+                                ipaddress=avail
+                                result,mesg = Config().node_interface_ipaddress_config(newnodeid,interface_name,ipaddress,networkname)
+                    
+                                if result is False:
+                                    response = {'message': f"{mesg}"}
+                                    access_code = 500
+                                    return json.dumps(response), access_code
+
+            Service().queue('dhcp','restart')
+            Service().queue('dns','restart')
 
         else:
             response = {'message': 'Bad Request; Columns are incorrect.'}

@@ -1634,11 +1634,12 @@ def config_switch_clone(switch=None):
                     if not ipaddress:
                         ips=[]
                         avail=None
-                        if network:
-                            for ip in network:
-                                ips.append(ip['ipaddress'])
-                        else:
-                            network = Database().get_record(None, 'network', f' WHERE `name` = "{networkname}"')
+                        if not network:
+                            network = Database().get_record_join(['ipaddress.ipaddress','ipaddress.networkid as networkid','network.network','network.subnet'], ['network.id=ipaddress.networkid'], [f"network.name='{networkname}'"])
+                            if network:
+                                networkname = network[0]['networkname']
+                        for ip in network:
+                            ips.append(ip['ipaddress'])
 
                         if network:
                             ret=0
@@ -1847,6 +1848,8 @@ def config_otherdev_clone(device=None):
     """
     data = {}
     create = False
+    srcdevice=None
+    ipaddress,networkname = None,None
     if Helper().check_json(request.data):
         request_data = request.get_json(force=True)
     else:
@@ -1855,6 +1858,7 @@ def config_otherdev_clone(device=None):
         return json.dumps(response), access_code
     if request_data:
         data = request_data['config']['otherdev'][device]
+        srcdevice=data['name']
         if 'newotherdevname' in data:
             data['name'] = data['newotherdevname']
             newdevicename = data['newotherdevname']
@@ -1871,26 +1875,87 @@ def config_otherdev_clone(device=None):
             return json.dumps(response), access_code
         else:
             create = True
+
         if 'ipaddress' in data:
+            ipaddress=data['ipaddress']
             del data['ipaddress']
         if 'network' in data:
+            networkname=data['network']
             del data['network']
         devicecolumns = Database().get_columns('otherdevices')
         columncheck = Helper().checkin_list(data, devicecolumns)
 #        data = Helper().check_ip_exist(data)
+#TWAN
         if data:
-            row = Helper().make_rows(data)
             if columncheck:
                 if create:
-                    Database().insert('otherdevices', row)
-                    response = {'message': 'Device cloned.'}
+                    otherdevice = Database().get_record(None, 'otherdevices', f' WHERE `name` = "{srcdevice}"')
+                    del otherdevice[0]['id']
+                    for key in otherdevice[0]:
+                        if key not in data:
+                            data[key]=otherdevice[0][key]
+
+                    row = Helper().make_rows(data)
+                    newdeviceid=Database().insert('otherdevices', row)
+                    if not newdeviceid:
+                        response = {'message': 'Bad Request; device not cloned due to clashing config.'}
+                        access_code = 400
+                        LOGGER.info(f"my response: {response}")
+                        return json.dumps(response), access_code
+ 
                     access_code = 201
+                    network=None
+                    if networkname:
+                        network = Database().get_record_join(['ipaddress.ipaddress','ipaddress.networkid as networkid','network.network','network.subnet'], ['network.id=ipaddress.networkid'], [f"network.name='{networkname}'"])
+                    else:
+                        network = Database().get_record_join(['ipaddress.ipaddress','ipaddress.networkid as networkid','network.name as networkname','network.network','network.subnet'],['network.id=ipaddress.networkid','ipaddress.tablerefid=otherdevices.id'],[f'otherdevices.name="{srcdevice}"','ipaddress.tableref="otherdevices"'])
+                        if network:
+                            networkname = network[0]['networkname']
+
+                    if not ipaddress:
+                        ips=[]
+                        avail=None
+                        if not network:
+                            network = Database().get_record_join(['ipaddress.ipaddress','ipaddress.networkid as networkid','network.network','network.subnet'], ['network.id=ipaddress.networkid'], [f"network.name='{networkname}'"])
+                            if network:
+                                networkname = network[0]['networkname']
+                        for ip in network:
+                            ips.append(ip['ipaddress'])
+
+                        if network:
+                            ret=0
+                            max=10 # we try to ping for 10 ips, if none of these are free, something else is going on (read: rogue devices)....
+                            while(max>0 and ret!=1):
+                                avail=Helper().get_available_ip(network[0]['network'],network[0]['subnet'],ips)
+                                ips.append(avail)
+                                output,ret=Helper().runcommand(f"ping -w1 -c1 {avail}", True, 3)
+                                max-=1
+ 
+                            if avail:
+                                ipaddress=avail
+                        else:
+                            response = {'message': 'Bad Request; please supply network and ipaddress.'}
+                            access_code = 400
+                            LOGGER.info(f"my response: {response}")
+                            return json.dumps(response), access_code
+
+                    result,mesg=Config().device_ipaddress_config(newdeviceid,'otherdevices',ipaddress,networkname)
+
+                    if result is False:
+                        Database().delete_row('otherdevices', [{"column": "id", "value": newdeviceid}])  # roll back
+                        access_code=400
+                        response = {'message': f"{mesg}"}
+                    else:
+                        Service().queue('dhcp','restart')
+                        Service().queue('dns','restart')
+                        response = {'message': 'Device created.'}
+
             else:
                 response = {'message': 'Bad Request; Columns are incorrect.'}
                 access_code = 400
                 return json.dumps(response), access_code
         else:
-            response = {'message': 'Bad Request; IP address already exist in the database.'}
+            response = {'message': 'Bad Request; Not enough details to create the device.'}
             access_code = 400
             return json.dumps(response), access_code
     else:

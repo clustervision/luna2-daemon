@@ -361,6 +361,25 @@ class Helper(object):
             variable = None
         return variable
 
+    def make_boolnum(self, variable=None):
+        """
+        Input - string
+        Output - Boolean
+        """
+        if isinstance(variable, bool):
+            if variable is True:
+                variable='1'
+            else:
+                variable='0'
+        elif isinstance(variable, (str, int)):
+            if variable in ('1', 1):
+                variable = '1'
+            elif variable in ('0', 0):
+                variable = '0'
+        else:
+            variable = None
+        return variable
+
 
     def encrypt_string(self, string=None):
         """

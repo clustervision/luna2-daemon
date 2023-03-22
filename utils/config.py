@@ -503,7 +503,7 @@ $TTL 604800
         if network:
             networkid = Database().getid_byname('network', network)
         else:
-            network_details = Database().get_record_join(['network.name as network','network.id'], ['ipaddress.tablerefid=switch.id','network.id=ipaddress.networkid'], [f'tableref="{device}"',f"switch.name='{deviceid}'"])
+            network_details = Database().get_record_join(['network.name as network','network.id'], ['ipaddress.tablerefid=switch.id','network.id=ipaddress.networkid'], [f'tableref="{device}"',f"switch.id='{deviceid}'"])
             if network_details:
                 networkid=network_details[0]['id']
             else:

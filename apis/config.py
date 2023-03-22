@@ -1603,7 +1603,7 @@ def config_switch_clone(switch=None):
 
         switchcolumns = Database().get_columns('switch')
         columncheck = Helper().checkin_list(data, switchcolumns)
-        data = Helper().check_ip_exist(data)
+        #data = Helper().check_ip_exist(data)
         if data:
             if columncheck:
                 if create:
@@ -1615,8 +1615,13 @@ def config_switch_clone(switch=None):
 
                     row = Helper().make_rows(data)
                     newswitchid=Database().insert('switch', row)
+                    if not newswitchid:
+                        response = {'message': 'Bad Request; switch not cloned due to clashing config.'}
+                        access_code = 400
+                        LOGGER.info(f"my response: {response}")
+                        return json.dumps(response), access_code
+   
                     access_code = 201
-
                     network=None
                     if networkname:
                         network = Database().get_record_join(['ipaddress.ipaddress','ipaddress.networkid as networkid','network.network','network.subnet'], ['network.id=ipaddress.networkid'], [f"network.name='{networkname}'"])
@@ -1649,12 +1654,14 @@ def config_switch_clone(switch=None):
                         else:
                             response = {'message': 'Bad Request; please supply network and ipaddress.'}
                             access_code = 400
+                            LOGGER.info(f"my response: {response}")
                             return json.dumps(response), access_code
 
                     result,mesg=Config().device_ipaddress_config(newswitchid,'switch',ipaddress,networkname)
 
                     if result is False:
-                        access_code=500
+                        Database().delete_row('switch', [{"column": "id", "value": newswitchid}])  # roll back
+                        access_code=400
                         response = {'message': f"{mesg}"}
                     else:
                         Service().queue('dhcp','restart')
@@ -1664,16 +1671,17 @@ def config_switch_clone(switch=None):
             else:
                 response = {'message': 'Bad Request; Columns are incorrect.'}
                 access_code = 400
-                return json.dumps(response), access_code
+                #return json.dumps(response), access_code
         else:
-            response = {'message': 'Bad Request; IP address already exist in the database.'}
+            response = {'message': 'Bad Request; Not enough information provided.'}
             access_code = 400
-            return json.dumps(response), access_code
+            #return json.dumps(response), access_code
     else:
         response = {'message': 'Bad Request; Did not received data.'}
         access_code = 400
-        return json.dumps(response), access_code
+        #return json.dumps(response), access_code
 
+    LOGGER.info(f"my response: {response}")
     return json.dumps(data), access_code
 
 

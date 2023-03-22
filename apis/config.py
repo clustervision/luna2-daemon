@@ -175,21 +175,21 @@ def config_node_get(name=None):
                     node['hostname'] = nodename + '.' + interface['network']
                 node['interfaces'].append(interface)
 
-        group_interface = Database().get_record_join(['groupinterface.interface','network.name as network'], ['network.id=groupinterface.networkid','groupinterface.groupid=node.groupid'],[f"node.id='{nodeid}'"])
-        if group_interface:
-            for interface in group_interface:
-                add_if=True
-                for check_interface in node['interfaces']:
-                    if check_interface['interface'] == interface['interface']:
-                        # the node has the same interface so we ditch the group one
-                        add_if=False
-                        break
-                if add_if:
-                    interfacename,*_ = (node['provisioninterface'].split(' ')+[None]) # we skim off parts that we added for clarity in above section (e.g. (default)). also works if there's no additional info
-                    if interface['interface'] == interfacename and interface['network']: # if it is my prov interf then it will get that domain as a FQDN.
-                        node['hostname'] = nodename + '.' + interface['network'] 
-                    interface['interface'] += f" ({node['group']})"
-                    node['interfaces'].append(interface)
+#        group_interface = Database().get_record_join(['groupinterface.interface','network.name as network'], ['network.id=groupinterface.networkid','groupinterface.groupid=node.groupid'],[f"node.id='{nodeid}'"])
+#        if group_interface:
+#            for interface in group_interface:
+#                add_if=True
+#                for check_interface in node['interfaces']:
+#                    if check_interface['interface'] == interface['interface']:
+#                        # the node has the same interface so we ditch the group one
+#                        add_if=False
+#                        break
+#                if add_if:
+#                    interfacename,*_ = (node['provisioninterface'].split(' ')+[None]) # we skim off parts that we added for clarity in above section (e.g. (default)). also works if there's no additional info
+#                    if interface['interface'] == interfacename and interface['network']: # if it is my prov interf then it will get that domain as a FQDN.
+#                        node['hostname'] = nodename + '.' + interface['network'] 
+#                    interface['interface'] += f" ({node['group']})"
+#                    node['interfaces'].append(interface)
 
         response['config']['node'][nodename] = node
         LOGGER.info('Provided list of all nodes.')
@@ -210,6 +210,14 @@ def config_node_post(name=None):
     Output - Node information.
     """
     data = {}
+    items={ # minimal required items with defaults
+       'setupbmc':False,
+       'netboot':False,
+       'localinstall':False,
+       'bootmenu':False,
+       'service':False,
+       'localboot':False
+    }
     create, update = False, False
 
     if Helper().check_json(request.data):
@@ -240,48 +248,27 @@ def config_node_post(name=None):
                     data['name'] = data['newnodename']
                     del data['newnodename']
             update = True
-            if 'bootmenu' in data:
-                data['bootmenu'] = Helper().bool_revert(data['bootmenu'])
-            if 'localboot' in data:
-                data['localboot'] = Helper().bool_revert(data['localboot'])
-            if 'localinstall' in data:
-                data['localinstall'] = Helper().bool_revert(data['localinstall'])
-            if 'netboot' in data:
-                data['netboot'] = Helper().bool_revert(data['netboot'])
-            if 'service' in data:
-                data['service'] = Helper().bool_revert(data['service'])
-            if 'setupbmc' in data:
-                data['setupbmc'] = Helper().bool_revert(data['setupbmc'])
         else:
             if 'newnodename' in data:
                 response = {'message': f'{nodename_new} is not allwoed while creating a new node.'}
                 access_code = 400
                 return json.dumps(response), access_code
-            if 'bootmenu' in data:
-                data['bootmenu'] = Helper().bool_revert(data['bootmenu'])
-            else:
-                data['bootmenu'] = 0
-            if 'localboot' in data:
-                data['localboot'] = Helper().bool_revert(data['localboot'])
-            else:
-                data['localboot'] = 0
-            if 'localinstall' in data:
-                data['localinstall'] = Helper().bool_revert(data['localinstall'])
-            else:
-                data['localinstall'] = 0
-            if 'netboot' in data:
-                data['netboot'] = Helper().bool_revert(data['netboot'])
-            else:
-                data['netboot'] = 0
-            if 'service' in data:
-                data['service'] = Helper().bool_revert(data['service'])
-            else:
-                data['service'] = 0
-            if 'setupbmc' in data:
-                data['setupbmc'] = Helper().bool_revert(data['setupbmc'])
-            else:
-                data['setupbmc'] = 0
             create = True
+
+        for item in items:
+            if item in data: 
+                data[item] = data[item] or items[item]
+                if isinstance(data[item], bool):
+                    data[item]=str(Helper().make_boolnum(data[item]))
+            else:
+                data[item] = items[item]
+                if isinstance(data[item], bool):
+                    data[item]=str(Helper().make_boolnum(data[item]))
+            LOGGER.info(f"+++> i see {item} = [{data[item]}]")
+            if not data[item]:
+                LOGGER.info(f"###> deleting {item} = [{data[item]}]")
+                del data[item]
+
 
         if 'bmcsetup' in data:
             bmc_name = data['bmcsetup']
@@ -300,6 +287,7 @@ def config_node_post(name=None):
             del data['switch']
             data['switchid'] = Database().getid_byname('switch', switch_name)
 
+        interfaces=None
         if 'interfaces' in data:
             interfaces = data['interfaces']
             del data['interfaces']
@@ -319,6 +307,32 @@ def config_node_post(name=None):
                 nodeid = Database().insert('node', row)
                 response = {'message': f'Node {name} created successfully.'}
                 access_code = 201
+                if nodeid and 'groupid' in data and data['groupid']:
+                    # ----> GROUP interface. WIP. pending
+                    group_interfaces = Database().get_record_join(['groupinterface.interface','network.name as network'], ['network.id=groupinterface.networkid'], [f"groupinterface.groupid={data['groupid']}"])
+                    if group_interfaces:
+                        for group_interface in group_interfaces:
+                            result,mesg = Config().node_interface_config(nodeid,group_interface['interface'])
+                            if result:
+                                ips=[]
+                                avail=None
+                                network = Database().get_record_join(['ipaddress.ipaddress','ipaddress.networkid as networkid','network.network','network.subnet'], ['network.id=ipaddress.networkid'], [f"network.name='{group_interface['network']}'"])
+                                if network:
+                                    for ip in network:
+                                        ips.append(ip['ipaddress'])
+#                                    ## ---> we do not ping nodes as it will take time if we add bulk nodes, it'll take 1s per node.
+#                                    ret=0
+#                                    max=5 # we try to ping for X ips, if none of these are free, something else is going on (read: rogue devices)....
+#                                    while(max>0 and ret!=1):
+#                                        avail=Helper().get_available_ip(network[0]['network'],network[0]['subnet'],ips)
+#                                        ips.append(avail)
+#                                        output,ret=Helper().runcommand(f"ping -w1 -c1 {avail}", True, 3)
+#                                        max-=1
+    
+                                    avail=Helper().get_available_ip(network[0]['network'],network[0]['subnet'],ips)
+                                    if avail:
+                                        ipaddress=avail
+                                        result,mesg = Config().node_interface_ipaddress_config(nodeid,group_interface['interface'],ipaddress,group_interface['network'])
             if interfaces:
                 access_code = 204
                 for interface in interfaces:
@@ -338,6 +352,7 @@ def config_node_post(name=None):
                         response = {'message': f"{mesg}"}
                         access_code = 500
                         return json.dumps(response), access_code
+
  
             Service().queue('dhcp','restart')
             Service().queue('dns','restart')

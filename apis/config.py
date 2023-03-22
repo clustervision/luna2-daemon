@@ -175,7 +175,7 @@ def config_node_get(name=None):
                     node['hostname'] = nodename + '.' + interface['network']
                 node['interfaces'].append(interface)
 
-        group_interface = Database().get_record_join(['nodeinterface.interface','ipaddress.ipaddress','nodeinterface.macaddress','network.name as network'], ['network.id=ipaddress.networkid','ipaddress.tablerefid=nodeinterface.id'],['tableref="nodeinterface"',f"nodeinterface.nodeid='{nodeid}'"])
+        group_interface = Database().get_record_join(['groupinterface.interface','network.name as network'], ['network.id=groupinterface.networkid','groupinterface.groupid=node.groupid'],[f"node.id='{nodeid}'"])
         if group_interface:
             for interface in group_interface:
                 add_if=True
@@ -187,7 +187,8 @@ def config_node_get(name=None):
                 if add_if:
                     interfacename,*_ = (node['provisioninterface'].split(' ')+[None]) # we skim off parts that we added for clarity in above section (e.g. (default)). also works if there's no additional info
                     if interface['interface'] == interfacename and interface['network']: # if it is my prov interf then it will get that domain as a FQDN.
-                        node['hostname'] = nodename + '.' + interface['network'] + f" ({node['group']})"
+                        node['hostname'] = nodename + '.' + interface['network'] 
+                    interface['interface'] += f" ({node['group']})"
                     node['interfaces'].append(interface)
 
         response['config']['node'][nodename] = node

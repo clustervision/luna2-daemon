@@ -333,6 +333,142 @@ def config_node_post(name=None):
     return json.dumps(response), access_code
 
 
+
+@config_blueprint.route('/config/node/<string:name>/_clone', methods=['POST'])
+@token_required
+def config_node_clone(name=None):
+    """
+    Input - Node name
+    Process - Create or update the groups.
+    Output - Node information.
+    """
+    data = {}
+    create, update = False, False
+
+    if Helper().check_json(request.data):
+        request_data = request.get_json(force=True)
+    else:
+        response = {'message': 'Bad Request.'}
+        access_code = 400
+        return json.dumps(response), access_code
+    if request_data:
+        if 'node' not in request_data['config'].keys():
+            response = {'message': 'Bad Request.'}
+            access_code = 400
+            return json.dumps(response), access_code
+
+        srcnodename=name
+        newnodename=None
+        data = request_data['config']['node'][name]
+        node = Database().get_record(None, 'node', f' WHERE name = "{name}"')
+        if node:
+            create = True
+            nodeid = node[0]['id']
+            if 'newnodename' in data: 
+                newnodename = data['newnodename']
+                where = f' WHERE `name` = "{newnodename}"'
+                newnode_check = Database().get_record(None, 'node', where)
+                if newnode_check:
+                    response = {'message': f'{nodename_new} already present in database.'}
+                    access_code = 400
+                    return json.dumps(response), access_code
+                else:
+                    data['name'] = data['newnodename']
+                    del data['newnodename']
+
+#TWAN
+
+        # things we have to set if we 'clone' or create a node
+        items={
+           'prescript':'',
+           'partscript':'',
+           'postscript':'',
+           'setupbmc':False,
+           'netboot':False,
+           'localinstall':False,
+           'localboot':False,
+           'bootmenu':False,
+           'service':False,
+           'provisioninterface':'BOOTIF'
+        }
+
+        for item in items:
+            if item in data and item in node[0]:  # we copy from another node. not sure if this is really correct. pending
+                data[item] = data[item] or node[0][item]
+            else:
+                data[item] = items[item]
+            if isinstance(items[item], bool):
+                data[item]=str(Helper().make_boolnum(data[item]))
+
+        if 'bmcsetup' in data:
+            bmc_name = data['bmcsetup']
+            del data['bmcsetup']
+            data['bmcsetupid'] = Database().getid_byname('bmcsetup', bmc_name)
+        if 'group' in data:
+            group_name = data['group']
+            del data['group']
+            data['groupid'] = Database().getid_byname('group', group_name)
+        if 'osimage' in data:
+            osimage_name = data['osimage']
+            del data['osimage']
+            data['osimageid'] = Database().getid_byname('osimage', osimage_name)
+        if 'switch' in data:
+            switch_name = data['switch']
+            del data['switch']
+            data['switchid'] = Database().getid_byname('switch', switch_name)
+
+        if 'interfaces' in data:
+            interfaces = data['interfaces']
+            del data['interfaces']
+
+
+        node_columns = Database().get_columns('node')
+        columns_check = Helper().checkin_list(data, node_columns)
+        if columns_check:
+            if update:
+                where = [{"column": "id", "value": nodeid}]
+                row = Helper().make_rows(data)
+                Database().update('node', row, where)
+                response = {'message': f'Node {name} updated successfully.'}
+                access_code = 204
+            if create:
+                data['name'] = name
+                row = Helper().make_rows(data)
+                nodeid = Database().insert('node', row)
+                response = {'message': f'Node {name} created successfully.'}
+                access_code = 201
+            if interfaces:
+                access_code = 204
+                for interface in interfaces:
+                    # Antoine
+                    interface_name = interface['interface']
+                    macaddress,network=None,None
+                    if 'macaddress' in interface.keys():
+                        macaddress=interface['macaddress']
+                    result,mesg = Config().node_interface_config(nodeid,interface_name,macaddress)
+                    if result and 'ipaddress' in interface.keys():
+                        ipaddress=interface['ipaddress']
+                        if 'network' in interface.keys():
+                            network=interface['network']
+                        result,mesg = Config().node_interface_ipaddress_config(nodeid,interface_name,ipaddress,network)
+                        
+                    if result is False:
+                        response = {'message': f"{mesg}"}
+                        access_code = 500
+                        return json.dumps(response), access_code
+                    else:
+                        Service().queue('dhcp','restart')
+                        Service().queue('dns','restart')
+
+        else:
+            response = {'message': 'Bad Request; Columns are incorrect.'}
+            access_code = 400
+    else:
+        response = {'message': 'Bad Request; Did not received data.'}
+        access_code = 400
+    return json.dumps(response), access_code
+
+
 @config_blueprint.route('/config/node/<string:name>/_delete', methods=['GET'])
 @token_required
 def config_node_delete(name=None):
@@ -561,6 +697,18 @@ def config_group_get(name=None):
     Process - Fetch the Group information.
     Output - Group Info.
     """
+    # things we have to set for a group
+    items={
+       'prescript':'<empty>',
+       'partscript':'<empty>',
+       'postscript':'<empty>',
+       'setupbmc':False,
+       'netboot':False,
+       'localinstall':False,
+       'bootmenu':False,
+       'provisioninterface':'BOOTIF'
+    }
+
     groups = Database().get_record(None, 'group', f' WHERE name = "{name}"')
     if groups:
         response = {'config': {'group': {} }}
@@ -573,10 +721,20 @@ def config_group_get(name=None):
                 for ifx in grp_interface:
                     grp['interfaces'].append(ifx)
             del grp['id']
-            grp['setupbmc'] = Helper().make_bool(grp['setupbmc'])
-            grp['netboot'] = Helper().make_bool(grp['netboot'])
-            grp['localinstall'] = Helper().make_bool(grp['localinstall'])
-            grp['bootmenu'] = Helper().make_bool(grp['bootmenu'])
+            for item in items.keys():
+                if item in grp:
+                    if isinstance(items[item], bool):
+                        grp[item]=str(Helper().make_bool(grp[item]))
+                    grp[item] = grp[item] or str(items[item]+' (default)')
+                else:
+                    if isinstance(items[item], bool):
+                        grp[item]=str(Helper().make_bool(grp[item]))
+                    grp[item] = str(items[item]+' (default)')
+
+#            grp['setupbmc'] = Helper().make_bool(grp['setupbmc'])
+#            grp['netboot'] = Helper().make_bool(grp['netboot'])
+#            grp['localinstall'] = Helper().make_bool(grp['localinstall'])
+#            grp['bootmenu'] = Helper().make_bool(grp['bootmenu'])
             grp['osimage'] = Database().getname_byid('osimage', grp['osimageid'])
             del grp['osimageid']
             if grp['bmcsetupid']:
@@ -626,36 +784,35 @@ def config_group_post(name=None):
                     data['name'] = data['newgroupname']
                     del data['newgroupname']
             update = True
-            if 'setupbmc' in data:
-                data['setupbmc'] = Helper().bool_revert(data['setupbmc'])
-            if 'netboot' in data:
-                data['netboot'] = Helper().bool_revert(data['netboot'])
-            if 'localinstall' in data:
-                data['localinstall'] = Helper().bool_revert(data['localinstall'])
-            if 'bootmenu' in data:
-                data['bootmenu'] = Helper().bool_revert(data['bootmenu'])
         else:
             if 'newgroupname' in data:
                 response = {'message': f'{newgrpname} is not allwoed while creating a new group.'}
                 access_code = 400
                 return json.dumps(response), access_code
-            if 'setupbmc' in data:
-                data['setupbmc'] = Helper().bool_revert(data['setupbmc'])
-            else:
-                data['setupbmc'] = 0
-            if 'netboot' in data:
-                data['netboot'] = Helper().bool_revert(data['netboot'])
-            else:
-                data['netboot'] = 0
-            if 'localinstall' in data:
-                data['localinstall'] = Helper().bool_revert(data['localinstall'])
-            else:
-                data['localinstall'] = 0
-            if 'bootmenu' in data:
-                data['bootmenu'] = Helper().bool_revert(data['bootmenu'])
-            else:
-                data['bootmenu'] = 0
             create = True
+
+        # things we have to set for a group
+        items={
+           'prescript':'',
+           'partscript':'',
+           'postscript':'',
+           'setupbmc':False,
+           'netboot':False,
+           'localinstall':False,
+           'bootmenu':False,
+           'provisioninterface':'BOOTIF'
+        }
+
+        for item in items:
+            if item in data:  # pending
+                LOGGER.debug(f"{item} in data [{data[item]}]")
+                data[item] = data[item]
+            else:
+                LOGGER.debug(f"{item} in other [{grp[0][item]}] or [{items[item]}]")
+                data[item] = grp[0][item] or items[item]
+            if isinstance(items[item], bool):
+                data[item]=str(Helper().make_boolnum(data[item]))
+
         if 'bmcsetupname' in data:
             bmcname = data['bmcsetupname']
             data['bmcsetupid'] = Database().getid_byname('bmcsetup', data['bmcsetupname'])
@@ -669,10 +826,6 @@ def config_group_post(name=None):
             osname = data['osimage']
             del data['osimage']
             data['osimageid'] = Database().getid_byname('osimage', osname)
-        if not data['bmcsetupid']:
-            response = {'message': f'BMC Setup {osname} does not exist.'}
-            access_code = 400
-            return json.dumps(response), access_code
         if 'interfaces' in data:
             newinterface = data['interfaces']
             del data['interfaces']

@@ -29,6 +29,7 @@ from utils.osimage import OsImage
 from utils.config import Config
 from utils.status import Status
 from utils.service import Service
+from utils.queue import Queue
 
 LOGGER = Log.get_logger()
 config_blueprint = Blueprint('config', __name__)
@@ -1293,7 +1294,7 @@ def config_osimage_pack(name=None):
     #Antoine
     request_id=str(time())+str(randint(1001,9999))+str(getpid())
 
-    queue_id,queue_response = Helper().add_task_to_queue(f'pack_n_tar_osimage:{name}','osimage',request_id)
+    queue_id,queue_response = Queue().add_task_to_queue(f'pack_n_tar_osimage:{name}','osimage',request_id)
     if not queue_id:
         LOGGER.info(f"config_osimage_pack GET cannot get queue_id")
         response= {"message": f'OS image {name} pack queuing failed.'}
@@ -1308,7 +1309,7 @@ def config_osimage_pack(name=None):
     LOGGER.info(f"config_osimage_pack GET added task to queue: {queue_id}")
     Status().add_message(request_id,"luna",f"queued pack osimage {name} with queue_id {queue_id}")
 
-    next_id = Helper().next_task_in_queue('osimage')
+    next_id = Queue().next_task_in_queue('osimage')
     if queue_id == next_id:
         executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
         executor.submit(OsImage().pack_n_tar_mother,name,request_id)

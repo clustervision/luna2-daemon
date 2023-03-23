@@ -26,6 +26,7 @@ from utils.database import Database
 from utils.helper import Helper
 from utils.queue import Queue
 from time import sleep
+import re
 
 from common.constant import CONSTANT
 
@@ -193,13 +194,16 @@ subnet {network} netmask {netmask} {{
         This method will generate node and
         otherdecices configuration for the DHCP
         """
-        node_block = f"""
+        if macaddress:
+            if re.match("[0-9a-f]{2}([-:]?)[0-9a-f]{2}(\\1[0-9a-f]{2}){4}$", macaddress.lower()):
+                node_block = f"""
 host {node}  {{
     hardware ethernet {macaddress};
     fixed-address {ipaddr};
 }}
 """
-        return node_block
+                return node_block
+        return ""  # has to be ""
 
 
     def dns_configure(self):
@@ -679,7 +683,7 @@ $TTL 604800
                                 Database().delete_row('nodeinterface', [{"column": "id", "value": node['ifid']}])
 
                     Queue().remove_task_from_queue(next_id)
-                    serv_queue_id,serv_response = Queue().add_task_to_queue(f'dns:restart','housekeeper','__internal__')
+                    serv_queue_id,serv_response = Queue().add_task_to_queue(f'dns:restart','housekeeper','__update_interface_on_group_nodes__')
 
                 else:
                     self.logger.info(f"{details['task']} is not for us.")

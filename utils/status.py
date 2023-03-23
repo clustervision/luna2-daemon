@@ -59,23 +59,3 @@ class Status(object):
         Database().delete_row('status', [{"column": "request_id", "value": request_id}])
 
 
-    def cleanup_mother(self,event):
-        tel=0
-        while True:
-            try:
-                tel+=1
-                if tel > 120:
-                    tel=0
-                    records=Database().get_record_query("select id,message from status where created<datetime('now','-1 hour')") # only sqlite compliant. rest pending
-                    for record in records:
-                        self.logger.info(f"cleaning up status id {record['id']} : {record['message']}")
-                        where = [{"column": "id", "value": record['id']}]
-                        Database().delete_row('status', where)
-                if event.is_set():
-                    return
-            except Exception as exp:
-                self.logger.error(f"clean up thread encountered problem: {exp}")
-            sleep(5)
-
-
-

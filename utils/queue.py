@@ -1,6 +1,3 @@
-
-
-
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
@@ -30,7 +27,6 @@ from threading import Event
 from time import sleep, time
 from datetime import datetime
 import signal
-
 
 class Queue(object):
 
@@ -91,26 +87,4 @@ class Queue(object):
         if tasks:
             return True
         return False
-
-
-    def housekeeper_mother(self,event):
-        tel=0
-        while True:
-            try:
-                tel+=1
-                if tel > 6:
-                    tel=0
-                    while next_id := self.next_task_in_queue('housekeeper'):
-                        self.logger.info(f"housekeeper_mother sees job in queue as next: {next_id}")
-                        details=self.get_task_details(next_id)
-                        first,second,*_=(details['task'].split(':')+[None])
-                        self.logger.info(f"housekeeper_mother will work on {first} {second}")
-                        self.remove_task_from_queue(next_id)
-                            
-                if event.is_set():
-                    return
-            except Exception as exp:
-                self.logger.error(f"clean up thread encountered problem: {exp}")
-            sleep(5)
-
 

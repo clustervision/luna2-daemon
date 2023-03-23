@@ -20,8 +20,7 @@ __status__      = 'Development'
 from flask import Flask, abort, json, Response, request
 from common.constant import LOGGER
 from common.bootstrap import validatebootstrap
-from utils.status import Status
-from utils.queue import Queue
+from utils.housekeeper import Housekeeper 
 from utils.service import Service
 import concurrent.futures
 from threading import Event
@@ -49,11 +48,11 @@ def on_starting(server):
     Service().luna_service('dns', 'restart')
     # --------------- status message cleanup thread ----------------
     executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
-    executor.submit(Status().cleanup_mother,event)
+    executor.submit(Housekeeper().cleanup_mother,event)
     executor.shutdown(wait=False)
     # ----------------- queue housekeeper thread -------------------
     executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
-    executor.submit(Queue().housekeeper_mother,event)
+    executor.submit(Housekeeper().tasks_mother,event)
     executor.shutdown(wait=False)
     # --------------------------------------------------------------
     LOGGER.info(vars(server))

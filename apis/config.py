@@ -425,6 +425,7 @@ def config_node_clone(name=None):
             return json.dumps(response), access_code
 
         del node[0]['id']
+        del node[0]['status']
         for item in node[0]:
             if item in data:  # we copy from another node unless we supply
                 data[item] = data[item] or node[0][item] or None
@@ -432,7 +433,7 @@ def config_node_clone(name=None):
                 data[item] = node[0][item] or None
             if item in items:
                 data[item] = data[item] or items[item]
-            if not data[item]:
+            if not data[item] and item not in items:
                 del data[item]
             elif isinstance(data[item], bool):
                 data[item]=str(Helper().make_boolnum(data[item]))
@@ -1006,7 +1007,7 @@ def config_group_clone(name=None):
                 data[item] = grp[0][item] or None
             if item in items:
                 data[item] = data[item] or items[item]
-            if not data[item]:
+            if not data[item] and item not in items:
                 del data[item]
             elif isinstance(data[item], bool):
                 data[item]=str(Helper().make_boolnum(data[item]))

@@ -826,6 +826,17 @@ def config_group_post(name=None):
     Output - Group Information.
     """
     data = {}
+    # things we have to set for a group
+    items={
+       'prescript':'',
+       'partscript':'',
+       'postscript':'',
+       'setupbmc':False,
+       'netboot':False,
+       'localinstall':False,
+       'bootmenu':False,
+       'provisioninterface':'BOOTIF'
+    }
     create, update = False, False
 
     if Helper().check_json(request.data):
@@ -857,18 +868,6 @@ def config_group_post(name=None):
                 access_code = 400
                 return json.dumps(response), access_code
             create = True
-
-        # things we have to set for a group
-        items={
-           'prescript':'',
-           'partscript':'',
-           'postscript':'',
-           'setupbmc':False,
-           'netboot':False,
-           'localinstall':False,
-           'bootmenu':False,
-           'provisioninterface':'BOOTIF'
-        }
 
         for item in items:
             if item in data:  # pending
@@ -933,6 +932,139 @@ def config_group_post(name=None):
                         row = Helper().make_rows(ifx)
                         result = Database().insert('groupinterface', row)
                         LOGGER.info(f'Interface created => {result} .')
+
+        else:
+            response = {'message': 'Bad Request; Columns are incorrect.'}
+            access_code = 400
+    else:
+        response = {'message': 'Bad Request; Did not received data.'}
+        access_code = 400
+    return json.dumps(response), access_code
+
+
+@config_blueprint.route("/config/group/<string:name>/_clone", methods=['POST'])
+###@token_required
+def config_group_clone(name=None):
+    """
+    Input - Group ID or Name
+    Process - Create Or Update The Groups.
+    Output - Group Information.
+    """
+    data = {}
+    # things we have to set for a group
+    items={
+       'prescript':'',
+       'partscript':'',
+       'postscript':'',
+       'setupbmc':False,
+       'netboot':False,
+       'localinstall':False,
+       'bootmenu':False,
+    }
+
+    if Helper().check_json(request.data):
+        request_data = request.get_json(force=True)
+    else:
+        response = {'message': 'Bad Request.'}
+        access_code = 400
+        return json.dumps(response), access_code
+    if request_data:
+        data = request_data['config']['group'][name]
+        grp = Database().get_record(None, 'group', f' WHERE name = "{name}"')
+        if grp:
+            grpid = grp[0]['id']
+            if 'newgroupname' in data:
+                newgroupname = data['newgroupname']
+                where = f' WHERE `name` = "{newgroupname}"'
+                checknewgrp = Database().get_record(None, 'group', where)
+                if checknewgrp:
+                    response = {'message': f'{newgroupname} Already present in database.'}
+                    access_code = 400
+                    return json.dumps(response), access_code
+                data['name'] = data['newgroupname']
+                del data['newgroupname']
+            else:
+                response = {'message': f'Bad Request; New groupname not supplied.'}
+                access_code = 400
+                return json.dumps(response), access_code
+        else:
+            response = {'message': f'Bad Request; Source group {name} does not exist.'}
+            access_code = 400
+            return json.dumps(response), access_code
+
+        del grp[0]['id']
+        for item in grp[0]:
+            if item in data:  # pending
+                LOGGER.debug(f"{item} in data [{data[item]}] or grp [{grp[0][item]}]")
+                data[item] = data[item] or grp[0][item] or None
+            else:
+                LOGGER.debug(f"{item} in other [{grp[0][item]}]")
+                data[item] = grp[0][item] or None
+            if item in items:
+                data[item] = data[item] or items[item]
+            if not data[item]:
+                del data[item]
+            elif isinstance(data[item], bool):
+                data[item]=str(Helper().make_boolnum(data[item]))
+
+        if 'bmcsetupname' in data:
+            bmcname = data['bmcsetupname']
+            data['bmcsetupid'] = Database().getid_byname('bmcsetup', data['bmcsetupname'])
+            if data['bmcsetupid']:
+                del data['bmcsetupname']
+            else:
+                response = {'message': f'BMC Setup {bmcname} does not exist.'}
+                access_code = 400
+                return json.dumps(response), access_code
+        if 'osimage' in data:
+            osname = data['osimage']
+            del data['osimage']
+            data['osimageid'] = Database().getid_byname('osimage', osname)
+        newinterface=None
+        if 'interfaces' in data:
+            newinterface = data['interfaces']
+            del data['interfaces']
+
+        grpcolumns = Database().get_columns('group')
+        columncheck = Helper().checkin_list(data, grpcolumns)
+        if columncheck:
+            row = Helper().make_rows(data)
+            newgroupid = Database().insert('group', row)
+            if not newgroupid:
+                response = {'message': f'Node {newgroupname} could not be created due to possible property clash.'}
+                access_code = 500
+                return json.dumps(response), access_code
+
+            response = {'message': f'Group {name} created.'}
+            access_code = 201
+
+            grp_interfaces = Database().get_record_join(['groupinterface.interface','network.name as network','network.id as networkid'], ['network.id=groupinterface.networkid'], [f"groupid = '{grpid}'"])
+
+            if newinterface:
+                for ifx in newinterface:
+                    network = Database().getid_byname('network', ifx['network'])
+                    if network is None:
+                        response = {'message': f'Bad Request; Network {network} not exist.'}
+                        access_code = 400
+                        return json.dumps(response), access_code
+                    else:
+                        ifx['networkid'] = network
+                        ifx['groupid'] = grpid
+                        del ifx['network']
+                    ifname = ifx['interface']
+                    for grp_ifx in grp_interfaces:
+                        if grp_ifx['interface'] == ifname:
+                            del group_interfaces[grp_ifx]
+                    row = Helper().make_rows(ifx)
+                    result = Database().insert('groupinterface', row)
+
+            for grp_ifx in grp_interfaces:
+                ifx={}
+                ifx['networkid']=grp_ifx['networkid']
+                ifx['interface']=grp_ifx['interface']
+                ifx['groupid']=newgroupid
+                row = Helper().make_rows(ifx)
+                result = Database().insert('groupinterface', row)
 
         else:
             response = {'message': 'Bad Request; Columns are incorrect.'}

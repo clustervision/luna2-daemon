@@ -30,6 +30,7 @@ import signal
 from utils.status import Status
 from utils.queue import Queue
 from utils.config import Config
+from utils.osimage import OsImage
 from utils.service import Service
 
 
@@ -40,6 +41,7 @@ class Housekeeper(object):
 
     def tasks_mother(self,event):
         tel=0
+        self.logger.info("--> Starting tasks thread")
         while True:
             try:
                 tel+=1
@@ -57,6 +59,11 @@ class Housekeeper(object):
                                 action=second
                                 Queue().update_task_status_in_queue(next_id,'in progress')
                                 response, code = self.luna_service(service, action)
+                            case 'pack_n_tar_osimage':
+                                osimage=second
+                                ret,mesg=self.pack_image(osimage)
+                                if ret is True:
+                                    rett,mesgt=self.create_tarball(osimage)
 
                         self.remove_task_from_queue(next_id)
                             
@@ -69,6 +76,7 @@ class Housekeeper(object):
 
     def cleanup_mother(self,event):
         tel=0
+        self.logger.info("--> Starting cleanup thread")
         while True:
             try:
                 tel+=1

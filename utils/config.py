@@ -679,7 +679,7 @@ $TTL 604800
                                 Database().delete_row('nodeinterface', [{"column": "id", "value": node['ifid']}])
 
                     Queue().remove_task_from_queue(next_id)
-                    #we have to schedule dhcp/dns restart
+                    serv_queue_id,serv_response = Queue().add_task_to_queue(f'dns:restart','housekeeper','__internal__')
 
                 else:
                     self.logger.info(f"{details['task']} is not for us.")

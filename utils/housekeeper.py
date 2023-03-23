@@ -48,29 +48,29 @@ class Housekeeper(object):
                 if tel > 6:
                     tel=0
                     while next_id := Queue().next_task_in_queue('housekeeper'):
-                        self.logger.info(f"housekeeper_mother sees job in queue as next: {next_id}")
+                        self.logger.info(f"tasks_mother sees job in queue as next: {next_id}")
                         details=Queue().get_task_details(next_id)
                         first,second,*_=(details['task'].split(':')+[None])
-                        self.logger.info(f"housekeeper_mother will work on {first} {second}")
+                        self.logger.info(f"tasks_mother will work on {first} {second}")
 
                         match first:
                             case 'dhcp' | 'dns':
                                 service=first
                                 action=second
                                 Queue().update_task_status_in_queue(next_id,'in progress')
-                                response, code = self.luna_service(service, action)
+                                response, code = Service().luna_service(service, action)
                             case 'pack_n_tar_osimage':
                                 osimage=second
-                                ret,mesg=self.pack_image(osimage)
+                                ret,mesg=OsImage().pack_image(osimage)
                                 if ret is True:
-                                    rett,mesgt=self.create_tarball(osimage)
+                                    rett,mesgt=OsImage().create_tarball(osimage)
 
-                        self.remove_task_from_queue(next_id)
+                        Queue().remove_task_from_queue(next_id)
                             
                 if event.is_set():
                     return
             except Exception as exp:
-                self.logger.error(f"clean up thread encountered problem: {exp}")
+                self.logger.error(f"tasks_mother up thread encountered problem: {exp}")
             sleep(5)
 
 

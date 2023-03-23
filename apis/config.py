@@ -235,11 +235,12 @@ def config_node_post(name=None):
             return json.dumps(response), access_code
 
         data = request_data['config']['node'][name]
+        name = name.replace('_','-')
         node = Database().get_record(None, 'node', f' WHERE name = "{name}"')
         if node:
             nodeid = node[0]['id']
             if 'newnodename' in data:  # is mentioned as newhostname in design documents!
-                nodename_new = data['newnodename']
+                nodename_new = data['newnodename'].replace('_','-')
                 where = f' WHERE `name` = "{nodename_new}"'
                 newnode_check = Database().get_record(None, 'node', where)
                 if newnode_check:
@@ -256,6 +257,8 @@ def config_node_post(name=None):
                 access_code = 400
                 return json.dumps(response), access_code
             create = True
+
+        data['name'] = data['name'].replace('_','-')
 
         for item in items:
             if item in data: 
@@ -406,11 +409,12 @@ def config_node_clone(name=None):
         srcnodename=name
         newnodename=None
         data = request_data['config']['node'][name]
+        name = name.replace('_','-')
         node = Database().get_record(None, 'node', f' WHERE name = "{name}"')
         if node:
             nodeid = node[0]['id']
             if 'newnodename' in data: 
-                newnodename = data['newnodename']
+                newnodename = data['newnodename'].replace('_','-')
                 where = f' WHERE `name` = "{newnodename}"'
                 newnode_check = Database().get_record(None, 'node', where)
                 if newnode_check:
@@ -428,6 +432,8 @@ def config_node_clone(name=None):
             response = {'message': f'Bad Request; Source node {name} does not exist.'}
             access_code = 400
             return json.dumps(response), access_code
+
+        data['name'] = data['name'].replace('_','-')
 
         del node[0]['id']
         del node[0]['status']
@@ -1902,6 +1908,7 @@ def config_switch_post(switch=None):
         return json.dumps(response), access_code
     if request_data:
         data = request_data['config']['switch'][switch]
+        switch = switch.replace('_','-')
         data['name'] = switch
         checkswitch = Database().get_record(None, 'switch', f' WHERE `name` = "{switch}"')
         if checkswitch:
@@ -1912,6 +1919,8 @@ def config_switch_post(switch=None):
             update = True
         else:
             create = True
+        data['name'] = data['name'].replace('_','-')
+
         switchcolumns = Database().get_columns('switch')
         if 'ipaddress' in data.keys():
             ipaddress=data['ipaddress']
@@ -1980,7 +1989,7 @@ def config_switch_clone(switch=None):
         srcswitch=data['name']
         if 'newswitchname' in data:
             data['name'] = data['newswitchname']
-            newswitchname = data['newswitchname']
+            newswitchname = data['newswitchname'].replace('_','-')
             del data['newswitchname']
         else:
             response = {'message': 'Kindly provide the new switch name.'}
@@ -2001,6 +2010,7 @@ def config_switch_clone(switch=None):
             networkname=data['network']
             del data['network']
 
+        data['name'] = data['name'].replace('_','-')
         switchcolumns = Database().get_columns('switch')
         columncheck = Helper().checkin_list(data, switchcolumns)
         if data:
@@ -2182,6 +2192,7 @@ def config_otherdev_post(device=None):
         return json.dumps(response), access_code
     if request_data:
         data = request_data['config']['otherdev'][device]
+        device = device.replace('_','-')
         data['name'] = device
         checkdevice = Database().get_record(None, 'otherdevices', f' WHERE `name` = "{device}"')
         if checkdevice:
@@ -2199,6 +2210,8 @@ def config_otherdev_post(device=None):
         if 'network' in data.keys():
             network=data['network']
             del data['network']
+        data['name'] = data['name'].replace('_','-')
+
         columncheck = Helper().checkin_list(data, devicecolumns)
         data = Helper().check_ip_exist(data)
         if data:
@@ -2260,7 +2273,7 @@ def config_otherdev_clone(device=None):
         srcdevice=data['name']
         if 'newotherdevname' in data:
             data['name'] = data['newotherdevname']
-            newdevicename = data['newotherdevname']
+            newdevicename = data['newotherdevname'].replace('_','-')
             del data['newotherdevname']
         else:
             response = {'message': 'Kindly provide the new device name.'}
@@ -2281,6 +2294,7 @@ def config_otherdev_clone(device=None):
         if 'network' in data:
             networkname=data['network']
             del data['network']
+        data['name'] = data['name'].replace('_','-')
         devicecolumns = Database().get_columns('otherdevices')
         columncheck = Helper().checkin_list(data, devicecolumns)
 

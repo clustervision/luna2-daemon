@@ -2198,7 +2198,7 @@ def config_otherdev_post(device=None):
         if checkdevice:
             deviceid = checkdevice[0]['id']
             if 'newotherdevname' in request_data['config']['otherdev'][device]:
-                data['name'] = data['newotherdevname'].replace('_','-')
+                data['name'] = data['newotherdevname']
                 del data['newotherdevname']
             update = True
         else:

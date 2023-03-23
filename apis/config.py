@@ -358,6 +358,10 @@ def config_node_post(name=None):
  
             Service().queue('dhcp','restart')
             Service().queue('dns','restart')
+            # below might look as redundant but is added to prevent a possible race condition when many nodes are added in a loop.
+            # the below tasks ensures that even the last node will be included in dhcp/dns
+            Queue().add_task_to_queue(f'dhcp:restart','housekeeper','__node_post__')
+            Queue().add_task_to_queue(f'dns:restart','housekeeper','__node_post__')
 
         else:
             response = {'message': 'Bad Request; Columns are incorrect.'}
@@ -530,7 +534,7 @@ def config_node_clone(name=None):
                                     access_code = 500
                                     return json.dumps(response), access_code
 
-            Service().queue('dhcp','restart')
+            #Service().queue('dhcp','restart') # do we need dhcp restart? MAC is wiped on new NIC so no real need i guess
             Service().queue('dns','restart')
 
         else:
@@ -560,8 +564,14 @@ def config_node_delete(name=None):
                 Database().delete_row('ipaddress', [{"column": "id", "value": ip['id']}])
         Database().delete_row('nodeinterface', [{"column": "nodeid", "value": nodeid}])
         Database().delete_row('nodesecrets', [{"column": "nodeid", "value": nodeid}])
+        # ----
         Service().queue('dns','restart')
         Service().queue('dhcp','restart')
+        # below might look as redundant but is added to prevent a possible race condition when many nodes are added in a loop.
+        # the below tasks ensures that even the last node will be included in dhcp/dns
+        Queue().add_task_to_queue(f'dhcp:restart','housekeeper','__node_delete__')
+        Queue().add_task_to_queue(f'dns:restart','housekeeper','__node_delete__')
+        # ----
         response = {'message': f'Node {name} with all its interfaces removed.'}
         access_code = 204
     else:
@@ -642,6 +652,10 @@ def config_node_post_interfaces(name=None):
                     else:
                         Service().queue('dhcp','restart')
                         Service().queue('dns','restart')
+                        # below might look as redundant but is added to prevent a possible race condition when many nodes are added in a loop.
+                        # the below tasks ensures that even the last node will be included in dhcp/dns
+                        Queue().add_task_to_queue(f'dhcp:restart','housekeeper','__node_interface_post__')
+                        Queue().add_task_to_queue(f'dns:restart','housekeeper','__node_interface_post__')
                         response = {'message': 'Interface updated.'}
                         access_code = 204
             else:
@@ -709,8 +723,14 @@ def config_node_delete_interface(name=None, interface=None):
             Database().delete_row('ipaddress', where)
             where = [{"column": "id", "value": node_interface[0]['ifid']}]
             Database().delete_row('nodeinterface', where)
+            # ---
             Service().queue('dhcp','restart')
             Service().queue('dns','restart')
+            # below might look as redundant but is added to prevent a possible race condition when many nodes are added in a loop.
+            # the below tasks ensures that even the last node will be included in dhcp/dns
+            Queue().add_task_to_queue(f'dhcp:restart','housekeeper','__node_interface_delete__')
+            Queue().add_task_to_queue(f'dns:restart','housekeeper','__node_interface_delete__')
+            # ---
             response = {'message': f'Node {name} interface {interface} removed successfully.'}
             access_code = 204
         else:

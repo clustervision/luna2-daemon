@@ -676,6 +676,7 @@ class Helper(object):
 
 
     # ---------------------------------------------------------
+    # not sure if below is still being used
  
     def insert_mesg_in_status(self,request_id,username_initiator,message):
         current_datetime=datetime.now()

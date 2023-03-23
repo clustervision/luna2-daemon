@@ -415,6 +415,10 @@ def config_node_clone(name=None):
                 else:
                     data['name'] = data['newnodename']
                     del data['newnodename']
+            else:
+                response = {'message': f'Bad Request; Destination node name not supplied.'}
+                access_code = 400
+                return json.dumps(response), access_code
         else:
             response = {'message': f'Bad Request; Source node {name} does not exist.'}
             access_code = 400
@@ -818,7 +822,7 @@ def config_group_get(name=None):
 
 
 @config_blueprint.route("/config/group/<string:name>", methods=['POST'])
-###@token_required
+@token_required
 def config_group_post(name=None):
     """
     Input - Group ID or Name
@@ -943,7 +947,7 @@ def config_group_post(name=None):
 
 
 @config_blueprint.route("/config/group/<string:name>/_clone", methods=['POST'])
-###@token_required
+@token_required
 def config_group_clone(name=None):
     """
     Input - Group ID or Name
@@ -984,7 +988,7 @@ def config_group_clone(name=None):
                 data['name'] = data['newgroupname']
                 del data['newgroupname']
             else:
-                response = {'message': f'Bad Request; New groupname not supplied.'}
+                response = {'message': f'Bad Request; Destination group name not supplied.'}
                 access_code = 400
                 return json.dumps(response), access_code
         else:
@@ -1076,7 +1080,7 @@ def config_group_clone(name=None):
 
 
 @config_blueprint.route("/config/group/<string:name>/_delete", methods=['GET'])
-###@token_required
+@token_required
 def config_group_delete(name=None):
     """
     Input - Group Name
@@ -1130,7 +1134,7 @@ def config_group_get_interfaces(name=None):
 
 
 @config_blueprint.route("/config/group/<string:name>/interfaces", methods=['POST'])
-###@token_required
+@token_required
 def config_group_post_interfaces(name=None):
     """
     Input - Group Name
@@ -1836,7 +1840,7 @@ def config_switch_get(switch=None):
 
 
 @config_blueprint.route("/config/switch/<string:switch>", methods=['POST'])
-###@token_required
+@token_required
 def config_switch_post(switch=None):
     """
     Input - Switch ID or Name
@@ -1910,7 +1914,7 @@ def config_switch_post(switch=None):
 
 
 @config_blueprint.route("/config/switch/<string:switch>/_clone", methods=['POST'])
-###@token_required
+@token_required
 def config_switch_clone(switch=None):
     """
     Input - Switch ID or Name
@@ -1945,7 +1949,7 @@ def config_switch_clone(switch=None):
             return json.dumps(response), access_code
         else:
             create = True
-#TWAN
+
         if 'ipaddress' in data:
             ipaddress=data['ipaddress']
             del data['ipaddress']
@@ -1955,7 +1959,6 @@ def config_switch_clone(switch=None):
 
         switchcolumns = Database().get_columns('switch')
         columncheck = Helper().checkin_list(data, switchcolumns)
-        #data = Helper().check_ip_exist(data)
         if data:
             if columncheck:
                 if create:
@@ -2040,7 +2043,7 @@ def config_switch_clone(switch=None):
 
 
 @config_blueprint.route("/config/switch/<string:switch>/_delete", methods=['GET'])
-###@token_required
+@token_required
 def config_switch_delete(switch=None):
     """
     Input - Switch ID or Name
@@ -2119,7 +2122,7 @@ def config_otherdev_get(device=None):
 
 
 @config_blueprint.route("/config/otherdev/<string:device>", methods=['POST'])
-###@token_required
+@token_required
 def config_otherdev_post(device=None):
     """
     Input - Device Name
@@ -2192,7 +2195,7 @@ def config_otherdev_post(device=None):
 
 
 @config_blueprint.route("/config/otherdev/<string:device>/_clone", methods=['POST'])
-###@token_required
+@token_required
 def config_otherdev_clone(device=None):
     """
     Input - Device ID or Name
@@ -2236,8 +2239,7 @@ def config_otherdev_clone(device=None):
             del data['network']
         devicecolumns = Database().get_columns('otherdevices')
         columncheck = Helper().checkin_list(data, devicecolumns)
-#        data = Helper().check_ip_exist(data)
-#TWAN
+
         if data:
             if columncheck:
                 if create:
@@ -2320,7 +2322,7 @@ def config_otherdev_clone(device=None):
 
 
 @config_blueprint.route("/config/otherdev/<string:device>/_delete", methods=['GET'])
-###@token_required
+@token_required
 def config_otherdev_delete(device=None):
     """
     Input - Device ID or Name
@@ -2403,7 +2405,7 @@ def config_network_get(name=None):
 
 
 @config_blueprint.route("/config/network/<string:name>", methods=['POST'])
-###@token_required
+@token_required
 def config_network_post(name=None):
     """
     Input - Network Name
@@ -2521,121 +2523,9 @@ def config_network_post(name=None):
     return json.dumps(data), access_code
 
 
-@config_blueprint.route("/config/network/<string:name>/_clone", methods=['POST'])
-# ###@token_required
-def config_network_clone(name=None):
-    """
-    Input - Network Name
-    Process - Create or Update Network information.
-    Output - Success or Failure.
-    """
-    data = {}
-    create = False
-    if Helper().check_json(request.data):
-        request_data = request.get_json(force=True)
-    else:
-        response = {'message': 'Bad Request.'}
-        access_code = 400
-        return json.dumps(response), access_code
-    if request_data:
-        data = request_data['config']['network'][name]
-        data['name'] = name
-        checknetwork = Database().get_record(None, 'network', f' WHERE `name` = "{name}"')
-        if checknetwork:
-            if 'newnetname' in request_data['config']['network'][name]:
-                newnetworkname = request_data['config']['network'][name]['newnetname']
-                where = f' WHERE `name` = "{newnetworkname}"'
-                checknewnetwork = Database().get_record(None, 'network', where)
-                if checknewnetwork:
-                    response = {'message': f'{newnetworkname} already present in database.'}
-                    access_code = 400
-                    return json.dumps(response), access_code
-                else:
-                    data['name'] = data['newnetname']
-                    del data['newnetname']
-            create = True
-        else:
-            response = {'message': f'Bad Request; Network {name} is not present in database.'}
-            access_code = 400
-            return json.dumps(response), access_code
-        if 'network' in data:
-            nwkip = Helper().check_ip(data['network'])
-            if nwkip:
-                nwkdetails = Helper().get_network_details(data['network'])
-                data['network'] = nwkip
-                data['subnet'] = nwkdetails['subnet']
-            else:
-                response = {'message': f'Incorrect network IP: {data["network"]}.'}
-                access_code = 400
-                return json.dumps(response), access_code
-        if 'gateway' in data:
-            gwdetails = Helper().check_ip_range(data['gateway'], data['network']+'/'+data['subnet'])
-            if not gwdetails:
-                response = {'message': f'Incorrect gateway IP: {data["gateway"]}.'}
-                access_code = 400
-                return json.dumps(response), access_code
-        if 'nameserver_ip' in data:
-            nsipdetails = Helper().check_ip_range(data['nameserver_ip'], data['network']+'/'+data['subnet'])
-            if not nsipdetails:
-                response = {'message': f'Incorrect Nameserver IP: {data["nameserver_ip"]}.'}
-                access_code = 400
-                return json.dumps(response), access_code
-        if 'ntp_server' in data:
-            subnet = data['network']+'/'+data['subnet']
-            ntpdetails = Helper().check_ip_range(data['ntp_server'], subnet)
-            if not ntpdetails:
-                response = {'message': f'Incorrect NTP Server IP: {data["ntp_server"]}.'}
-                access_code = 400
-                return json.dumps(response), access_code
-        if 'dhcp' in data:
-            if 'dhcp_range_begin' in data:
-                subnet = data['network']+'/'+data['subnet']
-                dhcpstartdetails = Helper().check_ip_range(data['dhcp_range_begin'], subnet)
-                if not dhcpstartdetails:
-                    response = {'message': f'Incorrect DHCP start: {data["dhcp_range_begin"]}.'}
-                    access_code = 400
-                    return json.dumps(response), access_code
-            else:
-                response = {'message': 'DHCP start range is a required parameter.'}
-                access_code = 400
-                return json.dumps(response), access_code
-            if 'dhcp_range_end' in data:
-                subnet = data['network']+'/'+data['subnet']
-                dhcpenddetails = Helper().check_ip_range(data['dhcp_range_end'], subnet)
-                if not dhcpenddetails:
-                    response = {'message': f'Incorrect DHCP end: {data["dhcp_range_end"]}.'}
-                    access_code = 400
-                    return json.dumps(response), access_code
-            else:
-                response = {'message': 'DHCP end range is a required parameter.'}
-                access_code = 400
-                return json.dumps(response), access_code
-        else:
-            data['dhcp'] = False
-            data['dhcp_range_begin'] = ""
-            data['dhcp_range_end'] = ""
-        networkcolumns = Database().get_columns('network')
-        columncheck = Helper().checkin_list(data, networkcolumns)
-        row = Helper().make_rows(data)
-        if columncheck:
-            if create:
-                Database().insert('network', row)
-                response = {'message': 'Network created.'}
-                access_code = 201
-        else:
-            response = {'message': 'Bad Request; Columns are incorrect.'}
-            access_code = 400
-            return json.dumps(response), access_code
-    else:
-        response = {'message': 'Bad Request; Did not received data.'}
-        access_code = 400
-        return json.dumps(response), access_code
-
-    return json.dumps(data), access_code
-
 
 @config_blueprint.route("/config/network/<string:name>/_delete", methods=['GET'])
-###@token_required
+@token_required
 def config_network_delete(name=None):
     """
     Input - Network Name
@@ -2655,7 +2545,7 @@ def config_network_delete(name=None):
 
 
 @config_blueprint.route("/config/network/<string:name>/<string:ipaddr>", methods=['GET'])
-###@token_required
+@token_required
 def config_network_ip(name=None, ipaddr=None):
     """
     Input - Network Name And IP Address
@@ -2728,7 +2618,7 @@ def config_network_nextip(name=None):
 
 
 @config_blueprint.route("/config/secrets", methods=['GET'])
-###@token_required
+@token_required
 def config_secrets_get():
     """
     Input - None
@@ -2767,7 +2657,7 @@ def config_secrets_get():
 
 
 @config_blueprint.route("/config/secrets/node/<string:name>", methods=['GET'])
-###@token_required
+@token_required
 def config_get_secrets_node(name=None):
     """
     Input - Node Name
@@ -2814,7 +2704,7 @@ def config_get_secrets_node(name=None):
 
 
 @config_blueprint.route("/config/secrets/node/<string:name>", methods=['POST'])
-###@token_required
+@token_required
 def config_post_secrets_node(name=None):
     """
     Input - Node Name & Payload
@@ -2884,7 +2774,7 @@ def config_post_secrets_node(name=None):
 
 
 @config_blueprint.route("/config/secrets/node/<string:name>/<string:secret>", methods=['GET'])
-###@token_required
+@token_required
 def config_get_node_secret(name=None, secret=None):
     """
     Input - Node Name & Secret Name
@@ -2914,7 +2804,7 @@ def config_get_node_secret(name=None, secret=None):
 
 
 @config_blueprint.route("/config/secrets/node/<string:name>/<string:secret>", methods=['POST'])
-###@token_required
+@token_required
 def config_post_node_secret(name=None, secret=None):
     """
     Input - Node Name & Payload
@@ -2971,7 +2861,7 @@ def config_post_node_secret(name=None, secret=None):
 
 
 @config_blueprint.route("/config/secrets/node/<string:name>/<string:secret>/_clone", methods=['POST'])
-###@token_required
+@token_required
 def config_clone_node_secret(name=None, secret=None):
     """
     Input - Node Name & Payload
@@ -3039,7 +2929,7 @@ def config_clone_node_secret(name=None, secret=None):
 
 
 @config_blueprint.route("/config/secrets/node/<string:name>/<string:secret>/_delete", methods=['GET'])
-###@token_required
+@token_required
 def config_node_secret_delete(name=None, secret=None):
     """
     Input - Node Name & Secret Name
@@ -3067,7 +2957,7 @@ def config_node_secret_delete(name=None, secret=None):
 
 
 @config_blueprint.route("/config/secrets/group/<string:name>", methods=['GET'])
-###@token_required
+@token_required
 def config_get_secrets_group(name=None):
     """
     Input - Group Name
@@ -3097,7 +2987,7 @@ def config_get_secrets_group(name=None):
 
 
 @config_blueprint.route("/config/secrets/group/<string:name>", methods=['POST'])
-###@token_required
+@token_required
 def config_post_secrets_group(name=None):
     """
     Input - Group Name & Payload
@@ -3167,7 +3057,7 @@ def config_post_secrets_group(name=None):
 
 
 @config_blueprint.route("/config/secrets/group/<string:name>/<string:secret>", methods=['GET'])
-###@token_required
+@token_required
 def config_get_group_secret(name=None, secret=None):
     """
     Input - Group Name & Secret Name
@@ -3197,7 +3087,7 @@ def config_get_group_secret(name=None, secret=None):
 
 
 @config_blueprint.route("/config/secrets/group/<string:name>/<string:secret>", methods=['POST'])
-###@token_required
+@token_required
 def config_post_group_secret(name=None, secret=None):
     """
     Input - Group Name & Payload
@@ -3254,7 +3144,7 @@ def config_post_group_secret(name=None, secret=None):
 
 
 @config_blueprint.route("/config/secrets/group/<string:name>/<string:secret>/_clone", methods=['POST'])
-###@token_required
+@token_required
 def config_clone_group_secret(name=None, secret=None):
     """
     Input - Group Name & Payload
@@ -3322,7 +3212,7 @@ def config_clone_group_secret(name=None, secret=None):
 
 
 @config_blueprint.route('/config/secrets/group/<string:name>/<string:secret>/_delete', methods=['GET'])
-###@token_required
+@token_required
 def config_group_secret_delete(name=None, secret=None):
     """
     Input - Group Name & Secret Name

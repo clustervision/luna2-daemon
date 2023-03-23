@@ -176,6 +176,7 @@ def config_node_get(name=None):
                     node['hostname'] = nodename + '.' + interface['network']
                 node['interfaces'].append(interface)
 
+#        Commented out since we do not need it but i left it as we _might_ use it one day
 #        group_interface = Database().get_record_join(['groupinterface.interface','network.name as network'], ['network.id=groupinterface.networkid','groupinterface.groupid=node.groupid'],[f"node.id='{nodeid}'"])
 #        if group_interface:
 #            for interface in group_interface:
@@ -937,6 +938,14 @@ def config_group_post(name=None):
                         row = Helper().make_rows(ifx)
                         result = Database().insert('groupinterface', row)
                         LOGGER.info(f'Interface created => {result} .')
+                        ## below section takes care (in the background), the adding/renaming/deleting. for adding nextfree ip-s will be selected. time consuming therefor background
+                        queue_id,queue_response = Queue().add_task_to_queue(f'add_interface_to_group_nodes:{name}:{ifname}','group_interface')
+                        next_id = Queue().next_task_in_queue('group_interface')
+                        if queue_id == next_id:
+                            executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
+                            executor.submit(Config().update_interface_on_group_nodes,name)
+                            executor.shutdown(wait=False)
+                            #Config().update_interface_on_group_nodes(name)
 
         else:
             response = {'message': 'Bad Request; Columns are incorrect.'}
@@ -1163,9 +1172,7 @@ def config_group_post_interfaces(name=None):
                         ifx['networkid'] = network
                         ifx['groupid'] = grpid
                         del ifx['network']
-                    ifx['interface'] = ifx['interfacename']
                     interface = ifx['interface']
-                    del ifx['interfacename']
                     grp_clause = f'groupid = "{grpid}"'
                     network_clause = f'networkid = "{network}"'
                     interface_clause = f'interface = "{interface}"'
@@ -1176,6 +1183,14 @@ def config_group_post_interfaces(name=None):
                         Database().insert('groupinterface', row)
                     response = {'message': 'Interface updated.'}
                     access_code = 204
+                    ## below section takes care (in the background), the adding/renaming/deleting. for adding nextfree ip-s will be selected. time consuming therefor background
+                    queue_id,queue_response = Queue().add_task_to_queue(f'add_interface_to_group_nodes:{name}:{interface}','group_interface')
+                    next_id = Queue().next_task_in_queue('group_interface')
+                    if queue_id == next_id:
+                        executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
+                        executor.submit(Config().update_interface_on_group_nodes,name)
+                        executor.shutdown(wait=False)
+                        #Config().update_interface_on_group_nodes(name)
             else:
                 LOGGER.error('Kindly provide the interface.')
                 response = {'message': 'Kindly provide the interface.'}
@@ -1201,11 +1216,19 @@ def config_group_delete_interface(name=None, interface=None):
     group = Database().get_record(None, 'group', f' WHERE `name` = "{name}"')
     if group:
         groupid = group[0]['id']
-        where = f' WHERE `interfacename` = "{interface}" AND `groupid` = "{groupid}"'
+        where = f' WHERE `interface` = "{interface}" AND `groupid` = "{groupid}"'
         group_interface = Database().get_record(None, 'groupinterface', where)
         if group_interface:
             where = [{"column": "id", "value": group_interface[0]['id']}]
             Database().delete_row('groupinterface', where)
+            ## below section takes care (in the background), the adding/renaming/deleting. for adding nextfree ip-s will be selected. time consuming therefor background
+            queue_id,queue_response = Queue().add_task_to_queue(f'delete_interface_from_group_nodes:{name}:{interface}','group_interface')
+            next_id = Queue().next_task_in_queue('group_interface')
+            if queue_id == next_id:
+#                executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
+#                executor.submit(Config().update_interface_on_group_nodes,name)
+#                executor.shutdown(wait=False)
+                Config().update_interface_on_group_nodes(name)
             response = {'message': f'Group {name} interface {interface} removed.'}
             access_code = 204
         else:

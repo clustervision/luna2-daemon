@@ -24,6 +24,8 @@ from ipaddress import ip_address
 from utils.log import Log
 from utils.database import Database
 from utils.helper import Helper
+from utils.queue import Queue
+from time import sleep
 
 from common.constant import CONSTANT
 
@@ -621,4 +623,71 @@ $TTL 604800
         return False,f"ipaddress for {interface_name} config failed with result {result_ip}"
 
     # -----------------
+
+    def update_interface_on_group_nodes(self,name,request_id=None):
+        self.logger.info(f"update_interface_on_group_nodes called")
+        try:
+            while next_id := Queue().next_task_in_queue('group_interface'):
+                self.logger.info(f"update_interface_on_group_nodes sees job in queue as next: {next_id}")
+                details=Queue().get_task_details(next_id)
+                #request_id=details['request_id']
+                action,group,interface,*_=(details['task'].split(':')+[None]+[None])
+
+                if group==name:
+                    # ADDING ---------------------------------------------------------------------------------------------------
+                    if action=='add_interface_to_group_nodes' and interface:
+                        ips=[]
+                        avail=None
+                        network = Database().get_record_join(['ipaddress.ipaddress','ipaddress.networkid as networkid','network.network','network.subnet','network.name as networkname'], 
+                                                             ['ipaddress.networkid=network.id','network.id=groupinterface.networkid','groupinterface.groupid=group.id'], 
+                                                             [f"`group`.name='{group}'",f"groupinterface.interface='{interface}'"])
+                        nodes = Database().get_record_join(['node.id as nodeid'], ['node.groupid=group.id'], [f"`group`.name='{group}'"])
+                        if nodes:
+                            for node in nodes:
+                                result,mesg=self.node_interface_config(node['nodeid'],interface)
+                                self.logger.info(f"Adding interface {interface} to node id {node['nodeid']} for group {group}. {mesg}")
+                                if result and network:
+                                    for ip in network:
+                                        ips.append(ip['ipaddress'])
+                                    ret=0
+                                    max=5 # we try to ping for X ips, if none of these are free, something else is going on (read: rogue devices)....
+                                    while(max>0 and ret!=1):
+                                        avail=Helper().get_available_ip(network[0]['network'],network[0]['subnet'],ips)
+                                        ips.append(avail)
+                                        output,ret=Helper().runcommand(f"ping -w1 -c1 {avail}", True, 3)
+                                        max-=1
+        
+                                    avail=Helper().get_available_ip(network[0]['network'],network[0]['subnet'],ips)
+                                    if avail:
+                                        ipaddress=avail
+                                        result,mesg = self.node_interface_ipaddress_config(node['nodeid'],interface,ipaddress,network[0]['networkname'])
+                                        self.logger.info(f"Adding IP {ipaddress} to node id {node['nodeid']} for group {group} interface {interface}. {mesg}")
+                
+                    # DELETING ------------------------------------------------------------------------------------------------
+                    elif action=='delete_interface_from_group_nodes' and interface:
+                        nodes = Database().get_record_join(['node.id as nodeid','nodeinterface.id as ifid','ipaddress.id as ipid'], 
+                                                                ['ipaddress.tablerefid=nodeinterface.id','nodeinterface.nodeid=node.id','node.groupid=group.id'], 
+                                                                [f"`group`.name='{name}'",f"nodeinterface.interface='{interface}'",'ipaddress.tableref="nodeinterface"'])
+                        if nodes:
+                            for node in nodes:
+                                Database().delete_row('ipaddress', [{"column": "id", "value": node['ipid']}])
+                                Database().delete_row('nodeinterface', [{"column": "id", "value": node['ifid']}])
+
+                        nodes = Database().get_record_join(['node.id as nodeid','nodeinterface.id as ifid'], ['nodeinterface.nodeid=node.id','node.groupid=group.id'], [f"`group`.name='{name}'",f"nodeinterface.interface='{interface}'"])
+                        if nodes:
+                            for node in nodes:
+                                Database().delete_row('nodeinterface', [{"column": "id", "value": node['ifid']}])
+
+                    Queue().remove_task_from_queue(next_id)
+                    #we have to schedule dhcp/dns restart
+
+                else:
+                    self.logger.info(f"{details['task']} is not for us.")
+                    sleep(10)
+
+        except Exception as exp:
+            self.logger.error(f"update_interface_on_group_nodes has problems: {exp}")
+
+
+
 

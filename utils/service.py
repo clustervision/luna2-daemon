@@ -185,8 +185,7 @@ class Service(object):
 #                # we need a check based on last hear queue entry, then we continue. pending in next_task_in_queue.
 #                return
 
-            while Queue().tasks_in_queue('service'):
-                next_id = Queue().next_task_in_queue('service')
+            while next_id := Queue().next_task_in_queue('service'):
                 self.logger.info(f"service_mother sees job in queue as next: {next_id}")
                 details=Queue().get_task_details(next_id)
                 request_id=details['request_id']

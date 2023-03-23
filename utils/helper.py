@@ -690,7 +690,7 @@ class Helper(object):
 
     # -----------------------------------------------------------------
 
-    def add_task_to_queue(self,task,subsystem=None,request_id=None):
+    def _add_task_to_queue(self,task,subsystem=None,request_id=None):
         if subsystem is None:
             subsystem="anonymous"
         if request_id is None:
@@ -714,29 +714,29 @@ class Helper(object):
         # the id is supposed to be kept bij de caller so it can update the status, either directly or after other pending stuff is done
         return id,'added'
 
-    def update_task_status_in_queue(self,taskid,status):
+    def _update_task_status_in_queue(self,taskid,status):
         row = [{"column": "status", "value": f"{status}"}]
         where = [{"column": "id", "value": f"{taskid}"}]
         status = Database().update('queue', row, where)
 
-    def remove_task_from_queue(self,taskid):
+    def _remove_task_from_queue(self,taskid):
         Database().delete_row('queue', [{"column": "id", "value": taskid}])
 
-    def next_task_in_queue(self,subsystem):
+    def _next_task_in_queue(self,subsystem):
         where=f" WHERE subsystem='{subsystem}' AND created>datetime('now','-10 minute') ORDER BY id ASC LIMIT 1"
         task = Database().get_record(None , 'queue', where)
         if task:
             return task[0]['id']
         return False
 
-    def get_task_details(self,taskid):
+    def _get_task_details(self,taskid):
         where=f" WHERE id='{taskid}'"
         task = Database().get_record(None , 'queue', where)
         if task:
             return task[0]
         return False
 
-    def tasks_in_queue(self,subsystem=None):
+    def _tasks_in_queue(self,subsystem=None):
         where=''
         if subsystem:
             where=f" WHERE subsystem='{subsystem}' LIMIT 1"

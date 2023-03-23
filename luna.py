@@ -21,6 +21,7 @@ from flask import Flask, abort, json, Response, request
 from common.constant import LOGGER
 from common.bootstrap import validatebootstrap
 from utils.status import Status
+from utils.queue import Queue
 from utils.service import Service
 import concurrent.futures
 from threading import Event
@@ -49,6 +50,10 @@ def on_starting(server):
     # --------------- status message cleanup thread ----------------
     executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
     executor.submit(Status().cleanup_mother,event)
+    executor.shutdown(wait=False)
+    # ----------------- queue housekeeper thread -------------------
+    executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
+    executor.submit(Queue().housekeeper_mother,event)
     executor.shutdown(wait=False)
     # --------------------------------------------------------------
     LOGGER.info(vars(server))

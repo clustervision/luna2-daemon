@@ -29,6 +29,7 @@ from utils.osimage import OsImage
 from utils.config import Config
 from utils.status import Status
 from utils.service import Service
+from utils.queue import Queue
 
 LOGGER = Log.get_logger()
 config_blueprint = Blueprint('config', __name__)
@@ -175,21 +176,21 @@ def config_node_get(name=None):
                     node['hostname'] = nodename + '.' + interface['network']
                 node['interfaces'].append(interface)
 
-        group_interface = Database().get_record_join(['groupinterface.interface','network.name as network'], ['network.id=groupinterface.networkid','groupinterface.groupid=node.groupid'],[f"node.id='{nodeid}'"])
-        if group_interface:
-            for interface in group_interface:
-                add_if=True
-                for check_interface in node['interfaces']:
-                    if check_interface['interface'] == interface['interface']:
-                        # the node has the same interface so we ditch the group one
-                        add_if=False
-                        break
-                if add_if:
-                    interfacename,*_ = (node['provisioninterface'].split(' ')+[None]) # we skim off parts that we added for clarity in above section (e.g. (default)). also works if there's no additional info
-                    if interface['interface'] == interfacename and interface['network']: # if it is my prov interf then it will get that domain as a FQDN.
-                        node['hostname'] = nodename + '.' + interface['network'] 
-                    interface['interface'] += f" ({node['group']})"
-                    node['interfaces'].append(interface)
+#        group_interface = Database().get_record_join(['groupinterface.interface','network.name as network'], ['network.id=groupinterface.networkid','groupinterface.groupid=node.groupid'],[f"node.id='{nodeid}'"])
+#        if group_interface:
+#            for interface in group_interface:
+#                add_if=True
+#                for check_interface in node['interfaces']:
+#                    if check_interface['interface'] == interface['interface']:
+#                        # the node has the same interface so we ditch the group one
+#                        add_if=False
+#                        break
+#                if add_if:
+#                    interfacename,*_ = (node['provisioninterface'].split(' ')+[None]) # we skim off parts that we added for clarity in above section (e.g. (default)). also works if there's no additional info
+#                    if interface['interface'] == interfacename and interface['network']: # if it is my prov interf then it will get that domain as a FQDN.
+#                        node['hostname'] = nodename + '.' + interface['network'] 
+#                    interface['interface'] += f" ({node['group']})"
+#                    node['interfaces'].append(interface)
 
         response['config']['node'][nodename] = node
         LOGGER.info('Provided list of all nodes.')
@@ -210,6 +211,14 @@ def config_node_post(name=None):
     Output - Node information.
     """
     data = {}
+    items={ # minimal required items with defaults
+       'setupbmc':False,
+       'netboot':False,
+       'localinstall':False,
+       'bootmenu':False,
+       'service':False,
+       'localboot':False
+    }
     create, update = False, False
 
     if Helper().check_json(request.data):
@@ -240,48 +249,27 @@ def config_node_post(name=None):
                     data['name'] = data['newnodename']
                     del data['newnodename']
             update = True
-            if 'bootmenu' in data:
-                data['bootmenu'] = Helper().bool_revert(data['bootmenu'])
-            if 'localboot' in data:
-                data['localboot'] = Helper().bool_revert(data['localboot'])
-            if 'localinstall' in data:
-                data['localinstall'] = Helper().bool_revert(data['localinstall'])
-            if 'netboot' in data:
-                data['netboot'] = Helper().bool_revert(data['netboot'])
-            if 'service' in data:
-                data['service'] = Helper().bool_revert(data['service'])
-            if 'setupbmc' in data:
-                data['setupbmc'] = Helper().bool_revert(data['setupbmc'])
         else:
             if 'newnodename' in data:
                 response = {'message': f'{nodename_new} is not allwoed while creating a new node.'}
                 access_code = 400
                 return json.dumps(response), access_code
-            if 'bootmenu' in data:
-                data['bootmenu'] = Helper().bool_revert(data['bootmenu'])
-            else:
-                data['bootmenu'] = 0
-            if 'localboot' in data:
-                data['localboot'] = Helper().bool_revert(data['localboot'])
-            else:
-                data['localboot'] = 0
-            if 'localinstall' in data:
-                data['localinstall'] = Helper().bool_revert(data['localinstall'])
-            else:
-                data['localinstall'] = 0
-            if 'netboot' in data:
-                data['netboot'] = Helper().bool_revert(data['netboot'])
-            else:
-                data['netboot'] = 0
-            if 'service' in data:
-                data['service'] = Helper().bool_revert(data['service'])
-            else:
-                data['service'] = 0
-            if 'setupbmc' in data:
-                data['setupbmc'] = Helper().bool_revert(data['setupbmc'])
-            else:
-                data['setupbmc'] = 0
             create = True
+
+        for item in items:
+            if item in data: 
+                data[item] = data[item] or items[item]
+                if isinstance(data[item], bool):
+                    data[item]=str(Helper().make_boolnum(data[item]))
+            else:
+                data[item] = items[item]
+                if isinstance(data[item], bool):
+                    data[item]=str(Helper().make_boolnum(data[item]))
+            LOGGER.info(f"+++> i see {item} = [{data[item]}]")
+            if not data[item]:
+                LOGGER.info(f"###> deleting {item} = [{data[item]}]")
+                del data[item]
+
 
         if 'bmcsetup' in data:
             bmc_name = data['bmcsetup']
@@ -300,6 +288,7 @@ def config_node_post(name=None):
             del data['switch']
             data['switchid'] = Database().getid_byname('switch', switch_name)
 
+        interfaces=None
         if 'interfaces' in data:
             interfaces = data['interfaces']
             del data['interfaces']
@@ -319,6 +308,32 @@ def config_node_post(name=None):
                 nodeid = Database().insert('node', row)
                 response = {'message': f'Node {name} created successfully.'}
                 access_code = 201
+                if nodeid and 'groupid' in data and data['groupid']:
+                    # ----> GROUP interface. WIP. pending
+                    group_interfaces = Database().get_record_join(['groupinterface.interface','network.name as network'], ['network.id=groupinterface.networkid'], [f"groupinterface.groupid={data['groupid']}"])
+                    if group_interfaces:
+                        for group_interface in group_interfaces:
+                            result,mesg = Config().node_interface_config(nodeid,group_interface['interface'])
+                            if result:
+                                ips=[]
+                                avail=None
+                                network = Database().get_record_join(['ipaddress.ipaddress','ipaddress.networkid as networkid','network.network','network.subnet'], ['network.id=ipaddress.networkid'], [f"network.name='{group_interface['network']}'"])
+                                if network:
+                                    for ip in network:
+                                        ips.append(ip['ipaddress'])
+#                                    ## ---> we do not ping nodes as it will take time if we add bulk nodes, it'll take 1s per node.
+#                                    ret=0
+#                                    max=5 # we try to ping for X ips, if none of these are free, something else is going on (read: rogue devices)....
+#                                    while(max>0 and ret!=1):
+#                                        avail=Helper().get_available_ip(network[0]['network'],network[0]['subnet'],ips)
+#                                        ips.append(avail)
+#                                        output,ret=Helper().runcommand(f"ping -w1 -c1 {avail}", True, 3)
+#                                        max-=1
+    
+                                    avail=Helper().get_available_ip(network[0]['network'],network[0]['subnet'],ips)
+                                    if avail:
+                                        ipaddress=avail
+                                        result,mesg = Config().node_interface_ipaddress_config(nodeid,group_interface['interface'],ipaddress,group_interface['network'])
             if interfaces:
                 access_code = 204
                 for interface in interfaces:
@@ -338,6 +353,7 @@ def config_node_post(name=None):
                         response = {'message': f"{mesg}"}
                         access_code = 500
                         return json.dumps(response), access_code
+
  
             Service().queue('dhcp','restart')
             Service().queue('dns','restart')
@@ -399,12 +415,17 @@ def config_node_clone(name=None):
                 else:
                     data['name'] = data['newnodename']
                     del data['newnodename']
+            else:
+                response = {'message': f'Bad Request; Destination node name not supplied.'}
+                access_code = 400
+                return json.dumps(response), access_code
         else:
             response = {'message': f'Bad Request; Source node {name} does not exist.'}
             access_code = 400
             return json.dumps(response), access_code
 
         del node[0]['id']
+        del node[0]['status']
         for item in node[0]:
             if item in data:  # we copy from another node unless we supply
                 data[item] = data[item] or node[0][item] or None
@@ -412,7 +433,7 @@ def config_node_clone(name=None):
                 data[item] = node[0][item] or None
             if item in items:
                 data[item] = data[item] or items[item]
-            if not data[item]:
+            if not data[item] and item not in items:
                 del data[item]
             elif isinstance(data[item], bool):
                 data[item]=str(Helper().make_boolnum(data[item]))
@@ -802,7 +823,7 @@ def config_group_get(name=None):
 
 
 @config_blueprint.route("/config/group/<string:name>", methods=['POST'])
-###@token_required
+@token_required
 def config_group_post(name=None):
     """
     Input - Group ID or Name
@@ -810,6 +831,17 @@ def config_group_post(name=None):
     Output - Group Information.
     """
     data = {}
+    # things we have to set for a group
+    items={
+       'prescript':'',
+       'partscript':'',
+       'postscript':'',
+       'setupbmc':False,
+       'netboot':False,
+       'localinstall':False,
+       'bootmenu':False,
+       'provisioninterface':'BOOTIF'
+    }
     create, update = False, False
 
     if Helper().check_json(request.data):
@@ -841,18 +873,6 @@ def config_group_post(name=None):
                 access_code = 400
                 return json.dumps(response), access_code
             create = True
-
-        # things we have to set for a group
-        items={
-           'prescript':'',
-           'partscript':'',
-           'postscript':'',
-           'setupbmc':False,
-           'netboot':False,
-           'localinstall':False,
-           'bootmenu':False,
-           'provisioninterface':'BOOTIF'
-        }
 
         for item in items:
             if item in data:  # pending
@@ -927,8 +947,141 @@ def config_group_post(name=None):
     return json.dumps(response), access_code
 
 
+@config_blueprint.route("/config/group/<string:name>/_clone", methods=['POST'])
+@token_required
+def config_group_clone(name=None):
+    """
+    Input - Group ID or Name
+    Process - Create Or Update The Groups.
+    Output - Group Information.
+    """
+    data = {}
+    # things we have to set for a group
+    items={
+       'prescript':'',
+       'partscript':'',
+       'postscript':'',
+       'setupbmc':False,
+       'netboot':False,
+       'localinstall':False,
+       'bootmenu':False,
+    }
+
+    if Helper().check_json(request.data):
+        request_data = request.get_json(force=True)
+    else:
+        response = {'message': 'Bad Request.'}
+        access_code = 400
+        return json.dumps(response), access_code
+    if request_data:
+        data = request_data['config']['group'][name]
+        grp = Database().get_record(None, 'group', f' WHERE name = "{name}"')
+        if grp:
+            grpid = grp[0]['id']
+            if 'newgroupname' in data:
+                newgroupname = data['newgroupname']
+                where = f' WHERE `name` = "{newgroupname}"'
+                checknewgrp = Database().get_record(None, 'group', where)
+                if checknewgrp:
+                    response = {'message': f'{newgroupname} Already present in database.'}
+                    access_code = 400
+                    return json.dumps(response), access_code
+                data['name'] = data['newgroupname']
+                del data['newgroupname']
+            else:
+                response = {'message': f'Bad Request; Destination group name not supplied.'}
+                access_code = 400
+                return json.dumps(response), access_code
+        else:
+            response = {'message': f'Bad Request; Source group {name} does not exist.'}
+            access_code = 400
+            return json.dumps(response), access_code
+
+        del grp[0]['id']
+        for item in grp[0]:
+            if item in data:  # pending
+                LOGGER.debug(f"{item} in data [{data[item]}] or grp [{grp[0][item]}]")
+                data[item] = data[item] or grp[0][item] or None
+            else:
+                LOGGER.debug(f"{item} in other [{grp[0][item]}]")
+                data[item] = grp[0][item] or None
+            if item in items:
+                data[item] = data[item] or items[item]
+            if not data[item] and item not in items:
+                del data[item]
+            elif isinstance(data[item], bool):
+                data[item]=str(Helper().make_boolnum(data[item]))
+
+        if 'bmcsetupname' in data:
+            bmcname = data['bmcsetupname']
+            data['bmcsetupid'] = Database().getid_byname('bmcsetup', data['bmcsetupname'])
+            if data['bmcsetupid']:
+                del data['bmcsetupname']
+            else:
+                response = {'message': f'BMC Setup {bmcname} does not exist.'}
+                access_code = 400
+                return json.dumps(response), access_code
+        if 'osimage' in data:
+            osname = data['osimage']
+            del data['osimage']
+            data['osimageid'] = Database().getid_byname('osimage', osname)
+        newinterface=None
+        if 'interfaces' in data:
+            newinterface = data['interfaces']
+            del data['interfaces']
+
+        grpcolumns = Database().get_columns('group')
+        columncheck = Helper().checkin_list(data, grpcolumns)
+        if columncheck:
+            row = Helper().make_rows(data)
+            newgroupid = Database().insert('group', row)
+            if not newgroupid:
+                response = {'message': f'Node {newgroupname} could not be created due to possible property clash.'}
+                access_code = 500
+                return json.dumps(response), access_code
+
+            response = {'message': f'Group {name} created.'}
+            access_code = 201
+
+            grp_interfaces = Database().get_record_join(['groupinterface.interface','network.name as network','network.id as networkid'], ['network.id=groupinterface.networkid'], [f"groupid = '{grpid}'"])
+
+            if newinterface:
+                for ifx in newinterface:
+                    network = Database().getid_byname('network', ifx['network'])
+                    if network is None:
+                        response = {'message': f'Bad Request; Network {network} not exist.'}
+                        access_code = 400
+                        return json.dumps(response), access_code
+                    else:
+                        ifx['networkid'] = network
+                        ifx['groupid'] = grpid
+                        del ifx['network']
+                    ifname = ifx['interface']
+                    for grp_ifx in grp_interfaces:
+                        if grp_ifx['interface'] == ifname:
+                            del group_interfaces[grp_ifx]
+                    row = Helper().make_rows(ifx)
+                    result = Database().insert('groupinterface', row)
+
+            for grp_ifx in grp_interfaces:
+                ifx={}
+                ifx['networkid']=grp_ifx['networkid']
+                ifx['interface']=grp_ifx['interface']
+                ifx['groupid']=newgroupid
+                row = Helper().make_rows(ifx)
+                result = Database().insert('groupinterface', row)
+
+        else:
+            response = {'message': 'Bad Request; Columns are incorrect.'}
+            access_code = 400
+    else:
+        response = {'message': 'Bad Request; Did not received data.'}
+        access_code = 400
+    return json.dumps(response), access_code
+
+
 @config_blueprint.route("/config/group/<string:name>/_delete", methods=['GET'])
-###@token_required
+@token_required
 def config_group_delete(name=None):
     """
     Input - Group Name
@@ -982,7 +1135,7 @@ def config_group_get_interfaces(name=None):
 
 
 @config_blueprint.route("/config/group/<string:name>/interfaces", methods=['POST'])
-###@token_required
+@token_required
 def config_group_post_interfaces(name=None):
     """
     Input - Group Name
@@ -1278,7 +1431,7 @@ def config_osimage_pack(name=None):
     #Antoine
     request_id=str(time())+str(randint(1001,9999))+str(getpid())
 
-    queue_id,queue_response = Helper().add_task_to_queue(f'pack_n_tar_osimage:{name}','osimage',request_id)
+    queue_id,queue_response = Queue().add_task_to_queue(f'pack_n_tar_osimage:{name}','osimage',request_id)
     if not queue_id:
         LOGGER.info(f"config_osimage_pack GET cannot get queue_id")
         response= {"message": f'OS image {name} pack queuing failed.'}
@@ -1293,7 +1446,7 @@ def config_osimage_pack(name=None):
     LOGGER.info(f"config_osimage_pack GET added task to queue: {queue_id}")
     Status().add_message(request_id,"luna",f"queued pack osimage {name} with queue_id {queue_id}")
 
-    next_id = Helper().next_task_in_queue('osimage')
+    next_id = Queue().next_task_in_queue('osimage')
     if queue_id == next_id:
         executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
         executor.submit(OsImage().pack_n_tar_mother,name,request_id)
@@ -1688,7 +1841,7 @@ def config_switch_get(switch=None):
 
 
 @config_blueprint.route("/config/switch/<string:switch>", methods=['POST'])
-###@token_required
+@token_required
 def config_switch_post(switch=None):
     """
     Input - Switch ID or Name
@@ -1762,7 +1915,7 @@ def config_switch_post(switch=None):
 
 
 @config_blueprint.route("/config/switch/<string:switch>/_clone", methods=['POST'])
-###@token_required
+@token_required
 def config_switch_clone(switch=None):
     """
     Input - Switch ID or Name
@@ -1797,7 +1950,7 @@ def config_switch_clone(switch=None):
             return json.dumps(response), access_code
         else:
             create = True
-#TWAN
+
         if 'ipaddress' in data:
             ipaddress=data['ipaddress']
             del data['ipaddress']
@@ -1807,7 +1960,6 @@ def config_switch_clone(switch=None):
 
         switchcolumns = Database().get_columns('switch')
         columncheck = Helper().checkin_list(data, switchcolumns)
-        #data = Helper().check_ip_exist(data)
         if data:
             if columncheck:
                 if create:
@@ -1892,7 +2044,7 @@ def config_switch_clone(switch=None):
 
 
 @config_blueprint.route("/config/switch/<string:switch>/_delete", methods=['GET'])
-###@token_required
+@token_required
 def config_switch_delete(switch=None):
     """
     Input - Switch ID or Name
@@ -1971,7 +2123,7 @@ def config_otherdev_get(device=None):
 
 
 @config_blueprint.route("/config/otherdev/<string:device>", methods=['POST'])
-###@token_required
+@token_required
 def config_otherdev_post(device=None):
     """
     Input - Device Name
@@ -2044,7 +2196,7 @@ def config_otherdev_post(device=None):
 
 
 @config_blueprint.route("/config/otherdev/<string:device>/_clone", methods=['POST'])
-###@token_required
+@token_required
 def config_otherdev_clone(device=None):
     """
     Input - Device ID or Name
@@ -2088,8 +2240,7 @@ def config_otherdev_clone(device=None):
             del data['network']
         devicecolumns = Database().get_columns('otherdevices')
         columncheck = Helper().checkin_list(data, devicecolumns)
-#        data = Helper().check_ip_exist(data)
-#TWAN
+
         if data:
             if columncheck:
                 if create:
@@ -2172,7 +2323,7 @@ def config_otherdev_clone(device=None):
 
 
 @config_blueprint.route("/config/otherdev/<string:device>/_delete", methods=['GET'])
-###@token_required
+@token_required
 def config_otherdev_delete(device=None):
     """
     Input - Device ID or Name
@@ -2255,7 +2406,7 @@ def config_network_get(name=None):
 
 
 @config_blueprint.route("/config/network/<string:name>", methods=['POST'])
-###@token_required
+@token_required
 def config_network_post(name=None):
     """
     Input - Network Name
@@ -2373,121 +2524,9 @@ def config_network_post(name=None):
     return json.dumps(data), access_code
 
 
-@config_blueprint.route("/config/network/<string:name>/_clone", methods=['POST'])
-# ###@token_required
-def config_network_clone(name=None):
-    """
-    Input - Network Name
-    Process - Create or Update Network information.
-    Output - Success or Failure.
-    """
-    data = {}
-    create = False
-    if Helper().check_json(request.data):
-        request_data = request.get_json(force=True)
-    else:
-        response = {'message': 'Bad Request.'}
-        access_code = 400
-        return json.dumps(response), access_code
-    if request_data:
-        data = request_data['config']['network'][name]
-        data['name'] = name
-        checknetwork = Database().get_record(None, 'network', f' WHERE `name` = "{name}"')
-        if checknetwork:
-            if 'newnetname' in request_data['config']['network'][name]:
-                newnetworkname = request_data['config']['network'][name]['newnetname']
-                where = f' WHERE `name` = "{newnetworkname}"'
-                checknewnetwork = Database().get_record(None, 'network', where)
-                if checknewnetwork:
-                    response = {'message': f'{newnetworkname} already present in database.'}
-                    access_code = 400
-                    return json.dumps(response), access_code
-                else:
-                    data['name'] = data['newnetname']
-                    del data['newnetname']
-            create = True
-        else:
-            response = {'message': f'Bad Request; Network {name} is not present in database.'}
-            access_code = 400
-            return json.dumps(response), access_code
-        if 'network' in data:
-            nwkip = Helper().check_ip(data['network'])
-            if nwkip:
-                nwkdetails = Helper().get_network_details(data['network'])
-                data['network'] = nwkip
-                data['subnet'] = nwkdetails['subnet']
-            else:
-                response = {'message': f'Incorrect network IP: {data["network"]}.'}
-                access_code = 400
-                return json.dumps(response), access_code
-        if 'gateway' in data:
-            gwdetails = Helper().check_ip_range(data['gateway'], data['network']+'/'+data['subnet'])
-            if not gwdetails:
-                response = {'message': f'Incorrect gateway IP: {data["gateway"]}.'}
-                access_code = 400
-                return json.dumps(response), access_code
-        if 'nameserver_ip' in data:
-            nsipdetails = Helper().check_ip_range(data['nameserver_ip'], data['network']+'/'+data['subnet'])
-            if not nsipdetails:
-                response = {'message': f'Incorrect Nameserver IP: {data["nameserver_ip"]}.'}
-                access_code = 400
-                return json.dumps(response), access_code
-        if 'ntp_server' in data:
-            subnet = data['network']+'/'+data['subnet']
-            ntpdetails = Helper().check_ip_range(data['ntp_server'], subnet)
-            if not ntpdetails:
-                response = {'message': f'Incorrect NTP Server IP: {data["ntp_server"]}.'}
-                access_code = 400
-                return json.dumps(response), access_code
-        if 'dhcp' in data:
-            if 'dhcp_range_begin' in data:
-                subnet = data['network']+'/'+data['subnet']
-                dhcpstartdetails = Helper().check_ip_range(data['dhcp_range_begin'], subnet)
-                if not dhcpstartdetails:
-                    response = {'message': f'Incorrect DHCP start: {data["dhcp_range_begin"]}.'}
-                    access_code = 400
-                    return json.dumps(response), access_code
-            else:
-                response = {'message': 'DHCP start range is a required parameter.'}
-                access_code = 400
-                return json.dumps(response), access_code
-            if 'dhcp_range_end' in data:
-                subnet = data['network']+'/'+data['subnet']
-                dhcpenddetails = Helper().check_ip_range(data['dhcp_range_end'], subnet)
-                if not dhcpenddetails:
-                    response = {'message': f'Incorrect DHCP end: {data["dhcp_range_end"]}.'}
-                    access_code = 400
-                    return json.dumps(response), access_code
-            else:
-                response = {'message': 'DHCP end range is a required parameter.'}
-                access_code = 400
-                return json.dumps(response), access_code
-        else:
-            data['dhcp'] = False
-            data['dhcp_range_begin'] = ""
-            data['dhcp_range_end'] = ""
-        networkcolumns = Database().get_columns('network')
-        columncheck = Helper().checkin_list(data, networkcolumns)
-        row = Helper().make_rows(data)
-        if columncheck:
-            if create:
-                Database().insert('network', row)
-                response = {'message': 'Network created.'}
-                access_code = 201
-        else:
-            response = {'message': 'Bad Request; Columns are incorrect.'}
-            access_code = 400
-            return json.dumps(response), access_code
-    else:
-        response = {'message': 'Bad Request; Did not received data.'}
-        access_code = 400
-        return json.dumps(response), access_code
-
-    return json.dumps(data), access_code
-
 
 @config_blueprint.route("/config/network/<string:name>/_delete", methods=['GET'])
-###@token_required
+@token_required
 def config_network_delete(name=None):
     """
     Input - Network Name
@@ -2507,7 +2546,7 @@ def config_network_delete(name=None):
 
 
 @config_blueprint.route("/config/network/<string:name>/<string:ipaddr>", methods=['GET'])
-###@token_required
+@token_required
 def config_network_ip(name=None, ipaddr=None):
     """
     Input - Network Name And IP Address
@@ -2580,7 +2619,7 @@ def config_network_nextip(name=None):
 
 
 @config_blueprint.route("/config/secrets", methods=['GET'])
-###@token_required
+@token_required
 def config_secrets_get():
     """
     Input - None
@@ -2619,7 +2658,7 @@ def config_secrets_get():
 
 
 @config_blueprint.route("/config/secrets/node/<string:name>", methods=['GET'])
-###@token_required
+@token_required
 def config_get_secrets_node(name=None):
     """
     Input - Node Name
@@ -2666,7 +2705,7 @@ def config_get_secrets_node(name=None):
 
 
 @config_blueprint.route("/config/secrets/node/<string:name>", methods=['POST'])
-###@token_required
+@token_required
 def config_post_secrets_node(name=None):
     """
     Input - Node Name & Payload
@@ -2736,7 +2775,7 @@ def config_post_secrets_node(name=None):
 
 
 @config_blueprint.route("/config/secrets/node/<string:name>/<string:secret>", methods=['GET'])
-###@token_required
+@token_required
 def config_get_node_secret(name=None, secret=None):
     """
     Input - Node Name & Secret Name
@@ -2766,7 +2805,7 @@ def config_get_node_secret(name=None, secret=None):
 
 
 @config_blueprint.route("/config/secrets/node/<string:name>/<string:secret>", methods=['POST'])
-###@token_required
+@token_required
 def config_post_node_secret(name=None, secret=None):
     """
     Input - Node Name & Payload
@@ -2823,7 +2862,7 @@ def config_post_node_secret(name=None, secret=None):
 
 
 @config_blueprint.route("/config/secrets/node/<string:name>/<string:secret>/_clone", methods=['POST'])
-###@token_required
+@token_required
 def config_clone_node_secret(name=None, secret=None):
     """
     Input - Node Name & Payload
@@ -2891,7 +2930,7 @@ def config_clone_node_secret(name=None, secret=None):
 
 
 @config_blueprint.route("/config/secrets/node/<string:name>/<string:secret>/_delete", methods=['GET'])
-###@token_required
+@token_required
 def config_node_secret_delete(name=None, secret=None):
     """
     Input - Node Name & Secret Name
@@ -2919,7 +2958,7 @@ def config_node_secret_delete(name=None, secret=None):
 
 
 @config_blueprint.route("/config/secrets/group/<string:name>", methods=['GET'])
-###@token_required
+@token_required
 def config_get_secrets_group(name=None):
     """
     Input - Group Name
@@ -2949,7 +2988,7 @@ def config_get_secrets_group(name=None):
 
 
 @config_blueprint.route("/config/secrets/group/<string:name>", methods=['POST'])
-###@token_required
+@token_required
 def config_post_secrets_group(name=None):
     """
     Input - Group Name & Payload
@@ -3019,7 +3058,7 @@ def config_post_secrets_group(name=None):
 
 
 @config_blueprint.route("/config/secrets/group/<string:name>/<string:secret>", methods=['GET'])
-###@token_required
+@token_required
 def config_get_group_secret(name=None, secret=None):
     """
     Input - Group Name & Secret Name
@@ -3049,7 +3088,7 @@ def config_get_group_secret(name=None, secret=None):
 
 
 @config_blueprint.route("/config/secrets/group/<string:name>/<string:secret>", methods=['POST'])
-###@token_required
+@token_required
 def config_post_group_secret(name=None, secret=None):
     """
     Input - Group Name & Payload
@@ -3106,7 +3145,7 @@ def config_post_group_secret(name=None, secret=None):
 
 
 @config_blueprint.route("/config/secrets/group/<string:name>/<string:secret>/_clone", methods=['POST'])
-###@token_required
+@token_required
 def config_clone_group_secret(name=None, secret=None):
     """
     Input - Group Name & Payload
@@ -3174,7 +3213,7 @@ def config_clone_group_secret(name=None, secret=None):
 
 
 @config_blueprint.route('/config/secrets/group/<string:name>/<string:secret>/_delete', methods=['GET'])
-###@token_required
+@token_required
 def config_group_secret_delete(name=None, secret=None):
     """
     Input - Group Name & Secret Name

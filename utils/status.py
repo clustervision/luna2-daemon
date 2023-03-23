@@ -24,27 +24,16 @@ from utils.database import Database
 from common.constant import CONSTANT, LUNAKEY
 from utils.helper import Helper
 import concurrent.futures
-#import threading
 from threading import Event
 from time import sleep, time
 from datetime import datetime
 import signal
 
-#stop_requested = False
 
 class Status(object):
 
     def __init__(self):
-
         self.logger = Log.get_logger()
-#        signal.signal(signal.SIGTERM, self.sig_handler)
-#        signal.signal(signal.SIGINT, self.sig_handler)
-# 
-#    def sig_handler(signum, frame):
-#        self.logging.info("handling signal: %s\n" % signum)
-#
-#        global stop_requested
-#        stop_requested = True
 
     def add_message(self,request_id,username_initiator,message):
         current_datetime=datetime.now()
@@ -68,25 +57,5 @@ class Status(object):
 
     def del_messages(self,request_id):
         Database().delete_row('status', [{"column": "request_id", "value": request_id}])
-
-
-    def cleanup_mother(self,event):
-        tel=0
-        while True:
-            try:
-                tel+=1
-                if tel > 120:
-                    tel=0
-                    records=Database().get_record_query("select id,message from status where created<datetime('now','-1 hour')") # only sqlite compliant. rest pending
-                    for record in records:
-                        self.logger.info(f"cleaning up status id {record['id']} : {record['message']}")
-                        where = [{"column": "id", "value": record['id']}]
-                        Database().delete_row('status', where)
-                if event.is_set():
-                    return
-            except Exception as exp:
-                self.logger.error(f"clean up thread encountered problem: {exp}")
-            sleep(5)
-
 
 

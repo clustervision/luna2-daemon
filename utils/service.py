@@ -21,6 +21,7 @@ from common.constant import CONSTANT
 from utils.status import Status
 import concurrent.futures
 from time import sleep,time
+from utils.queue import Queue
 
 class Service(object):
     """
@@ -170,7 +171,7 @@ class Service(object):
         self.logger.info(f"service_mother called")
         try:
 #            # Below section is already done in config/pack GET call but kept here in case we want to move it back
-#            queue_id,response = Helper().add_task_to_queue(f'{service}:{action}','service',request_id)
+#            queue_id,response = Queue().add_task_to_queue(f'{service}:{action}','service',request_id)
 #            if not queue_id:
 #                self.logger.info(f"service_mother cannot get queue_id")
 #                Status().add_message(request_id,"luna",f"error queuing my task")
@@ -178,22 +179,21 @@ class Service(object):
 #            self.logger.info(f"service_mother added task to queue: {queue_id}")
 #            Status().add_message(request_id,"luna",f"queued pack service {service} with queue_id {queue_id}")
 #
-#            next_id = Helper().next_task_in_queue('service')
+#            next_id = Queue().next_task_in_queue('service')
 #            if queue_id != next_id:
 #                # little tricky. we assume that another mother proces was spawned that took care of the runs... 
 #                # we need a check based on last hear queue entry, then we continue. pending in next_task_in_queue.
 #                return
 
-            while Helper().tasks_in_queue('service'):
-                next_id = Helper().next_task_in_queue('service')
+            while next_id := Queue().next_task_in_queue('service'):
                 self.logger.info(f"service_mother sees job in queue as next: {next_id}")
-                details=Helper().get_task_details(next_id)
+                details=Queue().get_task_details(next_id)
                 request_id=details['request_id']
                 service,action=details['task'].split(':')
 
                 if action and service:
     
-                    Helper().update_task_status_in_queue(next_id,'in progress')
+                    Queue().update_task_status_in_queue(next_id,'in progress')
                     Status().add_message(request_id,"luna",f"{action} service {service}")
 
                     response, code = self.luna_service(service, action)
@@ -205,7 +205,7 @@ class Service(object):
                         self.logger.info(f'service {service} {action} error: {response}.')
                         Status().add_message(request_id,"luna",f"error {action} service {service}: {response}")
 
-                    Helper().remove_task_from_queue(next_id)
+                    Queue().remove_task_from_queue(next_id)
                     Status().add_message(request_id,"luna",f"EOF")
                 else:
                     self.logger.info(f"{details['task']} is not for us.")
@@ -216,9 +216,9 @@ class Service(object):
 
 
     def queue(self,service,action):
-        queue_id,response = Helper().add_task_to_queue(f'{service}:{action}','service','__internal__')
+        queue_id,response = Queue().add_task_to_queue(f'{service}:{action}','service','__internal__')
         if queue_id:
-            next_id = Helper().next_task_in_queue('service')
+            next_id = Queue().next_task_in_queue('service')
             if queue_id == next_id:
                 executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
                 executor.submit(self.service_mother,service,action,'__internal__')

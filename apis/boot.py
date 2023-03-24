@@ -310,16 +310,26 @@ def boot_manual_group(groupname=None, mac=None):
         provision_interface=str(groupdetails[0]['provision_interface'])
 
     # things we have to set if we 'clone' or create a node
+#    items={
+#       'prescript':'',
+#       'partscript':'',
+#       'postscript':'',
+#       'setupbmc':False,
+#       'netboot':False,
+#       'localinstall':False,
+#       'localboot':False,
+#       'bootmenu':False,
+#       'service':False}
+#       'provision_interface':''}
+
     items={
-       'prescript':'',
-       'partscript':'',
-       'postscript':'',
        'setupbmc':False,
        'netboot':False,
        'localinstall':False,
        'bootmenu':False,
        'service':False,
-       'provision_interface':'BOOTIF'}
+       'localboot':False,
+    }
 
     # first we generate a list of taken ips. we might need it later
     ips=[]
@@ -365,8 +375,12 @@ def boot_manual_group(groupname=None, mac=None):
         for item in items:
             if list2 and item in list2[0] and list2[0][item]:  # we copy from another node. not sure if this is really correct. pending
                 newdata[item] = list2[0][item]
+                if isinstance(items[item], bool):
+                    newdata[item] = str(Helper().make_bool(newdata[item]))
             else:
                 newdata[item] = items[item]
+            if (not newdata[item]) and (item not in items):
+                del newdata[item]
         row = Helper().make_rows(newdata)
         nodeid = Database().insert('node', row)
 

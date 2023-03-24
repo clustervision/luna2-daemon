@@ -1874,9 +1874,10 @@ def config_switch_get(switch=None):
         response = {'config': {'switch': { } }}
         for switch in switches:
             switchname = switch['name']
-            response['config']['switch'][switchname] = switch
             #Antoine
             switch_ips = Database().get_record_join(['network.name as network','ipaddress.ipaddress'], ['ipaddress.tablerefid=switch.id','network.id=ipaddress.networkid'], ['tableref="switch"',f"tablerefid='{switch['id']}'"])
+            del switch['id']
+            response['config']['switch'][switchname] = switch
             if switch_ips:
                 response['config']['switch'][switchname]['ipaddress'] = switch_ips[0]['ipaddress']
                 response['config']['switch'][switchname]['network'] = switch_ips[0]['network']
@@ -2160,9 +2161,10 @@ def config_otherdev_get(device=None):
         response = {'config': {'otherdev': { } }}
         for device in devices:
             devicename = device['name']
-            response['config']['otherdev'][devicename] = device
             #Antoine
             otherdev_ips = Database().get_record_join(['network.name as network','ipaddress.ipaddress'], ['ipaddress.tablerefid=otherdevices.id','network.id=ipaddress.networkid'], ['tableref="otherdevices"',f"tablerefid='{device['id']}'"])
+            del device['id']
+            response['config']['otherdev'][devicename] = device
             if otherdev_ips:
                 response['config']['otherdev'][devicename]['ipaddress'] = otherdev_ips[0]['ipaddress']
                 response['config']['otherdev'][devicename]['network'] = otherdev_ips[0]['network']

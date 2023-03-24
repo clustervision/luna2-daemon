@@ -514,11 +514,11 @@ $TTL 604800
                 networkid=network_details[0]['id']
             else:
                 return False,"Network not specified"
-        if ipaddress and deviceid:
+        if ipaddress and deviceid and networkid:
             my_ipaddress={}
             my_ipaddress['networkid']=networkid
             result_ip=False
-            network_details = Database().get_record(None, 'network', f'WHERE id={networkid}')
+            network_details = Database().get_record(None, 'network', f"WHERE id='{networkid}'")
             valid_ip = Helper().check_ip_range(ipaddress, f"{network_details[0]['network']}/{network_details[0]['subnet']}")
             self.logger.info(f"Ipaddress {ipaddress} for {device} is [{valid_ip}]")
             if valid_ip is False:

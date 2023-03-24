@@ -109,7 +109,7 @@ def tpm(nodename=None):
 
     cluster = Database().get_record(None, 'cluster', None)
     if cluster and 'security' in cluster[0] and cluster[0]['security']:
-        LOGGER.info(f"AUTH: cluster[0]['security'] = {cluster[0]['security']}")
+        LOGGER.info(f"cluster security = {cluster[0]['security']}")
         if 'tpm_sha256' in auth:
             node = Database().get_record(None, 'node', f' WHERE name = "{nodename}"')
             if node:

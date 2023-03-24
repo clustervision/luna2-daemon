@@ -109,7 +109,7 @@ def config_node_get(name=None):
                                            'group.netboot AS group_netboot',
                                            'group.localinstall AS group_localinstall',
                                            'group.bootmenu AS group_bootmenu',
-                                           'group.provisioninterface AS group_provisioninterface'], ['group.id=node.groupid','osimage.id=group.osimageid'],f"node.name='{name}'")
+                                           'group.provision_interface AS group_provision_interface'], ['group.id=node.groupid','osimage.id=group.osimageid'],f"node.name='{name}'")
     nodes[0].update(nodefull[0])
     node=nodes[0]
     if node:
@@ -142,7 +142,7 @@ def config_node_get(name=None):
            'netboot':False,
            'localinstall':False,
            'bootmenu':False,
-           'provisioninterface':'BOOTIF'}
+           'provision_interface':'BOOTIF'}
 
         for item in items.keys():
            if 'group_'+item in node and node['group_'+item] and not node[item]:
@@ -171,7 +171,7 @@ def config_node_get(name=None):
         node_interface = Database().get_record_join(['nodeinterface.interface','ipaddress.ipaddress','nodeinterface.macaddress','network.name as network'], ['network.id=ipaddress.networkid','ipaddress.tablerefid=nodeinterface.id'],['tableref="nodeinterface"',f"nodeinterface.nodeid='{nodeid}'"])
         if node_interface:
             for interface in node_interface:
-                interfacename,*_ = (node['provisioninterface'].split(' ')+[None]) # we skim off parts that we added for clarity in above section (e.g. (default)). also works if there's no additional info
+                interfacename,*_ = (node['provision_interface'].split(' ')+[None]) # we skim off parts that we added for clarity in above section (e.g. (default)). also works if there's no additional info
                 if interface['interface'] == interfacename and interface['network']: # if it is my prov interf then it will get that domain as a FQDN.
                     node['hostname'] = nodename + '.' + interface['network']
                 node['interfaces'].append(interface)
@@ -187,7 +187,7 @@ def config_node_get(name=None):
 #                        add_if=False
 #                        break
 #                if add_if:
-#                    interfacename,*_ = (node['provisioninterface'].split(' ')+[None]) # we skim off parts that we added for clarity in above section (e.g. (default)). also works if there's no additional info
+#                    interfacename,*_ = (node['provision_interface'].split(' ')+[None]) # we skim off parts that we added for clarity in above section (e.g. (default)). also works if there's no additional info
 #                    if interface['interface'] == interfacename and interface['network']: # if it is my prov interf then it will get that domain as a FQDN.
 #                        node['hostname'] = nodename + '.' + interface['network'] 
 #                    interface['interface'] += f" ({node['group']})"
@@ -269,8 +269,8 @@ def config_node_post(name=None):
                 data[item] = items[item]
                 if isinstance(data[item], bool):
                     data[item]=str(Helper().make_boolnum(data[item]))
-            LOGGER.info(f"+++> i see {item} = [{data[item]}]")
-            if not data[item]:
+            LOGGER.debug(f"+++> i see {item} = [{data[item]}]")
+            if (not data[item]) and (item not in items):
                 LOGGER.info(f"###> deleting {item} = [{data[item]}]")
                 del data[item]
 
@@ -444,7 +444,7 @@ def config_node_clone(name=None):
                 data[item] = node[0][item] or None
             if item in items:
                 data[item] = data[item] or items[item]
-            if not data[item] and item not in items:
+            if (not data[item]) and (item not in items):
                 del data[item]
             elif isinstance(data[item], bool):
                 data[item]=str(Helper().make_boolnum(data[item]))
@@ -805,7 +805,7 @@ def config_group_get(name=None):
        'netboot':False,
        'localinstall':False,
        'bootmenu':False,
-       'provisioninterface':'BOOTIF'
+       'provision_interface':'BOOTIF'
     }
 
     groups = Database().get_record(None, 'group', f' WHERE name = "{name}"')
@@ -867,7 +867,7 @@ def config_group_post(name=None):
        'netboot':False,
        'localinstall':False,
        'bootmenu':False,
-       'provisioninterface':'BOOTIF'
+       'provision_interface':'BOOTIF'
     }
     create, update = False, False
 
@@ -1042,7 +1042,7 @@ def config_group_clone(name=None):
                 data[item] = grp[0][item] or None
             if item in items:
                 data[item] = data[item] or items[item]
-            if not data[item] and item not in items:
+            if (not data[item]) and (item not in items):
                 del data[item]
             elif isinstance(data[item], bool):
                 data[item]=str(Helper().make_boolnum(data[item]))
@@ -3165,13 +3165,13 @@ def config_post_group_secret(name=None, secret=None):
         if group:
             groupid = group[0]['id']
             if data:
+                grpsecretcolumns = Database().get_columns('groupsecrets')
+                columncheck = Helper().checkin_list(data[0], grpsecretcolumns)
                 secretname = data[0]['name']
                 where = f' WHERE groupid = "{groupid}" AND name = "{secretname}"'
                 secretdata = Database().get_record(None, 'groupsecrets', where)
-                if secretdata:
-                    grpsecretcolumns = Database().get_columns('groupsecrets')
-                    columncheck = Helper().checkin_list(data[0], grpsecretcolumns)
-                    if columncheck:
+                if columncheck:
+                    if secretdata:
                         secretid = secretdata[0]['id']
                         data[0]['content'] = Helper().encrypt_string(data[0]['content'])
                         where = [
@@ -3183,9 +3183,20 @@ def config_post_group_secret(name=None, secret=None):
                         Database().update('groupsecrets', row, where)
                         response = {'message': f'Group {name} secret {secret} updated.'}
                         access_code = 204
+                    else:
+                        data['groupid'] = groupid
+                        data['content'] = Helper().encrypt_string(data[0]['content'])
+                        row = Helper().make_rows(data[0])
+                        result=Database().insert('groupsecrets', row)
+                        if result:
+                            response = {'message': f'Group {name} secret {secret} updated.'}
+                            access_code = 204
+                        else:
+                            response = {'message': f'Group {name} secret {secret} update failed.'}
+                            access_code = 500
                 else:
-                    LOGGER.error(f'Group {name}, Secret {secret} is unavailable.')
-                    response = {'message': f'Group {name}, secret {secret} is unavailable.'}
+                    LOGGER.error(f'Rows do not match columns for Group {name}, secret {secret}.')
+                    response = {'message': f'Supplied columns do not match the requirements.'}
                     access_code = 404
             else:
                 LOGGER.error('Kindly provide at least one secret.')

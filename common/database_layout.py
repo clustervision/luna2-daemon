@@ -111,9 +111,9 @@ DATABASE_LAYOUT_group = [
 {"column": "localinstall",         "datatype": "VARCHAR", "length": "20"},
 {"column": "bootmenu",             "datatype": "VARCHAR", "length": "20"},
 {"column": "comment",              "datatype": "VARCHAR", "length": "20"},
-{"column": "provisioninterface",   "datatype": "VARCHAR", "length": "20"},
-{"column": "provisionmethod",      "datatype": "VARCHAR", "length": "20"},
-{"column": "provisionfallback",    "datatype": "VARCHAR", "length": "20"},
+{"column": "provision_interface",  "datatype": "VARCHAR", "length": "20"},
+{"column": "provision_method",     "datatype": "VARCHAR", "length": "20"},
+{"column": "provision_fallback",   "datatype": "VARCHAR", "length": "20"},
 {"column": "unmanaged_bmc_users",  "datatype": "VARCHAR", "length": "30"}]
 
 DATABASE_LAYOUT_network = [
@@ -187,9 +187,9 @@ DATABASE_LAYOUT_node = [
 {"column": "netboot",              "datatype": "INTEGER", "length": "10"},
 {"column": "localinstall",         "datatype": "INTEGER", "length": "10"},
 {"column": "bootmenu",             "datatype": "INTEGER", "length": "10"},
-{"column": "provisioninterface",   "datatype": "VARCHAR", "length": "60"},
-{"column": "provisionmethod",      "datatype": "VARCHAR", "length": "60"},
-{"column": "provisionfallback",    "datatype": "VARCHAR", "length": "60"},
+{"column": "provision_interface",  "datatype": "VARCHAR", "length": "60"},
+{"column": "provision_method",     "datatype": "VARCHAR", "length": "60"},
+{"column": "provision_fallback",   "datatype": "VARCHAR", "length": "60"},
 {"column": "tpm_uuid",             "datatype": "VARCHAR", "length": "60"},
 {"column": "tpm_pubkey",           "datatype": "VARCHAR", "length": "1024"},
 {"column": "tpm_sha256",           "datatype": "VARCHAR", "length": "256"},

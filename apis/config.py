@@ -109,6 +109,8 @@ def config_node_get(name=None):
                                            'group.netboot AS group_netboot',
                                            'group.localinstall AS group_localinstall',
                                            'group.bootmenu AS group_bootmenu',
+                                           'group.provision_method AS group_provision_method',
+                                           'group.provision_fallback AS group_provision_fallback',
                                            'group.provision_interface AS group_provision_interface'], ['group.id=node.groupid','osimage.id=group.osimageid'],f"node.name='{name}'")
     nodes[0].update(nodefull[0])
     node=nodes[0]
@@ -142,6 +144,8 @@ def config_node_get(name=None):
            'netboot':False,
            'localinstall':False,
            'bootmenu':False,
+           'provision_method':'torrent',
+           'provision_fallback':'http',
            'provision_interface':'BOOTIF'}
 
         for item in items.keys():

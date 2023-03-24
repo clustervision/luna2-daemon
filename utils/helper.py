@@ -372,9 +372,9 @@ class Helper(object):
             else:
                 variable='0'
         elif isinstance(variable, (str, int)):
-            if variable in ('1', 1):
+            if variable in ('1', 1, 'true', 'True', 'TRUE', 'yes', 'Yes', 'YES'):
                 variable = '1'
-            elif variable in ('0', 0):
+            elif variable in ('0', 0, 'false', 'False', 'FALSE', 'no', 'No', 'NO'):
                 variable = '0'
         else:
             variable = None

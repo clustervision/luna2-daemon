@@ -263,15 +263,13 @@ def config_node_post(name=None):
         for item in items:
             if item in data: 
                 data[item] = data[item] or items[item]
-                if isinstance(data[item], bool):
+                if isinstance(items[item], bool):
                     data[item]=str(Helper().make_boolnum(data[item]))
             else:
                 data[item] = items[item]
-                if isinstance(data[item], bool):
+                if isinstance(items[item], bool):
                     data[item]=str(Helper().make_boolnum(data[item]))
-            LOGGER.debug(f"+++> i see {item} = [{data[item]}]")
             if (not data[item]) and (item not in items):
-                LOGGER.info(f"###> deleting {item} = [{data[item]}]")
                 del data[item]
 
 
@@ -446,7 +444,7 @@ def config_node_clone(name=None):
                 data[item] = data[item] or items[item]
             if (not data[item]) and (item not in items):
                 del data[item]
-            elif isinstance(data[item], bool):
+            elif item in items and isinstance(items[item], bool):
                 data[item]=str(Helper().make_boolnum(data[item]))
 
         if 'bmcsetup' in data:
@@ -1044,7 +1042,7 @@ def config_group_clone(name=None):
                 data[item] = data[item] or items[item]
             if (not data[item]) and (item not in items):
                 del data[item]
-            elif isinstance(data[item], bool):
+            elif item in items and isinstance(items[item], bool):
                 data[item]=str(Helper().make_boolnum(data[item]))
 
         if 'bmcsetupname' in data:
@@ -1603,6 +1601,11 @@ def config_cluster_post():
     Process - Fetch The Cluster Information.
     Output - Cluster Information.
     """
+    items={
+       'debug':False,
+       'security':False,
+       'createnode_ondemand':True
+    }
     if Helper().check_json(request.data):
         request_data = request.get_json(force=True)
     else:
@@ -1631,6 +1634,19 @@ def config_cluster_post():
                     temp=temp.replace(' ',',')
                     temp=temp.replace(',,',',')
                     data['forwardserver_ip']=temp
+
+                for item in items:
+                    if item in data:
+                        data[item] = data[item] or items[item]
+                        if isinstance(items[item], bool):
+                            data[item]=str(Helper().make_boolnum(data[item]))
+                    else:
+                        data[item] = items[item]
+                        if isinstance(items[item], bool):
+                            data[item]=str(Helper().make_boolnum(data[item]))
+                    if (not data[item]) and (item not in items):
+                        del data[item]
+
                 where = [{"column": "id", "value": cluster[0]['id']}]
                 row = Helper().make_rows(data)
                 Database().update('cluster', row, where)

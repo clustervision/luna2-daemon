@@ -2882,13 +2882,13 @@ def config_post_node_secret(name=None, secret=None):
         if node:
             nodeid = node[0]['id']
             if data:
+                nodesecretcolumns = Database().get_columns('nodesecrets')
+                columncheck = Helper().checkin_list(data[0], nodesecretcolumns)
                 secretname = data[0]['name']
                 where = f' WHERE nodeid = "{nodeid}" AND name = "{secretname}"'
                 secret_data = Database().get_record(None, 'nodesecrets', where)
-                if secret_data:
-                    nodesecretcolumns = Database().get_columns('nodesecrets')
-                    columncheck = Helper().checkin_list(data[0], nodesecretcolumns)
-                    if columncheck:
+                if columncheck:
+                    if secret_data:
                         secretid = secret_data[0]['id']
                         data[0]['content'] = Helper().encrypt_string(data[0]['content'])
                         where = [
@@ -2900,9 +2900,20 @@ def config_post_node_secret(name=None, secret=None):
                         Database().update('nodesecrets', row, where)
                         response = {'message': f'Node {name} Secret {secret} updated.'}
                         access_code = 204
+                    else:
+                        data[0]['nodeid'] = nodeid
+                        data[0]['content'] = Helper().encrypt_string(data[0]['content'])
+                        row = Helper().make_rows(data[0])
+                        result=Database().insert('nodesecrets', row)
+                        if result:
+                            response = {'message': f'Node {name} secret {secret} updated.'}
+                            access_code = 204
+                        else:
+                            response = {'message': f'Node {name} secret {secret} update failed.'}
+                            access_code = 500
                 else:
-                    LOGGER.error(f'Node {name}, Secret {secret} is unavailable.')
-                    response = {'message': f'Node {name}, Secret {secret} is unavailable.'}
+                    LOGGER.error(f'Rows do not match columns for Group {name}, secret {secret}.')
+                    response = {'message': f'Supplied columns do not match the requirements.'}
                     access_code = 404
             else:
                 LOGGER.error('Kindly provide at least one secret.')
@@ -3184,8 +3195,8 @@ def config_post_group_secret(name=None, secret=None):
                         response = {'message': f'Group {name} secret {secret} updated.'}
                         access_code = 204
                     else:
-                        data['groupid'] = groupid
-                        data['content'] = Helper().encrypt_string(data[0]['content'])
+                        data[0]['groupid'] = groupid
+                        data[0]['content'] = Helper().encrypt_string(data[0]['content'])
                         row = Helper().make_rows(data[0])
                         result=Database().insert('groupsecrets', row)
                         if result:

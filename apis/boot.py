@@ -358,6 +358,7 @@ def boot_manual_group(groupname=None, mac=None):
 
         LOGGER.info(f"Group boot intelligence: we came up with the following node name: [{newdata['name']}]")
 
+        # we kinda already do this further down... but i leave it here as it makes sense
         if groupdetails:
             newdata['groupid']=groupdetails[0]['id']
 
@@ -405,6 +406,12 @@ def boot_manual_group(groupname=None, mac=None):
         template = environment.from_string('No Node is available for this group.')
         access_code = 404
         return template,access_code
+
+    # we update the groupid of the node. this is actually only really needed if we re-use a node (unassigned)
+    if groupdetails:
+        row = [{"column": "groupid", "value": groupdetails[0]['id']}]
+        where = [{"column": "name", "value": hostname}]
+        Database().update('node', row, where)
 
     # below here is almost identical to a manual node selection boot -------------------------------------------
 
@@ -644,13 +651,14 @@ def boot_install(node=None):
         if 'WEBSERVER' in CONSTANT.keys():
            if 'PORT' in CONSTANT['WEBSERVER']:
                data['webserverport'] = CONSTANT['WEBSERVER']['PORT']
-    node_details = Database().get_record_join(['node.*','group.osimageid as grouposimageid'],['group.id=node.groupid'],[f'node.name="{node}"'])
+    node_details = Database().get_record_join(['node.*','group.osimageid as grouposimageid','group.name as groupname'],['group.id=node.groupid'],[f'node.name="{node}"'])
     if node_details:
         if node_details[0]['osimageid']:
             data['osimageid']       = node_details[0]['osimageid']
         else:
             data['osimageid']       = node_details[0]['grouposimageid']
         data['groupid']             = node_details[0]['groupid']
+        data['groupname']           = node_details[0]['groupname']
         data['nodename']            = node_details[0]['name']
 #        data['nodehostname']        = node_details[0]['hostname']
         data['nodehostname']        = node_details[0]['name'] # + fqdn
@@ -753,6 +761,7 @@ def boot_install(node=None):
         WEBSERVER_PORT          = data['webserverport'],
         NODE_HOSTNAME           = data['nodehostname'],
         NODE_NAME               = data['nodename'],
+        GROUP_NAME              = data['groupname'],
         LUNA_OSIMAGE            = data['osimagename'],
         LUNA_TORRENT            = data['tarball'],  # has to be changed into torrent??
         LUNA_TARBALL            = data['tarball'],

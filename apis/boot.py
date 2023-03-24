@@ -693,12 +693,10 @@ def boot_install(node=None):
  
             for item in items.keys():
                if item in data and item in group[0] and group[0][item] and not data[item]:
-                   if isinstance(items[item], bool):
-                       group[0][item] = str(Helper().make_bool(group[0][item]))
+                   group[0][item] = str(Helper().make_bool(group[0][item]))
                    data[item] = data[item] or group[0][item] or str(items[item])
                else:
-                   if isinstance(items[item], bool):
-                       data[item] = str(Helper().make_bool(data[item]))
+                   data[item] = str(Helper().make_bool(data[item]))
                    data[item] = data[item] or str(items[item])
 
 #        if group:

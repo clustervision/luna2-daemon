@@ -310,18 +310,6 @@ def boot_manual_group(groupname=None, mac=None):
         provision_interface=str(groupdetails[0]['provision_interface'])
 
     # things we have to set if we 'clone' or create a node
-#    items={
-#       'prescript':'',
-#       'partscript':'',
-#       'postscript':'',
-#       'setupbmc':False,
-#       'netboot':False,
-#       'localinstall':False,
-#       'localboot':False,
-#       'bootmenu':False,
-#       'service':False}
-#       'provision_interface':''}
-
     items={
        'setupbmc':False,
        'netboot':False,

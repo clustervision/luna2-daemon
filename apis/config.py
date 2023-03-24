@@ -146,11 +146,13 @@ def config_node_get(name=None):
 
         for item in items.keys():
            if 'group_'+item in node and node['group_'+item] and not node[item]:
-               node['group_'+item] = str(Helper().make_bool(node['group_'+item]))
+               if isinstance(items[item], bool):
+                   node['group_'+item] = str(Helper().make_bool(node['group_'+item]))
                node['group_'+item] += f" ({node['group']})"
                node[item] = node[item] or node['group_'+item] or str(items[item]+' (default)')
            else:
-               node[item] = str(Helper().make_bool(node[item]))
+               if isinstance(items[item], bool):
+                   node[item] = str(Helper().make_bool(node[item]))
                node[item] = node[item] or str(items[item]+' (default)')
            if 'group_'+item in node:
                del node['group_'+item]
@@ -818,10 +820,12 @@ def config_group_get(name=None):
             del grp['id']
             for item in items.keys():
                 if item in grp:
-                    grp[item]=str(Helper().make_bool(grp[item]))
+                    if isinstance(items[item], bool):
+                        grp[item]=str(Helper().make_bool(grp[item]))
                     grp[item] = grp[item] or str(items[item]+' (default)')
                 else:
-                    grp[item]=str(Helper().make_bool(grp[item]))
+                    if isinstance(items[item], bool):
+                        grp[item]=str(Helper().make_bool(grp[item]))
                     grp[item] = str(items[item]+' (default)')
 
 #            grp['setupbmc'] = Helper().make_bool(grp['setupbmc'])

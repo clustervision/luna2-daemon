@@ -386,9 +386,10 @@ class Helper(object):
         Input - string
         Output - Encrypt String
         """
-        fernetobj = Fernet(bytes(LUNAKEY, 'utf-8'))
-        response = fernetobj.encrypt(string.encode()).decode()
-        return response
+        return string
+#        fernetobj = Fernet(bytes(LUNAKEY, 'utf-8'))
+#        response = fernetobj.encrypt(string.encode()).decode()
+#        return response
 
 
     def decrypt_string(self, string=None):
@@ -396,9 +397,10 @@ class Helper(object):
         Input - string
         Output - Decrypt Encoded String
         """
-        fernetobj = Fernet(bytes(LUNAKEY, 'utf-8'))
-        response = fernetobj.decrypt(string).decode()
-        return response
+        return string
+#        fernetobj = Fernet(bytes(LUNAKEY, 'utf-8'))
+#        response = fernetobj.decrypt(string).decode()
+#        return response
 
 
     def pack(self, image=None):

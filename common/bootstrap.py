@@ -349,8 +349,8 @@ def bootstrap(bootstrapfile=None):
             {'column': 'netboot', 'value': '1'},
             {'column': 'localinstall', 'value': '0'},
             {'column': 'bootmenu', 'value': '0'},
-            {'column': 'provisionmethod', 'value': 'torrent'},
-            {'column': 'provisionfallback', 'value': 'http'},
+            {'column': 'provision_method', 'value': 'torrent'},
+            {'column': 'provision_fallback', 'value': 'http'},
             {'column': 'osimageid', 'value': osimage},
             {'column': 'partscript', 'value': "mount -t tmpfs tmpfs /sysroot"},
             {'column': 'postscript', 'value': "echo 'tmpfs / tmpfs defaults 0 0' >> /sysroot/etc/fstab"}
@@ -368,8 +368,8 @@ def bootstrap(bootstrapfile=None):
                 {'column': 'localinstall', 'value': '0'},
                 {'column': 'bootmenu', 'value': '0'},
                 {'column': 'netboot', 'value': '1'},
-                {'column': 'provisionmethod', 'value': 'torrent'},
-                {'column': 'provisionfallback', 'value': 'http'}
+                {'column': 'provision_method', 'value': 'torrent'},
+                {'column': 'provision_fallback', 'value': 'http'}
             ]
         node_id=Database().insert('node', default_node)
         network_details=Helper().get_network_details(BOOTSTRAP['NETWORKS'][networkname]['NETWORK'])

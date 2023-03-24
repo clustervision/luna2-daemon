@@ -299,15 +299,15 @@ def boot_manual_group(groupname=None, mac=None):
         result_if=Database().update('nodeinterface', row, where)
 
     # then we fetch a list of all nodes that we have, with or without interface config
-    list1=Database().get_record_join(['node.*','group.name as groupname','group.provisioninterface','nodeinterface.interface','nodeinterface.macaddress'],['nodeinterface.nodeid=node.id','group.id=node.groupid'])
+    list1=Database().get_record_join(['node.*','group.name as groupname','group.provision_interface','nodeinterface.interface','nodeinterface.macaddress'],['nodeinterface.nodeid=node.id','group.id=node.groupid'])
     list2=Database().get_record_join(['node.*','group.name as groupname'],['group.id=node.groupid'])
     list=list1+list2
 
     # general group info and details. needed below
     groupdetails=Database().get_record(None,'group',f" WHERE name='{groupname}'")
-    provisioninterface='BOOTIF'
-    if groupdetails and 'provisioninterface' in groupdetails[0] and groupdetails[0]['provisioninterface']:
-        provisioninterface=str(groupdetails[0]['provisioninterface'])
+    provision_interface='BOOTIF'
+    if groupdetails and 'provision_interface' in groupdetails[0] and groupdetails[0]['provision_interface']:
+        provision_interface=str(groupdetails[0]['provision_interface'])
 
     # things we have to set if we 'clone' or create a node
     items={
@@ -319,7 +319,7 @@ def boot_manual_group(groupname=None, mac=None):
        'localinstall':False,
        'bootmenu':False,
        'service':False,
-       'provisioninterface':'BOOTIF'}
+       'provision_interface':'BOOTIF'}
 
     # first we generate a list of taken ips. we might need it later
     ips=[]
@@ -373,9 +373,9 @@ def boot_manual_group(groupname=None, mac=None):
             hostname=newdata['name']
             # we need to pick the currect network in a smart way. we assume the default network, the network where controller is in.
             avail_ip=Helper().get_available_ip(network[0]['network'],network[0]['subnet'],ips)
-            result,mesg = Config().node_interface_config(nodeid,provisioninterface,mac)
+            result,mesg = Config().node_interface_config(nodeid,provision_interface,mac)
             if result:
-                result,mesg = Config().node_interface_ipaddress_config(nodeid,provisioninterface,avail_ip,networkname)
+                result,mesg = Config().node_interface_ipaddress_config(nodeid,provision_interface,avail_ip,networkname)
             Service().queue('dns','restart')
 
     else:
@@ -386,16 +386,16 @@ def boot_manual_group(groupname=None, mac=None):
                 if 'interface' in node and 'macaddress' in node and not node['macaddress']:
                     # mac is empty. candidate!
                     hostname=node['name']
-                    result,mesg = Config().node_interface_config(node['id'],provisioninterface,mac)
+                    result,mesg = Config().node_interface_config(node['id'],provision_interface,mac)
                     break
                 elif not 'interface' in node:
                     # node is there but no interface. we'll take it!
                     hostname=node['name']
                     # we need to pick the currect network in a smart way. we assume the default network where controller is in as well
                     avail_ip=Helper().get_available_ip(network[0]['network'],network[0]['subnet'],ips)
-                    result,mesg = Config().node_interface_config(node['id'],provisioninterface,mac)
+                    result,mesg = Config().node_interface_config(node['id'],provision_interface,mac)
                     if result:
-                        result,mesg = Config().node_interface_ipaddress_config(node['id'],provisioninterface,avail_ip,networkname)
+                        result,mesg = Config().node_interface_ipaddress_config(node['id'],provision_interface,avail_ip,networkname)
                         Service().queue('dns','restart')
                     break
 
@@ -672,7 +672,7 @@ def boot_install(node=None):
            'netboot':False,
            'localinstall':False,
            'bootmenu':False,
-           'provisioninterface':'BOOTIF',
+           'provision_interface':'BOOTIF',
            'unmanaged_bmc_users': '' }
 
         for item in items.keys():

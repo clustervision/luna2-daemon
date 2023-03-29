@@ -44,37 +44,75 @@ def config_node():
     Output - Return the list of nodes.
     """
     # ---------------------------- NOTE NOTE NOTE ---------------------------
-    # we need two queries as a join is great but not holy. as soon as we know the absolute minimum/mandatory field/attributes for a node we can finetune
-    # this is also for the other functions/methods/or_whatever_you_call_These_in_python down below. it needs updating or finetuning. pending. -Antoine
+    # we collect all needed info from all tables at once and use dicts to collect data/info
+    # A join is not really suitable as there are too many permutations in where the below
+    # is way more efficient. -Antoine
     # -----------------------------------------------------------------------
     nodes = Database().get_record(None, 'node', None)
-    nodesfull = Database().get_record_join(['node.*','group.name AS group','osimage.name AS osimage'], ['group.id=node.groupid','osimage.id=group.osimageid'])
-    nodes+=nodesfull
+    groups = Database().get_record(None, 'group', None)
+    osimages = Database().get_record(None, 'osimage', None)
+    switches = Database().get_record(None, 'switch', None)
+    bmcsetups = Database().get_record(None, 'bmcsetup', None)
+    group=Helper().convert_list_to_dict(groups,'id')
+    LOGGER.info("stop")
+    osimage=Helper().convert_list_to_dict(osimages,'id')
+    switch=Helper().convert_list_to_dict(switches,'id')
+    bmcsetup=Helper().convert_list_to_dict(bmcsetups,'id')
     if nodes:
+        #items={'setupbmc','switch','osimage','group'}
+        items={
+           'prescript':'<empty>',
+           'partscript':'<empty>',
+           'postscript':'<empty>',
+           'setupbmc':False,
+           'netboot':False,
+           'localinstall':False,
+           'bootmenu':False,
+           'provision_method':'torrent',
+           'provision_fallback':'http',
+           'provision_interface':'BOOTIF'}
+
         response = {'config': {'node': {} }}
         for node in nodes:
             node_name = node['name']
             nodeid = node['id']
-#            if node['bmcsetupid']:
-#                node['bmcsetup'] = Database().getname_byid('bmcsetup', node['bmcsetupid'])
-#            if node['groupid']:
-#                node['group'] = Database().getname_byid('group', node['groupid'])
-#            if node['osimageid']:
-#                node['osimage'] = Database().getname_byid('osimage', node['osimageid'])
+
+            if node['groupid']:
+                node['group']=group[node['groupid']]['name']
+                groupid=node['groupid']
+                if node['osimageid']:
+                    node['osimage']=osimage[node['osimageid']]['name'] or osimage[group[groupid]['osimageid']]['name'] or None
+                else:
+                    node['osimage']=osimage[group[groupid]['osimageid']]['name'] or None
+                if node['bmcsetupid']:
+                    node['bmcsetup']=bmcsetup[node['bmcsetupid']]['name'] or bmcsetup[group[groupid]['bmcsetupid']]['name'] or None
+                else:
+                    node['bmcsetup']=bmcsetup[group[groupid]['bmcsetupid']]['name'] or None
+                for item in items:
+                    node[item]=str(node[item]) or str(group[groupid][item]) or items[item]
+            else:
+                node['group']=None
+
+            node['switch']=None
             if node['switchid']:
-                node['switch'] = Database().getname_byid('switch', node['switchid'])
-            # del node['name']
+                node['switch']=switch[node['switchid']]['name'] or None
+
+            node['tpm_present']=False
+            if node['tpm_uuid'] or node['tpm_sha256'] or node['tpm_pubkey']:
+                node['tpm_present']=True
+
             del node['id']
             del node['bmcsetupid']
             del node['groupid']
             del node['osimageid']
             del node['switchid']
-            node['bootmenu'] = Helper().bool_revert(node['bootmenu'])
-            node['localboot'] = Helper().bool_revert(node['localboot'])
-            node['localinstall'] = Helper().bool_revert(node['localinstall'])
-            node['netboot'] = Helper().bool_revert(node['netboot'])
-            node['service'] = Helper().bool_revert(node['service'])
-            node['setupbmc'] = Helper().bool_revert(node['setupbmc'])
+
+            node['bootmenu'] = Helper().make_bool(node['bootmenu'])
+            node['localboot'] = Helper().make_bool(node['localboot'])
+            node['localinstall'] = Helper().make_bool(node['localinstall'])
+            node['netboot'] = Helper().make_bool(node['netboot'])
+            node['service'] = Helper().make_bool(node['service'])
+            node['setupbmc'] = Helper().make_bool(node['setupbmc'])
             node_interface = Database().get_record_join(['nodeinterface.interface','ipaddress.ipaddress','nodeinterface.macaddress','network.name as network'], ['network.id=ipaddress.networkid','ipaddress.tablerefid=nodeinterface.id'],['tableref="nodeinterface"',f"nodeinterface.nodeid='{nodeid}'"])
             if node_interface:
                 node['interfaces'] = []
@@ -87,7 +125,7 @@ def config_node():
         LOGGER.error('No nodes are available.')
         response = {'message': 'No nodes are available.'}
         access_code = 404
-    LOGGER.info(f"my response: [{response}]")
+ 
     return json.dumps(response), access_code
 
 

@@ -662,14 +662,13 @@ def boot_install(node=None):
         data['groupid']             = node_details[0]['groupid']
         data['groupname']           = node_details[0]['groupname']
         data['nodename']            = node_details[0]['name']
-#        data['nodehostname']        = node_details[0]['hostname']
-        data['nodehostname']        = node_details[0]['name'] # + fqdn
+        data['nodehostname']        = node_details[0]['name'] # + fqdn further below
         data['nodeid']              = node_details[0]['id']
 
         items={
            'prescript':'',
-           'partscript':"mount -t tmpfs tmpfs /sysroot",
-           'postscript':"echo 'tmpfs / tmpfs defaults 0 0' >> /sysroot/etc/fstab",
+           'partscript':"bW91bnQgLXQgdG1wZnMgdG1wZnMgL3N5c3Jvb3QK",
+           'postscript':"ZWNobyAndG1wZnMgLyB0bXBmcyBkZWZhdWx0cyAwIDAnID4+IC9zeXNyb290L2V0Yy9mc3RhYgo=",
            'setupbmc':False,
            'netboot':False,
            'localinstall':False,
@@ -678,9 +677,9 @@ def boot_install(node=None):
            'unmanaged_bmc_users': '' }
 
         for item in items.keys():
-            data[item] = node_details[0][item] or items[item]
-#            if isinstance(items[item], bool):
-#                data[item] = str(Helper().make_bool(data[item]))
+            data[item] = node_details[0][item]
+            if isinstance(items[item], bool):
+                data[item] = str(Helper().make_bool(data[item]))
             if (not data[item]) and (item not in items):
                 data[item]=""
 
@@ -691,11 +690,15 @@ def boot_install(node=None):
  
             for item in items.keys():
                if item in data and item in group[0] and group[0][item] and not data[item]:
-                   group[0][item] = str(Helper().make_bool(group[0][item]))
+               # we check if we have data filled. if not (meaning node does not have that info) we verify if the group has it and if so, we fill it
+                   if isinstance(items[item], bool):
+                       group[0][item] = str(Helper().make_bool(group[0][item]))
                    data[item] = data[item] or group[0][item] or str(items[item])
                else:
-                   data[item] = str(Helper().make_bool(data[item]))
-                   data[item] = data[item] or str(items[item])
+               # if anything else fails we use the fallback
+                   if isinstance(items[item], bool):
+                       data[item] = str(Helper().make_bool(data[item]))
+                   data[item] = str(items[item])
 
     if data['osimageid']:
         osimage = Database().get_record(None, 'osimage', f' WHERE id = {data["osimageid"]}')
@@ -716,6 +719,8 @@ def boot_install(node=None):
                 data['interfaces'][nwkif['interface']]['network'] = node_nwk
                 data['interfaces'][nwkif['interface']]['netmask'] = netmask
                 data['interfaces'][nwkif['interface']]['networkname'] = nwkif['network']
+                if nwkif['interface'] == data['provision_interface'] and nwkif['network']: # if it is my prov interf then it will get that domain as a FQDN.
+                    data['nodehostname'] = data['nodename'] + '.' + nwkif['network']
 
     LOGGER.info(f"boot install data: [{data}]")
     if None not in data.values():
@@ -744,7 +749,6 @@ def boot_install(node=None):
         WEBSERVER_PORT          = data['webserverport'],
         NODE_HOSTNAME           = data['nodehostname'],
         NODE_NAME               = data['nodename'],
-        GROUP_NAME              = data['groupname'],
         LUNA_OSIMAGE            = data['osimagename'],
         LUNA_TORRENT            = data['tarball'],  # has to be changed into torrent??
         LUNA_TARBALL            = data['tarball'],

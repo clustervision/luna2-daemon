@@ -691,3 +691,28 @@ class Helper(object):
 
 
     # -----------------------------------------------------------------
+
+    def convert_list_to_dict(self, mylist=[], byname=None):
+    # This def receives a 'Database().get_record' list of dicts
+    # and converts it into a dictionary where the main key is the value of 'byname' of the dict objects inside the list
+    # eg group[0]{id:'1',....} with a byname of 'id' makes a dict like group{'1':{.....
+    
+        mydict={}
+        if not byname:
+            byname='name'
+        if mylist:
+            for element in mylist:
+                if type(element) is dict:
+                    if byname not in element:
+                        return None
+                    myname=element[byname]
+                    mydict[myname]={}
+                    for item in element:
+                        mydict[myname][item]=element[item]
+        return mydict
+
+
+
+
+
+

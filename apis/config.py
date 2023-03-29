@@ -59,7 +59,6 @@ def config_node():
     switch=Helper().convert_list_to_dict(switches,'id')
     bmcsetup=Helper().convert_list_to_dict(bmcsetups,'id')
     if nodes:
-        #items={'setupbmc','switch','osimage','group'}
         items={
            'prescript':'<empty>',
            'partscript':'<empty>',

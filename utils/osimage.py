@@ -44,11 +44,6 @@ class OsImage(object):
 
     def __init__(self):
         """
-                 , name=None, mongo_db=None, create=False, id=None,
-                 path='', kernver='', kernopts='', comment='',
-                 grab_list='grab_default_centos.lst'):
-        """
-        """
         path      - path to / of the image (will be converted to absolute)
         kernver   - kernel version (will be checked on creation)
         kernopt   - kernel options
@@ -103,8 +98,6 @@ class OsImage(object):
             return False,"/usr/bin/tar does not exist. please install tar"
         if not os.path.exists('/usr/bin/lbzip2'):
             return False,"/usr/bin/lbzip2 does not exist. please install lbzip2"
-
-#        os.chdir(f"{image_path}") # needed for tar to not have leading dirs in path
 
         try:
             self.logger.debug(f"/usr/bin/tar -C {image_path} --one-file-system --xattrs --selinux --acls --checkpoint=100000 --use-compress-program=/usr/bin/lbzip2 -c -f /tmp/{tarfile} .")
@@ -193,7 +186,7 @@ class OsImage(object):
     PRIMARY KEY (`id` AUTOINCREMENT), UNIQUE (`name`)
     """
 
-    def pack_image(self,osimage):
+    def pack_image_rhel(self,osimage):
 
         def mount(source, target, fs):
             try:
@@ -257,13 +250,9 @@ class OsImage(object):
         drivers_remove = []
         grab_filesystems = ['/','/boot']
         
-
-        print(f"{image[0]}")
-
         if 'dracutmodules' in image[0]:
             for i in image[0]['dracutmodules'].split(','):
                 s=i.replace(" ", "")
-                print(f" module: [{s[0]}] [{s}]")
                 if s[0] != '-':
                     modules_add.extend(['--add', s])
                 else:
@@ -309,7 +298,6 @@ class OsImage(object):
             dracut_cmd = (['/usr/bin/dracut', '--force', '--kver', kernver] +
                           modules_add + modules_remove + drivers_add +
                           drivers_remove + [tmp_path + '/' + initrdfile])
-            print(f"{dracut_cmd}")
 
             create = subprocess.Popen(dracut_cmd, stdout=subprocess.PIPE)
             while create.poll() is None:
@@ -359,6 +347,26 @@ class OsImage(object):
 
         return True,"Success"
 
+    # ---------------------------------------------------------------------------
+
+    def pack_image_based_on_distribution(self,osimage):
+        image = Database().get_record(None, 'osimage', f"WHERE name='{osimage}'")
+        distribution='rhel'
+        if 'distribution' in image[0]:
+            distribution=image[0]['distribution'] or 'rhel'
+            distribution=distribution.lower()
+
+        # --------------------------- distri switch ---------------------------------
+
+        self.logger.info(f"image {osimage} will be packed based on {distribution}")
+        ret,mesg=None,"distribution not supported"
+        if distribution == 'rhel' or distribution == 'redhat':
+            ret,mesg=self.pack_image_rhel(osimage)
+        
+        return ret,mesg
+
+
+    # ---------------------------------------------------------------------------
 
     def pack_n_tar_mother(self,osimage,request_id):
 
@@ -392,7 +400,7 @@ class OsImage(object):
    
                 # --- let's pack and rack
 
-                    ret,mesg=self.pack_image(osimage)
+                    ret,mesg=self.pack_image_based_on_distribution(osimage)
                     if ret is True:
                         self.logger.info(f'OS image {osimage} packed successfully.')
                         Status().add_message(request_id,"luna",f"finished packing osimage {osimage}")

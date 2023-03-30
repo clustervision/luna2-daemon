@@ -399,6 +399,8 @@ def bootstrap(bootstrapfile=None):
         bmcsetup_name=str(BOOTSTRAP['BMCSETUP']['NAME'])
     default_bmcsetup = [
             {'column': 'name', 'value': bmcsetup_name},
+            {'column': 'userid', 'value': '2'},
+            {'column': 'netchannel', 'value': '1'},
             {'column': 'username', 'value': str(BOOTSTRAP['BMCSETUP']['USERNAME'])},
             {'column': 'password', 'value': str(BOOTSTRAP['BMCSETUP']['PASSWORD'])}
         ]

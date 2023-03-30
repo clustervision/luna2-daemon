@@ -402,6 +402,7 @@ def bootstrap(bootstrapfile=None):
             {'column': 'username', 'value': str(BOOTSTRAP['BMCSETUP']['USERNAME'])},
             {'column': 'password', 'value': str(BOOTSTRAP['BMCSETUP']['PASSWORD'])}
         ]
+
     default_switch = [
             {'column': 'name', 'value': 'switch01'},
             {'column': 'oid', 'value': '.1.3.6.1.2.1.17.7.1.2.2.1.2'},

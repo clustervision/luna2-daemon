@@ -353,9 +353,9 @@ class Helper(object):
         if isinstance(variable, bool):
             pass
         elif isinstance(variable, (str, int)):
-            if variable in ('1', 1):
+            if variable in ('True', '1', 1):
                 variable = True
-            elif variable in ('0', 0):
+            elif variable in ('False', '0', 0):
                 variable = False
         else:
             variable = None

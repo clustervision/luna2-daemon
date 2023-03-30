@@ -687,9 +687,7 @@ def boot_install(node=None):
         for item in items.keys():
             data[item] = node_details[0][item]
             if isinstance(items[item], bool):
-                data[item] = str(Helper().make_bool(data[item]))
-            if (not data[item]) and (item not in items):
-                data[item]=""
+                data[item] = Helper().make_bool(data[item])
 
     if data['groupid']:
         group = Database().get_record(None, 'group', f' WHERE id = {data["groupid"]}')
@@ -697,18 +695,20 @@ def boot_install(node=None):
             # below section shows what's configured for the node, or the group, or a default fallback
  
             for item in items.keys():
-               if item in data and item in group[0] and group[0][item] and not data[item]:
-               # we check if we have data filled. if not (meaning node does not have that info) we verify if the group has it and if so, we fill it
+               if item in data and item in group[0] and group[0][item] and not str(data[item]):
+                   # we check if we have data filled. if not (meaning node does not have that info) we verify if the group has it and if so, we fill it
                    if isinstance(items[item], bool):
-                       group[0][item] = str(Helper().make_bool(group[0][item]))
-                   data[item] = data[item] or group[0][item] or str(items[item])
+                       group[0][item] = Helper().make_bool(group[0][item])
+                   data[item] = data[item] or group[0][item] or items[item]
+               elif str(data[item]) and data[item] is not None:
+                   pass
                else:
-               # if anything else fails we use the fallback
+                   # if anything else fails we use the fallback
                    if isinstance(items[item], bool):
-                       data[item] = str(Helper().make_bool(data[item]))
-                   data[item] = str(items[item])
+                       data[item] = Helper().make_bool(data[item])
+                   data[item] = items[item]
 
-    if data['setupbmc'] and data['bmcsetupid']:
+    if data['setupbmc'] is True and data['bmcsetupid']:
         bmcsetup = Database().get_record(None, 'bmcsetup', f" WHERE id = {data['bmcsetupid']}")
         if bmcsetup:
             data['bmc']={}
@@ -733,7 +733,7 @@ def boot_install(node=None):
                 netmask=Helper().get_netmask(node_nwk)
                 if nwkif['interface'] == 'BMC': 
                     # we configure bmc stuff here and no longer in template. big advantage is that we can have different networks/interface-names for different h/w, drivers, subnets, networks, etc
-                    if 'bmc' in data and data['bmc'] is dict:
+                    if 'bmc' in data.keys():
                         data['bmc']['ipaddress'] = nwkif['ipaddress']
                         data['bmc']['netmask'] = netmask
                         data['bmc']['gateway'] = nwkif['gateway'] or '0.0.0.0'  # <---- not ipv6 compliant! pending
@@ -757,7 +757,6 @@ def boot_install(node=None):
         environment = jinja2.Environment()
         template = environment.from_string('No Node is available for this mac address.')
         access_code = 500
-    LOGGER.info(data)
 
     jwt_token=None
     try:

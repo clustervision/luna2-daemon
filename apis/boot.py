@@ -634,7 +634,8 @@ def boot_install(node=None):
         'setupbmc'              : None,
         'localinstall'          : None,
         'unmanaged_bmc_users'   : None,
-        'interfaces'            : {}
+        'interfaces'            : {},
+        'bmc'                   : {}
     }
     template = 'templ_install.cfg'
     check_template = Helper().checkjinja(f'{CONSTANT["TEMPLATES"]["TEMPLATES_DIR"]}/{template}')
@@ -653,12 +654,19 @@ def boot_install(node=None):
         if 'WEBSERVER' in CONSTANT.keys():
            if 'PORT' in CONSTANT['WEBSERVER']:
                data['webserverport'] = CONSTANT['WEBSERVER']['PORT']
-    node_details = Database().get_record_join(['node.*','group.osimageid as grouposimageid','group.name as groupname'],['group.id=node.groupid'],[f'node.name="{node}"'])
+    node_details = Database().get_record_join(['node.*','group.osimageid as grouposimageid','group.name as groupname','group.bmcsetupid as groupbmcsetupid'],['group.id=node.groupid'],[f'node.name="{node}"'])
     if node_details:
+        # ---
         if node_details[0]['osimageid']:
             data['osimageid']       = node_details[0]['osimageid']
         else:
             data['osimageid']       = node_details[0]['grouposimageid']
+        # ---
+        if node_details[0]['bmcsetupid']:
+            data['bmcsetupid']       = node_details[0]['bmcsetupid']
+        else:
+            data['bmcsetupid']       = node_details[0]['groupbmcsetupid']
+        # ---
         data['groupid']             = node_details[0]['groupid']
         data['groupname']           = node_details[0]['groupname']
         data['nodename']            = node_details[0]['name']
@@ -679,9 +687,7 @@ def boot_install(node=None):
         for item in items.keys():
             data[item] = node_details[0][item]
             if isinstance(items[item], bool):
-                data[item] = str(Helper().make_bool(data[item]))
-            if (not data[item]) and (item not in items):
-                data[item]=""
+                data[item] = Helper().make_bool(data[item])
 
     if data['groupid']:
         group = Database().get_record(None, 'group', f' WHERE id = {data["groupid"]}')
@@ -689,16 +695,31 @@ def boot_install(node=None):
             # below section shows what's configured for the node, or the group, or a default fallback
  
             for item in items.keys():
-               if item in data and item in group[0] and group[0][item] and not data[item]:
-               # we check if we have data filled. if not (meaning node does not have that info) we verify if the group has it and if so, we fill it
+               if item in data and item in group[0] and group[0][item] and not str(data[item]):
+                   # we check if we have data filled. if not (meaning node does not have that info) we verify if the group has it and if so, we fill it
                    if isinstance(items[item], bool):
-                       group[0][item] = str(Helper().make_bool(group[0][item]))
-                   data[item] = data[item] or group[0][item] or str(items[item])
+                       group[0][item] = Helper().make_bool(group[0][item])
+                   data[item] = data[item] or group[0][item] or items[item]
+               elif str(data[item]) and data[item] is not None:
+                   pass
                else:
-               # if anything else fails we use the fallback
+                   # if anything else fails we use the fallback
                    if isinstance(items[item], bool):
-                       data[item] = str(Helper().make_bool(data[item]))
-                   data[item] = str(items[item])
+                       data[item] = Helper().make_bool(data[item])
+                   data[item] = items[item]
+
+    if data['setupbmc'] is True and data['bmcsetupid']:
+        bmcsetup = Database().get_record(None, 'bmcsetup', f" WHERE id = {data['bmcsetupid']}")
+        if bmcsetup:
+            data['bmc']={}
+            data['bmc']['userid']=bmcsetup[0]['userid']
+            data['bmc']['username']=bmcsetup[0]['username']
+            data['bmc']['password']=bmcsetup[0]['password']
+            data['bmc']['netchannel']=bmcsetup[0]['netchannel']
+            data['bmc']['mgmtchannel']=bmcsetup[0]['mgmtchannel']
+            data['bmc']['unmanaged_bmc_users']=bmcsetup[0]['unmanaged_bmc_users']
+        else:
+            data['setupbmc']=False
 
     if data['osimageid']:
         osimage = Database().get_record(None, 'osimage', f' WHERE id = {data["osimageid"]}')
@@ -707,20 +728,28 @@ def boot_install(node=None):
             data['tarball'] = osimage[0]['tarball']
 
     if data['nodeid']:
-        nodeinterface = Database().get_record_join(['nodeinterface.nodeid','nodeinterface.interface','nodeinterface.macaddress','ipaddress.ipaddress','network.name as network','network.network as networkip','network.subnet'], ['network.id=ipaddress.networkid','ipaddress.tablerefid=nodeinterface.id'],['tableref="nodeinterface"',f"nodeinterface.nodeid='{data['nodeid']}'"])
+        nodeinterface = Database().get_record_join(['nodeinterface.nodeid','nodeinterface.interface','nodeinterface.macaddress','ipaddress.ipaddress','network.name as network','network.network as networkip','network.subnet','network.gateway','network.id as networkid'], ['network.id=ipaddress.networkid','ipaddress.tablerefid=nodeinterface.id'],['tableref="nodeinterface"',f"nodeinterface.nodeid='{data['nodeid']}'"])
         if nodeinterface:
             for nwkif in nodeinterface:
-                data['interfaces'][nwkif['interface']] = {}
                 node_nwk = f'{nwkif["ipaddress"]}/{nwkif["subnet"]}'
                 netmask=Helper().get_netmask(node_nwk)
- 
-                data['interfaces'][nwkif['interface']]['interface'] = nwkif['interface']
-                data['interfaces'][nwkif['interface']]['ipaddress'] = nwkif['ipaddress']
-                data['interfaces'][nwkif['interface']]['network'] = node_nwk
-                data['interfaces'][nwkif['interface']]['netmask'] = netmask
-                data['interfaces'][nwkif['interface']]['networkname'] = nwkif['network']
-                if nwkif['interface'] == data['provision_interface'] and nwkif['network']: # if it is my prov interf then it will get that domain as a FQDN.
-                    data['nodehostname'] = data['nodename'] + '.' + nwkif['network']
+                if nwkif['interface'] == 'BMC': 
+                    # we configure bmc stuff here and no longer in template. big advantage is that we can have different networks/interface-names for different h/w, drivers, subnets, networks, etc
+                    if 'bmc' in data.keys():
+                        data['bmc']['ipaddress'] = nwkif['ipaddress']
+                        data['bmc']['netmask'] = netmask
+                        data['bmc']['gateway'] = nwkif['gateway'] or '0.0.0.0'  # <---- not ipv6 compliant! pending
+                else:
+                    # regular nic
+                    data['interfaces'][nwkif['interface']] = {}
+                    data['interfaces'][nwkif['interface']]['interface'] = nwkif['interface']
+                    data['interfaces'][nwkif['interface']]['ipaddress'] = nwkif['ipaddress']
+                    data['interfaces'][nwkif['interface']]['network'] = node_nwk
+                    data['interfaces'][nwkif['interface']]['netmask'] = netmask
+                    data['interfaces'][nwkif['interface']]['networkname'] = nwkif['network']
+                    data['interfaces'][nwkif['interface']]['gateway'] = nwkif['gateway']
+                    if nwkif['interface'] == data['provision_interface'] and nwkif['network']: # if it is my prov interf then it will get that domain as a FQDN.
+                        data['nodehostname'] = data['nodename'] + '.' + nwkif['network']
 
     LOGGER.info(f"boot install data: [{data}]")
     if None not in data.values():
@@ -730,7 +759,6 @@ def boot_install(node=None):
         environment = jinja2.Environment()
         template = environment.from_string('No Node is available for this mac address.')
         access_code = 500
-    LOGGER.info(data)
 
     jwt_token=None
     try:
@@ -755,7 +783,7 @@ def boot_install(node=None):
         LUNA_FILE               = data['tarball'],
         LUNA_SELINUX_ENABLED    = data['selinux'],
         LUNA_SETUPBMC           = data['setupbmc'],
-        LUNA_BMC                = "empty", # has to contain stuff related to BMC general config like channels e.d.
+        LUNA_BMC                = data['bmc'], 
         LUNA_BOOTLOADER         = data['localinstall'],
         LUNA_LOCALINSTALL       = data['localinstall'],
         LUNA_UNMANAGED_BMC_USERS= data['unmanaged_bmc_users'],

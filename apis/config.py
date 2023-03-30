@@ -888,6 +888,37 @@ def config_group_get(name=None):
     return json.dumps(response), access_code
 
 
+@config_blueprint.route("/config/group/<string:name>/_list", methods=['GET'])
+@token_required
+def config_group_member(name=None):
+    """
+    This method will fetch all the nodes, which is connected to
+    the provided group.
+    """
+    groups = Database().get_record(None, 'group', f' WHERE name = "{name}"')
+    if groups:
+        group = groups[0]
+        groupid = group['id']
+        response = {'config': {'group': {name: {'members': []}} }}
+        node_list = Database().get_record(None, 'node', f' WHERE groupid = "{groupid}"')
+        if node_list:
+            nodes = []
+            for node in node_list:
+                nodes.append(node['name'])
+            response['config']['group'][name]['members'] = nodes
+            LOGGER.info(f'Provided all group member nodes {nodes}.')
+            access_code = 200
+        else:
+            LOGGER.error(f'Group {name} is not have any member node.')
+            response = {'message': f'Group {name} is not have any member node.'}
+            access_code = 404
+    else:
+        LOGGER.error(f'Group {name} is not available.')
+        response = {'message': f'Group {name} is not available.'}
+        access_code = 404
+    return json.dumps(response), access_code
+
+
 @config_blueprint.route("/config/group/<string:name>", methods=['POST'])
 @token_required
 def config_group_post(name=None):
@@ -1347,6 +1378,64 @@ def config_osimage_get(name=None):
     else:
         LOGGER.error('No OS Image is available.')
         response = {'message': 'No OS Image is available.'}
+        access_code = 404
+    return json.dumps(response), access_code
+
+
+@config_blueprint.route("/config/osimage/<string:name>/_list", methods=['GET'])
+@token_required
+def config_osimage_member(name=None):
+    """
+    This method will fetch all the nodes, which is connected to
+    the provided osimage.
+    """
+    osimages = Database().get_record(None, 'osimage', f' WHERE name = "{name}"')
+    if osimages:
+        osimage = osimages[0]
+        osimageid = osimage['id']
+        response = {'config': {'osimage': {name: {'members': []}} }}
+
+        group_node_list = Database().get_record_join(
+            ['node.name as node'],
+            ['group.id=node.id'],
+            [f"group.osimageid='{osimageid}'"]
+        )
+
+
+        group_list = Database().get_record(None, 'group', f' WHERE osimageid = "{osimageid}"')
+        if group_list:
+            groups = []
+            for group in group_list:
+                groups.append(group['id'])
+            response['config']['group'][name]['members'] = groups
+            LOGGER.info(f'Provided all group member nodes {groups}.')
+            access_code = 200
+        else:
+            LOGGER.error(f'Group {name} is not have any member node.')
+            response = {'message': f'Group {name} is not have any member node.'}
+            access_code = 404
+        
+
+
+
+        node_list = Database().get_record(None, 'node', f' WHERE osimageid = "{osimageid}"')
+        if node_list:
+            nodes = []
+            for node in node_list:
+                nodes.append(node['name'])
+            response['config']['osimage'][name]['members'] = nodes
+            LOGGER.info(f'Provided all osimage members for nodes {nodes}.')
+            access_code = 200
+        else:
+            LOGGER.error(f'Group {name} is not have any member node.')
+            response = {'message': f'Group {name} is not have any member node.'}
+            access_code = 404
+
+
+
+    else:
+        LOGGER.error(f'OS Image {name} is not available.')
+        response = {'message': f'OS Image {name} is not available.'}
         access_code = 404
     return json.dumps(response), access_code
 

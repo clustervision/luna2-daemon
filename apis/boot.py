@@ -718,6 +718,8 @@ def boot_install(node=None):
             data['bmc']['netchannel']=bmcsetup[0]['netchannel']
             data['bmc']['mgmtchannel']=bmcsetup[0]['mgmtchannel']
             data['bmc']['unmanaged_bmc_users']=bmcsetup[0]['unmanaged_bmc_users']
+        else:
+            data['setupbmc']=False
 
     if data['osimageid']:
         osimage = Database().get_record(None, 'osimage', f' WHERE id = {data["osimageid"]}')

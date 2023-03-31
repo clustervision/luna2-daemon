@@ -1391,48 +1391,37 @@ def config_osimage_member(name=None):
     """
     osimages = Database().get_record(None, 'osimage', f' WHERE name = "{name}"')
     if osimages:
+        nodes = []
         osimage = osimages[0]
         osimageid = osimage['id']
         response = {'config': {'osimage': {name: {'members': []}} }}
-
-        group_node_list = Database().get_record_join(
-            ['node.name as node'],
-            ['group.id=node.id'],
-            [f"group.osimageid='{osimageid}'"]
-        )
-
-
         group_list = Database().get_record(None, 'group', f' WHERE osimageid = "{osimageid}"')
         if group_list:
-            groups = []
             for group in group_list:
-                groups.append(group['id'])
-            response['config']['group'][name]['members'] = groups
-            LOGGER.info(f'Provided all group member nodes {groups}.')
-            access_code = 200
+                groupid = group['id']
+                groupname = group['name']
+                node_list = Database().get_record(None, 'node', f' WHERE groupid = "{groupid}"')
+                if node_list:
+                    for node in node_list:
+                        nodes.append(node['name'])
+                else:
+                    LOGGER.info(f'OSImage {name} Group {groupname} is not have any node.')
         else:
-            LOGGER.error(f'Group {name} is not have any member node.')
-            response = {'message': f'Group {name} is not have any member node.'}
-            access_code = 404
-        
-
-
-
+            LOGGER.info(f'OSImage {name} is not configured with any Group.')
         node_list = Database().get_record(None, 'node', f' WHERE osimageid = "{osimageid}"')
         if node_list:
-            nodes = []
             for node in node_list:
                 nodes.append(node['name'])
+        else:
+            LOGGER.info(f'OSImage {name} is not configured with any node.')
+        if nodes:
             response['config']['osimage'][name]['members'] = nodes
             LOGGER.info(f'Provided all osimage members for nodes {nodes}.')
             access_code = 200
         else:
-            LOGGER.error(f'Group {name} is not have any member node.')
-            response = {'message': f'Group {name} is not have any member node.'}
+            LOGGER.error(f'OSImage {name} is not have any member node.')
+            response = {'message': f'OSImage {name} is not have any member node.'}
             access_code = 404
-
-
-
     else:
         LOGGER.error(f'OS Image {name} is not available.')
         response = {'message': f'OS Image {name} is not available.'}
@@ -1841,6 +1830,53 @@ def config_bmcsetup_get(bmcname=None):
     else:
         LOGGER.error('No BMC Setup is available.')
         response = {'message': 'No BMC Setup is available.'}
+        access_code = 404
+    return json.dumps(response), access_code
+
+
+@config_blueprint.route("/config/bmcsetup/<string:name>/_list", methods=['GET'])
+@token_required
+def config_bmcsetup_member(name=None):
+    """
+    This method will fetch all the nodes, which is connected to
+    the provided bmcsetup.
+    """
+    bmcsetups = Database().get_record(None, 'bmcsetup', f' WHERE name = "{name}"')
+    if bmcsetups:
+        nodes = []
+        bmcsetup = bmcsetups[0]
+        bmcsetupid = bmcsetup['id']
+        response = {'config': {'bmcsetup': {name: {'members': []}} }}
+        group_list = Database().get_record(None, 'group', f' WHERE bmcsetupid = "{bmcsetupid}"')
+        if group_list:
+            for group in group_list:
+                groupid = group['id']
+                groupname = group['name']
+                node_list = Database().get_record(None, 'node', f' WHERE groupid = "{groupid}"')
+                if node_list:
+                    for node in node_list:
+                        nodes.append(node['name'])
+                else:
+                    LOGGER.info(f'BMC Setup {name} Group {groupname} is not have any node.')
+        else:
+            LOGGER.info(f'BMC Setup {name} is not configured with any Group.')
+        node_list = Database().get_record(None, 'node', f' WHERE bmcsetupid = "{bmcsetupid}"')
+        if node_list:
+            for node in node_list:
+                nodes.append(node['name'])
+        else:
+            LOGGER.info(f'BMC Setup {name} is not configured with any node.')
+        if nodes:
+            response['config']['bmcsetup'][name]['members'] = nodes
+            LOGGER.info(f'Provided all bmcsetup members for nodes {nodes}.')
+            access_code = 200
+        else:
+            LOGGER.error(f'BMC Setup {name} is not have any member node.')
+            response = {'message': f'BMC Setup {name} is not have any member node.'}
+            access_code = 404
+    else:
+        LOGGER.error(f'BMC Setup {name} is not available.')
+        response = {'message': f'BMC Setup {name} is not available.'}
         access_code = 404
     return json.dumps(response), access_code
 

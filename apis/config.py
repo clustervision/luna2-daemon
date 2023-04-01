@@ -305,7 +305,7 @@ def config_node_post(name=None):
             update = True
         else:
             if 'newnodename' in data:
-                response = {'message': f'{nodename_new} is not allwoed while creating a new node.'}
+                response = {'message': f'{nodename_new} is not allowed while creating a new node.'}
                 access_code = 400
                 return json.dumps(response), access_code
             create = True
@@ -329,18 +329,34 @@ def config_node_post(name=None):
             bmc_name = data['bmcsetup']
             del data['bmcsetup']
             data['bmcsetupid'] = Database().getid_byname('bmcsetup', bmc_name)
+            if not data['bmcsetupid']:
+                access_code = 400
+                response = {'message': f'bmcsetup {bmc_name} is not known or valid.'}
+                return json.dumps(response), access_code
         if 'group' in data:
             group_name = data['group']
             del data['group']
             data['groupid'] = Database().getid_byname('group', group_name)
+            if not data['groupid']:
+                access_code = 400
+                response = {'message': f'group {group_name} is not known or valid.'}
+                return json.dumps(response), access_code
         if 'osimage' in data:
             osimage_name = data['osimage']
             del data['osimage']
             data['osimageid'] = Database().getid_byname('osimage', osimage_name)
+            if not data['osimageid']:
+                access_code = 400
+                response = {'message': f'osimage {osimage_name} is not known or valid.'}
+                return json.dumps(response), access_code
         if 'switch' in data:
             switch_name = data['switch']
             del data['switch']
             data['switchid'] = Database().getid_byname('switch', switch_name)
+            if not data['switchid']:
+                access_code = 400
+                response = {'message': f'switch {switch_name} is not known or valid.'}
+                return json.dumps(response), access_code
 
         interfaces=None
         if 'interfaces' in data:

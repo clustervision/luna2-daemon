@@ -76,10 +76,10 @@ def config_node():
             node_name = node['name']
             nodeid = node['id']
 
-            if node['groupid']:
+            groupid={}
+            if 'groupid' in node and node['groupid'] in group.keys():
                 node['group']=group[node['groupid']]['name']
                 groupid=node['groupid']
-
                 if node['osimageid']:
                     node['osimage']='!!Invalid!!'
                     if node['osimageid'] in osimage.keys():
@@ -97,15 +97,20 @@ def config_node():
                     node['bmcsetup']=bmcsetup[group[groupid]['bmcsetupid']]['name'] or None
                 else:
                     node['bmcsetup']=None
-
-                for item in items:
-                    node[item]=str(node[item]) or str(group[groupid][item]) or items[item]
             else:
-                node['group']=None
+                node['group']='!!Invalid!!'
+
+            for item in items:
+                if groupid and item in group[groupid]:
+                    node[item]=str(node[item]) or str(group[groupid][item]) or items[item]
+                else:
+                    node[item]=str(node[item]) or items[item]
 
             node['switch']=None
             if node['switchid']:
-                node['switch']=switch[node['switchid']]['name'] or None
+                node['switch']='!!Invalid!!'
+                if node['switchid'] in switch.keys():
+                    node['switch']=switch[node['switchid']]['name'] or None
 
             node['tpm_present']=False
             if node['tpm_uuid'] or node['tpm_sha256'] or node['tpm_pubkey']:
@@ -160,7 +165,8 @@ def config_node_get(name=None):
                                            'group.provision_method AS group_provision_method',
                                            'group.provision_fallback AS group_provision_fallback',
                                            'group.provision_interface AS group_provision_interface'], ['group.id=node.groupid','osimage.id=group.osimageid'],f"node.name='{name}'")
-    nodes[0].update(nodefull[0])
+    if nodefull:
+        nodes[0].update(nodefull[0])
     node=nodes[0]
     if node:
         response = {'config': {'node': {} }}
@@ -169,18 +175,23 @@ def config_node_get(name=None):
 
         if node['bmcsetupid']:
             node['bmcsetup'] = Database().getname_byid('bmcsetup', node['bmcsetupid']) or '!!Invalid!!'
-        elif node['group_bmcsetupid']:
+        elif 'group_bmcsetupid' in node and node['group_bmcsetupid']:
             node['bmcsetup']= Database().getname_byid('bmcsetup', node['group_bmcsetupid']) + f" ({node['group']})"
-        del node['group_bmcsetupid']
+        if 'group_bmcsetupid' in node:
+            del node['group_bmcsetupid']
 
         if node['osimageid']:
             node['osimage'] = Database().getname_byid('osimage', node['osimageid']) or '!!Invalid!!'
-        elif node['group_osimage']:
+        elif 'group_osimage' in node and node['group_osimage']:
             node['osimage']=node['group_osimage']+f" ({node['group']})"
-        del node['group_osimage']
+        if 'group_osimage' in node:
+            del node['group_osimage']
 
         if node['switchid']:
             node['switch'] = Database().getname_byid('switch', node['switchid'])
+
+        if not node['groupid']:
+            node['group']='!!Invalid!!'
 
         # below section shows what's configured for the node, or the group, or a default fallback
 

@@ -305,7 +305,7 @@ def config_node_post(name=None):
             update = True
         else:
             if 'newnodename' in data:
-                response = {'message': f'{nodename_new} is not allwoed while creating a new node.'}
+                response = {'message': f'{nodename_new} is not allowed while creating a new node.'}
                 access_code = 400
                 return json.dumps(response), access_code
             create = True
@@ -325,22 +325,16 @@ def config_node_post(name=None):
                 del data[item]
 
 
-        if 'bmcsetup' in data:
-            bmc_name = data['bmcsetup']
-            del data['bmcsetup']
-            data['bmcsetupid'] = Database().getid_byname('bmcsetup', bmc_name)
-        if 'group' in data:
-            group_name = data['group']
-            del data['group']
-            data['groupid'] = Database().getid_byname('group', group_name)
-        if 'osimage' in data:
-            osimage_name = data['osimage']
-            del data['osimage']
-            data['osimageid'] = Database().getid_byname('osimage', osimage_name)
-        if 'switch' in data:
-            switch_name = data['switch']
-            del data['switch']
-            data['switchid'] = Database().getid_byname('switch', switch_name)
+        checks={'bmcsetup','group','osimage','switch'}
+        for check in checks:
+            if check in data:
+                check_name = data[check]
+                del data[check]
+                data[check+'id'] = Database().getid_byname(check, check_name)
+                if not data[check+'id']:
+                    access_code = 400
+                    response = {'message': f'{check} {check_name} is not known or valid.'}
+                    return json.dumps(response), access_code
 
         interfaces=None
         if 'interfaces' in data:

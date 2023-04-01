@@ -325,38 +325,16 @@ def config_node_post(name=None):
                 del data[item]
 
 
-        if 'bmcsetup' in data:
-            bmc_name = data['bmcsetup']
-            del data['bmcsetup']
-            data['bmcsetupid'] = Database().getid_byname('bmcsetup', bmc_name)
-            if not data['bmcsetupid']:
-                access_code = 400
-                response = {'message': f'bmcsetup {bmc_name} is not known or valid.'}
-                return json.dumps(response), access_code
-        if 'group' in data:
-            group_name = data['group']
-            del data['group']
-            data['groupid'] = Database().getid_byname('group', group_name)
-            if not data['groupid']:
-                access_code = 400
-                response = {'message': f'group {group_name} is not known or valid.'}
-                return json.dumps(response), access_code
-        if 'osimage' in data:
-            osimage_name = data['osimage']
-            del data['osimage']
-            data['osimageid'] = Database().getid_byname('osimage', osimage_name)
-            if not data['osimageid']:
-                access_code = 400
-                response = {'message': f'osimage {osimage_name} is not known or valid.'}
-                return json.dumps(response), access_code
-        if 'switch' in data:
-            switch_name = data['switch']
-            del data['switch']
-            data['switchid'] = Database().getid_byname('switch', switch_name)
-            if not data['switchid']:
-                access_code = 400
-                response = {'message': f'switch {switch_name} is not known or valid.'}
-                return json.dumps(response), access_code
+        checks={'bmcsetup','group','osimage','switch'}
+        for check in checks:
+            if check in data:
+                check_name = data[check]
+                del data[check]
+                data[check+'id'] = Database().getid_byname(check, check_name)
+                if not data[check+'id']:
+                    access_code = 400
+                    response = {'message': f'{check} {check_name} is not known or valid.'}
+                    return json.dumps(response), access_code
 
         interfaces=None
         if 'interfaces' in data:

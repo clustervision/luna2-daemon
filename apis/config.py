@@ -79,14 +79,25 @@ def config_node():
             if node['groupid']:
                 node['group']=group[node['groupid']]['name']
                 groupid=node['groupid']
+
                 if node['osimageid']:
-                    node['osimage']=osimage[node['osimageid']]['name'] or osimage[group[groupid]['osimageid']]['name'] or None
-                else:
+                    node['osimage']='!!Invalid!!'
+                    if node['osimageid'] in osimage.keys():
+                        node['osimage']=osimage[node['osimageid']]['name'] or None
+                elif 'osimageid' in group[groupid] and group[groupid]['osimageid'] in osimage.keys():
                     node['osimage']=osimage[group[groupid]['osimageid']]['name'] or None
-                if node['bmcsetupid']:
-                    node['bmcsetup']=bmcsetup[node['bmcsetupid']]['name'] or bmcsetup[group[groupid]['bmcsetupid']]['name'] or None
                 else:
+                    node['osimage']=None
+
+                if node['bmcsetupid']: 
+                    node['bmcsetup']='!!Invalid!!'
+                    if node['bmcsetupid'] in bmcsetup.keys():
+                        node['bmcsetup']=bmcsetup[node['bmcsetupid']]['name'] or None
+                elif 'bmcsetupid' in group[groupid] and group[groupid]['bmcsetupid'] in bmcsetup.keys():
                     node['bmcsetup']=bmcsetup[group[groupid]['bmcsetupid']]['name'] or None
+                else:
+                    node['bmcsetup']=None
+
                 for item in items:
                     node[item]=str(node[item]) or str(group[groupid][item]) or items[item]
             else:
@@ -157,13 +168,13 @@ def config_node_get(name=None):
         nodeid = node['id']
 
         if node['bmcsetupid']:
-            node['bmcsetup'] = Database().getname_byid('bmcsetup', node['bmcsetupid'])
+            node['bmcsetup'] = Database().getname_byid('bmcsetup', node['bmcsetupid']) or '!!Invalid!!'
         elif node['group_bmcsetupid']:
             node['bmcsetup']= Database().getname_byid('bmcsetup', node['group_bmcsetupid']) + f" ({node['group']})"
         del node['group_bmcsetupid']
 
         if node['osimageid']:
-            node['osimage'] = Database().getname_byid('osimage', node['osimageid'])
+            node['osimage'] = Database().getname_byid('osimage', node['osimageid']) or '!!Invalid!!'
         elif node['group_osimage']:
             node['osimage']=node['group_osimage']+f" ({node['group']})"
         del node['group_osimage']

@@ -128,10 +128,11 @@ def config_node():
             node['netboot'] = Helper().make_bool(node['netboot'])
             node['service'] = Helper().make_bool(node['service'])
             node['setupbmc'] = Helper().make_bool(node['setupbmc'])
-            node_interface = Database().get_record_join(['nodeinterface.interface','ipaddress.ipaddress','nodeinterface.macaddress','network.name as network'], ['network.id=ipaddress.networkid','ipaddress.tablerefid=nodeinterface.id'],['tableref="nodeinterface"',f"nodeinterface.nodeid='{nodeid}'"])
+            node_interface = Database().get_record_join(['nodeinterface.interface','ipaddress.ipaddress','nodeinterface.macaddress','network.name as network','nodeinterface.options'], ['network.id=ipaddress.networkid','ipaddress.tablerefid=nodeinterface.id'],['tableref="nodeinterface"',f"nodeinterface.nodeid='{nodeid}'"])
             if node_interface:
                 node['interfaces'] = []
                 for interface in node_interface:
+                    interface['options']=interface['options'] or ""
                     node['interfaces'].append(interface)
             response['config']['node'][node_name] = node
         LOGGER.info('Provided list of all nodes.')
@@ -666,6 +667,7 @@ def config_node_get_interfaces(name=None):
         if node_interfaces:
             my_interface = []
             for interface in node_interfaces:
+                interface['options']=interface['options'] or ""
                 my_interface.append(interface)
                 response['config']['node'][name]['interfaces'] = my_interface
 
@@ -760,6 +762,7 @@ def config_node_interface_get(name=None, interface=None):
         if node_interfaces:
             my_interface = []
             for interface in node_interfaces:
+                interface['options']=interface['options'] or ""
                 my_interface.append(interface)
                 response['config']['node'][name]['interfaces'] = my_interface
 
@@ -833,6 +836,7 @@ def config_group():
             if grp_interface:
                 grp['interfaces'] = []
                 for ifx in grp_interface:
+                    ifx['options']=ifx['options'] or ""
                     grp['interfaces'].append(ifx)
             del grp['id']
             grp['setupbmc'] = Helper().make_bool(grp['setupbmc'])
@@ -884,6 +888,7 @@ def config_group_get(name=None):
             if grp_interface:
                 grp['interfaces'] = []
                 for ifx in grp_interface:
+                    ifx['options']=ifx['options'] or ""
                     grp['interfaces'].append(ifx)
             del grp['id']
             for item in items.keys():

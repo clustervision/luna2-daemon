@@ -375,6 +375,7 @@ def boot_manual_group(groupname=None, mac=None):
         if nodeid:
             hostname=newdata['name']
             # we need to pick the currect network in a smart way. we assume the default network, the network where controller is in.
+            # HOWEVER: we do not copy/create network if options. it's a bit tedious so we leave it here for now as pending. -Antoine
             avail_ip=Helper().get_available_ip(network[0]['network'],network[0]['subnet'],ips)
             result,mesg = Config().node_interface_config(nodeid,provision_interface,mac)
             if result:

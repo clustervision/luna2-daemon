@@ -325,7 +325,7 @@ def bootstrap(bootstrapfile=None):
     osimage_path,osimage_kernelversion=None,None
     if 'PATH' in BOOTSTRAP['OSIMAGE']:
         osimage_path=BOOTSTRAP['OSIMAGE']['PATH']
-        osimage_kernelversion,exit_code = Helper().runcommand(f"chroot {osimage_path} /bin/sh -c 'uname -r'")
+        osimage_kernelversion,exit_code = Helper().runcommand(f"ls -tr {osimage_path}/lib/modules/|tail -n1")
         osimage_kernelversion=osimage_kernelversion.strip()
         osimage_kernelversion=osimage_kernelversion.decode('utf-8')
     default_osimage = [

@@ -231,12 +231,13 @@ def config_node_get(name=None):
 
         node['interfaces'] = []
 
-        node_interface = Database().get_record_join(['nodeinterface.interface','ipaddress.ipaddress','nodeinterface.macaddress','network.name as network'], ['network.id=ipaddress.networkid','ipaddress.tablerefid=nodeinterface.id'],['tableref="nodeinterface"',f"nodeinterface.nodeid='{nodeid}'"])
+        node_interface = Database().get_record_join(['nodeinterface.interface','ipaddress.ipaddress','nodeinterface.macaddress','network.name as network','nodeinterface.options'], ['network.id=ipaddress.networkid','ipaddress.tablerefid=nodeinterface.id'],['tableref="nodeinterface"',f"nodeinterface.nodeid='{nodeid}'"])
         if node_interface:
             for interface in node_interface:
                 interfacename,*_ = (node['provision_interface'].split(' ')+[None]) # we skim off parts that we added for clarity in above section (e.g. (default)). also works if there's no additional info
                 if interface['interface'] == interfacename and interface['network']: # if it is my prov interf then it will get that domain as a FQDN.
                     node['hostname'] = nodename + '.' + interface['network']
+                interface['options'] = interface['options'] or ""
                 node['interfaces'].append(interface)
 
 #        Commented out since we do not need it but i left it as we _might_ use it one day
@@ -372,10 +373,10 @@ def config_node_post(name=None):
                 access_code = 201
                 if nodeid and 'groupid' in data and data['groupid']:
                     # ----> GROUP interface. WIP. pending
-                    group_interfaces = Database().get_record_join(['groupinterface.interface','network.name as network'], ['network.id=groupinterface.networkid'], [f"groupinterface.groupid={data['groupid']}"])
+                    group_interfaces = Database().get_record_join(['groupinterface.interface','network.name as network','groupinterface.options'], ['network.id=groupinterface.networkid'], [f"groupinterface.groupid={data['groupid']}"])
                     if group_interfaces:
                         for group_interface in group_interfaces:
-                            result,mesg = Config().node_interface_config(nodeid,group_interface['interface'])
+                            result,mesg = Config().node_interface_config(nodeid,group_interface['interface'],None,group_interface['options'])
                             if result:
                                 ips=[]
                                 avail=None
@@ -401,10 +402,12 @@ def config_node_post(name=None):
                 for interface in interfaces:
                     # Antoine
                     interface_name = interface['interface']
-                    macaddress,network=None,None
+                    macaddress,network,options=None,None,None
                     if 'macaddress' in interface.keys():
                         macaddress=interface['macaddress']
-                    result,mesg = Config().node_interface_config(nodeid,interface_name,macaddress)
+                    if 'options' in interface.keys():
+                        options=interface['options']
+                    result,mesg = Config().node_interface_config(nodeid,interface_name,macaddress,options)
                     if result and 'ipaddress' in interface.keys():
                         ipaddress=interface['ipaddress']
                         if 'network' in interface.keys():
@@ -544,7 +547,7 @@ def config_node_clone(name=None):
             response = {'message': f'Node {name} created successfully.'}
             access_code = 201
 
-            node_interfaces = Database().get_record_join(['nodeinterface.interface','ipaddress.ipaddress','nodeinterface.macaddress','network.name as network'], ['network.id=ipaddress.networkid','ipaddress.tablerefid=nodeinterface.id'],['tableref="nodeinterface"',f"nodeinterface.nodeid='{nodeid}'"])
+            node_interfaces = Database().get_record_join(['nodeinterface.interface','ipaddress.ipaddress','nodeinterface.macaddress','network.name as network','nodeinterface.options'], ['network.id=ipaddress.networkid','ipaddress.tablerefid=nodeinterface.id'],['tableref="nodeinterface"',f"nodeinterface.nodeid='{nodeid}'"])
 
             if interfaces:
                 for interface in interfaces:
@@ -557,7 +560,9 @@ def config_node_clone(name=None):
                     macaddress,network=None,None
                     if 'macaddress' in interface.keys():
                         macaddress=interface['macaddress']
-                    result,mesg = Config().node_interface_config(newnodeid,interface_name,macaddress)
+                    if 'options' in interface.keys():
+                        options=interface['options']
+                    result,mesg = Config().node_interface_config(newnodeid,interface_name,macaddress,options)
                     if result and 'ipaddress' in interface.keys():
                         ipaddress=interface['ipaddress']
                         if 'network' in interface.keys():
@@ -571,7 +576,8 @@ def config_node_clone(name=None):
 
             for node_interface in node_interfaces:       
                 interface_name = node_interface['interface']
-                result,mesg = Config().node_interface_config(newnodeid,interface_name)
+                interface_options=node_interface['options']
+                result,mesg = Config().node_interface_config(newnodeid,interface_name,None,interface_options)
                 if result and 'ipaddress' in node_interface.keys():
                     if 'network' in node_interface.keys():
                         networkname=node_interface['network']
@@ -656,7 +662,7 @@ def config_node_get_interfaces(name=None):
     if node:
         response = {'config': {'node': {name: {'interfaces': [] } } } }
         nodeid = node[0]['id']
-        node_interfaces = Database().get_record_join(['network.name as network','nodeinterface.macaddress','nodeinterface.interface','ipaddress.ipaddress'], ['ipaddress.tablerefid=nodeinterface.id','network.id=ipaddress.networkid'], ['tableref="nodeinterface"',f"nodeinterface.nodeid='{nodeid}'"])
+        node_interfaces = Database().get_record_join(['network.name as network','nodeinterface.macaddress','nodeinterface.interface','ipaddress.ipaddress','nodeinterface.options'], ['ipaddress.tablerefid=nodeinterface.id','network.id=ipaddress.networkid'], ['tableref="nodeinterface"',f"nodeinterface.nodeid='{nodeid}'"])
         if node_interfaces:
             my_interface = []
             for interface in node_interfaces:
@@ -700,15 +706,17 @@ def config_node_post_interfaces(name=None):
                 for interface in request_data['config']['node'][name]['interfaces']:
                     # Antoine
                     interface_name = interface['interface']
-                    macaddress,network=None,None
+                    macaddress,network,options=None,None,None
                     if 'macaddress' in interface.keys():
                         macaddress=interface['macaddress']
-                    result,mesg = Config().node_interface_config(nodeid,interface_name,macaddress)
+                    if 'options' in interface.keys():
+                        options=interface['options']
+                    result,mesg = Config().node_interface_config(nodeid,interface_name,macaddress,options)
                     if result and 'ipaddress' in interface.keys():
                         ipaddress=interface['ipaddress']
                         if 'network' in interface.keys():
                             network=interface['network']
-                        result,mesg = Config().node_interface_ipaddress_config(nodeid,interface_name,ipaddress,network)
+                        result,mesg = Config().node_interface_ipaddress_config(nodeid,interface_name,ipaddress,network,options)
 
                     if result is False:
                         response = {'message': f"{mesg}"}
@@ -748,7 +756,7 @@ def config_node_interface_get(name=None, interface=None):
     if node:
         response = {'config': {'node': {name: {'interfaces': [] } } } }
         nodeid = node[0]['id']
-        node_interfaces = Database().get_record_join(['network.name as network','nodeinterface.macaddress','nodeinterface.interface','ipaddress.ipaddress'], ['ipaddress.tablerefid=nodeinterface.id','network.id=ipaddress.networkid'], ['tableref="nodeinterface"',f"nodeinterface.nodeid='{nodeid}'"])
+        node_interfaces = Database().get_record_join(['network.name as network','nodeinterface.macaddress','nodeinterface.interface','ipaddress.ipaddress','nodeinterface.options'], ['ipaddress.tablerefid=nodeinterface.id','network.id=ipaddress.networkid'], ['tableref="nodeinterface"',f"nodeinterface.nodeid='{nodeid}'"])
         if node_interfaces:
             my_interface = []
             for interface in node_interfaces:
@@ -821,7 +829,7 @@ def config_group():
         for grp in groups:
             grpname = grp['name']
             grpid = grp['id']
-            grp_interface = Database().get_record_join(['groupinterface.interface','network.name as network'], ['network.id=groupinterface.networkid'], [f"groupid = '{grpid}'"])
+            grp_interface = Database().get_record_join(['groupinterface.interface','network.name as network','groupinterface.options'], ['network.id=groupinterface.networkid'], [f"groupid = '{grpid}'"])
             if grp_interface:
                 grp['interfaces'] = []
                 for ifx in grp_interface:
@@ -872,7 +880,7 @@ def config_group_get(name=None):
         for grp in groups:
             grpname = grp['name']
             grpid = grp['id']
-            grp_interface = Database().get_record_join(['groupinterface.interface','network.name as network'], ['network.id=groupinterface.networkid'], [f"groupid = '{grpid}'"])
+            grp_interface = Database().get_record_join(['groupinterface.interface','network.name as network','groupinterface.options'], ['network.id=groupinterface.networkid'], [f"groupid = '{grpid}'"])
             if grp_interface:
                 grp['interfaces'] = []
                 for ifx in grp_interface:
@@ -1136,7 +1144,7 @@ def config_group_clone(name=None):
             response = {'message': f'Group {name} created.'}
             access_code = 201
 
-            grp_interfaces = Database().get_record_join(['groupinterface.interface','network.name as network','network.id as networkid'], ['network.id=groupinterface.networkid'], [f"groupid = '{grpid}'"])
+            grp_interfaces = Database().get_record_join(['groupinterface.interface','network.name as network','network.id as networkid','groupinterface.options'], ['network.id=groupinterface.networkid'], [f"groupid = '{grpid}'"])
 
             if newinterface:
                 for ifx in newinterface:
@@ -1160,6 +1168,7 @@ def config_group_clone(name=None):
                 ifx={}
                 ifx['networkid']=grp_ifx['networkid']
                 ifx['interface']=grp_ifx['interface']
+                ifx['options']=grp_ifx['options']
                 ifx['groupid']=newgroupid
                 row = Helper().make_rows(ifx)
                 result = Database().insert('groupinterface', row)

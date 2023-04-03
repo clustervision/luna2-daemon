@@ -546,7 +546,7 @@ $TTL 604800
 
     # ----------------------------------------------------------------
 
-    def node_interface_config(self,nodeid,interface_name,macaddress=None):
+    def node_interface_config(self,nodeid,interface_name,macaddress=None,options=None):
 
         check_interface = Database().get_record(None, 'nodeinterface', f'WHERE nodeid = "{nodeid}" AND interface = "{interface_name}"')
 
@@ -557,13 +557,17 @@ $TTL 604800
             my_interface['interface']=interface_name
             my_interface['nodeid']=nodeid                
             if macaddress is not None:
-                my_interface['macaddress']=macaddress 
+                my_interface['macaddress']=macaddress
+            if options is not None:
+                my_interface['options']=options
             row = Helper().make_rows(my_interface)
             result_if = Database().insert('nodeinterface', row)
 
         else: # we have to update the interface
             if macaddress is not None:
                 my_interface['macaddress']=macaddress
+            if options is not None:
+                my_interface['options']=options
             if my_interface:
                 row = Helper().make_rows(my_interface)
                 where = [{"column": "id", "value": check_interface[0]['id']}]

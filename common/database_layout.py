@@ -59,8 +59,9 @@ DATABASE_LAYOUT_nodesecrets = [
 DATABASE_LAYOUT_nodeinterface = [
 {"column": "id",                   "datatype": "INTEGER", "key": "PRIMARY", "keyadd": "AUTOINCREMENT"},
 {"column": "nodeid",               "datatype": "INTEGER", "length": "10", "key": "UNIQUE", "with": "interface"},
+{"column": "interface",            "datatype": "VARCHAR", "length": "50"},
 {"column": "macaddress",           "datatype": "VARCHAR", "length": "200"},
-{"column": "interface",            "datatype": "VARCHAR", "length": "50"}]
+{"column": "options",              "datatype": "TEXT"}]
 
 DATABASE_LAYOUT_bmcsetup = [
 {"column": "id",                   "datatype": "INTEGER", "key": "PRIMARY", "keyadd": "AUTOINCREMENT"},
@@ -90,7 +91,8 @@ DATABASE_LAYOUT_groupinterface = [
 {"column": "id",                   "datatype": "INTEGER", "key": "PRIMARY", "keyadd": "AUTOINCREMENT"},
 {"column": "groupid",              "datatype": "INTEGER", "length": "10"},
 {"column": "interface",            "datatype": "VARCHAR", "length": "60"},
-{"column": "networkid",            "datatype": "INTEGER", "length": "10"}]
+{"column": "networkid",            "datatype": "INTEGER", "length": "10"},
+{"column": "options",              "datatype": "TEXT"}]
 
 DATABASE_LAYOUT_roles = [
 {"column": "id",                   "datatype": "INTEGER", "key": "PRIMARY", "keyadd": "AUTOINCREMENT"},

@@ -351,9 +351,9 @@ class OsImage(object):
 
     def pack_image_based_on_distribution(self,osimage):
         image = Database().get_record(None, 'osimage', f"WHERE name='{osimage}'")
-        distribution='rhel'
+        distribution='redhat'
         if 'distribution' in image[0]:
-            distribution=image[0]['distribution'] or 'rhel'
+            distribution=image[0]['distribution'] or 'redhat'
             distribution=distribution.lower()
 
         # --------------------------- distri switch ---------------------------------

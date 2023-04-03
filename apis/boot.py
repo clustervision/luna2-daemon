@@ -375,6 +375,7 @@ def boot_manual_group(groupname=None, mac=None):
         if nodeid:
             hostname=newdata['name']
             # we need to pick the currect network in a smart way. we assume the default network, the network where controller is in.
+            # HOWEVER: we do not copy/create network if options. it's a bit tedious so we leave it here for now as pending. -Antoine
             avail_ip=Helper().get_available_ip(network[0]['network'],network[0]['subnet'],ips)
             result,mesg = Config().node_interface_config(nodeid,provision_interface,mac)
             if result:
@@ -726,9 +727,10 @@ def boot_install(node=None):
         if osimage:
             data['osimagename'] = osimage[0]['name']
             data['tarball'] = osimage[0]['tarball']
+            data['distribution'] = osimage[0]['distribution'].lower() or 'redhat'
 
     if data['nodeid']:
-        nodeinterface = Database().get_record_join(['nodeinterface.nodeid','nodeinterface.interface','nodeinterface.macaddress','ipaddress.ipaddress','network.name as network','network.network as networkip','network.subnet','network.gateway','network.id as networkid'], ['network.id=ipaddress.networkid','ipaddress.tablerefid=nodeinterface.id'],['tableref="nodeinterface"',f"nodeinterface.nodeid='{data['nodeid']}'"])
+        nodeinterface = Database().get_record_join(['nodeinterface.nodeid','nodeinterface.interface','nodeinterface.macaddress','nodeinterface.options','ipaddress.ipaddress','network.name as network','network.network as networkip','network.subnet','network.gateway','network.id as networkid'], ['network.id=ipaddress.networkid','ipaddress.tablerefid=nodeinterface.id'],['tableref="nodeinterface"',f"nodeinterface.nodeid='{data['nodeid']}'"])
         if nodeinterface:
             for nwkif in nodeinterface:
                 node_nwk = f'{nwkif["ipaddress"]}/{nwkif["subnet"]}'
@@ -748,6 +750,7 @@ def boot_install(node=None):
                     data['interfaces'][nwkif['interface']]['netmask'] = netmask
                     data['interfaces'][nwkif['interface']]['networkname'] = nwkif['network']
                     data['interfaces'][nwkif['interface']]['gateway'] = nwkif['gateway']
+                    data['interfaces'][nwkif['interface']]['options'] = nwkif['options'] or ""
                     if nwkif['interface'] == data['provision_interface'] and nwkif['network']: # if it is my prov interf then it will get that domain as a FQDN.
                         data['nodehostname'] = data['nodename'] + '.' + nwkif['network']
 
@@ -778,6 +781,7 @@ def boot_install(node=None):
         NODE_HOSTNAME           = data['nodehostname'],
         NODE_NAME               = data['nodename'],
         LUNA_OSIMAGE            = data['osimagename'],
+        LUNA_DISTRIBUTION       = data['distribution'],
         LUNA_TORRENT            = data['tarball'],  # has to be changed into torrent??
         LUNA_TARBALL            = data['tarball'],
         LUNA_FILE               = data['tarball'],

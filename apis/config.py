@@ -36,6 +36,7 @@ config_blueprint = Blueprint('config', __name__)
 
 ############################# Node configuration #############################
 
+# BELOW SEGMENT HAS BEEN TESTED AND CONFIRMED WORKING BY ANTOINE ON APRIL 3 2023
 @config_blueprint.route('/config/node', methods=['GET'])
 ###@token_required
 def config_node():
@@ -145,6 +146,7 @@ def config_node():
     return json.dumps(response), access_code
 
 
+# BELOW SEGMENT HAS BEEN TESTED AND CONFIRMED WORKING BY ANTOINE ON APRIL 3 2023
 @config_blueprint.route('/config/node/<string:name>', methods=['GET'])
 ###@token_required
 def config_node_get(name=None):
@@ -438,6 +440,7 @@ def config_node_post(name=None):
 
 
 
+# BELOW SEGMENT HAS BEEN TESTED AND CONFIRMED WORKING BY ANTOINE ON APRIL 3 2023
 @config_blueprint.route('/config/node/<string:name>/_clone', methods=['POST'])
 @token_required
 def config_node_clone(name=None):
@@ -703,7 +706,6 @@ def config_node_post_interfaces(name=None):
         if node:
             nodeid = node[0]['id']
 
-
             if 'interfaces' in request_data['config']['node'][name]:
                 for interface in request_data['config']['node'][name]['interfaces']:
                     # Antoine
@@ -818,6 +820,7 @@ def config_node_delete_interface(name=None, interface=None):
 
 ############################# Group configuration #############################
 
+# BELOW SEGMENT HAS BEEN TESTED AND CONFIRMED WORKING BY ANTOINE ON APRIL 3 2023
 @config_blueprint.route("/config/group", methods=['GET'])
 ###@token_required
 def config_group():
@@ -858,6 +861,7 @@ def config_group():
     return json.dumps(response), access_code
 
 
+# BELOW SEGMENT HAS BEEN TESTED AND CONFIRMED WORKING BY ANTOINE ON APRIL 3 2023
 @config_blueprint.route("/config/group/<string:name>", methods=['GET'])
 ###@token_required
 def config_group_get(name=None):
@@ -1053,6 +1057,7 @@ def config_group_post(name=None):
     return json.dumps(response), access_code
 
 
+# BELOW SEGMENT HAS BEEN TESTED AND CONFIRMED WORKING BY ANTOINE ON APRIL 3 2023
 @config_blueprint.route("/config/group/<string:name>/_clone", methods=['POST'])
 @token_required
 def config_group_clone(name=None):
@@ -1542,6 +1547,7 @@ def config_osimage_clone(name=None):
 
 
 
+# BELOW SEGMENT HAS BEEN TESTED AND CONFIRMED WORKING BY ANTOINE ON APRIL 3 2023
 @config_blueprint.route("/config/osimage/<string:name>/_pack", methods=['GET'])
 @token_required
 def config_osimage_pack(name=None):
@@ -1633,6 +1639,7 @@ def config_osimage_kernel_post(name=None):
 ############################# Cluster configuration #############################
 
 
+# BELOW SEGMENT HAS BEEN TESTED AND CONFIRMED WORKING BY ANTOINE ON APRIL 3 2023
 @config_blueprint.route("/config/cluster", methods=['GET'])
 ###@token_required
 def config_cluster():

@@ -1262,8 +1262,8 @@ def config_group_post_interfaces(name=None):
             grpid = grp[0]['id']
             if 'interfaces' in request_data['config']['group'][name]:
                 for ifx in request_data['config']['group'][name]['interfaces']:
-                    if not 'network' in ifx:
-                        response = {'message': f'Bad Request; Network not specified.'}
+                    if (not 'network' in ifx) or (not 'interface' in ifx):
+                        response = {'message': f'Bad Request; interface and/or network not specified.'}
                         access_code = 400
                         return json.dumps(response), access_code
                     network = Database().getid_byname('network', ifx['network'])

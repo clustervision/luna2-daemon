@@ -335,17 +335,20 @@ def config_node_post(name=None):
             if (not data[item]) and (item not in items):
                 del data[item]
 
-
-        checks={'bmcsetup','group','osimage','switch'}
-        for check in checks:
+        # True means: cannot be empty if supplied. False means: can only be empty or correct
+        checks={'bmcsetup':False,'group':True,'osimage':False,'switch':False}
+        for check in checks.keys():
             if check in data:
                 check_name = data[check]
+                if data[check] == "" and checks[check] is False:
+                    data[check+'id']=""
+                else:
+                    data[check+'id'] = Database().getid_byname(check, check_name)
+                    if (not data[check+'id']):
+                        access_code = 400
+                        response = {'message': f'{check} {check_name} is not known or valid.'}
+                        return json.dumps(response), access_code
                 del data[check]
-                data[check+'id'] = Database().getid_byname(check, check_name)
-                if not data[check+'id']:
-                    access_code = 400
-                    response = {'message': f'{check} {check_name} is not known or valid.'}
-                    return json.dumps(response), access_code
 
         interfaces=None
         if 'interfaces' in data:

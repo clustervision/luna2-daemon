@@ -308,7 +308,7 @@ def config_node_post(name=None):
         if node:
             nodeid = node[0]['id']
             if 'newnodename' in data:  # is mentioned as newhostname in design documents!
-                nodename_new = data['newnodename'].replace('_','-')
+#                nodename_new = data['newnodename'].replace('_','-')
                 where = f' WHERE `name` = "{nodename_new}"'
                 newnode_check = Database().get_record(None, 'node', where)
                 if newnode_check:
@@ -326,7 +326,7 @@ def config_node_post(name=None):
                 return json.dumps(response), access_code
             create = True
 
-        data['name'] = data['name'].replace('_','-')
+#        data['name'] = data['name'].replace('_','-')
 
         for item in items:
             if item in data: 
@@ -499,7 +499,7 @@ def config_node_clone(name=None):
             access_code = 400
             return json.dumps(response), access_code
 
-        data['name'] = data['name'].replace('_','-')
+#        data['name'] = data['name'].replace('_','-')
 
         del node[0]['id']
         del node[0]['status']
@@ -1081,7 +1081,7 @@ def config_group_clone(name=None):
     }
 
     if Helper().check_json(request.data):
-        request_data = request.get_json(force=True)
+        request_data = Filter().validate_input(request.get_json(force=True))
     else:
         response = {'message': 'Bad Request.'}
         access_code = 400
@@ -1258,7 +1258,7 @@ def config_group_post_interfaces(name=None):
     Output - Group Interface.
     """
     if Helper().check_json(request.data):
-        request_data = request.get_json(force=True)
+        request_data = Filter().validate_input(request.get_json(force=True))
     else:
         response = {'message': 'Bad Request.'}
         access_code = 400
@@ -1407,7 +1407,7 @@ def config_osimage_post(name=None):
     data = {}
     create, update = False, False
     if Helper().check_json(request.data):
-        request_data = request.get_json(force=True)
+        request_data = Filter().validate_input(request.get_json(force=True))
     else:
         response = {'message': 'Bad Request.'}
         access_code = 400
@@ -1501,7 +1501,7 @@ def config_osimage_clone(name=None):
     data = {}
     create = False
     if Helper().check_json(request.data):
-        request_data = request.get_json(force=True)
+        request_data = Filter().validate_input(request.get_json(force=True))
     else:
         response = {'message': 'Bad Request.'}
         access_code = 400
@@ -1609,7 +1609,7 @@ def config_osimage_kernel_post(name=None):
     """
     data = {}
     if Helper().check_json(request.data):
-        request_data = request.get_json(force=True)
+        request_data = Filter().validate_input(request.get_json(force=True))
     else:
         response = {'message': 'Bad Request.'}
         access_code = 400
@@ -1695,7 +1695,7 @@ def config_cluster_post():
        'createnode_ondemand':True
     }
     if Helper().check_json(request.data):
-        request_data = request.get_json(force=True)
+        request_data = Filter().validate_input(request.get_json(force=True))
     else:
         response = {'message': 'Bad Request.'}
         access_code = 400
@@ -1814,7 +1814,7 @@ def config_bmcsetup_post(bmcname=None):
     data = {}
     create, update = False, False
     if Helper().check_json(request.data):
-        request_data = request.get_json(force=True)
+        request_data = Filter().validate_input(request.get_json(force=True))
     else:
         response = {'message': 'Bad Request.'}
         access_code = 400
@@ -1867,7 +1867,7 @@ def config_bmcsetup_clone(bmcname=None):
     data = {}
     create = False
     if Helper().check_json(request.data):
-        request_data = request.get_json(force=True)
+        request_data = Filter().validate_input(request.get_json(force=True))
     else:
         response = {'message': 'Bad Request.'}
         access_code = 400
@@ -2006,7 +2006,7 @@ def config_switch_post(switch=None):
     data = {}
     create, update = False, False
     if Helper().check_json(request.data):
-        request_data = request.get_json(force=True)
+        request_data = Filter().validate_input(request.get_json(force=True))
     else:
         response = {'message': 'Bad Request.'}
         access_code = 400
@@ -2024,7 +2024,7 @@ def config_switch_post(switch=None):
             update = True
         else:
             create = True
-        data['name'] = data['name'].replace('_','-')
+#        data['name'] = data['name'].replace('_','-')
 
         switchcolumns = Database().get_columns('switch')
         if 'ipaddress' in data.keys():
@@ -2084,7 +2084,7 @@ def config_switch_clone(switch=None):
     srcswitch=None
     ipaddress,networkname = None,None
     if Helper().check_json(request.data):
-        request_data = request.get_json(force=True)
+        request_data = Filter().validate_input(request.get_json(force=True))
     else:
         response = {'message': 'Bad Request.'}
         access_code = 400
@@ -2115,7 +2115,7 @@ def config_switch_clone(switch=None):
             networkname=data['network']
             del data['network']
 
-        data['name'] = data['name'].replace('_','-')
+#        data['name'] = data['name'].replace('_','-')
         switchcolumns = Database().get_columns('switch')
         columncheck = Helper().checkin_list(data, switchcolumns)
         if data:
@@ -2291,7 +2291,7 @@ def config_otherdev_post(device=None):
     data = {}
     create, update = False, False
     if Helper().check_json(request.data):
-        request_data = request.get_json(force=True)
+        request_data = Filter().validate_input(request.get_json(force=True))
     else:
         response = {'message': 'Bad Request.'}
         access_code = 400
@@ -2316,7 +2316,7 @@ def config_otherdev_post(device=None):
         if 'network' in data.keys():
             network=data['network']
             del data['network']
-        data['name'] = data['name'].replace('_','-')
+#        data['name'] = data['name'].replace('_','-')
 
         columncheck = Helper().checkin_list(data, devicecolumns)
         data = Helper().check_ip_exist(data)
@@ -2369,7 +2369,7 @@ def config_otherdev_clone(device=None):
     srcdevice=None
     ipaddress,networkname = None,None
     if Helper().check_json(request.data):
-        request_data = request.get_json(force=True)
+        request_data = Filter().validate_input(request.get_json(force=True))
     else:
         response = {'message': 'Bad Request.'}
         access_code = 400
@@ -2400,7 +2400,7 @@ def config_otherdev_clone(device=None):
         if 'network' in data:
             networkname=data['network']
             del data['network']
-        data['name'] = data['name'].replace('_','-')
+#        data['name'] = data['name'].replace('_','-')
         devicecolumns = Database().get_columns('otherdevices')
         columncheck = Helper().checkin_list(data, devicecolumns)
 
@@ -2579,7 +2579,7 @@ def config_network_post(name=None):
     data = {}
     create, update = False, False
     if Helper().check_json(request.data):
-        request_data = request.get_json(force=True)
+        request_data = Filter().validate_input(request.get_json(force=True))
     else:
         response = {'message': 'Bad Request.'}
         access_code = 400
@@ -2878,7 +2878,7 @@ def config_post_secrets_node(name=None):
     data, = {}
     create, update = False, False
     if Helper().check_json(request.data):
-        request_data = request.get_json(force=True)
+        request_data = Filter().validate_input(request.get_json(force=True))
     else:
         response = {'message': 'Bad Request.'}
         access_code = 400
@@ -2977,7 +2977,7 @@ def config_post_node_secret(name=None, secret=None):
     """
     data = {}
     if Helper().check_json(request.data):
-        request_data = request.get_json(force=True)
+        request_data = Filter().validate_input(request.get_json(force=True))
     else:
         response = {'message': 'Bad Request.'}
         access_code = 400
@@ -3045,7 +3045,7 @@ def config_clone_node_secret(name=None, secret=None):
     """
     data = {}
     if Helper().check_json(request.data):
-        request_data = request.get_json(force=True)
+        request_data = Filter().validate_input(request.get_json(force=True))
     else:
         response = {'message': 'Bad Request.'}
         access_code = 400
@@ -3172,7 +3172,7 @@ def config_post_secrets_group(name=None):
     data = {}
     create, update = False, False
     if Helper().check_json(request.data):
-        request_data = request.get_json(force=True)
+        request_data = Filter().validate_input(request.get_json(force=True))
     else:
         response = {'message': 'Bad Request.'}
         access_code = 400
@@ -3271,7 +3271,7 @@ def config_post_group_secret(name=None, secret=None):
     """
     data = {}
     if Helper().check_json(request.data):
-        request_data = request.get_json(force=True)
+        request_data = Filter().validate_input(request.get_json(force=True))
     else:
         response = {'message': 'Bad Request.'}
         access_code = 400
@@ -3339,7 +3339,7 @@ def config_clone_group_secret(name=None, secret=None):
     """
     data = {}
     if Helper().check_json(request.data):
-        request_data = request.get_json(force=True)
+        request_data = Filter().validate_input(request.get_json(force=True))
     else:
         response = {'message': 'Bad Request.'}
         access_code = 400

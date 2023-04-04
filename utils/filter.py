@@ -34,10 +34,10 @@ class Filter(object):
         self.no_underscore={'name','newnodename','hostname','newhostname','newswitchname','newotherdevicename','newotherdevname'}
 
     def validate_input(self,data,required=None,filter=None):
-        self.logger.info(f"---- START ---- {data}")
+        self.logger.debug(f"---- START ---- {data}")
         what=type(data)
         data=self.parse_item(data)
-        self.logger.info(f"----- END ----- {data}")
+        self.logger.debug(f"----- END ----- {data}")
         return data
 
     def parse_dict(self,data):
@@ -61,15 +61,15 @@ class Filter(object):
         elif what is list:
             data=(self.parse_list(data))
         elif what is str:
-            data=self.filter(data)
-            if name in self.no_underscore:
-                data=data.replace('_','-')
+            data=self.filter(data,name)
         return data
 
-    def filter(self,data):
+    def filter(self,data,name=None):
         data=control_char_re.sub('', data)
         data=data.replace("'","")
         data=data.replace('"',"")
+        if name and name in self.no_underscore:
+            data=data.replace('_','-')
         return data
 
 

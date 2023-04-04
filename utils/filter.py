@@ -31,64 +31,45 @@ class Filter(object):
 
     def __init__(self):
         self.logger = Log.get_logger()
-#        base64="[0-9A-Za-z\/\-\+\=]"
+        self.no_underscore={'name','newnodename','hostname','newhostname','newswitchname','newotherdevicename','newotherdevname'}
 
     def validate_input(self,data,required=None,filter=None):
-        self.logger.debug(f"---- START ---- {data}")
+        self.logger.info(f"---- START ---- {data}")
         what=type(data)
-#        self.logger.debug(f"VALIDATE_INPUT: what = [{what}] {data}")
         data=self.parse_item(data)
-        self.logger.debug(f"----- END ----- {data}")
+        self.logger.info(f"----- END ----- {data}")
         return data
 
     def parse_dict(self,data):
         for item in data.keys():
-            what=type(item)
-#            self.logger.debug(f"PARSE_DICT: what = [{what}] {data}")
-            if what is dict:
-               item.update(self.parse_dict(item))
-            elif what is list:
-               item=self.parse_list(item)
-            elif what is str: # or what is bool:
-               data[item]=self.parse_item(data[item])
-#        self.logger.debug(f"PARSE_DICT RETURN {data}")
+            data[item]=self.parse_item(data[item],item)
         return data
         
     def parse_list(self,data):
         for item in data:
             what=type(item)
-#            self.logger.debug(f"PARSE_LIST: what = [{what}] {data}")
-            if what is dict:
-               item.update(self.parse_dict(item))
-            elif what is list:
-               item=self.parse_list(item)
-            elif what is str: # or what is bool:
-               data[item]=self.parse_item(data[item])
-#        self.logger.debug(f"PARSE_LIST RETURN {data}")
+            if what is list:
+                item=self.parse_list(item)
+            else:
+                item=self.parse_item(item)
         return data
 
-    def parse_item(self,data):
-#        self.logger.debug(f"PARSE_ITEM inside what is str: [{data}]")
+    def parse_item(self,data,name=None):
         what=type(data)
         if what is dict:
             data.update(self.parse_dict(data))
         elif what is list:
             data=(self.parse_list(data))
-        else:
+        elif what is str:
             data=self.filter(data)
+            if name in self.no_underscore:
+                data=data.replace('_','-')
         return data
 
     def filter(self,data):
-#        filter(lambda x: x in string.printable, '\x01string')
-#        data=filter(lambda x: x in string.printable, data)
-        data=self.printable(data)
+        data=control_char_re.sub('', data)
         data=data.replace("'","")
         data=data.replace('"',"")
-#        self.logger.debug(f"FILTER: [{data}]")
         return data
-
-    def printable(self,line):
-        #return line+'blaat'
-        return control_char_re.sub('', line)
 
 

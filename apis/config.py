@@ -30,6 +30,7 @@ from utils.config import Config
 from utils.status import Status
 from utils.service import Service
 from utils.queue import Queue
+from utils.filter import Filter
 
 LOGGER = Log.get_logger()
 config_blueprint = Blueprint('config', __name__)
@@ -290,7 +291,7 @@ def config_node_post(name=None):
     create, update = False, False
 
     if Helper().check_json(request.data):
-        request_data = request.get_json(force=True)
+        request_data = Filter().validate_input(request.get_json(force=True))
     else:
         response = {'message': 'Bad Request.'}
         access_code = 400
@@ -460,7 +461,7 @@ def config_node_clone(name=None):
     }
 
     if Helper().check_json(request.data):
-        request_data = request.get_json(force=True)
+        request_data = Filter().validate_input(request.get_json(force=True))
     else:
         response = {'message': 'Bad Request.'}
         access_code = 400
@@ -696,7 +697,7 @@ def config_node_post_interfaces(name=None):
     Output - Node Interface.
     """
     if Helper().check_json(request.data):
-        request_data = request.get_json(force=True)
+        request_data = Filter().validate_input(request.get_json(force=True))
     else:
         response = {'message': 'Bad Request.'}
         access_code = 400
@@ -947,7 +948,7 @@ def config_group_post(name=None):
     create, update = False, False
 
     if Helper().check_json(request.data):
-        request_data = request.get_json(force=True)
+        request_data = Filter().validate_input(request.get_json(force=True))
     else:
         response = {'message': 'Bad Request.'}
         access_code = 400
@@ -999,6 +1000,7 @@ def config_group_post(name=None):
             osname = data['osimage']
             del data['osimage']
             data['osimageid'] = Database().getid_byname('osimage', osname)
+        newinterface=None
         if 'interfaces' in data:
             newinterface = data['interfaces']
             del data['interfaces']

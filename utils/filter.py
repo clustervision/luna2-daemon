@@ -33,9 +33,8 @@ class Filter(object):
         self.logger = Log.get_logger()
         self.no_underscore={'name','newnodename','hostname','newhostname','newswitchname','newotherdevicename','newotherdevname'}
 
-    def validate_input(self,data,required=None,filter=None):
+    def validate_input(self,data):
         self.logger.debug(f"---- START ---- {data}")
-        what=type(data)
         data=self.parse_item(data)
         self.logger.debug(f"----- END ----- {data}")
         return data

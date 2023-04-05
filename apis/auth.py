@@ -20,6 +20,7 @@ from flask import Blueprint, request, json
 from utils.log import Log
 from utils.database import Database
 from common.constant import CONSTANT
+from utils.helper import Helper
 from utils.filter import Filter
 
 LOGGER = Log.get_logger()
@@ -33,15 +34,14 @@ def token():
     On the success, create a token, which is valid for expiry time mentioned in configuration.
     Output - Token.
     """
-    username, password = '', ''
-    auth,ret = Filter().validate_input(request.get_json(force=True))
-    if not ret:
-        response = {'message': request_data}
-        access_code = 400
-        return json.dumps(response), access_code
-    api_expiry = datetime.timedelta(minutes=int(CONSTANT['API']['EXPIRY']))
-    expiry_time = datetime.datetime.utcnow() + api_expiry
-    api_key = CONSTANT['API']['SECRET_KEY']
+    username, password, auth = '', '', None
+    if Helper().check_json(request.data):
+        auth,ret = Filter().validate_input(request.get_json(force=True))
+        if not ret:
+            response = {'message': request_data}
+            access_code = 400
+            return json.dumps(response), access_code
+
     if not auth:
         LOGGER.error('Login Required')
         response = {'message' : 'Login Required'}
@@ -58,6 +58,10 @@ def token():
         code = 401
     else:
         password = auth['password']
+
+    api_expiry = datetime.timedelta(minutes=int(CONSTANT['API']['EXPIRY']))
+    expiry_time = datetime.datetime.utcnow() + api_expiry
+    api_key = CONSTANT['API']['SECRET_KEY']
 
     if CONSTANT['API']['USERNAME'] != username:
         LOGGER.info(f'Username {username} Not belongs to INI.')
@@ -101,11 +105,21 @@ def tpm(nodename=None):
     On the success, create a token, which is valid for expiry time mentioned in configuration.
     Output - Token.
     """
-    auth,ret = Filter().validate_input(request.get_json(force=True))
-    if not ret:
-        response = {'message': request_data}
-        access_code = 400
-        return json.dumps(response), access_code
+    auth=None
+    if Helper().check_json(request.data):
+        auth,ret = Filter().validate_input(request.get_json(force=True))
+        if not ret:
+            response = {'message': request_data}
+            access_code = 400
+            return json.dumps(response), access_code
+
+    if not auth:
+        LOGGER.error('Login Required')
+        response = {'message' : 'Login Required'}
+        code = 401
+
+    LOGGER.info(f"auth: {auth}")
+
     api_expiry = datetime.timedelta(minutes=int(CONSTANT['API']['EXPIRY']))
     expiry_time = datetime.datetime.utcnow() + api_expiry
     api_key = CONSTANT['API']['SECRET_KEY']
@@ -114,8 +128,7 @@ def tpm(nodename=None):
     response = {'message' : 'no result'}
     create_token=False
 
-    LOGGER.info(f"auth: {auth}")
-
+    nodename = Filter().filter(nodename,'name')
     cluster = Database().get_record(None, 'cluster', None)
     if cluster and 'security' in cluster[0] and cluster[0]['security']:
         LOGGER.info(f"cluster security = {cluster[0]['security']}")

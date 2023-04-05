@@ -27,6 +27,7 @@ from os import getpid
 import re
 from utils.control import Control
 from utils.status import Status
+from utils.filter import Filter
 
 LOGGER = Log.get_logger()
 control_blueprint = Blueprint('control', __name__)

@@ -31,10 +31,11 @@ class Filter(object):
 
     def __init__(self):
         self.logger = Log.get_logger()
-        self.regexps={'name':'^[a-z0-9\-]+$'}
+        self.regexps={'name':'^[a-z0-9\-]+$','ipaddress':'^[0-9a-f:\.]+$'}
 #        self.no_underscore={'name','newnodename','hostname','newhostname','newswitchname','newotherdevicename','newotherdevname'}
 #        self.lower={'name','newnodename','hostname','newhostname','newswitchname','newotherdevicename','newotherdevname'}
-        self.mymatch={'name':'name','newnodename':'name','hostname':'name','newhostname':'name','newswitchname':'name','newotherdevicename':'name','newotherdevname':'name'}
+        self.mymatch={'name':'name','newnodename':'name','hostname':'name','newhostname':'name','newswitchname':'name','newotherdevicename':'name','newotherdevname':'name',
+                     'ipaddress':'ipaddress'}
         self.error=None
 
     def validate_input(self,data):
@@ -82,7 +83,7 @@ class Filter(object):
             regex=re.compile(r""+self.regexps[self.mymatch[name]])
             if not regex.match(data):
                 self.logger.info(f"name = {name} with data = {data} mismatch with self.regexps['{self.mymatch[name]}'] = {self.regexps[self.mymatch[name]]}")
-                self.error=f"field {name} with content {data} does match criterea {self.regexps[self.mymatch[name]]}"
+                self.error=f"field {name} with content {data} does match criteria {self.regexps[self.mymatch[name]]}"
         return data
 
 

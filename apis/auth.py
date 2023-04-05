@@ -20,6 +20,7 @@ from flask import Blueprint, request, json
 from utils.log import Log
 from utils.database import Database
 from common.constant import CONSTANT
+from utils.filter import Filter
 
 LOGGER = Log.get_logger()
 auth_blueprint = Blueprint('auth', __name__)
@@ -33,7 +34,11 @@ def token():
     Output - Token.
     """
     username, password = '', ''
-    auth = request.get_json(force=True)
+    auth,ret = Filter().validate_input(request.get_json(force=True))
+    if not ret:
+        response = {'message': request_data}
+        access_code = 400
+        return json.dumps(response), access_code
     api_expiry = datetime.timedelta(minutes=int(CONSTANT['API']['EXPIRY']))
     expiry_time = datetime.datetime.utcnow() + api_expiry
     api_key = CONSTANT['API']['SECRET_KEY']
@@ -96,7 +101,11 @@ def tpm(nodename=None):
     On the success, create a token, which is valid for expiry time mentioned in configuration.
     Output - Token.
     """
-    auth = request.get_json(force=True)
+    auth,ret = Filter().validate_input(request.get_json(force=True))
+    if not ret:
+        response = {'message': request_data}
+        access_code = 400
+        return json.dumps(response), access_code
     api_expiry = datetime.timedelta(minutes=int(CONSTANT['API']['EXPIRY']))
     expiry_time = datetime.datetime.utcnow() + api_expiry
     api_key = CONSTANT['API']['SECRET_KEY']

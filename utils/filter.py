@@ -31,13 +31,20 @@ class Filter(object):
 
     def __init__(self):
         self.logger = Log.get_logger()
-        self.no_underscore={'name','newnodename','hostname','newhostname','newswitchname','newotherdevicename','newotherdevname'}
+        self.regexps={'name':'^[a-z0-9\-]+$'}
+#        self.no_underscore={'name','newnodename','hostname','newhostname','newswitchname','newotherdevicename','newotherdevname'}
+#        self.lower={'name','newnodename','hostname','newhostname','newswitchname','newotherdevicename','newotherdevname'}
+        self.mymatch={'name':'name','newnodename':'name','hostname':'name','newhostname':'name','newswitchname':'name','newotherdevicename':'name','newotherdevname':'name'}
+        self.error=None
 
     def validate_input(self,data):
+        self.error=None
         self.logger.debug(f"---- START ---- {data}")
         data=self.parse_item(data)
         self.logger.debug(f"----- END ----- {data}")
-        return data
+        if self.error:
+            return self.error,False
+        return data,True
 
     def parse_dict(self,data):
         for item in data.keys():
@@ -67,8 +74,15 @@ class Filter(object):
         data=control_char_re.sub('', data)
         data=data.replace("'","")
         data=data.replace('"',"")
-        if name and name in self.no_underscore:
-            data=data.replace('_','-')
+#        if name and name in self.no_underscore:
+#            data=data.replace('_','-')
+#        if name and name in self.lower:
+#            data=data.lower()
+        if name in self.mymatch.keys():
+            regex=re.compile(r""+self.regexps[self.mymatch[name]])
+            if not regex.match(data):
+                self.logger.info(f"name = {name} with data = {data} mismatch with self.regexps['{self.mymatch[name]}'] = {self.regexps[self.mymatch[name]]}")
+                self.error=f"field {name} with content {data} does match criterea {self.regexps[self.mymatch[name]]}"
         return data
 
 

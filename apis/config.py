@@ -279,7 +279,11 @@ def config_node_post(name=None):
     create, update = False, False
 
     if Helper().check_json(request.data):
-        request_data = Filter().validate_input(request.get_json(force=True))
+        request_data,ret = Filter().validate_input(request.get_json(force=True))
+        if not ret:
+            response = {'message': request_data}
+            access_code = 400
+            return json.dumps(response), access_code
     else:
         response = {'message': 'Bad Request.'}
         access_code = 400
@@ -447,7 +451,11 @@ def config_node_clone(name=None):
     }
 
     if Helper().check_json(request.data):
-        request_data = Filter().validate_input(request.get_json(force=True))
+        request_data,ret = Filter().validate_input(request.get_json(force=True))
+        if not ret:
+            response = {'message': request_data}
+            access_code = 400
+            return json.dumps(response), access_code
     else:
         response = {'message': 'Bad Request.'}
         access_code = 400
@@ -605,6 +613,7 @@ def config_node_clone(name=None):
     return json.dumps(response), access_code
 
 
+# BELOW SEGMENT HAS BEEN TESTED AND CONFIRMED WORKING BY ANTOINE ON APRIL 5 2023
 @config_blueprint.route('/config/node/<string:name>/_delete', methods=['GET'])
 @token_required
 def config_node_delete(name=None):
@@ -683,7 +692,11 @@ def config_node_post_interfaces(name=None):
     Output - Node Interface.
     """
     if Helper().check_json(request.data):
-        request_data = Filter().validate_input(request.get_json(force=True))
+        request_data,ret = Filter().validate_input(request.get_json(force=True))
+        if not ret:
+            response = {'message': request_data}
+            access_code = 400
+            return json.dumps(response), access_code
     else:
         response = {'message': 'Bad Request.'}
         access_code = 400
@@ -940,7 +953,11 @@ def config_group_post(name=None):
     create, update = False, False
 
     if Helper().check_json(request.data):
-        request_data = Filter().validate_input(request.get_json(force=True))
+        request_data,ret = Filter().validate_input(request.get_json(force=True))
+        if not ret:
+            response = {'message': request_data}
+            access_code = 400
+            return json.dumps(response), access_code
     else:
         response = {'message': 'Bad Request.'}
         access_code = 400
@@ -1074,7 +1091,11 @@ def config_group_clone(name=None):
     }
 
     if Helper().check_json(request.data):
-        request_data = Filter().validate_input(request.get_json(force=True))
+        request_data,ret = Filter().validate_input(request.get_json(force=True))
+        if not ret:
+            response = {'message': request_data}
+            access_code = 400
+            return json.dumps(response), access_code
     else:
         response = {'message': 'Bad Request.'}
         access_code = 400
@@ -1188,6 +1209,7 @@ def config_group_clone(name=None):
     return json.dumps(response), access_code
 
 
+# BELOW SEGMENT HAS BEEN TESTED AND CONFIRMED WORKING BY ANTOINE ON APRIL 5 2023
 @config_blueprint.route("/config/group/<string:name>/_delete", methods=['GET'])
 @token_required
 def config_group_delete(name=None):
@@ -1254,7 +1276,11 @@ def config_group_post_interfaces(name=None):
     Output - Group Interface.
     """
     if Helper().check_json(request.data):
-        request_data = Filter().validate_input(request.get_json(force=True))
+        request_data,ret = Filter().validate_input(request.get_json(force=True))
+        if not ret:
+            response = {'message': request_data}
+            access_code = 400
+            return json.dumps(response), access_code
     else:
         response = {'message': 'Bad Request.'}
         access_code = 400
@@ -1407,7 +1433,11 @@ def config_osimage_post(name=None):
     data = {}
     create, update = False, False
     if Helper().check_json(request.data):
-        request_data = Filter().validate_input(request.get_json(force=True))
+        request_data,ret = Filter().validate_input(request.get_json(force=True))
+        if not ret:
+            response = {'message': request_data}
+            access_code = 400
+            return json.dumps(response), access_code
     else:
         response = {'message': 'Bad Request.'}
         access_code = 400
@@ -1492,6 +1522,7 @@ def config_osimage_delete(name=None):
     return json.dumps(response), access_code
 
 
+# BELOW SEGMENT HAS BEEN TESTED AND CONFIRMED WORKING BY ANTOINE ON APRIL 5 2023
 @config_blueprint.route("/config/osimage/<string:name>/_clone", methods=['POST'])
 @token_required
 def config_osimage_clone(name=None):
@@ -1502,8 +1533,14 @@ def config_osimage_clone(name=None):
     """
     data = {}
     create = False
+    items = {'grab_filesystems','grab_exclude','initrdfile','kernelfile','kernelmodules','kerneloptions','kernelversion','distribution'}
+
     if Helper().check_json(request.data):
-        request_data = Filter().validate_input(request.get_json(force=True))
+        request_data,ret = Filter().validate_input(request.get_json(force=True))
+        if not ret:
+            response = {'message': request_data}
+            access_code = 400
+            return json.dumps(response), access_code
     else:
         response = {'message': 'Bad Request.'}
         access_code = 400
@@ -1523,6 +1560,9 @@ def config_osimage_clone(name=None):
                     return json.dumps(response), access_code
                 else:
                     data['name'] = data['newosimage']
+                    for item in items:
+                        if (item not in data) and item in image[0] and image[0][item]:
+                            data[item]=image[0][item]
                     del data['newosimage']
                     create = True
             else:
@@ -1613,7 +1653,11 @@ def config_osimage_kernel_post(name=None):
     """
     data = {}
     if Helper().check_json(request.data):
-        request_data = Filter().validate_input(request.get_json(force=True))
+        request_data,ret = Filter().validate_input(request.get_json(force=True))
+        if not ret:
+            response = {'message': request_data}
+            access_code = 400
+            return json.dumps(response), access_code
     else:
         response = {'message': 'Bad Request.'}
         access_code = 400
@@ -1700,7 +1744,11 @@ def config_cluster_post():
        'createnode_ondemand':True
     }
     if Helper().check_json(request.data):
-        request_data = Filter().validate_input(request.get_json(force=True))
+        request_data,ret = Filter().validate_input(request.get_json(force=True))
+        if not ret:
+            response = {'message': request_data}
+            access_code = 400
+            return json.dumps(response), access_code
     else:
         response = {'message': 'Bad Request.'}
         access_code = 400
@@ -1820,7 +1868,11 @@ def config_bmcsetup_post(bmcname=None):
     data = {}
     create, update = False, False
     if Helper().check_json(request.data):
-        request_data = Filter().validate_input(request.get_json(force=True))
+        request_data,ret = Filter().validate_input(request.get_json(force=True))
+        if not ret:
+            response = {'message': request_data}
+            access_code = 400
+            return json.dumps(response), access_code
     else:
         response = {'message': 'Bad Request.'}
         access_code = 400
@@ -1874,7 +1926,11 @@ def config_bmcsetup_clone(bmcname=None):
     data = {}
     create = False
     if Helper().check_json(request.data):
-        request_data = Filter().validate_input(request.get_json(force=True))
+        request_data,ret = Filter().validate_input(request.get_json(force=True))
+        if not ret:
+            response = {'message': request_data}
+            access_code = 400
+            return json.dumps(response), access_code
     else:
         response = {'message': 'Bad Request.'}
         access_code = 400
@@ -2015,7 +2071,11 @@ def config_switch_post(switch=None):
     data = {}
     create, update = False, False
     if Helper().check_json(request.data):
-        request_data = Filter().validate_input(request.get_json(force=True))
+        request_data,ret = Filter().validate_input(request.get_json(force=True))
+        if not ret:
+            response = {'message': request_data}
+            access_code = 400
+            return json.dumps(response), access_code
     else:
         response = {'message': 'Bad Request.'}
         access_code = 400
@@ -2092,7 +2152,11 @@ def config_switch_clone(switch=None):
     srcswitch=None
     ipaddress,networkname = None,None
     if Helper().check_json(request.data):
-        request_data = Filter().validate_input(request.get_json(force=True))
+        request_data,ret = Filter().validate_input(request.get_json(force=True))
+        if not ret:
+            response = {'message': request_data}
+            access_code = 400
+            return json.dumps(response), access_code
     else:
         response = {'message': 'Bad Request.'}
         access_code = 400
@@ -2300,7 +2364,11 @@ def config_otherdev_post(device=None):
     data = {}
     create, update = False, False
     if Helper().check_json(request.data):
-        request_data = Filter().validate_input(request.get_json(force=True))
+        request_data,ret = Filter().validate_input(request.get_json(force=True))
+        if not ret:
+            response = {'message': request_data}
+            access_code = 400
+            return json.dumps(response), access_code
     else:
         response = {'message': 'Bad Request.'}
         access_code = 400
@@ -2377,7 +2445,11 @@ def config_otherdev_clone(device=None):
     srcdevice=None
     ipaddress,networkname = None,None
     if Helper().check_json(request.data):
-        request_data = Filter().validate_input(request.get_json(force=True))
+        request_data,ret = Filter().validate_input(request.get_json(force=True))
+        if not ret:
+            response = {'message': request_data}
+            access_code = 400
+            return json.dumps(response), access_code
     else:
         response = {'message': 'Bad Request.'}
         access_code = 400
@@ -2588,7 +2660,11 @@ def config_network_post(name=None):
     data = {}
     create, update = False, False
     if Helper().check_json(request.data):
-        request_data = Filter().validate_input(request.get_json(force=True))
+        request_data,ret = Filter().validate_input(request.get_json(force=True))
+        if not ret:
+            response = {'message': request_data}
+            access_code = 400
+            return json.dumps(response), access_code
     else:
         response = {'message': 'Bad Request.'}
         access_code = 400
@@ -2893,7 +2969,11 @@ def config_post_secrets_node(name=None):
     data, = {}
     create, update = False, False
     if Helper().check_json(request.data):
-        request_data = Filter().validate_input(request.get_json(force=True))
+        request_data,ret = Filter().validate_input(request.get_json(force=True))
+        if not ret:
+            response = {'message': request_data}
+            access_code = 400
+            return json.dumps(response), access_code
     else:
         response = {'message': 'Bad Request.'}
         access_code = 400
@@ -2995,7 +3075,11 @@ def config_post_node_secret(name=None, secret=None):
     """
     data = {}
     if Helper().check_json(request.data):
-        request_data = Filter().validate_input(request.get_json(force=True))
+        request_data,ret = Filter().validate_input(request.get_json(force=True))
+        if not ret:
+            response = {'message': request_data}
+            access_code = 400
+            return json.dumps(response), access_code
     else:
         response = {'message': 'Bad Request.'}
         access_code = 400
@@ -3064,7 +3148,11 @@ def config_clone_node_secret(name=None, secret=None):
     """
     data = {}
     if Helper().check_json(request.data):
-        request_data = Filter().validate_input(request.get_json(force=True))
+        request_data,ret = Filter().validate_input(request.get_json(force=True))
+        if not ret:
+            response = {'message': request_data}
+            access_code = 400
+            return json.dumps(response), access_code
     else:
         response = {'message': 'Bad Request.'}
         access_code = 400
@@ -3195,7 +3283,11 @@ def config_post_secrets_group(name=None):
     data = {}
     create, update = False, False
     if Helper().check_json(request.data):
-        request_data = Filter().validate_input(request.get_json(force=True))
+        request_data,ret = Filter().validate_input(request.get_json(force=True))
+        if not ret:
+            response = {'message': request_data}
+            access_code = 400
+            return json.dumps(response), access_code
     else:
         response = {'message': 'Bad Request.'}
         access_code = 400
@@ -3297,7 +3389,11 @@ def config_post_group_secret(name=None, secret=None):
     """
     data = {}
     if Helper().check_json(request.data):
-        request_data = Filter().validate_input(request.get_json(force=True))
+        request_data,ret = Filter().validate_input(request.get_json(force=True))
+        if not ret:
+            response = {'message': request_data}
+            access_code = 400
+            return json.dumps(response), access_code
     else:
         response = {'message': 'Bad Request.'}
         access_code = 400
@@ -3366,7 +3462,11 @@ def config_clone_group_secret(name=None, secret=None):
     """
     data = {}
     if Helper().check_json(request.data):
-        request_data = Filter().validate_input(request.get_json(force=True))
+        request_data,ret = Filter().validate_input(request.get_json(force=True))
+        if not ret:
+            response = {'message': request_data}
+            access_code = 400
+            return json.dumps(response), access_code
     else:
         response = {'message': 'Bad Request.'}
         access_code = 400

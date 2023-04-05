@@ -74,7 +74,11 @@ def monitor_status_post(node=None):
     access_code = 400
     response = {'message': 'Bad Request.'}
     if Helper().check_json(request.data):
-        request_data = Filter().validate_input(request.get_json(force=True))
+        request_data,ret = Filter().validate_input(request.get_json(force=True))
+        if not ret:
+            response = {'message': request_data}
+            access_code = 400
+            return json.dumps(response), access_code
         if request_data:
             try:
                 node = Filter().filter(node,'name')

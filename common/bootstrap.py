@@ -129,7 +129,7 @@ def check_db_tables():
         if result:
             num = num+1
         else:
-            LOGGER.error(f'ERROR :: Database table {tablex} does not seem to exist or is empty.')
+            LOGGER.debug(f'Database table {tablex} does not seem to exist or is empty.')
     if num == 0:
         return False
     return True
@@ -441,7 +441,7 @@ def validatebootstrap():
     if db_check is True:
         db_tables_check=check_db_tables()
 
-    LOGGER.warning(f'db_check = [{db_check}], db_tables_check = [{db_tables_check}]')
+    LOGGER.info(f'db_check = [{db_check}], db_tables_check = [{db_tables_check}]')
     if bootstrapfile_check is True and db_check is True:
         if db_tables_check is False:
             bootstrap(bootstrapfile)

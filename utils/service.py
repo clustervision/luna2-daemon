@@ -56,7 +56,6 @@ class Service(object):
                     case 'start' | 'stop' | 'reload' | 'restart':
                         command = f'{CONSTANT["SERVICES"]["COMMAND"]} {action} {name}'
                         check_dhcp = Config().dhcp_overwrite()
-                        self.logger.info(f"---> inside service {name}: {check_dhcp}")
                         if check_dhcp:
                             output = Helper().runcommand(command)
                             response, code = self.service_status(name, action, output)
@@ -76,7 +75,6 @@ class Service(object):
                     case 'start' | 'stop' | 'reload' | 'restart':
                         command = f'{CONSTANT["SERVICES"]["COMMAND"]} {action} {name}'
                         check_dns = Config().dns_configure()
-                        self.logger.info(f"---> inside service {name}: {check_dns}")
                         if check_dns:
                             output = Helper().runcommand(command)
                             response, code = self.service_status(name, action, output)

@@ -248,23 +248,6 @@ def config_node_get(name=None):
                 interface['options'] = interface['options'] or ""
                 node['interfaces'].append(interface)
 
-#        Commented out since we do not need it but i left it as we _might_ use it one day
-#        group_interface = Database().get_record_join(['groupinterface.interface','network.name as network'], ['network.id=groupinterface.networkid','groupinterface.groupid=node.groupid'],[f"node.id='{nodeid}'"])
-#        if group_interface:
-#            for interface in group_interface:
-#                add_if=True
-#                for check_interface in node['interfaces']:
-#                    if check_interface['interface'] == interface['interface']:
-#                        # the node has the same interface so we ditch the group one
-#                        add_if=False
-#                        break
-#                if add_if:
-#                    interfacename,*_ = (node['provision_interface'].split(' ')+[None]) # we skim off parts that we added for clarity in above section (e.g. (default)). also works if there's no additional info
-#                    if interface['interface'] == interfacename and interface['network']: # if it is my prov interf then it will get that domain as a FQDN.
-#                        node['hostname'] = nodename + '.' + interface['network'] 
-#                    interface['interface'] += f" ({node['group']})"
-#                    node['interfaces'].append(interface)
-
         response['config']['node'][nodename] = node
         LOGGER.info('Provided list of all nodes.')
         access_code = 200
@@ -390,7 +373,7 @@ def config_node_post(name=None):
                                 if network:
                                     for ip in network:
                                         ips.append(ip['ipaddress'])
-#                                    ## ---> we do not ping nodes as it will take time if we add bulk nodes, it'll take 1s per node.
+#                                    ## ---> we do not ping nodes as it will take time if we add bulk nodes, it'll take 1s per node. code block removal pending?
 #                                    ret=0
 #                                    max=5 # we try to ping for X ips, if none of these are free, something else is going on (read: rogue devices)....
 #                                    while(max>0 and ret!=1):
@@ -609,7 +592,7 @@ def config_node_clone(name=None):
                                     access_code = 500
                                     return json.dumps(response), access_code
 
-            #Service().queue('dhcp','restart') # do we need dhcp restart? MAC is wiped on new NIC so no real need i guess
+            #Service().queue('dhcp','restart') # do we need dhcp restart? MAC is wiped on new NIC so no real need i guess. pending
             Service().queue('dns','restart')
 
         else:
@@ -642,7 +625,7 @@ def config_node_delete(name=None):
         # ----
         Service().queue('dns','restart')
         Service().queue('dhcp','restart')
-        # below might look as redundant but is added to prevent a possible race condition when many nodes are added in a loop.
+        # below might look redundant but is added to prevent a possible race condition when many nodes are added in a loop.
         # the below tasks ensures that even the last node will be included in dhcp/dns
         Queue().add_task_to_queue(f'dhcp:restart','housekeeper','__node_delete__')
         Queue().add_task_to_queue(f'dns:restart','housekeeper','__node_delete__')

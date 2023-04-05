@@ -41,7 +41,7 @@ class Housekeeper(object):
 
     def tasks_mother(self,event):
         tel=0
-        self.logger.info("--> Starting tasks thread")
+        self.logger.info("Starting tasks thread")
         while True:
             try:
                 tel+=1
@@ -76,7 +76,7 @@ class Housekeeper(object):
 
     def cleanup_mother(self,event):
         tel=0
-        self.logger.info("--> Starting cleanup thread")
+        self.logger.info("Starting cleanup thread")
         while True:
             try:
                 tel+=1

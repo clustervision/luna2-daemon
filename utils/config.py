@@ -86,8 +86,8 @@ class Config(object):
                                 device_block.append(
                                     self.dhcp_node(device['name'], device['macaddress'], device['ipaddress'])
                                 )
-                else:
-                    self.logger.info(f'Device not available for {nwkname} {nwknetwork}')
+                    else:
+                        self.logger.debug(f'{item} not available for {nwkname} {nwknetwork}')
 
         config = self.dhcp_config(ntpserver)
         config = f'{config}{dhcp_subnet_block}'

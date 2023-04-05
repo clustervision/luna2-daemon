@@ -31,11 +31,10 @@ class Filter(object):
 
     def __init__(self):
         self.logger = Log.get_logger()
-        self.regexps={'name':'^[a-z0-9\-]+$','ipaddress':'^[0-9a-f:\.]+$'}
-#        self.no_underscore={'name','newnodename','hostname','newhostname','newswitchname','newotherdevicename','newotherdevname'}
-#        self.lower={'name','newnodename','hostname','newhostname','newswitchname','newotherdevicename','newotherdevname'}
+        self.regexps={'name':'^[a-z0-9\-]+$','ipaddress':'^[0-9a-f:\.]+$','macaddress':'^[a-fA-F0-9:\-]+$'}
         self.mymatch={'name':'name','newnodename':'name','hostname':'name','newhostname':'name','newswitchname':'name','newotherdevicename':'name','newotherdevname':'name',
-                     'ipaddress':'ipaddress'}
+                     'ipaddress':'ipaddress','macaddress':'macaddress'}
+        self.convert={'macaddress':{'-':':'}}
         self.error=None
 
     def validate_input(self,data):
@@ -75,15 +74,16 @@ class Filter(object):
         data=control_char_re.sub('', data)
         data=data.replace("'","")
         data=data.replace('"',"")
-#        if name and name in self.no_underscore:
-#            data=data.replace('_','-')
-#        if name and name in self.lower:
-#            data=data.lower()
         if name in self.mymatch.keys():
             regex=re.compile(r""+self.regexps[self.mymatch[name]])
             if not regex.match(data):
-                self.logger.info(f"name = {name} with data = {data} mismatch with self.regexps['{self.mymatch[name]}'] = {self.regexps[self.mymatch[name]]}")
+                self.logger.debug(f"MATCH name = {name} with data = {data} mismatch with self.regexps['{self.mymatch[name]}'] = {self.regexps[self.mymatch[name]]}")
                 self.error=f"field {name} with content {data} does match criteria {self.regexps[self.mymatch[name]]}"
+        if name in self.convert.keys():
+            self.logger.debug(f"CONVERT IN {name} = {data}")
+            for rep in self.convert[name].keys():
+                data=data.replace(rep,self.convert[name][rep])
+            self.logger.debug(f"CONVERT OUT {name} = {data}")
         return data
 
 

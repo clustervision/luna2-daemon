@@ -27,11 +27,13 @@ from os import getpid
 import re
 from utils.control import Control
 from utils.status import Status
+from utils.filter import Filter
 
 LOGGER = Log.get_logger()
 control_blueprint = Blueprint('control', __name__)
 
 
+# BELOW SEGMENT HAS BEEN TESTED AND CONFIRMED WORKING BY ANTOINE ON APRIL 5 2023
 @control_blueprint.route('/control/power/<string:hostname>/<string:action>', methods=['GET'])
 @token_required
 def control_get(hostname=None, action=None):
@@ -40,6 +42,8 @@ def control_get(hostname=None, action=None):
     Process - Use to perform on, off, reset operations on one node.
     Output - Success or failure
     """
+    hostname = Filter().filter(hostname,'name')
+    action = Filter().filter(action,'action')
     node = Database().get_record(None, 'node', f' WHERE name = "{hostname}"')
     if node:
         groupid = node[0]['groupid']
@@ -73,6 +77,7 @@ def control_get(hostname=None, action=None):
     return json.dumps(response), access_code
 
 
+# BELOW SEGMENT HAS BEEN TESTED AND CONFIRMED WORKING BY ANTOINE ON APRIL 5 2023
 @control_blueprint.route('/control/power', methods=['POST'])
 @token_required
 def control_post():
@@ -144,6 +149,8 @@ def control_post():
            
     return json.dumps(response), access_code
 
+
+# BELOW SEGMENT HAS BEEN TESTED AND CONFIRMED WORKING BY ANTOINE ON APRIL 5 2023
 @control_blueprint.route('/control/status/<string:request_id>', methods=['GET'])
 def control_status(request_id=None):
     """
@@ -152,9 +159,9 @@ def control_status(request_id=None):
     Output - Success or failure
     """
 
-    LOGGER.debug(f"control STATUS: request_id: [{request_id}]")
     access_code = 400
     response = {'message': 'Bad Request.'}
+    request_id = Filter().filter(request_id,'request_id')
     status = Database().get_record(None , 'status', f' WHERE request_id = "{request_id}"')
     if status:
         on_nodes=[]

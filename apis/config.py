@@ -158,6 +158,7 @@ def config_node_get(name=None):
     Input - None
     Output - Return the node information.
     """
+    name = Filter().filter(name,'name')
     nodes = Database().get_record(None, 'node', f' WHERE name = "{name}"')
     nodefull = Database().get_record_join(['node.*',
                                            'group.name AS group',
@@ -278,7 +279,11 @@ def config_node_post(name=None):
     create, update = False, False
 
     if Helper().check_json(request.data):
-        request_data = Filter().validate_input(request.get_json(force=True))
+        request_data,ret = Filter().validate_input(request.get_json(force=True))
+        if not ret:
+            response = {'message': request_data}
+            access_code = 400
+            return json.dumps(response), access_code
     else:
         response = {'message': 'Bad Request.'}
         access_code = 400
@@ -446,7 +451,11 @@ def config_node_clone(name=None):
     }
 
     if Helper().check_json(request.data):
-        request_data = Filter().validate_input(request.get_json(force=True))
+        request_data,ret = Filter().validate_input(request.get_json(force=True))
+        if not ret:
+            response = {'message': request_data}
+            access_code = 400
+            return json.dumps(response), access_code
     else:
         response = {'message': 'Bad Request.'}
         access_code = 400
@@ -604,6 +613,7 @@ def config_node_clone(name=None):
     return json.dumps(response), access_code
 
 
+# BELOW SEGMENT HAS BEEN TESTED AND CONFIRMED WORKING BY ANTOINE ON APRIL 5 2023
 @config_blueprint.route('/config/node/<string:name>/_delete', methods=['GET'])
 @token_required
 def config_node_delete(name=None):
@@ -612,6 +622,7 @@ def config_node_delete(name=None):
     Process - Delete the Node and it's interfaces.
     Output - Success or Failure.
     """
+    name = Filter().filter(name,'name')
     node = Database().get_record(None, 'node', f' WHERE `name` = "{name}"')
     if node:
         nodeid=node[0]['id']
@@ -646,6 +657,7 @@ def config_node_get_interfaces(name=None):
     Process - Fetch the Node Interface List.
     Output - Node Interface List.
     """
+    name = Filter().filter(name,'name')
     node = Database().get_record(None, 'node', f' WHERE name = "{name}"')
     if node:
         response = {'config': {'node': {name: {'interfaces': [] } } } }
@@ -680,12 +692,17 @@ def config_node_post_interfaces(name=None):
     Output - Node Interface.
     """
     if Helper().check_json(request.data):
-        request_data = Filter().validate_input(request.get_json(force=True))
+        request_data,ret = Filter().validate_input(request.get_json(force=True))
+        if not ret:
+            response = {'message': request_data}
+            access_code = 400
+            return json.dumps(response), access_code
     else:
         response = {'message': 'Bad Request.'}
         access_code = 400
         return json.dumps(response), access_code
     if request_data:
+        name = Filter().filter(name,'name')
         node = Database().get_record(None, 'node', f' WHERE name = "{name}"')
         if node:
             nodeid = node[0]['id']
@@ -740,11 +757,13 @@ def config_node_interface_get(name=None, interface=None):
     Process - Get the Node Interface.
     Output - Success or Failure.
     """
+    name = Filter().filter(name,'name')
+    interface = Filter().filter(name,'interface')
     node = Database().get_record(None, 'node', f' WHERE name = "{name}"')
     if node:
         response = {'config': {'node': {name: {'interfaces': [] } } } }
         nodeid = node[0]['id']
-        node_interfaces = Database().get_record_join(['network.name as network','nodeinterface.macaddress','nodeinterface.interface','ipaddress.ipaddress','nodeinterface.options'], ['ipaddress.tablerefid=nodeinterface.id','network.id=ipaddress.networkid'], ['tableref="nodeinterface"',f"nodeinterface.nodeid='{nodeid}'"])
+        node_interfaces = Database().get_record_join(['network.name as network','nodeinterface.macaddress','nodeinterface.interface','ipaddress.ipaddress','nodeinterface.options'], ['ipaddress.tablerefid=nodeinterface.id','network.id=ipaddress.networkid'], ['tableref="nodeinterface"',f"nodeinterface.nodeid='{nodeid}'"])  # pending. we return all ifs but we only requested a particular one
         if node_interfaces:
             my_interface = []
             for interface in node_interfaces:
@@ -774,6 +793,8 @@ def config_node_delete_interface(name=None, interface=None):
     Process - Delete the Node Interface.
     Output - Success or Failure.
     """
+    name = Filter().filter(name,'name')
+    interface = Filter().filter(name,'interface')
     node = Database().get_record(None, 'node', f' WHERE `name` = "{name}"')
     if node:
         nodeid = node[0]['id']
@@ -866,6 +887,7 @@ def config_group_get(name=None):
        'provision_interface':'BOOTIF'
     }
 
+    name = Filter().filter(name,'group')
     groups = Database().get_record(None, 'group', f' WHERE name = "{name}"')
     if groups:
         response = {'config': {'group': {} }}
@@ -931,13 +953,18 @@ def config_group_post(name=None):
     create, update = False, False
 
     if Helper().check_json(request.data):
-        request_data = Filter().validate_input(request.get_json(force=True))
+        request_data,ret = Filter().validate_input(request.get_json(force=True))
+        if not ret:
+            response = {'message': request_data}
+            access_code = 400
+            return json.dumps(response), access_code
     else:
         response = {'message': 'Bad Request.'}
         access_code = 400
         return json.dumps(response), access_code
     if request_data:
         data = request_data['config']['group'][name]
+        name = Filter().filter(name,'group')
         grp = Database().get_record(None, 'group', f' WHERE name = "{name}"')
         if grp:
             grpid = grp[0]['id']
@@ -1064,13 +1091,18 @@ def config_group_clone(name=None):
     }
 
     if Helper().check_json(request.data):
-        request_data = Filter().validate_input(request.get_json(force=True))
+        request_data,ret = Filter().validate_input(request.get_json(force=True))
+        if not ret:
+            response = {'message': request_data}
+            access_code = 400
+            return json.dumps(response), access_code
     else:
         response = {'message': 'Bad Request.'}
         access_code = 400
         return json.dumps(response), access_code
     if request_data:
         data = request_data['config']['group'][name]
+        name = Filter().filter(name,'group')
         grp = Database().get_record(None, 'group', f' WHERE name = "{name}"')
         if grp:
             grpid = grp[0]['id']
@@ -1177,6 +1209,7 @@ def config_group_clone(name=None):
     return json.dumps(response), access_code
 
 
+# BELOW SEGMENT HAS BEEN TESTED AND CONFIRMED WORKING BY ANTOINE ON APRIL 5 2023
 @config_blueprint.route("/config/group/<string:name>/_delete", methods=['GET'])
 @token_required
 def config_group_delete(name=None):
@@ -1185,6 +1218,7 @@ def config_group_delete(name=None):
     Process - Delete the Group and it's interfaces.
     Output - Success or Failure.
     """
+    name = Filter().filter(name,'group')
     group = Database().get_record(None, 'group', f' WHERE `name` = "{name}"')
     if group:
         Database().delete_row('group', [{"column": "name", "value": name}])
@@ -1206,6 +1240,7 @@ def config_group_get_interfaces(name=None):
     Process - Fetch the Group Interface List.
     Output - Group Interface List.
     """
+    name = Filter().filter(name,'group')
     groups = Database().get_record(None, 'group', f' WHERE name = "{name}"')
     if groups:
         response = {'config': {'group': {name: {'interfaces': [] } } } }
@@ -1241,12 +1276,17 @@ def config_group_post_interfaces(name=None):
     Output - Group Interface.
     """
     if Helper().check_json(request.data):
-        request_data = Filter().validate_input(request.get_json(force=True))
+        request_data,ret = Filter().validate_input(request.get_json(force=True))
+        if not ret:
+            response = {'message': request_data}
+            access_code = 400
+            return json.dumps(response), access_code
     else:
         response = {'message': 'Bad Request.'}
         access_code = 400
         return json.dumps(response), access_code
     if request_data:
+        name = Filter().filter(name,'group')
         grp = Database().get_record(None, 'group', f' WHERE name = "{name}"')
         if grp:
             grpid = grp[0]['id']
@@ -1306,6 +1346,8 @@ def config_group_delete_interface(name=None, interface=None):
     Process - Delete the Group Interface.
     Output - Success or Failure.
     """
+    name = Filter().filter(name,'group')
+    interface = Filter().filter(name,'interface')
     group = Database().get_record(None, 'group', f' WHERE `name` = "{name}"')
     if group:
         groupid = group[0]['id']
@@ -1364,6 +1406,7 @@ def config_osimage_get(name=None):
     Process - Fetch the OS Image information.
     Output - OSImage Info.
     """
+    name = Filter().filter(name,'osimage')
     osimages = Database().get_record(None, 'osimage', f' WHERE name = "{name}"')
     if osimages:
         response = {'config': {'osimage': {} }}
@@ -1390,13 +1433,18 @@ def config_osimage_post(name=None):
     data = {}
     create, update = False, False
     if Helper().check_json(request.data):
-        request_data = Filter().validate_input(request.get_json(force=True))
+        request_data,ret = Filter().validate_input(request.get_json(force=True))
+        if not ret:
+            response = {'message': request_data}
+            access_code = 400
+            return json.dumps(response), access_code
     else:
         response = {'message': 'Bad Request.'}
         access_code = 400
         return json.dumps(response), access_code
     if request_data:
         data = request_data['config']['osimage'][name]
+        name = Filter().filter(name,'osimage')
         image = Database().get_record(None, 'osimage', f' WHERE name = "{name}"')
         if image:
             imageid = image[0]['id']
@@ -1462,6 +1510,7 @@ def config_osimage_delete(name=None):
     Process - Delete the OS Image.
     Output - Success or Failure.
     """
+    name = Filter().filter(name,'osimage')
     osimage = Database().get_record(None, 'osimage', f' WHERE `name` = "{name}"')
     if osimage:
         Database().delete_row('osimage', [{"column": "name", "value": name}])
@@ -1473,6 +1522,7 @@ def config_osimage_delete(name=None):
     return json.dumps(response), access_code
 
 
+# BELOW SEGMENT HAS BEEN TESTED AND CONFIRMED WORKING BY ANTOINE ON APRIL 5 2023
 @config_blueprint.route("/config/osimage/<string:name>/_clone", methods=['POST'])
 @token_required
 def config_osimage_clone(name=None):
@@ -1483,14 +1533,21 @@ def config_osimage_clone(name=None):
     """
     data = {}
     create = False
+    items = {'grab_filesystems','grab_exclude','initrdfile','kernelfile','kernelmodules','kerneloptions','kernelversion','distribution'}
+
     if Helper().check_json(request.data):
-        request_data = Filter().validate_input(request.get_json(force=True))
+        request_data,ret = Filter().validate_input(request.get_json(force=True))
+        if not ret:
+            response = {'message': request_data}
+            access_code = 400
+            return json.dumps(response), access_code
     else:
         response = {'message': 'Bad Request.'}
         access_code = 400
         return json.dumps(response), access_code
     if request_data:
         data = request_data['config']['osimage'][name]
+        name = Filter().filter(name,'osimage')
         image = Database().get_record(None, 'osimage', f' WHERE name = "{name}"')
         if image:
             if 'newosimage' in data:
@@ -1503,6 +1560,9 @@ def config_osimage_clone(name=None):
                     return json.dumps(response), access_code
                 else:
                     data['name'] = data['newosimage']
+                    for item in items:
+                        if (item not in data) and item in image[0] and image[0][item]:
+                            data[item]=image[0][item]
                     del data['newosimage']
                     create = True
             else:
@@ -1544,6 +1604,7 @@ def config_osimage_pack(name=None):
 
     code=500
     response= {"message": f'OS image {name} packing failed. No sign of life of spawned thread.'}
+    name = Filter().filter(name,'osimage')
 
     #Antoine
     request_id=str(time())+str(randint(1001,9999))+str(getpid())
@@ -1592,13 +1653,18 @@ def config_osimage_kernel_post(name=None):
     """
     data = {}
     if Helper().check_json(request.data):
-        request_data = Filter().validate_input(request.get_json(force=True))
+        request_data,ret = Filter().validate_input(request.get_json(force=True))
+        if not ret:
+            response = {'message': request_data}
+            access_code = 400
+            return json.dumps(response), access_code
     else:
         response = {'message': 'Bad Request.'}
         access_code = 400
         return json.dumps(response), access_code
     if request_data:
         data = request_data['config']['osimage'][name]
+        name = Filter().filter(name,'kernel')
         image = Database().get_record(None, 'osimage', f' WHERE name = "{name}"')
         if image:
             # imageid = image[0]['id']
@@ -1678,7 +1744,11 @@ def config_cluster_post():
        'createnode_ondemand':True
     }
     if Helper().check_json(request.data):
-        request_data = Filter().validate_input(request.get_json(force=True))
+        request_data,ret = Filter().validate_input(request.get_json(force=True))
+        if not ret:
+            response = {'message': request_data}
+            access_code = 400
+            return json.dumps(response), access_code
     else:
         response = {'message': 'Bad Request.'}
         access_code = 400
@@ -1770,6 +1840,7 @@ def config_bmcsetup_get(bmcname=None):
     Process - Fetch The BMC Setup information.
     Output - BMC Setup Information.
     """
+    bmcname = Filter().filter(bmcname,'bmc')
     bmcsetup = Database().get_record(None, 'bmcsetup', f' WHERE name = "{bmcname}"')
     if bmcsetup:
         response = {'config': {'bmcsetup': {} }}
@@ -1797,13 +1868,18 @@ def config_bmcsetup_post(bmcname=None):
     data = {}
     create, update = False, False
     if Helper().check_json(request.data):
-        request_data = Filter().validate_input(request.get_json(force=True))
+        request_data,ret = Filter().validate_input(request.get_json(force=True))
+        if not ret:
+            response = {'message': request_data}
+            access_code = 400
+            return json.dumps(response), access_code
     else:
         response = {'message': 'Bad Request.'}
         access_code = 400
         return json.dumps(response), access_code
     if request_data:
         data = request_data['config']['bmcsetup'][bmcname]
+        bmcname = Filter().filter(bmcname,'bmc')
         data['name'] = bmcname
         bmc = Database().get_record(None, 'bmcsetup', f' WHERE `name` = "{bmcname}"')
         if bmc:
@@ -1850,7 +1926,11 @@ def config_bmcsetup_clone(bmcname=None):
     data = {}
     create = False
     if Helper().check_json(request.data):
-        request_data = Filter().validate_input(request.get_json(force=True))
+        request_data,ret = Filter().validate_input(request.get_json(force=True))
+        if not ret:
+            response = {'message': request_data}
+            access_code = 400
+            return json.dumps(response), access_code
     else:
         response = {'message': 'Bad Request.'}
         access_code = 400
@@ -1906,6 +1986,7 @@ def config_bmcsetup_delete(bmcname=None):
     Process - Delete The BMC Setup Credentials.
     Output - Success or Failure.
     """
+    bmcname = Filter().filter(bmcname,'bmc')
     bmc = Database().get_record(None, 'bmcsetup', f' WHERE `name` = "{bmcname}"')
     if bmc:
         Database().delete_row('bmcsetup', [{"column": "name", "value": bmcname}])
@@ -1956,6 +2037,7 @@ def config_switch_get(switch=None):
     Process - Fetch The Switch Information.
     Output - Switch Details.
     """
+    switch = Filter().filter(switch,'switch')
     switches = Database().get_record(None, 'switch', f' WHERE name = "{switch}"')
     if switches:
         response = {'config': {'switch': { } }}
@@ -1989,7 +2071,11 @@ def config_switch_post(switch=None):
     data = {}
     create, update = False, False
     if Helper().check_json(request.data):
-        request_data = Filter().validate_input(request.get_json(force=True))
+        request_data,ret = Filter().validate_input(request.get_json(force=True))
+        if not ret:
+            response = {'message': request_data}
+            access_code = 400
+            return json.dumps(response), access_code
     else:
         response = {'message': 'Bad Request.'}
         access_code = 400
@@ -2066,7 +2152,11 @@ def config_switch_clone(switch=None):
     srcswitch=None
     ipaddress,networkname = None,None
     if Helper().check_json(request.data):
-        request_data = Filter().validate_input(request.get_json(force=True))
+        request_data,ret = Filter().validate_input(request.get_json(force=True))
+        if not ret:
+            response = {'message': request_data}
+            access_code = 400
+            return json.dumps(response), access_code
     else:
         response = {'message': 'Bad Request.'}
         access_code = 400
@@ -2190,6 +2280,7 @@ def config_switch_delete(switch=None):
     Process - Delete The Switch.
     Output - Success or Failure.
     """
+    switch = Filter().filter(switch,'name')
     checkswitch = Database().get_record(None, 'switch', f' WHERE `name` = "{switch}"')
     if checkswitch:
         Database().delete_row('ipaddress', [{"column": "tablerefid", "value": checkswitch[0]['id']},{"column": "tableref", "value": "switch"}])
@@ -2241,6 +2332,7 @@ def config_otherdev_get(device=None):
     Process - Fetch The List Of Devices.
     Output - Devices.
     """
+    device = Filter().filter(device,'name')
     devices = Database().get_record(None, 'otherdevices', f' WHERE name = "{device}"')
     if devices:
         response = {'config': {'otherdev': { } }}
@@ -2272,7 +2364,11 @@ def config_otherdev_post(device=None):
     data = {}
     create, update = False, False
     if Helper().check_json(request.data):
-        request_data = Filter().validate_input(request.get_json(force=True))
+        request_data,ret = Filter().validate_input(request.get_json(force=True))
+        if not ret:
+            response = {'message': request_data}
+            access_code = 400
+            return json.dumps(response), access_code
     else:
         response = {'message': 'Bad Request.'}
         access_code = 400
@@ -2349,7 +2445,11 @@ def config_otherdev_clone(device=None):
     srcdevice=None
     ipaddress,networkname = None,None
     if Helper().check_json(request.data):
-        request_data = Filter().validate_input(request.get_json(force=True))
+        request_data,ret = Filter().validate_input(request.get_json(force=True))
+        if not ret:
+            response = {'message': request_data}
+            access_code = 400
+            return json.dumps(response), access_code
     else:
         response = {'message': 'Bad Request.'}
         access_code = 400
@@ -2472,6 +2572,7 @@ def config_otherdev_delete(device=None):
     Process - Delete The Device.
     Output - Success or Failure.
     """
+    device = Filter().filter(device,'name')
     checkdevice = Database().get_record(None, 'otherdevices', f' WHERE `name` = "{device}"')
     if checkdevice:
         Database().delete_row('ipaddress', [{"column": "tablerefid", "value": checkdevice[0]['id']},{"column": "tableref", "value": "otherdevices"}])
@@ -2525,6 +2626,7 @@ def config_network_get(name=None):
     Process - Fetch The Network Information.
     Output - Network Information.
     """
+    name = Filter().filter(name,'network')
     networks = Database().get_record(None, 'network', f' WHERE `name` = "{name}"')
     if networks:
         response = {'config': {'network': {} }}
@@ -2558,13 +2660,18 @@ def config_network_post(name=None):
     data = {}
     create, update = False, False
     if Helper().check_json(request.data):
-        request_data = Filter().validate_input(request.get_json(force=True))
+        request_data,ret = Filter().validate_input(request.get_json(force=True))
+        if not ret:
+            response = {'message': request_data}
+            access_code = 400
+            return json.dumps(response), access_code
     else:
         response = {'message': 'Bad Request.'}
         access_code = 400
         return json.dumps(response), access_code
     if request_data:
         data = request_data['config']['network'][name]
+        name = Filter().filter(name,'network')
         data['name'] = name
         checknetwork = Database().get_record(None, 'network', f' WHERE `name` = "{name}"')
         if checknetwork:
@@ -2675,6 +2782,7 @@ def config_network_delete(name=None):
     Process - Delete The Network.
     Output - Success or Failure.
     """
+    name = Filter().filter(name,'network')
     network = Database().get_record(None, 'network', f' WHERE `name` = "{name}"')
     if network:
         Database().delete_row('network', [{"column": "name", "value": name}])
@@ -2695,6 +2803,8 @@ def config_network_ip(name=None, ipaddr=None):
     Process - Delete The Network.
     Output - Success or Failure.
     """
+    name = Filter().filter(name,'network')
+    ipaddr = Filter().filter(ipaddr,'ipaddress')
     network = Database().get_record(None, 'network', f' WHERE `name` = "{name}"')
     if network:
         ipdetails = Helper().check_ip_range(ipaddr, network[0]['network']+'/'+network[0]['subnet'])
@@ -2727,6 +2837,7 @@ def config_network_nextip(name=None):
 
     response = {'message': f'Network {name} not present in database.'}
     access_code = 404
+    name = Filter().filter(name,'network')
 
     #Antoine
     ips=[]
@@ -2806,6 +2917,7 @@ def config_get_secrets_node(name=None):
     Input - Node Name
     Output - Return the Node Secrets And Group Secrets for the Node.
     """
+    name = Filter().filter(name,'secret')
     node = Database().get_record(None, 'node', f' WHERE name = "{name}"')
     if node:
         nodeid  = node[0]['id']
@@ -2857,13 +2969,18 @@ def config_post_secrets_node(name=None):
     data, = {}
     create, update = False, False
     if Helper().check_json(request.data):
-        request_data = Filter().validate_input(request.get_json(force=True))
+        request_data,ret = Filter().validate_input(request.get_json(force=True))
+        if not ret:
+            response = {'message': request_data}
+            access_code = 400
+            return json.dumps(response), access_code
     else:
         response = {'message': 'Bad Request.'}
         access_code = 400
         return json.dumps(response), access_code
     if request_data:
         data = request_data['config']['secrets']['node'][name]
+        name = Filter().filter(name,'secret')
         node = Database().get_record(None, 'node', f' WHERE name = "{name}"')
         if node:
             nodeid = node[0]['id']
@@ -2923,6 +3040,8 @@ def config_get_node_secret(name=None, secret=None):
     Input - Node Name & Secret Name
     Output - Return the Node Secret
     """
+    name = Filter().filter(name,'name')
+    secret = Filter().filter(secret,'secret')
     node = Database().get_record(None, 'node', f' WHERE name = "{name}"')
     if node:
         nodeid  = node[0]['id']
@@ -2956,13 +3075,18 @@ def config_post_node_secret(name=None, secret=None):
     """
     data = {}
     if Helper().check_json(request.data):
-        request_data = Filter().validate_input(request.get_json(force=True))
+        request_data,ret = Filter().validate_input(request.get_json(force=True))
+        if not ret:
+            response = {'message': request_data}
+            access_code = 400
+            return json.dumps(response), access_code
     else:
         response = {'message': 'Bad Request.'}
         access_code = 400
         return json.dumps(response), access_code
     if request_data:
         data = request_data['config']['secrets']['node'][name]
+        name = Filter().filter(name,'name')
         node = Database().get_record(None, 'node', f' WHERE name = "{name}"')
         if node:
             nodeid = node[0]['id']
@@ -3024,13 +3148,18 @@ def config_clone_node_secret(name=None, secret=None):
     """
     data = {}
     if Helper().check_json(request.data):
-        request_data = Filter().validate_input(request.get_json(force=True))
+        request_data,ret = Filter().validate_input(request.get_json(force=True))
+        if not ret:
+            response = {'message': request_data}
+            access_code = 400
+            return json.dumps(response), access_code
     else:
         response = {'message': 'Bad Request.'}
         access_code = 400
         return json.dumps(response), access_code
     if request_data:
         data = request_data['config']['secrets']['node'][name]
+        name = Filter().filter(name,'name')
         node = Database().get_record(None, 'node', f' WHERE name = "{name}"')
         if node:
             nodeid = node[0]['id']
@@ -3089,6 +3218,8 @@ def config_node_secret_delete(name=None, secret=None):
     Input - Node Name & Secret Name
     Output - Success or Failure
     """
+    name = Filter().filter(name,'name')
+    secret = Filter().filter(secret,'secret')
     node = Database().get_record(None, 'node', f' WHERE name = "{name}"')
     if node:
         nodeid  = node[0]['id']
@@ -3117,6 +3248,7 @@ def config_get_secrets_group(name=None):
     Input - Group Name
     Output - Return the Group Secrets.
     """
+    name = Filter().filter(name,'group')
     group = Database().get_record(None, 'group', f' WHERE name = "{name}"')
     if group:
         groupid  = group[0]['id']
@@ -3151,13 +3283,18 @@ def config_post_secrets_group(name=None):
     data = {}
     create, update = False, False
     if Helper().check_json(request.data):
-        request_data = Filter().validate_input(request.get_json(force=True))
+        request_data,ret = Filter().validate_input(request.get_json(force=True))
+        if not ret:
+            response = {'message': request_data}
+            access_code = 400
+            return json.dumps(response), access_code
     else:
         response = {'message': 'Bad Request.'}
         access_code = 400
         return json.dumps(response), access_code
     if request_data:
         data = request_data['config']['secrets']['group'][name]
+        name = Filter().filter(name,'group')
         group = Database().get_record(None, 'group', f' WHERE name = "{name}"')
         if group:
             groupid = group[0]['id']
@@ -3217,6 +3354,8 @@ def config_get_group_secret(name=None, secret=None):
     Input - Group Name & Secret Name
     Output - Return the Group Secret
     """
+    name = Filter().filter(name,'group')
+    secret = Filter().filter(secret,'secret')
     group = Database().get_record(None, 'group', f' WHERE name = "{name}"')
     if group:
         groupid  = group[0]['id']
@@ -3250,13 +3389,18 @@ def config_post_group_secret(name=None, secret=None):
     """
     data = {}
     if Helper().check_json(request.data):
-        request_data = Filter().validate_input(request.get_json(force=True))
+        request_data,ret = Filter().validate_input(request.get_json(force=True))
+        if not ret:
+            response = {'message': request_data}
+            access_code = 400
+            return json.dumps(response), access_code
     else:
         response = {'message': 'Bad Request.'}
         access_code = 400
         return json.dumps(response), access_code
     if request_data:
         data = request_data['config']['secrets']['group'][name]
+        name = Filter().filter(name,'group')
         group = Database().get_record(None, 'group', f' WHERE name = "{name}"')
         if group:
             groupid = group[0]['id']
@@ -3318,13 +3462,18 @@ def config_clone_group_secret(name=None, secret=None):
     """
     data = {}
     if Helper().check_json(request.data):
-        request_data = Filter().validate_input(request.get_json(force=True))
+        request_data,ret = Filter().validate_input(request.get_json(force=True))
+        if not ret:
+            response = {'message': request_data}
+            access_code = 400
+            return json.dumps(response), access_code
     else:
         response = {'message': 'Bad Request.'}
         access_code = 400
         return json.dumps(response), access_code
     if request_data:
         data = request_data['config']['secrets']['group'][name]
+        name = Filter().filter(name,'group')
         group = Database().get_record(None, 'group', f' WHERE name = "{name}"')
         if group:
             groupid = group[0]['id']
@@ -3383,6 +3532,8 @@ def config_group_secret_delete(name=None, secret=None):
     Input - Group Name & Secret Name
     Output - Success or Failure
     """
+    name = Filter().filter(name,'group')
+    secret = Filter().filter(secret,'secret')
     group = Database().get_record(None, 'group', f' WHERE name = "{name}"')
     if group:
         groupid  = group[0]['id']
@@ -3415,6 +3566,7 @@ def control_status(request_id=None):
     LOGGER.debug(f"control STATUS: request_id: [{request_id}]")
     access_code = 400
     response = {'message': 'Bad Request.'}
+    request_id = Filter().filter(request_id,'request_id')
     status = Database().get_record(None , 'status', f' WHERE request_id = "{request_id}"')
     if status:
         message=[]

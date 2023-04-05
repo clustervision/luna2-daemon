@@ -32,6 +32,7 @@ import concurrent.futures
 from utils.database import Database
 from utils.status import Status
 from utils.queue import Queue
+from utils.filter import Filter
 
 
 LOGGER = Log.get_logger()
@@ -55,6 +56,8 @@ def service(name, action):
         
     code=500
     response= {"message": f'service {name} {action} failed. No sign of life of spawned thread.'}
+    name = Filter().filter(name,'service')
+    action = Filter().filter(action,'action')
 
     #Antoine
     request_id=str(time())+str(randint(1001,9999))+str(getpid())
@@ -104,6 +107,7 @@ def service_status(request_id=None):
     LOGGER.debug(f"service STATUS: request_id: [{request_id}]")
     access_code = 400
     response = {'message': 'Bad Request.'}
+    request_id = Filter().filter(request_id,'request_id')
     status = Database().get_record(None , 'status', f' WHERE request_id = "{request_id}"')
     if status:
         message=[]

@@ -33,6 +33,7 @@ def monitor_service(name=None):
     Currently supported services are DHCP, DNS and luna2 itself.
     Output - Status
     """
+    name = Filter().filter(name,'monitor')
     if name == "luna2":
         response, code = Helper().checkdbstatus()
         LOGGER.info(f'Database status is: {response}.')
@@ -49,6 +50,7 @@ def monitor_status_get(node=None):
     """
     access_code = 404
     response = {"monitor": {"status": { node: { } } } }
+    node = Filter().filter(node,'name')
     nodes = Database().get_record(None, 'node', f' WHERE id = "{node}" OR name = "{node}"')
     if nodes:
         status,access_code=Monitor().installer_state(nodes[0]['status'])
@@ -75,6 +77,7 @@ def monitor_status_post(node=None):
         request_data = Filter().validate_input(request.get_json(force=True))
         if request_data:
             try:
+                node = Filter().filter(node,'name')
                 state = request_data['monitor']['status'][node]['state']
                 where = f' WHERE id = "{node}" OR name = "{node}";'
                 dbnode = Database().get_record(None, 'node', where)
@@ -93,3 +96,4 @@ def monitor_status_post(node=None):
                 access_code = 400
 
     return json.dumps(response), access_code
+

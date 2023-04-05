@@ -30,6 +30,8 @@ from utils.config import Config
 from utils.status import Status
 from utils.service import Service
 from utils.queue import Queue
+from utils.filter import Filter
+from utils.monitor import Monitor
 
 LOGGER = Log.get_logger()
 config_blueprint = Blueprint('config', __name__)
@@ -122,6 +124,8 @@ def config_node():
             del node['groupid']
             del node['osimageid']
             del node['switchid']
+
+            node['status'],*_=Monitor().installer_state(node['status'])
 
             node['bootmenu'] = Helper().make_bool(node['bootmenu'])
             node['localboot'] = Helper().make_bool(node['localboot'])
@@ -228,6 +232,7 @@ def config_node_get(name=None):
         del node['groupid']
         del node['osimageid']
         del node['switchid']
+        node['status'],*_=Monitor().installer_state(node['status'])
         node['service'] = Helper().make_bool(node['service'])
         node['setupbmc'] = Helper().make_bool(node['setupbmc'])
         node['localboot'] = Helper().make_bool(node['localboot'])
@@ -242,23 +247,6 @@ def config_node_get(name=None):
                     node['hostname'] = nodename + '.' + interface['network']
                 interface['options'] = interface['options'] or ""
                 node['interfaces'].append(interface)
-
-#        Commented out since we do not need it but i left it as we _might_ use it one day
-#        group_interface = Database().get_record_join(['groupinterface.interface','network.name as network'], ['network.id=groupinterface.networkid','groupinterface.groupid=node.groupid'],[f"node.id='{nodeid}'"])
-#        if group_interface:
-#            for interface in group_interface:
-#                add_if=True
-#                for check_interface in node['interfaces']:
-#                    if check_interface['interface'] == interface['interface']:
-#                        # the node has the same interface so we ditch the group one
-#                        add_if=False
-#                        break
-#                if add_if:
-#                    interfacename,*_ = (node['provision_interface'].split(' ')+[None]) # we skim off parts that we added for clarity in above section (e.g. (default)). also works if there's no additional info
-#                    if interface['interface'] == interfacename and interface['network']: # if it is my prov interf then it will get that domain as a FQDN.
-#                        node['hostname'] = nodename + '.' + interface['network'] 
-#                    interface['interface'] += f" ({node['group']})"
-#                    node['interfaces'].append(interface)
 
         response['config']['node'][nodename] = node
         LOGGER.info('Provided list of all nodes.')
@@ -290,7 +278,7 @@ def config_node_post(name=None):
     create, update = False, False
 
     if Helper().check_json(request.data):
-        request_data = request.get_json(force=True)
+        request_data = Filter().validate_input(request.get_json(force=True))
     else:
         response = {'message': 'Bad Request.'}
         access_code = 400
@@ -302,12 +290,12 @@ def config_node_post(name=None):
             return json.dumps(response), access_code
 
         data = request_data['config']['node'][name]
-        name = name.replace('_','-')
+        name = Filter().filter(name,'name')
         node = Database().get_record(None, 'node', f' WHERE name = "{name}"')
         if node:
             nodeid = node[0]['id']
             if 'newnodename' in data:  # is mentioned as newhostname in design documents!
-                nodename_new = data['newnodename'].replace('_','-')
+                nodename_new = data['newnodename']
                 where = f' WHERE `name` = "{nodename_new}"'
                 newnode_check = Database().get_record(None, 'node', where)
                 if newnode_check:
@@ -324,8 +312,6 @@ def config_node_post(name=None):
                 access_code = 400
                 return json.dumps(response), access_code
             create = True
-
-        data['name'] = data['name'].replace('_','-')
 
         for item in items:
             if item in data: 
@@ -387,7 +373,7 @@ def config_node_post(name=None):
                                 if network:
                                     for ip in network:
                                         ips.append(ip['ipaddress'])
-#                                    ## ---> we do not ping nodes as it will take time if we add bulk nodes, it'll take 1s per node.
+#                                    ## ---> we do not ping nodes as it will take time if we add bulk nodes, it'll take 1s per node. code block removal pending?
 #                                    ret=0
 #                                    max=5 # we try to ping for X ips, if none of these are free, something else is going on (read: rogue devices)....
 #                                    while(max>0 and ret!=1):
@@ -460,7 +446,7 @@ def config_node_clone(name=None):
     }
 
     if Helper().check_json(request.data):
-        request_data = request.get_json(force=True)
+        request_data = Filter().validate_input(request.get_json(force=True))
     else:
         response = {'message': 'Bad Request.'}
         access_code = 400
@@ -474,12 +460,12 @@ def config_node_clone(name=None):
         srcnodename=name
         newnodename=None
         data = request_data['config']['node'][name]
-        name = name.replace('_','-')
+        name = Filter().filter(name,'name')
         node = Database().get_record(None, 'node', f' WHERE name = "{name}"')
         if node:
             nodeid = node[0]['id']
             if 'newnodename' in data: 
-                newnodename = data['newnodename'].replace('_','-')
+                newnodename = data['newnodename']
                 where = f' WHERE `name` = "{newnodename}"'
                 newnode_check = Database().get_record(None, 'node', where)
                 if newnode_check:
@@ -497,8 +483,6 @@ def config_node_clone(name=None):
             response = {'message': f'Bad Request; Source node {name} does not exist.'}
             access_code = 400
             return json.dumps(response), access_code
-
-        data['name'] = data['name'].replace('_','-')
 
         del node[0]['id']
         del node[0]['status']
@@ -608,7 +592,7 @@ def config_node_clone(name=None):
                                     access_code = 500
                                     return json.dumps(response), access_code
 
-            #Service().queue('dhcp','restart') # do we need dhcp restart? MAC is wiped on new NIC so no real need i guess
+            #Service().queue('dhcp','restart') # do we need dhcp restart? MAC is wiped on new NIC so no real need i guess. pending
             Service().queue('dns','restart')
 
         else:
@@ -641,7 +625,7 @@ def config_node_delete(name=None):
         # ----
         Service().queue('dns','restart')
         Service().queue('dhcp','restart')
-        # below might look as redundant but is added to prevent a possible race condition when many nodes are added in a loop.
+        # below might look redundant but is added to prevent a possible race condition when many nodes are added in a loop.
         # the below tasks ensures that even the last node will be included in dhcp/dns
         Queue().add_task_to_queue(f'dhcp:restart','housekeeper','__node_delete__')
         Queue().add_task_to_queue(f'dns:restart','housekeeper','__node_delete__')
@@ -696,7 +680,7 @@ def config_node_post_interfaces(name=None):
     Output - Node Interface.
     """
     if Helper().check_json(request.data):
-        request_data = request.get_json(force=True)
+        request_data = Filter().validate_input(request.get_json(force=True))
     else:
         response = {'message': 'Bad Request.'}
         access_code = 400
@@ -947,7 +931,7 @@ def config_group_post(name=None):
     create, update = False, False
 
     if Helper().check_json(request.data):
-        request_data = request.get_json(force=True)
+        request_data = Filter().validate_input(request.get_json(force=True))
     else:
         response = {'message': 'Bad Request.'}
         access_code = 400
@@ -999,6 +983,7 @@ def config_group_post(name=None):
             osname = data['osimage']
             del data['osimage']
             data['osimageid'] = Database().getid_byname('osimage', osname)
+        newinterface=None
         if 'interfaces' in data:
             newinterface = data['interfaces']
             del data['interfaces']
@@ -1079,7 +1064,7 @@ def config_group_clone(name=None):
     }
 
     if Helper().check_json(request.data):
-        request_data = request.get_json(force=True)
+        request_data = Filter().validate_input(request.get_json(force=True))
     else:
         response = {'message': 'Bad Request.'}
         access_code = 400
@@ -1256,7 +1241,7 @@ def config_group_post_interfaces(name=None):
     Output - Group Interface.
     """
     if Helper().check_json(request.data):
-        request_data = request.get_json(force=True)
+        request_data = Filter().validate_input(request.get_json(force=True))
     else:
         response = {'message': 'Bad Request.'}
         access_code = 400
@@ -1405,7 +1390,7 @@ def config_osimage_post(name=None):
     data = {}
     create, update = False, False
     if Helper().check_json(request.data):
-        request_data = request.get_json(force=True)
+        request_data = Filter().validate_input(request.get_json(force=True))
     else:
         response = {'message': 'Bad Request.'}
         access_code = 400
@@ -1499,7 +1484,7 @@ def config_osimage_clone(name=None):
     data = {}
     create = False
     if Helper().check_json(request.data):
-        request_data = request.get_json(force=True)
+        request_data = Filter().validate_input(request.get_json(force=True))
     else:
         response = {'message': 'Bad Request.'}
         access_code = 400
@@ -1607,7 +1592,7 @@ def config_osimage_kernel_post(name=None):
     """
     data = {}
     if Helper().check_json(request.data):
-        request_data = request.get_json(force=True)
+        request_data = Filter().validate_input(request.get_json(force=True))
     else:
         response = {'message': 'Bad Request.'}
         access_code = 400
@@ -1693,7 +1678,7 @@ def config_cluster_post():
        'createnode_ondemand':True
     }
     if Helper().check_json(request.data):
-        request_data = request.get_json(force=True)
+        request_data = Filter().validate_input(request.get_json(force=True))
     else:
         response = {'message': 'Bad Request.'}
         access_code = 400
@@ -1812,7 +1797,7 @@ def config_bmcsetup_post(bmcname=None):
     data = {}
     create, update = False, False
     if Helper().check_json(request.data):
-        request_data = request.get_json(force=True)
+        request_data = Filter().validate_input(request.get_json(force=True))
     else:
         response = {'message': 'Bad Request.'}
         access_code = 400
@@ -1865,7 +1850,7 @@ def config_bmcsetup_clone(bmcname=None):
     data = {}
     create = False
     if Helper().check_json(request.data):
-        request_data = request.get_json(force=True)
+        request_data = Filter().validate_input(request.get_json(force=True))
     else:
         response = {'message': 'Bad Request.'}
         access_code = 400
@@ -2004,14 +1989,14 @@ def config_switch_post(switch=None):
     data = {}
     create, update = False, False
     if Helper().check_json(request.data):
-        request_data = request.get_json(force=True)
+        request_data = Filter().validate_input(request.get_json(force=True))
     else:
         response = {'message': 'Bad Request.'}
         access_code = 400
         return json.dumps(response), access_code
     if request_data:
         data = request_data['config']['switch'][switch]
-        switch = switch.replace('_','-')
+        switch = Filter().filter(switch,'name')
         data['name'] = switch
         checkswitch = Database().get_record(None, 'switch', f' WHERE `name` = "{switch}"')
         if checkswitch:
@@ -2022,7 +2007,6 @@ def config_switch_post(switch=None):
             update = True
         else:
             create = True
-        data['name'] = data['name'].replace('_','-')
 
         switchcolumns = Database().get_columns('switch')
         if 'ipaddress' in data.keys():
@@ -2082,7 +2066,7 @@ def config_switch_clone(switch=None):
     srcswitch=None
     ipaddress,networkname = None,None
     if Helper().check_json(request.data):
-        request_data = request.get_json(force=True)
+        request_data = Filter().validate_input(request.get_json(force=True))
     else:
         response = {'message': 'Bad Request.'}
         access_code = 400
@@ -2092,7 +2076,7 @@ def config_switch_clone(switch=None):
         srcswitch=data['name']
         if 'newswitchname' in data:
             data['name'] = data['newswitchname']
-            newswitchname = data['newswitchname'].replace('_','-')
+            newswitchname = data['newswitchname']
             del data['newswitchname']
         else:
             response = {'message': 'Kindly provide the new switch name.'}
@@ -2113,7 +2097,6 @@ def config_switch_clone(switch=None):
             networkname=data['network']
             del data['network']
 
-        data['name'] = data['name'].replace('_','-')
         switchcolumns = Database().get_columns('switch')
         columncheck = Helper().checkin_list(data, switchcolumns)
         if data:
@@ -2289,14 +2272,14 @@ def config_otherdev_post(device=None):
     data = {}
     create, update = False, False
     if Helper().check_json(request.data):
-        request_data = request.get_json(force=True)
+        request_data = Filter().validate_input(request.get_json(force=True))
     else:
         response = {'message': 'Bad Request.'}
         access_code = 400
         return json.dumps(response), access_code
     if request_data:
         data = request_data['config']['otherdev'][device]
-        device = device.replace('_','-')
+        device = Filter().filter(device,'name')
         data['name'] = device
         checkdevice = Database().get_record(None, 'otherdevices', f' WHERE `name` = "{device}"')
         if checkdevice:
@@ -2314,7 +2297,6 @@ def config_otherdev_post(device=None):
         if 'network' in data.keys():
             network=data['network']
             del data['network']
-        data['name'] = data['name'].replace('_','-')
 
         columncheck = Helper().checkin_list(data, devicecolumns)
         data = Helper().check_ip_exist(data)
@@ -2367,7 +2349,7 @@ def config_otherdev_clone(device=None):
     srcdevice=None
     ipaddress,networkname = None,None
     if Helper().check_json(request.data):
-        request_data = request.get_json(force=True)
+        request_data = Filter().validate_input(request.get_json(force=True))
     else:
         response = {'message': 'Bad Request.'}
         access_code = 400
@@ -2377,7 +2359,7 @@ def config_otherdev_clone(device=None):
         srcdevice=data['name']
         if 'newotherdevname' in data:
             data['name'] = data['newotherdevname']
-            newdevicename = data['newotherdevname'].replace('_','-')
+            newdevicename = data['newotherdevname']
             del data['newotherdevname']
         else:
             response = {'message': 'Kindly provide the new device name.'}
@@ -2398,7 +2380,6 @@ def config_otherdev_clone(device=None):
         if 'network' in data:
             networkname=data['network']
             del data['network']
-        data['name'] = data['name'].replace('_','-')
         devicecolumns = Database().get_columns('otherdevices')
         columncheck = Helper().checkin_list(data, devicecolumns)
 
@@ -2577,7 +2558,7 @@ def config_network_post(name=None):
     data = {}
     create, update = False, False
     if Helper().check_json(request.data):
-        request_data = request.get_json(force=True)
+        request_data = Filter().validate_input(request.get_json(force=True))
     else:
         response = {'message': 'Bad Request.'}
         access_code = 400
@@ -2876,7 +2857,7 @@ def config_post_secrets_node(name=None):
     data, = {}
     create, update = False, False
     if Helper().check_json(request.data):
-        request_data = request.get_json(force=True)
+        request_data = Filter().validate_input(request.get_json(force=True))
     else:
         response = {'message': 'Bad Request.'}
         access_code = 400
@@ -2975,7 +2956,7 @@ def config_post_node_secret(name=None, secret=None):
     """
     data = {}
     if Helper().check_json(request.data):
-        request_data = request.get_json(force=True)
+        request_data = Filter().validate_input(request.get_json(force=True))
     else:
         response = {'message': 'Bad Request.'}
         access_code = 400
@@ -3043,7 +3024,7 @@ def config_clone_node_secret(name=None, secret=None):
     """
     data = {}
     if Helper().check_json(request.data):
-        request_data = request.get_json(force=True)
+        request_data = Filter().validate_input(request.get_json(force=True))
     else:
         response = {'message': 'Bad Request.'}
         access_code = 400
@@ -3170,7 +3151,7 @@ def config_post_secrets_group(name=None):
     data = {}
     create, update = False, False
     if Helper().check_json(request.data):
-        request_data = request.get_json(force=True)
+        request_data = Filter().validate_input(request.get_json(force=True))
     else:
         response = {'message': 'Bad Request.'}
         access_code = 400
@@ -3269,7 +3250,7 @@ def config_post_group_secret(name=None, secret=None):
     """
     data = {}
     if Helper().check_json(request.data):
-        request_data = request.get_json(force=True)
+        request_data = Filter().validate_input(request.get_json(force=True))
     else:
         response = {'message': 'Bad Request.'}
         access_code = 400
@@ -3337,7 +3318,7 @@ def config_clone_group_secret(name=None, secret=None):
     """
     data = {}
     if Helper().check_json(request.data):
-        request_data = request.get_json(force=True)
+        request_data = Filter().validate_input(request.get_json(force=True))
     else:
         response = {'message': 'Bad Request.'}
         access_code = 400

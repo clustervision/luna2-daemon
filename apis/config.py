@@ -31,6 +31,7 @@ from utils.status import Status
 from utils.service import Service
 from utils.queue import Queue
 from utils.filter import Filter
+from utils.monitor import Monitor
 
 LOGGER = Log.get_logger()
 config_blueprint = Blueprint('config', __name__)
@@ -123,6 +124,8 @@ def config_node():
             del node['groupid']
             del node['osimageid']
             del node['switchid']
+
+            node['status'],*_=Monitor().installer_state(node['status'])
 
             node['bootmenu'] = Helper().make_bool(node['bootmenu'])
             node['localboot'] = Helper().make_bool(node['localboot'])
@@ -229,6 +232,7 @@ def config_node_get(name=None):
         del node['groupid']
         del node['osimageid']
         del node['switchid']
+        node['status'],*_=Monitor().installer_state(node['status'])
         node['service'] = Helper().make_bool(node['service'])
         node['setupbmc'] = Helper().make_bool(node['setupbmc'])
         node['localboot'] = Helper().make_bool(node['localboot'])
@@ -303,7 +307,7 @@ def config_node_post(name=None):
             return json.dumps(response), access_code
 
         data = request_data['config']['node'][name]
-        name = name.replace('_','-')
+        name = Filter().filter(name,'name')
         node = Database().get_record(None, 'node', f' WHERE name = "{name}"')
         if node:
             nodeid = node[0]['id']
@@ -473,7 +477,7 @@ def config_node_clone(name=None):
         srcnodename=name
         newnodename=None
         data = request_data['config']['node'][name]
-        name = name.replace('_','-')
+        name = Filter().filter(name,'name')
         node = Database().get_record(None, 'node', f' WHERE name = "{name}"')
         if node:
             nodeid = node[0]['id']
@@ -2009,7 +2013,7 @@ def config_switch_post(switch=None):
         return json.dumps(response), access_code
     if request_data:
         data = request_data['config']['switch'][switch]
-        switch = switch.replace('_','-')
+        switch = Filter().filter(switch,'name')
         data['name'] = switch
         checkswitch = Database().get_record(None, 'switch', f' WHERE `name` = "{switch}"')
         if checkswitch:
@@ -2292,7 +2296,7 @@ def config_otherdev_post(device=None):
         return json.dumps(response), access_code
     if request_data:
         data = request_data['config']['otherdev'][device]
-        device = device.replace('_','-')
+        device = Filter().filter(device,'name')
         data['name'] = device
         checkdevice = Database().get_record(None, 'otherdevices', f' WHERE `name` = "{device}"')
         if checkdevice:

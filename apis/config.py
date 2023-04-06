@@ -32,6 +32,7 @@ from utils.service import Service
 from utils.queue import Queue
 from utils.filter import Filter
 from utils.monitor import Monitor
+import base64
 
 LOGGER = Log.get_logger()
 config_blueprint = Blueprint('config', __name__)
@@ -204,9 +205,9 @@ def config_node_get(name=None):
         # below section shows what's configured for the node, or the group, or a default fallback
 
         items={
-           'prescript':'<empty>',
-           'partscript':'<empty>',
-           'postscript':'<empty>',
+#           'prescript':'<empty>',
+#           'partscript':'<empty>',
+#           'postscript':'<empty>',
            'setupbmc':False,
            'netboot':False,
            'localinstall':False,
@@ -227,6 +228,31 @@ def config_node_get(name=None):
                node[item] = node[item] or str(items[item]+' (default)')
            if 'group_'+item in node:
                del node['group_'+item]
+
+        # same as above but now specifically base64
+        b64items={
+           'prescript':'<empty>',
+           'partscript':'<empty>',
+           'postscript':'<empty>'}
+
+        try:
+            for item in b64items.keys():
+               if 'group_'+item in node and node['group_'+item] and not node[item]:
+                   data = base64.b64decode(node['group_'+item])
+                   data = data.decode("ascii")
+                   data = f"({node['group']}) {data}"
+                   group_data = base64.b64encode(data.encode())
+                   group_data = group_data.decode("ascii")
+                   node[item] = node[item] or group_data
+               else:
+                   default_str = str(b64items[item]+' (default)')
+                   default_data = base64.b64encode(default_str.encode())
+                   default_data = default_data.decode("ascii")
+                   node[item] = node[item] or default_data
+               if 'group_'+item in node:
+                   del node['group_'+item]
+        except Exception as exp:
+            LOGGER.error(f"{exp}")
 
         del node['id']
         del node['bmcsetupid']
@@ -250,7 +276,8 @@ def config_node_get(name=None):
                 node['interfaces'].append(interface)
 
         response['config']['node'][nodename] = node
-        LOGGER.info('Provided list of all nodes.')
+        LOGGER.info('Provided details for node.')
+        LOGGER.info(f"{node}")
         access_code = 200
     else:
         LOGGER.error(f'Node {name} is not available.')

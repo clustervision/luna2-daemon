@@ -2134,6 +2134,7 @@ def config_switch_post(switch=None):
             create = True
 
         switchcolumns = Database().get_columns('switch')
+        ipaddress,network=None,None
         if 'ipaddress' in data.keys():
             ipaddress=data['ipaddress']
             del data['ipaddress']
@@ -2219,6 +2220,7 @@ def config_switch_clone(switch=None):
         else:
             create = True
 
+        ipaddress,network=None,None
         if 'ipaddress' in data:
             ipaddress=data['ipaddress']
             del data['ipaddress']
@@ -2425,7 +2427,9 @@ def config_otherdev_post(device=None):
             update = True
         else:
             create = True
+
         devicecolumns = Database().get_columns('otherdevices')
+        ipaddress,network=None,None
         if 'ipaddress' in data.keys():
             ipaddress=data['ipaddress']
             del data['ipaddress']
@@ -2513,6 +2517,7 @@ def config_otherdev_clone(device=None):
         else:
             create = True
 
+        ipaddress,network=None,None
         if 'ipaddress' in data:
             ipaddress=data['ipaddress']
             del data['ipaddress']

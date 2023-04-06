@@ -276,8 +276,7 @@ def config_node_get(name=None):
                 node['interfaces'].append(interface)
 
         response['config']['node'][nodename] = node
-        LOGGER.info('Provided details for node.')
-        LOGGER.info(f"{node}")
+        LOGGER.info(f'Provided details for node {name}.')
         access_code = 200
     else:
         LOGGER.error(f'Node {name} is not available.')
@@ -904,15 +903,21 @@ def config_group_get(name=None):
     """
     # things we have to set for a group
     items={
-       'prescript':'<empty>',
-       'partscript':'<empty>',
-       'postscript':'<empty>',
+#       'prescript':'<empty>',
+#       'partscript':'<empty>',
+#       'postscript':'<empty>',
        'setupbmc':False,
        'netboot':False,
        'localinstall':False,
        'bootmenu':False,
        'provision_interface':'BOOTIF'
     }
+
+    # same as above but now specifically base64
+    b64items={
+       'prescript':'<empty>',
+       'partscript':'<empty>',
+       'postscript':'<empty>'}
 
     name = Filter().filter(name,'group')
     groups = Database().get_record(None, 'group', f' WHERE name = "{name}"')
@@ -937,11 +942,18 @@ def config_group_get(name=None):
                     if isinstance(items[item], bool):
                         grp[item]=str(Helper().make_bool(grp[item]))
                     grp[item] = str(items[item]+' (default)')
+            try:
+                for item in b64items.keys():
+                    default_str = str(b64items[item]+' (default)')
+                    default_data = base64.b64encode(default_str.encode())
+                    default_data = default_data.decode("ascii")
+                    if item in grp:
+                        grp[item] = grp[item] or default_data
+                    else:
+                        grp[item] = default_data
+            except Exception as exp:
+                LOGGER.error(f"{exp}")
 
-#            grp['setupbmc'] = Helper().make_bool(grp['setupbmc'])
-#            grp['netboot'] = Helper().make_bool(grp['netboot'])
-#            grp['localinstall'] = Helper().make_bool(grp['localinstall'])
-#            grp['bootmenu'] = Helper().make_bool(grp['bootmenu'])
             grp['osimage'] = Database().getname_byid('osimage', grp['osimageid'])
             del grp['osimageid']
             if grp['bmcsetupid']:

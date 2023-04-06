@@ -315,6 +315,24 @@ class Helper(object):
         except:
             return
 
+    def get_ip_range_size(self,start,end):
+        start_ip = ipaddress.IPv4Address(start)
+        end_ip = ipaddress.IPv4Address(end)
+        count=int(end_ip)-int(start_ip)
+        return count
+
+    def get_network_size(self,network,subnet=None):
+        try:
+            if subnet:
+                nwk=ipaddress.IPv4Network(network+'/'+subnet)
+                return nwk.num_addresses-2
+            else:
+                nwk=ipaddress.IPv4Network(network)
+                return nwk.num_addresses-2
+        except:
+            return 0
+
+
     def make_rows(self, data=None):
         """
         Input - IP Address
@@ -711,6 +729,14 @@ class Helper(object):
                         mydict[myname][item]=element[item]
         return mydict
 
+    # -----------------------------------------------------------------
+
+    def used_ipaddresses_in_network(self,network):
+        if network:
+            ipaddresses = Database().get_record_join(['ipaddress.ipaddress'], 
+                                                     ['ipaddress.networkid=network.id'], 
+                                                     [f"network.name='{network}'"])
+            return len(ipaddresses)
 
 
 

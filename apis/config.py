@@ -2736,16 +2736,30 @@ def config_network_post(name=None):
             update = True
         else:
             create = True
+
+        used_ips,dhcp_size,redistribute_ipaddresses=0,0,None
         if 'network' in data:
             nwkip = Helper().check_ip(data['network'])
             if nwkip:
                 nwkdetails = Helper().get_network_details(data['network'])
                 data['network'] = nwkip
                 data['subnet'] = nwkdetails['subnet']
+                used_ips=Helper().used_ipaddresses_in_network(name)
+                if checknetwork:
+                    if (checknetwork[0]['network'] != data['network']) or (checknetwork[0]['subnet'] != data['subnet']):
+                        redistribute_ipaddresses=True
             else:
                 response = {'message': f'Incorrect network IP: {data["network"]}.'}
                 access_code = 400
                 return json.dumps(response), access_code
+        elif checknetwork:
+            #we fetch what we have from the DB
+            data['network']=checknetwork[0]['network']
+            data['subnet']=checknetwork[0]['subnet']
+        else:
+            response = {'message': "Not enough details provided. network/subnet in CIDR notation expected"}
+            access_code = 400
+            return json.dumps(response), access_code
         if 'gateway' in data:
             gwdetails = Helper().check_ip_range(data['gateway'], data['network']+'/'+data['subnet'])
             if not gwdetails:
@@ -2767,8 +2781,7 @@ def config_network_post(name=None):
                 return json.dumps(response), access_code
         if 'dhcp' in data:
             if 'dhcp_range_begin' in data:
-                #subnet = data['network']+'/'+data['subnet']
-            # --------- we have to check if it is supplied er else get it from the DB
+                subnet = data['network']+'/'+data['subnet']
                 dhcpstartdetails = Helper().check_ip_range(data['dhcp_range_begin'], subnet)
                 if not dhcpstartdetails:
                     response = {'message': f'Incorrect dhcp start: {data["dhcp_range_begin"]}.'}
@@ -2789,24 +2802,44 @@ def config_network_post(name=None):
                 response = {'message': 'DHCP end range is a required parameter.'}
                 access_code = 400
                 return json.dumps(response), access_code
+            dhcp_size=Helper().get_ip_range_size(data['dhcp_range_begin'],data['dhcp_range_end'])
         else:
             data['dhcp'] = False
             data['dhcp_range_begin'] = ""
             data['dhcp_range_end'] = ""
+
         networkcolumns = Database().get_columns('network')
         columncheck = Helper().checkin_list(data, networkcolumns)
-        row = Helper().make_rows(data)
         if columncheck:
+            row = Helper().make_rows(data)
             if create:
                 Database().insert('network', row)
                 response = {'message': 'Network created.'}
-                access_code = 201
+                access_code = 200
             if update:
+                if redistribute_ipaddresses:
+                    nwk_size=Helper().get_network_size(data['network'],data['subnet'])
+                    avail=nwk_size-dhcp_size
+                    if avail < used_ips:
+                        response = {'message': f"The proposed network config allows for {nwk_size} ip addresses. DHCP range will occupy {dhcp_size} ip addresses. The request will not accomodate for the currently {used_ips} in use ip addresses."}
+                        access_code = 400
+                        return json.dumps(response), access_code
                 where = [{"column": "id", "value": networkid}]
                 Database().update('network', row, where)
+                #TWANNIE
+                if redistribute_ipaddresses:
+                    ## below section takes care (in the background), the adding/renaming/deleting. for adding nextfree ip-s will be selected. time consuming therefor background
+                    queue_id,queue_response = Queue().add_task_to_queue(f'update_all_interface_ipaddresses:{name}','network_change')
+                    next_id = Queue().next_task_in_queue('group_interface')
+                    if queue_id == next_id:
+                        executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
+                        executor.submit(Config().update_interface_ipaddresses_on_network_change,name)
+                        executor.shutdown(wait=False)
+                        #Config().update_interface_ipaddresses_on_network_change(name)
                 response = {'message': 'Network updated.'}
                 access_code = 204
             Service().queue('dns','restart')
+            Service().queue('dhcp','restart') # technically only needed when dhcp changes, but it doesn't hurt to just do it
         else:
             response = {'message': 'Bad Request; Columns are incorrect.'}
             access_code = 400

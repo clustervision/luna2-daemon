@@ -645,7 +645,6 @@ $TTL 604800
                     # ADDING ---------------------------------------------------------------------------------------------------
                     if action=='add_interface_to_group_nodes' and interface:
                         ips=[]
-                        avail=None
                         network = Database().get_record_join(['ipaddress.ipaddress','ipaddress.networkid as networkid','network.network','network.subnet','network.name as networkname'], 
                                                              ['ipaddress.networkid=network.id','network.id=groupinterface.networkid','groupinterface.groupid=group.id'], 
                                                              [f"`group`.name='{group}'",f"groupinterface.interface='{interface}'"])
@@ -657,7 +656,7 @@ $TTL 604800
                                 if result and network:
                                     for ip in network:
                                         ips.append(ip['ipaddress'])
-                                    ret=0
+                                    ret,avail=0,None
                                     max=5 # we try to ping for X ips, if none of these are free, something else is going on (read: rogue devices)....
                                     while(max>0 and ret!=1):
                                         avail=Helper().get_available_ip(network[0]['network'],network[0]['subnet'],ips)
@@ -665,7 +664,6 @@ $TTL 604800
                                         output,ret=Helper().runcommand(f"ping -w1 -c1 {avail}", True, 3)
                                         max-=1
         
-                                    avail=Helper().get_available_ip(network[0]['network'],network[0]['subnet'],ips)
                                     if avail:
                                         ipaddress=avail
                                         result,mesg = self.node_interface_ipaddress_config(node['nodeid'],interface,ipaddress,network[0]['networkname'])
@@ -697,5 +695,50 @@ $TTL 604800
             self.logger.error(f"update_interface_on_group_nodes has problems: {exp}")
 
 
+    # -----------------
+
+    def update_interface_ipaddresses_on_network_change(self,name,request_id=None):  #name=network
+        self.logger.info(f"update_interface_ipaddresses_on_network_change called")
+        try:
+            while next_id := Queue().next_task_in_queue('network_change'):
+                self.logger.info(f"update_interface_ipaddresses_on_network_change sees job in queue as next: {next_id}")
+                details=Queue().get_task_details(next_id)
+                #request_id=details['request_id']
+                action,network,*_=(details['task'].split(':')+[None]+[None])
+
+                if network==name:
+                    if action=='update_all_interface_ipaddresses':
+                        ips=[]
+                        ipaddresses = Database().get_record_join(['ipaddress.ipaddress','ipaddress.networkid as networkid','network.network','network.subnet','network.name as networkname','ipaddress.id as ipaddressid'], 
+                                                             ['ipaddress.networkid=network.id'], 
+                                                             [f"network.name='{network}'","ipaddress.tableref!='controller'"])
+                        if ipaddresses:
+                            for ipaddress in ipaddresses:
+                                ret,avail=0,None
+                                max=5 # we try to ping for X ips, if none of these are free, something else is going on (read: rogue devices)....
+                                while(max>0 and ret!=1):
+                                    avail=Helper().get_available_ip(ipaddress['network'],ipaddress['subnet'],ips)
+                                    ips.append(avail)
+                                    output,ret=Helper().runcommand(f"ping -w1 -c1 {avail}", True, 3)
+                                    max-=1
+
+                                if avail:
+                                    row   = [{"column": "ipaddress", "value": f"{avail}"}]
+                                    where = [{"column": "id", "value": f"{ipaddress['ipaddressid']}"}]
+                                    mesg = Database().update('ipaddress', row, where)
+                                    self.logger.info(f"For network {network} changing IP {ipaddress['ipaddress']} to {avail}. {mesg}")
+                                else:
+                                    self.logger.error(f"For network {network} changing IP {ipaddress['ipaddress']} not possible. no free IP addresses available.")
+
+                    Queue().remove_task_from_queue(next_id)
+                    serv_queue_id,serv_response = Queue().add_task_to_queue(f'dns:restart','housekeeper','__update_interface_ipaddresses_on_network_change__')
+                    serv_queue_id,serv_response = Queue().add_task_to_queue(f'dhcp:restart','housekeeper','__update_interface_ipaddresses_on_network_change__')
+
+                else:
+                    self.logger.info(f"{details['task']} is not for us.")
+                    sleep(10)
+
+        except Exception as exp:
+            self.logger.error(f"update_interface_ipaddresses_on_network_change has problems: {exp}")
 
 

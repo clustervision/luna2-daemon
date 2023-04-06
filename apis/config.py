@@ -2748,6 +2748,7 @@ def config_network_post(name=None):
                 if checknetwork:
                     if (checknetwork[0]['network'] != data['network']) or (checknetwork[0]['subnet'] != data['subnet']):
                         redistribute_ipaddresses=True
+                        LOGGER.info("We will redistribute ip addresses")
             else:
                 response = {'message': f'Incorrect network IP: {data["network"]}.'}
                 access_code = 400
@@ -2830,7 +2831,7 @@ def config_network_post(name=None):
                 if redistribute_ipaddresses:
                     ## below section takes care (in the background), the adding/renaming/deleting. for adding nextfree ip-s will be selected. time consuming therefor background
                     queue_id,queue_response = Queue().add_task_to_queue(f'update_all_interface_ipaddresses:{name}','network_change')
-                    next_id = Queue().next_task_in_queue('group_interface')
+                    next_id = Queue().next_task_in_queue('network_change')
                     if queue_id == next_id:
                         executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
                         executor.submit(Config().update_interface_ipaddresses_on_network_change,name)

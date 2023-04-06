@@ -316,10 +316,13 @@ class Helper(object):
             return
 
     def get_ip_range_size(self,start,end):
-        start_ip = ipaddress.IPv4Address(start)
-        end_ip = ipaddress.IPv4Address(end)
-        count=int(end_ip)-int(start_ip)
-        return count
+        try:
+            start_ip = ipaddress.IPv4Address(start)
+            end_ip = ipaddress.IPv4Address(end)
+            count=int(end_ip)-int(start_ip)
+            return count
+        except:
+            return 0
 
     def get_network_size(self,network,subnet=None):
         try:
@@ -331,6 +334,21 @@ class Helper(object):
                 return nwk.num_addresses-2
         except:
             return 0
+
+    def get_ip_range_ips(self,network,subnet,size,offset=None):
+        try:
+            nwk = ipaddress.IPv4Network(network+'/'+subnet)
+            first = nwk[1]
+            last  = nwk[(size+1)]
+            if offset:
+                first_int = int(first) + offset
+                last_int = int(last) + offset
+                first = ipaddress.IPv4Address(first_int)  # ip_address instead of IPv4Address might also work and is ipv6 complaint? pending
+                last = ipaddress.IPv4Address(last_int)
+            return str(first),str(last)
+        except Exception as exp:
+            self.logger.error(f"something went wrong: {exp}")
+            return None,None
 
 
     def make_rows(self, data=None):

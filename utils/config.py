@@ -741,4 +741,30 @@ $TTL 604800
         except Exception as exp:
             self.logger.error(f"update_interface_ipaddresses_on_network_change has problems: {exp}")
 
+    def update_dhcp_range_on_network_change(self,name,request_id=None): # name=network
+        network = Database().get_record(None, 'network', f' WHERE `name` = "{name}"')
+        if network:
+            if network[0]['dhcp_range_begin'] and network[0]['dhcp_range_end']:
+                subnet = network[0]['network']+'/'+network[0]['subnet']
+                dhcpbeginok = Helper().check_ip_range(network[0]['dhcp_range_begin'], subnet)
+                dhcpendok = Helper().check_ip_range(network[0]['dhcp_range_end'], subnet)
+                if dhcpbeginok and dhcpendok:
+                    self.logger.info(f"{network[0]['network']}/{network[0]['subnet']} :: dhcp {network[0]['dhcp_range_begin']}-{network[0]['dhcp_range_end']} fits with in network range. no change")
+                    return True
+                dhcp_size=Helper().get_ip_range_size(network[0]['dhcp_range_begin'],network[0]['dhcp_range_end'])
+                nwk_size=Helper().get_network_size(network[0]['network'],network[0]['subnet'])
+                if ((100*dhcp_size)/nwk_size) > 50: # == 50%
+                    dhcp_size=int(nwk_size/10) # we reduce this to 10%
+                                                                                   #  how many,  offset start
+                dhcpbegin,dhcpend=Helper().get_ip_range_ips(network[0]['network'],network[0]['subnet'],dhcp_size,(int(nwk_size/2)-4))
+                self.logger.info(f"{network[0]['network']}/{network[0]['subnet']} :: new dhcp range {dhcpbegin}-{dhcpend}")
+                if dhcpbegin and dhcpend:
+                    row   = [{"column": "dhcp_range_begin", "value": f"{dhcpbegin}"},
+                             {"column": "dhcp_range_end", "value": f"{dhcpend}"}]
+                    where = [{"column": "name", "value": f"{name}"}]
+                    mesg = Database().update('network', row, where)
+                    serv_queue_id,serv_response = Queue().add_task_to_queue(f'dhcp:restart','housekeeper','__update_dhcp_range_on_network_change__')
+                
+
+
 

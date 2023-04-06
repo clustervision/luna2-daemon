@@ -2835,6 +2835,7 @@ def config_network_post(name=None):
                 Database().update('network', row, where)
                 #TWANNIE
                 if redistribute_ipaddresses:
+                    Config().update_dhcp_range_on_network_change(name)
                     ## below section takes care (in the background), the adding/renaming/deleting. for adding nextfree ip-s will be selected. time consuming therefor background
                     queue_id,queue_response = Queue().add_task_to_queue(f'update_all_interface_ipaddresses:{name}','network_change')
                     next_id = Queue().next_task_in_queue('network_change')

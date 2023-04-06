@@ -2160,14 +2160,15 @@ def config_switch_post(switch=None):
                 access_code = 400
         #Antoine
         # ----------- interface(s) update/create -------------
-        result,mesg=Config().device_ipaddress_config(switchid,'switch',ipaddress,network)
-        response = {'message': f"{mesg}"}
+        if ipaddress or network:
+            result,mesg=Config().device_ipaddress_config(switchid,'switch',ipaddress,network)
+            response = {'message': f"{mesg}"}
 
-        if result is False:
-            access_code=500
-        else:
-            Service().queue('dhcp','restart')
-            Service().queue('dns','restart')
+            if result is False:
+                access_code=500
+            else:
+                Service().queue('dhcp','restart')
+                Service().queue('dns','restart')
         return json.dumps(response), access_code
 
     else:
@@ -2457,14 +2458,15 @@ def config_otherdev_post(device=None):
                 return json.dumps(response), access_code
         #Antoine
         # ----------- interface(s) update/create -------------
-        result,mesg=Config().device_ipaddress_config(deviceid,'otherdevices',ipaddress,network)
-        response = {'message': f"{mesg}"}
+        if ipaddress or network:
+            result,mesg=Config().device_ipaddress_config(deviceid,'otherdevices',ipaddress,network)
+            response = {'message': f"{mesg}"}
 
-        if result is False:
-            access_code=500
-        else:
-            Service().queue('dhcp','restart')
-            Service().queue('dns','restart')
+            if result is False:
+                access_code=500
+            else:
+                Service().queue('dhcp','restart')
+                Service().queue('dns','restart')
         return json.dumps(response), access_code
 
     else:

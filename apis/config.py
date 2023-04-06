@@ -2805,9 +2805,14 @@ def config_network_post(name=None):
                 return json.dumps(response), access_code
             dhcp_size=Helper().get_ip_range_size(data['dhcp_range_begin'],data['dhcp_range_end'])
         else:
-            data['dhcp'] = False
-            data['dhcp_range_begin'] = ""
-            data['dhcp_range_end'] = ""
+            if checknetwork:
+                data['dhcp']=checknetwork[0]['dhcp']
+                data['dhcp_range_start']=checknetwork[0]['dhcp_range_start']
+                data['dhcp_range_end']=checknetwork[0]['dhcp_range_end']
+            else:
+                data['dhcp'] = False
+                data['dhcp_range_begin'] = ""
+                data['dhcp_range_end'] = ""
 
         networkcolumns = Database().get_columns('network')
         columncheck = Helper().checkin_list(data, networkcolumns)

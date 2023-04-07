@@ -249,13 +249,15 @@ def bootstrap(bootstrapfile=None):
     clusterid = cluster[0]['id']
     for nwkx in BOOTSTRAP['NETWORKS'].keys():
         network_details=Helper().get_network_details(BOOTSTRAP['NETWORKS'][nwkx]['NETWORK'])
+        defaultgw_ip=defaultserver_ip
         dhcp,dhcp_range_begin,dhcp_range_end=0,None,None
         if 'DHCP' in BOOTSTRAP['NETWORKS'][nwkx]:
             dhcp=1
             if 'RANGE' in BOOTSTRAP['NETWORKS'][nwkx]:
                 dhcp_range_begin,dhcp_range_end,*_=(BOOTSTRAP['NETWORKS'][nwkx]['RANGE'].split('-')+[None])
                 if dhcp_range_end is None:
-                    dhcp_range_begin=None
+                    dhcp_range_begin=''
+                    dhcp_range_end=''
         default_network = [
                 {'column': 'name', 'value': str(nwkx)},
                 {'column': 'network', 'value': network_details['network']},
@@ -263,9 +265,10 @@ def bootstrap(bootstrapfile=None):
                 {'column': 'dhcp', 'value': dhcp},
                 {'column': 'dhcp_range_begin', 'value': dhcp_range_begin},
                 {'column': 'dhcp_range_end', 'value': dhcp_range_end},
-                {'column': 'gateway', 'value': defaultserver_ip}
+                {'column': 'gateway', 'value': defaultgw_ip}
             ]
         Database().insert('network', default_network)
+        defaultgw_ip='' # a little tricky but we assume that 'cluster' network is the first to be dealt with and so it works. pending
     network = Database().get_record(None, 'network', None)
     networkid = network[0]['id']
     networkname = network[0]['name']

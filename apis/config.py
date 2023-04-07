@@ -2728,11 +2728,13 @@ def config_network_post(name=None):
                 nwkdetails = Helper().get_network_details(data['network'])
                 data['network'] = nwkip
                 data['subnet'] = nwkdetails['subnet']
-                used_ips=Helper().used_ipaddresses_in_network(name)
+                used_ips=Helper().get_quantity_occupied_ipaddresses_in_network(name)
                 if checknetwork:
                     if (checknetwork[0]['network'] != data['network']) or (checknetwork[0]['subnet'] != data['subnet']):
                         redistribute_ipaddresses=True
                         LOGGER.info("We will redistribute ip addresses")
+                        if not 'gateway' in data:
+                            data['gateway']=''  # we have to remove the gateway if we did not get a new one and an existing is in place. should we warn the user? pending
             else:
                 response = {'message': f'Incorrect network IP: {data["network"]}.'}
                 access_code = 400
@@ -2747,20 +2749,20 @@ def config_network_post(name=None):
             return json.dumps(response), access_code
         if 'gateway' in data:
             gwdetails = Helper().check_ip_range(data['gateway'], data['network']+'/'+data['subnet'])
-            if not gwdetails:
+            if (not gwdetails) and data['gateway'] != '':
                 response = {'message': f'Incorrect gateway IP: {data["gateway"]}.'}
                 access_code = 400
                 return json.dumps(response), access_code
         if 'nameserver_ip' in data:
             nsipdetails = Helper().check_ip_range(data['nameserver_ip'], data['network']+'/'+data['subnet'])
-            if not nsipdetails:
+            if (not nsipdetails) and data['nameserver_ip'] != '':
                 response = {'message': f'Incorrect Nameserver IP: {data["nameserver_ip"]}.'}
                 access_code = 400
                 return json.dumps(response), access_code
         if 'ntp_server' in data:
             subnet = data['network']+'/'+data['subnet']
             ntpdetails = Helper().check_ip_range(data['ntp_server'], subnet)
-            if not ntpdetails:
+            if (not ntpdetails) and data['ntp_server'] != '':
                 response = {'message': f'Incorrect NTP Server IP: {data["ntp_server"]}.'}
                 access_code = 400
                 return json.dumps(response), access_code

@@ -645,7 +645,6 @@ $TTL 604800
                     # ADDING ---------------------------------------------------------------------------------------------------
                     if action=='add_interface_to_group_nodes' and interface:
                         ips=[]
-                        avail=None
                         network = Database().get_record_join(['ipaddress.ipaddress','ipaddress.networkid as networkid','network.network','network.subnet','network.name as networkname'], 
                                                              ['ipaddress.networkid=network.id','network.id=groupinterface.networkid','groupinterface.groupid=group.id'], 
                                                              [f"`group`.name='{group}'",f"groupinterface.interface='{interface}'"])
@@ -657,7 +656,7 @@ $TTL 604800
                                 if result and network:
                                     for ip in network:
                                         ips.append(ip['ipaddress'])
-                                    ret=0
+                                    ret,avail=0,None
                                     max=5 # we try to ping for X ips, if none of these are free, something else is going on (read: rogue devices)....
                                     while(max>0 and ret!=1):
                                         avail=Helper().get_available_ip(network[0]['network'],network[0]['subnet'],ips)
@@ -665,7 +664,6 @@ $TTL 604800
                                         output,ret=Helper().runcommand(f"ping -w1 -c1 {avail}", True, 3)
                                         max-=1
         
-                                    avail=Helper().get_available_ip(network[0]['network'],network[0]['subnet'],ips)
                                     if avail:
                                         ipaddress=avail
                                         result,mesg = self.node_interface_ipaddress_config(node['nodeid'],interface,ipaddress,network[0]['networkname'])
@@ -697,5 +695,95 @@ $TTL 604800
             self.logger.error(f"update_interface_on_group_nodes has problems: {exp}")
 
 
+    # -----------------
 
+    def update_interface_ipaddresses_on_network_change(self,name,request_id=None):  #name=network
+        self.logger.info(f"update_interface_ipaddresses_on_network_change called")
+        try:
+            while next_id := Queue().next_task_in_queue('network_change'):
+                self.logger.info(f"update_interface_ipaddresses_on_network_change sees job in queue as next: {next_id}")
+                details=Queue().get_task_details(next_id)
+                #request_id=details['request_id']
+                action,network,*_=(details['task'].split(':')+[None]+[None])
+
+                if network==name:
+                    if action=='update_all_interface_ipaddresses':
+                        ips=self.get_dhcp_range_ips_from_network(network)
+#                        network_details = Database().get_record(None, 'network', f' WHERE `name` = "{name}"')
+#                        if network_details and network_details[0]['dhcp_range_begin'] and network_details[0]['dhcp_range_end']:
+#                            ips=Helper().get_ip_range_ips(network_details[0]['dhcp_range_begin'],network_details[0]['dhcp_range_end'])
+                        ipaddresses = Database().get_record_join(['ipaddress.ipaddress','ipaddress.networkid as networkid','network.network','network.subnet','network.name as networkname','ipaddress.id as ipaddressid'], 
+                                                             ['ipaddress.networkid=network.id'], 
+                                                             [f"network.name='{network}'","ipaddress.tableref!='controller'"])
+                        if ipaddresses:
+                            for ipaddress in ipaddresses:
+                                ret,avail=0,None
+                                max=5 # we try to ping for X ips, if none of these are free, something else is going on (read: rogue devices)....
+                                while(max>0 and ret!=1):
+                                    avail=Helper().get_available_ip(ipaddress['network'],ipaddress['subnet'],ips)
+                                    ips.append(avail)
+                                    output,ret=Helper().runcommand(f"ping -w1 -c1 {avail}", True, 3)
+                                    max-=1
+
+                                if avail:
+                                    row   = [{"column": "ipaddress", "value": f"{avail}"}]
+                                    where = [{"column": "id", "value": f"{ipaddress['ipaddressid']}"}]
+                                    mesg = Database().update('ipaddress', row, where)
+                                    self.logger.info(f"For network {network} changing IP {ipaddress['ipaddress']} to {avail}. {mesg}")
+                                else:
+                                    self.logger.error(f"For network {network} changing IP {ipaddress['ipaddress']} not possible. no free IP addresses available.")
+
+                    Queue().remove_task_from_queue(next_id)
+                    serv_queue_id,serv_response = Queue().add_task_to_queue(f'dns:restart','housekeeper','__update_interface_ipaddresses_on_network_change__')
+                    serv_queue_id,serv_response = Queue().add_task_to_queue(f'dhcp:restart','housekeeper','__update_interface_ipaddresses_on_network_change__')
+
+                else:
+                    self.logger.info(f"{details['task']} is not for us.")
+                    sleep(10)
+
+        except Exception as exp:
+            self.logger.error(f"update_interface_ipaddresses_on_network_change has problems: {exp}")
+
+    def update_dhcp_range_on_network_change(self,name,request_id=None): # name=network
+        network = Database().get_record(None, 'network', f' WHERE `name` = "{name}"')
+        if network:
+            if network[0]['dhcp_range_begin'] and network[0]['dhcp_range_end']:
+                subnet = network[0]['network']+'/'+network[0]['subnet']
+                dhcpbeginok = Helper().check_ip_range(network[0]['dhcp_range_begin'], subnet)
+                dhcpendok = Helper().check_ip_range(network[0]['dhcp_range_end'], subnet)
+                if dhcpbeginok and dhcpendok:
+                    self.logger.info(f"{network[0]['network']}/{network[0]['subnet']} :: dhcp {network[0]['dhcp_range_begin']}-{network[0]['dhcp_range_end']} fits with in network range. no change")
+                    return True
+                dhcp_size=Helper().get_ip_range_size(network[0]['dhcp_range_begin'],network[0]['dhcp_range_end'])
+                nwk_size=Helper().get_network_size(network[0]['network'],network[0]['subnet'])
+                if ((100*dhcp_size)/nwk_size) > 50: # == 50%
+                    dhcp_size=int(nwk_size/10) # we reduce this to 10%
+                                                                                   #  how many,  offset start
+                dhcpbegin,dhcpend=Helper().get_ip_range_first_last_ip(network[0]['network'],network[0]['subnet'],dhcp_size,(int(nwk_size/2)-4))
+                self.logger.info(f"{network[0]['network']}/{network[0]['subnet']} :: new dhcp range {dhcpbegin}-{dhcpend}")
+                if dhcpbegin and dhcpend:
+                    row   = [{"column": "dhcp_range_begin", "value": f"{dhcpbegin}"},
+                             {"column": "dhcp_range_end", "value": f"{dhcpend}"}]
+                    where = [{"column": "name", "value": f"{name}"}]
+                    mesg = Database().update('network', row, where)
+                    serv_queue_id,serv_response = Queue().add_task_to_queue(f'dhcp:restart','housekeeper','__update_dhcp_range_on_network_change__')
+                
+
+    def get_dhcp_range_ips_from_network(self,network):
+        ips=[]
+        network_details = Database().get_record(None, 'network', f' WHERE `name` = "{name}"')
+        if network_details and network_details[0]['dhcp_range_begin'] and network_details[0]['dhcp_range_end']:
+            ips=Helper().get_ip_range_ips(network_details[0]['dhcp_range_begin'],network_details[0]['dhcp_range_end'])
+        return ips
+
+    def get_all_occupied_ips_from_network(self,network):
+        ips=[]
+        network_details = Database().get_record(None, 'network', f' WHERE `name` = "{network}"')
+        if network_details and network_details[0]['dhcp_range_begin'] and network_details[0]['dhcp_range_end']:
+            ips=Helper().get_ip_range_ips(network_details[0]['dhcp_range_begin'],network_details[0]['dhcp_range_end'])
+        network_details = Database().get_record_join(['ipaddress.ipaddress'], ['network.id=ipaddress.networkid'], [f"network.name='{network}'"])
+        if network_details:
+            for ip in network_details:
+                ips.append(ip['ipaddress'])
+        return ips
 

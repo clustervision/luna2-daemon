@@ -315,6 +315,53 @@ class Helper(object):
         except:
             return
 
+    def get_ip_range_size(self,start,end):
+        try:
+            start_ip = ipaddress.IPv4Address(start)
+            end_ip = ipaddress.IPv4Address(end)
+            count=int(end_ip)-int(start_ip)
+            return count
+        except:
+            return 0
+
+    def get_ip_range_ips(self,start,end):
+        try:
+            list=[]
+            start_ip = ipaddress.IPv4Address(start)
+            end_ip = ipaddress.IPv4Address(end)
+            for ip in range(int(start_ip),int(end_ip)):
+                list.append(str(ipaddress.IPv4Address(ip)))
+            return list
+        except:
+            return []
+
+    def get_network_size(self,network,subnet=None):
+        try:
+            if subnet:
+                nwk=ipaddress.IPv4Network(network+'/'+subnet)
+                return nwk.num_addresses-2
+            else:
+                nwk=ipaddress.IPv4Network(network)
+                return nwk.num_addresses-2
+        except:
+            return 0
+
+    def get_ip_range_first_last_ip(self,network,subnet,size,offset=None):
+        try:
+            nwk = ipaddress.IPv4Network(network+'/'+subnet)
+            first = nwk[1]
+            last  = nwk[(size+1)]
+            if offset:
+                first_int = int(first) + offset
+                last_int = int(last) + offset
+                first = ipaddress.IPv4Address(first_int)  # ip_address instead of IPv4Address might also work and is ipv6 complaint? pending
+                last = ipaddress.IPv4Address(last_int)
+            return str(first),str(last)
+        except Exception as exp:
+            self.logger.error(f"something went wrong: {exp}")
+            return None,None
+
+
     def make_rows(self, data=None):
         """
         Input - IP Address
@@ -711,6 +758,14 @@ class Helper(object):
                         mydict[myname][item]=element[item]
         return mydict
 
+    # -----------------------------------------------------------------
+
+    def used_ipaddresses_in_network(self,network):
+        if network:
+            ipaddresses = Database().get_record_join(['ipaddress.ipaddress'], 
+                                                     ['ipaddress.networkid=network.id'], 
+                                                     [f"network.name='{network}'"])
+            return len(ipaddresses)
 
 
 

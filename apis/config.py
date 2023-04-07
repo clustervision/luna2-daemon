@@ -530,28 +530,25 @@ def config_node_clone(name=None):
             elif item in items and isinstance(items[item], bool):
                 data[item]=str(Helper().make_boolnum(data[item]))
 
-        if 'bmcsetup' in data:
-            bmc_name = data['bmcsetup']
-            del data['bmcsetup']
-            data['bmcsetupid'] = Database().getid_byname('bmcsetup', bmc_name)
-        if 'group' in data:
-            group_name = data['group']
-            del data['group']
-            data['groupid'] = Database().getid_byname('group', group_name)
-        if 'osimage' in data:
-            osimage_name = data['osimage']
-            del data['osimage']
-            data['osimageid'] = Database().getid_byname('osimage', osimage_name)
-        if 'switch' in data:
-            switch_name = data['switch']
-            del data['switch']
-            data['switchid'] = Database().getid_byname('switch', switch_name)
+        # True means: cannot be empty if supplied. False means: can only be empty or correct
+        checks={'bmcsetup':False,'group':True,'osimage':False,'switch':False}
+        for check in checks.keys():
+            if check in data:
+                check_name = data[check]
+                if data[check] == "" and checks[check] is False:
+                    data[check+'id']=""
+                else:
+                    data[check+'id'] = Database().getid_byname(check, check_name)
+                    if (not data[check+'id']):
+                        access_code = 400
+                        response = {'message': f'{check} {check_name} is not known or valid.'}
+                        return json.dumps(response), access_code
+                del data[check]
 
         interfaces=None
         if 'interfaces' in data:
             interfaces = data['interfaces']
             del data['interfaces']
-
 
         node_columns = Database().get_columns('node')
         columns_check = Helper().checkin_list(data, node_columns)

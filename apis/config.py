@@ -2749,20 +2749,20 @@ def config_network_post(name=None):
             return json.dumps(response), access_code
         if 'gateway' in data:
             gwdetails = Helper().check_ip_range(data['gateway'], data['network']+'/'+data['subnet'])
-            if not gwdetails and data['gateway'] != '':
+            if (not gwdetails) and data['gateway'] != '':
                 response = {'message': f'Incorrect gateway IP: {data["gateway"]}.'}
                 access_code = 400
                 return json.dumps(response), access_code
         if 'nameserver_ip' in data:
             nsipdetails = Helper().check_ip_range(data['nameserver_ip'], data['network']+'/'+data['subnet'])
-            if not nsipdetails and data['nameserver_ip'] != '':
+            if (not nsipdetails) and data['nameserver_ip'] != '':
                 response = {'message': f'Incorrect Nameserver IP: {data["nameserver_ip"]}.'}
                 access_code = 400
                 return json.dumps(response), access_code
-        if 'ntp_server' in data and data['ntp_server'] != '':
+        if 'ntp_server' in data:
             subnet = data['network']+'/'+data['subnet']
             ntpdetails = Helper().check_ip_range(data['ntp_server'], subnet)
-            if not ntpdetails:
+            if (not ntpdetails) and data['ntp_server'] != '':
                 response = {'message': f'Incorrect NTP Server IP: {data["ntp_server"]}.'}
                 access_code = 400
                 return json.dumps(response), access_code

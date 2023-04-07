@@ -398,12 +398,13 @@ def config_node_post(name=None):
                         for group_interface in group_interfaces:
                             result,mesg = Config().node_interface_config(nodeid,group_interface['interface'],None,group_interface['options'])
                             if result:
-                                ips=[]
-                                avail=None
-                                network = Database().get_record_join(['ipaddress.ipaddress','ipaddress.networkid as networkid','network.network','network.subnet'], ['network.id=ipaddress.networkid'], [f"network.name='{group_interface['network']}'"])
+                                ips=Config().get_all_occupied_ips_from_network(group_interface['network'])
+                                network = Database().get_record(None, 'network', f" WHERE `name` = \"{group_interface['network']}\"")
                                 if network:
-                                    for ip in network:
-                                        ips.append(ip['ipaddress'])
+                                    avail=Helper().get_available_ip(network[0]['network'],network[0]['subnet'],ips)
+                                    if avail:
+                                        result,mesg = Config().node_interface_ipaddress_config(nodeid,group_interface['interface'],avail,group_interface['network'])
+
 #                                    ## ---> we do not ping nodes as it will take time if we add bulk nodes, it'll take 1s per node. code block removal pending?
 #                                    ret=0
 #                                    max=5 # we try to ping for X ips, if none of these are free, something else is going on (read: rogue devices)....
@@ -412,11 +413,7 @@ def config_node_post(name=None):
 #                                        ips.append(avail)
 #                                        output,ret=Helper().runcommand(f"ping -w1 -c1 {avail}", True, 3)
 #                                        max-=1
-    
-                                    avail=Helper().get_available_ip(network[0]['network'],network[0]['subnet'],ips)
-                                    if avail:
-                                        ipaddress=avail
-                                        result,mesg = Config().node_interface_ipaddress_config(nodeid,group_interface['interface'],ipaddress,group_interface['network'])
+
             if interfaces:
                 access_code = 204
                 for interface in interfaces:
@@ -604,13 +601,10 @@ def config_node_clone(name=None):
                 if result and 'ipaddress' in node_interface.keys():
                     if 'network' in node_interface.keys():
                         networkname=node_interface['network']
-                        ips=[]
-                        avail=None
-                        network = Database().get_record_join(['ipaddress.ipaddress','ipaddress.networkid as networkid','network.network','network.subnet'], ['network.id=ipaddress.networkid'], [f"network.name='{networkname}'"])
+                        ips=Config().get_all_occupied_ips_from_network(networkname)
+                        network = Database().get_record(None, 'network', f' WHERE `name` = "{networkname}"')
                         if network:
-                            for ip in network:
-                                ips.append(ip['ipaddress'])
-                            ret=0
+                            ret,avail=0,None
                             max=5 # we try to ping for X ips, if none of these are free, something else is going on (read: rogue devices)....
                             while(max>0 and ret!=1):
                                 avail=Helper().get_available_ip(network[0]['network'],network[0]['subnet'],ips)
@@ -619,9 +613,8 @@ def config_node_clone(name=None):
                                 max-=1
     
                             if avail:
-                                ipaddress=avail
-                                result,mesg = Config().node_interface_ipaddress_config(newnodeid,interface_name,ipaddress,networkname)
-                    
+                                result,mesg = Config().node_interface_ipaddress_config(newnodeid,interface_name,avail,networkname)
+                   
                                 if result is False:
                                     response = {'message': f"{mesg}"}
                                     access_code = 500
@@ -2259,17 +2252,13 @@ def config_switch_clone(switch=None):
                             networkname=data['network']
 
                     if not ipaddress:
-                        ips=[]
-                        avail=None
                         if not network:
-                            network = Database().get_record_join(['ipaddress.ipaddress','ipaddress.networkid as networkid','network.network','network.subnet'], ['network.id=ipaddress.networkid'], [f"network.name='{networkname}'"])
+                            network = Database().get_record(None, 'network', f' WHERE `name` = "{networkname}"')
                             if network:
                                 networkname = network[0]['networkname']
-                        for ip in network:
-                            ips.append(ip['ipaddress'])
-
                         if network:
-                            ret=0
+                            ips=Config().get_all_occupied_ips_from_network(networkname)
+                            ret,avail=0,None
                             max=10 # we try to ping for 10 ips, if none of these are free, something else is going on (read: rogue devices)....
                             while(max>0 and ret!=1):
                                 avail=Helper().get_available_ip(network[0]['network'],network[0]['subnet'],ips)
@@ -2279,6 +2268,7 @@ def config_switch_clone(switch=None):
     
                             if avail:
                                 ipaddress=avail
+
                         else:
                             response = {'message': 'Bad Request; please supply network and ipaddress.'}
                             access_code = 400
@@ -2556,26 +2546,23 @@ def config_otherdev_clone(device=None):
                             networkname = network[0]['networkname']
 
                     if not ipaddress:
-                        ips=[]
-                        avail=None
                         if not network:
-                            network = Database().get_record_join(['ipaddress.ipaddress','ipaddress.networkid as networkid','network.network','network.subnet'], ['network.id=ipaddress.networkid'], [f"network.name='{networkname}'"])
+                            network = Database().get_record(None, 'network', f' WHERE `name` = "{networkname}"')
                             if network:
                                 networkname = network[0]['networkname']
-                        for ip in network:
-                            ips.append(ip['ipaddress'])
-
                         if network:
-                            ret=0
+                            ips=Config().get_all_occupied_ips_from_network(networkname)
+                            ret,avail=0,None
                             max=10 # we try to ping for 10 ips, if none of these are free, something else is going on (read: rogue devices)....
                             while(max>0 and ret!=1):
                                 avail=Helper().get_available_ip(network[0]['network'],network[0]['subnet'],ips)
                                 ips.append(avail)
                                 output,ret=Helper().runcommand(f"ping -w1 -c1 {avail}", True, 3)
                                 max-=1
- 
+    
                             if avail:
                                 ipaddress=avail
+
                         else:
                             response = {'message': 'Bad Request; please supply network and ipaddress.'}
                             access_code = 400
@@ -2804,6 +2791,7 @@ def config_network_post(name=None):
                 access_code = 400
                 return json.dumps(response), access_code
             dhcp_size=Helper().get_ip_range_size(data['dhcp_range_begin'],data['dhcp_range_end'])
+            redistribute_ipaddresses=True # to make sure we do not overlap with existing node ip configs
         else:
             if checknetwork:
                 data['dhcp']=checknetwork[0]['dhcp']
@@ -2927,14 +2915,9 @@ def config_network_nextip(name=None):
     name = Filter().filter(name,'network')
 
     #Antoine
-    ips=[]
+    ips=Config().get_all_occupied_ips_from_network(name)
+    network = Database().get_record(None, 'network', f' WHERE `name` = "{name}"')
     avail=None
-    network = Database().get_record_join(['ipaddress.ipaddress','network.id','network.network','network.subnet'], ['network.id=ipaddress.networkid'], [f"network.name='{name}'"])
-    if network:
-        for ip in network:
-            ips.append(ip['ipaddress'])
-    else:
-        network = Database().get_record(None, 'network', f' WHERE `name` = "{name}"')
 
     if network:
         access_code = 500

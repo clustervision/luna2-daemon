@@ -708,7 +708,10 @@ $TTL 604800
 
                 if network==name:
                     if action=='update_all_interface_ipaddresses':
-                        ips=[]
+                        ips=self.get_dhcp_range_ips_from_network(network)
+#                        network_details = Database().get_record(None, 'network', f' WHERE `name` = "{name}"')
+#                        if network_details and network_details[0]['dhcp_range_begin'] and network_details[0]['dhcp_range_end']:
+#                            ips=Helper().get_ip_range_ips(network_details[0]['dhcp_range_begin'],network_details[0]['dhcp_range_end'])
                         ipaddresses = Database().get_record_join(['ipaddress.ipaddress','ipaddress.networkid as networkid','network.network','network.subnet','network.name as networkname','ipaddress.id as ipaddressid'], 
                                                              ['ipaddress.networkid=network.id'], 
                                                              [f"network.name='{network}'","ipaddress.tableref!='controller'"])
@@ -756,7 +759,7 @@ $TTL 604800
                 if ((100*dhcp_size)/nwk_size) > 50: # == 50%
                     dhcp_size=int(nwk_size/10) # we reduce this to 10%
                                                                                    #  how many,  offset start
-                dhcpbegin,dhcpend=Helper().get_ip_range_ips(network[0]['network'],network[0]['subnet'],dhcp_size,(int(nwk_size/2)-4))
+                dhcpbegin,dhcpend=Helper().get_ip_range_first_last_ip(network[0]['network'],network[0]['subnet'],dhcp_size,(int(nwk_size/2)-4))
                 self.logger.info(f"{network[0]['network']}/{network[0]['subnet']} :: new dhcp range {dhcpbegin}-{dhcpend}")
                 if dhcpbegin and dhcpend:
                     row   = [{"column": "dhcp_range_begin", "value": f"{dhcpbegin}"},
@@ -766,5 +769,21 @@ $TTL 604800
                     serv_queue_id,serv_response = Queue().add_task_to_queue(f'dhcp:restart','housekeeper','__update_dhcp_range_on_network_change__')
                 
 
+    def get_dhcp_range_ips_from_network(self,network):
+        ips=[]
+        network_details = Database().get_record(None, 'network', f' WHERE `name` = "{name}"')
+        if network_details and network_details[0]['dhcp_range_begin'] and network_details[0]['dhcp_range_end']:
+            ips=Helper().get_ip_range_ips(network_details[0]['dhcp_range_begin'],network_details[0]['dhcp_range_end'])
+        return ips
 
+    def get_all_occupied_ips_from_network(self,network):
+        ips=[]
+        network_details = Database().get_record(None, 'network', f' WHERE `name` = "{network}"')
+        if network_details and network_details[0]['dhcp_range_begin'] and network_details[0]['dhcp_range_end']:
+            ips=Helper().get_ip_range_ips(network_details[0]['dhcp_range_begin'],network_details[0]['dhcp_range_end'])
+        network_details = Database().get_record_join(['ipaddress.ipaddress'], ['network.id=ipaddress.networkid'], [f"network.name='{network}'"])
+        if network_details:
+            for ip in network_details:
+                ips.append(ip['ipaddress'])
+        return ips
 

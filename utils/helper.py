@@ -324,6 +324,17 @@ class Helper(object):
         except:
             return 0
 
+    def get_ip_range_ips(self,start,end):
+        try:
+            list=[]
+            start_ip = ipaddress.IPv4Address(start)
+            end_ip = ipaddress.IPv4Address(end)
+            for ip in range(int(start_ip),int(end_ip)):
+                list.append(str(ipaddress.IPv4Address(ip)))
+            return list
+        except:
+            return []
+
     def get_network_size(self,network,subnet=None):
         try:
             if subnet:
@@ -335,7 +346,7 @@ class Helper(object):
         except:
             return 0
 
-    def get_ip_range_ips(self,network,subnet,size,offset=None):
+    def get_ip_range_first_last_ip(self,network,subnet,size,offset=None):
         try:
             nwk = ipaddress.IPv4Network(network+'/'+subnet)
             first = nwk[1]

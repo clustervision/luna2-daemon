@@ -361,6 +361,15 @@ class Helper(object):
             self.logger.error(f"something went wrong: {exp}")
             return None,None
 
+    def get_quantity_occupied_ipaddresses_in_network(self,network):
+        if network:
+            ipaddresses = Database().get_record_join(['ipaddress.ipaddress'], 
+                                                     ['ipaddress.networkid=network.id'], 
+                                                     [f"network.name='{network}'"])
+            return len(ipaddresses)
+
+
+
 
     def make_rows(self, data=None):
         """
@@ -759,15 +768,5 @@ class Helper(object):
         return mydict
 
     # -----------------------------------------------------------------
-
-    def used_ipaddresses_in_network(self,network):
-        if network:
-            ipaddresses = Database().get_record_join(['ipaddress.ipaddress'], 
-                                                     ['ipaddress.networkid=network.id'], 
-                                                     [f"network.name='{network}'"])
-            return len(ipaddresses)
-
-
-
 
 

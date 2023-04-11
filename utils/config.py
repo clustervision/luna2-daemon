@@ -703,10 +703,10 @@ $TTL 604800
             while next_id := Queue().next_task_in_queue('network_change'):
                 self.logger.info(f"update_interface_ipaddresses_on_network_change sees job in queue as next: {next_id}")
                 details=Queue().get_task_details(next_id)
-                #request_id=details['request_id']
                 action,network,*_=(details['task'].split(':')+[None]+[None])
 
-                if (name and network==name) or network:
+                #if (name and network==name) or network:
+                if network:
                     if action=='update_all_interface_ipaddresses':
                         ips=self.get_dhcp_range_ips_from_network(network)
                         ipaddresses = Database().get_record_join(['ipaddress.ipaddress','ipaddress.networkid as networkid','network.network','network.subnet','network.name as networkname','ipaddress.id as ipaddressid'], 

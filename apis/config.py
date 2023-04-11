@@ -138,7 +138,7 @@ def config_node():
             if node_interface:
                 node['interfaces'] = []
                 for interface in node_interface:
-                    if not interface['options']
+                    if not interface['options']:
                         del interface['options']
                     node['interfaces'].append(interface)
             response['config']['node'][node_name] = node
@@ -273,7 +273,7 @@ def config_node_get(name=None):
                 interfacename,*_ = (node['provision_interface'].split(' ')+[None]) # we skim off parts that we added for clarity in above section (e.g. (default)). also works if there's no additional info
                 if interface['interface'] == interfacename and interface['network']: # if it is my prov interf then it will get that domain as a FQDN.
                     node['hostname'] = nodename + '.' + interface['network']
-                if not interface['options']
+                if not interface['options']:
                     del interface['options']
                 node['interfaces'].append(interface)
 

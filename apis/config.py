@@ -974,6 +974,37 @@ def config_group_get(name=None):
     return json.dumps(response), access_code
 
 
+@config_blueprint.route("/config/group/<string:name>/_list", methods=['GET'])
+@token_required
+def config_group_member(name=None):
+    """
+    This method will fetch all the nodes, which is connected to
+    the provided group.
+    """
+    groups = Database().get_record(None, 'group', f' WHERE name = "{name}"')
+    if groups:
+        group = groups[0]
+        groupid = group['id']
+        response = {'config': {'group': {name: {'members': []}} }}
+        node_list = Database().get_record(None, 'node', f' WHERE groupid = "{groupid}"')
+        if node_list:
+            nodes = []
+            for node in node_list:
+                nodes.append(node['name'])
+            response['config']['group'][name]['members'] = nodes
+            LOGGER.info(f'Provided all group member nodes {nodes}.')
+            access_code = 200
+        else:
+            LOGGER.error(f'Group {name} is not have any member node.')
+            response = {'message': f'Group {name} is not have any member node.'}
+            access_code = 404
+    else:
+        LOGGER.error(f'Group {name} is not available.')
+        response = {'message': f'Group {name} is not available.'}
+        access_code = 404
+    return json.dumps(response), access_code
+
+
 @config_blueprint.route("/config/group/<string:name>", methods=['POST'])
 @token_required
 def config_group_post(name=None):
@@ -1470,6 +1501,40 @@ def config_osimage_get(name=None):
     return json.dumps(response), access_code
 
 
+@config_blueprint.route("/config/osimage/<string:name>/_list", methods=['GET'])
+@token_required
+def config_osimage_member(name=None):
+    """
+    This method will fetch all the nodes, which is connected to
+    the provided osimage.
+    """
+    osimages = Database().get_record(None, 'osimage', f' WHERE name = "{name}"')
+    if osimages:
+        nodes = []
+        osimage = osimages[0]
+        osimageid = osimage['id']
+        response = {'config': {'osimage': {name: {'members': []}} }}
+        get_group_node = Database().get_record_query(f'SELECT node.name FROM node JOIN `group` ON `group`.id = node.groupid WHERE `group`.osimageid ="{osimageid}";')
+        get_image_node = Database().get_record_query(f'SELECT name FROM node WHERE osimageid ="{osimageid}";')
+        list_nodes = get_group_node + get_image_node
+        if list_nodes:
+            for node in list_nodes:
+                nodes.append(node['name'])
+        if nodes:
+            response['config']['osimage'][name]['members'] = nodes
+            LOGGER.info(f'Provided all osimage members for nodes {nodes}.')
+            access_code = 200
+        else:
+            LOGGER.error(f'OSImage {name} is not have any member node.')
+            response = {'message': f'OSImage {name} is not have any member node.'}
+            access_code = 404
+    else:
+        LOGGER.error(f'OS Image {name} is not available.')
+        response = {'message': f'OS Image {name} is not available.'}
+        access_code = 404
+    return json.dumps(response), access_code
+
+
 @config_blueprint.route("/config/osimage/<string:name>", methods=['POST'])
 @token_required
 def config_osimage_post(name=None):
@@ -1901,6 +1966,40 @@ def config_bmcsetup_get(bmcname=None):
     else:
         LOGGER.error('No BMC Setup is available.')
         response = {'message': 'No BMC Setup is available.'}
+        access_code = 404
+    return json.dumps(response), access_code
+
+
+@config_blueprint.route("/config/bmcsetup/<string:name>/_list", methods=['GET'])
+@token_required
+def config_bmcsetup_member(name=None):
+    """
+    This method will fetch all the nodes, which is connected to
+    the provided bmcsetup.
+    """
+    bmcsetups = Database().get_record(None, 'bmcsetup', f' WHERE name = "{name}"')
+    if bmcsetups:
+        nodes = []
+        bmcsetup = bmcsetups[0]
+        bmcsetupid = bmcsetup['id']
+        response = {'config': {'bmcsetup': {name: {'members': []}} }}
+        get_group_node = Database().get_record_query(f'SELECT node.name FROM node JOIN `group` ON `group`.id = node.groupid WHERE `group`.bmcsetupid ="{bmcsetupid}";')
+        get_bmcsetup_node = Database().get_record_query(f'SELECT name FROM node WHERE bmcsetupid ="{bmcsetupid}";')
+        list_nodes = get_group_node + get_bmcsetup_node
+        if list_nodes:
+            for node in list_nodes:
+                nodes.append(node['name'])
+        if nodes:
+            response['config']['bmcsetup'][name]['members'] = nodes
+            LOGGER.info(f'Provided all bmcsetup members for nodes {nodes}.')
+            access_code = 200
+        else:
+            LOGGER.error(f'BMC Setup {name} is not have any member node.')
+            response = {'message': f'BMC Setup {name} is not have any member node.'}
+            access_code = 404
+    else:
+        LOGGER.error(f'BMC Setup {name} is not available.')
+        response = {'message': f'BMC Setup {name} is not available.'}
         access_code = 404
     return json.dumps(response), access_code
 

@@ -705,8 +705,7 @@ $TTL 604800
                 details=Queue().get_task_details(next_id)
                 action,network,*_=(details['task'].split(':')+[None]+[None])
 
-                #if (name and network==name) or network:
-                if network:
+                if (name and network==name) or network:
                     if action=='update_all_interface_ipaddresses':
                         ips=self.get_dhcp_range_ips_from_network(network)
                         ipaddresses = Database().get_record_join(['ipaddress.ipaddress','ipaddress.networkid as networkid','network.network','network.subnet','network.name as networkname','ipaddress.id as ipaddressid'], 
@@ -768,7 +767,7 @@ $TTL 604800
 
     def get_dhcp_range_ips_from_network(self,network):
         ips=[]
-        network_details = Database().get_record(None, 'network', f' WHERE `name` = "{name}"')
+        network_details = Database().get_record(None, 'network', f' WHERE `name` = "{network}"')
         if network_details and network_details[0]['dhcp_range_begin'] and network_details[0]['dhcp_range_end']:
             ips=Helper().get_ip_range_ips(network_details[0]['dhcp_range_begin'],network_details[0]['dhcp_range_end'])
         return ips

@@ -348,13 +348,16 @@ def config_node_post(name=None):
 
         for item in items:
             if item in data:
+                LOGGER.info(f"--- 1 --- data[item] = {item} => data = {data[item]}, items = {items[item]}")
                 data[item] = data[item] or items[item]
                 if isinstance(items[item], bool):
                     data[item]=str(Helper().make_boolnum(data[item]))
+                LOGGER.info(f"--- 2 --- data[item] = {item} => data = {data[item]}, items = {items[item]}")
             elif create:
                 data[item] = items[item]
                 if isinstance(items[item], bool):
                     data[item]=str(Helper().make_boolnum(data[item]))
+                LOGGER.info(f"--- 3 --- data[item] = {item} => data = {data[item]}, items = {items[item]}")
             if item in data and (not data[item]) and (item not in items):
                 del data[item]
 

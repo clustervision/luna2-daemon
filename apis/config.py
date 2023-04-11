@@ -105,16 +105,14 @@ def config_node():
                 node['group']='!!Invalid!!'
 
             for item in items:
+                if node[item] is None:
+                    node[item]=""
                 if groupid and item in group[groupid]:
-                    if isinstance(items[item], bool):  # we _have_ to do this to catch .e.g False, which can be valid... 
-                        node[item]=str(node[item]) or str(group[groupid][item]) or items[item]
-                    else:
-                        node[item]=node[item] or group[groupid][item] or items[item]
+                    if group[groupid][item] is None:
+                        group[groupid][item]=""
+                    node[item]=str(node[item]) or str(group[groupid][item]) or items[item]
                 else:
-                    if isinstance(items[item], bool):
-                        node[item]=str(node[item]) or items[item]
-                    else:
-                        node[item]=node[item] or items[item]
+                    node[item]=str(node[item]) or items[item]
 
             node['switch']=None
             if node['switchid']:

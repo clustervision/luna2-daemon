@@ -429,12 +429,16 @@ def config_node_post(name=None):
                     result,mesg = Config().node_interface_config(nodeid,interface_name,macaddress,options)
                     if result:
                         if not 'ipaddress' in interface.keys():
-                            ips=Config().get_all_occupied_ips_from_network(network)
-                            network_details = Database().get_record(None, 'network', f" WHERE `name` = '{network}'")
-                            if network:
-                                avail=Helper().get_available_ip(network_details[0]['network'],network_details[0]['subnet'],ips)
-                                if avail:
-                                    ipaddress=avail
+                            existing=Database().get_record_join(['ipaddress.ipaddress'], ['nodeinterface.nodeid=node.id','ipaddress.tablerefid=nodeinterface.id'], [f"node.name='{name}'","ipaddress.tableref='nodeinterface'",f"nodeinterface.interface='{interface_name}'"])
+                            if existing:
+                                ipaddress=existing[0]['ipaddress']
+                            else:
+                                ips=Config().get_all_occupied_ips_from_network(network)
+                                network_details = Database().get_record(None, 'network', f" WHERE `name` = '{network}'")
+                                if network_details:
+                                    avail=Helper().get_available_ip(network_details[0]['network'],network_details[0]['subnet'],ips)
+                                    if avail:
+                                        ipaddress=avail
                         else:
                             ipaddress=interface['ipaddress']
                         result,mesg = Config().node_interface_ipaddress_config(nodeid,interface_name,ipaddress,network)
@@ -593,7 +597,7 @@ def config_node_clone(name=None):
                         ipaddress=interface['ipaddress']
                         if 'network' in interface.keys():
                             network=interface['network']
-                        result,mesg = Config().node_interface_ipaddress_config(nodeid,interface_name,ipaddress,network)
+                        result,mesg = Config().node_interface_ipaddress_config(newnodeid,interface_name,ipaddress,network)
                         
                     if result is False:
                         response = {'message': f"{mesg}"}

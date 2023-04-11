@@ -590,10 +590,10 @@ $TTL 604800
         ipaddress_check,valid_ip,result_ip=False,False,False
         my_ipaddress={}
 
-        if network:
+        if network is not None:
             network_details = Database().get_record(None, 'network', f'WHERE name="{network}"')
         else:
-            network_details = Database().get_record_join(['network.*'], ['ipaddress.tablerefid=nodeinterface.id','network.id=ipaddress.networkid'], ['tableref="nodeinterface"',f'nodeinterface.id="{nodeid}"',f'nodeinterface.interface="{interface_name}"'])
+            network_details = Database().get_record_join(['network.*'], ['ipaddress.tablerefid=nodeinterface.id','network.id=ipaddress.networkid'], ['tableref="nodeinterface"',f'nodeinterface.nodeid="{nodeid}"',f'nodeinterface.interface="{interface_name}"'])
                 
         if not network_details:
             self.logger.info(f"not enough information provided. network name incorrect or need network name if there is no existing ipaddress")

@@ -355,7 +355,7 @@ def config_node_post(name=None):
                 data[item] = items[item]
                 if isinstance(items[item], bool):
                     data[item]=str(Helper().make_boolnum(data[item]))
-            if (not data[item]) and (item not in items):
+            if item in data and (not data[item]) and (item not in items):
                 del data[item]
 
         # True means: cannot be empty if supplied. False means: can only be empty or correct
@@ -1032,12 +1032,14 @@ def config_group_post(name=None):
             create = True
 
         for item in items:
-            if item in data:  # pending
+            if item in data:
                 data[item] = data[item]
             elif create:
-                data[item] = grp[0][item] or items[item]
+                data[item] = items[item]
             if isinstance(items[item], bool):
                 data[item]=str(Helper().make_boolnum(data[item]))
+            if item in data and (not data[item]) and (item not in items):
+                del data[item]
 
         if 'bmcsetupname' in data:
             bmcname = data['bmcsetupname']

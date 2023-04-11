@@ -541,8 +541,6 @@ def config_node_clone(name=None):
                     data[item]=str(Helper().make_boolnum(data[item]))
             if (not data[item]) and (item not in items):
                 del data[item]
-#            elif item in data and item in items and isinstance(items[item], bool):
-#                data[item]=str(Helper().make_boolnum(data[item]))
 
         # True means: cannot be empty if supplied. False means: can only be empty or correct
         checks={'bmcsetup':False,'group':True,'osimage':False,'switch':False}

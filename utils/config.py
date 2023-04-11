@@ -697,7 +697,7 @@ $TTL 604800
 
     # -----------------
 
-    def update_interface_ipaddresses_on_network_change(self,name,request_id=None):  #name=network
+    def update_interface_ipaddresses_on_network_change(self,name=None,request_id=None):  #name=network
         self.logger.info(f"update_interface_ipaddresses_on_network_change called")
         try:
             while next_id := Queue().next_task_in_queue('network_change'):
@@ -709,9 +709,6 @@ $TTL 604800
                 if (name and network==name) or network:
                     if action=='update_all_interface_ipaddresses':
                         ips=self.get_dhcp_range_ips_from_network(network)
-#                        network_details = Database().get_record(None, 'network', f' WHERE `name` = "{name}"')
-#                        if network_details and network_details[0]['dhcp_range_begin'] and network_details[0]['dhcp_range_end']:
-#                            ips=Helper().get_ip_range_ips(network_details[0]['dhcp_range_begin'],network_details[0]['dhcp_range_end'])
                         ipaddresses = Database().get_record_join(['ipaddress.ipaddress','ipaddress.networkid as networkid','network.network','network.subnet','network.name as networkname','ipaddress.id as ipaddressid'], 
                                                              ['ipaddress.networkid=network.id'], 
                                                              [f"network.name='{network}'","ipaddress.tableref!='controller'"])

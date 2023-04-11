@@ -367,10 +367,10 @@ def bootstrap(bootstrapfile=None):
                 {'column': 'groupid', 'value': str(groupid)},
                 {'column': 'localboot', 'value': '0'},
                 {'column': 'service', 'value': '0'},
-                {'column': 'setupbmc', 'value': '1'},
-                {'column': 'localinstall', 'value': '0'},
-                {'column': 'bootmenu', 'value': '0'},
-                {'column': 'netboot', 'value': '1'},
+#                {'column': 'setupbmc', 'value': '1'},
+#                {'column': 'localinstall', 'value': '0'},
+#                {'column': 'bootmenu', 'value': '0'},
+#                {'column': 'netboot', 'value': '1'},
                 {'column': 'provision_method', 'value': 'torrent'},
                 {'column': 'provision_fallback', 'value': 'http'}
             ]

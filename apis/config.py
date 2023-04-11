@@ -1395,25 +1395,12 @@ def config_osimage_member(name=None):
         osimage = osimages[0]
         osimageid = osimage['id']
         response = {'config': {'osimage': {name: {'members': []}} }}
-        group_list = Database().get_record(None, 'group', f' WHERE osimageid = "{osimageid}"')
-        if group_list:
-            for group in group_list:
-                groupid = group['id']
-                groupname = group['name']
-                node_list = Database().get_record(None, 'node', f' WHERE groupid = "{groupid}"')
-                if node_list:
-                    for node in node_list:
-                        nodes.append(node['name'])
-                else:
-                    LOGGER.info(f'OSImage {name} Group {groupname} is not have any node.')
-        else:
-            LOGGER.info(f'OSImage {name} is not configured with any Group.')
-        node_list = Database().get_record(None, 'node', f' WHERE osimageid = "{osimageid}"')
-        if node_list:
-            for node in node_list:
+        get_group_node = Database().get_record_query(f'SELECT node.name FROM node JOIN `group` ON `group`.id = node.groupid WHERE `group`.osimageid ="{osimageid}";')
+        get_image_node = Database().get_record_query(f'SELECT name FROM node WHERE osimageid ="{osimageid}";')
+        list_nodes = get_group_node + get_image_node
+        if list_nodes:
+            for node in list_nodes:
                 nodes.append(node['name'])
-        else:
-            LOGGER.info(f'OSImage {name} is not configured with any node.')
         if nodes:
             response['config']['osimage'][name]['members'] = nodes
             LOGGER.info(f'Provided all osimage members for nodes {nodes}.')
@@ -1847,25 +1834,12 @@ def config_bmcsetup_member(name=None):
         bmcsetup = bmcsetups[0]
         bmcsetupid = bmcsetup['id']
         response = {'config': {'bmcsetup': {name: {'members': []}} }}
-        group_list = Database().get_record(None, 'group', f' WHERE bmcsetupid = "{bmcsetupid}"')
-        if group_list:
-            for group in group_list:
-                groupid = group['id']
-                groupname = group['name']
-                node_list = Database().get_record(None, 'node', f' WHERE groupid = "{groupid}"')
-                if node_list:
-                    for node in node_list:
-                        nodes.append(node['name'])
-                else:
-                    LOGGER.info(f'BMC Setup {name} Group {groupname} is not have any node.')
-        else:
-            LOGGER.info(f'BMC Setup {name} is not configured with any Group.')
-        node_list = Database().get_record(None, 'node', f' WHERE bmcsetupid = "{bmcsetupid}"')
-        if node_list:
-            for node in node_list:
+        get_group_node = Database().get_record_query(f'SELECT node.name FROM node JOIN `group` ON `group`.id = node.groupid WHERE `group`.bmcsetupid ="{bmcsetupid}";')
+        get_bmcsetup_node = Database().get_record_query(f'SELECT name FROM node WHERE bmcsetupid ="{bmcsetupid}";')
+        list_nodes = get_group_node + get_bmcsetup_node
+        if list_nodes:
+            for node in list_nodes:
                 nodes.append(node['name'])
-        else:
-            LOGGER.info(f'BMC Setup {name} is not configured with any node.')
         if nodes:
             response['config']['bmcsetup'][name]['members'] = nodes
             LOGGER.info(f'Provided all bmcsetup members for nodes {nodes}.')

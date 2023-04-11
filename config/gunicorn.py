@@ -13,7 +13,7 @@ bind = '0.0.0.0:7050'
 workers = 1
 
 # Number of threads per worker process
-# threads = 3
+# threads = 4
 
 # Timeout (in seconds) for a request to complete
 # timeout = 120

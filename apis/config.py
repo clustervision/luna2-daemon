@@ -1514,8 +1514,8 @@ def config_osimage_member(name=None):
         osimage = osimages[0]
         osimageid = osimage['id']
         response = {'config': {'osimage': {name: {'members': []}} }}
-        get_group_node = Database().get_record_query(f'SELECT node.name FROM node JOIN `group` ON `group`.id = node.groupid WHERE `group`.osimageid ="{osimageid}";')
-        get_image_node = Database().get_record_query(f'SELECT name FROM node WHERE osimageid ="{osimageid}";')
+        get_group_node = Database().get_record_join(['node.name'],['group.id=node.groupid'],[f"`group`.osimageid='{osimageid}'"])
+        get_image_node = Database().get_record(['name'], 'node', f' WHERE osimageid ="{osimageid}"')
         list_nodes = get_group_node + get_image_node
         if list_nodes:
             for node in list_nodes:
@@ -1983,8 +1983,9 @@ def config_bmcsetup_member(name=None):
         bmcsetup = bmcsetups[0]
         bmcsetupid = bmcsetup['id']
         response = {'config': {'bmcsetup': {name: {'members': []}} }}
-        get_group_node = Database().get_record_query(f'SELECT node.name FROM node JOIN `group` ON `group`.id = node.groupid WHERE `group`.bmcsetupid ="{bmcsetupid}";')
-        get_bmcsetup_node = Database().get_record_query(f'SELECT name FROM node WHERE bmcsetupid ="{bmcsetupid}";')
+        get_group_node = Database().get_record_join(['node.name'],['group.id=node.groupid'],[f"`group`.bmcsetupid='{bmcsetupid}'"])
+        get_bmcsetup_node = Database().get_record(['name'], 'node', f' WHERE bmcsetupid ="{bmcsetupid}"')
+
         list_nodes = get_group_node + get_bmcsetup_node
         if list_nodes:
             for node in list_nodes:

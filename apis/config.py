@@ -349,14 +349,16 @@ def config_node_post(name=None):
         for item in items:
             if item in data:
                 data[item] = data[item] or items[item]
-                if isinstance(items[item], bool):
-                    data[item]=str(Helper().make_boolnum(data[item]))
+#                if isinstance(items[item], bool):
+#                    data[item]=str(Helper().make_boolnum(data[item]))
             elif create:
                 data[item] = items[item]
-                if isinstance(items[item], bool):
-                    data[item]=str(Helper().make_boolnum(data[item]))
+#                if isinstance(items[item], bool):
+#                    data[item]=str(Helper().make_boolnum(data[item]))
             if item in data and (not data[item]) and (item not in items):
                 del data[item]
+            elif isinstance(items[item], bool):
+                data[item]=str(Helper().make_boolnum(data[item]))
 
         # True means: cannot be empty if supplied. False means: can only be empty or correct
         checks={'bmcsetup':False,'group':True,'osimage':False,'switch':False}
@@ -1036,10 +1038,10 @@ def config_group_post(name=None):
                 data[item] = data[item]
             elif create:
                 data[item] = items[item]
-            if isinstance(items[item], bool):
-                data[item]=str(Helper().make_boolnum(data[item]))
             if item in data and (not data[item]) and (item not in items):
                 del data[item]
+            elif isinstance(items[item], bool):
+                data[item]=str(Helper().make_boolnum(data[item]))
 
         if 'bmcsetupname' in data:
             bmcname = data['bmcsetupname']

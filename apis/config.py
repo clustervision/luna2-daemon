@@ -165,6 +165,7 @@ def config_node_get(name=None):
     nodefull = Database().get_record_join(['node.*',
                                            'group.name AS group',
                                            'osimage.name AS group_osimage',
+                                           'group.setupbmc AS group_setupbmc',
                                            'group.bmcsetupid AS group_bmcsetupid',
                                            'group.prescript AS group_prescript',
                                            'group.partscript AS group_partscript',
@@ -296,11 +297,11 @@ def config_node_post(name=None):
     Output - Node information.
     """
     data = {}
-    items={ # minimal required items with defaults
-       'setupbmc':False,
-       'netboot':False,
-       'localinstall':False,
-       'bootmenu':False,
+    items={ # minimal required items with defaults. we do inherit things from e.g. groups. but that's real time and not here
+#       'setupbmc':False,
+#       'netboot':False,
+#       'localinstall':False,
+#       'bootmenu':False,
        'service':False,
        'localboot':False
     }
@@ -348,16 +349,13 @@ def config_node_post(name=None):
 
         for item in items:
             if item in data:
-                LOGGER.info(f"--- 1 --- data[item] = {item} => data = {data[item]}, items = {items[item]}")
                 data[item] = data[item] or items[item]
                 if isinstance(items[item], bool):
                     data[item]=str(Helper().make_boolnum(data[item]))
-                LOGGER.info(f"--- 2 --- data[item] = {item} => data = {data[item]}, items = {items[item]}")
             elif create:
                 data[item] = items[item]
                 if isinstance(items[item], bool):
                     data[item]=str(Helper().make_boolnum(data[item]))
-                LOGGER.info(f"--- 3 --- data[item] = {item} => data = {data[item]}, items = {items[item]}")
             if item in data and (not data[item]) and (item not in items):
                 del data[item]
 
@@ -483,10 +481,6 @@ def config_node_clone(name=None):
     """
     data = {}
     items={
-       'setupbmc':False,
-       'netboot':False,
-       'localinstall':False,
-       'bootmenu':False,
        'service':False,
        'localboot':False
     }
@@ -537,16 +531,18 @@ def config_node_clone(name=None):
         del node[0]['id']
         del node[0]['status']
         for item in node[0]:
-            if item in data:  # we copy from another node unless we supply
-                data[item] = str(data[item]) or str(node[0][item])
-            else:
-                data[item] = str(node[0][item])
-#            if item in items:
-#                data[item] = str(data[item]) or items[item]
+            if not item in data:  # we copy from another node unless we supply
+                data[item] = node[0][item]
+                if item in items and isinstance(items[item], bool):
+                    data[item]=str(Helper().make_boolnum(data[item]))
+            elif item in items:
+                data[item] = items[item]
+                if isinstance(items[item], bool):
+                    data[item]=str(Helper().make_boolnum(data[item]))
             if (not data[item]) and (item not in items):
                 del data[item]
-            elif item in data and item in items and isinstance(items[item], bool):
-                data[item]=str(Helper().make_boolnum(data[item]))
+#            elif item in data and item in items and isinstance(items[item], bool):
+#                data[item]=str(Helper().make_boolnum(data[item]))
 
         # True means: cannot be empty if supplied. False means: can only be empty or correct
         checks={'bmcsetup':False,'group':True,'osimage':False,'switch':False}
@@ -938,7 +934,8 @@ def config_group_get(name=None):
             if grp_interface:
                 grp['interfaces'] = []
                 for ifx in grp_interface:
-                    ifx['options']=ifx['options'] or ""
+                    if not ifx['options']:
+                        del ifx['options']
                     grp['interfaces'].append(ifx)
             del grp['id']
             for item in items.keys():
@@ -1134,7 +1131,7 @@ def config_group_clone(name=None):
        'partscript':'',
        'postscript':'',
        'setupbmc':False,
-       'netboot':False,
+       'netboot':True,
        'localinstall':False,
        'bootmenu':False,
     }
@@ -1176,18 +1173,20 @@ def config_group_clone(name=None):
 
         del grp[0]['id']
         for item in grp[0]:
-            if item in data:  # pending
-                LOGGER.debug(f"{item} in data [{data[item]}] or grp [{grp[0][item]}]")
-                data[item] = data[item] or grp[0][item] or None
+            if item in data:
+                data[item] = data[item]
+                if item in items and isinstance(items[item], bool):
+                    data[item]=str(Helper().make_boolnum(data[item]))
             else:
-                LOGGER.debug(f"{item} in other [{grp[0][item]}]")
-                data[item] = grp[0][item] or None
+                data[item] = grp[0][item]
+                if item in items and isinstance(items[item], bool):
+                    data[item]=str(Helper().make_boolnum(data[item]))
             if item in items:
                 data[item] = data[item] or items[item]
+                if item in items and isinstance(items[item], bool):
+                    data[item]=str(Helper().make_boolnum(data[item]))
             if (not data[item]) and (item not in items):
                 del data[item]
-            elif item in items and isinstance(items[item], bool):
-                data[item]=str(Helper().make_boolnum(data[item]))
 
         if 'bmcsetupname' in data:
             bmcname = data['bmcsetupname']
@@ -1244,7 +1243,7 @@ def config_group_clone(name=None):
                 ifx={}
                 ifx['networkid']=grp_ifx['networkid']
                 ifx['interface']=grp_ifx['interface']
-                ifx['options']=grp_ifx['options']
+                ifx['options']=grp_ifx['options'] or ""
                 ifx['groupid']=newgroupid
                 row = Helper().make_rows(ifx)
                 result = Database().insert('groupinterface', row)

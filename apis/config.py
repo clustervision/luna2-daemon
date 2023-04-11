@@ -483,10 +483,6 @@ def config_node_clone(name=None):
     """
     data = {}
     items={
-       'setupbmc':False,
-       'netboot':False,
-       'localinstall':False,
-       'bootmenu':False,
        'service':False,
        'localboot':False
     }
@@ -537,16 +533,18 @@ def config_node_clone(name=None):
         del node[0]['id']
         del node[0]['status']
         for item in node[0]:
-            if item in data:  # we copy from another node unless we supply
-                data[item] = str(data[item]) or str(node[0][item])
-            else:
-                data[item] = str(node[0][item])
-#            if item in items:
-#                data[item] = str(data[item]) or items[item]
+            if not item in data:  # we copy from another node unless we supply
+                data[item] = node[0][item]
+                if item in items and isinstance(items[item], bool):
+                    data[item]=str(Helper().make_boolnum(data[item]))
+            elif item in items:
+                data[item] = items[item]
+                if isinstance(items[item], bool):
+                    data[item]=str(Helper().make_boolnum(data[item]))
             if (not data[item]) and (item not in items):
                 del data[item]
-            elif item in data and item in items and isinstance(items[item], bool):
-                data[item]=str(Helper().make_boolnum(data[item]))
+#            elif item in data and item in items and isinstance(items[item], bool):
+#                data[item]=str(Helper().make_boolnum(data[item]))
 
         # True means: cannot be empty if supplied. False means: can only be empty or correct
         checks={'bmcsetup':False,'group':True,'osimage':False,'switch':False}

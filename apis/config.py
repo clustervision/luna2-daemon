@@ -347,11 +347,11 @@ def config_node_post(name=None):
             create = True
 
         for item in items:
-            if item in data: 
+            if item in data:
                 data[item] = data[item] or items[item]
                 if isinstance(items[item], bool):
                     data[item]=str(Helper().make_boolnum(data[item]))
-            else:
+            elif create:
                 data[item] = items[item]
                 if isinstance(items[item], bool):
                     data[item]=str(Helper().make_boolnum(data[item]))
@@ -1033,10 +1033,8 @@ def config_group_post(name=None):
 
         for item in items:
             if item in data:  # pending
-                LOGGER.debug(f"{item} in data [{data[item]}]")
                 data[item] = data[item]
-            else:
-                LOGGER.debug(f"{item} in other [{grp[0][item]}] or [{items[item]}]")
+            elif create:
                 data[item] = grp[0][item] or items[item]
             if isinstance(items[item], bool):
                 data[item]=str(Helper().make_boolnum(data[item]))

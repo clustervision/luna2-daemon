@@ -706,7 +706,7 @@ $TTL 604800
                 #request_id=details['request_id']
                 action,network,*_=(details['task'].split(':')+[None]+[None])
 
-                if network==name:
+                if (name and network==name) or network:
                     if action=='update_all_interface_ipaddresses':
                         ips=self.get_dhcp_range_ips_from_network(network)
 #                        network_details = Database().get_record(None, 'network', f' WHERE `name` = "{name}"')

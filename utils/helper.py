@@ -329,7 +329,7 @@ class Helper(object):
             list=[]
             start_ip = ipaddress.IPv4Address(start)
             end_ip = ipaddress.IPv4Address(end)
-            for ip in range(int(start_ip),int(end_ip)):
+            for ip in range(int(start_ip),(int(end_ip)+1)):
                 list.append(str(ipaddress.IPv4Address(ip)))
             return list
         except:

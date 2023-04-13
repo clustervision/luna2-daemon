@@ -364,18 +364,24 @@ class Database(object):
             values = ','.join(values)
         query = f'INSERT INTO "{table}" ({keys}) VALUES ({values});'
         self.logger.debug(f"Insert Query ---> {query}")
-        try:
-            mylocal.cursor.execute(query)
-            self.commit()
-            for key,value in zip(wherekeys, wherevalues):
-                wherelist.append(f'{key} = {value}')
-            where = where + ' AND '.join(wherelist)
-            result = self.get_record(None, table, where)
-            if result:
-                response = result[0]['id']
-        #except Exception as exp:
-        except Exception as exp:
-            self.logger.error(f'Error occur while executing => {query}. error is {exp}.')
+        attempt=1
+        while (not response) and attempt<10:
+            try:
+                mylocal.cursor.execute(query)
+                self.commit()
+                for key,value in zip(wherekeys, wherevalues):
+                    wherelist.append(f'{key} = {value}')
+                where = where + ' AND '.join(wherelist)
+                result = self.get_record(None, table, where)
+                if result:
+                    response = result[0]['id']
+            except Exception as exp:
+                self.logger.error(f'Error occur while executing => {query}. error is "{exp}" for attempt {attempt}.')
+                if exp == "error is database is locked":
+                    attempt+=1
+                    sleep(3)
+                else:
+                    return False
         return response
 
 
@@ -409,17 +415,23 @@ class Database(object):
             strwhere = ' AND '.join(map(str, wherelist))
         query = f'UPDATE "{table}" SET {strcolumns} WHERE {strwhere};'
         self.logger.debug(f"Update Query ---> {query}")
-        try:
-            mylocal.cursor.execute(query)
-            self.commit()
-            if mylocal.cursor.rowcount < 1:
-                response = False
-            else:
-                response = True
-        except Exception as exp:
-            self.logger.error(f'Error occur while executing => {query}. error is {exp}.')
-            response = False
-        return response
+        attempt=1
+        while attempt<10:
+            try:
+                mylocal.cursor.execute(query)
+                self.commit()
+                if mylocal.cursor.rowcount < 1:
+                    return False
+                else:
+                    return True
+            except Exception as exp:
+                self.logger.error(f'Error occur while executing => {query}. error is "{exp}" for attempt {attempt}.')
+                if exp == "error is database is locked":
+                    attempt+=1
+                    sleep(3)
+                else:
+                    return False
+        return False
 
 
     def delete_row(self, table=None, where=None):

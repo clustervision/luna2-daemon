@@ -610,7 +610,7 @@ $TTL 604800
 
         ipaddress_check = Database().get_record_join(['node.id as nodeid','nodeinterface.interface'], ['ipaddress.tablerefid=nodeinterface.id','nodeinterface.nodeid=node.id'], ['tableref="nodeinterface"',f"ipaddress.ipaddress='{ipaddress}'"])
         if ipaddress_check and ((ipaddress_check[0]['nodeid'] != nodeid) or (interface_name != ipaddress_check[0]['interface'])):
-            return False,"ip address {ipaddress} is already in use"
+            return False,f"ip address {ipaddress} is already in use"
 
         ipaddress_check = Database().get_record_join(['ipaddress.*'], ['ipaddress.tablerefid=nodeinterface.id'], ['tableref="nodeinterface"',f'nodeinterface.nodeid="{nodeid}"',f'nodeinterface.interface="{interface_name}"'])
 

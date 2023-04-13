@@ -210,6 +210,8 @@ class OsImage(object):
             umount(f"{path}/sys")
 
         image = Database().get_record(None, 'osimage', f"WHERE name='{osimage}'")
+        if not image:
+            return False,f"Image {osimage} does not exist?"
 
         if ('path' not in image[0]) or (image[0]['path'] is None):
             return False,"Image path not defined"
@@ -351,7 +353,7 @@ class OsImage(object):
     def pack_image_based_on_distribution(self,osimage):
         image = Database().get_record(None, 'osimage', f"WHERE name='{osimage}'")
         distribution='redhat'
-        if 'distribution' in image[0]:
+        if image and 'distribution' in image[0]:
             distribution=image[0]['distribution'] or 'redhat'
             distribution=distribution.lower()
 
@@ -407,7 +409,7 @@ class OsImage(object):
                         Status().add_message(request_id,"luna",f"tarring osimage {osimage}")
 
                         rett,mesgt=self.create_tarball(osimage)
-                        sleep(1)
+                        sleep(1) # same for this one
                         if rett is True:
                             self.logger.info(f'OS image {osimage} tarred successfully.')
                             Status().add_message(request_id,"luna",f"finished tarring osimage {osimage}")
@@ -430,9 +432,6 @@ class OsImage(object):
                 Status().add_message(request_id,"luna",f"Packing failed: {exp}")
                 Status().add_message(request_id,"luna",f"EOF")
             except Exception as nexp:
-                self.logger.error(f"pack_n_tar_mother has problems during exceptions handling: {nexp}")
+                self.logger.error(f"pack_n_tar_mother has problems during exception handling: {nexp}")
             
-
-
-
 

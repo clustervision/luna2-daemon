@@ -88,3 +88,10 @@ class Queue(object):
             return True
         return False
 
+    def change_subsystem(self,taskid,subsystem):
+        row = [{"column": "subsystem", "value": f"{subsystem}"}]
+        where = [{"column": "id", "value": f"{taskid}"}]
+        status = Database().update('queue', row, where)
+
+
+

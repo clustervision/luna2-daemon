@@ -66,7 +66,7 @@ class Database(object):
                            mylocal.cursor = mylocal.connection.cursor()
                            break
                        except Exception as exp:
-                           self.logger.info(f"Problem connecting to Database on attempt {attempt}... i try again in a few seconds...")
+                           self.logger.info(f"Problem '{exp}' while connecting to Database on attempt {attempt}... i try again in a few seconds...")
                            sleep(10)
                            attempt+=1
             else:
@@ -78,7 +78,7 @@ class Database(object):
 
     def commit(self):
         if "DATABASE" in CONSTANT and "DRIVER" in CONSTANT["DATABASE"] and CONSTANT["DATABASE"]["DRIVER"] == "SQLite3":
-            pass
+            mylocal.connection.commit()
         else:
             mylocal.cursor.commit()
 
@@ -377,7 +377,7 @@ class Database(object):
                     response = result[0]['id']
             except Exception as exp:
                 self.logger.error(f'Error occur while executing => {query}. error is "{exp}" on attempt {attempt}.')
-                if exp == "database is locked":
+                if f"{exp}" == "database is locked":
                     attempt+=1
                     sleep(3)
                 else:
@@ -426,7 +426,7 @@ class Database(object):
                     return True
             except Exception as exp:
                 self.logger.error(f'Error occur while executing => {query}. error is "{exp}" on attempt {attempt}.')
-                if exp == "database is locked":
+                if f"{exp}" == "database is locked":
                     attempt+=1
                     sleep(3)
                 else:
@@ -461,7 +461,7 @@ class Database(object):
                 return True
             except Exception as exp:
                 self.logger.error(f'Error occur while executing => {query}. error is "{exp}" on attempt {attempt}.')
-                if exp == "database is locked":
+                if f"{exp}" == "database is locked":
                     attempt+=1
                     sleep(3)
                 else:

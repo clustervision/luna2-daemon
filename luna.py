@@ -78,7 +78,18 @@ def on_exit(server):
     LOGGER.info('Gunicorn server hook on exit')
     return True
 
+############# debug traces ######################
+
+def worker_abort(worker):
+    import traceback, io
+    debug_info = io.StringIO()
+    debug_info.write("Traceback at time of timeout:\n")
+    traceback.print_stack(file=debug_info)
+    worker.log.critical(debug_info.getvalue())
+    LOGGER.error(debug_info.getvalue())
+
 ############# Gunicorn Server Hooks #############
+
 
 api = Flask(__name__)
 api.register_blueprint(auth_blueprint)

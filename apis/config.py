@@ -58,7 +58,6 @@ def config_node():
     switches = Database().get_record(None, 'switch', None)
     bmcsetups = Database().get_record(None, 'bmcsetup', None)
     group=Helper().convert_list_to_dict(groups,'id')
-    LOGGER.info("stop")
     osimage=Helper().convert_list_to_dict(osimages,'id')
     switch=Helper().convert_list_to_dict(switches,'id')
     bmcsetup=Helper().convert_list_to_dict(bmcsetups,'id')
@@ -180,10 +179,10 @@ def config_node_get(name=None):
                                            'group.provision_method AS group_provision_method',
                                            'group.provision_fallback AS group_provision_fallback',
                                            'group.provision_interface AS group_provision_interface'], ['group.id=node.groupid','osimage.id=group.osimageid'],f"node.name='{name}'")
-    if nodefull:
+    if nodefull and nodes:
         nodes[0].update(nodefull[0])
-    node=nodes[0]
-    if node:
+    if nodes:
+        node=nodes[0]
         response = {'config': {'node': {} }}
         nodename = node['name']
         nodeid = node['id']

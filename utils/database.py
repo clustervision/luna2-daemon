@@ -45,7 +45,7 @@ class Database(object):
         self.encoding = 'charset=utf8mb4;'
         self.port = f'PORT={CONSTANT["DATABASE"]["PORT"]};'
         self.connection_string = f'{self.driver}{self.server}{self.database}{self.uid}{self.pswd}'
-        self.connection_string = f'{self.connection_string}{self.encoding}{self.port};MultipleActiveResultSets=True;MARS_Connection=yes'
+        self.connection_string = f'{self.connection_string}{self.encoding}{self.port};MultipleActiveResultSets=True;MARS_Connection=yes;Pooling=True'
         #self.connection = pyodbc.connect(self.connection_string)
         #self.cursor = local.connection.cursor()
 
@@ -57,7 +57,7 @@ class Database(object):
             if "DATABASE" in CONSTANT and "DRIVER" in CONSTANT["DATABASE"] and CONSTANT["DATABASE"]["DRIVER"] == "SQLite3":
                 self.logger.info(f"====> Trying SQLite3 driver {threading.current_thread().name} <====")
                 if "DATABASE" in CONSTANT["DATABASE"]:
-                   attempt=0
+                   attempt=1
                    while attempt < 100:
                        try:
                            mylocal.connection = sqlite3.connect(CONSTANT["DATABASE"]["DATABASE"])
@@ -364,18 +364,24 @@ class Database(object):
             values = ','.join(values)
         query = f'INSERT INTO "{table}" ({keys}) VALUES ({values});'
         self.logger.debug(f"Insert Query ---> {query}")
-        try:
-            mylocal.cursor.execute(query)
-            self.commit()
-            for key,value in zip(wherekeys, wherevalues):
-                wherelist.append(f'{key} = {value}')
-            where = where + ' AND '.join(wherelist)
-            result = self.get_record(None, table, where)
-            if result:
-                response = result[0]['id']
-        #except Exception as exp:
-        except Exception as exp:
-            self.logger.error(f'Error occur while executing => {query}. error is {exp}.')
+        attempt=1
+        while (not response) and attempt<10:
+            try:
+                mylocal.cursor.execute(query)
+                self.commit()
+                for key,value in zip(wherekeys, wherevalues):
+                    wherelist.append(f'{key} = {value}')
+                where = where + ' AND '.join(wherelist)
+                result = self.get_record(None, table, where)
+                if result:
+                    response = result[0]['id']
+            except Exception as exp:
+                self.logger.error(f'Error occur while executing => {query}. error is "{exp}" on attempt {attempt}.')
+                if exp == "error is database is locked":
+                    attempt+=1
+                    sleep(3)
+                else:
+                    return False
         return response
 
 
@@ -409,17 +415,23 @@ class Database(object):
             strwhere = ' AND '.join(map(str, wherelist))
         query = f'UPDATE "{table}" SET {strcolumns} WHERE {strwhere};'
         self.logger.debug(f"Update Query ---> {query}")
-        try:
-            mylocal.cursor.execute(query)
-            self.commit()
-            if mylocal.cursor.rowcount < 1:
-                response = False
-            else:
-                response = True
-        except Exception as exp:
-            self.logger.error(f'Error occur while executing => {query}. error is {exp}.')
-            response = False
-        return response
+        attempt=1
+        while attempt<10:
+            try:
+                mylocal.cursor.execute(query)
+                self.commit()
+                if mylocal.cursor.rowcount < 1:
+                    return False
+                else:
+                    return True
+            except Exception as exp:
+                self.logger.error(f'Error occur while executing => {query}. error is "{exp}" on attempt {attempt}.')
+                if exp == "error is database is locked":
+                    attempt+=1
+                    sleep(3)
+                else:
+                    return False
+        return False
 
 
     def delete_row(self, table=None, where=None):
@@ -440,15 +452,21 @@ class Database(object):
                 column = column + ' = "' +str(cols['value']) +'"'
             wherelist.append(column)
             strwhere = ' AND '.join(map(str, wherelist))
-        try:
-            query = f'DELETE FROM "{table}" WHERE {strwhere};'
-            mylocal.cursor.execute(query)
-            self.commit()
-            response = True
-        except Exception as exp:
-            self.logger.error(f'Error occur while executing => {query}. error is {exp}.')
-            response = False
-        return response
+        attempt=1
+        while attempt<10:
+            try:
+                query = f'DELETE FROM "{table}" WHERE {strwhere};'
+                mylocal.cursor.execute(query)
+                self.commit()
+                return True
+            except Exception as exp:
+                self.logger.error(f'Error occur while executing => {query}. error is "{exp}" on attempt {attempt}.')
+                if exp == "error is database is locked":
+                    attempt+=1
+                    sleep(3)
+                else:
+                    return False
+        return False
 
     def clear(self, table):
         try:

@@ -60,13 +60,13 @@ class Database(object):
                    attempt=1
                    while attempt < 100:
                        try:
-                           mylocal.connection = sqlite3.connect(CONSTANT["DATABASE"]["DATABASE"])
+                           mylocal.connection = sqlite3.connect(CONSTANT["DATABASE"]["DATABASE"],isolation_level=None)
                            mylocal.connection.execute('pragma journal_mode=wal')
                            mylocal.connection.isolation_level = None
                            mylocal.cursor = mylocal.connection.cursor()
                            break
                        except Exception as exp:
-                           self.logger.info(f"Problem connecting to Database on attempt {attempt}... i try again in a few seconds...")
+                           self.logger.info(f"Problem '{exp}' while connecting to Database on attempt {attempt}... i try again in a few seconds...")
                            sleep(10)
                            attempt+=1
             else:

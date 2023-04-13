@@ -427,9 +427,6 @@ class OsImage(object):
                     self.logger.info(f"{details['task']} is not for us.")
                     sleep(10)
 
-            if threading.current_thread().__class__.__name__ != '_MainThread':
-                del Database
-
         except Exception as exp:
             self.logger.error(f"pack_n_tar_mother has problems: {exp}")
             try:

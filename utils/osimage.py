@@ -87,7 +87,7 @@ class OsImage(object):
                 return False,f"image path {image_path} is not an absolute path while IMAGE_DIRECTORY setting in FILES is not defined"
 
         if not os.path.exists(image_path):
-            return False,"Image path {image_path} does not exist"
+            return False,f"Image path {image_path} does not exist"
 
         #uid = str(uuid.uuid4())
         epoch_time = int(time())
@@ -226,7 +226,7 @@ class OsImage(object):
         tmp_path = '/tmp'  # in chroot env
         image_path = str(image[0]['path'])
         if not os.path.exists(image_path):
-            return False,"Image path {image_path} does not exist"
+            return False,f"Image path {image_path} does not exist"
 
         kernver = str(image[0]['kernelversion'])
         kernfile = f"{osimage}-vmlinuz-{kernver}"

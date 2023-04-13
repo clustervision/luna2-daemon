@@ -57,7 +57,7 @@ class Database(object):
             if "DATABASE" in CONSTANT and "DRIVER" in CONSTANT["DATABASE"] and CONSTANT["DATABASE"]["DRIVER"] == "SQLite3":
                 self.logger.info(f"====> Trying SQLite3 driver {threading.current_thread().name} <====")
                 if "DATABASE" in CONSTANT["DATABASE"]:
-                   attempt=0
+                   attempt=1
                    while attempt < 100:
                        try:
                            mylocal.connection = sqlite3.connect(CONSTANT["DATABASE"]["DATABASE"])
@@ -376,8 +376,8 @@ class Database(object):
                 if result:
                     response = result[0]['id']
             except Exception as exp:
-                self.logger.error(f'Error occur while executing => {query}. error is "{exp}" for attempt {attempt}.')
-                if exp == "error is database is locked":
+                self.logger.error(f'Error occur while executing => {query}. error is "{exp}" on attempt {attempt}.')
+                if exp == "error is database is locked"
                     attempt+=1
                     sleep(3)
                 else:
@@ -425,7 +425,7 @@ class Database(object):
                 else:
                     return True
             except Exception as exp:
-                self.logger.error(f'Error occur while executing => {query}. error is "{exp}" for attempt {attempt}.')
+                self.logger.error(f'Error occur while executing => {query}. error is "{exp}" on attempt {attempt}.')
                 if exp == "error is database is locked":
                     attempt+=1
                     sleep(3)
@@ -452,15 +452,21 @@ class Database(object):
                 column = column + ' = "' +str(cols['value']) +'"'
             wherelist.append(column)
             strwhere = ' AND '.join(map(str, wherelist))
-        try:
-            query = f'DELETE FROM "{table}" WHERE {strwhere};'
-            mylocal.cursor.execute(query)
-            self.commit()
-            response = True
-        except Exception as exp:
-            self.logger.error(f'Error occur while executing => {query}. error is {exp}.')
-            response = False
-        return response
+        attempt=1
+        while attempt<10:
+            try:
+                query = f'DELETE FROM "{table}" WHERE {strwhere};'
+                mylocal.cursor.execute(query)
+                self.commit()
+                return True
+            except Exception as exp:
+                self.logger.error(f'Error occur while executing => {query}. error is "{exp}" on attempt {attempt}.')
+                if exp == "error is database is locked":
+                    attempt+=1
+                    sleep(3)
+                else:
+                    return False
+        return False
 
     def clear(self, table):
         try:

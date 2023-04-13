@@ -10,7 +10,7 @@ bind = '0.0.0.0:7050'
 # Number of gunicorn workers to spawn. This should typically be 2n+1, where
 # n is the number of CPU cores present.
 # workers = 4
-workers = 1
+workers = 2
 
 # Number of threads per worker process
 # threads = 4

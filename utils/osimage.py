@@ -225,6 +225,9 @@ class OsImage(object):
 
         tmp_path = '/tmp'  # in chroot env
         image_path = str(image[0]['path'])
+        if not os.path.exists(image_path):
+            False,"Image path {image_path} does not exist"
+
         kernver = str(image[0]['kernelversion'])
         kernfile = f"{osimage}-vmlinuz-{kernver}"
         initrdfile = f"{osimage}-initramfs-{kernver}"
@@ -232,9 +235,6 @@ class OsImage(object):
             kernfile = f"{osimage}-{image[0]['kernelfile']}"
         if ('initrdfile' in image[0]) and (image[0]['initrdfile']):
             initrdfile = f"{osimage}-{image[0]['initrdfile']}"
-
-        # naming convention has to be worked out based on distribution. Above assumes RHEL naming standards if no explicit name for either kernel or ramdisk is given.
-        # pending: add a switch based n distro. e.g. RHEL, Debian, etc.... - Antoine
 
         user_id = pwd.getpwnam('root').pw_uid
         grp_id = pwd.getpwnam('root').pw_gid
@@ -424,6 +424,12 @@ class OsImage(object):
 
         except Exception as exp:
             self.logger.error(f"pack_n_tar_mother has problems: {exp}")
+            try:
+                Status().add_message(request_id,"luna",f"Packing failed: {exp}")
+                Status().add_message(request_id,"luna",f"EOF")
+            except Exception as nexp:
+                self.logger.error(f"pack_n_tar_mother has problems during exceptions handling: {nexp}")
+            
 
 
 

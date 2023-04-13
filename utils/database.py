@@ -60,7 +60,7 @@ class Database(object):
                    attempt=1
                    while attempt < 100:
                        try:
-                           mylocal.connection = sqlite3.connect(CONSTANT["DATABASE"]["DATABASE"],isolation_level=None)
+                           mylocal.connection = sqlite3.connect(CONSTANT["DATABASE"]["DATABASE"])
                            mylocal.connection.execute('pragma journal_mode=wal')
                            mylocal.connection.isolation_level = None
                            mylocal.cursor = mylocal.connection.cursor()
@@ -79,11 +79,6 @@ class Database(object):
     def commit(self):
         if "DATABASE" in CONSTANT and "DRIVER" in CONSTANT["DATABASE"] and CONSTANT["DATABASE"]["DRIVER"] == "SQLite3":
             mylocal.connection.commit()
-#            try:
-#                mylocal.cursor.execute("COMMIT")
-#            except:
-#                pass
-            pass
         else:
             mylocal.cursor.commit()
 

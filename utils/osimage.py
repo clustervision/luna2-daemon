@@ -422,7 +422,6 @@ class OsImage(object):
 
                     Queue().remove_task_from_queue(next_id)
                     Status().add_message(request_id,"luna",f"EOF")
-                    sleep(1)
                 else:
                     self.logger.info(f"{details['task']} is not for us.")
                     sleep(10)
@@ -433,9 +432,6 @@ class OsImage(object):
                 Status().add_message(request_id,"luna",f"Packing failed: {exp}")
                 Status().add_message(request_id,"luna",f"EOF")
             except Exception as nexp:
-                self.logger.error(f"pack_n_tar_mother has problems during exceptions handling: {nexp}")
+                self.logger.error(f"pack_n_tar_mother has problems during exception handling: {nexp}")
             
-        return True
-
-
 

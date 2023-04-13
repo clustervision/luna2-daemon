@@ -65,6 +65,9 @@ class Housekeeper(object):
                                 response, code = Service().luna_service(service, action)
                             case 'pack_n_tar_osimage':
                                 osimage=second
+#                                ret,mesg=OsImage().pack_image(osimage)
+#                                if ret is True:
+#                                    rett,mesgt=OsImage().create_tarball(osimage)
                                 remove_from_queue=False
                                 Queue().change_subsystem(next_id,'osimage')
                                 my_next_id = Queue().next_task_in_queue('osimage')

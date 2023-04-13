@@ -249,7 +249,7 @@ class OsImage(object):
         drivers_remove = []
         grab_filesystems = ['/','/boot']
         
-        if 'dracutmodules' in image[0]:
+        if 'dracutmodules' in image[0] and image[0]['dracutmodules']:
             for i in image[0]['dracutmodules'].split(','):
                 s=i.replace(" ", "")
                 if s[0] != '-':
@@ -257,7 +257,7 @@ class OsImage(object):
                 else:
                     modules_remove.extend(['--omit', s[1:]])
 
-        if 'kernelmodules' in image[0]:
+        if 'kernelmodules' in image[0] and image[0]['kernelmodules']:
             for i in image[0]['kernelmodules'].split(','):
                 s=i.replace(" ", "")
                 if s[0] != '-':

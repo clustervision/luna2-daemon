@@ -1648,7 +1648,7 @@ def config_osimage_clone(name=None):
     """
     data = {}
     create = False
-    items = {'grab_filesystems','grab_exclude','initrdfile','kernelfile','kernelmodules','kerneloptions','kernelversion','distribution'}
+    items = {'dracutmodules','grab_filesystems','grab_exclude','initrdfile','kernelfile','kernelmodules','kerneloptions','kernelversion','distribution'}
 
     if Helper().check_json(request.data):
         request_data,ret = Filter().validate_input(request.get_json(force=True))

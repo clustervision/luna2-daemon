@@ -87,6 +87,7 @@ def worker_abort(worker):
     debug_info.write("Traceback at time of timeout:\n")
     traceback.print_stack(file=debug_info)
     worker.log.critical(debug_info.getvalue())
+    LOGGER.error(debug_info.getvalue())
     #traceback.print_exc()
 
 ############# Gunicorn Server Hooks #############

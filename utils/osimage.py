@@ -161,7 +161,6 @@ class OsImage(object):
         row = [{"column": "tarball", "value": f"{tarfile}"}]
         where = [{"column": "id", "value": f"{image_id}"}]
         status = Database().update('osimage', row, where)
-        sleep(1)
 
         return True,"Success for {tarfile}"
 
@@ -401,12 +400,14 @@ class OsImage(object):
                 # --- let's pack and rack
 
                     ret,mesg=self.pack_image_based_on_distribution(osimage)
+                    sleep(1) # needed to prevent immediate concurrent access to the database. Pooling,WAL,WIF,WAF,etc won't fix this. Only sleep
                     if ret is True:
                         self.logger.info(f'OS image {osimage} packed successfully.')
                         Status().add_message(request_id,"luna",f"finished packing osimage {osimage}")
                         Status().add_message(request_id,"luna",f"tarring osimage {osimage}")
 
                         rett,mesgt=self.create_tarball(osimage)
+                        sleep(1)
                         if rett is True:
                             self.logger.info(f'OS image {osimage} tarred successfully.')
                             Status().add_message(request_id,"luna",f"finished tarring osimage {osimage}")

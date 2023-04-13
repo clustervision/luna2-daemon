@@ -31,7 +31,7 @@ from apis.files import files_blueprint
 from apis.service import service_blueprint
 from apis.monitor import monitor_blueprint
 from apis.control import control_blueprint
-import traceback
+#import traceback
 
 event = Event()
 
@@ -82,7 +82,12 @@ def on_exit(server):
 ############# debug traces ######################
 
 def worker_abort(worker):
-    traceback.print_exc()
+    import traceback, io
+    debug_info = io.StringIO()
+    debug_info.write("Traceback at time of timeout:\n")
+    traceback.print_stack(file=debug_info)
+    worker.log.critical(debug_info.getvalue())
+    #traceback.print_exc()
 
 ############# Gunicorn Server Hooks #############
 

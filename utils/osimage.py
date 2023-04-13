@@ -407,7 +407,7 @@ class OsImage(object):
                         Status().add_message(request_id,"luna",f"tarring osimage {osimage}")
 
                         rett,mesgt=self.create_tarball(osimage)
-                        sleep(1)
+                        sleep(1) # same for this one
                         if rett is True:
                             self.logger.info(f'OS image {osimage} tarred successfully.')
                             Status().add_message(request_id,"luna",f"finished tarring osimage {osimage}")
@@ -420,6 +420,7 @@ class OsImage(object):
 
                     Queue().remove_task_from_queue(next_id)
                     Status().add_message(request_id,"luna",f"EOF")
+                    sleep(1)
                 else:
                     self.logger.info(f"{details['task']} is not for us.")
                     sleep(10)
@@ -432,7 +433,7 @@ class OsImage(object):
             except Exception as nexp:
                 self.logger.error(f"pack_n_tar_mother has problems during exceptions handling: {nexp}")
             
-
+        return True
 
 
 

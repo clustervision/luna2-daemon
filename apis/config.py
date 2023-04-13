@@ -1723,8 +1723,8 @@ def config_osimage_pack(name=None):
     #Antoine
     request_id=str(time())+str(randint(1001,9999))+str(getpid())
 
-    queue_id,queue_response = Queue().add_task_to_queue(f'pack_n_tar_osimage:{name}','housekeeper',request_id)
-#    queue_id,queue_response = Queue().add_task_to_queue(f'pack_n_tar_osimage:{name}','osimage',request_id)
+#    queue_id,queue_response = Queue().add_task_to_queue(f'pack_n_tar_osimage:{name}','housekeeper',request_id)
+    queue_id,queue_response = Queue().add_task_to_queue(f'pack_n_tar_osimage:{name}','osimage',request_id)
     if not queue_id:
         LOGGER.info(f"config_osimage_pack GET cannot get queue_id")
         response= {"message": f'OS image {name} pack queuing failed.'}
@@ -1739,11 +1739,11 @@ def config_osimage_pack(name=None):
     LOGGER.info(f"config_osimage_pack GET added task to queue: {queue_id}")
     Status().add_message(request_id,"luna",f"queued pack osimage {name} with queue_id {queue_id}")
 
-#    next_id = Queue().next_task_in_queue('osimage')
-#    if queue_id == next_id:
-#        executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
-#        executor.submit(OsImage().pack_n_tar_mother,name,request_id)
-#        executor.shutdown(wait=False)
+    next_id = Queue().next_task_in_queue('osimage')
+    if queue_id == next_id:
+        executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
+        executor.submit(OsImage().pack_n_tar_mother,name,request_id)
+        executor.shutdown(wait=False)
 
     # we should check after a few seconds if there is a status update for us.
     # if so, that means mother is taking care of things

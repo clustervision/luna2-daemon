@@ -80,7 +80,7 @@ class Housekeeper(object):
                     return
             except Exception as exp:
                 self.logger.error(f"tasks_mother up thread encountered problem: {exp}")
-            sleep(3)
+            sleep(5)
 
 
     def cleanup_mother(self,event):

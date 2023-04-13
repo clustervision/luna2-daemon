@@ -180,14 +180,10 @@ def config_node_get(name=None):
                                            'group.provision_method AS group_provision_method',
                                            'group.provision_fallback AS group_provision_fallback',
                                            'group.provision_interface AS group_provision_interface'], ['group.id=node.groupid','osimage.id=group.osimageid'],f"node.name='{name}'")
-    if not nodes:
-        LOGGER.error(f'Node {name} is not available.')
-        response = {'message': f'Node {name} is not available.'}
-        access_code = 404
-    if nodefull:
+    if nodefull and nodes:
         nodes[0].update(nodefull[0])
-    node=nodes[0]
-    if node:
+    if nodes:
+        node=nodes[0]
         response = {'config': {'node': {} }}
         nodename = node['name']
         nodeid = node['id']

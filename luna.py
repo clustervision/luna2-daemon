@@ -31,6 +31,7 @@ from apis.files import files_blueprint
 from apis.service import service_blueprint
 from apis.monitor import monitor_blueprint
 from apis.control import control_blueprint
+import traceback
 
 event = Event()
 
@@ -78,7 +79,13 @@ def on_exit(server):
     LOGGER.info('Gunicorn server hook on exit')
     return True
 
+############# debug traces ######################
+
+def worker_abort(worker):
+    traceback.print_exc()
+
 ############# Gunicorn Server Hooks #############
+
 
 api = Flask(__name__)
 api.register_blueprint(auth_blueprint)

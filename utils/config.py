@@ -608,7 +608,7 @@ $TTL 604800
             self.logger.info(f"invalid IP address for {interface_name}. Network {network_details[0]['name']}: {network_details[0]['network']}/{network_details[0]['subnet']}")
             return False,f"invalid IP address for {interface_name}. Network {network_details[0]['name']}: {network_details[0]['network']}/{network_details[0]['subnet']}"
 
-        ipaddress_check = Database().get_record_join(['node.id as nodeid','nodeinterface.interface'], ['ipaddress.tablerefid=nodeinterface.id'], ['tableref="nodeinterface"',f"ipaddress.ipaddress='{ipaddress}'"])
+        ipaddress_check = Database().get_record_join(['node.id as nodeid','nodeinterface.interface'], ['ipaddress.tablerefid=nodeinterface.id','nodeinterface.nodeid=node.id'], ['tableref="nodeinterface"',f"ipaddress.ipaddress='{ipaddress}'"])
         if ipaddress_check and (ipaddress_check[0]['nodeid'] != nodeid) and (interface_name != ipaddress_check[0]['interface']):
             return False,"ip address {ipaddress} is already in use"
 

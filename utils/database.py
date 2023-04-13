@@ -78,7 +78,11 @@ class Database(object):
 
     def commit(self):
         if "DATABASE" in CONSTANT and "DRIVER" in CONSTANT["DATABASE"] and CONSTANT["DATABASE"]["DRIVER"] == "SQLite3":
-            pass
+            try:
+                mylocal.cursor.execute("COMMIT")
+            except:
+                pass
+#            pass
         else:
             mylocal.cursor.commit()
 
@@ -377,7 +381,7 @@ class Database(object):
                     response = result[0]['id']
             except Exception as exp:
                 self.logger.error(f'Error occur while executing => {query}. error is "{exp}" on attempt {attempt}.')
-                if exp == "database is locked":
+                if f"{exp}" == "database is locked":
                     attempt+=1
                     sleep(3)
                 else:
@@ -426,7 +430,7 @@ class Database(object):
                     return True
             except Exception as exp:
                 self.logger.error(f'Error occur while executing => {query}. error is "{exp}" on attempt {attempt}.')
-                if exp == "database is locked":
+                if f"{exp}" == "database is locked":
                     attempt+=1
                     sleep(3)
                 else:
@@ -461,7 +465,7 @@ class Database(object):
                 return True
             except Exception as exp:
                 self.logger.error(f'Error occur while executing => {query}. error is "{exp}" on attempt {attempt}.')
-                if exp == "database is locked":
+                if f"{exp}" == "database is locked":
                     attempt+=1
                     sleep(3)
                 else:

@@ -377,7 +377,7 @@ class Database(object):
                     response = result[0]['id']
             except Exception as exp:
                 self.logger.error(f'Error occur while executing => {query}. error is "{exp}" on attempt {attempt}.')
-                if exp == "error is database is locked"
+                if exp == "error is database is locked":
                     attempt+=1
                     sleep(3)
                 else:

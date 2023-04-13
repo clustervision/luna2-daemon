@@ -44,8 +44,8 @@ class Database(object):
         self.pswd = f'PWD={CONSTANT["DATABASE"]["DBPASSWORD"]};'
         self.encoding = 'charset=utf8mb4;'
         self.port = f'PORT={CONSTANT["DATABASE"]["PORT"]};'
-        self.connection_string = f'{self.driver}{self.server}{self.database}{self.uid}{self.pswd}'
-        self.connection_string = f'{self.connection_string}{self.encoding}{self.port};MultipleActiveResultSets=True;MARS_Connection=yes'
+#        self.connection_string = f'{self.driver}{self.server}{self.database}{self.uid}{self.pswd}'
+        self.connection_string = f'{self.connection_string}{self.encoding}{self.port};MultipleActiveResultSets=True;MARS_Connection=yes;Pooling=True'
         #self.connection = pyodbc.connect(self.connection_string)
         #self.cursor = local.connection.cursor()
 

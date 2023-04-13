@@ -24,7 +24,7 @@ import ipaddress
 from configparser import RawConfigParser
 from netaddr import IPNetwork
 from utils.log import Log
-#from utils.database import Database
+from utils.database import Database
 from common.constant import CONSTANT, LUNAKEY
 from utils.helper import Helper
 import concurrent.futures
@@ -70,11 +70,11 @@ class OsImage(object):
             os.chown(path_to_store, user_id, grp_id)
             os.chmod(path_to_store, 0o755)
 
-        from utils.database import Database
+#        from utils.database import Database
         image = Database().get_record(None, 'osimage', f"WHERE name='{osimage}'")
         if not image:
             return False,f"Image {osimage} does not exist?"
-        del Database
+#        del Database
 
         image_id=image[0]['id']  # we might need it later. at least once at the bottom
 
@@ -162,9 +162,9 @@ class OsImage(object):
 
         row = [{"column": "tarball", "value": f"{tarfile}"}]
         where = [{"column": "id", "value": f"{image_id}"}]
-        from utils.database import Database
+#        from utils.database import Database
         status = Database().update('osimage', row, where)
-        del Database
+#        del Database
 
         return True,"Success for {tarfile}"
 
@@ -213,9 +213,9 @@ class OsImage(object):
             umount(f"{path}/proc")
             umount(f"{path}/sys")
 
-        from utils.database import Database
+#        from utils.database import Database
         image = Database().get_record(None, 'osimage', f"WHERE name='{osimage}'")
-        del Database
+#        del Database
 
         if ('path' not in image[0]) or (image[0]['path'] is None):
             return False,"Image path not defined"
@@ -355,9 +355,9 @@ class OsImage(object):
     # ---------------------------------------------------------------------------
 
     def pack_image_based_on_distribution(self,osimage):
-        from utils.database import Database
+#        from utils.database import Database
         image = Database().get_record(None, 'osimage', f"WHERE name='{osimage}'")
-        del Database
+#        del Database
         distribution='redhat'
         if 'distribution' in image[0]:
             distribution=image[0]['distribution'] or 'redhat'

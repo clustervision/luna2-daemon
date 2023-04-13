@@ -31,7 +31,6 @@ from apis.files import files_blueprint
 from apis.service import service_blueprint
 from apis.monitor import monitor_blueprint
 from apis.control import control_blueprint
-#import traceback
 
 event = Event()
 
@@ -88,7 +87,6 @@ def worker_abort(worker):
     traceback.print_stack(file=debug_info)
     worker.log.critical(debug_info.getvalue())
     LOGGER.error(debug_info.getvalue())
-    #traceback.print_exc()
 
 ############# Gunicorn Server Hooks #############
 

@@ -78,11 +78,11 @@ class Database(object):
 
     def commit(self):
         if "DATABASE" in CONSTANT and "DRIVER" in CONSTANT["DATABASE"] and CONSTANT["DATABASE"]["DRIVER"] == "SQLite3":
-            try:
-                mylocal.cursor.execute("COMMIT")
-            except:
-                pass
-#            pass
+#            try:
+#                mylocal.cursor.execute("COMMIT")
+#            except:
+#                pass
+            pass
         else:
             mylocal.cursor.commit()
 

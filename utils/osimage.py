@@ -210,6 +210,8 @@ class OsImage(object):
             umount(f"{path}/sys")
 
         image = Database().get_record(None, 'osimage', f"WHERE name='{osimage}'")
+        if not image:
+            return False,f"Image {osimage} does not exist?"
 
         if ('path' not in image[0]) or (image[0]['path'] is None):
             return False,"Image path not defined"
@@ -351,7 +353,7 @@ class OsImage(object):
     def pack_image_based_on_distribution(self,osimage):
         image = Database().get_record(None, 'osimage', f"WHERE name='{osimage}'")
         distribution='redhat'
-        if 'distribution' in image[0]:
+        if image and 'distribution' in image[0]:
             distribution=image[0]['distribution'] or 'redhat'
             distribution=distribution.lower()
 

@@ -48,8 +48,12 @@ class Housekeeper(object):
                 if tel > 6:
                     tel=0
                     while next_id := Queue().next_task_in_queue('housekeeper'):
+                        remove_from_queue=True
                         self.logger.info(f"tasks_mother sees job in queue as next: {next_id}")
                         details=Queue().get_task_details(next_id)
+                        request_id=None
+                        if 'request_id' in details:
+                            request_id=details['request_id']
                         first,second,*_=(details['task'].split(':')+[None])
                         self.logger.info(f"tasks_mother will work on {first} {second}")
 
@@ -61,17 +65,22 @@ class Housekeeper(object):
                                 response, code = Service().luna_service(service, action)
                             case 'pack_n_tar_osimage':
                                 osimage=second
-                                ret,mesg=OsImage().pack_image(osimage)
-                                if ret is True:
-                                    rett,mesgt=OsImage().create_tarball(osimage)
+                                remove_from_queue=False
+                                Queue().change_subsystem(next_id,'osimage')
+                                my_next_id = Queue().next_task_in_queue('osimage')
+                                if next_id == my_next_id:
+                                    executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
+                                    executor.submit(OsImage().pack_n_tar_mother,osimage,request_id)
+                                    executor.shutdown(wait=False)
 
-                        Queue().remove_task_from_queue(next_id)
+                        if remove_from_queue:
+                            Queue().remove_task_from_queue(next_id)
                             
                 if event.is_set():
                     return
             except Exception as exp:
                 self.logger.error(f"tasks_mother up thread encountered problem: {exp}")
-            sleep(5)
+            sleep(3)
 
 
     def cleanup_mother(self,event):

@@ -58,7 +58,6 @@ def config_node():
     switches = Database().get_record(None, 'switch', None)
     bmcsetups = Database().get_record(None, 'bmcsetup', None)
     group=Helper().convert_list_to_dict(groups,'id')
-    LOGGER.info("stop")
     osimage=Helper().convert_list_to_dict(osimages,'id')
     switch=Helper().convert_list_to_dict(switches,'id')
     bmcsetup=Helper().convert_list_to_dict(bmcsetups,'id')

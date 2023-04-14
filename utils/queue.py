@@ -33,19 +33,20 @@ class Queue(object):
     def __init__(self):
         self.logger = Log.get_logger()
 
-    def add_task_to_queue(self,task,subsystem=None,request_id=None):
+    def add_task_to_queue(self,task,subsystem=None,request_id=None,force=None):
         if subsystem is None:
             subsystem="anonymous"
         if request_id is None:
             request_id="n/a"
 
-        # pending. these datatime calls might not be mysql compliant.
-        where=f" WHERE subsystem='{subsystem}' AND task='{task}' AND created>datetime('now','-10 minute') ORDER BY id ASC LIMIT 1"
-        check = Database().get_record(None , 'queue', where)
-        if check:
-            # we already have the same task in the queue
-            self.logger.info(f"We already have similar job in the queue ({check[0]['id']}) and i will return the matching request_id: {check[0]['request_id']}")
-            return check[0]['id'],check[0]['request_id']
+        if not force:
+            # pending. these datatime calls might not be mysql compliant.
+            where=f" WHERE subsystem='{subsystem}' AND task='{task}' AND created>datetime('now','-10 minute') ORDER BY id ASC LIMIT 1"
+            check = Database().get_record(None , 'queue', where)
+            if check:
+                # we already have the same task in the queue
+                self.logger.info(f"We already have similar job in the queue ({check[0]['id']}) and i will return the matching request_id: {check[0]['request_id']}")
+                return check[0]['id'],check[0]['request_id']
 
         row=[{"column": "created", "value": "current_datetime"}, 
              {"column": "username_initiator", "value": "luna"}, 

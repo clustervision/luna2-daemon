@@ -36,7 +36,7 @@ DATABASE_LAYOUT_osimage = [
 {"column": "id",                   "datatype": "INTEGER", "key": "PRIMARY", "keyadd": "AUTOINCREMENT"},
 {"column": "name",                 "datatype": "VARCHAR", "length": "20", "key": "UNIQUE"},
 {"column": "dracutmodules",        "datatype": "VARCHAR", "length": "100"},
-{"column": "grab_filesystems",     "datatype": "VARCHAR", "length": "60"},
+{"column": "grab_filesystems",     "datatype": "VARCHAR", "length": "250"},
 {"column": "grab_exclude",         "datatype": "TEXT"},
 {"column": "initrdfile",           "datatype": "VARCHAR", "length": "100"},
 {"column": "kernelfile",           "datatype": "VARCHAR", "length": "100"},
@@ -47,6 +47,7 @@ DATABASE_LAYOUT_osimage = [
 {"column": "tarball",              "datatype": "VARCHAR", "length": "100"},
 {"column": "torrent",              "datatype": "VARCHAR", "length": "100"},
 {"column": "distribution",         "datatype": "VARCHAR", "length": "20"},
+{"column": "changed",              "datatype": "INTEGER", "length": "10"},
 {"column": "comment",              "datatype": "VARCHAR", "length": "20"}]
 
 DATABASE_LAYOUT_nodesecrets = [
@@ -110,8 +111,8 @@ DATABASE_LAYOUT_group = [
 {"column": "partscript",           "datatype": "TEXT"},
 {"column": "postscript",           "datatype": "TEXT"},
 {"column": "netboot",              "datatype": "VARCHAR", "length": "20"},
-{"column": "localinstall",         "datatype": "VARCHAR", "length": "20"},
-{"column": "bootmenu",             "datatype": "VARCHAR", "length": "20"},
+{"column": "localinstall",         "datatype": "INTEGER", "length": "10"},
+{"column": "bootmenu",             "datatype": "INTEGER", "length": "10"},
 {"column": "comment",              "datatype": "VARCHAR", "length": "20"},
 {"column": "provision_interface",  "datatype": "VARCHAR", "length": "20"},
 {"column": "provision_method",     "datatype": "VARCHAR", "length": "20"},

@@ -1573,6 +1573,7 @@ def config_osimage_post(name=None):
                 else:
                     data['name'] = data['newosimage']
                     del data['newosimage']
+                    data['changed']=1
             update = True
         else:
             if 'newosimage' in data:
@@ -1751,10 +1752,17 @@ def config_osimage_pack(name=None):
     name = Filter().filter(name,'osimage')
 
     #Antoine
+    image = Database().get_record(None , 'osimage', f' WHERE name = "{name}"')
+    force=False
+    if image and 'changed' in image[0] and image[0]['changed']:
+        force=True
+        where = [{"column": "name", "value": {name}}]
+        row = [{"column": "changed", "value": '0'}]
+        Database().update('osimage', row, where)
+
     request_id=str(time())+str(randint(1001,9999))+str(getpid())
 
-#    queue_id,queue_response = Queue().add_task_to_queue(f'pack_n_tar_osimage:{name}','housekeeper',request_id)
-    queue_id,queue_response = Queue().add_task_to_queue(f'pack_n_tar_osimage:{name}','osimage',request_id)
+    queue_id,queue_response = Queue().add_task_to_queue(f'pack_n_tar_osimage:{name}','osimage',request_id,force)
     if not queue_id:
         LOGGER.info(f"config_osimage_pack GET cannot get queue_id")
         response= {"message": f'OS image {name} pack queuing failed.'}
@@ -1816,6 +1824,7 @@ def config_osimage_kernel_post(name=None):
             osimagecolumns = Database().get_columns('osimage')
             columncheck = Helper().checkin_list(data, osimagecolumns)
             if columncheck:
+                #changed=1
                 #requestcheck = Helper().pack(name) # discussed - pending
                 response = {'message': f'OS Image {name} Kernel updated.'}
                 access_code = 204

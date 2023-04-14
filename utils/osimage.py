@@ -381,7 +381,7 @@ class OsImage(object):
             output,exit_code = Helper().runcommand(command,True,10)
             if exit_code == 0:
                 command=f"rsync -aH \"{srcimage[0]['path']}\"/* \"{dstimage[0]['path']}\"/" 
-                output,exit_code = Helper().runcommand(command,True,10)
+                output,exit_code = Helper().runcommand(command,True,3600)
                 if exit_code == 0:
                     return True,"success"
         else:

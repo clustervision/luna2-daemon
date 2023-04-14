@@ -377,8 +377,10 @@ class OsImage(object):
                 if not os.path.exists(srcimage[0]['path']):
                     return False,f"{src}:{srcimage[0]['path']} does not exist"
         if dstimage and dstimage[0]['path']:
-            command=f"mkdir -p \"{dstimage[0]['path']}\""
-            output,exit_code = Helper().runcommand(command,True,10)
+            exit_code=0
+            if not os.path.exists(dstimage[0]['path']):
+                command=f"mkdir -p \"{dstimage[0]['path']}\""
+                output,exit_code = Helper().runcommand(command,True,10)
             if exit_code == 0:
                 command=f"rsync -aH \"{srcimage[0]['path']}\"/* \"{dstimage[0]['path']}\"/" 
                 output,exit_code = Helper().runcommand(command,True,3600)

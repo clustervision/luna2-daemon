@@ -222,15 +222,15 @@ def config_node_get(name=None):
            'provision_interface':'BOOTIF'}
 
         for item in items.keys():
-           if 'group_'+item in node and node['group_'+item] and not node[item]:
-               if isinstance(items[item], bool):
+           if 'group_'+item in node and isinstance(items[item], bool):
                    node['group_'+item] = str(Helper().make_bool(node['group_'+item]))
+           if 'group_'+item in node and node['group_'+item] and not node[item]:
                node['group_'+item] += f" ({node['group']})"
                node[item] = node[item] or node['group_'+item] or str(items[item]+' (default)')
            else:
                if isinstance(items[item], bool):
                    node[item] = str(Helper().make_bool(node[item]))
-               node[item] = node[item] or str(items[item]+' (default)')
+               node[item] = node[item] or str(items[item])+' (default)'
            if 'group_'+item in node:
                del node['group_'+item]
 

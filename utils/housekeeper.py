@@ -54,7 +54,7 @@ class Housekeeper(object):
                         request_id=None
                         if 'request_id' in details:
                             request_id=details['request_id']
-                        first,second,*_=(details['task'].split(':')+[None])
+                        first,second,third,*_=(details['task'].split(':')+[None]+[None]+[None])
                         self.logger.info(f"tasks_mother will work on {first} {second}")
 
                         match first:
@@ -63,6 +63,14 @@ class Housekeeper(object):
                                 action=second
                                 Queue().update_task_status_in_queue(next_id,'in progress')
                                 response, code = Service().luna_service(service, action)
+                            case 'copy_osimage':
+                                remove_from_queue=False
+                                Queue().change_subsystem(next_id,'osimage')
+                                my_next_id = Queue().next_task_in_queue('osimage')
+                                if next_id == my_next_id:
+                                    executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
+                                    executor.submit(OsImage().copy_mother,second,third,request_id)
+                                    executor.shutdown(wait=False)
                             case 'pack_n_tar_osimage':
                                 osimage=second
 #                                ret,mesg=OsImage().pack_image(osimage)

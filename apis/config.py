@@ -1646,8 +1646,9 @@ def config_osimage_clone(name=None):
     Output - OSImage Info.
     """
     data = {}
-    create = False
     items = {'dracutmodules','grab_filesystems','grab_exclude','initrdfile','kernelfile','kernelmodules','kerneloptions','kernelversion','distribution'}
+    access_code=500
+    response= {"message": f'OS image copy failed. No sign of life of spawned thread.'}
 
     if Helper().check_json(request.data):
         request_data,ret = Filter().validate_input(request.get_json(force=True))
@@ -1678,7 +1679,6 @@ def config_osimage_clone(name=None):
                         if (item not in data) and item in image[0] and image[0][item]:
                             data[item]=image[0][item]
                     del data['newosimage']
-                    create = True
             else:
                 response = {'message': 'Kindly pass the new OS Image name.'}
                 access_code = 400
@@ -1691,11 +1691,41 @@ def config_osimage_clone(name=None):
         osimagecolumns = Database().get_columns('osimage')
         columncheck = Helper().checkin_list(data, osimagecolumns)
         if columncheck:
-            if create:
-                row = Helper().make_rows(data)
-                Database().insert('osimage', row)
-                response = {'message': f'OS Image {name} cloned to {newosname}.'}
-                access_code = 201
+            row = Helper().make_rows(data)
+            Database().insert('osimage', row)
+#TWANNIE
+            request_id=str(time())+str(randint(1001,9999))+str(getpid())
+
+            queue_id,queue_response = Queue().add_task_to_queue(f"copy_osimage:{name}:{data['name']}",'clone_osimage',request_id)
+            if not queue_id:
+                LOGGER.info(f"config_osimage_pack GET cannot get queue_id")
+                response= {"message": f"OS image {name}->{data['name']} copy queuing failed."}
+                return json.dumps(response), code
+
+            Queue().add_task_to_queue(f"pack_n_tar_osimage:{data['name']}",'clone_osimage',request_id)
+            if queue_response != "added": # this means we already have an equal request in the queue
+                access_code=200
+                response = {"message": f"osimage copy for {data['name']} already queued", "request_id": queue_response}
+                LOGGER.info(f"my repsonse [{response}]")
+                return json.dumps(response), code
+
+            LOGGER.info(f"config_osimage_pack GET added task to queue: {queue_id}")
+            Status().add_message(request_id,"luna",f"queued pack osimage {name} with queue_id {queue_id}")
+
+            next_id = Queue().next_task_in_queue('clone_osimage')
+            if queue_id == next_id:
+                executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
+                executor.submit(OsImage().clone_mother,request_id)
+                executor.shutdown(wait=False)
+
+            # we should check after a few seconds if there is a status update for us.
+            # if so, that means mother is taking care of things
+
+            sleep(1)
+            status = Database().get_record(None , 'status', f' WHERE request_id = "{request_id}"')
+            if status:
+                access_code=200
+                response = {"message": f"osimage copy for {data['name']} queued", "request_id": request_id}
         else:
             response = {'message': 'Bad Request; Columns are incorrect.'}
             access_code = 400
@@ -1786,7 +1816,7 @@ def config_osimage_kernel_post(name=None):
             osimagecolumns = Database().get_columns('osimage')
             columncheck = Helper().checkin_list(data, osimagecolumns)
             if columncheck:
-                requestcheck = Helper().pack(name)
+                #requestcheck = Helper().pack(name) # discussed - pending
                 response = {'message': f'OS Image {name} Kernel updated.'}
                 access_code = 204
             else:

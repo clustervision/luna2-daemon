@@ -366,6 +366,27 @@ class OsImage(object):
         
         return ret,mesg
 
+    # ---------------------------------------------------------------------------
+
+    def copy_osimage(self,src,dst):
+        srcimage,dstimage=None,None
+        if src and dst:
+            srcimage = Database().get_record(None, 'osimage', f"WHERE name='{src}'")
+            dstimage = Database().get_record(None, 'osimage', f"WHERE name='{dst}'")
+            if srcimage and dstimage:
+                if not os.path.exists(srcimage[0]['path']):
+                    return False,f"{src}:{srcimage[0]['path']} does not exist"
+        if dstimage and dstimage[0]['path']:
+            command=f"mkdir -p \"{dstimage[0]['path']}\""
+            output,exit_code = Helper().runcommand(command,True,10)
+            if exit_code == 0:
+                command=f"rsync -aH \"{srcimage[0]['path']}\"/* \"{dstimage[0]['path']}\"/" 
+                output,exit_code = Helper().runcommand(command,True,10)
+                if exit_code == 0:
+                    return True,"success"
+        else:
+            return False,"destination image {src} does not seem to exist"
+        return False,f"failed with {output}"
 
     # ---------------------------------------------------------------------------
 
@@ -392,7 +413,7 @@ class OsImage(object):
                 self.logger.info(f"pack_n_tar_mother sees job in queue as next: {next_id}")
                 details=Queue().get_task_details(next_id)
                 request_id=details['request_id']
-                action,osimage=details['task'].split(':')
+                action,osimage,*_=(details['task'].split(':')+[None]+[None])
 
                 if action == "pack_n_tar_osimage":
 
@@ -433,5 +454,90 @@ class OsImage(object):
                 Status().add_message(request_id,"luna",f"EOF")
             except Exception as nexp:
                 self.logger.error(f"pack_n_tar_mother has problems during exception handling: {nexp}")
+            
+
+    def copy_mother(self,src,dst,request_id):
+
+        self.logger.info(f"copy_mother called")
+        try:
+#            # Below section is already done in config/pack GET call but kept here in case we want to move it back
+#            queue_id,response = Queue().add_task_to_queue(f'copy_osimage:{src}:{dst}','osimage',request_id)
+#            if not queue_id:
+#                self.logger.info(f"copy_mother cannot get queue_id")
+#                Status().add_message(request_id,"luna",f"error queuing my task")
+#                return
+#            self.logger.info(f"copy_mother added task to queue: {queue_id}")
+#            Status().add_message(request_id,"luna",f"queued copy osimage {src}->{dst} with queue_id {queue_id}")
+#
+#            next_id = Queue().next_task_in_queue('osimage')
+#            if queue_id != next_id:
+#                # little tricky. we assume that another mother proces was spawned that took care of the runs... 
+#                # we need a check based on last hear queue entry, then we continue. pending in next_task_in_queue.
+#                return
+
+            while next_id := Queue().next_task_in_queue('osimage'):
+                self.logger.info(f"copy_mother sees job in queue as next: {next_id}")
+                details=Queue().get_task_details(next_id)
+                request_id=details['request_id']
+                action,src,dst,*_=(details['task'].split(':')+[None]+[None])
+
+                if action == "copy_osimage":
+
+                    Queue().update_task_status_in_queue(next_id,'in progress')
+                    Status().add_message(request_id,"luna",f"copying osimage {src}->{dst}")
+   
+                # --- let's copy
+
+                    ret,mesg=self.copy_osimage(src,dst)
+                    sleep(1) # needed to prevent immediate concurrent access to the database. Pooling,WAL,WIF,WAF,etc won't fix this. Only sleep
+                    if ret is True:
+                        self.logger.info(f'OS image copied successfully.')
+                        Status().add_message(request_id,"luna",f"finished copying osimage")
+
+                    else:
+                        self.logger.info(f'Copy osimage {src}->{dst} error: {mesg}.')
+                        Status().add_message(request_id,"luna",f"error copying osimage: {mesg}")
+
+                    Queue().remove_task_from_queue(next_id)
+                    Status().add_message(request_id,"luna",f"EOF")
+                else:
+                    self.logger.info(f"{details['task']} is not for us.")
+                    sleep(10)
+
+        except Exception as exp:
+            self.logger.error(f"copy_mother has problems: {exp}")
+            try:
+                Status().add_message(request_id,"luna",f"Packing failed: {exp}")
+                Status().add_message(request_id,"luna",f"EOF")
+            except Exception as nexp:
+                self.logger.error(f"copy_mother has problems during exception handling: {nexp}")
+            
+
+    def clone_mother(self,request_id):
+
+        self.logger.info(f"clone_mother called")
+        try:
+
+            while next_id := Queue().next_task_in_queue('clone_osimage'):
+                self.logger.info(f"clone_mother sees job in queue as next: {next_id}")
+                details=Queue().get_task_details(next_id)
+                request_id=details['request_id']
+                action,first,second,*_=(details['task'].split(':')+[None]+[None])
+
+                if action == "copy_osimage":
+                    Queue().change_subsystem(next_id,'osimage')
+                    self.copy_mother(first,second,request_id)
+
+                elif action == "pack_n_tar_osimage":
+                    Queue().change_subsystem(next_id,'osimage')
+                    self.pack_n_tar_mother(first,request_id)
+
+        except Exception as exp:
+            self.logger.error(f"clone_mother has problems: {exp}")
+            try:
+                Status().add_message(request_id,"luna",f"Cloning failed: {exp}")
+                Status().add_message(request_id,"luna",f"EOF")
+            except Exception as nexp:
+                self.logger.error(f"copy_mother has problems during exception handling: {nexp}")
             
 

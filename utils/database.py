@@ -62,6 +62,7 @@ class Database(object):
                        try:
                            mylocal.connection = sqlite3.connect(CONSTANT["DATABASE"]["DATABASE"])
                            mylocal.connection.execute('pragma journal_mode=wal')
+                           mylocal.connection.execute('pragma busy_timeout=5000')
                            mylocal.connection.isolation_level = None
                            mylocal.cursor = mylocal.connection.cursor()
                            break

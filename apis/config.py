@@ -103,15 +103,15 @@ def config_node():
             else:
                 node['group']='!!Invalid!!'
 
-            for item in items:
-                if node[item] is None:
-                    node[item]=""
-                if groupid and item in group[groupid]:
-                    if group[groupid][item] is None:
-                        group[groupid][item]=""
-                    node[item]=str(node[item]) or str(group[groupid][item]) or items[item]
+            for item in items.keys():
+                if groupid and item in group[groupid] and isinstance(items[item], bool):
+                    group[groupid][item] = str(Helper().make_bool(group[groupid][item]))
+                if groupid and item in group[groupid] and not node[item]:
+                    node[item] = group[groupid][item] or items[item]
                 else:
-                    node[item]=str(node[item]) or items[item]
+                    if isinstance(items[item], bool):
+                        node[item] = str(Helper().make_bool(node[item]))
+                    node[item] = node[item] or items[item]
 
             node['switch']=None
             if node['switchid']:
@@ -223,7 +223,7 @@ def config_node_get(name=None):
 
         for item in items.keys():
            if 'group_'+item in node and isinstance(items[item], bool):
-                   node['group_'+item] = str(Helper().make_bool(node['group_'+item]))
+               node['group_'+item] = str(Helper().make_bool(node['group_'+item]))
            if 'group_'+item in node and node['group_'+item] and not node[item]:
                node['group_'+item] += f" ({node['group']})"
                node[item] = node[item] or node['group_'+item] or str(items[item]+' (default)')

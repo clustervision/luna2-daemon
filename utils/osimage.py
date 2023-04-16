@@ -532,12 +532,12 @@ class OsImage(object):
                 action,first,second,*_=(details['task'].split(':')+[None]+[None])
 
                 if action == "clone_osimage":
+                    Queue().remove_task_from_queue(next_id)
                     if first and second:
                         Queue().add_task_to_queue(f"copy_osimage:{first}:{second}",'osimage',request_id)
                         self.copy_mother(first,second,request_id,noeof)
                         Queue().add_task_to_queue(f"pack_n_tar_osimage:{second}",'osimage',request_id)
                         self.pack_n_tar_mother(first,request_id)
-                    Queue().remove_task_from_queue(next_id)
 
 #                if action == "copy_osimage":
 #                    Queue().change_subsystem(next_id,'osimage')

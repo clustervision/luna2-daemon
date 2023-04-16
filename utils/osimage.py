@@ -393,7 +393,7 @@ class OsImage(object):
                     self.logger.info(f'OS image {osimage} pack error: {mesg}.')
                     Status().add_message(request_id,"luna",f"error packing osimage {osimage}: {mesg}")
 
-                if result is True and not noeof:
+                if not noeof:
                     Status().add_message(request_id,"luna",f"EOF")
             else:
                 self.logger.info(f"{details['task']} is not for us.")
@@ -433,7 +433,7 @@ class OsImage(object):
                     self.logger.info(f'OS image {osimage} tar error: {mesg}.')
                     Status().add_message(request_id,"luna",f"error tarring osimage {osimage}: {mesg}")
 
-                if result is True and not noeof:
+                if not noeof:
                     Status().add_message(request_id,"luna",f"EOF")
             else:
                 self.logger.info(f"{details['task']} is not for us.")
@@ -499,7 +499,7 @@ class OsImage(object):
                     self.logger.info(f'Copy osimage src and/or dst not provided.')
                     Status().add_message(request_id,"luna",f"error copying osimage as 'src' and/or 'dst' not provided.")
 
-                if result is True and not noeof:
+                if not noeof:
                     Status().add_message(request_id,"luna",f"EOF")
                 return result
             else:
@@ -566,6 +566,7 @@ class OsImage(object):
                         Queue().remove_task_from_queue(next_id)
                         if not ret:
                             Queue().remove_task_from_queue_by_request_id(request_id)
+                            Status().add_message(request_id,"luna",f"EOF")
 
                 elif action == "pack_osimage":
                     if first:
@@ -574,6 +575,7 @@ class OsImage(object):
                         Queue().remove_task_from_queue(next_id)
                         if not ret:
                             Queue().remove_task_from_queue_by_request_id(request_id)
+                            Status().add_message(request_id,"luna",f"EOF")
 
                 elif action == "tar_osimage":
                     if first:
@@ -582,6 +584,7 @@ class OsImage(object):
                         Queue().remove_task_from_queue(next_id)
                         if not ret:
                             Queue().remove_task_from_queue_by_request_id(request_id)
+                            Status().add_message(request_id,"luna",f"EOF")
 
                 else:
                     self.logger.info(f"{details['task']} is not for us.")

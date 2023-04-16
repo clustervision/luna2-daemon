@@ -505,7 +505,7 @@ class OsImage(object):
             
     # ------------------------------------------------------------------- 
 
-    def copy_osimage(self,taskid,request_id,noeof=None):
+    def copy_osimage(self,taskid,request_id):
 
         self.logger.info(f"copy_osimage called")
         try:
@@ -513,7 +513,7 @@ class OsImage(object):
             result=False
             details=Queue().get_task_details(taskid)
             request_id=details['request_id']
-            action,src,dst,*_=(details['task'].split(':')+[None]+[None])
+            action,src,dst,noeof,*_=(details['task'].split(':')+[None]+[None])
 
             if action == "copy_osimage":
                 Status().add_message(request_id,"luna",f"copying osimage {src}->{dst}")
@@ -601,7 +601,7 @@ class OsImage(object):
                 if action == "clone_osimage":
                     Queue().remove_task_from_queue(next_id)
                     if first and second:
-                        queue_id,queue_response = Queue().add_task_to_queue(f"copy_osimage:{first}:{second}",'osimage',request_id)
+                        queue_id,queue_response = Queue().add_task_to_queue(f"copy_osimage:{first}:{second}:noeof",'osimage',request_id)
                         if queue_id:
                             queue_id,queue_response = Queue().add_task_to_queue(f"pack_n_tar_osimage:{second}",'osimage',request_id)
 

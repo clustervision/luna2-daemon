@@ -572,6 +572,6 @@ class OsImage(object):
                 Status().add_message(request_id,"luna",f"Cloning failed: {exp}")
                 Status().add_message(request_id,"luna",f"EOF")
             except Exception as nexp:
-                self.logger.error(f"copy_mother has problems during exception handling: {nexp}")
+                self.logger.error(f"osimage_mother has problems during exception handling: {nexp}")
             
 

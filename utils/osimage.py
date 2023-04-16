@@ -368,36 +368,128 @@ class OsImage(object):
 
     # ---------------------------------------------------------------------------
 
-    def copy_osimage(self,src,dst):
-        srcimage,dstimage=None,None
-        if src and dst:
-            srcimage = Database().get_record(None, 'osimage', f"WHERE name='{src}'")
-            dstimage = Database().get_record(None, 'osimage', f"WHERE name='{dst}'")
-            if srcimage and dstimage:
-                if not os.path.exists(srcimage[0]['path']):
-                    return False,f"{src}:{srcimage[0]['path']} does not exist"
-        if dstimage and dstimage[0]['path'] and len(dstimage[0]['path'])>1:
-            exit_code=0
-            if not os.path.exists(dstimage[0]['path']):
-                command=f"mkdir -p \"{dstimage[0]['path']}\""
-                output,exit_code = Helper().runcommand(command,True,10)
-            if exit_code == 0:
-                self.logger.info(f"Copy image from \"{srcimage[0]['path']}\" to \"{dstimage[0]['path']}\"")
-                #command=f"rsync -a \"{srcimage[0]['path']}\"/* \"{dstimage[0]['path']}\"/" 
-                command=f"tar -C \"{srcimage[0]['path']}\"/ --one-file-system --exclude=/proc/* --exclude=/sys/* --xattrs --acls --selinux -cf - . | (cd \"{dstimage[0]['path']}\"/ && tar -xf -)" 
-                output,exit_code = Helper().runcommand(command,True,3600)
-                if exit_code == 0:
-                    return True,"success"
-        else:
-            return False,"destination image or path does not seem to exist"
-        return False,f"failed with {output}"
+    def pack_n_tar_osimage(self,taskid,request_id,noeof=None):
 
-    # ---------------------------------------------------------------------------
-
-    def pack_n_tar_mother(self,osimage,request_id,noeof=None):
-
-        self.logger.info(f"pack_n_tar_mother called")
+        self.logger.info(f"pack_n_tar called")
         try:
+
+            details=Queue().get_task_details(taskid)
+            request_id=details['request_id']
+            action,osimage,*_=(details['task'].split(':')+[None]+[None])
+
+            if action == "pack_n_tar_osimage":
+
+                Queue().update_task_status_in_queue(taskid,'in progress')
+                Status().add_message(request_id,"luna",f"packing osimage {osimage}")
+   
+                # --- let's pack and rack
+
+                ret,mesg=self.pack_image_based_on_distribution(osimage)
+                sleep(1) # needed to prevent immediate concurrent access to the database. Pooling,WAL,WIF,WAF,etc won't fix this. Only sleep
+                if ret is True:
+                    self.logger.info(f'OS image {osimage} packed successfully.')
+                    Status().add_message(request_id,"luna",f"finished packing osimage {osimage}")
+                    Status().add_message(request_id,"luna",f"tarring osimage {osimage}")
+
+                    rett,mesgt=self.create_tarball(osimage)
+                    sleep(1) # same for this one
+                    if rett is True:
+                        self.logger.info(f'OS image {osimage} tarred successfully.')
+                        Status().add_message(request_id,"luna",f"finished tarring osimage {osimage}")
+                    else:
+                        self.logger.info(f'OS image {osimage} tar error: {mesgt}.')
+                        Status().add_message(request_id,"luna",f"error tarring osimage {osimage}: {mesgt}")
+                else:
+                    self.logger.info(f'OS image {osimage} pack error: {mesg}.')
+                    Status().add_message(request_id,"luna",f"error packing osimage {osimage}: {mesg}")
+
+                Queue().remove_task_from_queue(taskid)
+                if not noeof:
+                    Status().add_message(request_id,"luna",f"EOF")
+            else:
+                self.logger.info(f"{details['task']} is not for us.")
+
+        except Exception as exp:
+            self.logger.error(f"pack_n_tar_osimage has problems: {exp}")
+            try:
+                Status().add_message(request_id,"luna",f"Packing failed: {exp}")
+                Status().add_message(request_id,"luna",f"EOF")
+            except Exception as nexp:
+                self.logger.error(f"pack_n_tar_osimage has problems during exception handling: {nexp}")
+            
+    # ------------------------------------------------------------------- 
+
+    def copy_osimage(self,taskid,request_id,noeof=None):
+
+        try:
+
+            details=Queue().get_task_details(taskid)
+            request_id=details['request_id']
+            action,src,dst,*_=(details['task'].split(':')+[None]+[None])
+
+            if action == "copy_osimage":
+
+                Queue().update_task_status_in_queue(taskid,'in progress')
+                Status().add_message(request_id,"luna",f"copying osimage {src}->{dst}")
+   
+                # --- let's copy
+
+                srcimage,dstimage,result,mesg=None,None,None,None
+                if src and dst:
+                    srcimage = Database().get_record(None, 'osimage', f"WHERE name='{src}'")
+                    dstimage = Database().get_record(None, 'osimage', f"WHERE name='{dst}'")
+                    if srcimage and dstimage:
+                        if not os.path.exists(srcimage[0]['path']):
+                            mesg=f"{src}:{srcimage[0]['path']} does not exist"
+                        elif dstimage[0]['path'] and len(dstimage[0]['path'])>1:
+                            exit_code=0
+                            if not os.path.exists(dstimage[0]['path']):
+                                command=f"mkdir -p \"{dstimage[0]['path']}\""
+                                mesg,exit_code = Helper().runcommand(command,True,10)
+                            if exit_code == 0:
+                                self.logger.info(f"Copy image from \"{srcimage[0]['path']}\" to \"{dstimage[0]['path']}\"")
+                                #command=f"rsync -a \"{srcimage[0]['path']}\"/* \"{dstimage[0]['path']}\"/" 
+                                command=f"tar -C \"{srcimage[0]['path']}\"/ --one-file-system --exclude=/proc/* --exclude=/sys/* --xattrs --acls --selinux -cf - . | (cd \"{dstimage[0]['path']}\"/ && tar -xf -)" 
+                                mesg,exit_code = Helper().runcommand(command,True,3600)
+                                if exit_code == 0:
+                                    result=True
+
+                    sleep(1) # needed to prevent immediate concurrent access to the database. Pooling,WAL,WIF,WAF,etc won't fix this. Only sleep
+                    if result is True:
+                        self.logger.info(f'OS image copied successfully.')
+                        Status().add_message(request_id,"luna",f"finished copying osimage")
+
+                    else:
+                        self.logger.info(f'Copy osimage {src}->{dst} error: {mesg}.')
+                        Status().add_message(request_id,"luna",f"error copying osimage: {mesg}")
+
+                else:
+                    self.logger.info(f'Copy osimage src and/or dst not provided.')
+                    Status().add_message(request_id,"luna",f"error copying osimage as 'src' and/or 'dst' not provided.")
+
+                Queue().remove_task_from_queue(taskid)
+                if not noeof:
+                    Status().add_message(request_id,"luna",f"EOF")
+
+            else:
+                self.logger.info(f"{details['task']} is not for us.")
+
+        except Exception as exp:
+            self.logger.error(f"copy_osimage has problems: {exp}")
+            try:
+                Status().add_message(request_id,"luna",f"Packing failed: {exp}")
+                Status().add_message(request_id,"luna",f"EOF")
+            except Exception as nexp:
+                self.logger.error(f"copy_osimage has problems during exception handling: {nexp}")
+           
+    # ------------------------------------------------------------------- 
+    # The mother of all. the other mothers need revision as in no while loop anymore. pending. -A
+
+    def osimage_mother(self,request_id):
+
+        self.logger.info(f"osimage_mother called")
+        try:
+
 #            # Below section is already done in config/pack GET call but kept here in case we want to move it back
 #            queue_id,response = Queue().add_task_to_queue(f'pack_n_tar_osimage:{osimage}','osimage',request_id)
 #            if not queue_id:
@@ -414,120 +506,6 @@ class OsImage(object):
 #                return
 
             while next_id := Queue().next_task_in_queue('osimage'):
-                self.logger.info(f"pack_n_tar_mother sees job in queue as next: {next_id}")
-                details=Queue().get_task_details(next_id)
-                request_id=details['request_id']
-                action,osimage,*_=(details['task'].split(':')+[None]+[None])
-
-                if action == "pack_n_tar_osimage":
-
-                    Queue().update_task_status_in_queue(next_id,'in progress')
-                    Status().add_message(request_id,"luna",f"packing osimage {osimage}")
-   
-                # --- let's pack and rack
-
-                    ret,mesg=self.pack_image_based_on_distribution(osimage)
-                    sleep(1) # needed to prevent immediate concurrent access to the database. Pooling,WAL,WIF,WAF,etc won't fix this. Only sleep
-                    if ret is True:
-                        self.logger.info(f'OS image {osimage} packed successfully.')
-                        Status().add_message(request_id,"luna",f"finished packing osimage {osimage}")
-                        Status().add_message(request_id,"luna",f"tarring osimage {osimage}")
-
-                        rett,mesgt=self.create_tarball(osimage)
-                        sleep(1) # same for this one
-                        if rett is True:
-                            self.logger.info(f'OS image {osimage} tarred successfully.')
-                            Status().add_message(request_id,"luna",f"finished tarring osimage {osimage}")
-                        else:
-                            self.logger.info(f'OS image {osimage} tar error: {mesgt}.')
-                            Status().add_message(request_id,"luna",f"error tarring osimage {osimage}: {mesgt}")
-                    else:
-                        self.logger.info(f'OS image {osimage} pack error: {mesg}.')
-                        Status().add_message(request_id,"luna",f"error packing osimage {osimage}: {mesg}")
-
-                    Queue().remove_task_from_queue(next_id)
-                    if not noeof:
-                        Status().add_message(request_id,"luna",f"EOF")
-                else:
-                    self.logger.info(f"{details['task']} is not for us.")
-                    sleep(10)
-
-        except Exception as exp:
-            self.logger.error(f"pack_n_tar_mother has problems: {exp}")
-            try:
-                Status().add_message(request_id,"luna",f"Packing failed: {exp}")
-                Status().add_message(request_id,"luna",f"EOF")
-            except Exception as nexp:
-                self.logger.error(f"pack_n_tar_mother has problems during exception handling: {nexp}")
-            
-    # ------------------------------------------------------------------- 
-
-    def copy_mother(self,src,dst,request_id,noeof=None):
-
-        self.logger.info(f"copy_mother called")
-        try:
-#            # Below section is already done in config/pack GET call but kept here in case we want to move it back
-#            queue_id,response = Queue().add_task_to_queue(f'copy_osimage:{src}:{dst}','osimage',request_id)
-#            if not queue_id:
-#                self.logger.info(f"copy_mother cannot get queue_id")
-#                Status().add_message(request_id,"luna",f"error queuing my task")
-#                return
-#            self.logger.info(f"copy_mother added task to queue: {queue_id}")
-#            Status().add_message(request_id,"luna",f"queued copy osimage {src}->{dst} with queue_id {queue_id}")
-#
-#            next_id = Queue().next_task_in_queue('osimage')
-#            if queue_id != next_id:
-#                # little tricky. we assume that another mother proces was spawned that took care of the runs... 
-#                # we need a check based on last hear queue entry, then we continue. pending in next_task_in_queue.
-#                return
-
-            while next_id := Queue().next_task_in_queue('osimage'):
-                self.logger.info(f"copy_mother sees job in queue as next: {next_id}")
-                details=Queue().get_task_details(next_id)
-                request_id=details['request_id']
-                action,src,dst,*_=(details['task'].split(':')+[None]+[None])
-
-                if action == "copy_osimage":
-
-                    Queue().update_task_status_in_queue(next_id,'in progress')
-                    Status().add_message(request_id,"luna",f"copying osimage {src}->{dst}")
-   
-                # --- let's copy
-
-                    ret,mesg=self.copy_osimage(src,dst)
-                    sleep(1) # needed to prevent immediate concurrent access to the database. Pooling,WAL,WIF,WAF,etc won't fix this. Only sleep
-                    if ret is True:
-                        self.logger.info(f'OS image copied successfully.')
-                        Status().add_message(request_id,"luna",f"finished copying osimage")
-
-                    else:
-                        self.logger.info(f'Copy osimage {src}->{dst} error: {mesg}.')
-                        Status().add_message(request_id,"luna",f"error copying osimage: {mesg}")
-
-                    Queue().remove_task_from_queue(next_id)
-                    if not noeof:
-                        Status().add_message(request_id,"luna",f"EOF")
-                else:
-                    self.logger.info(f"{details['task']} is not for us.")
-                    sleep(10)
-
-        except Exception as exp:
-            self.logger.error(f"copy_mother has problems: {exp}")
-            try:
-                Status().add_message(request_id,"luna",f"Packing failed: {exp}")
-                Status().add_message(request_id,"luna",f"EOF")
-            except Exception as nexp:
-                self.logger.error(f"copy_mother has problems during exception handling: {nexp}")
-           
-    # ------------------------------------------------------------------- 
-    # The mother of all. the other mothers need revision as in no while loop anymore. pending. -A
-
-    def osimage_mother(self,request_id):
-
-        self.logger.info(f"osimage_mother called")
-        try:
-
-            while next_id := Queue().next_task_in_queue('osimage'):
                 self.logger.info(f"osimage_mother sees job in queue as next: {next_id}")
                 details=Queue().get_task_details(next_id)
                 request_id=details['request_id']
@@ -540,11 +518,11 @@ class OsImage(object):
                         my_next_id = Queue().next_task_in_queue('osimage')
                         if my_next_id == queue_id:
                             noeof=True
-                            self.copy_mother(first,second,request_id,noeof)
+                            self.copy_osimage(my_next_id,request_id,noeof)
                         queue_id,queue_response = Queue().add_task_to_queue(f"pack_n_tar_osimage:{second}",'osimage',request_id)
                         my_next_id = Queue().next_task_in_queue('osimage')
                         if my_next_id == queue_id:
-                            self.pack_n_tar_mother(second,request_id)
+                            self.pack_n_tar_osimage(my_next_id,request_id)
 
                 elif action == "copy_osimage":
                     Queue().remove_task_from_queue(next_id)
@@ -552,7 +530,7 @@ class OsImage(object):
                         queue_id,queue_response = Queue().add_task_to_queue(f"copy_osimage:{first}:{second}",'osimage',request_id)
                         my_next_id = Queue().next_task_in_queue('osimage')
                         if my_next_id == queue_id:
-                            self.copy_mother(first,second,request_id)
+                            self.copy_osimage(my_next_id,request_id)
 
                 elif action == "pack_n_tar_osimage":
                     Queue().remove_task_from_queue(next_id)
@@ -560,7 +538,7 @@ class OsImage(object):
                         queue_id,queue_response = Queue().add_task_to_queue(f"pack_n_tar_osimage:{first}",'osimage',request_id)
                         my_next_id = Queue().next_task_in_queue('osimage')
                         if my_next_id == queue_id:
-                            self.pack_n_tar_mother(first,request_id)
+                            self.pack_n_tar_osimage(my_next_id,request_id)
 
                 else:
                     self.logger.info(f"{details['task']} is not for us.")

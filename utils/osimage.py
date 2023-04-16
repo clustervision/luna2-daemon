@@ -394,7 +394,7 @@ class OsImage(object):
 
     # ---------------------------------------------------------------------------
 
-    def pack_n_tar_mother(self,osimage,request_id):
+    def pack_n_tar_mother(self,osimage,request_id,noeof=None):
 
         self.logger.info(f"pack_n_tar_mother called")
         try:
@@ -446,7 +446,8 @@ class OsImage(object):
                         Status().add_message(request_id,"luna",f"error packing osimage {osimage}: {mesg}")
 
                     Queue().remove_task_from_queue(next_id)
-                    Status().add_message(request_id,"luna",f"EOF")
+                    if not noeof:
+                        Status().add_message(request_id,"luna",f"EOF")
                 else:
                     self.logger.info(f"{details['task']} is not for us.")
                     sleep(10)
@@ -460,7 +461,7 @@ class OsImage(object):
                 self.logger.error(f"pack_n_tar_mother has problems during exception handling: {nexp}")
             
 
-    def copy_mother(self,src,dst,request_id):
+    def copy_mother(self,src,dst,request_id,noeof=None):
 
         self.logger.info(f"copy_mother called")
         try:
@@ -503,7 +504,8 @@ class OsImage(object):
                         Status().add_message(request_id,"luna",f"error copying osimage: {mesg}")
 
                     Queue().remove_task_from_queue(next_id)
-                    Status().add_message(request_id,"luna",f"EOF")
+                    if not noeof:
+                        Status().add_message(request_id,"luna",f"EOF")
                 else:
                     self.logger.info(f"{details['task']} is not for us.")
                     sleep(10)
@@ -519,6 +521,7 @@ class OsImage(object):
 
     def clone_mother(self,request_id):
 
+        noeof=True
         self.logger.info(f"clone_mother called")
         try:
 
@@ -530,7 +533,7 @@ class OsImage(object):
 
                 if action == "copy_osimage":
                     Queue().change_subsystem(next_id,'osimage')
-                    self.copy_mother(first,second,request_id)
+                    self.copy_mother(first,second,request_id,noeof)
 
                 elif action == "pack_n_tar_osimage":
                     Queue().change_subsystem(next_id,'osimage')

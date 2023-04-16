@@ -58,6 +58,7 @@ class Service(object):
                         check_dhcp = Config().dhcp_overwrite()
                         if check_dhcp:
                             output = Helper().runcommand(command)
+                            sleep(1)
                             response, code = self.service_status(name, action, output)
                         else:
                             response = f'{name} service file have errors.'
@@ -77,6 +78,7 @@ class Service(object):
                         check_dns = Config().dns_configure()
                         if check_dns:
                             output = Helper().runcommand(command)
+                            sleep(1)
                             response, code = self.service_status(name, action, output)
                         else:
                             response = f'{name} service file have errors.'

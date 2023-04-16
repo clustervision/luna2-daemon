@@ -525,19 +525,31 @@ class OsImage(object):
         self.logger.info(f"clone_mother called")
         try:
 
-            while next_id := Queue().next_task_in_queue('clone_osimage'):
+            while next_id := Queue().next_task_in_queue('osimage'):
                 self.logger.info(f"clone_mother sees job in queue as next: {next_id}")
                 details=Queue().get_task_details(next_id)
                 request_id=details['request_id']
                 action,first,second,*_=(details['task'].split(':')+[None]+[None])
 
-                if action == "copy_osimage":
-                    Queue().change_subsystem(next_id,'osimage')
-                    self.copy_mother(first,second,request_id,noeof)
+                if action == "clone_osimage":
+                    if first and second:
+                        Queue().add_task_to_queue(f"copy_osimage:{first}:{second}",'osimage',request_id)
+                        self.copy_mother(first,second,request_id,noeof)
+                        Queue().add_task_to_queue(f"pack_n_tar_osimage:{second}",'osimage',request_id)
+                        self.pack_n_tar_mother(first,request_id)
+                    Queue().remove_task_from_queue(next_id)
 
-                elif action == "pack_n_tar_osimage":
-                    Queue().change_subsystem(next_id,'osimage')
-                    self.pack_n_tar_mother(first,request_id)
+#                if action == "copy_osimage":
+#                    Queue().change_subsystem(next_id,'osimage')
+#                    self.copy_mother(first,second,request_id,noeof)
+#
+#                elif action == "pack_n_tar_osimage":
+#                    Queue().change_subsystem(next_id,'osimage')
+#                    self.pack_n_tar_mother(first,request_id)
+
+                else:
+                    self.logger.info(f"{details['task']} is not for us.")
+                    sleep(10)
 
         except Exception as exp:
             self.logger.error(f"clone_mother has problems: {exp}")

@@ -1694,26 +1694,24 @@ def config_osimage_clone(name=None):
         if columncheck:
             row = Helper().make_rows(data)
             Database().insert('osimage', row)
-#TWANNIE
             request_id=str(time())+str(randint(1001,9999))+str(getpid())
 
-            queue_id,queue_response = Queue().add_task_to_queue(f"copy_osimage:{name}:{data['name']}",'clone_osimage',request_id)
+            queue_id,queue_response = Queue().add_task_to_queue(f"clone_osimage:{name}:{data['name']}",'osimage',request_id)
             if not queue_id:
-                LOGGER.info(f"config_osimage_pack GET cannot get queue_id")
-                response= {"message": f"OS image {name}->{data['name']} copy queuing failed."}
+                LOGGER.info(f"config_osimage_clone GET cannot get queue_id")
+                response= {"message": f"OS image {name}->{data['name']} clone queuing failed."}
                 return json.dumps(response), code
 
-            Queue().add_task_to_queue(f"pack_n_tar_osimage:{data['name']}",'clone_osimage',request_id)
             if queue_response != "added": # this means we already have an equal request in the queue
                 access_code=200
-                response = {"message": f"osimage copy for {data['name']} already queued", "request_id": queue_response}
+                response = {"message": f"osimage clone for {data['name']} already queued", "request_id": queue_response}
                 LOGGER.info(f"my repsonse [{response}]")
                 return json.dumps(response), code
 
-            LOGGER.info(f"config_osimage_pack GET added task to queue: {queue_id}")
-            Status().add_message(request_id,"luna",f"queued pack osimage {name} with queue_id {queue_id}")
+            LOGGER.info(f"config_osimage_clone GET added task to queue: {queue_id}")
+            Status().add_message(request_id,"luna",f"queued clone osimage {name}->{data['name']} with queue_id {queue_id}")
 
-            next_id = Queue().next_task_in_queue('clone_osimage')
+            next_id = Queue().next_task_in_queue('osimage')
             if queue_id == next_id:
                 executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
                 executor.submit(OsImage().clone_mother,request_id)
@@ -1726,7 +1724,7 @@ def config_osimage_clone(name=None):
             status = Database().get_record(None , 'status', f' WHERE request_id = "{request_id}"')
             if status:
                 access_code=200
-                response = {"message": f"osimage copy for {data['name']} queued", "request_id": request_id}
+                response = {"message": f"osimage clone for {data['name']} queued", "request_id": request_id}
         else:
             response = {'message': 'Bad Request; Columns are incorrect.'}
             access_code = 400

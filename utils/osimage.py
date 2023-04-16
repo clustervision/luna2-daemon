@@ -393,7 +393,7 @@ class OsImage(object):
                     self.logger.info(f'OS image {osimage} pack error: {mesg}.')
                     Status().add_message(request_id,"luna",f"error packing osimage {osimage}: {mesg}")
 
-                if result and not noeof:
+                if result is True and not noeof:
                     Status().add_message(request_id,"luna",f"EOF")
             else:
                 self.logger.info(f"{details['task']} is not for us.")
@@ -433,7 +433,7 @@ class OsImage(object):
                     self.logger.info(f'OS image {osimage} tar error: {mesg}.')
                     Status().add_message(request_id,"luna",f"error tarring osimage {osimage}: {mesg}")
 
-                if result and not noeof:
+                if result is True and not noeof:
                     Status().add_message(request_id,"luna",f"EOF")
             else:
                 self.logger.info(f"{details['task']} is not for us.")
@@ -499,7 +499,7 @@ class OsImage(object):
                     self.logger.info(f'Copy osimage src and/or dst not provided.')
                     Status().add_message(request_id,"luna",f"error copying osimage as 'src' and/or 'dst' not provided.")
 
-                if result and not noeof:
+                if result is True and not noeof:
                     Status().add_message(request_id,"luna",f"EOF")
                 return result
             else:

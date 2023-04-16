@@ -460,6 +460,7 @@ class OsImage(object):
             except Exception as nexp:
                 self.logger.error(f"pack_n_tar_mother has problems during exception handling: {nexp}")
             
+    # ------------------------------------------------------------------- 
 
     def copy_mother(self,src,dst,request_id,noeof=None):
 
@@ -517,11 +518,11 @@ class OsImage(object):
                 Status().add_message(request_id,"luna",f"EOF")
             except Exception as nexp:
                 self.logger.error(f"copy_mother has problems during exception handling: {nexp}")
-            
+           
+    # ------------------------------------------------------------------- 
 
     def clone_mother(self,request_id):
 
-        noeof=True
         self.logger.info(f"clone_mother called")
         try:
 
@@ -534,18 +535,15 @@ class OsImage(object):
                 if action == "clone_osimage":
                     Queue().remove_task_from_queue(next_id)
                     if first and second:
-                        Queue().add_task_to_queue(f"copy_osimage:{first}:{second}",'osimage',request_id)
-                        self.copy_mother(first,second,request_id,noeof)
-                        Queue().add_task_to_queue(f"pack_n_tar_osimage:{second}",'osimage',request_id)
-                        self.pack_n_tar_mother(first,request_id)
-
-#                if action == "copy_osimage":
-#                    Queue().change_subsystem(next_id,'osimage')
-#                    self.copy_mother(first,second,request_id,noeof)
-#
-#                elif action == "pack_n_tar_osimage":
-#                    Queue().change_subsystem(next_id,'osimage')
-#                    self.pack_n_tar_mother(first,request_id)
+                        queue_id,queue_response = Queue().add_task_to_queue(f"copy_osimage:{first}:{second}",'osimage',request_id)
+                        my_next_id = Queue().next_task_in_queue('osimage')
+                        if my_next_id == queue_id:
+                            noeof=True
+                            self.copy_mother(first,second,request_id,noeof)
+                        queue_id,queue_response = Queue().add_task_to_queue(f"pack_n_tar_osimage:{second}",'osimage',request_id)
+                        my_next_id = Queue().next_task_in_queue('osimage')
+                        if my_next_id == queue_id:
+                            self.pack_n_tar_mother(first,request_id)
 
                 else:
                     self.logger.info(f"{details['task']} is not for us.")

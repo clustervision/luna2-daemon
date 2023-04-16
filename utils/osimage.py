@@ -562,20 +562,29 @@ class OsImage(object):
                 elif action == "copy_osimage":
                     if first and second:
                         Queue().update_task_status_in_queue(next_id,'in progress')
-                        self.copy_osimage(next_id,request_id)
+                        ret=self.copy_osimage(next_id,request_id)
                         Queue().remove_task_from_queue(next_id)
+                        if not ret:
+                            Queue().remove_task_from_queue_by_request_id(request_id)
+                            Status().add_message(request_id,"luna",f"EOF")
 
                 elif action == "pack_osimage":
                     if first:
                         Queue().update_task_status_in_queue(next_id,'in progress')
-                        self.pack_osimage(next_id,request_id)
+                        ret=self.pack_osimage(next_id,request_id)
                         Queue().remove_task_from_queue(next_id)
+                        if not ret:
+                            Queue().remove_task_from_queue_by_request_id(request_id)
+                            Status().add_message(request_id,"luna",f"EOF")
 
                 elif action == "tar_osimage":
                     if first:
                         Queue().update_task_status_in_queue(next_id,'in progress')
-                        self.tar_osimage(next_id,request_id)
+                        ret=self.tar_osimage(next_id,request_id)
                         Queue().remove_task_from_queue(next_id)
+                        if not ret:
+                            Queue().remove_task_from_queue_by_request_id(request_id)
+                            Status().add_message(request_id,"luna",f"EOF")
 
                 else:
                     self.logger.info(f"{details['task']} is not for us.")

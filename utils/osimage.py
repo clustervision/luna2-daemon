@@ -370,7 +370,7 @@ class OsImage(object):
 
     def pack_n_tar_osimage(self,taskid,request_id,noeof=None):
 
-        self.logger.info(f"pack_n_tar called")
+        self.logger.info(f"pack_n_tar_osimage called")
         try:
 
             details=Queue().get_task_details(taskid)
@@ -421,6 +421,7 @@ class OsImage(object):
 
     def copy_osimage(self,taskid,request_id,noeof=None):
 
+        self.logger.info(f"copy_osimage called")
         try:
 
             details=Queue().get_task_details(taskid)
@@ -481,9 +482,10 @@ class OsImage(object):
                 Status().add_message(request_id,"luna",f"EOF")
             except Exception as nexp:
                 self.logger.error(f"copy_osimage has problems during exception handling: {nexp}")
-           
+          
+ 
     # ------------------------------------------------------------------- 
-    # The mother of all. the other mothers need revision as in no while loop anymore. pending. -A
+    # The mother of all.
 
     def osimage_mother(self,request_id):
 

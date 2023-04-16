@@ -376,7 +376,7 @@ class OsImage(object):
             if srcimage and dstimage:
                 if not os.path.exists(srcimage[0]['path']):
                     return False,f"{src}:{srcimage[0]['path']} does not exist"
-        if dstimage and dstimage[0]['path']:
+        if dstimage and dstimage[0]['path'] and len(dstimage[0]['path'])>1:
             exit_code=0
             if not os.path.exists(dstimage[0]['path']):
                 command=f"mkdir -p \"{dstimage[0]['path']}\""
@@ -389,7 +389,7 @@ class OsImage(object):
                 if exit_code == 0:
                     return True,"success"
         else:
-            return False,"destination image {src} does not seem to exist"
+            return False,"destination image or path does not seem to exist"
         return False,f"failed with {output}"
 
     # ---------------------------------------------------------------------------

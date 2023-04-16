@@ -383,8 +383,9 @@ class OsImage(object):
                 output,exit_code = Helper().runcommand(command,True,10)
             if exit_code == 0:
                 #command=f"rsync -a \"{srcimage[0]['path']}\"/* \"{dstimage[0]['path']}\"/" 
-                command=f"tar -C \"{srcimage[0]['path']}\"/ --one-file-system --xattrs --acls --selinux -cf - . | (cd \"{dstimage[0]['path']}\"/ && tar -xf -)" 
+                command=f"tar -C \"{srcimage[0]['path']}\"/ --one-file-system --exclude=/proc/* --exclude=/sys/* --xattrs --acls --selinux -cf - . | (cd \"{dstimage[0]['path']}\"/ && tar -xf -)" 
                 output,exit_code = Helper().runcommand(command,True,3600)
+                self.logger.info(f"copying output: {output}")
                 if exit_code == 0:
                     return True,"success"
         else:

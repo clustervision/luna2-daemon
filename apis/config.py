@@ -1714,7 +1714,7 @@ def config_osimage_clone(name=None):
             next_id = Queue().next_task_in_queue('osimage')
             if queue_id == next_id:
                 executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
-                executor.submit(OsImage().clone_mother,request_id)
+                executor.submit(OsImage().osimage_mother,request_id)
                 executor.shutdown(wait=False)
 
             # we should check after a few seconds if there is a status update for us.
@@ -1778,7 +1778,7 @@ def config_osimage_pack(name=None):
     next_id = Queue().next_task_in_queue('osimage')
     if queue_id == next_id:
         executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
-        executor.submit(OsImage().pack_n_tar_mother,name,request_id)
+        executor.submit(OsImage().osimage_mother,name,request_id)
         executor.shutdown(wait=False)
 
     # we should check after a few seconds if there is a status update for us.

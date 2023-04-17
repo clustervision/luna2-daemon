@@ -321,7 +321,7 @@ def config_node_post(name=None):
         access_code = 400
         return json.dumps(response), access_code
     if request_data:
-        if 'node' not in request_data['config'].keys():
+        if ('config' not in request_data.keys()) or ('node' not in request_data['config'].keys()):
             response = {'message': 'Bad Request.'}
             access_code = 400
             return json.dumps(response), access_code
@@ -499,7 +499,7 @@ def config_node_clone(name=None):
         access_code = 400
         return json.dumps(response), access_code
     if request_data:
-        if 'node' not in request_data['config'].keys():
+        if ('config' not in request_data.keys()) or ('node' not in request_data['config'].keys()):
             response = {'message': 'Bad Request.'}
             access_code = 400
             return json.dumps(response), access_code

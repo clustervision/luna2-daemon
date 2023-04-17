@@ -43,6 +43,7 @@ class Filter(object):
         if mytype:
             what=type(data)
             if what is not mytype:
+                self.logger.info(f"data type mismatch. expected {mytype} but got {what}")
                 return "data type mismatch",False
         data=self.parse_item(data)
         self.logger.debug(f"----- END ----- {data}")

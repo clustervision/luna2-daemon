@@ -49,5 +49,10 @@ def token_required(function):
             response = {'message': 'Token is invalid.'}
             code = 401
             return json.dumps(response), code
+        except Exception as exp:
+            LOGGER.error(f'Token is invalid. {exp}')
+            response = {'message': 'Token is invalid.'}
+            code = 401
+            return json.dumps(response), code
         return function(**kwargs)
     return decorator

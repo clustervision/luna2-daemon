@@ -311,7 +311,7 @@ def config_node_post(name=None):
     create, update = False, False
 
     if Helper().check_json(request.data):
-        request_data,ret = Filter().validate_input(request.get_json(force=True))
+        request_data,ret = Filter().validate_input(request.get_json(force=True),'dict')
         if not ret:
             response = {'message': request_data}
             access_code = 400
@@ -321,7 +321,7 @@ def config_node_post(name=None):
         access_code = 400
         return json.dumps(response), access_code
     if request_data:
-        if ('config' not in request_data.keys()) or ('node' not in request_data['config'].keys()):
+        if 'node' not in request_data['config'].keys():
             response = {'message': 'Bad Request.'}
             access_code = 400
             return json.dumps(response), access_code
@@ -489,7 +489,7 @@ def config_node_clone(name=None):
     }
 
     if Helper().check_json(request.data):
-        request_data,ret = Filter().validate_input(request.get_json(force=True))
+        request_data,ret = Filter().validate_input(request.get_json(force=True),'dict')
         if not ret:
             response = {'message': request_data}
             access_code = 400
@@ -499,7 +499,7 @@ def config_node_clone(name=None):
         access_code = 400
         return json.dumps(response), access_code
     if request_data:
-        if ('config' not in request_data.keys()) or ('node' not in request_data['config'].keys()):
+        if 'node' not in request_data['config'].keys():
             response = {'message': 'Bad Request.'}
             access_code = 400
             return json.dumps(response), access_code

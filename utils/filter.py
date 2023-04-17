@@ -37,9 +37,13 @@ class Filter(object):
         self.convert={'macaddress':{'-':':'}}
         self.error=None
 
-    def validate_input(self,data):
+    def validate_input(self,data,mytype=None):
         self.error=None
         self.logger.debug(f"---- START ---- {data}")
+        if mytype:
+            what=type(data)
+            if what is not mytype:
+                return "data type mismatch",False
         data=self.parse_item(data)
         self.logger.debug(f"----- END ----- {data}")
         if self.error:

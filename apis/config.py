@@ -311,7 +311,7 @@ def config_node_post(name=None):
     create, update = False, False
 
     if Helper().check_json(request.data):
-        request_data,ret = Filter().validate_input(request.get_json(force=True),'dict')
+        request_data,ret = Filter().validate_input(request.get_json(force=True),dict)
         if not ret:
             response = {'message': request_data}
             access_code = 400
@@ -489,7 +489,7 @@ def config_node_clone(name=None):
     }
 
     if Helper().check_json(request.data):
-        request_data,ret = Filter().validate_input(request.get_json(force=True),'dict')
+        request_data,ret = Filter().validate_input(request.get_json(force=True),dict)
         if not ret:
             response = {'message': request_data}
             access_code = 400

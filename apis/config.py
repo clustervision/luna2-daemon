@@ -3002,7 +3002,7 @@ def config_network_post(name=None):
         access_code = 400
         return json.dumps(response), access_code
 
-    return json.dumps(data), access_code
+    return json.dumps(response), access_code
 
 
 

@@ -90,13 +90,17 @@ def control_post():
     response = {'message': 'Bad Request.'}
     access_code = 400
     if Helper().check_json(request.data):
-        request_data,ret = Filter().validate_input(request.get_json(force=True),dict)
+        request_data,ret = Filter().validate_input(request.get_json(force=True),['control:power'])
         if not ret:
             response = {'message': request_data}
             access_code = 400
             return json.dumps(response), access_code
         if request_data:
             action = list(request_data['control']['power'].keys())[0]
+            if not Filter().check_structure(request_data,['control:power:'+action+':hostlist']):
+                response = {'message': 'Bad Request.'}
+                access_code = 400
+                return json.dumps(response), access_code
             rawhosts = request_data['control']['power'][action]['hostlist']
             hostlist = Helper().get_hostlist(rawhosts)
             if hostlist:

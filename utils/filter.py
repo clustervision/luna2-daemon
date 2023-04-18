@@ -37,19 +37,16 @@ class Filter(object):
         self.convert={'macaddress':{'-':':'}}
         self.error=None
 
-    def validate_input(self,data,mytype=None):
+    def validate_input(self,data,checks=None):
         self.error=None
         self.logger.debug(f"---- START ---- {data}")
-        if mytype:
-            what=type(data)
-            if what is not mytype:
-                self.logger.info(f"data type mismatch. expected {mytype} but got {what}")
-                return "invalid input: data type mismatch",False
-        data=self.parse_item(data)
-        self.logger.debug(f"----- END ----- {data}")
-        if self.error:
-            return self.error,False
-        return data,True
+        if self.check_structure(data,checks):
+            data=self.parse_item(data)
+            self.logger.debug(f"----- END ----- {data}")
+            if self.error:
+                return self.error,False
+            return data,True
+        return "data structure incomplete or incorrect",False
 
     def parse_dict(self,data):
         for item in data.keys():
@@ -90,5 +87,25 @@ class Filter(object):
                 data=data.replace(rep,self.convert[name][rep])
             self.logger.debug(f"CONVERT OUT {name} = {data}")
         return data
+
+    def check_structure(self,data,checks=None):
+        if not checks:
+            return True
+        mychecks=[]
+        if type(checks) == type('string'):
+            mychecks.append(str(checks))
+        else:
+            mychecks=checks
+
+        for check in mychecks:
+            arr=check.split(':')
+            slice=data
+            for element in arr:
+                if not element in slice:
+                    self.logger.debug(f"{element} not found in data {slice}")
+                    return False
+                self.logger.debug(f"OK: {element} found in data {slice}")
+                slice=slice[element]
+        return True
 
 

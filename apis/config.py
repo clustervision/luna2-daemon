@@ -1896,7 +1896,7 @@ def config_cluster_post():
        'createnode_ondemand':True
     }
     if Helper().check_json(request.data):
-        request_data,ret = Filter().validate_input(request.get_json(force=True),['config:cluster'+name])
+        request_data,ret = Filter().validate_input(request.get_json(force=True),['config:cluster'])
         if not ret:
             response = {'message': request_data}
             access_code = 400

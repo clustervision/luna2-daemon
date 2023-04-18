@@ -474,17 +474,20 @@ class OsImage(object):
                         if not os.path.exists(srcimage[0]['path']):
                             mesg=f"{src}:{srcimage[0]['path']} does not exist"
                         elif dstimage[0]['path'] and len(dstimage[0]['path'])>1:
-                            exit_code=0
-                            if not os.path.exists(dstimage[0]['path']):
-                                command=f"mkdir -p \"{dstimage[0]['path']}\""
-                                mesg,exit_code = Helper().runcommand(command,True,10)
-                            if exit_code == 0:
-                                self.logger.info(f"Copy image from \"{srcimage[0]['path']}\" to \"{dstimage[0]['path']}\"")
-                                #command=f"rsync -a \"{srcimage[0]['path']}\"/* \"{dstimage[0]['path']}\"/" 
-                                command=f"tar -C \"{srcimage[0]['path']}\"/ --one-file-system --exclude=/proc/* --exclude=/sys/* --xattrs --acls --selinux -cf - . | (cd \"{dstimage[0]['path']}\"/ && tar -xf -)" 
-                                mesg,exit_code = Helper().runcommand(command,True,3600)
+                            if srcimage[0]['path'] == dstimage[0]['path']:
+                                mesg=f"{src}:{srcimage[0]['path']} and {dst}:{dstimage[0]['path']} are the same"
+                            else:
+                                exit_code=0
+                                if not os.path.exists(dstimage[0]['path']):
+                                    command=f"mkdir -p \"{dstimage[0]['path']}\""
+                                    mesg,exit_code = Helper().runcommand(command,True,10)
                                 if exit_code == 0:
-                                    result=True
+                                    self.logger.info(f"Copy image from \"{srcimage[0]['path']}\" to \"{dstimage[0]['path']}\"")
+                                    #command=f"rsync -a \"{srcimage[0]['path']}\"/* \"{dstimage[0]['path']}\"/" 
+                                    command=f"tar -C \"{srcimage[0]['path']}\"/ --one-file-system --exclude=/proc/* --exclude=/sys/* --xattrs --acls --selinux -cf - . | (cd \"{dstimage[0]['path']}\"/ && tar -xf -)" 
+                                    mesg,exit_code = Helper().runcommand(command,True,3600)
+                                    if exit_code == 0:
+                                        result=True
 
                     sleep(1) # needed to prevent immediate concurrent access to the database. Pooling,WAL,WIF,WAF,etc won't fix this. Only sleep
                     if result is True:

@@ -23,7 +23,7 @@ from common.validate_auth import token_required
 from common.constant import CONFIGFILE
 from random import randint
 from time import sleep,time
-from os import getpid
+from os import getpid,path
 import concurrent.futures
 from utils.osimage import OsImage
 from utils.config import Config
@@ -1680,6 +1680,10 @@ def config_osimage_clone(name=None):
                         if (item not in data) and item in image[0] and image[0][item]:
                             data[item]=image[0][item]
                     del data['newosimage']
+                    if 'path' in data and data['path'] and path.exists(data['path']):
+                        response = {'message': f"Destination path {data['path']} already exists."}
+                        access_code = 400
+                        return json.dumps(response), access_code
             else:
                 response = {'message': 'Kindly pass the new OS Image name.'}
                 access_code = 400
@@ -2141,6 +2145,10 @@ def config_bmcsetup_clone(bmcname=None):
                 return json.dumps(response), access_code
             else:
                 create = True
+            del checkbmc[0]['id']
+            for item in checkbmc[0]:
+                if not item in data:
+                    data[item]=checkbmc[0][item]
         else:
             response = {'message': f'{bmcname} not present in database.'}
             access_code = 400

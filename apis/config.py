@@ -392,13 +392,17 @@ def config_node_post(name=None):
                 response = {'message': f'Node {name} updated successfully.'}
                 access_code = 204
             if create:
+                if not 'groupid' in data: # ai, we DO need this for new nodes...... kind of. we agreed on this. pending?
+                    access_code = 400
+                    response = {'message': f'group name is required for new nodes'}
+                    return json.dumps(response), access_code
                 data['name'] = name
                 row = Helper().make_rows(data)
                 nodeid = Database().insert('node', row)
                 response = {'message': f'Node {name} created successfully.'}
                 access_code = 201
                 if nodeid and 'groupid' in data and data['groupid']:
-                    # ----> GROUP interface. WIP. pending
+                    # ----> GROUP interface. WIP. pending. should work but i keep it WIP
                     group_interfaces = Database().get_record_join(['groupinterface.interface','network.name as network','groupinterface.options'], ['network.id=groupinterface.networkid'], [f"groupinterface.groupid={data['groupid']}"])
                     if group_interfaces:
                         for group_interface in group_interfaces:

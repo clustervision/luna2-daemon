@@ -1086,8 +1086,14 @@ def config_group_post(name=None):
                 return json.dumps(response), access_code
         if 'osimage' in data:
             osname = data['osimage']
-            del data['osimage']
             data['osimageid'] = Database().getid_byname('osimage', osname)
+            if data['osimageid']:
+                del data['osimage']
+            else:
+                response = {'message': f'OSimage {osname} does not exist.'}
+                access_code = 404
+                return json.dumps(response), access_code
+
         newinterface=None
         if 'interfaces' in data:
             newinterface = data['interfaces']

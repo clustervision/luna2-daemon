@@ -449,7 +449,6 @@ def config_node_post(name=None):
                             ipaddress=interface['ipaddress']
                         result,mesg = Config().node_interface_ipaddress_config(nodeid,interface_name,ipaddress,network)
                         
-
                     if result is False:
                         response = {'message': f"{mesg}"}
                         access_code = 404
@@ -2319,9 +2318,9 @@ def config_switch_post(switch=None):
         # ----------- interface(s) update/create -------------
         if ipaddress or network:
             result,mesg=Config().device_ipaddress_config(switchid,'switch',ipaddress,network)
-            response = {'message': f"{mesg}"}
 
             if result is False:
+                response = {'message': f"{mesg}"}
                 access_code=404
             else:
                 Service().queue('dhcp','restart')
@@ -2614,9 +2613,9 @@ def config_otherdev_post(device=None):
         # ----------- interface(s) update/create -------------
         if ipaddress or network:
             result,mesg=Config().device_ipaddress_config(deviceid,'otherdevices',ipaddress,network)
-            response = {'message': f"{mesg}"}
 
             if result is False:
+                response = {'message': f"{mesg}"}
                 access_code=404
             else:
                 Service().queue('dhcp','restart')

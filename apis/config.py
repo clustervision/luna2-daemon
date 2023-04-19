@@ -2056,7 +2056,7 @@ def config_bmcsetup_post(bmcname=None):
     Process - Create or Update BMC Setup information.
     Output - Success or Failure.
     """
-    data = {}
+    data,response = {},{}
     create, update = False, False
     if Helper().check_json(request.data):
         request_data,ret = Filter().validate_input(request.get_json(force=True),['config:bmcsetup:'+bmcname])
@@ -2103,7 +2103,7 @@ def config_bmcsetup_post(bmcname=None):
         access_code = 400
         return json.dumps(response), access_code
 
-    return json.dumps(data), access_code
+    return json.dumps(response), access_code
 
 
 @config_blueprint.route("/config/bmcsetup/<string:bmcname>/_clone", methods=['POST'])
@@ -2114,7 +2114,7 @@ def config_bmcsetup_clone(bmcname=None):
     Process - Fetch BMC Setup and Credentials.
     Output - BMC Name And Credentials.
     """
-    data = {}
+    data,response = {},{}
     create = False
     if Helper().check_json(request.data):
         request_data,ret = Filter().validate_input(request.get_json(force=True),['config:bmcsetup:'+bmcname])
@@ -2170,7 +2170,7 @@ def config_bmcsetup_clone(bmcname=None):
         access_code = 400
         return json.dumps(response), access_code
 
-    return json.dumps(data), access_code
+    return json.dumps(response), access_code
 
 
 @config_blueprint.route("/config/bmcsetup/<string:bmcname>/_delete", methods=['GET'])
@@ -2263,7 +2263,7 @@ def config_switch_post(switch=None):
     Output - Switch Details.
     """
     network=False
-    data = {}
+    data,response = {},{}
     create, update = False, False
     if Helper().check_json(request.data):
         request_data,ret = Filter().validate_input(request.get_json(force=True),['config:switch:'+switch])
@@ -2332,7 +2332,7 @@ def config_switch_post(switch=None):
         access_code = 400
         return json.dumps(response), access_code
 
-    return json.dumps(data), access_code
+    return json.dumps(response), access_code
 
 
 
@@ -2344,7 +2344,7 @@ def config_switch_clone(switch=None):
     Process - Delete The Switch.
     Output - Success or Failure.
     """
-    data = {}
+    data,response = {},{}
     create = False
     srcswitch=None
     ipaddress,networkname = None,None
@@ -2463,7 +2463,7 @@ def config_switch_clone(switch=None):
         #return json.dumps(response), access_code
 
     LOGGER.info(f"my response: {response}")
-    return json.dumps(data), access_code
+    return json.dumps(response), access_code
 
 
 
@@ -2556,7 +2556,7 @@ def config_otherdev_post(device=None):
     Input - Device Name
     Output - Create or Update Device.
     """
-    data = {}
+    data,response = {},{}
     create, update = False, False
     if Helper().check_json(request.data):
         request_data,ret = Filter().validate_input(request.get_json(force=True),['config:otherdev:'+device])
@@ -2627,7 +2627,7 @@ def config_otherdev_post(device=None):
         access_code = 400
         return json.dumps(response), access_code
 
-    return json.dumps(data), access_code
+    return json.dumps(response), access_code
 
 
 
@@ -2638,7 +2638,7 @@ def config_otherdev_clone(device=None):
     Input - Device ID or Name
     Output - Clone The Device.
     """
-    data = {}
+    data,response = {},{}
     create = False
     srcdevice=None
     ipaddress,networkname = None,None
@@ -2756,7 +2756,7 @@ def config_otherdev_clone(device=None):
         access_code = 400
         return json.dumps(response), access_code
 
-    return json.dumps(data), access_code
+    return json.dumps(response), access_code
 
 
 

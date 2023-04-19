@@ -337,7 +337,7 @@ def config_node_post(name=None):
                 newnode_check = Database().get_record(None, 'node', where)
                 if newnode_check:
                     response = {'message': f'{nodename_new} already present in database.'}
-                    access_code = 400
+                    access_code = 404
                     return json.dumps(response), access_code
                 else:
                     data['name'] = data['newnodename']
@@ -372,7 +372,7 @@ def config_node_post(name=None):
                 else:
                     data[check+'id'] = Database().getid_byname(check, check_name)
                     if (not data[check+'id']):
-                        access_code = 400
+                        access_code = 404
                         response = {'message': f'{check} {check_name} is not known or valid.'}
                         return json.dumps(response), access_code
                 del data[check]
@@ -392,13 +392,17 @@ def config_node_post(name=None):
                 response = {'message': f'Node {name} updated successfully.'}
                 access_code = 204
             if create:
+                if not 'groupid' in data: # ai, we DO need this for new nodes...... kind of. we agreed on this. pending?
+                    access_code = 400
+                    response = {'message': f'group name is required for new nodes'}
+                    return json.dumps(response), access_code
                 data['name'] = name
                 row = Helper().make_rows(data)
                 nodeid = Database().insert('node', row)
                 response = {'message': f'Node {name} created successfully.'}
                 access_code = 201
                 if nodeid and 'groupid' in data and data['groupid']:
-                    # ----> GROUP interface. WIP. pending
+                    # ----> GROUP interface. WIP. pending. should work but i keep it WIP
                     group_interfaces = Database().get_record_join(['groupinterface.interface','network.name as network','groupinterface.options'], ['network.id=groupinterface.networkid'], [f"groupinterface.groupid={data['groupid']}"])
                     if group_interfaces:
                         for group_interface in group_interfaces:
@@ -449,10 +453,9 @@ def config_node_post(name=None):
                             ipaddress=interface['ipaddress']
                         result,mesg = Config().node_interface_ipaddress_config(nodeid,interface_name,ipaddress,network)
                         
-
                     if result is False:
                         response = {'message': f"{mesg}"}
-                        access_code = 500
+                        access_code = 404
                         return json.dumps(response), access_code
 
  
@@ -517,7 +520,7 @@ def config_node_clone(name=None):
                 newnode_check = Database().get_record(None, 'node', where)
                 if newnode_check:
                     response = {'message': f'{newnodename} already present in database.'}
-                    access_code = 400
+                    access_code = 404
                     return json.dumps(response), access_code
                 else:
                     data['name'] = data['newnodename']
@@ -555,7 +558,7 @@ def config_node_clone(name=None):
                 else:
                     data[check+'id'] = Database().getid_byname(check, check_name)
                     if (not data[check+'id']):
-                        access_code = 400
+                        access_code = 404
                         response = {'message': f'{check} {check_name} is not known or valid.'}
                         return json.dumps(response), access_code
                 del data[check]
@@ -573,7 +576,7 @@ def config_node_clone(name=None):
             newnodeid = Database().insert('node', row)
             if not newnodeid:
                 response = {'message': f'Node {newnodename} could not be created due to possible property clash.'}
-                access_code = 500
+                access_code = 404
                 return json.dumps(response), access_code
 
             response = {'message': f'Node {name} created successfully.'}
@@ -603,7 +606,7 @@ def config_node_clone(name=None):
                         
                     if result is False:
                         response = {'message': f"{mesg}"}
-                        access_code = 500
+                        access_code = 404
                         return json.dumps(response), access_code
 
             for node_interface in node_interfaces:       
@@ -629,7 +632,7 @@ def config_node_clone(name=None):
                    
                                 if result is False:
                                     response = {'message': f"{mesg}"}
-                                    access_code = 500
+                                    access_code = 404
                                     return json.dumps(response), access_code
 
             #Service().queue('dhcp','restart') # do we need dhcp restart? MAC is wiped on new NIC so no real need i guess. pending
@@ -756,7 +759,7 @@ def config_node_post_interfaces(name=None):
 
                     if result is False:
                         response = {'message': f"{mesg}"}
-                        access_code = 500
+                        access_code = 404
                     else:
                         Service().queue('dhcp','restart')
                         Service().queue('dns','restart')
@@ -767,9 +770,9 @@ def config_node_post_interfaces(name=None):
                         response = {'message': 'Interface updated.'}
                         access_code = 204
             else:
-                LOGGER.error('Kindly provide the interface.')
-                response = {'message': 'Kindly provide the interface.'}
-                access_code = 404
+                LOGGER.error(f'Interface for Node {name} not provided.')
+                response = {'message': 'interface not provided.'}
+                access_code = 400
         else:
             LOGGER.error(f'Node {name} is not available.')
             response = {'message': f'Node {name} is not available.'}
@@ -805,8 +808,8 @@ def config_node_interface_get(name=None, interface=None):
             LOGGER.info(f'Returned group {name} with details.')
             access_code = 200
         else:
-            LOGGER.error(f'Node {name} dont have {interface} interface.')
-            response = {'message': f'Node {name} dont have {interface} interface.'}
+            LOGGER.error(f'Node {name} does not have {interface} interface.')
+            response = {'message': f'Node {name} does not have {interface} interface.'}
             access_code = 404
     else:
         LOGGER.error('Node is not available.')
@@ -982,6 +985,7 @@ def config_group_member(name=None):
     This method will fetch all the nodes, which is connected to
     the provided group.
     """
+    name = Filter().filter(name,'group')
     groups = Database().get_record(None, 'group', f' WHERE name = "{name}"')
     if groups:
         group = groups[0]
@@ -1050,7 +1054,7 @@ def config_group_post(name=None):
                 checknewgrp = Database().get_record(None, 'group', where)
                 if checknewgrp:
                     response = {'message': f'{newgrpname} Already present in database.'}
-                    access_code = 400
+                    access_code = 404
                     return json.dumps(response), access_code
                 else:
                     data['name'] = data['newgroupname']
@@ -1058,7 +1062,7 @@ def config_group_post(name=None):
             update = True
         else:
             if 'newgroupname' in data:
-                response = {'message': f'{newgrpname} is not allwoed while creating a new group.'}
+                response = {'message': f'{newgrpname} is not allowed while creating a new group.'}
                 access_code = 400
                 return json.dumps(response), access_code
             create = True
@@ -1082,12 +1086,18 @@ def config_group_post(name=None):
                 del data['bmcsetupname']
             else:
                 response = {'message': f'BMC Setup {bmcname} does not exist.'}
-                access_code = 400
+                access_code = 404
                 return json.dumps(response), access_code
         if 'osimage' in data:
             osname = data['osimage']
-            del data['osimage']
             data['osimageid'] = Database().getid_byname('osimage', osname)
+            if data['osimageid']:
+                del data['osimage']
+            else:
+                response = {'message': f'OSimage {osname} does not exist.'}
+                access_code = 404
+                return json.dumps(response), access_code
+
         newinterface=None
         if 'interfaces' in data:
             newinterface = data['interfaces']
@@ -1113,7 +1123,7 @@ def config_group_post(name=None):
                     network = Database().getid_byname('network', ifx['network'])
                     if network is None:
                         response = {'message': f'Bad Request; Network {network} not exist.'}
-                        access_code = 400
+                        access_code = 404
                         return json.dumps(response), access_code
                     else:
                         ifx['networkid'] = network
@@ -1190,7 +1200,7 @@ def config_group_clone(name=None):
                 checknewgrp = Database().get_record(None, 'group', where)
                 if checknewgrp:
                     response = {'message': f'{newgroupname} Already present in database.'}
-                    access_code = 400
+                    access_code = 404
                     return json.dumps(response), access_code
                 data['name'] = data['newgroupname']
                 del data['newgroupname']
@@ -1227,7 +1237,7 @@ def config_group_clone(name=None):
                 del data['bmcsetupname']
             else:
                 response = {'message': f'BMC Setup {bmcname} does not exist.'}
-                access_code = 400
+                access_code = 404
                 return json.dumps(response), access_code
         if 'osimage' in data:
             osname = data['osimage']
@@ -1245,7 +1255,7 @@ def config_group_clone(name=None):
             newgroupid = Database().insert('group', row)
             if not newgroupid:
                 response = {'message': f'Node {newgroupname} could not be created due to possible property clash.'}
-                access_code = 500
+                access_code = 404
                 return json.dumps(response), access_code
 
             response = {'message': f'Group {name} created.'}
@@ -1258,7 +1268,7 @@ def config_group_clone(name=None):
                     network = Database().getid_byname('network', ifx['network'])
                     if network is None:
                         response = {'message': f'Bad Request; Network {network} not exist.'}
-                        access_code = 400
+                        access_code = 404
                         return json.dumps(response), access_code
                     else:
                         ifx['networkid'] = network
@@ -1334,8 +1344,8 @@ def config_group_get_interfaces(name=None):
                     grp_interfaces.append(ifx)
                 response['config']['group'][groupname]['interfaces'] = grp_interfaces
             else:
-                LOGGER.error(f'Group {name} dont have any interface.')
-                response = {'message': f'Group {name} dont have any interface.'}
+                LOGGER.error(f'Group {name} does not have any interface.')
+                response = {'message': f'Group {name} does not have any interface.'}
                 access_code = 404
         LOGGER.info(f'Returned group {name} with details.')
         access_code = 200
@@ -1373,13 +1383,13 @@ def config_group_post_interfaces(name=None):
             if 'interfaces' in request_data['config']['group'][name]:
                 for ifx in request_data['config']['group'][name]['interfaces']:
                     if (not 'network' in ifx) or (not 'interface' in ifx):
-                        response = {'message': f'Bad Request; interface and/or network not specified.'}
+                        response = {'message': f'Interface and/or network not specified.'}
                         access_code = 400
                         return json.dumps(response), access_code
                     network = Database().getid_byname('network', ifx['network'])
                     if network is None:
-                        response = {'message': f'Bad Request; Network {network} not exist.'}
-                        access_code = 400
+                        response = {'message': f'Network {network} does not exist.'}
+                        access_code = 404
                         return json.dumps(response), access_code
                     else:
                         ifx['networkid'] = network
@@ -1405,9 +1415,9 @@ def config_group_post_interfaces(name=None):
                         executor.shutdown(wait=False)
                         #Config().update_interface_on_group_nodes(name)
             else:
-                LOGGER.error('Kindly provide the interface.')
-                response = {'message': 'Kindly provide the interface.'}
-                access_code = 404
+                LOGGER.error('interface not provided.')
+                response = {'message': 'interface not provided.'}
+                access_code = 400
         else:
             LOGGER.error('No group is available.')
             response = {'message': 'No group is available.'}
@@ -1568,7 +1578,7 @@ def config_osimage_post(name=None):
                 newoscheck = Database().get_record(None, 'osimage', where)
                 if newoscheck:
                     response = {'message': f'{newosname} Already present in database.'}
-                    access_code = 400
+                    access_code = 404
                     return json.dumps(response), access_code
                 else:
                     data['name'] = data['newosimage']
@@ -1582,14 +1592,14 @@ def config_osimage_post(name=None):
                 newoscheck = Database().get_record(None, 'osimage', where)
                 if newoscheck:
                     response = {'message': f'{newosname} Already present in database.'}
-                    access_code = 400
+                    access_code = 404
                     return json.dumps(response), access_code
                 else:
                     data['name'] = data['newosimage']
                     del data['newosimage']
                 create = True
             else:
-                response = {'message': 'Kindly pass the new OS Image name.'}
+                response = {'message': 'New OS Image name not provided.'}
                 access_code = 400
                 return json.dumps(response), access_code
 
@@ -1672,7 +1682,7 @@ def config_osimage_clone(name=None):
                 checknewos = Database().get_record(None, 'osimage', where)
                 if checknewos:
                     response = {'message': f'{newosname} Already present in database.'}
-                    access_code = 400
+                    access_code = 404
                     return json.dumps(response), access_code
                 else:
                     data['name'] = data['newosimage']
@@ -1682,15 +1692,15 @@ def config_osimage_clone(name=None):
                     del data['newosimage']
                     if 'path' in data and data['path'] and path.exists(data['path']):
                         response = {'message': f"Destination path {data['path']} already exists."}
-                        access_code = 400
+                        access_code = 404
                         return json.dumps(response), access_code
             else:
-                response = {'message': 'Kindly pass the new OS Image name.'}
+                response = {'message': 'New OS Image name not provided.'}
                 access_code = 400
                 return json.dumps(response), access_code
         else:
             response = {'message': f'OS Image {name} not present in the database.'}
-            access_code = 400
+            access_code = 404
             return json.dumps(response), access_code
 
         osimagecolumns = Database().get_columns('osimage')
@@ -1834,8 +1844,8 @@ def config_osimage_kernel_post(name=None):
                 response = {'message': 'Bad Request; Columns are incorrect.'}
                 access_code = 400
         else:
-            response = {'message': f'OS Image {name} dose not exist.'}
-            access_code = 400
+            response = {'message': f'OS Image {name} does not exist.'}
+            access_code = 404
             return json.dumps(response), access_code
     else:
         response = {'message': 'Bad Request; Did not received data.'}
@@ -1951,8 +1961,8 @@ def config_cluster_post():
                 response = {'message': 'Cluster updated.'}
                 access_code = 204
             else:
-                response = {'message': 'Bad Request; No cluster is available to update.'}
-                access_code = 400
+                response = {'message': 'No cluster is available to update.'}
+                access_code = 404
         else:
             response = {'message': 'Bad Request; Columns are incorrect.'}
             access_code = 400
@@ -2056,7 +2066,7 @@ def config_bmcsetup_post(bmcname=None):
     Process - Create or Update BMC Setup information.
     Output - Success or Failure.
     """
-    data = {}
+    data,response = {},{}
     create, update = False, False
     if Helper().check_json(request.data):
         request_data,ret = Filter().validate_input(request.get_json(force=True),['config:bmcsetup:'+bmcname])
@@ -2103,7 +2113,7 @@ def config_bmcsetup_post(bmcname=None):
         access_code = 400
         return json.dumps(response), access_code
 
-    return json.dumps(data), access_code
+    return json.dumps(response), access_code
 
 
 @config_blueprint.route("/config/bmcsetup/<string:bmcname>/_clone", methods=['POST'])
@@ -2114,7 +2124,7 @@ def config_bmcsetup_clone(bmcname=None):
     Process - Fetch BMC Setup and Credentials.
     Output - BMC Name And Credentials.
     """
-    data = {}
+    data,response = {},{}
     create = False
     if Helper().check_json(request.data):
         request_data,ret = Filter().validate_input(request.get_json(force=True),['config:bmcsetup:'+bmcname])
@@ -2133,7 +2143,7 @@ def config_bmcsetup_clone(bmcname=None):
             newbmc = data['newbmcname']
             del data['newbmcname']
         else:
-            response = {'message': 'Kindly provide the new bmc name.'}
+            response = {'message': 'New bmc name nor provided.'}
             access_code = 400
             return json.dumps(response), access_code
         checkbmc = Database().get_record(None, 'bmcsetup', f' WHERE `name` = "{bmcname}"')
@@ -2141,7 +2151,7 @@ def config_bmcsetup_clone(bmcname=None):
             checnewkbmc = Database().get_record(None, 'bmcsetup', f' WHERE `name` = "{newbmc}"')
             if checnewkbmc:
                 response = {'message': f'{newbmc} Already present in database.'}
-                access_code = 400
+                access_code = 404
                 return json.dumps(response), access_code
             else:
                 create = True
@@ -2151,7 +2161,7 @@ def config_bmcsetup_clone(bmcname=None):
                     data[item]=checkbmc[0][item]
         else:
             response = {'message': f'{bmcname} not present in database.'}
-            access_code = 400
+            access_code = 404
             return json.dumps(response), access_code
         bmccolumns = Database().get_columns('bmcsetup')
         columncheck = Helper().checkin_list(data, bmccolumns)
@@ -2170,7 +2180,7 @@ def config_bmcsetup_clone(bmcname=None):
         access_code = 400
         return json.dumps(response), access_code
 
-    return json.dumps(data), access_code
+    return json.dumps(response), access_code
 
 
 @config_blueprint.route("/config/bmcsetup/<string:bmcname>/_delete", methods=['GET'])
@@ -2263,7 +2273,7 @@ def config_switch_post(switch=None):
     Output - Switch Details.
     """
     network=False
-    data = {}
+    data,response = {},{}
     create, update = False, False
     if Helper().check_json(request.data):
         request_data,ret = Filter().validate_input(request.get_json(force=True),['config:switch:'+switch])
@@ -2318,10 +2328,10 @@ def config_switch_post(switch=None):
         # ----------- interface(s) update/create -------------
         if ipaddress or network:
             result,mesg=Config().device_ipaddress_config(switchid,'switch',ipaddress,network)
-            response = {'message': f"{mesg}"}
 
             if result is False:
-                access_code=500
+                response = {'message': f"{mesg}"}
+                access_code=404
             else:
                 Service().queue('dhcp','restart')
                 Service().queue('dns','restart')
@@ -2332,7 +2342,7 @@ def config_switch_post(switch=None):
         access_code = 400
         return json.dumps(response), access_code
 
-    return json.dumps(data), access_code
+    return json.dumps(response), access_code
 
 
 
@@ -2344,7 +2354,7 @@ def config_switch_clone(switch=None):
     Process - Delete The Switch.
     Output - Success or Failure.
     """
-    data = {}
+    data,response = {},{}
     create = False
     srcswitch=None
     ipaddress,networkname = None,None
@@ -2366,13 +2376,13 @@ def config_switch_clone(switch=None):
             newswitchname = data['newswitchname']
             del data['newswitchname']
         else:
-            response = {'message': 'Kindly provide the new switch name.'}
+            response = {'message': 'New switch name not provided.'}
             access_code = 400
             return json.dumps(response), access_code
         checkswitch = Database().get_record(None, 'switch', f' WHERE `name` = "{newswitchname}"')
         if checkswitch:
             response = {'message': f'{newswitchname} already present in database.'}
-            access_code = 400
+            access_code = 404
             return json.dumps(response), access_code
         else:
             create = True
@@ -2399,8 +2409,8 @@ def config_switch_clone(switch=None):
                     row = Helper().make_rows(data)
                     newswitchid=Database().insert('switch', row)
                     if not newswitchid:
-                        response = {'message': 'Bad Request; switch not cloned due to clashing config.'}
-                        access_code = 400
+                        response = {'message': 'Switch not cloned due to clashing config.'}
+                        access_code = 404
                         LOGGER.info(f"my response: {response}")
                         return json.dumps(response), access_code
    
@@ -2433,7 +2443,7 @@ def config_switch_clone(switch=None):
                                 ipaddress=avail
 
                         else:
-                            response = {'message': 'Bad Request; please supply network and ipaddress.'}
+                            response = {'message': 'Network and ipaddress not provided.'}
                             access_code = 400
                             LOGGER.info(f"my response: {response}")
                             return json.dumps(response), access_code
@@ -2442,7 +2452,7 @@ def config_switch_clone(switch=None):
 
                     if result is False:
                         Database().delete_row('switch', [{"column": "id", "value": newswitchid}])  # roll back
-                        access_code=400
+                        access_code=404
                         response = {'message': f"{mesg}"}
                     else:
                         Service().queue('dhcp','restart')
@@ -2463,7 +2473,7 @@ def config_switch_clone(switch=None):
         #return json.dumps(response), access_code
 
     LOGGER.info(f"my response: {response}")
-    return json.dumps(data), access_code
+    return json.dumps(response), access_code
 
 
 
@@ -2556,7 +2566,7 @@ def config_otherdev_post(device=None):
     Input - Device Name
     Output - Create or Update Device.
     """
-    data = {}
+    data,response = {},{}
     create, update = False, False
     if Helper().check_json(request.data):
         request_data,ret = Filter().validate_input(request.get_json(force=True),['config:otherdev:'+device])
@@ -2613,10 +2623,10 @@ def config_otherdev_post(device=None):
         # ----------- interface(s) update/create -------------
         if ipaddress or network:
             result,mesg=Config().device_ipaddress_config(deviceid,'otherdevices',ipaddress,network)
-            response = {'message': f"{mesg}"}
 
             if result is False:
-                access_code=500
+                response = {'message': f"{mesg}"}
+                access_code=404
             else:
                 Service().queue('dhcp','restart')
                 Service().queue('dns','restart')
@@ -2627,7 +2637,7 @@ def config_otherdev_post(device=None):
         access_code = 400
         return json.dumps(response), access_code
 
-    return json.dumps(data), access_code
+    return json.dumps(response), access_code
 
 
 
@@ -2638,7 +2648,7 @@ def config_otherdev_clone(device=None):
     Input - Device ID or Name
     Output - Clone The Device.
     """
-    data = {}
+    data,response = {},{}
     create = False
     srcdevice=None
     ipaddress,networkname = None,None
@@ -2660,14 +2670,14 @@ def config_otherdev_clone(device=None):
             newdevicename = data['newotherdevname']
             del data['newotherdevname']
         else:
-            response = {'message': 'Kindly provide the new device name.'}
+            response = {'message': 'New device name not provided.'}
             access_code = 400
             return json.dumps(response), access_code
         where = f' WHERE `name` = "{newdevicename}"'
         checkdevice = Database().get_record(None, 'otherdevices', where)
         if checkdevice:
             response = {'message': f'{newdevicename} already present in database.'}
-            access_code = 400
+            access_code = 404
             return json.dumps(response), access_code
         else:
             create = True
@@ -2694,8 +2704,8 @@ def config_otherdev_clone(device=None):
                     row = Helper().make_rows(data)
                     newdeviceid=Database().insert('otherdevices', row)
                     if not newdeviceid:
-                        response = {'message': 'Bad Request; device not cloned due to clashing config.'}
-                        access_code = 400
+                        response = {'message': 'Device not cloned due to clashing config.'}
+                        access_code = 404
                         LOGGER.info(f"my response: {response}")
                         return json.dumps(response), access_code
  
@@ -2727,7 +2737,7 @@ def config_otherdev_clone(device=None):
                                 ipaddress=avail
 
                         else:
-                            response = {'message': 'Bad Request; please supply network and ipaddress.'}
+                            response = {'message': 'Network and ipaddress not provided.'}
                             access_code = 400
                             LOGGER.info(f"my response: {response}")
                             return json.dumps(response), access_code
@@ -2736,7 +2746,7 @@ def config_otherdev_clone(device=None):
 
                     if result is False:
                         Database().delete_row('otherdevices', [{"column": "id", "value": newdeviceid}])  # roll back
-                        access_code=400
+                        access_code=404
                         response = {'message': f"{mesg}"}
                     else:
                         Service().queue('dhcp','restart')
@@ -2756,7 +2766,7 @@ def config_otherdev_clone(device=None):
         access_code = 400
         return json.dumps(response), access_code
 
-    return json.dumps(data), access_code
+    return json.dumps(response), access_code
 
 
 
@@ -2878,7 +2888,7 @@ def config_network_post(name=None):
                 checknewnetwork = Database().get_record(None, 'network', where)
                 if checknewnetwork:
                     response = {'message': f'{newnetworkname} already present in database.'}
-                    access_code = 400
+                    access_code = 404
                     return json.dumps(response), access_code
                 else:
                     data['name'] = data['newnetname']
@@ -2903,7 +2913,7 @@ def config_network_post(name=None):
                             data['gateway']=''  # we have to remove the gateway if we did not get a new one and an existing is in place. should we warn the user? pending
             else:
                 response = {'message': f'Incorrect network IP: {data["network"]}.'}
-                access_code = 400
+                access_code = 404
                 return json.dumps(response), access_code
         elif checknetwork:
             #we fetch what we have from the DB
@@ -2911,26 +2921,26 @@ def config_network_post(name=None):
             data['subnet']=checknetwork[0]['subnet']
         else:
             response = {'message': "Not enough details provided. network/subnet in CIDR notation expected"}
-            access_code = 400
+            access_code = 404
             return json.dumps(response), access_code
         if 'gateway' in data:
             gwdetails = Helper().check_ip_range(data['gateway'], data['network']+'/'+data['subnet'])
             if (not gwdetails) and data['gateway'] != '':
                 response = {'message': f'Incorrect gateway IP: {data["gateway"]}.'}
-                access_code = 400
+                access_code = 404
                 return json.dumps(response), access_code
         if 'nameserver_ip' in data:
             nsipdetails = Helper().check_ip_range(data['nameserver_ip'], data['network']+'/'+data['subnet'])
             if (not nsipdetails) and data['nameserver_ip'] != '':
                 response = {'message': f'Incorrect Nameserver IP: {data["nameserver_ip"]}.'}
-                access_code = 400
+                access_code = 404
                 return json.dumps(response), access_code
         if 'ntp_server' in data:
             subnet = data['network']+'/'+data['subnet']
             ntpdetails = Helper().check_ip_range(data['ntp_server'], subnet)
             if (not ntpdetails) and data['ntp_server'] != '':
                 response = {'message': f'Incorrect NTP Server IP: {data["ntp_server"]}.'}
-                access_code = 400
+                access_code = 404
                 return json.dumps(response), access_code
         if 'dhcp' in data:
             if 'dhcp_range_begin' in data:
@@ -2938,7 +2948,7 @@ def config_network_post(name=None):
                 dhcpstartdetails = Helper().check_ip_range(data['dhcp_range_begin'], subnet)
                 if not dhcpstartdetails:
                     response = {'message': f'Incorrect dhcp start: {data["dhcp_range_begin"]}.'}
-                    access_code = 400
+                    access_code = 404
                     return json.dumps(response), access_code
             else:
                 response = {'message': 'DHCP start range is a required parameter.'}
@@ -2949,7 +2959,7 @@ def config_network_post(name=None):
                 dhcpenddetails = Helper().check_ip_range(data['dhcp_range_end'], subnet)
                 if not dhcpenddetails:
                     response = {'message': f'Incorrect dhcp end: {data["dhcp_range_end"]}.'}
-                    access_code = 400
+                    access_code = 404
                     return json.dumps(response), access_code
             else:
                 response = {'message': 'DHCP end range is a required parameter.'}
@@ -2975,14 +2985,14 @@ def config_network_post(name=None):
             if create:
                 Database().insert('network', row)
                 response = {'message': 'Network created.'}
-                access_code = 200
+                access_code = 201
             if update:
                 if redistribute_ipaddresses:
                     nwk_size=Helper().get_network_size(data['network'],data['subnet'])
                     avail=nwk_size-dhcp_size
                     if avail < used_ips:
                         response = {'message': f"The proposed network config allows for {nwk_size} ip addresses. DHCP range will occupy {dhcp_size} ip addresses. The request will not accomodate for the currently {used_ips} in use ip addresses."}
-                        access_code = 400
+                        access_code = 404
                         return json.dumps(response), access_code
                 where = [{"column": "id", "value": networkid}]
                 Database().update('network', row, where)
@@ -3085,7 +3095,6 @@ def config_network_nextip(name=None):
     avail=None
 
     if network:
-        access_code = 500
         response = {'message': f'Network {name} has no free addresses.'}
         ret=0
         max=10 # we try to ping for 10 ips, if none of these are free, something else is going on (read: rogue devices)....
@@ -3097,9 +3106,10 @@ def config_network_nextip(name=None):
 
     if avail:
         response = {'config': {'network': {name: {'nextip': avail} } } }
-
-    if response:
         access_code = 200
+    else:
+        response = {'message': f'network {name} does not provide for any free IP address'}
+
     return json.dumps(response), access_code
 
 
@@ -3201,7 +3211,7 @@ def config_post_secrets_node(name=None):
     Process - Create Or Update Node Secrets.
     Output - None.
     """
-    data, = {}
+    data = {}
     create, update = False, False
     if Helper().check_json(request.data):
         request_data,ret = Filter().validate_input(request.get_json(force=True),['config:secrets:node:'+name])
@@ -3245,9 +3255,9 @@ def config_post_secrets_node(name=None):
                         Database().insert('nodesecrets', row)
                         create = True
             else:
-                LOGGER.error('Kindly provide at least one secret.')
-                response = {'message': 'Kindly provide at least one secret.'}
-                access_code = 404
+                LOGGER.error('not provided at least one secret.')
+                response = {'message': 'At least one secret not provided.'}
+                access_code = 400
         else:
             LOGGER.error(f'Node {name} is not available.')
             response = {'message': f'Node {name} is not available.'}
@@ -3261,7 +3271,7 @@ def config_post_secrets_node(name=None):
             access_code = 201
         elif create is False and update is True:
             response = {'message': f'Node {name} Secret updated.'}
-            access_code = 201
+            access_code = 204
     else:
         response = {'message': 'Bad Request; Did not received data.'}
         access_code = 400
@@ -3353,16 +3363,16 @@ def config_post_node_secret(name=None, secret=None):
                             response = {'message': f'Node {name} secret {secret} updated.'}
                             access_code = 204
                         else:
-                            response = {'message': f'Node {name} secret {secret} update failed.'}
+                            response = {'message': f'Node {name} secret {secret} update failed: {result}.'}
                             access_code = 500
                 else:
                     LOGGER.error(f'Rows do not match columns for Group {name}, secret {secret}.')
                     response = {'message': f'Supplied columns do not match the requirements.'}
-                    access_code = 404
+                    access_code = 400
             else:
-                LOGGER.error('Kindly provide at least one secret.')
-                response = {'message': 'Kindly provide at least one secret.'}
-                access_code = 404
+                LOGGER.error('not provided at least one secret.')
+                response = {'message': 'At least one secret not provided.'}
+                access_code = 400
         else:
             LOGGER.error(f'Node {name} is not available.')
             response = {'message': f'Node {name} is not available.'}
@@ -3425,17 +3435,17 @@ def config_clone_node_secret(name=None, secret=None):
                                 response = {'message': message}
                                 access_code = 204
                     else:
-                        LOGGER.error('Kindly pass the new secret name.')
-                        response = {'message': 'Kindly pass the new secret name.'}
-                        access_code = 404
+                        LOGGER.error('new secret name not provided.')
+                        response = {'message': 'New secret name not provided.'}
+                        access_code = 400
                 else:
                     LOGGER.error(f'Node {name}, Secret {secret} is unavailable.')
                     response = {'message': f'Node {name}, Secret {secret} is unavailable.'}
                     access_code = 404
             else:
-                LOGGER.error('Kindly provide at least one secret.')
-                response = {'message': 'Kindly provide at least one secret.'}
-                access_code = 404
+                LOGGER.error('not provided at least one secret.')
+                response = {'message': 'At least one secret not provided.'}
+                access_code = 400
         else:
             LOGGER.error(f'Node {name} is not available.')
             response = {'message': f'Node {name} is not available.'}
@@ -3559,9 +3569,9 @@ def config_post_secrets_group(name=None):
                         Database().insert('groupsecrets', row)
                         create = True
             else:
-                LOGGER.error('Kindly provide at least one secret.')
-                response = {'message': 'Kindly provide at least one secret.'}
-                access_code = 404
+                LOGGER.error('not provided at least one secret.')
+                response = {'message': 'At least one secret not provided.'}
+                access_code = 400
         else:
             LOGGER.error(f'Group {name} is not available.')
             response = {'message': f'Group {name} is not available.'}
@@ -3569,7 +3579,7 @@ def config_post_secrets_group(name=None):
 
         if create is True and update is True:
             response = {'message': f'Group {name} secrets created & updated.'}
-            access_code = 204
+            access_code = 201
         elif create is True and update is False:
             response = {'message': f'Group {name} secret created.'}
             access_code = 201
@@ -3667,16 +3677,16 @@ def config_post_group_secret(name=None, secret=None):
                             response = {'message': f'Group {name} secret {secret} updated.'}
                             access_code = 204
                         else:
-                            response = {'message': f'Group {name} secret {secret} update failed.'}
+                            response = {'message': f'Group {name} secret {secret} update failed: {result}.'}
                             access_code = 500
                 else:
                     LOGGER.error(f'Rows do not match columns for Group {name}, secret {secret}.')
                     response = {'message': f'Supplied columns do not match the requirements.'}
-                    access_code = 404
+                    access_code = 400
             else:
-                LOGGER.error('Kindly provide at least one secret.')
-                response = {'message': 'Kindly provide at least one secret.'}
-                access_code = 404
+                LOGGER.error('not provided at least one secret.')
+                response = {'message': 'At least one secret not provided.'}
+                access_code = 400
         else:
             LOGGER.error(f'Group {name} is not available.')
             response = {'message': f'Group {name} is not available.'}
@@ -3739,17 +3749,17 @@ def config_clone_group_secret(name=None, secret=None):
                                 response = {'message': message}
                                 access_code = 204
                     else:
-                        LOGGER.error('Kindly pass the new secret name.')
-                        response = {'message': 'Kindly pass the new secret name.'}
-                        access_code = 404
+                        LOGGER.error('the new secret name not provided.')
+                        response = {'message': 'The new secret name not provided.'}
+                        access_code = 400
                 else:
                     LOGGER.error(f'Group {name}, Secret {secret} is unavailable.')
                     response = {'message': f'Group {name}, Secret {secret} is unavailable.'}
                     access_code = 404
             else:
-                LOGGER.error('Kindly provide at least one secret.')
-                response = {'message': 'Kindly provide at least one secret.'}
-                access_code = 404
+                LOGGER.error('not provided at least one secret.')
+                response = {'message': 'At least one secret not provided.'}
+                access_code = 400
         else:
             LOGGER.error(f'Group {name} is not available.')
             response = {'message': f'Group {name} is not available.'}
@@ -3799,7 +3809,7 @@ def control_status(request_id=None):
     """
 
     LOGGER.debug(f"control STATUS: request_id: [{request_id}]")
-    access_code = 400
+    access_code = 404
     response = {'message': 'Bad Request.'}
     request_id = Filter().filter(request_id,'request_id')
     status = Database().get_record(None , 'status', f' WHERE request_id = "{request_id}"')

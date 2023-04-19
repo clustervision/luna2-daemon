@@ -105,7 +105,7 @@ def service_status(request_id=None):
     """
 
     LOGGER.debug(f"service STATUS: request_id: [{request_id}]")
-    access_code = 400
+    access_code = 404
     response = {'message': 'Bad Request.'}
     request_id = Filter().filter(request_id,'request_id')
     status = Database().get_record(None , 'status', f' WHERE request_id = "{request_id}"')

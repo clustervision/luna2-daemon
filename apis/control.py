@@ -153,7 +153,7 @@ def control_post():
                 # end Antoine ---------------------------------------------------------------
             else:
                 response = {'message': 'invalid hostlist.'}
-                access_code = 404
+                access_code = 400
            
     return json.dumps(response), access_code
 
@@ -167,7 +167,7 @@ def control_status(request_id=None):
     Output - Success or failure
     """
 
-    access_code = 400
+    access_code = 404
     response = {'message': 'Bad Request.'}
     request_id = Filter().filter(request_id,'request_id')
     status = Database().get_record(None , 'status', f' WHERE request_id = "{request_id}"')

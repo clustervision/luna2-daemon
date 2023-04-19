@@ -3202,7 +3202,7 @@ def config_post_secrets_node(name=None):
     Process - Create Or Update Node Secrets.
     Output - None.
     """
-    data, = {}
+    data = {}
     create, update = False, False
     if Helper().check_json(request.data):
         request_data,ret = Filter().validate_input(request.get_json(force=True),['config:secrets:node:'+name])

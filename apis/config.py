@@ -828,7 +828,7 @@ def config_node_delete_interface(name=None, interface=None):
     Output - Success or Failure.
     """
     name = Filter().filter(name,'name')
-    interface = Filter().filter(name,'interface')
+    interface = Filter().filter(interface,'interface')
     node = Database().get_record(None, 'node', f' WHERE `name` = "{name}"')
     if node:
         nodeid = node[0]['id']
@@ -1120,27 +1120,46 @@ def config_group_post(name=None):
                 access_code = 201
             if newinterface:
                 for ifx in newinterface:
-                    network = Database().getid_byname('network', ifx['network'])
+                    if not 'interface' in ifx:
+                        response = {'message': f'Bad Request; Interface name is required for this operation.'}
+                        access_code = 400
+                        return json.dumps(response), access_code
+                    ifname = ifx['interface']
+                    network=None
+                    if not 'network' in ifx:
+                        nwk=Database().get_record_join(['network.name as network','network.id as networkid'], ['network.id=groupinterface.networkid','groupinterface.groupid=group.id'], [f"`group`.name='{name}'",f"groupinterface.interface='{ifname}'"])
+                        if nwk and 'networkid' in nwk[0]:
+                            network=nwk[0]['networkid']
+                    else:
+                        network = Database().getid_byname('network', ifx['network'])
+                        del ifx['network']
                     if network is None:
-                        response = {'message': f'Bad Request; Network {network} not exist.'}
+                        response = {'message': f'Bad Request; Network not provided or does not exist.'}
                         access_code = 404
                         return json.dumps(response), access_code
                     else:
                         ifx['networkid'] = network
                         ifx['groupid'] = grpid
-                        del ifx['network']
-                    ifname = ifx['interface']
                     grp_clause = f'groupid = "{grpid}"'
-                    network_clause = f'networkid = "{network}"'
+#                    network_clause = f'networkid = "{network}"'
                     interface_clause = f'interface = "{ifname}"'
-                    where = f' WHERE {grp_clause} AND {network_clause} AND {interface_clause}'
+#                    where = f' WHERE {grp_clause} AND {network_clause} AND {interface_clause}'
+                    where = f' WHERE {grp_clause} AND {interface_clause}'
                     check_interface = Database().get_record(None, 'groupinterface', where)
+                    result,queue_id=None,None
                     if not check_interface:
                         row = Helper().make_rows(ifx)
                         result = Database().insert('groupinterface', row)
                         LOGGER.info(f'Interface created => {result} .')
-                        ## below section takes care (in the background), the adding/renaming/deleting. for adding nextfree ip-s will be selected. time consuming therefor background
                         queue_id,queue_response = Queue().add_task_to_queue(f'add_interface_to_group_nodes:{name}:{ifname}','group_interface')
+                    else: # we update only
+                        row = Helper().make_rows(ifx)
+                        where=[{"column": "groupid", "value": grpid},{"column": "interface", "value": ifname}]
+                        result = Database().update('groupinterface', row, where)
+                        LOGGER.info(f'Interface updated => {result} .')
+                        queue_id,queue_response = Queue().add_task_to_queue(f'update_interface_for_group_nodes:{name}:{ifname}','group_interface')
+                    ## below section takes care (in the background), the adding/renaming/deleting. for adding nextfree ip-s will be selected. time consuming therefor background
+                    if result:
                         next_id = Queue().next_task_in_queue('group_interface')
                         if queue_id == next_id:
                             executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
@@ -1472,7 +1491,7 @@ def config_group_delete_interface(name=None, interface=None):
     Output - Success or Failure.
     """
     name = Filter().filter(name,'group')
-    interface = Filter().filter(name,'interface')
+    interface = Filter().filter(interface,'interface')
     group = Database().get_record(None, 'group', f' WHERE `name` = "{name}"')
     if group:
         groupid = group[0]['id']

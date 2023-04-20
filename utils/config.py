@@ -674,9 +674,6 @@ $TTL 604800
                                             avail=ipdetails[0]['ipaddress']
                                             self.logger.info(f"---> reusing ipaddress {avail}")
                                     if not avail:
-#                                        if 'ipaddress' in network[0]:
-#                                            for ip in network:
-#                                                ips.append(ip['ipaddress'])
                                         ret=0
                                         max=5 # we try to ping for X ips, if none of these are free, something else is going on (read: rogue devices)....
                                         while(max>0 and ret!=1):

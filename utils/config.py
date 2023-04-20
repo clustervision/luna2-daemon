@@ -652,6 +652,10 @@ $TTL 604800
                         network = Database().get_record_join(['ipaddress.ipaddress','ipaddress.networkid as networkid','network.network','network.subnet','network.name as networkname'], 
                                                              ['ipaddress.networkid=network.id','network.id=groupinterface.networkid','groupinterface.groupid=group.id'], 
                                                              [f"`group`.name='{group}'",f"groupinterface.interface='{interface}'"])
+                        if not network: # as in we did not have any ipaddress used...
+                            network = Database().get_record_join(['network.id as networkid','network.network','network.subnet','network.name as networkname'], 
+                                                             ['network.id=groupinterface.networkid','groupinterface.groupid=group.id'], 
+                                                             [f"`group`.name='{group}'",f"groupinterface.interface='{interface}'"])
                         nodes = Database().get_record_join(['node.id as nodeid'], ['node.groupid=group.id'], [f"`group`.name='{group}'"])
                         if nodes:
                             for node in nodes:
@@ -666,7 +670,7 @@ $TTL 604800
                                         if valid_ip:
                                             avail=ipdetails[0]['ipaddress']
                                             self.logger.info(f"---> reusing ipaddress {avail}")
-                                    if not avail:   
+                                    if not avail and 'ipaddress' in network[0]:   
                                         for ip in network:
                                             ips.append(ip['ipaddress'])
                                         ret=0

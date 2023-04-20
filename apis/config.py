@@ -792,12 +792,12 @@ def config_node_interface_get(name=None, interface=None):
     Output - Success or Failure.
     """
     name = Filter().filter(name,'name')
-    interface = Filter().filter(name,'interface')
+    interface = Filter().filter(interface,'interface')
     node = Database().get_record(None, 'node', f' WHERE name = "{name}"')
     if node:
         response = {'config': {'node': {name: {'interfaces': [] } } } }
         nodeid = node[0]['id']
-        node_interfaces = Database().get_record_join(['network.name as network','nodeinterface.macaddress','nodeinterface.interface','ipaddress.ipaddress','nodeinterface.options'], ['ipaddress.tablerefid=nodeinterface.id','network.id=ipaddress.networkid'], ['tableref="nodeinterface"',f"nodeinterface.nodeid='{nodeid}'"])  # pending. we return all ifs but we only requested a particular one
+        node_interfaces = Database().get_record_join(['network.name as network','nodeinterface.macaddress','nodeinterface.interface','ipaddress.ipaddress','nodeinterface.options'], ['ipaddress.tablerefid=nodeinterface.id','network.id=ipaddress.networkid'], ['tableref="nodeinterface"',f"nodeinterface.nodeid='{nodeid}'",f"nodeinterface.interface='{interface}'"])
         if node_interfaces:
             my_interface = []
             for interface in node_interfaces:
@@ -1337,7 +1337,7 @@ def config_group_get_interfaces(name=None):
         for grp in groups:
             groupname = grp['name']
             groupid = grp['id']
-            grp_interface = Database().get_record_join(['groupinterface.interface','network.name as network'], ['network.id=groupinterface.networkid'], [f"groupid = '{groupid}'"])
+            grp_interface = Database().get_record_join(['groupinterface.interface','groupinterface.options','network.name as network'], ['network.id=groupinterface.networkid'], [f"groupid = '{groupid}'"])
             if grp_interface:
                 grp_interfaces = []
                 for ifx in grp_interface:
@@ -1425,6 +1425,41 @@ def config_group_post_interfaces(name=None):
     else:
         response = {'message': 'Bad Request; Did not received data.'}
         access_code = 400
+    return json.dumps(response), access_code
+
+
+@config_blueprint.route("/config/group/<string:name>/interfaces/<string:interface>", methods=['GET'])
+###@token_required
+def config_group_interface_get(name=None, interface=None):
+    """
+    Input - Group Name & Interface Name
+    Process - Get the Group Interface.
+    Output - Success or Failure.
+    """
+    name = Filter().filter(name,'group')
+    interface = Filter().filter(interface,'interface')
+    group = Database().get_record(None, 'group', f' WHERE name = "{name}"')
+    if group:
+        response = {'config': {'group': {name: {'interfaces': [] } } } }
+        groupid = group[0]['id']
+        grp_interfaces = Database().get_record_join(['groupinterface.interface','groupinterface.options','network.name as network'], ['network.id=groupinterface.networkid'], [f"groupid = '{groupid}'",f"groupinterface.interface='{interface}'"])
+        if grp_interfaces:
+            my_interface = []
+            for interface in grp_interfaces:
+                interface['options']=interface['options'] or ""
+                my_interface.append(interface)
+                response['config']['group'][name]['interfaces'] = my_interface
+
+            LOGGER.info(f'Returned group {name} with details.')
+            access_code = 200
+        else:
+            LOGGER.error(f'Group {name} does not have {interface} interface.')
+            response = {'message': f'Group {name} does not have {interface} interface.'}
+            access_code = 404
+    else:
+        LOGGER.error('Group is not available.')
+        response = {'message': 'Group is not available.'}
+        access_code = 404
     return json.dumps(response), access_code
 
 

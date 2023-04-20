@@ -646,8 +646,8 @@ $TTL 604800
                 action,group,interface,*_=(details['task'].split(':')+[None]+[None])
 
                 if group==name:
-                    # ADDING ---------------------------------------------------------------------------------------------------
-                    if action=='add_interface_to_group_nodes' and interface:
+                    # ADDING/UPDATING -------------------------------------------------------------------------------------------
+                    if (action=='add_interface_to_group_nodes' or action=='update_interface_for_group_nodes') and interface:
                         ips=[]
                         network = Database().get_record_join(['ipaddress.ipaddress','ipaddress.networkid as networkid','network.network','network.subnet','network.name as networkname'], 
                                                              ['ipaddress.networkid=network.id','network.id=groupinterface.networkid','groupinterface.groupid=group.id'], 
@@ -656,42 +656,17 @@ $TTL 604800
                         if nodes:
                             for node in nodes:
                                 result,mesg=self.node_interface_config(node['nodeid'],interface)
-                                self.logger.info(f"Adding interface {interface} to node id {node['nodeid']} for group {group}. {mesg}")
-                                if result and network:
-                                    for ip in network:
-                                        ips.append(ip['ipaddress'])
-                                    ret,avail=0,None
-                                    max=5 # we try to ping for X ips, if none of these are free, something else is going on (read: rogue devices)....
-                                    while(max>0 and ret!=1):
-                                        avail=Helper().get_available_ip(network[0]['network'],network[0]['subnet'],ips)
-                                        ips.append(avail)
-                                        output,ret=Helper().runcommand(f"ping -w1 -c1 {avail}", True, 3)
-                                        max-=1
-        
-                                    if avail:
-                                        ipaddress=avail
-                                        result,mesg = self.node_interface_ipaddress_config(node['nodeid'],interface,ipaddress,network[0]['networkname'])
-                                        self.logger.info(f"Adding IP {ipaddress} to node id {node['nodeid']} for group {group} interface {interface}. {mesg}")
-                
-                    # UPDATING ---------------------------------------------------------------------------------------------------
-                    if action=='update_interface_for_group_nodes' and interface:
-                        ips=[]
-                        network = Database().get_record_join(['ipaddress.ipaddress','ipaddress.networkid as networkid','network.network','network.subnet','network.name as networkname'], 
-                                                             ['ipaddress.networkid=network.id','network.id=groupinterface.networkid','groupinterface.groupid=group.id'], 
-                                                             [f"`group`.name='{group}'",f"groupinterface.interface='{interface}'"])
-                        nodes = Database().get_record_join(['node.id as nodeid'], ['node.groupid=group.id'], [f"`group`.name='{group}'"])
-                        if nodes:
-                            for node in nodes:
-                                result,mesg=self.node_interface_config(node['nodeid'],interface)
-                                self.logger.info(f"Updating interface {interface} for node id {node['nodeid']} for group {group}. {mesg}")
+                                self.logger.info(f"Adding/Updating interface {interface} to node id {node['nodeid']} for group {group}. {mesg}")
                                 if result and network:
                                     valid_ip,avail=None,None
-                                    ipdetails = Database().get_record_join(['ipaddress.ipaddress'],['ipaddress.tablerefid=nodeinterface.id'],["ipaddress.tableref='nodeinterface",f"nodeinterface.nodeid=\"{node['nodeid']}\""])
-                                    if ipdetails:
-                                        valid_ip = Helper().check_ip_range(ipdetails[0]['ipaddress'], f"{network[0]['network']}/{network[0]['subnet']}")
-                                    if valid_ip:
-                                        avail=ipdetails[0]['ipaddress']
-                                    else:
+                                    if action=='update_interface_for_group_nodes':
+                                        ipdetails = Database().get_record_join(['ipaddress.ipaddress'],['ipaddress.tablerefid=nodeinterface.id'],["ipaddress.tableref='nodeinterface'",f"nodeinterface.nodeid=\"{node['nodeid']}\"",f"nodeinterface.interface='{interface}'"])
+                                        if ipdetails:
+                                            valid_ip = Helper().check_ip_range(ipdetails[0]['ipaddress'], f"{network[0]['network']}/{network[0]['subnet']}")
+                                        if valid_ip:
+                                            avail=ipdetails[0]['ipaddress']
+                                            self.logger.info(f"---> reusing ipaddress {avail}")
+                                    if not avail:   
                                         for ip in network:
                                             ips.append(ip['ipaddress'])
                                         ret=0

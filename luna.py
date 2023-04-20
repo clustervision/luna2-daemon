@@ -17,6 +17,7 @@ __maintainer__  = 'Sumit Sharma'
 __email__       = 'sumit.sharma@clustervision.com'
 __status__      = 'Development'
 
+import git
 from flask import Flask, abort, json, Response, request
 from common.constant import LOGGER
 from common.bootstrap import validatebootstrap
@@ -117,6 +118,21 @@ def all_routes():
             routes.append({"route": route, "function": str(rule.endpoint), "method": apimethod})
     LOGGER.info(routes)
     return routes, 200
+
+
+@api.route('/version', methods=['GET'])
+def files():
+    """
+    This Method will provide the current version of the Luna Daemon Application.
+    """
+    try:
+        repo = git.Repo(search_parent_directories=True)
+        hexsha = repo.head.object.hexsha
+    except git.exc.InvalidGitRepositoryError:
+        hexsha = "Error :: Invalid Git Repository"
+    response = {'version': {'luna': '2.0.0001', 'api': 1, 'commit': hexsha }}
+    access_code = 200
+    return json.dumps(response), access_code
 
 
 @api.route('/')

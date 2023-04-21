@@ -34,6 +34,7 @@ class Filter(object):
         self.regexps={'name':'^[a-z0-9\-]+$','ipaddress':'^[0-9a-f:\.]+$','macaddress':'^[a-fA-F0-9:\-]+$'}
         self.mymatch={'name':'name','newnodename':'name','hostname':'name','newhostname':'name','newswitchname':'name','newotherdevicename':'name','newotherdevname':'name',
                      'ipaddress':'ipaddress','macaddress':'macaddress'}
+        self.maxlength={'request_id':'256'}
         self.convert={'macaddress':{'-':':'}}
         self.error=None
 
@@ -76,6 +77,10 @@ class Filter(object):
         data=control_char_re.sub('', data)
         data=data.replace("'","")
         data=data.replace('"',"")
+        if name in self.maxlength.keys():
+            if len(data) > int(self.maxlength[name]):
+                self.logger.debug(f"length of {name} exceeds {self.maxlength[name]}")
+                self.error=f"length of {name} exceeds {self.maxlength[name]}"
         if name in self.mymatch.keys():
             regex=re.compile(r""+self.regexps[self.mymatch[name]])
             if not regex.match(data):

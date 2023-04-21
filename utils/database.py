@@ -371,9 +371,11 @@ class Database(object):
             try:
                 mylocal.cursor.execute(query)
                 self.commit()
+                mywhere = where
                 for key,value in zip(wherekeys, wherevalues):
                     wherelist.append(f'{key} = {value}')
-                mywhere = where + ' AND '.join(wherelist)
+                if len(wherelist) > 0:
+                    mywhere = mywhere + ' AND '.join(wherelist)
                 result = self.get_record(None, table, mywhere)
                 if result:
                     response = result[0]['id']

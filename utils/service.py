@@ -95,10 +95,10 @@ class Service(object):
                 match action:
                     case 'start' | 'stop' | 'reload' | 'restart':
                         response = {'info': 'not implemented'}
-                        code = 204
+                        code = 200
                     case 'status':
                         response = {'info': 'not implemented'}
-                        code = 204
+                        code = 200
                     case _:
                         self.logger.error(f'Service Action {name} Is Not Recognized')
                         response = {'error': f'Service Action {action} Is Not Recognized.'}

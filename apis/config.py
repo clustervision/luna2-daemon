@@ -755,7 +755,7 @@ def config_node_post_interfaces(name=None):
                         ipaddress=interface['ipaddress']
                         if 'network' in interface.keys():
                             network=interface['network']
-                        result,mesg = Config().node_interface_ipaddress_config(nodeid,interface_name,ipaddress,network,options)
+                        result,mesg = Config().node_interface_ipaddress_config(nodeid,interface_name,ipaddress,network)
 
                     if result is False:
                         response = {'message': f"{mesg}"}

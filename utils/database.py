@@ -371,10 +371,12 @@ class Database(object):
             try:
                 mylocal.cursor.execute(query)
                 self.commit()
+                mywhere = where
                 for key,value in zip(wherekeys, wherevalues):
                     wherelist.append(f'{key} = {value}')
-                where = where + ' AND '.join(wherelist)
-                result = self.get_record(None, table, where)
+                if len(wherelist) > 0:
+                    mywhere = mywhere + ' AND '.join(wherelist)
+                result = self.get_record(None, table, mywhere)
                 if result:
                     response = result[0]['id']
             except Exception as exp:

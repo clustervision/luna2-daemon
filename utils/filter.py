@@ -102,15 +102,18 @@ class Filter(object):
         else:
             mychecks=checks
 
-        for check in mychecks:
-            arr=check.split(':')
-            slice=data
-            for element in arr:
-                if not element in slice:
-                    self.logger.debug(f"{element} not found in data {slice}")
-                    return False
-                self.logger.debug(f"OK: {element} found in data {slice}")
-                slice=slice[element]
-        return True
-
+        try:
+            for check in mychecks:
+                arr=check.split(':')
+                slice=data
+                for element in arr:
+                    if not element in slice:
+                        self.logger.debug(f"{element} not found in data {slice}")
+                        return False
+                    self.logger.debug(f"OK: {element} found in data {slice}")
+                    slice=slice[element]
+            return True
+        except Exception as exp:
+            self.logger.debug(f"filter encountered issue due to incorrect data/json/dict?: {exp}")
+            return False
 

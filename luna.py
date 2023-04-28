@@ -17,7 +17,6 @@ __maintainer__  = 'Sumit Sharma'
 __email__       = 'sumit.sharma@clustervision.com'
 __status__      = 'Development'
 
-import git
 from flask import Flask, abort, json, Response, request
 from common.constant import LOGGER
 from common.bootstrap import validatebootstrap
@@ -125,12 +124,14 @@ def files():
     """
     This Method will provide the current version of the Luna Daemon Application.
     """
-    try:
-        repo = git.Repo(search_parent_directories=True)
-        hexsha = repo.head.object.hexsha
-    except git.exc.InvalidGitRepositoryError:
-        hexsha = "Error :: Invalid Git Repository"
-    response = {'version': {'luna': '2.0.0001', 'api': 1, 'commit': hexsha }}
+    # version_file = 'version.txt'
+    # try:
+    #     with open(version_file, 'r', encoding='utf-8') as ver:
+    #         version = ver.read()
+    # except OSError:
+    #     version = "Error :: Not Available"
+    version = '711e3a5---DUMMY---278ad6399b'
+    response = {'version': {'luna': '2.0.0001', 'api': 1, 'commit': version }}
     access_code = 200
     return json.dumps(response), access_code
 

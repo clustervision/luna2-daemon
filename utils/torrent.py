@@ -84,7 +84,8 @@ class Torrent(object):
 ##                       ":" + str(tracker_port) + "/announce"))
 ##
 ##        t.set_creator(torrent_key)
-##        t.set_comment(uid)
+        t.set_creator('Luna2')
+        t.set_comment('Luna2 image')
         libtorrent.set_piece_hashes(t, ".")
 
         f = open(torrentfile, 'wb')
@@ -95,7 +96,7 @@ class Torrent(object):
 ##        self.set('torrent', str(uid))
         os.chdir(old_cwd)
 
-        return True,"success"
+        return True,tarball+".torrent"
 
 
 

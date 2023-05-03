@@ -297,7 +297,8 @@ class Tracker(object):
 #        self.set_header('Content-Type', 'text/plain')
 #        self.write(bencode(self.response))
 #        self.finish()
-        return 200,bencode(response)
+        response=bencode(response)
+        return 200,response.decode()
 
 
     def scrape(self):

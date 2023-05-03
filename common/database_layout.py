@@ -139,7 +139,7 @@ DATABASE_LAYOUT_user = [
 {"column": "roleid",               "datatype": "INTEGER", "length": "10"},
 {"column": "createdby",            "datatype": "INTEGER", "length": "10"},
 {"column": "lastlogin",            "datatype": "VARCHAR", "length": "50"},
-{"column": "created",              "datatype": "VARCHAR", "length": "50"}]
+{"column": "created",              "datatype": "numeric"}]
 
 DATABASE_LAYOUT_switch = [
 {"column": "id",                   "datatype": "INTEGER", "key": "PRIMARY", "keyadd": "AUTOINCREMENT"},
@@ -221,6 +221,6 @@ DATABASE_LAYOUT_tracker = [
 {"column": "download",             "datatype": "INTEGER", "length": "10"},
 {"column": "upload",               "datatype": "INTEGER", "length": "10"},
 {"column": "left",                 "datatype": "INTEGER", "length": "10"},
-{"column": "updated",              "datatype": "VARCHAR", "length": "60"},
+{"column": "updated",              "datatype": "numeric"},
 {"column": "status",               "datatype": "VARCHAR", "length": "20"}]
 

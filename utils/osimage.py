@@ -552,7 +552,8 @@ class OsImage(object):
                         ret,mesg=Torrent().create_torrent(image[0]['tarball'])
                         if ret:
                             torrentfile=mesg # create_torrent returns the torrent file on success.
-                            ret,mesg=Torrent().announce_torrent(torrentfile)
+                            Status().add_message(request_id,"luna",f"adding torrent for osimage {osimage}")
+                            ret,mesg=Torrent().add_torrent(torrentfile)
                             if ret:
                                 result=True
                                 row = [{"column": "torrent", "value": f"{torrentfile}"}]

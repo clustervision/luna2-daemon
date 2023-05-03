@@ -36,7 +36,6 @@ class Torrent(object):
     def __init__(self):
         self.logger = Log.get_logger()
 
-
     def create_torrent(self,tarball):
         path_to_store = CONSTANT['FILES']['TARBALL']
 
@@ -69,11 +68,13 @@ class Torrent(object):
 
         command=f"transmission-create -o {torrentfile} {tarfile}"
         mesg,exit_code = Helper().runcommand(command,True,600)
+        mesg=data.replace('"',"")
+        mesg=data.replace("'","")
         if exit_code == "0":
             return True,tarball + ".torrent"
         return False,mesg
 
-    def announce_torrent(self,torrent):
+    def add_torrent(self,torrent):
         path_to_store = CONSTANT['FILES']['TARBALL']
 
         if not os.path.exists(path_to_store +'/'+ torrent):
@@ -97,6 +98,8 @@ class Torrent(object):
 
         command=f"transmission-add {host}:{port} -o {torrentfile} {tarfile}"
         mesg,exit_code = Helper().runcommand(command,True,60)
+        mesg=data.replace('"',"")
+        mesg=data.replace("'","")
         if exit_code == "0":
             return True,mesg
         return False,mesg
@@ -162,6 +165,5 @@ class Torrent(object):
         os.chdir(old_cwd)
 
         return True,tarball+".torrent"
-
 
 

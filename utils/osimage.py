@@ -551,12 +551,14 @@ class OsImage(object):
                     else:
                         ret,mesg=Torrent().create_torrent(image[0]['tarball'])
                         if ret:
-                            result=True
                             torrentfile=mesg # create_torrent returns the torrent file on success.
-                            row = [{"column": "torrent", "value": f"{torrentfile}"}]
-                            where = [{"column": "id", "value": f"{image_id}"}]
-                            status = Database().update('osimage', row, where)
-                            mesg=f"Success for {image[0]['tarball']}"
+                            ret,mesg=Torrent().announce_torrent(torrentfile)
+                            if ret:
+                                result=True
+                                row = [{"column": "torrent", "value": f"{torrentfile}"}]
+                                where = [{"column": "id", "value": f"{image_id}"}]
+                                status = Database().update('osimage', row, where)
+                                mesg=f"Success for {image[0]['tarball']}"
  
                 sleep(1) # needed to prevent immediate concurrent access to the database. Pooling,WAL,WIF,WAF,etc won't fix this. Only sleep
                 if result is True:

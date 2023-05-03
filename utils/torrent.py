@@ -38,6 +38,71 @@ class Torrent(object):
 
 
     def create_torrent(self,tarball):
+        path_to_store = CONSTANT['FILES']['TARBALL']
+
+        if not os.path.exists(path_to_store +'/'+ tarball):
+            self.logger.error(f"{path_to_store}/{tarball} does not exist.")
+            return False,f"{path_to_store}/{tarball} does not exist"
+
+#        host,port=None,9091
+#        controller = Database().get_record_join(['controller.*','ipaddress.ipaddress'], ['ipaddress.tablerefid=controller.id'],['tableref="controller"','controller.hostname="controller"'])
+#        if controller:
+#            host = controller[0]['ipaddress']
+#            port = controller[0]['serverport']
+#            if 'TORRENTSERVER' in CONSTANT.keys():
+#               if 'PORT' in CONSTANT['TORRENTSERVER']:
+#                   port = CONSTANT['TORRENTSERVER']['PORT']
+#               if 'HOST' in CONSTANT['TORRENTSERVER']:
+#                   host = CONSTANT['TORRENTSERVER']['HOST']
+#
+#        if (not host) or (not port):
+#            self.logger.error("Tracker host/port not configured.")
+#            return False,"Tracker host/port not configured"
+
+        if not os.path.exists(path_to_store):
+            os.makedirs(path_to_store)
+#            os.chown(path_to_store, user_id, grp_id)
+            os.chmod(path_to_store, 0o755)
+
+        tarfile = path_to_store +'/'+ tarball 
+        torrentfile = path_to_store +'/'+ tarball + ".torrent"
+
+        command=f"transmission-create -o {torrentfile} {tarfile}"
+        mesg,exit_code = Helper().runcommand(command,True,600)
+        if exit_code == "0":
+            return True,tarball + ".torrent"
+        return False,mesg
+
+    def announce_torrent(self,torrent):
+        path_to_store = CONSTANT['FILES']['TARBALL']
+
+        if not os.path.exists(path_to_store +'/'+ torrent):
+            self.logger.error(f"{path_to_store}/{torrent} does not exist.")
+            return False,f"{path_to_store}/{torrent} does not exist"
+
+        host,port="localhost",9091
+        controller = Database().get_record_join(['controller.*','ipaddress.ipaddress'], ['ipaddress.tablerefid=controller.id'],['tableref="controller"','controller.hostname="controller"'])
+        if controller:
+            host = controller[0]['ipaddress']
+            port = controller[0]['serverport']
+            if 'TORRENTSERVER' in CONSTANT.keys():
+               if 'PORT' in CONSTANT['TORRENTSERVER']:
+                   port = CONSTANT['TORRENTSERVER']['PORT']
+               if 'HOST' in CONSTANT['TORRENTSERVER']:
+                   host = CONSTANT['TORRENTSERVER']['HOST']
+
+        if (not host) or (not port):
+            self.logger.error("Tracker host/port not configured.")
+            return False,"Tracker host/port not configured"
+
+        command=f"transmission-add {host}:{port} -o {torrentfile} {tarfile}"
+        mesg,exit_code = Helper().runcommand(command,True,60)
+        if exit_code == "0":
+            return True,mesg
+        return False,mesg
+
+
+    def create_torrent_libtorrent(self,tarball):
         # TODO check if root
 
         path_to_store = CONSTANT['FILES']['TARBALL']

@@ -48,8 +48,8 @@ class Tracker(object):
         self.PEER_INCREASE_LIMIT = 30
         self.DEFAULT_ALLOWED_PEERS = 50
         self.MAX_ALLOWED_PEERS = 200
-        self.INFO_HASH_LEN = 20 * 2  # info_hash is hexified.
-        self.PEER_ID_LEN = 20 * 2  # peer_hash is hexified.
+        self.INFO_HASH_LEN = 20
+        self.PEER_ID_LEN = 20
 
         # HTTP Error Codes for BitTorrent Tracker
         self.INVALID_REQUEST_TYPE = 100
@@ -72,6 +72,10 @@ class Tracker(object):
                                    self.MAX_ALLOWED_PEERS),
             self.GENERIC_ERROR: 'Error in request',
         }
+        self.tracker_interval = 120
+        self.tracker_min_interval = 120
+        self.tracker_maxpeers = 100
+
 #        responses.update(self.PYTT_RESPONSE_MESSAGES)
 
 #        self.tracker_interval = params['luna_tracker_interval']
@@ -81,10 +85,10 @@ class Tracker(object):
 
 
     def get_error(self,myerror):
-        mesg="Unknown error"
+        mesg="<html><title>900: unknown error</title><body>900: unknown error</body></html>"
         if myerror in self.PYTT_RESPONSE_MESSAGES.keys():
-            mesg=self.PYTT_RESPONSE_MESSAGES[myerror]
-        return myerror,mesg
+            mesg=f"<html><title>{myerror}: {self.PYTT_RESPONSE_MESSAGES[myerror]}</title><body>{myerror}: {self.PYTT_RESPONSE_MESSAGES[myerror]}</body></html>"
+        return 200,mesg
 
 
     #CREATE TABLE `tracker` ( `id`  INTEGER  NOT NULL ,  `infohash`  VARCHAR ,  `peer`  VARCHAR ,  `ipaddress`  VARCHAR ,  `port`  INTEGER ,  `download`  INTEGER ,  `upload`  INTEGER ,  `left`  INTEGER ,  `updated`  VARCHAR ,  `status`  VARCHAR , PRIMARY KEY (`id` AUTOINCREMENT));
@@ -110,6 +114,7 @@ class Tracker(object):
             where = [{"column": "peer", "value": f"{peer_id}"}]
             result = Database().update('tracker', row, where)
         else:
+            row.append({"column": "peer", "value": f"{peer_id}"})
             result = Database().insert('tracker', row)
         return result
 
@@ -122,13 +127,16 @@ class Tracker(object):
 
         peers = Database().get_record(None, 'tracker', f"WHERE infohash='{info_hash}' AND updated>datetime('now','-{age} second') ORDER BY updated DESC")
 
-        for peer in peers:
-            peer_tuple_list.append((binascii.unhexlify(peer['peer']),peer['ipaddress'], peer['port']))
-            try:
-                n_leechers += int(peer['status'] == 'started')
-                n_seeders += int(peer['status'] == 'completed')
-            except:
-                pass
+        if peers:
+            for peer in peers:
+                self.logger.info(f"peer [{peer['peer']}]")
+                if peer['peer']:
+                    peer_tuple_list.append((binascii.unhexlify(peer['peer']),peer['ipaddress'], peer['port']))
+                    try:
+                        n_leechers += int(peer['status'] == 'started')
+                        n_seeders += int(peer['status'] == 'completed')
+                    except:
+                        pass
             
 
 #        nodes = self.mongo_db['tracker'].find({'info_hash': info_hash,
@@ -186,12 +194,12 @@ class Tracker(object):
 #        self.response['incomplete'] = n_leechers
 
         if compact:
-            self.log.debug('compact peer list: %r' % compact_peers)
+            self.logger.debug('compact peer list: %r' % compact_peers)
             peers = compact_peers
 #            self.response['peers'] = compact_peers
 
         else:
-            self.log.debug('peer list: %r' % peers)
+            self.logger.debug('peer list: %r' % peers)
 #            self.response['peers'] = peers
 
         return peers
@@ -207,7 +215,8 @@ class Tracker(object):
             return self.get_error(self.MISSING_INFO_HASH)
         elif len(info_hash) != self.INFO_HASH_LEN:
             return self.get_error(self.INVALID_INFO_HASH)
-        info_hash=binascii.hexlify(info_hash)
+        info_hash=binascii.hexlify(b"{info_hash}")
+        info_hash=info_hash.decode()
 
         peer_id = None
         if 'peer_id' in params:
@@ -216,7 +225,8 @@ class Tracker(object):
             return self.get_error(self.MISSING_PEER_ID)
         elif len(peer_id) != self.PEER_ID_LEN:
             return self.get_error(self.INVALID_PEER_ID)
-        peer_id=binascii.hexlify(peer_id)
+        peer_id=binascii.hexlify(b"{peer_id}")
+        peer_id=peer_id.decode()
 
         #xreal_ip = self.request.headers.get('X-Real-IP', default=None)
         announce_ip=None
@@ -236,7 +246,7 @@ class Tracker(object):
             return self.get_error(self.MISSING_PORT)
 
         info_hash = str(info_hash)
-        uploaded,downloaded,left,compact,no_peer_id,event,trackerid = '0','0','0','0','0',None,None
+        uploaded,downloaded,left,compact,no_peer_id,event,tracker_id = '0','0','0','0','0',None,None
         if 'uploaded' in params:
             uploaded = params['uploaded']
         if 'downloaded' in params:

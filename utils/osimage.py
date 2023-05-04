@@ -543,6 +543,7 @@ class OsImage(object):
                     mesg=f"Image {osimage} does not exist?"
 
                 else:
+                    image_id=image[0]['id']
                     if (not 'tarball' in image[0]) and (not image[0]['tarball']):
                         result=False
                         mesg=f"Tarball for {osimage} does not exist?"
@@ -550,8 +551,15 @@ class OsImage(object):
                     else:
                         ret,mesg=Torrent().create_torrent(image[0]['tarball'])
                         if ret:
-                            result=True
-                            mesg=f"Success for {image[0]['tarball']}"
+                            torrentfile=mesg # create_torrent returns the torrent file on success.
+                            Status().add_message(request_id,"luna",f"adding torrent for osimage {osimage}")
+                            ret,mesg=Torrent().add_torrent(torrentfile)
+                            if ret:
+                                result=True
+                                row = [{"column": "torrent", "value": f"{torrentfile}"}]
+                                where = [{"column": "id", "value": f"{image_id}"}]
+                                status = Database().update('osimage', row, where)
+                                mesg=f"Success for {image[0]['tarball']}"
  
                 sleep(1) # needed to prevent immediate concurrent access to the database. Pooling,WAL,WIF,WAF,etc won't fix this. Only sleep
                 if result is True:

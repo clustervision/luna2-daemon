@@ -31,6 +31,7 @@ from apis.files import files_blueprint
 from apis.service import service_blueprint
 from apis.monitor import monitor_blueprint
 from apis.control import control_blueprint
+from apis.tracker import tracker_blueprint
 
 event = Event()
 
@@ -99,6 +100,7 @@ api.register_blueprint(files_blueprint)
 api.register_blueprint(service_blueprint)
 api.register_blueprint(monitor_blueprint)
 api.register_blueprint(control_blueprint)
+api.register_blueprint(tracker_blueprint)
 
 
 @api.route('/all-routes')

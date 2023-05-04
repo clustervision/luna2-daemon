@@ -55,13 +55,15 @@ class Filter(object):
         return data
         
     def parse_list(self,data):
+        ndata=[]
         for item in data:
             what=type(item)
             if what is list:
                 item=self.parse_list(item)
             else:
                 item=self.parse_item(item)
-        return data
+            ndata.append(item)
+        return ndata
 
     def parse_item(self,data,name=None):
         what=type(data)

@@ -233,7 +233,6 @@ class Tracker(object):
         if len(peer_id) < self.PEER_ID_LEN:
             return self.get_error(self.INVALID_PEER_ID)
 
-        #xreal_ip = self.request.headers.get('X-Real-IP', default=None)
         announce_ip=None
         if 'ip' in params:
             ip=params['ip']
@@ -316,28 +315,50 @@ class Tracker(object):
                 return exp,False
 
 
-    def scrape(self):
+    def scrape(self,hashes=[]):
         """Returns the state of all torrents this tracker is managing"""
         response = {}
+        response['files']={}
 
-        info_hashes = self.get_arguments('info_hash')
-        for info_hash in info_hashes:
-            info_hash = str(info_hash)
-            response[info_hash] = {}
+        filter=True 
+        if not hashes:
+            peers = Database().get_record(None, 'tracker', f"WHERE updated>datetime('now','-3600 second') ORDER BY updated DESC")
+            if peers:
+                filter=False
+                for peer in peers:
+                    hashes.append(peer['infohash'])
+
+        for info_hash in hashes:
+            if filter:
+                info_hash=binascii.hexlify(str.encode(info_hash))
+                info_hash=info_hash.decode()
+                info_hash = str(info_hash)
             numwant = 100
             compact = True
             no_peer_id = 1
 
-            complete, incomplete, _ = self.get_peers(info_hash, numwant,
-                                                     compact, no_peer_id,
-                                                     self.tracker_interval * 2)
+            n_seeders,n_leechers,n_peers = self.get_peers(info_hash, numwant, compact, no_peer_id, self.tracker_interval * 2)
 
-            response[info_hash]['complete'] = complete
-            response[info_hash]['downloaded'] = complete
-            response[info_hash]['incomplete'] = incomplete
+            info_hash=bytes.decode(binascii.unhexlify(info_hash))
+            response['files'][info_hash] = {}
 
-#        self.set_header('content-type', 'text/plain')
-#        self.write(bencode(response))
-#        self.finish()
+            response['files'][info_hash]['complete'] = n_seeders
+            response['files'][info_hash]['downloaded'] = n_seeders
+            response['files'][info_hash]['incomplete'] = n_leechers
+
+        self.logger.info(f"reponse: {response}")
+
+        response=bencode(response)
+        try:
+            resp = Response(response)
+            resp.mimetype='text/plain'
+            resp.headers['Content-Type']='text/plain'
+            resp.status_code=200
+            return resp,True
+        except:
+            try:
+                return response,True
+            except Exception as exp:
+                return exp,False
 
 

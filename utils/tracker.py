@@ -18,6 +18,7 @@ __status__      = 'Development'
 #import pwd
 #import shutil
 #import json
+from flask import Flask, abort, json, Response, request, send_file
 from configparser import RawConfigParser
 from utils.log import Log
 from utils.database import Database
@@ -39,6 +40,7 @@ from socket import inet_aton
 #from httplib import responses
 from libtorrent import bencode
 
+#import base64
 
 class Tracker(object):
     """Class for operating with torrents"""
@@ -48,8 +50,8 @@ class Tracker(object):
         self.PEER_INCREASE_LIMIT = 30
         self.DEFAULT_ALLOWED_PEERS = 50
         self.MAX_ALLOWED_PEERS = 200
-        self.INFO_HASH_LEN = 20
-        self.PEER_ID_LEN = 20
+        self.INFO_HASH_LEN = 22
+        self.PEER_ID_LEN = 18 
 
         # HTTP Error Codes for BitTorrent Tracker
         self.INVALID_REQUEST_TYPE = 100
@@ -72,8 +74,8 @@ class Tracker(object):
                                    self.MAX_ALLOWED_PEERS),
             self.GENERIC_ERROR: 'Error in request',
         }
-        self.tracker_interval = 120
-        self.tracker_min_interval = 120
+        self.tracker_interval = 20
+        self.tracker_min_interval = 10
         self.tracker_maxpeers = 100
 
 #        responses.update(self.PYTT_RESPONSE_MESSAGES)
@@ -119,19 +121,24 @@ class Tracker(object):
         return result
 
 
-    def get_peers(self, info_hash, numwant, compact, no_peer_id, age):
+    def get_peers(self, info_hash, numwant, compact=None, no_peer_id=None, age=None):
 #        time_age = datetime.datetime.utcnow() - datetime.timedelta(seconds=age)
         peer_tuple_list = [('luna2controller','10.141.255.254','51413')]
         n_leechers = 0
         n_seeders = 0
 
+        if not age:
+           age=600
         peers = Database().get_record(None, 'tracker', f"WHERE infohash='{info_hash}' AND updated>datetime('now','-{age} second') ORDER BY updated DESC")
+#                   data = base64.b64decode(node['group_'+item])
+#                   data = data.decode("ascii")
 
         if peers:
             for peer in peers:
-                self.logger.info(f"peer [{peer['peer']}]")
                 if peer['peer']:
-                    peer_tuple_list.append((binascii.unhexlify(peer['peer']),peer['ipaddress'], peer['port']))
+                    my_peer_id=bytes.decode(binascii.unhexlify(peer['peer']))
+                    peer_tuple_list.append((my_peer_id, peer['ipaddress'], peer['port']))
+                    self.logger.info(f"peer_tuple add = [{(my_peer_id, peer['ipaddress'], peer['port'])}]")
                     try:
                         n_leechers += int(peer['status'] == 'started')
                         n_seeders += int(peer['status'] == 'completed')
@@ -176,7 +183,7 @@ class Tracker(object):
         compact_peers = b''
         random_peer_list = random.sample(peer_tuple_list, numwant)
         for peer_info in random_peer_list:
-            if compact:
+            if compact and compact!='0':
                 try:
                     ip = inet_aton(peer_info[1])
                     port = pack('>H', int(peer_info[2]))
@@ -188,21 +195,22 @@ class Tracker(object):
 
             p = {}
             p['peer_id'], p['ip'], p['port'] = peer_info
+#            self.logger.info(f"peer_info = [{peer_info}]")
             peers.append(p)
 
 #        self.response['complete'] = n_seeders
 #        self.response['incomplete'] = n_leechers
 
-        if compact:
-            self.logger.debug('compact peer list: %r' % compact_peers)
+        if compact and compact!='0':
             peers = compact_peers
 #            self.response['peers'] = compact_peers
 
         else:
-            self.logger.debug('peer list: %r' % peers)
+            self.logger.info('peer list: %r' % peers)
 #            self.response['peers'] = peers
 
-        return peers
+        return n_seeders,n_leechers,peers
+
 
     def announce(self,params,peerip=None):
         failure_reason = ''
@@ -213,20 +221,24 @@ class Tracker(object):
             info_hash = params['info_hash']
         if info_hash is None:
             return self.get_error(self.MISSING_INFO_HASH)
-        elif len(info_hash) != self.INFO_HASH_LEN:
-            return self.get_error(self.INVALID_INFO_HASH)
-        info_hash=binascii.hexlify(b"{info_hash}")
+        info_hash=binascii.hexlify(str.encode(info_hash))
         info_hash=info_hash.decode()
+        hashlen=len(info_hash)
+        self.logger.info(f"info_hash = [{info_hash}], len = {hashlen}")
+        if len(info_hash) < self.INFO_HASH_LEN:
+            return self.get_error(self.INVALID_INFO_HASH)
 
         peer_id = None
         if 'peer_id' in params:
             peer_id=params['peer_id']
         if peer_id is None:
             return self.get_error(self.MISSING_PEER_ID)
-        elif len(peer_id) != self.PEER_ID_LEN:
-            return self.get_error(self.INVALID_PEER_ID)
-        peer_id=binascii.hexlify(b"{peer_id}")
+        peer_id=binascii.hexlify(str.encode(peer_id))
         peer_id=peer_id.decode()
+        peerlen=len(peer_id)
+        self.logger.info(f"peer_id = [{peer_id}], len = {peerlen}")
+        if len(peer_id) < self.PEER_ID_LEN:
+            return self.get_error(self.INVALID_PEER_ID)
 
         #xreal_ip = self.request.headers.get('X-Real-IP', default=None)
         announce_ip=None
@@ -246,7 +258,7 @@ class Tracker(object):
             return self.get_error(self.MISSING_PORT)
 
         info_hash = str(info_hash)
-        uploaded,downloaded,left,compact,no_peer_id,event,tracker_id = '0','0','0','0','0',None,None
+        uploaded,downloaded,left,compact,no_peer_id,event,tracker_id = '0','0','0',None,None,None,None
         if 'uploaded' in params:
             uploaded = params['uploaded']
         if 'downloaded' in params:
@@ -291,14 +303,24 @@ class Tracker(object):
         if warning_message:
             response['warning message'] = warning_message
 
-        self.get_peers(info_hash, numwant, compact, no_peer_id,
-                       self.tracker_interval * 2)
+        n_seeders,n_leechers,n_peers = self.get_peers(info_hash, numwant, compact, no_peer_id, self.tracker_interval * 2)
 
-#        self.set_header('Content-Type', 'text/plain')
-#        self.write(bencode(self.response))
-#        self.finish()
+        response['complete'] = n_seeders
+        response['incomplete'] = n_leechers
+        response['peers'] = n_peers
+
         response=bencode(response)
-        return 200,response.decode()
+        try:
+            resp = Response(response)
+            resp.mimetype='text/plain'
+            resp.headers['Content-Type']='text/plain'
+            resp.status_code=200
+            return resp,True
+        except:
+            try:
+                return response,True
+            except Exception as exp:
+                return exp,False
 
 
     def scrape(self):

@@ -63,15 +63,24 @@ class Torrent(object):
 #            os.chown(path_to_store, user_id, grp_id)
             os.chmod(path_to_store, 0o755)
 
-        tarfile = path_to_store +'/'+ tarball 
-        torrentfile = path_to_store +'/'+ tarball + ".torrent"
+        old_cwd = os.getcwd()
+        os.chdir(path_to_store)
+
+#        tarfile = path_to_store +'/'+ tarball 
+#        torrentfile = path_to_store +'/'+ tarball + ".torrent"
+        tarfile = tarball 
+        torrentfile = tarball + ".torrent"
 
         command=f"transmission-create -t http://{host}:{port}/announce -o {torrentfile} {tarfile}"
         mesg,exit_code = Helper().runcommand(command,True,600)
-        if exit_code == "0":
-            return True,tarball + ".torrent"
+
+        os.chdir(old_cwd)
+
+        if exit_code == 0:
+            return True,torrentfile
         self.logger.error(f"transmission-create returned exit_code [{exit_code}]")
         return False,mesg
+
 
     def add_torrent(self,torrent):
         path_to_store = CONSTANT['FILES']['TARBALL']
@@ -95,9 +104,10 @@ class Torrent(object):
             self.logger.error("Tracker host/port not configured.")
             return False,"Tracker host/port not configured"
 
-        command=f"transmission-add {host}:{port} -o {torrentfile} {tarfile}"
+        torrentfile = path_to_store +'/'+ torrent
+        command=f"transmission-remote --add {torrentfile}"
         mesg,exit_code = Helper().runcommand(command,True,60)
-        if exit_code == "0":
+        if exit_code == 0:
             return True,mesg
         return False,mesg
 

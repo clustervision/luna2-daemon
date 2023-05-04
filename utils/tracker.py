@@ -33,7 +33,8 @@ from utils.queue import Queue
 import random
 import logging
 import binascii
-import datetime
+#import datetime
+from datetime import datetime
 
 from struct import pack
 from socket import inet_aton
@@ -98,11 +99,12 @@ class Tracker(object):
     def update_peers(self, info_hash, peer_id, ip, port, status=None, uploaded=None, downloaded=None, left=None):
         """Store the information about the peer"""
 
+        current_datetime=datetime.now()
         result=False
         row = [{"column": "infohash", "value": f"{info_hash}"},
                {"column": "ipaddress", "value": f"{ip}"},
                {"column": "port", "value": f"{port}"},
-               {"column": "updated", "value": "current_datetime"}]
+               {"column": "updated", "value": str(current_datetime)}]
         if status:
             row.append({"column": "status", "value": f"{status}"})
         if uploaded:
@@ -122,7 +124,7 @@ class Tracker(object):
 
 
     def get_peers(self, info_hash, numwant, compact=None, no_peer_id=None, age=None):
-#        time_age = datetime.datetime.utcnow() - datetime.timedelta(seconds=age)
+#        time_age = datetime.utcnow() - datetime.timedelta(seconds=age)
         peer_tuple_list = [('luna2controller','10.141.255.254','51413')]
         n_leechers = 0
         n_seeders = 0

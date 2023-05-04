@@ -138,7 +138,7 @@ class Tracker(object):
                 if peer['peer']:
                     my_peer_id=bytes.decode(binascii.unhexlify(peer['peer']))
                     peer_tuple_list.append((my_peer_id, peer['ipaddress'], peer['port']))
-                    self.logger.info(f"peer_tuple add = [{(my_peer_id, peer['ipaddress'], peer['port'])}]")
+                    self.logger.debug(f"peer_tuple add = [{(my_peer_id, peer['ipaddress'], peer['port'])}]")
                     try:
                         n_leechers += int(peer['status'] == 'started')
                         n_seeders += int(peer['status'] == 'completed')
@@ -195,20 +195,13 @@ class Tracker(object):
 
             p = {}
             p['peer_id'], p['ip'], p['port'] = peer_info
-#            self.logger.info(f"peer_info = [{peer_info}]")
+            self.logger.debug(f"peer_info = [{peer_info}]")
             peers.append(p)
-
-#        self.response['complete'] = n_seeders
-#        self.response['incomplete'] = n_leechers
 
         if compact and compact!='0':
             peers = compact_peers
-#            self.response['peers'] = compact_peers
 
-        else:
-            self.logger.info('peer list: %r' % peers)
-#            self.response['peers'] = peers
-
+        self.logger.debug('peer list: %r' % peers)
         return n_seeders,n_leechers,peers
 
 
@@ -224,7 +217,7 @@ class Tracker(object):
         info_hash=binascii.hexlify(str.encode(info_hash))
         info_hash=info_hash.decode()
         hashlen=len(info_hash)
-        self.logger.info(f"info_hash = [{info_hash}], len = {hashlen}")
+        self.logger.debug(f"info_hash = [{info_hash}], len = {hashlen}")
         if len(info_hash) < self.INFO_HASH_LEN:
             return self.get_error(self.INVALID_INFO_HASH)
 
@@ -236,7 +229,7 @@ class Tracker(object):
         peer_id=binascii.hexlify(str.encode(peer_id))
         peer_id=peer_id.decode()
         peerlen=len(peer_id)
-        self.logger.info(f"peer_id = [{peer_id}], len = {peerlen}")
+        self.logger.debug(f"peer_id = [{peer_id}], len = {peerlen}")
         if len(peer_id) < self.PEER_ID_LEN:
             return self.get_error(self.INVALID_PEER_ID)
 

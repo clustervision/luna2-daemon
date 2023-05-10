@@ -727,6 +727,7 @@ def boot_install(node=None):
         if osimage:
             data['osimagename'] = osimage[0]['name']
             data['tarball'] = osimage[0]['tarball']
+            data['torrent'] = osimage[0]['torrent']
             data['distribution'] = osimage[0]['distribution'].lower() or 'redhat'
 
     if data['nodeid']:
@@ -782,7 +783,7 @@ def boot_install(node=None):
         NODE_NAME               = data['nodename'],
         LUNA_OSIMAGE            = data['osimagename'],
         LUNA_DISTRIBUTION       = data['distribution'],
-        LUNA_TORRENT            = data['tarball'],  # has to be changed into torrent??
+        LUNA_TORRENT            = data['torrent'],
         LUNA_TARBALL            = data['tarball'],
         LUNA_FILE               = data['tarball'],
         LUNA_SELINUX_ENABLED    = data['selinux'],

@@ -79,8 +79,6 @@ class Tracker(object):
         self.tracker_min_interval = 10
         self.tracker_maxpeers = 100
 
-#        responses.update(self.PYTT_RESPONSE_MESSAGES)
-
 #        self.tracker_interval = params['luna_tracker_interval']
 #        self.tracker_min_interval = params['luna_tracker_min_interval']
 #        self.tracker_maxpeers = params['luna_tracker_maxpeers']
@@ -130,8 +128,8 @@ class Tracker(object):
         n_seeders = 0
 
         if not age:
-           age=600
-        peers = Database().get_record(None, 'tracker', f"WHERE infohash='{info_hash}' AND updated>datetime('now','-{age} second') ORDER BY updated DESC")
+           age=86400
+        peers = Database().get_record(None, 'tracker', f"WHERE infohash='{info_hash}' AND updated>datetime('now','-{age} second') GROUP BY ipaddress ORDER BY updated DESC")
 #                   data = base64.b64decode(node['group_'+item])
 #                   data = data.decode("ascii")
 
@@ -189,6 +187,7 @@ class Tracker(object):
                 try:
                     ip = inet_aton(peer_info[1])
                     port = pack('>H', int(peer_info[2]))
+                    self.logger.debug(f"{peer_info[1]}:{peer_info[2]} : {ip} + {port}")
                     compact_peers += (ip+port)
                 except:
                     pass
@@ -276,6 +275,8 @@ class Tracker(object):
             # XXX: cannot request more than MAX_ALLOWED_PEERS.
             return self.get_error(self.INVALID_NUMWANT)
 
+        self.logger.debug(f"update_peers: {info_hash}, {peer_id}, {ip}, {port}, {event}, {uploaded}, {downloaded}, {left}")
+
         self.update_peers(info_hash, peer_id, ip, port, event, uploaded, downloaded, left)
 
         # generate response
@@ -303,7 +304,9 @@ class Tracker(object):
         response['incomplete'] = n_leechers
         response['peers'] = n_peers
 
+        self.logger.debug(f"response: {response}")
         response=bencode(response)
+ 
         try:
             resp = Response(response)
             resp.mimetype='text/plain'
@@ -335,6 +338,7 @@ class Tracker(object):
                 info_hash=binascii.hexlify(str.encode(info_hash))
                 info_hash=info_hash.decode()
                 info_hash = str(info_hash)
+            self.logger.debug(f"info_hash hexlified: {info_hash}")
             numwant = 100
             compact = True
             no_peer_id = 1

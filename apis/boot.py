@@ -646,6 +646,8 @@ def boot_install(node=None):
     cluster = Database().get_record(None, 'cluster', None)
     if cluster:
         data['selinux']      = Helper().bool_revert(cluster[0]['security'])
+        data['cluster_provision_method']   = cluster[0]['provision_method']
+        data['cluster_provision_fallback'] = cluster[0]['provision_fallback']
     #Antoine
     controller = Database().get_record_join(['controller.*','ipaddress.ipaddress'], ['ipaddress.tablerefid=controller.id'],['tableref="controller"','controller.hostname="controller"'])
     if controller:
@@ -673,6 +675,8 @@ def boot_install(node=None):
         data['nodename']            = node_details[0]['name']
         data['nodehostname']        = node_details[0]['name'] # + fqdn further below
         data['nodeid']              = node_details[0]['id']
+        data['provision_method']    = node_details[0]['provision_method']
+        data['provision_fallback']  = node_details[0]['provision_fallback']
 
         items={
            'prescript':'',
@@ -683,7 +687,9 @@ def boot_install(node=None):
            'localinstall':False,
            'bootmenu':False,
            'provision_interface':'BOOTIF',
-           'unmanaged_bmc_users': '' }
+           'unmanaged_bmc_users': '',
+           'provision_method': data['cluster_provision_method'],
+           'provision_fallback': data['cluster_provision_fallback'] }
 
         for item in items.keys():
             data[item] = node_details[0][item]
@@ -796,6 +802,9 @@ def boot_install(node=None):
         LUNA_PRESCRIPT          = data['prescript'],
         LUNA_PARTSCRIPT         = data['partscript'],
         LUNA_POSTSCRIPT         = data['postscript'],
+        PROVISION_METHOD        = data['provision_method'],
+        PROVISION_FALLBACK      = data['provision_fallback'],
         LUNA_TOKEN              = jwt_token
     ), access_code
+
 

@@ -118,7 +118,7 @@ def tpm(nodename=None):
         response = {'message' : 'Login Required'}
         code = 401
 
-    LOGGER.info(f"auth: {auth}")
+    LOGGER.debug(f"TPM auth: {auth}")
 
     api_expiry = datetime.timedelta(minutes=int(CONSTANT['API']['EXPIRY']))
     expiry_time = datetime.datetime.utcnow() + api_expiry
@@ -159,6 +159,6 @@ def tpm(nodename=None):
         code=200
         response = {"token" : jwt_token}
 
-    LOGGER.info(f"my response: {response}")
+    LOGGER.debug(f"my response: {response}")
     return json.dumps(response), code
 

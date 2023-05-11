@@ -128,7 +128,7 @@ class Tracker(object):
         n_seeders = 0
 
         if not age:
-           age=86400
+           age=21600
         peers = Database().get_record(None, 'tracker', f"WHERE infohash='{info_hash}' AND updated>datetime('now','-{age} second') GROUP BY ipaddress ORDER BY updated DESC")
 #                   data = base64.b64decode(node['group_'+item])
 #                   data = data.decode("ascii")

@@ -107,6 +107,11 @@ class Housekeeper(object):
                         self.logger.info(f"cleaning up status id {record['id']} : {record['message']}")
                         where = [{"column": "id", "value": record['id']}]
                         Database().delete_row('status', where)
+                    records=Database().get_record_query("select id,peer from tracker where updated<datetime('now','-6 hour')") # only sqlite compliant. rest pending
+                    for record in records:
+                        self.logger.info(f"cleaning up tracker id {record['id']} : {record['peer']}")
+                        where = [{"column": "id", "value": record['id']}]
+                        Database().delete_row('tracker', where)
                 if event.is_set():
                     return
             except Exception as exp:

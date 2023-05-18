@@ -45,7 +45,7 @@ class Queue(object):
             check = Database().get_record(None , 'queue', where)
             if check:
                 # we already have the same task in the queue
-                self.logger.info(f"We already have similar job in the queue ({check[0]['id']}) and i will return the matching request_id: {check[0]['request_id']}")
+                self.logger.info(f"We already have similar job in the queue {check[0]['task']} ({check[0]['id']}) and i will return the matching request_id: {check[0]['request_id']}")
                 return check[0]['id'],check[0]['request_id']
 
         row=[{"column": "created", "value": "current_datetime"}, 

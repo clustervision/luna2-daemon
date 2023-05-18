@@ -747,7 +747,7 @@ $TTL 604800
                 if (name and network==name) or network:
                     if action=='update_all_interface_ipaddresses':
                         ips=self.get_dhcp_range_ips_from_network(network)
-                        ipaddresses = Database().get_record_join(['ipaddress.ipaddress','ipaddress.networkid as networkid','network.network','network.subnet','network.name as networkname','ipaddress.id as ipaddressid'], 
+                        ipaddresses = Database().get_record_join(['ipaddress.ipaddress','ipaddress.networkid as networkid','network.network','network.subnet','network.name as networkname','ipaddress.id as ipaddressid','ipaddress.tableref','ipaddress.tablerefid'], 
                                                              ['ipaddress.networkid=network.id'], 
                                                              [f"network.name='{network}'","ipaddress.tableref!='controller'"])
                         if ipaddresses:
@@ -761,9 +761,16 @@ $TTL 604800
                                     max-=1
 
                                 if avail:
-                                    row   = [{"column": "ipaddress", "value": f"{avail}"}]
-                                    where = [{"column": "id", "value": f"{ipaddress['ipaddressid']}"}]
-                                    mesg = Database().update('ipaddress', row, where)
+#                                    row   = [{"column": "ipaddress", "value": f"{avail}"}]
+#                                    where = [{"column": "id", "value": f"{ipaddress['ipaddressid']}"}]
+#                                    mesg = Database().update('ipaddress', row, where)
+                                    mesg = Database().delete_row('ipaddress', [{"column": "ipaddress", "value": f"{avail}"}])
+                                    mesg = Database().delete_row('ipaddress', [{"column": "tableref", "value": f"{ipaddress['tableref']}"}, {"column": "tablerefid", "value": f"{ipaddress['tablerefid']}"}])
+                                    row   = [{"column": "ipaddress", "value": f"{avail}"},
+                                             {"column": "networkid", "value": f"{ipaddress['networkid']}"},
+                                             {"column": "tableref", "value": f"{ipaddress['tableref']}"},
+                                             {"column": "tablerefid", "value": f"{ipaddress['tablerefid']}"}]
+                                    mesg = Database().insert('ipaddress', row)
                                     self.logger.info(f"For network {network} changing IP {ipaddress['ipaddress']} to {avail}. {mesg}")
                                 else:
                                     self.logger.error(f"For network {network} changing IP {ipaddress['ipaddress']} not possible. no free IP addresses available.")

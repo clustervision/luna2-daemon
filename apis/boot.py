@@ -717,7 +717,7 @@ def boot_install(node=None):
            'localinstall':False,
            'bootmenu':False,
            'provision_interface':'BOOTIF',
-           'unmanaged_bmc_users': '',
+           'unmanaged_bmc_users': 'skip',
            'provision_method': data['cluster_provision_method'],
            'provision_fallback': data['cluster_provision_fallback'] }
 
@@ -725,6 +725,19 @@ def boot_install(node=None):
             data[item] = node_details[0][item]
             if isinstance(items[item], bool):
                 data[item] = Helper().make_bool(data[item])
+
+    if data['setupbmc'] is True and data['bmcsetupid']:
+        bmcsetup = Database().get_record(None, 'bmcsetup', f" WHERE id = {data['bmcsetupid']}")
+        if bmcsetup:
+            data['bmc']={}
+            data['bmc']['userid']=bmcsetup[0]['userid']
+            data['bmc']['username']=bmcsetup[0]['username']
+            data['bmc']['password']=bmcsetup[0]['password']
+            data['bmc']['netchannel']=bmcsetup[0]['netchannel']
+            data['bmc']['mgmtchannel']=bmcsetup[0]['mgmtchannel']
+            data['unmanaged_bmc_users']=bmcsetup[0]['unmanaged_bmc_users']
+        else:
+            data['setupbmc']=False
 
     if data['groupid']:
         group = Database().get_record(None, 'group', f' WHERE id = {data["groupid"]}')
@@ -744,19 +757,6 @@ def boot_install(node=None):
                    if isinstance(items[item], bool):
                        data[item] = Helper().make_bool(data[item])
                    data[item] = items[item]
-
-    if data['setupbmc'] is True and data['bmcsetupid']:
-        bmcsetup = Database().get_record(None, 'bmcsetup', f" WHERE id = {data['bmcsetupid']}")
-        if bmcsetup:
-            data['bmc']={}
-            data['bmc']['userid']=bmcsetup[0]['userid']
-            data['bmc']['username']=bmcsetup[0]['username']
-            data['bmc']['password']=bmcsetup[0]['password']
-            data['bmc']['netchannel']=bmcsetup[0]['netchannel']
-            data['bmc']['mgmtchannel']=bmcsetup[0]['mgmtchannel']
-            data['bmc']['unmanaged_bmc_users']=bmcsetup[0]['unmanaged_bmc_users']
-        else:
-            data['setupbmc']=False
 
     if data['osimageid']:
         osimage = Database().get_record(None, 'osimage', f' WHERE id = {data["osimageid"]}')

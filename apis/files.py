@@ -60,7 +60,7 @@ def files_get(filename=None):
 
     # since some files are requested during early bootstage where no token is available (think: PXE+kernel+ramdisk)
     # we do enforce authentication for specific files. .bz2 + .torrent are most likely the images.
-    auth_ext = [".gz", ".tar", ".bz", ".torrent"]
+    auth_ext = [".gz", ".tar", ".bz", ".bz2", ".torrent"]
 
     response = {'message': ''}
     code=500
@@ -70,6 +70,7 @@ def files_get(filename=None):
     if filename:
         result = re.search(r"^.+(\..[^.]+)(\?|\&|;|#)?", filename)
         ext = result.group(1)
+        LOGGER.debug(f"filename [{filename}], ext = [{ext}]")
         if ext in auth_ext:
             LOGGER.debug(f"We enforce authentication for file extension = [{ext}]")
             needs_auth=True

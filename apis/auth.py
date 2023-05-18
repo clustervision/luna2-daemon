@@ -22,6 +22,7 @@ from utils.database import Database
 from common.constant import CONSTANT
 from utils.helper import Helper
 from utils.filter import Filter
+import re
 
 LOGGER = Log.get_logger()
 auth_blueprint = Blueprint('auth', __name__)
@@ -161,4 +162,53 @@ def tpm(nodename=None):
 
     LOGGER.debug(f"my response: {response}")
     return json.dumps(response), code
+
+
+@auth_blueprint.route('/filesauth', methods=['GET'])
+def auth_get():
+    """
+    Needed for e.g. --> nginx subrequest auth <--
+    Input - just headers -> token + original uri
+    Process - Validate the token if needed
+    On the success, return a go, else no go
+    Output - go/no go
+    """
+
+    # since some files are requested during early bootstage where no token is available (think: PXE+kernel+ramdisk)
+    # we do enforce authentication for specific files. .bz2 + .torrent are most likely the images.
+    auth_ext = [".bz", ".torrent"]
+
+    token,orguri,ext=None,None,None
+    needs_auth=False
+    if 'X-Original-URI' in request.headers:
+        orguri = request.headers['X-Original-URI']
+    LOGGER.info(f"Auth request made for {orguri}")
+    if orguri:
+        result = re.search(r"^.+(\..[^.]+)$", orguri)
+        ext = result.group(1)
+        if ext in auth_ext:
+            LOGGER.info(f"We enforce authentication for file extension = [{ext}]")
+            needs_auth=True
+
+    if not needs_auth:
+        return "go", 200
+
+    if 'x-access-tokens' in request.headers:
+        token = request.headers['x-access-tokens']
+    if not token:
+        LOGGER.error('A valid token is missing.')
+        code = 401
+        return "A valid token is missing", code
+    try:
+        jwt.decode(token, CONSTANT['API']['SECRET_KEY'], algorithms=['HS256']) ## Decoding Token
+    except jwt.exceptions.DecodeError:
+        LOGGER.error('Token is invalid.')
+        code = 401
+        return "Token is invalid", code
+    except Exception as exp:
+        LOGGER.error(f'Token is invalid. {exp}')
+        code = 401
+        return "Token is invalid", code
+    LOGGER.info("Valid authentication - Go!")
+    return "go", 200
 

@@ -21,6 +21,8 @@ from utils.files import Files
 from utils.database import Database
 from common.constant import CONSTANT
 import os
+import re
+import jwt
 
 LOGGER = Log.get_logger()
 files_blueprint = Blueprint('files', __name__)
@@ -56,8 +58,45 @@ def files_get(filename=None):
     else:
         request_ip = request.environ['HTTP_X_FORWARDED_FOR']
 
+    # since some files are requested during early bootstage where no token is available (think: PXE+kernel+ramdisk)
+    # we do enforce authentication for specific files. .bz2 + .torrent are most likely the images.
+    auth_ext = [".gz", ".tar", ".bz", ".bz2", ".torrent"]
+
     response = {'message': ''}
     code=500
+
+    token,ext=None,None
+    needs_auth=False
+    if filename:
+        result = re.search(r"^.+(\..[^.]+)(\?|\&|;|#)?", filename)
+        ext = result.group(1)
+        LOGGER.debug(f"filename [{filename}], ext = [{ext}]")
+        if ext in auth_ext:
+            LOGGER.debug(f"We enforce authentication for file extension = [{ext}]")
+            needs_auth=True
+
+    if needs_auth:
+        if 'x-access-tokens' in request.headers:
+            token = request.headers['x-access-tokens']
+        if not token:
+            LOGGER.error(f'A valid token is missing for request {filename}.')
+            code = 401
+            response = {'message': 'A valid token is missing'}
+            return json.dumps(response), code
+        try:
+            jwt.decode(token, CONSTANT['API']['SECRET_KEY'], algorithms=['HS256']) ## Decoding Token
+        except jwt.exceptions.DecodeError:
+            LOGGER.error('Token is invalid for request {filename}.')
+            code = 401
+            response = {'message': 'Token is invalid'}
+            return json.dumps(response), code
+        except Exception as exp:
+            LOGGER.error(f'Token is invalid for request {filename}. {exp}')
+            code = 401
+            response = {'message': 'Token is invalid'}
+            return json.dumps(response), code
+        LOGGER.info(f"Valid authentication for extension [{ext}] - Go!")
+
     LOGGER.debug(f'Request for file: {filename} from IP Address: {request_ip}')
     node_interface = Database().get_record_join(['nodeinterface.nodeid as id'], ['ipaddress.tablerefid=nodeinterface.id'],['tableref="nodeinterface"',f"ipaddress.ipaddress='{request_ip}'"])
     if node_interface:

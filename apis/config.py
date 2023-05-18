@@ -2997,6 +2997,8 @@ def config_network_post(name=None):
                 access_code = 404
                 return json.dumps(response), access_code
         if 'dhcp' in data:
+            data['dhcp'] = Helper().make_boolnum(data['dhcp'])
+            LOGGER.info(f"dhcp is seto to {data['dhcp']}")
             if 'dhcp_range_begin' in data:
                 subnet = data['network']+'/'+data['subnet']
                 dhcpstartdetails = Helper().check_ip_range(data['dhcp_range_begin'], subnet)
@@ -3004,7 +3006,7 @@ def config_network_post(name=None):
                     response = {'message': f'Incorrect dhcp start: {data["dhcp_range_begin"]}.'}
                     access_code = 404
                     return json.dumps(response), access_code
-            else:
+            elif data['dhcp'] != "0":
                 response = {'message': 'DHCP start range is a required parameter.'}
                 access_code = 400
                 return json.dumps(response), access_code
@@ -3015,12 +3017,13 @@ def config_network_post(name=None):
                     response = {'message': f'Incorrect dhcp end: {data["dhcp_range_end"]}.'}
                     access_code = 404
                     return json.dumps(response), access_code
-            else:
+            elif data['dhcp'] != "0":
                 response = {'message': 'DHCP end range is a required parameter.'}
                 access_code = 400
                 return json.dumps(response), access_code
-            dhcp_size=Helper().get_ip_range_size(data['dhcp_range_begin'],data['dhcp_range_end'])
-            redistribute_ipaddresses=True # to make sure we do not overlap with existing node ip configs
+            if data['dhcp'] == "1":
+                dhcp_size=Helper().get_ip_range_size(data['dhcp_range_begin'],data['dhcp_range_end'])
+                redistribute_ipaddresses=True # to make sure we do not overlap with existing node ip configs
         else:
             if checknetwork:
                 data['dhcp']=checknetwork[0]['dhcp']

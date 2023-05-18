@@ -54,7 +54,6 @@ class Config(object):
         cluster = Database().get_record(None, 'cluster', None)
         if cluster and 'ntp_server' in cluster[0] and cluster[0]['ntp_server']:
             ntpserver = cluster[0]['ntp_server']
-        controller = Database().get_record_join(['ipaddress.ipaddress'], ['ipaddress.tablerefid=controller.id'], ['tableref="controller"','controller.hostname="controller"'])
         networks = Database().get_record(None, 'network', ' WHERE `dhcp` = 1')
         dhcpfile = f"{CONSTANT['TEMPLATES']['TEMP_DIR']}/dhcpd.conf"
         if networks:
@@ -63,10 +62,18 @@ class Config(object):
                 nwkname = nwk['name']
                 nwknetwork = nwk['network']
                 netmask = Helper().get_netmask(f"{nwk['network']}/{nwk['subnet']}")
-                subnet_block = self.dhcp_subnet(
-                    nwk['network'], netmask, controller[0]['ipaddress'], nwk['gateway'],
-                    nwk['dhcp_range_begin'], nwk['dhcp_range_end']
-                )
+                controller = Database().get_record_join(['ipaddress.ipaddress'], ['ipaddress.tablerefid=controller.id'], ['tableref="controller"','controller.hostname="controller"',f'ipaddress.networkid="{nwkid}"'])
+                self.logger.info(f"Building DHCP block for {nwkname}")
+                if controller:
+                    subnet_block = self.dhcp_subnet(
+                        nwk['network'], netmask, controller[0]['ipaddress'], nwk['gateway'],
+                        nwk['dhcp_range_begin'], nwk['dhcp_range_end']
+                    )
+                else:
+                    subnet_block = self.dhcp_subnet(
+                        nwk['network'], netmask, None, nwk['gateway'],
+                        nwk['dhcp_range_begin'], nwk['dhcp_range_end']
+                    )
                 dhcp_subnet_block = f'{dhcp_subnet_block}{subnet_block}'
 
                 node_interface = Database().get_record_join(['node.name as nodename','ipaddress.ipaddress','nodeinterface.macaddress'], ['ipaddress.tablerefid=nodeinterface.id','nodeinterface.nodeid=node.id'], ['tableref="nodeinterface"',f'ipaddress.networkid="{nwkid}"'])
@@ -105,6 +112,7 @@ class Config(object):
                     validate = False
                     self.logger.error(f'DHCP file : {dhcpfile} containing errors.')
             except:
+                validate = False
                 self.logger.error(f'DHCP file : {dhcpfile} containing errors.')
             else:
                 shutil.copyfile(dhcpfile, '/etc/dhcp/dhcpd.conf')
@@ -158,6 +166,8 @@ option client-architecture code 93 = unsigned integer 16;
         return config
 
 
+# -----------------------------------------------------------------------------------------------------------
+
     def dhcp_subnet(self, network=None, netmask=None, nextserver=None, gateway=None,
                     dhcp_range_start=None, dhcp_range_end=None):
         """
@@ -179,15 +189,25 @@ subnet {network} netmask {netmask} {{
             filename "luna_undionly.kpxe";
         }}
     }}
+"""
+        if nextserver:
+            subnet_block += f"""
     next-server {nextserver};
+"""
+        subnet_block += f"""
     range {dhcp_range_start} {dhcp_range_end};
-
+"""
+        if gateway:
+            subnet_block += f"""
     option routers {gateway};
+"""
+        subnet_block += f"""
     option luna-id "lunaclient";
 }}
 """
         return subnet_block
 
+# -----------------------------------------------------------------------------------------------------------
 
     def dhcp_node(self, node=None, macaddress=None, ipaddr=None):
         """
@@ -205,6 +225,7 @@ host {node}  {{
                 return node_block
         return ""  # has to be ""
 
+# -----------------------------------------------------------------------------------------------------------
 
     def dns_configure(self):
         """
@@ -726,7 +747,7 @@ $TTL 604800
                 if (name and network==name) or network:
                     if action=='update_all_interface_ipaddresses':
                         ips=self.get_dhcp_range_ips_from_network(network)
-                        ipaddresses = Database().get_record_join(['ipaddress.ipaddress','ipaddress.networkid as networkid','network.network','network.subnet','network.name as networkname','ipaddress.id as ipaddressid'], 
+                        ipaddresses = Database().get_record_join(['ipaddress.ipaddress','ipaddress.networkid as networkid','network.network','network.subnet','network.name as networkname','ipaddress.id as ipaddressid','ipaddress.tableref','ipaddress.tablerefid'], 
                                                              ['ipaddress.networkid=network.id'], 
                                                              [f"network.name='{network}'","ipaddress.tableref!='controller'"])
                         if ipaddresses:
@@ -740,9 +761,16 @@ $TTL 604800
                                     max-=1
 
                                 if avail:
-                                    row   = [{"column": "ipaddress", "value": f"{avail}"}]
-                                    where = [{"column": "id", "value": f"{ipaddress['ipaddressid']}"}]
-                                    mesg = Database().update('ipaddress', row, where)
+#                                    row   = [{"column": "ipaddress", "value": f"{avail}"}]
+#                                    where = [{"column": "id", "value": f"{ipaddress['ipaddressid']}"}]
+#                                    mesg = Database().update('ipaddress', row, where)
+                                    mesg = Database().delete_row('ipaddress', [{"column": "ipaddress", "value": f"{avail}"}])
+                                    mesg = Database().delete_row('ipaddress', [{"column": "tableref", "value": f"{ipaddress['tableref']}"}, {"column": "tablerefid", "value": f"{ipaddress['tablerefid']}"}])
+                                    row   = [{"column": "ipaddress", "value": f"{avail}"},
+                                             {"column": "networkid", "value": f"{ipaddress['networkid']}"},
+                                             {"column": "tableref", "value": f"{ipaddress['tableref']}"},
+                                             {"column": "tablerefid", "value": f"{ipaddress['tablerefid']}"}]
+                                    mesg = Database().insert('ipaddress', row)
                                     self.logger.info(f"For network {network} changing IP {ipaddress['ipaddress']} to {avail}. {mesg}")
                                 else:
                                     self.logger.error(f"For network {network} changing IP {ipaddress['ipaddress']} not possible. no free IP addresses available.")

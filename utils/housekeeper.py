@@ -85,7 +85,8 @@ class Housekeeper(object):
                                     executor.shutdown(wait=False)
                             case 'cleanup_images_n_torrents':
                                 Queue().update_task_status_in_queue(next_id,'in progress')
-                                OsImage().cleanup(second)
+                                OsImage().cleanup_oldimages(second)
+                                OsImage().cleanup_oldtorrents(second)
                             
                         if remove_from_queue:
                             Queue().remove_task_from_queue(next_id)

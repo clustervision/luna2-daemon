@@ -586,7 +586,7 @@ class OsImage(object):
 
     # -------------------------------------------------------------------
    
-    def cleanup(self,osimage=None):
+    def cleanup_oldimages(self,osimage):
         self.logger.info(f"I was called to cleanup old images: {osimage}")
         if 'FILES' not in CONSTANT:
             return False,"FILES config setting not defined"
@@ -599,10 +599,33 @@ class OsImage(object):
             currentimage=images[0]['tarball']
         if currentimage:
             command=f"cd {path_to_store} && ls {osimage}-*.tar* | grep -vw \"{currentimage}\" | grep -v torrent | xargs rm -f"
-            mesg,exit_code = Helper().runcommand(command,True,600)
+            mesg,exit_code = Helper().runcommand(command,True,300)
             self.logger.info(f"current image: {currentimage}, Old images {mesg}")
             if exit_code == 0:
                 return True
+        return False
+
+    # -------------------------------------------------------------------
+   
+    def cleanup_oldtorrents(self,osimage):
+        self.logger.info(f"I was called to cleanup old torrents: {osimage}")
+        if 'FILES' not in CONSTANT:
+            return False,"FILES config setting not defined"
+        if 'TARBALL' not in CONSTANT['FILES']:
+            return False,"TARBALL config setting not defined in FILES"
+        path_to_store = CONSTANT['FILES']['TARBALL']
+        currenttorrent=None
+        images = Database().get_record(None, 'osimage', f" WHERE name='{osimage}'")
+        if images:
+            currenttorrent=images[0]['torrent']
+        if currenttorrent:
+            command=f"cd {path_to_store} && ls {osimage}-*.tar*.torrent | grep -vw \"{currenttorrent}\" | xargs rm -f"
+            mesg,exit_code = Helper().runcommand(command,True,300)
+            self.logger.info(f"current torrent: {currenttorrent}, Old torrents {mesg}")
+            Torrent().remove_torrent(currenttorrent,osimage)
+            if exit_code == 0:
+                return True
+        return False
 
     # ------------------------------------------------------------------- 
     # The mother of all.

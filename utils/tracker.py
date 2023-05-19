@@ -97,7 +97,8 @@ class Tracker(object):
     def update_peers(self, info_hash, peer_id, ip, port, status=None, uploaded=None, downloaded=None, left=None):
         """Store the information about the peer"""
 
-        current_datetime=datetime.now()
+#        current_datetime=datetime.now().replace(microsecond=0)
+        current_datetime="NOW"
         result=False
         row = [{"column": "infohash", "value": f"{info_hash}"},
                {"column": "ipaddress", "value": f"{ip}"},

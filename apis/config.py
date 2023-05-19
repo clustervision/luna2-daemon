@@ -1848,6 +1848,7 @@ def config_osimage_pack(name=None):
         executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
         executor.submit(OsImage().osimage_mother,request_id)
         executor.shutdown(wait=False)
+#        OsImage().osimage_mother(request_id)
 
     # we should check after a few seconds if there is a status update for us.
     # if so, that means mother is taking care of things

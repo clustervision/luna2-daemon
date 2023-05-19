@@ -83,7 +83,10 @@ class Housekeeper(object):
                                     executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
                                     executor.submit(OsImage().pack_n_tar_mother,osimage,request_id)
                                     executor.shutdown(wait=False)
-
+                            case 'cleanup_images_n_torrents':
+                                Queue().update_task_status_in_queue(next_id,'in progress')
+                                OsImage().cleanup(second)
+                            
                         if remove_from_queue:
                             Queue().remove_task_from_queue(next_id)
                             

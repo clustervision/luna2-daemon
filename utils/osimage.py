@@ -584,6 +584,11 @@ class OsImage(object):
                 self.logger.error(f"torrent_osimage has problems during exception handling: {nexp}")
             return False
 
+    # -------------------------------------------------------------------
+   
+    def cleanup(self,image=None):
+        self.logger.info(f"I was called to cleanup old images: {image}")
+
 
     # ------------------------------------------------------------------- 
     # The mother of all.
@@ -636,7 +641,9 @@ class OsImage(object):
                             if queue_id:
                                 queue_id,queue_response = Queue().add_task_to_queue(f"torrent_osimage:{first}",'osimage',request_id)
                                 if queue_id:
-                                    queue_id,queue_response = Queue().add_task_to_queue(f"close_task:{next_id}",'osimage',request_id)
+                                    queue_id,queue_response = Queue().add_task_to_queue(f'cleanup_images_n_torrents:{first}','housekeeper',request_id,None,'10m')
+                                    if queue_id:
+                                        queue_id,queue_response = Queue().add_task_to_queue(f"close_task:{next_id}",'osimage',request_id)
 
                 # below are internal calls.
 
@@ -692,4 +699,3 @@ class OsImage(object):
             except Exception as nexp:
                 self.logger.error(f"osimage_mother has problems during exception handling: {nexp}")
             
-

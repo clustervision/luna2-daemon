@@ -55,7 +55,7 @@ def service(name, action):
         return json.dumps(response), code
         
     code=500
-    response= {"message": f'service {name} {action} failed. No sign of life of spawned thread.'}
+    response= {"message": f'service {name} {action} failed. No sign of life of spawned thread'}
     name = Filter().filter(name,'service')
     action = Filter().filter(action,'action')
 
@@ -65,7 +65,7 @@ def service(name, action):
     queue_id, queue_response = Queue().add_task_to_queue(f'{name}:{action}','service',request_id)
     if not queue_id:
         LOGGER.info(f"service GET cannot get queue_id")
-        response= {"message": f'Service {name} {action} queuing failed.'}
+        response= {"message": f'Service {name} {action} queuing failed'}
         return json.dumps(response), code
 
     if queue_response != "added": # this means we already have an equal request in the queue
@@ -105,7 +105,7 @@ def service_status(request_id=None):
     """
 
     access_code = 404
-    response = {'message': 'No data for this request.'}
+    response = {'message': 'No data for this request'}
     request_id = Filter().filter(request_id,'request_id')
     status = Database().get_record(None , 'status', f' WHERE request_id = "{request_id}"')
     if status:

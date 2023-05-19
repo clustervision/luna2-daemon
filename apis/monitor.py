@@ -72,7 +72,7 @@ def monitor_status_post(node=None):
     Output - Status.
     """
     access_code = 400
-    response = {'message': 'Bad Request.'}
+    response = {'message': 'Bad Request'}
     if Helper().check_json(request.data):
         request_data,ret = Filter().validate_input(request.get_json(force=True),['monitor:status'])
         if not ret:
@@ -91,12 +91,12 @@ def monitor_status_post(node=None):
                     where = [{"column": "name", "value": node}]
                     Database().update('node', row, where)
                     access_code = 204
-                    response = {'message': f'Node {node} updated.'}
+                    response = {'message': f'Node {node} updated'}
                 else:
-                    response = {'message': 'Node is not present.'}
+                    response = {'message': 'Node is not present'}
                     access_code = 404
             except KeyError:
-                response = {'message': 'URL Node is not matching with requested node.'}
+                response = {'message': 'URL Node is not matching with requested node'}
                 access_code = 400
 
     return json.dumps(response), access_code

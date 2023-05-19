@@ -64,15 +64,15 @@ def control_get(hostname=None, action=None):
                     access_code = 204
             else:
                 LOGGER.info(f'{hostname} not have any bmcsetup.')
-                response = {'message': f'{hostname} not have any bmcsetup.'}
+                response = {'message': f'{hostname} not have any bmcsetup'}
                 access_code = 404
         else:
             LOGGER.info(f'{hostname} not have any group.')
-            response = {'message': f'{hostname} not have any group.'}
+            response = {'message': f'{hostname} not have any group'}
             access_code = 404
     else:
         LOGGER.info(f'{hostname} not have any node.')
-        response = {'message': f'{hostname} not have any node.'}
+        response = {'message': f'{hostname} not have any node'}
         access_code = 404
     return json.dumps(response), access_code
 
@@ -87,7 +87,7 @@ def control_post():
     Output - Success or failure
     """
 
-    response = {'message': 'Bad Request.'}
+    response = {'message': 'Bad Request'}
     access_code = 400
     if Helper().check_json(request.data):
         request_data,ret = Filter().validate_input(request.get_json(force=True),['control:power'])
@@ -98,7 +98,7 @@ def control_post():
         if request_data:
             action = list(request_data['control']['power'].keys())[0]
             if not Filter().check_structure(request_data,['control:power:'+action+':hostlist']):
-                response = {'message': 'Bad Request.'}
+                response = {'message': 'Bad Request'}
                 access_code = 400
                 return json.dumps(response), access_code
             rawhosts = request_data['control']['power'][action]['hostlist']
@@ -129,7 +129,7 @@ def control_post():
                     sleep(1)
                     wait_count-=1
 
-                response = {'message': 'Bad Request.'}
+                response = {'message': 'Bad Request'}
                 status = Database().get_record(None , 'status', f' WHERE request_id = "{request_id}"')
                 if status:
                     on_nodes=[]
@@ -152,7 +152,7 @@ def control_post():
                     response = {'control': {'power': {'request_id': request_id} } }
                 # end Antoine ---------------------------------------------------------------
             else:
-                response = {'message': 'invalid hostlist.'}
+                response = {'message': 'invalid hostlist'}
                 access_code = 400
            
     return json.dumps(response), access_code
@@ -168,7 +168,7 @@ def control_status(request_id=None):
     """
 
     access_code = 404
-    response = {'message': 'No data for this request.'}
+    response = {'message': 'No data for this request'}
     request_id = Filter().filter(request_id,'request_id')
     status = Database().get_record(None , 'status', f' WHERE request_id = "{request_id}"')
     if status:

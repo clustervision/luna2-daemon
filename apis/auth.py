@@ -78,16 +78,16 @@ def token():
                 code = 200
             else:
                 LOGGER.warning(f'Incorrect password {password} for the user {username}.')
-                response = {'message' : f'Incorrect password {password} for the user {username}.'}
+                response = {'message' : f'Incorrect password {password} for the user {username}'}
                 code = 401
         else:
             LOGGER.error(f'User {username} is not exists.')
-            response = {'message' : f'User {username} is not exists.'}
+            response = {'message' : f'User {username} does not exists'}
             code = 401
     else:
         if CONSTANT['API']['PASSWORD'] != password:
-            LOGGER.warning(f'Incorrect password {password}, Kindly check the INI.')
-            response = {'message' : f'Incorrect password {password}, Kindly check the INI.'}
+            LOGGER.warning(f'Incorrect password {password}, check luna.ini.')
+            response = {'message' : f'Incorrect password {password}, check luna.ini'}
             code = 401
         else:
             # Creating Token via JWT with default id =1, expiry time

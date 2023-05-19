@@ -1278,7 +1278,7 @@ def config_group_clone(name=None):
                 access_code = 404
                 return json.dumps(response), access_code
 
-            response = {'message': f'Group {name} created'}
+            response = {'message': f'Group {name} created successfully'}
             access_code = 201
 
             grp_interfaces = Database().get_record_join(['groupinterface.interface','network.name as network','network.id as networkid','groupinterface.options'], ['network.id=groupinterface.networkid'], [f"groupid = '{grpid}'"])
@@ -2197,6 +2197,7 @@ def config_bmcsetup_clone(bmcname=None):
     """
     data,response = {},{}
     create = False
+    bmcname = Filter().filter(bmcname,'bmc')
     if Helper().check_json(request.data):
         request_data,ret = Filter().validate_input(request.get_json(force=True),['config:bmcsetup:'+bmcname])
         if not ret:
@@ -2240,7 +2241,7 @@ def config_bmcsetup_clone(bmcname=None):
         if columncheck:
             if create:
                 Database().insert('bmcsetup', row)
-                response = {'message': 'BMC Setup created'}
+                response = {'message': f'BMC Setup created successfully'}
                 access_code = 201
         else:
             response = {'message': 'Bad Request; Columns are incorrect'}

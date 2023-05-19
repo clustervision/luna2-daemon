@@ -615,14 +615,16 @@ class OsImage(object):
             return False,"TARBALL config setting not defined in FILES"
         path_to_store = CONSTANT['FILES']['TARBALL']
         currenttorrent=None
+        currentimage=None
         images = Database().get_record(None, 'osimage', f" WHERE name='{osimage}'")
         if images:
             currenttorrent=images[0]['torrent']
+            currentimage=images[0]['tarball']
         if currenttorrent:
             command=f"cd {path_to_store} && ls {osimage}-*.tar*.torrent | grep -vw \"{currenttorrent}\" | xargs rm -f"
             mesg,exit_code = Helper().runcommand(command,True,300)
             self.logger.info(f"current torrent: {currenttorrent}, Old torrents {mesg}")
-            Torrent().remove_torrent(currenttorrent,osimage)
+            Torrent().remove_torrent(currentimage,osimage)  # yes! currentimage as transmission drops the .torrent extension
             if exit_code == 0:
                 return True
         return False

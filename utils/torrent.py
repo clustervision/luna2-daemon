@@ -116,10 +116,12 @@ class Torrent(object):
     def remove_torrent(self,currenttorrent,osimage=None):
         addgrep=""
         if osimage:
-            addgrep=" grep {osimage} |"
+            addgrep=f" grep {osimage} |"
         command=f"transmission-remote -l | {addgrep} grep -v {currenttorrent}"
-        command+=" | awk '\{ print \$1 \}' | xargs -i transmission-remote -t \{\} --remove-and-delete" 
+        command+=" | awk '{ print $1 }' | xargs -i transmission-remote -t {} --remove-and-delete" 
+        self.logger.debug(f"what i will run: {command}")
         mesg,exit_code = Helper().runcommand(command,True,60)
+        self.logger.debug(f"what i got back: {mesg}")
         if exit_code == 0:
             return True,mesg
         return False,mesg

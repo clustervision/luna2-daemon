@@ -586,9 +586,23 @@ class OsImage(object):
 
     # -------------------------------------------------------------------
    
-    def cleanup(self,image=None):
-        self.logger.info(f"I was called to cleanup old images: {image}")
-
+    def cleanup(self,osimage=None):
+        self.logger.info(f"I was called to cleanup old images: {osimage}")
+        if 'FILES' not in CONSTANT:
+            return False,"FILES config setting not defined"
+        if 'TARBALL' not in CONSTANT['FILES']:
+            return False,"TARBALL config setting not defined in FILES"
+        path_to_store = CONSTANT['FILES']['TARBALL']
+        currentimage=None
+        images = Database().get_record(None, 'osimage', f" WHERE name='{osimage}'")
+        if images:
+            currentimage=images[0]['tarball']
+        if currentimage:
+            command=f"cd {path_to_store} && ls {osimage}-*.tar* | grep -vw \"{currentimage}\" | grep -v torrent | xargs rm -f"
+            mesg,exit_code = Helper().runcommand(command,True,600)
+            self.logger.info(f"current image: {currentimage}, Old images {mesg}")
+            if exit_code == 0:
+                return True
 
     # ------------------------------------------------------------------- 
     # The mother of all.
@@ -641,7 +655,7 @@ class OsImage(object):
                             if queue_id:
                                 queue_id,queue_response = Queue().add_task_to_queue(f"torrent_osimage:{first}",'osimage',request_id)
                                 if queue_id:
-                                    queue_id,queue_response = Queue().add_task_to_queue(f'cleanup_images_n_torrents:{first}','housekeeper',request_id,None,'10m')
+                                    queue_id,queue_response = Queue().add_task_to_queue(f'cleanup_images_n_torrents:{first}','housekeeper',request_id,None,'1h')
                                     if queue_id:
                                         queue_id,queue_response = Queue().add_task_to_queue(f"close_task:{next_id}",'osimage',request_id)
 

@@ -39,7 +39,7 @@ def token():
     if Helper().check_json(request.data):
         auth,ret = Filter().validate_input(request.get_json(force=True))
         if not ret:
-            response = {'message': request_data}
+            response = {'message': auth}
             access_code = 400
             return json.dumps(response), access_code
 

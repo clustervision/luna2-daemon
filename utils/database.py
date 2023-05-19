@@ -359,9 +359,22 @@ class Database(object):
         if row:
             for nrow in row:
                 keys.append('"'+str(nrow["column"])+'"')
-                values.append('"'+str(nrow["value"])+'"')
-            wherekeys = keys
-            wherevalues = values
+                if str(nrow["column"]) == "created" or str(nrow["column"]) == "updated": # wee ugly but fast.
+                    if str(nrow["value"]) == "NOW":
+                        values.append("datetime('now')")
+                    else:
+                        result = re.search(r"^NOW\s*(\+|\-)\s*([0-9]+)\s*(hour|minute|second)$", str(nrow["value"]))
+                        plusminus = result.group(1)
+                        timevalue = result.group(2)
+                        timedenom = result.group(3)
+                        if plusminus and timevalue and timedenom:
+                            values.append(f"datetime('now','{plusminus}{timevalue} {timedenom}')") # only sqlite complaint! pending
+                        else:
+                            values.append('"'+str(nrow["value"])+'"')
+                else:    
+                    values.append('"'+str(nrow["value"])+'"')
+                    wherekeys = keys
+                    wherevalues = values
             keys = ','.join(keys)
             values = ','.join(values)
         query = f'INSERT INTO "{table}" ({keys}) VALUES ({values});'

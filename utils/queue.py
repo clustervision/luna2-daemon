@@ -25,15 +25,16 @@ import concurrent.futures
 #import threading
 from threading import Event
 from time import sleep, time
-from datetime import datetime
+from datetime import datetime, timedelta
 import signal
+import re
 
 class Queue(object):
 
     def __init__(self):
         self.logger = Log.get_logger()
 
-    def add_task_to_queue(self,task,subsystem=None,request_id=None,force=None):
+    def add_task_to_queue(self,task,subsystem=None,request_id=None,force=None,when=None):
         if subsystem is None:
             subsystem="anonymous"
         if request_id is None:
@@ -41,14 +42,36 @@ class Queue(object):
 
         if not force:
             # pending. these datatime calls might not be mysql compliant.
-            where=f" WHERE subsystem='{subsystem}' AND task='{task}' AND created>datetime('now','-10 minute') ORDER BY id ASC LIMIT 1"
+            where=f" WHERE subsystem='{subsystem}' AND task='{task}' AND created>datetime('now','-15 minute') ORDER BY id ASC LIMIT 1"
             check = Database().get_record(None , 'queue', where)
             if check:
                 # we already have the same task in the queue
                 self.logger.info(f"We already have similar job in the queue {check[0]['task']} ({check[0]['id']}) and i will return the matching request_id: {check[0]['request_id']}")
                 return check[0]['id'],check[0]['request_id']
 
-        row=[{"column": "created", "value": "current_datetime"}, 
+#        current_datetime=datetime.now().replace(microsecond=0)
+        current_datetime="NOW"
+
+        if when:
+            result = re.search(r"^([0-9]+)(h|m|s)?$", when)
+            delay = result.group(1)
+            denom = result.group(2)
+            if not denom:
+                denom='s'
+            if delay and denom:
+                match denom:
+                    case 'h':
+#                        current_datetime=datetime.now().replace(microsecond=0) + timedelta(hours=delay)
+                        current_datetime=f"NOW +{delay} hour"
+                    case 'm':
+#                        current_datetime=datetime.now().replace(microsecond=0) + timedelta(minutes=delay)
+                        current_datetime=f"NOW +{delay} minute"
+                    case 's':
+#                        current_datetime=datetime.now().replace(microsecond=0) + timedelta(seconds=delay)
+                        current_datetime=f"NOW +{delay} second"
+                self.logger.info(f"Scheduling task {task} into the future: {current_datetime}")
+                
+        row=[{"column": "created", "value": str(current_datetime)}, 
              {"column": "username_initiator", "value": "luna"}, 
              {"column": "task", "value": f"{task}"},
              {"column": "subsystem", "value": f"{subsystem}"},
@@ -72,9 +95,9 @@ class Queue(object):
     def next_task_in_queue(self,subsystem,filter=None):
         where=None
         if filter:
-            where=f" WHERE subsystem='{subsystem}' AND status='{filter}' AND created>datetime('now','-10 minute') ORDER BY id ASC LIMIT 1"
+            where=f" WHERE subsystem='{subsystem}' AND status='{filter}' AND created>datetime('now','-15 minute') AND created<=datetime('now') ORDER BY id ASC LIMIT 1"
         else:
-            where=f" WHERE subsystem='{subsystem}' AND created>datetime('now','-10 minute') ORDER BY id ASC LIMIT 1"
+            where=f" WHERE subsystem='{subsystem}' AND created>datetime('now','-15 minute') AND created<=datetime('now') ORDER BY id ASC LIMIT 1"
         task = Database().get_record(None , 'queue', where)
         if task:
             return task[0]['id']

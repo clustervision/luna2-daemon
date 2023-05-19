@@ -599,7 +599,8 @@ class Helper(object):
     # not sure if below is still being used
  
     def insert_mesg_in_status(self,request_id,username_initiator,message):
-        current_datetime=datetime.now()
+        #current_datetime=datetime.now().replace(microsecond=0)
+        current_datetime="NOW"
         row=[{"column": "request_id", "value": f"{request_id}"}, 
              {"column": "created", "value": str(current_datetime)}, 
              {"column": "username_initiator", "value": f"{username_initiator}"}, 

@@ -763,7 +763,7 @@ def boot_install(node=None):
         if osimage:
             data['osimagename'] = osimage[0]['name']
             data['tarball'] = osimage[0]['tarball']
-            data['torrent'] = osimage[0]['torrent']
+            data['torrent'] = osimage[0]['torrent'] or ""
             data['distribution'] = osimage[0]['distribution'].lower() or 'redhat'
 
     if data['nodeid']:

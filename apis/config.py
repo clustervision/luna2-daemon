@@ -2015,15 +2015,9 @@ def config_cluster_post():
 
                 for item in items:
                     if item in data:
-                        data[item] = data[item] or items[item]
+                        data[item] = str(data[item]) or items[item]
                         if isinstance(items[item], bool):
                             data[item]=str(Helper().make_boolnum(data[item]))
-                    else:
-                        data[item] = items[item]
-                        if isinstance(items[item], bool):
-                            data[item]=str(Helper().make_boolnum(data[item]))
-                    if (not data[item]) and (item not in items):
-                        del data[item]
 
                 where = [{"column": "id", "value": cluster[0]['id']}]
                 row = Helper().make_rows(data)

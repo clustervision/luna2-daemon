@@ -40,7 +40,7 @@ def tracker_announce_get():
     """
     access_code = 404
 
-    request_data,ret = Filter().validate_input(request.args.to_dict())
+    request_data,ret = Filter().validate_input(request.args.to_dict(),None,['info_hash','peer_id'])
     remote_ip=request.environ['REMOTE_ADDR']
     response,ret=Tracker().announce(request_data,remote_ip)
     LOGGER.debug(f"response = {response}, ret = [{ret}]")
@@ -62,7 +62,7 @@ def tracker_scrape_get():
     access_code = 404
 
 #    request_data,ret = Filter().validate_input(request.args.to_dict())
-    hashes,ret=Filter().validate_input(request.args.getlist('info_hash'))
+    hashes,ret=Filter().validate_input(request.args.getlist('info_hash'),None,'info_hash')
     response,ret=Tracker().scrape(hashes)
     LOGGER.debug(f"response = {response}, ret = [{ret}]")
     if ret:

@@ -37,9 +37,16 @@ class Filter(object):
         self.maxlength={'request_id':'256'}
         self.convert={'macaddress':{'-':':'}}
         self.error=None
+        self.skip=[]
 
-    def validate_input(self,data,checks=None):
+    def validate_input(self,data,checks=None,skip=None):
         self.error=None
+        if skip:
+            if type(skip) == type('string'):
+                self.skip.append(str(skip))
+            else:
+                self.skip=skip
+
         self.logger.debug(f"---- START ---- {data}")
         if self.check_structure(data,checks):
             data=self.parse_item(data)
@@ -76,6 +83,9 @@ class Filter(object):
         return data
 
     def filter(self,data,name=None):
+        if name in self.skip:
+            self.logger.debug(f"Skipping filter on {name}")
+            return data
         data=control_char_re.sub('', data)
         data=data.replace("'","")
         data=data.replace('"',"")

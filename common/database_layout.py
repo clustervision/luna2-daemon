@@ -173,7 +173,6 @@ DATABASE_LAYOUT_groupsecrets = [
 DATABASE_LAYOUT_node = [
 {"column": "id",                   "datatype": "INTEGER", "key": "PRIMARY", "keyadd": "AUTOINCREMENT"},
 {"column": "name",                 "datatype": "VARCHAR", "length": "10", "key": "UNIQUE"},
-{"column": "hostname",             "datatype": "VARCHAR", "length": "120", "key": "UNIQUE"},
 {"column": "groupid",              "datatype": "INTEGER", "length": "10"},
 {"column": "localboot",            "datatype": "INTEGER", "length": "10"},
 {"column": "osimageid",            "datatype": "INTEGER", "length": "10"},

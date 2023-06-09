@@ -629,13 +629,16 @@ $TTL 604800
             self.logger.info(f"invalid IP address for {interface_name}. Network {network_details[0]['name']}: {network_details[0]['network']}/{network_details[0]['subnet']}")
             return False,f"invalid IP address for {interface_name}. Network {network_details[0]['name']}: {network_details[0]['network']}/{network_details[0]['subnet']}"
 
-        ipaddress_check = Database().get_record_join(['node.id as nodeid','nodeinterface.interface'], ['ipaddress.tablerefid=nodeinterface.id','nodeinterface.nodeid=node.id'], ['tableref="nodeinterface"',f"ipaddress.ipaddress='{ipaddress}'"])
-        if ipaddress_check and ((ipaddress_check[0]['nodeid'] != nodeid) or (interface_name != ipaddress_check[0]['interface'])):
-            return False,f"ip address {ipaddress} is already in use"
+        ipaddress_check = Database().get_record(None, 'ipaddress', f"WHERE ipaddress='{ipaddress}'")
+        if ipaddress_check:
+            ipaddress_check_own = Database().get_record_join(['node.id as nodeid','nodeinterface.interface'], ['ipaddress.tablerefid=nodeinterface.id','nodeinterface.nodeid=node.id'], ['tableref="nodeinterface"',f"ipaddress.ipaddress='{ipaddress}'"])
+            if ipaddress_check_own and ((ipaddress_check_own[0]['nodeid'] != nodeid) or (interface_name != ipaddress_check_own[0]['interface'])):
+                return False,f"ip address {ipaddress} is already in use"
 
         ipaddress_check = Database().get_record_join(['ipaddress.*'], ['ipaddress.tablerefid=nodeinterface.id'], ['tableref="nodeinterface"',f'nodeinterface.nodeid="{nodeid}"',f'nodeinterface.interface="{interface_name}"'])
 
         if ipaddress_check: # existing ip config we need to modify
+#        if MYOWN:
             row = Helper().make_rows(my_ipaddress)
             where = [{"column": "id", "value": f"{ipaddress_check[0]['id']}"}]
             result_ip = Database().update('ipaddress', row, where)

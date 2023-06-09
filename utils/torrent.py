@@ -74,7 +74,8 @@ class Torrent(object):
         command=f"transmission-create -t http://{host}:{port}/announce -o {torrentfile} {tarfile}"
         mesg,exit_code = Helper().runcommand(command,True,600)
 
-        os.chmod(torrentfile, 0o644)
+        if exit_code == 0:
+            os.chmod(torrentfile, 0o644)
         os.chdir(old_cwd)
 
         if exit_code == 0:

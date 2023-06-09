@@ -309,6 +309,7 @@ def config_node_post(name=None):
        'localboot':False
     }
     create, update = False, False
+    access_code = 400
 
     if Helper().check_json(request.data):
         request_data,ret = Filter().validate_input(request.get_json(force=True),['config:node:'+name])
@@ -426,7 +427,6 @@ def config_node_post(name=None):
 #                                        max-=1
 
             if interfaces:
-                access_code = 204
                 for interface in interfaces:
                     # Antoine
                     interface_name = interface['interface']
@@ -1641,22 +1641,7 @@ def config_osimage_post(name=None):
                     data['changed']=1
             update = True
         else:
-            if 'newosimage' in data:
-                newosname = data['newosimage']
-                where = f' WHERE `name` = "{newosname}"'
-                newoscheck = Database().get_record(None, 'osimage', where)
-                if newoscheck:
-                    response = {'message': f'{newosname} Already present in database'}
-                    access_code = 404
-                    return json.dumps(response), access_code
-                else:
-                    data['name'] = data['newosimage']
-                    del data['newosimage']
-                create = True
-            else:
-                response = {'message': 'New OS Image name not provided'}
-                access_code = 400
-                return json.dumps(response), access_code
+            create = True
 
         osimagecolumns = Database().get_columns('osimage')
         columncheck = Helper().checkin_list(data, osimagecolumns)

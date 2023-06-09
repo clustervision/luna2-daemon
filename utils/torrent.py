@@ -74,7 +74,8 @@ class Torrent(object):
         command=f"transmission-create -t http://{host}:{port}/announce -o {torrentfile} {tarfile}"
         mesg,exit_code = Helper().runcommand(command,True,600)
 
-        os.chmod(torrentfile, 0o644)
+        if exit_code == 0:
+            os.chmod(torrentfile, 0o644)
         os.chdir(old_cwd)
 
         if exit_code == 0:
@@ -118,7 +119,7 @@ class Torrent(object):
         if osimage:
             addgrep=f" grep {osimage} |"
         command=f"transmission-remote -l | {addgrep} grep -v {currenttorrent}"
-        command+=" | awk '{ print $1 }' | xargs -i transmission-remote -t {} --remove-and-delete" 
+        command+=" | awk '{ print $1 }' | grep -oE '[0-9]+' | xargs -i transmission-remote -t {} --remove-and-delete" 
         self.logger.debug(f"what i will run: {command}")
         mesg,exit_code = Helper().runcommand(command,True,60)
         self.logger.debug(f"what i got back: {mesg}")

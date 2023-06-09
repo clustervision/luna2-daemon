@@ -638,7 +638,6 @@ $TTL 604800
         ipaddress_check = Database().get_record_join(['ipaddress.*'], ['ipaddress.tablerefid=nodeinterface.id'], ['tableref="nodeinterface"',f'nodeinterface.nodeid="{nodeid}"',f'nodeinterface.interface="{interface_name}"'])
 
         if ipaddress_check: # existing ip config we need to modify
-#        if MYOWN:
             row = Helper().make_rows(my_ipaddress)
             where = [{"column": "id", "value": f"{ipaddress_check[0]['id']}"}]
             result_ip = Database().update('ipaddress', row, where)

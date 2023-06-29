@@ -1,8 +1,0 @@
-{
-  "files": [
-    "templ_boot_ipxe.cfg",
-    "templ_boot_ipxe_short.cfg",
-    "templ_boot_disk.cfg"
-  ],
-  "directories": null
-}

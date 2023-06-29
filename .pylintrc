@@ -1,4 +1,0 @@
-[MASTER]
-init-hook='import sys; sys.path.append(".")'
-max-module-lines=5000
-extension-pkg-whitelist=pyodbc

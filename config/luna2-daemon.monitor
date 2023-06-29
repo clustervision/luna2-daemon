@@ -1,8 +1,0 @@
-#!/bin/bash
-
-# It's a cron job file.
-# Userful to Monitor the Luna 2 Database Service
-# Place this file as /etc/cron.d/luna2-daemon.monitor if not exists.
-# then run systemctl restart crond.service
-
-0 * * * * root curl http://127.0.0.1:7050/monitor/service/luna2

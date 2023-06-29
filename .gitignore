@@ -1,1 +1,6 @@
 __pycache__
+daemon/log/*
+daemon/common/luna.db
+daemon/common/luna.db-shm
+daemon/common/luna.db-wal
+daemon/config/bootstrap-*

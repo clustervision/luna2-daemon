@@ -31,6 +31,7 @@ from base.switch import Switch
 from base.otherdev import OtherDev
 from base.network import Network
 from base.secret import Secret
+from base.osuser import OsUser
 
 LOGGER = Log.get_logger()
 config_blueprint = Blueprint('config', __name__)
@@ -104,6 +105,36 @@ def config_node_delete(name=None):
     Output - Success or Failure.
     """
     response, access_code = Node().delete_node(name)
+    return response, access_code
+
+
+# NEW API call. 
+@config_blueprint.route("/config/node/<string:name>/_osgrab", methods=['POST'])
+@token_required
+@validate_name
+@input_filter(checks=['config:node'], skip=None)
+def config_node_osgrab(name=None):
+    """
+    Input - OS Image name
+    Process - Grab the OS from a node into an image. node inside json.
+    Output - Success or Failure.
+    """
+    response, access_code = OSImage().grab(name, request)
+    return response, access_code
+
+
+# NEW API call. 
+@config_blueprint.route("/config/node/<string:name>/_ospush", methods=['POST'])
+@token_required
+@validate_name
+@input_filter(checks=['config:node'], skip=None)
+def config_node_ospush(name=None):
+    """
+    Input - OS Image name
+    Process - Push the OS from an image to a node. node inside json
+    Output - Success or Failure.
+    """
+    response, access_code = OSImage().push(name, request)
     return response, access_code
 
 
@@ -220,6 +251,21 @@ def config_group_post(name=None):
     Output - Group Information.
     """
     response, access_code = Group().update_group(name, request)
+    return response, access_code
+
+
+# NEW API call. 
+@config_blueprint.route("/config/group/<string:name>/_ospush", methods=['POST'])
+@token_required
+@validate_name
+@input_filter(checks=['config:group'], skip=None)
+def config_group_ospush(name=None):
+    """
+    Input - OS Image name
+    Process - Push the OS from an image to a all nodes in the group. node inside json
+    Output - Success or Failure.
+    """
+    response, access_code = OSImage().push(name, request)
     return response, access_code
 
 
@@ -395,32 +441,6 @@ def config_osimage_pack(name=None):
     Output - Success or Failure.
     """
     response, access_code = OSImage().pack(name)
-    return response, access_code
-
-# NEW API call. Antoine. pending.
-@config_blueprint.route("/config/osimage/<string:name>/node/<string:node>/_grab", methods=['GET'])
-@token_required
-@validate_name
-def config_osimage_grab(name=None,node=None):
-    """
-    Input - OS Image name
-    Process - Grab the OS from a node. node inside json.
-    Output - Success or Failure.
-    """
-    response, access_code = OSImage().grab(name, node)
-    return response, access_code
-
-# NEW API call. Antoine. pending. --[ DUPLICATE ]-- just for bare. Maybe we need to do this as POST?
-@config_blueprint.route("/config/osimage/<string:name>/node/<string:node>/bare/<string:bare>/_grab", methods=['GET'])
-@token_required
-@validate_name
-def config_osimage_grab_bare(name=None,node=None,bare=None):
-    """
-    Input - OS Image name
-    Process - Grab the OS from a node. node inside json.
-    Output - Success or Failure.
-    """
-    response, access_code = OSImage().grab(name, node, bare)
     return response, access_code
 
 
@@ -928,6 +948,112 @@ def config_group_secret_delete(name=None, secret=None):
     return response, access_code
 
 
+@config_blueprint.route("/config/osuser", methods=['GET'])
+@token_required
+def config_get_os_user_list():
+    """
+    Input - None
+    Process - List OSystem (ldap/ssd/pam) group.
+    Output - None.
+    """
+    response,access_code=None,404
+    ret,mesg = OsUser().list_users()
+    if ret is True:
+       access_code=200
+       return dumps(mesg), access_code
+    else:
+       response={'message': mesg}
+    return response, access_code
+
+
+@config_blueprint.route("/config/osgroup", methods=['GET'])
+@token_required
+def config_get_os_group_list():
+    """
+    Input - None
+    Process - List OSystem (ldap/ssd/pam) group.
+    Output - None.
+    """
+    response,access_code=None,404
+    ret,mesg = OsUser().list_groups()
+    if ret is True:
+       access_code=200
+       return dumps(mesg), access_code
+    else:
+       response={'message': mesg}
+    return response, access_code
+
+
+@config_blueprint.route("/config/osuser/<string:name>", methods=['POST'])
+@token_required
+@validate_name
+@input_filter(checks=['config:osuser'], skip=None)
+def config_post_os_user(name=None):
+    """
+    Input - User Name & Payload
+    Process - Create Or Update System (ldap/ssd/pam) users.
+    Output - None.
+    """
+    response,access_code=None,404
+    ret,mesg = OsUser().update_user(name, request)
+    response={'message': mesg}
+    if ret is True:
+       access_code=204
+    return response, access_code
+
+
+@config_blueprint.route("/config/osuser/<string:name>/_delete", methods=['GET'])
+@token_required
+@validate_name
+def config_post_os_user_delete(name=None):
+    """
+    Input - User Name
+    Process - Delete System (ldap/ssd/pam) group.
+    Output - None.
+    """
+    response,access_code=None,404
+    ret,mesg = OsUser().delete_user(name)
+    response={'message': mesg}
+    if ret is True:
+       access_code=204
+    return response, access_code
+
+
+@config_blueprint.route("/config/osgroup/<string:name>", methods=['POST'])
+@token_required
+@validate_name
+@input_filter(checks=['config:osgroup'], skip=None)
+def config_post_os_group(name=None):
+    """
+    Input - Group Name & Payload
+    Process - Create Or Update System (ldap/ssd/pam) group.
+    Output - None.
+    """
+    response,access_code=None,404
+    ret,mesg = OsUser().update_group(name, request)
+    response={'message': mesg}
+    if ret is True:
+       access_code=204
+    return response, access_code
+
+
+@config_blueprint.route("/config/osgroup/<string:name>/_delete", methods=['GET'])
+@token_required
+@validate_name
+def config_post_os_group_delete(name=None):
+    """
+    Input - Group Name
+    Process - Delete System (ldap/ssd/pam) group.
+    Output - None.
+    """
+    response,access_code=None,404
+    ret,mesg = OsUser().delete_group(name)
+    response={'message': mesg}
+    if ret is True:
+       access_code=204
+    return response, access_code
+
+
 @config_blueprint.route('/config/status/<string:request_id>', methods=['GET'])
 @validate_name
 def control_status(request_id=None):
@@ -938,3 +1064,4 @@ def control_status(request_id=None):
     """
     response, access_code = OSImage().get_status(request_id)
     return response, access_code
+

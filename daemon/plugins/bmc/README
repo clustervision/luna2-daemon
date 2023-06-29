@@ -1,0 +1,11 @@
+# BMC PLUGIN
+#
+#        one variable is mandatory:
+#        - config: contains a snippet of code to run during node installation time
+
+# Plugin selection based on the following search path and priority:
+#
+# 1 node name                 e.g. plugins/bmc/node001.py
+# 2 group name                e.g. plugins/bmc/compute.py
+# 3 default                   e.g. plugins/bmc/default.py
+#

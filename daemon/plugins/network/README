@@ -1,0 +1,15 @@
+# NETWORK PLUGIN
+#
+#        three defined variables are mandatory which contains snippets of bash code:
+#        - gateway
+#        - interface
+#        - hostname
+#
+#        these snippets are included and run during node installation time
+
+# Plugin selection based on the following search path and priority:
+#
+# 1 distribution + osrelease, e.g. plugins/network/redhat/el9.py
+# 2 distribution              e.g. plugins/network/redhat/default.py  or  plugins/osimage/redhat.py
+# 3 default                   e.g. plugins/network/default.py
+#

@@ -1,0 +1,15 @@
+# PROVISION PLUGIN
+#
+#        three defined methods are mandatory:
+#        - create    responsible for creation of needed to be to use this provision method. returns <True|False>,"message"
+#        - cleanup   responsible for deletion of no longer needed files. returns <True|False>,"message"
+#
+#        one defined variable is mandatory which will be used during node installation time
+#        - fetch     contains the actual bash snippet to fetch the image
+
+# Plugin selection based on the following search path and priority:
+#
+# 1 primary provisioning method  e.g. plugins/provision/http.py
+# 2 backup provisioning method   e.g. plugins/provision/torrent.py
+#
+# All of the provision method plugins, based on the luna configuration, will be used.

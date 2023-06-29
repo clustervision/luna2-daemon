@@ -1,0 +1,9 @@
+# DETECTION / Switch port node detection PLUGIN
+#
+#        two defined methods are mandatory:
+#        - find   returns true,switch,port on success,  false on no success
+#        - scan   runs through a dict of switches. collects ports+macs
+
+#
+# switchport is the default plugin for node detection
+# plugin/detection/switchport.py

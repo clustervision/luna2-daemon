@@ -1,0 +1,14 @@
+# INSTALL PLUGIN
+#
+#        three defined variables are mandatory which contain snippets of bash code:
+#        - prescript
+#        - partscript
+#        - postscript
+#
+#        these snippets will be in addition to what's defined for the node or group configuration
+
+# Plugin selection based on the following search path and priority:
+#
+# 1 node name                 e.g. plugins/install/node001.py
+# 2 group name                e.g. plugins/install/compute.py
+# 3 default                   e.g. plugins/install/default.py

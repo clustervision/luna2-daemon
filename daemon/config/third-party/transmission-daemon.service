@@ -1,0 +1,13 @@
+[Unit]
+Description=Transmission BitTorrent Daemon
+After=network.target
+
+[Service]
+User=transmission
+Type=notify
+ExecStart=/usr/bin/transmission-daemon -f --log-error --no-dht --download-dir /trinity/local/luna/files/ --log-debug --no-blocklist --no-global-seedratio
+ExecReload=/bin/kill -s HUP $MAINPID
+NoNewPrivileges=true
+
+[Install]
+WantedBy=multi-user.target

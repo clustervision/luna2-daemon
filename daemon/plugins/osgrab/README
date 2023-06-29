@@ -1,0 +1,13 @@
+# OSGRAB PLUGIN
+#
+#        one defined method is mandatory:
+#        - grab   responsible for the actual collection of data from a running node into an image (path). returns the kernelversion upon success
+
+# Plugin selection based on the following search path and priority:
+#
+# 1 node name                 e.g. plugins/osgrab/node001.py
+# 2 distribution              e.g. plugins/osgrab/redhat/default.py  or  plugins/osimage/redhat.py
+# 3 osimage name              e.g. plugins/osgrab/compute.py
+# 4 group name                e.g. plugins/osgrab/compute.py
+# 5 default                   e.g. plugins/osgrab/default.py
+# 

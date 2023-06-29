@@ -1,0 +1,202 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
+"""
+This file is the entry point for provisioning
+"""
+
+__author__      = 'Sumit Sharma'
+__copyright__   = 'Copyright 2022, Luna2 Project'
+__license__     = 'GPL'
+__version__     = '2.0'
+__maintainer__  = 'Sumit Sharma'
+__email__       = 'sumit.sharma@clustervision.com'
+__status__      = 'Development'
+
+
+from json import dumps
+from time import sleep, time
+from random import randint
+from os import getpid
+from concurrent.futures import ThreadPoolExecutor
+from utils.log import Log
+from utils.database import Database
+from utils.helper import Helper
+from common.constant import CONSTANT
+from utils.control import Control as Power
+from utils.status import Status
+from common.validate_input import check_structure
+
+
+class Control():
+    """
+    This class is responsible for power control operations.
+    """
+
+    def __init__(self):
+        """
+        This constructor will initialize all required variables here.
+        """
+        self.logger = Log.get_logger()
+
+
+    def power_action(self, hostname=None, action=None):
+        """
+        This method will perform the power operation on a requested host, such as
+        on, off, status.
+        """
+        # node = Database().get_record(None, 'node', f' WHERE name = "{hostname}"')
+        node = Database().get_record_join(
+            ['node.id as nodeid', 'node.name as nodename', 'node.groupid as groupid', 'group.name as groupname','ipaddress.ipaddress as device', 'node.bmcsetupid'],
+            ['nodeinterface.nodeid=node.id', 'ipaddress.tablerefid=nodeinterface.id', 'group.id=node.groupid'],
+            ['tableref="nodeinterface"', "nodeinterface.interface='BMC'", f"node.name='{hostname}'"]
+        )
+        if node:
+            bmcsetupid, group = None, None
+            if 'bmcsetupid' in node[0] and str(node[0]['bmcsetupid']) == 'None':
+                groupid = node[0]['groupid']
+                group = Database().get_record(None, 'group', f' WHERE id = "{groupid}"')
+                if group:
+                    bmcsetupid = group[0]['bmcsetupid']
+                else:
+                    self.logger.info(f"{node[0]['nodename']} does not have any group.")
+                    response = {'message': f'{hostname} does not have any group'}
+                    access_code = 404
+                    return response, access_code
+            else:
+                bmcsetupid = node[0]['bmcsetupid']
+            bmcsetup = Database().get_record(None, 'bmcsetup', f' WHERE id = "{bmcsetupid}"')
+            if bmcsetup and 'device' in node[0] and node[0]['device']:
+                username = bmcsetup[0]['username']
+                password = bmcsetup[0]['password']
+                action = action.replace('_', '')
+                ret,mesg=Power().control_action(node[0]['nodename'], node[0]['groupname'], action, node[0]['device'], username, password, position=None)
+                #mesg = Helper().ipmi_action(hostname, action, username, password)
+                response = {'control': {action : mesg } }
+                if 'status' in action:
+                    access_code = 200
+                else:
+                    access_code = 204
+            else:
+                self.logger.info(f'{hostname} not have any bmcsetup.')
+                response = {'message': f'{hostname} does not have any bmcsetup'}
+                access_code = 404
+        else:
+            self.logger.info(f'{hostname} not have any node.')
+            response = {'message': f'{hostname} does not have BMC configured (properly)'}
+            access_code = 404
+        return dumps(response), access_code
+
+
+    def bulk_action(self, http_request=None):
+        """
+        This method will perform the power operation on requested hostlist, such as
+        on, off, status.
+        """
+        response = {'message': 'Bad Request'}
+        access_code = 400
+        request_data = http_request.data
+        if request_data:
+            action = list(request_data['control']['power'].keys())[0]
+            if not check_structure(request_data, ['control:power:' + action + ':hostlist']):
+                response = {'message': 'Bad Request'}
+                access_code = 400
+                return dumps(response), access_code
+            raw_hosts = request_data['control']['power'][action]['hostlist']
+            hostlist = Helper().get_hostlist(raw_hosts)
+            if hostlist:
+                access_code = 200
+                size = int(CONSTANT['BMCCONTROL']['BMC_BATCH_SIZE'])
+                delay = CONSTANT['BMCCONTROL']['BMC_BATCH_DELAY']
+                # Antoine -------------------------------------------------------------------
+                pipeline = Helper().Pipeline()
+                for hostname in hostlist:
+                    pipeline.add_nodes({hostname: action})
+                request_id = str(time()) + str(randint(1001, 9999)) + str(getpid())
+                executor = ThreadPoolExecutor(max_workers=1)
+                executor.submit(Power().control_mother, pipeline, request_id, size, delay)
+                executor.shutdown(wait=False)
+                # use below to not spawn a thread. easy for debugging.
+                #Power().control_mother(pipeline, request_id, size, delay)
+                # though we won't wait till all scheduled tasks are done, we wait a bit
+                # and return what we have.
+                # the client/lpower will then have to inquire to see what's done hereafter
+                wait_count=3
+                while(pipeline.has_nodes() and wait_count > 0):
+                    sleep(1)
+                    wait_count-=1
+                response = {'message': 'Bad Request'}
+                status = Database().get_record(None , 'status', f' WHERE request_id = "{request_id}"')
+                if status:
+                    on_nodes = []
+                    off_nodes = []
+                    failed_nodes = []
+                    for record in status:
+                        if 'message' in record:
+                            if record['read'] == 0:
+                                node, result, *_ = (record['message'].split(':', 1) + [None])
+                                # data is message is like 'nodexxx:message'
+                                self.logger.info(f"control POST regexp match: [{result}]")
+                                if result in ['on','reset','cycle']:
+                                    on_nodes.append(node)
+                                elif result == "off":
+                                    off_nodes.append(node)
+                                else:
+                                    failed_nodes.append(node)
+                    Status().mark_messages_read(request_id)
+                    response = {
+                        'control': {
+                            'power': {
+                                'on': {'hostlist': ','.join(on_nodes)},
+                                'off': {'hostlist': ','.join(off_nodes)},
+                                'failed': {'hostlist': ','.join(failed_nodes)},
+                                'request_id': request_id
+                            }
+                        }
+                    }
+                else:
+                    response = {'control': {'power': {'request_id': request_id} } }
+                # end Antoine ---------------------------------------------------------------
+            else:
+                response = {'message': 'invalid hostlist'}
+                access_code = 400
+        return dumps(response), access_code
+
+
+    def get_status(self, request_id=None):
+        """
+        This method will get the exact status of the nodes, depends on the request ID.
+        """
+        access_code = 404
+        response = {'message': 'No data for this request'}
+        status = Database().get_record(None , 'status', f' WHERE request_id = "{request_id}"')
+        if status:
+            on_nodes = []
+            off_nodes = []
+            failed_nodes = []
+            for record in status:
+                if 'message' in record:
+                    if record['read'] == 0:
+                        if record['message'] == "EOF":
+                            Status().del_messages(request_id)
+                        else:
+                            node, result = record['message'].split(':',1)
+                            # data is message is like 'nodexxx:message'
+                            if result == "on":
+                                on_nodes.append(node)
+                            elif result == "off":
+                                off_nodes.append(node)
+                            else:
+                                failed_nodes.append(node)
+            response = {
+                'control': {
+                    'power': {
+                        'on': {'hostlist': ','.join(on_nodes)},
+                        'off': {'hostlist': ','.join(off_nodes)},
+                        'failed': {'hostlist': ','.join(failed_nodes)}
+                    }
+                }
+            }
+            Status().mark_messages_read(request_id)
+            access_code = 200
+        return dumps(response), access_code

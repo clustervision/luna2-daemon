@@ -1,0 +1,12 @@
+include requirements.txt
+include VERSION.txt
+include README.md
+include daemon/*
+include daemon/apis/*
+include daemon/common/*
+include daemon/config/*
+include daemon/config/third-party/*
+include daemon/documentation/*
+include daemon/log/*
+include daemon/templates/*
+include daemon/utils/*

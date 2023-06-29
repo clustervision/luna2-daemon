@@ -1,0 +1,15 @@
+# CONTROL PLUGIN - ipmi/bmc control
+#
+#        7 defined methods are mandatory which return <True|False>,message:
+#        - on
+#        - of
+#        - reset
+#        - cycle
+#        - indentify
+#        - noindentify
+
+# Plugin selection based on the following search path and priority:
+#
+# 1 node name                 e.g. plugins/control/node001.py
+# 2 group name                e.g. plugins/control/compute.py
+# 3 default                   e.g. plugins/control/default.py

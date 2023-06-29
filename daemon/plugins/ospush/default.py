@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 """
-This Is the default OS Grab plugin, which takes care of grabbing a life filesystem into an image
+This Is the default OS Push plugin, which takes care of pushing an image to a node
 
 """
 
@@ -17,6 +17,8 @@ __status__      = 'Development'
 from utils.log import Log
 from utils.helper import Helper
 
+import random
+from time import sleep
 
 class Plugin():
     """
@@ -30,8 +32,15 @@ class Plugin():
     def __init__(self):
         self.logger = Log.get_logger()
 
-    def grab(self,osimage,image_path,node,grab_filesystems=[],grab_exclude=[],nodry=False):
+    def push(self,osimage,image_path,node,grab_filesystems=[],grab_exclude=[],nodry=False):
 
+        sleep(10)
+        if random.randrange(1,10) > 5:
+            return False,f"test for [{node}] with [{image_path}] - [{grab_filesystems}], [{grab_exclude}] [{nodry}]"
+        return True,"Success"
+
+
+"""
         # let's build the rsync command line parameters
         excludes=[]
         exclude_string=""
@@ -46,11 +55,7 @@ class Plugin():
             exit_code=0
             for grab in grab_filesystems:
                 if exit_code == 0:
-                    command=None
-                    if nodry is True: # nodry is True means it's for real
-                        command=f"mkdir -p {image_path}/{grab} 2> /dev/null; rsync -aH --one-file-system --delete-after {exclude_string} {node}:{grab}/* {image_path}/{grab}/"
-                    else:
-                        command=f"mkdir -p {image_path}/{grab} 2> /dev/null; rsync -aHvn --one-file-system --delete-after {exclude_string} {node}:{grab}/* {image_path}/{grab}/ &> /tmp/osgrab.out"
+                    command=f"mkdir -p {image_path}/{grab} 2> /dev/null; rsync -aH --one-file-system --delete-after {exclude_string} {node}:{grab}/* {image_path}/{grab}/"
                     self.logger.info(command)
                     message,exit_code = Helper().runcommand(command,True,3600)
                     self.logger.debug(f"exit_code = {exit_code}")
@@ -70,3 +75,4 @@ class Plugin():
         if kernel_version:
             return True, "Success", kernel_version
         return True, "Success"
+"""

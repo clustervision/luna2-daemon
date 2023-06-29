@@ -56,6 +56,7 @@ class OsImage(object):
         self.osgrab_plugins = Helper().plugin_finder('/trinity/local/luna/plugins/osgrab')  # needs to be with constants. pending
         self.provision_plugins = Helper().plugin_finder('/trinity/local/luna/plugins/provision')  # needs to be with constants. pending
         self.osclone_plugins = Helper().plugin_finder('/trinity/local/luna/plugins/osclone')  # needs to be with constants. pending
+        self.ospush_plugins = Helper().plugin_finder('/trinity/local/luna/plugins/ospush')  # needs to be with constants. pending
 
 
     # ---------------------------------------------------------------------------
@@ -68,7 +69,10 @@ class OsImage(object):
             result=False
             details=Queue().get_task_details(taskid)
             request_id=details['request_id']
-            action,node,osimage,noeof,*_=(details['task'].split(':')+[None]+[None]+[None])
+            action,node,osimage,nodry,noeof,*_=(details['task'].split(':')+[None]+[None]+[None]+[None])
+            if not nodry:
+                nodry=False
+            nodry = Helper().make_bool(nodry)
 
             if action == "grab_osimage":
                 image = Database().get_record(None, 'osimage', f"WHERE name='{osimage}'")
@@ -76,7 +80,7 @@ class OsImage(object):
                     Status().add_message(request_id,"luna",f"error grabbing osimage {osimage}: Image {osimage} does not exist?")
                     return False
 
-                dbnode = Database().get_record_join(['node.name as nodename', 'group.name as groupname'], ['group.id=node.groupid'],[f'node.name="{node}"'])
+                dbnode = Database().get_record_join(['node.name as nodename', 'group.name as groupname'], ['group.id=node.groupid'], [f'node.name="{node}"'])
                 if not dbnode:
                     Status().add_message(request_id,"luna",f"error grabbing osimage {osimage}: Node {node} does not exist?")
                     return False
@@ -123,7 +127,8 @@ class OsImage(object):
                                             image_path=image_path,
                                             node=dbnode[0]['nodename'],
                                             grab_filesystems=grab_fs,
-                                            grab_exclude=grab_ex)
+                                            grab_exclude=grab_ex,
+                                            nodry=nodry)
                 ret=response[0]
                 mesg=response[1]
                 kernel_version=None
@@ -412,6 +417,133 @@ class OsImage(object):
  
     # ---------------------------------------------------------------------------
 
+    def push_osimage(self,taskid,request_id,object='node'):
+
+        self.logger.info(f"push_osimage called")
+        try:
+
+            result=False
+            details=Queue().get_task_details(taskid)
+            request_id=details['request_id']
+            action,dst,osimage,nodry,noeof,*_=(details['task'].split(':')+[None]+[None]+[None])
+            if not nodry:
+                nodry=False
+            nodry = Helper().make_bool(nodry)
+
+            if action == "push_osimage_to_node" or action == "push_osimage_to_group":
+                Status().add_message(request_id,"luna",f"pushing osimage {osimage}->{object} {dst}")
+   
+                # --- let's push
+
+                image,mesg=None,None
+                if osimage and dst:
+                    image = Database().get_record(None, 'osimage', f"WHERE name='{osimage}'")
+                    if image:
+                        distribution = str(image[0]['distribution']) or 'redhat'
+                        distribution=distribution.lower()
+                        grab_fs=[]
+                        grab_ex=[]
+                        if image[0]['grab_filesystems']:
+                            image[0]['grab_filesystems']=image[0]['grab_filesystems'].replace(' ',',')
+                            image[0]['grab_filesystems']=image[0]['grab_filesystems'].replace(',,',',')
+                            grab_fs=image[0]['grab_filesystems'].split(",")
+                        if image[0]['grab_exclude']:
+                            image[0]['grab_exclude']=image[0]['grab_exclude'].replace(' ',',')
+                            image[0]['grab_exclude']=image[0]['grab_exclude'].replace(',,',',')
+                            grab_ex=image[0]['grab_exclude'].split(",")
+                    else:
+                        self.logger.info(f'Push osimage {osimage} does not exist.')
+                        Status().add_message(request_id,"luna",f"error pushing osimage as osimage {osimage} does not exist.")
+                        return False
+
+                    if not os.path.exists(image[0]['path']):
+                        mesg=f"{osimage}:{image[0]['path']} does not exist"
+                    elif image[0]['path'] and len(image[0]['path'])>1:
+                        if object == 'node':
+                            dbnode = Database().get_record_join(['node.name as nodename', 'group.name as groupname'], ['group.id=node.groupid'], [f'node.name="{dst}"'])
+                            if not dbnode:
+                                Status().add_message(request_id,"luna",f"error pushing osimage {osimage}: Node {dst} does not exist?")
+                                return False
+                            # loading the plugin depending on OS
+                            OsPushPlugin=Helper().plugin_load(self.ospush_plugins,'ospush',[dbnode[0]['nodename'],distribution,osimage,dbnode[0]['groupname']])
+
+                            self.logger.info(f"Push image from \"{image[0]['path']}\" to \"{dst}\"")
+                            response=OsPushPlugin().push(osimage=osimage,
+                                                         image_path=image[0]['path'],
+                                                         node=dst,
+                                                         grab_filesystems=grab_fs,
+                                                         grab_exclude=grab_ex,
+                                                         nodry=nodry)
+                            result=response[0]
+                            mesg=response[1]
+
+                        if object == 'group':
+                            dbnodes = Database().get_record_join(['node.name as nodename'], ['group.id=node.groupid'], [f'`group`.name="{dst}"'])
+                            if not dbnodes:
+                                Status().add_message(request_id,"luna",f"error pushing osimage {osimage}: Group {dst} does not exist?")
+                                return False
+                            OsPushPlugin=Helper().plugin_load(self.ospush_plugins,'ospush',[distribution,osimage,dst])
+
+                            try:
+                                batch=10
+                                delay=0
+                                result=True  # as i report individual results in status
+                                pipeline = Helper().Pipeline()
+                                for dbnode in dbnodes:
+                                    nodename=dbnode['nodename']
+                                    pipeline.add_nodes({nodename: 'ospush'})
+                                while(pipeline.has_nodes()):
+
+                                    with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
+                                        _ = [executor.submit(self.ospush_child, pipeline, t, OsPushPlugin, osimage, image[0]['path'], grab_fs, grab_ex, nodry) for t in range(1,batch)]
+
+                                    sleep(0.1) # not needed but just in case a child does a lock right after i fetch the list.
+                                    results=pipeline.get_messages()
+
+                                    for key in list(results):
+                                        self.logger.info(f"ospush_mother result: {key}: {results[key]}")
+                                        ret,mesg,*_ = (results[key].split('=')+[None]+[None])
+                                        if ret is True or ret == "True":
+                                            Status().add_message(request_id,"luna",f"{key}:success")
+                                        else:
+                                            Status().add_message(request_id,"luna",f"{key}:Failed -> {mesg}")
+                                        pipeline.del_message(key)
+                                    sleep(delay)
+
+                            except Exception as exp:
+                                self.logger.error(f"ospush_mother has problems: {exp}")
+
+
+                    sleep(1) # needed to prevent immediate concurrent access to the database. Pooling,WAL,WIF,WAF,etc won't fix this. Only sleep
+                    if result is True:
+                        self.logger.info(f'OS image pushed successfully.')
+                        Status().add_message(request_id,"luna",f"finished pushing osimage")
+
+                    else:
+                        self.logger.info(f'Push osimage {osimage}->{dst} error: {mesg}.')
+                        Status().add_message(request_id,"luna",f"error pushing osimage: {mesg}")
+
+                else:
+                    self.logger.info(f'Push osimage src and/or dst not provided.')
+                    Status().add_message(request_id,"luna",f"error pushing osimage as 'osimage' and/or 'destination' not provided.")
+
+                if not noeof:
+                    Status().add_message(request_id,"luna",f"EOF")
+                return result
+            else:
+                self.logger.info(f"{details['task']} is not for us.")
+
+        except Exception as exp:
+            self.logger.error(f"push_osimage has problems: {exp}")
+            try:
+                Status().add_message(request_id,"luna",f"Pushing failed: {exp}")
+                Status().add_message(request_id,"luna",f"EOF")
+            except Exception as nexp:
+                self.logger.error(f"push_osimage has problems during exception handling: {nexp}")
+            return False 
+ 
+    # ---------------------------------------------------------------------------
+
     def provision_osimage(self,taskid,request_id):
 
         self.logger.info(f"provision_osimage called")
@@ -449,10 +581,6 @@ class OsImage(object):
                     if controller:
                         server_ipaddress   = controller[0]['ipaddress']
                         server_port  = controller[0]['serverport']
-#                        tracker goes through API, not the optional webserver
-#                        if 'WEBSERVER' in CONSTANT.keys():
-#                            if 'PORT' in CONSTANT['WEBSERVER']:
-#                                server_port = CONSTANT['WEBSERVER']['PORT']
          
                     ##path_to_store = f"{image[0]['path']}/boot"  # <-- we will store all files in this path, but add the name of the image to it.
                     if 'FILES' not in CONSTANT:
@@ -660,9 +788,27 @@ class OsImage(object):
                             Status().add_message(request_id,"luna",f"EOF")
 
                 elif action == "grab_osimage":
-                    if first:
+                    if first and second:
                         Queue().update_task_status_in_queue(next_id,'in progress')
                         ret=self.grab_osimage(next_id,request_id)
+                        Queue().remove_task_from_queue(next_id)
+                        if not ret:
+                            Queue().remove_task_from_queue_by_request_id(request_id)
+                            Status().add_message(request_id,"luna",f"EOF")
+
+                elif action == "push_osimage_to_group":
+                    if first and second:
+                        Queue().update_task_status_in_queue(next_id,'in progress')
+                        ret=self.push_osimage(next_id,request_id,'group')
+                        Queue().remove_task_from_queue(next_id)
+                        if not ret:
+                            Queue().remove_task_from_queue_by_request_id(request_id)
+                            Status().add_message(request_id,"luna",f"EOF")
+
+                elif action == "push_osimage_to_node":
+                    if first and second:
+                        Queue().update_task_status_in_queue(next_id,'in progress')
+                        ret=self.push_osimage(next_id,request_id,'node')
                         Queue().remove_task_from_queue(next_id)
                         if not ret:
                             Queue().remove_task_from_queue_by_request_id(request_id)
@@ -679,8 +825,25 @@ class OsImage(object):
         except Exception as exp:
             self.logger.error(f"osimage_mother has problems: {exp}")
             try:
-                Status().add_message(request_id,"luna",f"Cloning failed: {exp}")
+                Status().add_message(request_id,"luna",f"Operation failed: {exp}")
                 Status().add_message(request_id,"luna",f"EOF")
             except Exception as nexp:
                 self.logger.error(f"osimage_mother has problems during exception handling: {nexp}")
-            
+           
+
+    # ---------------------- child for bulk parallel operations --------------------------------
+
+    def ospush_child(self,pipeline,t,Plugin,osimage,image_path,grab_fs,grab_ex,nodry):
+        nodename,action=pipeline.get_node()
+        self.logger.info("control_child thread "+str(t)+": "+nodename+" -> called for ospush")
+        if nodename:
+            response=Plugin().push(osimage=osimage,image_path=image_path,node=nodename,
+                                           grab_filesystems=grab_fs,
+                                           grab_exclude=grab_ex,nodry=nodry)
+            result=response[0]
+            mesg=response[1] 
+            pipeline.add_message({nodename: f"{result}={mesg}"})
+
+
+
+

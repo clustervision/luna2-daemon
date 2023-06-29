@@ -234,29 +234,55 @@ class OSImage():
         return response, access_code
 
     
-    def grab(self, name=None, node=None, bare=False):
+    def grab(self, node=None, http_request=None):
         data = {}
         access_code = 500
-        if node and name:
-            bare = Helper().make_bool(bare)
+        request_data = http_request.data
+        if request_data:
+            data = request_data['config']['node'][node]
+            bare=False
+            if 'bare' in data:
+                bare = Helper().make_bool(data['bare'])
+            nodry=False  # means default dry=True
+            if 'nodry' in data:
+                nodry = Helper().make_bool(data['nodry'])
+            osimage=None
+            osimage=None
+            if 'osimage' in data:
+                osimage=data['osimage']
+            else:
+                image_details = Database().get_record_join(['osimage.name as osimagename','osimage.id as osimageid'],
+                                                           ['osimage.id=node.osimageid'],
+                                                           [f'node.name="{node}"'])
+                if not image_details: #meaning, node does not have osimage override. we check the group
+                    image_details = Database().get_record_join(['osimage.name as osimagename','osimage.id as osimageid'],
+                                                           ['group.id=node.groupid','osimage.id=group.osimageid'],
+                                                           [f'node.name="{node}"'])
+                if image_details:
+                    osimage=image_details[0]['osimagename']
+                else:
+                    access_code = 404
+                    response = {"message": f"osimage grab for {osimage} failed. no osimage or group configured for this node?"}
+                    return dumps(response), access_code
+
             request_id = str(time()) + str(randint(1001, 9999)) + str(getpid())
             queue_id, queue_response = None,None
-            if bare is not False:
-                queue_id, queue_response = Queue().add_task_to_queue(f'grab_osimage:{node}:{name}', 'osimage', request_id)
+            if (bare is not False) or (nodry is False):
+                queue_id, queue_response = Queue().add_task_to_queue(f'grab_osimage:{node}:{osimage}:{nodry}', 'osimage', request_id)
             else:
-                queue_id, queue_response = Queue().add_task_to_queue(f'grab_n_pack_n_build_osimage:{node}:{name}', 'osimage', request_id)
+                queue_id, queue_response = Queue().add_task_to_queue(f'grab_n_pack_n_build_osimage:{node}:{osimage}:{nodry}', 'osimage', request_id)
             if not queue_id:
                 self.logger.info("config_osimage_grab GET cannot get queue_id")
-                response= {"message": f'OS image {name} grab queuing failed'}
+                response= {"message": f'OS image {osimage} grab queuing failed'}
                 return dumps(response), access_code
             if queue_response != "added": # this means we already have an equal request in the queue
                 access_code = 200
-                response = {"message": f"osimage grab for {name} already queued", "request_id": queue_response}
+                response = {"message": f"osimage grab for {osimage} already queued", "request_id": queue_response}
                 self.logger.info(f"my response [{response}]")
                 return dumps(response), access_code
 
             self.logger.info(f"config_osimage_grab POST added task to queue: {queue_id}")
-            Status().add_message(request_id, "luna", f"queued grab osimage {name} with queue_id {queue_id}")
+            Status().add_message(request_id, "luna", f"queued grab osimage {osimage} with queue_id {queue_id}")
 
             next_id = Queue().next_task_in_queue('osimage')
             if queue_id == next_id:
@@ -270,10 +296,86 @@ class OSImage():
             status = Database().get_record(None , 'status', f' WHERE request_id = "{request_id}"')
             if status:
                 access_code = 200
-                response = {"message": f"osimage grab for {name} queued", "request_id": request_id}
+                response = {"message": f"osimage grab from {node} to {osimage} queued", "request_id": request_id}
             self.logger.info(f"my response [{response}]")
             return dumps(response), access_code
         response = {"message": f"osimage grab missing data"}
+        access_code = 404
+        return dumps(response), access_code
+   
+    def push(self, nodeorgroup=None, http_request=None):
+        data = {}
+        access_code = 500
+        request_data = http_request.data
+        if request_data:
+            data,togroup=None,False
+            nodry=False  # means default dry=True
+            if 'nodry' in request_data['config'].keys():
+                nodry = Helper().make_bool(data['nodry'])
+            if 'group' in request_data['config'].keys():
+                data = request_data['config']['group'][nodeorgroup]
+                togroup=True
+            else:
+                data = request_data['config']['node'][nodeorgroup]
+            osimage=None
+            if 'osimage' in data:
+                osimage=data['osimage']
+            else:
+                image_details=None
+                if togroup is True:
+                    image_details = Database().get_record_join(['osimage.name as osimagename','osimage.id as osimageid'],
+                                                           ['osimage.id=group.osimageid'],
+                                                           [f'`group`.name="{nodeorgroup}"'])
+                else:
+                    image_details = Database().get_record_join(['osimage.name as osimagename','osimage.id as osimageid'],
+                                                           ['osimage.id=node.osimageid'],
+                                                           [f'node.name="{nodeorgroup}"'])
+                    if not image_details: #meaning, node does not have osimage override. we check the group
+                        image_details = Database().get_record_join(['osimage.name as osimagename','osimage.id as osimageid'],
+                                                           ['group.id=node.groupid','osimage.id=group.osimageid'],
+                                                           [f'node.name="{nodeorgroup}"'])
+                if image_details:
+                    osimage=image_details[0]['osimagename']
+                else:
+                    access_code = 404
+                    response = {"message": f"osimage push for {osimage} failed. no osimage configured for this node or group?"}
+                    return dumps(response), access_code
+
+            request_id = str(time()) + str(randint(1001, 9999)) + str(getpid())
+            queueid, queue_response=None,None
+            if togroup is True:
+                queue_id, queue_response = Queue().add_task_to_queue(f'push_osimage_to_group:{nodeorgroup}:{osimage}:{nodry}', 'osimage', request_id)
+            else:
+                queue_id, queue_response = Queue().add_task_to_queue(f'push_osimage_to_node:{nodeorgroup}:{osimage}:{nodry}', 'osimage', request_id)
+            if not queue_id:
+                self.logger.info("config_osimage_push POST cannot get queue_id")
+                response= {"message": f'OS image {osimage} push queuing failed'}
+                return dumps(response), access_code
+            if queue_response != "added": # this means we already have an equal request in the queue
+                access_code = 200
+                response = {"message": f"osimage push for {osimage} already queued", "request_id": queue_response}
+                self.logger.info(f"my response [{response}]")
+                return dumps(response), access_code
+
+            self.logger.info(f"config_osimage_push POST added task to queue: {queue_id}")
+            Status().add_message(request_id, "luna", f"queued push osimage {osimage} with queue_id {queue_id}")
+
+            next_id = Queue().next_task_in_queue('osimage')
+            if queue_id == next_id:
+                executor = ThreadPoolExecutor(max_workers=1)
+                executor.submit(OsImager().osimage_mother,request_id)
+                executor.shutdown(wait=False)
+                # OsImager().osimage_mother(request_id)
+                # we should check after a few seconds if there is a status update for us.
+                # if so, that means mother is taking care of things
+            sleep(1)
+            status = Database().get_record(None , 'status', f' WHERE request_id = "{request_id}"')
+            if status:
+                access_code = 200
+                response = {"message": f"osimage push from {nodeorgroup} to {osimage} queued", "request_id": request_id}
+            self.logger.info(f"my response [{response}]")
+            return dumps(response), access_code
+        response = {"message": f"osimage push missing data"}
         access_code = 404
         return dumps(response), access_code
    

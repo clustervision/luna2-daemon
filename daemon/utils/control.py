@@ -129,7 +129,7 @@ class Control(object):
                 case 'identify':
                     ret,mesg=ControlPlugin().identify(device=device, username=username, password=password, position=None)
                 case 'noidentify':
-                    ret,mesg=ControlPlugin().noidentify(device=device, username=username, password=password, position=None)
+                    ret,mesg=ControlPlugin().no_identify(device=device, username=username, password=password, position=None)
 
             self.logger.debug(f"mesg=[{mesg}]")
        

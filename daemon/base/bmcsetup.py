@@ -120,7 +120,7 @@ class BMCSetup():
                 access_code = 404
                 return dumps(response), access_code
             bmcsetup_columns = Database().get_columns(self.table)
-            column_check = Helper().checkin_list(data, bmcsetup_columns)
+            column_check = Helper().compare_list(data, bmcsetup_columns)
             row = Helper().make_rows(data)
             if column_check:
                 if create:

@@ -150,7 +150,7 @@ class Model():
             access_code = 404
         else:
             columns = Database().get_columns(table)
-            column_check = Helper().checkin_list(data, columns)
+            column_check = Helper().compare_list(data, columns)
             if column_check:
                 row = Helper().make_rows(data)
                 Database().insert(table, row)
@@ -177,7 +177,7 @@ class Model():
             data['name'] = name
         if record:
             columns = Database().get_columns(table)
-            column_check = Helper().checkin_list(data, columns)
+            column_check = Helper().compare_list(data, columns)
             row = Helper().make_rows(data)
             if column_check:
                 where = [{"column": "id", "value": record[0]['id']}]

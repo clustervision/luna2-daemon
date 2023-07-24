@@ -33,8 +33,6 @@ class Authentication():
         This constructor will initialize all required variables here.
         """
         self.logger = Log.get_logger()
-        # self.username = username
-        # self.password = password
 
 
     def get_token(self, http_request=None):

@@ -87,7 +87,7 @@ class OtherDev():
             if 'network' in data.keys():
                 network = data['network']
                 del data['network']
-            column_check = Helper().checkin_list(data, device_columns)
+            column_check = Helper().compare_list(data, device_columns)
             data = Helper().check_ip_exist(data)
             if data:
                 row = Helper().make_rows(data)
@@ -154,7 +154,7 @@ class OtherDev():
                 networkname=data['network']
                 del data['network']
             device_columns = Database().get_columns(self.table)
-            column_check = Helper().checkin_list(data, device_columns)
+            column_check = Helper().compare_list(data, device_columns)
             if data:
                 if column_check:
                     if create:

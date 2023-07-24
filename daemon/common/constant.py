@@ -28,13 +28,13 @@ BASE_DIR = str(UTILSDIR.parent)
 configParser = RawConfigParser()
 CONFIGFILE = '/trinity/local/luna/config/luna.ini'
 
-def checkpathstate(path=None):
+def check_path_state(path=None):
     """
     Input - Directory
     Output - Directory if exists, readable or writable
     """
     path_check = False
-    pathtype = checkpathtype(path)
+    pathtype = check_path_type(path)
     if pathtype in ('File', 'Directory'):
         if os.access(path, os.R_OK):
             if os.access(path, os.W_OK):
@@ -48,12 +48,12 @@ def checkpathstate(path=None):
     return path_check
 
 
-def checkpathtype(path=None):
+def check_path_type(path=None):
     """
     Input - Path of File or Directory
     Output - File or directory or Not Exists
     """
-    pathstatus = checkpath(path)
+    pathstatus = check_path(path)
     if pathstatus:
         if os.path.isdir(path):
             response = 'File'
@@ -66,7 +66,7 @@ def checkpathtype(path=None):
     return response
 
 
-def checkpath(path=None):
+def check_path(path=None):
     """
     Input - Path of File or Directory
     Output - True or False Is exists or not
@@ -108,7 +108,7 @@ def checksection(filename=None):
             LOGGER.error(f'Section {item} is missing, kindly check the file {filename}.')
 
 
-def checkoption(filename=None, section=None, option=None):
+def check_option(filename=None, section=None, option=None):
     """
     Compare the ini option with the predefined dictionary options.
     """
@@ -157,7 +157,7 @@ def getconfig(filename=None):
     for section in configParser.sections():
         for (option, item) in configParser.items(section):
             if section in getlist(CONSTANT):
-                checkoption(filename, section, option.upper())
+                check_option(filename, section, option.upper())
                 set_constants(section, option.upper(), item)
             else:
                 CONSTANT[section] = {}
@@ -180,7 +180,7 @@ CONSTANT = {
 }
 
 
-if checkpathstate(CONFIGFILE):
+if check_path_state(CONFIGFILE):
     getconfig(CONFIGFILE)
 else:
     LOGGER.error(f'Unable to get configurations from {CONFIGFILE} file')
@@ -196,7 +196,7 @@ sanitize = [
                 CONSTANT['FILES']['KEYFILE']
             ]
 for sanity in sanitize:
-    checkpathstate(sanity)
+    check_path_state(sanity)
 
 if CONSTANT['LOGGER']['LEVEL']:
     LOGGER = Log.set_logger(CONSTANT['LOGGER']['LEVEL'])
@@ -211,7 +211,7 @@ if 'files' in data.keys():
     runcommand(f'rm -rf {CONSTANT["TEMPLATES"]["TEMP_DIR"]}')
     runcommand(f'mkdir {CONSTANT["TEMPLATES"]["TEMP_DIR"]}')
     for templatefiles in data['files']:
-        if checkpathstate(f'{CONSTANT["TEMPLATES"]["TEMPLATES_DIR"]}/{templatefiles}'):
+        if check_path_state(f'{CONSTANT["TEMPLATES"]["TEMPLATES_DIR"]}/{templatefiles}'):
             copy_source = f'{CONSTANT["TEMPLATES"]["TEMPLATES_DIR"]}/{templatefiles}'
             copy_destination = f'{CONSTANT["TEMPLATES"]["TEMP_DIR"]}'
             runcommand(f'cp {copy_source} {copy_destination}')

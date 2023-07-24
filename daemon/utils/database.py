@@ -532,7 +532,7 @@ class Database(object):
         return response
 
 
-    def getid_byname(self, table=None, name=None):
+    def id_by_name(self, table=None, name=None):
         """
         Input - tablename, name
         Output - id.
@@ -551,7 +551,7 @@ class Database(object):
         return response
 
 
-    def getname_byid(self, table=None, tableid=None):
+    def name_by_id(self, table=None, tableid=None):
         """
         Input - tablename, id
         Output - name.

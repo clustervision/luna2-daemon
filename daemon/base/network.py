@@ -158,7 +158,7 @@ class Network():
                     access_code = 404
                     return dumps(response), access_code
             if 'dhcp' in data:
-                data['dhcp'] = Helper().make_boolnum(data['dhcp'])
+                data['dhcp'] = Helper().bool_to_string(data['dhcp'])
                 self.logger.info(f"dhcp is set to {data['dhcp']}")
                 if 'dhcp_range_begin' in data:
                     subnet = data['network']+'/'+data['subnet']
@@ -198,7 +198,7 @@ class Network():
                     data['dhcp_range_end'] = ""
 
             network_columns = Database().get_columns('network')
-            column_check = Helper().checkin_list(data, network_columns)
+            column_check = Helper().compare_list(data, network_columns)
             if column_check:
                 row = Helper().make_rows(data)
                 if create:
@@ -221,13 +221,13 @@ class Network():
                         # below section takes care (in the background), adding/renaming/deleting.
                         # for adding next free ip-s will be selected.
                         # time consuming therefor background
-                        queue_id, _ = Queue().add_task_to_queue(f'update_all_interface_ipaddresses:{name}', 'network_change')
+                        queue_id, _ = Queue().add_task_to_queue(f'update_all_interface_ipaddress:{name}', 'network_change')
                         next_id = Queue().next_task_in_queue('network_change')
                         if queue_id == next_id:
                             executor = ThreadPoolExecutor(max_workers=1)
-                            executor.submit(Config().update_interface_ipaddresses_on_network_change, name)
+                            executor.submit(Config().update_interface_ipaddress_on_network_change, name)
                             executor.shutdown(wait=False)
-                            # Config().update_interface_ipaddresses_on_network_change(name)
+                            # Config().update_interface_ipaddress_on_network_change(name)
                     response = {'message': f'Network {name} updated successfully'}
                     access_code = 204
                 Service().queue('dns','restart')
@@ -264,7 +264,7 @@ class Network():
         if network:
             ip_detail = Helper().check_ip_range(ipaddress, network[0]['network'] + '/' + network[0]['subnet'])
             if ip_detail:
-                check_ip = Database().get_record(None, 'ipaddress', f' WHERE ipaddress = "{ipaddress}"; ')
+                check_ip = Database().get_record(None, 'ipaddress', f' WHERE ipaddress = "{ipaddress}"')
                 if check_ip:
                     response = {'config': {'network': {ipaddress: {'status': 'taken'} } } }
                     access_code = 200

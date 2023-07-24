@@ -58,10 +58,10 @@ class Group():
                 group['netboot'] = Helper().make_bool(group['netboot'])
                 group['localinstall'] = Helper().make_bool(group['localinstall'])
                 group['bootmenu'] = Helper().make_bool(group['bootmenu'])
-                group['osimage'] = Database().getname_byid('osimage', group['osimageid'])
+                group['osimage'] = Database().name_by_id('osimage', group['osimageid'])
                 del group['osimageid']
                 if group['bmcsetupid']:
-                    group['bmcsetupname'] = Database().getname_byid('bmcsetup', group['bmcsetupid'])
+                    group['bmcsetupname'] = Database().name_by_id('bmcsetup', group['bmcsetupid'])
                 del group['bmcsetupid']
                 response['config']['group'][name] = group
             self.logger.info('Provided list of all groups with details.')
@@ -140,10 +140,10 @@ class Group():
                 except Exception as exp:
                     self.logger.error(f"{exp}")
 
-                group['osimage'] = Database().getname_byid('osimage', group['osimageid'])
+                group['osimage'] = Database().name_by_id('osimage', group['osimageid'])
                 del group['osimageid']
                 if group['bmcsetupid']:
-                    group['bmcsetupname'] = Database().getname_byid('bmcsetup', group['bmcsetupid'])
+                    group['bmcsetupname'] = Database().name_by_id('bmcsetup', group['bmcsetupid'])
                 del group['bmcsetupid']
                 response['config']['group'][name] = group
             self.logger.info(f'Returned Group {name} with Details.')
@@ -224,17 +224,17 @@ class Group():
                 if item in data:
                     data[item] = data[item]
                     if isinstance(items[item], bool):
-                        data[item] = str(Helper().make_boolnum(data[item]))
+                        data[item] = str(Helper().bool_to_string(data[item]))
                 elif create:
                     data[item] = items[item]
                     if isinstance(items[item], bool):
-                        data[item] = str(Helper().make_boolnum(data[item]))
+                        data[item] = str(Helper().bool_to_string(data[item]))
                 if item in data and (not data[item]) and (item not in items):
                     del data[item]
 
             if 'bmcsetupname' in data:
                 bmcsetupname = data['bmcsetupname']
-                data['bmcsetupid'] = Database().getid_byname('bmcsetup', data['bmcsetupname'])
+                data['bmcsetupid'] = Database().id_by_name('bmcsetup', data['bmcsetupname'])
                 if data['bmcsetupid']:
                     del data['bmcsetupname']
                 else:
@@ -243,7 +243,7 @@ class Group():
                     return dumps(response), access_code
             if 'osimage' in data:
                 osimage = data['osimage']
-                data['osimageid'] = Database().getid_byname('osimage', osimage)
+                data['osimageid'] = Database().id_by_name('osimage', osimage)
                 if data['osimageid']:
                     del data['osimage']
                 else:
@@ -257,7 +257,7 @@ class Group():
                 del data['interfaces']
 
             group_columns = Database().get_columns('group')
-            column_check = Helper().checkin_list(data, group_columns)
+            column_check = Helper().compare_list(data, group_columns)
             if column_check:
                 if update:
                     where = [{"column": "id", "value": group_id}]
@@ -288,7 +288,7 @@ class Group():
                             if nwk and 'networkid' in nwk[0]:
                                 network=nwk[0]['networkid']
                         else:
-                            network = Database().getid_byname('network', ifx['network'])
+                            network = Database().id_by_name('network', ifx['network'])
                             del ifx['network']
                         if network is None:
                             response = {'message': 'Bad Request; Network not provided or does not exist'}
@@ -378,20 +378,20 @@ class Group():
                 if item in data:
                     data[item] = data[item]
                     if item in items and isinstance(items[item], bool):
-                        data[item]=str(Helper().make_boolnum(data[item]))
+                        data[item]=str(Helper().bool_to_string(data[item]))
                 else:
                     data[item] = grp[0][item]
                     if item in items and isinstance(items[item], bool):
-                        data[item]=str(Helper().make_boolnum(data[item]))
+                        data[item]=str(Helper().bool_to_string(data[item]))
                 if item in items:
                     data[item] = data[item] or items[item]
                     if item in items and isinstance(items[item], bool):
-                        data[item]=str(Helper().make_boolnum(data[item]))
+                        data[item]=str(Helper().bool_to_string(data[item]))
                 if (not data[item]) and (item not in items):
                     del data[item]
             if 'bmcsetupname' in data:
                 bmcsetupname = data['bmcsetupname']
-                data['bmcsetupid'] = Database().getid_byname('bmcsetup', data['bmcsetupname'])
+                data['bmcsetupid'] = Database().id_by_name('bmcsetup', data['bmcsetupname'])
                 if data['bmcsetupid']:
                     del data['bmcsetupname']
                 else:
@@ -401,13 +401,13 @@ class Group():
             if 'osimage' in data:
                 osimage = data['osimage']
                 del data['osimage']
-                data['osimageid'] = Database().getid_byname('osimage', osimage)
+                data['osimageid'] = Database().id_by_name('osimage', osimage)
             new_interface = None
             if 'interfaces' in data:
                 new_interface = data['interfaces']
                 del data['interfaces']
             group_columns = Database().get_columns('group')
-            column_check = Helper().checkin_list(data, group_columns)
+            column_check = Helper().compare_list(data, group_columns)
             if column_check:
                 row = Helper().make_rows(data)
                 new_group_id = Database().insert('group', row)
@@ -425,7 +425,7 @@ class Group():
 
                 if new_interface:
                     for ifx in new_interface:
-                        network = Database().getid_byname('network', ifx['network'])
+                        network = Database().id_by_name('network', ifx['network'])
                         if network is None:
                             response = {'message': f'Bad Request; Network {network} not exist'}
                             access_code = 404

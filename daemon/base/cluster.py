@@ -77,7 +77,7 @@ class Cluster():
         if request_data:
             data = request_data['config']['cluster']
             cluster_columns = Database().get_columns('cluster')
-            cluster_check = Helper().checkin_list(data, cluster_columns)
+            cluster_check = Helper().compare_list(data, cluster_columns)
             if cluster_check:
                 cluster = Database().get_record(None, 'cluster', None)
                 if cluster:
@@ -116,7 +116,7 @@ class Cluster():
                         if item in data:
                             data[item] = str(data[item]) or items[item]
                             if isinstance(items[item], bool):
-                                data[item] = str(Helper().make_boolnum(data[item]))
+                                data[item] = str(Helper().bool_to_string(data[item]))
 
                     where = [{"column": "id", "value": cluster[0]['id']}]
                     row = Helper().make_rows(data)

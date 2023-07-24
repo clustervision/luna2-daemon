@@ -41,12 +41,17 @@ class Boot():
         This constructor will initialize all required variables here.
         """
         self.logger = Log.get_logger()
-        self.provision_plugins = Helper().plugin_finder('/trinity/local/luna/plugins/provision')  # needs to be with constants. pending
-        self.network_plugins = Helper().plugin_finder('/trinity/local/luna/plugins/network')  # needs to be with constants. pending
-        self.bmc_plugins = Helper().plugin_finder('/trinity/local/luna/plugins/bmc')  # needs to be with constants. pending
-        self.install_plugins = Helper().plugin_finder('/trinity/local/luna/plugins/install')  # needs to be with constants. pending
-#        self.detection_plugins = Helper().plugin_finder('/trinity/local/luna/plugins/detection')  # needs to be with constants. pending
-#        self.DetectionPlugin=Helper().plugin_load(self.detection_plugins,'detection','switchport')
+        self.provision_plugins = Helper().plugin_finder('/trinity/local/luna/plugins/provision')
+        # needs to be with constants. pending
+        self.network_plugins = Helper().plugin_finder('/trinity/local/luna/plugins/network')
+        # needs to be with constants. pending
+        self.bmc_plugins = Helper().plugin_finder('/trinity/local/luna/plugins/bmc')
+        # needs to be with constants. pending
+        self.install_plugins = Helper().plugin_finder('/trinity/local/luna/plugins/install')
+        # needs to be with constants. pending
+        # self.detection_plugins = Helper().plugin_finder('/trinity/local/luna/plugins/detection')
+        # needs to be with constants. pending
+        # self.DetectionPlugin=Helper().plugin_load(self.detection_plugins,'detection','switchport')
 
 
     def default(self):

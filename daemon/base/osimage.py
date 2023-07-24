@@ -102,7 +102,7 @@ class OSImage():
                 create = True
 
             osimage_columns = Database().get_columns('osimage')
-            column_check = Helper().checkin_list(data, osimage_columns)
+            column_check = Helper().compare_list(data, osimage_columns)
             if column_check:
                 if update:
                     where = [{"column": "id", "value": image_id}]
@@ -179,7 +179,7 @@ class OSImage():
                 return dumps(response), access_code
 
             osimage_columns = Database().get_columns('osimage')
-            column_check = Helper().checkin_list(data, osimage_columns)
+            column_check = Helper().compare_list(data, osimage_columns)
             if column_check:
                 row = Helper().make_rows(data)
                 Database().insert('osimage', row)
@@ -433,7 +433,7 @@ class OSImage():
             image = Database().get_record(None, 'osimage', f' WHERE name = "{name}"')
             if image:
                 osimage_columns = Database().get_columns('osimage')
-                column_check = Helper().checkin_list(data, osimage_columns)
+                column_check = Helper().compare_list(data, osimage_columns)
                 if column_check:
                     # TODO
                     # changed=1

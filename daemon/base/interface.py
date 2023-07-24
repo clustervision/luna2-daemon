@@ -228,7 +228,7 @@ class Interface():
                             response = {'message': 'Interface and/or network not specified'}
                             access_code = 400
                             return dumps(response), access_code
-                        network = Database().getid_byname('network', ifx['network'])
+                        network = Database().id_by_name('network', ifx['network'])
                         if network is None:
                             response = {'message': f'Network {network} does not exist'}
                             access_code = 404

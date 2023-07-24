@@ -45,7 +45,7 @@ class Secret():
         if nodesecrets:
             response['config']['secrets']['node'] = {}
             for node in nodesecrets:
-                nodename = Database().getname_byid('node', node['nodeid'])
+                nodename = Database().name_by_id('node', node['nodeid'])
                 if nodename not in response['config']['secrets']['node']:
                     response['config']['secrets']['node'][nodename] = []
                 del node['nodeid']
@@ -55,7 +55,7 @@ class Secret():
         if groupsecrets:
             response['config']['secrets']['group'] = {}
             for group in groupsecrets:
-                groupname = Database().getname_byid('group', group['groupid'])
+                groupname = Database().name_by_id('group', group['groupid'])
                 if groupname not in response['config']['secrets']['group']:
                     response['config']['secrets']['group'][groupname] = []
                 del group['groupid']
@@ -83,7 +83,7 @@ class Secret():
             if nodesecrets:
                 response['config']['secrets']['node'] = {}
                 for node in nodesecrets:
-                    nodename = Database().getname_byid('node', node['nodeid'])
+                    nodename = Database().name_by_id('node', node['nodeid'])
                     if nodename not in response['config']['secrets']['node']:
                         response['config']['secrets']['node'][nodename] = []
                     del node['nodeid']
@@ -93,7 +93,7 @@ class Secret():
             if groupsecrets:
                 response['config']['secrets']['group'] = {}
                 for group in groupsecrets:
-                    groupname = Database().getname_byid('group', group['groupid'])
+                    groupname = Database().name_by_id('group', group['groupid'])
                     if groupname not in response['config']['secrets']['group']:
                         response['config']['secrets']['group'][groupname] = []
                     del group['groupid']
@@ -124,7 +124,7 @@ class Secret():
                         secret_data = Database().get_record(None, 'nodesecrets', where)
                         if secret_data:
                             node_secret_columns = Database().get_columns('nodesecrets')
-                            column_check = Helper().checkin_list(secret_data[0], node_secret_columns)
+                            column_check = Helper().compare_list(secret_data[0], node_secret_columns)
                             if column_check:
                                 secret_id = secret_data[0]['id']
                                 secret['content'] = Helper().encrypt_string(secret['content'])
@@ -202,7 +202,7 @@ class Secret():
                 nodeid = node[0]['id']
                 if data:
                     node_secret_columns = Database().get_columns('nodesecrets')
-                    column_check = Helper().checkin_list(data[0], node_secret_columns)
+                    column_check = Helper().compare_list(data[0], node_secret_columns)
                     secret_name = data[0]['name']
                     where = f' WHERE nodeid = "{nodeid}" AND name = "{secret_name}"'
                     secret_data = Database().get_record(None, 'nodesecrets', where)
@@ -275,7 +275,7 @@ class Secret():
                                 access_code = 404
                             else:
                                 node_secret_columns = Database().get_columns('nodesecrets')
-                                column_check = Helper().checkin_list(data[0], node_secret_columns)
+                                column_check = Helper().compare_list(data[0], node_secret_columns)
                                 if column_check:
                                     data[0]['content'] = Helper().encrypt_string(data[0]['content'])
                                     row = Helper().make_rows(data[0])
@@ -370,7 +370,7 @@ class Secret():
                         secret_data = Database().get_record(None, 'groupsecrets', where)
                         if secret_data:
                             group_secret_columns = Database().get_columns('groupsecrets')
-                            column_check = Helper().checkin_list(secret_data[0], group_secret_columns)
+                            column_check = Helper().compare_list(secret_data[0], group_secret_columns)
                             if column_check:
                                 secret_id = secret_data[0]['id']
                                 secret['content'] = Helper().encrypt_string(secret['content'])
@@ -448,7 +448,7 @@ class Secret():
                 groupid = group[0]['id']
                 if data:
                     group_secret_columns = Database().get_columns('groupsecrets')
-                    column_check = Helper().checkin_list(data[0], group_secret_columns)
+                    column_check = Helper().compare_list(data[0], group_secret_columns)
                     secret_name = data[0]['name']
                     where = f' WHERE groupid = "{groupid}" AND name = "{secret_name}"'
                     secret_data = Database().get_record(None, 'groupsecrets', where)
@@ -521,7 +521,7 @@ class Secret():
                                 access_code = 404
                             else:
                                 group_secret_columns = Database().get_columns('groupsecrets')
-                                column_check = Helper().checkin_list(data[0], group_secret_columns)
+                                column_check = Helper().compare_list(data[0], group_secret_columns)
                                 if column_check:
                                     data[0]['content'] = Helper().encrypt_string(data[0]['content'])
                                     row = Helper().make_rows(data[0])

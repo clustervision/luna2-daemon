@@ -154,7 +154,7 @@ def getconfig(filename=None):
         for (option, item) in configParser.items(section):
             globals()[option.upper()] = item
             if section in list(BOOTSTRAP.keys()):
-                Helper().checkoption(filename, section, option.upper(), BOOTSTRAP)
+                Helper().check_option(filename, section, option.upper(), BOOTSTRAP)
                 for num in range(1, 10):
                     if 'CONTROLLER'+str(num) in option.upper():
                         BOOTSTRAP[section][option.upper()]={}
@@ -457,7 +457,7 @@ def validate_bootstrap():
         'OSIMAGE': {'NAME': None},
         'BMCSETUP': {'USERNAME': None, 'PASSWORD': None}
     }
-    bootstrapfile_check = Helper().checkpathstate(bootstrapfile)
+    bootstrapfile_check = Helper().check_path_state(bootstrapfile)
     db_check=check_db()
     if db_check is True:
         db_tables_check=check_db_tables()

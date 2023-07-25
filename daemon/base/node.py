@@ -198,13 +198,22 @@ class Node():
             nodename = node['name']
             nodeid = node['id']
             if node['bmcsetupid']:
-                node['bmcsetup'] = Database().name_by_id('bmcsetup', node['bmcsetupid']) or '!!Invalid!!'
+                node['bmcsetup'] = Database().name_by_id(
+                    'bmcsetup',
+                    node['bmcsetupid']
+                ) or '!!Invalid!!'
             elif 'group_bmcsetupid' in node and node['group_bmcsetupid']:
-                node['bmcsetup'] = Database().name_by_id('bmcsetup', node['group_bmcsetupid']) + f" ({node['group']})"
+                node['bmcsetup'] = Database().name_by_id(
+                    'bmcsetup',
+                    node['group_bmcsetupid']
+                ) + f" ({node['group']})"
             if 'group_bmcsetupid' in node:
                 del node['group_bmcsetupid']
             if node['osimageid']:
-                node['osimage'] = Database().name_by_id('osimage', node['osimageid']) or '!!Invalid!!'
+                node['osimage'] = Database().name_by_id(
+                    'osimage',
+                    node['osimageid']
+                ) or '!!Invalid!!'
             elif 'group_osimage' in node and node['group_osimage']:
                 node['osimage'] = node['group_osimage']+f" ({node['group']})"
             if 'group_osimage' in node:
@@ -219,7 +228,7 @@ class Node():
                 node['cluster_provision_method'] = cluster[0]['provision_method']
                 node['cluster_provision_fallback'] = cluster[0]['provision_fallback']
 
-            # below section shows what's configured for the node, or the group, or a default fallback
+            # What's configured for the node, or the group, or a default fallback
             items = {
                 # 'prescript': '<empty>',
                 # 'partscript': '<empty>',
@@ -297,7 +306,7 @@ class Node():
             node['hostname'] = nodename
             if node_interface:
                 for interface in node_interface:
-                    interface_name, *_ = (node['provision_interface'].split(' ')+[None])
+                    interface_name, *_ = (node['provision_interface'].split(' ') + [None])
                     # we skim off parts that we added for clarity in above section
                     # (e.g. (default)). also works if there's no additional info
                     if interface['interface'] == interface_name and interface['network']:
@@ -320,7 +329,7 @@ class Node():
         """
         This method will return update requested node.
         """
-        status = False
+        # status = False
         data = {}
         items = {
             # 'setupbmc': False,
@@ -355,7 +364,8 @@ class Node():
             else:
                 if 'newnodename' in data:
                     nodename_new = data['newnodename']
-                    response = {'message': 'newnodename is only allowed while update, rename or clone a node'}
+                    message = 'newnodename is only allowed while update, rename or clone a node'
+                    response = {'message': message}
                     access_code = 400
                     return dumps(response), access_code
                 create = True
@@ -381,7 +391,7 @@ class Node():
                         data[key+'id'] = ""
                     else:
                         data[key+'id'] = Database().id_by_name(key, check_name)
-                        if (not data[key+'id']):
+                        if not data[key+'id']:
                             access_code = 404
                             response = {'message': f'{key} {check_name} is not known or valid'}
                             return dumps(response), access_code
@@ -402,7 +412,7 @@ class Node():
                     response = {'message': f'Node {name} updated successfully'}
                     access_code = 204
                 if create:
-                    if not 'groupid' in data:
+                    if 'groupid' not in data:
                         # ai, we DO need this for new nodes...... kind of.
                         # we agreed on this. pending?
                         access_code = 400
@@ -426,19 +436,26 @@ class Node():
                         )
                         if group_interfaces:
                             for group_interface in group_interfaces:
-                                result, mesg = Config().node_interface_config(
+                                result, message = Config().node_interface_config(
                                     nodeid,
                                     group_interface['interface'],
                                     None,
                                     group_interface['options']
                                 )
                                 if result:
-                                    ips = Config().get_all_occupied_ips_from_network(group_interface['network'])
-                                    network = Database().get_record(None, 'network', f" WHERE `name` = \"{group_interface['network']}\"")
+                                    ips = Config().get_all_occupied_ips_from_network(
+                                        group_interface['network']
+                                    )
+                                    where = f" WHERE `name` = \"{group_interface['network']}\""
+                                    network = Database().get_record(None, 'network', where)
                                     if network:
-                                        avail = Helper().get_available_ip(network[0]['network'], network[0]['subnet'], ips)
+                                        avail = Helper().get_available_ip(
+                                            network[0]['network'],
+                                            network[0]['subnet'],
+                                            ips
+                                        )
                                         if avail:
-                                            result, mesg = Config().node_interface_ipaddress_config(
+                                            result, message = Config().node_interface_ipaddress_config(
                                                 nodeid,
                                                 group_interface['interface'],
                                                 avail,
@@ -451,9 +468,14 @@ class Node():
                                         # we try to ping for X ips, if none of these are free,
                                         # something else is going on (read: rogue devices)....
                                         # while(max>0 and ret!=1):
-                                        #     avail=Helper().get_available_ip(network[0]['network'], network[0]['subnet'],ips)
+                                        #     avail = Helper().get_available_ip(
+                                        #       network[0]['network'],
+                                        #       network[0]['subnet'],
+                                        #       ips
+                                        #     )
                                         #     ips.append(avail)
-                                        #     output, ret = Helper().runcommand(f"ping -w1 -c1 {avail}", True, 3)
+                                        #     command = f"ping -w1 -c1 {avail}"
+                                        #     output, ret = Helper().runcommand(command, True, 3)
                                         #     max-= 1
 
                 if interfaces:
@@ -467,44 +489,66 @@ class Node():
                             options = interface['options']
                         if 'network' in interface.keys():
                             network = interface['network']
-                        result, mesg = Config().node_interface_config(nodeid, interface_name, macaddress, options)
+                        result, message = Config().node_interface_config(
+                            nodeid,
+                            interface_name,
+                            macaddress,
+                            options
+                        )
                         if result:
                             if not 'ipaddress' in interface.keys():
                                 existing = Database().get_record_join(
                                     ['ipaddress.ipaddress'],
-                                    ['nodeinterface.nodeid=node.id','ipaddress.tablerefid=nodeinterface.id'],
-                                    [f"node.name='{name}'","ipaddress.tableref='nodeinterface'",f"nodeinterface.interface='{interface_name}'"]
+                                    [
+                                        'nodeinterface.nodeid=node.id',
+                                        'ipaddress.tablerefid=nodeinterface.id'
+                                    ],
+                                    [
+                                        f"node.name='{name}'",
+                                        "ipaddress.tableref='nodeinterface'",
+                                        f"nodeinterface.interface='{interface_name}'"
+                                    ]
                                 )
                                 if existing:
                                     ipaddress = existing[0]['ipaddress']
                                 else:
                                     ips = Config().get_all_occupied_ips_from_network(network)
-                                    network_details = Database().get_record(None, 'network', f" WHERE `name` = '{network}'")
+                                    where = f" WHERE `name` = '{network}'"
+                                    network_details = Database().get_record(None, 'network', where)
                                     if network_details:
-                                        avail = Helper().get_available_ip(network_details[0]['network'], network_details[0]['subnet'], ips)
+                                        avail = Helper().get_available_ip(
+                                            network_details[0]['network'],
+                                            network_details[0]['subnet'],
+                                            ips
+                                        )
                                         if avail:
                                             ipaddress = avail
                             else:
                                 ipaddress=interface['ipaddress']
-                            result, mesg = Config().node_interface_ipaddress_config(nodeid, interface_name, ipaddress, network)
+                            result, message = Config().node_interface_ipaddress_config(
+                                nodeid,
+                                interface_name,
+                                ipaddress,
+                                network
+                            )
 
                         if result is False:
-                            response = {'message': f'{mesg}'}
+                            response = {'message': f'{message}'}
                             access_code = 404
                             return dumps(response), access_code
 
-                Service().queue('dhcp','restart')
-                Service().queue('dns','restart')
+                Service().queue('dhcp', 'restart')
+                Service().queue('dns', 'restart')
                 # below might look as redundant but is added to prevent a possible race condition
                 # when many nodes are added in a loop.
                 # the below tasks ensures that even the last node will be included in dhcp/dns
                 Queue().add_task_to_queue('dhcp:restart', 'housekeeper', '__node_post__')
                 Queue().add_task_to_queue('dns:restart', 'housekeeper', '__node_post__')
             else:
-                response = {'message': 'Bad Request; Columns are incorrect'}
+                response = {'message': 'Columns are incorrect'}
                 access_code = 400
         else:
-            response = {'message': 'Bad Request; Did not received data'}
+            response = {'message': 'Did not received data'}
             access_code = 400
         return dumps(response), access_code
 
@@ -525,7 +569,7 @@ class Node():
             node = Database().get_record(None, 'node', f' WHERE name = "{name}"')
             if node:
                 nodeid = node[0]['id']
-                if 'newnodename' in data: 
+                if 'newnodename' in data:
                     newnodename = data['newnodename']
                     where = f' WHERE `name` = "{newnodename}"'
                     node_check = Database().get_record(None, 'node', where)
@@ -537,11 +581,11 @@ class Node():
                         data['name'] = data['newnodename']
                         del data['newnodename']
                 else:
-                    response = {'message': 'Bad Request; Destination node name not supplied'}
+                    response = {'message': 'Destination node name not supplied'}
                     access_code = 400
                     return dumps(response), access_code
             else:
-                response = {'message': f'Bad Request; Source node {name} does not exist'}
+                response = {'message': f'Source node {name} does not exist'}
                 access_code = 400
                 return dumps(response), access_code
 
@@ -560,19 +604,19 @@ class Node():
                     del data[item]
 
             # True means: cannot be empty if supplied. False means: can only be empty or correct
-            checks={'bmcsetup':False,'group':True,'osimage':False,'switch':False}
-            for check in checks.keys():
-                if check in data:
-                    check_name = data[check]
-                    if data[check] == "" and checks[check] is False:
-                        data[check+'id']=""
+            checks = {'bmcsetup': False, 'group': True, 'osimage': False, 'switch': False}
+            for key, value in checks.items():
+                if key in data:
+                    check_name = data[key]
+                    if data[key] == "" and value is False:
+                        data[key+'id']=""
                     else:
-                        data[check+'id'] = Database().id_by_name(check, check_name)
-                        if (not data[check+'id']):
+                        data[key+'id'] = Database().id_by_name(key, check_name)
+                        if not data[key+'id']:
                             access_code = 404
-                            response = {'message': f'{check} {check_name} is not known or valid'}
+                            response = {'message': f'{key} {check_name} is not known or valid'}
                             return dumps(response), access_code
-                    del data[check]
+                    del data[key]
             interfaces = None
             if 'interfaces' in data:
                 interfaces = data['interfaces']
@@ -584,13 +628,20 @@ class Node():
                 row = Helper().make_rows(data)
                 new_nodeid = Database().insert('node', row)
                 if not new_nodeid:
-                    response = {'message': f'Node {newnodename} could not be created due to possible property clash'}
+                    message = f'Node {newnodename} is not created due to possible property clash'
+                    response = {'message': message}
                     access_code = 404
                     return dumps(response), access_code
                 response = {'message': f'Node {name} created successfully'}
                 access_code = 201
                 node_interfaces = Database().get_record_join(
-                    ['nodeinterface.interface', 'ipaddress.ipaddress', 'nodeinterface.macaddress', 'network.name as network', 'nodeinterface.options'],
+                    [
+                        'nodeinterface.interface',
+                        'ipaddress.ipaddress',
+                        'nodeinterface.macaddress',
+                        'network.name as network',
+                        'nodeinterface.options'
+                    ],
                     ['network.id=ipaddress.networkid', 'ipaddress.tablerefid=nodeinterface.id'],
                     ['tableref="nodeinterface"', f"nodeinterface.nodeid='{nodeid}'"]
                 )
@@ -607,58 +658,84 @@ class Node():
                             macaddress = interface['macaddress']
                         if 'options' in interface.keys():
                             options = interface['options']
-                        result,mesg = Config().node_interface_config(new_nodeid, interface_name, macaddress, options)
+                        result, message = Config().node_interface_config(
+                            new_nodeid,
+                            interface_name,
+                            macaddress,
+                            options
+                        )
                         if result and 'ipaddress' in interface.keys():
                             ipaddress = interface['ipaddress']
                             if 'network' in interface.keys():
                                 network = interface['network']
-                            result,mesg = Config().node_interface_ipaddress_config(new_nodeid, interface_name, ipaddress, network)
-                            
+                            result, message = Config().node_interface_ipaddress_config(
+                                new_nodeid,
+                                interface_name,
+                                ipaddress,
+                                network
+                            )
                         if result is False:
-                            response = {'message': f'{mesg}'}
+                            response = {'message': f'{message}'}
                             access_code = 404
                             return dumps(response), access_code
 
                 for node_interface in node_interfaces:
                     interface_name = node_interface['interface']
                     interface_options = node_interface['options']
-                    result, mesg = Config().node_interface_config(new_nodeid, interface_name, None, interface_options )
+                    result, message = Config().node_interface_config(
+                        new_nodeid,
+                        interface_name,
+                        None,
+                        interface_options
+                    )
                     if result and 'ipaddress' in node_interface.keys():
                         if 'network' in node_interface.keys():
                             networkname = node_interface['network']
                             ips = Config().get_all_occupied_ips_from_network(networkname)
-                            network = Database().get_record(None, 'network', f' WHERE `name` = "{networkname}"')
+                            where = f' WHERE `name` = "{networkname}"'
+                            network = Database().get_record(None, 'network', where)
                             if network:
                                 ret, avail = 0, None
                                 max_count = 5
                                 # we try to ping for X ips, if none of these are free, something
                                 # else is going on (read: rogue devices)....
                                 while(max_count>0 and ret!=1):
-                                    avail = Helper().get_available_ip(network[0]['network'],network[0]['subnet'],ips)
+                                    avail = Helper().get_available_ip(
+                                        network[0]['network'],
+                                        network[0]['subnet'],
+                                        ips
+                                    )
                                     ips.append(avail)
                                     _, ret = Helper().runcommand(f"ping -w1 -c1 {avail}", True, 3)
                                     max_count -= 1
 
                                 if avail:
-                                    result,mesg = Config().node_interface_ipaddress_config(new_nodeid, interface_name, avail, networkname)
+                                    result, message = Config().node_interface_ipaddress_config(
+                                        new_nodeid,
+                                        interface_name,
+                                        avail,
+                                        networkname
+                                    )
                                     if result is False:
-                                        response = {'message': f'{mesg}'}
+                                        response = {'message': f'{message}'}
                                         access_code = 404
                                         return dumps(response), access_code
                 # Service().queue('dhcp','restart')
                 # do we need dhcp restart? MAC is wiped on new NIC so no real need i guess. pending
                 Service().queue('dns','restart')
             else:
-                response = {'message': 'Bad Request; Columns are incorrect'}
+                response = {'message': 'Columns are incorrect'}
                 access_code = 400
         else:
-            response = {'message': 'Bad Request; Did not received data'}
+            response = {'message': 'Did not received data'}
             access_code = 400
         return dumps(response), access_code
 
 
     def delete_node(self, name=None):
-        """This method will delete a node."""
+        """
+        This method will delete a node.
+        """
         node = Database().get_record(None, 'node', f' WHERE `name` = "{name}"')
         if node:
             nodeid = node[0]['id']

@@ -125,13 +125,27 @@ class Model():
         return dumps(response), access_code
 
 
-    def change_record(self, name=None, new_name=None, table=None, table_cap=None, request_data=None):
+    def change_record(
+            self,
+            name=None,
+            new_name=None,
+            table=None,
+            table_cap=None,
+            request_data=None
+        ):
         """
-        This method will create or update a bmcsetup.
+        This method will decide to create or update a record.
         """
         record = Database().get_record(table=table, where=f' WHERE `name` = "{name}"')
         if record or (new_name in request_data['config'][table][name]):
-            response, access_code = self.update_record(record, name, new_name, table, table_cap, request_data)
+            response, access_code = self.update_record(
+                record,
+                name,
+                new_name,
+                table,
+                table_cap,
+                request_data
+            )
         else:
             response, access_code = self.create_record(record ,name, table, table_cap, request_data)
         return response, access_code
@@ -164,7 +178,15 @@ class Model():
         return dumps(response), access_code
 
 
-    def update_record(self, record=None, name=None, new_name=None, table=None, table_cap=None, request_data=None):
+    def update_record(
+            self,
+            record=None,
+            name=None,
+            new_name=None,
+            table=None,
+            table_cap=None,
+            request_data=None
+        ):
         """
         This method will update a record for requested table.
         """

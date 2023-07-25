@@ -14,13 +14,11 @@ __email__       = 'antoine.schonewille@clustervision.com'
 __status__      = 'Development'
 
 
-from utils.log import Log
-from utils.filter import Filter
-from libtorrent import bencode
 import random
 import binascii
 from struct import pack
 from socket import inet_aton
+from libtorrent import bencode
 from flask import Response
 from utils.log import Log
 from utils.database import Database
@@ -37,7 +35,7 @@ class Tracker():
         self.DEFAULT_ALLOWED_PEERS = 50
         self.MAX_ALLOWED_PEERS = 200
         self.INFO_HASH_LEN = 22
-        self.PEER_ID_LEN = 18 
+        self.PEER_ID_LEN = 18
 
         # HTTP Error Codes for BitTorrent Tracker
         self.INVALID_REQUEST_TYPE = 100
@@ -53,17 +51,14 @@ class Tracker():
             self.MISSING_INFO_HASH: 'Missing info_hash field',
             self.MISSING_PEER_ID: 'Missing peer_id field',
             self.MISSING_PORT: 'Missing port field',
-            self.INVALID_INFO_HASH: ('info_hash is not %d bytes' %
-                                     self.INFO_HASH_LEN),
-            self.INVALID_PEER_ID: 'peer_id is not %d bytes' % self.PEER_ID_LEN,
-            self.INVALID_NUMWANT: ('Peers more than %d is not allowed.' %
-                                   self.MAX_ALLOWED_PEERS),
-            self.GENERIC_ERROR: 'Error in request',
+            self.INVALID_INFO_HASH: (f'info_hash is not {self.INFO_HASH_LEN} bytes'),
+            self.INVALID_PEER_ID: f'peer_id is not {self.PEER_ID_LEN} bytes',
+            self.INVALID_NUMWANT: (f'Peers more than {self.MAX_ALLOWED_PEERS} is not allowed.'),
+            self.GENERIC_ERROR: 'Error in request'
         }
         self.tracker_interval = 20
         self.tracker_min_interval = 10
         self.tracker_maxpeers = 100
-
         # self.tracker_interval = params['luna_tracker_interval']
         # self.tracker_min_interval = params['luna_tracker_min_interval']
         # self.tracker_maxpeers = params['luna_tracker_maxpeers']
@@ -76,11 +71,12 @@ class Tracker():
         """
         message = "<html><title>900: unknown error</title><body>900: unknown error</body></html>"
         if myerror in self.PYTT_RESPONSE_MESSAGES:
-            message = f"<html><title>{myerror}: {self.PYTT_RESPONSE_MESSAGES[myerror]}</title><body>{myerror}: {self.PYTT_RESPONSE_MESSAGES[myerror]}</body></html>"
+            message = f"<html><title>{myerror}: {self.PYTT_RESPONSE_MESSAGES[myerror]}</title>"
+            message += f"<body>{myerror}: {self.PYTT_RESPONSE_MESSAGES[myerror]}</body></html>"
         return 200, message
-    
-    # CREATE TABLE `tracker` ( `id`  INTEGER  NOT NULL ,  `infohash`  VARCHAR ,  `peer`  VARCHAR ,  `ipaddress`  VARCHAR ,  `port`  INTEGER ,  `download`  INTEGER ,  `upload`  INTEGER ,  `left`  INTEGER ,  `updated`  VARCHAR ,  `status`  VARCHAR , PRIMARY KEY (`id` AUTOINCREMENT));
 
+
+    # CREATE TABLE `tracker` ( `id`  INTEGER  NOT NULL ,  `infohash`  VARCHAR ,  `peer`  VARCHAR ,  `ipaddress`  VARCHAR ,  `port`  INTEGER ,  `download`  INTEGER ,  `upload`  INTEGER ,  `left`  INTEGER ,  `updated`  VARCHAR ,  `status`  VARCHAR , PRIMARY KEY (`id` AUTOINCREMENT));
     def update_peers(self, info_hash=None, peer_id=None, ip=None, port=None, status=None, uploaded=None, downloaded=None, left=None):
         """
         Store the information about the peer
@@ -199,18 +195,17 @@ class Tracker():
         return n_seeders,n_leechers,peers
 
 
-    def announce(self,params,peerip=None):
+    def announce(self, params, peerip=None):
         failure_reason = ''
         warning_message = ''
-
         info_hash=None
         if 'info_hash' in params:
             info_hash = params['info_hash']
         if info_hash is None:
             return self.get_error(self.MISSING_INFO_HASH)
-        info_hash=binascii.hexlify(str.encode(info_hash))
-        info_hash=info_hash.decode()
-        hashlen=len(info_hash)
+        info_hash = binascii.hexlify(str.encode(info_hash))
+        info_hash = info_hash.decode()
+        hashlen = len(info_hash)
         self.logger.debug(f"info_hash = [{info_hash}], len = {hashlen}")
         if len(info_hash) < self.INFO_HASH_LEN:
             return self.get_error(self.INVALID_INFO_HASH)
@@ -220,25 +215,25 @@ class Tracker():
             peer_id=params['peer_id']
         if peer_id is None:
             return self.get_error(self.MISSING_PEER_ID)
-        peer_id=binascii.hexlify(str.encode(peer_id))
-        peer_id=peer_id.decode()
-        peerlen=len(peer_id)
+        peer_id = binascii.hexlify(str.encode(peer_id))
+        peer_id = peer_id.decode()
+        peerlen = len(peer_id)
         self.logger.debug(f"peer_id = [{peer_id}], len = {peerlen}")
         if len(peer_id) < self.PEER_ID_LEN:
             return self.get_error(self.INVALID_PEER_ID)
 
         announce_ip=None
         if 'ip' in params:
-            ip=params['ip']
+            ip = params['ip']
         if announce_ip == '0.0.0.0':
             announce_ip = None
         ip = announce_ip or peerip
 
-        port=None
+        port = None
         if 'port' in params:
             try:
                 port = int(params['port'])
-            except:
+            except Exception:
                 return self.get_error(self.MISSING_PORT)
         if port is None:
             return self.get_error(self.MISSING_PORT)
@@ -260,45 +255,36 @@ class Tracker():
         if 'tracker_id' in params:
             tracker_id = params['tracker_id']
 
-        numwant=self.DEFAULT_ALLOWED_PEERS
-#        numwant = int(self.get_argument('numwant',
-#                                        default=self.DEFAULT_ALLOWED_PEERS))
+        numwant = self.DEFAULT_ALLOWED_PEERS
+        # numwant = int(self.get_argument('numwant', default=self.DEFAULT_ALLOWED_PEERS))
 
         if numwant > self.tracker_maxpeers:
             # XXX: cannot request more than MAX_ALLOWED_PEERS.
             return self.get_error(self.INVALID_NUMWANT)
-
         self.logger.debug(f"update_peers: {info_hash}, {peer_id}, {ip}, {port}, {event}, {uploaded}, {downloaded}, {left}")
-
         self.update_peers(info_hash, peer_id, ip, port, event, uploaded, downloaded, left)
 
         # generate response
         response = {}
-
         # Interval in seconds that the client should wait between sending
         # regular requests to the tracker.
         response['interval'] = self.tracker_interval
-
         # Minimum announce interval. If present clients must not re-announce
         # more frequently than this.
         response['min interval'] = self.tracker_min_interval
-
         response['tracker id'] = tracker_id
-
         if failure_reason:
             response['failure reason'] = failure_reason
-
         if warning_message:
             response['warning message'] = warning_message
 
-        n_seeders,n_leechers,n_peers = self.get_peers(info_hash, numwant, compact, no_peer_id, self.tracker_interval * 2)
+        n_seeders, n_leechers, n_peers = self.get_peers(info_hash, numwant, compact, no_peer_id, self.tracker_interval * 2)
 
         response['complete'] = n_seeders
         response['incomplete'] = n_leechers
         response['peers'] = n_peers
-
         self.logger.debug(f"response: {response}")
-        response=bencode(response)
+        response = bencode(response)
  
         try:
             resp = Response(response)
@@ -311,16 +297,18 @@ class Tracker():
             return f"{exp}\n",500
 
 
-    def scrape(self,hashes=[]):
-        """Returns the state of all torrents this tracker is managing"""
+    def scrape(self, hashes=[]):
+        """
+        Returns the state of all torrents this tracker is managing
+        """
         response = {}
-        response['files']={}
+        response['files'] = {}
 
         self.logger.debug(f"Inside scrape base class. hashes = [{hashes}]")
-        filter=True 
+        filter = True
         if not hashes:
-            self.logger.debug(f"Inside scrape base class. no hashes!")
-            peers = Database().get_record(None, 'tracker', f"WHERE updated>datetime('now','-3600 second') ORDER BY updated DESC")
+            self.logger.debug("Inside scrape base class. no hashes!")
+            peers = Database().get_record(None, 'tracker', "WHERE updated>datetime('now','-3600 second') ORDER BY updated DESC")
             if peers:
                 filter=False
                 for peer in peers:
@@ -338,18 +326,18 @@ class Tracker():
             no_peer_id = 1
 
             self.logger.debug(f"Inside scrape base class. info_hash: {info_hash}")
-            n_seeders,n_leechers,n_peers = self.get_peers(info_hash, numwant, compact, no_peer_id, self.tracker_interval * 2)
+            n_seeders, n_leechers, n_peers = self.get_peers(info_hash, numwant, compact, no_peer_id, self.tracker_interval * 2)
 
-            info_hash=bytes.decode(binascii.unhexlify(info_hash))
+            info_hash = bytes.decode(binascii.unhexlify(info_hash))
             response['files'][info_hash] = {}
 
             response['files'][info_hash]['complete'] = n_seeders
             response['files'][info_hash]['downloaded'] = n_seeders
             response['files'][info_hash]['incomplete'] = n_leechers
 
-        self.logger.debug(f"Inside scrape base class. reponse: {response}")
+        self.logger.debug(f"Inside scrape base class. response: {response}")
 
-        response=bencode(response)
+        response = bencode(response)
         try:
             resp = Response(response)
             resp.mimetype='text/plain'
@@ -358,4 +346,3 @@ class Tracker():
             return resp
         except Exception as exp:
             return f"{exp}\n",500
-

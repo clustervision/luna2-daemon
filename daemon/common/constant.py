@@ -99,7 +99,7 @@ def getlist(dictionary):
         key_list.append(key)
     return key_list
 
-def checksection(filename=None):
+def check_section(filename=None):
     """
     Compare the ini section with the predefined dictionary sections.
     """
@@ -153,7 +153,7 @@ def getconfig(filename=None):
     of options are item(10.141.255.254, node[001-004])
     """
     configParser.read(filename)
-    checksection(filename)
+    check_section(filename)
     for section in configParser.sections():
         for (option, item) in configParser.items(section):
             if section in getlist(CONSTANT):

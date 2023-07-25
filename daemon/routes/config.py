@@ -497,7 +497,7 @@ def config_bmcsetup():
     Process - Fetch The list of configured settings.
     Output - List Of BMC Setup.
     """
-    response, access_code = BMCSetup().get_all_bmcsetups()
+    response, access_code = BMCSetup().get_all_bmcsetup()
     return response, access_code
 
 

@@ -391,7 +391,7 @@ class Helper(object):
             self.logger.error(f"something went wrong: {exp}")
             return None, None
 
-    def get_quantity_occupied_ipaddresses_in_network(self, network=None):
+    def get_quantity_occupied_ipaddress_in_network(self, network=None):
         """
         This method will provide the quantity occupied in a network by ipaddress.
         """
@@ -494,7 +494,7 @@ class Helper(object):
         # return response
 
 
-    def checksection(self, filename=None, parent_dict=None):
+    def check_section(self, filename=None, parent_dict=None):
         """
         Compare the bootstrap/constants section with the predefined dictionary sections.
         """

@@ -36,13 +36,21 @@ class Interface():
 
 
     def get_all_node_interface(self, name=None):
-        """This method will return all the node interfaces in detailed format."""
+        """
+        This method will return all the node interfaces in detailed format.
+        """
         node = Database().get_record(None, 'node', f' WHERE name = "{name}"')
         if node:
             response = {'config': {'node': {name: {'interfaces': [] } } } }
             nodeid = node[0]['id']
             node_interfaces = Database().get_record_join(
-                ['network.name as network', 'nodeinterface.macaddress', 'nodeinterface.interface', 'ipaddress.ipaddress', 'nodeinterface.options'],
+                [
+                    'network.name as network',
+                    'nodeinterface.macaddress',
+                    'nodeinterface.interface',
+                    'ipaddress.ipaddress',
+                    'nodeinterface.options'
+                ],
                 ['ipaddress.tablerefid=nodeinterface.id', 'network.id=ipaddress.networkid'],
                 ['tableref="nodeinterface"', f"nodeinterface.nodeid='{nodeid}'"]
             )
@@ -66,7 +74,9 @@ class Interface():
 
 
     def change_node_interface(self, name=None, http_request=None):
-        """This method will add or update the node interface."""
+        """
+        This method will add or update the node interface.
+        """
         request_data = http_request.data
         if request_data:
             node = Database().get_record(None, 'node', f' WHERE name = "{name}"')
@@ -82,25 +92,43 @@ class Interface():
                             macaddress = interface['macaddress']
                         if 'options' in interface.keys():
                             options = interface['options']
-                        result, message = Config().node_interface_config(nodeid, interface_name, macaddress, options)
+                        result, message = Config().node_interface_config(
+                            nodeid,
+                            interface_name,
+                            macaddress,
+                            options
+                        )
                         if result and 'ipaddress' in interface.keys():
                             ipaddress=interface['ipaddress']
                             if 'network' in interface.keys():
                                 network=interface['network']
-                            result, message = Config().node_interface_ipaddress_config(nodeid, interface_name, ipaddress, network)
+                            result, message = Config().node_interface_ipaddress_config(
+                                nodeid,
+                                interface_name,
+                                ipaddress,
+                                network
+                            )
 
                         if result is False:
                             response = {'message': f'{message}'}
                             access_code = 404
                         else:
-                            Service().queue('dhcp','restart')
-                            Service().queue('dns','restart')
+                            Service().queue('dhcp', 'restart')
+                            Service().queue('dns', 'restart')
                             # below might look as redundant but is added to prevent a possible
                             # race condition when many nodes are added in a loop.
                             # the below tasks ensures that even the last node will be included
                             # in dhcp/dns
-                            Queue().add_task_to_queue('dhcp:restart', 'housekeeper', '__node_interface_post__')
-                            Queue().add_task_to_queue('dns:restart', 'housekeeper', '__node_interface_post__')
+                            Queue().add_task_to_queue(
+                                'dhcp:restart',
+                                'housekeeper',
+                                '__node_interface_post__'
+                            )
+                            Queue().add_task_to_queue(
+                                'dns:restart',
+                                'housekeeper',
+                                '__node_interface_post__'
+                            )
                             response = {'message': 'Interface updated'}
                             access_code = 204
                 else:
@@ -112,21 +140,33 @@ class Interface():
                 response = {'message': f'Node {name} is not available'}
                 access_code = 404
         else:
-            response = {'message': 'Bad Request; Did not received Data'}
+            response = {'message': 'Did not received Data'}
             access_code = 400
         return dumps(response), access_code
 
 
     def get_node_interface(self, name=None, interface=None):
-        """This method will provide a node interface."""
+        """
+        This method will provide a node interface.
+        """
         node = Database().get_record(None, 'node', f' WHERE name = "{name}"')
         if node:
             response = {'config': {'node': {name: {'interfaces': [] } } } }
             nodeid = node[0]['id']
             node_interfaces = Database().get_record_join(
-                ['network.name as network', 'nodeinterface.macaddress', 'nodeinterface.interface', 'ipaddress.ipaddress', 'nodeinterface.options'],
+                [
+                    'network.name as network',
+                    'nodeinterface.macaddress',
+                    'nodeinterface.interface',
+                    'ipaddress.ipaddress',
+                    'nodeinterface.options'
+                ],
                 ['ipaddress.tablerefid=nodeinterface.id', 'network.id=ipaddress.networkid'],
-                ['tableref="nodeinterface"', f"nodeinterface.nodeid='{nodeid}'", f"nodeinterface.interface='{interface}'"]
+                [
+                    'tableref="nodeinterface"',
+                    f"nodeinterface.nodeid='{nodeid}'",
+                    f"nodeinterface.interface='{interface}'"
+                ]
             )
             if node_interfaces:
                 my_interface = []
@@ -149,7 +189,9 @@ class Interface():
 
 
     def delete_node_interface(self, name=None, interface=None):
-        """This method will delete a node."""
+        """
+        This method will delete a node.
+        """
         node = Database().get_record(None, 'node', f' WHERE `name` = "{name}"')
         if node:
             nodeid = node[0]['id']
@@ -157,7 +199,11 @@ class Interface():
             node_interface = Database().get_record_join(
                 ['nodeinterface.id as ifid', 'ipaddress.id as ipid'],
                 ['ipaddress.tablerefid=nodeinterface.id'],
-                ['tableref="nodeinterface"', f"nodeinterface.nodeid='{nodeid}'", f"nodeinterface.interface='{interface}'"]
+                [
+                    'tableref="nodeinterface"',
+                    f"nodeinterface.nodeid='{nodeid}'",
+                    f"nodeinterface.interface='{interface}'"
+                ]
             )
             if node_interface:
                 where = [{"column": "id", "value": node_interface[0]['ipid']}]
@@ -169,7 +215,11 @@ class Interface():
                 # below might look as redundant but is added to prevent a possible race condition
                 # when many nodes are added in a loop.
                 # the below tasks ensures that even the last node will be included in dhcp/dns
-                Queue().add_task_to_queue('dhcp:restart', 'housekeeper', '__node_interface_delete__')
+                Queue().add_task_to_queue(
+                    'dhcp:restart',
+                    'housekeeper',
+                    '__node_interface_delete__'
+                )
                 Queue().add_task_to_queue('dns:restart', 'housekeeper', '__node_interface_delete__')
                 response = {'message': f'Node {name} interface {interface} removed successfully'}
                 access_code = 204
@@ -216,7 +266,9 @@ class Interface():
 
 
     def change_group_interface(self, name=None, http_request=None):
-        """This method will add or update the group interface."""
+        """
+        This method will add or update the group interface.
+        """
         request_data = http_request.data
         if request_data:
             group = Database().get_record(None, 'group', f' WHERE name = "{name}"')
@@ -251,7 +303,10 @@ class Interface():
                         # below section takes care(in the background), adding/renaming/deleting.
                         # for adding next free ip-s will be selected. time consuming
                         # therefor background
-                        queue_id, _ = Queue().add_task_to_queue(f'add_interface_to_group_nodes:{name}:{interface}', 'group_interface')
+                        queue_id, _ = Queue().add_task_to_queue(
+                            f'add_interface_to_group_nodes:{name}:{interface}',
+                            'group_interface'
+                        )
                         next_id = Queue().next_task_in_queue('group_interface')
                         if queue_id == next_id:
                             executor = ThreadPoolExecutor(max_workers=1)
@@ -267,13 +322,15 @@ class Interface():
                 response = {'message': 'No group is available'}
                 access_code = 404
         else:
-            response = {'message': 'Bad Request; Did not received data'}
+            response = {'message': 'Did not received data'}
             access_code = 400
         return dumps(response), access_code
 
 
     def get_group_interface(self, name=None, interface=None):
-        """This method will provide a group interface."""
+        """
+        This method will provide a group interface.
+        """
         group = Database().get_record(None, 'group', f' WHERE name = "{name}"')
         if group:
             response = {'config': {'group': {name: {'interfaces': [] } } } }
@@ -304,7 +361,9 @@ class Interface():
 
 
     def delete_group_interface(self, name=None, interface=None):
-        """This method will delete a group interface."""
+        """
+        This method will delete a group interface.
+        """
         group = Database().get_record(None, 'group', f' WHERE `name` = "{name}"')
         if group:
             groupid = group[0]['id']
@@ -315,7 +374,10 @@ class Interface():
                 Database().delete_row('groupinterface', where)
                 # below section takes care (in the background), adding/renaming/deleting.
                 # for adding next free ip-s will be selected. time consuming therefor background
-                queue_id, _ = Queue().add_task_to_queue(f'delete_interface_from_group_nodes:{name}:{interface}', 'group_interface')
+                queue_id, _ = Queue().add_task_to_queue(
+                    f'delete_interface_from_group_nodes:{name}:{interface}',
+                    'group_interface'
+                )
                 next_id = Queue().next_task_in_queue('group_interface')
                 if queue_id == next_id:
                     # executor = ThreadPoolExecutor(max_workers=1)
@@ -325,7 +387,8 @@ class Interface():
                 response = {'message': f'Group {name} interface {interface} removed'}
                 access_code = 204
             else:
-                response = {'message': f'Group {name} interface {interface} not present in database'}
+                message = f'Group {name} interface {interface} not present in database'
+                response = {'message': message}
                 access_code = 404
         else:
             response = {'message': f'Group {name} not present in database'}

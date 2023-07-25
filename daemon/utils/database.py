@@ -4,7 +4,7 @@
 This Class Identify the specified Database Connection from Configuration
 and return the Cursor of correct Database.
 Database have the default methods for CRUD. In case of changing database
-model dosn't impact the application.
+model doesn't impact the application.
 """
 
 __author__      = 'Sumit Sharma'
@@ -16,17 +16,18 @@ __email__       = 'sumit.sharma@clustervision.com'
 __status__      = 'Development'
 
 
-import pyodbc
-import sqlite3
-from utils.log import Log
-from common.constant import CONSTANT
 import re
 import threading
 from time import sleep
+import sqlite3
+import pyodbc
+from utils.log import Log
+from common.constant import CONSTANT
 
-mylocal = threading.local()
+local_thread = threading.local()
 
-class Database(object):
+
+class Database():
 
     """
     Database Connector Class with all basic functions.
@@ -41,54 +42,56 @@ class Database(object):
         self.server = f'SERVER={CONSTANT["DATABASE"]["HOST"]};'
         self.database = f'DATABASE={CONSTANT["DATABASE"]["DATABASE"]};'
         self.uid = f'UID={CONSTANT["DATABASE"]["DBUSER"]};'
-        self.pswd = f'PWD={CONSTANT["DATABASE"]["DBPASSWORD"]};'
+        self.password = f'PWD={CONSTANT["DATABASE"]["DBPASSWORD"]};'
         self.encoding = 'charset=utf8mb4;'
         self.port = f'PORT={CONSTANT["DATABASE"]["PORT"]};'
-        self.connection_string = f'{self.driver}{self.server}{self.database}{self.uid}{self.pswd}'
-        self.connection_string = f'{self.connection_string}{self.encoding}{self.port};MultipleActiveResultSets=True;MARS_Connection=yes;Pooling=True'
-        #self.connection = pyodbc.connect(self.connection_string)
-        #self.cursor = local.connection.cursor()
-
-        # the below 5 lines ensure that each thread gets it's own connection. it's a MUST for pyodbc - Antoine
-        connection = getattr(mylocal, 'connection', None)
+        self.connection_string = f'{self.driver}{self.server}{self.database}{self.uid}'
+        self.connection_string += f'{self.password}{self.encoding}{self.port};'
+        self.connection_string += 'MultipleActiveResultSets=True;MARS_Connection=yes;Pooling=True'
+        # self.connection = pyodbc.connect(self.connection_string)
+        # self.cursor = local.connection.cursor()
+        # the below 5 lines ensure that each thread gets it's own connection.
+        # it's a MUST for pyodbc - Antoine
+        connection = getattr(local_thread, 'connection', None)
         if connection is None:
             if "DATABASE" in CONSTANT and "DRIVER" in CONSTANT["DATABASE"] and CONSTANT["DATABASE"]["DRIVER"] == "SQLite3":
-                self.logger.debug(f"====> Trying SQLite3 driver {threading.current_thread().name} <====")
+                message = f"====> Trying SQLite3 driver {threading.current_thread().name} <===="
+                self.logger.debug(message)
                 if "DATABASE" in CONSTANT["DATABASE"]:
-                   attempt=1
-                   while attempt < 100:
-                       try:
-                           mylocal.connection = sqlite3.connect(CONSTANT["DATABASE"]["DATABASE"])
-                           mylocal.connection.execute('pragma journal_mode=wal')
-                           mylocal.connection.execute('pragma busy_timeout=5000')
-                           mylocal.connection.execute('pragma synchronous=1')
-                           mylocal.connection.isolation_level = None
-                           mylocal.cursor = mylocal.connection.cursor()
-                           break
-                       except Exception as exp:
-                           self.logger.info(f"Problem '{exp}' while connecting to Database on attempt {attempt}... i try again in a few seconds...")
-                           sleep(10)
-                           attempt+=1
+                    attempt = 1
+                    while attempt < 100:
+                        try:
+                            local_thread.connection = sqlite3.connect(CONSTANT["DATABASE"]["DATABASE"])
+                            local_thread.connection.execute('pragma journal_mode=wal')
+                            local_thread.connection.execute('pragma busy_timeout=5000')
+                            local_thread.connection.execute('pragma synchronous=1')
+                            local_thread.connection.isolation_level = None
+                            local_thread.cursor = local_thread.connection.cursor()
+                            break
+                        except Exception as exp:
+                            message = f"Problem '{exp}' while connecting to Database on attempt "
+                            message += f"{attempt}... i try again in a few seconds..."
+                            self.logger.info(message)
+                            sleep(10)
+                            attempt += 1
             else:
-                self.logger.debug(f"====> Trying pyodbc driver {threading.current_thread().name} <====")
-                mylocal.connection = pyodbc.connect(self.connection_string)
-                ##mylocal.connection.autocommit = True
-                mylocal.cursor = mylocal.connection.cursor()
-            self.logger.debug(f"====> Establised DB connection for {threading.current_thread().name} <====")
+                message = f"====> Trying pyodbc driver {threading.current_thread().name} <===="
+                self.logger.debug(message)
+                local_thread.connection = pyodbc.connect(self.connection_string)
+                ## local_thread.connection.autocommit = True
+                local_thread.cursor = local_thread.connection.cursor()
+            message = f"===> Established DB connection for {threading.current_thread().name} <==="
+            self.logger.debug(message)
+
 
     def commit(self):
+        """
+        This method will commit the local thread.
+        """
         if "DATABASE" in CONSTANT and "DRIVER" in CONSTANT["DATABASE"] and CONSTANT["DATABASE"]["DRIVER"] == "SQLite3":
-            mylocal.connection.commit()
+            local_thread.connection.commit()
         else:
-            mylocal.cursor.commit()
-
-
-    def get_cursor(self):
-        """
-        Input - None
-        Output - Return Cursor Od Database.
-        """
-        return self.cursor
+            local_thread.cursor.commit()
 
 
     def check_db(self):
@@ -98,8 +101,8 @@ class Database(object):
         Output - Result/None.
         """
         try:
-            mylocal.cursor.execute('SELECT * FROM user')
-            result = mylocal.cursor.fetchone()
+            local_thread.cursor.execute('SELECT * FROM user')
+            result = local_thread.cursor.fetchone()
         except Exception as exp:
             self.logger.error(f'Error while checking database => {exp}.')
             result = None
@@ -116,41 +119,47 @@ class Database(object):
         Output - Fetch rows along with column name.
         """
         if select:
-            strcolumn = ','.join(map(str, select))
+            column_string = ','.join(map(str, select))
         else:
-            strcolumn = "*"
+            column_string = "*"
         if where:
-            where=re.sub(';$', '', where)
-            query = f'SELECT {strcolumn} FROM "{table}" {where};'
+            where = re.sub(';$', '', where)
+            query = f'SELECT {column_string} FROM "{table}" {where};'
         else:
-            query = f'SELECT {strcolumn} FROM "{table}";'
+            query = f'SELECT {column_string} FROM "{table}";'
         self.logger.debug(f'Query executing => {query}.')
         try:
-            mylocal.cursor.execute(query)
-            names = list(map(lambda x: x[0], mylocal.cursor.description)) # Fetching the Column Names
-            data = mylocal.cursor.fetchall()
-            self.logger.debug(f'Dataset retrived => {data}.')
-            rowdict = {}
+            local_thread.cursor.execute(query)
+            names = list(map(lambda x: x[0], local_thread.cursor.description))
+            # Fetching the Column Names
+            data = local_thread.cursor.fetchall()
+            self.logger.debug(f'Dataset retrieved => {data}.')
+            row_dict = {}
             response = []
             for row in data:
                 for key, value in zip(names,row):
-                    rowdict[key] = value
-                response.append(rowdict)
-                rowdict = {}
+                    row_dict[key] = value
+                response.append(row_dict)
+                row_dict = {}
         except Exception as exp:
             self.logger.error(f'Error occur while executing => {query}. error is {exp}.')
             response = None
         return response
 
-    def convert_string_to_list(self,myitem):
-        if type(myitem) == type('string'):
-            mylist=[]
-            mylist.append(str(myitem))
-        else:
-            mylist=myitem
-        return mylist
 
-    def get_record_join(self, select=None, joinon=None, where=None):
+    def convert_string_to_list(self, text=None):
+        """
+        This method convert string to list.
+        """
+        response = []
+        if isinstance(text, str):
+            response.append(str(text))
+        else:
+            response = text
+        return response
+
+
+    def get_record_join(self, select=None, join_on=None, where=None):
         """
         Input - Complete SQL query with Joins
         Process - It is SELECT operation on the DB.
@@ -162,71 +171,74 @@ class Database(object):
 
         ## ------------------------- NOTE NOTE NOTE -------------------------------
         ## The code below is actively used and works as intended. it looks a bit messy
-        ## but optimizing will most probably obscure what's happening. i therefor left it as is for now.
+        ## but optimizing will most probably obscure what's happening.
+        # i therefor left it as is for now.
         ## Antoine
         ## ------------------------------------------------------------------------
 
         if select:
-            #strcolumn = ','.join(map(str, select))
-            cols=[]
-            select=self.convert_string_to_list(select)
-            for eachselect in select:
-                table,col=eachselect.split('.',1)
-                #str_output = re.sub(regex_search_term, regex_replacement, str_input)
+            # column_string = ','.join(map(str, select))
+            cols = []
+            select=  self.convert_string_to_list(select)
+            for each in select:
+                table, col = each.split('.', 1)
+                # str_output = re.sub(regex_search_term, regex_replacement, str_input)
                 col = re.sub('(as|AS) (.+)', r"AS `\2`", col)
                 if col:
                     cols.append(f"`{table}`.{col}")
                 else:
                     cols.append(f"`{table}`")
-            strcolumn = ','.join(cols)
+            column_string = ','.join(cols)
         else:
-            strcolumn = "*"
-        if joinon:
-            """
-            in here we do two things. we disect the joins, polish them (`) and we gather the involved tables
-            """
-            joinon=self.convert_string_to_list(joinon)
-            joins=[]
-            tables=[]
-            for eachjoin in joinon:
-                left,right=eachjoin.split('=')
-                lefttable,leftcol=left.split('.')
-                righttable,rightcol=right.split('.')
-                joins.append(f"`{lefttable}`.{leftcol}=`{righttable}`.{rightcol}")
-                if lefttable not in tables:
-                    tables.append(lefttable)
-                if righttable not in tables:
-                    tables.append(righttable)
-            #print(tables)
-            #tablestr = ','.join(joinon.map(lambda x:x.split('.',1)[0])) #    map(lambda x:x.split('.', 1)[0])
-            tablestr = '`,`'.join(tables)
-            strjoin = ' AND '.join(joins)
-        else: # no join? we give up. this function is called _join so you better specify one
+            column_string = "*"
+        if join_on:
+            # in here we do two things. we dissect the joins,
+            # polish them (`) and we gather the involved tables
+            join_on = self.convert_string_to_list(join_on)
+            joins = []
+            tables = []
+            for each in join_on:
+                left, right = each.split('=')
+                left_table, left_column = left.split('.')
+                right_table, right_column = right.split('.')
+                joins.append(f"`{left_table}`.{left_column}=`{right_table}`.{right_column}")
+                if left_table not in tables:
+                    tables.append(left_table)
+                if right_table not in tables:
+                    tables.append(right_table)
+            # table_string = ','.join(join_on.map(lambda x:x.split('.',1)[0]))
+            # map(lambda x:x.split('.', 1)[0])
+            table_string = '`,`'.join(tables)
+            join_string = ' AND '.join(joins)
+        else:
+            # no join? we give up. this function is called _join so you better specify one
             response = None
             return response
         if where:
             where=self.convert_string_to_list(where)
-            strwhere = ' AND '.join(map(str, where))
-        if where and joinon:
-            query = f'SELECT {strcolumn} FROM `{tablestr}` WHERE {strjoin} AND {strwhere};'
-        elif joinon:
-            query = f'SELECT {strcolumn} FROM `{tablestr}` WHERE {strjoin};'
-        else:       
+            join_where = ' AND '.join(map(str, where))
+        if where and join_on:
+            query = f'SELECT {column_string} FROM `{table_string}` WHERE {join_string}'
+            query += f' AND {join_where};'
+        elif join_on:
+            query = f'SELECT {column_string} FROM `{table_string}` WHERE {join_string};'
+        else:
             response = None
             return response
         self.logger.debug(f'Query executing => {query}.')
         try:
-            mylocal.cursor.execute(query)
-            names = list(map(lambda x: x[0], mylocal.cursor.description)) # Fetching the Column Names
-            data = mylocal.cursor.fetchall()
-            self.logger.debug(f'Dataset retrived => {data}.')
-            rowdict = {}
+            local_thread.cursor.execute(query)
+            names = list(map(lambda x: x[0], local_thread.cursor.description))
+            # Fetching the Column Names
+            data = local_thread.cursor.fetchall()
+            self.logger.debug(f'Dataset retrieved => {data}.')
+            row_dict = {}
             response = []
             for row in data:
                 for key, value in zip(names,row):
-                    rowdict[key] = value
-                response.append(rowdict)
-                rowdict = {}
+                    row_dict[key] = value
+                response.append(row_dict)
+                row_dict = {}
         except Exception as exp:
             self.logger.error(f'Error occur while executing => {query}. error is {exp}.')
             response = None
@@ -244,17 +256,18 @@ class Database(object):
         """
         self.logger.debug(f'Query executing => {query}.')
         try:
-            mylocal.cursor.execute(query)
-            names = list(map(lambda x: x[0], mylocal.cursor.description)) # Fetching the Column Names
-            data = mylocal.cursor.fetchall()
-            self.logger.debug(f'Dataset retrived => {data}.')
-            rowdict = {}
+            local_thread.cursor.execute(query)
+            names = list(map(lambda x: x[0], local_thread.cursor.description))
+            # Fetching the Column Names
+            data = local_thread.cursor.fetchall()
+            self.logger.debug(f'Dataset retrieved => {data}.')
+            row_dict = {}
             response = []
             for row in data:
                 for key, value in zip(names,row):
-                    rowdict[key] = value
-                response.append(rowdict)
-                rowdict = {}
+                    row_dict[key] = value
+                response.append(row_dict)
+                row_dict = {}
         except Exception as exp:
             self.logger.error(f'Error occur while executing => {query}. error is {exp}.')
             response = None
@@ -265,55 +278,63 @@ class Database(object):
         """
         Input - tablename and column
         Process - It is Create operation on the DB.
-                    table is the table name which need to be created.
-                    column is a list of dict ex:
-                    where = [
-                        {"column": "id", "datatype": "INTEGER", "length": "10", "key": "PRIMARY", "keyadd": "autoincrement"},
-                        {"column": "id", "datatype": "INTEGER", "length": "20", "key": "UNIQUE"},
-                        {"column": "id", "datatype": "INTEGER", "length": "20", "key": "UNIQUE", "with": "name"},
-                        {"column": "name", "datatype": "VARCHAR", "length": "40"}]
+            table is the table name which need to be created.
+            column is a list of dict ex:
+            where = [
+                {"column": "id", "datatype": "INTEGER", "length": "10", "key": "PRIMARY", 
+                "keyadd": "autoincrement"},
+                {"column": "id", "datatype": "INTEGER", "length": "20", "key": "UNIQUE"},
+                {"column": "id", "datatype": "INTEGER", "length": "20", "key": "UNIQUE", 
+                "with": "name"},
+                {"column": "name", "datatype": "VARCHAR", "length": "40"}]
         Output - Creates Table.
         """
-        driver=f'{CONSTANT["DATABASE"]["DRIVER"]}' # either MySQL, SQLite, or...
+        driver = f'{CONSTANT["DATABASE"]["DRIVER"]}'
+        # either MySQL, SQLite, or...
         if driver == "SQLite3":
-           driver="SQLite"
+            driver = "SQLite"
         columns = []
-        indici  = []
+        key_list  = []
         for cols in column:
-            strcolumn = ''
+            column_string = ''
             if 'column' in cols.keys():
-                strcolumn = strcolumn + ' `' + cols['column'] + '` '
+                column_string = column_string + ' `' + cols['column'] + '` '
             if 'datatype' in cols.keys():
-                strcolumn = strcolumn + ' ' +cols['datatype'].upper() + ' '
+                column_string = column_string + ' ' +cols['datatype'].upper() + ' '
             if 'length' in cols.keys():
                 if driver != "SQLite" and 'keyadd' in cols.keys() and cols['keyadd'].upper() == "AUTOINCREMENT":
-                    #YES! sqlite does not allow e.g. INTEGER(10) to be an auto increment... _has_ to be INTEGER
-                    strcolumn = strcolumn + ' (' +cols['length'] + ') '
+                    # YES! sqlite does not allow e.g. INTEGER(10) to be
+                    # an auto increment... _has_ to be INTEGER
+                    column_string = column_string + ' (' +cols['length'] + ') '
             if 'key' in cols.keys() and 'column' in cols.keys():
                 if cols['key'] == "PRIMARY":
                     if 'keyadd' in cols.keys():
-                        if cols['keyadd'].upper() == "AUTOINCREMENT": # then it must a an INT or FLOAT
-                            strcolumn = strcolumn + " NOT NULL "
-                            if driver != "SQLite": # e.g. Mysql
-                                strcolumn = strcolumn + "AUTO_INCREMENT "
+                        if cols['keyadd'].upper() == "AUTOINCREMENT":
+                            # then it must a an INT or FLOAT
+                            column_string = column_string + " NOT NULL "
+                            if driver != "SQLite":
+                                # e.g. Mysql
+                                column_string = column_string + "AUTO_INCREMENT "
                         if driver == "SQLite":
-                            indici.append(f"PRIMARY KEY (`{cols['column']}` {cols['keyadd'].upper()})")
+                            a_key = f"PRIMARY KEY (`{cols['column']}` {cols['keyadd'].upper()})"
+                            key_list.append(a_key)
+                            a_key = ''
                         else:
-                            indici.append(f"PRIMARY KEY (`{cols['column']}`)")
+                            key_list.append(f"PRIMARY KEY (`{cols['column']}`)")
                     else:
-                        indici.append(f"PRIMARY KEY (`{cols['column']}`)")
+                        key_list.append(f"PRIMARY KEY (`{cols['column']}`)")
                 else:
                     if 'with' not in cols:
-                        indici.append(f"{cols['key'].upper()} (`{cols['column']}`)")
+                        key_list.append(f"{cols['key'].upper()} (`{cols['column']}`)")
             if 'with' in cols.keys() and 'column' in cols.keys():
-                indici.append(f"UNIQUE (`{cols['column']}`,`{cols['with']}`)")
-            columns.append(strcolumn)
-        strkeys = ', '.join(map(str, indici))
-        columns.append(strkeys)
-        strcolumns = ', '.join(map(str, columns))
-        query = f'CREATE TABLE IF NOT EXISTS `{table}` ({strcolumns})'
+                key_list.append(f"UNIQUE (`{cols['column']}`,`{cols['with']}`)")
+            columns.append(column_string)
+        join_keys = ', '.join(map(str, key_list))
+        columns.append(join_keys)
+        column_strings = ', '.join(map(str, columns))
+        query = f'CREATE TABLE IF NOT EXISTS `{table}` ({column_strings})'
         try:
-            mylocal.cursor.execute(query)
+            local_thread.cursor.execute(query)
             self.commit()
             response = True
         except Exception as exp:
@@ -330,10 +351,10 @@ class Database(object):
         """
         try:
             query = f'DELETE FROM "{table}";'
-            mylocal.cursor.execute(query)
+            local_thread.cursor.execute(query)
             self.commit()
             query = f'DELETE FROM sqlite_sequence WHERE name ="{table}";'
-            mylocal.cursor.execute(query)
+            local_thread.cursor.execute(query)
             self.commit()
             response = True
         except Exception as exp:
@@ -351,49 +372,57 @@ class Database(object):
         [{"column": "name", "value": "node004"}, {"column": "ip", "value": "10.141.0.1"}]
         Output - Creates Table.
         """
-        keys, values, wherelist = [], [], []
+        keys, values, where_list = [], [], []
+        where_keys, where_values = [], []
         where = ' WHERE '
         response = False
         if row:
-            for nrow in row:
-                keys.append('"'+str(nrow["column"])+'"')
-                if str(nrow["column"]) == "created" or str(nrow["column"]) == "updated": # wee ugly but fast.
-                    if str(nrow["value"]) == "NOW":
+            for each in row:
+                keys.append('"'+str(each["column"])+'"')
+                if str(each["column"]) == "created" or str(each["column"]) == "updated":
+                    # wee ugly but fast.
+                    if str(each["value"]) == "NOW":
                         values.append("datetime('now')")
                     else:
-                        result = re.search(r"^NOW\s*(\+|\-)\s*([0-9]+)\s*(hour|minute|second)$", str(nrow["value"]))
-                        plusminus = result.group(1)
-                        timevalue = result.group(2)
-                        timedenom = result.group(3)
-                        if plusminus and timevalue and timedenom:
-                            values.append(f"datetime('now','{plusminus}{timevalue} {timedenom}')") # only sqlite complaint! pending
+                        result = re.search(
+                            r"^NOW\s*(\+|\-)\s*([0-9]+)\s*(hour|minute|second)$",
+                            str(each["value"])
+                        )
+                        symbol = result.group(1)
+                        time_value = result.group(2)
+                        time_denom = result.group(3)
+                        if symbol and time_value and time_denom:
+                            values.append(f"datetime('now','{symbol}{time_value} {time_denom}')")
+                            # only sqlite complaint! pending
                         else:
-                            values.append('"'+str(nrow["value"])+'"')
-                else:    
-                    values.append('"'+str(nrow["value"])+'"')
-                    wherekeys = keys
-                    wherevalues = values
+                            values.append('"'+str(each["value"])+'"')
+                else:
+                    values.append('"'+str(each["value"])+'"')
+                    where_keys = keys
+                    where_values = values
             keys = ','.join(keys)
             values = ','.join(values)
         query = f'INSERT INTO "{table}" ({keys}) VALUES ({values});'
         self.logger.debug(f"Insert Query ---> {query}")
-        attempt=1
-        while (not response) and attempt<10:
+        attempt = 1
+        while (not response) and attempt < 10:
             try:
-                mylocal.cursor.execute(query)
+                local_thread.cursor.execute(query)
                 self.commit()
-                mywhere = where
-                for key,value in zip(wherekeys, wherevalues):
-                    wherelist.append(f'{key} = {value}')
-                if len(wherelist) > 0:
-                    mywhere = mywhere + ' AND '.join(wherelist)
-                result = self.get_record(None, table, mywhere)
+                new_where = where
+                for key,value in zip(where_keys, where_values):
+                    where_list.append(f'{key} = {value}')
+                if len(where_list) > 0:
+                    new_where = new_where + ' AND '.join(where_list)
+                result = self.get_record(None, table, new_where)
                 if result:
                     response = result[0]['id']
             except Exception as exp:
-                self.logger.error(f'Error occur while executing => {query}. error is "{exp}" on attempt {attempt}.')
+                message = f'Error occur while executing => {query}. error is "{exp}" '
+                message += f'on attempt {attempt}.'
+                self.logger.error(message)
                 if f"{exp}" == "database is locked":
-                    attempt+=1
+                    attempt += 1
                     sleep(3)
                 else:
                     return False
@@ -411,7 +440,7 @@ class Database(object):
                     [{"column": "active", "value": "1"}, {"column": "network", "value": "ib"}]
         Output - Update the rows.
         """
-        columns, wherelist = [], []
+        columns, where_list = [], []
         for cols in row:
             column = ''
             if 'column' in cols.keys():
@@ -419,30 +448,32 @@ class Database(object):
             if 'value' in cols.keys():
                 column = column + ' = "' +str(cols['value']) +'"'
             columns.append(column)
-            strcolumns = ', '.join(map(str, columns))
+            column_strings = ', '.join(map(str, columns))
         for cols in where:
             column = ''
             if 'column' in cols.keys():
                 column = column + cols['column']
             if 'value' in cols.keys():
                 column = column + ' = "' +str(cols['value']) +'"'
-            wherelist.append(column)
-            strwhere = ' AND '.join(map(str, wherelist))
-        query = f'UPDATE "{table}" SET {strcolumns} WHERE {strwhere};'
+            where_list.append(column)
+            join_where = ' AND '.join(map(str, where_list))
+        query = f'UPDATE "{table}" SET {column_strings} WHERE {join_where};'
         self.logger.debug(f"Update Query ---> {query}")
-        attempt=1
-        while attempt<10:
+        attempt = 1
+        while attempt < 10:
             try:
-                mylocal.cursor.execute(query)
+                local_thread.cursor.execute(query)
                 self.commit()
-                if mylocal.cursor.rowcount < 1:
+                if local_thread.cursor.rowcount < 1:
                     return False
                 else:
                     return True
             except Exception as exp:
-                self.logger.error(f'Error occur while executing => {query}. error is "{exp}" on attempt {attempt}.')
+                message = f'Error occur while executing => {query}. error is "{exp}"'
+                message += f' on attempt {attempt}.'
+                self.logger.error(message)
                 if f"{exp}" == "database is locked":
-                    attempt+=1
+                    attempt += 1
                     sleep(3)
                 else:
                     return False
@@ -458,52 +489,42 @@ class Database(object):
         [{"column": "active", "value": "1"}, {"column": "network", "value": "ib"}]
         Output - Delete the row.
         """
-        wherelist = []
+        where_list = []
         for cols in where:
             column = ''
             if 'column' in cols.keys():
                 column = column + cols['column']
             if 'value' in cols.keys():
                 column = column + ' = "' +str(cols['value']) +'"'
-            wherelist.append(column)
-            strwhere = ' AND '.join(map(str, wherelist))
+            where_list.append(column)
+            join_where = ' AND '.join(map(str, where_list))
         attempt=1
         while attempt<10:
             try:
-                query = f'DELETE FROM "{table}" WHERE {strwhere};'
-                mylocal.cursor.execute(query)
+                query = f'DELETE FROM "{table}" WHERE {join_where};'
+                local_thread.cursor.execute(query)
                 self.commit()
                 return True
             except Exception as exp:
-                self.logger.error(f'Error occur while executing => {query}. error is "{exp}" on attempt {attempt}.')
+                message = f'Error occur while executing => {query}. error is "{exp}" '
+                message += f'on attempt {attempt}.'
+                self.logger.error(message)
                 if f"{exp}" == "database is locked":
-                    attempt+=1
+                    attempt += 1
                     sleep(3)
                 else:
                     return False
         return False
 
+
     def clear(self, table):
+        """
+        This method will do truncate the table.
+        """
         try:
             query = f'DELETE FROM "{table}";'
-            mylocal.cursor.execute(query)
+            local_thread.cursor.execute(query)
             self.commit()
-            response = True
-        except Exception as exp:
-            self.logger.error(f'Error occur while executing => {query}. error is {exp}.')
-            response = False
-        return response
-
-    def deletetable(self, connection, cursor, table):
-        """
-        Input - tablename
-        Process - Delete The Table
-        Output - Success/Failure.
-        """
-        try:
-            query = f'DROP TABLE [IF EXISTS] {table}'
-            cursor.execute(query)
-            connection.commit()
             response = True
         except Exception as exp:
             self.logger.error(f'Error occur while executing => {query}. error is {exp}.')
@@ -523,9 +544,9 @@ class Database(object):
         query = f'SELECT * FROM "{table}" LIMIT 1;'
         self.logger.debug(f'Query Executing => {query} .')
         try:
-            mylocal.cursor.execute(query)
+            local_thread.cursor.execute(query)
             # Fetching the Column Names
-            response = list(map(lambda x: x[0], mylocal.cursor.description)) # Fetching the Column Names
+            response = list(map(lambda x: x[0], local_thread.cursor.description))
         except Exception as exp:
             self.logger.error(f'Error occur while executing => {query}. error is {exp}.')
             response = None
@@ -540,9 +561,9 @@ class Database(object):
         query = f'SELECT id FROM "{table}" WHERE `name` == "{name}";'
         self.logger.debug(f'Query executing => {query}.')
         try:
-            mylocal.cursor.execute(query)
-            response = mylocal.cursor.fetchone()
-            self.logger.debug(f'Dataeet retrived => {response}.')
+            local_thread.cursor.execute(query)
+            response = local_thread.cursor.fetchone()
+            self.logger.debug(f'Dataset retrieved => {response}.')
             if response:
                 response = response[0]
         except Exception as exp:
@@ -559,9 +580,9 @@ class Database(object):
         query = f'SELECT name FROM "{table}" WHERE `id` == "{tableid}";'
         self.logger.debug(f'Query executing => {query}.')
         try:
-            mylocal.cursor.execute(query)
-            response = mylocal.cursor.fetchone()
-            self.logger.debug(f'Dataset retrived => {response}.')
+            local_thread.cursor.execute(query)
+            response = local_thread.cursor.fetchone()
+            self.logger.debug(f'Dataset retrieved => {response}.')
             if response:
                 response = response[0]
         except Exception as exp:

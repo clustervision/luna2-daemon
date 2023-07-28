@@ -343,3 +343,50 @@ class Network():
         else:
             response = {'message': f'network {name} does not provide for any free IP address'}
         return dumps(response), access_code
+
+
+    def taken_ip(self, name=None):
+        """
+        This method will identify the all taken ipaddress on a network.
+        """
+        # TODO ->
+        # Need to convert in Join query.
+        # Get ipaddress from ipaddress table and device name which have the network name provided.
+        # device can be node, controller, switch, otherdevices. Remember nodeinterface table.
+        taken = []
+        network_id = Database().id_by_name('network', name)
+        if network_id:
+            where = f' WHERE `networkid` = "{network_id}"'
+            ip_list = Database().get_record("*", 'ipaddress', where=where)
+            if ip_list:
+                for each in ip_list:
+                    if 'interface' in each['tableref']:
+                        tablerefid = each['tablerefid']
+                        where = f' WHERE `id` = "{tablerefid}"'
+                        nodeid = Database().get_record("*",'nodeinterface', where)
+                        nodeid = nodeid[0]['nodeid']
+                        device_name = Database().name_by_id('node', nodeid)
+                    elif 'controller' in each['tableref']:
+                        tablerefid = each['tablerefid']
+                        where = f' WHERE `id` = "{tablerefid}"'
+                        hostname = Database().get_record("*",'controller', where)
+                        self.logger.info(hostname)
+                        if hostname:
+                            device_name = hostname[0]['hostname']
+                        else:
+                            device_name = "Controller has No Hostname"
+                    else:
+                        device_name = Database().name_by_id(each['tableref'], each['tablerefid'])
+                    taken.append({'ipaddress': each['ipaddress'], 'device': device_name})
+                    device_name = ""
+                response = {'config': {'network': {name: {'taken': taken} } } }
+                access_code = 200
+                self.logger.info(response)
+            else:
+                response = {'message': f'All IP Address are free on Network {name}. None is Taken.'}
+                access_code = 404
+
+        else:
+            response = {'message': f'Network {name} not present in database.'}
+            access_code = 404
+        return dumps(response), access_code

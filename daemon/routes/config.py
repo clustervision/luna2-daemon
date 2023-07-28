@@ -767,6 +767,19 @@ def config_network_ip(name=None, ipaddress=None):
     return response, access_code
 
 
+@config_blueprint.route("/config/network/<string:name>/_list", methods=['GET'])
+@token_required
+@validate_name
+def config_network_taken(name=None):
+    """
+    Input - Network Name
+    Process - Find out all the ipaddress which is taken by the provided network.
+    Output - List all taken ipaddress by the network.
+    """
+    response, access_code = Network().taken_ip(name)
+    return response, access_code
+
+
 @config_blueprint.route("/config/network/<string:name>/_nextfreeip", methods=['GET'])
 # @token_required
 @validate_name

@@ -33,8 +33,6 @@ class Authentication():
         This constructor will initialize all required variables here.
         """
         self.logger = Log.get_logger()
-        # self.username = username
-        # self.password = password
 
 
     def get_token(self, http_request=None):
@@ -158,7 +156,7 @@ class Authentication():
         """
         This method will provide a PyJWT encoded token for a node.
         """
-        # since some files are requested during early bootstage where no token is available
+        # since some files are requested during early boot stage where no token is available
         # (think: PXE+kernel+ramdisk)
         # we do enforce authentication for specific files. .bz2 + .torrent
         # are most likely the images.

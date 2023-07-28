@@ -24,9 +24,8 @@ from common.constant import CONSTANT
 
 configParser = RawConfigParser()
 
-# -----------------------------------------------------------------------------------
 
-def checkdbstatus():
+def db_status():
     """
     A validation method to check which db is configured.
     """
@@ -44,7 +43,7 @@ def checkdbstatus():
                     write = True
                     code = 200
                     file.close()
-                    sys.stderr.write(f"checkdbstatus: I can read the database file.\n")
+                    sys.stderr.write("db_status: I can read the database file.\n")
             except Exception as exp:
                 sys.stderr.write(f"{CONSTANT['DATABASE']['DATABASE']} has exception {exp}.\n")
 
@@ -53,44 +52,51 @@ def checkdbstatus():
                 if header.startswith('SQLite format 3'):
                     read, write = True, True
                     code = 200
-                    sys.stderr.write(f"checkdbstatus: I see SQLite3 header.\n")
+                    sys.stderr.write("db_status: I see SQLite3 header.\n")
                 else:
                     read, write = False, False
                     code = 503
-                    sys.stderr.write(f"checkdbstatus: {CONSTANT['DATABASE']['DATABASE']} is not SQLite3.\n")
+                    sys.stderr.write(f"db_status: {CONSTANT['DATABASE']['DATABASE']} is not SQLite3.\n")
         else:
-            sys.stderr.write(f"checkdbstatus: DATABASE {CONSTANT['DATABASE']['DATABASE']} is not readable.\n")
+            sys.stderr.write(f"db_status: DATABASE {CONSTANT['DATABASE']['DATABASE']} is not readable.\n")
     else:
         code = 501
-        sys.stderr.write(f"checkdbstatus: {CONSTANT['DATABASE']['DATABASE']} does not exist.\n")
+        sys.stderr.write(f"db_status: {CONSTANT['DATABASE']['DATABASE']} does not exist.\n")
     if not sqlite:
         try:
             from utils.database import Database
             Database().get_cursor()
             read, write = True, True
             code = 200
-            sys.stderr.write(f"checkdbstatus: Successfully tried to test a non-sqlite database\n")
+            sys.stderr.write("db_status: Successfully tried to test a non-sqlite database\n")
         except Exception as error:
             sys.stderr.write(f"{CONSTANT['DATABASE']['DATABASE']} connection error: {error}.\n")
-    response = {"driver": CONSTANT['DATABASE']['DRIVER'], "database": CONSTANT['DATABASE']['DATABASE'], "read": read, "write": write}
-    sys.stderr.write(f"checkdbstatus: returning code = [{code}]\n")
+    response = {
+        "driver": CONSTANT['DATABASE']['DRIVER'],
+        "database": CONSTANT['DATABASE']['DATABASE'],
+        "read": read,
+        "write": write
+    }
+    sys.stderr.write(f"db_status: returning code = [{code}]\n")
     return response, code
+
 
 def check_db():
     """
     some incredibly ugly stuff happens here
     for now only sqlite is supported as mysql requires a bit more work.... quite a bit.
     """
-    dbstatus, dbcode = checkdbstatus()
-    sys.stderr.write(f"Got this back from checkdbstatus: {dbcode} {dbstatus}\n")
-    if dbcode == 200:
+    status, code = db_status()
+    sys.stderr.write(f"Got this back from db_status: {code} {status}\n")
+    if code == 200:
         return True
-    if dbcode == 501: # means DB does not exist and we will create it
-        sys.stderr.write(f"Will try to create {dbstatus['database']} with {dbstatus['driver']}\n")
+    if code == 501: # means DB does not exist and we will create it
+        sys.stderr.write(f"Will try to create {status['database']} with {status['driver']}\n")
         kill = lambda process: process.kill()
         output = None
-        if dbstatus["driver"] == "SQLite" or dbstatus["driver"] == "SQLite3":
-            my_process = subprocess.Popen(f"sqlite3 {dbstatus['database']} \"create table init (id int); drop table init;\"", stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
+        if status["driver"] == "SQLite" or status["driver"] == "SQLite3":
+            command = f"sqlite3 {status['database']} \"create table init (id int); drop table init;\""
+            my_process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
             my_timer = threading.Timer(10,kill,[my_process])
             try:
                 my_timer.start()
@@ -115,7 +121,7 @@ if check_db():
 else:
     sys.stderr.write("ERROR: i cannot initialize my database. This is fatal.\n")
     exit(127)
-# --------------------------------------------------------------------------------
+
 
 def check_db_tables():
     """
@@ -124,52 +130,61 @@ def check_db_tables():
     table = ['cluster', 'bmcsetup', 'group', 'groupinterface', 'groupsecrets', 'status', 'queue',
              'network', 'osimage', 'switch', 'tracker', 'node', 'nodeinterface', 'nodesecrets']
     num = 0
-    for tablex in table:
-        result = Database().get_record(None, tablex, None)
+    for table_x in table:
+        result = Database().get_record(None, table_x, None)
         if result:
             num = num+1
         else:
-            LOGGER.debug(f'Database table {tablex} does not seem to exist or is empty.')
+            LOGGER.debug(f'Database table {table_x} does not seem to exist or is empty.')
     if num == 0:
         return False
     return True
 
+
 def cleanup_queue_and_status():
+    """
+    This method will clean the Queue"""
     Database().clear('queue')
     Database().clear('status')
 
-def getconfig(filename=None):
+
+def get_config(filename=None):
     """
     From ini file Section Name is a section here, Option Name is an
     option here and Option Value is an item here.
     Example: sections[HOSTS, NETWORKS], options[HOSTNAME, NODELIST],
-    and vlaues of options are item(10.141.255.254, node[001-004])
+    and values of options are item(10.141.255.254, node[001-004])
     CONTROLLER  = controller.cluster:10.141.255.251  <---- virtual IP
     CONTROLLER1 = controller1.cluster:10.141.255.254
     CONTROLLER2 = None
     """
     configParser.read(filename)
-    Helper().checksection(filename, BOOTSTRAP)
+    Helper().check_section(filename, BOOTSTRAP)
     for section in configParser.sections():
         for (option, item) in configParser.items(section):
             globals()[option.upper()] = item
             if section in list(BOOTSTRAP.keys()):
-                Helper().checkoption(filename, section, option.upper(), BOOTSTRAP)
+                Helper().check_option(filename, section, option.upper(), BOOTSTRAP)
                 for num in range(1, 10):
                     if 'CONTROLLER'+str(num) in option.upper():
                         BOOTSTRAP[section][option.upper()]={}
                         hostname,ip,*_=(item.split(':')+[None])
-                        hostname,*_=(hostname.split('.')+[None]) # we don't expect a fqdn anywhere in the code! we generally look for 'controller'. BEWARE!
-                        if hostname and not ip and '.' in hostname:  # i guess we only have an IP and no hostname?
+                        hostname,*_=(hostname.split('.')+[None])
+                        # we don't expect a fqdn anywhere in the code!
+                        # we generally look for 'controller'. BEWARE!
+                        if hostname and not ip and '.' in hostname:
+                            # i guess we only have an IP and no hostname?
                             ip=hostname
                             hostname=option.lower()
                         if Helper().check_ip(ip):
                             BOOTSTRAP[section][option.upper()]['IP'] = ip
                             BOOTSTRAP[section][option.upper()]['HOSTNAME'] = hostname
-                if 'CONTROLLER' in option.upper() and 'CONTROLLER1' not in option.upper():  # we assume we do not have H/A setup. no Virtual IP
+                if 'CONTROLLER' in option.upper() and 'CONTROLLER1' not in option.upper():
+                    # we assume we do not have H/A setup. no Virtual IP
                     hostname,ip,*_=(item.split(':')+[None])
                     hostname,*_=(hostname.split('.')+[None])
-                    if hostname and not ip and '.' in hostname:  # i guess we only have an IP and no hostname?
+                    if hostname and not ip and '.' in hostname:
+                        # i guess we only have an IP and no hostname?
                         ip=hostname
                         hostname=option.lower()
                     if Helper().check_ip(ip):
@@ -200,33 +215,36 @@ def getconfig(filename=None):
 
 
 def create_database_tables():
-    Database().create("status",DATABASE_LAYOUT_status)
-    Database().create("queue",DATABASE_LAYOUT_queue)
-    Database().create("osimage",DATABASE_LAYOUT_osimage)
-    Database().create("nodesecrets",DATABASE_LAYOUT_nodesecrets)
-    Database().create("nodeinterface",DATABASE_LAYOUT_nodeinterface)
-    Database().create("bmcsetup",DATABASE_LAYOUT_bmcsetup)
-    Database().create("monitor",DATABASE_LAYOUT_monitor)
-    Database().create("ipaddress",DATABASE_LAYOUT_ipaddress)
-    Database().create("groupinterface",DATABASE_LAYOUT_groupinterface)
-    Database().create("roles",DATABASE_LAYOUT_roles)
-    Database().create("group",DATABASE_LAYOUT_group)
-    Database().create("network",DATABASE_LAYOUT_network)
-    Database().create("user",DATABASE_LAYOUT_user)
-    Database().create("switch",DATABASE_LAYOUT_switch)
-    Database().create("otherdevices",DATABASE_LAYOUT_otherdevices)
-    Database().create("controller",DATABASE_LAYOUT_controller)
-    Database().create("groupsecrets",DATABASE_LAYOUT_groupsecrets)
-    Database().create("node",DATABASE_LAYOUT_node)
-    Database().create("cluster",DATABASE_LAYOUT_cluster)
-    Database().create("tracker",DATABASE_LAYOUT_tracker)
+    """
+    This method will create DB table.
+    """
+    Database().create("status", DATABASE_LAYOUT_status)
+    Database().create("queue", DATABASE_LAYOUT_queue)
+    Database().create("osimage", DATABASE_LAYOUT_osimage)
+    Database().create("nodesecrets", DATABASE_LAYOUT_nodesecrets)
+    Database().create("nodeinterface", DATABASE_LAYOUT_nodeinterface)
+    Database().create("bmcsetup", DATABASE_LAYOUT_bmcsetup)
+    Database().create("monitor", DATABASE_LAYOUT_monitor)
+    Database().create("ipaddress", DATABASE_LAYOUT_ipaddress)
+    Database().create("groupinterface", DATABASE_LAYOUT_groupinterface)
+    Database().create("roles", DATABASE_LAYOUT_roles)
+    Database().create("group", DATABASE_LAYOUT_group)
+    Database().create("network", DATABASE_LAYOUT_network)
+    Database().create("user", DATABASE_LAYOUT_user)
+    Database().create("switch", DATABASE_LAYOUT_switch)
+    Database().create("otherdevices", DATABASE_LAYOUT_otherdevices)
+    Database().create("controller", DATABASE_LAYOUT_controller)
+    Database().create("groupsecrets", DATABASE_LAYOUT_groupsecrets)
+    Database().create("node", DATABASE_LAYOUT_node)
+    Database().create("cluster", DATABASE_LAYOUT_cluster)
+    Database().create("tracker", DATABASE_LAYOUT_tracker)
 
 
 def bootstrap(bootstrapfile=None):
     """
     Insert default data into the database.
     """
-    getconfig(bootstrapfile)
+    get_config(bootstrapfile)
     LOGGER.info('###################### Bootstrap Start ######################')
     create_database_tables()
 
@@ -365,72 +383,72 @@ def bootstrap(bootstrapfile=None):
     groupid = group[0]['id']
     for nodex in BOOTSTRAP['HOSTS']['NODELIST']:
         default_node = [
-                {'column': 'name', 'value': str(nodex)},
-                {'column': 'groupid', 'value': str(groupid)},
-                {'column': 'localboot', 'value': '0'},
-                {'column': 'service', 'value': '0'},
-            ]
-        node_id=Database().insert('node', default_node)
+            {'column': 'name', 'value': str(nodex)},
+            {'column': 'groupid', 'value': str(groupid)},
+            {'column': 'localboot', 'value': '0'},
+            {'column': 'service', 'value': '0'},
+        ]
+        node_id = Database().insert('node', default_node)
         network_details=Helper().get_network_details(BOOTSTRAP['NETWORKS'][networkname]['NETWORK'])
-        avail_ip=Helper().get_available_ip(network_details['network'],network_details['subnet'],taken_ips)
+        avail_ip = Helper().get_available_ip(network_details['network'],network_details['subnet'],taken_ips)
         taken_ips.append(avail_ip)
         default_int = [
-                {'column': 'nodeid', 'value': str(node_id)},
-                {'column': 'interface', 'value': 'BOOTIF'}
-             ]
+            {'column': 'nodeid', 'value': str(node_id)},
+            {'column': 'interface', 'value': 'BOOTIF'}
+        ]
         if_id = Database().insert('nodeinterface', default_int)
         default_ip = [
-                {'column': 'tableref', 'value': 'nodeinterface'},
-                {'column': 'tablerefid', 'value': str(if_id)},
-                {'column': 'ipaddress', 'value': str(avail_ip)},
-                {'column': 'networkid', 'value': networkid}
-             ]
+            {'column': 'tableref', 'value': 'nodeinterface'},
+            {'column': 'tablerefid', 'value': str(if_id)},
+            {'column': 'ipaddress', 'value': str(avail_ip)},
+            {'column': 'networkid', 'value': networkid}
+        ]
         ip_id = Database().insert('ipaddress', default_ip)
 
-        bmcnetwork_details=Helper().get_network_details(BOOTSTRAP['NETWORKS'][bmcnetworkname]['NETWORK'])
-        avail_ip=Helper().get_available_ip(bmcnetwork_details['network'],network_details['subnet'],bmctaken_ips)
+        bmcnetwork_details = Helper().get_network_details(BOOTSTRAP['NETWORKS'][bmcnetworkname]['NETWORK'])
+        avail_ip = Helper().get_available_ip(bmcnetwork_details['network'],network_details['subnet'],bmctaken_ips)
         bmctaken_ips.append(avail_ip)
         bmc_int = [
-                {'column': 'nodeid', 'value': str(node_id)},
-                {'column': 'interface', 'value': 'BMC'}
-             ]
+            {'column': 'nodeid', 'value': str(node_id)},
+            {'column': 'interface', 'value': 'BMC'}
+        ]
         bmcif_id = Database().insert('nodeinterface', bmc_int)
         bmc_ip = [
-                {'column': 'tableref', 'value': 'nodeinterface'},
-                {'column': 'tablerefid', 'value': str(bmcif_id)},
-                {'column': 'ipaddress', 'value': str(avail_ip)},
-                {'column': 'networkid', 'value': bmcnetworkid}
-             ]
+            {'column': 'tableref', 'value': 'nodeinterface'},
+            {'column': 'tablerefid', 'value': str(bmcif_id)},
+            {'column': 'ipaddress', 'value': str(avail_ip)},
+            {'column': 'networkid', 'value': bmcnetworkid}
+        ]
         bmc_id = Database().insert('ipaddress', bmc_ip)
 
     default_group_interface = [
-            {'column': 'groupid', 'value': '1'},
-            {'column': 'interface', 'value': 'BOOTIF'},
-            {'column': 'networkid', 'value': networkid}
-        ]
+        {'column': 'groupid', 'value': '1'},
+        {'column': 'interface', 'value': 'BOOTIF'},
+        {'column': 'networkid', 'value': networkid}
+    ]
     bmc_group_interface = [
-            {'column': 'groupid', 'value': '1'},
-            {'column': 'interface', 'value': 'BMC'},
-            {'column': 'networkid', 'value': bmcnetworkid}
-        ]
+        {'column': 'groupid', 'value': '1'},
+        {'column': 'interface', 'value': 'BMC'},
+        {'column': 'networkid', 'value': bmcnetworkid}
+    ]
 
     bmcsetup_name='compute'
     if 'NAME' in BOOTSTRAP['BMCSETUP'] and BOOTSTRAP['BMCSETUP']['NAME']:
         bmcsetup_name=str(BOOTSTRAP['BMCSETUP']['NAME'])
     default_bmcsetup = [
-            {'column': 'name', 'value': bmcsetup_name},
-            {'column': 'userid', 'value': '2'},
-            {'column': 'netchannel', 'value': '1'},
-            {'column': 'username', 'value': str(BOOTSTRAP['BMCSETUP']['USERNAME'])},
-            {'column': 'password', 'value': str(BOOTSTRAP['BMCSETUP']['PASSWORD'])}
-        ]
+        {'column': 'name', 'value': bmcsetup_name},
+        {'column': 'userid', 'value': '2'},
+        {'column': 'netchannel', 'value': '1'},
+        {'column': 'username', 'value': str(BOOTSTRAP['BMCSETUP']['USERNAME'])},
+        {'column': 'password', 'value': str(BOOTSTRAP['BMCSETUP']['PASSWORD'])}
+    ]
 
     default_switch = [
-            {'column': 'name', 'value': 'switch01'},
-            {'column': 'oid', 'value': '.1.3.6.1.2.1.17.7.1.2.2.1.2'},
-            {'column': 'read', 'value': 'public'},
-            {'column': 'rw', 'value': 'private'}
-            ]
+        {'column': 'name', 'value': 'switch01'},
+        {'column': 'oid', 'value': '.1.3.6.1.2.1.17.7.1.2.2.1.2'},
+        {'column': 'read', 'value': 'public'},
+        {'column': 'rw', 'value': 'private'}
+    ]
     
     Database().insert('groupinterface', default_group_interface)
     Database().insert('groupinterface', bmc_group_interface)
@@ -457,7 +475,7 @@ def validate_bootstrap():
         'OSIMAGE': {'NAME': None},
         'BMCSETUP': {'USERNAME': None, 'PASSWORD': None}
     }
-    bootstrapfile_check = Helper().checkpathstate(bootstrapfile)
+    bootstrapfile_check = Helper().check_path_state(bootstrapfile)
     db_check=check_db()
     if db_check is True:
         db_tables_check=check_db_tables()
@@ -467,12 +485,12 @@ def validate_bootstrap():
         if db_tables_check is False:
             bootstrap(bootstrapfile)
         else:
-            LOGGER.warning(f'Bootstrap file {bootstrapfile} is still present, Kindly remove the file.')
+            LOGGER.warning(f'{bootstrapfile} is still present, Kindly remove the file.')
     elif db_check is False:
-        LOGGER.error(f'Database is unavailable.')
+        LOGGER.error('Database is unavailable.')
         return False
     elif db_tables_check is False:
-        LOGGER.error(f'Database requires initialization but bootstrap.ini file is missing.')
+        LOGGER.error('Database requires initialization but bootstrap.ini file is missing.')
         return False
 
     cleanup_queue_and_status()

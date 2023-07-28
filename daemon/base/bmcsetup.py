@@ -34,7 +34,7 @@ class BMCSetup():
         self.table_cap = 'BMC Setup'
 
 
-    def get_all_bmcsetups(self):
+    def get_all_bmcsetup(self):
         """
         This method will return all the bmcsetup in detailed format.
         """
@@ -102,9 +102,11 @@ class BMCSetup():
                 response = {'message': 'New bmc name nor provided'}
                 access_code = 400
                 return dumps(response), access_code
-            check_bmcsetup = Database().get_record(table=self.table, where=f' WHERE `name` = "{name}"')
+            where = f' WHERE `name` = "{name}"'
+            check_bmcsetup = Database().get_record(table=self.table, where=where)
             if check_bmcsetup:
-                check_new_bmcsetup = Database().get_record(table=self.table, where=f' WHERE `name` = "{newbmcname}"')
+                where = f' WHERE `name` = "{newbmcname}"'
+                check_new_bmcsetup = Database().get_record(table=self.table, where=where)
                 if check_new_bmcsetup:
                     response = {'message': f'{newbmcname} Already present in database'}
                     access_code = 404
@@ -120,7 +122,7 @@ class BMCSetup():
                 access_code = 404
                 return dumps(response), access_code
             bmcsetup_columns = Database().get_columns(self.table)
-            column_check = Helper().checkin_list(data, bmcsetup_columns)
+            column_check = Helper().compare_list(data, bmcsetup_columns)
             row = Helper().make_rows(data)
             if column_check:
                 if create:
@@ -128,11 +130,11 @@ class BMCSetup():
                     response = {'message': 'BMC Setup created successfully'}
                     access_code = 201
             else:
-                response = {'message': 'Bad Request; Columns are incorrect'}
+                response = {'message': 'Columns are incorrect'}
                 access_code = 400
                 return dumps(response), access_code
         else:
-            response = {'message': 'Bad Request; Did not received data'}
+            response = {'message': 'Did not received data'}
             access_code = 400
             return dumps(response), access_code
         return dumps(response), access_code

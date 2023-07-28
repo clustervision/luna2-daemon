@@ -16,8 +16,8 @@ __email__       = "sumit.sharma@clustervision.com"
 __status__      = "Development"
 
 
-from flask import Blueprint, request
 from json import dumps
+from flask import Blueprint, request
 from utils.log import Log
 from common.validate_auth import token_required
 from common.validate_input import input_filter, validate_name
@@ -47,11 +47,11 @@ def config_node():
     # we collect all needed info from all tables at once and use dicts to collect data/info
     # A join is not really suitable as there are too many permutations in where the below
     # is way more efficient. -Antoine
-    access_code=404
-    ret, response = Node().get_all_nodes()
-    if ret is True:
-        access_code=200
-        return dumps(response), access_code
+    access_code = 404
+    status, response = Node().get_all_nodes()
+    if status is True:
+        access_code = 200
+        response = dumps(response)
     return response, access_code
 
 
@@ -62,11 +62,11 @@ def config_node_get(name=None):
     """
     This api will send a requested node in details.
     """
-    access_code=404
-    ret, response = Node().get_node(name)
-    if ret is True:
-        access_code=200
-        return dumps(response), access_code
+    access_code = 404
+    status, response = Node().get_node(name)
+    if status is True:
+        access_code = 200
+        response = dumps(response)
     return response, access_code
 
 
@@ -108,7 +108,7 @@ def config_node_delete(name=None):
     return response, access_code
 
 
-# NEW API call. 
+# NEW API call.
 @config_blueprint.route("/config/node/<string:name>/_osgrab", methods=['POST'])
 @token_required
 @validate_name
@@ -123,7 +123,7 @@ def config_node_osgrab(name=None):
     return response, access_code
 
 
-# NEW API call. 
+# NEW API call.
 @config_blueprint.route("/config/node/<string:name>/_ospush", methods=['POST'])
 @token_required
 @validate_name
@@ -254,7 +254,7 @@ def config_group_post(name=None):
     return response, access_code
 
 
-# NEW API call. 
+# NEW API call.
 @config_blueprint.route("/config/group/<string:name>/_ospush", methods=['POST'])
 @token_required
 @validate_name
@@ -497,7 +497,7 @@ def config_bmcsetup():
     Process - Fetch The list of configured settings.
     Output - List Of BMC Setup.
     """
-    response, access_code = BMCSetup().get_all_bmcsetups()
+    response, access_code = BMCSetup().get_all_bmcsetup()
     return response, access_code
 
 
@@ -767,6 +767,19 @@ def config_network_ip(name=None, ipaddress=None):
     return response, access_code
 
 
+@config_blueprint.route("/config/network/<string:name>/_list", methods=['GET'])
+@token_required
+@validate_name
+def config_network_taken(name=None):
+    """
+    Input - Network Name
+    Process - Find out all the ipaddress which is taken by the provided network.
+    Output - List all taken ipaddress by the network.
+    """
+    response, access_code = Network().taken_ip(name)
+    return response, access_code
+
+
 @config_blueprint.route("/config/network/<string:name>/_nextfreeip", methods=['GET'])
 # @token_required
 @validate_name
@@ -956,13 +969,13 @@ def config_get_os_user_list():
     Process - List OSystem (ldap/ssd/pam) group.
     Output - None.
     """
-    response,access_code=None,404
-    ret,mesg = OsUser().list_users()
+    response, access_code = None, 404
+    ret, message = OsUser().list_users()
     if ret is True:
-       access_code=200
-       return dumps(mesg), access_code
+        access_code=200
+        return dumps(message), access_code
     else:
-       response={'message': mesg}
+        response={'message': message}
     return response, access_code
 
 
@@ -974,13 +987,13 @@ def config_get_os_group_list():
     Process - List OSystem (ldap/ssd/pam) group.
     Output - None.
     """
-    response,access_code=None,404
-    ret,mesg = OsUser().list_groups()
+    response, access_code = None, 404
+    ret, message = OsUser().list_groups()
     if ret is True:
-       access_code=200
-       return dumps(mesg), access_code
+        access_code=200
+        return dumps(message), access_code
     else:
-       response={'message': mesg}
+        response={'message': message}
     return response, access_code
 
 
@@ -994,11 +1007,11 @@ def config_post_os_user(name=None):
     Process - Create Or Update System (ldap/ssd/pam) users.
     Output - None.
     """
-    response,access_code=None,404
-    ret,mesg = OsUser().update_user(name, request)
-    response={'message': mesg}
+    response, access_code = None, 404
+    ret, message = OsUser().update_user(name, request)
+    response={'message': message}
     if ret is True:
-       access_code=204
+        access_code=204
     return response, access_code
 
 
@@ -1011,11 +1024,11 @@ def config_post_os_user_delete(name=None):
     Process - Delete System (ldap/ssd/pam) group.
     Output - None.
     """
-    response,access_code=None,404
-    ret,mesg = OsUser().delete_user(name)
-    response={'message': mesg}
+    response, access_code = None, 404
+    ret, message = OsUser().delete_user(name)
+    response={'message': message}
     if ret is True:
-       access_code=204
+        access_code=204
     return response, access_code
 
 
@@ -1029,11 +1042,11 @@ def config_post_os_group(name=None):
     Process - Create Or Update System (ldap/ssd/pam) group.
     Output - None.
     """
-    response,access_code=None,404
-    ret,mesg = OsUser().update_group(name, request)
-    response={'message': mesg}
+    response, access_code = None, 404
+    ret, message = OsUser().update_group(name, request)
+    response={'message': message}
     if ret is True:
-       access_code=204
+        access_code=204
     return response, access_code
 
 
@@ -1046,11 +1059,11 @@ def config_post_os_group_delete(name=None):
     Process - Delete System (ldap/ssd/pam) group.
     Output - None.
     """
-    response,access_code=None,404
-    ret,mesg = OsUser().delete_group(name)
-    response={'message': mesg}
+    response, access_code = None, 404
+    ret, message = OsUser().delete_group(name)
+    response={'message': message}
     if ret is True:
-       access_code=204
+        access_code=204
     return response, access_code
 
 
@@ -1064,4 +1077,3 @@ def control_status(request_id=None):
     """
     response, access_code = OSImage().get_status(request_id)
     return response, access_code
-

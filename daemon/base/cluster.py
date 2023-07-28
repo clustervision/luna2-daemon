@@ -13,11 +13,12 @@ __maintainer__  = 'Sumit Sharma'
 __email__       = 'sumit.sharma@clustervision.com'
 __status__      = 'Development'
 
+
 from json import dumps
-from utils.service import Service
 from common.constant import CONFIGFILE
-from utils.database import Database
 from utils.log import Log
+from utils.database import Database
+from utils.service import Service
 from utils.helper import Helper
 
 
@@ -34,10 +35,12 @@ class Cluster():
 
 
     def information(self):
-        """This method will return all the osimage in detailed format."""
+        """
+        This method will return all the osimage in detailed format.
+        """
         cluster = Database().get_record(None, 'cluster', None)
         if cluster:
-            clusterid = cluster[0]['id']
+            cluster_id = cluster[0]['id']
             del cluster[0]['id']
             if cluster[0]['debug']:
                 cluster[0]['debug'] = True
@@ -55,7 +58,7 @@ class Cluster():
             controllers = Database().get_record_join(
                 ['controller.*', 'ipaddress.ipaddress'],
                 ['ipaddress.tablerefid=controller.id', 'cluster.id=controller.clusterid'],
-                ['tableref="controller"', f'cluster.id="{clusterid}"']
+                ['tableref="controller"', f'cluster.id="{cluster_id}"']
             )
             for controller in controllers:
                 del controller['id']
@@ -71,13 +74,15 @@ class Cluster():
 
 
     def update_cluster(self, http_request=None):
-        """This method will update the cluster information."""
+        """
+        This method will update the cluster information.
+        """
         items = {'debug': False, 'security': False, 'createnode_ondemand': True}
         request_data = http_request.data
         if request_data:
             data = request_data['config']['cluster']
             cluster_columns = Database().get_columns('cluster')
-            cluster_check = Helper().checkin_list(data, cluster_columns)
+            cluster_check = Helper().compare_list(data, cluster_columns)
             if cluster_check:
                 cluster = Database().get_record(None, 'cluster', None)
                 if cluster:
@@ -112,11 +117,11 @@ class Cluster():
                                 return dumps(response), access_code
                         data['forwardserver_ip'] = temp
 
-                    for item in items:
-                        if item in data:
-                            data[item] = str(data[item]) or items[item]
-                            if isinstance(items[item], bool):
-                                data[item] = str(Helper().make_boolnum(data[item]))
+                    for key, value in items.items():
+                        if key in data:
+                            data[key] = str(data[key]) or value
+                            if isinstance(value, bool):
+                                data[key] = str(Helper().bool_to_string(data[key]))
 
                     where = [{"column": "id", "value": cluster[0]['id']}]
                     row = Helper().make_rows(data)
@@ -128,9 +133,9 @@ class Cluster():
                     response = {'message': 'No cluster is available to update'}
                     access_code = 404
             else:
-                response = {'message': 'Bad Request; Columns are incorrect'}
+                response = {'message': 'Columns are incorrect'}
                 access_code = 400
         else:
-            response = {'message': 'Bad Request; Did not received data'}
+            response = {'message': 'Did not received data'}
             access_code = 400
         return dumps(response), access_code

@@ -63,7 +63,9 @@ class OtherDev():
 
 
     def update_otherdev(self, name=None, http_request=None):
-        """This method will create or update a other device."""
+        """
+        This method will create or update a other device.
+        """
         data, response = {}, {}
         create, update = False, False
         request_data = http_request.data
@@ -87,7 +89,7 @@ class OtherDev():
             if 'network' in data.keys():
                 network = data['network']
                 del data['network']
-            column_check = Helper().checkin_list(data, device_columns)
+            column_check = Helper().compare_list(data, device_columns)
             data = Helper().check_ip_exist(data)
             if data:
                 row = Helper().make_rows(data)
@@ -102,12 +104,17 @@ class OtherDev():
                         response = {'message': f'Device {name} updated successfully'}
                         access_code = 204
                 else:
-                    response = {'message': 'Bad Request; Columns are incorrect'}
+                    response = {'message': 'Columns are incorrect'}
                     access_code = 400
                     return dumps(response), access_code
             # Antoine --->> interface(s) update/create -------------
             if ipaddress or network:
-                result, message = Config().device_ipaddress_config(device_id, self.table, ipaddress, network)
+                result, message = Config().device_ipaddress_config(
+                    device_id,
+                    self.table,
+                    ipaddress,
+                    network
+                )
                 if result is False:
                     response = {'message': f'{message}'}
                     access_code = 404
@@ -116,14 +123,15 @@ class OtherDev():
                     Service().queue('dns','restart')
             return dumps(response), access_code
         else:
-            response = {'message': 'Bad Request; Did not received data'}
+            response = {'message': 'Did not received data'}
             access_code = 400
-            return dumps(response), access_code
         return dumps(response), access_code
 
 
     def clone_otherdev(self, name=None, http_request=None):
-        """This method will clone a other device."""
+        """
+        This method will clone a other device.
+        """
         data, response = {}, {}
         create = False
         ipaddress, networkname = None, None
@@ -154,11 +162,12 @@ class OtherDev():
                 networkname=data['network']
                 del data['network']
             device_columns = Database().get_columns(self.table)
-            column_check = Helper().checkin_list(data, device_columns)
+            column_check = Helper().compare_list(data, device_columns)
             if data:
                 if column_check:
                     if create:
-                        device = Database().get_record(table=self.table, where=f' WHERE `name` = "{name}"')
+                        where=f' WHERE `name` = "{name}"'
+                        device = Database().get_record(table=self.table, where=where)
                         del device[0]['id']
                         for key in device[0]:
                             if key not in data:
@@ -175,21 +184,36 @@ class OtherDev():
                         network = None
                         if networkname:
                             network = Database().get_record_join(
-                                ['ipaddress.ipaddress', 'ipaddress.networkid as networkid', 'network.network', 'network.subnet'],
+                                [
+                                    'ipaddress.ipaddress',
+                                    'ipaddress.networkid as networkid',
+                                    'network.network',
+                                    'network.subnet'
+                                ],
                                 ['network.id=ipaddress.networkid'],
                                 [f"network.name='{networkname}'"]
                             )
                         else:
                             network = Database().get_record_join(
-                                ['ipaddress.ipaddress', 'ipaddress.networkid as networkid', 'network.name as networkname', 'network.network', 'network.subnet'],
-                                ['network.id=ipaddress.networkid', 'ipaddress.tablerefid=otherdevices.id'],
+                                [
+                                    'ipaddress.ipaddress',
+                                    'ipaddress.networkid as networkid',
+                                    'network.name as networkname',
+                                    'network.network',
+                                    'network.subnet'
+                                ],
+                                [
+                                    'network.id=ipaddress.networkid',
+                                    'ipaddress.tablerefid=otherdevices.id'
+                                ],
                                 [f'otherdevices.name="{name}"', 'ipaddress.tableref="otherdevices"']
                             )
                             if network:
                                 networkname = network[0]['networkname']
                         if not ipaddress:
                             if not network:
-                                network = Database().get_record(None, 'network', f' WHERE `name` = "{networkname}"')
+                                where = f' WHERE `name` = "{networkname}"'
+                                network = Database().get_record(None, 'network', where)
                                 if network:
                                     networkname = network[0]['networkname']
                             if network:
@@ -199,7 +223,11 @@ class OtherDev():
                                 # we try to ping for 10 ips, if none of these are free, something
                                 # else is going on (read: rogue devices)....
                                 while(max_count > 0 and ret != 1):
-                                    avail = Helper().get_available_ip(network[0]['network'], network[0]['subnet'], ips)
+                                    avail = Helper().get_available_ip(
+                                        network[0]['network'],
+                                        network[0]['subnet'],
+                                        ips
+                                    )
                                     ips.append(avail)
                                     _, ret = Helper().runcommand(f"ping -w1 -c1 {avail}", True, 3)
                                     max_count -= 1
@@ -210,28 +238,31 @@ class OtherDev():
                                 access_code = 400
                                 self.logger.info(f"my response: {response}")
                                 return dumps(response), access_code
-                        result, message = Config().device_ipaddress_config(device_id, self.table, ipaddress, networkname)
+                        result, message = Config().device_ipaddress_config(
+                            device_id,
+                            self.table,
+                            ipaddress,
+                            networkname
+                        )
                         if result is False:
-                            Database().delete_row(self.table, [{"column": "id", "value": device_id}])
+                            where = [{"column": "id", "value": device_id}]
+                            Database().delete_row(self.table, where)
                             # roll back
                             access_code = 404
                             response = {'message': f'{message}'}
                         else:
-                            Service().queue('dhcp','restart')
-                            Service().queue('dns','restart')
+                            Service().queue('dhcp', 'restart')
+                            Service().queue('dns', 'restart')
                             response = {'message': 'Device created'}
                 else:
-                    response = {'message': 'Bad Request; Columns are incorrect'}
+                    response = {'message': 'Columns are incorrect'}
                     access_code = 400
-                    return dumps(response), access_code
             else:
-                response = {'message': 'Bad Request; Not enough details to create the device'}
+                response = {'message': 'Not enough details to create the device'}
                 access_code = 400
-                return dumps(response), access_code
         else:
-            response = {'message': 'Bad Request; Did not received data'}
+            response = {'message': 'Did not received data'}
             access_code = 400
-            return dumps(response), access_code
         return dumps(response), access_code
 
 

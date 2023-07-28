@@ -19,13 +19,13 @@ from time import sleep, time
 from random import randint
 from os import getpid
 from concurrent.futures import ThreadPoolExecutor
+from common.constant import CONSTANT
+from common.validate_input import check_structure
 from utils.log import Log
 from utils.database import Database
 from utils.helper import Helper
-from common.constant import CONSTANT
 from utils.control import Control as Power
 from utils.status import Status
-from common.validate_input import check_structure
 
 
 class Control():
@@ -47,8 +47,19 @@ class Control():
         """
         # node = Database().get_record(None, 'node', f' WHERE name = "{hostname}"')
         node = Database().get_record_join(
-            ['node.id as nodeid', 'node.name as nodename', 'node.groupid as groupid', 'group.name as groupname','ipaddress.ipaddress as device', 'node.bmcsetupid'],
-            ['nodeinterface.nodeid=node.id', 'ipaddress.tablerefid=nodeinterface.id', 'group.id=node.groupid'],
+            [
+                'node.id as nodeid',
+                'node.name as nodename',
+                'node.groupid as groupid',
+                'group.name as groupname',
+                'ipaddress.ipaddress as device',
+                'node.bmcsetupid'
+            ],
+            [
+                'nodeinterface.nodeid=node.id',
+                'ipaddress.tablerefid=nodeinterface.id',
+                'group.id=node.groupid'
+            ],
             ['tableref="nodeinterface"', "nodeinterface.interface='BMC'", f"node.name='{hostname}'"]
         )
         if node:
@@ -70,9 +81,17 @@ class Control():
                 username = bmcsetup[0]['username']
                 password = bmcsetup[0]['password']
                 action = action.replace('_', '')
-                ret,mesg=Power().control_action(node[0]['nodename'], node[0]['groupname'], action, node[0]['device'], username, password, position=None)
-                #mesg = Helper().ipmi_action(hostname, action, username, password)
-                response = {'control': {action : mesg } }
+                _, message = Power().control_action(
+                    node[0]['nodename'],
+                    node[0]['groupname'],
+                    action,
+                    node[0]['device'],
+                    username,
+                    password,
+                    position=None
+                )
+                # message = Helper().ipmi_action(hostname, action, username, password)
+                response = {'control': {action : message } }
                 if 'status' in action:
                     access_code = 200
                 else:
@@ -117,16 +136,17 @@ class Control():
                 executor.submit(Power().control_mother, pipeline, request_id, size, delay)
                 executor.shutdown(wait=False)
                 # use below to not spawn a thread. easy for debugging.
-                #Power().control_mother(pipeline, request_id, size, delay)
+                # Power().control_mother(pipeline, request_id, size, delay)
                 # though we won't wait till all scheduled tasks are done, we wait a bit
                 # and return what we have.
                 # the client/lpower will then have to inquire to see what's done hereafter
-                wait_count=3
+                wait_count = 3
                 while(pipeline.has_nodes() and wait_count > 0):
                     sleep(1)
-                    wait_count-=1
+                    wait_count -= 1
                 response = {'message': 'Bad Request'}
-                status = Database().get_record(None , 'status', f' WHERE request_id = "{request_id}"')
+                where = f' WHERE request_id = "{request_id}"'
+                status = Database().get_record(None , 'status', where)
                 if status:
                     on_nodes = []
                     off_nodes = []
@@ -135,7 +155,7 @@ class Control():
                         if 'message' in record:
                             if record['read'] == 0:
                                 node, result, *_ = (record['message'].split(':', 1) + [None])
-                                # data is message is like 'nodexxx:message'
+                                # data is message is like 'node:message'
                                 self.logger.info(f"control POST regexp match: [{result}]")
                                 if result in ['on','reset','cycle']:
                                     on_nodes.append(node)
@@ -181,7 +201,7 @@ class Control():
                             Status().del_messages(request_id)
                         else:
                             node, result = record['message'].split(':',1)
-                            # data is message is like 'nodexxx:message'
+                            # data is message is like 'node:message'
                             if result == "on":
                                 on_nodes.append(node)
                             elif result == "off":

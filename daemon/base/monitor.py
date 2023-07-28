@@ -34,16 +34,21 @@ class Monitor():
 
 
     def service_monitor(self, name=None):
-        """This method will check the status of a service"""
+        """
+        This method will check the status of a service
+        """
         if name == "luna2":
-            response, code = Helper().checkdbstatus()
+            # response, code = Helper().checkdbstatus()
+            response, code = 'Helper Method checkdbstatus is missing', 200
             self.logger.info(f'Database status is: {response}.')
         response, code = Service().luna_service(name, 'status')
         return dumps(response), code
 
 
     def get_status(self, node=None):
-        """This method will check the status of a node"""
+        """
+        This method will check the status of a node
+        """
         access_code = 404
         response = {"monitor": {"status": { node: { } } } }
         nodes = Database().get_record(None, 'node', f' WHERE id = "{node}" OR name = "{node}"')
@@ -58,7 +63,9 @@ class Monitor():
 
 
     def update_status(self, node=None, http_request=None):
-        """This method will update the status of a node"""
+        """
+        This method will update the status of a node
+        """
         access_code = 400
         response = {'message': 'Bad Request'}
         request_data = http_request.data

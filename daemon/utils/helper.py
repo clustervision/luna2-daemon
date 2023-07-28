@@ -15,26 +15,20 @@ __email__       = 'sumit.sharma@clustervision.com'
 __status__      = 'Development'
 
 import os
-import pwd
 import subprocess
-import shutil
 import queue
 import json
 import ipaddress
 from configparser import RawConfigParser
 import hostlist
-import pyodbc
 from netaddr import IPNetwork
-from cryptography.fernet import Fernet
+import threading
+import re
 from jinja2 import Environment, meta, FileSystemLoader
 from utils.log import Log
 from utils.database import Database
-from common.constant import CONSTANT, LUNAKEY
-import concurrent.futures
-import threading
-from time import sleep
-from datetime import datetime
-import re
+from common.constant import CONSTANT
+
 
 class Helper(object):
     """
@@ -48,7 +42,6 @@ class Helper(object):
         self.logger = Log.get_logger()
         self.packing = queue.Queue()
         self.IPregex = re.compile(r"^((([0-9a-fA-F]{1,4}:){7,7}[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,7}:|([0-9a-fA-F]{1,4}:){1,6}:[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,5}(:[0-9a-fA-F]{1,4}){1,2}|([0-9a-fA-F]{1,4}:){1,4}(:[0-9a-fA-F]{1,4}){1,3}|([0-9a-fA-F]{1,4}:){1,3}(:[0-9a-fA-F]{1,4}){1,4}|([0-9a-fA-F]{1,4}:){1,2}(:[0-9a-fA-F]{1,4}){1,5}|[0-9a-fA-F]{1,4}:((:[0-9a-fA-F]{1,4}){1,6})|:((:[0-9a-fA-F]{1,4}){1,7}|:)|fe80:(:[0-9a-fA-F]{0,4}){0,4}%[0-9a-zA-Z]{1,}|::(ffff(:0{1,4}){0,1}:){0,1}((25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])\.){3,3}(25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])|([0-9a-fA-F]{1,4}:){1,4}:((25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])\.){3,3}(25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9]))|(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\.(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\.(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\.(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)|(([0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3})))\/?[0-9]*$")
-
 
 
     def get_ip_network(self, table=None, record_id=None):
@@ -71,8 +64,7 @@ class Helper(object):
 
     def get_template_vars(self, template=None):
         """
-        This method will return all the variables used
-        in the templates.
+        This method will return all the variables used in the templates.
         """
         dbcol = {}
         env = Environment(loader=FileSystemLoader('templates'))
@@ -95,7 +87,6 @@ class Helper(object):
         Process - Via subprocess, execute the command and wait to receive the complete output.
         Output - Detailed result.
         """
-
         kill = lambda process: process.kill()
         output = None
         self.logger.debug(f'Command Executed [{command}]')
@@ -108,9 +99,9 @@ class Helper(object):
         finally:
             my_timer.cancel()
 
-#        with subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True) as process:
-#            output = process.communicate()
-#            exit_code = process.wait()
+        # with subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True) as process:
+        #     output = process.communicate()
+        #     exit_code = process.wait()
         self.logger.debug(f'Output Of Command [{output[0]}], [{output[1]}]')
         if return_exit_code:
             return output,exit_code
@@ -126,33 +117,33 @@ class Helper(object):
         return False
 
 
-    def checkpathstate(self, path=None):
+    def check_path_state(self, path=None):
         """
         Input - Directory
         Output - Directory if exists, readable or writable
         """
         state = False
-        pathtype = self.checkpathtype(path)
-        if pathtype in('File', 'Directory'):
+        path_type = self.check_path_type(path)
+        if path_type in('File', 'Directory'):
             if os.access(path, os.R_OK):
                 if os.access(path, os.W_OK):
                     state = True
                 else:
-                    self.logger.debug(f'{pathtype} {path} is writable.')
+                    self.logger.debug(f'{path_type} {path} is writable.')
             else:
-                self.logger.debug(f'{pathtype} {path} is not readable.')
+                self.logger.debug(f'{path_type} {path} is not readable.')
         else:
-            self.logger.debug(f'{pathtype} {path} is not exists.')
+            self.logger.debug(f'{path_type} {path} is not exists.')
         return state
 
 
-    def checkpathtype(self, path=None):
+    def check_path_type(self, path=None):
         """
         Input - Path of File or Directory
         Output - File or directory or Not Exists
         """
-        pathstatus = self.checkpath(path)
-        if pathstatus:
+        path_status = self.check_path(path)
+        if path_status:
             if os.path.isdir(path):
                 response = 'File'
             elif os.path.isfile(path):
@@ -164,7 +155,7 @@ class Helper(object):
         return response
 
 
-    def checkpath(self, path=None):
+    def check_path(self, path=None):
         """
         Input - Path of File or Directory
         Output - True or False Is exists or not
@@ -216,7 +207,8 @@ class Helper(object):
             key_list.append(key)
         return key_list
 
-    def checkin_list(self, list1=None, list2=None):
+
+    def compare_list(self, list1=None, list2=None):
         """
         Input - TWO LISTS
         Output - True or False For Errors
@@ -259,15 +251,16 @@ class Helper(object):
     def get_network_details(self, ipaddr=None):
         """
         Input - IP Address such as 10.141.0.0/16
-        Output - Network and Subnet such as 10.141.0.0 and 16 (we settled for a cidr notation to be ipv6 compliant in the future)
+        Output - Network and Subnet such as 10.141.0.0 and 16
+        (we settled for a cidr notation to be ipv6 compliant in the future)
         """
         response = {}
         try:
-#            net = ipaddress.ip_network(ipaddr, strict=False)
-#            response['network'] = str(net)
-#            response['subnet'] = str(net.netmask)
-             net = IPNetwork(f"{ipaddr}")
-             response['network'],response['subnet'] = str(net).split('/') 
+            # net = ipaddress.ip_network(ipaddr, strict=False)
+            # response['network'] = str(net)
+            # response['subnet'] = str(net.netmask)
+            net = IPNetwork(f"{ipaddr}")
+            response['network'], response['subnet'] = str(net).split('/')
         except (ValueError, TypeError) as exp:
             self.logger.error(f'Invalid IP address: {ipaddr}, Exception is {exp}.')
         return response
@@ -324,7 +317,10 @@ class Helper(object):
         return data
 
 
-    def get_available_ip(self, network, subnet=None, takenips=None):
+    def get_available_ip(self, network=None, subnet=None, takenips=None):
+        """
+        This method will provide the available IP address list.
+        """
         if not takenips:
             takenips=[]
         if subnet:
@@ -333,19 +329,25 @@ class Helper(object):
             net = ipaddress.ip_network(f"{network}")
             avail = (str(ip) for ip in net.hosts() if str(ip) not in takenips)
             return str(next(avail))
-        except:
-            return
+        except Exception as exp:
+            return exp
 
-    def get_ip_range_size(self,start,end):
+    def get_ip_range_size(self, start=None, end=None):
+        """
+        This method will provide the range size of IP.
+        """
         try:
             start_ip = ipaddress.IPv4Address(start)
             end_ip = ipaddress.IPv4Address(end)
             count=int(end_ip)-int(start_ip)
             return count
-        except:
+        except Exception as exp:
             return 0
 
-    def get_ip_range_ips(self,start,end):
+    def get_ip_range_ips(self, start=None, end=None):
+        """
+        This method will provide the range size of IP.
+        """
         try:
             list=[]
             start_ip = ipaddress.IPv4Address(start)
@@ -353,10 +355,13 @@ class Helper(object):
             for ip in range(int(start_ip),(int(end_ip)+1)):
                 list.append(str(ipaddress.IPv4Address(ip)))
             return list
-        except:
+        except Exception as exp:
             return []
 
-    def get_network_size(self,network,subnet=None):
+    def get_network_size(self, network=None, subnet=None):
+        """
+        This method will provide the network size of IP.
+        """
         try:
             if subnet:
                 nwk=ipaddress.IPv4Network(network+'/'+subnet)
@@ -364,10 +369,13 @@ class Helper(object):
             else:
                 nwk=ipaddress.IPv4Network(network)
                 return nwk.num_addresses-2
-        except:
+        except Exception as exp:
             return 0
 
-    def get_ip_range_first_last_ip(self,network,subnet,size,offset=None):
+    def get_ip_range_first_last_ip(self, network=None, subnet=None, size=None, offset=None):
+        """
+        This method will provide the range of first and last IP.
+        """
         try:
             nwk = ipaddress.IPv4Network(network+'/'+subnet)
             first = nwk[1]
@@ -375,21 +383,25 @@ class Helper(object):
             if offset:
                 first_int = int(first) + offset
                 last_int = int(last) + offset
-                first = ipaddress.IPv4Address(first_int)  # ip_address instead of IPv4Address might also work and is ipv6 complaint? pending
+                first = ipaddress.IPv4Address(first_int) 
+                # ip_address instead of IPv4Address might also work and is ipv6 complaint? pending
                 last = ipaddress.IPv4Address(last_int)
             return str(first),str(last)
         except Exception as exp:
             self.logger.error(f"something went wrong: {exp}")
-            return None,None
+            return None, None
 
-    def get_quantity_occupied_ipaddresses_in_network(self,network):
+    def get_quantity_occupied_ipaddress_in_network(self, network=None):
+        """
+        This method will provide the quantity occupied in a network by ipaddress.
+        """
         if network:
-            ipaddresses = Database().get_record_join(['ipaddress.ipaddress'], 
-                                                     ['ipaddress.networkid=network.id'], 
-                                                     [f"network.name='{network}'"])
-            return len(ipaddresses)
-
-
+            ipaddress_list = Database().get_record_join(
+                ['ipaddress.ipaddress'],
+                ['ipaddress.networkid=network.id'],
+                [f"network.name='{network}'"]
+            )
+            return len(ipaddress_list)
 
 
     def make_rows(self, data=None):
@@ -422,6 +434,7 @@ class Helper(object):
             variable = None
         return variable
 
+
     def make_bool(self, variable=None):
         """
         Input - string
@@ -438,16 +451,17 @@ class Helper(object):
             variable = None
         return variable
 
-    def make_boolnum(self, variable=None):
+
+    def bool_to_string(self, variable=None):
         """
         Input - string
         Output - Boolean
         """
         if isinstance(variable, bool):
             if variable is True:
-                variable='1'
+                variable = '1'
             else:
-                variable='0'
+                variable = '0'
         elif isinstance(variable, (str, int)):
             if variable in ('1', 1, 'true', 'True', 'TRUE', 'yes', 'Yes', 'YES'):
                 variable = '1'
@@ -464,9 +478,9 @@ class Helper(object):
         Output - Encrypt String
         """
         return string
-#        fernetobj = Fernet(bytes(LUNAKEY, 'utf-8'))
-#        response = fernetobj.encrypt(string.encode()).decode()
-#        return response
+        # fernetobj = Fernet(bytes(LUNAKEY, 'utf-8'))
+        # response = fernetobj.encrypt(string.encode()).decode()
+        # return response
 
 
     def decrypt_string(self, string=None):
@@ -475,12 +489,12 @@ class Helper(object):
         Output - Decrypt Encoded String
         """
         return string
-#        fernetobj = Fernet(bytes(LUNAKEY, 'utf-8'))
-#        response = fernetobj.decrypt(string).decode()
-#        return response
+        # fernetobj = Fernet(bytes(LUNAKEY, 'utf-8'))
+        # response = fernetobj.decrypt(string).decode()
+        # return response
 
 
-    def checksection(self, filename=None, parent_dict=None):
+    def check_section(self, filename=None, parent_dict=None):
         """
         Compare the bootstrap/constants section with the predefined dictionary sections.
         """
@@ -494,7 +508,7 @@ class Helper(object):
         return check
 
 
-    def checkoption(self, filename=None, section=None, option=None, parent_dict=None):
+    def check_option(self, filename=None, section=None, option=None, parent_dict=None):
         """
         Compare the bootstrap/constants option with the predefined dictionary options.
         """
@@ -506,6 +520,7 @@ class Helper(object):
                 self.logger.error(f'{section} do not have {option}, kindly check {filename}.')
                 check = False
         return check
+
 
     def ipmi_action(self, hostname=None, action=None, username=None, password=None):
         """
@@ -534,7 +549,9 @@ class Helper(object):
 
 
     def chunks(self, lst, num):
-        """Yield successive n-sized chunks from lst."""
+        """
+        Yield successive n-sized chunks from lst.
+        """
         for i in range(0, len(lst), num):
             yield lst[i:i + num]
 
@@ -565,74 +582,107 @@ class Helper(object):
         status = Database().update('node', row, where)
         return status
 
-    # -----------------------------------------------------------------
     """ 
-    Below Classes/Functions maintained by Antoine
-    antoine.schonewille@clustervision.com
+    Below Classes/Functions maintained by Antoine antoine.schonewille@clustervision.com
     """
 
     class Pipeline():
         """
-        Class to allow a single element pipeline between mainthread and childs.
+        Class to allow a single element pipeline between main thread and child.
         Antoine Jan 2023
         """
         def __init__(self):
             self.message = {}
             self.nodes   = {}
-            self._lock    = threading.Lock()
+            self._lock = threading.Lock()
+
 
         def get_messages(self):
+            """
+            This method will retrieve the message.
+            """
             with self._lock:
                 message = self.message
             return message
 
-        def add_message(self, message):
+
+        def add_message(self, message=None):
+            """
+            This method will add the message.
+            """
             with self._lock:
                 self.message.update(message)
 
-        def del_message(self, _key):
+
+        def del_message(self, _key=None):
+            """
+            This method will delete the message.
+            """
             with self._lock:
                 self.message.pop(_key, None)
 
+
         def get_node(self):
+            """
+            This method will retrieve the node.
+            """
             with self._lock:
                 if len(self.nodes)>0:
                     node = self.nodes.popitem()
                     return (node[0],node[1])
                 return
 
-        def add_nodes(self,nodes=[]):
+
+        def add_nodes(self, nodes=[]):
+            """
+            This method will add the node.
+            """
             with self._lock:
                 self.nodes.update(nodes)
 
+
         def get_nodes(self):
+            """
+            This method will add the nodes.
+            """
             with self._lock:
                 return self.nodes
 
+
         def has_nodes(self):
+            """
+            This method will check the node.
+            """
             with self._lock:
                 if len(self.nodes) > 0:
                     return True
                 return False
 
-
     # ---------------------------------------------------------
     # not sure if below is still being used
  
-    def insert_mesg_in_status(self,request_id,username_initiator,message):
-        #current_datetime=datetime.now().replace(microsecond=0)
-        current_datetime="NOW"
-        row=[{"column": "request_id", "value": f"{request_id}"}, 
-             {"column": "created", "value": str(current_datetime)}, 
-             {"column": "username_initiator", "value": f"{username_initiator}"}, 
-             {"column": "read", "value": "0"}, 
-             {"column": "message", "value": f"{message}"}]
+    def insert_mesg_in_status(self, request_id=None, username_initiator=None, message=None):
+        """
+        This method will insert the message in the status table.
+        """
+        # current_datetime=datetime.now().replace(microsecond=0)
+        current_datetime = "NOW"
+        row = [
+            {"column": "request_id", "value": f"{request_id}"},
+            {"column": "created", "value": str(current_datetime)},
+            {"column": "username_initiator", "value": f"{username_initiator}"},
+            {"column": "read", "value": "0"},
+            {"column": "message", "value": f"{message}"}
+        ]
         Database().insert('status', row)
 
 
     # -----------------------------------------------------------------
 
     def convert_list_to_dict(self, mylist=[], byname=None):
+        """
+        This method will convert list into the dictionary.
+        """
     # This def receives a 'Database().get_record' list of dicts
     # and converts it into a dictionary where the main key is the value of 'byname' of the dict objects inside the list
     # eg group[0]{id:'1',....} with a byname of 'id' makes a dict like group{'1':{.....
@@ -653,13 +703,16 @@ class Helper(object):
 
     # -----------------------------------------------------------------
 
-    def plugin_finder(self,startpath):
+    def plugin_finder(self, startpath=None):
+        """
+        This method will find the plugin.
+        """
         # plugin_finder traverses a path to find python 'plugin' files in nested directories
 
-        def set_leaf(tree, branches, leaf):
-            """ Set a terminal element to *leaf* within nested dictionaries.              
-            *branches* defines the path through dictionnaries.                            
-
+        def set_leaf(tree=None, branches=None, leaf=None):
+            """
+            Set a terminal element to *leaf* within nested dictionaries.              
+            *branches* defines the path through dictionaries.                            
             Example:                                                                      
             >>> t = {}                                                                    
             >>> set_leaf(t, ['b1','b2','b3'], 'new_leaf')                                 
@@ -675,31 +728,32 @@ class Helper(object):
 
         tree = {}
         for root, dirs, files in os.walk(startpath):
-            #branches = [startpath]
+            # branches = [startpath]
             branches = [os.path.basename(startpath)]
             if root != startpath:
                 branches.extend(os.path.relpath(root, startpath).split(os.sep))
-
             set_leaf(tree, branches, dict([(d,{}) for d in dirs]+[(f,None) for f in files]))
-
         self.logger.debug(f"PLUGIN TREE {startpath}: {tree}")
         return tree
 
-    def plugin_load(self,plugins,root,levelone,leveltwo=None,class_name=None):
+
+    def plugin_load(self, plugins=None, root=None, levelone=None, leveltwo=None, class_name=None):
+        """
+        This method will load the plugin.
+        """
         self.logger.debug(f"Loading module {class_name}/Plugin from plugins.{root}.{levelone}.{leveltwo} / {plugins}")
-        module=None
+        module = None
         class_name = class_name or 'Plugin'
-        levelones=[]
+        levelones = []
         if type(levelone) == type('string'):
             levelones.append(levelone)
         else:
-            levelones=levelone
-
+            levelones = levelone
         try:
             for levelone in levelones:
                 if levelone in plugins[root].keys():
                     if leveltwo and leveltwo in plugins[root][levelone]:
-                        plugin=leveltwo.rsplit('.',1)
+                        plugin = leveltwo.rsplit('.',1)
                         self.logger.info(f"loading plugins.{root}.{levelone}.{plugin[0]}")
                         module = __import__('plugins.'+root+'.'+levelone+'.'+plugin[0],fromlist=[class_name])
                         break
@@ -728,4 +782,3 @@ class Helper(object):
         except Exception as exp:
             self.logger.error(f"Getattr caused a problem: {exp}") 
             return None
-

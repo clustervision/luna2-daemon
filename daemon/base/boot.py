@@ -18,18 +18,18 @@ import datetime
 import jinja2
 import jwt
 from flask import abort
+from common.constant import CONSTANT
 from utils.log import Log
 from utils.database import Database
 from utils.helper import Helper
-from common.constant import CONSTANT
 from utils.service import Service
 from utils.config import Config
 
 try:
     from plugins.detection.switchport import Plugin as DetectionPlugin
-except Exception as exp:
-    logger = Log.get_logger()
-    logger.error(f"Problems encountered while loading detection plugin: {exp}")
+except ImportError as import_error:
+    LOGGER = Log.get_logger()
+    LOGGER.error(f"Problems encountered while loading detection plugin: {import_error}")
 
 class Boot():
     """
@@ -41,12 +41,17 @@ class Boot():
         This constructor will initialize all required variables here.
         """
         self.logger = Log.get_logger()
-        self.provision_plugins = Helper().plugin_finder('/trinity/local/luna/plugins/provision')  # needs to be with constants. pending
-        self.network_plugins = Helper().plugin_finder('/trinity/local/luna/plugins/network')  # needs to be with constants. pending
-        self.bmc_plugins = Helper().plugin_finder('/trinity/local/luna/plugins/bmc')  # needs to be with constants. pending
-        self.install_plugins = Helper().plugin_finder('/trinity/local/luna/plugins/install')  # needs to be with constants. pending
-#        self.detection_plugins = Helper().plugin_finder('/trinity/local/luna/plugins/detection')  # needs to be with constants. pending
-#        self.DetectionPlugin=Helper().plugin_load(self.detection_plugins,'detection','switchport')
+        self.provision_plugins = Helper().plugin_finder('/trinity/local/luna/plugins/provision')
+        # needs to be with constants. pending
+        self.network_plugins = Helper().plugin_finder('/trinity/local/luna/plugins/network')
+        # needs to be with constants. pending
+        self.bmc_plugins = Helper().plugin_finder('/trinity/local/luna/plugins/bmc')
+        # needs to be with constants. pending
+        self.install_plugins = Helper().plugin_finder('/trinity/local/luna/plugins/install')
+        # needs to be with constants. pending
+        # self.detection_plugins = Helper().plugin_finder('/trinity/local/luna/plugins/detection')
+        # needs to be with constants. pending
+        # self.DetectionPlugin=Helper().plugin_load(self.detection_plugins,'detection','switchport')
 
 
     def default(self):
@@ -54,7 +59,8 @@ class Boot():
         This method will provide a default ipxe template.
         """
         template = 'templ_boot_ipxe.cfg'
-        check_template = Helper().check_jinja(f'{CONSTANT["TEMPLATES"]["TEMPLATES_DIR"]}/{template}')
+        template_path = f'{CONSTANT["TEMPLATES"]["TEMPLATES_DIR"]}/{template}'
+        check_template = Helper().check_jinja(template_path)
         if not check_template:
             abort(404, 'Empty')
         controller = Database().get_record_join(
@@ -68,7 +74,7 @@ class Boot():
             protocol = CONSTANT['API']['PROTOCOL']
             webserver_port = serverport
             webserver_protocol = protocol
-            if 'WEBSERVER' in CONSTANT.keys():
+            if 'WEBSERVER' in CONSTANT:
                 if 'PORT' in CONSTANT['WEBSERVER']:
                     webserver_port = CONSTANT['WEBSERVER']['PORT']
                 if 'PROTOCOL' in CONSTANT['WEBSERVER']:
@@ -77,7 +83,7 @@ class Boot():
             nodes, available_nodes = [], []
             all_nodes = Database().get_record(None, 'node')
             most_nodes = Database().get_record_join(
-                ['node.name','nodeinterface.macaddress'],
+                ['node.name', 'nodeinterface.macaddress'],
                 ['nodeinterface.nodeid=node.id'],
                 ["nodeinterface.interface='BOOTIF'"]
             )  # BOOTIF is not entirely true but for now it will do. pending
@@ -96,7 +102,6 @@ class Boot():
             if all_groups:
                 for group in all_groups:
                     groups.append(group['name'])
-
             access_code = 200
         else:
             environment = jinja2.Environment()
@@ -123,13 +128,14 @@ class Boot():
         This method will provide a boot short ipxe template.
         """
         template = 'templ_boot_ipxe_short.cfg'
-        check_template = Helper().check_jinja(f'{CONSTANT["TEMPLATES"]["TEMPLATES_DIR"]}/{template}')
+        template_path = f'{CONSTANT["TEMPLATES"]["TEMPLATES_DIR"]}/{template}'
+        check_template = Helper().check_jinja(template_path)
         if not check_template:
             abort(404, 'Empty')
         controller = Database().get_record_join(
-            ['controller.*','ipaddress.ipaddress'],
+            ['controller.*', 'ipaddress.ipaddress'],
             ['ipaddress.tablerefid=controller.id'],
-            ['tableref="controller"','controller.hostname="controller"']
+            ['tableref="controller"', 'controller.hostname="controller"']
         )
         if controller:
             ipaddress = controller[0]['ipaddress']
@@ -137,7 +143,7 @@ class Boot():
             protocol = CONSTANT['API']['PROTOCOL']
             webserver_protocol = protocol
             webserver_port = serverport
-            if 'WEBSERVER' in CONSTANT.keys():
+            if 'WEBSERVER' in CONSTANT:
                 if 'PORT' in CONSTANT['WEBSERVER']:
                     webserver_port = CONSTANT['WEBSERVER']['PORT']
                 if 'PROTOCOL' in CONSTANT['WEBSERVER']:
@@ -165,13 +171,14 @@ class Boot():
         This method will provide a boot disk ipxe template.
         """
         template = 'templ_boot_disk.cfg'
-        check_template = Helper().check_jinja(f'{CONSTANT["TEMPLATES"]["TEMPLATES_DIR"]}/{template}')
+        template_path = f'{CONSTANT["TEMPLATES"]["TEMPLATES_DIR"]}/{template}'
+        check_template = Helper().check_jinja(template_path)
         if not check_template:
             abort(404, 'Empty')
         controller = Database().get_record_join(
-            ['controller.*','ipaddress.ipaddress'],
+            ['controller.*', 'ipaddress.ipaddress'],
             ['ipaddress.tablerefid=controller.id'],
-            ['tableref="controller"','controller.hostname="controller"']
+            ['tableref="controller"', 'controller.hostname="controller"']
         )
         if controller:
             ipaddress = controller[0]['ipaddress']
@@ -183,11 +190,7 @@ class Boot():
             ipaddress, serverport = '', ''
             access_code = 404
         self.logger.info(f'Boot API serving the {template}')
-        response = {
-            'template': template,
-            'LUNA_CONTROLLER': ipaddress,
-            'LUNA_API_PORT': serverport
-        }
+        response = {'template': template, 'LUNA_CONTROLLER': ipaddress, 'LUNA_API_PORT': serverport}
         return response, access_code
 
 
@@ -212,21 +215,22 @@ class Boot():
         }
         data['protocol'] = CONSTANT['API']['PROTOCOL']
         data['webserver_protocol'] = data['protocol']
-        check_template = Helper().check_jinja(f'{CONSTANT["TEMPLATES"]["TEMPLATES_DIR"]}/{template}')
+        template_path = f'{CONSTANT["TEMPLATES"]["TEMPLATES_DIR"]}/{template}'
+        check_template = Helper().check_jinja(template_path)
         if not check_template:
             abort(404, 'Empty')
-        #Antoine
-        #LOGGER.info(f"BOOT/SEARCH/MAC received for {mac}")
+        # Antoine
+        # LOGGER.info(f"BOOT/SEARCH/MAC received for {mac}")
         controller = Database().get_record_join(
-            ['controller.*','ipaddress.ipaddress'],
+            ['controller.*', 'ipaddress.ipaddress'],
             ['ipaddress.tablerefid=controller.id'],
-            ['tableref="controller"','controller.hostname="controller"']
+            ['tableref="controller"', 'controller.hostname="controller"']
         )
         if controller:
             data['ipaddress'] = controller[0]['ipaddress']
             data['serverport'] = controller[0]['serverport']
             data['webserver_port'] = data['serverport']
-            if 'WEBSERVER' in CONSTANT.keys():
+            if 'WEBSERVER' in CONSTANT:
                 if 'PORT' in CONSTANT['WEBSERVER']:
                     data['webserver_port'] = CONSTANT['WEBSERVER']['PORT']
                 if 'PROTOCOL' in CONSTANT['WEBSERVER']:
@@ -234,8 +238,8 @@ class Boot():
         nodeinterface = Database().get_record_join(
             ['nodeinterface.nodeid', 'nodeinterface.interface', 'ipaddress.ipaddress',
             'network.name as network', 'network.network as networkip', 'network.subnet'],
-            ['network.id=ipaddress.networkid','ipaddress.tablerefid=nodeinterface.id'],
-            ['tableref="nodeinterface"',f"nodeinterface.macaddress='{mac}'"]
+            ['network.id=ipaddress.networkid', 'ipaddress.tablerefid=nodeinterface.id'],
+            ['tableref="nodeinterface"', f"nodeinterface.macaddress='{mac}'"]
         )
         if nodeinterface:
             data['nodeid'] = nodeinterface[0]['nodeid']
@@ -243,32 +247,41 @@ class Boot():
         else:
           # --------------------- port detection ----------------------------------
             try:
-                result=DetectionPlugin().find(macaddress=mac)
+                result = DetectionPlugin().find(macaddress=mac)
                 if (isinstance(result, bool) and result is True) or (isinstance(result, tuple) and result[0] is True and len(result)>2):
-                    switch=result[1]
-                    port=result[2]
+                    switch = result[1]
+                    port = result[2]
                     self.logger.info(f"detected {mac} on: [{switch}] : [{port}]")
-                    detnode = Database().get_record_join(['node.*'], ['switch.id=node.switchid'], [f'switch.name="{switch}"', f'node.switchport = "{port}"'])
-                    if detnode:
+                    detect_node = Database().get_record_join(
+                        ['node.*'],
+                        ['switch.id=node.switchid'],
+                        [f'switch.name="{switch}"', f'node.switchport = "{port}"']
+                    )
+                    if detect_node:
                         row = [{"column": "macaddress", "value": mac}]
                         where = [
-                            {"column": "nodeid", "value": detnode[0]["id"]},
+                            {"column": "nodeid", "value": detect_node[0]["id"]},
                             {"column": "interface", "value": "BOOTIF"}
                             ]
                         Database().update('nodeinterface', row, where)
                         nodeinterface = Database().get_record_join(
-                            ['nodeinterface.nodeid', 'nodeinterface.interface', 'ipaddress.ipaddress',
-                             'network.name as network', 'network.network as networkip', 'network.subnet'],
-                            ['network.id=ipaddress.networkid','ipaddress.tablerefid=nodeinterface.id'],
-                            ['tableref="nodeinterface"',f"nodeinterface.macaddress='{mac}'"]
+                            ['nodeinterface.nodeid', 'nodeinterface.interface',
+                             'ipaddress.ipaddress', 'network.name as network',
+                             'network.network as networkip', 'network.subnet'],
+                            [
+                                'network.id=ipaddress.networkid',
+                                'ipaddress.tablerefid=nodeinterface.id'
+                            ],
+                            ['tableref="nodeinterface"', f"nodeinterface.macaddress='{mac}'"]
                         )
                         if nodeinterface:
                             data['nodeid'] = nodeinterface[0]['nodeid']
-                            data['nodeip'] = f'{nodeinterface[0]["ipaddress"]}/{nodeinterface[0]["subnet"]}'
-                            Service().queue('dhcp','restart')
+                            nodeip = f'{nodeinterface[0]["ipaddress"]}/{nodeinterface[0]["subnet"]}'
+                            data['nodeip'] = nodeip
+                            Service().queue('dhcp', 'restart')
             except Exception as exp:
                 self.logger.info(f"port detection call in boot returned: {exp}")
-          # -----------------------------------------------------------------------
+        # -----------------------------------------------------------------------
         if data['nodeid']:
             node = Database().get_record_join(
                 ['node.*','group.osimageid as grouposimageid'],
@@ -278,7 +291,7 @@ class Boot():
             if node:
                 data['osimageid'] = node[0]['osimageid'] or node[0]['grouposimageid']
                 data['nodename'] = node[0]['name']
-    #            data['nodehostname'] = node[0]['hostname']
+                # data['nodehostname'] = node[0]['hostname']
                 data['nodehostname'] = node[0]['name'] # + fqdn - pending
                 data['nodeservice'] = node[0]['service']
         if data['osimageid']:
@@ -328,43 +341,44 @@ class Boot():
         }
         data['protocol'] = CONSTANT['API']['PROTOCOL']
         data['webserver_protocol'] = data['protocol']
-        check_template = Helper().check_jinja(f'{CONSTANT["TEMPLATES"]["TEMPLATES_DIR"]}/{template}')
+        template_path = f'{CONSTANT["TEMPLATES"]["TEMPLATES_DIR"]}/{template}'
+        check_template = Helper().check_jinja(template_path)
         if not check_template:
             abort(404, 'Empty')
-        #Antoine
+        # Antoine
         networkname, network, createnode_ondemand = None, None, True # used below
 
         # get controller and cluster info
         controller = Database().get_record_join(
-            ['controller.*','ipaddress.ipaddress','network.name as networkname'],
-            ['ipaddress.tablerefid=controller.id','network.id=ipaddress.networkid'],
-            ['tableref="controller"','controller.hostname="controller"']
+            ['controller.*', 'ipaddress.ipaddress', 'network.name as networkname'],
+            ['ipaddress.tablerefid=controller.id', 'network.id=ipaddress.networkid'],
+            ['tableref="controller"', 'controller.hostname="controller"']
         )
         if controller:
             data['ipaddress'] = controller[0]['ipaddress']
             data['serverport'] = controller[0]['serverport']
             data['webserver_port'] = data['serverport']
-            if 'WEBSERVER' in CONSTANT.keys():
+            if 'WEBSERVER' in CONSTANT:
                 if 'PORT' in CONSTANT['WEBSERVER']:
                     data['webserver_port'] = CONSTANT['WEBSERVER']['PORT']
                 if 'PROTOCOL' in CONSTANT['WEBSERVER']:
                     data['webserver_protocol'] = CONSTANT['WEBSERVER']['PROTOCOL']
-            networkname=controller[0]['networkname']
-            cluster=Database().get_record(None,'cluster',f" WHERE id='{controller[0]['clusterid']}'")
+            networkname = controller[0]['networkname']
+            where = f" WHERE id='{controller[0]['clusterid']}'"
+            cluster = Database().get_record(None, 'cluster', where)
             if cluster and 'createnode_ondemand' in cluster[0]:
                 createnode_ondemand=Helper().bool_revert(cluster[0]['createnode_ondemand'])
-
         # clear mac if it already exists. let's check
         nodeinterface_check = Database().get_record_join(
-            ['nodeinterface.nodeid as nodeid','nodeinterface.interface'],
+            ['nodeinterface.nodeid as nodeid', 'nodeinterface.interface'],
             ['nodeinterface.nodeid=node.id'],
             [f'nodeinterface.macaddress="{mac}"']
         )
         if nodeinterface_check:
             # this means there is already a node with this mac.
             # though we shouldn't, we will remove the other node's MAC so we can proceed
-            self.logger.warning(f"node with id {nodeinterface_check[0]['nodeid']} will have its MAC\
-                            cleared and this <to be declared>-node  will use MAC {mac}")
+            self.logger.warning(f"node with id {nodeinterface_check[0]['nodeid']} will have its\
+                                 MAC cleared and this <to be declared>-node  will use MAC {mac}")
             row = [{"column": "macaddress", "value": ""}]
             where = [{"column": "macaddress", "value": mac}]
             Database().update('nodeinterface', row, where)
@@ -376,7 +390,7 @@ class Boot():
             ['nodeinterface.nodeid=node.id','group.id=node.groupid']
         )
         list2 = Database().get_record_join(
-            ['node.*','group.name as groupname'],
+            ['node.*', 'group.name as groupname'],
             ['group.id=node.groupid']
         )
         node_list = list1 + list2
@@ -388,26 +402,26 @@ class Boot():
             provision_interface = str(group_details[0]['provision_interface'])
 
         # things we have to set if we 'clone' or create a node
-        items={
-#        'setupbmc'       : False,
-#        'netboot'        : False,
-#        'localinstall'   : False,
-#        'bootmenu'       : False,
-        'service'        : False,
-        'localboot'      : False
+        items = {
+            # 'setupbmc'       : False,
+            # 'netboot'        : False,
+            # 'localinstall'   : False,
+            # 'bootmenu'       : False,
+            'service'        : False,
+            'localboot'      : False
         }
 
         # first we generate a list of taken ips. we might need it later
         ips = []
         if networkname:
             network = Database().get_record_join(
-                ['ipaddress.ipaddress','network.network','network.subnet'],
+                ['ipaddress.ipaddress', 'network.network', 'network.subnet'],
                 ['network.id=ipaddress.networkid'],
                 [f"network.name='{networkname}'"]
             )
             if network:
-                for ip in network:
-                    ips.append(ip['ipaddress'])
+                for network_ip in network:
+                    ips.append(network_ip['ipaddress'])
 
         hostname = None # we use it further down below.
         checked = []
@@ -420,50 +434,62 @@ class Boot():
                 for node in list2:
                     names.append(node['name'])
                 names.sort(reverse=True)
-            
                 example_node = names[0]
-                ename = example_node.rstrip('0123456789')  # this assumes a convention like <name><number> as node name
+                ename = example_node.rstrip('0123456789')
+                # this assumes a convention like <name><number> as node name
                 enumber = example_node[len(ename):]
                 if ename and enumber:
-                    newenumber=str(int(enumber)+1)
-                    newenumber = newenumber.zfill(len(enumber))
-                    new_data['name'] = f"{ename}{newenumber}"
+                    new_enumber = str(int(enumber) + 1)
+                    new_enumber = new_enumber.zfill(len(enumber))
+                    new_data['name'] = f"{ename}{new_enumber}"
                 elif ename:
-                    newenumber='001'
-                    new_data['name'] = f"{ename}{newenumber}"
-                else:  # we have to create a name ourselves
+                    new_enumber = '001'
+                    new_data['name'] = f"{ename}{new_enumber}"
+                else:
+                    # we have to create a name ourselves
                     new_data['name'] = f"{groupname}001"
-            else: # we have to create a name ourselves
+            else:
+                # we have to create a name ourselves
                 new_data['name'] = f"{groupname}001"
-
-            self.logger.info(f"Group boot intelligence: we came up with the following node name: [{new_data['name']}]")
-
+            self.logger.info(f"Group boot intelligence: we came up with the following\
+                              node name: [{new_data['name']}]")
             # we kinda already do this further down... but i leave it here as it makes sense
             if group_details:
                 new_data['groupid']=group_details[0]['id']
 
-            for item in items:
-                if list2 and item in list2[0] and list2[0][item]:  # we copy from another node. not sure if this is really correct. pending
-                    new_data[item] = list2[0][item]
-                    if isinstance(items[item], bool):
-                        new_data[item] = str(Helper().make_bool(new_data[item]))
+            for key, value in items.items():
+                if list2 and key in list2[0] and list2[0][key]:
+                    # we copy from another node. not sure if this is really correct. pending
+                    new_data[key] = list2[0][key]
+                    if isinstance(value, bool):
+                        new_data[key] = str(Helper().make_bool(new_data[key]))
                 else:
-                    new_data[item] = items[item]
-                if (not new_data[item]) and (item not in items):
-                    del new_data[item]
+                    new_data[key] = value
+                if (not new_data[key]) and (key not in items):
+                    del new_data[key]
             row = Helper().make_rows(new_data)
             nodeid = Database().insert('node', row)
 
             if nodeid:
-                hostname=new_data['name']
-                # we need to pick the currect network in a smart way. we assume the default network, the network where controller is in.
-                # HOWEVER: we do not copy/create network if options. it's a bit tedious so we leave it here for now as pending. -Antoine
-                avail_ip=Helper().get_available_ip(network[0]['network'],network[0]['subnet'],ips)
-                result, _ = Config().node_interface_config(nodeid,provision_interface,mac)
+                hostname = new_data['name']
+                # we need to pick the current network in a smart way. we assume the
+                # default network, the network where controller is in.
+                # HOWEVER: we do not copy/create network if options. it's a bit tedious
+                # so we leave it here for now as pending. -Antoine
+                avail_ip = Helper().get_available_ip(
+                    network[0]['network'],
+                    network[0]['subnet'],
+                    ips
+                )
+                result, _ = Config().node_interface_config(nodeid, provision_interface, mac)
                 if result:
-                    result, _ = Config().node_interface_ipaddress_config(nodeid,provision_interface,avail_ip,networkname)
-                Service().queue('dns','restart')
-
+                    result, _ = Config().node_interface_ipaddress_config(
+                        nodeid,
+                        provision_interface,
+                        avail_ip,
+                        networkname
+                    )
+                Service().queue('dns', 'restart')
         else:
             # we already have some nodes in the list. let's see if we can re-use
             for node in node_list:
@@ -471,55 +497,91 @@ class Boot():
                     checked.append(node['name'])
                     if 'interface' in node and 'macaddress' in node and not node['macaddress']:
                         # mac is empty. candidate!
-                        hostname=node['name']
-                        result, _ = Config().node_interface_config(node['id'],provision_interface,mac)
+                        hostname = node['name']
+                        result, _ = Config().node_interface_config(
+                            node['id'],
+                            provision_interface,
+                            mac
+                        )
                         break
                     elif not 'interface' in node:
                         # node is there but no interface. we'll take it!
-                        hostname=node['name']
-                        # we need to pick the currect network in a smart way. we assume the default network where controller is in as well
-                        avail_ip=Helper().get_available_ip(network[0]['network'],network[0]['subnet'],ips)
-                        result, _ = Config().node_interface_config(node['id'],provision_interface,mac)
+                        hostname = node['name']
+                        # we need to pick the current network in a smart way. we assume
+                        # the default network where controller is in as well
+                        avail_ip = Helper().get_available_ip(
+                            network[0]['network'],
+                            network[0]['subnet'],
+                            ips
+                        )
+                        result, _ = Config().node_interface_config(
+                            node['id'],
+                            provision_interface,
+                            mac
+                        )
                         if result:
-                            result, _ = Config().node_interface_ipaddress_config(node['id'],provision_interface,avail_ip,networkname)
+                            result, _ = Config().node_interface_ipaddress_config(
+                                node['id'],
+                                provision_interface,
+                                avail_ip,
+                                networkname
+                            )
                             Service().queue('dns','restart')
                         break
 
         if not hostname:
-            # we bail out because we could not re-use a node or create one. something above did not work out.
+            # we bail out because we could not re-use a node or create one.
+            # something above did not work out.
             environment = jinja2.Environment()
             template = environment.from_string('No Node is available for this group.')
             access_code = 404
             return template,access_code
 
-        # we update the groupid of the node. this is actually only really needed if we re-use a node (unassigned)
+        # we update the groupid of the node. this is actually only really
+        # needed if we re-use a node (unassigned)
         if group_details:
             row = [{"column": "groupid", "value": group_details[0]['id']}]
             where = [{"column": "name", "value": hostname}]
             Database().update('node', row, where)
 
-        # below here is almost identical to a manual node selection boot -------------------------------------------
+        # below here is almost identical to a manual node selection boot -----------------
 
-        node = Database().get_record_join(['node.*','group.osimageid as grouposimageid'],['group.id=node.groupid'],[f'node.name="{hostname}"'])
+        node = Database().get_record_join(
+            ['node.*', 'group.osimageid as grouposimageid'],
+            ['group.id=node.groupid'],
+            [f'node.name="{hostname}"']
+        )
         if node:
             data['osimageid'] = node[0]['osimageid'] or node[0]['grouposimageid']
             data['nodename'] = node[0]['name']
-    #        data['nodehostname'] = node[0]['hostname']
+            # data['nodehostname'] = node[0]['hostname']
             data['nodehostname'] = node[0]['name'] # + fqdn ?
             data['nodeservice'] = node[0]['service']
             data['nodeid'] = node[0]['id']
 
         if data['nodeid']:
-
             Service().queue('dhcp','restart')
-
-            nodeinterface = Database().get_record_join(['nodeinterface.nodeid','nodeinterface.interface','nodeinterface.macaddress','ipaddress.ipaddress','network.name as network','network.network as networkip','network.subnet'], 
-                                                    ['network.id=ipaddress.networkid','ipaddress.tablerefid=nodeinterface.id'],
-                                                    ['tableref="nodeinterface"',f"nodeinterface.nodeid='{data['nodeid']}'",f'nodeinterface.macaddress="{mac}"'])
+            nodeinterface = Database().get_record_join(
+                [
+                    'nodeinterface.nodeid',
+                    'nodeinterface.interface',
+                    'nodeinterface.macaddress',
+                    'ipaddress.ipaddress',
+                    'network.name as network',
+                    'network.network as networkip',
+                    'network.subnet'
+                ],
+                ['network.id=ipaddress.networkid', 'ipaddress.tablerefid=nodeinterface.id'],
+                [
+                    'tableref="nodeinterface"',
+                    f"nodeinterface.nodeid='{data['nodeid']}'",
+                    f'nodeinterface.macaddress="{mac}"'
+                ]
+            )
             if nodeinterface:
                 data['nodeip'] = f'{nodeinterface[0]["ipaddress"]}/{nodeinterface[0]["subnet"]}'
             else:
-                #uh oh... no bootif??
+                # uh oh... no bootif??
                 data['nodeip'] = None
 
         if data['osimageid']:
@@ -529,13 +591,12 @@ class Boot():
                     data['kernelfile'] = osimage[0]['kernelfile']
                 if ('initrdfile' in osimage[0]) and (osimage[0]['initrdfile']):
                     data['initrdfile'] = osimage[0]['initrdfile']
-
         self.logger.info(f"manual group boot template data: [{data}]")
 
         if None not in data.values():
             access_code = 200
             Helper().update_node_state(data["nodeid"], "installer.discovery")
-            # reintroduced below section as if we serve files through e.g. nginx, we won't update anything
+            # reintroduced below section as if we serve files through e.g. nginx, we won't update
             row = [{"column": "status", "value": "installer.discovery"}]
             where = [{"column": "id", "value": data['nodeid']}]
             Database().update('node', row, where)
@@ -568,74 +629,103 @@ class Boot():
         }
         data['protocol'] = CONSTANT['API']['PROTOCOL']
         data['webserver_protocol'] = data['protocol']
-        check_template = Helper().check_jinja(f'{CONSTANT["TEMPLATES"]["TEMPLATES_DIR"]}/{template}')
+        template_path = f'{CONSTANT["TEMPLATES"]["TEMPLATES_DIR"]}/{template}'
+        check_template = Helper().check_jinja(template_path)
         if not check_template:
             abort(404, 'Empty')
-        #Antoine
-        controller = Database().get_record_join(['controller.*','ipaddress.ipaddress'], ['ipaddress.tablerefid=controller.id'],['tableref="controller"','controller.hostname="controller"'])
+        # Antoine
+        controller = Database().get_record_join(
+            ['controller.*', 'ipaddress.ipaddress'],
+            ['ipaddress.tablerefid=controller.id'],
+            ['tableref="controller"','controller.hostname="controller"']
+        )
         if controller:
             data['ipaddress'] = controller[0]['ipaddress']
             data['serverport'] = controller[0]['serverport']
             data['webserver_port'] = data['serverport']
-            if 'WEBSERVER' in CONSTANT.keys():
+            if 'WEBSERVER' in CONSTANT:
                 if 'PORT' in CONSTANT['WEBSERVER']:
                     data['webserver_port'] = CONSTANT['WEBSERVER']['PORT']
                 if 'PROTOCOL' in CONSTANT['WEBSERVER']:
                     data['webserver_protocol'] = CONSTANT['WEBSERVER']['PROTOCOL']
 
         # we probably have to cut the fqdn off of hostname?
-        node = Database().get_record_join(['node.*','group.osimageid as grouposimageid'],['group.id=node.groupid'],[f'node.name="{hostname}"'])
+        node = Database().get_record_join(
+            ['node.*', 'group.osimageid as grouposimageid'],
+            ['group.id=node.groupid'],
+            [f'node.name="{hostname}"']
+        )
         if node:
             data['osimageid'] = node[0]['osimageid'] or node[0]['grouposimageid']
             data['nodename'] = node[0]['name']
-    #        data['nodehostname'] = node[0]['hostname']
+            # data['nodehostname'] = node[0]['hostname']
             data['nodehostname'] = node[0]['name'] # + fqdn ?
             data['nodeservice'] = node[0]['service']
             data['nodeid'] = node[0]['id']
         if data['nodeid']:
-            we_need_dhcpd_restart=False
-            nodeinterface_check = Database().get_record_join(['nodeinterface.nodeid as nodeid','nodeinterface.interface'], 
-                                                            ['nodeinterface.nodeid=node.id'],
-                                                            [f'nodeinterface.macaddress="{mac}"'])
+            we_need_dhcpd_restart = False
+            nodeinterface_check = Database().get_record_join(
+                ['nodeinterface.nodeid as nodeid', 'nodeinterface.interface'],
+                ['nodeinterface.nodeid=node.id'],
+                [f'nodeinterface.macaddress="{mac}"']
+            )
             if nodeinterface_check:
-                # this means there is already a node with this mac. let's first check if it's our own.
+                # There is already a node with this mac. let's first check if it's our own.
                 if nodeinterface_check[0]['nodeid'] != data['nodeid']:
-                    # we are NOT !!! though we shouldn't, we will remove the other node's MAC and assign this mac to us.
-                    # note to other developers: We hard assign a node's IP address (hard config inside image/node) we must be careful - Antoine
-                    self.logger.info(f"Warning: node with id {nodeinterface_check[0]['nodeid']} will have its MAC cleared and node {hostname} with id {data['nodeid']} will use MAC {mac}")
+                    # we are NOT !!! though we shouldn't, we will remove the other node's
+                    # MAC and assign this mac to us.
+                    # note to other developers: We hard assign a node's IP address
+                    # (hard config inside image/node) we must be careful - Antoine
+                    message = f"Warning: node with id {nodeinterface_check[0]['nodeid']} "
+                    message += f"will have its MAC cleared and node {hostname} with "
+                    message += f"id {data['nodeid']} will use MAC {mac}"
+                    self.logger.info(message)
                     row = [{"column": "macaddress", "value": ""}]
                     where = [
                         {"column": "nodeid", "value": nodeinterface_check[0]['nodeid']},
                         {"column": "interface", "value": nodeinterface_check[0]['interface']}
-                        ]
+                    ]
                     Database().update('nodeinterface', row, where)
                     row = [{"column": "macaddress", "value": mac}]
                     where = [
                         {"column": "nodeid", "value": data["nodeid"]},
                         {"column": "interface", "value": "BOOTIF"}
-                        ]
+                    ]
                     Database().update('nodeinterface', row, where)
-                    we_need_dhcpd_restart=True
+                    we_need_dhcpd_restart = True
             else:
                 # we do not have anyone with this mac yet. we can safely move ahead.
                 row = [{"column": "macaddress", "value": mac}]
                 where = [
                     {"column": "nodeid", "value": data["nodeid"]},
                     {"column": "interface", "value": "BOOTIF"}
-                    ]
+                ]
                 Database().update('nodeinterface', row, where)
-                we_need_dhcpd_restart=True
+                we_need_dhcpd_restart = True
 
             if we_need_dhcpd_restart is True:
-                Service().queue('dhcp','restart')
-
-            nodeinterface = Database().get_record_join(['nodeinterface.nodeid','nodeinterface.interface','nodeinterface.macaddress','ipaddress.ipaddress','network.name as network','network.network as networkip','network.subnet'], 
-                                                    ['network.id=ipaddress.networkid','ipaddress.tablerefid=nodeinterface.id'],
-                                                    ['tableref="nodeinterface"',f"nodeinterface.nodeid='{data['nodeid']}'",f'nodeinterface.macaddress="{mac}"'])
+                Service().queue('dhcp', 'restart')
+            nodeinterface = Database().get_record_join(
+                [
+                    'nodeinterface.nodeid',
+                    'nodeinterface.interface',
+                    'nodeinterface.macaddress',
+                    'ipaddress.ipaddress',
+                    'network.name as network',
+                    'network.network as networkip',
+                    'network.subnet'
+                ],
+                ['network.id=ipaddress.networkid', 'ipaddress.tablerefid=nodeinterface.id'],
+                [
+                    'tableref="nodeinterface"',
+                    f"nodeinterface.nodeid='{data['nodeid']}'",
+                    f'nodeinterface.macaddress="{mac}"'
+                ]
+            )
             if nodeinterface:
                 data['nodeip'] = f'{nodeinterface[0]["ipaddress"]}/{nodeinterface[0]["subnet"]}'
             else:
-                #uh oh... no bootif??
+                # uh oh... no bootif??
                 data['nodeip'] = None
 
         if data['osimageid']:
@@ -645,13 +735,12 @@ class Boot():
                     data['kernelfile'] = osimage[0]['kernelfile']
                 if ('initrdfile' in osimage[0]) and (osimage[0]['initrdfile']):
                     data['initrdfile'] = osimage[0]['initrdfile']
-
         self.logger.info(f"manual node boot template data: [{data}]")
 
         if None not in data.values():
             access_code = 200
             Helper().update_node_state(data["nodeid"], "installer.discovery")
-            # reintroduced below section as if we serve files through e.g. nginx, we won't update anything
+            # reintroduced below section as if we serve files through e.g. nginx, we won't update
             row = [{"column": "status", "value": "installer.discovery"}]
             where = [{"column": "id", "value": data['nodeid']}]
             Database().update('node', row, where)
@@ -687,11 +776,12 @@ class Boot():
         }
         data['protocol'] = CONSTANT['API']['PROTOCOL']
         data['webserver_protocol'] = data['protocol']
-        check_template = Helper().check_jinja(f'{CONSTANT["TEMPLATES"]["TEMPLATES_DIR"]}/{template}')
+        template_path = f'{CONSTANT["TEMPLATES"]["TEMPLATES_DIR"]}/{template}'
+        check_template = Helper().check_jinja(template_path)
         if not check_template:
             abort(404, 'Empty')
 
-        with open(f'{CONSTANT["TEMPLATES"]["TEMPLATES_DIR"]}/{template}', 'r') as file:
+        with open(template_path, 'r', encoding='utf-8') as file:
             template_data = file.read()
 
         cluster = Database().get_record(None, 'cluster', None)
@@ -699,18 +789,31 @@ class Boot():
             data['selinux']      = Helper().bool_revert(cluster[0]['security'])
             data['cluster_provision_method']   = cluster[0]['provision_method']
             data['cluster_provision_fallback'] = cluster[0]['provision_fallback']
-        #Antoine
-        controller = Database().get_record_join(['controller.*','ipaddress.ipaddress'], ['ipaddress.tablerefid=controller.id'],['tableref="controller"','controller.hostname="controller"'])
+        # Antoine
+        controller = Database().get_record_join(
+            ['controller.*', 'ipaddress.ipaddress'],
+            ['ipaddress.tablerefid=controller.id'],
+            ['tableref="controller"', 'controller.hostname="controller"']
+        )
         if controller:
             data['ipaddress']   = controller[0]['ipaddress']
             data['serverport']  = controller[0]['serverport']
             data['webserver_port'] = data['serverport']
-            if 'WEBSERVER' in CONSTANT.keys():
+            if 'WEBSERVER' in CONSTANT:
                 if 'PORT' in CONSTANT['WEBSERVER']:
                     data['webserver_port'] = CONSTANT['WEBSERVER']['PORT']
                 if 'PROTOCOL' in CONSTANT['WEBSERVER']:
                     data['webserver_protocol'] = CONSTANT['WEBSERVER']['PROTOCOL']
-        node_details = Database().get_record_join(['node.*','group.osimageid as grouposimageid','group.name as groupname','group.bmcsetupid as groupbmcsetupid'],['group.id=node.groupid'],[f'node.name="{node}"'])
+        node_details = Database().get_record_join(
+            [
+                'node.*',
+                'group.osimageid as grouposimageid',
+                'group.name as groupname',
+                'group.bmcsetupid as groupbmcsetupid'
+            ],
+            ['group.id=node.groupid'],
+            [f'node.name="{node}"']
+        )
         if node_details:
             # ---
             if node_details[0]['osimageid']:
@@ -731,55 +834,59 @@ class Boot():
             data['provision_method']    = node_details[0]['provision_method']
             data['provision_fallback']  = node_details[0]['provision_fallback']
 
-            items={
-            'prescript':'',
-            'partscript':"bW91bnQgLXQgdG1wZnMgdG1wZnMgL3N5c3Jvb3QK",
-            'postscript':"ZWNobyAndG1wZnMgLyB0bXBmcyBkZWZhdWx0cyAwIDAnID4+IC9zeXNyb290L2V0Yy9mc3RhYgo=",
-            'setupbmc':False,
-            'netboot':False,
-            'localinstall':False,
-            'bootmenu':False,
-            'provision_interface':'BOOTIF',
-            'unmanaged_bmc_users': 'skip',
-            'provision_method': data['cluster_provision_method'],
-            'provision_fallback': data['cluster_provision_fallback'] }
+            en_part = "bW91bnQgLXQgdG1wZnMgdG1wZnMgL3N5c3Jvb3QK"
+            en_post = "ZWNobyAndG1wZnMgLyB0bXBmcyBkZWZhdWx0cyAwIDAnID4+IC9zeXNyb290L2V0Yy9mc3RhYgo="
 
-            for item in items.keys():
-                data[item] = node_details[0][item]
-                if isinstance(items[item], bool):
-                    data[item] = Helper().make_bool(data[item])
+            items = {
+                'prescript': '',
+                'partscript': en_part,
+                'postscript': en_post,
+                'setupbmc': False,
+                'netboot': False,
+                'localinstall': False,
+                'bootmenu': False,
+                'provision_interface': 'BOOTIF',
+                'unmanaged_bmc_users': 'skip',
+                'provision_method': data['cluster_provision_method'],
+                'provision_fallback': data['cluster_provision_fallback']
+            }
+
+            for key, value in items.items():
+                data[key] = node_details[0][key]
+                if isinstance(value, bool):
+                    data[key] = Helper().make_bool(data[key])
 
         if data['setupbmc'] is True and data['bmcsetupid']:
             bmcsetup = Database().get_record(None, 'bmcsetup', f" WHERE id = {data['bmcsetupid']}")
             if bmcsetup:
-                data['bmc']={}
-                data['bmc']['userid']=bmcsetup[0]['userid']
-                data['bmc']['username']=bmcsetup[0]['username']
-                data['bmc']['password']=bmcsetup[0]['password']
-                data['bmc']['netchannel']=bmcsetup[0]['netchannel']
-                data['bmc']['mgmtchannel']=bmcsetup[0]['mgmtchannel']
-                data['unmanaged_bmc_users']=bmcsetup[0]['unmanaged_bmc_users']
+                data['bmc'] = {}
+                data['bmc']['userid'] = bmcsetup[0]['userid']
+                data['bmc']['username'] = bmcsetup[0]['username']
+                data['bmc']['password'] = bmcsetup[0]['password']
+                data['bmc']['netchannel'] = bmcsetup[0]['netchannel']
+                data['bmc']['mgmtchannel'] = bmcsetup[0]['mgmtchannel']
+                data['unmanaged_bmc_users'] = bmcsetup[0]['unmanaged_bmc_users']
             else:
-                data['setupbmc']=False
+                data['setupbmc'] = False
 
         if data['groupid']:
             group = Database().get_record(None, 'group', f' WHERE id = {data["groupid"]}')
             if group:
-                # below section shows what's configured for the node, or the group, or a default fallback
-    
-                for item in items.keys():
-                    if item in data and item in group[0] and group[0][item] and not str(data[item]):
-                        # we check if we have data filled. if not (meaning node does not have that info) we verify if the group has it and if so, we fill it
-                        if isinstance(items[item], bool):
-                            group[0][item] = Helper().make_bool(group[0][item])
-                        data[item] = data[item] or group[0][item] or items[item]
-                    elif str(data[item]) and data[item] is not None:
+                # What's configured for the node, or the group, or a default fallback
+                for key, value in items.items():
+                    if key in data and key in group[0] and group[0][key] and not str(data[key]):
+                        # we check if we have data filled. if not (meaning node does not have
+                        # that info) we verify if the group has it and if so, we fill it
+                        if isinstance(value, bool):
+                            group[0][key] = Helper().make_bool(group[0][key])
+                        data[key] = data[key] or group[0][key] or value
+                    elif str(data[key]) and data[key] is not None:
                         pass
                     else:
                         # if anything else fails we use the fallback
-                        if isinstance(items[item], bool):
-                            data[item] = Helper().make_bool(data[item])
-                        data[item] = items[item]
+                        if isinstance(value, bool):
+                            data[key] = Helper().make_bool(data[key])
+                        data[key] = value
 
         if data['osimageid']:
             osimage = Database().get_record(None, 'osimage', f' WHERE id = {data["osimageid"]}')
@@ -792,29 +899,49 @@ class Boot():
                     data['osrelease'] = osimage[0]['osrelease'] or 'default.py'
 
         if data['nodeid']:
-            nodeinterface = Database().get_record_join(['nodeinterface.nodeid','nodeinterface.interface','nodeinterface.macaddress','nodeinterface.options','ipaddress.ipaddress','network.name as network','network.network as networkip','network.subnet','network.gateway','network.id as networkid'], ['network.id=ipaddress.networkid','ipaddress.tablerefid=nodeinterface.id'],['tableref="nodeinterface"',f"nodeinterface.nodeid='{data['nodeid']}'"])
+            nodeinterface = Database().get_record_join(
+                [
+                    'nodeinterface.nodeid',
+                    'nodeinterface.interface',
+                    'nodeinterface.macaddress',
+                    'nodeinterface.options',
+                    'ipaddress.ipaddress',
+                    'network.name as network',
+                    'network.network as networkip',
+                    'network.subnet',
+                    'network.gateway',
+                    'network.id as networkid'
+                ],
+                ['network.id=ipaddress.networkid', 'ipaddress.tablerefid=nodeinterface.id'],
+                ['tableref="nodeinterface"', f"nodeinterface.nodeid='{data['nodeid']}'"]
+            )
             if nodeinterface:
-                for nwkif in nodeinterface:
-                    node_nwk = f'{nwkif["ipaddress"]}/{nwkif["subnet"]}'
-                    netmask=Helper().get_netmask(node_nwk)
-                    if nwkif['interface'] == 'BMC': 
-                        # we configure bmc stuff here and no longer in template. big advantage is that we can have different networks/interface-names for different h/w, drivers, subnets, networks, etc
-                        if 'bmc' in data.keys():
-                            data['bmc']['ipaddress'] = nwkif['ipaddress']
+                for interface in nodeinterface:
+                    node_nwk = f'{interface["ipaddress"]}/{interface["subnet"]}'
+                    netmask = Helper().get_netmask(node_nwk)
+                    if interface['interface'] == 'BMC':
+                        # we configure bmc stuff here and no longer in template. big advantage is
+                        # that we can have different networks/interface-names for different h/w,
+                        # drivers, subnets, networks, etc
+                        if 'bmc' in data:
+                            data['bmc']['ipaddress'] = interface['ipaddress']
                             data['bmc']['netmask'] = netmask
-                            data['bmc']['gateway'] = nwkif['gateway'] or '0.0.0.0'  # <---- not ipv6 compliant! pending
+                            data['bmc']['gateway'] = interface['gateway'] or '0.0.0.0'
+                            # <---- not ipv6 compliant! pending
                     else:
                         # regular nic
-                        data['interfaces'][nwkif['interface']] = {}
-                        data['interfaces'][nwkif['interface']]['interface'] = nwkif['interface']
-                        data['interfaces'][nwkif['interface']]['ipaddress'] = nwkif['ipaddress']
-                        data['interfaces'][nwkif['interface']]['network'] = node_nwk
-                        data['interfaces'][nwkif['interface']]['netmask'] = netmask
-                        data['interfaces'][nwkif['interface']]['networkname'] = nwkif['network']
-                        data['interfaces'][nwkif['interface']]['gateway'] = nwkif['gateway']
-                        data['interfaces'][nwkif['interface']]['options'] = nwkif['options'] or ""
-                        if nwkif['interface'] == data['provision_interface'] and nwkif['network']: # if it is my prov interf then it will get that domain as a FQDN.
-                            data['nodehostname'] = data['nodename'] + '.' + nwkif['network']
+                        data['interfaces'][interface['interface']] = {
+                            'interface': interface['interface'],
+                            'ipaddress': interface['ipaddress'],
+                            'network': node_nwk,
+                            'netmask': netmask,
+                            'networkname': interface['network'],
+                            'gateway': interface['gateway'],
+                            'options': interface['options'] or ""
+                        }
+                        if interface['interface'] == data['provision_interface'] and interface['network']:
+                            # if it is my prov interface then it will get that domain as a FQDN.
+                            data['nodehostname'] = data['nodename'] + '.' + interface['network']
 
         self.logger.info(f"boot install data: [{data}]")
         if None not in data.values():
@@ -825,49 +952,61 @@ class Boot():
             template = environment.from_string('No Node is available for this mac address.')
             access_code = 500
 
-        # ## FETCH CODE SEGMENT
-        cluster_provision_methods=[]
-        cluster_provision_methods.append(data['provision_method'])
-        cluster_provision_methods.append(data['provision_fallback'])
+        ## FETCH CODE SEGMENT
+        cluster_provision_methods = [data['provision_method'], data['provision_fallback']]
 
         for method in cluster_provision_methods:
-            ProvisionPlugin=Helper().plugin_load(self.provision_plugins,'provision',method)
-            segment=str(ProvisionPlugin().fetch)
-            segment="function download_"+str(method)+" {\n"+segment+"\n}\n## FETCH CODE SEGMENT"
-#            self.logger.info(f"SEGMENT {method}:\n{segment}")
-            template_data=template_data.replace("## FETCH CODE SEGMENT",segment)
+            provision_plugin = Helper().plugin_load(self.provision_plugins, 'provision', method)
+            segment = str(provision_plugin().fetch)
+            segment = f"function download_{method} {{\n{segment}\n}}\n## FETCH CODE SEGMENT"
+            # self.logger.info(f"SEGMENT {method}:\n{segment}")
+            template_data = template_data.replace("## FETCH CODE SEGMENT",segment)
 
         ## INTERFACE CODE SEGMENT
-        NetworkPlugin=Helper().plugin_load(self.network_plugins,'network',data['distribution'],data['osrelease'])
-        segment=str(NetworkPlugin().interface)
-        template_data=template_data.replace("## INTERFACE CODE SEGMENT",segment)
-        segment=str(NetworkPlugin().hostname)
-        template_data=template_data.replace("## HOSTNAME CODE SEGMENT",segment)
-        segment=str(NetworkPlugin().gateway)
-        template_data=template_data.replace("## GATEWAY CODE SEGMENT",segment)
+        network_plugin = Helper().plugin_load(
+            self.network_plugins,
+            'network',
+            data['distribution'],
+            data['osrelease']
+        )
+        segment = str(network_plugin().interface)
+        template_data = template_data.replace("## INTERFACE CODE SEGMENT", segment)
+        segment = str(network_plugin().hostname)
+        template_data = template_data.replace("## HOSTNAME CODE SEGMENT", segment)
+        segment = str(network_plugin().gateway)
+        template_data = template_data.replace("## GATEWAY CODE SEGMENT", segment)
 
         ## BMC CODE SEGMENT
-        BmcPlugin=Helper().plugin_load(self.bmc_plugins,'bmc',[data['nodename'],data['groupname']])
-        segment=str(BmcPlugin().config)
-        template_data=template_data.replace("## BMC CODE SEGMENT",segment)
+        bmc_plugin = Helper().plugin_load(
+            self.bmc_plugins,
+            'bmc',
+            [data['nodename'], data['groupname']]
+        )
+        segment = str(bmc_plugin().config)
+        template_data = template_data.replace("## BMC CODE SEGMENT",segment)
 
         ## INSTALL <PRE|PART|POST>SCRIPT CODE SEGMENT
-        InstallPlugin=Helper().plugin_load(self.install_plugins,'install',[data['nodename'],data['groupname']])
-        for type in ['prescript','partscript','postscript']:
-            segment=""
-            match type:
+        install_plugin = Helper().plugin_load(
+            self.install_plugins,
+            'install',
+            [data['nodename'],data['groupname']]
+        )
+        for script in ['prescript', 'partscript', 'postscript']:
+            segment = ""
+            match script:
                 case 'prescript':
-                    segment=str(InstallPlugin().prescript)
+                    segment = str(install_plugin().prescript)
                 case 'partscript':
-                    segment=str(InstallPlugin().partscript)
+                    segment = str(install_plugin().partscript)
                 case 'postscript':
-                    segment=str(InstallPlugin().postscript)
-            typeupper=type.upper()
-            template_data=template_data.replace(f"## INSTALL {typeupper} CODE SEGMENT",segment)
+                    segment = str(install_plugin().postscript)
+            template_data = template_data.replace(
+                f"## INSTALL {script.upper()} CODE SEGMENT",
+                segment
+            )
 
-        data['template_data']=template_data
-
-        jwt_token=None
+        data['template_data'] = template_data
+        jwt_token = None
         try:
             api_key = CONSTANT['API']['SECRET_KEY']
             api_expiry = datetime.timedelta(minutes=int(CONSTANT['API']['EXPIRY']))
@@ -878,4 +1017,3 @@ class Boot():
             self.logger.info(f"Token creation error: {exp}")
         data['jwt_token'] = jwt_token
         return data, access_code
-

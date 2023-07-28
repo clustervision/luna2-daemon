@@ -2,8 +2,7 @@
 # -*- coding: utf-8 -*-
 
 """
-This endpoint is serving files.
-The location is defined in the configuration file,
+This endpoint is serving files. The location is defined in the configuration file,
 see luna2.ini
 """
 
@@ -20,11 +19,10 @@ from json import dumps
 import re
 import jwt
 from flask import send_file
+from common.constant import CONSTANT
 from utils.log import Log
 from utils.files import Files
 from utils.database import Database
-from common.constant import CONSTANT
-
 
 
 class File():
@@ -46,12 +44,14 @@ class File():
         filelist = Files().list_files()
         if filelist:
             self.logger.info(f'Available tars {CONSTANT["FILES"]["IMAGE_FILES"]} are {filelist}.')
-            return filelist, 200
+            response = filelist
+            access_code = 200
         else:
-            self.logger.error(f'No tar file is present in {CONSTANT["FILES"]["IMAGE_FILES"]}.')
-            response = {'message': f'No tar file is present in {CONSTANT["FILES"]["IMAGE_FILES"]}.'}
+            message = f'No tar file is present in {CONSTANT["FILES"]["IMAGE_FILES"]}.'
+            self.logger.error(message)
+            response = {'message': message}
             access_code = 503
-            return dumps(response), access_code
+        return dumps(response), access_code
 
 
     def get_file(self, filename=None, http_request=None):
@@ -62,18 +62,15 @@ class File():
             request_ip = http_request.environ['REMOTE_ADDR']
         else:
             request_ip = http_request.environ['HTTP_X_FORWARDED_FOR']
-
-        # since some files are requested during early bootstage where no token
+        # since some files are requested during early boot stage where no token
         # is available (think: PXE+kernel+ramdisk)
         # we do enforce authentication for specific files. .bz2 + .torrent are
         # most likely the images.
         auth_ext = [".gz", ".tar", ".bz", ".bz2", ".torrent"]
-
         response = {'message': ''}
-        code=500
-
-        token,ext=None,None
-        needs_auth=False
+        code = 500
+        token, ext  =None, None
+        needs_auth = False
         if filename:
             result = re.search(r"^.+(\..[^.]+)(\?|\&|;|#)?", filename)
             ext = result.group(1)
@@ -119,7 +116,8 @@ class File():
             self.logger.info(f'Tar File Path is {filepath}.')
             return send_file(filepath, as_attachment=True), 200
         else:
-            self.logger.error(f'{filename} is not present in {CONSTANT["FILES"]["IMAGE_FILES"]}.')
-            response = {'message': f'{filename} is not present in {CONSTANT["FILES"]["IMAGE_FILES"]}.'}
+            message = f'{filename} is not present in {CONSTANT["FILES"]["IMAGE_FILES"]}.'
+            self.logger.error(message)
+            response = {'message': message}
             code = 503
         return dumps(response), code

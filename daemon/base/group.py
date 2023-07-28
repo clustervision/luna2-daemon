@@ -36,7 +36,9 @@ class Group():
 
 
     def get_all_group(self):
-        """This method will return all the groups in detailed format."""
+        """
+        This method will return all the groups in detailed format.
+        """
         groups = Database().get_record(None, 'group', None)
         if groups:
             response = {'config': {'group': {} }}
@@ -58,10 +60,10 @@ class Group():
                 group['netboot'] = Helper().make_bool(group['netboot'])
                 group['localinstall'] = Helper().make_bool(group['localinstall'])
                 group['bootmenu'] = Helper().make_bool(group['bootmenu'])
-                group['osimage'] = Database().getname_byid('osimage', group['osimageid'])
+                group['osimage'] = Database().name_by_id('osimage', group['osimageid'])
                 del group['osimageid']
                 if group['bmcsetupid']:
-                    group['bmcsetupname'] = Database().getname_byid('bmcsetup', group['bmcsetupid'])
+                    group['bmcsetupname'] = Database().name_by_id('bmcsetup', group['bmcsetupid'])
                 del group['bmcsetupid']
                 response['config']['group'][name] = group
             self.logger.info('Provided list of all groups with details.')
@@ -73,7 +75,9 @@ class Group():
 
 
     def get_group(self, name=None):
-        """This method will return requested group in detailed format."""
+        """
+        This method will return requested group in detailed format.
+        """
         # things we have to set for a group
         items = {
             # 'prescript': '<empty>',
@@ -100,7 +104,11 @@ class Group():
             for group in groups:
                 group_id = group['id']
                 group_interface = Database().get_record_join(
-                    ['groupinterface.interface', 'network.name as network', 'groupinterface.options'],
+                    [
+                        'groupinterface.interface',
+                        'network.name as network',
+                        'groupinterface.options'
+                    ],
                     ['network.id=groupinterface.networkid'],
                     [f"groupid = '{group_id}'"]
                 )
@@ -111,39 +119,39 @@ class Group():
                             del interface['options']
                         group['interfaces'].append(interface)
                 del group['id']
-                for item in items.keys():
-                    if item in cluster[0]:
-                        if isinstance(items[item], bool):
-                            cluster[0][item] = str(Helper().make_bool(cluster[0][item]))
-                        cluster[0][item] = cluster[0][item] or str(items[item]+' (default)')
-                    if item in group:
-                        if isinstance(items[item], bool):
-                            group[item] = str(Helper().make_bool(group[item]))
-                    if item in cluster[0] and ((not item in group) or (not group[item])):
-                        group[item] = str(cluster[0][item])+' (cluster)'
+                for key, value in items.items():
+                    if key in cluster[0]:
+                        if isinstance(value, bool):
+                            cluster[0][key] = str(Helper().make_bool(cluster[0][key]))
+                        cluster[0][key] = cluster[0][key] or str(value+' (default)')
+                    if key in group:
+                        if isinstance(value, bool):
+                            group[key] = str(Helper().make_bool(group[key]))
+                    if key in cluster[0] and ((not key in group) or (not group[key])):
+                        group[key] = str(cluster[0][key])+' (cluster)'
                     else:
-                        if item in group:
-                            group[item] = group[item] or str(items[item]+' (default)')
+                        if key in group:
+                            group[key] = group[key] or str(value+' (default)')
                         else:
-                            if isinstance(items[item], bool):
-                                group[item] = str(Helper().make_bool(group[item]))
-                            group[item] = str(items[item]+' (default)')
+                            if isinstance(value, bool):
+                                group[key] = str(Helper().make_bool(group[key]))
+                            group[key] = str(value+' (default)')
                 try:
-                    for item in b64items.keys():
-                        default_str = str(b64items[item]+' (default)')
+                    for key, value in b64items.items():
+                        default_str = str(value+' (default)')
                         default_data = b64encode(default_str.encode())
                         default_data = default_data.decode("ascii")
-                        if item in group:
-                            group[item] = group[item] or default_data
+                        if key in group:
+                            group[key] = group[key] or default_data
                         else:
-                            group[item] = default_data
+                            group[key] = default_data
                 except Exception as exp:
                     self.logger.error(f"{exp}")
 
-                group['osimage'] = Database().getname_byid('osimage', group['osimageid'])
+                group['osimage'] = Database().name_by_id('osimage', group['osimageid'])
                 del group['osimageid']
                 if group['bmcsetupid']:
-                    group['bmcsetupname'] = Database().getname_byid('bmcsetup', group['bmcsetupid'])
+                    group['bmcsetupname'] = Database().name_by_id('bmcsetup', group['bmcsetupid'])
                 del group['bmcsetupid']
                 response['config']['group'][name] = group
             self.logger.info(f'Returned Group {name} with Details.')
@@ -155,7 +163,9 @@ class Group():
 
 
     def get_group_member(self, name=None):
-        """This method will return all the list of all the member node names for a group."""
+        """
+        This method will return all the list of all the member node names for a group.
+        """
         groups = Database().get_record(None, 'group', f' WHERE name = "{name}"')
         if groups:
             group = groups[0]
@@ -181,7 +191,9 @@ class Group():
 
 
     def update_group(self, name=None, http_request=None):
-        """This method will create or update a group."""
+        """
+        This method will create or update a group.
+        """
         data = {}
         # things we have to set for a group
         items = {
@@ -215,26 +227,26 @@ class Group():
                 update = True
             else:
                 if 'newgroupname' in data:
-                    response = {'message': f'{newgroupname} is not allowed while creating a new group'}
+                    response = {'message': 'newgroupname is not allowed while creating a new group'}
                     access_code = 400
                     return dumps(response), access_code
                 create = True
 
-            for item in items:
-                if item in data:
-                    data[item] = data[item]
-                    if isinstance(items[item], bool):
-                        data[item] = str(Helper().make_boolnum(data[item]))
+            for key, value in items.items():
+                if key in data:
+                    data[key] = data[key]
+                    if isinstance(value, bool):
+                        data[key] = str(Helper().bool_to_string(data[key]))
                 elif create:
-                    data[item] = items[item]
-                    if isinstance(items[item], bool):
-                        data[item] = str(Helper().make_boolnum(data[item]))
-                if item in data and (not data[item]) and (item not in items):
-                    del data[item]
+                    data[key] = value
+                    if isinstance(value, bool):
+                        data[key] = str(Helper().bool_to_string(data[key]))
+                if key in data and (not data[key]) and (key not in items):
+                    del data[key]
 
             if 'bmcsetupname' in data:
                 bmcsetupname = data['bmcsetupname']
-                data['bmcsetupid'] = Database().getid_byname('bmcsetup', data['bmcsetupname'])
+                data['bmcsetupid'] = Database().id_by_name('bmcsetup', data['bmcsetupname'])
                 if data['bmcsetupid']:
                     del data['bmcsetupname']
                 else:
@@ -243,7 +255,7 @@ class Group():
                     return dumps(response), access_code
             if 'osimage' in data:
                 osimage = data['osimage']
-                data['osimageid'] = Database().getid_byname('osimage', osimage)
+                data['osimageid'] = Database().id_by_name('osimage', osimage)
                 if data['osimageid']:
                     del data['osimage']
                 else:
@@ -257,7 +269,7 @@ class Group():
                 del data['interfaces']
 
             group_columns = Database().get_columns('group')
-            column_check = Helper().checkin_list(data, group_columns)
+            column_check = Helper().compare_list(data, group_columns)
             if column_check:
                 if update:
                     where = [{"column": "id", "value": group_id}]
@@ -274,7 +286,7 @@ class Group():
                 if new_interface:
                     for ifx in new_interface:
                         if not 'interface' in ifx:
-                            response = {'message': 'Bad Request; Interface name is required for this operation'}
+                            response = {'message': 'Interface name is required for this operation'}
                             access_code = 400
                             return dumps(response), access_code
                         interface_name = ifx['interface']
@@ -282,16 +294,22 @@ class Group():
                         if not 'network' in ifx:
                             nwk=Database().get_record_join(
                                 ['network.name as network', 'network.id as networkid'],
-                                ['network.id=groupinterface.networkid', 'groupinterface.groupid=group.id'],
-                                [f"`group`.name='{name}'", f"groupinterface.interface='{interface_name}'"]
+                                [
+                                    'network.id=groupinterface.networkid',
+                                    'groupinterface.groupid=group.id'
+                                ],
+                                [
+                                    f"`group`.name='{name}'",
+                                    f"groupinterface.interface='{interface_name}'"
+                                ]
                             )
                             if nwk and 'networkid' in nwk[0]:
                                 network=nwk[0]['networkid']
                         else:
-                            network = Database().getid_byname('network', ifx['network'])
+                            network = Database().id_by_name('network', ifx['network'])
                             del ifx['network']
                         if network is None:
-                            response = {'message': 'Bad Request; Network not provided or does not exist'}
+                            response = {'message': 'Network not provided or does not exist'}
                             access_code = 404
                             return dumps(response), access_code
                         else:
@@ -300,21 +318,30 @@ class Group():
                         group_clause = f'groupid = "{group_id}"'
                         # network_clause = f'networkid = "{network}"'
                         interface_clause = f'interface = "{interface_name}"'
-                        # where = f' WHERE {group_clause} AND {network_clause} AND {interface_clause}'
                         where = f' WHERE {group_clause} AND {interface_clause}'
+                        # where += f' AND {interface_clause}'
                         check_interface = Database().get_record(None, 'groupinterface', where)
                         result, queue_id = None, None
                         if not check_interface:
                             row = Helper().make_rows(ifx)
                             result = Database().insert('groupinterface', row)
                             self.logger.info(f'Interface created => {result} .')
-                            queue_id, _ = Queue().add_task_to_queue(f'add_interface_to_group_nodes:{name}:{interface_name}', 'group_interface')
+                            queue_id, _ = Queue().add_task_to_queue(
+                                f'add_interface_to_group_nodes:{name}:{interface_name}',
+                                'group_interface'
+                            )
                         else: # we update only
                             row = Helper().make_rows(ifx)
-                            where=[{"column": "groupid", "value": group_id},{"column": "interface", "value": interface_name}]
+                            where = [
+                                {"column": "groupid", "value": group_id},
+                                {"column": "interface", "value": interface_name}
+                            ]
                             result = Database().update('groupinterface', row, where)
                             self.logger.info(f'Interface updated => {result} .')
-                            queue_id, _ = Queue().add_task_to_queue(f'update_interface_for_group_nodes:{name}:{interface_name}', 'group_interface')
+                            queue_id, _ = Queue().add_task_to_queue(
+                                f'update_interface_for_group_nodes:{name}:{interface_name}',
+                                'group_interface'
+                            )
                         # below section takes care(in the background) the adding/renaming/deleting.
                         # for adding next free ip-s will be selected. time consuming there for
                         # background
@@ -327,16 +354,18 @@ class Group():
                                 # Config().update_interface_on_group_nodes(name)
 
             else:
-                response = {'message': 'Bad Request; Columns are incorrect'}
+                response = {'message': 'Columns are incorrect'}
                 access_code = 400
         else:
-            response = {'message': 'Bad Request; Did not received data'}
+            response = {'message': 'Did not received data'}
             access_code = 400
         return dumps(response), access_code
 
 
     def clone_group(self, name=None, http_request=None):
-        """This method will clone a node."""
+        """
+        This method will clone a node.
+        """
         data = {}
         # things we have to set for a group
         items = {
@@ -365,11 +394,11 @@ class Group():
                     data['name'] = data['newgroupname']
                     del data['newgroupname']
                 else:
-                    response = {'message': 'Bad Request; Destination group name not supplied'}
+                    response = {'message': 'Destination group name not supplied'}
                     access_code = 400
                     return dumps(response), access_code
             else:
-                response = {'message': f'Bad Request; Source group {name} does not exist'}
+                response = {'message': f'Source group {name} does not exist'}
                 access_code = 400
                 return dumps(response), access_code
 
@@ -378,20 +407,20 @@ class Group():
                 if item in data:
                     data[item] = data[item]
                     if item in items and isinstance(items[item], bool):
-                        data[item]=str(Helper().make_boolnum(data[item]))
+                        data[item]=str(Helper().bool_to_string(data[item]))
                 else:
                     data[item] = grp[0][item]
                     if item in items and isinstance(items[item], bool):
-                        data[item]=str(Helper().make_boolnum(data[item]))
+                        data[item]=str(Helper().bool_to_string(data[item]))
                 if item in items:
                     data[item] = data[item] or items[item]
                     if item in items and isinstance(items[item], bool):
-                        data[item]=str(Helper().make_boolnum(data[item]))
+                        data[item]=str(Helper().bool_to_string(data[item]))
                 if (not data[item]) and (item not in items):
                     del data[item]
             if 'bmcsetupname' in data:
                 bmcsetupname = data['bmcsetupname']
-                data['bmcsetupid'] = Database().getid_byname('bmcsetup', data['bmcsetupname'])
+                data['bmcsetupid'] = Database().id_by_name('bmcsetup', data['bmcsetupname'])
                 if data['bmcsetupid']:
                     del data['bmcsetupname']
                 else:
@@ -401,33 +430,39 @@ class Group():
             if 'osimage' in data:
                 osimage = data['osimage']
                 del data['osimage']
-                data['osimageid'] = Database().getid_byname('osimage', osimage)
+                data['osimageid'] = Database().id_by_name('osimage', osimage)
             new_interface = None
             if 'interfaces' in data:
                 new_interface = data['interfaces']
                 del data['interfaces']
             group_columns = Database().get_columns('group')
-            column_check = Helper().checkin_list(data, group_columns)
+            column_check = Helper().compare_list(data, group_columns)
             if column_check:
                 row = Helper().make_rows(data)
                 new_group_id = Database().insert('group', row)
                 if not new_group_id:
-                    response = {'message': f'Node {newgroupname} could not be created due to possible property clash'}
+                    message = f'Node {newgroupname} is not created due to possible property clash'
+                    response = {'message': message}
                     access_code = 404
                     return dumps(response), access_code
                 response = {'message': f'Group {name} created successfully'}
                 access_code = 201
                 group_interfaces = Database().get_record_join(
-                    ['groupinterface.interface', 'network.name as network', 'network.id as networkid', 'groupinterface.options'],
+                    [
+                        'groupinterface.interface',
+                        'network.name as network',
+                        'network.id as networkid',
+                        'groupinterface.options'
+                    ],
                     ['network.id=groupinterface.networkid'],
                     [f"groupid = '{group_id}'"]
                 )
 
                 if new_interface:
                     for ifx in new_interface:
-                        network = Database().getid_byname('network', ifx['network'])
+                        network = Database().id_by_name('network', ifx['network'])
                         if network is None:
-                            response = {'message': f'Bad Request; Network {network} not exist'}
+                            response = {'message': f'Network {network} not exist'}
                             access_code = 404
                             return dumps(response), access_code
                         else:
@@ -449,23 +484,27 @@ class Group():
                     ifx['groupid'] = new_group_id
                     row = Helper().make_rows(ifx)
                     Database().insert('groupinterface', row)
-
             else:
-                response = {'message': 'Bad Request; Columns are incorrect'}
+                response = {'message': 'Columns are incorrect'}
                 access_code = 400
         else:
-            response = {'message': 'Bad Request; Did not received data'}
+            response = {'message': 'Did not received data'}
             access_code = 400
         return dumps(response), access_code
 
 
     def delete_group(self, name=None):
-        """This method will delete a group."""
-        group = Database().get_record(None, 'group', f' WHERE `name` = "{name}"')
+        """
+        This method will delete a group.
+        """
+        where = f' WHERE `name` = "{name}"'
+        group = Database().get_record(None, 'group', where)
         if group:
-            Database().delete_row('group', [{"column": "name", "value": name}])
-            Database().delete_row('groupinterface', [{"column": "groupid", "value": group[0]['id']}])
-            Database().delete_row('groupsecrets', [{"column": "groupid", "value": group[0]['id']}])
+            where = [{"column": "name", "value": name}]
+            Database().delete_row('group', where)
+            where = [{"column": "groupid", "value": group[0]['id']}]
+            Database().delete_row('groupinterface', where)
+            Database().delete_row('groupsecrets', where)
             response = {'message': f'Group {name} with all its interfaces removed'}
             access_code = 204
         else:

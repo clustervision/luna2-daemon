@@ -56,7 +56,7 @@ Confirm With Password: y
 Remove anonymous: y
 Disallow remote login: n
 remove test database: y
-reload privillages: y
+reload privileges: y
 wget https://repo.mysql.com/yum/mysql-connectors-community/el/8/x86_64/mysql-connector-odbc-8.0.30-1.el8.x86_64.rpm -P /opt/
 wget https://repo.mysql.com/yum/mysql-connectors-community/el/8/x86_64/mysql-connector-odbc-setup-8.0.30-1.el8.x86_64.rpm -P /opt/
 yum install /opt/mysql-connector-odbc-8.0.30-1.el8.x86_64.rpm

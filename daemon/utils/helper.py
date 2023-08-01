@@ -59,6 +59,26 @@ class Helper(object):
         return response
 
 
+    def cli_check(self, request=None):
+        """
+        This method will check if request is coming from tool or other client.
+        """
+        # TODO For Antoine---------------------------------------------------------------->>>
+        # Use case:
+        # from flask import request ---> In the import area
+        # check_cli = Helper().cli_check(request)
+        # if check_cli is True:
+        #   DO STUFF (Basically can Include the <empty, (cluster), (compute), (default))
+        # else
+        #   DO STUFF (Don't Include those extra things. Exact value is require in order to work GUI)
+        # Thank you.
+        response = None
+        if 'python' in request.environ.get('HTTP_USER_AGENT'):
+            response = True
+        else:
+            response = False
+        return response
+
 
 ################### ---> Experiment to compare the logic
 

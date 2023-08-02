@@ -56,3 +56,20 @@ def token_required(function):
             return json.dumps(response), code
         return function(**kwargs)
     return decorator
+
+
+def agent_check(function):
+    """
+    This decorator will check if request is coming from tool or other client.
+    """
+    @wraps(function)
+    def cli_check(*args, **kwargs):
+        """
+        This method will check HTTP_USER_AGENT.
+        """
+        kwargs['cli'] = False
+        if 'HTTP_USER_AGENT' in request.environ:
+            if 'Luna2-web' not in request.environ.get('HTTP_USER_AGENT'):
+                kwargs['cli'] = True
+        return function(**kwargs)
+    return cli_check

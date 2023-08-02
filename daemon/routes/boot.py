@@ -27,6 +27,7 @@ boot_blueprint = Blueprint('boot', __name__, template_folder='../templates')
 @boot_blueprint.route('/boot', methods=['GET'])
 def boot():
     """
+    This route will provide the default boot template
     Input - None
     Process - Via jinja2 filled data in template templ_boot_ipxe.cfg
     Output - templ_boot_ipxe.cfg

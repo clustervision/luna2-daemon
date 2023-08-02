@@ -39,76 +39,80 @@ class Authentication():
         """
         This method will provide a PyJWT encoded token.
         """
-        username, password = '', ''
-        request_data = http_request.data
+        status = False
+        message, jwt_token = "", ""
+        http_request = http_request.data
 
-        if not request_data:
-            self.logger.error('Login Required')
-            response = {'message' : 'Login Required'}
-            access_code = 401
-        if 'username' not in request_data:
-            self.logger.error('Username Is Required')
-            response = {'message' : 'Login Required'}
-            access_code = 401
-        else:
-            username = request_data['username']
-        if 'password' not in request_data:
-            self.logger.error('Password Is Required')
-            response = {'message' : 'Login Required'}
-            access_code = 401
-        else:
-            password = request_data['password']
-
-        api_expiry = timedelta(minutes=int(CONSTANT['API']['EXPIRY']))
-        expiry_time = datetime.utcnow() + api_expiry
-        api_key = CONSTANT['API']['SECRET_KEY']
-
-        if CONSTANT['API']['USERNAME'] != username:
-            self.logger.info(f'Username {username} Not belongs to INI.')
-            where = f" WHERE username = '{username}' AND roleid = '1';"
-            user = Database().get_record(None, 'user', where)
-            if user:
-                user_id = user[0]["id"]
-                user_password = user[0]["password"]
-                if user_password == md5(password.encode()).hexdigest():
-                    jwt_token = encode({'id': user_id, 'exp': expiry_time}, api_key, 'HS256')
-                    self.logger.debug(f'Login token generated successfully, Token {jwt_token}.')
-                    response = {'token' : jwt_token}
-                    access_code = 200
+        if http_request:
+            if 'username' in http_request:
+                username = http_request['username']
+                if 'password' in http_request:
+                    password = http_request['password']
+                    api_expiry = timedelta(minutes=int(CONSTANT['API']['EXPIRY']))
+                    expiry_time = datetime.utcnow() + api_expiry
+                    api_key = CONSTANT['API']['SECRET_KEY']
+                    if username and password:
+                        if CONSTANT['API']['USERNAME'] != username:
+                            message = f'Username {username} Not belongs to INI.'
+                            self.logger.info(message)
+                            where = f" WHERE username = '{username}' AND roleid = '1';"
+                            user = Database().get_record(None, 'user', where)
+                            if user:
+                                user_id = user[0]["id"]
+                                user_password = user[0]["password"]
+                                if user_password == md5(password.encode()).hexdigest():
+                                    jwt_token = encode(
+                                        {'id': user_id, 'exp': expiry_time},
+                                        api_key,
+                                        'HS256'
+                                    )
+                                    message = f'Authentication token generated, Token {jwt_token}.'
+                                    self.logger.debug(message)
+                                    status = True
+                                else:
+                                    message = f'Incorrect password {password} for user {username}.'
+                                    self.logger.warning(message)
+                            else:
+                                message = f'User {username} is not exists.'
+                                self.logger.error(message)
+                        else:
+                            if CONSTANT['API']['PASSWORD'] != password:
+                                message = f'Incorrect password {password}, check luna.ini.'
+                                self.logger.warning(message)
+                            else:
+                                # Creating Token via JWT with default id =1, expiry time
+                                # and Secret Key from conf file, and algo Sha 256
+                                jwt_token = encode({'id': 0, 'exp': expiry_time}, api_key, 'HS256')
+                                message = f'Authentication token generated, Token {jwt_token}'
+                                self.logger.debug(message)
+                                status = True
+                    else:
+                        message = 'Kindly provide the username and password'
+                        self.logger.error(message)
                 else:
-                    self.logger.warning(f'Incorrect password {password} for the user {username}.')
-                    response = {'message':f'Incorrect password {password} for the user {username}'}
-                    access_code = 401
+                    message = 'Password Is Required'
+                    self.logger.error(message)
             else:
-                self.logger.error(f'User {username} is not exists.')
-                response = {'message' : f'User {username} does not exists'}
-                access_code = 401
+                message = 'Username Is Required'
+                self.logger.error(message)
         else:
-            if CONSTANT['API']['PASSWORD'] != password:
-                self.logger.warning(f'Incorrect password {password}, check luna.ini.')
-                response = {'message' : f'Incorrect password {password}, check luna.ini'}
-                access_code = 401
-            else:
-                # Creating Token via JWT with default id =1, expiry time
-                # and Secret Key from conf file, and algo Sha 256
-                jwt_token = encode({'id': 0, 'exp': expiry_time}, api_key, 'HS256')
-                self.logger.debug(f'Login token generated successfully, Token {jwt_token}')
-                response = {"token" : jwt_token}
-                access_code = 201
-        return dumps(response), access_code
+            message = 'Login Required'
+            self.logger.error(message)
+        response = {'token' : jwt_token} if jwt_token else {'message' : message}
+        return status, response
 
 
     def node_token(self, http_request=None, nodename=None):
         """
         This method will provide a PyJWT encoded token for a node.
         """
-        request_data = http_request.data
-        if not request_data:
+        http_request = http_request.data
+        if not http_request:
             self.logger.error('Login Required')
             response = {'message' : 'Login Required'}
             access_code = 401
 
-        self.logger.debug(f"TPM auth: {request_data}")
+        self.logger.debug(f"TPM auth: {http_request}")
 
         api_expiry = timedelta(minutes=int(CONSTANT['API']['EXPIRY']))
         expiry_time = datetime.utcnow() + api_expiry
@@ -121,11 +125,11 @@ class Authentication():
         cluster = Database().get_record(None, 'cluster', None)
         if cluster and 'security' in cluster[0] and cluster[0]['security']:
             self.logger.info(f"cluster security = {cluster[0]['security']}")
-            if 'tpm_sha256' in request_data:
+            if 'tpm_sha256' in http_request:
                 node = Database().get_record(None, 'node', f' WHERE name = "{nodename}"')
                 if node:
                     if 'tpm_sha256' in node[0]:
-                        if request_data['tpm_sha256'] == node[0]['tpm_sha256']:
+                        if http_request['tpm_sha256'] == node[0]['tpm_sha256']:
                             create_token=True
                         else:
                             response = {'message' : 'invalid TPM information'}
@@ -136,9 +140,9 @@ class Authentication():
         else:
             # we do not enforce security. just return the token
             # we store the string though
-            if nodename and 'tpm_sha256' in request_data:
+            if nodename and 'tpm_sha256' in http_request:
                 where = [{"column": "name", "value": nodename}]
-                row = [{"column": "tpm_sha256", "value": request_data['tpm_sha256']}]
+                row = [{"column": "tpm_sha256", "value": http_request['tpm_sha256']}]
                 Database().update('node', row, where)
             create_token=True
 

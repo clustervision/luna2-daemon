@@ -74,7 +74,7 @@ class Group():
         return True,response
 
 
-    def get_group(self, name=None):
+    def get_group(self, cli=None, name=None):
         """
         This method will return requested group in detailed format.
         """
@@ -92,11 +92,10 @@ class Group():
             'provision_fallback': 'http'
         }
         # same as above but now specifically base64
-        b64items = {
-            'prescript': '<empty>',
-            'partscript': '<empty>',
-            'postscript': '<empty>'
-        }
+        if cli:
+            b64items = {'prescript': '<empty>', 'partscript': '<empty>', 'postscript': '<empty>'}
+        else:
+            b64items = {'prescript': '', 'partscript': '', 'postscript': ''}
         cluster = Database().get_record(None, 'cluster', None)
         groups = Database().get_record(None, 'group', f' WHERE name = "{name}"')
         if groups:
@@ -123,22 +122,37 @@ class Group():
                     if key in cluster[0]:
                         if isinstance(value, bool):
                             cluster[0][key] = str(Helper().make_bool(cluster[0][key]))
-                        cluster[0][key] = cluster[0][key] or str(value+' (default)')
+                        if cli:
+                            cluster[0][key] = cluster[0][key] or str(value+' (default)')
+                        else:
+                            cluster[0][key] = cluster[0][key] or str(value)
                     if key in group:
                         if isinstance(value, bool):
                             group[key] = str(Helper().make_bool(group[key]))
                     if key in cluster[0] and ((not key in group) or (not group[key])):
-                        group[key] = str(cluster[0][key])+' (cluster)'
+                        if cli:
+                            group[key] = str(cluster[0][key])+' (cluster)'
+                        else:
+                            group[key] = str(cluster[0][key])
                     else:
                         if key in group:
-                            group[key] = group[key] or str(value+' (default)')
+                            if cli:
+                                group[key] = group[key] or str(value+' (default)')
+                            else:
+                                group[key] = group[key] or str(value)
                         else:
                             if isinstance(value, bool):
                                 group[key] = str(Helper().make_bool(group[key]))
-                            group[key] = str(value+' (default)')
+                            if cli:
+                                group[key] = str(value+' (default)')
+                            else:
+                                group[key] = str(value)
                 try:
                     for key, value in b64items.items():
-                        default_str = str(value+' (default)')
+                        if cli:
+                            default_str = str(value+' (default)')
+                        else:
+                            default_str = str(value)
                         default_data = b64encode(default_str.encode())
                         default_data = default_data.decode("ascii")
                         if key in group:

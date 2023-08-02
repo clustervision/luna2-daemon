@@ -164,7 +164,7 @@ class Node():
         return status, response
 
 
-    def get_node(self, name=None):
+    def get_node(self, cli=None, name=None):
         """
         This method will return requested node in detailed format.
         """
@@ -203,25 +203,25 @@ class Node():
                     node['bmcsetupid']
                 ) or '!!Invalid!!'
             elif 'group_bmcsetupid' in node and node['group_bmcsetupid']:
-                node['bmcsetup'] = Database().name_by_id(
-                    'bmcsetup',
-                    node['group_bmcsetupid']
-                ) + f" ({node['group']})"
+                if cli:
+                    node['bmcsetup'] = Database().name_by_id('bmcsetup', node['group_bmcsetupid']) + f" ({node['group']})"
+                else:
+                    node['bmcsetup'] = Database().name_by_id('bmcsetup', node['group_bmcsetupid'])
             if 'group_bmcsetupid' in node:
                 del node['group_bmcsetupid']
             if node['osimageid']:
-                node['osimage'] = Database().name_by_id(
-                    'osimage',
-                    node['osimageid']
-                ) or '!!Invalid!!'
+                node['osimage'] = Database().name_by_id('osimage', node['osimageid']) or '!!Invalid!!'
             elif 'group_osimage' in node and node['group_osimage']:
-                node['osimage'] = node['group_osimage']+f" ({node['group']})"
+                if cli:
+                    node['osimage'] = node['group_osimage']+f" ({node['group']})"
+                else:
+                    node['osimage'] = node['group_osimage']
             if 'group_osimage' in node:
                 del node['group_osimage']
             if node['switchid']:
                 node['switch'] = Database().name_by_id('switch', node['switchid'])
             if not node['groupid']:
-                node['group']='!!Invalid!!'
+                node['group'] = '!!Invalid!!'
 
             cluster = Database().get_record(None, 'cluster', None)
             if cluster:
@@ -247,33 +247,49 @@ class Node():
                 if 'group_'+key in node and isinstance(value, bool):
                     node['group_'+key] = str(Helper().make_bool(node['group_'+key]))
                 if 'cluster_'+key in node and node['cluster_'+key] and ((not 'group_'+key in node) or (not node['group_'+key])) and not node[key]:
-                    node['cluster_'+key] += " (cluster)"
-                    node[key] = node[key] or node['cluster_'+key] or str(value+' (default)')
+                    if cli:
+                        node['cluster_'+key] += " (cluster)"
+                        node[key] = node[key] or node['cluster_'+key] or str(value+' (default)')
+                    else:
+                        node[key] = node[key] or node['cluster_'+key] or str(value)
                 else:
                     if 'group_'+key in node and node['group_'+key] and not node[key]:
-                        node['group_'+key] += f" ({node['group']})"
-                        node[key] = node[key] or node['group_'+key] or str(value+' (default)')
+                        if cli:
+                            node['group_'+key] += f" ({node['group']})"
+                            node[key] = node[key] or node['group_'+key] or str(value+' (default)')
+                        else:
+                            node[key] = node[key] or node['group_'+key] or str(value)
                     else:
                         if isinstance(value, bool):
                             node[key] = str(Helper().make_bool(node[key]))
-                        node[key] = node[key] or str(value)+' (default)'
+                        if cli:
+                            node[key] = node[key] or str(value)+' (default)'
+                        else:
+                            node[key] = node[key] or str(value)
                 if 'group_'+key in node:
                     del node['group_'+key]
                 if 'cluster_'+key in node:
                     del node['cluster_'+key]
             # same as above but now specifically base64
-            b64items = {'prescript': '<empty>', 'partscript': '<empty>', 'postscript': '<empty>'}
+            if cli:
+                b64items = {'prescript': '<empty>', 'partscript': '<empty>', 'postscript': '<empty>'}
+            else:
+                b64items = {'prescript': '', 'partscript': '', 'postscript': ''}
             try:
                 for key, value in b64items.items():
                     if 'group_'+key in node and node['group_'+key] and not node[key]:
                         data = b64decode(node['group_'+key])
                         data = data.decode("ascii")
-                        data = f"({node['group']}) {data}"
+                        if cli:
+                            data = f"({node['group']}) {data}"
                         group_data = b64encode(data.encode())
                         group_data = group_data.decode("ascii")
                         node[key] = node[key] or group_data
                     else:
-                        default_str = str(value+' (default)')
+                        if cli:
+                            default_str = str(value+' (default)')
+                        else:
+                            default_str = str(value)
                         default_data = b64encode(default_str.encode())
                         default_data = default_data.decode("ascii")
                         node[key] = node[key] or default_data

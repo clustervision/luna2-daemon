@@ -215,3 +215,46 @@ class Model():
             response = {'message': f'{name} is not present in {table_cap}.'}
             access_code = 404
         return dumps(response), access_code
+
+
+    def clone_record(self, name=None, new_name=None, table=None, table_cap=None, request_data=None):
+        """
+        This method will clone a record for requested table.
+        """
+        response = {}
+        data = request_data['config'][table][name]
+        if new_name in request_data['config'][table][name]:
+            data['name'] = data[new_name]
+            new_record = data[new_name]
+            del data[new_name]
+        else:
+            data['name'] = name
+        record = Database().get_record(table=table, where=f' WHERE `name` = "{name}"')
+        if record:
+            where = f' WHERE `name` = "{new_record}"'
+            check_new_record = Database().get_record(table=table, where=where)
+            if check_new_record:
+                response = {'message': f'{new_record} Already present in database'}
+                access_code = 404
+                return dumps(response), access_code
+            del record[0]['id']
+            for item in record[0]:
+                if not item in data:
+                    data[item] = record[0][item]
+
+            columns = Database().get_columns(table)
+            column_check = Helper().compare_list(data, columns)
+            row = Helper().make_rows(data)
+            if column_check:
+                Database().insert(table, row)
+                response = {'message': f'{name} cloned as {new_record} successfully'}
+                access_code = 201
+            else:
+                self.logger.info('Incorrect column(s) provided.')
+                response = {'message': 'Incorrect column(s) provided.'}
+                access_code = 400
+        else:
+            self.logger.info(f'{name} is not present in {table_cap}.')
+            response = {'message': f'{name} is not present in {table_cap}.'}
+            access_code = 404
+        return dumps(response), access_code

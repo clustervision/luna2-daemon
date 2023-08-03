@@ -19,7 +19,7 @@ __status__      = "Development"
 from json import dumps
 from flask import Blueprint, request
 from utils.log import Log
-from common.validate_auth import token_required
+from common.validate_auth import token_required, agent_check
 from common.validate_input import input_filter, validate_name
 from base.node import Node
 from base.group import Group
@@ -58,12 +58,13 @@ def config_node():
 @config_blueprint.route('/config/node/<string:name>', methods=['GET'])
 # @token_required
 @validate_name
-def config_node_get(name=None):
+@agent_check
+def config_node_get(cli=None, name=None):
     """
     This api will send a requested node in details.
     """
     access_code = 404
-    status, response = Node().get_node(name)
+    status, response = Node().get_node(cli, name)
     if status is True:
         access_code = 200
         response = dumps(response)
@@ -214,16 +215,17 @@ def config_group():
 @config_blueprint.route("/config/group/<string:name>", methods=['GET'])
 # @token_required
 @validate_name
-def config_group_get(name=None):
+@agent_check
+def config_group_get(cli=None, name=None):
     """
     Input - Group Name
     Process - Fetch the Group information.
     Output - Group Info.
     """
-    access_code=404
-    ret, response = Group().get_group(name)
+    access_code = 404
+    ret, response = Group().get_group(cli, name)
     if ret is True:
-        access_code=200
+        access_code = 200
         return dumps(response),access_code
     return response, access_code
 
@@ -493,9 +495,7 @@ def config_cluster_post():
 # @token_required
 def config_bmcsetup():
     """
-    Input - None
-    Process - Fetch The list of configured settings.
-    Output - List Of BMC Setup.
+    This route will provide all the BMC Setup's.
     """
     response, access_code = BMCSetup().get_all_bmcsetup()
     return response, access_code
@@ -506,9 +506,7 @@ def config_bmcsetup():
 @validate_name
 def config_bmcsetup_get(name=None):
     """
-    Input - BMC Setup ID or Name
-    Process - Fetch The BMC Setup information.
-    Output - BMC Setup Information.
+    This route will provide a requested BMC Setup.
     """
     response, access_code = BMCSetup().get_bmcsetup(name)
     return response, access_code
@@ -519,8 +517,7 @@ def config_bmcsetup_get(name=None):
 @validate_name
 def config_bmcsetup_member(name=None):
     """
-    This method will fetch all the nodes, which is connected to
-    the provided bmcsetup.
+    This route will provide the list of nodes which is connected to the requested BMC Setup.
     """
     response, access_code = BMCSetup().get_bmcsetup_member(name)
     return response, access_code
@@ -532,9 +529,7 @@ def config_bmcsetup_member(name=None):
 @input_filter(checks=['config:bmcsetup'], skip=None)
 def config_bmcsetup_post(name=None):
     """
-    Input - BMC Setup ID or Name
-    Process - Create or Update BMC Setup information.
-    Output - Success or Failure.
+    This route will create or update requested BMC Setup.
     """
     response, access_code = BMCSetup().update_bmcsetup(name, request)
     return response, access_code
@@ -546,9 +541,7 @@ def config_bmcsetup_post(name=None):
 @input_filter(checks=['config:bmcsetup'], skip=None)
 def config_bmcsetup_clone(name=None):
     """
-    Input - BMC Setup ID or Name
-    Process - Fetch BMC Setup and Credentials.
-    Output - BMC Name And Credentials.
+    This route will clone a requested BMC Setup.
     """
     response, access_code = BMCSetup().clone_bmcsetup(name, request)
     return response, access_code
@@ -559,13 +552,10 @@ def config_bmcsetup_clone(name=None):
 @validate_name
 def config_bmcsetup_delete(name=None):
     """
-    Input - BMC Setup ID or Name
-    Process - Delete The BMC Setup Credentials.
-    Output - Success or Failure.
+    This route will delete a requested BMC Setup.
     """
     response, access_code = BMCSetup().delete_bmcsetup(name)
     return response, access_code
-
 
 
 ############################# Switch configuration #############################
@@ -574,9 +564,7 @@ def config_bmcsetup_delete(name=None):
 # @token_required
 def config_switch():
     """
-    Input - None
-    Process - Fetch The List Of Switches.
-    Output - Switches.
+    This route will provide all the Switches.
     """
     response, access_code = Switch().get_all_switches()
     return response, access_code
@@ -587,9 +575,7 @@ def config_switch():
 @validate_name
 def config_switch_get(name=None):
     """
-    Input - Switch ID or Name
-    Process - Fetch The Switch Information.
-    Output - Switch Details.
+    This route will provide a requested Switch.
     """
     response, access_code = Switch().get_switch(name)
     return response, access_code
@@ -601,9 +587,7 @@ def config_switch_get(name=None):
 @input_filter(checks=['config:switch'], skip=None)
 def config_switch_post(name=None):
     """
-    Input - Switch ID or Name
-    Process - Fetch The Switch Information.
-    Output - Switch Details.
+    This route will create or update a requested Switch.
     """
     response, access_code = Switch().update_switch(name, request)
     return response, access_code
@@ -615,9 +599,7 @@ def config_switch_post(name=None):
 @input_filter(checks=['config:switch'], skip=None)
 def config_switch_clone(name=None):
     """
-    Input - Switch ID or Name
-    Process - Delete The Switch.
-    Output - Success or Failure.
+    This route will clone a requested Switch.
     """
     response, access_code = Switch().clone_switch(name, request)
     return response, access_code
@@ -628,9 +610,7 @@ def config_switch_clone(name=None):
 @validate_name
 def config_switch_delete(name=None):
     """
-    Input - Switch ID or Name
-    Process - Delete The Switch.
-    Output - Success or Failure.
+    This route will delete a requested Switch.
     """
     response, access_code = Switch().delete_switch(name)
     return response, access_code
@@ -641,9 +621,7 @@ def config_switch_delete(name=None):
 # @token_required
 def config_otherdev():
     """
-    Input - None
-    Process - Fetch The List Of Devices.
-    Output - Devices.
+    This route will provide all the Other Devices.
     """
     response, access_code = OtherDev().get_all_otherdev()
     return response, access_code
@@ -654,9 +632,7 @@ def config_otherdev():
 @validate_name
 def config_otherdev_get(name=None):
     """
-    Input - Device ID or Name
-    Process - Fetch The List Of Devices.
-    Output - Devices.
+    This route will provide a requested Other Device.
     """
     response, access_code = OtherDev().get_otherdev(name)
     return response, access_code
@@ -668,8 +644,7 @@ def config_otherdev_get(name=None):
 @input_filter(checks=['config:otherdev'], skip=None)
 def config_otherdev_post(name=None):
     """
-    Input - Device Name
-    Output - Create or Update Device.
+    This route will create or update a requested Other Device.
     """
     response, access_code = OtherDev().update_otherdev(name, request)
     return response, access_code
@@ -681,8 +656,7 @@ def config_otherdev_post(name=None):
 @input_filter(checks=['config:otherdev'], skip=None)
 def config_otherdev_clone(name=None):
     """
-    Input - Device ID or Name
-    Output - Clone The Device.
+    This route will clone a requested Other Device.
     """
     response, access_code = OtherDev().clone_otherdev(name, request)
     return response, access_code
@@ -693,9 +667,7 @@ def config_otherdev_clone(name=None):
 @validate_name
 def config_otherdev_delete(name=None):
     """
-    Input - Device ID or Name
-    Process - Delete The Device.
-    Output - Success or Failure.
+    This route will delete a requested Other Device.
     """
     response, access_code = OtherDev().delete_otherdev(name)
     return response, access_code

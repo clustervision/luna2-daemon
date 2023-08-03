@@ -13,6 +13,8 @@ __maintainer__  = 'Sumit Sharma'
 __email__       = 'sumit.sharma@clustervision.com'
 __status__      = 'Development'
 
+
+from json import dumps
 from flask import Blueprint, request
 from utils.log import Log
 from common.validate_input import validate_name, input_filter
@@ -26,12 +28,11 @@ auth_blueprint = Blueprint('auth', __name__)
 @input_filter()
 def jwt_token():
     """
-    Input - username and password
-    Process - Validate the username and password from the conf file.
-    On the success, create a token, which is valid for expiry time mentioned in configuration.
-    Output - Token.
+    This route will generate and return the token on behalf of provided username and password.
     """
-    response, access_code = Authentication().get_token(request)
+    status, response = Authentication().get_token(request)
+    response = dumps(response)
+    access_code = 200 if status is True else 401
     return response, access_code
 
 

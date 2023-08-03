@@ -30,7 +30,7 @@ class OsUser():
         self.logger = Log.get_logger()
         self.osuser_plugins = Helper().plugin_finder('/trinity/local/luna/plugins/osuser')
         # needs to be with constants. pending
-        OsUserPlugin = Helper().plugin_load(self.osuser_plugins, 'osuser', ['obol'])
+        self.OsUserPlugin = Helper().plugin_load(self.osuser_plugins, 'osuser', ['obol'])
 
 
     def list_users(self):
@@ -38,7 +38,7 @@ class OsUser():
         This method will list all OS users.
         """
         try:
-            results = OsUserPlugin().list_users()
+            results = self.OsUserPlugin().list_users()
             ret = results[0]
             mesg = None
             if len(results) > 1:

@@ -33,15 +33,29 @@ class Plugin():
     """
 
     def __init__(self):
-        self.logger = ""
+        self.logger = Log.get_logger()
 
-    def list_users():
+    def list_users(self):
+        #command="GREP=$(obol user list|tr '\n' '|'); GREP=${GREP::-1}; getent passwd|grep -w -E $GREP"
+        command="getent passwd"
+        message, exit_code = Helper().runcommand(command, True, 60)
         users={}
-        users['testuser']={}
-        users['testuser']['fullname']='my Fullname'
+        if exit_code == 0:
+            raw = message[0].decode("ascii")
+            list = raw.split('\n')
+            for entry in list:
+                info = entry.split(':')
+                self.logger.debug(f"{info}")
+                if (len(info)>5):
+                    users[info[0]]={}
+                    users[info[0]]['userid']=info[2]
+                    users[info[0]]['primarygroup']=info[3]
+                    users[info[0]]['fullname']=info[4]
+                    users[info[0]]['homedir']=info[5]
+                    users[info[0]]['shell']=info[6]
         return True, users
 
-    def update_user(username,userid,pimarygroup,groups,fullname,homedir,shell):
+    def update_user(self,username,userid,pimarygroup,groups,fullname,homedir,shell):
         userinfo={}
         userinfo[username]={}
         userinfo[username]['userid']=userid
@@ -52,17 +66,17 @@ class Plugin():
         userinfo[username]['shell']=shell
         return True, userinfo
 
-    def delete_user(username):
+    def delete_user(self,username):
         return True,f"user {username} deleted"
 
-    def list_groups():
+    def list_groups(self):
         groups={}
         groups['testgroup']={}
         groups['testgroup']['groupid']='12343321'
         groups['testgroup']['users']='testuser1, testuser2'
         return True, groups
 
-    def update_group(groupname,groupid,users):
+    def update_group(self,groupname,groupid,users):
         # if users is a list.... else we treat it as a string
         groupinfo={}
         groupinfo[groupname]={}
@@ -70,7 +84,7 @@ class Plugin():
         groupinfo[groupname]['users']=users
         return True, groupinfo
 
-    def delete_group(groupname):
+    def delete_group(self,groupname):
         return True,f"group {groupname} deleted"
 
 

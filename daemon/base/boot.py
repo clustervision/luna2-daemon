@@ -311,10 +311,13 @@ class Boot():
             where = [{"column": "id", "value": data['nodeid']}]
             Database().update('node', row, where)
         else:
+            for key, value in data.items():
+                if value is None:
+                    self.logger.error(f"{key} has no value. Node {data['nodename']} cannot boot")
             environment = jinja2.Environment()
             template = environment.from_string('No Node is available for this mac address.')
             access_code = 404
-            self.logger.info(f'template mac search data: {data}')
+            #self.logger.info(f'template mac search data: {data}')
         self.logger.info(f'Boot API serving the {template}')
         return data, access_code
 
@@ -591,7 +594,7 @@ class Boot():
                     data['kernelfile'] = osimage[0]['kernelfile']
                 if ('initrdfile' in osimage[0]) and (osimage[0]['initrdfile']):
                     data['initrdfile'] = osimage[0]['initrdfile']
-        self.logger.info(f"manual group boot template data: [{data}]")
+        #self.logger.info(f"manual group boot template data: [{data}]")
 
         if None not in data.values():
             access_code = 200
@@ -601,6 +604,9 @@ class Boot():
             where = [{"column": "id", "value": data['nodeid']}]
             Database().update('node', row, where)
         else:
+            for key, value in data.items():
+                if value is None:
+                    self.logger.error(f"{key} has no value. Node {data['nodename']} cannot boot")
             environment = jinja2.Environment()
             template = environment.from_string('No Node is available for this mac address.')
             access_code = 404
@@ -735,7 +741,7 @@ class Boot():
                     data['kernelfile'] = osimage[0]['kernelfile']
                 if ('initrdfile' in osimage[0]) and (osimage[0]['initrdfile']):
                     data['initrdfile'] = osimage[0]['initrdfile']
-        self.logger.info(f"manual node boot template data: [{data}]")
+        #self.logger.info(f"manual node boot template data: [{data}]")
 
         if None not in data.values():
             access_code = 200
@@ -745,6 +751,9 @@ class Boot():
             where = [{"column": "id", "value": data['nodeid']}]
             Database().update('node', row, where)
         else:
+            for key, value in data.items():
+                if value is None:
+                    self.logger.error(f"{key} has no value. Node {data['nodename']} cannot boot")
             environment = jinja2.Environment()
             template = environment.from_string('No Node is available for this mac address.')
             access_code = 404
@@ -943,11 +952,14 @@ class Boot():
                             # if it is my prov interface then it will get that domain as a FQDN.
                             data['nodehostname'] = data['nodename'] + '.' + interface['network']
 
-        self.logger.info(f"boot install data: [{data}]")
+        #self.logger.info(f"boot install data: [{data}]")
         if None not in data.values():
             access_code = 200
             Helper().update_node_state(data["nodeid"], "installer.downloaded")
         else:
+            for key, value in data.items():
+                if value is None:
+                    self.logger.error(f"{key} has no value. Node {data['nodename']} cannot boot")
             environment = jinja2.Environment()
             template = environment.from_string('No Node is available for this mac address.')
             access_code = 500

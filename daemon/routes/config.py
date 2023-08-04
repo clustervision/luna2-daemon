@@ -409,7 +409,13 @@ def config_group_get_interfaces(name=None):
     Process - Fetch the Group Interface List.
     Output - Group Interface List.
     """
-    response, access_code = Interface().get_all_group_interface(name)
+    access_code=404
+    status, response = Interface().get_all_group_interface(name)
+    if status is True:
+        access_code = 200
+        response = dumps(response)
+    else:
+        response = {'message': response}
     return response, access_code
 
 
@@ -437,7 +443,13 @@ def config_group_interface_get(name=None, interface=None):
     Process - Get the Group Interface.
     Output - Success or Failure.
     """
-    response, access_code = Interface().get_group_interface(name, interface)
+    access_code=404
+    status, response = Interface().get_group_interface(name, interface)
+    if status is True:
+        access_code = 200
+        response = dumps(response)
+    else:
+        response = {'message': response}
     return response, access_code
 
 

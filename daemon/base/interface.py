@@ -240,6 +240,8 @@ class Interface():
         """
         This method will return all the group interfaces in detailed format for a desired group.
         """
+        status=False
+        response=""
         groups = Database().get_record(None, 'group', f' WHERE name = "{name}"')
         if groups:
             response = {'config': {'group': {name: {'interfaces': [] } } } }
@@ -258,15 +260,15 @@ class Interface():
                     response['config']['group'][groupname]['interfaces'] = group_interfaces
                 else:
                     self.logger.error(f'Group {name} does not have any interface.')
-                    response = {'message': f'Group {name} does not have any interface'}
-                    access_code = 404
+                    response = f'Group {name} does not have any interface'
+                    status=False
             self.logger.info(f'Returned group {name} with details.')
-            access_code = 200
+            status=True
         else:
             self.logger.error('No group is available.')
-            response = {'message': 'No group is available'}
-            access_code = 404
-        return dumps(response), access_code
+            response = 'No group is available'
+            status=False
+        return status, response
 
 
     def change_group_interface(self, name=None, http_request=None):
@@ -335,6 +337,8 @@ class Interface():
         """
         This method will provide a group interface.
         """
+        status=False
+        response=""
         group = Database().get_record(None, 'group', f' WHERE name = "{name}"')
         if group:
             response = {'config': {'group': {name: {'interfaces': [] } } } }
@@ -352,16 +356,16 @@ class Interface():
                     response['config']['group'][name]['interfaces'] = my_interface
 
                 self.logger.info(f'Returned group {name} with details.')
-                access_code = 200
+                status=True
             else:
                 self.logger.error(f'Group {name} does not have {interface} interface.')
-                response = {'message': f'Group {name} does not have {interface} interface'}
-                access_code = 404
+                response = f'Group {name} does not have {interface} interface'
+                status=True
         else:
             self.logger.error('Group is not available.')
-            response = {'message': 'Group is not available'}
-            access_code = 404
-        return dumps(response), access_code
+            response = 'Group is not available'
+            status=False
+        return status, response
 
 
     def delete_group_interface(self, name=None, interface=None):

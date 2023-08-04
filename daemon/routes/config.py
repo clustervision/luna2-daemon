@@ -101,7 +101,11 @@ def config_node_clone(name=None):
     """
     This api will clone a node depends on the availability of the node name.
     """
-    response, access_code = Node().clone_node(name, request)
+    access_code=404
+    status, response = Node().clone_node(name, request)
+    if status is True:
+        access_code=201
+    response = {'message': response}
     return response, access_code
 
 
@@ -115,7 +119,11 @@ def config_node_delete(name=None):
     Process - Delete the Node and it's interfaces.
     Output - Success or Failure.
     """
-    response, access_code = Node().delete_node(name)
+    access_code=404
+    status, response = Node().delete_node(name)
+    if status is True:
+        access_code=204
+    response = {'message': response}
     return response, access_code
 
 

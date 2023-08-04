@@ -195,6 +195,7 @@ class Interface():
         """
         This method will delete a node.
         """
+        status=False
         node = Database().get_record(None, 'node', f' WHERE `name` = "{name}"')
         if node:
             nodeid = node[0]['id']
@@ -224,15 +225,15 @@ class Interface():
                     '__node_interface_delete__'
                 )
                 Queue().add_task_to_queue('dns:restart', 'housekeeper', '__node_interface_delete__')
-                response = {'message': f'Node {name} interface {interface} removed successfully'}
-                access_code = 204
+                response = f'Node {name} interface {interface} removed successfully'
+                status=True
             else:
-                response = {'message': f'Node {name} interface {interface} not present in database'}
-                access_code = 404
+                response = f'Node {name} interface {interface} not present in database'
+                status=False
         else:
-            response = {'message': f'Node {name} not present in database'}
-            access_code = 404
-        return dumps(response), access_code
+            response = f'Node {name} not present in database'
+            status=False
+        return status, response
 
 
     def get_all_group_interface(self, name=None):

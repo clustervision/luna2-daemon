@@ -69,7 +69,7 @@ class Group():
             self.logger.info('Provided list of all groups with details.')
         else:
             self.logger.error('No group is available.')
-            response = {'message': 'No group is available'}
+            response = 'No group is available'
             return False, response
         return True,response
 
@@ -171,7 +171,7 @@ class Group():
             self.logger.info(f'Returned Group {name} with Details.')
         else:
             self.logger.error('No group is available.')
-            response = {'message': 'No group is available'}
+            response = 'No group is available'
             return False,response
         return True,response
 
@@ -180,6 +180,7 @@ class Group():
         """
         This method will return all the list of all the member node names for a group.
         """
+        status=False
         groups = Database().get_record(None, 'group', f' WHERE name = "{name}"')
         if groups:
             group = groups[0]
@@ -192,16 +193,16 @@ class Group():
                     nodes.append(node['name'])
                 response['config']['group'][name]['members'] = nodes
                 self.logger.info(f'Provided all group member nodes {nodes}.')
-                access_code = 200
+                status=True
             else:
                 self.logger.error(f'Group {name} is not have any member node.')
-                response = {'message': f'Group {name} is not have any member node'}
-                access_code = 404
+                response = f'Group {name} is not have any member node'
+                status=False
         else:
             self.logger.error(f'Group {name} is not available.')
-            response = {'message': f'Group {name} is not available'}
-            access_code = 404
-        return dumps(response), access_code
+            response = f'Group {name} is not available'
+            status=False
+        return status, response
 
 
     def update_group(self, name=None, http_request=None):
@@ -209,6 +210,8 @@ class Group():
         This method will create or update a group.
         """
         data = {}
+        status=False
+        response=""
         # things we have to set for a group
         items = {
             'prescript': '',
@@ -232,18 +235,16 @@ class Group():
                     where = f' WHERE `name` = "{newgroupname}"'
                     check_group = Database().get_record(None, 'group', where)
                     if check_group:
-                        response = {'message': f'{newgroupname} Already present in database'}
-                        access_code = 404
-                        return dumps(response), access_code
+                        status=False
+                        return status, f'{newgroupname} Already present in database'
                     else:
                         data['name'] = data['newgroupname']
                         del data['newgroupname']
                 update = True
             else:
                 if 'newgroupname' in data:
-                    response = {'message': 'newgroupname is not allowed while creating a new group'}
-                    access_code = 400
-                    return dumps(response), access_code
+                    status=False
+                    return status, 'newgroupname is not allowed while creating a new group'
                 create = True
 
             for key, value in items.items():
@@ -264,18 +265,16 @@ class Group():
                 if data['bmcsetupid']:
                     del data['bmcsetupname']
                 else:
-                    response = {'message': f'BMC Setup {bmcsetupname} does not exist'}
-                    access_code = 404
-                    return dumps(response), access_code
+                    status=False
+                    return status, f'BMC Setup {bmcsetupname} does not exist'
             if 'osimage' in data:
                 osimage = data['osimage']
                 data['osimageid'] = Database().id_by_name('osimage', osimage)
                 if data['osimageid']:
                     del data['osimage']
                 else:
-                    response = {'message': f'OSimage {osimage} does not exist'}
-                    access_code = 404
-                    return dumps(response), access_code
+                    status=False
+                    return status, f'OSimage {osimage} does not exist'
 
             new_interface = None
             if 'interfaces' in data:
@@ -300,9 +299,8 @@ class Group():
                 if new_interface:
                     for ifx in new_interface:
                         if not 'interface' in ifx:
-                            response = {'message': 'Interface name is required for this operation'}
-                            access_code = 400
-                            return dumps(response), access_code
+                            status=False
+                            return status, 'Interface name is required for this operation'
                         interface_name = ifx['interface']
                         network = None
                         if not 'network' in ifx:
@@ -323,9 +321,8 @@ class Group():
                             network = Database().id_by_name('network', ifx['network'])
                             del ifx['network']
                         if network is None:
-                            response = {'message': 'Network not provided or does not exist'}
-                            access_code = 404
-                            return dumps(response), access_code
+                            status=False
+                            return status, 'Network not provided or does not exist'
                         else:
                             ifx['networkid'] = network
                             ifx['groupid'] = group_id
@@ -368,12 +365,12 @@ class Group():
                                 # Config().update_interface_on_group_nodes(name)
 
             else:
-                response = {'message': 'Columns are incorrect'}
-                access_code = 400
+                status=False
+                response = 'Columns are incorrect'
         else:
-            response = {'message': 'Did not received data'}
-            access_code = 400
-        return dumps(response), access_code
+            status=False
+            response = 'Did not received data'
+        return status, response
 
 
     def clone_group(self, name=None, http_request=None):
@@ -381,6 +378,8 @@ class Group():
         This method will clone a node.
         """
         data = {}
+        status=False
+        response=""
         # things we have to set for a group
         items = {
             'prescript': '',
@@ -402,19 +401,16 @@ class Group():
                     where = f' WHERE `name` = "{newgroupname}"'
                     check_group = Database().get_record(None, 'group', where)
                     if check_group:
-                        response = {'message': f'{newgroupname} Already present in database'}
-                        access_code = 404
-                        return dumps(response), access_code
+                        status=False
+                        return status, f'{newgroupname} Already present in database'
                     data['name'] = data['newgroupname']
                     del data['newgroupname']
                 else:
-                    response = {'message': 'Destination group name not supplied'}
-                    access_code = 400
-                    return dumps(response), access_code
+                    status=False
+                    return status, 'Destination group name not supplied'
             else:
-                response = {'message': f'Source group {name} does not exist'}
-                access_code = 400
-                return dumps(response), access_code
+                status=False,
+                return status, f'Source group {name} does not exist'
 
             del grp[0]['id']
             for item in grp[0]:
@@ -438,9 +434,8 @@ class Group():
                 if data['bmcsetupid']:
                     del data['bmcsetupname']
                 else:
-                    response = {'message': f'BMC Setup {bmcsetupname} does not exist'}
-                    access_code = 404
-                    return dumps(response), access_code
+                    status=False
+                    return status, f'BMC Setup {bmcsetupname} does not exist'
             if 'osimage' in data:
                 osimage = data['osimage']
                 del data['osimage']
@@ -455,12 +450,10 @@ class Group():
                 row = Helper().make_rows(data)
                 new_group_id = Database().insert('group', row)
                 if not new_group_id:
-                    message = f'Node {newgroupname} is not created due to possible property clash'
-                    response = {'message': message}
-                    access_code = 404
-                    return dumps(response), access_code
-                response = {'message': f'Group {name} created successfully'}
-                access_code = 201
+                    status=False
+                    return status, f'Node {newgroupname} is not created due to possible property clash'
+                response = f'Group {name} created successfully'
+                status=True
                 group_interfaces = Database().get_record_join(
                     [
                         'groupinterface.interface',
@@ -476,9 +469,8 @@ class Group():
                     for ifx in new_interface:
                         network = Database().id_by_name('network', ifx['network'])
                         if network is None:
-                            response = {'message': f'Network {network} not exist'}
-                            access_code = 404
-                            return dumps(response), access_code
+                            status=False
+                            return status, f'Network {network} does not exist'
                         else:
                             ifx['networkid'] = network
                             ifx['groupid'] = group_id
@@ -499,18 +491,19 @@ class Group():
                     row = Helper().make_rows(ifx)
                     Database().insert('groupinterface', row)
             else:
-                response = {'message': 'Columns are incorrect'}
-                access_code = 400
+                response = 'Columns are incorrect'
+                status=False
         else:
-            response = {'message': 'Did not received data'}
-            access_code = 400
-        return dumps(response), access_code
+            response = 'Did not received data'
+            status=False
+        return status, response
 
 
     def delete_group(self, name=None):
         """
         This method will delete a group.
         """
+        status=False
         where = f' WHERE `name` = "{name}"'
         group = Database().get_record(None, 'group', where)
         if group:
@@ -519,9 +512,9 @@ class Group():
             where = [{"column": "groupid", "value": group[0]['id']}]
             Database().delete_row('groupinterface', where)
             Database().delete_row('groupsecrets', where)
-            response = {'message': f'Group {name} with all its interfaces removed'}
-            access_code = 204
+            response = f'Group {name} with all its interfaces removed'
+            status=True
         else:
-            response = {'message': f'Group {name} not present in database'}
-            access_code = 404
-        return dumps(response), access_code
+            response = f'Group {name} not present in database'
+            status=False
+        return status, response

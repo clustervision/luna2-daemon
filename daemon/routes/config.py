@@ -249,7 +249,11 @@ def config_node_delete_interface(name=None, interface=None):
     Process - Delete the Node Interface.
     Output - Success or Failure.
     """
-    response, access_code = Interface().delete_node_interface(name, interface)
+    access_code=404
+    status, response = Interface().delete_node_interface(name, interface)
+    if status is True:
+        access_code=204
+    response = {'message': response}
     return response, access_code
 
 ############################# Group configuration #############################
@@ -264,10 +268,12 @@ def config_group():
     Output - Group Info.
     """
     access_code=404
-    ret, response = Group().get_all_group()
-    if ret is True:
+    status, response = Group().get_all_group()
+    if status is True:
         access_code=200
-        return dumps(response),access_code
+        response=dumps(response)
+    else:
+        response = {'message': response}
     return response, access_code
 
 
@@ -283,10 +289,12 @@ def config_group_get(cli=None, name=None):
     Output - Group Info.
     """
     access_code = 404
-    ret, response = Group().get_group(cli, name)
-    if ret is True:
+    status, response = Group().get_group(cli, name)
+    if status is True:
         access_code = 200
-        return dumps(response),access_code
+        response=dumps(response)
+    else:
+        response = {'message': response}
     return response, access_code
 
 
@@ -298,7 +306,13 @@ def config_group_member(name=None):
     This method will fetch all the nodes, which is connected to
     the provided group.
     """
-    response, access_code = Group().get_group_member(name)
+    access_code=404
+    status, response = Group().get_group_member(name)
+    if status is True:
+        access_code = 200
+        response=dumps(response)
+    else:
+        response = {'message': response}
     return response, access_code
 
 
@@ -312,7 +326,13 @@ def config_group_post(name=None):
     Process - Create Or Update The Groups.
     Output - Group Information.
     """
-    response, access_code = Group().update_group(name, request)
+    access_code=404
+    status, response = Group().update_group(name, request)
+    if status is True:
+        access_code = 201
+        if 'update' in response:
+            access_code = 204
+    response = {'message': response}
     return response, access_code
 
 
@@ -327,7 +347,19 @@ def config_group_ospush(name=None):
     Process - Push the OS from an image to a all nodes in the group. node inside json
     Output - Success or Failure.
     """
-    response, access_code = OSImage().push(name, request)
+    access_code=404
+    returned = OSImage().push(name, request)
+    status=returned[0]
+    response=returned[1]
+    if status is True:
+        access_code=200
+        if len(returned)==3:
+            request_id=returned[2]
+            response = {"message": response, "request_id": request_id}
+        else:
+            response = {'message': response}
+    else:
+        response = {'message': response}
     return response, access_code
 
 
@@ -342,7 +374,11 @@ def config_group_clone(name=None):
     Process - Create Or Update The Groups.
     Output - Group Information.
     """
-    response, access_code = Group().clone_group(name, request)
+    access_code=404
+    status, response = Group().clone_group(name, request)
+    if status is True:
+        access_code=201
+    response = {'message': response}
     return response, access_code
 
 
@@ -356,7 +392,11 @@ def config_group_delete(name=None):
     Process - Delete the Group and it's interfaces.
     Output - Success or Failure.
     """
-    response, access_code = Group().delete_group(name)
+    access_code=404
+    status, response = Group().delete_group(name)
+    if status is True:
+        access_code=204
+    response = {'message': response}
     return response, access_code
 
 

@@ -190,7 +190,13 @@ def config_node_get_interfaces(name=None):
     Process - Fetch the Node Interface List.
     Output - Node Interface List.
     """
-    response, access_code = Interface().get_all_node_interface(name)
+    access_code=404
+    status, response = Interface().get_all_node_interface(name)
+    if status is True:
+        access_code = 200
+        response = dumps(response)
+    else:
+        response = {'message': response}
     return response, access_code
 
 
@@ -204,7 +210,13 @@ def config_node_post_interfaces(name=None):
     Process - Create Or Update The Node Interface.
     Output - Node Interface.
     """
-    response, access_code = Interface().change_node_interface(name, request)
+    access_code=404
+    status, response = Interface().change_node_interface(name, request)
+    if status is True:
+        access_code = 201
+        if 'update' in response:
+            access_code = 204
+    response = {'message': response}
     return response, access_code
 
 
@@ -217,7 +229,13 @@ def config_node_interface_get(name=None, interface=None):
     Process - Get the Node Interface.
     Output - Success or Failure.
     """
-    response, access_code = Interface().get_node_interface(name, interface)
+    access_code=404
+    status, response = Interface().get_node_interface(name, interface)
+    if status is True:
+        access_code = 200
+        response = dumps(response)
+    else:
+        response = {'message': response}
     return response, access_code
 
 

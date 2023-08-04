@@ -39,6 +39,7 @@ class Interface():
         """
         This method will return all the node interfaces in detailed format.
         """
+        status=False
         node = Database().get_record(None, 'node', f' WHERE name = "{name}"')
         if node:
             response = {'config': {'node': {name: {'interfaces': [] } } } }
@@ -60,23 +61,24 @@ class Interface():
                     interface['options'] = interface['options'] or ""
                     my_interface.append(interface)
                     response['config']['node'][name]['interfaces'] = my_interface
-                self.logger.info(f'Returned group {name} with details.')
-                access_code = 200
+                self.logger.info(f'Returned node interface {name} details.')
+                status=True
             else:
                 self.logger.error(f'Node {name} dont have any interface.')
-                response = {'message': f'Node {name} dont have any interface'}
-                access_code = 404
+                response = f'Node {name} dont have any interface'
+                status=False
         else:
-            self.logger.error('No nodes are available.')
-            response = {'message': 'No nodes are available'}
-            access_code = 404
-        return dumps(response), access_code
+            self.logger.error('No nodes available.')
+            response = 'No nodes available'
+            status=False
+        return status, response
 
 
     def change_node_interface(self, name=None, http_request=None):
         """
         This method will add or update the node interface.
         """
+        status=False
         request_data = http_request.data
         if request_data:
             node = Database().get_record(None, 'node', f' WHERE name = "{name}"')
@@ -110,8 +112,8 @@ class Interface():
                             )
 
                         if result is False:
-                            response = {'message': f'{message}'}
-                            access_code = 404
+                            response = f'{message}'
+                            status=False
                         else:
                             Service().queue('dhcp', 'restart')
                             Service().queue('dns', 'restart')
@@ -129,26 +131,27 @@ class Interface():
                                 'housekeeper',
                                 '__node_interface_post__'
                             )
-                            response = {'message': 'Interface updated'}
-                            access_code = 204
+                            response = 'Interface updated'
+                            status=True
                 else:
                     self.logger.error(f'Interface for Node {name} not provided.')
-                    response = {'message': 'interface not provided'}
-                    access_code = 400
+                    response = 'interface not provided'
+                    status=False
             else:
                 self.logger.error(f'Node {name} is not available.')
-                response = {'message': f'Node {name} is not available'}
-                access_code = 404
+                response = f'Node {name} is not available'
+                status=False
         else:
-            response = {'message': 'Did not received Data'}
-            access_code = 400
-        return dumps(response), access_code
+            response = 'Did not receive Data'
+            status=False
+        return status, response
 
 
     def get_node_interface(self, name=None, interface=None):
         """
         This method will provide a node interface.
         """
+        status=False
         node = Database().get_record(None, 'node', f' WHERE name = "{name}"')
         if node:
             response = {'config': {'node': {name: {'interfaces': [] } } } }
@@ -175,15 +178,15 @@ class Interface():
                     my_interface.append(interface)
                     response['config']['node'][name]['interfaces'] = my_interface
 
-                self.logger.info(f'Returned group {name} with details.')
-                access_code = 200
+                self.logger.info(f'Returned node interface {name} details.')
+                status=True
             else:
                 self.logger.error(f'Node {name} does not have {interface} interface.')
-                response = {'message': f'Node {name} does not have {interface} interface'}
-                access_code = 404
+                response = f'Node {name} does not have {interface} interface'
+                status=False
         else:
             self.logger.error('Node is not available.')
-            response = {'message': 'Node is not available'}
+            response = 'Node is not available'
             access_code = 404
         return dumps(response), access_code
 

@@ -159,8 +159,8 @@ class Node():
             self.logger.info('Provided list of all nodes.')
             status = True
         else:
-            self.logger.error('No nodes are available.')
-            response = {'message': 'No nodes are available'}
+            self.logger.error('No nodes available.')
+            response = 'No nodes available'
         return status, response
 
 
@@ -337,7 +337,7 @@ class Node():
             status = True
         else:
             self.logger.error(f'Node {name} is not available.')
-            response = {'message': f'Node {name} is not available'}
+            response = f'Node {name} is not available'
         return status, response
 
 
@@ -358,7 +358,8 @@ class Node():
         # minimal required items with defaults. we do inherit things from e.g. groups. but that's
         # real time and not here
         create, update = False, False
-        access_code = 400
+        status = False
+        response = ""
         request_data = http_request.data
         if request_data:
             data = request_data['config']['node'][name]
@@ -370,9 +371,8 @@ class Node():
                     where = f' WHERE `name` = "{nodename_new}"'
                     node_check = Database().get_record(None, 'node', where)
                     if node_check:
-                        response = {'message': f'{nodename_new} already present in database'}
-                        access_code = 404
-                        return dumps(response), access_code
+                        status = False
+                        return status, f'{nodename_new} already present in database'
                     else:
                         data['name'] = data['newnodename']
                         del data['newnodename']
@@ -380,10 +380,8 @@ class Node():
             else:
                 if 'newnodename' in data:
                     nodename_new = data['newnodename']
-                    message = 'newnodename is only allowed while update, rename or clone a node'
-                    response = {'message': message}
-                    access_code = 400
-                    return dumps(response), access_code
+                    status = False
+                    return status, 'newnodename is only allowed while update, rename or clone a node'
                 create = True
 
             for key, value in items.items():
@@ -408,9 +406,8 @@ class Node():
                     else:
                         data[key+'id'] = Database().id_by_name(key, check_name)
                         if not data[key+'id']:
-                            access_code = 404
-                            response = {'message': f'{key} {check_name} is not known or valid'}
-                            return dumps(response), access_code
+                            status = False
+                            return status, f'{key} {check_name} is not known or valid'
                     del data[key]
 
             interfaces = None
@@ -425,20 +422,19 @@ class Node():
                     where = [{"column": "id", "value": nodeid}]
                     row = Helper().make_rows(data)
                     Database().update('node', row, where)
-                    response = {'message': f'Node {name} updated successfully'}
-                    access_code = 204
+                    response = f'Node {name} updated successfully'
+                    status = True
                 if create:
                     if 'groupid' not in data:
                         # ai, we DO need this for new nodes...... kind of.
                         # we agreed on this. pending?
-                        access_code = 400
-                        response = {'message': 'group name is required for new nodes'}
-                        return dumps(response), access_code
+                        status = False
+                        return status, 'group name is required for new nodes'
                     data['name'] = name
                     row = Helper().make_rows(data)
                     nodeid = Database().insert('node', row)
-                    response = {'message': f'Node {name} created successfully'}
-                    access_code = 201
+                    response = f'Node {name} created successfully'
+                    status = True
                     if nodeid and 'groupid' in data and data['groupid']:
                         # ----> GROUP interface. WIP. pending. should work but i keep it WIP
                         group_interfaces = Database().get_record_join(
@@ -549,9 +545,8 @@ class Node():
                             )
 
                         if result is False:
-                            response = {'message': f'{message}'}
-                            access_code = 404
-                            return dumps(response), access_code
+                            status = False
+                            return status, f'{message}'
 
                 Service().queue('dhcp', 'restart')
                 Service().queue('dns', 'restart')
@@ -561,12 +556,12 @@ class Node():
                 Queue().add_task_to_queue('dhcp:restart', 'housekeeper', '__node_post__')
                 Queue().add_task_to_queue('dns:restart', 'housekeeper', '__node_post__')
             else:
-                response = {'message': 'Columns are incorrect'}
-                access_code = 400
+                response = 'Columns are incorrect'
+                status = False
         else:
-            response = {'message': 'Did not received data'}
-            access_code = 400
-        return dumps(response), access_code
+            response = 'Did not receive data'
+            status = False
+        return status, response
 
 
     def clone_node(self, name=None, http_request=None):

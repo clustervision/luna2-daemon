@@ -52,6 +52,8 @@ def config_node():
     if status is True:
         access_code = 200
         response = dumps(response)
+    else:
+        response = {'message': response}
     return response, access_code
 
 
@@ -68,6 +70,8 @@ def config_node_get(cli=None, name=None):
     if status is True:
         access_code = 200
         response = dumps(response)
+    else:
+        response = {'message': response}
     return response, access_code
 
 
@@ -79,7 +83,13 @@ def config_node_post(name=None):
     """
     This api will create or update a node depends on the availability of the node name.
     """
-    response, access_code = Node().update_node(name, request)
+    access_code=404
+    status, response = Node().update_node(name, request)
+    if status is True:
+        access_code=201
+        if 'update' in response:
+            access_code=204
+    response = {'message': response}
     return response, access_code
 
 

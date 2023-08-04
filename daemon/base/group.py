@@ -289,13 +289,13 @@ class Group():
                     row = Helper().make_rows(data)
                     Database().update('group', row, where)
                     response = {'message': f'Group {name} updated successfully'}
-                    access_code = 204
+                    status=True
                 if create:
                     data['name'] = name
                     row = Helper().make_rows(data)
                     group_id = Database().insert('group', row)
                     response = {'message': f'Group {name} created successfully'}
-                    access_code = 201
+                    status=True
                 if new_interface:
                     for ifx in new_interface:
                         if not 'interface' in ifx:

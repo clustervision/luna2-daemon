@@ -250,7 +250,8 @@ class OSImage():
         This method will grab a osimage.
         """
         data = {}
-        access_code = 500
+        status=False
+        response=""
         request_data = http_request.data
         if request_data:
             data = request_data['config']['node'][node]
@@ -280,11 +281,8 @@ class OSImage():
                 if image_details:
                     osimage=image_details[0]['osimagename']
                 else:
-                    access_code = 404
-                    message = f"Grab failed for {osimage}. "
-                    message += "This node have osimage or group configured?"
-                    response = {"message": message}
-                    return dumps(response), access_code
+                    status=False
+                    return status, f"Grab failed for {osimage}. This node has osimage or group configured?"
 
             request_id = str(time()) + str(randint(1001, 9999)) + str(getpid())
             task_id, text = None,None
@@ -296,15 +294,14 @@ class OSImage():
                 task_id, text = Queue().add_task_to_queue(task, 'osimage', request_id)
             if not task_id:
                 self.logger.info("config_osimage_grab GET cannot get queue_id")
-                response= {"message": f'OS image {osimage} grab queuing failed'}
-                return dumps(response), access_code
+                status=False
+                return status, f'OS image {osimage} grab queuing failed'
             if text != "added":
                 # this means we already have an equal request in the queue
-                access_code = 200
-                message = f"osimage grab for {osimage} already queued"
-                response = {"message": message, "request_id": text}
-                self.logger.info(f"my response [{response}]")
-                return dumps(response), access_code
+                response = f"osimage grab for {osimage} already queued"
+                self.logger.info(f"my response [{response}] [{text}]")
+                status=True
+                return status, response, text
 
             self.logger.info(f"config_osimage_grab POST added task to queue: {task_id}")
             message = f"queued grab osimage {osimage} with queue_id {task_id}"
@@ -321,14 +318,12 @@ class OSImage():
             sleep(1)
             status = Database().get_record(None , 'status', f' WHERE request_id = "{request_id}"')
             if status:
-                access_code = 200
-                message = f"osimage grab from {node} to {osimage} queued"
-                response = {"message": message, "request_id": request_id}
-            self.logger.info(f"my response [{response}]")
-            return dumps(response), access_code
-        response = {"message": "osimage grab missing data"}
-        access_code = 404
-        return dumps(response), access_code
+                response = f"osimage grab from {node} to {osimage} queued"
+                status=True
+                self.logger.info(f"my response [{response}] [{request_id}]")
+                return status, response, request_id
+        status=False
+        return status, "osimage grab missing data"
 
 
     def push(self, entity_name=None, http_request=None):
@@ -337,6 +332,8 @@ class OSImage():
         """
         data = {}
         access_code = 500
+        status=False
+        response=""
         request_data = http_request.data
         if request_data:
             data, to_group = None, False
@@ -376,11 +373,8 @@ class OSImage():
                 if image_details:
                     osimage=image_details[0]['osimagename']
                 else:
-                    access_code = 404
-                    message = f"Push failed for {osimage}. "
-                    message += "No osimage configured for this node or group?"
-                    response = {"message": message}
-                    return dumps(response), access_code
+                    status=False
+                    return status, f"Push failed for {osimage}. No osimage configured for this node or group?"
 
             request_id = str(time()) + str(randint(1001, 9999)) + str(getpid())
             task_id, text = None, None
@@ -392,15 +386,15 @@ class OSImage():
                 task_id, text = Queue().add_task_to_queue(task, 'osimage', request_id)
             if not task_id:
                 self.logger.info("config_osimage_push POST cannot get queue_id")
-                response= {"message": f'OS image {osimage} push queuing failed'}
-                return dumps(response), access_code
+                status=False
+                return status, f'OS image {osimage} push queuing failed'
             if text != "added":
                 # this means we already have an equal request in the queue
                 access_code = 200
-                message = f"osimage push for {osimage} already queued"
-                response = {"message": message, "request_id": text}
-                self.logger.info(f"my response [{response}]")
-                return dumps(response), access_code
+                response = f"osimage push for {osimage} already queued"
+                status=True
+                self.logger.info(f"my response [{response}] [{text}]")
+                return status, response, text
 
             self.logger.info(f"config_osimage_push POST added task to queue: {task_id}")
             message = f"queued push osimage {osimage} with queue_id {task_id}"
@@ -417,14 +411,12 @@ class OSImage():
             sleep(1)
             status = Database().get_record(None , 'status', f' WHERE request_id = "{request_id}"')
             if status:
-                access_code = 200
-                message = f"osimage push from {entity_name} to {osimage} queued"
-                response = {"message": message, "request_id": request_id}
-            self.logger.info(f"my response [{response}]")
-            return dumps(response), access_code
-        response = {"message": "osimage push missing data"}
-        access_code = 404
-        return dumps(response), access_code
+                status=True
+                response = f"osimage push from {entity_name} to {osimage} queued"
+                self.logger.info(f"my response [{response}] [{request_id}]")
+                return status, response, request_id
+        status=False
+        return status, "osimage push missing data"
 
 
     def pack(self, name=None):

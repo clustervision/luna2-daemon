@@ -138,7 +138,19 @@ def config_node_osgrab(name=None):
     Process - Grab the OS from a node into an image. node inside json.
     Output - Success or Failure.
     """
-    response, access_code = OSImage().grab(name, request)
+    access_code=404
+    returned = OSImage().grab(name, request)
+    status=returned[0]
+    response=returned[1]
+    if status is True:
+        access_code=200
+        if len(returned)==3:
+            request_id=returned[2]
+            response = {"message": response, "request_id": request_id}
+        else:
+            response = {'message': response}
+    else:
+        response = {'message': response}
     return response, access_code
 
 
@@ -153,7 +165,19 @@ def config_node_ospush(name=None):
     Process - Push the OS from an image to a node. node inside json
     Output - Success or Failure.
     """
-    response, access_code = OSImage().push(name, request)
+    access_code=404
+    returned = OSImage().push(name, request)
+    status=returned[0]
+    response=returned[1]
+    if status is True:
+        access_code=200
+        if len(returned)==3:
+            request_id=returned[2]
+            response = {"message": response, "request_id": request_id}
+        else:
+            response = {'message': response}
+    else:
+        response = {'message': response}
     return response, access_code
 
 

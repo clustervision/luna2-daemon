@@ -18,6 +18,7 @@ __email__       = "sumit.sharma@clustervision.com"
 __status__      = "Development"
 
 
+from json import dumps
 from flask import Blueprint
 from utils.log import Log
 from common.validate_auth import token_required

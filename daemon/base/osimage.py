@@ -461,7 +461,7 @@ class OSImage():
             status=True
             response = f"osimage pack for {name} queued"
             self.logger.info(f"my response [{response}] [{request_id}]")
-            return response, request_id
+            return status, response, request_id
         return status, response
 
 

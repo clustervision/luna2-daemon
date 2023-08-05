@@ -40,7 +40,24 @@ def service(name, action):
         seconds. If not then only execute the action with the help of service Class.
     Output - Success or Failure.
     """
-    response, access_code = Service().service_action(name, action)
+    access_code=404
+    returned = Service().service_action(name, action)
+    status=returned[0]
+    message=returned[1]
+    if status is True:
+        access_code=200
+        if len(returned)==3:
+            request_id=returned[2]
+            response = {"message": message, "request_id": request_id}
+        else:
+            response={'info': message}
+    else:
+        if 'config has error' in response:
+            access_code=500
+        response={'error': message}
+    # Antoine - aug 5 2023 - bit ugly workaround for when status returns a full dict/json already.
+    if action == 'status':
+        response=message
     return response, access_code
 
 

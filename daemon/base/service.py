@@ -45,12 +45,12 @@ class Service():
         This method will perform all the operations on all the services.
         such as dhcp or dns restart, reload, status, etc.
         """
+        status=False
         # we do not need the queue for e.g. status
         if action == "status":
-            response, code = service().luna_service(name, action)
-            return dumps(response), code
-        code = 500
-        response = {"message": f'service {name} {action} failed. No sign of life of spawned thread'}
+            status, response = service().luna_service(name, action)
+            return status, response
+        response = f'Internal error: service {name} {action} failed. No sign of life of spawned thread'
         #Antoine
         request_id = str(time()) + str(randint(1001, 9999)) + str(getpid())
         queue_id, queue_response = Queue().add_task_to_queue(
@@ -60,16 +60,14 @@ class Service():
         )
         if not queue_id:
             self.logger.info("service GET cannot get queue_id")
-            response = {"message": f'Service {name} {action} queuing failed'}
-            return dumps(response), code
+            status=False
+            response = f'Service {name} {action} queuing failed'
+            return status, response
         if queue_response != "added": # this means we already have an equal request in the queue
-            code = 200
-            response = {
-                "message": f"service for {name} {action} already queued",
-                "request_id": queue_response
-            }
-            self.logger.info(f"my response [{response}]")
-            return dumps(response), code
+            status=True
+            response = f"service for {name} {action} already queued"
+            self.logger.info(f"my response [{response}] [{queue_response}]")
+            return status, response, queue_response
         self.logger.info(f"service GET added task to queue: {queue_id}")
         Status().add_message(
             request_id,
@@ -87,10 +85,11 @@ class Service():
         sleep(1)
         status = Database().get_record(None , 'status', f' WHERE request_id = "{request_id}"')
         if status:
-            code = 200
-            response = {"message": f"service for {name} {action} queued", "request_id": request_id}
-        self.logger.info(f"my response [{response}]")
-        return dumps(response), code
+            status=True
+            response = f"service for {name} {action} queued"
+            self.logger.info(f"my response [{response}] [{request_id}]")
+            return status, response, request_id
+        return status, response
 
 
     # below segment has been moved to Status()
@@ -98,8 +97,6 @@ class Service():
         """
         This method will get the exact status of the service, depends on the request ID.
         """
-        access_code = 404
-        response = {'message': 'No data for this request'}
         status = Database().get_record(None , 'status', f' WHERE request_id = "{request_id}"')
         if status:
             message = []
@@ -116,5 +113,7 @@ class Service():
                                 message.append(record['message'])
             response = {'message': (';;').join(message) }
             Status().mark_messages_read(request_id)
-            access_code = 200
-        return dumps(response), access_code
+            status=True
+            return status, response 
+        return status, 'No data for this request'
+

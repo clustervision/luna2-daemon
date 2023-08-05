@@ -614,7 +614,13 @@ def config_cluster():
     Process - Fetch The Cluster Information.
     Output - Cluster Information.
     """
-    response, access_code = Cluster().information()
+    access_code=404
+    status, response = Cluster().information()
+    if status is True:
+        access_code=200
+        response=dumps(response)
+    else:
+        response = {'message': response}
     return response, access_code
 
 
@@ -627,7 +633,9 @@ def config_cluster_post():
     Process - Fetch The Cluster Information.
     Output - Cluster Information.
     """
-    response, access_code = Cluster().update_cluster(request)
+    status, response = Cluster().update_cluster(request)
+    access_code=Helper().get_access_code(status,response)
+    response = {'message': response}
     return response, access_code
 
 
@@ -639,7 +647,13 @@ def config_bmcsetup():
     """
     This route will provide all the BMC Setup's.
     """
-    response, access_code = BMCSetup().get_all_bmcsetup()
+    access_code=404
+    status, response = BMCSetup().get_all_bmcsetup()
+    if status is True:
+        access_code=200
+        response=dumps(response)
+    else:
+        response = {'message': response}
     return response, access_code
 
 
@@ -650,7 +664,13 @@ def config_bmcsetup_get(name=None):
     """
     This route will provide a requested BMC Setup.
     """
-    response, access_code = BMCSetup().get_bmcsetup(name)
+    access_code=404
+    status, response = BMCSetup().get_bmcsetup(name)
+    if status is True:
+        access_code=200
+        response=dumps(response)
+    else:
+        response = {'message': response}
     return response, access_code
 
 
@@ -661,7 +681,13 @@ def config_bmcsetup_member(name=None):
     """
     This route will provide the list of nodes which is connected to the requested BMC Setup.
     """
-    response, access_code = BMCSetup().get_bmcsetup_member(name)
+    access_code=404
+    status, response = BMCSetup().get_bmcsetup_member(name)
+    if status is True:
+        access_code=200
+        response=dumps(response)
+    else:
+        response = {'message': response}
     return response, access_code
 
 
@@ -673,7 +699,9 @@ def config_bmcsetup_post(name=None):
     """
     This route will create or update requested BMC Setup.
     """
-    response, access_code = BMCSetup().update_bmcsetup(name, request)
+    status, response = BMCSetup().update_bmcsetup(name, request)
+    access_code=Helper().get_access_code(status,response)
+    response = {'message': response}
     return response, access_code
 
 
@@ -685,7 +713,9 @@ def config_bmcsetup_clone(name=None):
     """
     This route will clone a requested BMC Setup.
     """
-    response, access_code = BMCSetup().clone_bmcsetup(name, request)
+    status, response = BMCSetup().clone_bmcsetup(name, request)
+    access_code=Helper().get_access_code(status,response)
+    response = {'message': response}
     return response, access_code
 
 
@@ -696,7 +726,9 @@ def config_bmcsetup_delete(name=None):
     """
     This route will delete a requested BMC Setup.
     """
-    response, access_code = BMCSetup().delete_bmcsetup(name)
+    status, response = BMCSetup().delete_bmcsetup(name)
+    access_code=Helper().get_access_code(status,response)
+    response = {'message': response}
     return response, access_code
 
 

@@ -38,6 +38,7 @@ class Cluster():
         """
         This method will return all the osimage in detailed format.
         """
+        status=False
         cluster = Database().get_record(None, 'cluster', None)
         if cluster:
             cluster_id = cluster[0]['id']
@@ -65,18 +66,20 @@ class Cluster():
                 del controller['clusterid']
                 controller['luna_config'] = CONFIGFILE
                 response['config']['cluster'][controller['hostname']] = controller
-                access_code = 200
+                status=True
         else:
             self.logger.error('No cluster is available.')
-            response = {'message': 'No cluster is available'}
-            access_code = 404
-        return dumps(response), access_code
+            response = 'No cluster is available'
+            status=False
+        return status, response
 
 
     def update_cluster(self, http_request=None):
         """
         This method will update the cluster information.
         """
+        status=False
+        response=""
         items = {'debug': False, 'security': False, 'createnode_ondemand': True}
         request_data = http_request.data
         if request_data:
@@ -92,9 +95,8 @@ class Cluster():
                         temp = temp.replace(',,',',')
                         for ipaddress in temp.split(','):
                             if not Helper().check_ip(ipaddress):
-                                response = {'message': f'{ipaddress} is an invalid NTP server IP'}
-                                access_code = 404
-                                return dumps(response), access_code
+                                status=False
+                                return status, f'{ipaddress} is an invalid NTP server IP'
                         data['ntp_server'] = temp
                     if 'nameserver_ip' in data and data['nameserver_ip']:
                         temp = data['nameserver_ip']
@@ -102,9 +104,8 @@ class Cluster():
                         temp = temp.replace(',,',',')
                         for ipaddress in temp.split(','):
                             if not Helper().check_ip(ipaddress):
-                                response = {'message': f'{ipaddress} is an invalid name server IP'}
-                                access_code = 404
-                                return dumps(response), access_code
+                                status=False
+                                return status, f'{ipaddress} is an invalid name server IP'
                         data['nameserver_ip'] = temp
                     if 'forwardserver_ip' in data and data['forwardserver_ip']:
                         temp = data['forwardserver_ip']
@@ -112,9 +113,8 @@ class Cluster():
                         temp = temp.replace(',,',',')
                         for ipaddress in temp.split(','):
                             if not Helper().check_ip(ipaddress):
-                                response = {'message': f'{ipaddress} is an invalid forwarder IP'}
-                                access_code = 404
-                                return dumps(response), access_code
+                                status=False
+                                return status, f'{ipaddress} is an invalid forwarder IP'
                         data['forwardserver_ip'] = temp
 
                     for key, value in items.items():
@@ -127,15 +127,16 @@ class Cluster():
                     row = Helper().make_rows(data)
                     Database().update('cluster', row, where)
                     Service().queue('dns','restart')
-                    response = {'message': 'Cluster updated'}
-                    access_code = 204
+                    response = 'Cluster updated'
+                    status=True
                 else:
-                    response = {'message': 'No cluster is available to update'}
-                    access_code = 404
+                    response = 'No cluster is available to update'
+                    status=False
             else:
-                response = {'message': 'Columns are incorrect'}
-                access_code = 400
+                response = 'Invalid request: Columns are incorrect'
+                status=False
         else:
-            response = {'message': 'Did not received data'}
-            access_code = 400
-        return dumps(response), access_code
+            response = 'Invalid request: Did not receive data'
+            status=False
+        return status, response
+

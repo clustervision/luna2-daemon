@@ -35,50 +35,49 @@ class BMCSetup():
         """
         This method will return all the bmcsetup in detailed format.
         """
-        response, access_code = Model().get_record(
+        status, response = Model().get_record(
             table = self.table,
             table_cap = self.table_cap
         )
-        return response, access_code
+        return status, response
 
 
     def get_bmcsetup(self, name=None):
         """
         This method will return requested bmcsetup in detailed format.
         """
-        response, access_code = Model().get_record(
+        status, response = Model().get_record(
             name = name,
             table = self.table,
             table_cap = self.table_cap
         )
-        return response, access_code
+        return status, response
 
 
     def get_bmcsetup_member(self, name=None):
         """
         This method will return all the list of all the member node names for a bmcsetup.
         """
-        response, access_code = Model().get_member(
+        status, response = Model().get_member(
             name = name,
             table = self.table,
             table_cap = self.table_cap
         )
-        return response, access_code
-
+        return status, response
 
     def update_bmcsetup(self, name=None, http_request=None):
         """
         This method will create or update a bmcsetup.
         """
         new_name = 'newbmcname'
-        response, access_code = Model().change_record(
+        status, response = Model().change_record(
             name = name,
             new_name = new_name,
             table = self.table,
             table_cap = self.table_cap,
             request_data = http_request.data
         )
-        return response, access_code
+        return status, response
 
 
     def clone_bmcsetup(self, name=None, http_request=None):
@@ -86,23 +85,24 @@ class BMCSetup():
         This method will clone a bmcsetup.
         """
         new_name = 'newbmcname'
-        response, access_code = Model().clone_record(
+        status, response = Model().clone_record(
             name = name,
             new_name = new_name,
             table = self.table,
             table_cap = self.table_cap,
             request_data = http_request.data
         )
-        return response, access_code
+        return status, response
 
 
     def delete_bmcsetup(self, name=None):
         """
         This method will delete a bmcsetup.
         """
-        response, access_code = Model().delete_record(
+        status, response = Model().delete_record(
             name = name,
             table = self.table,
             table_cap = self.table_cap
         )
-        return response, access_code
+        return status, response
+

@@ -256,7 +256,7 @@ class OtherDev():
                 response = 'Invalid request: Not enough details to create the device'
                 status=False
         else:
-            response = 'Invalid request: Did not receive data'}
+            response = 'Invalid request: Did not receive data'
             status=False
         return status, response
 

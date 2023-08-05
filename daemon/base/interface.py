@@ -135,14 +135,14 @@ class Interface():
                             status=True
                 else:
                     self.logger.error(f'Interface for Node {name} not provided.')
-                    response = 'interface not provided'
+                    response = 'Invalid request: interface not provided'
                     status=False
             else:
                 self.logger.error(f'Node {name} is not available.')
                 response = f'Node {name} is not available'
                 status=False
         else:
-            response = 'Did not receive Data'
+            response = 'Invalid request: Did not receive Data'
             status=False
         return status, response
 
@@ -240,7 +240,6 @@ class Interface():
         This method will return all the group interfaces in detailed format for a desired group.
         """
         status=False
-        response="Internal error"
         groups = Database().get_record(None, 'group', f' WHERE name = "{name}"')
         if groups:
             response = {'config': {'group': {name: {'interfaces': [] } } } }
@@ -327,7 +326,7 @@ class Interface():
                 response = 'No group is available'
                 status=False
         else:
-            response = 'Did not receive data'
+            response = 'Invalid request: Did not receive data'
             status=False
         return status, response
 

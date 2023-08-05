@@ -244,7 +244,7 @@ class Group():
             else:
                 if 'newgroupname' in data:
                     status=False
-                    return status, 'newgroupname is not allowed while creating a new group'
+                    return status, 'Invalid request: newgroupname is not allowed while creating a new group'
                 create = True
 
             for key, value in items.items():
@@ -288,13 +288,13 @@ class Group():
                     where = [{"column": "id", "value": group_id}]
                     row = Helper().make_rows(data)
                     Database().update('group', row, where)
-                    response = {'message': f'Group {name} updated successfully'}
+                    response = f'Group {name} updated successfully'
                     status=True
                 if create:
                     data['name'] = name
                     row = Helper().make_rows(data)
                     group_id = Database().insert('group', row)
-                    response = {'message': f'Group {name} created successfully'}
+                    response = f'Group {name} created successfully'
                     status=True
                 if new_interface:
                     for ifx in new_interface:
@@ -366,10 +366,10 @@ class Group():
 
             else:
                 status=False
-                response = 'Columns are incorrect'
+                response = 'Invalid request: Columns are incorrect'
         else:
             status=False
-            response = 'Did not received data'
+            response = 'Invalid request: Did not receive data'
         return status, response
 
 
@@ -491,10 +491,10 @@ class Group():
                     row = Helper().make_rows(ifx)
                     Database().insert('groupinterface', row)
             else:
-                response = 'Columns are incorrect'
+                response = 'Invalid request: Columns are incorrect'
                 status=False
         else:
-            response = 'Did not received data'
+            response = 'Invalid request: Did not receive data'
             status=False
         return status, response
 

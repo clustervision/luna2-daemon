@@ -787,7 +787,7 @@ class Helper(object):
         access_code=404
         if status is True:
             access_code=201
-            if 'update' in response or 'remove' in response:
+            if 'update' in response or 'remove' in response or 'delete' in response:
                 access_code=204
         else:
             if 'nvalid request' in response or 'ad request' in response:

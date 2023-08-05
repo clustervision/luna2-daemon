@@ -359,7 +359,7 @@ class Node():
         # real time and not here
         create, update = False, False
         status = False
-        response = ""
+        response = "Internal error"
         request_data = http_request.data
         if request_data:
             data = request_data['config']['node'][name]
@@ -556,10 +556,10 @@ class Node():
                 Queue().add_task_to_queue('dhcp:restart', 'housekeeper', '__node_post__')
                 Queue().add_task_to_queue('dns:restart', 'housekeeper', '__node_post__')
             else:
-                response = 'Columns are incorrect'
+                response = 'Invalid request: Columns are incorrect'
                 status = False
         else:
-            response = 'Did not receive data'
+            response = 'Invalid request: Did not receive data'
             status = False
         return status, response
 
@@ -728,10 +728,10 @@ class Node():
                 # do we need dhcp restart? MAC is wiped on new NIC so no real need i guess. pending
                 Service().queue('dns','restart')
             else:
-                response = 'Columns are incorrect'
+                response = 'Invalid request: Columns are incorrect'
                 status=False
         else:
-            response = 'Did not received data'
+            response = 'Invalid request: Did not receive data'
             status=False
         return status, response
 

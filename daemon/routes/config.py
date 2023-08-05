@@ -893,7 +893,13 @@ def config_network():
     Process - Fetch The Network Information.
     Output - Network Information.
     """
-    response, access_code = Network().get_all_networks()
+    access_code=404
+    status,response = Network().get_all_networks()
+    if status is True:
+        access_code=200
+        response=dumps(response)
+    else:
+        response = {'message': response}
     return response, access_code
 
 
@@ -906,7 +912,13 @@ def config_network_get(name=None):
     Process - Fetch The Network Information.
     Output - Network Information.
     """
-    response, access_code = Network().get_network(name)
+    access_code=404
+    status, response = Network().get_network(name)
+    if status is True:
+        access_code=200
+        response=dumps(response)
+    else:
+        response = {'message': response}
     return response, access_code
 
 
@@ -920,7 +932,9 @@ def config_network_post(name=None):
     Process - Create or Update Network information.
     Output - Success or Failure.
     """
-    response, access_code = Network().update_network(name, request)
+    status, response = Network().update_network(name, request)
+    access_code=Helper().get_access_code(status,response)
+    response = {'message': response}
     return response, access_code
 
 
@@ -933,20 +947,29 @@ def config_network_delete(name=None):
     Process - Delete The Network.
     Output - Success or Failure.
     """
-    response, access_code = Network().delete_network(name)
+    status, response = Network().delete_network(name)
+    access_code=Helper().get_access_code(status,response)
+    response = {'message': response}
     return response, access_code
 
 
+# Antoine - Aug 5 2023 - next API call will probably never be used, or not in context with a network?
 @config_blueprint.route("/config/network/<string:name>/<string:ipaddress>", methods=['GET'])
 @token_required
 @validate_name
 def config_network_ip(name=None, ipaddress=None):
     """
     Input - Network Name And IP Address
-    Process - Delete The Network.
+    Process - checks if a given ip address is free or taken for the network
     Output - Success or Failure.
     """
-    response, access_code = Network().network_ip(name, ipaddress)
+    access_code=404
+    status, response = Network().network_ip(name, ipaddress)
+    if status is True:
+        access_code=200
+        response=dumps(response)
+    else:
+        response = {'message': response}
     return response, access_code
 
 
@@ -959,7 +982,13 @@ def config_network_taken(name=None):
     Process - Find out all the ipaddress which is taken by the provided network.
     Output - List all taken ipaddress by the network.
     """
-    response, access_code = Network().taken_ip(name)
+    access_code=404
+    status, response = Network().taken_ip(name)
+    if status is True:
+        access_code=200
+        response=dumps(response)
+    else:
+        response = {'message': response}
     return response, access_code
 
 
@@ -972,7 +1001,13 @@ def config_network_nextip(name=None):
     Process - Find The Next Available IP on the Network.
     Output - Next Available IP on the Network.
     """
-    response, access_code = Network().next_free_ip(name)
+    access_code=404
+    status, response = Network().next_free_ip(name)
+    if status is True:
+        access_code=200
+        response=dumps(response)
+    else:
+        response = {'message': response}
     return response, access_code
 
 ############################# Secrets configuration #############################

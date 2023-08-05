@@ -117,7 +117,6 @@ class Control():
             raw_hosts = request_data['control']['power'][action]['hostlist']
             hostlist = Helper().get_hostlist(raw_hosts)
             if hostlist:
-                status=True
                 size = int(CONSTANT['BMCCONTROL']['BMC_BATCH_SIZE'])
                 delay = CONSTANT['BMCCONTROL']['BMC_BATCH_DELAY']
                 # Antoine -------------------------------------------------------------------
@@ -166,8 +165,10 @@ class Control():
                             }
                         }
                     }
+                    status=True
                 else:
                     response = {'control': {'power': {'request_id': request_id} } }
+                    status=True
                 # end Antoine ---------------------------------------------------------------
             else:
                 response = 'Invalid request: invalid hostlist'

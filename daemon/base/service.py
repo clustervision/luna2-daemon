@@ -93,6 +93,7 @@ class Service():
         return dumps(response), code
 
 
+    # below segment has been moved to Status()
     def get_status(self, request_id=None):
         """
         This method will get the exact status of the service, depends on the request ID.

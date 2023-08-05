@@ -62,3 +62,25 @@ class Status(object):
         Database().delete_row('status', [{"column": "request_id", "value": request_id}])
 
 
+    def get_status(self, request_id):
+        """
+        This method will get the exact status from queue, depends on the request ID.
+        """
+        status = Database().get_record(None , 'status', f' WHERE request_id = "{request_id}"')
+        if status:
+            message = []
+            for record in status:
+                if 'read' in record:
+                    if record['read'] == 0:
+                        if 'message' in record:
+                            if record['message'] == "EOF":
+                                self.del_messages(request_id)
+                            else:
+                                created, *_ = (record['created'].split('.') + [None])
+                                message.append(created + " :: " + record['message'])
+            response = {'message': (';;').join(message) }
+            self.mark_messages_read(request_id)
+            return True, response
+        return False, 'No data for this request'
+
+

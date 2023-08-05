@@ -45,7 +45,7 @@ class Control():
         This method will perform the power operation on a requested host, such as
         on, off, status.
         """
-        # node = Database().get_record(None, 'node', f' WHERE name = "{hostname}"')
+        status=False
         node = Database().get_record_join(
             [
                 'node.id as nodeid',
@@ -71,9 +71,8 @@ class Control():
                     bmcsetupid = group[0]['bmcsetupid']
                 else:
                     self.logger.info(f"{node[0]['nodename']} does not have any group.")
-                    response = {'message': f'{hostname} does not have any group'}
-                    access_code = 404
-                    return response, access_code
+                    status=False
+                    return status, f'{hostname} does not have any group'
             else:
                 bmcsetupid = node[0]['bmcsetupid']
             bmcsetup = Database().get_record(None, 'bmcsetup', f' WHERE id = "{bmcsetupid}"')
@@ -92,19 +91,14 @@ class Control():
                 )
                 # message = Helper().ipmi_action(hostname, action, username, password)
                 response = {'control': {action : message } }
-                if 'status' in action:
-                    access_code = 200
-                else:
-                    access_code = 204
+                status=True
             else:
-                self.logger.info(f'{hostname} not have any bmcsetup.')
-                response = {'message': f'{hostname} does not have any bmcsetup'}
-                access_code = 404
+                response = f'{hostname} does not have any bmcsetup'
+                status=False
         else:
-            self.logger.info(f'{hostname} not have any node.')
-            response = {'message': f'{hostname} does not have BMC configured (properly)'}
-            access_code = 404
-        return dumps(response), access_code
+            response = f'{hostname} does not have BMC configured (properly)'
+            status=False
+        return status, response
 
 
     def bulk_action(self, http_request=None):
@@ -112,19 +106,18 @@ class Control():
         This method will perform the power operation on requested hostlist, such as
         on, off, status.
         """
-        response = {'message': 'Bad Request'}
-        access_code = 400
+        response = 'Bad Request'
+        status=False
         request_data = http_request.data
         if request_data:
             action = list(request_data['control']['power'].keys())[0]
             if not check_structure(request_data, ['control:power:' + action + ':hostlist']):
-                response = {'message': 'Bad Request'}
-                access_code = 400
-                return dumps(response), access_code
+                status=False
+                return status, 'Bad request'
             raw_hosts = request_data['control']['power'][action]['hostlist']
             hostlist = Helper().get_hostlist(raw_hosts)
             if hostlist:
-                access_code = 200
+                status=True
                 size = int(CONSTANT['BMCCONTROL']['BMC_BATCH_SIZE'])
                 delay = CONSTANT['BMCCONTROL']['BMC_BATCH_DELAY']
                 # Antoine -------------------------------------------------------------------
@@ -144,7 +137,6 @@ class Control():
                 while(pipeline.has_nodes() and wait_count > 0):
                     sleep(1)
                     wait_count -= 1
-                response = {'message': 'Bad Request'}
                 where = f' WHERE request_id = "{request_id}"'
                 status = Database().get_record(None , 'status', where)
                 if status:
@@ -178,22 +170,21 @@ class Control():
                     response = {'control': {'power': {'request_id': request_id} } }
                 # end Antoine ---------------------------------------------------------------
             else:
-                response = {'message': 'invalid hostlist'}
-                access_code = 400
-        return dumps(response), access_code
+                response = 'Invalid request: invalid hostlist'
+                status=False
+        return status, response
 
 
     def get_status(self, request_id=None):
         """
         This method will get the exact status of the nodes, depends on the request ID.
         """
-        access_code = 404
-        response = {'message': 'No data for this request'}
         status = Database().get_record(None , 'status', f' WHERE request_id = "{request_id}"')
         if status:
             on_nodes = []
             off_nodes = []
             failed_nodes = []
+            other_nodes = []
             for record in status:
                 if 'message' in record:
                     if record['read'] == 0:
@@ -206,6 +197,8 @@ class Control():
                                 on_nodes.append(node)
                             elif result == "off":
                                 off_nodes.append(node)
+                            elif result == "identify" or result == "noidentify"
+                                other_nodes.append(node)
                             else:
                                 failed_nodes.append(node)
             response = {
@@ -213,10 +206,12 @@ class Control():
                     'power': {
                         'on': {'hostlist': ','.join(on_nodes)},
                         'off': {'hostlist': ','.join(off_nodes)},
+                        'other': {'hostlist': ','.join(other_nodes)},
                         'failed': {'hostlist': ','.join(failed_nodes)}
                     }
                 }
             }
             Status().mark_messages_read(request_id)
-            access_code = 200
-        return dumps(response), access_code
+            return True, response
+        return False, 'No data for this request'
+

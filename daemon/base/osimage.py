@@ -498,13 +498,11 @@ class OSImage():
             status=False
         return status, response
 
-
+    # below has been 'moved' to utils/status
     def get_status(self, request_id=None):
         """
         This method will get the exact status from queue, depends on the request ID.
         """
-        access_code = 404
-        response = {'message': 'No data for this request'}
         status = Database().get_record(None , 'status', f' WHERE request_id = "{request_id}"')
         if status:
             message = []
@@ -519,5 +517,6 @@ class OSImage():
                                 message.append(created + " :: " + record['message'])
             response = {'message': (';;').join(message) }
             Status().mark_messages_read(request_id)
-            access_code = 200
-        return dumps(response), access_code
+            return True, response
+        return False, 'No data for this request'
+

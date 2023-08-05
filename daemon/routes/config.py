@@ -33,6 +33,7 @@ from base.network import Network
 from base.secret import Secret
 from base.osuser import OsUser
 from utils.helper import Helper
+from utils.Status import Status
 
 LOGGER = Log.get_logger()
 config_blueprint = Blueprint('config', __name__)
@@ -1327,5 +1328,12 @@ def control_status(request_id=None):
     Process - gets the list from status table. renders this into a response.
     Output - Success or failure
     """
-    response, access_code = OSImage().get_status(request_id)
+    access_code=404
+    status, response = Status().get_status(request_id)
+    if status is True:
+        access_code=200
+        response=dumps(response)
+    else:
+        response={'message': response}
     return response, access_code
+

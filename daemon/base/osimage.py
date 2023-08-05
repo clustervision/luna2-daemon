@@ -81,7 +81,7 @@ class OSImage():
         """
         data = {}
         status=False
-        response=""
+        response="Internal error"
         create, update = False, False
         request_data = http_request.data
         if request_data:
@@ -134,7 +134,7 @@ class OSImage():
         """
         data = {}
         status=False
-        response=""
+        response="Internal error"
         items = {
             'dracutmodules',
             'grab_filesystems',
@@ -248,7 +248,7 @@ class OSImage():
         """
         data = {}
         status=False
-        response=""
+        response="Internal error"
         request_data = http_request.data
         if request_data:
             data = request_data['config']['node'][node]
@@ -329,7 +329,7 @@ class OSImage():
         """
         data = {}
         status=False
-        response=""
+        response="Internal error"
         request_data = http_request.data
         if request_data:
             data, to_group = None, False
@@ -471,7 +471,7 @@ class OSImage():
         """
         data = {}
         status=False
-        response=""
+        response="Internal error"
         request_data = http_request.data
         if request_data:
             data = request_data['config']['osimage'][name]

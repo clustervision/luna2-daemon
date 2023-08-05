@@ -570,7 +570,7 @@ class Node():
         items = {'service': False, 'localboot': False}
         request_data = http_request.data
         status=False
-        response=""
+        response="Internal error"
         if request_data:
             if 'node' not in request_data['config'].keys():
                 status=False
@@ -741,7 +741,7 @@ class Node():
         This method will delete a node.
         """
         status=False
-        response=""
+        response="Internal error"
         node = Database().get_record(None, 'node', f' WHERE `name` = "{name}"')
         if node:
             nodeid = node[0]['id']

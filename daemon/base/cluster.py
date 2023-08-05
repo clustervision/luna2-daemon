@@ -79,7 +79,7 @@ class Cluster():
         This method will update the cluster information.
         """
         status=False
-        response=""
+        response="Internal error"
         items = {'debug': False, 'security': False, 'createnode_ondemand': True}
         request_data = http_request.data
         if request_data:

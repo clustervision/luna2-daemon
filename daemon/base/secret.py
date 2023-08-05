@@ -35,15 +35,15 @@ class Secret():
         """
         This method will return all secrets in detailed format.
         """
+        status=False
         nodesecrets = Database().get_record(None, 'nodesecrets', None)
         groupsecrets = Database().get_record(None, 'groupsecrets', None)
         if nodesecrets or groupsecrets:
             response = {'config': {'secrets': {} }}
-            access_code = 200
+            status=True
         else:
-            self.logger.error('Secrets are not available.')
-            response = {'message': 'Secrets are not available'}
-            access_code = 404
+            response = 'No Secrets available'
+            status=False
         if nodesecrets:
             response['config']['secrets']['node'] = {}
             for node in nodesecrets:
@@ -64,13 +64,14 @@ class Secret():
                 del group['id']
                 group['content'] = Helper().decrypt_string(group['content'])
                 response['config']['secrets']['group'][groupname].append(group)
-        return dumps(response), access_code
+        return status, response
 
 
     def get_node_secrets(self, name=None):
         """
         This method will return all secrets of a requested node in detailed format.
         """
+        status=False
         node = Database().get_record(None, 'node', f' WHERE name = "{name}"')
         if node:
             nodeid  = node[0]['id']
@@ -81,11 +82,11 @@ class Secret():
             groupsecrets = Database().get_record(None, 'groupsecrets', where)
             if nodesecrets or groupsecrets:
                 response = {'config': {'secrets': {} }}
-                access_code = 200
+                status=True
             else:
                 self.logger.error(f'Secrets are not available for node {name}.')
-                response = {'message': f'Secrets are not available for node {name}'}
-                access_code = 404
+                response = f'Secrets are not available for node {name}'
+                status=False
             if nodesecrets:
                 response['config']['secrets']['node'] = {}
                 for node in nodesecrets:
@@ -108,15 +109,17 @@ class Secret():
                     response['config']['secrets']['group'][groupname].append(group)
         else:
             self.logger.error(f'Node {name} is not available.')
-            response = {'message': f'Node {name} is not available'}
-            access_code = 404
-        return dumps(response), access_code
+            response = f'Node {name} is not available'
+            status=False
+        return status, response
 
 
     def update_node_secrets(self, name=None, http_request=None):
         """
         This method will create or update all secrets for a node.
         """
+        status=False
+        response="Internal error"
         data = {}
         create, update = False, False
         request_data = http_request.data
@@ -155,32 +158,31 @@ class Secret():
                             create = True
                 else:
                     self.logger.error('not provided at least one secret.')
-                    response = {'message': 'At least one secret not provided'}
-                    access_code = 400
+                    response = 'Invalid request: At least one secret not provided'
+                    status=False
             else:
-                self.logger.error(f'Node {name} is not available.')
-                response = {'message': f'Node {name} is not available'}
-                access_code = 404
-
+                response = f'Node {name} is not available'
+                status=False
             if create is True and update is True:
-                response = {'message': f'Node {name} Secrets created & updated'}
-                access_code = 201
+                response = f'Node {name} Secrets created & updated'
+                status=True
             elif create is True and update is False:
-                response = {'message': f'Node {name} Secret created'}
-                access_code = 201
+                response = f'Node {name} Secret created'
+                status=True
             elif create is False and update is True:
-                response = {'message': f'Node {name} Secret updated'}
-                access_code = 204
+                response = f'Node {name} Secret updated'
+                status=True
         else:
-            response = {'message': 'Did not received data'}
-            access_code = 400
-        return dumps(response), access_code
+            response = 'Invalid request: Did not receive data'
+            status=False
+        return status, response
 
 
     def get_node_secret(self, name=None, secret=None):
         """
         This method will return a requested secret of a node in detailed format.
         """
+        status=False
         node = Database().get_record(None, 'node', f' WHERE name = "{name}"')
         if node:
             nodeid  = node[0]['id']
@@ -188,27 +190,28 @@ class Secret():
             secret_data = Database().get_record(None, 'nodesecrets', where)
             if secret_data:
                 response = {'config': {'secrets': {'node': {name: [] } } } }
-                access_code = 200
+                status=True
                 del secret_data[0]['nodeid']
                 del secret_data[0]['id']
                 secret_data[0]['content'] = Helper().decrypt_string(secret_data[0]['content'])
                 response['config']['secrets']['node'][name] = secret_data
             else:
-                self.logger.error(f'Secret {secret} is unavailable for node {name}.')
-                response = {'message': f'Secret {secret} is unavailable for node {name}'}
-                access_code = 404
+                response = f'Secret {secret} is unavailable for node {name}'
+                status=False
         else:
-            self.logger.error(f'Node {name} is not available.')
-            response = {'message': f'Node {name} is not available'}
-            access_code = 404
-        return dumps(response), access_code
+            response = f'Node {name} is not available'
+            status=False
+        return status, response
 
 
     def update_node_secret(self, name=None, secret=None, http_request=None):
         """
         This method will create or update a node secret.
         """
+        status=False
+        response="Internal error"
         data = {}
+        result=False
         request_data = http_request.data
         if request_data:
             data = request_data['config']['secrets']['node'][name]
@@ -231,44 +234,41 @@ class Secret():
                                 {"column": "name", "value": secret_name}
                                 ]
                             row = Helper().make_rows(data[0])
-                            Database().update('nodesecrets', row, where)
-                            response = {'message': f'Node {name} Secret {secret} updated'}
-                            access_code = 204
+                            result=Database().update('nodesecrets', row, where)
+                            response = f'Node {name} Secret {secret} updated'
+                            status=True
                         else:
                             data[0]['nodeid'] = nodeid
                             data[0]['content'] = Helper().encrypt_string(data[0]['content'])
                             row = Helper().make_rows(data[0])
                             result=Database().insert('nodesecrets', row)
-                            if result:
-                                response = {'message': f'Node {name} secret {secret} updated'}
-                                access_code = 204
-                            else:
-                                message = f'Node {name} secret {secret} update failed: {result}'
-                                response = {'message': message}
-                                access_code = 500
+                            response = f'Node {name} secret {secret} updated'
+                            status=True
+                        if not result:
+                            response = f'Internal error: Node {name} secret {secret} create/update failed: {result}'
+                            self.logger.error(response)
+                            status=False
                     else:
-                        message = f'Rows do not match columns for Group {name}, secret {secret}.'
-                        self.logger.error(message)
-                        response = {'message': 'Supplied columns do not match the requirements'}
-                        access_code = 400
+                        response = 'Invalid request: Supplied columns do not match the requirements'
+                        status=False
                 else:
-                    self.logger.error('not provided at least one secret.')
-                    response = {'message': 'At least one secret not provided'}
-                    access_code = 400
+                    response = 'Invalid request: At least one secret needs to be provided'
+                    status=False
             else:
-                self.logger.error(f'Node {name} is not available.')
-                response = {'message': f'Node {name} is not available'}
-                access_code = 404
+                response = f'Node {name} is not available'
+                status=False
         else:
-            response = {'message': 'Did not received data'}
-            access_code = 400
-        return dumps(response), access_code
+            response = 'Invalid request: Did not receive data'
+            status=False
+        return status, response
 
 
     def clone_node_secret(self, name=None, secret=None, http_request=None):
         """
         This method will clone a requested node secret.
         """
+        status=False
+        response="Internal error"
         data = {}
         request_data = http_request.data
         if request_data:
@@ -289,9 +289,8 @@ class Secret():
                             where = f' WHERE nodeid = "{nodeid}" AND name = "{newsecretname}"'
                             new_secret_data = Database().get_record(None, 'nodesecrets', where)
                             if new_secret_data:
-                                self.logger.error(f'Secret {newsecretname} already present.')
-                                response = {'message': f'Secret {newsecretname} already present'}
-                                access_code = 404
+                                response = f'Secret {newsecretname} already present'
+                                status=False
                             else:
                                 node_secret_columns = Database().get_columns('nodesecrets')
                                 column_check = Helper().compare_list(data[0], node_secret_columns)
@@ -299,36 +298,33 @@ class Secret():
                                     data[0]['content'] = Helper().encrypt_string(data[0]['content'])
                                     row = Helper().make_rows(data[0])
                                     Database().insert('nodesecrets', row)
-                                    message = f'Node {name} Secret {secret} '
-                                    message += f'Cloned to {newsecretname}.'
-                                    response = {'message': message}
-                                    access_code = 204
+                                    response = f'Node {name} Secret {secret} '
+                                    response += f'Cloned to {newsecretname}.'
+                                    status=True
                         else:
-                            self.logger.error('new secret name not provided.')
-                            response = {'message': 'New secret name not provided'}
-                            access_code = 400
+                            response = 'Invalid request: New secret name not provided'
+                            status=False
                     else:
-                        self.logger.error(f'Node {name}, Secret {secret} is unavailable.')
-                        response = {'message': f'Node {name}, Secret {secret} is unavailable'}
-                        access_code = 404
+                        response = f'Node {name}, Secret {secret} is unavailable'
+                        status=False
                 else:
-                    self.logger.error('not provided at least one secret.')
-                    response = {'message': 'At least one secret not provided'}
-                    access_code = 400
+                    response = 'Invalid request: At least one secret needs to be provided'
+                    status=False
             else:
-                self.logger.error(f'Node {name} is not available.')
-                response = {'message': f'Node {name} is not available'}
-                access_code = 404
+                response = f'Node {name} is not available'
+                status=False
         else:
-            response = {'message': 'Did not received data'}
-            access_code = 400
-        return dumps(response), access_code
+            response = 'Invalid request: Did not received data'
+            status=False
+        return status, response
 
 
     def delete_node_secret(self, name=None, secret=None):
         """
         This method will delete a requested secret of a node.
         """
+        status=False
+        response="Internal error"
         node = Database().get_record(None, 'node', f' WHERE name = "{name}"')
         if node:
             nodeid  = node[0]['id']
@@ -337,23 +333,22 @@ class Secret():
             if secret_data:
                 where = [{"column": "nodeid", "value": nodeid}, {"column": "name", "value": secret}]
                 Database().delete_row('nodesecrets', where)
-                response = {'message': f'Secret {secret} deleted from node {name}'}
-                access_code = 204
+                response = f'Secret {secret} deleted from node {name}'
+                status=False
             else:
-                self.logger.error(f'Secret {secret} is unavailable for node {name}.')
-                response = {'message': f'Secret {secret} is unavailable for node {name}'}
-                access_code = 404
+                response = f'Secret {secret} is unavailable for node {name}'
+                status=False
         else:
-            self.logger.error(f'Node {name} is not available.')
-            response = {'message': f'Node {name} is not available'}
-            access_code = 404
-        return dumps(response), access_code
+            response = f'Node {name} is not available'
+            status=False
+        return status, response
 
 
     def get_group_secrets(self, name=None):
         """
         This method will return all secrets of a requested group in detailed format.
         """
+        status=False
         group = Database().get_record(None, 'group', f' WHERE name = "{name}"')
         if group:
             groupid  = group[0]['id']
@@ -366,24 +361,24 @@ class Secret():
                     del grp['id']
                     grp['content'] = Helper().decrypt_string(grp['content'])
                     response['config']['secrets']['group'][name].append(grp)
-                    access_code = 200
+                    status=True
             else:
-                self.logger.error(f'Secrets are not available for group {name}.')
-                response = {'message': f'Secrets are not available for group {name}'}
-                access_code = 404
+                response = f'Secrets are not available for group {name}'
+                status=False
         else:
-            self.logger.error(f'Group {name} is not available.')
-            response = {'message': f'Group {name} is not available'}
-            access_code = 404
-        return dumps(response), access_code
+            response = f'Group {name} is not available'
+            status=False
+        return status, response
 
 
     def update_group_secrets(self, name=None, http_request=None):
         """
         This method will create or update all secrets for a group.
         """
+        status=False
+        response="Internal error"
         data = {}
-        create, update = False, False
+        result=False
         request_data = http_request.data
         if request_data:
             data = request_data['config']['secrets']['group'][name]
@@ -410,42 +405,37 @@ class Secret():
                                     {"column": "name", "value": secret_name}
                                     ]
                                 row = Helper().make_rows(secret)
-                                Database().update('groupsecrets', row, where)
-                                update = True
+                                result=Database().update('groupsecrets', row, where)
+                                status=True
+                                response = f'Group {name} secret updated'
                         else:
                             secret['groupid'] = groupid
                             secret['content'] = Helper().encrypt_string(secret['content'])
                             row = Helper().make_rows(secret)
-                            Database().insert('groupsecrets', row)
-                            create = True
+                            result=Database().insert('groupsecrets', row)
+                            status=True
+                            response = f'Group {name} secret created'
+                        if not result:
+                            status=False
+                            response = f'Internal error: Group {name} secret {secret_name} create/update failed: {result}'
+                            self.logger.error(response)
                 else:
-                    self.logger.error('not provided at least one secret.')
-                    response = {'message': 'At least one secret not provided'}
-                    access_code = 400
+                    response = 'Invalid request: At least one secret needs to be provided'
+                    status=False
             else:
-                self.logger.error(f'Group {name} is not available.')
-                response = {'message': f'Group {name} is not available'}
-                access_code = 404
-
-            if create is True and update is True:
-                response = {'message': f'Group {name} secrets created & updated'}
-                access_code = 201
-            elif create is True and update is False:
-                response = {'message': f'Group {name} secret created'}
-                access_code = 201
-            elif create is False and update is True:
-                response = {'message': f'Group {name} secret updated'}
-                access_code = 204
+                response = f'Group {name} is not available'
+                status=False
         else:
-            response = {'message': 'Did not received data'}
-            access_code = 400
-        return dumps(response), access_code
+            response = 'Invalid request: Did not receive data'
+            status=False
+        return status, response
 
 
     def get_group_secret(self, name=None, secret=None):
         """
         This method will return a requested secret of a group in detailed format.
         """
+        status=False
         group = Database().get_record(None, 'group', f' WHERE name = "{name}"')
         if group:
             groupid  = group[0]['id']
@@ -453,26 +443,26 @@ class Secret():
             secret_data = Database().get_record(None, 'groupsecrets', where)
             if secret_data:
                 response = {'config': {'secrets': {'group': {name: [] } } } }
-                access_code = 200
+                status=True
                 del secret_data[0]['groupid']
                 del secret_data[0]['id']
                 secret_data[0]['content'] = Helper().decrypt_string(secret_data[0]['content'])
                 response['config']['secrets']['group'][name] = secret_data
             else:
-                self.logger.error(f'Secret {secret} is unavailable for group {name}.')
-                response = {'message': f'Secret {secret} is unavailable for group {name}'}
-                access_code = 404
+                response = f'Secret {secret} is unavailable for group {name}'
+                status=False
         else:
-            self.logger.error(f'Group {name} is not available.')
-            response = {'message': f'Group {name} is not available'}
-            access_code = 404
-        return dumps(response), access_code
+            response = f'Group {name} is not available'
+            status=False
+        return status, response
 
 
     def update_group_secret(self, name=None, secret=None, http_request=None):
         """
         This method will create or update a group secret.
         """
+        status=False
+        response="Internal error"
         data = {}
         request_data = http_request.data
         if request_data:
@@ -497,43 +487,42 @@ class Secret():
                                 ]
                             row = Helper().make_rows(data[0])
                             Database().update('groupsecrets', row, where)
-                            response = {'message': f'Group {name} secret {secret} updated'}
-                            access_code = 204
+                            response = f'Group {name} secret {secret} updated'
+                            status=True
                         else:
                             data[0]['groupid'] = groupid
                             data[0]['content'] = Helper().encrypt_string(data[0]['content'])
                             row = Helper().make_rows(data[0])
                             result=Database().insert('groupsecrets', row)
                             if result:
-                                response = {'message': f'Group {name} secret {secret} updated'}
-                                access_code = 204
+                                response = f'Group {name} secret {secret} updated'
+                                status=True
                             else:
-                                message = f'Group {name} secret {secret} update failed: {result}'
-                                response = {'message': message}
-                                access_code = 500
+                                response = f'Internal error: Group {name} secret {secret} update failed: {result}'
+                                status=False
+                                self.logger.error(response)
                     else:
-                        message = f'Rows do not match columns for Group {name}, secret {secret}.'
-                        self.logger.error(message)
-                        response = {'message': 'Supplied columns do not match the requirements'}
-                        access_code = 400
+                        response = 'Invalid request: Supplied columns do not match the requirements'
+                        status=False
+                        self.logger.error(response)
                 else:
-                    self.logger.error('not provided at least one secret.')
-                    response = {'message': 'At least one secret not provided'}
-                    access_code = 400
+                    response = 'Invalid request: At least one secret needs to be provided'
+                    status=False
             else:
-                self.logger.error(f'Group {name} is not available.')
-                response = {'message': f'Group {name} is not available'}
-                access_code = 404
+                response = f'Group {name} is not available'
+                status=False
         else:
-            response = {'message': 'Did not received data'}
-            access_code = 400
-        return dumps(response), access_code
+            response = 'Invalid request: Did not received data'
+            status=False
+        return status, response
 
 
     def clone_group_secret(self, name=None, secret=None, http_request=None):
         """
         This method will clone a requested group secret.
         """
+        status=False
+        response="Internal error"
         data = {}
         request_data = http_request.data
         if request_data:
@@ -555,8 +544,8 @@ class Secret():
                             new_secret_data = Database().get_record(None, 'groupsecrets', where)
                             if new_secret_data:
                                 self.logger.error(f'Secret {newsecretname} already present.')
-                                response = {'message': f'Secret {newsecretname} already present'}
-                                access_code = 404
+                                response = f'Secret {newsecretname} already present'
+                                status=False
                             else:
                                 group_secret_columns = Database().get_columns('groupsecrets')
                                 column_check = Helper().compare_list(data[0], group_secret_columns)
@@ -564,36 +553,33 @@ class Secret():
                                     data[0]['content'] = Helper().encrypt_string(data[0]['content'])
                                     row = Helper().make_rows(data[0])
                                     Database().insert('groupsecrets', row)
-                                    message = f'Group {name} Secret {secret} '
-                                    message += f'Cloned to {newsecretname}.'
-                                    response = {'message': message}
-                                    access_code = 204
+                                    response = f'Group {name} Secret {secret} '
+                                    response += f'Cloned to {newsecretname}.'
+                                    status=True
                         else:
-                            self.logger.error('the new secret name not provided.')
-                            response = {'message': 'The new secret name not provided'}
-                            access_code = 400
+                            response = 'Invalid request: The new secret name not provided'
+                            status=False
                     else:
-                        self.logger.error(f'Group {name}, Secret {secret} is unavailable.')
-                        response = {'message': f'Group {name}, Secret {secret} is unavailable'}
-                        access_code = 404
+                        response = f'Group {name}, Secret {secret} is unavailable'
+                        status=False
                 else:
-                    self.logger.error('not provided at least one secret.')
-                    response = {'message': 'At least one secret not provided'}
-                    access_code = 400
+                    response = 'Invalid request: At least one secret not provided'
+                    status=False
             else:
-                self.logger.error(f'Group {name} is not available.')
-                response = {'message': f'Group {name} is not available'}
-                access_code = 404
+                response = f'Group {name} is not available'
+                status=False
         else:
-            response = {'message': 'Did not received data'}
-            access_code = 400
-        return dumps(response), access_code
+            response = 'Invalid request: Did not receive data'
+            status=False
+        return status, response
 
 
     def delete_group_secret(self, name=None, secret=None):
         """
         This method will delete a requested secret of a group.
         """
+        status=False
+        response="Internal error"
         group = Database().get_record(None, 'group', f' WHERE name = "{name}"')
         if group:
             groupid  = group[0]['id']
@@ -605,14 +591,13 @@ class Secret():
                     {"column": "name", "value": secret}
                 ]
                 Database().delete_row('groupsecrets', where)
-                response = {'message': f'Secret {secret} deleted from group {name}'}
-                access_code = 204
+                response = f'Secret {secret} deleted from group {name}'
+                status=True
             else:
-                self.logger.error(f'Secret {secret} is unavailable for group {name}.')
-                response = {'message': f'Secret {secret} is unavailable for group {name}'}
-                access_code = 404
+                response = f'Secret {secret} is unavailable for group {name}'
+                status=False
         else:
-            self.logger.error(f'Group {name} is not available.')
-            response = {'message': f'Group {name} is not available'}
-            access_code = 404
-        return dumps(response), access_code
+            response = f'Group {name} is not available'
+            status=False
+        return status, response
+

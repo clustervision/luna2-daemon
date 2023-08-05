@@ -211,7 +211,7 @@ class Group():
         """
         data = {}
         status=False
-        response=""
+        response="Internal error"
         # things we have to set for a group
         items = {
             'prescript': '',
@@ -379,7 +379,7 @@ class Group():
         """
         data = {}
         status=False
-        response=""
+        response="Internal error"
         # things we have to set for a group
         items = {
             'prescript': '',

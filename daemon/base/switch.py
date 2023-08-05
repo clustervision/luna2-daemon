@@ -65,7 +65,7 @@ class Switch():
         This method will create or update a switch.
         """
         status=False
-        response=""
+        response="Internal error"
         network = False
         data, response = {}, {}
         create, update = False, False

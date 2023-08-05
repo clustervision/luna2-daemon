@@ -1019,7 +1019,13 @@ def config_secrets_get():
     Input - None
     Output - Return the List Of All Secrets.
     """
-    response, access_code = Secret().get_all_secrets()
+    access_code=404
+    status, response = Secret().get_all_secrets()
+    if status is True:
+        access_code=200
+        response=dumps(response)
+    else:
+        response = {'message': response}
     return response, access_code
 
 
@@ -1031,7 +1037,13 @@ def config_get_secrets_node(name=None):
     Input - Node Name
     Output - Return the Node Secrets And Group Secrets for the Node.
     """
-    response, access_code = Secret().get_node_secrets(name)
+    access_code=404
+    status, response = Secret().get_node_secrets(name)
+    if status is True:
+        access_code=200
+        response=dumps(response)
+    else:
+        response = {'message': response}
     return response, access_code
 
 
@@ -1045,7 +1057,9 @@ def config_post_secrets_node(name=None):
     Process - Create Or Update Node Secrets.
     Output - None.
     """
-    response, access_code = Secret().update_node_secrets(name, request)
+    status, response = Secret().update_node_secrets(name, request)
+    access_code=Helper().get_access_code(status,response)
+    response = {'message': response}
     return response, access_code
 
 
@@ -1057,7 +1071,13 @@ def config_get_node_secret(name=None, secret=None):
     Input - Node Name & Secret Name
     Output - Return the Node Secret
     """
-    response, access_code = Secret().get_node_secret(name, secret)
+    access_code=404
+    status, response = Secret().get_node_secret(name, secret)
+    if status is True:
+        access_code=200
+        response=dumps(response)
+    else:
+        response = {'message': response}
     return response, access_code
 
 
@@ -1071,7 +1091,9 @@ def config_post_node_secret(name=None, secret=None):
     Process - Create Or Update Node Secrets.
     Output - None.
     """
-    response, access_code = Secret().update_node_secret(name, secret, request)
+    status, response = Secret().update_node_secret(name, secret, request)
+    access_code=Helper().get_access_code(status,response)
+    response = {'message': response}
     return response, access_code
 
 
@@ -1085,7 +1107,9 @@ def config_clone_node_secret(name=None, secret=None):
     Process - Create Or Update Node Secrets.
     Output - None.
     """
-    response, access_code = Secret().clone_node_secret(name, secret, request)
+    status, response = Secret().clone_node_secret(name, secret, request)
+    access_code=Helper().get_access_code(status,response)
+    response = {'message': response}
     return response, access_code
 
 
@@ -1097,7 +1121,9 @@ def config_node_secret_delete(name=None, secret=None):
     Input - Node Name & Secret Name
     Output - Success or Failure
     """
-    response, access_code = Secret().delete_node_secret(name, secret)
+    status, response = Secret().delete_node_secret(name, secret)
+    access_code=Helper().get_access_code(status,response)
+    response = {'message': response}
     return response, access_code
 
 
@@ -1109,7 +1135,9 @@ def config_get_secrets_group(name=None):
     Input - Group Name
     Output - Return the Group Secrets.
     """
-    response, access_code = Secret().get_group_secrets(name)
+    status, response = Secret().get_group_secrets(name)
+    access_code=Helper().get_access_code(status,response)
+    response = {'message': response}
     return response, access_code
 
 
@@ -1123,7 +1151,9 @@ def config_post_secrets_group(name=None):
     Process - Create Or Update Group Secrets.
     Output - None.
     """
-    response, access_code = Secret().update_group_secrets(name, request)
+    status, response = Secret().update_group_secrets(name, request)
+    access_code=Helper().get_access_code(status,response)
+    response = {'message': response}
     return response, access_code
 
 
@@ -1135,7 +1165,13 @@ def config_get_group_secret(name=None, secret=None):
     Input - Group Name & Secret Name
     Output - Return the Group Secret
     """
-    response, access_code = Secret().get_group_secret(name, secret)
+    access_code=404
+    status, response = Secret().get_group_secret(name, secret)
+    if status is True:
+        access_code=200
+        response=dumps(response)
+    else:
+        response = {'message': response}
     return response, access_code
 
 
@@ -1149,7 +1185,9 @@ def config_post_group_secret(name=None, secret=None):
     Process - Create Or Update Group Secrets.
     Output - None.
     """
-    response, access_code = Secret().update_group_secret(name, secret, request)
+    status, response = Secret().update_group_secret(name, secret, request)
+    access_code=Helper().get_access_code(status,response)
+    response = {'message': response}
     return response, access_code
 
 
@@ -1163,7 +1201,9 @@ def config_clone_group_secret(name=None, secret=None):
     Process - Clone Group Secrets.
     Output - None.
     """
-    response, access_code = Secret().clone_group_secret(name, secret, request)
+    status, response = Secret().clone_group_secret(name, secret, request)
+    access_code=Helper().get_access_code(status,response)
+    response = {'message': response}
     return response, access_code
 
 
@@ -1175,7 +1215,9 @@ def config_group_secret_delete(name=None, secret=None):
     Input - Group Name & Secret Name
     Output - Success or Failure
     """
-    response, access_code = Secret().delete_group_secret(name, secret)
+    status, response = Secret().delete_group_secret(name, secret)
+    access_code=Helper().get_access_code(status,response)
+    response = {'message': response}
     return response, access_code
 
 
@@ -1187,13 +1229,13 @@ def config_get_os_user_list():
     Process - List OSystem (ldap/ssd/pam) group.
     Output - None.
     """
-    response, access_code = None, 404
-    ret, message = OsUser().list_users()
-    if ret is True:
+    access_code = 404
+    status, response = OsUser().list_users()
+    if status is True:
         access_code=200
-        return dumps(message), access_code
+        response=dumps(response)
     else:
-        response={'message': message}
+        response={'message': response}
     return response, access_code
 
 
@@ -1205,13 +1247,13 @@ def config_get_os_group_list():
     Process - List OSystem (ldap/ssd/pam) group.
     Output - None.
     """
-    response, access_code = None, 404
-    ret, message = OsUser().list_groups()
-    if ret is True:
+    access_code = 404
+    status, response = OsUser().list_groups()
+    if status is True:
         access_code=200
-        return dumps(message), access_code
+        response=dumps(response)
     else:
-        response={'message': message}
+        response={'message': response}
     return response, access_code
 
 
@@ -1225,11 +1267,9 @@ def config_post_os_user(name=None):
     Process - Create Or Update System (ldap/ssd/pam) users.
     Output - None.
     """
-    response, access_code = None, 404
-    ret, message = OsUser().update_user(name, request)
-    response={'message': message}
-    if ret is True:
-        access_code=204
+    status, response = OsUser().update_user(name, request)
+    access_code=Helper().get_access_code(status,response)
+    response = {'message': response}
     return response, access_code
 
 
@@ -1242,11 +1282,9 @@ def config_post_os_user_delete(name=None):
     Process - Delete System (ldap/ssd/pam) group.
     Output - None.
     """
-    response, access_code = None, 404
-    ret, message = OsUser().delete_user(name)
-    response={'message': message}
-    if ret is True:
-        access_code=204
+    status, response = OsUser().delete_user(name)
+    access_code=Helper().get_access_code(status,response)
+    response = {'message': response}
     return response, access_code
 
 
@@ -1260,11 +1298,9 @@ def config_post_os_group(name=None):
     Process - Create Or Update System (ldap/ssd/pam) group.
     Output - None.
     """
-    response, access_code = None, 404
-    ret, message = OsUser().update_group(name, request)
-    response={'message': message}
-    if ret is True:
-        access_code=204
+    status, response = OsUser().update_group(name, request)
+    access_code=Helper().get_access_code(status,response)
+    response = {'message': response}
     return response, access_code
 
 
@@ -1277,11 +1313,9 @@ def config_post_os_group_delete(name=None):
     Process - Delete System (ldap/ssd/pam) group.
     Output - None.
     """
-    response, access_code = None, 404
-    ret, message = OsUser().delete_group(name)
-    response={'message': message}
-    if ret is True:
-        access_code=204
+    status, response = OsUser().delete_group(name)
+    access_code=Helper().get_access_code(status,response)
+    response = {'message': response}
     return response, access_code
 
 

@@ -240,7 +240,7 @@ class Interface():
         This method will return all the group interfaces in detailed format for a desired group.
         """
         status=False
-        response=""
+        response="Internal error"
         groups = Database().get_record(None, 'group', f' WHERE name = "{name}"')
         if groups:
             response = {'config': {'group': {name: {'interfaces': [] } } } }
@@ -276,7 +276,7 @@ class Interface():
         """
         request_data = http_request.data
         status=False
-        response=""
+        response="Internal error"
         if request_data:
             group = Database().get_record(None, 'group', f' WHERE name = "{name}"')
             if group:
@@ -337,7 +337,6 @@ class Interface():
         This method will provide a group interface.
         """
         status=False
-        response=""
         group = Database().get_record(None, 'group', f' WHERE name = "{name}"')
         if group:
             response = {'config': {'group': {name: {'interfaces': [] } } } }
@@ -371,7 +370,7 @@ class Interface():
         """
         This method will delete a group interface.
         """
-        response=""
+        response="Internal error"
         status=False
         group = Database().get_record(None, 'group', f' WHERE `name` = "{name}"')
         if group:

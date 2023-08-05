@@ -741,7 +741,13 @@ def config_switch():
     """
     This route will provide all the Switches.
     """
-    response, access_code = Switch().get_all_switches()
+    access_code=404
+    status, response = Switch().get_all_switches()
+    if status is True:
+        access_code=200
+        response=dumps(response)
+    else:
+        response = {'message': response}
     return response, access_code
 
 
@@ -752,7 +758,13 @@ def config_switch_get(name=None):
     """
     This route will provide a requested Switch.
     """
-    response, access_code = Switch().get_switch(name)
+    access_code=404
+    status, response = Switch().get_switch(name)
+    if status is True:
+        access_code=200
+        response=dumps(response)
+    else:
+        response = {'message': response}
     return response, access_code
 
 
@@ -764,7 +776,9 @@ def config_switch_post(name=None):
     """
     This route will create or update a requested Switch.
     """
-    response, access_code = Switch().update_switch(name, request)
+    status, response = Switch().update_switch(name, request)
+    access_code=Helper().get_access_code(status,response)
+    response = {'message': response}
     return response, access_code
 
 
@@ -776,7 +790,9 @@ def config_switch_clone(name=None):
     """
     This route will clone a requested Switch.
     """
-    response, access_code = Switch().clone_switch(name, request)
+    status, response = Switch().clone_switch(name, request)
+    access_code=Helper().get_access_code(status,response)
+    response = {'message': response}
     return response, access_code
 
 
@@ -787,7 +803,9 @@ def config_switch_delete(name=None):
     """
     This route will delete a requested Switch.
     """
-    response, access_code = Switch().delete_switch(name)
+    status, response = Switch().delete_switch(name)
+    access_code=Helper().get_access_code(status,response)
+    response = {'message': response}
     return response, access_code
 
 ############################# Other Devices configuration #############################
@@ -798,7 +816,13 @@ def config_otherdev():
     """
     This route will provide all the Other Devices.
     """
-    response, access_code = OtherDev().get_all_otherdev()
+    access_code=404
+    status, response = OtherDev().get_all_otherdev()
+    if status is True:
+        access_code=200
+        response=dumps(response)
+    else:
+        response = {'message': response}
     return response, access_code
 
 
@@ -809,7 +833,13 @@ def config_otherdev_get(name=None):
     """
     This route will provide a requested Other Device.
     """
-    response, access_code = OtherDev().get_otherdev(name)
+    access_code=404
+    status, response = OtherDev().get_otherdev(name)
+    if status is True:
+        access_code=200
+        response=dumps(response)
+    else:
+        response = {'message': response}
     return response, access_code
 
 
@@ -821,7 +851,9 @@ def config_otherdev_post(name=None):
     """
     This route will create or update a requested Other Device.
     """
-    response, access_code = OtherDev().update_otherdev(name, request)
+    status, response = OtherDev().update_otherdev(name, request)
+    access_code=Helper().get_access_code(status,response)
+    response = {'message': response}
     return response, access_code
 
 
@@ -833,7 +865,9 @@ def config_otherdev_clone(name=None):
     """
     This route will clone a requested Other Device.
     """
-    response, access_code = OtherDev().clone_otherdev(name, request)
+    status, response = OtherDev().clone_otherdev(name, request)
+    access_code=Helper().get_access_code(status,response)
+    response = {'message': response}
     return response, access_code
 
 
@@ -844,7 +878,9 @@ def config_otherdev_delete(name=None):
     """
     This route will delete a requested Other Device.
     """
-    response, access_code = OtherDev().delete_otherdev(name)
+    status, response = OtherDev().delete_otherdev(name)
+    access_code=Helper().get_access_code(status,response)
+    response = {'message': response}
     return response, access_code
 
 ############################# Network configuration #############################

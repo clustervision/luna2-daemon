@@ -39,31 +39,33 @@ class Switch():
         """
         This method will return all the switches in detailed format.
         """
-        response, access_code = Model().get_record(
+        status, response = Model().get_record(
             table = self.table,
             table_cap = self.table_cap,
             ip_check = True
         )
-        return response, access_code
+        return status, response
 
 
     def get_switch(self, name=None):
         """
         This method will return requested switch in detailed format.
         """
-        response, access_code = Model().get_record(
+        status, response = Model().get_record(
             name = name,
             table = self.table,
             table_cap = self.table_cap,
             ip_check = True
         )
-        return response, access_code
+        return status, response
 
 
     def update_switch(self, name=None, http_request=None):
         """
         This method will create or update a switch.
         """
+        status=False
+        response=""
         network = False
         data, response = {}, {}
         create, update = False, False
@@ -96,16 +98,16 @@ class Switch():
                 if column_check:
                     if create:
                         switchid = Database().insert(self.table, row)
-                        response = {'message': f'Switch {name} created successfully'}
-                        access_code = 201
+                        response = f'Switch {name} created successfully'
+                        status=True
                     if update:
                         where = [{"column": "id", "value": switchid}]
                         Database().update(self.table, row, where)
-                        response = {'message': f'Switch {name} updated successfully'}
-                        access_code = 204
+                        response = f'Switch {name} updated successfully'
+                        status=True
                 else:
-                    response = {'message': 'Columns are incorrect'}
-                    access_code = 400
+                    response = 'Invalid request: Columns are incorrect'
+                    status=False
             # Antoine --->>> ----------- interface(s) update/create -------------
             if ipaddress or network:
                 result, message = Config().device_ipaddress_config(
@@ -115,23 +117,24 @@ class Switch():
                     network
                 )
                 if result is False:
-                    response = {'message': f'{message}'}
-                    access_code=404
+                    response = f'{message}'
+                    status=False
                 else:
                     Service().queue('dhcp','restart')
                     Service().queue('dns','restart')
-            return dumps(response), access_code
+            return status, response
         else:
-            response = {'message': 'Did not received data'}
-            access_code = 400
-        return dumps(response), access_code
+            response = 'Invalid request: Did not received data'
+            status=False
+        return status, response
 
 
     def clone_switch(self, name=None, http_request=None):
         """
         This method will clone a switch.
         """
-        data, response = {}, {}
+        data, response = {}, ""
+        status=False
         create = False
         ipaddress, networkname = None, None
         request_data = http_request.data
@@ -142,15 +145,13 @@ class Switch():
                 newswitchname = data['newswitchname']
                 del data['newswitchname']
             else:
-                response = {'message': 'New switch name not provided'}
-                access_code = 400
-                return dumps(response), access_code
+                status=False
+                return status, 'Invalid request: New switch name not provided'
             where = f' WHERE `name` = "{newswitchname}"'
             check_switch = Database().get_record(table=self.table, where=where)
             if check_switch:
-                response = {'message': f'{newswitchname} already present in database'}
-                access_code = 404
-                return dumps(response), access_code
+                status=False
+                return status, f'{newswitchname} already present in database'
             else:
                 create = True
             ipaddress, network = None, None
@@ -174,11 +175,9 @@ class Switch():
                         row = Helper().make_rows(data)
                         new_switchid = Database().insert(self.table, row)
                         if not new_switchid:
-                            response = {'message': 'Switch not cloned due to clashing config'}
-                            access_code = 404
-                            self.logger.info(f"my response: {response}")
-                            return dumps(response), access_code
-                        access_code = 201
+                            status=False
+                            return status, 'Switch not cloned due to clashing config'
+                        status=True
                         network=None
                         if networkname:
                             network = Database().get_record_join(
@@ -233,10 +232,8 @@ class Switch():
                                 if avail:
                                     ipaddress = avail
                             else:
-                                response = {'message': 'Network and ipaddress not provided'}
-                                access_code = 400
-                                self.logger.info(f"my response: {response}")
-                                return dumps(response), access_code
+                                status=False
+                                return status, 'Invalid request: Network and ipaddress not provided'
                         result, message = Config().device_ipaddress_config(
                             new_switchid,
                             self.table,
@@ -247,33 +244,33 @@ class Switch():
                             where = [{"column": "id", "value": new_switchid}]
                             Database().delete_row(self.table, where)
                             # roll back
-                            access_code=404
-                            response = {'message': f'{message}'}
+                            status=False
+                            response = f'{message}'
                         else:
                             Service().queue('dhcp', 'restart')
                             Service().queue('dns', 'restart')
                             response = {'message': 'Switch created'}
                 else:
-                    response = {'message': 'Columns are incorrect'}
-                    access_code = 400
+                    response = 'Invalid request: Columns are incorrect'
+                    status=False
             else:
-                response = {'message': 'Not enough information provided'}
-                access_code = 400
+                response = 'Invalid request: Not enough information provided'
+                status=False
         else:
-            response = {'message': 'Did not received data'}
-            access_code = 400
+            response = 'Invalid request: Did not receive data'
+            status=False
         self.logger.info(f"my response: {response}")
-        return dumps(response), access_code
+        return status, response
 
 
     def delete_switch(self, name=None):
         """
         This method will delete a switch.
         """
-        response, access_code = Model().delete_record(
+        status, response = Model().delete_record(
             name = name,
             table = self.table,
             table_cap = self.table_cap,
             ip_check = True
         )
-        return response, access_code
+        return status, response

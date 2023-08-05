@@ -248,7 +248,7 @@ class OtherDev():
                         else:
                             Service().queue('dhcp', 'restart')
                             Service().queue('dns', 'restart')
-                            response = {'message': 'Device created'}
+                            response = 'Device created'
                 else:
                     response = 'Invalid request: Columns are incorrect'
                     status=False

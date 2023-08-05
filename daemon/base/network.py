@@ -272,7 +272,7 @@ class Network():
         if network:
             Database().delete_row('network', [{"column": "name", "value": name}])
             Service().queue('dns','restart')
-            response = {'message': 'Network removed'}
+            response = 'Network removed'
             status=True
         else:
             response = f'Network {name} not present in database'
@@ -318,7 +318,7 @@ class Network():
         network = Database().get_record(None, 'network', f' WHERE `name` = "{name}"')
         avail = None
         if network:
-            response = {'message': f'Network {name} has no free addresses'}
+            response = f'Network {name} has no free addresses'
             ret = 0
             max_count = 10
             # we try to ping for 10 ips, if none of these are free, something else is going on

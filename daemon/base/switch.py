@@ -249,7 +249,7 @@ class Switch():
                         else:
                             Service().queue('dhcp', 'restart')
                             Service().queue('dns', 'restart')
-                            response = {'message': 'Switch created'}
+                            response = 'Switch created'
                 else:
                     response = 'Invalid request: Columns are incorrect'
                     status=False

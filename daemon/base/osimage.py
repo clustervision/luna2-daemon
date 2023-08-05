@@ -44,35 +44,35 @@ class OSImage():
         """
         This method will return all the osimage in detailed format.
         """
-        response, access_code = Model().get_record(
+        status, response = Model().get_record(
             table = self.table,
             table_cap = self.table_cap
         )
-        return response, access_code
+        return status, response
 
 
     def get_osimage(self, name=None):
         """
         This method will return requested osimage in detailed format.
         """
-        response, access_code = Model().get_record(
+        status, response = Model().get_record(
             name = name,
             table = self.table,
             table_cap = self.table_cap
         )
-        return response, access_code
+        return status, response
 
 
     def get_osimage_member(self, name=None):
         """
         This method will return all the list of all the member node names for a osimage.
         """
-        response, access_code = Model().get_member(
+        status, response = Model().get_member(
             name = name,
             table = self.table,
             table_cap = self.table_cap
         )
-        return response, access_code
+        return status, response
 
 
     def update_osimage(self, name=None, http_request=None):
@@ -80,6 +80,8 @@ class OSImage():
         This method will create or update a osimage.
         """
         data = {}
+        status=False
+        response=""
         create, update = False, False
         request_data = http_request.data
         if request_data:
@@ -92,9 +94,8 @@ class OSImage():
                     where = f' WHERE `name` = "{newosimage}"'
                     osimage_check = Database().get_record(None, 'osimage', where)
                     if osimage_check:
-                        response = {'message': f'{newosimage} Already present in database'}
-                        access_code = 404
-                        return dumps(response), access_code
+                        status=False
+                        return status, f'{newosimage} Already present in database'
                     else:
                         data['name'] = data['newosimage']
                         del data['newosimage']
@@ -110,21 +111,21 @@ class OSImage():
                     where = [{"column": "id", "value": image_id}]
                     row = Helper().make_rows(data)
                     Database().update('osimage', row, where)
-                    response = {'message': f'OS Image {name} updated'}
-                    access_code = 204
+                    response = f'OS Image {name} updated'
+                    status=True
                 if create:
                     data['name'] = name
                     row = Helper().make_rows(data)
                     Database().insert('osimage', row)
-                    response = {'message': f'OS Image {name} created'}
-                    access_code = 201
+                    response = f'OS Image {name} created'
+                    status=True
             else:
-                response = {'message': 'Columns are incorrect'}
-                access_code = 400
+                response = 'Invalid request: Columns are incorrect'
+                status=False
         else:
-            response = {'message': 'Did not received data'}
-            access_code = 400
-        return dumps(response), access_code
+            response = 'Invalid request: Did not received data'
+            status=False
+        return status, response
 
 
     def clone_osimage(self, name=None, http_request=None):
@@ -132,6 +133,8 @@ class OSImage():
         This method will clone a osimage.
         """
         data = {}
+        status=False
+        response=""
         items = {
             'dracutmodules',
             'grab_filesystems',
@@ -143,7 +146,6 @@ class OSImage():
             'kernelversion',
             'distribution'
         }
-        access_code = 500
         response = {"message": 'OS image copy failed. No sign of life of spawned thread'}
         request_data = http_request.data
         if request_data:
@@ -160,9 +162,8 @@ class OSImage():
                     where = f' WHERE `name` = "{newosimage}"'
                     osimage_check = Database().get_record(None, 'osimage', where)
                     if osimage_check:
-                        response = {'message': f'{newosimage} Already present in database'}
-                        access_code = 404
-                        return dumps(response), access_code
+                        status=False
+                        return status, f'{newosimage} Already present in database'
                     else:
                         data['name'] = data['newosimage']
                         for item in items:
@@ -170,18 +171,14 @@ class OSImage():
                                 data[item]=image[0][item]
                         del data['newosimage']
                         if 'path' in data and data['path'] and path.exists(data['path']):
-                            message = f"Destination path {data['path']} already exists."
-                            response = {'message': message}
-                            access_code = 404
-                            return dumps(response), access_code
+                            status=False
+                            return status, f"Destination path {data['path']} already exists."
                 else:
-                    response = {'message': 'New OS Image name not provided'}
-                    access_code = 400
-                    return dumps(response), access_code
+                    status=False
+                    return status, 'Invalid request: New OS Image name not provided'
             else:
-                response = {'message': f'OS Image {name} not present in the database'}
-                access_code = 404
-                return dumps(response), access_code
+                status=False
+                return status, f'OS Image {name} not present in the database'
 
             osimage_columns = Database().get_columns('osimage')
             column_check = Helper().compare_list(data, osimage_columns)
@@ -197,16 +194,16 @@ class OSImage():
                     task_id, text = Queue().add_task_to_queue(task, 'osimage', request_id)
                 if not task_id:
                     self.logger.info("config_osimage_clone GET cannot get queue_id")
-                    response= {"message": f"OS image {name}->{data['name']} clone queuing failed."}
-                    return dumps(response), access_code
+                    status=False
+                    return status, f"Internal error: OS image {name}->{data['name']} clone queuing failed."
 
                 if text != "added":
                     # this means we already have an equal request in the queue
-                    access_code = 200
-                    message = f"osimage clone for {data['name']} already queued"
-                    response = {"message": message, "request_id": text}
-                    self.logger.info(f"my response [{response}]")
-                    return dumps(response), access_code
+                    response = f"osimage clone for {data['name']} already queued"
+                    #response = {"message": message, "request_id": text}
+                    self.logger.info(f"my response [{response}] [{text}]")
+                    status=True
+                    return status, response, text
                 self.logger.info(f"config_osimage_clone GET added task to queue: {task_id}")
                 message = f"queued clone osimage {name}->{data['name']} with queue_id {task_id}"
                 Status().add_message(request_id, "luna", message)
@@ -221,28 +218,28 @@ class OSImage():
                 where = f' WHERE request_id = "{request_id}"'
                 status = Database().get_record(None , 'status', where)
                 if status:
-                    access_code = 200
-                    message = f"osimage clone for {data['name']} queued"
-                    response = {"message": message, "request_id": request_id}
+                    response = f"osimage clone for {data['name']} queued"
+                    status=True
+                    return status, response, request_id
             else:
-                response = {'message': 'Columns are incorrect'}
-                access_code = 400
+                response = 'Invalid request: Columns are incorrect'
+                status=False
         else:
-            response = {'message': 'Did not received data'}
-            access_code = 400
-        return dumps(response), access_code
+            response = 'Invalid request: Did not received data'
+            status=False
+        return status, response
 
 
     def delete_osimage(self, name=None):
         """
         This method will delete a osimage.
         """
-        response, access_code = Model().delete_record(
+        status, response = Model().delete_record(
             name = name,
             table = self.table,
             table_cap = self.table_cap
         )
-        return response, access_code
+        return status, response
 
 
     def grab(self, node=None, http_request=None):
@@ -331,7 +328,6 @@ class OSImage():
         This method will push a osimage.
         """
         data = {}
-        access_code = 500
         status=False
         response=""
         request_data = http_request.data
@@ -387,10 +383,9 @@ class OSImage():
             if not task_id:
                 self.logger.info("config_osimage_push POST cannot get queue_id")
                 status=False
-                return status, f'OS image {osimage} push queuing failed'
+                return status, f'Internal error: OS image {osimage} push queuing failed'
             if text != "added":
                 # this means we already have an equal request in the queue
-                access_code = 200
                 response = f"osimage push for {osimage} already queued"
                 status=True
                 self.logger.info(f"my response [{response}] [{text}]")
@@ -423,7 +418,8 @@ class OSImage():
         """
         This method will pack requested osimage.
         """
-        access_code = 500
+        status=False
+        response="unknown state"
         response = {"message": f'OS image {name} packing failed. No sign of life of spawned thread'}
         # Antoine
         image = Database().get_record(None , 'osimage', f' WHERE name = "{name}"')
@@ -438,15 +434,14 @@ class OSImage():
         queue_id, queue_response = Queue().add_task_to_queue(task, 'osimage', request_id, force)
         if not queue_id:
             self.logger.info("config_osimage_pack GET cannot get queue_id")
-            response= {"message": f'OS image {name} pack queuing failed'}
-            return dumps(response), access_code
+            status=False
+            return status, f'Internal error: OS image {name} pack queuing failed'
         if queue_response != "added":
             # this means we already have an equal request in the queue
-            access_code = 200
-            message = f"osimage pack for {name} already queued"
-            response = {"message": message, "request_id": queue_response}
-            self.logger.info(f"my response [{response}]")
-            return dumps(response), access_code
+            response = f"osimage pack for {name} already queued"
+            self.logger.info(f"my response [{response}] [{queue_response}]")
+            status=True
+            return status, response, queue_response
 
         self.logger.info(f"config_osimage_pack GET added task to queue: {queue_id}")
         message = f"queued pack osimage {name} with queue_id {queue_id}"
@@ -463,10 +458,11 @@ class OSImage():
         sleep(1)
         status = Database().get_record(None , 'status', f' WHERE request_id = "{request_id}"')
         if status:
-            access_code = 200
-            response = {"message": f"osimage pack for {name} queued", "request_id": request_id}
-        self.logger.info(f"my response [{response}]")
-        return dumps(response), access_code
+            status=True
+            response = f"osimage pack for {name} queued"
+            self.logger.info(f"my response [{response}] [{request_id}]")
+            return response, request_id
+        return status, response
 
 
     def change_kernel(self, name=None, http_request=None):
@@ -474,6 +470,8 @@ class OSImage():
         This method will change the kernel of an image and pack again that image.
         """
         data = {}
+        status=False
+        response=""
         request_data = http_request.data
         if request_data:
             data = request_data['config']['osimage'][name]
@@ -486,19 +484,19 @@ class OSImage():
                     # changed=1
                     # request_check = Helper().pack(name)
                     # discussed - pending
-                    response = {'message': f'OS Image {name} Kernel updated'}
-                    access_code = 204
+                    response = f'OS Image {name} Kernel updated'
+                    status=True
                 else:
-                    response = {'message': 'Columns are incorrect'}
-                    access_code = 400
+                    response = 'Invalid request: Columns are incorrect'
+                    status=False
             else:
-                response = {'message': f'OS Image {name} does not exist'}
-                access_code = 404
-                return dumps(response), access_code
+                response = f'OS Image {name} does not exist'
+                status=False
+                return status, response
         else:
-            response = {'message': 'Did not received data'}
-            access_code = 400
-        return dumps(response), access_code
+            response = 'Invalid request: Did not receive data'
+            status=False
+        return status, response
 
 
     def get_status(self, request_id=None):
@@ -515,10 +513,6 @@ class OSImage():
                     if record['read'] == 0:
                         if 'message' in record:
                             if record['message'] == "EOF":
-                                # Database().delete_row(
-                                #     'status',
-                                #     [{"column": "request_id", "value": request_id}]
-                                # )
                                 Status().del_messages(request_id)
                             else:
                                 created, *_ = (record['created'].split('.') + [None])

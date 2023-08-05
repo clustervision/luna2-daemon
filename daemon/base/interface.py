@@ -276,6 +276,8 @@ class Interface():
         This method will add or update the group interface.
         """
         request_data = http_request.data
+        status=False
+        response=""
         if request_data:
             group = Database().get_record(None, 'group', f' WHERE name = "{name}"')
             if group:
@@ -283,14 +285,12 @@ class Interface():
                 if 'interfaces' in request_data['config']['group'][name]:
                     for ifx in request_data['config']['group'][name]['interfaces']:
                         if (not 'network' in ifx) or (not 'interface' in ifx):
-                            response = {'message': 'Interface and/or network not specified'}
-                            access_code = 400
-                            return dumps(response), access_code
+                            status=False
+                            return status, 'Invalid request: Interface and/or network not specified'
                         network = Database().id_by_name('network', ifx['network'])
                         if network is None:
-                            response = {'message': f'Network {network} does not exist'}
-                            access_code = 404
-                            return dumps(response), access_code
+                            status=False
+                            return status, f'Invalid request: Network {network} does not exist'
                         else:
                             ifx['networkid'] = network
                             ifx['groupid'] = group_id
@@ -304,8 +304,8 @@ class Interface():
                         if not interface_check:
                             row = Helper().make_rows(ifx)
                             Database().insert('groupinterface', row)
-                        response = {'message': 'Interface updated'}
-                        access_code = 204
+                        response = 'Interface updated'
+                        status=True
                         # below section takes care(in the background), adding/renaming/deleting.
                         # for adding next free ip-s will be selected. time consuming
                         # therefor background
@@ -321,16 +321,16 @@ class Interface():
                             # Config().update_interface_on_group_nodes(name)
                 else:
                     self.logger.error('interface not provided.')
-                    response = {'message': 'interface not provided'}
-                    access_code = 400
+                    response = 'Invalid request: interface not provided'
+                    status=False
             else:
                 self.logger.error('No group is available.')
-                response = {'message': 'No group is available'}
-                access_code = 404
+                response = 'No group is available'
+                status=False
         else:
-            response = {'message': 'Did not received data'}
-            access_code = 400
-        return dumps(response), access_code
+            response = 'Did not receive data'
+            status=False
+        return status, response
 
 
     def get_group_interface(self, name=None, interface=None):
@@ -372,6 +372,8 @@ class Interface():
         """
         This method will delete a group interface.
         """
+        response=""
+        status=False
         group = Database().get_record(None, 'group', f' WHERE `name` = "{name}"')
         if group:
             groupid = group[0]['id']
@@ -392,13 +394,12 @@ class Interface():
                     # executor.submit(Config().update_interface_on_group_nodes,name)
                     # executor.shutdown(wait=False)
                     Config().update_interface_on_group_nodes(name)
-                response = {'message': f'Group {name} interface {interface} removed'}
-                access_code = 204
+                response = f'Group {name} interface {interface} removed'
+                True
             else:
-                message = f'Group {name} interface {interface} not present in database'
-                response = {'message': message}
-                access_code = 404
+                response = f'Group {name} interface {interface} not present in database'
+                status=False
         else:
-            response = {'message': f'Group {name} not present in database'}
-            access_code = 404
-        return dumps(response), access_code
+            f'Group {name} not present in database'
+            status=False
+        return status, response

@@ -781,3 +781,19 @@ class Helper(object):
         except Exception as exp:
             self.logger.error(f"Getattr caused a problem: {exp}") 
             return None
+
+    def get_access_code(self,status,response=None):
+        # this def is not suitable for 200 reponses
+        access_code=404
+        if status is True:
+            access_code=201
+            if 'update' in response or 'remove' in response:
+                access_code=204
+        else:
+            if 'nvalid request' in response:
+                access_code=400
+            elif 'nternal error' in response:
+                access_code=500
+        return access_code
+
+

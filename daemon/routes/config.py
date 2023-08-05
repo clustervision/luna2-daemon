@@ -83,12 +83,8 @@ def config_node_post(name=None):
     """
     This api will create or update a node depends on the availability of the node name.
     """
-    access_code=404
     status, response = Node().update_node(name, request)
-    if status is True:
-        access_code=201
-        if 'update' in response:
-            access_code=204
+    access_code=Helper().get_access_code(status,response)
     response = {'message': response}
     return response, access_code
 
@@ -101,10 +97,8 @@ def config_node_clone(name=None):
     """
     This api will clone a node depends on the availability of the node name.
     """
-    access_code=404
     status, response = Node().clone_node(name, request)
-    if status is True:
-        access_code=201
+    access_code=Helper().get_access_code(status,response)
     response = {'message': response}
     return response, access_code
 
@@ -119,10 +113,8 @@ def config_node_delete(name=None):
     Process - Delete the Node and it's interfaces.
     Output - Success or Failure.
     """
-    access_code=404
     status, response = Node().delete_node(name)
-    if status is True:
-        access_code=204
+    access_code=Helper().get_access_code(status,response)
     response = {'message': response}
     return response, access_code
 
@@ -210,12 +202,8 @@ def config_node_post_interfaces(name=None):
     Process - Create Or Update The Node Interface.
     Output - Node Interface.
     """
-    access_code=404
     status, response = Interface().change_node_interface(name, request)
-    if status is True:
-        access_code = 201
-        if 'update' in response:
-            access_code = 204
+    access_code=Helper().get_access_code(status,response)
     response = {'message': response}
     return response, access_code
 
@@ -249,10 +237,8 @@ def config_node_delete_interface(name=None, interface=None):
     Process - Delete the Node Interface.
     Output - Success or Failure.
     """
-    access_code=404
     status, response = Interface().delete_node_interface(name, interface)
-    if status is True:
-        access_code=204
+    access_code=Helper().get_access_code(status,response)
     response = {'message': response}
     return response, access_code
 
@@ -326,12 +312,8 @@ def config_group_post(name=None):
     Process - Create Or Update The Groups.
     Output - Group Information.
     """
-    access_code=404
     status, response = Group().update_group(name, request)
-    if status is True:
-        access_code = 201
-        if 'update' in response:
-            access_code = 204
+    access_code=Helper().get_access_code(status,response)
     response = {'message': response}
     return response, access_code
 
@@ -374,10 +356,8 @@ def config_group_clone(name=None):
     Process - Create Or Update The Groups.
     Output - Group Information.
     """
-    access_code=404
     status, response = Group().clone_group(name, request)
-    if status is True:
-        access_code=201
+    access_code=Helper().get_access_code(status,response)
     response = {'message': response}
     return response, access_code
 
@@ -392,10 +372,8 @@ def config_group_delete(name=None):
     Process - Delete the Group and it's interfaces.
     Output - Success or Failure.
     """
-    access_code=404
     status, response = Group().delete_group(name)
-    if status is True:
-        access_code=204
+    access_code=Helper().get_access_code(status,response)
     response = {'message': response}
     return response, access_code
 
@@ -430,7 +408,9 @@ def config_group_post_interfaces(name=None):
     Process - Create Or Update The Group Interface.
     Output - Group Interface.
     """
-    response, access_code = Interface().change_group_interface(name, request)
+    status, response = Interface().change_group_interface(name, request)
+    access_code=Helper().get_access_code(status,response)
+    response = {'message': response}
     return response, access_code
 
 
@@ -462,7 +442,9 @@ def config_group_delete_interface(name=None, interface=None):
     Process - Delete the Group Interface.
     Output - Success or Failure.
     """
-    response, access_code = Interface().delete_group_interface(name, interface)
+    status, response = Interface().delete_group_interface(name, interface)
+    access_code=Helper().get_access_code(status,response)
+    response = {'message': response}
     return response, access_code
 
 ############################# OSimage configuration #############################
@@ -474,7 +456,13 @@ def config_osimage():
     Process - Fetch the OS Image information.
     Output - OSImage Info.
     """
-    response, access_code = OSImage().get_all_osimages()
+    access_code=404
+    status, response = OSImage().get_all_osimages()
+    if status is True:
+        access_code = 200
+        response = dumps(response)
+    else:
+        response = {'message': response}
     return response, access_code
 
 
@@ -486,7 +474,13 @@ def config_osimage_get(name=None):
     Process - Fetch the OS Image information.
     Output - OSImage Info.
     """
-    response, access_code = OSImage().get_osimage(name)
+    access_code=404
+    status, response = OSImage().get_osimage(name)
+    if status is True:
+        access_code = 200
+        response = dumps(response)
+    else:
+        response = {'message': response}
     return response, access_code
 
 
@@ -498,7 +492,13 @@ def config_osimage_member(name=None):
     This method will fetch all the nodes, which is connected to
     the provided osimage.
     """
-    response, access_code = OSImage().get_osimage_member(name)
+    access_code=404
+    status, response = OSImage().get_osimage_member(name)
+    if status is True:
+        access_code = 200
+        response = dumps(response)
+    else:
+        response = {'message': response}
     return response, access_code
 
 
@@ -512,7 +512,9 @@ def config_osimage_post(name=None):
     Process - Create or Update the OS Image information.
     Output - OSImage Info.
     """
-    response, access_code = OSImage().update_osimage(name, request)
+    status, response = OSImage().update_osimage(name, request)
+    access_code=Helper().get_access_code(status,response)
+    response = {'message': response}
     return response, access_code
 
 
@@ -527,7 +529,19 @@ def config_osimage_clone(name=None):
     Process - Clone OS Image information.
     Output - OSImage Info.
     """
-    response, access_code = OSImage().clone_osimage(name, request)
+    access_code=404
+    returned = OSImage().clone_osimage(name, request)
+    status=returned[0]
+    response=returned[1]
+    if status is True:
+        access_code=200
+        if len(returned)==3:
+            request_id=returned[2]
+            response = {"message": response, "request_id": request_id}
+        else:
+            response = {'message': response}
+    else:
+        response = {'message': response}
     return response, access_code
 
 
@@ -540,7 +554,9 @@ def config_osimage_delete(name=None):
     Process - Delete the OS Image.
     Output - Success or Failure.
     """
-    response, access_code = OSImage().delete_osimage(name)
+    status, response = OSImage().delete_osimage(name)
+    access_code=Helper().get_access_code(status,response)
+    response = {'message': response}
     return response, access_code
 
 
@@ -554,7 +570,19 @@ def config_osimage_pack(name=None):
     Process - Manually Pack the OS Image.
     Output - Success or Failure.
     """
-    response, access_code = OSImage().pack(name)
+    access_code=404
+    returned = OSImage().pack(name)
+    status=returned[0]
+    response=returned[1]
+    if status is True:
+        access_code=200
+        if len(returned)==3:
+            request_id=returned[2]
+            response = {"message": response, "request_id": request_id}
+        else:
+            response = {'message': response}
+    else:
+        response = {'message': response}
     return response, access_code
 
 
@@ -568,7 +596,9 @@ def config_osimage_kernel_post(name=None):
     Process - Manually change kernel version.
     Output - Kernel Version.
     """
-    response, access_code = OSImage().change_kernel(name, request)
+    status, response = OSImage().change_kernel(name, request)
+    access_code=Helper().get_access_code(status,response)
+    response = {'message': response}
     return response, access_code
 
 

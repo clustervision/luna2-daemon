@@ -32,6 +32,7 @@ from base.otherdev import OtherDev
 from base.network import Network
 from base.secret import Secret
 from base.osuser import OsUser
+from utils.helper import Helper
 
 LOGGER = Log.get_logger()
 config_blueprint = Blueprint('config', __name__)

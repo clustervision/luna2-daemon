@@ -197,7 +197,7 @@ class Service(object):
 
                     status, response = self.luna_service(service, action)
 
-                    if status is True
+                    if status is True:
                         self.logger.info(f'service {service} {action} successful.')
                         Status().add_message(request_id,"luna",f"finished {action} service {service}")
                     else:

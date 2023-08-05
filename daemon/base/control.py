@@ -197,7 +197,7 @@ class Control():
                                 on_nodes.append(node)
                             elif result == "off":
                                 off_nodes.append(node)
-                            elif result == "identify" or result == "noidentify"
+                            elif result == "identify" or result == "noidentify":
                                 other_nodes.append(node)
                             else:
                                 failed_nodes.append(node)

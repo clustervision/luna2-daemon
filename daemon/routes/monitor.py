@@ -59,3 +59,4 @@ def monitor_status_post(node=None):
     """
     response, access_code = Monitor().update_status(node, request)
     return response, access_code
+

@@ -53,7 +53,7 @@ def service(name, action):
         else:
             response={'info': message}
     else:
-        if 'config has error' in response:
+        if 'config has error' in response or action == 'status':
             access_code=500
         response={'error': message}
     # Antoine - aug 5 2023 - bit ugly workaround for when status returns a full dict/json already.

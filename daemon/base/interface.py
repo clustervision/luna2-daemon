@@ -187,8 +187,7 @@ class Interface():
         else:
             self.logger.error('Node is not available.')
             response = 'Node is not available'
-            access_code = 404
-        return dumps(response), access_code
+        return status, response
 
 
     def delete_node_interface(self, name=None, interface=None):

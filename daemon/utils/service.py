@@ -96,7 +96,7 @@ class Service(object):
                         response = 'not implemented'
                         status=True
                     case 'status':
-                        response = {'message': 'not implemented'} # yes, this is correct - Antoine
+                        response = 'not implemented'
                         status=True
                     case _:
                         response = f'Service Action {action} Is Not Recognized.'
@@ -157,11 +157,13 @@ class Service(object):
             case 'status':
                 if 'active (running)' in str(output):
                     self.logger.info(f'Service {name} is Active & Running.')
-                    response = {'monitor': {'Service': { name: 'OK, running'} } }
+                    #response = {'monitor': {'Service': { name: 'OK, running'} } }
+                    response = 'OK, running'
                     status=True
                 else:
                     self.logger.error('Service {name} is Not Active & Running.')
-                    response = {'monitor': {'Service': { name: 'FAIL, not running'} } }
+                    #response = {'monitor': {'Service': { name: 'FAIL, not running'} } }
+                    response = 'FAIL, not running'
                     status=False
         return status, response
 

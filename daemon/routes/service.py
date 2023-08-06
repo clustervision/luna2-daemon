@@ -56,9 +56,9 @@ def service(name, action):
         if 'config has error' in message or action == 'status': # we have no issues with reporting the failed service. is this 500 or 200 ??
             access_code=500
         response={'error': message}
-    # Antoine - aug 5 2023 - bit ugly workaround for when status returns a full dict/json already.
+    # Antoine - aug 5 2023 - bit ugly workaround for status as API expects monitor as response
     if action == 'status':
-        response=message
+        response={'monitor': {'Service': { name: message} } }
     return response, access_code
 
 

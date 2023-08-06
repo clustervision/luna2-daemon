@@ -34,13 +34,11 @@ class Plugin():
 
     def push(self,osimage,image_path,node,grab_filesystems=[],grab_exclude=[],nodry=False):
 
-        sleep(10)
-        if random.randrange(1,10) > 5:
-            return False,f"test for [{node}] with [{image_path}] - [{grab_filesystems}], [{grab_exclude}] [{nodry}]"
-        return True,"Success"
+#        sleep(10)
+#        if random.randrange(1,10) > 5:
+#            return False,f"test for [{node}] with [{image_path}] - [{grab_filesystems}], [{grab_exclude}] [{nodry}]"
+#        return True,"Success"
 
-
-"""
         # let's build the rsync command line parameters
         excludes=[]
         exclude_string=""
@@ -55,17 +53,23 @@ class Plugin():
             exit_code=0
             for grab in grab_filesystems:
                 if exit_code == 0:
-                    command=f"mkdir -p {image_path}/{grab} 2> /dev/null; rsync -aH --one-file-system --delete-after {exclude_string} {node}:{grab}/* {image_path}/{grab}/"
+                    if nodry is True: # nodry is True means it's for real
+                        command=f"rsync -aH --one-file-system {exclude_string} {image_path}/{grab} {node}:/"
+                    else:
+                        command=f"rsync -aHvn --one-file-system {exclude_string} {image_path}/{grab} {node}:/ &> /tmp/ospush.out"
                     self.logger.info(command)
                     message,exit_code = Helper().runcommand(command,True,3600)
                     self.logger.debug(f"exit_code = {exit_code}")
         else:
-            command=f"mkdir -p {image_path}/ 2> /dev/null; rsync -aH --delete-after {exclude_string} {node}:/* {image_path}/"
+            if nodry is True: # nodry is True means it's for real
+                command=f"rsync -aH --delete-after {exclude_string} {image_path}/* {node}:/"
+            else:
+                command=f"rsync -aHnv --delete-after {exclude_string} {image_path}/* {node}:/ &> /tmp/ospush.out"
             self.logger.info(command)
             message,exit_code = Helper().runcommand(command,True,3600)
 
         if exit_code != 0:
-            False,f"{message}"
+            return False, f"{message}"
 
         # not entirely accurate but good enough
         kernel_version, stderr = Helper().runcommand(f"ls -tr {image_path}/lib/modules/|tail -n1")
@@ -75,4 +79,3 @@ class Plugin():
         if kernel_version:
             return True, "Success", kernel_version
         return True, "Success"
-"""

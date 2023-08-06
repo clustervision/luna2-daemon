@@ -334,7 +334,7 @@ class Secret():
                 where = [{"column": "nodeid", "value": nodeid}, {"column": "name", "value": secret}]
                 Database().delete_row('nodesecrets', where)
                 response = f'Secret {secret} deleted from node {name}'
-                status=False
+                status=True
             else:
                 response = f'Secret {secret} is unavailable for node {name}'
                 status=False

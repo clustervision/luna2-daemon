@@ -96,7 +96,7 @@ class Service(object):
                         response = 'not implemented'
                         status=True
                     case 'status':
-                        response = 'not implemented'
+                        response = {'message': 'not implemented'} # yes, this is correct - Antoine
                         status=True
                     case _:
                         response = f'Service Action {action} Is Not Recognized.'

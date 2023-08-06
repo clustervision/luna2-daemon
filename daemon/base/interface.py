@@ -392,7 +392,7 @@ class Interface():
                     # executor.shutdown(wait=False)
                     Config().update_interface_on_group_nodes(name)
                 response = f'Group {name} interface {interface} removed'
-                True
+                status=True
             else:
                 response = f'Group {name} interface {interface} not present in database'
                 status=False

@@ -59,7 +59,7 @@ class Service(object):
                         check_dhcp = Config().dhcp_overwrite()
                         if check_dhcp:
                             output = Helper().runcommand(command)
-                            sleep(1)
+                            sleep(2)
                             status, response = self.service_status(name, action, output)
                         else:
                             response = f'{name} config file has errors'
@@ -78,7 +78,7 @@ class Service(object):
                         check_dns = Config().dns_configure()
                         if check_dns:
                             output = Helper().runcommand(command)
-                            sleep(1)
+                            sleep(2)
                             status, response = self.service_status(name, action, output)
                         else:
                             response = f'{name} config file has errors.'
@@ -161,7 +161,7 @@ class Service(object):
                     response = 'OK, running'
                     status=True
                 else:
-                    self.logger.error('Service {name} is Not Active & Running.')
+                    self.logger.error(f'Service {name} is Not Active & Running.')
                     #response = {'monitor': {'Service': { name: 'FAIL, not running'} } }
                     response = 'FAIL, not running'
                     status=False

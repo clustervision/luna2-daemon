@@ -194,7 +194,7 @@ class Control():
                 case _:
                     return_code, message = False, "NO-Match"
 
-            self.logger.debug(f"mesg=[{message}]")
+            self.logger.debug(f"return_code=[{return_code}], mesg=[{message}]")
 
         except TimeoutError:
             return_code = False
@@ -204,7 +204,7 @@ class Control():
             message = exp
         # finally:
         #     signal.alarm(0)
-        return_code, message
+        return return_code, message
 
 
     def control_mother(self, pipeline=None, request_id=None, batch=10, delay=10):

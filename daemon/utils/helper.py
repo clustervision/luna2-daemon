@@ -792,8 +792,12 @@ class Helper(object):
         else:
             if 'nvalid request' in response or 'ad request' in response:
                 access_code=400
+            elif 'uthentication error' in response:
+                access_code=401
             elif 'nternal error' in response:
                 access_code=500
+            elif 'ervice unavailable' in response:
+                access_code=503
         return access_code
 
 

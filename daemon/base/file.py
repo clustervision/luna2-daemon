@@ -41,17 +41,17 @@ class File():
         """
         This method will provide the list of all available tar files under the files directory.
         """
+        status=False
         filelist = Files().list_files()
         if filelist:
             self.logger.info(f'Available tars {CONSTANT["FILES"]["IMAGE_FILES"]} are {filelist}.')
             response = filelist
-            access_code = 200
+            status=True
         else:
-            message = f'No tar file is present in {CONSTANT["FILES"]["IMAGE_FILES"]}.'
-            self.logger.error(message)
-            response = {'message': message}
-            access_code = 503
-        return dumps(response), access_code
+            response = f'No tar file is present in {CONSTANT["FILES"]["IMAGE_FILES"]}.'
+            self.logger.error(response)
+            status=False
+        return status, response
 
 
     def get_file(self, filename=None, http_request=None):
@@ -67,8 +67,8 @@ class File():
         # we do enforce authentication for specific files. .bz2 + .torrent are
         # most likely the images.
         auth_ext = [".gz", ".tar", ".bz", ".bz2", ".torrent"]
-        response = {'message': ''}
-        code = 500
+        response = "Internal error"
+        status=False
         token, ext  =None, None
         needs_auth = False
         if filename:
@@ -84,21 +84,18 @@ class File():
                 token = http_request.headers['x-access-tokens']
             if not token:
                 self.logger.error(f'A valid token is missing for request {filename}.')
-                code = 401
-                response = {'message': 'A valid token is missing'}
-                return dumps(response), code
+                status=False
+                return status, 'Authentication error: A valid token is missing'
             try:
                 jwt.decode(token, CONSTANT['API']['SECRET_KEY'], algorithms=['HS256']) ## Decode
             except jwt.exceptions.DecodeError:
                 self.logger.error('Token is invalid for request {filename}.')
-                code = 401
-                response = {'message': 'Token is invalid'}
-                return dumps(response), code
+                status=False
+                return status, 'Authentication error: Token is invalid'
             except Exception as exp:
                 self.logger.error(f'Token is invalid for request {filename}. {exp}')
-                code = 401
-                response = {'message': 'Token is invalid'}
-                return dumps(response), code
+                status=False
+                return status, 'Authentication error: Token is invalid'
             self.logger.info(f"Valid authentication for extension [{ext}] - Go!")
 
         self.logger.debug(f'Request for file: {filename} from IP Address: {request_ip}')
@@ -114,10 +111,10 @@ class File():
         filepath = Files().check_file(filename)
         if filepath:
             self.logger.info(f'Tar File Path is {filepath}.')
-            return send_file(filepath, as_attachment=True), 200
+            status=True
+            return status, send_file(filepath, as_attachment=True)
         else:
-            message = f'{filename} is not present in {CONSTANT["FILES"]["IMAGE_FILES"]}.'
-            self.logger.error(message)
-            response = {'message': message}
-            code = 503
-        return dumps(response), code
+            self.logger.error(f'{filename} is not present in {CONSTANT["FILES"]["IMAGE_FILES"]}')
+            status=False
+            return status, f'Service unavailable: {filename} is not present in {CONSTANT["FILES"]["IMAGE_FILES"]}'
+        return return status, response

@@ -117,4 +117,4 @@ class File():
             self.logger.error(f'{filename} is not present in {CONSTANT["FILES"]["IMAGE_FILES"]}')
             status=False
             return status, f'Service unavailable: {filename} is not present in {CONSTANT["FILES"]["IMAGE_FILES"]}'
-        return return status, response
+        return status, response

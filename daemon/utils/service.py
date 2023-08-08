@@ -58,16 +58,16 @@ class Service(object):
                         command = f'{CONSTANT["SERVICES"]["COMMAND"]} {action} {name}'
                         check_dhcp = Config().dhcp_overwrite()
                         if check_dhcp:
-                            output = Helper().runcommand(command)
+                            output, exit_code = Helper().runcommand(command,True,60)
                             sleep(2)
-                            status, response = self.service_status(name, action, output)
+                            status, response = self.service_status(name, action, exit_code, output)
                         else:
                             response = f'{name} config file has errors'
                             status=False
                     case 'status':
                         command = f'{CONSTANT["SERVICES"]["COMMAND"]} {action} {name}'
-                        output = Helper().runcommand(command)
-                        status, response = self.service_status(name, action, output)
+                        output, exit_code = Helper().runcommand(command,True,60)
+                        status, response = self.service_status(name, action, exit_code, output)
                     case _:
                         response = f'Service Action {action} Is Not Recognized'
                         status=False
@@ -77,16 +77,16 @@ class Service(object):
                         command = f'{CONSTANT["SERVICES"]["COMMAND"]} {action} {name}'
                         check_dns = Config().dns_configure()
                         if check_dns:
-                            output = Helper().runcommand(command)
+                            output, exit_code = Helper().runcommand(command,True,60)
                             sleep(2)
-                            status, response = self.service_status(name, action, output)
+                            status, response = self.service_status(name, action, exit_code, output)
                         else:
                             response = f'{name} config file has errors.'
                             status=False
                     case 'status':
                         command = f'{CONSTANT["SERVICES"]["COMMAND"]} {action} {name}'
-                        output = Helper().runcommand(command)
-                        status, response = self.service_status(name, action, output)
+                        output, exit_code = Helper().runcommand(command,True,60)
+                        status, response = self.service_status(name, action, exit_code, output)
                     case _:
                         response = f'Service Action {action} Is Not Recognized.'
                         status=False
@@ -108,7 +108,7 @@ class Service(object):
         return status, response
 
 
-    def service_status(self, name, action, output):
+    def service_status(self, name, action, exit_code=0, output=None):
         """
         Input - name of service and action need to be perform
         Process - After Validating Token, Check Queue if the same request is enque in last two
@@ -119,26 +119,26 @@ class Service(object):
         status=False
         match action:
             case 'start':
-                if "(b'', b'')" in str(output):
+                if exit_code == 0 or "(b'', b'')" in str(output):
                     self.logger.info(f'Service {name} is {action}ed.')
                     response = f'Service {name} is {action}ed.'
                     status=True
                 else:
-                    self.logger.error(f'Service {name} is Failed to {action}.')
+                    self.logger.error(f'Service {name} is Failed to {action}: {output}')
                     response = f'Service {name} is Failed to {action}.'
                     status=False
             case 'stop':
-                if "(b'', b'')" in str(output):
+                if exit_code == 0 or "(b'', b'')" in str(output):
                     self.logger.info(f'Service {name} is {action}ped.')
                     response = f'Service {name} is {action}ped.'
                     status=True
                 else:
-                    self.logger.error(f'Service {name} is Failed to {action}.')
+                    self.logger.error(f'Service {name} is Failed to {action}: {output}')
                     response = f'Service {name} is Failed to {action}.'
                     status=False
             case 'reload':
-                if "Failed" in str(output):
-                    self.logger.error(f'Service {name} is Failed to {action}.')
+                if exit_code != 0 or "Failed" in str(output):
+                    self.logger.error(f'Service {name} is Failed to {action}: {output}')
                     response = f'Service {name} is Failed to {action}.'
                     status=False
                 else:
@@ -146,22 +146,22 @@ class Service(object):
                     response = f'Service {name} is {action}ed.'
                     status=True
             case 'restart':
-                if "(b'', b'')" in str(output):
+                if exit_code == 0 or "(b'', b'')" in str(output):
                     self.logger.info(f'Service {name} is {action}ed.')
                     response = f'Service {name} is {action}ed.'
                     status=True
                 else:
-                    self.logger.error(f'Service {name} is Failed to {action}.')
+                    self.logger.error(f'Service {name} is Failed to {action}: {output}')
                     response = f'Service {name} is Failed to {action}.'
                     status=False
             case 'status':
-                if 'active (running)' in str(output):
+                if exit_code == 0 or 'active (running)' in str(output):
                     self.logger.info(f'Service {name} is Active & Running.')
                     #response = {'monitor': {'Service': { name: 'OK, running'} } }
                     response = 'OK, running'
                     status=True
                 else:
-                    self.logger.error(f'Service {name} is Not Active & Running.')
+                    self.logger.error(f'Service {name} is Not Active & Running: {output}')
                     #response = {'monitor': {'Service': { name: 'FAIL, not running'} } }
                     response = 'FAIL, not running'
                     status=False

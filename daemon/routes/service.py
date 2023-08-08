@@ -57,7 +57,7 @@ def service(name, action):
             access_code=500
         response={'error': message}
     # Antoine - aug 5 2023 - bit ugly workaround for status as API expects monitor as response
-    if action == 'status':
+    if action == 'status' and name is not 'luna2': # later we have to remove the 'and name ....'-part
         response={'monitor': {'Service': { name: message} } }
     return response, access_code
 

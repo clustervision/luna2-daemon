@@ -166,7 +166,7 @@ class Config(object):
             {ntp_server}
             """)
             
-        config+=omapi_key
+        config += omapi_key
 
         config += dedent(f"""
             # how to get luna_ipxe.efi and luna_undionly.kpxe :

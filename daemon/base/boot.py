@@ -46,7 +46,7 @@ class Boot():
         self.provision_plugins = Helper().plugin_finder(f'{plugins_path}/provision')
         self.network_plugins = Helper().plugin_finder(f'{plugins_path}/network')
         self.bmc_plugins = Helper().plugin_finder(f'{plugins_path}/bmc')
-        self.install_plugins = Helper().plugin_finder(f'{plugins_path}install')
+        self.install_plugins = Helper().plugin_finder(f'{plugins_path}/install')
         # self.detection_plugins = Helper().plugin_finder(f'{plugins_path}/detection')
         # self.DetectionPlugin=Helper().plugin_load(self.detection_plugins,'detection','switchport')
 

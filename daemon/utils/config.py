@@ -145,7 +145,7 @@ class Config(object):
 
         omapi_key = ''
         if CONSTANT['DHCP']['OMAPIKEY']:
-            omapi_key = dedent(f"""\
+            omapi_key = dedent(f"""
                 omapi-port 7911;
                 omapi-key omapi_key;
 
@@ -155,7 +155,7 @@ class Config(object):
                 }}
             """)
 
-        config = dedent(f"""\
+        config = dedent(f"""
             #
             # DHCP Server Configuration file.
             # created by Luna
@@ -184,7 +184,7 @@ class Config(object):
         """
         This method prepare the network block for all DHCP enabled networks
         """
-        subnet_block = dedent(f"""\
+        subnet_block = dedent(f"""
             subnet {network} netmask {netmask} {{
                 max-lease-time 28800;
                 if exists user-class and option user-class = "iPXE" {{
@@ -214,7 +214,7 @@ class Config(object):
         """
         if macaddress:
             if re.match("[0-9a-f]{2}([-:]?)[0-9a-f]{2}(\\1[0-9a-f]{2}){4}$", macaddress.lower()):
-                node_block = dedent(f"""\
+                node_block = dedent(f"""
                     host {node}  {{
                         hardware ethernet {macaddress};
                         fixed-address {ipaddr};

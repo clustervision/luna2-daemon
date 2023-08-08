@@ -84,7 +84,7 @@ class Control():
                     where = f' WHERE id = "{bmcsetupid}"'
                     bmcsetup = Database().get_record(None, 'bmcsetup', where)
                     if bmcsetup and 'device' in node[0] and node[0]['device']:
-                        self.logger.info(f"control_child thread {t}: bmcsetup: {bmcsetup}")
+                        self.logger.debug(f"control_child thread {t}: bmcsetup: {bmcsetup}")
                         try:
                             device   = node[0]['device']
                             username = bmcsetup[0]['username']

@@ -18,11 +18,13 @@ __email__       = "sumit.sharma@clustervision.com"
 __status__      = "Development"
 
 
+from json import dumps
 from flask import Blueprint
 from utils.log import Log
 from common.validate_auth import token_required
 from common.validate_input import validate_name
 from base.service import Service
+from utils.status import Status
 
 
 LOGGER = Log.get_logger()
@@ -39,7 +41,24 @@ def service(name, action):
         seconds. If not then only execute the action with the help of service Class.
     Output - Success or Failure.
     """
-    response, access_code = Service().service_action(name, action)
+    access_code=404
+    returned = Service().service_action(name, action)
+    status=returned[0]
+    message=returned[1]
+    if status is True:
+        access_code=200
+        if len(returned)==3:
+            request_id=returned[2]
+            response = {"message": message, "request_id": request_id}
+        else:
+            response={'info': message}
+    else:
+        if 'config has error' in message or action == 'status': # we have no issues with reporting the failed service. is this 500 or 200 ??
+            access_code=503
+        response={'error': message}
+    # Antoine - aug 5 2023 - bit ugly workaround for status as API expects monitor as response
+    if action == 'status':
+        response={'monitor': {'Service': { name: message} } }
     return response, access_code
 
 
@@ -51,5 +70,12 @@ def service_status(request_id=None):
     Process - gets the list from status table. renders this into a response.
     Output - Success or failure
     """
-    response, access_code = Service().get_status(request_id)
+    access_code=404
+    status, response = Status().get_status(request_id)
+    if status is True:
+        access_code=200
+        response=dumps(response)
+    else:
+        response={'message': response}
     return response, access_code
+

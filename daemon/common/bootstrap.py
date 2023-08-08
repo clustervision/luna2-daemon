@@ -144,7 +144,7 @@ def check_db_tables():
 def cleanup_queue_and_status():
     """
     This method will clean the Queue"""
-    Database().clear('queue')
+    Database().clear('queue',"subsystem!='housekeeper'") # we exclude housekeeper tasks being removed
     Database().clear('status')
 
 

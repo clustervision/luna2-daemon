@@ -22,6 +22,7 @@ from utils.log import Log
 from utils.database import Database
 from utils.helper import Helper
 from utils.status import Status
+from common.constant import CONSTANT
 
 
 class Control():
@@ -34,7 +35,8 @@ class Control():
         Constructor - As of now, nothing have to initialize.
         """
         self.logger = Log.get_logger()
-        self.control_plugins = Helper().plugin_finder('/trinity/local/luna/plugins/control')
+        plugins_path=CONSTANT["PLUGINS"]["PLUGINS_DIR"]
+        self.control_plugins = Helper().plugin_finder(f'{plugins_path}/control')
         # needs to be with constants. pending
 
 
@@ -84,7 +86,7 @@ class Control():
                     where = f' WHERE id = "{bmcsetupid}"'
                     bmcsetup = Database().get_record(None, 'bmcsetup', where)
                     if bmcsetup and 'device' in node[0] and node[0]['device']:
-                        self.logger.info(f"control_child thread {t}: bmcsetup: {bmcsetup}")
+                        self.logger.debug(f"control_child thread {t}: bmcsetup: {bmcsetup}")
                         try:
                             device   = node[0]['device']
                             username = bmcsetup[0]['username']
@@ -194,7 +196,7 @@ class Control():
                 case _:
                     return_code, message = False, "NO-Match"
 
-            self.logger.debug(f"mesg=[{message}]")
+            self.logger.debug(f"return_code=[{return_code}], mesg=[{message}]")
 
         except TimeoutError:
             return_code = False

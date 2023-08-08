@@ -14,7 +14,7 @@ __email__       = 'antoine.schonewille@clustervision.com'
 __status__      = 'Development'
 
 
-from flask import Blueprint, request
+from flask import Blueprint, request, Response
 from utils.log import Log
 from base.tracker import Tracker
 # from common.validate_auth import token_required
@@ -34,10 +34,24 @@ def tracker_announce_get():
     Process - 
     Output - 
     """
+    access_code=400
     request_data = request.args.to_dict()
     remote_ip = request.environ['REMOTE_ADDR']
-    response_list = Tracker().announce(request_data, remote_ip)
-    return response_list
+    status, response = Tracker().announce(request_data, remote_ip)
+    #return response_list
+    if status is True:
+        try:
+            resp = Response(response)
+            resp.mimetype='text/plain'
+            resp.headers['Content-Type']='text/plain'
+            access_code=200
+            resp.status_code=access_code
+            return resp
+        except Exception as exp:
+            # here we do return a code as this is a error message
+            access_code=500
+            return f"{exp}\n",access_code
+    return response, access_code
 
 
 # BELOW SEGMENT HAS BEEN TESTED AND CONFIRMED WORKING BY ANTOINE ON MAY 4 2023
@@ -50,8 +64,21 @@ def tracker_scrape_get():
     Process - 
     Output - 
     """
+    access_code=500
     hashes = request.args.getlist('info_hash')
-    response_list = Tracker().scrape(hashes)
-    return response_list
+    status, response = Tracker().scrape(hashes)
+    #return response_list
 
+    if status is True:
+        try:
+            resp = Response(response)
+            resp.mimetype='text/plain'
+            resp.headers['Content-Type']='text/plain'
+            access_code=200
+            resp.status_code=access_code
+            return resp
+        except Exception as exp:
+            access_code=500
+            return f"{exp}\n", access_code
+    return response, access_code
 

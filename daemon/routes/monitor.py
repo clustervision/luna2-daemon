@@ -31,7 +31,8 @@ def monitor_service(name=None):
     Currently supported services are DHCP, DNS and luna2 itself.
     Output - Status
     """
-    response, access_code = Monitor().service_monitor(name)
+    status, response = Monitor().service_monitor(name)
+    response={'monitor': {'Service': { name: response} } }
     return response, access_code
 
 
@@ -43,7 +44,14 @@ def monitor_status_get(node=None):
     Process - Validate if the node exists and what the state is
     Output - Status.
     """
-    response, access_code = Monitor().get_status(node)
+    access_code=404
+    status, response = Monitor().get_status(node)
+    if status is True:
+        access_code=200
+        response=dumps(response)
+    else:
+        access_code=404
+        response={'message': f'{node} not found'}
     return response, access_code
 
 
@@ -57,5 +65,10 @@ def monitor_status_post(node=None):
     Process - Update the Node Status
     Output - Status.
     """
-    response, access_code = Monitor().update_status(node, request)
+    access_code=404
+    status, response = Monitor().update_status(node, request)
+    if status is True:
+        access_code=204
+    response={'message': response}
     return response, access_code
+

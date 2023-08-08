@@ -55,7 +55,10 @@ class Plugin():
                     message,exit_code = Helper().runcommand(command,True,3600)
                     self.logger.debug(f"exit_code = {exit_code}")
         else:
-            command=f"mkdir -p {image_path}/ 2> /dev/null; rsync -aH --delete-after {exclude_string} {node}:/* {image_path}/"
+            if nodry is True: # nodry is True means it's for real
+                command=f"mkdir -p {image_path}/ 2> /dev/null; rsync -aH --delete-after {exclude_string} {node}:/* {image_path}/"
+            else:
+                command=f"mkdir -p {image_path}/ 2> /dev/null; rsync -aHvn --delete-after {exclude_string} {node}:/* {image_path}/ &> /tmp/osgrab.out"
             self.logger.info(command)
             message,exit_code = Helper().runcommand(command,True,3600)
 

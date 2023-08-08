@@ -37,6 +37,7 @@ class Model():
         This method will return the requested record from the table
         or all records if the name is not available.
         """
+        status=False
         if name:
             all_records = Database().get_record(table=table, where=f' WHERE name = "{name}"')
         else:
@@ -57,18 +58,19 @@ class Model():
                         response['config'][config_table][record['name']]['ipaddress'] = ipaddress
                         response['config'][config_table][record['name']]['network'] = network
             self.logger.info(f'Available {table_cap} are {all_records}.')
-            access_code = 200
+            status=True
         else:
             self.logger.error(f'No {table_cap} is available.')
-            response = {'message': f'No {table_cap} is available'}
-            access_code = 404
-        return dumps(response), access_code
+            response = f'No {table_cap} is available'
+            status=False
+        return status, response
 
 
     def get_member(self, name=None, table=None, table_cap=None):
         """
         This method will return all the nodes which are member of a requested table.
         """
+        status=False
         all_records = Database().get_record(table=table, where=f' WHERE name = "{name}"')
         if all_records:
             nodes = []
@@ -89,22 +91,23 @@ class Model():
             if nodes:
                 response['config'][table][name]['members'] = nodes
                 self.logger.info(f'Provided all {table_cap} members for nodes {nodes}.')
-                access_code = 200
+                status=True
             else:
                 self.logger.error(f'{table_cap} {name} is not have any member node.')
-                response = {'message': f'{table_cap} {name} is not have any member node'}
-                access_code = 404
+                response = f'{table_cap} {name} is not have any member node'
+                status=False
         else:
             self.logger.error(f'{table_cap} {name} is not available.')
-            response = {'message': f'{table_cap} {name} is not available'}
-            access_code = 404
-        return dumps(response), access_code
+            response = f'{table_cap} {name} is not available'
+            status=False
+        return status, response
 
 
     def delete_record(self, name=None, table=None, table_cap=None, ip_check=None):
         """
         This method will delete the requested.
         """
+        status=False
         record = Database().get_record(table=table, where=f' WHERE `name` = "{name}"')
         if record:
             if ip_check:
@@ -116,13 +119,13 @@ class Model():
                 self.logger.info(f'{table_cap} linked IP Address is deleted.')
             Database().delete_row(table, [{"column": "name", "value": name}])
             self.logger.info(f'{table_cap} removed from database.')
-            response = {'message': f'{table_cap} removed from database.'}
-            access_code = 204
+            response = f'{table_cap} removed from database.'
+            status=True
         else:
             self.logger.info(f'{name} is not present in the database.')
-            response = {'message': f'{name} is not present in the database.'}
-            access_code = 404
-        return dumps(response), access_code
+            response = f'{name} is not present in the database.'
+            status=False
+        return status, response
 
 
     def change_record(
@@ -138,7 +141,7 @@ class Model():
         """
         record = Database().get_record(table=table, where=f' WHERE `name` = "{name}"')
         if record or (new_name in request_data['config'][table][name]):
-            response, access_code = self.update_record(
+            status, response = self.update_record(
                 record,
                 name,
                 new_name,
@@ -147,8 +150,8 @@ class Model():
                 request_data
             )
         else:
-            response, access_code = self.create_record(record ,name, table, table_cap, request_data)
-        return response, access_code
+            status, response = self.create_record(record ,name, table, table_cap, request_data)
+        return status, response
 
 
     def create_record(self, record=None, name=None, table=None, table_cap=None, request_data=None):
@@ -156,12 +159,13 @@ class Model():
         This method will create a new record for requested table.
         """
         response = {}
+        status=False
         data = request_data['config'][table][name]
         data['name'] = name
         if record:
             self.logger.info(f'{table_cap} already has {name}')
-            response = {'message': f'{table_cap} already has {name}'}
-            access_code = 404
+            response = f'{table_cap} already has {name}'
+            status=False
         else:
             columns = Database().get_columns(table)
             column_check = Helper().compare_list(data, columns)
@@ -169,13 +173,13 @@ class Model():
                 row = Helper().make_rows(data)
                 Database().insert(table, row)
                 self.logger.info(f'{name} successfully added in {table}')
-                response = {'message': f'{name} successfully added in {table}'}
-                access_code = 201
+                response = f'{name} successfully added in {table}'
+                status=True
             else:
                 self.logger.info('Incorrect column(s) provided.')
-                response = {'message': 'Incorrect column(s) provided.'}
-                access_code = 400
-        return dumps(response), access_code
+                response = 'Invalid request: Incorrect column(s) provided.'
+                status=False
+        return status, response
 
 
     def update_record(
@@ -191,6 +195,7 @@ class Model():
         This method will update a record for requested table.
         """
         response = {}
+        status=False
         data = request_data['config'][table][name]
         if new_name in request_data['config'][table][name]:
             data['name'] = data[new_name]
@@ -204,17 +209,17 @@ class Model():
             if column_check:
                 where = [{"column": "id", "value": record[0]['id']}]
                 Database().update(table, row, where)
-                response = {'message': f'{name} updated successfully'}
-                access_code = 204
+                response = f'{name} updated successfully'
+                status=True
             else:
                 self.logger.info('Incorrect column(s) provided.')
-                response = {'message': 'Incorrect column(s) provided.'}
-                access_code = 400
+                response = 'Invalid request: Incorrect column(s) provided.'
+                status=False
         else:
             self.logger.info(f'{name} is not present in {table_cap}.')
-            response = {'message': f'{name} is not present in {table_cap}.'}
-            access_code = 404
-        return dumps(response), access_code
+            response = f'{name} is not present in {table_cap}.'
+            status=False
+        return status, response
 
 
     def clone_record(self, name=None, new_name=None, table=None, table_cap=None, request_data=None):
@@ -222,6 +227,7 @@ class Model():
         This method will clone a record for requested table.
         """
         response = {}
+        status=False
         data = request_data['config'][table][name]
         if new_name in request_data['config'][table][name]:
             data['name'] = data[new_name]
@@ -234,9 +240,9 @@ class Model():
             where = f' WHERE `name` = "{new_record}"'
             check_new_record = Database().get_record(table=table, where=where)
             if check_new_record:
-                response = {'message': f'{new_record} Already present in database'}
-                access_code = 404
-                return dumps(response), access_code
+                response = f'{new_record} Already present in database'
+                status=False
+                return status, response
             del record[0]['id']
             for item in record[0]:
                 if not item in data:
@@ -247,14 +253,14 @@ class Model():
             row = Helper().make_rows(data)
             if column_check:
                 Database().insert(table, row)
-                response = {'message': f'{name} cloned as {new_record} successfully'}
-                access_code = 201
+                response = f'{name} cloned as {new_record} successfully'
+                status=True
             else:
                 self.logger.info('Incorrect column(s) provided.')
-                response = {'message': 'Incorrect column(s) provided.'}
-                access_code = 400
+                response = 'Invalid request: Incorrect column(s) provided.'
+                status=False
         else:
             self.logger.info(f'{name} is not present in {table_cap}.')
-            response = {'message': f'{name} is not present in {table_cap}.'}
-            access_code = 404
-        return dumps(response), access_code
+            response = f'{name} is not present in {table_cap}.'
+            status=False
+        return status, response

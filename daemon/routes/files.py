@@ -15,9 +15,11 @@ __maintainer__  = "Sumit Sharma"
 __email__       = "sumit.sharma@clustervision.com"
 __status__      = "Development"
 
+from json import dumps
 from flask import Blueprint, request
 from utils.log import Log
 from base.file import File
+from utils.helper import Helper
 
 LOGGER = Log.get_logger()
 files_blueprint = Blueprint('files', __name__)
@@ -30,7 +32,14 @@ def files():
     Process - Search IMAGE_FILES for *.tar.gz. *.tar.bz2 files.
     Output - List of available files.
     """
-    response, access_code = File().get_files_list()
+    access_code=503
+    status, response = File().get_files_list()
+    if status is True:
+        access_code=200
+        response=dumps(response)
+    else:
+        access_code=Helper().get_access_code(status, response)
+        response={'message': response}
     return response, access_code
 
 
@@ -41,5 +50,13 @@ def files_get(filename=None):
     Process - Make available file to download.
     Output - File
     """
-    response, access_code = File().get_file(filename=filename, http_request=request)
+    access_code=503
+    status, response = File().get_file(filename=filename, http_request=request)
+    if status is True:
+        access_code=200
+        return response, access_code
+    else:
+        access_code=Helper().get_access_code(status, response)
+        response={'message': response}
     return response, access_code
+

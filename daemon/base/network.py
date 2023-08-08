@@ -39,6 +39,7 @@ class Network():
         """
         This method will return all the network in detailed format.
         """
+        status=False
         networks = Database().get_record(None, 'network', None)
         if networks:
             response = {'config': {'network': {} }}
@@ -54,18 +55,19 @@ class Network():
                 else:
                     network['dhcp'] = True
                 response['config']['network'][network['name']] = network
-            access_code = 200
+            status=True
         else:
             self.logger.error('No networks is available.')
-            response = {'message': 'No networks is available'}
-            access_code = 404
-        return dumps(response), access_code
+            response = 'No networks is available'
+            status=False
+        return status, response
 
 
     def get_network(self, name=None):
         """
         This method will return requested network in detailed format.
         """
+        status=False
         networks = Database().get_record(None, 'network', f' WHERE `name` = "{name}"')
         if networks:
             response = {'config': {'network': {} }}
@@ -81,18 +83,20 @@ class Network():
                 else:
                     network['dhcp'] = True
                 response['config']['network'][name] = network
-            access_code = 200
+            status=True
         else:
             self.logger.error(f'Network {name} is not available.')
-            response = {'message': f'Network {name} is not available'}
-            access_code = 404
-        return dumps(response), access_code
+            response = f'Network {name} is not available'
+            status=False
+        return status, response
 
 
     def update_network(self, name=None, http_request=None):
         """
         This method will create or update a network.
         """
+        status=True
+        response="Internal error"
         data = {}
         create, update = False, False
         request_data = http_request.data
@@ -107,9 +111,8 @@ class Network():
                     where = f' WHERE `name` = "{newnetname}"'
                     check_network = Database().get_record(None, 'network', where)
                     if check_network:
-                        response = {'message': f'{newnetname} already present in database'}
-                        access_code = 404
-                        return dumps(response), access_code
+                        status=False
+                        return status, f'{newnetname} already present in database'
                     else:
                         data['name'] = data['newnetname']
                         del data['newnetname']
@@ -133,43 +136,37 @@ class Network():
                                 # we have to remove the gateway if we did not get a new one and an
                                 # existing is in place. should we warn the user? pending
                 else:
-                    response = {'message': f'Incorrect network IP: {data["network"]}'}
-                    access_code = 404
-                    return dumps(response), access_code
+                    status=False
+                    return status, f'Invalid request: Incorrect network IP: {data["network"]}'
             elif network:
                 # we fetch what we have from the DB
                 data['network'] = network[0]['network']
                 data['subnet'] = network[0]['subnet']
             else:
-                message = 'Not enough details provided. network/subnet in CIDR notation expected'
-                response = {'message': message}
-                access_code = 404
-                return dumps(response), access_code
+                status=False
+                return status, 'Invalid request: Not enough details provided. network/subnet in CIDR notation expected'
             if 'gateway' in data:
                 gateway_details = Helper().check_ip_range(
                     data['gateway'],
                     data['network'] + '/' + data['subnet']
                 )
                 if (not gateway_details) and data['gateway'] != '':
-                    response = {'message': f'Incorrect gateway IP: {data["gateway"]}'}
-                    access_code = 404
-                    return dumps(response), access_code
+                    status=False
+                    return status, f'Invalid request: Incorrect gateway IP: {data["gateway"]}'
             if 'nameserver_ip' in data:
                 nsip_details = Helper().check_ip_range(
                     data['nameserver_ip'],
                     data['network'] + '/' + data['subnet']
                 )
                 if (not nsip_details) and data['nameserver_ip'] != '':
-                    response = {'message': f'Incorrect Nameserver IP: {data["nameserver_ip"]}'}
-                    access_code = 404
-                    return dumps(response), access_code
+                    status=False
+                    return status, f'Invalid request: Incorrect Nameserver IP: {data["nameserver_ip"]}'
             if 'ntp_server' in data:
                 subnet = data['network'] + '/' + data['subnet']
                 ntp_details = Helper().check_ip_range(data['ntp_server'], subnet)
                 if (not ntp_details) and data['ntp_server'] != '':
-                    response = {'message': f'Incorrect NTP Server IP: {data["ntp_server"]}'}
-                    access_code = 404
-                    return dumps(response), access_code
+                    status=False
+                    return status, f'Invalid request: Incorrect NTP Server IP: {data["ntp_server"]}'
             if 'dhcp' in data:
                 data['dhcp'] = Helper().bool_to_string(data['dhcp'])
                 self.logger.info(f"dhcp is set to {data['dhcp']}")
@@ -177,24 +174,20 @@ class Network():
                     subnet = data['network']+'/'+data['subnet']
                     dhcp_start_details = Helper().check_ip_range(data['dhcp_range_begin'], subnet)
                     if not dhcp_start_details:
-                        response = {'message': f'Incorrect dhcp start: {data["dhcp_range_begin"]}'}
-                        access_code = 404
-                        return dumps(response), access_code
+                        status=False
+                        return status, f'Invalid request: Incorrect dhcp start: {data["dhcp_range_begin"]}'
                 elif data['dhcp'] != "0":
-                    response = {'message': 'DHCP start range is a required parameter'}
-                    access_code = 400
-                    return dumps(response), access_code
+                    status=False
+                    return status, f'Invalid request: DHCP start range is a required parameter'
                 if 'dhcp_range_end' in data:
                     subnet = data['network']+'/'+data['subnet']
                     dhcp_end_details = Helper().check_ip_range(data['dhcp_range_end'], subnet)
                     if not dhcp_end_details:
-                        response = {'message': f'Incorrect dhcp end: {data["dhcp_range_end"]}'}
-                        access_code = 404
-                        return dumps(response), access_code
+                        status=False
+                        return status, f'Invalid request: Incorrect dhcp end: {data["dhcp_range_end"]}'
                 elif data['dhcp'] != "0":
-                    response = {'message': 'DHCP end range is a required parameter'}
-                    access_code = 400
-                    return dumps(response), access_code
+                    status=False
+                    return status, f'Invalid request: DHCP end range is a required parameter'
                 if data['dhcp'] == "1":
                     dhcp_size = Helper().get_ip_range_size(
                         data['dhcp_range_begin'],
@@ -222,20 +215,19 @@ class Network():
                 row = Helper().make_rows(data)
                 if create:
                     Database().insert('network', row)
-                    response = {'message': f'Network {name} created successfully'}
-                    access_code = 201
-                if update:
+                    response = f'Network {name} created successfully'
+                    status=True
+                elif update:
                     if redistribute_ipaddress:
                         nwk_size = Helper().get_network_size(data['network'], data['subnet'])
                         avail = nwk_size - dhcp_size
                         if avail < used_ips:
-                            message = f'The proposed network config allows for {nwk_size} ip '
-                            message += f'addresses. DHCP range will occupy {dhcp_size} ip '
-                            message += 'addresses. The request will not accomodate for the '
-                            message += f'currently  {used_ips} in use ip addresses.'
-                            response = {'message': message}
-                            access_code = 404
-                            return dumps(response), access_code
+                            response = f'The proposed network config allows for {nwk_size} ip '
+                            response += f'addresses. DHCP range will occupy {dhcp_size} ip '
+                            response += 'addresses. The request will not accomodate for the '
+                            response += f'currently {used_ips} in use ip addresses.'
+                            status=False
+                            return status, response
                     where = [{"column": "id", "value": networkid}]
                     Database().update('network', row, where)
                     # TWANNIE
@@ -257,42 +249,42 @@ class Network():
                             )
                             executor.shutdown(wait=False)
                             # Config().update_interface_ipaddress_on_network_change(name)
-                    response = {'message': f'Network {name} updated successfully'}
-                    access_code = 204
+                    response = f'Network {name} updated successfully'
+                    status=True
                 Service().queue('dns','restart')
                 Service().queue('dhcp','restart')
                 # technically only needed when dhcp changes, but it doesn't hurt to just do it
             else:
-                response = {'message': 'Columns are incorrect'}
-                access_code = 400
-                return dumps(response), access_code
+                status=False
+                response='Invalid request: Columns are incorrect'
         else:
-            response = {'message': 'Did not received data'}
-            access_code = 400
-            return dumps(response), access_code
-        return dumps(response), access_code
+            status=False
+            response='Invalid request: Did not receive data'
+        return status, response
 
 
     def delete_network(self, name=None):
         """
         This method will delete a network.
         """
+        status=False
         network = Database().get_record(None, 'network', f' WHERE `name` = "{name}"')
         if network:
             Database().delete_row('network', [{"column": "name", "value": name}])
             Service().queue('dns','restart')
-            response = {'message': 'Network removed'}
-            access_code = 204
+            response = 'Network removed'
+            status=True
         else:
-            response = {'message': f'Network {name} not present in database'}
-            access_code = 404
-        return dumps(response), access_code
+            response = f'Network {name} not present in database'
+            status=False
+        return status, response
 
 
     def network_ip(self, name=None, ipaddress=None):
         """
         This method will identifies the requested ipaddress is available or not.
         """
+        status=False
         network = Database().get_record(None, 'network', f' WHERE `name` = "{name}"')
         if network:
             ip_with_subnet = network[0]['network'] + '/' + network[0]['subnet']
@@ -302,32 +294,31 @@ class Network():
                 check_ip = Database().get_record(None, 'ipaddress', where)
                 if check_ip:
                     response = {'config': {'network': {ipaddress: {'status': 'taken'} } } }
-                    access_code = 200
+                    status=True
                 else:
                     response = {'config': {'network': {ipaddress: {'status': 'free'} } } }
-                    access_code = 200
+                    status=True
             else:
-                response = {'message': f'{ipaddress} is not in the range'}
-                access_code = 404
-                return dumps(response), access_code
+                response = f'{ipaddress} is not in the range'
+                status=False
         else:
-            response = {'message': f'Network {name} not present in database'}
-            access_code = 404
-        return dumps(response), access_code
+            response = f'Network {name} not present in database'
+            status=False
+        return status, response
 
 
     def next_free_ip(self, name=None):
         """
         This method will identify the next available ipaddress on a network.
         """
-        response = {'message': f'Network {name} not present in database'}
-        access_code = 404
+        response = f'Network {name} not present in database'
+        status=False
         #Antoine
         ips = Config().get_all_occupied_ips_from_network(name)
         network = Database().get_record(None, 'network', f' WHERE `name` = "{name}"')
         avail = None
         if network:
-            response = {'message': f'Network {name} has no free addresses'}
+            response = f'Network {name} has no free addresses'
             ret = 0
             max_count = 10
             # we try to ping for 10 ips, if none of these are free, something else is going on
@@ -339,10 +330,10 @@ class Network():
                 max_count-=1
         if avail:
             response = {'config': {'network': {name: {'nextip': avail} } } }
-            access_code = 200
+            status=True
         else:
-            response = {'message': f'network {name} does not provide for any free IP address'}
-        return dumps(response), access_code
+            response = f'network {name} does not provide for any free IP address'
+        return status, response
 
 
     def taken_ip(self, name=None):
@@ -353,6 +344,7 @@ class Network():
         # Need to convert in Join query.
         # Get ipaddress from ipaddress table and device name which have the network name provided.
         # device can be node, controller, switch, otherdevices. Remember nodeinterface table.
+        status=False
         taken = []
         network_id = Database().id_by_name('network', name)
         if network_id:
@@ -380,13 +372,13 @@ class Network():
                     taken.append({'ipaddress': each['ipaddress'], 'device': device_name})
                     device_name = ""
                 response = {'config': {'network': {name: {'taken': taken} } } }
-                access_code = 200
+                status=True
                 self.logger.info(response)
             else:
-                response = {'message': f'All IP Address are free on Network {name}. None is Taken.'}
-                access_code = 404
-
+                response = 'All IP Address are free on Network {name}. None is Taken.'
+                status=False
         else:
-            response = {'message': f'Network {name} not present in database.'}
-            access_code = 404
-        return dumps(response), access_code
+            response = f'Network {name} not present in database.'
+            status=False
+        return status, response
+

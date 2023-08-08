@@ -39,34 +39,35 @@ class OtherDev():
         """
         This method will return all the other devices in detailed format.
         """
-        response, access_code = Model().get_record(
+        status, response = Model().get_record(
             table = self.table,
             table_cap = self.table_cap,
             ip_check = True,
             new_table = 'otherdev'
         )
-        return response, access_code
+        return status, response
 
 
     def get_otherdev(self, name=None):
         """
         This method will return requested other device in detailed format.
         """
-        response, access_code = Model().get_record(
+        status, response = Model().get_record(
             name = name,
             table = self.table,
             table_cap = self.table_cap,
             ip_check = True,
             new_table = 'otherdev'
         )
-        return response, access_code
+        return status, response
 
 
     def update_otherdev(self, name=None, http_request=None):
         """
         This method will create or update a other device.
         """
-        data, response = {}, {}
+        status=False
+        data, response = {}, ""
         create, update = False, False
         request_data = http_request.data
         if request_data:
@@ -96,17 +97,16 @@ class OtherDev():
                 if column_check:
                     if create:
                         device_id = Database().insert(self.table, row)
-                        response = {'message': f'Device {name} created successfully'}
-                        access_code = 201
+                        response = f'Device {name} created successfully'
+                        status=True
                     if update:
                         where = [{"column": "id", "value": device_id}]
                         Database().update(self.table, row, where)
-                        response = {'message': f'Device {name} updated successfully'}
-                        access_code = 204
+                        response = f'Device {name} updated successfully'
+                        status=True
                 else:
-                    response = {'message': 'Columns are incorrect'}
-                    access_code = 400
-                    return dumps(response), access_code
+                    status=False
+                    return status, 'Invalid request: Columns are incorrect'
             # Antoine --->> interface(s) update/create -------------
             if ipaddress or network:
                 result, message = Config().device_ipaddress_config(
@@ -116,23 +116,24 @@ class OtherDev():
                     network
                 )
                 if result is False:
-                    response = {'message': f'{message}'}
-                    access_code = 404
+                    response = f'{message}'
+                    status=False
                 else:
                     Service().queue('dhcp','restart')
                     Service().queue('dns','restart')
-            return dumps(response), access_code
+            return status, response
         else:
-            response = {'message': 'Did not received data'}
-            access_code = 400
-        return dumps(response), access_code
+            response = 'Invalid request: Did not receive data'
+            status=False
+        return status, response
 
 
     def clone_otherdev(self, name=None, http_request=None):
         """
         This method will clone a other device.
         """
-        data, response = {}, {}
+        status=False
+        data, response = {}, ""
         create = False
         ipaddress, networkname = None, None
         request_data = http_request.data
@@ -143,15 +144,13 @@ class OtherDev():
                 newotherdevname = data['newotherdevname']
                 del data['newotherdevname']
             else:
-                response = {'message': 'New device name not provided'}
-                access_code = 400
-                return dumps(response), access_code
+                status=False
+                return status, 'Invalid request: New device name not provided'
             where = f' WHERE `name` = "{newotherdevname}"'
             device = Database().get_record(table=self.table, where=where)
             if device:
-                response = {'message': f'{newotherdevname} already present in database'}
-                access_code = 404
-                return dumps(response), access_code
+                status=False
+                return status, f'{newotherdevname} already present in database'
             else:
                 create = True
             ipaddress, network = None, None
@@ -176,11 +175,9 @@ class OtherDev():
                         row = Helper().make_rows(data)
                         device_id = Database().insert(self.table, row)
                         if not device_id:
-                            response = {'message': 'Device not cloned due to clashing config'}
-                            access_code = 404
-                            self.logger.info(f"my response: {response}")
-                            return dumps(response), access_code
-                        access_code = 201
+                            status=False
+                            return status, 'Device not cloned due to clashing config'
+                        status=True
                         network = None
                         if networkname:
                             network = Database().get_record_join(
@@ -234,10 +231,8 @@ class OtherDev():
                                 if avail:
                                     ipaddress = avail
                             else:
-                                response = {'message': 'Network and ipaddress not provided'}
-                                access_code = 400
-                                self.logger.info(f"my response: {response}")
-                                return dumps(response), access_code
+                                status=False
+                                return status, 'Invalid request: Network and ipaddress not provided'
                         result, message = Config().device_ipaddress_config(
                             device_id,
                             self.table,
@@ -248,32 +243,33 @@ class OtherDev():
                             where = [{"column": "id", "value": device_id}]
                             Database().delete_row(self.table, where)
                             # roll back
-                            access_code = 404
-                            response = {'message': f'{message}'}
+                            status=False
+                            response = f'{message}'
                         else:
                             Service().queue('dhcp', 'restart')
                             Service().queue('dns', 'restart')
-                            response = {'message': 'Device created'}
+                            response = 'Device created'
                 else:
-                    response = {'message': 'Columns are incorrect'}
-                    access_code = 400
+                    response = 'Invalid request: Columns are incorrect'
+                    status=False
             else:
-                response = {'message': 'Not enough details to create the device'}
-                access_code = 400
+                response = 'Invalid request: Not enough details to create the device'
+                status=False
         else:
-            response = {'message': 'Did not received data'}
-            access_code = 400
-        return dumps(response), access_code
+            response = 'Invalid request: Did not receive data'
+            status=False
+        return status, response
 
 
     def delete_otherdev(self, name=None):
         """
         This method will delete a other device.
         """
-        response, access_code = Model().delete_record(
+        status, response = Model().delete_record(
             name = name,
             table = self.table,
             table_cap = self.table_cap,
             ip_check = True
         )
-        return response, access_code
+        return status, response
+

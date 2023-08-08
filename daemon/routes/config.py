@@ -32,6 +32,8 @@ from base.otherdev import OtherDev
 from base.network import Network
 from base.secret import Secret
 from base.osuser import OsUser
+from utils.helper import Helper
+from utils.status import Status
 
 LOGGER = Log.get_logger()
 config_blueprint = Blueprint('config', __name__)
@@ -43,15 +45,13 @@ def config_node():
     """
     This api will send all the nodes in details.
     """
-    # TODO
-    # we collect all needed info from all tables at once and use dicts to collect data/info
-    # A join is not really suitable as there are too many permutations in where the below
-    # is way more efficient. -Antoine
     access_code = 404
     status, response = Node().get_all_nodes()
     if status is True:
         access_code = 200
         response = dumps(response)
+    else:
+        response = {'message': response}
     return response, access_code
 
 
@@ -68,6 +68,8 @@ def config_node_get(cli=None, name=None):
     if status is True:
         access_code = 200
         response = dumps(response)
+    else:
+        response = {'message': response}
     return response, access_code
 
 
@@ -79,7 +81,9 @@ def config_node_post(name=None):
     """
     This api will create or update a node depends on the availability of the node name.
     """
-    response, access_code = Node().update_node(name, request)
+    status, response = Node().update_node(name, request)
+    access_code=Helper().get_access_code(status,response)
+    response = {'message': response}
     return response, access_code
 
 
@@ -91,7 +95,9 @@ def config_node_clone(name=None):
     """
     This api will clone a node depends on the availability of the node name.
     """
-    response, access_code = Node().clone_node(name, request)
+    status, response = Node().clone_node(name, request)
+    access_code=Helper().get_access_code(status,response)
+    response = {'message': response}
     return response, access_code
 
 
@@ -105,7 +111,9 @@ def config_node_delete(name=None):
     Process - Delete the Node and it's interfaces.
     Output - Success or Failure.
     """
-    response, access_code = Node().delete_node(name)
+    status, response = Node().delete_node(name)
+    access_code=Helper().get_access_code(status,response)
+    response = {'message': response}
     return response, access_code
 
 
@@ -120,7 +128,19 @@ def config_node_osgrab(name=None):
     Process - Grab the OS from a node into an image. node inside json.
     Output - Success or Failure.
     """
-    response, access_code = OSImage().grab(name, request)
+    access_code=404
+    returned = OSImage().grab(name, request)
+    status=returned[0]
+    response=returned[1]
+    if status is True:
+        access_code=200
+        if len(returned)==3:
+            request_id=returned[2]
+            response = {"message": response, "request_id": request_id}
+        else:
+            response = {'message': response}
+    else:
+        response = {'message': response}
     return response, access_code
 
 
@@ -135,7 +155,19 @@ def config_node_ospush(name=None):
     Process - Push the OS from an image to a node. node inside json
     Output - Success or Failure.
     """
-    response, access_code = OSImage().push(name, request)
+    access_code=404
+    returned = OSImage().push(name, request)
+    status=returned[0]
+    response=returned[1]
+    if status is True:
+        access_code=200
+        if len(returned)==3:
+            request_id=returned[2]
+            response = {"message": response, "request_id": request_id}
+        else:
+            response = {'message': response}
+    else:
+        response = {'message': response}
     return response, access_code
 
 
@@ -148,7 +180,13 @@ def config_node_get_interfaces(name=None):
     Process - Fetch the Node Interface List.
     Output - Node Interface List.
     """
-    response, access_code = Interface().get_all_node_interface(name)
+    access_code=404
+    status, response = Interface().get_all_node_interface(name)
+    if status is True:
+        access_code = 200
+        response = dumps(response)
+    else:
+        response = {'message': response}
     return response, access_code
 
 
@@ -162,7 +200,9 @@ def config_node_post_interfaces(name=None):
     Process - Create Or Update The Node Interface.
     Output - Node Interface.
     """
-    response, access_code = Interface().change_node_interface(name, request)
+    status, response = Interface().change_node_interface(name, request)
+    access_code=Helper().get_access_code(status,response)
+    response = {'message': response}
     return response, access_code
 
 
@@ -175,7 +215,13 @@ def config_node_interface_get(name=None, interface=None):
     Process - Get the Node Interface.
     Output - Success or Failure.
     """
-    response, access_code = Interface().get_node_interface(name, interface)
+    access_code=404
+    status, response = Interface().get_node_interface(name, interface)
+    if status is True:
+        access_code = 200
+        response = dumps(response)
+    else:
+        response = {'message': response}
     return response, access_code
 
 
@@ -189,7 +235,9 @@ def config_node_delete_interface(name=None, interface=None):
     Process - Delete the Node Interface.
     Output - Success or Failure.
     """
-    response, access_code = Interface().delete_node_interface(name, interface)
+    status, response = Interface().delete_node_interface(name, interface)
+    access_code=Helper().get_access_code(status,response)
+    response = {'message': response}
     return response, access_code
 
 ############################# Group configuration #############################
@@ -204,10 +252,12 @@ def config_group():
     Output - Group Info.
     """
     access_code=404
-    ret, response = Group().get_all_group()
-    if ret is True:
+    status, response = Group().get_all_group()
+    if status is True:
         access_code=200
-        return dumps(response),access_code
+        response=dumps(response)
+    else:
+        response = {'message': response}
     return response, access_code
 
 
@@ -223,10 +273,12 @@ def config_group_get(cli=None, name=None):
     Output - Group Info.
     """
     access_code = 404
-    ret, response = Group().get_group(cli, name)
-    if ret is True:
+    status, response = Group().get_group(cli, name)
+    if status is True:
         access_code = 200
-        return dumps(response),access_code
+        response=dumps(response)
+    else:
+        response = {'message': response}
     return response, access_code
 
 
@@ -238,7 +290,13 @@ def config_group_member(name=None):
     This method will fetch all the nodes, which is connected to
     the provided group.
     """
-    response, access_code = Group().get_group_member(name)
+    access_code=404
+    status, response = Group().get_group_member(name)
+    if status is True:
+        access_code = 200
+        response=dumps(response)
+    else:
+        response = {'message': response}
     return response, access_code
 
 
@@ -252,7 +310,9 @@ def config_group_post(name=None):
     Process - Create Or Update The Groups.
     Output - Group Information.
     """
-    response, access_code = Group().update_group(name, request)
+    status, response = Group().update_group(name, request)
+    access_code=Helper().get_access_code(status,response)
+    response = {'message': response}
     return response, access_code
 
 
@@ -267,7 +327,19 @@ def config_group_ospush(name=None):
     Process - Push the OS from an image to a all nodes in the group. node inside json
     Output - Success or Failure.
     """
-    response, access_code = OSImage().push(name, request)
+    access_code=404
+    returned = OSImage().push(name, request)
+    status=returned[0]
+    response=returned[1]
+    if status is True:
+        access_code=200
+        if len(returned)==3:
+            request_id=returned[2]
+            response = {"message": response, "request_id": request_id}
+        else:
+            response = {'message': response}
+    else:
+        response = {'message': response}
     return response, access_code
 
 
@@ -282,7 +354,9 @@ def config_group_clone(name=None):
     Process - Create Or Update The Groups.
     Output - Group Information.
     """
-    response, access_code = Group().clone_group(name, request)
+    status, response = Group().clone_group(name, request)
+    access_code=Helper().get_access_code(status,response)
+    response = {'message': response}
     return response, access_code
 
 
@@ -296,7 +370,9 @@ def config_group_delete(name=None):
     Process - Delete the Group and it's interfaces.
     Output - Success or Failure.
     """
-    response, access_code = Group().delete_group(name)
+    status, response = Group().delete_group(name)
+    access_code=Helper().get_access_code(status,response)
+    response = {'message': response}
     return response, access_code
 
 
@@ -309,7 +385,13 @@ def config_group_get_interfaces(name=None):
     Process - Fetch the Group Interface List.
     Output - Group Interface List.
     """
-    response, access_code = Interface().get_all_group_interface(name)
+    access_code=404
+    status, response = Interface().get_all_group_interface(name)
+    if status is True:
+        access_code = 200
+        response = dumps(response)
+    else:
+        response = {'message': response}
     return response, access_code
 
 
@@ -324,7 +406,9 @@ def config_group_post_interfaces(name=None):
     Process - Create Or Update The Group Interface.
     Output - Group Interface.
     """
-    response, access_code = Interface().change_group_interface(name, request)
+    status, response = Interface().change_group_interface(name, request)
+    access_code=Helper().get_access_code(status,response)
+    response = {'message': response}
     return response, access_code
 
 
@@ -337,7 +421,13 @@ def config_group_interface_get(name=None, interface=None):
     Process - Get the Group Interface.
     Output - Success or Failure.
     """
-    response, access_code = Interface().get_group_interface(name, interface)
+    access_code=404
+    status, response = Interface().get_group_interface(name, interface)
+    if status is True:
+        access_code = 200
+        response = dumps(response)
+    else:
+        response = {'message': response}
     return response, access_code
 
 
@@ -350,7 +440,9 @@ def config_group_delete_interface(name=None, interface=None):
     Process - Delete the Group Interface.
     Output - Success or Failure.
     """
-    response, access_code = Interface().delete_group_interface(name, interface)
+    status, response = Interface().delete_group_interface(name, interface)
+    access_code=Helper().get_access_code(status,response)
+    response = {'message': response}
     return response, access_code
 
 ############################# OSimage configuration #############################
@@ -362,7 +454,13 @@ def config_osimage():
     Process - Fetch the OS Image information.
     Output - OSImage Info.
     """
-    response, access_code = OSImage().get_all_osimages()
+    access_code=404
+    status, response = OSImage().get_all_osimages()
+    if status is True:
+        access_code = 200
+        response = dumps(response)
+    else:
+        response = {'message': response}
     return response, access_code
 
 
@@ -374,7 +472,13 @@ def config_osimage_get(name=None):
     Process - Fetch the OS Image information.
     Output - OSImage Info.
     """
-    response, access_code = OSImage().get_osimage(name)
+    access_code=404
+    status, response = OSImage().get_osimage(name)
+    if status is True:
+        access_code = 200
+        response = dumps(response)
+    else:
+        response = {'message': response}
     return response, access_code
 
 
@@ -386,7 +490,13 @@ def config_osimage_member(name=None):
     This method will fetch all the nodes, which is connected to
     the provided osimage.
     """
-    response, access_code = OSImage().get_osimage_member(name)
+    access_code=404
+    status, response = OSImage().get_osimage_member(name)
+    if status is True:
+        access_code = 200
+        response = dumps(response)
+    else:
+        response = {'message': response}
     return response, access_code
 
 
@@ -400,7 +510,9 @@ def config_osimage_post(name=None):
     Process - Create or Update the OS Image information.
     Output - OSImage Info.
     """
-    response, access_code = OSImage().update_osimage(name, request)
+    status, response = OSImage().update_osimage(name, request)
+    access_code=Helper().get_access_code(status,response)
+    response = {'message': response}
     return response, access_code
 
 
@@ -415,7 +527,19 @@ def config_osimage_clone(name=None):
     Process - Clone OS Image information.
     Output - OSImage Info.
     """
-    response, access_code = OSImage().clone_osimage(name, request)
+    access_code=404
+    returned = OSImage().clone_osimage(name, request)
+    status=returned[0]
+    response=returned[1]
+    if status is True:
+        access_code=200
+        if len(returned)==3:
+            request_id=returned[2]
+            response = {"message": response, "request_id": request_id}
+        else:
+            response = {'message': response}
+    else:
+        response = {'message': response}
     return response, access_code
 
 
@@ -428,7 +552,9 @@ def config_osimage_delete(name=None):
     Process - Delete the OS Image.
     Output - Success or Failure.
     """
-    response, access_code = OSImage().delete_osimage(name)
+    status, response = OSImage().delete_osimage(name)
+    access_code=Helper().get_access_code(status,response)
+    response = {'message': response}
     return response, access_code
 
 
@@ -442,7 +568,19 @@ def config_osimage_pack(name=None):
     Process - Manually Pack the OS Image.
     Output - Success or Failure.
     """
-    response, access_code = OSImage().pack(name)
+    access_code=404
+    returned = OSImage().pack(name)
+    status=returned[0]
+    response=returned[1]
+    if status is True:
+        access_code=200
+        if len(returned)==3:
+            request_id=returned[2]
+            response = {"message": response, "request_id": request_id}
+        else:
+            response = {'message': response}
+    else:
+        response = {'message': response}
     return response, access_code
 
 
@@ -456,7 +594,9 @@ def config_osimage_kernel_post(name=None):
     Process - Manually change kernel version.
     Output - Kernel Version.
     """
-    response, access_code = OSImage().change_kernel(name, request)
+    status, response = OSImage().change_kernel(name, request)
+    access_code=Helper().get_access_code(status,response)
+    response = {'message': response}
     return response, access_code
 
 
@@ -472,7 +612,13 @@ def config_cluster():
     Process - Fetch The Cluster Information.
     Output - Cluster Information.
     """
-    response, access_code = Cluster().information()
+    access_code=404
+    status, response = Cluster().information()
+    if status is True:
+        access_code=200
+        response=dumps(response)
+    else:
+        response = {'message': response}
     return response, access_code
 
 
@@ -485,7 +631,9 @@ def config_cluster_post():
     Process - Fetch The Cluster Information.
     Output - Cluster Information.
     """
-    response, access_code = Cluster().update_cluster(request)
+    status, response = Cluster().update_cluster(request)
+    access_code=Helper().get_access_code(status,response)
+    response = {'message': response}
     return response, access_code
 
 
@@ -497,7 +645,13 @@ def config_bmcsetup():
     """
     This route will provide all the BMC Setup's.
     """
-    response, access_code = BMCSetup().get_all_bmcsetup()
+    access_code=404
+    status, response = BMCSetup().get_all_bmcsetup()
+    if status is True:
+        access_code=200
+        response=dumps(response)
+    else:
+        response = {'message': response}
     return response, access_code
 
 
@@ -508,7 +662,13 @@ def config_bmcsetup_get(name=None):
     """
     This route will provide a requested BMC Setup.
     """
-    response, access_code = BMCSetup().get_bmcsetup(name)
+    access_code=404
+    status, response = BMCSetup().get_bmcsetup(name)
+    if status is True:
+        access_code=200
+        response=dumps(response)
+    else:
+        response = {'message': response}
     return response, access_code
 
 
@@ -519,7 +679,13 @@ def config_bmcsetup_member(name=None):
     """
     This route will provide the list of nodes which is connected to the requested BMC Setup.
     """
-    response, access_code = BMCSetup().get_bmcsetup_member(name)
+    access_code=404
+    status, response = BMCSetup().get_bmcsetup_member(name)
+    if status is True:
+        access_code=200
+        response=dumps(response)
+    else:
+        response = {'message': response}
     return response, access_code
 
 
@@ -531,7 +697,9 @@ def config_bmcsetup_post(name=None):
     """
     This route will create or update requested BMC Setup.
     """
-    response, access_code = BMCSetup().update_bmcsetup(name, request)
+    status, response = BMCSetup().update_bmcsetup(name, request)
+    access_code=Helper().get_access_code(status,response)
+    response = {'message': response}
     return response, access_code
 
 
@@ -543,7 +711,9 @@ def config_bmcsetup_clone(name=None):
     """
     This route will clone a requested BMC Setup.
     """
-    response, access_code = BMCSetup().clone_bmcsetup(name, request)
+    status, response = BMCSetup().clone_bmcsetup(name, request)
+    access_code=Helper().get_access_code(status,response)
+    response = {'message': response}
     return response, access_code
 
 
@@ -554,7 +724,9 @@ def config_bmcsetup_delete(name=None):
     """
     This route will delete a requested BMC Setup.
     """
-    response, access_code = BMCSetup().delete_bmcsetup(name)
+    status, response = BMCSetup().delete_bmcsetup(name)
+    access_code=Helper().get_access_code(status,response)
+    response = {'message': response}
     return response, access_code
 
 
@@ -566,7 +738,13 @@ def config_switch():
     """
     This route will provide all the Switches.
     """
-    response, access_code = Switch().get_all_switches()
+    access_code=404
+    status, response = Switch().get_all_switches()
+    if status is True:
+        access_code=200
+        response=dumps(response)
+    else:
+        response = {'message': response}
     return response, access_code
 
 
@@ -577,7 +755,13 @@ def config_switch_get(name=None):
     """
     This route will provide a requested Switch.
     """
-    response, access_code = Switch().get_switch(name)
+    access_code=404
+    status, response = Switch().get_switch(name)
+    if status is True:
+        access_code=200
+        response=dumps(response)
+    else:
+        response = {'message': response}
     return response, access_code
 
 
@@ -589,7 +773,9 @@ def config_switch_post(name=None):
     """
     This route will create or update a requested Switch.
     """
-    response, access_code = Switch().update_switch(name, request)
+    status, response = Switch().update_switch(name, request)
+    access_code=Helper().get_access_code(status,response)
+    response = {'message': response}
     return response, access_code
 
 
@@ -601,7 +787,9 @@ def config_switch_clone(name=None):
     """
     This route will clone a requested Switch.
     """
-    response, access_code = Switch().clone_switch(name, request)
+    status, response = Switch().clone_switch(name, request)
+    access_code=Helper().get_access_code(status,response)
+    response = {'message': response}
     return response, access_code
 
 
@@ -612,7 +800,9 @@ def config_switch_delete(name=None):
     """
     This route will delete a requested Switch.
     """
-    response, access_code = Switch().delete_switch(name)
+    status, response = Switch().delete_switch(name)
+    access_code=Helper().get_access_code(status,response)
+    response = {'message': response}
     return response, access_code
 
 ############################# Other Devices configuration #############################
@@ -623,7 +813,13 @@ def config_otherdev():
     """
     This route will provide all the Other Devices.
     """
-    response, access_code = OtherDev().get_all_otherdev()
+    access_code=404
+    status, response = OtherDev().get_all_otherdev()
+    if status is True:
+        access_code=200
+        response=dumps(response)
+    else:
+        response = {'message': response}
     return response, access_code
 
 
@@ -634,7 +830,13 @@ def config_otherdev_get(name=None):
     """
     This route will provide a requested Other Device.
     """
-    response, access_code = OtherDev().get_otherdev(name)
+    access_code=404
+    status, response = OtherDev().get_otherdev(name)
+    if status is True:
+        access_code=200
+        response=dumps(response)
+    else:
+        response = {'message': response}
     return response, access_code
 
 
@@ -646,7 +848,9 @@ def config_otherdev_post(name=None):
     """
     This route will create or update a requested Other Device.
     """
-    response, access_code = OtherDev().update_otherdev(name, request)
+    status, response = OtherDev().update_otherdev(name, request)
+    access_code=Helper().get_access_code(status,response)
+    response = {'message': response}
     return response, access_code
 
 
@@ -658,7 +862,9 @@ def config_otherdev_clone(name=None):
     """
     This route will clone a requested Other Device.
     """
-    response, access_code = OtherDev().clone_otherdev(name, request)
+    status, response = OtherDev().clone_otherdev(name, request)
+    access_code=Helper().get_access_code(status,response)
+    response = {'message': response}
     return response, access_code
 
 
@@ -669,7 +875,9 @@ def config_otherdev_delete(name=None):
     """
     This route will delete a requested Other Device.
     """
-    response, access_code = OtherDev().delete_otherdev(name)
+    status, response = OtherDev().delete_otherdev(name)
+    access_code=Helper().get_access_code(status,response)
+    response = {'message': response}
     return response, access_code
 
 ############################# Network configuration #############################
@@ -682,7 +890,13 @@ def config_network():
     Process - Fetch The Network Information.
     Output - Network Information.
     """
-    response, access_code = Network().get_all_networks()
+    access_code=404
+    status,response = Network().get_all_networks()
+    if status is True:
+        access_code=200
+        response=dumps(response)
+    else:
+        response = {'message': response}
     return response, access_code
 
 
@@ -695,7 +909,13 @@ def config_network_get(name=None):
     Process - Fetch The Network Information.
     Output - Network Information.
     """
-    response, access_code = Network().get_network(name)
+    access_code=404
+    status, response = Network().get_network(name)
+    if status is True:
+        access_code=200
+        response=dumps(response)
+    else:
+        response = {'message': response}
     return response, access_code
 
 
@@ -709,7 +929,9 @@ def config_network_post(name=None):
     Process - Create or Update Network information.
     Output - Success or Failure.
     """
-    response, access_code = Network().update_network(name, request)
+    status, response = Network().update_network(name, request)
+    access_code=Helper().get_access_code(status,response)
+    response = {'message': response}
     return response, access_code
 
 
@@ -722,20 +944,29 @@ def config_network_delete(name=None):
     Process - Delete The Network.
     Output - Success or Failure.
     """
-    response, access_code = Network().delete_network(name)
+    status, response = Network().delete_network(name)
+    access_code=Helper().get_access_code(status,response)
+    response = {'message': response}
     return response, access_code
 
 
+# Antoine - Aug 5 2023 - next API call will probably never be used, or not in context with a network?
 @config_blueprint.route("/config/network/<string:name>/<string:ipaddress>", methods=['GET'])
 @token_required
 @validate_name
 def config_network_ip(name=None, ipaddress=None):
     """
     Input - Network Name And IP Address
-    Process - Delete The Network.
+    Process - checks if a given ip address is free or taken for the network
     Output - Success or Failure.
     """
-    response, access_code = Network().network_ip(name, ipaddress)
+    access_code=404
+    status, response = Network().network_ip(name, ipaddress)
+    if status is True:
+        access_code=200
+        response=dumps(response)
+    else:
+        response = {'message': response}
     return response, access_code
 
 
@@ -748,7 +979,13 @@ def config_network_taken(name=None):
     Process - Find out all the ipaddress which is taken by the provided network.
     Output - List all taken ipaddress by the network.
     """
-    response, access_code = Network().taken_ip(name)
+    access_code=404
+    status, response = Network().taken_ip(name)
+    if status is True:
+        access_code=200
+        response=dumps(response)
+    else:
+        response = {'message': response}
     return response, access_code
 
 
@@ -761,7 +998,13 @@ def config_network_nextip(name=None):
     Process - Find The Next Available IP on the Network.
     Output - Next Available IP on the Network.
     """
-    response, access_code = Network().next_free_ip(name)
+    access_code=404
+    status, response = Network().next_free_ip(name)
+    if status is True:
+        access_code=200
+        response=dumps(response)
+    else:
+        response = {'message': response}
     return response, access_code
 
 ############################# Secrets configuration #############################
@@ -773,7 +1016,13 @@ def config_secrets_get():
     Input - None
     Output - Return the List Of All Secrets.
     """
-    response, access_code = Secret().get_all_secrets()
+    access_code=404
+    status, response = Secret().get_all_secrets()
+    if status is True:
+        access_code=200
+        response=dumps(response)
+    else:
+        response = {'message': response}
     return response, access_code
 
 
@@ -785,7 +1034,13 @@ def config_get_secrets_node(name=None):
     Input - Node Name
     Output - Return the Node Secrets And Group Secrets for the Node.
     """
-    response, access_code = Secret().get_node_secrets(name)
+    access_code=404
+    status, response = Secret().get_node_secrets(name)
+    if status is True:
+        access_code=200
+        response=dumps(response)
+    else:
+        response = {'message': response}
     return response, access_code
 
 
@@ -799,7 +1054,9 @@ def config_post_secrets_node(name=None):
     Process - Create Or Update Node Secrets.
     Output - None.
     """
-    response, access_code = Secret().update_node_secrets(name, request)
+    status, response = Secret().update_node_secrets(name, request)
+    access_code=Helper().get_access_code(status,response)
+    response = {'message': response}
     return response, access_code
 
 
@@ -811,7 +1068,13 @@ def config_get_node_secret(name=None, secret=None):
     Input - Node Name & Secret Name
     Output - Return the Node Secret
     """
-    response, access_code = Secret().get_node_secret(name, secret)
+    access_code=404
+    status, response = Secret().get_node_secret(name, secret)
+    if status is True:
+        access_code=200
+        response=dumps(response)
+    else:
+        response = {'message': response}
     return response, access_code
 
 
@@ -825,7 +1088,9 @@ def config_post_node_secret(name=None, secret=None):
     Process - Create Or Update Node Secrets.
     Output - None.
     """
-    response, access_code = Secret().update_node_secret(name, secret, request)
+    status, response = Secret().update_node_secret(name, secret, request)
+    access_code=Helper().get_access_code(status,response)
+    response = {'message': response}
     return response, access_code
 
 
@@ -839,7 +1104,9 @@ def config_clone_node_secret(name=None, secret=None):
     Process - Create Or Update Node Secrets.
     Output - None.
     """
-    response, access_code = Secret().clone_node_secret(name, secret, request)
+    status, response = Secret().clone_node_secret(name, secret, request)
+    access_code=Helper().get_access_code(status,response)
+    response = {'message': response}
     return response, access_code
 
 
@@ -851,7 +1118,9 @@ def config_node_secret_delete(name=None, secret=None):
     Input - Node Name & Secret Name
     Output - Success or Failure
     """
-    response, access_code = Secret().delete_node_secret(name, secret)
+    status, response = Secret().delete_node_secret(name, secret)
+    access_code=Helper().get_access_code(status,response)
+    response = {'message': response}
     return response, access_code
 
 
@@ -863,7 +1132,9 @@ def config_get_secrets_group(name=None):
     Input - Group Name
     Output - Return the Group Secrets.
     """
-    response, access_code = Secret().get_group_secrets(name)
+    status, response = Secret().get_group_secrets(name)
+    access_code=Helper().get_access_code(status,response)
+    response = {'message': response}
     return response, access_code
 
 
@@ -877,7 +1148,9 @@ def config_post_secrets_group(name=None):
     Process - Create Or Update Group Secrets.
     Output - None.
     """
-    response, access_code = Secret().update_group_secrets(name, request)
+    status, response = Secret().update_group_secrets(name, request)
+    access_code=Helper().get_access_code(status,response)
+    response = {'message': response}
     return response, access_code
 
 
@@ -889,7 +1162,13 @@ def config_get_group_secret(name=None, secret=None):
     Input - Group Name & Secret Name
     Output - Return the Group Secret
     """
-    response, access_code = Secret().get_group_secret(name, secret)
+    access_code=404
+    status, response = Secret().get_group_secret(name, secret)
+    if status is True:
+        access_code=200
+        response=dumps(response)
+    else:
+        response = {'message': response}
     return response, access_code
 
 
@@ -903,7 +1182,9 @@ def config_post_group_secret(name=None, secret=None):
     Process - Create Or Update Group Secrets.
     Output - None.
     """
-    response, access_code = Secret().update_group_secret(name, secret, request)
+    status, response = Secret().update_group_secret(name, secret, request)
+    access_code=Helper().get_access_code(status,response)
+    response = {'message': response}
     return response, access_code
 
 
@@ -917,7 +1198,9 @@ def config_clone_group_secret(name=None, secret=None):
     Process - Clone Group Secrets.
     Output - None.
     """
-    response, access_code = Secret().clone_group_secret(name, secret, request)
+    status, response = Secret().clone_group_secret(name, secret, request)
+    access_code=Helper().get_access_code(status,response)
+    response = {'message': response}
     return response, access_code
 
 
@@ -929,7 +1212,9 @@ def config_group_secret_delete(name=None, secret=None):
     Input - Group Name & Secret Name
     Output - Success or Failure
     """
-    response, access_code = Secret().delete_group_secret(name, secret)
+    status, response = Secret().delete_group_secret(name, secret)
+    access_code=Helper().get_access_code(status,response)
+    response = {'message': response}
     return response, access_code
 
 
@@ -941,13 +1226,13 @@ def config_get_os_user_list():
     Process - List OSystem (ldap/ssd/pam) group.
     Output - None.
     """
-    response, access_code = None, 404
-    ret, message = OsUser().list_users()
-    if ret is True:
+    access_code = 404
+    status, response = OsUser().list_users()
+    if status is True:
         access_code=200
-        return dumps(message), access_code
+        response=dumps(response)
     else:
-        response={'message': message}
+        response={'message': response}
     return response, access_code
 
 
@@ -959,13 +1244,13 @@ def config_get_os_group_list():
     Process - List OSystem (ldap/ssd/pam) group.
     Output - None.
     """
-    response, access_code = None, 404
-    ret, message = OsUser().list_groups()
-    if ret is True:
+    access_code = 404
+    status, response = OsUser().list_groups()
+    if status is True:
         access_code=200
-        return dumps(message), access_code
+        response=dumps(response)
     else:
-        response={'message': message}
+        response={'message': response}
     return response, access_code
 
 
@@ -979,11 +1264,9 @@ def config_post_os_user(name=None):
     Process - Create Or Update System (ldap/ssd/pam) users.
     Output - None.
     """
-    response, access_code = None, 404
-    ret, message = OsUser().update_user(name, request)
-    response={'message': message}
-    if ret is True:
-        access_code=204
+    status, response = OsUser().update_user(name, request)
+    access_code=Helper().get_access_code(status,response)
+    response = {'message': response}
     return response, access_code
 
 
@@ -996,11 +1279,9 @@ def config_post_os_user_delete(name=None):
     Process - Delete System (ldap/ssd/pam) group.
     Output - None.
     """
-    response, access_code = None, 404
-    ret, message = OsUser().delete_user(name)
-    response={'message': message}
-    if ret is True:
-        access_code=204
+    status, response = OsUser().delete_user(name)
+    access_code=Helper().get_access_code(status,response)
+    response = {'message': response}
     return response, access_code
 
 
@@ -1014,11 +1295,9 @@ def config_post_os_group(name=None):
     Process - Create Or Update System (ldap/ssd/pam) group.
     Output - None.
     """
-    response, access_code = None, 404
-    ret, message = OsUser().update_group(name, request)
-    response={'message': message}
-    if ret is True:
-        access_code=204
+    status, response = OsUser().update_group(name, request)
+    access_code=Helper().get_access_code(status,response)
+    response = {'message': response}
     return response, access_code
 
 
@@ -1031,11 +1310,9 @@ def config_post_os_group_delete(name=None):
     Process - Delete System (ldap/ssd/pam) group.
     Output - None.
     """
-    response, access_code = None, 404
-    ret, message = OsUser().delete_group(name)
-    response={'message': message}
-    if ret is True:
-        access_code=204
+    status, response = OsUser().delete_group(name)
+    access_code=Helper().get_access_code(status,response)
+    response = {'message': response}
     return response, access_code
 
 
@@ -1047,5 +1324,12 @@ def control_status(request_id=None):
     Process - gets the list from status table. renders this into a response.
     Output - Success or failure
     """
-    response, access_code = OSImage().get_status(request_id)
+    access_code=404
+    status, response = Status().get_status(request_id)
+    if status is True:
+        access_code=200
+        response=dumps(response)
+    else:
+        response={'message': response}
     return response, access_code
+

@@ -39,6 +39,7 @@ class Interface():
         """
         This method will return all the node interfaces in detailed format.
         """
+        status=False
         node = Database().get_record(None, 'node', f' WHERE name = "{name}"')
         if node:
             response = {'config': {'node': {name: {'interfaces': [] } } } }
@@ -60,23 +61,24 @@ class Interface():
                     interface['options'] = interface['options'] or ""
                     my_interface.append(interface)
                     response['config']['node'][name]['interfaces'] = my_interface
-                self.logger.info(f'Returned group {name} with details.')
-                access_code = 200
+                self.logger.info(f'Returned node interface {name} details.')
+                status=True
             else:
                 self.logger.error(f'Node {name} dont have any interface.')
-                response = {'message': f'Node {name} dont have any interface'}
-                access_code = 404
+                response = f'Node {name} dont have any interface'
+                status=False
         else:
-            self.logger.error('No nodes are available.')
-            response = {'message': 'No nodes are available'}
-            access_code = 404
-        return dumps(response), access_code
+            self.logger.error('No nodes available.')
+            response = 'No nodes available'
+            status=False
+        return status, response
 
 
     def change_node_interface(self, name=None, http_request=None):
         """
         This method will add or update the node interface.
         """
+        status=False
         request_data = http_request.data
         if request_data:
             node = Database().get_record(None, 'node', f' WHERE name = "{name}"')
@@ -110,11 +112,12 @@ class Interface():
                             )
 
                         if result is False:
-                            response = {'message': f'{message}'}
-                            access_code = 404
+                            response = f'{message}'
+                            status=False
                         else:
-                            Service().queue('dhcp', 'restart')
-                            Service().queue('dns', 'restart')
+                            # disabled the next two for testing. Antoine aug 8 2023
+                            #Service().queue('dhcp', 'restart')
+                            #Service().queue('dns', 'restart')
                             # below might look as redundant but is added to prevent a possible
                             # race condition when many nodes are added in a loop.
                             # the below tasks ensures that even the last node will be included
@@ -129,26 +132,27 @@ class Interface():
                                 'housekeeper',
                                 '__node_interface_post__'
                             )
-                            response = {'message': 'Interface updated'}
-                            access_code = 204
+                            response = 'Interface updated'
+                            status=True
                 else:
                     self.logger.error(f'Interface for Node {name} not provided.')
-                    response = {'message': 'interface not provided'}
-                    access_code = 400
+                    response = 'Invalid request: interface not provided'
+                    status=False
             else:
                 self.logger.error(f'Node {name} is not available.')
-                response = {'message': f'Node {name} is not available'}
-                access_code = 404
+                response = f'Node {name} is not available'
+                status=False
         else:
-            response = {'message': 'Did not received Data'}
-            access_code = 400
-        return dumps(response), access_code
+            response = 'Invalid request: Did not receive Data'
+            status=False
+        return status, response
 
 
     def get_node_interface(self, name=None, interface=None):
         """
         This method will provide a node interface.
         """
+        status=False
         node = Database().get_record(None, 'node', f' WHERE name = "{name}"')
         if node:
             response = {'config': {'node': {name: {'interfaces': [] } } } }
@@ -175,23 +179,23 @@ class Interface():
                     my_interface.append(interface)
                     response['config']['node'][name]['interfaces'] = my_interface
 
-                self.logger.info(f'Returned group {name} with details.')
-                access_code = 200
+                self.logger.info(f'Returned node interface {name} details.')
+                status=True
             else:
                 self.logger.error(f'Node {name} does not have {interface} interface.')
-                response = {'message': f'Node {name} does not have {interface} interface'}
-                access_code = 404
+                response = f'Node {name} does not have {interface} interface'
+                status=False
         else:
             self.logger.error('Node is not available.')
-            response = {'message': 'Node is not available'}
-            access_code = 404
-        return dumps(response), access_code
+            response = 'Node is not available'
+        return status, response
 
 
     def delete_node_interface(self, name=None, interface=None):
         """
         This method will delete a node.
         """
+        status=False
         node = Database().get_record(None, 'node', f' WHERE `name` = "{name}"')
         if node:
             nodeid = node[0]['id']
@@ -210,8 +214,9 @@ class Interface():
                 Database().delete_row('ipaddress', where)
                 where = [{"column": "id", "value": node_interface[0]['ifid']}]
                 Database().delete_row('nodeinterface', where)
-                Service().queue('dhcp','restart')
-                Service().queue('dns','restart')
+                # disabled the next two for testing. Antoine aug 8 2023
+                #Service().queue('dhcp','restart')
+                #Service().queue('dns','restart')
                 # below might look as redundant but is added to prevent a possible race condition
                 # when many nodes are added in a loop.
                 # the below tasks ensures that even the last node will be included in dhcp/dns
@@ -221,21 +226,22 @@ class Interface():
                     '__node_interface_delete__'
                 )
                 Queue().add_task_to_queue('dns:restart', 'housekeeper', '__node_interface_delete__')
-                response = {'message': f'Node {name} interface {interface} removed successfully'}
-                access_code = 204
+                response = f'Node {name} interface {interface} removed successfully'
+                status=True
             else:
-                response = {'message': f'Node {name} interface {interface} not present in database'}
-                access_code = 404
+                response = f'Node {name} interface {interface} not present in database'
+                status=False
         else:
-            response = {'message': f'Node {name} not present in database'}
-            access_code = 404
-        return dumps(response), access_code
+            response = f'Node {name} not present in database'
+            status=False
+        return status, response
 
 
     def get_all_group_interface(self, name=None):
         """
         This method will return all the group interfaces in detailed format for a desired group.
         """
+        status=False
         groups = Database().get_record(None, 'group', f' WHERE name = "{name}"')
         if groups:
             response = {'config': {'group': {name: {'interfaces': [] } } } }
@@ -254,15 +260,15 @@ class Interface():
                     response['config']['group'][groupname]['interfaces'] = group_interfaces
                 else:
                     self.logger.error(f'Group {name} does not have any interface.')
-                    response = {'message': f'Group {name} does not have any interface'}
-                    access_code = 404
+                    response = f'Group {name} does not have any interface'
+                    status=False
             self.logger.info(f'Returned group {name} with details.')
-            access_code = 200
+            status=True
         else:
             self.logger.error('No group is available.')
-            response = {'message': 'No group is available'}
-            access_code = 404
-        return dumps(response), access_code
+            response = 'No group is available'
+            status=False
+        return status, response
 
 
     def change_group_interface(self, name=None, http_request=None):
@@ -270,6 +276,8 @@ class Interface():
         This method will add or update the group interface.
         """
         request_data = http_request.data
+        status=False
+        response="Internal error"
         if request_data:
             group = Database().get_record(None, 'group', f' WHERE name = "{name}"')
             if group:
@@ -277,14 +285,12 @@ class Interface():
                 if 'interfaces' in request_data['config']['group'][name]:
                     for ifx in request_data['config']['group'][name]['interfaces']:
                         if (not 'network' in ifx) or (not 'interface' in ifx):
-                            response = {'message': 'Interface and/or network not specified'}
-                            access_code = 400
-                            return dumps(response), access_code
+                            status=False
+                            return status, 'Invalid request: Interface and/or network not specified'
                         network = Database().id_by_name('network', ifx['network'])
                         if network is None:
-                            response = {'message': f'Network {network} does not exist'}
-                            access_code = 404
-                            return dumps(response), access_code
+                            status=False
+                            return status, f'Invalid request: Network {network} does not exist'
                         else:
                             ifx['networkid'] = network
                             ifx['groupid'] = group_id
@@ -298,8 +304,8 @@ class Interface():
                         if not interface_check:
                             row = Helper().make_rows(ifx)
                             Database().insert('groupinterface', row)
-                        response = {'message': 'Interface updated'}
-                        access_code = 204
+                        response = 'Interface updated'
+                        status=True
                         # below section takes care(in the background), adding/renaming/deleting.
                         # for adding next free ip-s will be selected. time consuming
                         # therefor background
@@ -315,22 +321,23 @@ class Interface():
                             # Config().update_interface_on_group_nodes(name)
                 else:
                     self.logger.error('interface not provided.')
-                    response = {'message': 'interface not provided'}
-                    access_code = 400
+                    response = 'Invalid request: interface not provided'
+                    status=False
             else:
                 self.logger.error('No group is available.')
-                response = {'message': 'No group is available'}
-                access_code = 404
+                response = 'No group is available'
+                status=False
         else:
-            response = {'message': 'Did not received data'}
-            access_code = 400
-        return dumps(response), access_code
+            response = 'Invalid request: Did not receive data'
+            status=False
+        return status, response
 
 
     def get_group_interface(self, name=None, interface=None):
         """
         This method will provide a group interface.
         """
+        status=False
         group = Database().get_record(None, 'group', f' WHERE name = "{name}"')
         if group:
             response = {'config': {'group': {name: {'interfaces': [] } } } }
@@ -348,22 +355,24 @@ class Interface():
                     response['config']['group'][name]['interfaces'] = my_interface
 
                 self.logger.info(f'Returned group {name} with details.')
-                access_code = 200
+                status=True
             else:
                 self.logger.error(f'Group {name} does not have {interface} interface.')
-                response = {'message': f'Group {name} does not have {interface} interface'}
-                access_code = 404
+                response = f'Group {name} does not have {interface} interface'
+                status=True
         else:
             self.logger.error('Group is not available.')
-            response = {'message': 'Group is not available'}
-            access_code = 404
-        return dumps(response), access_code
+            response = 'Group is not available'
+            status=False
+        return status, response
 
 
     def delete_group_interface(self, name=None, interface=None):
         """
         This method will delete a group interface.
         """
+        response="Internal error"
+        status=False
         group = Database().get_record(None, 'group', f' WHERE `name` = "{name}"')
         if group:
             groupid = group[0]['id']
@@ -384,13 +393,12 @@ class Interface():
                     # executor.submit(Config().update_interface_on_group_nodes,name)
                     # executor.shutdown(wait=False)
                     Config().update_interface_on_group_nodes(name)
-                response = {'message': f'Group {name} interface {interface} removed'}
-                access_code = 204
+                response = f'Group {name} interface {interface} removed'
+                status=True
             else:
-                message = f'Group {name} interface {interface} not present in database'
-                response = {'message': message}
-                access_code = 404
+                response = f'Group {name} interface {interface} not present in database'
+                status=False
         else:
-            response = {'message': f'Group {name} not present in database'}
-            access_code = 404
-        return dumps(response), access_code
+            f'Group {name} not present in database'
+            status=False
+        return status, response

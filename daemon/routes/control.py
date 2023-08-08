@@ -14,6 +14,7 @@ __email__       = 'sumit.sharma@clustervision.com'
 __status__      = 'Development'
 
 
+from json import dumps
 from flask import Blueprint, request
 from utils.log import Log
 from common.validate_auth import token_required
@@ -34,7 +35,15 @@ def control_get(hostname=None, action=None):
     Process - Use to perform on, off, reset operations on one node.
     Output - Success or failure
     """
-    response, access_code = Control().power_action(hostname, action)
+    access_code=404
+    status, response = Control().power_action(hostname, action)
+    if status is True:
+        access_code=204
+        if 'status' in action:
+            access_code=200
+        response=dumps(response)
+    else:
+        response={'message': response}
     return response, access_code
 
 
@@ -48,7 +57,13 @@ def control_post():
     Process - Use to perform on, off, reset operations on one node.
     Output - Success or failure
     """
-    response, access_code = Control().bulk_action(request)
+    access_code=404
+    status, response = Control().bulk_action(request)
+    if status is True:
+        access_code=200
+        response=dumps(response)
+    else:
+        response={'message': response}
     return response, access_code
 
 
@@ -61,5 +76,13 @@ def control_status(request_id=None):
     Process - gets the list from status table. renders this into a response.
     Output - Success or failure
     """
-    response, access_code = Control().get_status(request_id)
+    access_code=404
+    # we cannot use Status().get_status as there is too much customization
+    status, response = Control().get_status(request_id)
+    if status is True:
+        access_code=200
+        response=dumps(response)
+    else:
+        response={'message': response}
     return response, access_code
+

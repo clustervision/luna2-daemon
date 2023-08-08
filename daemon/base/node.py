@@ -42,6 +42,10 @@ class Node():
         """
         status = False
         response = {}
+        # TODO
+        # we collect all needed info from all tables at once and use dicts to collect data/info
+        # A join is not really suitable as there are too many permutations in where the below
+        # is way more efficient. -Antoine
         nodes = Database().get_record(None, 'node', None)
         groups = Database().get_record(None, 'group', None)
         osimages = Database().get_record(None, 'osimage', None)
@@ -159,8 +163,8 @@ class Node():
             self.logger.info('Provided list of all nodes.')
             status = True
         else:
-            self.logger.error('No nodes are available.')
-            response = {'message': 'No nodes are available'}
+            self.logger.error('No nodes available.')
+            response = 'No nodes available'
         return status, response
 
 
@@ -337,7 +341,7 @@ class Node():
             status = True
         else:
             self.logger.error(f'Node {name} is not available.')
-            response = {'message': f'Node {name} is not available'}
+            response = f'Node {name} is not available'
         return status, response
 
 
@@ -358,7 +362,8 @@ class Node():
         # minimal required items with defaults. we do inherit things from e.g. groups. but that's
         # real time and not here
         create, update = False, False
-        access_code = 400
+        status = False
+        response = "Internal error"
         request_data = http_request.data
         if request_data:
             data = request_data['config']['node'][name]
@@ -370,9 +375,8 @@ class Node():
                     where = f' WHERE `name` = "{nodename_new}"'
                     node_check = Database().get_record(None, 'node', where)
                     if node_check:
-                        response = {'message': f'{nodename_new} already present in database'}
-                        access_code = 404
-                        return dumps(response), access_code
+                        status = False
+                        return status, f'{nodename_new} already present in database'
                     else:
                         data['name'] = data['newnodename']
                         del data['newnodename']
@@ -380,10 +384,8 @@ class Node():
             else:
                 if 'newnodename' in data:
                     nodename_new = data['newnodename']
-                    message = 'newnodename is only allowed while update, rename or clone a node'
-                    response = {'message': message}
-                    access_code = 400
-                    return dumps(response), access_code
+                    status = False
+                    return status, 'newnodename is only allowed while update, rename or clone a node'
                 create = True
 
             for key, value in items.items():
@@ -408,9 +410,8 @@ class Node():
                     else:
                         data[key+'id'] = Database().id_by_name(key, check_name)
                         if not data[key+'id']:
-                            access_code = 404
-                            response = {'message': f'{key} {check_name} is not known or valid'}
-                            return dumps(response), access_code
+                            status = False
+                            return status, f'{key} {check_name} is not known or valid'
                     del data[key]
 
             interfaces = None
@@ -425,20 +426,19 @@ class Node():
                     where = [{"column": "id", "value": nodeid}]
                     row = Helper().make_rows(data)
                     Database().update('node', row, where)
-                    response = {'message': f'Node {name} updated successfully'}
-                    access_code = 204
+                    response = f'Node {name} updated successfully'
+                    status = True
                 if create:
                     if 'groupid' not in data:
                         # ai, we DO need this for new nodes...... kind of.
                         # we agreed on this. pending?
-                        access_code = 400
-                        response = {'message': 'group name is required for new nodes'}
-                        return dumps(response), access_code
+                        status = False
+                        return status, 'group name is required for new nodes'
                     data['name'] = name
                     row = Helper().make_rows(data)
                     nodeid = Database().insert('node', row)
-                    response = {'message': f'Node {name} created successfully'}
-                    access_code = 201
+                    response = f'Node {name} created successfully'
+                    status = True
                     if nodeid and 'groupid' in data and data['groupid']:
                         # ----> GROUP interface. WIP. pending. should work but i keep it WIP
                         group_interfaces = Database().get_record_join(
@@ -549,24 +549,24 @@ class Node():
                             )
 
                         if result is False:
-                            response = {'message': f'{message}'}
-                            access_code = 404
-                            return dumps(response), access_code
+                            status = False
+                            return status, f'{message}'
 
-                Service().queue('dhcp', 'restart')
-                Service().queue('dns', 'restart')
+                # For now i have the below two disabled. it's testing. -Antoine aug 8 2023
+                #Service().queue('dhcp', 'restart')
+                #Service().queue('dns', 'restart')
                 # below might look as redundant but is added to prevent a possible race condition
                 # when many nodes are added in a loop.
                 # the below tasks ensures that even the last node will be included in dhcp/dns
                 Queue().add_task_to_queue('dhcp:restart', 'housekeeper', '__node_post__')
                 Queue().add_task_to_queue('dns:restart', 'housekeeper', '__node_post__')
             else:
-                response = {'message': 'Columns are incorrect'}
-                access_code = 400
+                response = 'Invalid request: Columns are incorrect'
+                status = False
         else:
-            response = {'message': 'Did not received data'}
-            access_code = 400
-        return dumps(response), access_code
+            response = 'Invalid request: Did not receive data'
+            status = False
+        return status, response
 
 
     def clone_node(self, name=None, http_request=None):
@@ -574,11 +574,12 @@ class Node():
         data = {}
         items = {'service': False, 'localboot': False}
         request_data = http_request.data
+        status=False
+        response="Internal error"
         if request_data:
             if 'node' not in request_data['config'].keys():
-                response = {'message': 'Bad Request'}
-                access_code = 400
-                return dumps(response), access_code
+                status=False
+                return status, 'Bad Request'
 
             newnodename=None
             data = request_data['config']['node'][name]
@@ -590,20 +591,17 @@ class Node():
                     where = f' WHERE `name` = "{newnodename}"'
                     node_check = Database().get_record(None, 'node', where)
                     if node_check:
-                        response = {'message': f'{newnodename} already present in database'}
-                        access_code = 404
-                        return dumps(response), access_code
+                        status=False
+                        return status, f'{newnodename} already present in database'
                     else:
                         data['name'] = data['newnodename']
                         del data['newnodename']
                 else:
-                    response = {'message': 'Destination node name not supplied'}
-                    access_code = 400
-                    return dumps(response), access_code
+                    status=False
+                    return status, 'Destination node name not supplied'
             else:
-                response = {'message': f'Source node {name} does not exist'}
-                access_code = 400
-                return dumps(response), access_code
+                status=False
+                return status, f'Source node {name} does not exist'
 
             del node[0]['id']
             del node[0]['status']
@@ -629,9 +627,8 @@ class Node():
                     else:
                         data[key+'id'] = Database().id_by_name(key, check_name)
                         if not data[key+'id']:
-                            access_code = 404
-                            response = {'message': f'{key} {check_name} is not known or valid'}
-                            return dumps(response), access_code
+                            status=False
+                            return status, f'{key} {check_name} is not known or valid'
                     del data[key]
             interfaces = None
             if 'interfaces' in data:
@@ -644,12 +641,10 @@ class Node():
                 row = Helper().make_rows(data)
                 new_nodeid = Database().insert('node', row)
                 if not new_nodeid:
-                    message = f'Node {newnodename} is not created due to possible property clash'
-                    response = {'message': message}
-                    access_code = 404
-                    return dumps(response), access_code
-                response = {'message': f'Node {name} created successfully'}
-                access_code = 201
+                    status=False
+                    return status, f'Node {newnodename} is not created due to possible property clash'
+                response = f'Node {name} created successfully'
+                status=True
                 node_interfaces = Database().get_record_join(
                     [
                         'nodeinterface.interface',
@@ -691,9 +686,8 @@ class Node():
                                 network
                             )
                         if result is False:
-                            response = {'message': f'{message}'}
-                            access_code = 404
-                            return dumps(response), access_code
+                            status=False
+                            return status, f'{message}'
 
                 for node_interface in node_interfaces:
                     interface_name = node_interface['interface']
@@ -733,25 +727,28 @@ class Node():
                                         networkname
                                     )
                                     if result is False:
-                                        response = {'message': f'{message}'}
-                                        access_code = 404
-                                        return dumps(response), access_code
+                                        status=False
+                                        return status, f'{message}'
                 # Service().queue('dhcp','restart')
                 # do we need dhcp restart? MAC is wiped on new NIC so no real need i guess. pending
-                Service().queue('dns','restart')
+                #Service().queue('dns','restart')
+            	#Queue().add_task_to_queue('dhcp:restart', 'housekeeper', '__node_clone__')
+                Queue().add_task_to_queue('dns:restart', 'housekeeper', '__node_clone__')
             else:
-                response = {'message': 'Columns are incorrect'}
-                access_code = 400
+                response = 'Invalid request: Columns are incorrect'
+                status=False
         else:
-            response = {'message': 'Did not received data'}
-            access_code = 400
-        return dumps(response), access_code
+            response = 'Invalid request: Did not receive data'
+            status=False
+        return status, response
 
 
     def delete_node(self, name=None):
         """
         This method will delete a node.
         """
+        status=False
+        response="Internal error"
         node = Database().get_record(None, 'node', f' WHERE `name` = "{name}"')
         if node:
             nodeid = node[0]['id']
@@ -766,16 +763,17 @@ class Node():
                     Database().delete_row('ipaddress', [{"column": "id", "value": node_ip['id']}])
             Database().delete_row('nodeinterface', [{"column": "nodeid", "value": nodeid}])
             Database().delete_row('nodesecrets', [{"column": "nodeid", "value": nodeid}])
-            Service().queue('dns', 'restart')
-            Service().queue('dhcp', 'restart')
+            # for now i have disabled the below two lines for testing purposes. Antoine Aug 8 2023
+            #Service().queue('dns', 'restart')
+            #Service().queue('dhcp', 'restart')
             # below might look redundant but is added to prevent a possible race condition
             # when many nodes are added in a loop.
             # the below tasks ensures that even the last node will be included in dhcp/dns
             Queue().add_task_to_queue('dhcp:restart', 'housekeeper', '__node_delete__')
             Queue().add_task_to_queue('dns:restart', 'housekeeper', '__node_delete__')
-            response = {'message': f'Node {name} with all its interfaces removed'}
-            access_code = 204
+            response = f'Node {name} with all its interfaces removed'
+            status=True
         else:
-            response = {'message': f'Node {name} not present in database'}
-            access_code = 404
-        return dumps(response), access_code
+            response = f'Node {name} not present in database'
+            status=False
+        return status, response

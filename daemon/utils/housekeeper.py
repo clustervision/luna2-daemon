@@ -45,7 +45,7 @@ class Housekeeper(object):
         while True:
             try:
                 tel+=1
-                if tel > 6:
+                if tel > 3:
                     tel=0
                     while next_id := Queue().next_task_in_queue('housekeeper'):
                         remove_from_queue=True
@@ -123,7 +123,8 @@ class Housekeeper(object):
     def switchport_scan(self,event):
         tel=118
         self.logger.info("Starting switch port scan thread")
-        #detection_plugins = Helper().plugin_finder('/trinity/local/luna/plugins/detection')  # needs to be with constants. pending
+        plugins_path=CONSTANT["PLUGINS"]["PLUGINS_DIR"]
+        #detection_plugins = Helper().plugin_finder(f'{plugins_path}/detection')
         #DetectionPlugin=Helper().plugin_load(detection_plugins,'detection','switchport')
         try: 
             from plugins.detection.switchport import Plugin as DetectionPlugin
@@ -150,8 +151,4 @@ class Housekeeper(object):
                 sleep(5)
         except Exception as exp:
             self.logger.error(f"switch port scan thread encountered problem: {exp}")
-
-
-
-
 

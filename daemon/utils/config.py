@@ -164,9 +164,11 @@ class Config(object):
             option luna-id code 129 = text;
             option client-architecture code 93 = unsigned integer 16;
             {ntp_server}
+            """)
+            
+        config+=omapi_key
 
-            {omapi_key}
-
+        config += dedent(f"""
             # how to get luna_ipxe.efi and luna_undionly.kpxe :
             # git clone git://git.ipxe.org/ipxe.git
             # cd ipxe/src

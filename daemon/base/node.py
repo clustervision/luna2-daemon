@@ -727,7 +727,9 @@ class Node():
                                         return status, f'{message}'
                 # Service().queue('dhcp','restart')
                 # do we need dhcp restart? MAC is wiped on new NIC so no real need i guess. pending
-                Service().queue('dns','restart')
+                #Service().queue('dns','restart')
+            	#Queue().add_task_to_queue('dhcp:restart', 'housekeeper', '__node_clone__')
+            	Queue().add_task_to_queue('dns:restart', 'housekeeper', '__node_clone__')
             else:
                 response = 'Invalid request: Columns are incorrect'
                 status=False

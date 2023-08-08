@@ -115,8 +115,9 @@ class Interface():
                             response = f'{message}'
                             status=False
                         else:
-                            Service().queue('dhcp', 'restart')
-                            Service().queue('dns', 'restart')
+                            # disabled the next two for testing. Antoine aug 8 2023
+                            #Service().queue('dhcp', 'restart')
+                            #Service().queue('dns', 'restart')
                             # below might look as redundant but is added to prevent a possible
                             # race condition when many nodes are added in a loop.
                             # the below tasks ensures that even the last node will be included
@@ -213,8 +214,9 @@ class Interface():
                 Database().delete_row('ipaddress', where)
                 where = [{"column": "id", "value": node_interface[0]['ifid']}]
                 Database().delete_row('nodeinterface', where)
-                Service().queue('dhcp','restart')
-                Service().queue('dns','restart')
+                # disabled the next two for testing. Antoine aug 8 2023
+                #Service().queue('dhcp','restart')
+                #Service().queue('dns','restart')
                 # below might look as redundant but is added to prevent a possible race condition
                 # when many nodes are added in a loop.
                 # the below tasks ensures that even the last node will be included in dhcp/dns

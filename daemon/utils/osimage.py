@@ -34,10 +34,8 @@ from datetime import datetime
 import sys
 import uuid
 import shutil
-#import re
 from utils.status import Status
 from utils.queue import Queue
-#from utils.torrent import Torrent
 
 
 class OsImage(object):
@@ -49,14 +47,12 @@ class OsImage(object):
         """
 
         self.logger = Log.get_logger()
-
-#        regex=re.compile(r"^[a-zA-Z0-9\-\.\_]+\.py$")
-#                        if regex.match(f):
-        self.osimage_plugins = Helper().plugin_finder('/trinity/local/luna/plugins/osimage')  # needs to be with constants. pending
-        self.osgrab_plugins = Helper().plugin_finder('/trinity/local/luna/plugins/osgrab')  # needs to be with constants. pending
-        self.provision_plugins = Helper().plugin_finder('/trinity/local/luna/plugins/provision')  # needs to be with constants. pending
-        self.osclone_plugins = Helper().plugin_finder('/trinity/local/luna/plugins/osclone')  # needs to be with constants. pending
-        self.ospush_plugins = Helper().plugin_finder('/trinity/local/luna/plugins/ospush')  # needs to be with constants. pending
+        plugins_path=CONSTANT["TEMPLATES"]["TEMPLATES_DIR"]
+        self.osimage_plugins = Helper().plugin_finder(f'{plugins_path}/osimage')
+        self.osgrab_plugins = Helper().plugin_finder(f'{plugins_path}/osgrab')
+        self.provision_plugins = Helper().plugin_finder(f'{plugins_path}/provision')
+        self.osclone_plugins = Helper().plugin_finder(f'{plugins_path}/osclone')
+        self.ospush_plugins = Helper().plugin_finder(f'{plugins_path}/ospush')
 
 
     # ---------------------------------------------------------------------------

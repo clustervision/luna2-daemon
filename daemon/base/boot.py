@@ -24,6 +24,7 @@ from utils.database import Database
 from utils.helper import Helper
 from utils.service import Service
 from utils.config import Config
+from common.constant import CONSTANT
 
 try:
     from plugins.detection.switchport import Plugin as DetectionPlugin
@@ -41,16 +42,12 @@ class Boot():
         This constructor will initialize all required variables here.
         """
         self.logger = Log.get_logger()
-        self.provision_plugins = Helper().plugin_finder('/trinity/local/luna/plugins/provision')
-        # needs to be with constants. pending
-        self.network_plugins = Helper().plugin_finder('/trinity/local/luna/plugins/network')
-        # needs to be with constants. pending
-        self.bmc_plugins = Helper().plugin_finder('/trinity/local/luna/plugins/bmc')
-        # needs to be with constants. pending
-        self.install_plugins = Helper().plugin_finder('/trinity/local/luna/plugins/install')
-        # needs to be with constants. pending
-        # self.detection_plugins = Helper().plugin_finder('/trinity/local/luna/plugins/detection')
-        # needs to be with constants. pending
+        plugins_path=CONSTANT["TEMPLATES"]["TEMPLATES_DIR"]
+        self.provision_plugins = Helper().plugin_finder(f'{plugins_path}/provision')
+        self.network_plugins = Helper().plugin_finder(f'{plugins_path}/network')
+        self.bmc_plugins = Helper().plugin_finder(f'{plugins_path}/bmc')
+        self.install_plugins = Helper().plugin_finder(f'{plugins_path}install')
+        # self.detection_plugins = Helper().plugin_finder(f'{plugins_path}/detection')
         # self.DetectionPlugin=Helper().plugin_load(self.detection_plugins,'detection','switchport')
 
 

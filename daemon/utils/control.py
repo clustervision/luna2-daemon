@@ -22,6 +22,7 @@ from utils.log import Log
 from utils.database import Database
 from utils.helper import Helper
 from utils.status import Status
+from common.constant import CONSTANT
 
 
 class Control():
@@ -34,7 +35,8 @@ class Control():
         Constructor - As of now, nothing have to initialize.
         """
         self.logger = Log.get_logger()
-        self.control_plugins = Helper().plugin_finder('/trinity/local/luna/plugins/control')
+        plugins_path=CONSTANT["TEMPLATES"]["TEMPLATES_DIR"]
+        self.control_plugins = Helper().plugin_finder(f'{plugins_path}/control')
         # needs to be with constants. pending
 
 

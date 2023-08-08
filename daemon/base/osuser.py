@@ -16,6 +16,7 @@ __status__      = 'Development'
 
 from utils.helper import Helper
 from utils.log import Log
+from common.constant import CONSTANT
 
 
 class OsUser():
@@ -28,7 +29,8 @@ class OsUser():
         Default Constructor
         """
         self.logger = Log.get_logger()
-        self.osuser_plugins = Helper().plugin_finder('/trinity/local/luna/plugins/osuser')
+        plugins_path=CONSTANT["TEMPLATES"]["TEMPLATES_DIR"]
+        self.osuser_plugins = Helper().plugin_finder(f'{plugins_path}/osuser')
         # needs to be with constants. pending
         self.OsUserPlugin = Helper().plugin_load(self.osuser_plugins, 'osuser', ['obol'])
 

@@ -69,7 +69,7 @@ def auth_get():
     """
     access_code=401
     status, response = Authentication().validate_token(request)
-    status is True:
+    if status is True:
         access_code=200
     response={'message': response}
     return response, access_code

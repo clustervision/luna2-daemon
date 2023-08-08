@@ -106,11 +106,12 @@ class Authentication():
         """
         This method will provide a PyJWT encoded token for a node.
         """
+        status=False
         http_request = http_request.data
         if not http_request:
             self.logger.error('Login Required')
-            response = {'message' : 'Login Required'}
-            access_code = 401
+            response = 'Login Required'
+            status=False
 
         self.logger.debug(f"TPM auth: {http_request}")
 
@@ -118,8 +119,8 @@ class Authentication():
         expiry_time = datetime.utcnow() + api_expiry
         api_key = CONSTANT['API']['SECRET_KEY']
 
-        access_code = 401
-        response = {'message' : 'no result'}
+        status=False
+        response = 'no result'
         create_token = False
 
         cluster = Database().get_record(None, 'cluster', None)
@@ -149,11 +150,11 @@ class Authentication():
         if create_token:
             jwt_token = encode({'id': 0, 'exp': expiry_time}, api_key, 'HS256')
             self.logger.debug(f'Node token generated successfully, Token {jwt_token}')
-            access_code = 200
+            status=True
             response = {"token" : jwt_token}
 
         self.logger.debug(f"my response: {response}")
-        return dumps(response), access_code
+        return status, response
 
 
     def validate_token(self, http_request=None):
@@ -166,7 +167,7 @@ class Authentication():
         # are most likely the images.
         auth_ext = [".gz", ".tar", ".bz", ".bz2", ".torrent"]
 
-        access_code = 401
+        status=False
         http_token, uri, ext = None, None, None
         needs_auth = False
         if 'X-Original-URI' in http_request.headers:
@@ -179,29 +180,30 @@ class Authentication():
                 self.logger.debug(f"We enforce authentication for file extension = [{ext}]")
                 needs_auth=True
         else:
-            access_code = 401
-            return "Missing request uri", access_code
+            status=False
+            return status, "Missing request uri"
 
         if not needs_auth:
-            access_code = 200
-            return "Go", access_code
+            status=True
+            return status, "Go"
 
         if 'x-access-tokens' in http_request.headers:
             http_token = http_request.headers['x-access-tokens']
         if not http_token:
             self.logger.error(f'A valid token is missing for request {uri}.')
-            access_code = 401
-            return "A valid token is missing", access_code
+            status=False
+            return status, "A valid token is missing"
         try:
             decode(http_token, CONSTANT['API']['SECRET_KEY'], algorithms=['HS256']) # Decode
         except exceptions.DecodeError:
             self.logger.error(f'Token is invalid for request {uri}.')
-            access_code = 401
-            return "Token is invalid", access_code
+            status=False
+            return status, "Token is invalid"
         except exceptions.ExpiredSignatureError:
             self.logger.error(f'Expired Signature Error for request {uri}.')
-            access_code = 401
-            return "Token is invalid", access_code
+            status=False
+            return status, "Token is invalid"
         self.logger.info(f"Valid authentication for extension [{ext}] - Go!")
-        access_code = 200
-        return "Go", access_code
+        status=True
+        return status, "Go"
+

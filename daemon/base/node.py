@@ -42,6 +42,10 @@ class Node():
         """
         status = False
         response = {}
+        # TODO
+        # we collect all needed info from all tables at once and use dicts to collect data/info
+        # A join is not really suitable as there are too many permutations in where the below
+        # is way more efficient. -Antoine
         nodes = Database().get_record(None, 'node', None)
         groups = Database().get_record(None, 'group', None)
         osimages = Database().get_record(None, 'osimage', None)

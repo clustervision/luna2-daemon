@@ -45,10 +45,6 @@ def config_node():
     """
     This api will send all the nodes in details.
     """
-    # TODO
-    # we collect all needed info from all tables at once and use dicts to collect data/info
-    # A join is not really suitable as there are too many permutations in where the below
-    # is way more efficient. -Antoine
     access_code = 404
     status, response = Node().get_all_nodes()
     if status is True:

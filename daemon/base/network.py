@@ -217,7 +217,7 @@ class Network():
                     Database().insert('network', row)
                     response = f'Network {name} created successfully'
                     status=True
-                if update:
+                elif update:
                     if redistribute_ipaddress:
                         nwk_size = Helper().get_network_size(data['network'], data['subnet'])
                         avail = nwk_size - dhcp_size

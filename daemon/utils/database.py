@@ -517,12 +517,14 @@ class Database():
         return False
 
 
-    def clear(self, table):
+    def clear(self, table, excluding=None):
         """
         This method will do truncate the table.
         """
         try:
             query = f'DELETE FROM "{table}";'
+            if excluding:
+                query = f'DELETE FROM "{table} WHERE {excluding}";'
             local_thread.cursor.execute(query)
             self.commit()
             response = True

@@ -44,8 +44,8 @@ class Monitor():
             self.logger.info(f'Database status is: {response}.')
         returned = service().luna_service(name, 'status')
         status=returned[0]
-        message=returned[1]
-        return return status, response
+        response=returned[1]
+        return status, response
 
 
     def get_status(self, node=None):

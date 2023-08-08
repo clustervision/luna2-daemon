@@ -31,10 +31,8 @@ def monitor_service(name=None):
     Currently supported services are DHCP, DNS and luna2 itself.
     Output - Status
     """
-    response, access_code = Monitor().service_monitor(name)
-    #returned = Service().service_action(name, action)
-    #status=returned[0]
-    #message=returned[1]
+    status, response = Monitor().service_monitor(name)
+    response={'monitor': {'Service': { name: response} } }
     return response, access_code
 
 

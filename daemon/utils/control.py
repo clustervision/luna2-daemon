@@ -204,7 +204,7 @@ class Control():
             message = exp
         # finally:
         #     signal.alarm(0)
-        return return_code, message
+        return_code, message
 
 
     def control_mother(self, pipeline=None, request_id=None, batch=10, delay=10):

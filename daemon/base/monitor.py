@@ -37,37 +37,40 @@ class Monitor():
         """
         This method will check the status of a service
         """
+        status=False
         if name == "luna2":
             # response, code = Helper().checkdbstatus()
-            response, code = 'Helper Method checkdbstatus is missing', 200
+            response, status = 'Helper Method checkdbstatus is missing', True
             self.logger.info(f'Database status is: {response}.')
-        response, code = Service().luna_service(name, 'status')
-        return dumps(response), code
+        returned = service().luna_service(name, 'status')
+        status=returned[0]
+        message=returned[1]
+        return return status, response
 
 
     def get_status(self, node=None):
         """
         This method will check the status of a node
         """
-        access_code = 404
+        status=False
         response = {"monitor": {"status": { node: { } } } }
         nodes = Database().get_record(None, 'node', f' WHERE id = "{node}" OR name = "{node}"')
         if nodes:
-            status,access_code=monitor().installer_state(nodes[0]['status'])
-            response['monitor']['status'][node]['status'] = status
+            status,servicestatus=monitor().installer_state(nodes[0]['status'])
+            response['monitor']['status'][node]['status'] = servicestatus
             response['monitor']['status'][node]['state'] = nodes[0]['status']
         else:
             response = None
-            access_code = 404
-        return dumps(response), access_code
+            status=False
+        return status, response
 
 
     def update_status(self, node=None, http_request=None):
         """
         This method will update the status of a node
         """
-        access_code = 400
-        response = {'message': 'Bad Request'}
+        status=False
+        response = 'Bad Request'
         request_data = http_request.data
         if request_data:
             try:
@@ -79,12 +82,12 @@ class Monitor():
                     row = [{"column": "status", "value": state}]
                     where = [{"column": "name", "value": node}]
                     Database().update('node', row, where)
-                    access_code = 204
-                    response = {'message': f'Node {node} updated'}
+                    status=True
+                    response = f'Node {node} updated'
                 else:
-                    response = {'message': 'Node is not present'}
-                    access_code = 404
+                    response = 'Node is not present'
+                    status=False
             except KeyError:
-                response = {'message': 'URL Node is not matching with requested node'}
-                access_code = 400
-        return dumps(response), access_code
+                response = 'Invalid request: URL Node is not matching with requested node'
+                status=False
+        return status, response

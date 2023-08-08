@@ -73,7 +73,7 @@ class Tracker():
         if myerror in self.PYTT_RESPONSE_MESSAGES:
             message = f"<html><title>{myerror}: {self.PYTT_RESPONSE_MESSAGES[myerror]}</title>"
             message += f"<body>{myerror}: {self.PYTT_RESPONSE_MESSAGES[myerror]}</body></html>"
-        return 200, message
+        return message
 
 
     # CREATE TABLE `tracker` ( `id`  INTEGER  NOT NULL ,  `infohash`  VARCHAR ,  `peer`  VARCHAR ,  `ipaddress`  VARCHAR ,  `port`  INTEGER ,  `download`  INTEGER ,  `upload`  INTEGER ,  `left`  INTEGER ,  `updated`  VARCHAR ,  `status`  VARCHAR , PRIMARY KEY (`id` AUTOINCREMENT));
@@ -202,25 +202,25 @@ class Tracker():
         if 'info_hash' in params:
             info_hash = params['info_hash']
         if info_hash is None:
-            return self.get_error(self.MISSING_INFO_HASH)
+            return False, self.get_error(self.MISSING_INFO_HASH)
         info_hash = binascii.hexlify(str.encode(info_hash))
         info_hash = info_hash.decode()
         hashlen = len(info_hash)
         self.logger.debug(f"info_hash = [{info_hash}], len = {hashlen}")
         if len(info_hash) < self.INFO_HASH_LEN:
-            return self.get_error(self.INVALID_INFO_HASH)
+            return False, self.get_error(self.INVALID_INFO_HASH)
 
         peer_id = None
         if 'peer_id' in params:
             peer_id=params['peer_id']
         if peer_id is None:
-            return self.get_error(self.MISSING_PEER_ID)
+            return False, self.get_error(self.MISSING_PEER_ID)
         peer_id = binascii.hexlify(str.encode(peer_id))
         peer_id = peer_id.decode()
         peerlen = len(peer_id)
         self.logger.debug(f"peer_id = [{peer_id}], len = {peerlen}")
         if len(peer_id) < self.PEER_ID_LEN:
-            return self.get_error(self.INVALID_PEER_ID)
+            return False, self.get_error(self.INVALID_PEER_ID)
 
         announce_ip=None
         if 'ip' in params:
@@ -234,9 +234,9 @@ class Tracker():
             try:
                 port = int(params['port'])
             except Exception:
-                return self.get_error(self.MISSING_PORT)
+                return False, self.get_error(self.MISSING_PORT)
         if port is None:
-            return self.get_error(self.MISSING_PORT)
+            return False, self.get_error(self.MISSING_PORT)
 
         info_hash = str(info_hash)
         uploaded,downloaded,left,compact,no_peer_id,event,tracker_id = '0','0','0',None,None,None,None
@@ -260,7 +260,7 @@ class Tracker():
 
         if numwant > self.tracker_maxpeers:
             # XXX: cannot request more than MAX_ALLOWED_PEERS.
-            return self.get_error(self.INVALID_NUMWANT)
+            return False, self.get_error(self.INVALID_NUMWANT)
         self.logger.debug(f"update_peers: {info_hash}, {peer_id}, {ip}, {port}, {event}, {uploaded}, {downloaded}, {left}")
         self.update_peers(info_hash, peer_id, ip, port, event, uploaded, downloaded, left)
 
@@ -285,16 +285,17 @@ class Tracker():
         response['peers'] = n_peers
         self.logger.debug(f"response: {response}")
         response = bencode(response)
+        return True, response
  
-        try:
-            resp = Response(response)
-            resp.mimetype='text/plain'
-            resp.headers['Content-Type']='text/plain'
-            resp.status_code=200
-            return resp
-        except Exception as exp:
-            # here we do return a code as this is a error message
-            return f"{exp}\n",500
+#        try:
+#            resp = Response(response)
+#            resp.mimetype='text/plain'
+#            resp.headers['Content-Type']='text/plain'
+#            resp.status_code=200
+#            return resp
+#        except Exception as exp:
+#            # here we do return a code as this is a error message
+#            return f"{exp}\n",500
 
 
     def scrape(self, hashes=[]):
@@ -338,11 +339,13 @@ class Tracker():
         self.logger.debug(f"Inside scrape base class. response: {response}")
 
         response = bencode(response)
-        try:
-            resp = Response(response)
-            resp.mimetype='text/plain'
-            resp.headers['Content-Type']='text/plain'
-            resp.status_code=200
-            return resp
-        except Exception as exp:
-            return f"{exp}\n",500
+        return True, response
+
+#        try:
+#            resp = Response(response)
+#            resp.mimetype='text/plain'
+#            resp.headers['Content-Type']='text/plain'
+#            resp.status_code=200
+#            return resp
+#        except Exception as exp:
+#            return f"{exp}\n",500

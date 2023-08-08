@@ -14,7 +14,7 @@ __email__       = 'antoine.schonewille@clustervision.com'
 __status__      = 'Development'
 
 
-from flask import Blueprint, request
+from flask import Blueprint, request, Response
 from utils.log import Log
 from base.tracker import Tracker
 # from common.validate_auth import token_required

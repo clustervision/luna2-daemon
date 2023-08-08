@@ -105,6 +105,9 @@ class Service(object):
                 self.logger.error(f'Service Name {name} Is Not Recognized.')
                 response = f'Service Name {name} Is Not Recognized.'
                 status=False
+            if status is False:
+                output, exit_code = Helper().runcommand(f"systemctl status {name}",True,60)
+                self.logger.error(f"{output}")
         return status, response
 
 

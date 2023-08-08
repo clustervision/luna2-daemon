@@ -45,7 +45,7 @@ class Housekeeper(object):
         while True:
             try:
                 tel+=1
-                if tel > 6:
+                if tel > 3:
                     tel=0
                     while next_id := Queue().next_task_in_queue('housekeeper'):
                         remove_from_queue=True

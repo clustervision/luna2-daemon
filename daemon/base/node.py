@@ -548,8 +548,9 @@ class Node():
                             status = False
                             return status, f'{message}'
 
-                Service().queue('dhcp', 'restart')
-                Service().queue('dns', 'restart')
+                # For now i have the below two disabled. it's testing. -Antoine aug 8 2023
+                #Service().queue('dhcp', 'restart')
+                #Service().queue('dns', 'restart')
                 # below might look as redundant but is added to prevent a possible race condition
                 # when many nodes are added in a loop.
                 # the below tasks ensures that even the last node will be included in dhcp/dns
@@ -756,8 +757,9 @@ class Node():
                     Database().delete_row('ipaddress', [{"column": "id", "value": node_ip['id']}])
             Database().delete_row('nodeinterface', [{"column": "nodeid", "value": nodeid}])
             Database().delete_row('nodesecrets', [{"column": "nodeid", "value": nodeid}])
-            Service().queue('dns', 'restart')
-            Service().queue('dhcp', 'restart')
+            # for now i have disabled the below two lines for testing purposes. Antoine Aug 8 2023
+            #Service().queue('dns', 'restart')
+            #Service().queue('dhcp', 'restart')
             # below might look redundant but is added to prevent a possible race condition
             # when many nodes are added in a loop.
             # the below tasks ensures that even the last node will be included in dhcp/dns

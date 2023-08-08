@@ -35,7 +35,7 @@ class Control():
         Constructor - As of now, nothing have to initialize.
         """
         self.logger = Log.get_logger()
-        plugins_path=CONSTANT["TEMPLATES"]["TEMPLATES_DIR"]
+        plugins_path=CONSTANT["PLUGINS"]["PLUGINS_DIR"]
         self.control_plugins = Helper().plugin_finder(f'{plugins_path}/control')
         # needs to be with constants. pending
 

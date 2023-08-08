@@ -42,7 +42,7 @@ class Boot():
         This constructor will initialize all required variables here.
         """
         self.logger = Log.get_logger()
-        plugins_path=CONSTANT["TEMPLATES"]["TEMPLATES_DIR"]
+        plugins_path=CONSTANT["PLUGINS"]["PLUGINS_DIR"]
         self.provision_plugins = Helper().plugin_finder(f'{plugins_path}/provision')
         self.network_plugins = Helper().plugin_finder(f'{plugins_path}/network')
         self.bmc_plugins = Helper().plugin_finder(f'{plugins_path}/bmc')

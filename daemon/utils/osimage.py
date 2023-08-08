@@ -47,7 +47,7 @@ class OsImage(object):
         """
 
         self.logger = Log.get_logger()
-        plugins_path=CONSTANT["TEMPLATES"]["TEMPLATES_DIR"]
+        plugins_path=CONSTANT["PLUGINS"]["PLUGINS_DIR"]
         self.osimage_plugins = Helper().plugin_finder(f'{plugins_path}/osimage')
         self.osgrab_plugins = Helper().plugin_finder(f'{plugins_path}/osgrab')
         self.provision_plugins = Helper().plugin_finder(f'{plugins_path}/provision')

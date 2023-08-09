@@ -84,11 +84,11 @@ class Housekeeper(object):
                                 Queue().update_task_status_in_queue(next_id,'in progress')
                                 returned=OsImage().cleanup_images(second)
                                 status=returned[0]
-                                if status is False and len(returned>1):
+                                if status is False and len(returned)>1:
                                     self.logger.error(f"cleanup_image: {returned[1]}")
                                 returned=OsImage().cleanup_provisioning(second)
                                 status=returned[0]
-                                if status is False and len(returned>1):
+                                if status is False and len(returned)>1:
                                     self.logger.error(f"cleanup_provisioning: {returned[1]}")
                             
                         if remove_from_queue:

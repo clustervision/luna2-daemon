@@ -97,8 +97,9 @@ def boot_disk():
     ), access_code
 
 
-@boot_blueprint.route('/boot/search/mac/<string:mac>', methods=['GET'])
-def boot_search_mac(mac=None):
+@boot_blueprint.route('/boot/search/mac/<string:macaddress>', methods=['GET'])
+@validate_name
+def boot_search_mac(macaddress=None):
     """
     Input - MacID
     Process - Discovery on MAC address, server will lookup the MAC if SNMP
@@ -106,7 +107,7 @@ def boot_search_mac(mac=None):
     Output - iPXE Template
     """
     access_code = 404
-    status, data = Boot().discover_mac(mac)
+    status, data = Boot().discover_mac(macaddress)
     if status is True:
         access_code = 200
     else:
@@ -129,8 +130,9 @@ def boot_search_mac(mac=None):
         ), access_code
 
 
-@boot_blueprint.route('/boot/manual/group/<string:groupname>/<string:mac>', methods=['GET'])
-def boot_manual_group(groupname=None, mac=None):
+@boot_blueprint.route('/boot/manual/group/<string:groupname>/<string:macaddress>', methods=['GET'])
+@validate_name
+def boot_manual_group(groupname=None, macaddress=None):
     """
     Input - Group
     Process - pick first available node in the chosen group,
@@ -138,7 +140,7 @@ def boot_manual_group(groupname=None, mac=None):
     Output - iPXE Template
     """
     access_code = 404
-    status, data = Boot().discover_group_mac(groupname, mac)
+    status, data = Boot().discover_group_mac(groupname, macaddress)
     if status is True:
         access_code = 200
     else:
@@ -161,8 +163,9 @@ def boot_manual_group(groupname=None, mac=None):
     ), access_code
 
 
-@boot_blueprint.route('/boot/manual/hostname/<string:hostname>/<string:mac>', methods=['GET'])
-def boot_manual_hostname(hostname=None, mac=None):
+@boot_blueprint.route('/boot/manual/hostname/<string:hostname>/<string:macaddress>', methods=['GET'])
+@validate_name
+def boot_manual_hostname(hostname=None, macaddress=None):
     """
     Input - Hostname
     Process - Discovery on hostname, server will lookup the MAC
@@ -170,7 +173,7 @@ def boot_manual_hostname(hostname=None, mac=None):
     Output - iPXE Template
     """
     access_code = 404
-    status, data = Boot().discover_hostname_mac(hostname, mac)
+    status, data = Boot().discover_hostname_mac(hostname, macaddress)
     if status is True:
         access_code = 200
     else:

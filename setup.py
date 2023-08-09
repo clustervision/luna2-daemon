@@ -61,7 +61,15 @@ setup(
         "daemon/config": ["*.monitor", "*.ini", "*.service", "*.json", "*.conf"],
         "daemon/config/third-party": ["*.service","*.conf"],
         "daemon/log": ["*.log"],
-        "daemon/templates": ["*.cfg"]
+        "daemon/templates": ["*.cfg"],
+        "daemon/plugins/bmc": ["README"],
+        "daemon/plugins/control": ["README"],
+        "daemon/plugins/detection": ["README"],
+        "daemon/plugins/install": ["README"],
+        "daemon/plugins/network": ["README"],
+        "daemon/plugins/osgrab": ["README"],
+        "daemon/plugins/osimage": ["README"],
+        "daemon/plugins/provision": ["README"]
     },
 	data_files = [],
 	zip_safe = False,

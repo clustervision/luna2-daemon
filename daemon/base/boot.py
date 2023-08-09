@@ -359,6 +359,17 @@ class Boot():
             ['ipaddress.tablerefid=controller.id', 'network.id=ipaddress.networkid'],
             ['tableref="controller"', 'controller.hostname="controller"']
         )
+        if not controller:
+            # e.g. when the controller has some other IP address that is reachable by 
+            # a node but not configured in luna.
+            controller = Database().get_record_join(
+                ['controller.*', 'ipaddress.ipaddress'],
+                ['ipaddress.tablerefid=controller.id'],
+                ['tableref="controller"', 'controller.hostname="controller"']
+            )
+            altnetwork = Database().get_record(None, 'network', f"WHERE dhcp='1' or dhcp='true'")
+            if controller[0] and altnetwork:
+                controller[0]['networkname']=altnetwork[0]['name']
         if controller:
             data['ipaddress'] = controller[0]['ipaddress']
             data['serverport'] = controller[0]['serverport']
@@ -368,7 +379,8 @@ class Boot():
                     data['webserver_port'] = CONSTANT['WEBSERVER']['PORT']
                 if 'PROTOCOL' in CONSTANT['WEBSERVER']:
                     data['webserver_protocol'] = CONSTANT['WEBSERVER']['PROTOCOL']
-            networkname = controller[0]['networkname']
+            if 'networkname' in controller[0]:
+                networkname = controller[0]['networkname']
             where = f" WHERE id='{controller[0]['clusterid']}'"
             cluster = Database().get_record(None, 'cluster', where)
             if cluster and 'createnode_ondemand' in cluster[0]:
@@ -427,6 +439,8 @@ class Boot():
             if network:
                 for network_ip in network:
                     ips.append(network_ip['ipaddress'])
+        else:
+            return False, "we do not have enough network information"
 
         hostname = None # we use it further down below.
         checked = []

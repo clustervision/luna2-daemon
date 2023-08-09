@@ -36,6 +36,9 @@ def boot():
     status, response = Boot().default()
     if status is True:
         access_code=200
+    else:
+        access_code=404
+        return response, access_code
     return render_template(
         response['template'],
         LUNA_CONTROLLER     = response['LUNA_CONTROLLER'],
@@ -60,6 +63,9 @@ def boot_short():
     status, response = Boot().boot_short()
     if status is True:
         access_code=200
+    else:
+        access_code=404
+        return response, access_code
     return render_template(
         response['template'],
         LUNA_CONTROLLER     = response['LUNA_CONTROLLER'],
@@ -81,6 +87,9 @@ def boot_disk():
     status, response = Boot().boot_disk()
     if status is True:
         access_code=200
+    else:
+        access_code=404
+        return response, access_code
     return render_template(
         response['template'],
         LUNA_CONTROLLER     = response['LUNA_CONTROLLER'],
@@ -100,6 +109,9 @@ def boot_search_mac(mac=None):
     status, data = Boot().discover_mac(mac)
     if status is True:
         access_code=200
+    else:
+        access_code=404
+        return data, access_code
     return render_template(
             data['template'],
             LUNA_CONTROLLER     = data['ipaddress'],
@@ -129,6 +141,9 @@ def boot_manual_group(groupname=None, mac=None):
     status, data = Boot().discover_group_mac(groupname, mac)
     if status is True:
         access_code=200
+    else:
+        access_code=404
+        return data, access_code
     return render_template(
         data['template'],
         LUNA_CONTROLLER     = data['ipaddress'],
@@ -158,6 +173,9 @@ def boot_manual_hostname(hostname=None, mac=None):
     status, data = Boot().discover_hostname_mac(hostname, mac)
     if status is True:
         access_code=200
+    else:
+        access_code=404
+        return data, access_code
     return render_template(
         data['template'],
         LUNA_CONTROLLER     = data['ipaddress'],
@@ -188,6 +206,9 @@ def boot_install(node=None):
     status, data = Boot().install(node)
     if status is True:
         access_code=200
+    else:
+        access_code=404
+        return data, access_code
     return render_template_string(
         data['template_data'],
         LUNA_CONTROLLER         = data['ipaddress'],

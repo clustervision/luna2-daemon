@@ -107,11 +107,11 @@ def validate_name(function):
     def decorator(*args, **kwargs):
         for name_key, name_value in kwargs.items():
             check = filter_data(name_value, name_key)
-            if check is False:
-                message = f"Incorrect Naming convention with {name_key} {name_value}."
+            if ERROR:
+                message = f"Incorrect Naming convention with {name_key} {name_value}: {ERROR}"
                 response = {'message': message}
-                LOGGER.debug(f" ERROR :: {message}")
-                return response, 404
+                LOGGER.debug(f"{ERROR}")
+                return response, 400
         return function(*args, **kwargs)
     return decorator
 
@@ -170,8 +170,8 @@ def filter_data(data=None, name=None):
     if name in MATCH.keys():
         regex = re.compile(r"" + REG_EXP[MATCH[name]])
         if not regex.match(data):
-            LOGGER.debug(f"MATCH name = {name} with data = {data} mismatch with \
-                         REG_EXP['{MATCH[name]}'] = {REG_EXP[MATCH[name]]}")
+            LOGGER.debug(f"MATCH name = {name} with data = {data} mismatch with:")
+            LOGGER.debug(f"    REG_EXP['{MATCH[name]}'] = {REG_EXP[MATCH[name]]}")
             ERROR = f"field {name} with content {data} does match criteria {REG_EXP[MATCH[name]]}"
     if name in convert.keys():
         LOGGER.debug(f"CONVERT IN {name} = {data}")

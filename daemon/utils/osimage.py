@@ -620,7 +620,7 @@ class OsImage(object):
 
     # -------------------------------------------------------------------
   
-    def cleanup_images(self,osimage):
+    def cleanup_images(self,osimage,request_id):
         self.logger.info(f"I was called to cleanup old images: {osimage}")
 
         image = Database().get_record(None, 'osimage', f"WHERE name='{osimage}'")
@@ -650,7 +650,7 @@ class OsImage(object):
 
     # -------------------------------------------------------------------
 
-    def cleanup_provisioning(self,osimage):
+    def cleanup_provisioning(self,osimage,request_id):
         self.logger.info(f"I was called to cleanup old provisioning: {osimage}")
 
         image = Database().get_record(None, 'osimage', f"WHERE name='{osimage}'")

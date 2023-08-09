@@ -82,8 +82,14 @@ class Housekeeper(object):
                                     executor.shutdown(wait=False)
                             case 'cleanup_old_images':
                                 Queue().update_task_status_in_queue(next_id,'in progress')
-                                OsImage().cleanup_images(second)
-                                OsImage().cleanup_provisioning(second)
+                                returned=OsImage().cleanup_images(second)
+                                status=returned[0]
+                                if status is False and len(returned)>1:
+                                    self.logger.error(f"cleanup_image: {returned[1]}")
+                                returned=OsImage().cleanup_provisioning(second)
+                                status=returned[0]
+                                if status is False and len(returned)>1:
+                                    self.logger.error(f"cleanup_provisioning: {returned[1]}")
                             
                         if remove_from_queue:
                             Queue().remove_task_from_queue(next_id)

@@ -318,6 +318,7 @@ class Boot():
             environment = jinja2.Environment()
             template = environment.from_string('No Node is available for this mac address.')
             status=False
+            return status, "No config available"
             #self.logger.info(f'template mac search data: {data}')
         self.logger.info(f'Boot API serving the {template}')
         return status, data
@@ -774,6 +775,7 @@ class Boot():
             environment = jinja2.Environment()
             template = environment.from_string('No Node is available for this mac address.')
             status=False
+            return status, "No config available"
         self.logger.info(f'Boot API serving the {template}')
         return status, data
 

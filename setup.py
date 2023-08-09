@@ -60,7 +60,6 @@ setup(
 	package_data = {
         "daemon/config": ["*.monitor", "*.ini", "*.service", "*.json", "*.conf"],
         "daemon/config/third-party": ["*.service","*.conf"],
-        "daemon/documentation": ["*.png", "*.bkp"],
         "daemon/log": ["*.log"],
         "daemon/templates": ["*.cfg"]
     },
@@ -68,7 +67,7 @@ setup(
 	zip_safe = False,
 	include_package_data = True,
 	classifiers = [
-		'Development Status :: Beta',
+		'Development Status :: BETA',
 		'Environment :: REST API',
 		'Intended Audience :: System Administrators',
 		'License :: MIT',

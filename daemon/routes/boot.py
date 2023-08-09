@@ -32,12 +32,12 @@ def boot():
     Process - Via jinja2 filled data in template templ_boot_ipxe.cfg
     Output - templ_boot_ipxe.cfg
     """
-    access_code=404
+    access_code = 404
     status, response = Boot().default()
     if status is True:
-        access_code=200
+        access_code = 200
     else:
-        access_code=404
+        access_code = 404
         return response, access_code
     return render_template(
         response['template'],
@@ -59,12 +59,12 @@ def boot_short():
     Process - Via jinja2 filled data in template templ_boot_ipxe_short.cfg
     Output - templ_boot_ipxe_short.cfg
     """
-    access_code=404
+    access_code = 404
     status, response = Boot().boot_short()
     if status is True:
-        access_code=200
+        access_code = 200
     else:
-        access_code=404
+        access_code = 404
         return response, access_code
     return render_template(
         response['template'],
@@ -83,12 +83,12 @@ def boot_disk():
     Process - Via jinja2 filled data in template templ_boot_disk.cfg
     Output - templ_boot_disk.cfg
     """
-    access_code=404
+    access_code = 404
     status, response = Boot().boot_disk()
     if status is True:
-        access_code=200
+        access_code = 200
     else:
-        access_code=404
+        access_code = 404
         return response, access_code
     return render_template(
         response['template'],
@@ -105,12 +105,12 @@ def boot_search_mac(mac=None):
     port-detection has been enabled
     Output - iPXE Template
     """
-    access_code=404
+    access_code = 404
     status, data = Boot().discover_mac(mac)
     if status is True:
-        access_code=200
+        access_code = 200
     else:
-        access_code=404
+        access_code = 404
         return data, access_code
     return render_template(
             data['template'],
@@ -137,12 +137,12 @@ def boot_manual_group(groupname=None, mac=None):
             or create one if there is none available.
     Output - iPXE Template
     """
-    access_code=404
+    access_code = 404
     status, data = Boot().discover_group_mac(groupname, mac)
     if status is True:
-        access_code=200
+        access_code = 200
     else:
-        access_code=404
+        access_code = 404
         return data, access_code
     return render_template(
         data['template'],
@@ -169,12 +169,12 @@ def boot_manual_hostname(hostname=None, mac=None):
     if SNMP port-detection has been enabled
     Output - iPXE Template
     """
-    access_code=404
+    access_code = 404
     status, data = Boot().discover_hostname_mac(hostname, mac)
     if status is True:
-        access_code=200
+        access_code = 200
     else:
-        access_code=404
+        access_code = 404
         return data, access_code
     return render_template(
         data['template'],
@@ -202,12 +202,12 @@ def boot_install(node=None):
     Process - Call the installation script for this node.
     Output - Success or failure
     """
-    access_code=404
+    access_code = 404
     status, data = Boot().install(node)
     if status is True:
-        access_code=200
+        access_code = 200
     else:
-        access_code=404
+        access_code = 404
         return data, access_code
     return render_template_string(
         data['template_data'],

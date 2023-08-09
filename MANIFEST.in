@@ -2,11 +2,13 @@ include requirements.txt
 include VERSION.txt
 include README.md
 include daemon/*
-include daemon/apis/*
+include daemon/base/*
 include daemon/common/*
 include daemon/config/*
 include daemon/config/third-party/*
-include daemon/documentation/*
+include daemon/files/*
 include daemon/log/*
+include daemon/plugins/*
+include daemon/routes/*
 include daemon/templates/*
 include daemon/utils/*

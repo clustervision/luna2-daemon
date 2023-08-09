@@ -1132,9 +1132,13 @@ def config_get_secrets_group(name=None):
     Input - Group Name
     Output - Return the Group Secrets.
     """
+    access_code=404
     status, response = Secret().get_group_secrets(name)
-    access_code=Helper().get_access_code(status,response)
-    response = {'message': response}
+    if status is True:
+        access_code=200
+        response=dumps(response)
+    else:
+        response = {'message': response}
     return response, access_code
 
 

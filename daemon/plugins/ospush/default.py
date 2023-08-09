@@ -56,7 +56,7 @@ class Plugin():
                     if nodry is True: # nodry is True means it's for real
                         command=f"rsync -aH --one-file-system {exclude_string} {image_path}/{grab} {node}:/"
                     else:
-                        command=f"rsync -aHvn --one-file-system {exclude_string} {image_path}/{grab} {node}:/ &> /tmp/ospush.out"
+                        command=f"rsync -aHvn --one-file-system {exclude_string} {image_path}/{grab} {node}:/ > /tmp/ospush.out"
                     self.logger.info(command)
                     message,exit_code = Helper().runcommand(command,True,3600)
                     self.logger.debug(f"exit_code = {exit_code}")

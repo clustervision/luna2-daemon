@@ -130,7 +130,8 @@ DATABASE_LAYOUT_network = [
 {"column": "dhcp",                 "datatype": "INTEGER", "length": "10"},
 {"column": "dhcp_range_begin",     "datatype": "VARCHAR", "length": "20"},
 {"column": "dhcp_range_end",       "datatype": "VARCHAR", "length": "60"},
-{"column": "comment",              "datatype": "VARCHAR", "length": "60"}]
+{"column": "zone",                 "datatype": "VARCHAR", "length": "60"},
+{"column": "comment",              "datatype": "VARCHAR", "length": "200"}]
 
 DATABASE_LAYOUT_user = [
 {"column": "id",                   "datatype": "INTEGER", "key": "PRIMARY", "keyadd": "AUTOINCREMENT"},

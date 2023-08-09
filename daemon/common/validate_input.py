@@ -166,13 +166,13 @@ def filter_data(data=None, name=None):
     data = data.replace('"', "")
     if name in maxlength.keys():
         if len(data) > int(maxlength[name]):
-            LOGGER.debug(f"length of {name} exceeds {maxlength[name]}")
+            LOGGER.info(f"length of {name} exceeds {maxlength[name]}")
             ERROR = f"length of {name} exceeds {maxlength[name]}"
     if name in MATCH.keys():
         regex = re.compile(r"" + REG_EXP[MATCH[name]])
         if not regex.match(data):
-            LOGGER.debug(f"MATCH name = {name} with data = {data} mismatch with:")
-            LOGGER.debug(f"    REG_EXP['{MATCH[name]}'] = {REG_EXP[MATCH[name]]}")
+            LOGGER.info(f"MATCH name = {name} with data = {data} mismatch with:")
+            LOGGER.info(f"    REG_EXP['{MATCH[name]}'] = {REG_EXP[MATCH[name]]}")
             ERROR = f"field {name} with content {data} does match criteria {REG_EXP[MATCH[name]]}"
     if name in convert.keys():
         LOGGER.debug(f"CONVERT IN {name} = {data}")

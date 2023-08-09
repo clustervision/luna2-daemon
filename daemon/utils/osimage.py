@@ -620,13 +620,12 @@ class OsImage(object):
 
     # -------------------------------------------------------------------
   
-    def cleanup_images(self,osimage,request_id):
+    def cleanup_images(self,osimage):
         self.logger.info(f"I was called to cleanup old images: {osimage}")
 
         image = Database().get_record(None, 'osimage', f"WHERE name='{osimage}'")
         if not image:
-            Status().add_message(request_id,"luna",f"error packing osimage {osimage}: Image {osimage} does not exist?")
-            return False
+            return False, f"error packing osimage {osimage}: Image {osimage} does not exist?"
         distribution = str(image[0]['distribution']) or 'redhat'
         distribution=distribution.lower()
         osrelease = str(image[0]['osrelease']) or 'default.py'
@@ -650,13 +649,12 @@ class OsImage(object):
 
     # -------------------------------------------------------------------
 
-    def cleanup_provisioning(self,osimage,request_id):
+    def cleanup_provisioning(self,osimage):
         self.logger.info(f"I was called to cleanup old provisioning: {osimage}")
 
         image = Database().get_record(None, 'osimage', f"WHERE name='{osimage}'")
         if not image:
-            Status().add_message(request_id,"luna",f"error cleaning provisioning osimage {osimage}: Image {osimage} does not exist?")
-            return False
+            return False, f"error cleaning provisioning osimage {osimage}: Image {osimage} does not exist?"
         current_packed_image_file = str(image[0]['imagefile'])
 
         cluster_provision_methods=[]

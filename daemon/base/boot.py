@@ -816,6 +816,8 @@ class Boot():
             data['selinux']      = Helper().bool_revert(cluster[0]['security'])
             data['cluster_provision_method']   = cluster[0]['provision_method']
             data['cluster_provision_fallback'] = cluster[0]['provision_fallback']
+            data['name_server'] = cluster[0]['nameserver_ip']
+            data['ntp_server']  = cluster[0]['ntp_server']
         # Antoine
         controller = Database().get_record_join(
             ['controller.*', 'ipaddress.ipaddress'],
@@ -831,6 +833,7 @@ class Boot():
                     data['webserver_port'] = CONSTANT['WEBSERVER']['PORT']
                 if 'PROTOCOL' in CONSTANT['WEBSERVER']:
                     data['webserver_protocol'] = CONSTANT['WEBSERVER']['PROTOCOL']
+
         node_details = Database().get_record_join(
             [
                 'node.*',
@@ -942,6 +945,7 @@ class Boot():
                 ['network.id=ipaddress.networkid', 'ipaddress.tablerefid=nodeinterface.id'],
                 ['tableref="nodeinterface"', f"nodeinterface.nodeid='{data['nodeid']}'"]
             )
+            data['domain_search']=''
             if nodeinterface:
                 for interface in nodeinterface:
                     node_nwk = f'{interface["ipaddress"]}/{interface["subnet"]}'
@@ -966,9 +970,11 @@ class Boot():
                             'gateway': interface['gateway'],
                             'options': interface['options'] or ""
                         }
+                        data['domain_search']=interface['network'] + ','
                         if interface['interface'] == data['provision_interface'] and interface['network']:
                             # if it is my prov interface then it will get that domain as a FQDN.
                             data['nodehostname'] = data['nodename'] + '.' + interface['network']
+                            data['domain_search']=interface['network'] + ',' + data['domain_search']
 
         #self.logger.info(f"boot install data: [{data}]")
         if None not in data.values():
@@ -1005,6 +1011,10 @@ class Boot():
         template_data = template_data.replace("## HOSTNAME CODE SEGMENT", segment)
         segment = str(network_plugin().gateway)
         template_data = template_data.replace("## GATEWAY CODE SEGMENT", segment)
+        segment = str(network_plugin().dns)
+        template_data = template_data.replace("## DNS CODE SEGMENT", segment)
+        segment = str(network_plugin().ntp)
+        template_data = template_data.replace("## NTP CODE SEGMENT", segment)
 
         ## BMC CODE SEGMENT
         bmc_plugin = Helper().plugin_load(

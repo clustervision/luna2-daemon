@@ -25,35 +25,23 @@ class Plugin():
         """
 
     interface = """
-        cd /sysroot
-        cd etc/sysconfig/network-scripts
-        echo DEVICE=$DEVICE >> ifcfg-$DEVICE
-        echo NAME=$DEVICE >> ifcfg-$DEVICE
-        echo IPADDR=$IPADDR >> ifcfg-$DEVICE
-        echo PREFIX=$PREFIX >> ifcfg-$DEVICE
-        echo NETMASK=$NETMASK >> ifcfg-$DEVICE
+        chroot /sysroot "nmcli connection add con-name Connection1 ifname $DEVICE type ethernet"
+        #chroot /sysroot "nmcli connection modify Connection1 ipv4.addresses $IPADDRESS/$PREFIX"
+        chroot /sysroot "nmcli connection modify Connection1 ipv4.addresses $IPADDRESS/$NETMASK"
+        chroot /sysroot "nmcli connection modify Connection1 ipv4.method manual"
     """
 
     hostname = """
-        cd /sysroot
         echo "$HOSTNAME" > /proc/sys/kernel/hostname
-        echo "HOSTNAME=$HOSTNAME" >> etc/sysconfig/network
-        echo "$HOSTNAME" > etc/hostname
+        chroot /sysroot "hostnamectl --static set-hostname $HOSTNAME"
     """
 
     gateway = """
-        cd /sysroot
-        echo "GATEWAY=$GATEWAY" >> etc/sysconfig/network
+        chroot /sysroot "nmcli connection modify Connection1 ipv4.gateway $GATEWAY"
     """
 
     dns = """
-        cd /sysroot
-        echo -n '' > etc/resolv.conf
-        for server in $(echo $NAMESERVER|tr ',' ' '); do
-            echo "nameserver $server" >> etc/resolv.conf
-        done
-        search=$(echo $SEARCH | awk '{gsub(/,/, " "); print}')
-        echo "search $search" >> etc/resolv.conf
+        chroot /sysroot "nmcli connection modify Connection1 ipv4.dns $NAMESERVER ipv4.dns-search $SEARCH"
     """
 
     ntp = """

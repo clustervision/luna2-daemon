@@ -50,7 +50,7 @@ class Plugin():
                     if nodry is True: # nodry is True means it's for real
                         command=f"mkdir -p {image_path}/{grab} 2> /dev/null; rsync -aH --one-file-system --delete-after {exclude_string} {node}:{grab}/* {image_path}/{grab}/"
                     else:
-                        command=f"mkdir -p {image_path}/{grab} 2> /dev/null; rsync -aHvn --one-file-system --delete-after {exclude_string} {node}:{grab}/* {image_path}/{grab}/ &> /tmp/osgrab.out"
+                        command=f"mkdir -p {image_path}/{grab} 2> /dev/null; rsync -aHvn --one-file-system --delete-after {exclude_string} {node}:{grab}/* {image_path}/{grab}/ > /tmp/osgrab.out"
                     self.logger.info(command)
                     message,exit_code = Helper().runcommand(command,True,3600)
                     self.logger.debug(f"exit_code = {exit_code}")
@@ -63,6 +63,8 @@ class Plugin():
             message,exit_code = Helper().runcommand(command,True,3600)
 
         if exit_code != 0:
+            if len(message) > 0:
+                message=message[1]
             False,f"{message}"
 
         # not entirely accurate but good enough

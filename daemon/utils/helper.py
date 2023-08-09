@@ -750,7 +750,11 @@ class Helper(object):
             levelones = levelone
         try:
             for levelone in levelones:
-                if levelone in plugins[root].keys():
+                if leveltwo and levelone+leveltwo+'.py' in plugins[root]:
+                    self.logger.info(f"loading plugins.{root}.{levelone}{leveltwo}")
+                    module = __import__('plugins.'+root+'.'+levelone+leveltwo,fromlist=[class_name])
+                    break
+                elif levelone in plugins[root].keys():
                     if leveltwo and leveltwo in plugins[root][levelone]:
                         plugin = leveltwo.rsplit('.',1)
                         self.logger.info(f"loading plugins.{root}.{levelone}.{plugin[0]}")

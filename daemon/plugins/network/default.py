@@ -45,3 +45,21 @@ class Plugin():
         cd /sysroot
         echo "GATEWAY=$GATEWAY" >> etc/sysconfig/network
     """
+
+    dns = """
+        cd /sysroot
+        echo -n '' > etc/resolv.conf
+        for server in $(echo $NAMESERVER|tr ',' ' '); do
+            echo "nameserver $server" >> etc/resolv.conf
+        done
+        search=$(echo $SEARCH | awk '{gsub(/,/, " "); print}')
+        echo "search $search" >> etc/resolv.conf
+    """
+
+    ntp = """
+        cd /sysroot
+        echo "server  $NTPSERVER" > etc/ntp.conf
+        echo "fudge   $NTPSERVER stratum 10" >> etc/ntp.conf
+        echo "driftfile /etc/ntp/drift" >> etc/ntp.conf
+    """
+

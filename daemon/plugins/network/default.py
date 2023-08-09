@@ -32,6 +32,8 @@ class Plugin():
         echo IPADDR=$IPADDR >> ifcfg-$DEVICE
         echo PREFIX=$PREFIX >> ifcfg-$DEVICE
         echo NETMASK=$NETMASK >> ifcfg-$DEVICE
+        #$ZONE
+        #$OPTIONS
     """
 
     hostname = """

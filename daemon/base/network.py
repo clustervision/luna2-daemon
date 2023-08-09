@@ -145,6 +145,12 @@ class Network():
             else:
                 status=False
                 return status, 'Invalid request: Not enough details provided. network/subnet in CIDR notation expected'
+            if 'zone' in data:
+                if (data['zone'] != "external") and (data['zone'] != "internal"):
+                    status=False
+                    return status, f'Invalid request: Incorrect zone. Must be either internal or external'
+            elif create is True:
+                data['zone']="internal"
             if 'gateway' in data:
                 gateway_details = Helper().check_ip_range(
                     data['gateway'],

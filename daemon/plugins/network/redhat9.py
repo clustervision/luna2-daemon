@@ -29,6 +29,8 @@ class Plugin():
         #chroot /sysroot "nmcli connection modify Connection1 ipv4.addresses $IPADDRESS/$PREFIX"
         chroot /sysroot "nmcli connection modify Connection1 ipv4.addresses $IPADDRESS/$NETMASK"
         chroot /sysroot "nmcli connection modify Connection1 ipv4.method manual"
+        #$ZONE
+        #$OPTIONS
     """
 
     hostname = """

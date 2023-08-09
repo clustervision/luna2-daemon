@@ -283,7 +283,8 @@ def bootstrap(bootstrapfile=None):
                 {'column': 'dhcp', 'value': dhcp},
                 {'column': 'dhcp_range_begin', 'value': dhcp_range_begin},
                 {'column': 'dhcp_range_end', 'value': dhcp_range_end},
-                {'column': 'gateway', 'value': defaultgw_ip}
+                {'column': 'gateway', 'value': defaultgw_ip},
+                {'column': 'zone', 'value': 'internal'}
             ]
         Database().insert('network', default_network)
         defaultgw_ip='' # a little tricky but we assume that 'cluster' network is the first to be dealt with and so it works. pending

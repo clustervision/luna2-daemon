@@ -32,7 +32,13 @@ def boot():
     Process - Via jinja2 filled data in template templ_boot_ipxe.cfg
     Output - templ_boot_ipxe.cfg
     """
-    response, access_code = Boot().default()
+    access_code=404
+    status, response = Boot().default()
+    if status is True:
+        access_code=200
+    else:
+        access_code=404
+        return response, access_code
     return render_template(
         response['template'],
         LUNA_CONTROLLER     = response['LUNA_CONTROLLER'],
@@ -53,7 +59,13 @@ def boot_short():
     Process - Via jinja2 filled data in template templ_boot_ipxe_short.cfg
     Output - templ_boot_ipxe_short.cfg
     """
-    response, access_code = Boot().boot_short()
+    access_code=404
+    status, response = Boot().boot_short()
+    if status is True:
+        access_code=200
+    else:
+        access_code=404
+        return response, access_code
     return render_template(
         response['template'],
         LUNA_CONTROLLER     = response['LUNA_CONTROLLER'],
@@ -71,7 +83,13 @@ def boot_disk():
     Process - Via jinja2 filled data in template templ_boot_disk.cfg
     Output - templ_boot_disk.cfg
     """
-    response, access_code = Boot().boot_disk()
+    access_code=404
+    status, response = Boot().boot_disk()
+    if status is True:
+        access_code=200
+    else:
+        access_code=404
+        return response, access_code
     return render_template(
         response['template'],
         LUNA_CONTROLLER     = response['LUNA_CONTROLLER'],
@@ -87,7 +105,13 @@ def boot_search_mac(mac=None):
     port-detection has been enabled
     Output - iPXE Template
     """
-    data, access_code = Boot().discover_mac(mac)
+    access_code=404
+    status, data = Boot().discover_mac(mac)
+    if status is True:
+        access_code=200
+    else:
+        access_code=404
+        return data, access_code
     return render_template(
             data['template'],
             LUNA_CONTROLLER     = data['ipaddress'],
@@ -113,7 +137,13 @@ def boot_manual_group(groupname=None, mac=None):
             or create one if there is none available.
     Output - iPXE Template
     """
-    data, access_code = Boot().discover_group_mac(groupname, mac)
+    access_code=404
+    status, data = Boot().discover_group_mac(groupname, mac)
+    if status is True:
+        access_code=200
+    else:
+        access_code=404
+        return data, access_code
     return render_template(
         data['template'],
         LUNA_CONTROLLER     = data['ipaddress'],
@@ -139,7 +169,13 @@ def boot_manual_hostname(hostname=None, mac=None):
     if SNMP port-detection has been enabled
     Output - iPXE Template
     """
-    data, access_code = Boot().discover_hostname_mac(hostname, mac)
+    access_code=404
+    status, data = Boot().discover_hostname_mac(hostname, mac)
+    if status is True:
+        access_code=200
+    else:
+        access_code=404
+        return data, access_code
     return render_template(
         data['template'],
         LUNA_CONTROLLER     = data['ipaddress'],
@@ -166,7 +202,13 @@ def boot_install(node=None):
     Process - Call the installation script for this node.
     Output - Success or failure
     """
-    data, access_code = Boot().install(node)
+    access_code=404
+    status, data = Boot().install(node)
+    if status is True:
+        access_code=200
+    else:
+        access_code=404
+        return data, access_code
     return render_template_string(
         data['template_data'],
         LUNA_CONTROLLER         = data['ipaddress'],

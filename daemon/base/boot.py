@@ -17,7 +17,7 @@ __status__      = 'Development'
 import datetime
 import jinja2
 import jwt
-from flask import abort
+#from flask import abort
 from common.constant import CONSTANT
 from utils.log import Log
 from utils.database import Database
@@ -60,7 +60,7 @@ class Boot():
         template_path = f'{CONSTANT["TEMPLATES"]["TEMPLATES_DIR"]}/{template}'
         check_template = Helper().check_jinja(template_path)
         if not check_template:
-            abort(404, 'Empty')
+            return False, 'Empty'
         controller = Database().get_record_join(
             ['controller.*','ipaddress.ipaddress'],
             ['ipaddress.tablerefid=controller.id'],
@@ -130,7 +130,7 @@ class Boot():
         template_path = f'{CONSTANT["TEMPLATES"]["TEMPLATES_DIR"]}/{template}'
         check_template = Helper().check_jinja(template_path)
         if not check_template:
-            abort(404, 'Empty')
+            return False, 'Empty'
         controller = Database().get_record_join(
             ['controller.*', 'ipaddress.ipaddress'],
             ['ipaddress.tablerefid=controller.id'],
@@ -174,7 +174,7 @@ class Boot():
         template_path = f'{CONSTANT["TEMPLATES"]["TEMPLATES_DIR"]}/{template}'
         check_template = Helper().check_jinja(template_path)
         if not check_template:
-            abort(404, 'Empty')
+            return False, 'Empty'
         controller = Database().get_record_join(
             ['controller.*', 'ipaddress.ipaddress'],
             ['ipaddress.tablerefid=controller.id'],
@@ -219,7 +219,7 @@ class Boot():
         template_path = f'{CONSTANT["TEMPLATES"]["TEMPLATES_DIR"]}/{template}'
         check_template = Helper().check_jinja(template_path)
         if not check_template:
-            abort(404, 'Empty')
+            return False, 'Empty'
         # Antoine
         # LOGGER.info(f"BOOT/SEARCH/MAC received for {mac}")
         controller = Database().get_record_join(
@@ -349,7 +349,7 @@ class Boot():
         template_path = f'{CONSTANT["TEMPLATES"]["TEMPLATES_DIR"]}/{template}'
         check_template = Helper().check_jinja(template_path)
         if not check_template:
-            abort(404, 'Empty')
+            return False, 'Empty'
         # Antoine
         networkname, network, createnode_ondemand = None, None, True # used below
 
@@ -641,7 +641,7 @@ class Boot():
         template_path = f'{CONSTANT["TEMPLATES"]["TEMPLATES_DIR"]}/{template}'
         check_template = Helper().check_jinja(template_path)
         if not check_template:
-            abort(404, 'Empty')
+            return False, 'Empty'
         # Antoine
         controller = Database().get_record_join(
             ['controller.*', 'ipaddress.ipaddress'],
@@ -792,7 +792,7 @@ class Boot():
         template_path = f'{CONSTANT["TEMPLATES"]["TEMPLATES_DIR"]}/{template}'
         check_template = Helper().check_jinja(template_path)
         if not check_template:
-            abort(404, 'Empty')
+            return False, 'Empty'
 
         with open(template_path, 'r', encoding='utf-8') as file:
             template_data = file.read()

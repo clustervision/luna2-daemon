@@ -970,7 +970,7 @@ class Boot():
                             'networkname': interface['network'],
                             'gateway': interface['gateway'],
                             'options': interface['options'] or "",
-                            'zone': interface['zone'] or ""
+                            'zone': interface['zone']
                         }
                         data['domain_search']=interface['network'] + ','
                         if interface['interface'] == data['provision_interface'] and interface['network']:

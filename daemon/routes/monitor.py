@@ -13,6 +13,7 @@ __email__       = "sumit.sharma@clustervision.com"
 __status__      = "Development"
 
 
+from json import dumps
 from flask import Blueprint, request
 from utils.log import Log
 from common.validate_auth import token_required
@@ -31,8 +32,11 @@ def monitor_service(name=None):
     Currently supported services are DHCP, DNS and luna2 itself.
     Output - Status
     """
+    access_code = 503
     status, response = Monitor().service_monitor(name)
-    response={'monitor': {'Service': { name: response} } }
+    if status is True:
+        access_code = 200
+    response = {'monitor': {'Service': { name: response} } }
     return response, access_code
 
 
@@ -44,14 +48,14 @@ def monitor_status_get(node=None):
     Process - Validate if the node exists and what the state is
     Output - Status.
     """
-    access_code=404
+    access_code = 404
     status, response = Monitor().get_status(node)
     if status is True:
-        access_code=200
-        response=dumps(response)
+        access_code = 200
+        response = dumps(response)
     else:
-        access_code=404
-        response={'message': f'{node} not found'}
+        access_code = 404
+        response = {'message': f'{node} not found'}
     return response, access_code
 
 
@@ -65,10 +69,9 @@ def monitor_status_post(node=None):
     Process - Update the Node Status
     Output - Status.
     """
-    access_code=404
+    access_code = 404
     status, response = Monitor().update_status(node, request)
     if status is True:
-        access_code=204
-    response={'message': response}
+        access_code = 204
+    response = {'message': response}
     return response, access_code
-

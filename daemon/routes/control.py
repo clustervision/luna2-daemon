@@ -35,15 +35,15 @@ def control_get(hostname=None, action=None):
     Process - Use to perform on, off, reset operations on one node.
     Output - Success or failure
     """
-    access_code=404
+    access_code = 404
     status, response = Control().power_action(hostname, action)
     if status is True:
-        access_code=204
+        access_code = 204
         if 'status' in action:
-            access_code=200
-        response=dumps(response)
+            access_code = 200
+        response = dumps(response)
     else:
-        response={'message': response}
+        response = {'message': response}
     return response, access_code
 
 
@@ -57,13 +57,13 @@ def control_post():
     Process - Use to perform on, off, reset operations on one node.
     Output - Success or failure
     """
-    access_code=404
+    access_code = 404
     status, response = Control().bulk_action(request)
     if status is True:
         access_code=200
-        response=dumps(response)
+        response = dumps(response)
     else:
-        response={'message': response}
+        response = {'message': response}
     return response, access_code
 
 
@@ -76,13 +76,12 @@ def control_status(request_id=None):
     Process - gets the list from status table. renders this into a response.
     Output - Success or failure
     """
-    access_code=404
+    access_code = 404
     # we cannot use Status().get_status as there is too much customization
     status, response = Control().get_status(request_id)
     if status is True:
         access_code=200
-        response=dumps(response)
+        response = dumps(response)
     else:
-        response={'message': response}
+        response = {'message': response}
     return response, access_code
-

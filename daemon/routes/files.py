@@ -32,14 +32,14 @@ def files():
     Process - Search IMAGE_FILES for *.tar.gz. *.tar.bz2 files.
     Output - List of available files.
     """
-    access_code=503
+    access_code = 503
     status, response = File().get_files_list()
     if status is True:
         access_code=200
-        response=dumps(response)
+        response = dumps(response)
     else:
-        access_code=Helper().get_access_code(status, response)
-        response={'message': response}
+        access_code = Helper().get_access_code(status, response)
+        response = {'message': response}
     return response, access_code
 
 
@@ -50,13 +50,12 @@ def files_get(filename=None):
     Process - Make available file to download.
     Output - File
     """
-    access_code=503
+    access_code = 503
     status, response = File().get_file(filename=filename, http_request=request)
     if status is True:
-        access_code=200
+        access_code = 200
         return response, access_code
     else:
-        access_code=Helper().get_access_code(status, response)
-        response={'message': response}
+        access_code = Helper().get_access_code(status, response)
+        response = {'message': response}
     return response, access_code
-

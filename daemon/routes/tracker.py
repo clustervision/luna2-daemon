@@ -34,7 +34,7 @@ def tracker_announce_get():
     Process - 
     Output - 
     """
-    access_code=400
+    access_code = 400
     request_data = request.args.to_dict()
     remote_ip = request.environ['REMOTE_ADDR']
     status, response = Tracker().announce(request_data, remote_ip)
@@ -42,14 +42,14 @@ def tracker_announce_get():
     if status is True:
         try:
             resp = Response(response)
-            resp.mimetype='text/plain'
-            resp.headers['Content-Type']='text/plain'
-            access_code=200
-            resp.status_code=access_code
+            resp.mimetype = 'text/plain'
+            resp.headers['Content-Type'] = 'text/plain'
+            access_code = 200
+            resp.status_code = access_code
             return resp
         except Exception as exp:
             # here we do return a code as this is a error message
-            access_code=500
+            access_code = 500
             return f"{exp}\n",access_code
     return response, access_code
 
@@ -64,7 +64,7 @@ def tracker_scrape_get():
     Process - 
     Output - 
     """
-    access_code=500
+    access_code = 500
     hashes = request.args.getlist('info_hash')
     status, response = Tracker().scrape(hashes)
     #return response_list
@@ -72,13 +72,12 @@ def tracker_scrape_get():
     if status is True:
         try:
             resp = Response(response)
-            resp.mimetype='text/plain'
-            resp.headers['Content-Type']='text/plain'
-            access_code=200
-            resp.status_code=access_code
+            resp.mimetype = 'text/plain'
+            resp.headers['Content-Type'] = 'text/plain'
+            access_code = 200
+            resp.status_code = access_code
             return resp
         except Exception as exp:
-            access_code=500
+            access_code = 500
             return f"{exp}\n", access_code
     return response, access_code
-

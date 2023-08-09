@@ -106,7 +106,8 @@ def validate_name(function):
     @wraps(function)
     def decorator(*args, **kwargs):
         for name_key, name_value in kwargs.items():
-            check = filter_data(name_value, name_key)
+            ERROR = None
+            filter_data(name_value, name_key)
             if ERROR:
                 message = f"Incorrect Naming convention with {name_key} {name_value}: {ERROR}"
                 response = {'message': message}

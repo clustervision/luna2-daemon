@@ -760,6 +760,10 @@ class Helper(object):
                         self.logger.info(f"loading plugins.{root}.{levelone}.default")
                         module = __import__('plugins.'+root+'.'+levelone+'.default',fromlist=[class_name])
                         break
+                elif leveltwo and levelone+leveltwo+'.py' plugins[root]:
+                    self.logger.info(f"loading plugins.{root}.{levelone}{leveltwo}")
+                    module = __import__('plugins.'+root+'.'+levelone+leveltwo,fromlist=[class_name])
+                    break
                 elif levelone+'.py' in plugins[root]:
                     self.logger.info(f"loading plugins.{root}.{levelone}")
                     module = __import__('plugins.'+root+'.'+levelone,fromlist=[class_name])

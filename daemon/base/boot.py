@@ -974,7 +974,7 @@ class Boot():
                         if interface['interface'] == data['provision_interface'] and interface['network']:
                             # if it is my prov interface then it will get that domain as a FQDN.
                             data['nodehostname'] = data['nodename'] + '.' + interface['network']
-                            data['domain_search']=interface['network'] + data['domain_search']
+                            data['domain_search']=interface['network'] + ',' + data['domain_search']
 
         #self.logger.info(f"boot install data: [{data}]")
         if None not in data.values():

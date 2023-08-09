@@ -32,9 +32,12 @@ def monitor_service(name=None):
     Currently supported services are DHCP, DNS and luna2 itself.
     Output - Status
     """
-    status, response = Monitor().service_monitor(name) # TODO -------------------------->>Unused Variable "status".
+    access_code = 503
+    status, response = Monitor().service_monitor(name)
+    if status is True:
+        access_code = 200
     response = {'monitor': {'Service': { name: response} } }
-    return response, access_code # TODO -------------------------->> Access Code Not defined.
+    return response, access_code
 
 
 @monitor_blueprint.route("/monitor/status/<string:node>", methods=['GET'])

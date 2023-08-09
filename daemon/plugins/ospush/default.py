@@ -69,6 +69,8 @@ class Plugin():
             message,exit_code = Helper().runcommand(command,True,3600)
 
         if exit_code != 0:
+            if len(message) > 0:
+                message=message[1]
             return False, f"{message}"
 
         # not entirely accurate but good enough

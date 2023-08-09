@@ -55,6 +55,7 @@ class Boot():
         """
         This method will provide a default ipxe template.
         """
+        status=False
         template = 'templ_boot_ipxe.cfg'
         template_path = f'{CONSTANT["TEMPLATES"]["TEMPLATES_DIR"]}/{template}'
         check_template = Helper().check_jinja(template_path)
@@ -99,12 +100,12 @@ class Boot():
             if all_groups:
                 for group in all_groups:
                     groups.append(group['name'])
-            access_code = 200
+            status=True
         else:
             environment = jinja2.Environment()
             template = environment.from_string('No Controller is available.')
             ipaddress, serverport = '', ''
-            access_code = 404
+            status=False
         self.logger.info(f'Boot API serving the {template}')
         response = {
             'template': template,
@@ -117,13 +118,14 @@ class Boot():
             'AVAILABLE_NODES': available_nodes,
             'GROUPS': groups
         }
-        return response, access_code
+        return status, response
 
 
     def boot_short(self):
         """
         This method will provide a boot short ipxe template.
         """
+        status=False
         template = 'templ_boot_ipxe_short.cfg'
         template_path = f'{CONSTANT["TEMPLATES"]["TEMPLATES_DIR"]}/{template}'
         check_template = Helper().check_jinja(template_path)
@@ -145,12 +147,12 @@ class Boot():
                     webserver_port = CONSTANT['WEBSERVER']['PORT']
                 if 'PROTOCOL' in CONSTANT['WEBSERVER']:
                     webserver_protocol = CONSTANT['WEBSERVER']['PROTOCOL']
-            access_code = 200
+            status=True
         else:
             environment = jinja2.Environment()
             template = environment.from_string('No Controller is available.')
             ipaddress, serverport = '', ''
-            access_code = 404
+            status=False
         self.logger.info(f'Boot API serving the {template}')
         response = {
             'template': template,
@@ -160,13 +162,14 @@ class Boot():
             'LUNA_API_PROTOCOL': protocol,
             'WEBSERVER_PROTOCOL': webserver_protocol
         }
-        return response, access_code
+        return status, response
 
 
     def boot_disk(self):
         """
         This method will provide a boot disk ipxe template.
         """
+        status=False
         template = 'templ_boot_disk.cfg'
         template_path = f'{CONSTANT["TEMPLATES"]["TEMPLATES_DIR"]}/{template}'
         check_template = Helper().check_jinja(template_path)
@@ -180,21 +183,22 @@ class Boot():
         if controller:
             ipaddress = controller[0]['ipaddress']
             serverport = controller[0]['serverport']
-            access_code = 200
+            status=True
         else:
             environment = jinja2.Environment()
             template = environment.from_string('No Controller is available.')
             ipaddress, serverport = '', ''
-            access_code = 404
+            status=False
         self.logger.info(f'Boot API serving the {template}')
         response = {'template': template, 'LUNA_CONTROLLER': ipaddress, 'LUNA_API_PORT': serverport}
-        return response, access_code
+        return status, response
 
 
     def discover_mac(self, mac=None):
         """
         This method will provide a node boot ipxe template, but search for mac address first.
         """
+        status=False
         template = 'templ_nodeboot.cfg'
         data = {
             'template'      : template,
@@ -300,7 +304,7 @@ class Boot():
                     data['initrdfile'] = osimage[0]['initrdfile']
 
         if None not in data.values():
-            access_code = 200
+            status=True
             Helper().update_node_state(data["nodeid"], "installer.discovery")
             # reintroduced below section as if we serve files through
             # e.g. nginx, we won't update anything
@@ -313,10 +317,10 @@ class Boot():
                     self.logger.error(f"{key} has no value. Node {data['nodename']} cannot boot")
             environment = jinja2.Environment()
             template = environment.from_string('No Node is available for this mac address.')
-            access_code = 404
+            status=False
             #self.logger.info(f'template mac search data: {data}')
         self.logger.info(f'Boot API serving the {template}')
-        return data, access_code
+        return status, data
 
 
     def discover_group_mac(self, groupname=None, mac=None):
@@ -324,6 +328,7 @@ class Boot():
         This method will provide a node boot ipxe template, but search for first available
         node in the chosen group.
         """
+        status=False
         template = 'templ_nodeboot.cfg'
         data = {
             'template'      : template,
@@ -534,8 +539,8 @@ class Boot():
             # something above did not work out.
             environment = jinja2.Environment()
             template = environment.from_string('No Node is available for this group.')
-            access_code = 404
-            return template,access_code
+            status=False
+            return status, template
 
         # we update the groupid of the node. this is actually only really
         # needed if we re-use a node (unassigned)
@@ -594,7 +599,7 @@ class Boot():
         #self.logger.info(f"manual group boot template data: [{data}]")
 
         if None not in data.values():
-            access_code = 200
+            status=True
             Helper().update_node_state(data["nodeid"], "installer.discovery")
             # reintroduced below section as if we serve files through e.g. nginx, we won't update
             row = [{"column": "status", "value": "installer.discovery"}]
@@ -606,15 +611,16 @@ class Boot():
                     self.logger.error(f"{key} has no value. Node {data['nodename']} cannot boot")
             environment = jinja2.Environment()
             template = environment.from_string('No Node is available for this mac address.')
-            access_code = 404
+            status=False
         self.logger.info(f'Boot API serving the {template}')
-        return data, access_code
+        return status, data
 
 
     def discover_hostname_mac(self, hostname=None, mac=None):
         """
         This method will provide a node boot ipxe template, but search for hostname.
         """
+        status=False
         template = 'templ_nodeboot.cfg'
         data = {
             'template'      : template,
@@ -741,7 +747,7 @@ class Boot():
         #self.logger.info(f"manual node boot template data: [{data}]")
 
         if None not in data.values():
-            access_code = 200
+            status=True
             Helper().update_node_state(data["nodeid"], "installer.discovery")
             # reintroduced below section as if we serve files through e.g. nginx, we won't update
             row = [{"column": "status", "value": "installer.discovery"}]
@@ -753,15 +759,16 @@ class Boot():
                     self.logger.error(f"{key} has no value. Node {data['nodename']} cannot boot")
             environment = jinja2.Environment()
             template = environment.from_string('No Node is available for this mac address.')
-            access_code = 404
+            status=False
         self.logger.info(f'Boot API serving the {template}')
-        return data, access_code
+        return status, data
 
 
     def install(self, node=None):
         """
         This method will provide a install ipxe template for a node.
         """
+        status=False
         template = 'templ_install.cfg'
         data = {
             'template'              : template,
@@ -951,7 +958,7 @@ class Boot():
 
         #self.logger.info(f"boot install data: [{data}]")
         if None not in data.values():
-            access_code = 200
+            status=True
             Helper().update_node_state(data["nodeid"], "installer.downloaded")
         else:
             for key, value in data.items():
@@ -959,7 +966,7 @@ class Boot():
                     self.logger.error(f"{key} has no value. Node {data['nodename']} cannot boot")
             environment = jinja2.Environment()
             template = environment.from_string('No Node is available for this mac address.')
-            access_code = 500
+            status=False 
 
         ## FETCH CODE SEGMENT
         cluster_provision_methods = [data['provision_method'], data['provision_fallback']]
@@ -1025,4 +1032,4 @@ class Boot():
         except Exception as exp:
             self.logger.info(f"Token creation error: {exp}")
         data['jwt_token'] = jwt_token
-        return data, access_code
+        return status, data

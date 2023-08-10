@@ -155,7 +155,7 @@ class Control():
                             if record['read'] == 0:
                                 node, result, message, *_ = (record['message'].split(':', 2) + [None] + [None])
                                 # data is message is like 'node:message'
-                                self.logger.info(f"control POST regexp match: [{result}]")
+                                self.logger.info(f"control POST regexp match: [{message}] -> [{result}]")
                                 if message in ['on','reset','cycle']:
                                     on_nodes.append(node)
                                 elif message == "off":
@@ -171,6 +171,7 @@ class Control():
                                 'on': {'hostlist': ','.join(on_nodes)},
                                 'off': {'hostlist': ','.join(off_nodes)},
                                 'failed': {'hostlist': ','.join(failed_nodes)},
+                                'other': {'hostlist': ','.join(other_nodes)},
                                 'request_id': request_id
                             }
                         }

@@ -36,7 +36,7 @@ def control_get(hostname=None, action=None):
     Output - Success or failure
     """
     access_code = 404
-    status, response = Control().power_action(hostname, action)
+    status, response = Control().control_action(hostname, 'power '+action)
     if status is True:
         access_code = 204
         if 'status' in action:
@@ -55,6 +55,46 @@ def control_post():
     """
     Input - hostname & action
     Process - Use to perform on, off, reset operations on one node.
+    Output - Success or failure
+    """
+    access_code = 404
+    status, response = Control().bulk_action(request)
+    if status is True:
+        access_code=200
+        response = dumps(response)
+    else:
+        response = {'message': response}
+    return response, access_code
+
+
+@control_blueprint.route('/control/sel/<string:hostname>/<string:action>', methods=['GET'])
+@token_required
+@validate_name
+def control_get(hostname=None, action=None):
+    """
+    Input - hostname & action
+    Process - Use to perform sel clear, list operations on one node.
+    Output - Success or failure
+    """
+    access_code = 404
+    status, response = Control().control_action(hostname, 'sel '+action)
+    if status is True:
+        access_code = 204
+        if 'list' in action:
+            access_code = 200
+        response = dumps(response)
+    else:
+        response = {'message': response}
+    return response, access_code
+
+
+@control_blueprint.route('/control/sel', methods=['POST'])
+@token_required
+@input_filter(checks=['control:sel'], skip=None)
+def control_post():
+    """
+    Input - hostname & action
+    Process - Use to perform sel clear (only for now) operations on one node.
     Output - Success or failure
     """
     access_code = 404

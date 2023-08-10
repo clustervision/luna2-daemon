@@ -108,7 +108,7 @@ class Control():
                         except Exception as exp:
                             status=f'command returned {exp}'
                             self.logger.error(f"uh oh... {exp}")
-                        pipeline.add_message({nodename: ret+':'+status})
+                        pipeline.add_message({nodename: str(ret)+':'+status})
                     else:
                         self.logger.info(f'{nodename} not have any bmcsetup.')
                         pipeline.add_message({nodename: 'does not have any bmcsetup'})

@@ -154,12 +154,12 @@ class Control():
                             if record['read'] == 0:
                                 node, result, message, *_ = (record['message'].split(':', 2) + [None] + [None])
                                 # data is message is like 'node:message'
-                                self.logger.info(f"control POST regexp match: [{message}] -> [{result}]")
-                                if message in ['on','reset','cycle',func+' on',func+' reset',func+' cycle']:
+                                self.logger.info(f"control POST regexp match: [{message}], [{result}]")
+                                if message in ['on','reset','cycle','power on','power reset','power cycle']:
                                     on_nodes.append(node)
-                                elif message == "off":
+                                elif message in ['off','power off']:
                                     off_nodes.append(node)
-                                elif result == "True":
+                                elif result == "True" or message == "identify" or message == "noidentify":
                                     other_nodes.append(node)
                                 else:
                                     failed_nodes.append(node)
@@ -205,9 +205,9 @@ class Control():
                             node, result, message, *_ = (record['message'].split(':',2) + [None] + [None])
                             self.logger.info(f"[{record['message']}: [{node}] [{result}] [{message}]")
                             # data is message is like 'node:message'
-                            if message == "on":
+                            if message in ['on','reset','cycle','power on','power reset','power cycle']:
                                 on_nodes.append(node)
-                            elif message == "off":
+                            elif message in ['off','power off']:
                                 off_nodes.append(node)
                             elif result == "True" or message == "identify" or message == "noidentify":
                                 other_nodes.append(node)

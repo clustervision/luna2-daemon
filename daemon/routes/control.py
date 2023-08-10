@@ -29,7 +29,7 @@ control_blueprint = Blueprint('control', __name__)
 @control_blueprint.route('/control/power/<string:hostname>/<string:action>', methods=['GET'])
 @token_required
 @validate_name
-def control_get(hostname=None, action=None):
+def control_power_get(hostname=None, action=None):
     """
     Input - hostname & action
     Process - Use to perform on, off, reset operations on one node.
@@ -51,7 +51,7 @@ def control_get(hostname=None, action=None):
 @control_blueprint.route('/control/power', methods=['POST'])
 @token_required
 @input_filter(checks=['control:power'], skip=None)
-def control_post():
+def control_power_post():
     """
     Input - hostname & action
     Process - Use to perform on, off, reset operations on one node.
@@ -70,7 +70,7 @@ def control_post():
 @control_blueprint.route('/control/sel/<string:hostname>/<string:action>', methods=['GET'])
 @token_required
 @validate_name
-def control_get(hostname=None, action=None):
+def control_sel_get(hostname=None, action=None):
     """
     Input - hostname & action
     Process - Use to perform sel clear, list operations on one node.
@@ -91,7 +91,7 @@ def control_get(hostname=None, action=None):
 @control_blueprint.route('/control/sel', methods=['POST'])
 @token_required
 @input_filter(checks=['control:sel'], skip=None)
-def control_post():
+def control_sel_post():
     """
     Input - hostname & action
     Process - Use to perform sel clear (only for now) operations on one node.

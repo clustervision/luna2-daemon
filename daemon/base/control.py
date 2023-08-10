@@ -149,16 +149,19 @@ class Control():
                     on_nodes = []
                     off_nodes = []
                     failed_nodes = []
+                    other_nodes = []
                     for record in status:
                         if 'message' in record:
                             if record['read'] == 0:
-                                node, result, *_ = (record['message'].split(':', 1) + [None])
+                                node, result, message, *_ = (record['message'].split(':', 2) + [None] + [None])
                                 # data is message is like 'node:message'
                                 self.logger.info(f"control POST regexp match: [{result}]")
-                                if result in ['on','reset','cycle']:
+                                if message in ['on','reset','cycle']:
                                     on_nodes.append(node)
-                                elif result == "off":
+                                elif message == "off":
                                     off_nodes.append(node)
+                                elif result == "True":
+                                    other_nodes.append(node)
                                 else:
                                     failed_nodes.append(node)
                     Status().mark_messages_read(request_id)
@@ -199,13 +202,14 @@ class Control():
                         if record['message'] == "EOF":
                             Status().del_messages(request_id)
                         else:
-                            node, result, message = record['message'].split(':',2)
+                            node, result, message, *_ = (record['message'].split(':',2) + [None] + [None])
+                            self.logger.info(f"[{record['message']}: [{node}] [{result}] [{message}]")
                             # data is message is like 'node:message'
                             if message == "on":
                                 on_nodes.append(node)
                             elif message == "off":
                                 off_nodes.append(node)
-                            elif result == 0 or message == "identify" or message == "noidentify":
+                            elif result == "True" or message == "identify" or message == "noidentify":
                                 other_nodes.append(node)
                             else:
                                 failed_nodes.append(node)

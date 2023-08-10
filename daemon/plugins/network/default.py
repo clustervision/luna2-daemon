@@ -45,6 +45,7 @@ class Plugin():
 
     gateway = """
         cd /sysroot
+        echo "# Gateway belonging to $DEVICE" >> etc/sysconfig/network
         echo "GATEWAY=$GATEWAY" >> etc/sysconfig/network
     """
 

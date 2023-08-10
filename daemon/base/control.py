@@ -87,8 +87,7 @@ class Control():
                     action,
                     node[0]['device'],
                     username,
-                    password,
-                    position=None
+                    password
                 )
                 # message = Helper().ipmi_action(hostname, action, username, password)
                 response = {'control': {action : message } }

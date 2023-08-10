@@ -25,10 +25,10 @@ class Plugin():
         """
 
     interface = """
-        chroot /sysroot "nmcli connection add con-name Connection1 ifname $DEVICE type ethernet"
-        #chroot /sysroot "nmcli connection modify Connection1 ipv4.addresses $IPADDRESS/$PREFIX"
-        chroot /sysroot "nmcli connection modify Connection1 ipv4.addresses $IPADDRESS/$NETMASK"
-        chroot /sysroot "nmcli connection modify Connection1 ipv4.method manual"
+        chroot /sysroot "nmcli connection add con-name Connection_$DEVICE ifname $DEVICE type ethernet"
+        #chroot /sysroot "nmcli connection modify Connection_$DEVICE ipv4.addresses $IPADDRESS/$PREFIX"
+        chroot /sysroot "nmcli connection modify Connection_$DEVICE ipv4.addresses $IPADDRESS/$NETMASK"
+        chroot /sysroot "nmcli connection modify Connection_$DEVICE ipv4.method manual"
         #$ZONE
         #$OPTIONS
     """
@@ -39,11 +39,11 @@ class Plugin():
     """
 
     gateway = """
-        chroot /sysroot "nmcli connection modify Connection1 ipv4.gateway $GATEWAY"
+        chroot /sysroot "nmcli connection modify Connection_$DEVICE ipv4.gateway $GATEWAY ipv4.route-metric $METRIC"
     """
 
     dns = """
-        chroot /sysroot "nmcli connection modify Connection1 ipv4.dns $NAMESERVER ipv4.dns-search $SEARCH"
+        chroot /sysroot "nmcli connection modify Connection_$DEVICE ipv4.dns $NAMESERVER ipv4.dns-search $SEARCH"
     """
 
     ntp = """

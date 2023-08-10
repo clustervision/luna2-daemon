@@ -90,6 +90,8 @@ class Control():
                     password
                 )
                 # message = Helper().ipmi_action(hostname, action, username, password)
+                if 'power' in action:
+                    action=action.replace('power ','')
                 response = {'control': {action : message } }
                 status=True
             else:

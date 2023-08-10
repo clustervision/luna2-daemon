@@ -102,14 +102,13 @@ class Control():
                                 action,
                                 device,
                                 username,
-                                password,
-                                position=None
+                                password
                             )
                             self.logger.debug(f"ret=[{ret}], status=[{status}]")
                         except Exception as exp:
                             status=f'command returned {exp}'
                             self.logger.error(f"uh oh... {exp}")
-                        pipeline.add_message({nodename: status})
+                        pipeline.add_message({nodename: str(ret)+':'+status})
                     else:
                         self.logger.info(f'{nodename} not have any bmcsetup.')
                         pipeline.add_message({nodename: 'does not have any bmcsetup'})
@@ -124,13 +123,12 @@ class Control():
                 run = 0
 
 
-    def control_action(self, nodename=None, groupname=None, action=None, device=None, username=None, password=None, position=None):
+    def control_action(self, nodename=None, groupname=None, action=None, device=None, username=None, password=None):
         """
         This method will handle the power control actions.
         """
         self.logger.info(nodename)
         self.logger.info(groupname)
-        self.logger.info(position)
         return_code, message = False, ""
         # class TimeoutError(Exception):
         #     pass
@@ -147,51 +145,57 @@ class Control():
                 ['nodename,groupname']
             )
             match action:
-                case 'on':
-                    return_code, message = control_plugin().on(
-                        device=device, username=username, password=password, position=None
+                case 'power on':
+                    return_code, message = control_plugin().power_on(
+                        device=device, username=username, password=password
                     )
-                case 'off':
-                    return_code, message = control_plugin().off(
+                case 'power off':
+                    return_code, message = control_plugin().power_off(
                         device = device,
                         username = username,
-                        password = password,
-                        position = None
+                        password = password
                     )
-                case 'status':
-                    return_code, message = control_plugin().status(
+                case 'power status':
+                    return_code, message = control_plugin().power_status(
                         device = device,
                         username = username,
-                        password = password,
-                        position = None
+                        password = password
                     )
-                case 'reset':
-                    return_code, message = control_plugin().reset(
+                case 'power reset':
+                    return_code, message = control_plugin().power_reset(
                         device = device,
                         username = username,
-                        password = password,
-                        position = None
+                        password = password
                     )
-                case 'cycle':
-                    return_code, message = control_plugin().cycle(
+                case 'power cycle':
+                    return_code, message = control_plugin().power_cycle(
                         device = device,
                         username = username,
-                        password = password,
-                        position = None
+                        password = password
                     )
-                case 'identify':
+                case 'power identify':
                     return_code, message = control_plugin().identify(
                         device = device,
                         username = username,
-                        password = password,
-                        position = None
+                        password = password
                     )
-                case 'noidentify':
+                case 'power noidentify':
                     return_code, message = control_plugin().no_identify(
                         device = device,
                         username = username,
-                        password = password,
-                        position = None
+                        password = password
+                    )
+                case 'sel list':
+                    return_code, message = control_plugin().sel_list(
+                        device = device,
+                        username = username,
+                        password = password
+                    )
+                case 'sel clear':
+                    return_code, message = control_plugin().sel_clear(
+                        device = device,
+                        username = username,
+                        password = password
                     )
                 case _:
                     return_code, message = False, "NO-Match"
@@ -230,3 +234,4 @@ class Control():
             Status().add_message(request_id, "lpower", "EOF")
         except Exception as exp:
             self.logger.error(f"service_mother has problems: {exp}")
+

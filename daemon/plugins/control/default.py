@@ -25,77 +25,92 @@ class Plugin():
         on, off, reset, status, cycle, identify, no_identify are required methods
         """
 
-    def on(self, device=None, username=None, password=None, position=None):
+    def power_on(self, device=None, username=None, password=None):
         """
         This method will be used for power on.
         """
-        print(f"Received Position: {position}")
         try:
-            return self.execute(device, 'on', username, password)
+            return self.execute(device, 'power on', username, password)
         except Exception as exp:
             return False, f"{exp}"
 
 
-    def off(self, device=None, username=None, password=None, position=None):
+    def power_off(self, device=None, username=None, password=None):
         """
         This method will be used for power off.
         """
-        print(f"Received Position: {position}")
         try:
-            return self.execute(device, 'off', username, password)
+            return self.execute(device, 'power off', username, password)
         except Exception as exp:
             return False, f"{exp}"
 
 
-    def reset(self, device=None, username=None, password=None, position=None):
+    def power_reset(self, device=None, username=None, password=None):
         """
         This method will be used for power reset.
         """
-        print(f"Received Position: {position}")
         try:
-            return self.execute(device, 'reset', username, password)
+            return self.execute(device, 'power reset', username, password)
         except Exception as exp:
             return False, f"{exp}"
 
 
-    def status(self, device=None, username=None, password=None, position=None):
+    def power_status(self, device=None, username=None, password=None):
         """
         This method will be used to check power status.
         """
-        print(f"Received Position: {position}")
         try:
-            return self.execute(device, 'status', username, password)
+            return self.execute(device, 'power status', username, password)
         except Exception as exp:
             return False, f"{exp}"
 
-    def cycle(self, device=None, username=None, password=None, position=None):
+    def power_cycle(self, device=None, username=None, password=None):
         """
         This method will be used for power cycle.
         """
-        print(f"Received Position: {position}")
         try:
-            return self.execute(device, 'status', username, password)
+            return self.execute(device, 'power status', username, password)
         except Exception as exp:
             return False, f"{exp}"
 
-    def identify(self, device=None, username=None, password=None, position=None):
+    def identify(self, device=None, username=None, password=None):
         """
         This method will be used to get identify device.
         """
-        print(f"Received Device: {device}")
-        print(f"Received Username: {username}")
-        print(f"Received Password: {password}")
-        print(f"Received Position: {position}")
+        try:
+            return self.execute(device, 'identify', username, password)
+        except Exception as exp:
+            return False, f"{exp}"
         return True, "success"
 
-    def no_identify(self, device=None, username=None, password=None, position=None):
+    def no_identify(self, device=None, username=None, password=None):
         """
         This method will be used to get identify device.
         """
-        print(f"Received Device: {device}")
-        print(f"Received Username: {username}")
-        print(f"Received Password: {password}")
-        print(f"Received Position: {position}")
+        try:
+            return self.execute(device, 'noidentify', username, password)
+        except Exception as exp:
+            return False, f"{exp}"
+        return True, "success"
+
+    def sel_clear(self, device=None, username=None, password=None):
+        """
+        This method will be used to clear sel logs on device.
+        """
+        try:
+            return self.execute(device, 'sel clear', username, password)
+        except Exception as exp:
+            return False, f"{exp}"
+        return True, "success"
+
+    def sel_list(self, device=None, username=None, password=None):
+        """
+        This method will be used to get sel logs from device.
+        """
+        try:
+            return self.execute(device, 'sel list', username, password)
+        except Exception as exp:
+            return False, f"{exp}"
         return True, "success"
 
 
@@ -106,7 +121,7 @@ class Plugin():
         status = False
         response = ''
         command = f'ipmitool -I lanplus -C3 -U {username} -P {password} -H {device} '
-        command += f'chassis power {action}'
+        command += f'chassis {action}'
         output, exit_code = Helper().runcommand(command,True,10)
         if output and exit_code == 0:
             response = str(output[0].decode())
@@ -118,5 +133,8 @@ class Plugin():
                 response = action
             status = True
         else:
-            response = f"Command execution failed with exit code {exit_code}"
+            if len(output)>1:
+                response = str(output[1].decode())
+            response = f"Command execution failed with exit code {exit_code}: {response}"
         return status, response
+

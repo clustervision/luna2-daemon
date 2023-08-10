@@ -24,7 +24,7 @@ from common.validate_input import check_structure
 from utils.log import Log
 from utils.database import Database
 from utils.helper import Helper
-from utils.control import Control as Power
+from utils.control import Control as BMC
 from utils.status import Status
 
 
@@ -40,12 +40,13 @@ class Control():
         self.logger = Log.get_logger()
 
 
-    def power_action(self, hostname=None, action=None):
+    def control_action(self, hostname=None, action=None):
         """
         This method will perform the power operation on a requested host, such as
         on, off, status.
         """
         status=False
+        result=False
         node = Database().get_record_join(
             [
                 'node.id as nodeid',
@@ -80,16 +81,16 @@ class Control():
                 username = bmcsetup[0]['username']
                 password = bmcsetup[0]['password']
                 action = action.replace('_', '')
-                _, message = Power().control_action(
+                result, message = BMC().control_action(
                     node[0]['nodename'],
                     node[0]['groupname'],
                     action,
                     node[0]['device'],
                     username,
-                    password,
-                    position=None
+                    password
                 )
-                # message = Helper().ipmi_action(hostname, action, username, password)
+                if 'power' in action:
+                    action=action.replace('power ','') # wee ugly but we need to review the API response design - Antoine
                 response = {'control': {action : message } }
                 status=True
             else:
@@ -104,17 +105,22 @@ class Control():
     def bulk_action(self, http_request=None):
         """
         This method will perform the power operation on requested hostlist, such as
-        on, off, status.
+        power on, off, status.
+        sel list, clear
         """
         response = 'Bad Request'
         status=False
         request_data = http_request.data
         if request_data:
-            action = list(request_data['control']['power'].keys())[0]
-            if not check_structure(request_data, ['control:power:' + action + ':hostlist']):
+            if not 'control' in request_data.keys():
                 status=False
                 return status, 'Bad request'
-            raw_hosts = request_data['control']['power'][action]['hostlist']
+            func   = list(request_data['control'].keys())[0]
+            action = list(request_data['control'][func].keys())[0]
+            if not check_structure(request_data, ['control:' + func + ':' + action + ':hostlist']):
+                status=False
+                return status, 'Bad request'
+            raw_hosts = request_data['control'][func][action]['hostlist']
             hostlist = Helper().get_hostlist(raw_hosts)
             if hostlist:
                 size = int(CONSTANT['BMCCONTROL']['BMC_BATCH_SIZE'])
@@ -122,13 +128,13 @@ class Control():
                 # Antoine -------------------------------------------------------------------
                 pipeline = Helper().Pipeline()
                 for hostname in hostlist:
-                    pipeline.add_nodes({hostname: action})
+                    pipeline.add_nodes({hostname: func+' '+action})
                 request_id = str(time()) + str(randint(1001, 9999)) + str(getpid())
                 executor = ThreadPoolExecutor(max_workers=1)
-                executor.submit(Power().control_mother, pipeline, request_id, size, delay)
+                executor.submit(BMC().control_mother, pipeline, request_id, size, delay)
                 executor.shutdown(wait=False)
                 # use below to not spawn a thread. easy for debugging.
-                # Power().control_mother(pipeline, request_id, size, delay)
+                # BMC().control_mother(pipeline, request_id, size, delay)
                 # though we won't wait till all scheduled tasks are done, we wait a bit
                 # and return what we have.
                 # the client/lpower will then have to inquire to see what's done hereafter
@@ -142,16 +148,19 @@ class Control():
                     on_nodes = []
                     off_nodes = []
                     failed_nodes = []
+                    other_nodes = []
                     for record in status:
                         if 'message' in record:
                             if record['read'] == 0:
-                                node, result, *_ = (record['message'].split(':', 1) + [None])
+                                node, result, message, *_ = (record['message'].split(':', 2) + [None] + [None])
                                 # data is message is like 'node:message'
-                                self.logger.info(f"control POST regexp match: [{result}]")
-                                if result in ['on','reset','cycle']:
+                                self.logger.info(f"control POST regexp match: [{message}], [{result}]")
+                                if message in ['on','reset','cycle','power on','power reset','power cycle']:
                                     on_nodes.append(node)
-                                elif result == "off":
+                                elif message in ['off','power off']:
                                     off_nodes.append(node)
+                                elif result == "True" or message == "identify" or message == "noidentify":
+                                    other_nodes.append(node)
                                 else:
                                     failed_nodes.append(node)
                     Status().mark_messages_read(request_id)
@@ -161,6 +170,7 @@ class Control():
                                 'on': {'hostlist': ','.join(on_nodes)},
                                 'off': {'hostlist': ','.join(off_nodes)},
                                 'failed': {'hostlist': ','.join(failed_nodes)},
+                                'other': {'hostlist': ','.join(other_nodes)},
                                 'request_id': request_id
                             }
                         }
@@ -192,13 +202,14 @@ class Control():
                         if record['message'] == "EOF":
                             Status().del_messages(request_id)
                         else:
-                            node, result = record['message'].split(':',1)
+                            node, result, message, *_ = (record['message'].split(':',2) + [None] + [None])
+                            self.logger.info(f"[{record['message']}: [{node}] [{result}] [{message}]")
                             # data is message is like 'node:message'
-                            if result == "on":
+                            if message in ['on','reset','cycle','power on','power reset','power cycle']:
                                 on_nodes.append(node)
-                            elif result == "off":
+                            elif message in ['off','power off']:
                                 off_nodes.append(node)
-                            elif result == "identify" or result == "noidentify":
+                            elif result == "True" or message == "identify" or message == "noidentify":
                                 other_nodes.append(node)
                             else:
                                 failed_nodes.append(node)

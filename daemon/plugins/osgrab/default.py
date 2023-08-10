@@ -65,7 +65,7 @@ class Plugin():
         if exit_code != 0:
             if len(message) > 0:
                 message=message[1]
-            False,f"{message}"
+            return False,f"{message}"
 
         # not entirely accurate but good enough
         kernel_version, stderr = Helper().runcommand(f"ls -tr {image_path}/lib/modules/|tail -n1")

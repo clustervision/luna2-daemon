@@ -199,13 +199,13 @@ class Control():
                         if record['message'] == "EOF":
                             Status().del_messages(request_id)
                         else:
-                            node, result = record['message'].split(':',1)
+                            node, result, message = record['message'].split(':',2)
                             # data is message is like 'node:message'
-                            if result == "on":
+                            if message == "on":
                                 on_nodes.append(node)
-                            elif result == "off":
+                            elif message == "off":
                                 off_nodes.append(node)
-                            elif result == "identify" or result == "noidentify":
+                            elif result == 0 or message == "identify" or message == "noidentify":
                                 other_nodes.append(node)
                             else:
                                 failed_nodes.append(node)

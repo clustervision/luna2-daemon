@@ -173,13 +173,13 @@ class Control():
                         username = username,
                         password = password
                     )
-                case 'identify':
+                case 'power identify':
                     return_code, message = control_plugin().identify(
                         device = device,
                         username = username,
                         password = password
                     )
-                case 'noidentify':
+                case 'power noidentify':
                     return_code, message = control_plugin().no_identify(
                         device = device,
                         username = username,

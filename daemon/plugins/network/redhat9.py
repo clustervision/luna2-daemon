@@ -39,7 +39,8 @@ class Plugin():
     """
 
     gateway = """
-        chroot /sysroot "nmcli connection modify Connection_$DEVICE ipv4.gateway $GATEWAY ipv4.route-metric $METRIC"
+        chroot /sysroot "nmcli connection modify Connection_$DEVICE ipv4.gateway $GATEWAY"
+        chroot /sysroot "nmcli connection modify Connection_$DEVICE ipv4.route-metric $METRIC"
     """
 
     dns = """

@@ -89,9 +89,8 @@ class Control():
                     username,
                     password
                 )
-                # message = Helper().ipmi_action(hostname, action, username, password)
                 if 'power' in action:
-                    action=action.replace('power ','')
+                    action=action.replace('power ','') # wee ugly but we need to review the API response design - Antoine
                 response = {'control': {action : message } }
                 status=True
             else:
@@ -156,7 +155,7 @@ class Control():
                                 node, result, message, *_ = (record['message'].split(':', 2) + [None] + [None])
                                 # data is message is like 'node:message'
                                 self.logger.info(f"control POST regexp match: [{message}] -> [{result}]")
-                                if message in ['on','reset','cycle']:
+                                if message in ['on','reset','cycle',func+' on',func+' reset',func+' cycle']:
                                     on_nodes.append(node)
                                 elif message == "off":
                                     off_nodes.append(node)

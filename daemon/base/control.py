@@ -164,7 +164,7 @@ class Control():
                                         elif message == "off":
                                             off_nodes[node] = 'None'
                                         else:
-                                            failed_node[node] = message
+                                            failed_nodes[node] = f"success with unparsable output: {message}"
                                     else:
                                         failed_nodes[node] = message
                                 else:
@@ -221,7 +221,7 @@ class Control():
                                     elif message == "off":
                                         off_nodes[node] = 'None'
                                     else:
-                                        failed_node[node] = message
+                                        failed_nodes[node] = f"success with unparsable output: {message}"
                                 else:
                                     failed_nodes[node] = message
                             else:

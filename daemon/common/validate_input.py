@@ -135,10 +135,10 @@ def parse_list(data=None):
     new_data = []
     for item in data:
         if isinstance(item, list):
-            ret, item, error = parse_list(item)
+            ret, myitem, error = parse_list(item)
         else:
-            ret, item, error = parse_item(item)
-        new_data.append(item)
+            ret, myitem, error = parse_item(item)
+        new_data.append(myitem)
     return ret, new_data, error
 
 
@@ -149,11 +149,11 @@ def parse_item(data=None, name=None):
     ret = True
     error = None
     if isinstance(data, dict):
-        ret, data, error = parse_list(data)
-        data.update(data)
+        ret, mydata, error = parse_list(data)
+        data.update(mydata)
     elif isinstance(data, list):
-        ret, data, error = parse_list(data)
-        data = (data)
+        ret, mydata, error = parse_list(data)
+        data = (mydata)
     elif isinstance(data, str):
         ret, data, error = filter_data(data,name)
     return ret, data, error

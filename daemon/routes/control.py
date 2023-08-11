@@ -25,18 +25,17 @@ LOGGER = Log.get_logger()
 control_blueprint = Blueprint('control', __name__)
 
 
-# BELOW SEGMENT HAS BEEN TESTED AND CONFIRMED WORKING BY ANTOINE ON APRIL 5 2023
-@control_blueprint.route('/control/power/<string:hostname>/<string:action>', methods=['GET'])
+@control_blueprint.route(' /control/action/<string:subsystem>/<string:hostname>/_<string:action>', methods=['GET'])
 @token_required
 @validate_name
-def control_power_get(hostname=None, action=None):
+def control_power_get(hostname=None, subsystem=None, action=None):
     """
     Input - hostname & action
     Process - Use to perform on, off, reset operations on one node.
     Output - Success or failure
     """
     access_code = 404
-    status, response = Control().control_action(hostname, 'power '+action)
+    status, response = Control().control_action(hostname, subsystem, action)
     if status is True:
         access_code = 204
         if 'status' in action:

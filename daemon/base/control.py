@@ -24,7 +24,7 @@ from common.validate_input import check_structure
 from utils.log import Log
 from utils.database import Database
 from utils.helper import Helper
-from utils.control import Control as BMC
+from utils.control import Control as NodeControl
 from utils.status import Status
 
 
@@ -40,13 +40,14 @@ class Control():
         self.logger = Log.get_logger()
 
 
-    def control_action(self, hostname=None, action=None):
+    def control_action(self, hostname=None, subsystem=None, action=None):
         """
         This method will perform the power operation on a requested host, such as
         on, off, status.
         """
         status=False
         result=False
+        command=subsystem+' '+action
         node = Database().get_record_join(
             [
                 'node.id as nodeid',
@@ -81,10 +82,10 @@ class Control():
                 username = bmcsetup[0]['username']
                 password = bmcsetup[0]['password']
                 action = action.replace('_', '')
-                result, message = BMC().control_action(
+                result, message = NodeControl().control_action(
                     node[0]['nodename'],
                     node[0]['groupname'],
-                    action,
+                    command,
                     node[0]['device'],
                     username,
                     password
@@ -115,12 +116,12 @@ class Control():
             if not 'control' in request_data.keys():
                 status=False
                 return status, 'Bad request'
-            func   = list(request_data['control'].keys())[0]
-            action = list(request_data['control'][func].keys())[0]
-            if not check_structure(request_data, ['control:' + func + ':' + action + ':hostlist']):
+            subsystem = list(request_data['control'].keys())[0]
+            action = list(request_data['control'][subsystem].keys())[0]
+            if not check_structure(request_data, ['control:' + subsystem + ':' + action + ':hostlist']):
                 status=False
                 return status, 'Bad request'
-            raw_hosts = request_data['control'][func][action]['hostlist']
+            raw_hosts = request_data['control'][subsystem][action]['hostlist']
             hostlist = Helper().get_hostlist(raw_hosts)
             if hostlist:
                 size = int(CONSTANT['BMCCONTROL']['BMC_BATCH_SIZE'])
@@ -128,13 +129,13 @@ class Control():
                 # Antoine -------------------------------------------------------------------
                 pipeline = Helper().Pipeline()
                 for hostname in hostlist:
-                    pipeline.add_nodes({hostname: func+' '+action})
+                    pipeline.add_nodes({hostname: subsystem+' '+action})
                 request_id = str(time()) + str(randint(1001, 9999)) + str(getpid())
                 executor = ThreadPoolExecutor(max_workers=1)
-                executor.submit(BMC().control_mother, pipeline, request_id, size, delay)
+                executor.submit(NodeControl().control_mother, pipeline, request_id, size, delay)
                 executor.shutdown(wait=False)
                 # use below to not spawn a thread. easy for debugging.
-                # BMC().control_mother(pipeline, request_id, size, delay)
+                # NodeControl().control_mother(pipeline, request_id, size, delay)
                 # though we won't wait till all scheduled tasks are done, we wait a bit
                 # and return what we have.
                 # the client/lpower will then have to inquire to see what's done hereafter
@@ -145,39 +146,45 @@ class Control():
                 where = f' WHERE request_id = "{request_id}"'
                 status = Database().get_record(None , 'status', where)
                 if status:
-                    on_nodes = []
-                    off_nodes = []
-                    failed_nodes = []
-                    other_nodes = []
+                    on_nodes = {}
+                    off_nodes = {}
+                    ok_nodes = {}
+                    failed_nodes = {}
                     for record in status:
                         if 'message' in record:
                             if record['read'] == 0:
-                                node, result, message, *_ = (record['message'].split(':', 2) + [None] + [None])
-                                # data is message is like 'node:message'
+                                node, command, result, message, *_ = (record['message'].split(':', 3) + [None] + [None] + [None])
+                                # data is message is like 'node:result:message'
                                 self.logger.debug(f"control POST regexp match: [{node}], [{message}], [{result}]")
-                                if message in ['on','reset','cycle','power on','power reset','power cycle']:
-                                    on_nodes.append(node)
-                                elif message in ['off','power off']:
-                                    off_nodes.append(node)
-                                elif result == "True" or message == "identify" or message == "noidentify":
-                                    other_nodes.append(node)
+
+                                if subsystem == 'power' and action == 'status':
+                                    if result is 'True':
+                                        if message == "on":
+                                            on_nodes[node] = 'None'
+                                        elif message == "off":
+                                            off_nodes[node] = 'None'
+                                    else:
+                                        failed_nodes[node] = message
                                 else:
-                                    failed_nodes.append(node)
+                                    if results is 'True':
+                                        ok_nodes[node]=subsystem+' '+action
+                                    else
+                                        failed_nodes[node] = message
+
                     Status().mark_messages_read(request_id)
                     response = {
                         'control': {
-                            'power': {
-                                'on': {'hostlist': ','.join(on_nodes)},
-                                'off': {'hostlist': ','.join(off_nodes)},
-                                'failed': {'hostlist': ','.join(failed_nodes)},
-                                'other': {'hostlist': ','.join(other_nodes)},
-                                'request_id': request_id
+                            subsystem: {
+                                'on': on_nodes,
+                                'off': off_nodes,
                             }
+                            'failed': failed_nodes,
+                            'request_id': request_id
                         }
                     }
                     status=True
                 else:
-                    response = {'control': {'power': {'request_id': request_id} } }
+                    response = {'control': {subsystem: {'request_id': request_id} } }
                     status=True
                 # end Antoine ---------------------------------------------------------------
             else:
@@ -192,38 +199,44 @@ class Control():
         """
         status = Database().get_record(None , 'status', f' WHERE request_id = "{request_id}"')
         if status:
-            on_nodes = []
-            off_nodes = []
-            failed_nodes = []
-            other_nodes = []
+            subsystem=None
+            on_nodes = {}
+            off_nodes = {}
+            ok_nodes = {}
+            failed_nodes = {}
             for record in status:
                 if 'message' in record:
                     if record['read'] == 0:
                         if record['message'] == "EOF":
                             Status().del_messages(request_id)
                         else:
-                            node, result, message, *_ = (record['message'].split(':',2) + [None] + [None])
-                            self.logger.info(f"[{record['message']}: [{node}] [{result}] [{message}]")
-                            # data is message is like 'node:message'
-                            if message in ['on','reset','cycle','power on','power reset','power cycle']:
-                                on_nodes.append(node)
-                            elif message in ['off','power off']:
-                                off_nodes.append(node)
-                            elif result == "True" or message == "identify" or message == "noidentify":
-                                other_nodes.append(node)
+                            node, command, result, message, *_ = (record['message'].split(':',3) + [None] + [None] + [None])
+                            subsystem, action = command.split(' ',1)
+                            if subsystem == 'power' and action == 'status':
+                                if result is 'True':
+                                    if message == "on":
+                                        on_nodes[node] = 'None'
+                                    elif message == "off":
+                                        off_nodes[node] = 'None'
+                                else:
+                                    failed_nodes[node] = message
                             else:
-                                failed_nodes.append(node)
+                                if results is 'True':
+                                    ok_nodes[node]=subsystem+' '+action
+                                else
+                                    failed_nodes[node] = message
+
+            Status().mark_messages_read(request_id)
             response = {
                 'control': {
-                    'power': {
-                        'on': {'hostlist': ','.join(on_nodes)},
-                        'off': {'hostlist': ','.join(off_nodes)},
-                        'other': {'hostlist': ','.join(other_nodes)},
-                        'failed': {'hostlist': ','.join(failed_nodes)}
+                    subsystem: {
+                        'on': on_nodes,
+                        'off': off_nodes,
                     }
+                    'failed': failed_nodes,
+                    'request_id': request_id
                 }
             }
-            Status().mark_messages_read(request_id)
             return True, response
         return False, 'No data for this request'
 

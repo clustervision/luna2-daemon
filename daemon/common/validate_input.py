@@ -49,7 +49,7 @@ MATCH = {
 maxlength = {'request_id': '256'}
 convert = {'macaddress': {'-':':'}}
 
-ERROR = None
+#ERROR = None
 SKIP_LIST = []
 LOGGER = Log.get_logger()
 
@@ -60,7 +60,7 @@ def input_filter(checks=None, skip=None, json=True):
         @wraps(function)
         def filter_input(*args, **kwargs):
             global SKIP_LIST
-            global ERROR
+            #global ERROR
             data=None
             ERROR = None
             if json:
@@ -86,10 +86,11 @@ def input_filter(checks=None, skip=None, json=True):
                 check_list = checks
             # Checking for Name in kwargs and appending the name in checks - Sumit
             if check_structure(data, check_list):
-                data = parse_item(data)
+                ret, data, error = parse_item(data)
+                SKIP_LIST = []
                 LOGGER.debug(f"----- END ----- {data}")
-                if ERROR:
-                    response = {'message': f"{ERROR}"}
+                if ret is False:
+                    response = {'message': f"{error}"}
                     return response, 404
                 request.data = data
                 return function(*args, **kwargs)
@@ -106,12 +107,11 @@ def validate_name(function):
     @wraps(function)
     def decorator(*args, **kwargs):
         for name_key, name_value in kwargs.items():
-            global ERROR
-            filter_data(name_value, name_key)
-            if ERROR:
-                message = f"Incorrect Naming convention with {name_key} {name_value}: {ERROR}"
+            ret, data, error = filter_data(name_value, name_key)
+            if ret is False:
+                message = f"Incorrect Naming convention with {name_key} {name_value}: {error}"
                 response = {'message': message}
-                LOGGER.debug(f"{ERROR}")
+                LOGGER.debug(f"{error}")
                 return response, 400
         return function(*args, **kwargs)
     return decorator
@@ -130,34 +130,40 @@ def parse_list(data=None):
     """
     This method will parse the list.
     """
+    ret = True
+    error = None
     new_data = []
     for item in data:
         if isinstance(item, list):
-            item = parse_list(item)
+            ret, item, error = parse_list(item)
         else:
-            item = parse_item(item)
+            ret, item, error = parse_item(item)
         new_data.append(item)
-    return new_data
+    return ret, new_data, error
 
 
 def parse_item(data=None, name=None):
     """
     This method will parse the dictionary, list, and filter the strings.
     """
+    ret = True
+    error = None
     if isinstance(data, dict):
         data.update(parse_dict(data))
     elif isinstance(data, list):
-        data = (parse_list(data))
+        ret, data, error = parse_list(data)
+        data = (data)
     elif isinstance(data, str):
-        data = filter_data(data,name)
-    return data
+        ret, data, error = filter_data(data,name)
+    return ret, data, error
 
 
 def filter_data(data=None, name=None):
     """
     This method will filter the provided data.
     """
-    global ERROR
+    ret=True
+    ERROR=None
     if name in SKIP_LIST:
         LOGGER.debug(f"Skipping filter on {name}")
         return data
@@ -168,18 +174,22 @@ def filter_data(data=None, name=None):
         if len(data) > int(maxlength[name]):
             LOGGER.info(f"length of {name} exceeds {maxlength[name]}")
             ERROR = f"length of {name} exceeds {maxlength[name]}"
+            ret = False
+            return ret, data, ERROR
     if name in MATCH.keys():
         regex = re.compile(r"" + REG_EXP[MATCH[name]])
         if not regex.match(data):
             LOGGER.info(f"MATCH name = {name} with data = {data} mismatch with:")
             LOGGER.info(f"    REG_EXP['{MATCH[name]}'] = {REG_EXP[MATCH[name]]}")
             ERROR = f"field {name} with content {data} does match criteria {REG_EXP[MATCH[name]]}"
+            ret = False
+            return ret, data, ERROR
     if name in convert.keys():
         LOGGER.debug(f"CONVERT IN {name} = {data}")
         for rep in convert[name].keys():
             data = data.replace(rep ,convert[name][rep])
         LOGGER.debug(f"CONVERT OUT {name} = {data}")
-    return data
+    return ret, data, ERROR
 
 
 def check_structure(data=None, checks=None):

@@ -80,7 +80,7 @@ class Control():
                             bmcsetupid = group[0]['bmcsetupid']
                         else:
                             self.logger.info(f'{nodename} not have any group.')
-                            pipeline.add_message({nodename: 'does not have any group'})
+                            pipeline.add_message({nodename: 'None:does not have any group'})
                     else:
                         bmcsetupid = node[0]['bmcsetupid']
                     where = f' WHERE id = "{bmcsetupid}"'
@@ -111,10 +111,10 @@ class Control():
                         pipeline.add_message({nodename: str(ret)+':'+status})
                     else:
                         self.logger.info(f'{nodename} not have any bmcsetup.')
-                        pipeline.add_message({nodename: 'does not have any bmcsetup'})
+                        pipeline.add_message({nodename: 'None:does not have any bmcsetup'})
                 else:
                     self.logger.info(f'{nodename} not have any suitable config.')
-                    pipeline.add_message({nodename: 'does not have any node information'})
+                    pipeline.add_message({nodename: 'None:does not have any node information'})
                 run = 0
                 # setting this to 0 means we only do one iteration.
                 # we can do loops, but we let mother control this

@@ -21,7 +21,7 @@ from configparser import RawConfigParser
 from pathlib import Path
 from utils.log import Log
 
-LOGGER = Log.init_log('info', '/trinity/local/luna/log/luna2-daemon.log')
+#LOGGER = Log.init_log('info', '/trinity/local/luna/log/luna2-daemon.log')
 CurrentDir = os.path.dirname(os.path.realpath(__file__))
 UTILSDIR = Path(CurrentDir)
 BASE_DIR = str(UTILSDIR.parent)
@@ -179,7 +179,6 @@ CONSTANT = {
     'TEMPLATES': {'TEMPLATES_DIR': None, 'TEMPLATELIST': None,  'TEMP_DIR': None}
 }
 
-
 if check_path_state(CONFIGFILE):
     getconfig(CONFIGFILE)
 else:
@@ -198,8 +197,11 @@ sanitize = [
 for sanity in sanitize:
     check_path_state(sanity)
 
+if CONSTANT['LOGGER']['LOGFILE']:
+    LOGGER = Log.init_log('info', CONSTANT['LOGGER']['LOGFILE'])
 if CONSTANT['LOGGER']['LEVEL']:
     LOGGER = Log.set_logger(CONSTANT['LOGGER']['LEVEL'])
+
 
 with open(CONSTANT['FILES']['KEYFILE'], 'r', encoding='utf-8') as key_file:
     LUNAKEY = key_file.read()

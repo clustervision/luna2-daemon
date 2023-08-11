@@ -18,7 +18,6 @@ __email__       = 'sumit.sharma@clustervision.com'
 __status__      = 'Development'
 
 import sys
-import os
 import logging
 
 

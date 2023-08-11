@@ -48,7 +48,7 @@ class Control():
         while run:
             nodename, command = pipeline.get_node()
             if nodename:
-                message = f"control_child thread {t} called for: {nodename} {subsystem} {action}"
+                message = f"control_child thread {t} called for: {nodename} {command}"
                 self.logger.info(message)
                 # node = Database().get_record(None, 'node', f' WHERE name = "{nodename}"')
                 node = Database().get_record_join(
@@ -91,11 +91,7 @@ class Control():
                             device   = node[0]['device']
                             username = bmcsetup[0]['username']
                             password = bmcsetup[0]['password']
-                            action = action.replace('_', '')
-                            # self.logger.info("control_child thread "+str(t)+": "+nodename+" ->
-                            # performing "+action+", with user/pass "+username+"/"+password)
-                            # status = Helper().ipmi_action(nodename, action, username, password)
-                            # or 'no response or timeout'
+                            command = command.replace('_', '')
                             ret, status = self.control_action(
                                 node[0]['nodename'],
                                 node[0]['groupname'],

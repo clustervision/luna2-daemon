@@ -122,7 +122,7 @@ def parse_dict(data=None):
     This method will parse the dictionary.
     """
     for item in data.keys():
-        data[item] = parse_item(data[item],item)
+        ret, data[item], error = parse_item(data[item],item)
     return data
 
 
@@ -149,7 +149,8 @@ def parse_item(data=None, name=None):
     ret = True
     error = None
     if isinstance(data, dict):
-        data.update(parse_dict(data))
+        ret, data, error = parse_list(data)
+        data.update(data)
     elif isinstance(data, list):
         ret, data, error = parse_list(data)
         data = (data)

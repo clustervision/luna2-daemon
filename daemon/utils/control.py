@@ -49,7 +49,7 @@ class Control():
             nodename, action = pipeline.get_node()
             if nodename:
                 message = f"control_child thread {t}: {nodename} -> called for {action}"
-                self.logger.info(message)
+                self.logger.debug(message)
                 # node = Database().get_record(None, 'node', f' WHERE name = "{nodename}"')
                 node = Database().get_record_join(
                     [
@@ -113,7 +113,7 @@ class Control():
                         self.logger.info(f'{nodename} not have any bmcsetup.')
                         pipeline.add_message({nodename: 'None:does not have any bmcsetup'})
                 else:
-                    self.logger.info(f'{nodename} not have any suitable config.')
+                    self.logger.info(f'{nodename} does not have any suitable config.')
                     pipeline.add_message({nodename: 'None:does not have any node information'})
                 run = 0
                 # setting this to 0 means we only do one iteration.
@@ -127,8 +127,8 @@ class Control():
         """
         This method will handle the power control actions.
         """
-        self.logger.info(nodename)
-        self.logger.info(groupname)
+        self.logger.debug(nodename)
+        self.logger.debug(groupname)
         return_code, message = False, ""
         # class TimeoutError(Exception):
         #     pass
@@ -227,7 +227,7 @@ class Control():
                 results=pipeline.get_messages()
 
                 for key in list(results):
-                    self.logger.info(f"control_mother result: {key}: {results[key]}")
+                    self.logger.debug(f"control_mother result: {key}: {results[key]}")
                     Status().add_message(request_id, "lpower", f"{key}:{results[key]}")
                     pipeline.del_message(key)
                 sleep(delay)

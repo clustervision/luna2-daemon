@@ -176,8 +176,8 @@ class Control():
                         'control': {
                             subsystem: {
                                 'on': on_nodes,
-                                'off': off_nodes,
-                            }
+                                'off': off_nodes
+                            },
                             'failed': failed_nodes,
                             'request_id': request_id
                         }
@@ -232,7 +232,7 @@ class Control():
                     subsystem: {
                         'on': on_nodes,
                         'off': off_nodes,
-                    }
+                    },
                     'failed': failed_nodes,
                     'request_id': request_id
                 }

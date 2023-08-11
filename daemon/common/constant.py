@@ -188,7 +188,7 @@ else:
 ## Sanity Checks On LOGFILE, IMAGE_FILES, TEMPLATES_DIR, TEMPLATELIST, KEYFILE
 
 sanitize = [
-                CONSTANT['LOGGER']['LOGFILE'],
+#                CONSTANT['LOGGER']['LOGFILE'],
                 CONSTANT['FILES']['IMAGE_FILES'],
                 CONSTANT['TEMPLATES']['TEMPLATES_DIR'],
                 CONSTANT['TEMPLATES']['TEMPLATELIST'],
@@ -198,6 +198,8 @@ for sanity in sanitize:
     check_path_state(sanity)
 
 if CONSTANT['LOGGER']['LOGFILE']:
+    logpath = os.path.dirname(CONSTANT['LOGGER']['LOGFILE'])
+    os.makedirs(logpath, exist_ok=True)
     LOGGER = Log.init_log('info', CONSTANT['LOGGER']['LOGFILE'])
 if CONSTANT['LOGGER']['LEVEL']:
     LOGGER = Log.set_logger(CONSTANT['LOGGER']['LEVEL'])

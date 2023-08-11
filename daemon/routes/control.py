@@ -25,18 +25,18 @@ LOGGER = Log.get_logger()
 control_blueprint = Blueprint('control', __name__)
 
 
-# BELOW SEGMENT HAS BEEN TESTED AND CONFIRMED WORKING BY ANTOINE ON APRIL 5 2023
-@control_blueprint.route('/control/power/<string:hostname>/<string:action>', methods=['GET'])
+# BELOW SEGMENT HAS BEEN TESTED AND CONFIRMED WORKING BY ANTOINE ON AUG 11 2023
+@control_blueprint.route('/control/action/<string:subsystem>/<string:hostname>/_<string:action>', methods=['GET'])
 @token_required
 @validate_name
-def control_power_get(hostname=None, action=None):
+def control_action_get(hostname=None, subsystem=None, action=None):
     """
     Input - hostname & action
     Process - Use to perform on, off, reset operations on one node.
     Output - Success or failure
     """
     access_code = 404
-    status, response = Control().control_action(hostname, 'power '+action)
+    status, response = Control().control_action(hostname, subsystem, action)
     if status is True:
         access_code = 204
         if 'status' in action:
@@ -47,54 +47,14 @@ def control_power_get(hostname=None, action=None):
     return response, access_code
 
 
-# BELOW SEGMENT HAS BEEN TESTED AND CONFIRMED WORKING BY ANTOINE ON APRIL 5 2023
-@control_blueprint.route('/control/power', methods=['POST'])
+# BELOW SEGMENT HAS BEEN TESTED AND CONFIRMED WORKING BY ANTOINE ON AUG 11 2023
+@control_blueprint.route('/control/action/<string:subsystem>/_<string:action>', methods=['POST'])
 @token_required
-@input_filter(checks=['control:power'], skip=None)
-def control_power_post():
+@input_filter(checks=['control'], skip=None)
+def control_action_post(subsystem=None, action=None):
     """
     Input - hostname & action
     Process - Use to perform on, off, reset operations on one node.
-    Output - Success or failure
-    """
-    access_code = 404
-    status, response = Control().bulk_action(request)
-    if status is True:
-        access_code=200
-        response = dumps(response)
-    else:
-        response = {'message': response}
-    return response, access_code
-
-
-@control_blueprint.route('/control/sel/<string:hostname>/<string:action>', methods=['GET'])
-@token_required
-@validate_name
-def control_sel_get(hostname=None, action=None):
-    """
-    Input - hostname & action
-    Process - Use to perform sel clear, list operations on one node.
-    Output - Success or failure
-    """
-    access_code = 404
-    status, response = Control().control_action(hostname, 'sel '+action)
-    if status is True:
-        access_code = 204
-        if 'list' in action:
-            access_code = 200
-        response = dumps(response)
-    else:
-        response = {'message': response}
-    return response, access_code
-
-
-@control_blueprint.route('/control/sel', methods=['POST'])
-@token_required
-@input_filter(checks=['control:sel'], skip=None)
-def control_sel_post():
-    """
-    Input - hostname & action
-    Process - Use to perform sel clear (only for now) operations on one node.
     Output - Success or failure
     """
     access_code = 404

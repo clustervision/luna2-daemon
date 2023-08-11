@@ -42,6 +42,7 @@ class Log:
         try:
             logpath=os.path.dirname(logfile)
             if not os.path.exists(logpath):
+                cls.__logger.error(f"logpath {logpath} does not exit. trying to create it")
                 os.makedirs(logpath)
         except Exception as exp:
             cls.__logger.error(f"{exp}")

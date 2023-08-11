@@ -154,7 +154,7 @@ class Control():
                             if record['read'] == 0:
                                 node, result, message, *_ = (record['message'].split(':', 2) + [None] + [None])
                                 # data is message is like 'node:message'
-                                self.logger.info(f"control POST regexp match: [{message}], [{result}]")
+                                self.logger.debug(f"control POST regexp match: [{node}], [{message}], [{result}]")
                                 if message in ['on','reset','cycle','power on','power reset','power cycle']:
                                     on_nodes.append(node)
                                 elif message in ['off','power off']:

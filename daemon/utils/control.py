@@ -49,7 +49,7 @@ class Control():
             nodename, action = pipeline.get_node()
             if nodename:
                 message = f"control_child thread {t}: {nodename} -> called for {action}"
-                self.logger.debug(message)
+                self.logger.info(message)
                 # node = Database().get_record(None, 'node', f' WHERE name = "{nodename}"')
                 node = Database().get_record_join(
                     [

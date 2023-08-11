@@ -358,8 +358,6 @@ def bootstrap(bootstrapfile=None):
         {'column': 'dracutmodules', 'value': 'luna, -18n, -plymouth'},
         {'column': 'grab_filesystems', 'value': '/, /boot'},
         {'column': 'grab_exclude', 'value': '/proc/*, /sys/*, /dev/*, /tmp/*, /var/log/*'},
-#        {'column': 'initrdfile', 'value': 'osimagename-initramfs-`uname -r`'},
-#        {'column': 'kernelfile', 'value': 'osimagename-vmlinuz-`uname -r`'},
         {'column': 'kernelversion', 'value': f'{osimage_kernelversion}'},
         {'column': 'path', 'value': f'{osimage_path}'},
         {'column': 'kernelmodules', 'value': 'ipmi_devintf, ipmi_si, ipmi_msghandler'},

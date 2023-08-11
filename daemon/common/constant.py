@@ -21,7 +21,8 @@ from configparser import RawConfigParser
 from pathlib import Path
 from utils.log import Log
 
-LOGGER = Log.init_log('info', '/trinity/local/luna/log/luna2-daemon.log')
+# not here..... further down as we load the path for the log file - Antoine Aug 11 2023
+#LOGGER = Log.init_log('info', '/trinity/local/luna/log/luna2-daemon.log')
 CurrentDir = os.path.dirname(os.path.realpath(__file__))
 UTILSDIR = Path(CurrentDir)
 BASE_DIR = str(UTILSDIR.parent)
@@ -179,7 +180,6 @@ CONSTANT = {
     'TEMPLATES': {'TEMPLATES_DIR': None, 'TEMPLATELIST': None,  'TEMP_DIR': None}
 }
 
-
 if check_path_state(CONFIGFILE):
     getconfig(CONFIGFILE)
 else:
@@ -188,8 +188,12 @@ else:
 
 ## Sanity Checks On LOGFILE, IMAGE_FILES, TEMPLATES_DIR, TEMPLATELIST, KEYFILE
 
+# the log path, not the file. we can create the file very well by ourselves... - Antoine aug 11 2023
+logpath = os.path.dirname(CONSTANT['LOGGER']['LOGFILE'])
+
 sanitize = [
-                CONSTANT['LOGGER']['LOGFILE'],
+#                CONSTANT['LOGGER']['LOGFILE'],
+                logpath,
                 CONSTANT['FILES']['IMAGE_FILES'],
                 CONSTANT['TEMPLATES']['TEMPLATES_DIR'],
                 CONSTANT['TEMPLATES']['TEMPLATELIST'],
@@ -198,8 +202,12 @@ sanitize = [
 for sanity in sanitize:
     check_path_state(sanity)
 
+if CONSTANT['LOGGER']['LOGFILE']:
+    #os.makedirs(logpath, exist_ok=True)  # <-- debatable - Antoine
+    LOGGER = Log.init_log('info', CONSTANT['LOGGER']['LOGFILE'])
 if CONSTANT['LOGGER']['LEVEL']:
     LOGGER = Log.set_logger(CONSTANT['LOGGER']['LEVEL'])
+
 
 with open(CONSTANT['FILES']['KEYFILE'], 'r', encoding='utf-8') as key_file:
     LUNAKEY = key_file.read()

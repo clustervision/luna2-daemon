@@ -51,7 +51,7 @@ def control_action_get(hostname=None, subsystem=None, action=None):
 @control_blueprint.route('/control/action/<string:subsystem>/_<string:action>', methods=['POST'])
 @token_required
 @input_filter(checks=['control'], skip=None)
-def control_action_post():
+def control_action_post(subsystem=None, action=None):
     """
     Input - hostname & action
     Process - Use to perform on, off, reset operations on one node.

@@ -18,6 +18,7 @@ __email__       = 'sumit.sharma@clustervision.com'
 __status__      = 'Development'
 
 import sys
+import os
 import logging
 
 
@@ -38,6 +39,9 @@ class Log:
         thread_level = '[%(levelname)s]:[%(asctime)s]:[%(threadName)s]:'
         message = '[%(filename)s:%(funcName)s@%(lineno)d] - %(message)s'
         log_format = f'{thread_level}{message}'
+        logpath=os.path.dirname(logfile)
+        if not os.path.exists(logpath):
+            os.makedirs(logpath)
         logging.basicConfig(filename=logfile, format=log_format, filemode='a', level=log_level)
         cls.__logger = logging.getLogger('luna2-daemon')
         cls.__logger.setLevel(log_level)

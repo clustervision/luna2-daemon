@@ -166,7 +166,7 @@ class Control():
                                     else:
                                         failed_nodes[node] = message
                                 else:
-                                    if results == 'True':
+                                    if result == 'True':
                                         ok_nodes[node]=subsystem+' '+action
                                     else:
                                         failed_nodes[node] = message
@@ -221,7 +221,7 @@ class Control():
                                 else:
                                     failed_nodes[node] = message
                             else:
-                                if results == 'True':
+                                if result == 'True':
                                     ok_nodes[node]=subsystem+' '+action
                                 else:
                                     failed_nodes[node] = message

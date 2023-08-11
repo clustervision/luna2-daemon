@@ -829,7 +829,7 @@ class OsImage(object):
 
     def ospush_child(self,pipeline,t,Plugin,osimage,image_path,grab_fs,grab_ex,nodry):
         nodename,action=pipeline.get_node()
-        self.logger.info("control_child thread "+str(t)+": "+nodename+" -> called for ospush")
+        self.logger.info("control_child thread "+str(t)+" called for: "+nodename+" ospush")
         if nodename:
             response=Plugin().push(osimage=osimage,image_path=image_path,node=nodename,
                                            grab_filesystems=grab_fs,

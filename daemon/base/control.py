@@ -177,6 +177,7 @@ class Control():
                     response = {
                         'control': {
                             subsystem: {
+                                'ok': ok_nodes,
                                 'on': on_nodes,
                                 'off': off_nodes
                             },
@@ -234,6 +235,7 @@ class Control():
             response = {
                 'control': {
                     subsystem: {
+                        'ok': ok_nodes,
                         'on': on_nodes,
                         'off': off_nodes,
                     },

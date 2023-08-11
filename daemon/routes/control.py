@@ -25,7 +25,7 @@ LOGGER = Log.get_logger()
 control_blueprint = Blueprint('control', __name__)
 
 
-@control_blueprint.route(' /control/action/<string:subsystem>/<string:hostname>/_<string:action>', methods=['GET'])
+@control_blueprint.route('/control/action/<string:subsystem>/<string:hostname>/_<string:action>', methods=['GET'])
 @token_required
 @validate_name
 def control_power_get(hostname=None, subsystem=None, action=None):

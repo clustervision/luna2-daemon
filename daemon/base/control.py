@@ -158,7 +158,7 @@ class Control():
                                 self.logger.debug(f"control POST regexp match: [{node}], [{message}], [{result}]")
 
                                 if subsystem == 'power' and action == 'status':
-                                    if result is 'True':
+                                    if result == 'True':
                                         if message == "on":
                                             on_nodes[node] = 'None'
                                         elif message == "off":
@@ -166,7 +166,7 @@ class Control():
                                     else:
                                         failed_nodes[node] = message
                                 else:
-                                    if results is 'True':
+                                    if results == 'True':
                                         ok_nodes[node]=subsystem+' '+action
                                     else:
                                         failed_nodes[node] = message
@@ -213,7 +213,7 @@ class Control():
                             node, command, result, message, *_ = (record['message'].split(':',3) + [None] + [None] + [None])
                             subsystem, action = command.split(' ',1)
                             if subsystem == 'power' and action == 'status':
-                                if result is 'True':
+                                if result == 'True':
                                     if message == "on":
                                         on_nodes[node] = 'None'
                                     elif message == "off":
@@ -221,7 +221,7 @@ class Control():
                                 else:
                                     failed_nodes[node] = message
                             else:
-                                if results is 'True':
+                                if results == 'True':
                                     ok_nodes[node]=subsystem+' '+action
                                 else:
                                     failed_nodes[node] = message

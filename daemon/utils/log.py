@@ -40,6 +40,7 @@ class Log:
         message = '[%(filename)s:%(funcName)s@%(lineno)d] - %(message)s'
         log_format = f'{thread_level}{message}'
         try:
+            cls.__logger.info(f"using logpath {logpath} -> {logfile}")
             logpath=os.path.dirname(logfile)
             if not os.path.exists(logpath):
                 cls.__logger.error(f"logpath {logpath} does not exit. trying to create it")

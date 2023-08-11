@@ -66,7 +66,7 @@ def input_filter(checks=None, skip=None, json=True):
             if json:
                 if not Helper().check_json(request.data):
                     response = {'message': "data is not valid json"}
-                    return response, 404
+                    return response, 400
                 data = request.get_json(force=True)
             else:
                 data = request.args.to_dict()
@@ -87,15 +87,16 @@ def input_filter(checks=None, skip=None, json=True):
             # Checking for Name in kwargs and appending the name in checks - Sumit
             if check_structure(data, check_list):
                 data = parse_item(data)
+                SKIP_LIST = []
                 LOGGER.debug(f"----- END ----- {data}")
                 if ERROR:
                     response = {'message': f"{ERROR}"}
-                    ERROR=None
-                    return response, 404
+                    ERROR = None
+                    return response, 400
                 request.data = data
                 return function(*args, **kwargs)
             response = {'message': "data structure incomplete or incorrect"}
-            return response, 404
+            return response, 400
         return filter_input
     return decorator
 
@@ -113,7 +114,7 @@ def validate_name(function):
                 message = f"Incorrect Naming convention with {name_key} {name_value}: {ERROR}"
                 response = {'message': message}
                 LOGGER.debug(f"{ERROR}")
-                ERROR=None
+                ERROR = None
                 return response, 400
         return function(*args, **kwargs)
     return decorator

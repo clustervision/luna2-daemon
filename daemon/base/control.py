@@ -168,7 +168,7 @@ class Control():
                                 else:
                                     if results is 'True':
                                         ok_nodes[node]=subsystem+' '+action
-                                    else
+                                    else:
                                         failed_nodes[node] = message
 
                     Status().mark_messages_read(request_id)
@@ -223,7 +223,7 @@ class Control():
                             else:
                                 if results is 'True':
                                     ok_nodes[node]=subsystem+' '+action
-                                else
+                                else:
                                     failed_nodes[node] = message
 
             Status().mark_messages_read(request_id)

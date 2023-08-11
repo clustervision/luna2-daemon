@@ -25,10 +25,11 @@ LOGGER = Log.get_logger()
 control_blueprint = Blueprint('control', __name__)
 
 
+# BELOW SEGMENT HAS BEEN TESTED AND CONFIRMED WORKING BY ANTOINE ON AUG 11 2023
 @control_blueprint.route('/control/action/<string:subsystem>/<string:hostname>/_<string:action>', methods=['GET'])
 @token_required
 @validate_name
-def control_power_get(hostname=None, subsystem=None, action=None):
+def control_action_get(hostname=None, subsystem=None, action=None):
     """
     Input - hostname & action
     Process - Use to perform on, off, reset operations on one node.
@@ -46,11 +47,11 @@ def control_power_get(hostname=None, subsystem=None, action=None):
     return response, access_code
 
 
-# BELOW SEGMENT HAS BEEN TESTED AND CONFIRMED WORKING BY ANTOINE ON APRIL 5 2023
-@control_blueprint.route('/control/power', methods=['POST'])
+# BELOW SEGMENT HAS BEEN TESTED AND CONFIRMED WORKING BY ANTOINE ON AUG 11 2023
+@control_blueprint.route('/control/action/<string:subsystem>/_<string:action>', methods=['POST'])
 @token_required
-@input_filter(checks=['control:power'], skip=None)
-def control_power_post():
+@input_filter(checks=['control'], skip=None)
+def control_action_post():
     """
     Input - hostname & action
     Process - Use to perform on, off, reset operations on one node.

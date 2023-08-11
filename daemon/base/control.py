@@ -163,6 +163,8 @@ class Control():
                                             on_nodes[node] = 'None'
                                         elif message == "off":
                                             off_nodes[node] = 'None'
+                                        else:
+                                            failed_node[node] = message
                                     else:
                                         failed_nodes[node] = message
                                 else:
@@ -218,6 +220,8 @@ class Control():
                                         on_nodes[node] = 'None'
                                     elif message == "off":
                                         off_nodes[node] = 'None'
+                                    else:
+                                        failed_node[node] = message
                                 else:
                                     failed_nodes[node] = message
                             else:

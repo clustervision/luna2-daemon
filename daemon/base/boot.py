@@ -25,6 +25,7 @@ from utils.helper import Helper
 from utils.service import Service
 from utils.config import Config
 from common.constant import CONSTANT
+from base.node import Node
 
 try:
     from plugins.detection.switchport import Plugin as DetectionPlugin
@@ -465,7 +466,6 @@ class Boot():
             if group_details:
                 # Antoine aug 15 2023
                 ret,message = None, None
-                from base.node import Node
                 if new_nodename:
                     if example_node:
                         newnodedata = {'config': {'node': {example_node: {}}}}
@@ -764,9 +764,8 @@ class Boot():
         template = 'templ_install.cfg'
         data = {
             'template'              : template,
-            'osimageid'             : None,
-            'groupid'               : None,
             'nodeid'                : None,
+            'group'                 : None,
             'ipaddress'             : None,
             'serverport'            : None,
             'nodehostname'          : None,
@@ -811,61 +810,47 @@ class Boot():
                     data['webserver_port'] = CONSTANT['WEBSERVER']['PORT']
                 if 'PROTOCOL' in CONSTANT['WEBSERVER']:
                     data['webserver_protocol'] = CONSTANT['WEBSERVER']['PROTOCOL']
+        
+        items = {
+            'setupbmc': False,
+            'netboot': False,
+            'localinstall': False,
+            'bootmenu': False,
+            'unmanaged_bmc_users': 'skip',
+        }
+        ret, enclosed_node_details = Node().get_node(cli=False, name=node)
+        node_details=None
+        if ret is True:
+            if 'config' in enclosed_node_details.keys():
+                if 'node' in enclosed_node_details['config'].keys():
+                    if node in enclosed_node_details['config']['node']:
+                        node_details=enclosed_node_details['config']['node'][node]
+            if not node_details:
+                status = False
+                return status, "i received data back internally that i could not parse"
+            self.logger.debug(f"DEBUG: {node_details}")
+            for item in ['provision_method','provision_fallback','prescript','partscript','postscript',
+                         'netboot','localinstall','bootmenu','provision_interface','unmanaged_bmc_users',
+                         'name','setupbmc','bmcsetup','group','osimage']:
+                if item in items and isinstance(items[item], bool):
+                    if node_details[item] is None or node_details[item] == 'None':
+                        data[item]=False
+                    else:
+                        data[item] = Helper().make_bool(node_details[item])
+                else:
+                    data[item] = node_details[item]
+            # though None is perfectly valid, the check below doesn't like it. - Antoine Aug 15 2023
+            if data['unmanaged_bmc_users'] is None:
+                data['unmanaged_bmc_users'] = items['unmanaged_bmc_users']
+            data['nodeid'] = Database().id_by_name('node', node)             # we need this for node status update
+            data['nodename']            = node_details['name']
+            data['nodehostname']        = node_details['hostname']
+        else:
+            status = False
+            return status, "This node does not seem to exist"
 
-        node_details = Database().get_record_join(
-            [
-                'node.*',
-                'group.osimageid as grouposimageid',
-                'group.name as groupname',
-                'group.bmcsetupid as groupbmcsetupid'
-            ],
-            ['group.id=node.groupid'],
-            [f'node.name="{node}"']
-        )
-        if node_details:
-            # ---
-            if node_details[0]['osimageid']:
-                data['osimageid']       = node_details[0]['osimageid']
-            else:
-                data['osimageid']       = node_details[0]['grouposimageid']
-            # ---
-            if node_details[0]['bmcsetupid']:
-                data['bmcsetupid']       = node_details[0]['bmcsetupid']
-            else:
-                data['bmcsetupid']       = node_details[0]['groupbmcsetupid']
-            # ---
-            data['groupid']             = node_details[0]['groupid']
-            data['groupname']           = node_details[0]['groupname']
-            data['nodename']            = node_details[0]['name']
-            data['nodehostname']        = node_details[0]['name'] # + fqdn further below
-            data['nodeid']              = node_details[0]['id']
-            data['provision_method']    = node_details[0]['provision_method']
-            data['provision_fallback']  = node_details[0]['provision_fallback']
-
-            en_part = "bW91bnQgLXQgdG1wZnMgdG1wZnMgL3N5c3Jvb3QK"
-            en_post = "ZWNobyAndG1wZnMgLyB0bXBmcyBkZWZhdWx0cyAwIDAnID4+IC9zeXNyb290L2V0Yy9mc3RhYgo="
-
-            items = {
-                'prescript': '',
-                'partscript': en_part,
-                'postscript': en_post,
-                'setupbmc': False,
-                'netboot': False,
-                'localinstall': False,
-                'bootmenu': False,
-                'provision_interface': 'BOOTIF',
-                'unmanaged_bmc_users': 'skip',
-                'provision_method': data['cluster_provision_method'],
-                'provision_fallback': data['cluster_provision_fallback']
-            }
-
-            for key, value in items.items():
-                data[key] = node_details[0][key]
-                if isinstance(value, bool):
-                    data[key] = Helper().make_bool(data[key])
-
-        if data['setupbmc'] is True and data['bmcsetupid']:
-            bmcsetup = Database().get_record(None, 'bmcsetup', f" WHERE id = {data['bmcsetupid']}")
+        if data['setupbmc'] is True and data['bmcsetup']:
+            bmcsetup = Database().get_record(None, 'bmcsetup', " WHERE name = '"+data['bmcsetup']+"'")
             if bmcsetup:
                 data['bmc'] = {}
                 data['bmc']['userid'] = bmcsetup[0]['userid']
@@ -873,32 +858,14 @@ class Boot():
                 data['bmc']['password'] = bmcsetup[0]['password']
                 data['bmc']['netchannel'] = bmcsetup[0]['netchannel']
                 data['bmc']['mgmtchannel'] = bmcsetup[0]['mgmtchannel']
-                data['unmanaged_bmc_users'] = bmcsetup[0]['unmanaged_bmc_users']
+#                data['unmanaged_bmc_users'] = bmcsetup[0]['unmanaged_bmc_users'] # supposedly covered by Node().get_node
             else:
                 data['setupbmc'] = False
 
-        if data['groupid']:
-            group = Database().get_record(None, 'group', f' WHERE id = {data["groupid"]}')
-            if group:
-                # What's configured for the node, or the group, or a default fallback
-                for key, value in items.items():
-                    if key in data and key in group[0] and group[0][key] and not str(data[key]):
-                        # we check if we have data filled. if not (meaning node does not have
-                        # that info) we verify if the group has it and if so, we fill it
-                        if isinstance(value, bool):
-                            group[0][key] = Helper().make_bool(group[0][key])
-                        data[key] = data[key] or group[0][key] or value
-                    elif str(data[key]) and data[key] is not None:
-                        pass
-                    else:
-                        # if anything else fails we use the fallback
-                        if isinstance(value, bool):
-                            data[key] = Helper().make_bool(data[key])
-                        data[key] = value
-
-        if data['osimageid']:
-            osimage = Database().get_record(None, 'osimage', f' WHERE id = {data["osimageid"]}')
+        if data['osimage']:
+            osimage = Database().get_record(None, 'osimage', " WHERE name = '"+data['osimage']+"'")
             if osimage:
+                data['osimageid'] = osimage[0]['id']
                 data['osimagename'] = osimage[0]['name']
                 data['imagefile'] = osimage[0]['imagefile']
                 data['distribution'] = osimage[0]['distribution'].lower() or 'redhat'
@@ -906,7 +873,7 @@ class Boot():
                 if 'osrelease' in osimage[0]:
                     data['osrelease'] = osimage[0]['osrelease'] or 'default.py'
 
-        if data['nodeid']:
+        if data['name']:
             nodeinterface = Database().get_record_join(
                 [
                     'nodeinterface.nodeid',
@@ -921,8 +888,8 @@ class Boot():
                     'network.id as networkid',
                     'network.zone as zone'
                 ],
-                ['network.id=ipaddress.networkid', 'ipaddress.tablerefid=nodeinterface.id'],
-                ['tableref="nodeinterface"', f"nodeinterface.nodeid='{data['nodeid']}'"]
+                ['network.id=ipaddress.networkid', 'ipaddress.tablerefid=nodeinterface.id', 'nodeinterface.nodeid=node.id'],
+                ['tableref="nodeinterface"', f"node.name='+{data['name']}+'"]
             )
             data['domain_search']=''
             if nodeinterface:
@@ -1000,7 +967,7 @@ class Boot():
         bmc_plugin = Helper().plugin_load(
             self.bmc_plugins,
             'bmc',
-            [data['nodename'], data['groupname']]
+            [data['nodename'], data['group']]
         )
         segment = str(bmc_plugin().config)
         template_data = template_data.replace("## BMC CODE SEGMENT",segment)
@@ -1009,7 +976,7 @@ class Boot():
         install_plugin = Helper().plugin_load(
             self.install_plugins,
             'install',
-            [data['nodename'],data['groupname']]
+            [data['nodename'],data['group']]
         )
         for script in ['prescript', 'partscript', 'postscript']:
             segment = ""

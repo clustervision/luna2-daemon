@@ -764,9 +764,8 @@ class Boot():
         template = 'templ_install.cfg'
         data = {
             'template'              : template,
-            'osimageid'             : None,
-            'groupid'               : None,
             'nodeid'                : None,
+            'group'                 : None,
             'ipaddress'             : None,
             'serverport'            : None,
             'nodehostname'          : None,
@@ -817,62 +816,9 @@ class Boot():
             'netboot': False,
             'localinstall': False,
             'bootmenu': False,
-            'unmanaged_bmc_users': False,
+            'unmanaged_bmc_users': 'skip',
         }
         ret, enclosed_node_details = Node().get_node(cli=False, name=node)
-
-#        node_details = Database().get_record_join(
-#            [
-#                'node.*',
-#                'group.osimageid as grouposimageid',
-#                'group.name as groupname',
-#                'group.bmcsetupid as groupbmcsetupid'
-#            ],
-#            ['group.id=node.groupid'],
-#            [f'node.name="{node}"']
-#        )
-#        if node_details:
-#            # ---
-#            if node_details[0]['osimageid']:
-#                data['osimageid']       = node_details[0]['osimageid']
-#            else:
-#                data['osimageid']       = node_details[0]['grouposimageid']
-#            # ---
-#            if node_details[0]['bmcsetupid']:
-#                data['bmcsetupid']       = node_details[0]['bmcsetupid']
-#            else:
-#                data['bmcsetupid']       = node_details[0]['groupbmcsetupid']
-#            # ---
-#            data['groupid']             = node_details[0]['groupid']
-#            data['groupname']           = node_details[0]['groupname']
-#            data['nodename']            = node_details[0]['name']
-#            data['nodehostname']        = node_details[0]['name'] # + fqdn further below
-#            data['nodeid']              = node_details[0]['id']
-#            data['provision_method']    = node_details[0]['provision_method']
-#            data['provision_fallback']  = node_details[0]['provision_fallback']
-#
-#            en_part = "bW91bnQgLXQgdG1wZnMgdG1wZnMgL3N5c3Jvb3QK"
-#            en_post = "ZWNobyAndG1wZnMgLyB0bXBmcyBkZWZhdWx0cyAwIDAnID4+IC9zeXNyb290L2V0Yy9mc3RhYgo="
-#
-#            items = {
-#                'prescript': '',
-#                'partscript': en_part,
-#                'postscript': en_post,
-#                'setupbmc': False,
-#                'netboot': False,
-#                'localinstall': False,
-#                'bootmenu': False,
-#                'provision_interface': 'BOOTIF',
-#                'unmanaged_bmc_users': 'skip',
-#                'provision_method': data['cluster_provision_method'],
-#                'provision_fallback': data['cluster_provision_fallback']
-#            }
-#
-#            for key, value in items.items():
-#                data[key] = node_details[0][key]
-#                if isinstance(value, bool):
-#                    data[key] = Helper().make_bool(data[key])
-
         node_details=None
         if ret is True:
             if 'config' in enclosed_node_details.keys():
@@ -893,17 +839,11 @@ class Boot():
                         data[item] = Helper().make_bool(node_details[item])
                 else:
                     data[item] = node_details[item]
-            # only exception:
-#            if data['unmanaged_bmc_users'] is None:
-#                data['unmanaged_bmc_users'] = 'skip'  # <-- None is not taken wel below.....
             data['nodeid'] = Database().id_by_name('node', node)             # not sure if we really need this in template
-            data['groupid'] = Database().id_by_name('group', data['group'])  # not sure if we really need this in template
             data['nodename']            = node_details['name']
             data['nodehostname']        = node_details['name'] # + fqdn further below
             data['groupname']           = node_details['group']
 
-#        if data['setupbmc'] is True and data['bmcsetupid']:
-#            bmcsetup = Database().get_record(None, 'bmcsetup', f" WHERE id = {data['bmcsetupid']}")
         if data['setupbmc'] is True and data['bmcsetup']:
             bmcsetup = Database().get_record(None, 'bmcsetup', " WHERE name = '"+data['bmcsetup']+"'")
             if bmcsetup:
@@ -917,27 +857,6 @@ class Boot():
             else:
                 data['setupbmc'] = False
 
-#        if data['groupid']:
-#            group = Database().get_record(None, 'group', f' WHERE id = {data["groupid"]}')
-#            if group:
-#                # What's configured for the node, or the group, or a default fallback
-#                for key, value in items.items():
-#                    if key in data and key in group[0] and group[0][key] and not str(data[key]):
-#                        # we check if we have data filled. if not (meaning node does not have
-#                        # that info) we verify if the group has it and if so, we fill it
-#                        if isinstance(value, bool):
-#                            group[0][key] = Helper().make_bool(group[0][key])
-#                        data[key] = data[key] or group[0][key] or value
-#                    elif str(data[key]) and data[key] is not None:
-#                        pass
-#                    else:
-#                        # if anything else fails we use the fallback
-#                        if isinstance(value, bool):
-#                            data[key] = Helper().make_bool(data[key])
-#                        data[key] = value
-
-#        if data['osimageid']:
-#            osimage = Database().get_record(None, 'osimage', f' WHERE id = {data["osimageid"]}')
         if data['osimage']:
             osimage = Database().get_record(None, 'osimage', " WHERE name = '"+data['osimage']+"'")
             if osimage:
@@ -949,7 +868,6 @@ class Boot():
                 if 'osrelease' in osimage[0]:
                     data['osrelease'] = osimage[0]['osrelease'] or 'default.py'
 
-#        if data['nodeid']:
         if data['name']:
             nodeinterface = Database().get_record_join(
                 [
@@ -965,9 +883,7 @@ class Boot():
                     'network.id as networkid',
                     'network.zone as zone'
                 ],
-#                ['network.id=ipaddress.networkid', 'ipaddress.tablerefid=nodeinterface.id'],
                 ['network.id=ipaddress.networkid', 'ipaddress.tablerefid=nodeinterface.id', 'nodeinterface.nodeid=node.id'],
-#                ['tableref="nodeinterface"', f"nodeinterface.nodeid='{data['nodeid']}'"]
                 ['tableref="nodeinterface"', f"node.name='+{data['name']}+'"]
             )
             data['domain_search']=''

@@ -894,6 +894,7 @@ class Boot():
             data['groupid'] = Database().id_by_name('group', data['group'])  # not sure if we really need this in template
             data['nodename']            = node_details['name']
             data['nodehostname']        = node_details['name'] # + fqdn further below
+            data['groupname']           = node_details['group']
 
 #        if data['setupbmc'] is True and data['bmcsetupid']:
 #            bmcsetup = Database().get_record(None, 'bmcsetup', f" WHERE id = {data['bmcsetupid']}")

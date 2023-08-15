@@ -892,7 +892,7 @@ class Boot():
                     data[item] = node_details[item]
             # only exception:
             if data['unmanaged_bmc_users'] is None:
-                data'unmanaged_bmc_users'] = 'skip'  # <-- None is not taken wel below.....
+                data['unmanaged_bmc_users'] = 'skip'  # <-- None is not taken wel below.....
             data['nodeid'] = Database().id_by_name('node', node)             # not sure if we really need this in template
             data['groupid'] = Database().id_by_name('group', data['group'])  # not sure if we really need this in template
             data['nodename']            = node_details['name']

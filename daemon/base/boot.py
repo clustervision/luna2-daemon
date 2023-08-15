@@ -887,12 +887,15 @@ class Boot():
                          'netboot','localinstall','bootmenu','provision_interface','unmanaged_bmc_users',
                          'name','setupbmc','bmcsetup','group','osimage']:
                 if item in items and isinstance(items[item], bool):
-                    data[item] = Helper().make_bool(node_details[item])
+                    if node_details[item] is None or node_details[item] == 'None':
+                        data[item]=False
+                    else:
+                        data[item] = Helper().make_bool(node_details[item])
                 else:
                     data[item] = node_details[item]
             # only exception:
-            if data['unmanaged_bmc_users'] is None:
-                data['unmanaged_bmc_users'] = 'skip'  # <-- None is not taken wel below.....
+#            if data['unmanaged_bmc_users'] is None:
+#                data['unmanaged_bmc_users'] = 'skip'  # <-- None is not taken wel below.....
             data['nodeid'] = Database().id_by_name('node', node)             # not sure if we really need this in template
             data['groupid'] = Database().id_by_name('group', data['group'])  # not sure if we really need this in template
             data['nodename']            = node_details['name']
@@ -910,7 +913,7 @@ class Boot():
                 data['bmc']['password'] = bmcsetup[0]['password']
                 data['bmc']['netchannel'] = bmcsetup[0]['netchannel']
                 data['bmc']['mgmtchannel'] = bmcsetup[0]['mgmtchannel']
-                data['unmanaged_bmc_users'] = bmcsetup[0]['unmanaged_bmc_users']
+#                data['unmanaged_bmc_users'] = bmcsetup[0]['unmanaged_bmc_users']
             else:
                 data['setupbmc'] = False
 

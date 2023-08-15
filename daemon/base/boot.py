@@ -817,7 +817,7 @@ class Boot():
             'netboot': False,
             'localinstall': False,
             'bootmenu': False,
-            'unmanaged_bmc_users': 'skip',
+            'unmanaged_bmc_users': False,
         }
         ret, enclosed_node_details = Node().get_node(cli=False, name=node)
 

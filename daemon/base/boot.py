@@ -886,7 +886,7 @@ class Boot():
             for item in ['provision_method','provision_fallback','prescript','partscript','postscript',
                          'netboot','localinstall','bootmenu','provision_interface','unmanaged_bmc_users',
                          'name','setupbmc','bmcsetup','group','osimage']:
-                if isinstance(items[item], bool):
+                if item in items and isinstance(items[item], bool):
                     data[item] = Helper().make_bool(node_details[item])
                 else:
                     data[item] = node_details[item]

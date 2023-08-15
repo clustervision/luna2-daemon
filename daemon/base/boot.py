@@ -827,7 +827,7 @@ class Boot():
                         node_details=enclosed_node_details['config']['node'][node]
             if not node_details:
                 status = False
-                return status, "This node does not seem to exist"
+                return status, "i received data back internally that i could not parse"
             self.logger.debug(f"DEBUG: {node_details}")
             for item in ['provision_method','provision_fallback','prescript','partscript','postscript',
                          'netboot','localinstall','bootmenu','provision_interface','unmanaged_bmc_users',
@@ -845,6 +845,9 @@ class Boot():
             data['nodeid'] = Database().id_by_name('node', node)             # we need this for node status update
             data['nodename']            = node_details['name']
             data['nodehostname']        = node_details['hostname']
+        else:
+            status = False
+            return status, "This node does not seem to exist"
 
         if data['setupbmc'] is True and data['bmcsetup']:
             bmcsetup = Database().get_record(None, 'bmcsetup', " WHERE name = '"+data['bmcsetup']+"'")

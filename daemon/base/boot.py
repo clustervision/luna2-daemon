@@ -464,6 +464,7 @@ class Boot():
                     new_enumber = str(int(enumber) + 1)
                     new_enumber = new_enumber.zfill(len(enumber))
                     new_data['name'] = f"{ename}{new_enumber}"
+                    new_nodename = f"{ename}{new_enumber}"
                 elif ename:
                     new_enumber = '001'
                     new_data['name'] = f"{ename}{new_enumber}"
@@ -483,25 +484,26 @@ class Boot():
                 # Antoine
                 ret,message = None, None
                 from base.node import Node
-                if example_node:
-#                    newnodedata = {}
-#                    newnodedata['config'] = {}
-#                    newnodedata['config']['node'] = {}
-#                    newnodedata['config']['node'][example_node] = {}
-                    newnodedata = {'config': {'node': {example_node: {}}}}
-                    newnodedata['config']['node'][example_node]['newnodename'] = new_nodename
-                    newnodedata['config']['node'][example_node]['name'] = example_node
-                    newnodedata['config']['node'][example_node]['group'] = groupname # groupname is given through API call
-                    ret, message = Node().clone_node(example_node,newnodedata)
-                    self.logger.info(f"Group select boot: Cloning {example_node} to {new_nodename}: ret = [{ret}], message = [{message}]")
-                else:
-                    newnodedata = {'config': {'node': {new_nodename: {}}}}
-                    newnodedata['config']['node'][new_nodename]['name'] = new_nodename
-                    newnodedata['config']['node'][new_nodename]['group'] = groupname # groupname is given through API call
-                    ret, message = Node().update(new_nodename,newnodedata)
-                    self.logger.info(f"Group select boot: Creating {new_nodename}: ret = [{ret}], message = [{message}]")
-                if ret is True:
-                    hostname = new_nodename
+                if new_nodename:
+                    if example_node:
+#                        newnodedata = {}
+#                        newnodedata['config'] = {}
+#                        newnodedata['config']['node'] = {}
+#                        newnodedata['config']['node'][example_node] = {}
+                        newnodedata = {'config': {'node': {example_node: {}}}}
+                        newnodedata['config']['node'][example_node]['newnodename'] = new_nodename
+                        newnodedata['config']['node'][example_node]['name'] = example_node
+                        newnodedata['config']['node'][example_node]['group'] = groupname # groupname is given through API call
+                        ret, message = Node().clone_node(example_node,newnodedata)
+                        self.logger.info(f"Group select boot: Cloning {example_node} to {new_nodename}: ret = [{ret}], message = [{message}]")
+                    else:
+                        newnodedata = {'config': {'node': {new_nodename: {}}}}
+                        newnodedata['config']['node'][new_nodename]['name'] = new_nodename
+                        newnodedata['config']['node'][new_nodename]['group'] = groupname # groupname is given through API call
+                        ret, message = Node().update(new_nodename,newnodedata)
+                        self.logger.info(f"Group select boot: Creating {new_nodename}: ret = [{ret}], message = [{message}]")
+                    if ret is True:
+                        hostname = new_nodename
                 
 
 #                new_data['groupid']=group_details[0]['id']

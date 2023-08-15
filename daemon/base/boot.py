@@ -585,8 +585,8 @@ class Boot():
             # something above did not work out.
             environment = jinja2.Environment()
             template = environment.from_string('No Node is available for this group.')
-            status=False
-            return status, template
+            status = False
+            return status, 'No Node is available for this group'
 
         # we update the groupid of the node. this is actually only really
         # needed if we re-use a node (unassigned)

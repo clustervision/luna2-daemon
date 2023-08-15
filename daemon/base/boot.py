@@ -842,7 +842,6 @@ class Boot():
             data['nodeid'] = Database().id_by_name('node', node)             # not sure if we really need this in template
             data['nodename']            = node_details['name']
             data['nodehostname']        = node_details['name'] # + fqdn further below
-            data['groupname']           = node_details['group']
 
         if data['setupbmc'] is True and data['bmcsetup']:
             bmcsetup = Database().get_record(None, 'bmcsetup', " WHERE name = '"+data['bmcsetup']+"'")
@@ -962,7 +961,7 @@ class Boot():
         bmc_plugin = Helper().plugin_load(
             self.bmc_plugins,
             'bmc',
-            [data['nodename'], data['groupname']]
+            [data['nodename'], data['group']]
         )
         segment = str(bmc_plugin().config)
         template_data = template_data.replace("## BMC CODE SEGMENT",segment)
@@ -971,7 +970,7 @@ class Boot():
         install_plugin = Helper().plugin_load(
             self.install_plugins,
             'install',
-            [data['nodename'],data['groupname']]
+            [data['nodename'],data['group']]
         )
         for script in ['prescript', 'partscript', 'postscript']:
             segment = ""

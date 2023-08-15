@@ -898,7 +898,7 @@ class Boot():
 #        if data['setupbmc'] is True and data['bmcsetupid']:
 #            bmcsetup = Database().get_record(None, 'bmcsetup', f" WHERE id = {data['bmcsetupid']}")
         if data['setupbmc'] is True and data['bmcsetup']:
-            bmcsetup = Database().get_record(None, 'bmcsetup', " WHERE name = '"+{data['bmcsetup']}+"'")
+            bmcsetup = Database().get_record(None, 'bmcsetup', " WHERE name = '"+data['bmcsetup']+"'")
             if bmcsetup:
                 data['bmc'] = {}
                 data['bmc']['userid'] = bmcsetup[0]['userid']
@@ -932,7 +932,7 @@ class Boot():
 #        if data['osimageid']:
 #            osimage = Database().get_record(None, 'osimage', f' WHERE id = {data["osimageid"]}')
         if data['osimage']:
-            osimage = Database().get_record(None, 'osimage', " WHERE name = '"+{data['osimage']}+"'")
+            osimage = Database().get_record(None, 'osimage', " WHERE name = '"+data['osimage']+"'")
             if osimage:
                 data['osimageid'] = osimage[0]['id']
                 data['osimagename'] = osimage[0]['name']

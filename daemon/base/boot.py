@@ -839,6 +839,9 @@ class Boot():
                         data[item] = Helper().make_bool(node_details[item])
                 else:
                     data[item] = node_details[item]
+            # though None is perfectly valid, the check below doesn't like it.
+            if data['unmanaged_bmc_users'] is None:
+                data['unmanaged_bmc_users'] = items['unmanaged_bmc_users']
             data['nodeid'] = Database().id_by_name('node', node)             # not sure if we really need this in template
             data['nodename']            = node_details['name']
             data['nodehostname']        = node_details['name'] # + fqdn further below

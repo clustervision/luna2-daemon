@@ -345,7 +345,7 @@ class Node():
         return status, response
 
 
-    def update_node(self, name=None, http_request=None):
+    def update_node(self, name=None, request_data=None):
         """
         This method will return update requested node.
         """
@@ -364,7 +364,6 @@ class Node():
         create, update = False, False
         status = False
         response = "Internal error"
-        request_data = http_request.data
         if request_data:
             data = request_data['config']['node'][name]
             node = Database().get_record(None, 'node', f' WHERE name = "{name}"')
@@ -569,11 +568,10 @@ class Node():
         return status, response
 
 
-    def clone_node(self, name=None, http_request=None):
+    def clone_node(self, name=None, request_data=None):
         """This method will clone a node."""
         data = {}
         items = {'service': False, 'localboot': False}
-        request_data = http_request.data
         status=False
         response="Internal error"
         if request_data:
@@ -643,7 +641,7 @@ class Node():
                 if not new_nodeid:
                     status=False
                     return status, f'Node {newnodename} is not created due to possible property clash'
-                response = f'Node {name} created successfully'
+                response = f'Node {newnodename} created successfully'
                 status=True
                 node_interfaces = Database().get_record_join(
                     [

@@ -395,8 +395,7 @@ class Boot():
         if nodeinterface_check:
             # this means there is already a node with this mac.
             # though we shouldn't, we will remove the other node's MAC so we can proceed
-            self.logger.warning(f"node with id {nodeinterface_check[0]['nodeid']} will have its\
-                                 MAC cleared and this <to be declared>-node  will use MAC {mac}")
+            self.logger.warning(f"node with id {nodeinterface_check[0]['nodeid']} will have its MAC cleared and this <to be declared>-node will use MAC {mac}")
             row = [{"column": "macaddress", "value": ""}]
             where = [{"column": "macaddress", "value": mac}]
             Database().update('nodeinterface', row, where)
@@ -419,16 +418,6 @@ class Boot():
         if group_details and 'provision_interface' in group_details[0] and group_details[0]['provision_interface']:
             provision_interface = str(group_details[0]['provision_interface'])
 
-        # things we have to set if we 'clone' or create a node
-        items = {
-            # 'setupbmc'       : False,
-            # 'netboot'        : False,
-            # 'localinstall'   : False,
-            # 'bootmenu'       : False,
-            'service'        : False,
-            'localboot'      : False
-        }
-
         # first we generate a list of taken ips. we might need it later
         ips = []
         if networkname:
@@ -445,9 +434,10 @@ class Boot():
 
         hostname = None # we use it further down below.
         checked = []
+        example_node = None
+        new_nodename = None
         if (not node_list) or (createnode_ondemand is True):
             # we have no spare or free nodes in here -or- we create one on demand.
-            new_data = {}
             if list2:
                 # we fetch the node with highest 'number' - sort
                 names = []
@@ -461,55 +451,41 @@ class Boot():
                 if ename and enumber:
                     new_enumber = str(int(enumber) + 1)
                     new_enumber = new_enumber.zfill(len(enumber))
-                    new_data['name'] = f"{ename}{new_enumber}"
+                    new_nodename = f"{ename}{new_enumber}"
                 elif ename:
                     new_enumber = '001'
-                    new_data['name'] = f"{ename}{new_enumber}"
+                    new_nodename = f"{ename}{new_enumber}"
                 else:
                     # we have to create a name ourselves
-                    new_data['name'] = f"{groupname}001"
+                    new_nodename = f"{groupname}001"
             else:
                 # we have to create a name ourselves
-                new_data['name'] = f"{groupname}001"
-            self.logger.info(f"Group boot intelligence: we came up with the following\
-                              node name: [{new_data['name']}]")
-            # we kinda already do this further down... but i leave it here as it makes sense
+                new_nodename = f"{groupname}001"
+            self.logger.info(f"Group boot intelligence: we came up with the following node name: [{new_nodename}]")
             if group_details:
-                new_data['groupid']=group_details[0]['id']
-
-            for key, value in items.items():
-                if list2 and key in list2[0] and list2[0][key]:
-                    # we copy from another node. not sure if this is really correct. pending
-                    new_data[key] = list2[0][key]
-                    if isinstance(value, bool):
-                        new_data[key] = str(Helper().make_bool(new_data[key]))
-                else:
-                    new_data[key] = value
-                if (not new_data[key]) and (key not in items):
-                    del new_data[key]
-            row = Helper().make_rows(new_data)
-            nodeid = Database().insert('node', row)
-
-            if nodeid:
-                hostname = new_data['name']
-                # we need to pick the current network in a smart way. we assume the
-                # default network, the network where controller is in.
-                # HOWEVER: we do not copy/create network if options. it's a bit tedious
-                # so we leave it here for now as pending. -Antoine
-                avail_ip = Helper().get_available_ip(
-                    network[0]['network'],
-                    network[0]['subnet'],
-                    ips
-                )
-                result, _ = Config().node_interface_config(nodeid, provision_interface, mac)
-                if result:
-                    result, _ = Config().node_interface_ipaddress_config(
-                        nodeid,
-                        provision_interface,
-                        avail_ip,
-                        networkname
-                    )
-                Service().queue('dns', 'restart')
+                # Antoine aug 15 2023
+                ret,message = None, None
+                from base.node import Node
+                if new_nodename:
+                    if example_node:
+                        newnodedata = {'config': {'node': {example_node: {}}}}
+                        newnodedata['config']['node'][example_node]['newnodename'] = new_nodename
+                        newnodedata['config']['node'][example_node]['name'] = example_node
+                        newnodedata['config']['node'][example_node]['group'] = groupname # groupname is given through API call
+                        ret, message = Node().clone_node(example_node,newnodedata)
+                        self.logger.info(f"Group select boot: Cloning {example_node} to {new_nodename}: ret = [{ret}], message = [{message}]")
+                    else:
+                        newnodedata = {'config': {'node': {new_nodename: {}}}}
+                        newnodedata['config']['node'][new_nodename]['name'] = new_nodename
+                        newnodedata['config']['node'][new_nodename]['group'] = groupname # groupname is given through API call
+                        ret, message = Node().update(new_nodename,newnodedata)
+                        self.logger.info(f"Group select boot: Creating {new_nodename}: ret = [{ret}], message = [{message}]")
+                    if ret is True:
+                        hostname = new_nodename
+                        nodeid = Database().id_by_name('node', new_nodename)
+                        ret, _ = Config().node_interface_config(nodeid, provision_interface, mac)
+                
+#                Service().queue('dns', 'restart')
         else:
             # we already have some nodes in the list. let's see if we can re-use
             for node in node_list:
@@ -554,8 +530,8 @@ class Boot():
             # something above did not work out.
             environment = jinja2.Environment()
             template = environment.from_string('No Node is available for this group.')
-            status=False
-            return status, template
+            status = False
+            return status, 'No Node is available for this group'
 
         # we update the groupid of the node. this is actually only really
         # needed if we re-use a node (unassigned)

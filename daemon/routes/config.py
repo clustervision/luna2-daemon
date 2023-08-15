@@ -81,7 +81,8 @@ def config_node_post(name=None):
     """
     This api will create or update a node depends on the availability of the node name.
     """
-    status, response = Node().update_node(name, request)
+    data = request.data
+    status, response = Node().update_node(name, data)
     access_code=Helper().get_access_code(status,response)
     response = {'message': response}
     return response, access_code
@@ -95,7 +96,8 @@ def config_node_clone(name=None):
     """
     This api will clone a node depends on the availability of the node name.
     """
-    status, response = Node().clone_node(name, request)
+    data = request.data
+    status, response = Node().clone_node(name, data)
     access_code=Helper().get_access_code(status,response)
     response = {'message': response}
     return response, access_code

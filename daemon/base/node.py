@@ -641,7 +641,7 @@ class Node():
                 if not new_nodeid:
                     status=False
                     return status, f'Node {newnodename} is not created due to possible property clash'
-                response = f'Node {name} created successfully'
+                response = f'Node {newnodename} created successfully'
                 status=True
                 node_interfaces = Database().get_record_join(
                     [

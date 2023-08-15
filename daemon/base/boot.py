@@ -504,6 +504,8 @@ class Boot():
                         self.logger.info(f"Group select boot: Creating {new_nodename}: ret = [{ret}], message = [{message}]")
                     if ret is True:
                         hostname = new_nodename
+                        nodeid = Database().id_by_name('node', new_nodename)
+                        ret, _ = Config().node_interface_config(nodeid, provision_interface, mac)
                 
 
 #                new_data['groupid']=group_details[0]['id']

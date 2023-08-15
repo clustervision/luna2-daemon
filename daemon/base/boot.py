@@ -931,6 +931,7 @@ class Boot():
 
 #        if data['osimageid']:
 #            osimage = Database().get_record(None, 'osimage', f' WHERE id = {data["osimageid"]}')
+        if data['osimage']:
             osimage = Database().get_record(None, 'osimage', f' WHERE name = {data["osimage"]}')
             if osimage:
                 data['osimageid'] = osimage[0]['id']

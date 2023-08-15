@@ -828,7 +828,7 @@ class Boot():
             if not node_details:
                 status = False
                 return status, "This node does not seem to exist"
-            self.logger.info(f"DEBUG: {node_details}")
+            self.logger.debug(f"DEBUG: {node_details}")
             for item in ['provision_method','provision_fallback','prescript','partscript','postscript',
                          'netboot','localinstall','bootmenu','provision_interface','unmanaged_bmc_users',
                          'name','setupbmc','bmcsetup','group','osimage']:
@@ -839,12 +839,12 @@ class Boot():
                         data[item] = Helper().make_bool(node_details[item])
                 else:
                     data[item] = node_details[item]
-            # though None is perfectly valid, the check below doesn't like it.
+            # though None is perfectly valid, the check below doesn't like it. - Antoine Aug 15 2023
             if data['unmanaged_bmc_users'] is None:
                 data['unmanaged_bmc_users'] = items['unmanaged_bmc_users']
-            data['nodeid'] = Database().id_by_name('node', node)             # not sure if we really need this in template
+            data['nodeid'] = Database().id_by_name('node', node)             # we need this for node status update
             data['nodename']            = node_details['name']
-            data['nodehostname']        = node_details['name'] # + fqdn further below
+            data['nodehostname']        = node_details['hostname']
 
         if data['setupbmc'] is True and data['bmcsetup']:
             bmcsetup = Database().get_record(None, 'bmcsetup', " WHERE name = '"+data['bmcsetup']+"'")
@@ -855,7 +855,7 @@ class Boot():
                 data['bmc']['password'] = bmcsetup[0]['password']
                 data['bmc']['netchannel'] = bmcsetup[0]['netchannel']
                 data['bmc']['mgmtchannel'] = bmcsetup[0]['mgmtchannel']
-#                data['unmanaged_bmc_users'] = bmcsetup[0]['unmanaged_bmc_users']
+#                data['unmanaged_bmc_users'] = bmcsetup[0]['unmanaged_bmc_users'] # supposedly covered by Node().get_node
             else:
                 data['setupbmc'] = False
 

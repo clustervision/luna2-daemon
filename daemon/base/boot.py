@@ -874,6 +874,7 @@ class Boot():
 #                    data[key] = Helper().make_bool(data[key])
 
         if ret is True:
+            self.logger.info(f"DEBUG: {node_details}")
             for item in ['provision_method','provision_fallback','prescript','partscript','postscript',
                          'netboot','localinstall','bootmenu','provision_interface','unmanaged_bmc_users',
                          'name','setupbmc','bmcsetup','group','osimage']:

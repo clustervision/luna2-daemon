@@ -819,7 +819,7 @@ class Boot():
             'bootmenu': False,
             'unmanaged_bmc_users': 'skip',
         }
-        ret, node_details = Node().get_node(cli=False, name=node)
+        ret, enclosed_node_details = Node().get_node(cli=False, name=node)
 
 #        node_details = Database().get_record_join(
 #            [
@@ -873,7 +873,15 @@ class Boot():
 #                if isinstance(value, bool):
 #                    data[key] = Helper().make_bool(data[key])
 
+        node_details=None
         if ret is True:
+            if 'config' in enclosed_node_details.keys():
+                if 'node' in enclosed_node_details['config'].keys():
+                    if node in enclosed_node_details['config']['node']:
+                        node_details=enclosed_node_details['config']['node'][node]
+            if not node_details:
+                status = False
+                return status, "This node does not seem to exist"
             self.logger.info(f"DEBUG: {node_details}")
             for item in ['provision_method','provision_fallback','prescript','partscript','postscript',
                          'netboot','localinstall','bootmenu','provision_interface','unmanaged_bmc_users',

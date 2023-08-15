@@ -30,7 +30,7 @@ class Plugin():
         This method will be used for power on.
         """
         try:
-            return self.execute(device, 'power on', username, password)
+            return self.execute(device, 'chassis', 'power on', username, password)
         except Exception as exp:
             return False, f"{exp}"
 
@@ -40,7 +40,7 @@ class Plugin():
         This method will be used for power off.
         """
         try:
-            return self.execute(device, 'power off', username, password)
+            return self.execute(device, 'chassis', 'power off', username, password)
         except Exception as exp:
             return False, f"{exp}"
 
@@ -50,7 +50,7 @@ class Plugin():
         This method will be used for power reset.
         """
         try:
-            return self.execute(device, 'power reset', username, password)
+            return self.execute(device, 'chassis', 'power reset', username, password)
         except Exception as exp:
             return False, f"{exp}"
 
@@ -60,7 +60,7 @@ class Plugin():
         This method will be used to check power status.
         """
         try:
-            return self.execute(device, 'power status', username, password)
+            return self.execute(device, 'chassis', 'power status', username, password)
         except Exception as exp:
             return False, f"{exp}"
 
@@ -69,7 +69,7 @@ class Plugin():
         This method will be used for power cycle.
         """
         try:
-            return self.execute(device, 'power status', username, password)
+            return self.execute(device, 'chassis', 'power status', username, password)
         except Exception as exp:
             return False, f"{exp}"
 
@@ -78,7 +78,7 @@ class Plugin():
         This method will be used to get identify device.
         """
         try:
-            return self.execute(device, 'identify', username, password)
+            return self.execute(device, 'chassis', 'identify', username, password)
         except Exception as exp:
             return False, f"{exp}"
         return True, "success"
@@ -88,7 +88,7 @@ class Plugin():
         This method will be used to get identify device.
         """
         try:
-            return self.execute(device, 'noidentify', username, password)
+            return self.execute(device, 'chassis', 'noidentify', username, password)
         except Exception as exp:
             return False, f"{exp}"
         return True, "success"
@@ -98,7 +98,7 @@ class Plugin():
         This method will be used to clear sel logs on device.
         """
         try:
-            return self.execute(device, 'sel clear', username, password)
+            return self.execute(device, 'sel', 'clear', username, password)
         except Exception as exp:
             return False, f"{exp}"
         return True, "success"
@@ -108,21 +108,21 @@ class Plugin():
         This method will be used to get sel logs from device.
         """
         try:
-            return self.execute(device, 'sel list', username, password)
+            return self.execute(device, 'sel', 'elist', username, password)
         except Exception as exp:
             return False, f"{exp}"
         return True, "success"
 
 
-    def execute(self, device=None, action=None, username=None, password=None):
+    def execute(self, device=None, subsystem=None, action=None, username=None, password=None):
         """
         This is an private method.
         """
         status = False
         response = ''
-        command = f'ipmitool -I lanplus -C3 -U {username} -P {password} -H {device} '
-        command += f'chassis {action}'
-        output, exit_code = Helper().runcommand(command,True,10)
+        bash_command = f'ipmitool -I lanplus -C3 -U {username} -P {password} -H {device} '
+        bash_command += f'{subsystem} {action}'
+        output, exit_code = Helper().runcommand(bash_command,True,10)
         if output and exit_code == 0:
             response = str(output[0].decode())
             response = response.replace('Chassis Power is ', '')

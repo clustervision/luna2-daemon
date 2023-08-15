@@ -36,28 +36,28 @@ def new_version():
 
 
 setup(
-	name = "daemon",
-	version = new_version(),
-	description = "Luna Daemon to make Luna SystemD Service",
-	long_description = "Luna Daemon is a base tool of luna, that means, \
+    name = "daemon",
+    version = new_version(),
+    description = "Luna Daemon to make Luna SystemD Service",
+    long_description = "Luna Daemon is a base tool of luna, that means, \
         it will install the luna daemon and start it as a service.",
-	author = "Sumit Sharma",
-	author_email = "sumit.sharma@clustervision.com",
-	maintainer = "Sumit Sharma",
-	maintainer_email = "sumit.sharma@clustervision.com",
-	url = "https://gitlab.taurusgroup.one/clustervision/luna2-daemon.git",
-	download_url = f"https://{PRE}@gitlab.taurusgroup.one/api/v4/projects/20/packages/pypi/simple",
-	packages = find_packages(),
-	license = "MIT",
-	keywords = ["luna", "daemon", "Trinity", "ClusterVision", "Sumit", "Sumit Sharma"],
-	entry_points = {
-		'console_scripts': [
-			'daemon = daemon.daemon:main'
-		]
-	},
-	install_requires = requirements,
-	dependency_links = [],
-	package_data = {
+    author = "Sumit Sharma",
+    author_email = "sumit.sharma@clustervision.com",
+    maintainer = "Sumit Sharma",
+    maintainer_email = "sumit.sharma@clustervision.com",
+    url = "https://gitlab.taurusgroup.one/clustervision/luna2-daemon.git",
+    download_url = f"https://{PRE}@gitlab.taurusgroup.one/api/v4/projects/20/packages/pypi/simple",
+    packages = find_packages(),
+    license = "MIT",
+    keywords = ["luna", "daemon", "Trinity", "ClusterVision", "Sumit", "Sumit Sharma"],
+    entry_points = {
+        'console_scripts': [
+            'daemon = daemon.daemon:main'
+        ]
+    },
+    install_requires = requirements,
+    dependency_links = [],
+    package_data = {
         "daemon/config": ["*.monitor", "*.ini", "*.service", "*.json", "*.conf"],
         "daemon/config/third-party": ["*.service","*.conf"],
         "daemon/log": ["*.log"],
@@ -71,22 +71,22 @@ setup(
         "daemon/plugins/osimage": ["README"],
         "daemon/plugins/provision": ["README"]
     },
-	data_files = [],
-	zip_safe = False,
-	include_package_data = True,
-	classifiers = [
-		'Development Status :: BETA',
-		'Environment :: REST API',
-		'Intended Audience :: System Administrators',
-		'License :: MIT',
-		'Operating System :: RockyLinux :: CentOS :: RedHat',
-		'Programming Language :: Python',
-		'Topic :: Trinity :: Luna'
-	],
-	platforms = [
-		'RockyLinux',
-		'CentOS',
-		'RedHat'
-	]
+    data_files = [],
+    zip_safe = False,
+    include_package_data = True,
+    classifiers = [
+        'Development Status :: BETA',
+        'Environment :: REST API',
+        'Intended Audience :: System Administrators',
+        'License :: MIT',
+        'Operating System :: RockyLinux :: CentOS :: RedHat',
+        'Programming Language :: Python',
+        'Topic :: Trinity :: Luna'
+    ],
+    platforms = [
+        'RockyLinux',
+        'CentOS',
+        'RedHat'
+    ]
 )
 # python setup.py sdist bdist_wheel

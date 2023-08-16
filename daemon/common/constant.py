@@ -27,7 +27,7 @@ CurrentDir = os.path.dirname(os.path.realpath(__file__))
 UTILSDIR = Path(CurrentDir)
 BASE_DIR = str(UTILSDIR.parent)
 configParser = RawConfigParser()
-CONFIGFILE = '/trinity/local/luna/config/luna.ini'
+CONFIGFILE = '/trinity/local/luna/daemon/config/luna.ini'
 
 def check_path_state(path=None):
     """
@@ -41,11 +41,14 @@ def check_path_state(path=None):
             if os.access(path, os.W_OK):
                 path_check = True
             else:
-                LOGGER.error(f'{pathtype} {path} is writable.')
+                LOGGER = Log.init_log('info')
+                LOGGER.error(f'{pathtype} {path} is writable')
         else:
-            LOGGER.error(f'{pathtype} {path} is not readable.')
+            LOGGER = Log.init_log('info')
+            LOGGER.error(f'{pathtype} {path} is not readable')
     else:
-        LOGGER.error(f'{pathtype} {path} is not exists.')
+        LOGGER = Log.init_log('info')
+        LOGGER.error(f'{pathtype} {path} does not exist')
     return path_check
 
 
@@ -183,6 +186,7 @@ CONSTANT = {
 if check_path_state(CONFIGFILE):
     getconfig(CONFIGFILE)
 else:
+    LOGGER = Log.init_log('info')
     LOGGER.error(f'Unable to get configurations from {CONFIGFILE} file')
 
 
@@ -197,6 +201,7 @@ sanitize = [
                 CONSTANT['FILES']['IMAGE_FILES'],
                 CONSTANT['TEMPLATES']['TEMPLATES_DIR'],
                 CONSTANT['TEMPLATES']['TEMPLATELIST'],
+                CONSTANT['PLUGINS']['PLUGINS_DIR'],
                 CONSTANT['FILES']['KEYFILE']
             ]
 for sanity in sanitize:

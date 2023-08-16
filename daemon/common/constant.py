@@ -41,11 +41,14 @@ def check_path_state(path=None):
             if os.access(path, os.W_OK):
                 path_check = True
             else:
-                LOGGER.error(f'{pathtype} {path} is writable.')
+                LOGGER = Log.init_log('info')
+                LOGGER.error(f'{pathtype} {path} is writable')
         else:
-            LOGGER.error(f'{pathtype} {path} is not readable.')
+            LOGGER = Log.init_log('info')
+            LOGGER.error(f'{pathtype} {path} is not readable')
     else:
-        LOGGER.error(f'{pathtype} {path} is not exists.')
+        LOGGER = Log.init_log('info')
+        LOGGER.error(f'{pathtype} {path} does not exist')
     return path_check
 
 

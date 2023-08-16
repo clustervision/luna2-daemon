@@ -372,7 +372,7 @@ class Group():
         return status, response
 
 
-    def clone_group(self, name=None, request.data=None):
+    def clone_group(self, name=None, request_data=None):
         """
         This method will clone a node.
         """

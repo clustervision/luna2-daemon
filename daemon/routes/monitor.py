@@ -70,7 +70,7 @@ def monitor_status_post(node=None):
     Output - Status.
     """
     access_code = 404
-    status, response = Monitor().update_status(node, request)
+    status, response = Monitor().update_status(node, request.data)
     if status is True:
         access_code = 204
     response = {'message': response}

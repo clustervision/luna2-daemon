@@ -35,19 +35,18 @@ class Authentication():
         self.logger = Log.get_logger()
 
 
-    def get_token(self, http_request=None):
+    def get_token(self, request_data=None):
         """
         This method will provide a PyJWT encoded token.
         """
         status = False
         message, jwt_token = "", ""
-        http_request = http_request.data
 
-        if http_request:
-            if 'username' in http_request:
-                username = http_request['username']
-                if 'password' in http_request:
-                    password = http_request['password']
+        if request_data:
+            if 'username' in request_data:
+                username = request_data['username']
+                if 'password' in request_data:
+                    password = request_data['password']
                     api_expiry = timedelta(minutes=int(CONSTANT['API']['EXPIRY']))
                     expiry_time = datetime.utcnow() + api_expiry
                     api_key = CONSTANT['API']['SECRET_KEY']
@@ -102,18 +101,17 @@ class Authentication():
         return status, response
 
 
-    def node_token(self, http_request=None, nodename=None):
+    def node_token(self, request_data=None, nodename=None):
         """
         This method will provide a PyJWT encoded token for a node.
         """
         status=False
-        http_request = http_request.data
-        if not http_request:
+        if not request_data:
             self.logger.error('Login Required')
             response = 'Login Required'
             status=False
 
-        self.logger.debug(f"TPM auth: {http_request}")
+        self.logger.debug(f"TPM auth: {request_data}")
 
         api_expiry = timedelta(minutes=int(CONSTANT['API']['EXPIRY']))
         expiry_time = datetime.utcnow() + api_expiry
@@ -126,11 +124,11 @@ class Authentication():
         cluster = Database().get_record(None, 'cluster', None)
         if cluster and 'security' in cluster[0] and cluster[0]['security']:
             self.logger.info(f"cluster security = {cluster[0]['security']}")
-            if 'tpm_sha256' in http_request:
+            if 'tpm_sha256' in request_data:
                 node = Database().get_record(None, 'node', f' WHERE name = "{nodename}"')
                 if node:
                     if 'tpm_sha256' in node[0]:
-                        if http_request['tpm_sha256'] == node[0]['tpm_sha256']:
+                        if request_data['tpm_sha256'] == node[0]['tpm_sha256']:
                             create_token=True
                         else:
                             response = {'message' : 'invalid TPM information'}
@@ -141,9 +139,9 @@ class Authentication():
         else:
             # we do not enforce security. just return the token
             # we store the string though
-            if nodename and 'tpm_sha256' in http_request:
+            if nodename and 'tpm_sha256' in request_data:
                 where = [{"column": "name", "value": nodename}]
-                row = [{"column": "tpm_sha256", "value": http_request['tpm_sha256']}]
+                row = [{"column": "tpm_sha256", "value": request_data['tpm_sha256']}]
                 Database().update('node', row, where)
             create_token=True
 
@@ -157,7 +155,7 @@ class Authentication():
         return status, response
 
 
-    def validate_token(self, http_request=None):
+    def validate_token(self, request_data=None, request_headers=None):
         """
         This method will provide a PyJWT encoded token for a node.
         """
@@ -170,8 +168,8 @@ class Authentication():
         status=False
         http_token, uri, ext = None, None, None
         needs_auth = False
-        if 'X-Original-URI' in http_request.headers:
-            uri = http_request.headers['X-Original-URI']
+        if 'X-Original-URI' in request_headers:
+            uri = request_headers['X-Original-URI']
         self.logger.debug(f"Auth request made for {uri}")
         if uri:
             result = search(r"^.+(\..[^.]+)(\?|\&|;|#)?", uri)
@@ -187,8 +185,8 @@ class Authentication():
             status=True
             return status, "Go"
 
-        if 'x-access-tokens' in http_request.headers:
-            http_token = http_request.headers['x-access-tokens']
+        if 'x-access-tokens' in request_headers:
+            http_token = request_headers['x-access-tokens']
         if not http_token:
             self.logger.error(f'A valid token is missing for request {uri}.')
             status=False

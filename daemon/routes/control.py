@@ -58,7 +58,7 @@ def control_action_post(subsystem=None, action=None):
     Output - Success or failure
     """
     access_code = 404
-    status, response = Control().bulk_action(request)
+    status, response = Control().bulk_action(request.data)
     if status is True:
         access_code=200
         response = dumps(response)

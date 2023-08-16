@@ -60,7 +60,7 @@ class Switch():
         return status, response
 
 
-    def update_switch(self, name=None, http_request=None):
+    def update_switch(self, name=None, request_data=None):
         """
         This method will create or update a switch.
         """
@@ -69,7 +69,6 @@ class Switch():
         network = False
         data, response = {}, {}
         create, update = False, False
-        request_data = http_request.data
         if request_data:
             data = request_data['config'][self.table][name]
             data['name'] = name
@@ -129,7 +128,7 @@ class Switch():
         return status, response
 
 
-    def clone_switch(self, name=None, http_request=None):
+    def clone_switch(self, name=None, request_data=None):
         """
         This method will clone a switch.
         """
@@ -137,7 +136,6 @@ class Switch():
         status=False
         create = False
         ipaddress, networkname = None, None
-        request_data = http_request.data
         if request_data:
             data = request_data['config'][self.table][name]
             if 'newswitchname' in data:

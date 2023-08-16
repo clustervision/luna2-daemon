@@ -114,7 +114,7 @@ class Secret():
         return status, response
 
 
-    def update_node_secrets(self, name=None, http_request=None):
+    def update_node_secrets(self, name=None, request_data=None):
         """
         This method will create or update all secrets for a node.
         """
@@ -122,7 +122,6 @@ class Secret():
         response="Internal error"
         data = {}
         create, update = False, False
-        request_data = http_request.data
         if request_data:
             data = request_data['config']['secrets']['node'][name]
             node = Database().get_record(None, 'node', f' WHERE name = "{name}"')
@@ -130,6 +129,9 @@ class Secret():
                 nodeid = node[0]['id']
                 if data:
                     for secret in data:
+                        if ('name' not in secret.keys()) or ('content' not in secret.keys()):
+                            status=False
+                            return status, 'Invalid request: secret information not complete'
                         secret_name = secret['name']
                         where = f' WHERE nodeid = "{nodeid}" AND name = "{secret_name}"'
                         secret_data = Database().get_record(None, 'nodesecrets', where)
@@ -158,7 +160,7 @@ class Secret():
                             create = True
                 else:
                     self.logger.error('not provided at least one secret.')
-                    response = 'Invalid request: At least one secret not provided'
+                    response = 'Invalid request: secret information not complete'
                     status=False
             else:
                 response = f'Node {name} is not available'
@@ -204,7 +206,7 @@ class Secret():
         return status, response
 
 
-    def update_node_secret(self, name=None, secret=None, http_request=None):
+    def update_node_secret(self, name=None, secret=None, request_data=None):
         """
         This method will create or update a node secret.
         """
@@ -212,7 +214,6 @@ class Secret():
         response="Internal error"
         data = {}
         result=False
-        request_data = http_request.data
         if request_data:
             data = request_data['config']['secrets']['node'][name]
             node = Database().get_record(None, 'node', f' WHERE name = "{name}"')
@@ -263,14 +264,13 @@ class Secret():
         return status, response
 
 
-    def clone_node_secret(self, name=None, secret=None, http_request=None):
+    def clone_node_secret(self, name=None, secret=None, request_data=None):
         """
         This method will clone a requested node secret.
         """
         status=False
         response="Internal error"
         data = {}
-        request_data = http_request.data
         if request_data:
             data = request_data['config']['secrets']['node'][name]
             node = Database().get_record(None, 'node', f' WHERE name = "{name}"')
@@ -371,7 +371,7 @@ class Secret():
         return status, response
 
 
-    def update_group_secrets(self, name=None, http_request=None):
+    def update_group_secrets(self, name=None, request_data=None):
         """
         This method will create or update all secrets for a group.
         """
@@ -379,7 +379,6 @@ class Secret():
         response="Internal error"
         data = {}
         result=False
-        request_data = http_request.data
         if request_data:
             data = request_data['config']['secrets']['group'][name]
             group = Database().get_record(None, 'group', f' WHERE name = "{name}"')
@@ -387,6 +386,9 @@ class Secret():
                 groupid = group[0]['id']
                 if data:
                     for secret in data:
+                        if ('name' not in secret.keys()) or ('content' not in secret.keys()):
+                            status=False
+                            return status, 'Invalid request: secret information not complete'
                         secret_name = secret['name']
                         where = f' WHERE groupid = "{groupid}" AND name = "{secret_name}"'
                         secret_data = Database().get_record(None, 'groupsecrets', where)
@@ -420,7 +422,7 @@ class Secret():
                             response = f'Internal error: Group {name} secret {secret_name} create/update failed: {result}'
                             self.logger.error(response)
                 else:
-                    response = 'Invalid request: At least one secret needs to be provided'
+                    response = 'Invalid request: secret information not complete'
                     status=False
             else:
                 response = f'Group {name} is not available'
@@ -457,14 +459,13 @@ class Secret():
         return status, response
 
 
-    def update_group_secret(self, name=None, secret=None, http_request=None):
+    def update_group_secret(self, name=None, secret=None, request_data=None):
         """
         This method will create or update a group secret.
         """
         status=False
         response="Internal error"
         data = {}
-        request_data = http_request.data
         if request_data:
             data = request_data['config']['secrets']['group'][name]
             group = Database().get_record(None, 'group', f' WHERE name = "{name}"')
@@ -517,14 +518,13 @@ class Secret():
         return status, response
 
 
-    def clone_group_secret(self, name=None, secret=None, http_request=None):
+    def clone_group_secret(self, name=None, secret=None, request_data=None):
         """
         This method will clone a requested group secret.
         """
         status=False
         response="Internal error"
         data = {}
-        request_data = http_request.data
         if request_data:
             data = request_data['config']['secrets']['group'][name]
             group = Database().get_record(None, 'group', f' WHERE name = "{name}"')

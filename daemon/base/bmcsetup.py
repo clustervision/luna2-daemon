@@ -65,7 +65,7 @@ class BMCSetup():
         )
         return status, response
 
-    def update_bmcsetup(self, name=None, http_request=None):
+    def update_bmcsetup(self, name=None, request_data=None):
         """
         This method will create or update a bmcsetup.
         """
@@ -75,12 +75,12 @@ class BMCSetup():
             new_name = new_name,
             table = self.table,
             table_cap = self.table_cap,
-            request_data = http_request.data
+            request_data = request_data
         )
         return status, response
 
 
-    def clone_bmcsetup(self, name=None, http_request=None):
+    def clone_bmcsetup(self, name=None, request_data=None):
         """
         This method will clone a bmcsetup.
         """
@@ -90,7 +90,7 @@ class BMCSetup():
             new_name = new_name,
             table = self.table,
             table_cap = self.table_cap,
-            request_data = http_request.data
+            request_data = request_data
         )
         return status, response
 

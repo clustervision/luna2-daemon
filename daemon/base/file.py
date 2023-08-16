@@ -54,18 +54,15 @@ class File():
         return status, response
 
 
-    def get_file(self, filename=None, http_request=None):
+    def get_file(self, filename=None, request_headers=None, request_ip=None):
         """
         This method will provide the requested file.
         """
-        if http_request.environ.get('HTTP_X_FORWARDED_FOR') is None:
-            request_ip = http_request.environ['REMOTE_ADDR']
-        else:
-            request_ip = http_request.environ['HTTP_X_FORWARDED_FOR']
         # since some files are requested during early boot stage where no token
         # is available (think: PXE+kernel+ramdisk)
         # we do enforce authentication for specific files. .bz2 + .torrent are
         # most likely the images.
+        # request_ip serves no other purpose other than just update the status table.... 
         auth_ext = [".gz", ".tar", ".bz", ".bz2", ".torrent"]
         response = "Internal error"
         status=False
@@ -80,8 +77,8 @@ class File():
                 needs_auth=True
 
         if needs_auth:
-            if 'x-access-tokens' in http_request.headers:
-                token = http_request.headers['x-access-tokens']
+            if 'x-access-tokens' in request_headers:
+                token = request_headers['x-access-tokens']
             if not token:
                 self.logger.error(f'A valid token is missing for request {filename}.')
                 status=False
@@ -118,3 +115,4 @@ class File():
             status=False
             return status, f'Service unavailable: {filename} is not present in {CONSTANT["FILES"]["IMAGE_FILES"]}'
         return status, response
+

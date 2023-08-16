@@ -103,7 +103,7 @@ class Control():
         return status, response
 
 
-    def bulk_action(self, http_request=None):
+    def bulk_action(self, request_data=None):
         """
         This method will perform the power operation on requested hostlist, such as
         power on, off, status.
@@ -111,7 +111,6 @@ class Control():
         """
         response = 'Bad Request'
         status=False
-        request_data = http_request.data
         if request_data:
             if not 'control' in request_data.keys():
                 status=False

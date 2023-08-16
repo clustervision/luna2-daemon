@@ -201,6 +201,7 @@ sanitize = [
                 CONSTANT['FILES']['IMAGE_FILES'],
                 CONSTANT['TEMPLATES']['TEMPLATES_DIR'],
                 CONSTANT['TEMPLATES']['TEMPLATELIST'],
+                CONSTANT['PLUGINS']['PLUGINS_DIR'],
                 CONSTANT['FILES']['KEYFILE']
             ]
 for sanity in sanitize:

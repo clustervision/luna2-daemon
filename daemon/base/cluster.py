@@ -74,14 +74,13 @@ class Cluster():
         return status, response
 
 
-    def update_cluster(self, http_request=None):
+    def update_cluster(self, request_data=None):
         """
         This method will update the cluster information.
         """
         status=False
         response="Internal error"
         items = {'debug': False, 'security': False, 'createnode_ondemand': True}
-        request_data = http_request.data
         if request_data:
             data = request_data['config']['cluster']
             cluster_columns = Database().get_columns('cluster')

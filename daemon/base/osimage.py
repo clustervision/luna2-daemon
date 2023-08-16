@@ -75,7 +75,7 @@ class OSImage():
         return status, response
 
 
-    def update_osimage(self, name=None, http_request=None):
+    def update_osimage(self, name=None, request_data=None):
         """
         This method will create or update a osimage.
         """
@@ -83,7 +83,6 @@ class OSImage():
         status=False
         response="Internal error"
         create, update = False, False
-        request_data = http_request.data
         if request_data:
             data = request_data['config']['osimage'][name]
             image = Database().get_record(None, 'osimage', f' WHERE name = "{name}"')
@@ -128,7 +127,7 @@ class OSImage():
         return status, response
 
 
-    def clone_osimage(self, name=None, http_request=None):
+    def clone_osimage(self, name=None, request_data=None):
         """
         This method will clone a osimage.
         """
@@ -147,7 +146,6 @@ class OSImage():
             'distribution'
         }
         response = {"message": 'OS image copy failed. No sign of life of spawned thread'}
-        request_data = http_request.data
         if request_data:
             data = request_data['config']['osimage'][name]
             bare=False
@@ -242,14 +240,13 @@ class OSImage():
         return status, response
 
 
-    def grab(self, node=None, http_request=None):
+    def grab(self, node=None, request_data=None):
         """
         This method will grab a osimage.
         """
         data = {}
         status=False
         response="Internal error"
-        request_data = http_request.data
         if request_data:
             data = request_data['config']['node'][node]
             bare=False
@@ -323,14 +320,13 @@ class OSImage():
         return status, "osimage grab missing data"
 
 
-    def push(self, entity_name=None, http_request=None):
+    def push(self, entity_name=None, request_data=None):
         """
         This method will push a osimage.
         """
         data = {}
         status=False
         response="Internal error"
-        request_data = http_request.data
         if request_data:
             data, to_group = None, False
             nodry = False
@@ -465,14 +461,13 @@ class OSImage():
         return status, response
 
 
-    def change_kernel(self, name=None, http_request=None):
+    def change_kernel(self, name=None, request_data=None):
         """
         This method will change the kernel of an image and pack again that image.
         """
         data = {}
         status=False
         response="Internal error"
-        request_data = http_request.data
         if request_data:
             data = request_data['config']['osimage'][name]
             image = Database().get_record(None, 'osimage', f' WHERE name = "{name}"')

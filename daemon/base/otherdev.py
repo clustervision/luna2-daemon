@@ -62,14 +62,13 @@ class OtherDev():
         return status, response
 
 
-    def update_otherdev(self, name=None, http_request=None):
+    def update_otherdev(self, name=None, request_data=None):
         """
         This method will create or update a other device.
         """
         status=False
         data, response = {}, ""
         create, update = False, False
-        request_data = http_request.data
         if request_data:
             data = request_data['config']['otherdev'][name]
             data['name'] = name
@@ -128,7 +127,7 @@ class OtherDev():
         return status, response
 
 
-    def clone_otherdev(self, name=None, http_request=None):
+    def clone_otherdev(self, name=None, request_data=None):
         """
         This method will clone a other device.
         """
@@ -136,7 +135,6 @@ class OtherDev():
         data, response = {}, ""
         create = False
         ipaddress, networkname = None, None
-        request_data = http_request.data
         if request_data:
             data = request_data['config']['otherdev'][name]
             if 'newotherdevname' in data:

@@ -65,11 +65,10 @@ class OsUser():
             return False, f'problem while listing Os Groups: {exp}'
 
 
-    def update_user(self, username, request):
+    def update_user(self, username, request_data):
         """
         This method will update a OS users.
         """
-        request_data = request.data
         data = None
         if request_data and name in request_data['config']['user']:
             data = request_data['config']['osuser'][name] 
@@ -116,11 +115,10 @@ class OsUser():
             return False, f'problem while deleting Os Users: {exp}'
 
 
-    def update_group(self, groupname, request):
+    def update_group(self, groupname, request_data):
         """
         This method will update a OS user group.
         """
-        request_data = request.data
         data = None
         if request_data and name in request_data['config']['user']:
             data = request_data['config']['osgroup'][name]           

@@ -31,7 +31,7 @@ def jwt_token():
     This route will generate and return the token on behalf of provided username and password.
     """
     access_code = 401
-    status, response = Authentication().get_token(request)
+    status, response = Authentication().get_token(request.data)
     response = dumps(response)
     if status is True:
         access_code = 200
@@ -49,7 +49,7 @@ def tpm(nodename=None):
     Output - Token.
     """
     access_code = 401
-    status, response = Authentication().node_token(request, nodename)
+    status, response = Authentication().node_token(request.data, nodename)
     if status is True:
         access_code=200
         response = dumps(response)
@@ -68,7 +68,7 @@ def auth_get():
     Output - go/no go
     """
     access_code = 401
-    status, response = Authentication().validate_token(request)
+    status, response = Authentication().validate_token(request.data,request.headers)
     if status is True:
         access_code = 200
     response = {'message': response}

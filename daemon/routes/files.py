@@ -51,7 +51,13 @@ def files_get(filename=None):
     Output - File
     """
     access_code = 503
-    status, response = File().get_file(filename=filename, http_request=request)
+    request_ip = None
+    if request.environ.get('HTTP_X_FORWARDED_FOR') is None:
+        request_ip = request.environ['REMOTE_ADDR']
+    else:
+        request_ip = request.environ['HTTP_X_FORWARDED_FOR']
+
+    status, response = File().get_file(filename=filename, request_headers=request.headers, request_ip=request_ip)
     if status is True:
         access_code = 200
         return response, access_code

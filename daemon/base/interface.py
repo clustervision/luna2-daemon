@@ -74,12 +74,11 @@ class Interface():
         return status, response
 
 
-    def change_node_interface(self, name=None, http_request=None):
+    def change_node_interface(self, name=None, request_data=None):
         """
         This method will add or update the node interface.
         """
         status=False
-        request_data = http_request.data
         if request_data:
             node = Database().get_record(None, 'node', f' WHERE name = "{name}"')
             if node:
@@ -271,11 +270,10 @@ class Interface():
         return status, response
 
 
-    def change_group_interface(self, name=None, http_request=None):
+    def change_group_interface(self, name=None, request_data=None):
         """
         This method will add or update the group interface.
         """
-        request_data = http_request.data
         status=False
         response="Internal error"
         if request_data:

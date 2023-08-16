@@ -205,7 +205,7 @@ class Group():
         return status, response
 
 
-    def update_group(self, name=None, http_request=None):
+    def update_group(self, name=None, request_data=None):
         """
         This method will create or update a group.
         """
@@ -224,7 +224,6 @@ class Group():
             'provision_interface': 'BOOTIF'
         }
         create, update = False, False
-        request_data = http_request.data
         if request_data:
             data = request_data['config']['group'][name]
             group = Database().get_record(None, 'group', f' WHERE name = "{name}"')
@@ -373,7 +372,7 @@ class Group():
         return status, response
 
 
-    def clone_group(self, name=None, http_request=None):
+    def clone_group(self, name=None, request.data=None):
         """
         This method will clone a node.
         """
@@ -390,7 +389,6 @@ class Group():
             'localinstall': False,
             'bootmenu': False,
         }
-        request_data = http_request.data
         if request_data:
             data = request_data['config']['group'][name]
             grp = Database().get_record(None, 'group', f' WHERE name = "{name}"')

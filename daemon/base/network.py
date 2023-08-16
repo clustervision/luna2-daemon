@@ -91,7 +91,7 @@ class Network():
         return status, response
 
 
-    def update_network(self, name=None, http_request=None):
+    def update_network(self, name=None, request_data=None):
         """
         This method will create or update a network.
         """
@@ -99,7 +99,6 @@ class Network():
         response="Internal error"
         data = {}
         create, update = False, False
-        request_data = http_request.data
         if request_data:
             data = request_data['config']['network'][name]
             data['name'] = name

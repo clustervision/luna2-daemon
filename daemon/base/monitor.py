@@ -65,13 +65,12 @@ class Monitor():
         return status, response
 
 
-    def update_status(self, node=None, http_request=None):
+    def update_status(self, node=None, request_data=None):
         """
         This method will update the status of a node
         """
         status=False
         response = 'Bad Request'
-        request_data = http_request.data
         if request_data:
             try:
                 state = request_data['monitor']['status'][node]['state']

@@ -130,6 +130,9 @@ class Secret():
                 nodeid = node[0]['id']
                 if data:
                     for secret in data:
+                        if ('name' not in secret.keys()) or ('content' not in secret.keys()):
+                            status=False
+                            return status, 'Invalid request: secret information not complete'
                         secret_name = secret['name']
                         where = f' WHERE nodeid = "{nodeid}" AND name = "{secret_name}"'
                         secret_data = Database().get_record(None, 'nodesecrets', where)
@@ -158,7 +161,7 @@ class Secret():
                             create = True
                 else:
                     self.logger.error('not provided at least one secret.')
-                    response = 'Invalid request: At least one secret not provided'
+                    response = 'Invalid request: secret information not complete'
                     status=False
             else:
                 response = f'Node {name} is not available'
@@ -387,6 +390,9 @@ class Secret():
                 groupid = group[0]['id']
                 if data:
                     for secret in data:
+                        if ('name' not in secret.keys()) or ('content' not in secret.keys()):
+                            status=False
+                            return status, 'Invalid request: secret information not complete'
                         secret_name = secret['name']
                         where = f' WHERE groupid = "{groupid}" AND name = "{secret_name}"'
                         secret_data = Database().get_record(None, 'groupsecrets', where)
@@ -420,7 +426,7 @@ class Secret():
                             response = f'Internal error: Group {name} secret {secret_name} create/update failed: {result}'
                             self.logger.error(response)
                 else:
-                    response = 'Invalid request: At least one secret needs to be provided'
+                    response = 'Invalid request: secret information not complete'
                     status=False
             else:
                 response = f'Group {name} is not available'

@@ -27,7 +27,7 @@ CurrentDir = os.path.dirname(os.path.realpath(__file__))
 UTILSDIR = Path(CurrentDir)
 BASE_DIR = str(UTILSDIR.parent)
 configParser = RawConfigParser()
-CONFIGFILE = '/trinity/local/luna/config/luna.ini'
+CONFIGFILE = '/trinity/local/luna/daemon/config/luna.ini'
 
 def check_path_state(path=None):
     """
@@ -186,6 +186,7 @@ CONSTANT = {
 if check_path_state(CONFIGFILE):
     getconfig(CONFIGFILE)
 else:
+    LOGGER = Log.init_log('info')
     LOGGER.error(f'Unable to get configurations from {CONFIGFILE} file')
 
 

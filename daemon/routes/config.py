@@ -97,8 +97,6 @@ def config_node_clone(name=None):
     """
     status, response = Node().clone_node(name, request.data)
     access_code=Helper().get_access_code(status,response)
-    if 'loned success' in response:
-       access_code = 201
     response = {'message': response}
     return response, access_code
 
@@ -539,6 +537,7 @@ def config_osimage_clone(name=None):
             request_id=returned[2]
             response = {"message": response, "request_id": request_id}
         else:
+            access_code = 201
             response = {'message': response}
     else:
         response = {'message': response}

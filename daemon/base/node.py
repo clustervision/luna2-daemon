@@ -658,11 +658,13 @@ class Node():
                     for interface in interfaces:
                         # Antoine
                         interface_name = interface['interface']
+                        index = 0
                         for node_interface in node_interfaces:
                             # delete interfaces we overwrite
                             if interface_name == node_interface['interface']:
-                                del node_interfaces[node_interface]
-                        macaddress, network = None, None
+                                del node_interfaces[index]
+                            index += 1
+                        macaddress, network, options = None, None, None
                         if 'macaddress' in interface.keys():
                             macaddress = interface['macaddress']
                         if 'options' in interface.keys():

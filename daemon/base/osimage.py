@@ -148,11 +148,16 @@ class OSImage():
         response = {"message": 'OS image copy failed. No sign of life of spawned thread'}
         if request_data:
             data = request_data['config']['osimage'][name]
-            bare=False
+            bare = False
+            nocopy = False
             if 'bare' in data:
                 bare = data['bare']
                 bare = Helper().make_bool(bare)
                 del data['bare']
+            if 'nocopy' in data:
+                nocopy = data['nocopy']
+                nocopy = Helper().make_bool(nocopy)
+                del data['nocopy']
             image = Database().get_record(None, 'osimage', f' WHERE name = "{name}"')
             if image:
                 if 'newosimage' in data:
@@ -182,8 +187,14 @@ class OSImage():
             column_check = Helper().compare_list(data, osimage_columns)
             if column_check:
                 row = Helper().make_rows(data)
-                Database().insert('osimage', row)
-                request_id  =str(time()) + str(randint(1001, 9999)) + str(getpid())
+                img_id = Database().insert('osimage', row)
+                if not img_id:
+                    status = False
+                    return status, f"Failed cloning image"
+                if nocopy is True:
+                    status = True
+                    return status, f"OS Image cloned successfully"
+                request_id  = str(time()) + str(randint(1001, 9999)) + str(getpid())
                 if bare is not False:
                     task = f"clone_osimage:{name}:{data['name']}"
                     task_id, text = Queue().add_task_to_queue(task, 'osimage', request_id)

@@ -454,7 +454,7 @@ def bootstrap(bootstrapfile=None):
     Database().insert('bmcsetup', default_bmcsetup)
     Database().insert('switch', default_switch)
     current_time = str(time.time()).replace('.', '')
-    new_bootstrapfile = f'/trinity/local/luna/config/bootstrap-{current_time}.ini'
+    new_bootstrapfile = f'/trinity/local/luna/daemon/config/bootstrap-{current_time}.ini'
     os.rename(bootstrapfile, new_bootstrapfile)
     LOGGER.info('###################### Bootstrap Finish ######################')
     return True
@@ -465,7 +465,7 @@ def validate_bootstrap():
     The main method should be called from outside.
     To perform and check the bootstrap.
     """
-    bootstrapfile = '/trinity/local/luna/config/bootstrap.ini'
+    bootstrapfile = '/trinity/local/luna/daemon/config/bootstrap.ini'
     global BOOTSTRAP
     BOOTSTRAP = {
         'HOSTS': {'HOSTNAME': None, 'CONTROLLER1': None, 'CONTROLLER2': None, 'NODELIST': None},

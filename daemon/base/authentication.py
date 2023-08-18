@@ -52,7 +52,7 @@ class Authentication():
                     api_key = CONSTANT['API']['SECRET_KEY']
                     if username and password:
                         if CONSTANT['API']['USERNAME'] != username:
-                            message = f'Username {username} Not belongs to INI.'
+                            message = f'Username {username} does not belong to INI.'
                             self.logger.info(message)
                             where = f" WHERE username = '{username}' AND roleid = '1';"
                             user = Database().get_record(None, 'user', where)
@@ -65,18 +65,18 @@ class Authentication():
                                         api_key,
                                         'HS256'
                                     )
-                                    message = f'Authentication token generated, Token {jwt_token}.'
+                                    message = f'Authentication token generated, Token {jwt_token}'
                                     self.logger.debug(message)
                                     status = True
                                 else:
-                                    message = f'Incorrect password {password} for user {username}.'
+                                    message = f'Incorrect password {password} for user {username}'
                                     self.logger.warning(message)
                             else:
-                                message = f'User {username} is not exists.'
+                                message = f'User {username} does not exist'
                                 self.logger.error(message)
                         else:
                             if CONSTANT['API']['PASSWORD'] != password:
-                                message = f'Incorrect password {password}, check luna.ini.'
+                                message = f'Incorrect password {password}, check luna.ini'
                                 self.logger.warning(message)
                             else:
                                 # Creating Token via JWT with default id =1, expiry time
@@ -86,7 +86,7 @@ class Authentication():
                                 self.logger.debug(message)
                                 status = True
                     else:
-                        message = 'Kindly provide the username and password'
+                        message = 'Please provide the username and password'
                         self.logger.error(message)
                 else:
                     message = 'Password Is Required'

@@ -171,7 +171,7 @@ class Config(object):
 
         config += option_domain
 
-        config = dedent(f"""
+        config += dedent(f"""
             option luna-id code 129 = text;
             option client-architecture code 93 = unsigned integer 16;
             {ntp_server}

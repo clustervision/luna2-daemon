@@ -288,7 +288,9 @@ class OsImage(object):
 
                 distribution = str(image[0]['distribution']) or 'redhat'
                 distribution=distribution.lower()
-                osrelease = str(image[0]['osrelease']) or 'default.py'
+                osrelease = 'default'
+                if image[0]['osrelease']:
+                    osrelease = str(image[0]['osrelease'])
 
                 ##path_to_store = f"{image[0]['path']}/boot"  # <-- we will store all files in this path, but add the name of the image to it.
                 if 'FILES' not in CONSTANT:

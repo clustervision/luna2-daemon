@@ -595,9 +595,19 @@ def config_osimage_kernel_post(name=None):
     Process - Manually change kernel version.
     Output - Kernel Version.
     """
-    status, response = OSImage().change_kernel(name, request.data)
-    access_code=Helper().get_access_code(status,response)
-    response = {'message': response}
+    returned = OSImage().change_kernel(name, request.data)
+    status=returned[0]
+    response=returned[1]
+    if status is True:
+        access_code=200
+        if len(returned)==3:
+            request_id=returned[2]
+            response = {"message": response, "request_id": request_id}
+        else:
+            access_code = 201
+            response = {'message': response}
+    else:
+        response = {'message': response}
     return response, access_code
 
 

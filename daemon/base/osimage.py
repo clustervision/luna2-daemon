@@ -488,9 +488,16 @@ class OSImage():
                 del data['bare']
             image = Database().get_record(None, 'osimage', f' WHERE name = "{name}"')
             if image:
+                image_id = image[0]['id']
                 osimage_columns = Database().get_columns('osimage')
                 column_check = Helper().compare_list(data, osimage_columns)
                 if column_check:
+                    where = [{"column": "id", "value": image_id}]
+                    row = Helper().make_rows(data)
+                    img_id = Database().update('osimage', row, where)
+                    if not img_id:
+                        status = False
+                        return status, f"Failed updating image"
                     if bare is True:
                         status=True
                         response = f'OS Image {name} Kernel updated'

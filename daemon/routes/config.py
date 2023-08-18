@@ -604,7 +604,7 @@ def config_osimage_kernel_post(name=None):
             request_id=returned[2]
             response = {"message": response, "request_id": request_id}
         else:
-            access_code = 201
+            access_code = 204
             response = {'message': response}
     else:
         response = {'message': response}

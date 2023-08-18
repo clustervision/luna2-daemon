@@ -202,7 +202,7 @@ class OSImage():
                     task = f"clone_n_pack_osimage:{name}:{data['name']}"
                     task_id, text = Queue().add_task_to_queue(task, 'osimage', request_id)
                 if not task_id:
-                    self.logger.info("config_osimage_clone GET cannot get queue_id")
+                    self.logger.info("config_osimage_clone cannot get queue_id")
                     status=False
                     return status, f"Internal error: OS image {name}->{data['name']} clone queuing failed."
 
@@ -213,7 +213,7 @@ class OSImage():
                     self.logger.info(f"my response [{response}] [{text}]")
                     status=True
                     return status, response, text
-                self.logger.info(f"config_osimage_clone GET added task to queue: {task_id}")
+                self.logger.info(f"config_osimage_clone added task to queue: {task_id}")
                 message = f"queued clone osimage {name}->{data['name']} with queue_id {task_id}"
                 Status().add_message(request_id, "luna", message)
                 next_id = Queue().next_task_in_queue('osimage')
@@ -298,7 +298,7 @@ class OSImage():
                 task = f'grab_n_pack_n_build_osimage:{node}:{osimage}:{nodry}'
                 task_id, text = Queue().add_task_to_queue(task, 'osimage', request_id)
             if not task_id:
-                self.logger.info("config_osimage_grab GET cannot get queue_id")
+                self.logger.info("config_osimage_grab cannot get queue_id")
                 status=False
                 return status, f'OS image {osimage} grab queuing failed'
             if text != "added":
@@ -308,7 +308,7 @@ class OSImage():
                 status=True
                 return status, response, text
 
-            self.logger.info(f"config_osimage_grab POST added task to queue: {task_id}")
+            self.logger.info(f"config_osimage_grab added task to queue: {task_id}")
             message = f"queued grab osimage {osimage} with queue_id {task_id}"
             Status().add_message(request_id, "luna", message)
 
@@ -388,7 +388,7 @@ class OSImage():
                 task = f'push_osimage_to_node:{entity_name}:{osimage}:{nodry}'
                 task_id, text = Queue().add_task_to_queue(task, 'osimage', request_id)
             if not task_id:
-                self.logger.info("config_osimage_push POST cannot get queue_id")
+                self.logger.info("config_osimage_push cannot get queue_id")
                 status=False
                 return status, f'Internal error: OS image {osimage} push queuing failed'
             if text != "added":
@@ -398,7 +398,7 @@ class OSImage():
                 self.logger.info(f"my response [{response}] [{text}]")
                 return status, response, text
 
-            self.logger.info(f"config_osimage_push POST added task to queue: {task_id}")
+            self.logger.info(f"config_osimage_push added task to queue: {task_id}")
             message = f"queued push osimage {osimage} with queue_id {task_id}"
             Status().add_message(request_id, "luna", message)
 
@@ -440,7 +440,7 @@ class OSImage():
         task = f'pack_n_build_osimage:{name}'
         queue_id, queue_response = Queue().add_task_to_queue(task, 'osimage', request_id, force)
         if not queue_id:
-            self.logger.info("config_osimage_pack GET cannot get queue_id")
+            self.logger.info("config_osimage_pack cannot get queue_id")
             status=False
             return status, f'Internal error: OS image {name} pack queuing failed'
         if queue_response != "added":
@@ -450,7 +450,7 @@ class OSImage():
             status=True
             return status, response, queue_response
 
-        self.logger.info(f"config_osimage_pack GET added task to queue: {queue_id}")
+        self.logger.info(f"config_osimage_pack added task to queue: {queue_id}")
         message = f"queued pack osimage {name} with queue_id {queue_id}"
         Status().add_message(request_id, "luna", message)
 
@@ -481,17 +481,58 @@ class OSImage():
         response="Internal error"
         if request_data:
             data = request_data['config']['osimage'][name]
+            bare = False
+            if 'bare' in data:
+                bare = data['bare']
+                bare = Helper().make_bool(bare)
+                del data['bare']
             image = Database().get_record(None, 'osimage', f' WHERE name = "{name}"')
             if image:
+                image_id = image[0]['id']
                 osimage_columns = Database().get_columns('osimage')
                 column_check = Helper().compare_list(data, osimage_columns)
                 if column_check:
-                    # TODO
-                    # changed=1
-                    # request_check = Helper().pack(name)
-                    # discussed - pending
-                    response = f'OS Image {name} Kernel updated'
-                    status=True
+                    where = [{"column": "id", "value": image_id}]
+                    row = Helper().make_rows(data)
+                    img_id = Database().update('osimage', row, where)
+                    if not img_id:
+                        status = False
+                        return status, f"Failed updating image"
+                    if bare is True:
+                        status=True
+                        response = f'OS Image {name} Kernel updated'
+                        return status, f'OS Image {name} Kernel updated'
+                    request_id = str(time()) + str(randint(1001, 9999)) + str(getpid())
+                    task_id, text = None,None
+                    task = f'pack_osimage:{name}'
+                    task_id, text = Queue().add_task_to_queue(task, 'osimage', request_id)
+                    if not task_id:
+                        self.logger.info("config_osimage_kernel cannot get queue_id")
+                        status=False
+                        return status, f'OS image {name} pack queuing failed'
+                    if text != "added":
+                        # this means we already have an equal request in the queue
+                        response = f"osimage pack for {name} already queued"
+                        self.logger.info(f"my response [{response}] [{text}]")
+                        status=True
+                        return status, response, text
+                    self.logger.info(f"config_osimage_kernel added task to queue: {task_id}")
+                    message = f"queued pack osimage {name} with queue_id {task_id}"
+                    Status().add_message(request_id, "luna", message)
+                    next_id = Queue().next_task_in_queue('osimage')
+                    if task_id == next_id:
+                        executor = ThreadPoolExecutor(max_workers=1)
+                        executor.submit(OsImager().osimage_mother, request_id)
+                        executor.shutdown(wait=False)
+                    # we should check after a few seconds if there is a status update for us.
+                    # if so, that means mother is taking care of things
+                    sleep(1)
+                    where = f' WHERE request_id = "{request_id}"'
+                    status = Database().get_record(None , 'status', where)
+                    if status:
+                        response = f"osimage pack for {name} queued"
+                        status=True
+                        return status, response, request_id
                 else:
                     response = 'Invalid request: Columns are incorrect'
                     status=False

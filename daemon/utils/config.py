@@ -52,8 +52,9 @@ class Config(object):
         cluster = Database().get_record(None, 'cluster', None)
         if cluster and 'ntp_server' in cluster[0] and cluster[0]['ntp_server']:
             ntp_server = cluster[0]['ntp_server']
-        networks = Database().get_record(None, 'network', ' WHERE `dhcp` = 1')
         dhcp_file = f"{CONSTANT['TEMPLATES']['TEMP_DIR']}/dhcpd.conf"
+        domain = None
+        networks = Database().get_record(None, 'network', ' WHERE `dhcp` = 1')
         if networks:
             for nwk in networks:
                 network_id = nwk['id']
@@ -67,6 +68,7 @@ class Config(object):
                 )
                 self.logger.info(f"Building DHCP block for {network_name}")
                 if controller:
+                    domain = nwk['name']
                     subnet_block = self.dhcp_subnet(
                         nwk['network'], netmask, controller[0]['ipaddress'], nwk['gateway'],
                         nwk['dhcp_range_begin'], nwk['dhcp_range_end']
@@ -107,7 +109,7 @@ class Config(object):
                                 )
                     else:
                         self.logger.debug(f'{item} not available for {network_name} {network_ip}')
-        config = self.dhcp_config(ntp_server)
+        config = self.dhcp_config(domain,ntp_server)
         config = f'{config}{dhcp_subnet_block}'
         for node in node_block:
             config = f'{config}{node}'
@@ -134,7 +136,7 @@ class Config(object):
         return validate
 
 
-    def dhcp_config(self, ntp_server=None):
+    def dhcp_config(self, domain=None, ntp_server=None):
         """
         This method will prepare DHCP configuration.
         """
@@ -142,6 +144,11 @@ class Config(object):
             ntp_server = f'option time-servers {ntp_server};\n'
         else:
             ntp_server = ''
+
+        if domain:
+            option_domain = f'option domain-name "{domain}";'
+        else:
+            option_domain = f'option domain-name "cluster";'
 
         omapi_key = ''
         if CONSTANT['DHCP']['OMAPIKEY']:
@@ -160,7 +167,11 @@ class Config(object):
             # DHCP Server Configuration file.
             # created by Luna
             #
-            option domain-name "lunacluster";
+            """)
+
+        config += option_domain
+
+        config += dedent(f"""
             option luna-id code 129 = text;
             option client-architecture code 93 = unsigned integer 16;
             {ntp_server}

@@ -166,6 +166,9 @@ class Switch():
                     if create:
                         where = f' WHERE `name` = "{name}"'
                         switch = Database().get_record(table=self.table, where=where)
+                        if not switch:
+                           status = False
+                           return status, f"Source switch {name} does not exist"
                         del switch[0]['id']
                         for key in switch[0]:
                             if key not in data:

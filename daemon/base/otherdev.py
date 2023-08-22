@@ -165,6 +165,9 @@ class OtherDev():
                     if create:
                         where=f' WHERE `name` = "{name}"'
                         device = Database().get_record(table=self.table, where=where)
+                        if not device:
+                           status = False
+                           return status, f"Source device {name} does not exist"
                         del device[0]['id']
                         for key in device[0]:
                             if key not in data:

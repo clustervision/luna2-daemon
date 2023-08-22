@@ -192,11 +192,6 @@ class OsImage(object):
                         Status().add_message(request_id,"luna",f"error packing osimage {osimage}: image path {image_path} is not an absolute path while IMAGE_DIRECTORY setting in FILES is not defined")
                         return False
 
-                kernel_version = str(image[0]['kernelversion'])
-                distribution = str(image[0]['distribution']) or 'redhat'
-                distribution=distribution.lower()
-                osrelease = str(image[0]['osrelease']) or 'default.py'
-
                 ##path_to_store = f"{image[0]['path']}/boot"  # <-- we will store all files in this path, but add the name of the image to it.
                 if 'FILES' not in CONSTANT:
                     Status().add_message(request_id,"luna",f"error packing osimage {osimage}: FILES config setting not defined")
@@ -205,9 +200,21 @@ class OsImage(object):
                     Status().add_message(request_id,"luna",f"error packing osimage {osimage}: IMAGE_FILES config setting not defined in FILES")
                     return False
                 files_path = CONSTANT['FILES']['IMAGE_FILES']
-        
-                ramdisk_modules = image[0]['dracutmodules'].split(',')
-                kernel_modules = image[0]['kernelmodules'].split(',')
+       
+                kernel_version = str(image[0]['kernelversion'])
+                distribution = 'redhat'
+                if image[0]['distribution']:
+                    distribution = str(image[0]['distribution'])
+                distribution=distribution.lower()
+                osrelease = 'default'
+                if image[0]['osrelease']:
+                    osrelease = str(image[0]['osrelease'])
+
+                ramdisk_modules, kernel_modules = [], []
+                if ramdisk_modules:
+                    ramdisk_modules = image[0]['dracutmodules'].split(',')
+                if kernel_modules:
+                    kernel_modules = image[0]['kernelmodules'].split(',')
 
                 # loading the plugin depending on OS
                 OsImagePlugin=Helper().plugin_load(self.osimage_plugins,'osimage',distribution,osrelease)
@@ -333,12 +340,12 @@ class OsImage(object):
             return result
 
         except Exception as exp:
-            self.logger.error(f"pack_osimage has problems: {exp}")
+            self.logger.error(f"build_osimage has problems: {exp}")
             try:
                 Status().add_message(request_id,"luna",f"Packing failed: {exp}")
                 Status().add_message(request_id,"luna",f"EOF")
             except Exception as nexp:
-                self.logger.error(f"pack_osimage has problems during exception handling: {nexp}")
+                self.logger.error(f"build_osimage has problems during exception handling: {nexp}")
             return False
             
     # ---------------------------------------------------------------------------

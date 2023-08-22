@@ -203,7 +203,7 @@ class OsImage(object):
        
                 kernel_version = str(image[0]['kernelversion'])
                 distribution = 'redhat'
-                image[0]['distribution']:
+                if image[0]['distribution']:
                     distribution = str(image[0]['distribution'])
                 distribution=distribution.lower()
                 osrelease = 'default'

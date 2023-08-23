@@ -34,7 +34,7 @@ def jwt_token():
     status, response = Authentication().get_token(request.data)
     response = dumps(response)
     if status is True:
-        access_code = 200
+        access_code = 201
     return response, access_code
 
 

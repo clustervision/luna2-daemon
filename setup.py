@@ -13,6 +13,7 @@ __maintainer__  = 'Sumit Sharma'
 __email__       = 'sumit.sharma@clustervision.com'
 __status__      = 'Development'
 
+from time import time
 from setuptools import setup, find_packages
 
 PRE = "{Personal-Access-Token-Name}:{Personal-Access-Token}"
@@ -28,10 +29,13 @@ except ImportError: # for pip <= 9.0.3
 
 
 def new_version():
-    """This Method will create a New version and update the Version file."""
-    version = "0.0.0"
-    with open('VERSION.txt', 'r', encoding='utf-8') as ver:
-        version = ver.read()
+    """
+    This Method will create a New version and update the Version file.
+    """
+    time_now = int(time())
+    version = f'2.0.{time_now}'
+    with open('daemon/VERSION.txt', 'w', encoding='utf-8') as ver:
+        ver.write(version)
     return version
 
 
@@ -58,6 +62,7 @@ setup(
     install_requires = requirements,
     dependency_links = [],
     package_data = {
+        "daemon": ["*.txt"],
         "daemon/config": ["*.monitor", "*.ini", "*.service", "*.json", "*.conf"],
         "daemon/config/third-party": ["*.service","*.conf"],
         "daemon/log": ["*.log"],

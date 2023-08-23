@@ -595,6 +595,7 @@ def config_osimage_kernel_post(name=None):
     Process - Manually change kernel version.
     Output - Kernel Version.
     """
+    access_code=404
     returned = OSImage().change_kernel(name, request.data)
     status=returned[0]
     response=returned[1]

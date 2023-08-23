@@ -868,10 +868,10 @@ class Boot():
                 data['osimageid'] = osimage[0]['id']
                 data['osimagename'] = osimage[0]['name']
                 data['imagefile'] = osimage[0]['imagefile']
-                data['distribution'] = osimage[0]['distribution'].lower() or 'redhat'
-                data['osrelease'] = 'default.py'
-                if 'osrelease' in osimage[0]:
-                    data['osrelease'] = osimage[0]['osrelease'] or 'default.py'
+                data['distribution'] = osimage[0]['distribution'] or 'redhat'
+                data['distribution'] = data['distribution'].lower()
+                data['osrelease'] = 'default'
+                data['osrelease'] = osimage[0]['osrelease'] or 'default'
 
         if data['name']:
             nodeinterface = Database().get_record_join(

@@ -36,7 +36,7 @@ def new_version():
 
 
 setup(
-    name = "daemon",
+    name = "luna2-daemon",
     version = new_version(),
     description = "Luna Daemon to make Luna SystemD Service",
     long_description = "Luna Daemon is a base tool of luna, that means, \

@@ -1,4 +1,4 @@
-Flask==2.3.2
+Flask==2.3.3
 PyJWT==2.8.0
 pyodbc==4.0.39
 python-hostlist==1.23.0

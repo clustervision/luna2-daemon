@@ -39,7 +39,7 @@ def control_action_get(hostname=None, subsystem=None, action=None):
     status, response = Control().control_action(hostname, subsystem, action)
     if status is True:
         access_code = 204
-        if 'status' in action:
+        if 'status' in action or 'list' in action:
             access_code = 200
         response = dumps(response)
     else:

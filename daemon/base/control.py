@@ -92,7 +92,7 @@ class Control():
                 )
                 if 'power' in action:
                     action=action.replace('power ','') # wee ugly but we need to review the API response design - Antoine
-                response = {'control': {action : message } }
+                response = {'control': {subsystem : message } }
                 status=True
             else:
                 response = f'{hostname} does not have any bmcsetup'

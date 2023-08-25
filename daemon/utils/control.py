@@ -106,11 +106,11 @@ class Control():
                             self.logger.error(f"uh oh... {exp}")
                         pipeline.add_message({nodename: command+':'+str(ret)+':'+status})
                     else:
-                        self.logger.info(f'{nodename} not have any bmcsetup.')
+                        self.logger.info(f'{nodename} not have any bmcsetup')
                         pipeline.add_message({nodename: command+':None:does not have any bmcsetup'})
                 else:
                     self.logger.info(f'{nodename} does not have any suitable config.')
-                    pipeline.add_message({nodename: command+':None:does not have any node information'})
+                    pipeline.add_message({nodename: command+':None:does not exist or does not have BMC configured'})
                 run = 0
                 # setting this to 0 means we only do one iteration.
                 # we can do loops, but we let mother control this

@@ -797,7 +797,7 @@ class Helper(object):
             if 'update' in response or 'remove' in response or 'delete' in response:
                 access_code=204
         else:
-            if 'nvalid request' in response or 'ad request' in response:
+            if 'nvalid request' in response or 'ad request' in response or ' invalid ' in response:
                 access_code=400
             elif 'uthentication error' in response:
                 access_code=401

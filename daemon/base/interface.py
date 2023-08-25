@@ -397,6 +397,7 @@ class Interface():
                 response = f'Group {name} interface {interface} not present in database'
                 status=False
         else:
-            f'Group {name} not present in database'
+            response = f'Group {name} not present in database'
             status=False
         return status, response
+

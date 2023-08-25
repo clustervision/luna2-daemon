@@ -26,7 +26,6 @@ tracker_blueprint = Blueprint('tracker', __name__)
 
 # BELOW SEGMENT HAS BEEN TESTED AND CONFIRMED WORKING BY ANTOINE ON MAY 4 2023
 @tracker_blueprint.route('/announce', methods=['GET'])
-# @token_required
 @input_filter(checks=None, skip=['info_hash', 'peer_id'], json=False)
 def tracker_announce_get():
     """
@@ -56,7 +55,6 @@ def tracker_announce_get():
 
 # BELOW SEGMENT HAS BEEN TESTED AND CONFIRMED WORKING BY ANTOINE ON MAY 4 2023
 @tracker_blueprint.route('/scrape', methods=['GET'])
-# @token_required
 @input_filter(checks=None, skip='info_hash', json=False)
 def tracker_scrape_get():
     """
@@ -81,3 +79,4 @@ def tracker_scrape_get():
             access_code = 500
             return f"{exp}\n", access_code
     return response, access_code
+

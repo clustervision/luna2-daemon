@@ -40,7 +40,7 @@ config_blueprint = Blueprint('config', __name__)
 
 
 @config_blueprint.route('/config/node', methods=['GET'])
-# @token_required
+@token_required
 def config_node():
     """
     This api will send all the nodes in details.
@@ -56,7 +56,7 @@ def config_node():
 
 
 @config_blueprint.route('/config/node/<string:name>', methods=['GET'])
-# @token_required
+@token_required
 @validate_name
 @agent_check
 def config_node_get(cli=None, name=None):
@@ -172,7 +172,7 @@ def config_node_ospush(name=None):
 
 
 @config_blueprint.route('/config/node/<string:name>/interfaces', methods=['GET'])
-# @token_required
+@token_required
 @validate_name
 def config_node_get_interfaces(name=None):
     """
@@ -207,7 +207,7 @@ def config_node_post_interfaces(name=None):
 
 
 @config_blueprint.route("/config/node/<string:name>/interfaces/<string:interface>", methods=['GET'])
-# @token_required
+@token_required
 @validate_name
 def config_node_interface_get(name=None, interface=None):
     """
@@ -244,7 +244,7 @@ def config_node_delete_interface(name=None, interface=None):
 
 # BELOW SEGMENT HAS BEEN TESTED AND CONFIRMED WORKING BY ANTOINE ON APRIL 3 2023
 @config_blueprint.route("/config/group", methods=['GET'])
-# @token_required
+@token_required
 def config_group():
     """
     Input - Group Name
@@ -263,7 +263,7 @@ def config_group():
 
 # BELOW SEGMENT HAS BEEN TESTED AND CONFIRMED WORKING BY ANTOINE ON APRIL 3 2023
 @config_blueprint.route("/config/group/<string:name>", methods=['GET'])
-# @token_required
+@token_required
 @validate_name
 @agent_check
 def config_group_get(cli=None, name=None):
@@ -377,7 +377,7 @@ def config_group_delete(name=None):
 
 
 @config_blueprint.route("/config/group/<string:name>/interfaces", methods=['GET'])
-# @token_required
+@token_required
 @validate_name
 def config_group_get_interfaces(name=None):
     """
@@ -413,7 +413,7 @@ def config_group_post_interfaces(name=None):
 
 
 @config_blueprint.route("/config/group/<string:name>/interfaces/<string:interface>", methods=['GET'])
-# @token_required
+@token_required
 @validate_name
 def config_group_interface_get(name=None, interface=None):
     """
@@ -448,6 +448,7 @@ def config_group_delete_interface(name=None, interface=None):
 ############################# OSimage configuration #############################
 
 @config_blueprint.route("/config/osimage", methods=['GET'])
+@token_required
 def config_osimage():
     """
     Input - OS Image ID or Name
@@ -465,6 +466,7 @@ def config_osimage():
 
 
 @config_blueprint.route("/config/osimage/<string:name>", methods=['GET'])
+@token_required
 @validate_name
 def config_osimage_get(name=None):
     """
@@ -617,7 +619,7 @@ def config_osimage_kernel_post(name=None):
 
 # BELOW SEGMENT HAS BEEN TESTED AND CONFIRMED WORKING BY ANTOINE ON APRIL 3 2023
 @config_blueprint.route("/config/cluster", methods=['GET'])
-# @token_required
+@token_required
 def config_cluster():
     """
     Input - None
@@ -652,7 +654,7 @@ def config_cluster_post():
 ############################# BMC setup configuration #############################
 
 @config_blueprint.route("/config/bmcsetup", methods=['GET'])
-# @token_required
+@token_required
 def config_bmcsetup():
     """
     This route will provide all the BMC Setup's.
@@ -668,7 +670,7 @@ def config_bmcsetup():
 
 
 @config_blueprint.route("/config/bmcsetup/<string:name>", methods=['GET'])
-# @token_required
+@token_required
 @validate_name
 def config_bmcsetup_get(name=None):
     """
@@ -745,7 +747,7 @@ def config_bmcsetup_delete(name=None):
 ############################# Switch configuration #############################
 
 @config_blueprint.route("/config/switch", methods=['GET'])
-# @token_required
+@token_required
 def config_switch():
     """
     This route will provide all the Switches.
@@ -761,7 +763,7 @@ def config_switch():
 
 
 @config_blueprint.route("/config/switch/<string:name>", methods=['GET'])
-# @token_required
+@token_required
 @validate_name
 def config_switch_get(name=None):
     """
@@ -820,7 +822,7 @@ def config_switch_delete(name=None):
 ############################# Other Devices configuration #############################
 
 @config_blueprint.route("/config/otherdev", methods=['GET'])
-# @token_required
+@token_required
 def config_otherdev():
     """
     This route will provide all the Other Devices.
@@ -836,7 +838,7 @@ def config_otherdev():
 
 
 @config_blueprint.route("/config/otherdev/<string:name>", methods=['GET'])
-# @token_required
+@token_required
 @validate_name
 def config_otherdev_get(name=None):
     """
@@ -895,7 +897,7 @@ def config_otherdev_delete(name=None):
 ############################# Network configuration #############################
 
 @config_blueprint.route("/config/network", methods=['GET'])
-# @token_required
+@token_required
 def config_network():
     """
     Input - None
@@ -913,7 +915,7 @@ def config_network():
 
 
 @config_blueprint.route("/config/network/<string:name>", methods=['GET'])
-# @token_required
+@token_required
 @validate_name
 def config_network_get(name=None):
     """
@@ -1002,7 +1004,7 @@ def config_network_taken(name=None):
 
 
 @config_blueprint.route("/config/network/<string:name>/_nextfreeip", methods=['GET'])
-# @token_required
+@token_required
 @validate_name
 def config_network_nextip(name=None):
     """

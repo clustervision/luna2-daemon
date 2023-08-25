@@ -187,7 +187,7 @@ class Control():
                         username = username,
                         password = password
                     )
-                    message = message.replace('\n',';;')
+                    message = message.replace("\n",";;")
                 case 'sel clear':
                     return_code, message = control_plugin().sel_clear(
                         device = device,

@@ -37,6 +37,8 @@ class Plugin():
         - pack   returns kernel_file_name,ramdisk_file_name upon success
         - build  returns image_file_name upon success
         - cleanup
+        one variable is required:
+        - systemroot   defines where the os/init looks foor the pivot+init == the new root
         """
         self.logger = Log.get_logger()
 
@@ -50,6 +52,8 @@ class Plugin():
         # ramdisk_modules = list of ramdisk modules to be included/excluded
 
     # ---------------------------------------------------------------------------
+
+    systemroot = "\$ROOT"
 
     def cleanup(self, osimage=None, files_path=None, current_packed_image_file=None, current_kernel_file=None, current_ramdisk_file=None):
         # files_path = is the location where the imagefile will be copied.

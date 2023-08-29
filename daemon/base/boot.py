@@ -48,6 +48,7 @@ class Boot():
         self.network_plugins = Helper().plugin_finder(f'{plugins_path}/network')
         self.bmc_plugins = Helper().plugin_finder(f'{plugins_path}/bmc')
         self.install_plugins = Helper().plugin_finder(f'{plugins_path}/install')
+        self.osimage_plugins = Helper().plugin_finder(f'{plugins_path}/osimage')
         # self.detection_plugins = Helper().plugin_finder(f'{plugins_path}/detection')
         # self.DetectionPlugin=Helper().plugin_load(self.detection_plugins,'detection','switchport')
 
@@ -775,6 +776,7 @@ class Boot():
             'setupbmc'              : None,
             'localinstall'          : None,
             'unmanaged_bmc_users'   : None,
+            'systemroot'            : None,
             'interfaces'            : {},
             'bmc'                   : {}
         }
@@ -862,6 +864,8 @@ class Boot():
             else:
                 data['setupbmc'] = False
 
+        data['osrelease'] = 'default'
+        data['distribution'] = 'redhat'
         if data['osimage']:
             osimage = Database().get_record(None, 'osimage', " WHERE name = '"+data['osimage']+"'")
             if osimage:
@@ -870,7 +874,6 @@ class Boot():
                 data['imagefile'] = osimage[0]['imagefile']
                 data['distribution'] = osimage[0]['distribution'] or 'redhat'
                 data['distribution'] = data['distribution'].lower()
-                data['osrelease'] = 'default'
                 data['osrelease'] = osimage[0]['osrelease'] or 'default'
 
         if data['name']:
@@ -934,6 +937,10 @@ class Boot():
             environment = jinja2.Environment()
             template = environment.from_string('No Node is available for this mac address.')
             status=False 
+
+        ## SYSTEMROOT
+        osimage_plugin = Helper().plugin_load(self.osimage_plugins, 'osimage', data['distribution'], data['osrelease'])
+        data['systemroot'] = str(osimage_plugin().systemroot)
 
         ## FETCH CODE SEGMENT
         cluster_provision_methods = [data['provision_method'], data['provision_fallback']]

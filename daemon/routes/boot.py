@@ -223,6 +223,7 @@ def boot_install(node=None):
         NODE_NAME               = data['nodename'],
         LUNA_OSIMAGE            = data['osimagename'],
         LUNA_DISTRIBUTION       = data['distribution'],
+        LUNA_SYSTEMROOT         = data['systemroot'],
         LUNA_IMAGEFILE          = data['imagefile'],
         LUNA_FILE               = data['imagefile'],
         LUNA_SELINUX_ENABLED    = data['selinux'],

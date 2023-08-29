@@ -926,18 +926,6 @@ class Boot():
                             data['nodehostname'] = data['nodename'] + '.' + interface['network']
                             data['domain_search']=interface['network'] + ',' + data['domain_search']
 
-        #self.logger.info(f"boot install data: [{data}]")
-        if None not in data.values():
-            status=True
-            Helper().update_node_state(data["nodeid"], "installer.downloaded")
-        else:
-            for key, value in data.items():
-                if value is None:
-                    self.logger.error(f"{key} has no value. Node {data['nodename']} cannot boot")
-            environment = jinja2.Environment()
-            template = environment.from_string('No Node is available for this mac address.')
-            status=False 
-
         ## SYSTEMROOT
         osimage_plugin = Helper().plugin_load(self.osimage_plugins, 'osimage', data['distribution'], data['osrelease'])
         data['systemroot'] = str(osimage_plugin().systemroot)
@@ -998,6 +986,18 @@ class Boot():
                 f"## INSTALL {script.upper()} CODE SEGMENT",
                 segment
             )
+
+        #self.logger.info(f"boot install data: [{data}]")
+        if None not in data.values():
+            status=True
+            Helper().update_node_state(data["nodeid"], "installer.downloaded")
+        else:
+            for key, value in data.items():
+                if value is None:
+                    self.logger.error(f"{key} has no value. Node {data['nodename']} cannot boot")
+            environment = jinja2.Environment()
+            template = environment.from_string('No Node is available for this mac address.')
+            status=False 
 
         data['template_data'] = template_data
         jwt_token = None

@@ -53,7 +53,7 @@ class Plugin():
 
     # ---------------------------------------------------------------------------
 
-    systemroot = "\$ROOT"
+    systemroot = "$ROOT"
 
     def cleanup(self, osimage=None, files_path=None, current_packed_image_file=None, current_kernel_file=None, current_ramdisk_file=None):
         # files_path = is the location where the imagefile will be copied.

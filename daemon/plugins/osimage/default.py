@@ -37,6 +37,8 @@ class Plugin():
         - pack   returns kernel_file_name,ramdisk_file_name upon success
         - build  returns image_file_name upon success
         - cleanup
+        one variable:
+        - systemroot   this is where the installer will unpack files (read: ramdisk image) to
         """
         self.logger = Log.get_logger()
 
@@ -48,6 +50,10 @@ class Plugin():
         # packed_image_file = the name of the actual imagefile
         # kernel_modules = list of drivers to be included/excluded
         # ramdisk_modules = list of ramdisk modules to be included/excluded
+
+    # ---------------------------------------------------------------------------
+
+    systemroot = "/sysroot"
 
     # ---------------------------------------------------------------------------
 
@@ -165,12 +171,11 @@ class Plugin():
 
     # -------------------------------------------------------------------
 
-    def pack(self, osimage=None, image_path=None, files_path=None, kernel_version=None, kernel_modules=[], ramdisk_modules=[]):
+    def pack(self, osimage=None, image_path=None, files_path=None, kernel_version=None, kernel_modules=[]):
         # files_path = location where ramdisk+kernel are being stored
         # kernel_file = name of the kernel/vmlinuz file
         # ramdisk_file = name  of the ramdisk/initrd file
         # kernel_modules = list of drivers to be included/excluded
-        # ramdisk_modules = list of ramdisk modules to be included/excluded
 
         def mount(source, target, fs):
             try:
@@ -213,7 +218,9 @@ class Plugin():
         drivers_add = []
         drivers_remove = []
         grab_filesystems = ['/','/boot']
-        
+       
+        # hard coded ramdisk modules
+        ramdisk_modules = ['luna','-18n','-plymouth']
         if ramdisk_modules:
             for i in ramdisk_modules:
                 s = i.replace(" ", "")

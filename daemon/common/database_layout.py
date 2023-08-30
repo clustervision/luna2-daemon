@@ -35,7 +35,6 @@ DATABASE_LAYOUT_queue = [
 DATABASE_LAYOUT_osimage = [
 {"column": "id",                   "datatype": "INTEGER", "key": "PRIMARY", "keyadd": "AUTOINCREMENT"},
 {"column": "name",                 "datatype": "VARCHAR", "length": "20", "key": "UNIQUE"},
-{"column": "dracutmodules",        "datatype": "VARCHAR", "length": "100"},
 {"column": "grab_filesystems",     "datatype": "VARCHAR", "length": "250"},
 {"column": "grab_exclude",         "datatype": "TEXT"},
 {"column": "initrdfile",           "datatype": "VARCHAR", "length": "100"},
@@ -47,8 +46,6 @@ DATABASE_LAYOUT_osimage = [
 {"column": "imagefile",            "datatype": "VARCHAR", "length": "100"},
 {"column": "distribution",         "datatype": "VARCHAR", "length": "20"},
 {"column": "osrelease",            "datatype": "VARCHAR", "length": "20"},
-{"column": "systemroot",           "datatype": "VARCHAR", "length": "30"},
-{"column": "changed",              "datatype": "INTEGER", "length": "10"},
 {"column": "comment",              "datatype": "VARCHAR", "length": "20"}]
 
 DATABASE_LAYOUT_nodesecrets = [
@@ -177,7 +174,6 @@ DATABASE_LAYOUT_node = [
 {"column": "id",                   "datatype": "INTEGER", "key": "PRIMARY", "keyadd": "AUTOINCREMENT"},
 {"column": "name",                 "datatype": "VARCHAR", "length": "10", "key": "UNIQUE"},
 {"column": "groupid",              "datatype": "INTEGER", "length": "10"},
-{"column": "localboot",            "datatype": "INTEGER", "length": "10"},
 {"column": "osimageid",            "datatype": "INTEGER", "length": "10"},
 {"column": "switchport",           "datatype": "INTEGER", "length": "10"},
 {"column": "service",              "datatype": "INTEGER", "length": "10"},

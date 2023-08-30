@@ -135,7 +135,6 @@ class OSImage():
         status=False
         response="Internal error"
         items = {
-            'dracutmodules',
             'grab_filesystems',
             'grab_exclude',
             'initrdfile',
@@ -504,7 +503,8 @@ class OSImage():
                         return status, f'OS Image {name} Kernel updated'
                     request_id = str(time()) + str(randint(1001, 9999)) + str(getpid())
                     task_id, text = None,None
-                    task = f'pack_osimage:{name}'
+                    #task = f'pack_osimage:{name}'
+                    task = f'pack_n_build_osimage:{name}'
                     task_id, text = Queue().add_task_to_queue(task, 'osimage', request_id)
                     if not task_id:
                         self.logger.info("config_osimage_kernel cannot get queue_id")

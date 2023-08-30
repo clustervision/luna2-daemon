@@ -37,6 +37,8 @@ class Plugin():
         - pack   returns kernel_file_name,ramdisk_file_name upon success
         - build  returns image_file_name upon success
         - cleanup
+        one variable:
+        - systemroot   this is where the installer will unpack files (read: ramdisk image) to
         """
         self.logger = Log.get_logger()
 

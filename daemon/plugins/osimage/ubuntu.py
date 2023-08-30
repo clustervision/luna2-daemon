@@ -37,8 +37,9 @@ class Plugin():
         - pack   returns kernel_file_name,ramdisk_file_name upon success
         - build  returns image_file_name upon success
         - cleanup
-
-        systemroot in osimage set default to $ROOT or $rootmnt
+        one variable:
+        - systemroot   this is where the installer will unpack files (read: ramdisk image) to
+          systemroot   for debian/ubuntu is typically set to $rootmnt. note: $ROOT (not $rootmnt) points to /luna
         """
         self.logger = Log.get_logger()
 

@@ -48,7 +48,6 @@ class Boot():
         self.network_plugins = Helper().plugin_finder(f'{plugins_path}/network')
         self.bmc_plugins = Helper().plugin_finder(f'{plugins_path}/bmc')
         self.install_plugins = Helper().plugin_finder(f'{plugins_path}/install')
-        self.osimage_plugins = Helper().plugin_finder(f'{plugins_path}/osimage')
         # self.detection_plugins = Helper().plugin_finder(f'{plugins_path}/detection')
         # self.DetectionPlugin=Helper().plugin_load(self.detection_plugins,'detection','switchport')
 
@@ -866,6 +865,7 @@ class Boot():
 
         data['osrelease'] = 'default'
         data['distribution'] = 'redhat'
+        data['systemroot'] = '/sysroot'
         if data['osimage']:
             osimage = Database().get_record(None, 'osimage', " WHERE name = '"+data['osimage']+"'")
             if osimage:
@@ -875,6 +875,7 @@ class Boot():
                 data['distribution'] = osimage[0]['distribution'] or 'redhat'
                 data['distribution'] = data['distribution'].lower()
                 data['osrelease'] = osimage[0]['osrelease'] or 'default'
+                data['systemroot'] = osimage[0]['systemroot'] or '/sysroot'
 
         if data['name']:
             nodeinterface = Database().get_record_join(
@@ -926,9 +927,6 @@ class Boot():
                             data['nodehostname'] = data['nodename'] + '.' + interface['network']
                             data['domain_search']=interface['network'] + ',' + data['domain_search']
 
-        ## SYSTEMROOT
-        osimage_plugin = Helper().plugin_load(self.osimage_plugins, 'osimage', data['distribution'], data['osrelease'])
-        data['systemroot'] = str(osimage_plugin().systemroot)
 
         ## FETCH CODE SEGMENT
         cluster_provision_methods = [data['provision_method'], data['provision_fallback']]

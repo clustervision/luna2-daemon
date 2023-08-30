@@ -361,9 +361,25 @@ def bootstrap(bootstrapfile=None):
         {'column': 'kernelversion', 'value': f'{osimage_kernelversion}'},
         {'column': 'path', 'value': f'{osimage_path}'},
         {'column': 'kernelmodules', 'value': 'ipmi_devintf, ipmi_si, ipmi_msghandler'},
-        {'column': 'distribution', 'value': 'redhat'}
+        {'column': 'distribution', 'value': 'redhat'},
+        {'column': 'systemroot', 'value': '/sysroot'}
      ]
     osimage = Database().insert('osimage', default_osimage)
+    ubuntu_path = None
+    if 'FILES' in CONSTANT and 'IMAGE_DIRECTORY' in CONSTANT['FILES']:
+        ubuntu_path = CONSTANT['FILES']['IMAGE_DIRECTORY'] + '/ubuntu'
+    ubuntu_osimage = [
+        {'column': 'name', 'value': 'ubuntu'},
+        {'column': 'dracutmodules', 'value': 'luna'},
+        {'column': 'grab_filesystems', 'value': '/, /boot'},
+        {'column': 'grab_exclude', 'value': '/proc/*, /sys/*, /dev/*, /tmp/*, /var/log/*'},
+        {'column': 'kernelversion', 'value': ''},
+        {'column': 'path', 'value': f'{ubuntu_path}'},
+        {'column': 'kernelmodules', 'value': 'ipmi_devintf, ipmi_si, ipmi_msghandler'},
+        {'column': 'distribution', 'value': 'ubuntu'},
+        {'column': 'systemroot', 'value': '$ROOT'}
+     ]
+    ubuntu = Database().insert('osimage', ubuntu_osimage)
 
     default_group = [
             {'column': 'name', 'value': str(BOOTSTRAP['GROUPS']['NAME'])},

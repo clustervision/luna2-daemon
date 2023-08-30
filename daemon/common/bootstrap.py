@@ -355,14 +355,12 @@ def bootstrap(bootstrapfile=None):
         osimage_kernelversion=osimage_kernelversion.decode('utf-8')
     default_osimage = [
         {'column': 'name', 'value': str(BOOTSTRAP['OSIMAGE']['NAME'])},
-        {'column': 'dracutmodules', 'value': 'luna, -18n, -plymouth'},
         {'column': 'grab_filesystems', 'value': '/, /boot'},
         {'column': 'grab_exclude', 'value': '/proc/*, /sys/*, /dev/*, /tmp/*, /var/log/*'},
         {'column': 'kernelversion', 'value': f'{osimage_kernelversion}'},
         {'column': 'path', 'value': f'{osimage_path}'},
         {'column': 'kernelmodules', 'value': 'ipmi_devintf, ipmi_si, ipmi_msghandler'},
-        {'column': 'distribution', 'value': 'redhat'},
-        {'column': 'systemroot', 'value': '/sysroot'}
+        {'column': 'distribution', 'value': 'redhat'}
      ]
     osimage = Database().insert('osimage', default_osimage)
 #    ubuntu_path = None
@@ -370,14 +368,12 @@ def bootstrap(bootstrapfile=None):
 #        ubuntu_path = CONSTANT['FILES']['IMAGE_DIRECTORY'] + '/ubuntu'
 #    ubuntu_osimage = [
 #        {'column': 'name', 'value': 'ubuntu'},
-#        {'column': 'dracutmodules', 'value': 'luna'},
 #        {'column': 'grab_filesystems', 'value': '/, /boot'},
 #        {'column': 'grab_exclude', 'value': '/proc/*, /sys/*, /dev/*, /tmp/*, /var/log/*'},
 #        {'column': 'kernelversion', 'value': ''},
 #        {'column': 'path', 'value': f'{ubuntu_path}'},
 #        {'column': 'kernelmodules', 'value': 'ipmi_devintf, ipmi_si, ipmi_msghandler'},
-#        {'column': 'distribution', 'value': 'ubuntu'},
-#        {'column': 'systemroot', 'value': '$rootmnt'}
+#        {'column': 'distribution', 'value': 'ubuntu'}
 #     ]
 #    ubuntu = Database().insert('osimage', ubuntu_osimage)
 

@@ -210,11 +210,7 @@ class OsImage(object):
                 if image[0]['osrelease']:
                     osrelease = str(image[0]['osrelease'])
 
-                ramdisk_modules, kernel_modules = [], []
-                if ramdisk_modules:
-                    ramdisk_modules = image[0]['dracutmodules'].split(',')
-                if kernel_modules:
-                    kernel_modules = image[0]['kernelmodules'].split(',')
+                kernel_modules = image[0]['kernelmodules'].split(',')
 
                 # loading the plugin depending on OS
                 OsImagePlugin=Helper().plugin_load(self.osimage_plugins,'osimage',distribution,osrelease)
@@ -226,8 +222,7 @@ class OsImage(object):
                                             image_path=image_path,
                                             files_path=files_path,
                                             kernel_version=kernel_version,
-                                            kernel_modules=kernel_modules,
-                                            ramdisk_modules=ramdisk_modules)
+                                            kernel_modules=kernel_modules)
                 ret=response[0]
                 mesg=response[1]
                 kernel_file,ramdisk_file=None,None

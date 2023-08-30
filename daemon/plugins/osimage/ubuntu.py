@@ -53,6 +53,10 @@ class Plugin():
 
     # ---------------------------------------------------------------------------
 
+    systemroot = "$rootmnt"
+
+    # ---------------------------------------------------------------------------
+
     def cleanup(self, osimage=None, files_path=None, current_packed_image_file=None, current_kernel_file=None, current_ramdisk_file=None):
         # files_path = is the location where the imagefile will be copied.
         # current_packed_image_file is the currently used packed image
@@ -167,12 +171,11 @@ class Plugin():
 
     # -------------------------------------------------------------------
 
-    def pack(self, osimage=None, image_path=None, files_path=None, kernel_version=None, kernel_modules=[], ramdisk_modules=[]):
+    def pack(self, osimage=None, image_path=None, files_path=None, kernel_version=None, kernel_modules=[]):
         # files_path = location where ramdisk+kernel are being stored
         # kernel_file = name of the kernel/vmlinuz file
         # ramdisk_file = name  of the ramdisk/initrd file
         # kernel_modules = list of drivers to be included/excluded
-        # ramdisk_modules = list of ramdisk modules to be included/excluded
 
         def mount(source, target, fs):
             try:
@@ -219,7 +222,8 @@ class Plugin():
 
 
         # add modules goes in /image/etc/initramfs-tools/modules
-        
+
+#        ramdisk_modules = []        
 #        if ramdisk_modules:
 #            for i in ramdisk_modules:
 #                s = i.replace(" ", "")

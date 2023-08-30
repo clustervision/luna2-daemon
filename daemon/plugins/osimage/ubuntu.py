@@ -38,7 +38,7 @@ class Plugin():
         - build  returns image_file_name upon success
         - cleanup
 
-        systemroot in osimage set default to $ROOT
+        systemroot in osimage set default to $ROOT or $rootmnt
         """
         self.logger = Log.get_logger()
 

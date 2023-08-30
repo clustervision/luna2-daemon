@@ -365,21 +365,21 @@ def bootstrap(bootstrapfile=None):
         {'column': 'systemroot', 'value': '/sysroot'}
      ]
     osimage = Database().insert('osimage', default_osimage)
-    ubuntu_path = None
-    if 'FILES' in CONSTANT and 'IMAGE_DIRECTORY' in CONSTANT['FILES']:
-        ubuntu_path = CONSTANT['FILES']['IMAGE_DIRECTORY'] + '/ubuntu'
-    ubuntu_osimage = [
-        {'column': 'name', 'value': 'ubuntu'},
-        {'column': 'dracutmodules', 'value': 'luna'},
-        {'column': 'grab_filesystems', 'value': '/, /boot'},
-        {'column': 'grab_exclude', 'value': '/proc/*, /sys/*, /dev/*, /tmp/*, /var/log/*'},
-        {'column': 'kernelversion', 'value': ''},
-        {'column': 'path', 'value': f'{ubuntu_path}'},
-        {'column': 'kernelmodules', 'value': 'ipmi_devintf, ipmi_si, ipmi_msghandler'},
-        {'column': 'distribution', 'value': 'ubuntu'},
-        {'column': 'systemroot', 'value': '$ROOT'}
-     ]
-    ubuntu = Database().insert('osimage', ubuntu_osimage)
+#    ubuntu_path = None
+#    if 'FILES' in CONSTANT and 'IMAGE_DIRECTORY' in CONSTANT['FILES']:
+#        ubuntu_path = CONSTANT['FILES']['IMAGE_DIRECTORY'] + '/ubuntu'
+#    ubuntu_osimage = [
+#        {'column': 'name', 'value': 'ubuntu'},
+#        {'column': 'dracutmodules', 'value': 'luna'},
+#        {'column': 'grab_filesystems', 'value': '/, /boot'},
+#        {'column': 'grab_exclude', 'value': '/proc/*, /sys/*, /dev/*, /tmp/*, /var/log/*'},
+#        {'column': 'kernelversion', 'value': ''},
+#        {'column': 'path', 'value': f'{ubuntu_path}'},
+#        {'column': 'kernelmodules', 'value': 'ipmi_devintf, ipmi_si, ipmi_msghandler'},
+#        {'column': 'distribution', 'value': 'ubuntu'},
+#        {'column': 'systemroot', 'value': '$rootmnt'}
+#     ]
+#    ubuntu = Database().insert('osimage', ubuntu_osimage)
 
     default_group = [
             {'column': 'name', 'value': str(BOOTSTRAP['GROUPS']['NAME'])},
@@ -394,6 +394,19 @@ def bootstrap(bootstrapfile=None):
             {'column': 'postscript', 'value': "ZWNobyAndG1wZnMgLyB0bXBmcyBkZWZhdWx0cyAwIDAnID4+IC9zeXNyb290L2V0Yy9mc3RhYgo="}
         ]
     Database().insert('group', default_group)
+#    ubuntu_group = [
+#            {'column': 'name', 'value': 'ubuntu'},
+#            {'column': 'setupbmc', 'value': '1'},
+#            {'column': 'bmcsetupid', 'value': '1'},
+#            {'column': 'domain', 'value': 'cluster'},
+#            {'column': 'netboot', 'value': '1'},
+#            {'column': 'localinstall', 'value': '0'},
+#            {'column': 'bootmenu', 'value': '0'},
+#            {'column': 'osimageid', 'value': ubuntu},
+#            {'column': 'partscript', 'value': "bW91bnQgLXQgdG1wZnMgdG1wZnMgIiRyb290bW50Igo="},
+#            {'column': 'postscript', 'value': "ZWNobyB0bXBmcyAvIHRtcGZzIGRlZmF1bHRzIDAgMCA+PiAiJHJvb3RtbnQiL2V0Yy9mc3RhYgo="}
+#        ]
+#    Database().insert('group', ubuntu_group)
     group = Database().get_record(None, 'group', None)
     groupid = group[0]['id']
     for nodex in BOOTSTRAP['HOSTS']['NODELIST']:

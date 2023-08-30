@@ -37,6 +37,8 @@ class Plugin():
         - pack   returns kernel_file_name,ramdisk_file_name upon success
         - build  returns image_file_name upon success
         - cleanup
+
+        systemroot in osimage set default to $ROOT
         """
         self.logger = Log.get_logger()
 

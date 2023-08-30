@@ -43,7 +43,7 @@ class Plugin():
     # the fetch variable defines the method used in the template to fetch the image_file
     # -------------------------------
     fetch = """
-    echo "Luna2: Downloading imagefile {{ WEBSERVER_PROTOCOL }}://{{ LUNA_CONTROLLER }}:{{ WEBSERVER_PORT }}/files/{{ LUNA_IMAGEFILE }} to /sysroot/{{ LUNA_IMAGEFILE }}"
-    curl -H "x-access-tokens: $LUNA_TOKEN" -s {{ WEBSERVER_PROTOCOL }}://{{ LUNA_CONTROLLER }}:{{ WEBSERVER_PORT }}/files/{{ LUNA_IMAGEFILE }} > /sysroot/{{ LUNA_IMAGEFILE }}
+    echo "Luna2: Downloading imagefile {{ WEBSERVER_PROTOCOL }}://{{ LUNA_CONTROLLER }}:{{ WEBSERVER_PORT }}/files/{{ LUNA_IMAGEFILE }} to /{{ LUNA_SYSTEMROOT }}/{{ LUNA_IMAGEFILE }}"
+    curl -H "x-access-tokens: $LUNA_TOKEN" -s {{ WEBSERVER_PROTOCOL }}://{{ LUNA_CONTROLLER }}:{{ WEBSERVER_PORT }}/files/{{ LUNA_IMAGEFILE }} > /{{ LUNA_SYSTEMROOT }}/{{ LUNA_IMAGEFILE }}
     return $?
     """

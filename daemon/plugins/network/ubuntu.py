@@ -37,7 +37,7 @@ fi
 cat << EOF >> $rootmnt/etc/netplan/99_config.yaml
     $DEVICE
       addresses:
-        - $IPADDRESS/$PREFIX
+        - $IPADDR/$PREFIX
       routes:
         - to: default
           via: __${DEVICE}_GATEWAY__

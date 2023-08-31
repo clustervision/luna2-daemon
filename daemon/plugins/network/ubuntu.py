@@ -35,7 +35,7 @@ EOF
 fi
 
 cat << EOF >> $rootmnt/etc/netplan/99_config.yaml
-    $DEVICE
+    ${DEVICE}:
       addresses:
         - $IPADDR/$PREFIX
       routes:
@@ -52,7 +52,7 @@ EOF
 
     hostname = """
         echo "$HOSTNAME" > /proc/sys/kernel/hostname
-        chroot $rootmnt "hostnamectl --static set-hostname $HOSTNAME"
+        chroot /root "hostnamectl --static set-hostname $HOSTNAME"
     """
 
     gateway = """
@@ -64,15 +64,15 @@ EOF
     dns = """
         sed -i 's/__'${DEVICE}'__SEARCH__/'$SEARCH'/' $rootmnt/etc/netplan/99_config.yaml
         sed -i 's/__'${DEVICE}'__NAMESERVER__/'$NAMESERVER'/' $rootmnt/etc/netplan/99_config.yaml
-        cd $rootmnt
+        cd /root
         echo "search $SEARCH" > /etc/resolv.conf
         echo "nameserver $NAMESERVER" >> /etc/resolv.conf
         cd -
-        chroot $rootmnt netplan apply
+        chroot /root netplan apply
     """
 
     ntp = """
-        cd $rootmnt
+        cd /root
         echo "server  $NTPSERVER" > etc/ntp.conf
         echo "fudge   $NTPSERVER stratum 10" >> etc/ntp.conf
         echo "driftfile /etc/ntp/drift" >> etc/ntp.conf

@@ -1254,24 +1254,6 @@ def config_get_os_user_list():
     return response, access_code
 
 
-@config_blueprint.route("/config/osgroup", methods=['GET'])
-@token_required
-def config_get_os_group_list():
-    """
-    Input - None
-    Process - List OSystem (ldap/ssd/pam) group.
-    Output - None.
-    """
-    access_code = 404
-    status, response = OsUser().list_groups()
-    if status is True:
-        access_code=200
-        response=dumps(response)
-    else:
-        response={'message': response}
-    return response, access_code
-
-
 @config_blueprint.route("/config/osuser/<string:name>", methods=['POST'])
 @token_required
 @validate_name
@@ -1300,6 +1282,24 @@ def config_post_os_user_delete(name=None):
     status, response = OsUser().delete_user(name)
     access_code=Helper().get_access_code(status,response)
     response = {'message': response}
+    return response, access_code
+
+
+@config_blueprint.route("/config/osgroup", methods=['GET'])
+@token_required
+def config_get_os_group_list():
+    """
+    Input - None
+    Process - List OSystem (ldap/ssd/pam) group.
+    Output - None.
+    """
+    access_code = 404
+    status, response = OsUser().list_groups()
+    if status is True:
+        access_code=200
+        response=dumps(response)
+    else:
+        response={'message': response}
     return response, access_code
 
 

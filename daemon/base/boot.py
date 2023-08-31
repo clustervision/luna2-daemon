@@ -80,6 +80,9 @@ class Boot():
                     webserver_port = CONSTANT['WEBSERVER']['PORT']
                 if 'PROTOCOL' in CONSTANT['WEBSERVER']:
                     webserver_protocol = CONSTANT['WEBSERVER']['PROTOCOL']
+            if CONSTANT['API']['PROTOCOL'] == 'https':
+                protocol = 'http'
+                serverport = webserver_port
 
             nodes, available_nodes = [], []
             all_nodes = Database().get_record(None, 'node')
@@ -152,6 +155,9 @@ class Boot():
                     webserver_port = CONSTANT['WEBSERVER']['PORT']
                 if 'PROTOCOL' in CONSTANT['WEBSERVER']:
                     webserver_protocol = CONSTANT['WEBSERVER']['PROTOCOL']
+            if CONSTANT['API']['PROTOCOL'] == 'https':
+                protocol = 'http'
+                serverport = webserver_port
             status=True
         else:
             environment = jinja2.Environment()
@@ -243,6 +249,9 @@ class Boot():
                     data['webserver_port'] = CONSTANT['WEBSERVER']['PORT']
                 if 'PROTOCOL' in CONSTANT['WEBSERVER']:
                     data['webserver_protocol'] = CONSTANT['WEBSERVER']['PROTOCOL']
+            if CONSTANT['API']['PROTOCOL'] == 'https':
+                data['protocol'] = 'http'
+                data['serverport'] = webserver_port
         nodeinterface = Database().get_record_join(
             ['nodeinterface.nodeid', 'nodeinterface.interface', 'ipaddress.ipaddress',
             'network.name as network', 'network.network as networkip', 'network.subnet'],
@@ -388,6 +397,9 @@ class Boot():
                     data['webserver_port'] = CONSTANT['WEBSERVER']['PORT']
                 if 'PROTOCOL' in CONSTANT['WEBSERVER']:
                     data['webserver_protocol'] = CONSTANT['WEBSERVER']['PROTOCOL']
+            if CONSTANT['API']['PROTOCOL'] == 'https':
+                data['protocol'] = 'http'
+                data['serverport'] = webserver_port
             if 'networkname' in controller[0]:
                 networkname = controller[0]['networkname']
             where = f" WHERE id='{controller[0]['clusterid']}'"
@@ -656,6 +668,9 @@ class Boot():
                     data['webserver_port'] = CONSTANT['WEBSERVER']['PORT']
                 if 'PROTOCOL' in CONSTANT['WEBSERVER']:
                     data['webserver_protocol'] = CONSTANT['WEBSERVER']['PROTOCOL']
+            if CONSTANT['API']['PROTOCOL'] == 'https':
+                data['protocol'] = 'http'
+                data['serverport'] = webserver_port
 
         # we probably have to cut the fqdn off of hostname?
         node = Database().get_record_join(

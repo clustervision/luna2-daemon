@@ -251,7 +251,7 @@ class Boot():
                     data['webserver_protocol'] = CONSTANT['WEBSERVER']['PROTOCOL']
             if CONSTANT['API']['PROTOCOL'] == 'https':
                 data['protocol'] = 'http'
-                data['serverport'] = webserver_port
+                data['serverport'] = data['webserver_port']
         nodeinterface = Database().get_record_join(
             ['nodeinterface.nodeid', 'nodeinterface.interface', 'ipaddress.ipaddress',
             'network.name as network', 'network.network as networkip', 'network.subnet'],
@@ -399,7 +399,7 @@ class Boot():
                     data['webserver_protocol'] = CONSTANT['WEBSERVER']['PROTOCOL']
             if CONSTANT['API']['PROTOCOL'] == 'https':
                 data['protocol'] = 'http'
-                data['serverport'] = webserver_port
+                data['serverport'] = data['webserver_port']
             if 'networkname' in controller[0]:
                 networkname = controller[0]['networkname']
             where = f" WHERE id='{controller[0]['clusterid']}'"
@@ -670,7 +670,7 @@ class Boot():
                     data['webserver_protocol'] = CONSTANT['WEBSERVER']['PROTOCOL']
             if CONSTANT['API']['PROTOCOL'] == 'https':
                 data['protocol'] = 'http'
-                data['serverport'] = webserver_port
+                data['serverport'] = data['webserver_port']
 
         # we probably have to cut the fqdn off of hostname?
         node = Database().get_record_join(

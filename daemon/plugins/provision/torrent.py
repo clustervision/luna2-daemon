@@ -48,7 +48,7 @@ class Plugin():
 
         host = server_ipaddress
         port = server_port
-        proto = server_proto or 'http'
+        proto = server_protocol or 'http'
 
         if (not host) or (not port):
             self.logger.error("Tracker host/port not configured.")

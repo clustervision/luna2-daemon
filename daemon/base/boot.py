@@ -979,7 +979,7 @@ class Boot():
         install_plugin = Helper().plugin_load(
             self.install_plugins,
             'install',
-            [data['nodename'],data['group']]
+            [data['nodename'],data['group'],data['distribution']]
         )
         for script in ['prescript', 'partscript', 'postscript']:
             segment = ""

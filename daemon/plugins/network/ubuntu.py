@@ -25,24 +25,6 @@ class Plugin():
         """
 
     interface = """
-
-#network:
-#  version: 2
-#  renderer: networkd
-#  ethernets:
-#    eth0:
-#      addresses:
-#        - 10.10.10.2/24
-#      routes:
-#        - to: default
-#          via: 10.10.10.1
-#      nameservers:
-#          search: [mydomain, otherdomain]
-#          addresses: [10.10.10.1, 1.1.1.1]
-#
-#
-#/etc/netplan/99_config.yaml
-
 if [ ! -f $rootmnt/etc/netplan/99_config.yaml ]; then
 cat << EOF > $rootmnt/etc/netplan/99_config.yaml
 network:
@@ -56,13 +38,14 @@ cat << EOF >> $rootmnt/etc/netplan/99_config.yaml
     $DEVICE
       addresses:
         - $IPADDRESS/$PREFIX
+      routes:
+        - to: default
+          via: __${DEVICE}_GATEWAY__
+      nameservers:
+          search: [__SEARCH__]
+          addresses: [__NAMESERVER__]
 EOF
-
-
-#        chroot $rootmnt "nmcli connection add con-name Connection_$DEVICE ifname $DEVICE type ethernet"
-#        #chroot $rootmnt "nmcli connection modify Connection_$DEVICE ipv4.addresses $IPADDRESS/$PREFIX"
-#        chroot $rootmnt "nmcli connection modify Connection_$DEVICE ipv4.addresses $IPADDRESS/$NETMASK"
-#        chroot $rootmnt "nmcli connection modify Connection_$DEVICE ipv4.method manual"
+        #$NETMASK
         #$ZONE
         #$OPTIONS
     """
@@ -73,12 +56,14 @@ EOF
     """
 
     gateway = """
-#        chroot $rootmnt "nmcli connection modify Connection_$DEVICE ipv4.gateway $GATEWAY"
-#        chroot $rootmnt "nmcli connection modify Connection_$DEVICE ipv4.route-metric $METRIC"
+        sed -i 's/__'${DEVICE}'_GATEWAY__/$GATEWAY/' $rootmnt/etc/netplan/99_config.yaml
+        # $METRIC
+
     """
 
     dns = """
-#        chroot $rootmnt "nmcli connection modify Connection_$DEVICE ipv4.dns $NAMESERVER ipv4.dns-search $SEARCH"
+        sed -i 's/__SEARCH__/$SEARCH/' $rootmnt/etc/netplan/99_config.yaml
+        sed -i 's/__NAMESERVER__/$NAMESERVER/' $rootmnt/etc/netplan/99_config.yaml
         cd $rootmnt
         echo "search $SEARCH" > /etc/resolv.conf
         echo "nameserver $NAMESERVER" >> /etc/resolv.conf

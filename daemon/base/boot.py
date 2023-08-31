@@ -921,6 +921,7 @@ class Boot():
                         data['interfaces'][interface['interface']] = {
                             'interface': interface['interface'],
                             'ipaddress': interface['ipaddress'],
+                            'prefix': interface['subnet'],
                             'network': node_nwk,
                             'netmask': netmask,
                             'networkname': interface['network'],

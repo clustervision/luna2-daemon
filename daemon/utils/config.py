@@ -53,7 +53,11 @@ class Config(object):
         if cluster and 'ntp_server' in cluster[0] and cluster[0]['ntp_server']:
             ntp_server = cluster[0]['ntp_server']
         dhcp_file = f"{CONSTANT['TEMPLATES']['TEMP_DIR']}/dhcpd.conf"
-        protocol = CONSTANT['API']['PROTOCOL']
+        serverport = 7050
+        if CONSTANT['API']['PROTOCOL'] == 'https' and 'WEBSERVER' in CONSTANT and 'PORT' in CONSTANT['WEBSERVER']:
+            # we rely on nginx serving non https stuff for e.g. /boot. 
+            # ipxe does support https but has issues dealing with self signed certificates
+            serverport = CONSTANT['WEBSERVER']['PORT']
         domain = None
         networks = Database().get_record(None, 'network', ' WHERE `dhcp` = 1')
         if networks:
@@ -71,7 +75,7 @@ class Config(object):
                 if controller:
                     domain = nwk['name']
                     subnet_block = self.dhcp_subnet(
-                        nwk['network'], netmask, protocol, controller[0]['ipaddress'], nwk['gateway'],
+                        nwk['network'], netmask, serverport, controller[0]['ipaddress'], nwk['gateway'],
                         nwk['dhcp_range_begin'], nwk['dhcp_range_end']
                     )
                 else:
@@ -193,7 +197,7 @@ class Config(object):
         return config
 
 
-    def dhcp_subnet(self, network=None, netmask=None, protocol=None, nextserver=None, gateway=None,
+    def dhcp_subnet(self, network=None, netmask=None, serverport=None, nextserver=None, gateway=None,
                     dhcp_range_start=None, dhcp_range_end=None):
         """
         This method prepare the network block for all DHCP enabled networks
@@ -202,7 +206,7 @@ class Config(object):
             subnet {network} netmask {netmask} {{
                 max-lease-time 28800;
                 if exists user-class and option user-class = "iPXE" {{
-                    filename "{protocol}://{nextserver}:7050/boot";
+                    filename "http://{nextserver}:{serverport}/boot";
                 }} else {{
                     if option client-architecture = 00:07 {{
                         filename "luna_ipxe.efi";

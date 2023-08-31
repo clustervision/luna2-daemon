@@ -55,7 +55,7 @@ class OsUser():
         This method will list all OS user groups.
         """
         try:
-            results = OsUserPlugin().list_groups()
+            results = self.OsUserPlugin().list_groups()
             ret = results[0]
             mesg = None
             if len(results) > 1:
@@ -82,7 +82,7 @@ class OsUser():
                 if item in data:
                     userinfo[item] = data[item]
             
-            results = OsUserPlugin().update_user(
+            results = self.OsUserPlugin().update_user(
                 username = userinfo['username'],
                 userid = userinfo['userid'],
                 pimarygroup = userinfo['primarygroup'],
@@ -105,7 +105,7 @@ class OsUser():
         This method will delete a OS users.
         """
         try:
-            results = OsUserPlugin().delete_user(name)
+            results = self.OsUserPlugin().delete_user(name)
             ret = results[0]
             mesg = None
             if len(results) > 1:
@@ -132,7 +132,7 @@ class OsUser():
                 if item in data:
                     groupinfo[item] = data[item]
             
-            results = OsUserPlugin().update_groups(
+            results = self.OsUserPlugin().update_groups(
                 groupname = groupinfo['groupname'],
                 groupid = groupinfo['groupid'],
                 users = groupinfo['users']
@@ -151,7 +151,7 @@ class OsUser():
         This method will delete a OS user group.
         """
         try:
-            results = OsUserPlugin().delete_group(name)
+            results = self.OsUserPlugin().delete_group(name)
             ret = results[0]
             mesg = None
             if len(results) > 1:

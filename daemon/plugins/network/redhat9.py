@@ -26,8 +26,8 @@ class Plugin():
 
     interface = """
         chroot /sysroot "nmcli connection add con-name Connection_$DEVICE ifname $DEVICE type ethernet"
-        #chroot /sysroot "nmcli connection modify Connection_$DEVICE ipv4.addresses $IPADDRESS/$PREFIX"
-        chroot /sysroot "nmcli connection modify Connection_$DEVICE ipv4.addresses $IPADDRESS/$NETMASK"
+        #chroot /sysroot "nmcli connection modify Connection_$DEVICE ipv4.addresses $IPADDR/$PREFIX"
+        chroot /sysroot "nmcli connection modify Connection_$DEVICE ipv4.addresses $IPADDR/$NETMASK"
         chroot /sysroot "nmcli connection modify Connection_$DEVICE ipv4.method manual"
         #$ZONE
         #$OPTIONS

@@ -25,32 +25,54 @@ class Plugin():
         """
 
     interface = """
-        chroot $rootmnt "nmcli connection add con-name Connection_$DEVICE ifname $DEVICE type ethernet"
-        #chroot $rootmnt "nmcli connection modify Connection_$DEVICE ipv4.addresses $IPADDRESS/$PREFIX"
-        chroot $rootmnt "nmcli connection modify Connection_$DEVICE ipv4.addresses $IPADDRESS/$NETMASK"
-        chroot $rootmnt "nmcli connection modify Connection_$DEVICE ipv4.method manual"
+if [ ! -f $rootmnt/etc/netplan/99_config.yaml ]; then
+cat << EOF > $rootmnt/etc/netplan/99_config.yaml
+network:
+  version: 2
+  renderer: networkd
+  ethernets:
+EOF
+fi
+
+cat << EOF >> $rootmnt/etc/netplan/99_config.yaml
+    ${DEVICE}:
+      addresses:
+        - $IPADDR/$PREFIX
+      routes:
+        - to: default
+          via: __${DEVICE}_GATEWAY__
+      nameservers:
+          search: [__${DEVICE}__SEARCH__]
+          addresses: [__${DEVICE}__NAMESERVER__]
+EOF
+        #$NETMASK
         #$ZONE
         #$OPTIONS
     """
 
     hostname = """
         echo "$HOSTNAME" > /proc/sys/kernel/hostname
-        chroot $rootmnt "hostnamectl --static set-hostname $HOSTNAME"
+        echo "$HOSTNAME" > $rootmnt/etc/hostname
+        chroot $rootmnt /usr/bin/hostnamectl --static set-hostname $HOSTNAME
     """
 
     gateway = """
-        chroot $rootmnt "nmcli connection modify Connection_$DEVICE ipv4.gateway $GATEWAY"
-        chroot $rootmnt "nmcli connection modify Connection_$DEVICE ipv4.route-metric $METRIC"
+        sed -i 's/__'${DEVICE}'_GATEWAY__/'$GATEWAY'/' $rootmnt/etc/netplan/99_config.yaml
+        # $METRIC
+
     """
 
     dns = """
-        chroot $rootmnt "nmcli connection modify Connection_$DEVICE ipv4.dns $NAMESERVER ipv4.dns-search $SEARCH"
+        sed -i 's/__'${DEVICE}'__SEARCH__/'$SEARCH'/' $rootmnt/etc/netplan/99_config.yaml
+        sed -i 's/__'${DEVICE}'__NAMESERVER__/'$NAMESERVER'/' $rootmnt/etc/netplan/99_config.yaml
+        echo "search $SEARCH" > $rootmnt/etc/resolv.conf
+        echo "nameserver $NAMESERVER" >> $rootmnt/etc/resolv.conf
+        chroot $rootmnt netplan apply
     """
 
     ntp = """
-        cd $rootmnt
-        echo "server  $NTPSERVER" > etc/ntp.conf
-        echo "fudge   $NTPSERVER stratum 10" >> etc/ntp.conf
-        echo "driftfile /etc/ntp/drift" >> etc/ntp.conf
+        echo "server  $NTPSERVER" > $rootmnt/etc/ntp.conf
+        echo "fudge   $NTPSERVER stratum 10" >> $rootmnt/etc/ntp.conf
+        echo "driftfile /etc/ntp/drift" >> $rootmnt/etc/ntp.conf
     """
 

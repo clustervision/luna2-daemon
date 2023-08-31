@@ -36,7 +36,7 @@ class Plugin():
     def __init__(self):
         self.logger = ""
 
-    def create(self, image_file=None, files_path=None, server_ipaddress=None, server_port=None):
+    def create(self, image_file=None, files_path=None, server_ipaddress=None, server_port=None, server_protocol=None):
         """
         This method will create a imagefile.
         """
@@ -48,11 +48,7 @@ class Plugin():
 
         host = server_ipaddress
         port = server_port
-        if 'TORRENTSERVER' in CONSTANT:
-            if 'PORT' in CONSTANT['TORRENTSERVER']:
-                port = CONSTANT['TORRENTSERVER']['PORT']
-            if 'HOST' in CONSTANT['TORRENTSERVER']:
-                host = CONSTANT['TORRENTSERVER']['HOST']
+        proto = server_proto or 'http'
 
         if (not host) or (not port):
             self.logger.error("Tracker host/port not configured.")
@@ -68,7 +64,7 @@ class Plugin():
         # torrent_file = files_path + '/' + image_file + ".torrent"
         torrent_file = image_file + ".torrent"
 
-        command = f"transmission-create -t http://{host}:{port}/announce -o {torrent_file} {image_file}"
+        command = f"transmission-create -t {proto}://{host}:{port}/announce -o {torrent_file} {image_file}"
         message, exit_code = Helper().runcommand(command, True, 600)
 
         if exit_code == 0:

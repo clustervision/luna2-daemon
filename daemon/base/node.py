@@ -119,7 +119,7 @@ class Node():
                         node['switch'] = switch[node['switchid']]['name'] or None
                 node['tpm_present'] = False
                 if node['tpm_uuid'] or node['tpm_sha256'] or node['tpm_pubkey']:
-                    node['tpm_present']=True
+                    node['tpm_present'] = True
                 del node['id']
                 del node['bmcsetupid']
                 del node['groupid']

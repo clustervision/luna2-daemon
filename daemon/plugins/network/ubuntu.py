@@ -52,6 +52,7 @@ EOF
 
     hostname = """
         echo "$HOSTNAME" > /proc/sys/kernel/hostname
+        echo "$HOSTNAME" > $rootmnt/etc/hostname
         chroot $rootmnt /usr/bin/hostnamectl --static set-hostname $HOSTNAME
     """
 

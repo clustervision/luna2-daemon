@@ -884,7 +884,7 @@ class Boot():
                 data['distribution'] = data['distribution'].lower()
                 data['osrelease'] = osimage[0]['osrelease'] or 'default'
 
-        if data['name']:
+        if 'nodename' in data and data['nodename']:
             nodeinterface = Database().get_record_join(
                 [
                     'nodeinterface.nodeid',
@@ -900,7 +900,7 @@ class Boot():
                     'network.zone as zone'
                 ],
                 ['network.id=ipaddress.networkid', 'ipaddress.tablerefid=nodeinterface.id', 'nodeinterface.nodeid=node.id'],
-                ['tableref="nodeinterface"', f"node.name='+{data['name']}+'"]
+                ['tableref="nodeinterface"', f"node.name='+{data['nodename']}+'"]
             )
             data['domain_search']=''
             if nodeinterface:

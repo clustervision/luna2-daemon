@@ -25,30 +25,30 @@ class Plugin():
         """
 
     interface = """
-        chroot /sysroot "nmcli connection add con-name Connection_$DEVICE ifname $DEVICE type ethernet"
-        #chroot /sysroot "nmcli connection modify Connection_$DEVICE ipv4.addresses $IPADDRESS/$PREFIX"
-        chroot /sysroot "nmcli connection modify Connection_$DEVICE ipv4.addresses $IPADDRESS/$NETMASK"
-        chroot /sysroot "nmcli connection modify Connection_$DEVICE ipv4.method manual"
+        chroot $rootmnt "nmcli connection add con-name Connection_$DEVICE ifname $DEVICE type ethernet"
+        #chroot $rootmnt "nmcli connection modify Connection_$DEVICE ipv4.addresses $IPADDRESS/$PREFIX"
+        chroot $rootmnt "nmcli connection modify Connection_$DEVICE ipv4.addresses $IPADDRESS/$NETMASK"
+        chroot $rootmnt "nmcli connection modify Connection_$DEVICE ipv4.method manual"
         #$ZONE
         #$OPTIONS
     """
 
     hostname = """
         echo "$HOSTNAME" > /proc/sys/kernel/hostname
-        chroot /sysroot "hostnamectl --static set-hostname $HOSTNAME"
+        chroot $rootmnt "hostnamectl --static set-hostname $HOSTNAME"
     """
 
     gateway = """
-        chroot /sysroot "nmcli connection modify Connection_$DEVICE ipv4.gateway $GATEWAY"
-        chroot /sysroot "nmcli connection modify Connection_$DEVICE ipv4.route-metric $METRIC"
+        chroot $rootmnt "nmcli connection modify Connection_$DEVICE ipv4.gateway $GATEWAY"
+        chroot $rootmnt "nmcli connection modify Connection_$DEVICE ipv4.route-metric $METRIC"
     """
 
     dns = """
-        chroot /sysroot "nmcli connection modify Connection_$DEVICE ipv4.dns $NAMESERVER ipv4.dns-search $SEARCH"
+        chroot $rootmnt "nmcli connection modify Connection_$DEVICE ipv4.dns $NAMESERVER ipv4.dns-search $SEARCH"
     """
 
     ntp = """
-        cd /sysroot
+        cd $rootmnt
         echo "server  $NTPSERVER" > etc/ntp.conf
         echo "fudge   $NTPSERVER stratum 10" >> etc/ntp.conf
         echo "driftfile /etc/ntp/drift" >> etc/ntp.conf

@@ -15,7 +15,6 @@ __status__      = 'Development'
 
 
 from utils.helper import Helper
-from utils.log import Log
 from common.constant import CONSTANT
 
 
@@ -28,11 +27,11 @@ class OsUser():
         """
         Default Constructor
         """
-        self.logger = Log.get_logger()
-        plugins_path=CONSTANT["PLUGINS"]["PLUGINS_DIR"]
-        self.osuser_plugins = Helper().plugin_finder(f'{plugins_path}/osuser')
+        plugins_path = CONSTANT["PLUGINS"]["PLUGINS_DIR"]
+        osuser_plugins = Helper().plugin_finder(f'{plugins_path}/osuser')
+        Plugin = Helper().plugin_load(osuser_plugins, 'osuser', ['obol'])
+        self.plugin = Plugin()
         # needs to be with constants. pending
-        self.OsUserPlugin = Helper().plugin_load(self.osuser_plugins, 'osuser', ['obol'])
 
 
     def list_users(self):
@@ -40,122 +39,110 @@ class OsUser():
         This method will list all OS users.
         """
         try:
-            results = self.OsUserPlugin().list_users()
-            ret = results[0]
-            mesg = None
-            if len(results) > 1:
-                mesg = results[1]
-            return ret, mesg
+            result_state, result_msg = self.plugin.list_users()
+            if result_state:
+                return True, [item.to_json() for item in result_msg]
+            else:
+                return False, result_msg
         except Exception as exp:
             return False, f'problem while listing Os Users: {exp}'
 
 
-    def list_groups(self):
+    def get_user(self, name):
         """
-        This method will list all OS user groups.
+        This method will list all OS users.
         """
         try:
-            results = self.OsUserPlugin().list_groups()
-            ret = results[0]
-            mesg = None
-            if len(results) > 1:
-                mesg = results[1]
-            return ret, mesg
+            result_state, result_msg = self.plugin.get_user(name)
+            if result_state:
+                return True, result_msg.to_json()
+            else:
+                return False, result_msg
         except Exception as exp:
-            return False, f'problem while listing Os Groups: {exp}'
+            return False, f'problem while getting Os User: {exp}'
 
-
-    def update_user(self, username, request_data):
+    def update_user(self, name, **kwargs):
         """
-        This method will update a OS users.
+        This method will list all OS users.
         """
-        data = None
-        if request_data and name in request_data['config']['user']:
-            data = request_data['config']['osuser'][name] 
-        if not data:
-            return False, "user details not provided"
         try:
-            userinfo={}
-            userinfo['username']=username
-            for item in ['userid', 'primarygroup', 'groups', 'fullname', 'homedir', 'shell']:
-                userinfo[item]=None
-                if item in data:
-                    userinfo[item] = data[item]
-            
-            results = self.OsUserPlugin().update_user(
-                username = userinfo['username'],
-                userid = userinfo['userid'],
-                pimarygroup = userinfo['primarygroup'],
-                groups = userinfo['groups'],
-                fullname = userinfo['fullname'],
-                homedir = userinfo['homedir'],
-                shell = userinfo['shell']
-            )
-            ret=results[0]
-            mesg = None
-            if len(results) > 1:
-                mesg = results[1]
-            return ret, mesg
+            user = self.plugin.osuser(**kwargs)
+            result_state, result_msg = self.plugin.update_user(name, user)
+            if result_state:
+                return True, result_msg
+            else:
+                return False, result_msg
         except Exception as exp:
-            return False, f'problem while updating Os Users: {exp}'
+            return False, f'problem while updating Os User: {exp}'
 
 
     def delete_user(self, name):
         """
-        This method will delete a OS users.
+        This method will list all OS users.
         """
         try:
-            results = self.OsUserPlugin().delete_user(name)
-            ret = results[0]
-            mesg = None
-            if len(results) > 1:
-                mesg = results[1]
-            return ret, mesg
+            result_state, result_msg = self.plugin.delete_user(name)
+            print(result_state, result_msg)
+            if result_state:
+                return True, result_msg
+            else:
+                return False, result_msg
         except Exception as exp:
-            return False, f'problem while deleting Os Users: {exp}'
+            return False, f'problem while deleting Os User: {exp}'
+        
 
-
-    def update_group(self, groupname, request_data):
+    def list_groups(self):
         """
-        This method will update a OS user group.
+        This method will list all OS groups.
         """
-        data = None
-        if request_data and name in request_data['config']['user']:
-            data = request_data['config']['osgroup'][name]           
-        if not data:
-            return False, "user details not provided" 
         try:
-            groupinfo = {}
-            groupinfo['groupname'] = groupname
-            for item in ['groupid','users']:
-                groupinfo[item] = None
-                if item in data:
-                    groupinfo[item] = data[item]
-            
-            results = self.OsUserPlugin().update_groups(
-                groupname = groupinfo['groupname'],
-                groupid = groupinfo['groupid'],
-                users = groupinfo['users']
-            )
-            ret = results[0]
-            mesg = None
-            if len(results) > 1:
-                mesg = results[1]
-            return ret, mesg
+            result_state, result_msg = self.plugin.list_groups()
+            if result_state:
+                return True, [item.to_json() for item in result_msg]
+            else:
+                return False, result_msg
         except Exception as exp:
-            return False, f'problem while updating Os Groups: {exp}'
+            return False, f'problem while listing Os Users: {exp}'
+
+
+    def get_group(self, name):
+        """
+        This method will list all OS groups.
+        """
+        try:
+            result_state, result_msg = self.plugin.get_group(name)
+            if result_state:
+                return True, result_msg.to_json()
+            else:
+                return False, result_msg
+        except Exception as exp:
+            return False, f'problem while getting Os User: {exp}'
+
+    def update_group(self, name, **kwargs):
+        """
+        This method will list all OS groups.
+        """
+        try:
+            group = self.plugin.osgroup(**kwargs)
+            result_state, result_msg = self.plugin.update_group(name, group)
+            if result_state:
+                return True, result_msg
+            else:
+                return False, result_msg
+        except Exception as exp:
+            return False, f'problem while updating Os User: {exp}'
 
 
     def delete_group(self, name):
         """
-        This method will delete a OS user group.
+        This method will list all OS groups.
         """
         try:
-            results = self.OsUserPlugin().delete_group(name)
-            ret = results[0]
-            mesg = None
-            if len(results) > 1:
-                mesg = results[1]
-            return ret, mesg
+            result_state, result_msg = self.plugin.delete_group(name)
+            print(result_state, result_msg)
+            if result_state:
+                return True, result_msg
+            else:
+                return False, result_msg
         except Exception as exp:
-            return False, f'problem while deleting Os Groups: {exp}'
+            return False, f'problem while deleting Os User: {exp}'

@@ -25,6 +25,9 @@ class Plugin():
         """
 
     interface = """
+if [ ! -d $rootmnt/etc/netplan/ ]; then
+    mkdir -p $rootmnt/etc/netplan/
+fi
 if [ ! -f $rootmnt/etc/netplan/99_config.yaml ]; then
 cat << EOF > $rootmnt/etc/netplan/99_config.yaml
 network:

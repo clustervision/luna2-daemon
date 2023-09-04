@@ -1,86 +1,66 @@
 from abc import ABC as AbstractBaseClass
-from dataclasses import dataclass, field
-from typing import List, Optional
+from typing import List, Dict, Optional
+from pydantic import BaseModel, Field
 
 
-@dataclass
-class OSUser(AbstractBaseClass):
+class OSUserData(BaseModel, extra='forbid'):
     """
     This class will be used to represent OS users.
     """
-    username: str
-    password: Optional[str] = field(default=None, repr=False)
-    group: Optional[str] = field(default=None, repr=False)
-    groups: Optional[List[str]] = field(default=None, repr=False)
-    uid: Optional[int] = field(default=None, repr=False)
-    gid: Optional[int] = field(default=None, repr=False)
-    surname: Optional[str] = field(default=None, repr=False)
-    givenname: Optional[str] = field(default=None, repr=False)
-    email: Optional[str] = field(default=None, repr=False)
-    phone: Optional[str] = field(default=None, repr=False)
-    shell: Optional[str] = field(default=None, repr=False)
-    homedir: Optional[str] = field(default=None, repr=False)
-    expire: Optional[int] = field(default=None, repr=False)
-    last_change: Optional[int] = field(default=None, repr=False)
+    # username: str
+    uid: Optional[int] = None
 
-    def to_json(self):
-        """
-        This method will convert the object to json.
-        """
-        return {
-            'username': self.username,
-            'password': self.password,
-            'group': self.group,
-            'groups': self.groups,
-            'uid': self.uid,
-            'gid': self.gid,
-            'surname': self.surname,
-            'givenname': self.givenname,
-            'email': self.email,
-            'phone': self.phone,
-            'shell': self.shell,
-            'homedir': self.homedir,
-            'expire': self.expire,
-            'last_change': self.last_change
-        }
+    groupname: Optional[str] = None
+    gid: Optional[int] = None
 
-@dataclass
-class OSGroup(object):
+    groups: Optional[List[str]] = None
+
+    password: Optional[str] = None
+    surname: Optional[str] = None
+    givenname: Optional[str] = None
+    email: Optional[str] = None
+    phone: Optional[str] = None
+    shell: Optional[str] = None
+    homedir: Optional[str] = None
+    expire: Optional[int] = None
+    last_change: Optional[int] = None
+
+class OSUserUpdateData(OSUserData, extra='forbid'):
+    """
+    This class will be used to represent update for OS users.
+    """
+    groupname: str = Field(exclude=True)
+    groups: List[str] = Field(exclude=True)
+    last_change: int = Field(exclude=True)
+
+class OSGroupData(BaseModel, extra='forbid'):
     """
     This class will be used to represent OS groups.
     """
-    groupname: str
-    gid: Optional[int] = field(default=None, repr=False)
-    users: Optional[List[str]] = field(default=None, repr=False)
+    # groupname: str
+    gid: Optional[int] = None
+    users: Optional[List[str]] = None
 
-    def to_json(self):
-        """
-        This method will convert the object to json.
-        """
-        return {
-            'groupname': self.groupname,
-            'gid': self.gid,
-            'users': self.users
-        }
+
 
 class OSUserPluginInterface(AbstractBaseClass):
     """
     This class will be used to represent OS user plugins.
     """
 
-    def list_users(self) -> (bool, List[OSUser] | str):
+    def list_users(self) -> (bool, List[Dict[str, OSUserData]] | str):
         """
         This method will list all OS users.
         """
         raise NotImplementedError
 
-    def get_user(self, username: str) -> (bool, OSUser | str):
+    def get_user(self, username: str) -> (bool, Dict[str, OSUserData]  | str):
         """
         This method will list all OS users.
         """
         raise NotImplementedError
 
-    def update_user(self, username: str, user: OSUser) -> (bool, str):
+    def update_user(self, username: str, user: OSUserUpdateData) -> (bool, str):
         """
         This method will update a OS users.
         """
@@ -92,19 +72,19 @@ class OSUserPluginInterface(AbstractBaseClass):
         """
         raise NotImplementedError
 
-    def list_groups(self) -> (bool, List[OSGroup] | str):
+    def list_groups(self) -> (bool, List[Dict[str, OSGroupData]]  | str):
         """
         This method will list all OS user groups.
         """
         raise NotImplementedError
 
-    def get_group(self, groupname: str) -> (bool, OSGroup | str):
+    def get_group(self, groupname: str) -> (bool, Dict[str, OSGroupData] | str):
         """
         This method will list all OS groups.
         """
         raise NotImplementedError
 
-    def update_group(self, groupname: str, group: OSGroup) -> (bool, str):
+    def update_group(self, groupname: str, group: OSGroupData) -> (bool, str):
         """
         This method will update a OS groups.
         """

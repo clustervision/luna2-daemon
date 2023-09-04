@@ -41,7 +41,7 @@ class OsUser():
         try:
             result_state, result_msg = self.plugin.list_users()
             if result_state:
-                return True, [item.to_json() for item in result_msg]
+                return True, [{item: data.dict()} for item, data in result_msg]
             else:
                 return False, result_msg
         except Exception as exp:
@@ -55,7 +55,7 @@ class OsUser():
         try:
             result_state, result_msg = self.plugin.get_user(name)
             if result_state:
-                return True, result_msg.to_json()
+                return True, result_msg.dict()
             else:
                 return False, result_msg
         except Exception as exp:
@@ -66,8 +66,8 @@ class OsUser():
         This method will list all OS users.
         """
         try:
-            user = self.plugin.osuser(**kwargs)
-            result_state, result_msg = self.plugin.update_user(name, user)
+            osuserdata = self.plugin.osuserdata(**kwargs)
+            result_state, result_msg = self.plugin.update_user(name, osuserdata)
             if result_state:
                 return True, result_msg
             else:
@@ -98,7 +98,7 @@ class OsUser():
         try:
             result_state, result_msg = self.plugin.list_groups()
             if result_state:
-                return True, [item.to_json() for item in result_msg]
+                return True, [{item: data.dict()} for item, data in result_msg]
             else:
                 return False, result_msg
         except Exception as exp:
@@ -112,7 +112,7 @@ class OsUser():
         try:
             result_state, result_msg = self.plugin.get_group(name)
             if result_state:
-                return True, result_msg.to_json()
+                return True, result_msg.dict()
             else:
                 return False, result_msg
         except Exception as exp:
@@ -123,8 +123,8 @@ class OsUser():
         This method will list all OS groups.
         """
         try:
-            group = self.plugin.osgroup(**kwargs)
-            result_state, result_msg = self.plugin.update_group(name, group)
+            osgroupdata = self.plugin.osgroupdata(**kwargs)
+            result_state, result_msg = self.plugin.update_group(name, osgroupdata)
             if result_state:
                 return True, result_msg
             else:
@@ -139,7 +139,6 @@ class OsUser():
         """
         try:
             result_state, result_msg = self.plugin.delete_group(name)
-            print(result_state, result_msg)
             if result_state:
                 return True, result_msg
             else:

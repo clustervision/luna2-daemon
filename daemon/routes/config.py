@@ -1246,9 +1246,9 @@ def config_get_os_user_list():
     """
     status, response = OsUser().list_users()
     if status is True:
-        return response, 200
+        return {"config": {"osuser": response}}, 200
     else:
-        return {'message': response}, 200
+        return {'message': response}, 500
 
 
 @config_blueprint.route("/config/osuser/<string:username>", methods=['GET'])
@@ -1260,7 +1260,7 @@ def config_get_os_user(username):
     """
     status, response = OsUser().get_user(username)
     if status is True:
-        return response, 200
+        return {"config": {"osuser": {username: response}}}, 200
     else:
         return {'message': response}, 404
 
@@ -1277,8 +1277,14 @@ def config_post_os_user(name=None):
     """
     userdata = request.json['config']['osuser'][name]
     status, response = OsUser().update_user(name, **userdata)
-    access_code = Helper().get_access_code(status, response)
-    return {'message': response}, access_code
+
+    if status is True:
+        if 'created' in response:
+            return {'message': response}, 201
+        else:
+            return {'message': response}, 200
+    else:
+        return {'message': response}, 500
 
 
 @config_blueprint.route("/config/osuser/<string:name>/_delete", methods=['GET'])
@@ -1291,9 +1297,11 @@ def config_post_os_user_delete(name=None):
     Output - None.
     """
     status, response = OsUser().delete_user(name)
-    access_code = Helper().get_access_code(status, response)
-    response = {'message': response}
-    return response, access_code
+
+    if status is True:
+        return {'message': response}, 200
+    else:
+        return {'message': response}, 404
 
 ########### OSGROUP
 @config_blueprint.route("/config/osgroup", methods=['GET'])
@@ -1304,10 +1312,11 @@ def config_get_os_group_list():
     Output - List of OSUsers (ldap/ssd/pam).
     """
     status, response = OsUser().list_groups()
+
     if status is True:
-        return response, 200
+        return {"config": {"osgroup": response}}, 200
     else:
-        return {'message': response}, 200
+        return {'message': response}, 500
 
 
 @config_blueprint.route("/config/osgroup/<string:groupname>", methods=['GET'])
@@ -1318,8 +1327,9 @@ def config_get_os_group(groupname):
     Process - Show info of OSUser (ldap/ssd/pam).
     """
     status, response = OsUser().get_group(groupname)
+
     if status is True:
-        return response, 200
+        return {"config": {"osgroup": {groupname: response}}}, 200
     else:
         return {'message': response}, 404
 
@@ -1336,8 +1346,14 @@ def config_post_os_group(name=None):
     """
     groupdata = request.json['config']['osgroup'][name]
     status, response = OsUser().update_group(name, **groupdata)
-    access_code = Helper().get_access_code(status, response)
-    return {'message': response}, access_code
+
+    if status is True:
+        if 'created' in response:
+            return {'message': response}, 201
+        else:
+            return {'message': response}, 200
+    else:
+        return {'message': response}, 500
 
 
 @config_blueprint.route("/config/osgroup/<string:name>/_delete", methods=['GET'])
@@ -1350,9 +1366,11 @@ def config_post_os_group_delete(name=None):
     Output - None.
     """
     status, response = OsUser().delete_group(name)
-    access_code = Helper().get_access_code(status, response)
-    response = {'message': response}
-    return response, access_code
+
+    if status is True:
+        return {'message': response}, 200
+    else:
+        return {'message': response}, 404
 
 
 @config_blueprint.route('/config/status/<string:request_id>', methods=['GET'])

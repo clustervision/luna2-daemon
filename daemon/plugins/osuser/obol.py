@@ -1,107 +1,57 @@
 import subprocess
 import json
-from typing import List
-from plugins.osuser.interface import OSUserPluginInterface, OSUser, OSGroup
+from typing import List, Tuple
+from plugins.osuser.interface import (
+    OSUserPluginInterface,
+    OSUserData,
+    OSUserUpdateData,
+    OSGroupData
+)
 
-
-
-# @dataclass
-# class OSUser(AbstractBaseClass):
-#     """
-#     This class will be used to represent OS users.
-#     """
-    # username: str
-    # password: Optional[str] = field(default=None, repr=False)
-    # group: Optional[str] = field(default=None, repr=False)
-    # groups: Optional[List[str]] = field(default=None, repr=False)
-    # uid: Optional[int] = field(default=None, repr=False)
-    # gid: Optional[int] = field(default=None, repr=False)
-    # surname: Optional[str] = field(default=None, repr=False)
-    # givenname: Optional[str] = field(default=None, repr=False)
-    # email: Optional[str] = field(default=None, repr=False)
-    # phone: Optional[str] = field(default=None, repr=False)
-    # shell: Optional[str] = field(default=None, repr=False)
-    # homedir: Optional[str] = field(default=None, repr=False)
-    # expire: Optional[int] = field(default=None, repr=False)
-    # last_change: Optional[int] = field(default=None, repr=False)
-
-#     def to_json(self):
-#         """
-#         This method will convert the object to json.
-#         """
-#         return {
-#             'username': self.username,
-#             'password': self.password,
-#             'group': self.group,
-#             'groups': self.groups,
-#             'uid': self.uid,
-#             'gid': self.gid,
-#             'surname': self.surname,
-#             'givenname': self.givenname,
-#             'email': self.email,
-#             'phone': self.phone,
-#             'shell': self.shell,
-#             'homedir': self.homedir
-#         }
-
-# @dataclass
-# class OSGroup(object):
-#     """
-#     This class will be used to represent OS groups.
-#     """
-#     groupname: str = field(default=None, repr=False)
-#     gid: Optional[int] = field(default=None, repr=False)
-#     users: Optional[List[str]] = field(default=None, repr=False)
-
-#     def to_json(self):
-#         """
-#         This method will convert the object to json.
-#         """
-#         return {
-#             'groupname': self.groupname,
-#             'gid': self.gid,
-#             'users': self.users
-#         }
 
 class Plugin(OSUserPluginInterface):
     """
     This class will be used to represent OS user plugins.
     """
-    osuser = OSUser
-    osgroup = OSGroup
+    osuserdata = OSUserData
+    osuserupdatedata = OSUserUpdateData
+    osgroupdata = OSGroupData
 
-    def list_users(self) -> (bool, List[OSUser]):
+    def list_users(self) -> (bool, List[Tuple[str, OSUserData]] | str):
         """
         This method will list all OS users.
         """
-        result = subprocess.run(['obol', 'user', 'list'], check=True, capture_output=True).stdout
-        usernames = result.decode('utf-8').strip().split('\n')
-        users = [OSUser(username=username) for username in usernames]
+        obol_cmd = ['obol', 'user', 'list']
+        result = subprocess.run(
+            obol_cmd,
+            check=False,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE)
+
+        if result.returncode != 0:
+            return False, f"[obol: {result}]"
+
+        usernames = result.stdout.decode('utf-8').strip().split('\n')
+        users = [ (username, OSUserData()) for username in usernames]
         return True, users
 
-    def get_user(self, username: str) -> (bool, OSUser):
+    def get_user(self, username: str) -> (bool, Tuple[str, OSUserData]  | str):
         """
         This method will list all OS users.
         """
-        result = subprocess.run(['obol', 'user', 'show', username], check=True, capture_output=True).stdout.decode('utf-8')
-        result_json = json.loads(result)
-        # sample output 
-        # {
-        #     "cn": "diegoo",
-        #     "gidNumber": "1070",
-        #     "homeDirectory": "/trinity/home/diegoo",
-        #     "loginShell": "/bin/bash",
-        #     "shadowExpire": "-1",
-        #     "shadowLastChange": "19599",
-        #     "shadowMax": "99999",
-        #     "shadowMin": "0",
-        #     "shadowWarning": "7",
-        #     "sn": "diegoo",
-        #     "uid": "diegoo",
-        #     "uidNumber": "1070",
-        #     "userPassword": "{SSHA}ac/F3HYdD+6sdNSxa4gE5E0QFYEXJzIL"
-        # }
-        user = OSUser(username=result_json['cn'],
+        obol_cmd = ['obol', 'user', 'show', username]
+        result = subprocess.run(
+            obol_cmd,
+            check=False,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE)
+        if result.returncode != 0:
+            return False, f"[obol: {result}]"
+        if result.stdout.decode('utf-8') == '':
+            return False, f"[cmd: {obol_cmd}][obol: user {username} not found]"
+        
+        result_json = json.loads(result.stdout.decode('utf-8').strip())
+        user = OSUserData(
                       gid=result_json['gidNumber'],
                       homedir=result_json['homeDirectory'],
                       shell=result_json['loginShell'],
@@ -109,76 +59,216 @@ class Plugin(OSUserPluginInterface):
                       uid=result_json['uidNumber'],
                       expire=result_json['shadowExpire'],
                       last_change=result_json['shadowLastChange'],
+                      password=result_json.get('userPassword')
                       )
         return True, user
 
-    def update_user(self, username: str, user: OSUser) -> (bool, str):
+    def update_user(self, username: str, user: OSUserUpdateData) -> (bool, str):
         """
         This method will update a OS users.
         """
-        if username != user.username:
-            return False, "username mismatch"
+        flags_mapping = {
+            'password': '--password',
+            'surname': '--sn',
+            'givenname': '--givenName',
+            'groupname': '--group',
+            'uid': '--uid',
+            'gid': '--gid',
+            'email': '--mail',
+            'phone': '--phone',
+            'shell': '--shell',
+            'groups': '--groups',
+            'expire': '--expire',
+            'homedir': '--home'
+        }
+        flags_formatting = {
+            'uid' : lambda uid: str(uid),
+            'gid' : lambda gid: str(gid),
+            'expire': lambda expire: str(expire),
+            'groups': lambda groups: ",".join(groups)
+        }
         
-        _, users = self.list_users()
-        usernames = [user.username for user in users]
-        if username not in usernames:
-            result = subprocess.run(['obol', 'user', 'add', username], check=True, capture_output=True).stdout.decode('utf-8')
-            return True, result
-        else:
-            result = subprocess.run(['obol', 'user', 'modify', username], check=True, capture_output=True).stdout.decode('utf-8')
-            return True, result
+        user_exist, old_user = self.get_user(username)
 
-    def delete_user(self, username: str) -> bool:
+        obol_flags = []
+        for key, flag in flags_mapping.items():
+            value = user.dict().get(key)
+            if value is None:
+                continue
+            if user_exist and (key in ['groupname', 'gid', 'groups']):
+                raise KeyError(f'cannot update {key}')
+            if user_exist and (value == old_user.dict().get(key)):
+                continue
+            obol_flags += [flag, flags_formatting.get(key, lambda x: x)(value)]
+
+        if user_exist:
+            obol_cmd = ['obol', 'user', 'modify', username, *obol_flags]
+        else:
+            obol_cmd = ['obol', 'user', 'add', username, *obol_flags]
+
+        result = subprocess.run(
+            obol_cmd,
+            check=False,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE)
+
+        if result.returncode != 0:
+            return False, f"[obol: {result}]"
+        if result.stdout.decode('utf-8') != '':
+            return False, f"[obol: {result}]"
+
+        if user_exist:
+            return True, f"[obol: user {username} updated]"
+        else:
+            return True, f"[obol: user {username} created]"
+
+    def delete_user(self, username: str) -> (bool, str):
         """
         This method will delete a OS users.
         """
-        result = subprocess.run(['obol', 'user', 'delete', username], check=True, capture_output=True).stdout.decode('utf-8')
-        return True, result
+        obol_cmd = ['obol', 'user', 'delete', username]
+        result = subprocess.run(
+            obol_cmd,
+            check=False,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE)
+        
+        if result.returncode != 0:
+            return False, f"[obol: {result}]"
+        if result.stdout.decode('utf-8') != '':
+            return False, f"[cmd: {obol_cmd}][obol: {result.stdout.decode('utf-8')}]"
+        
+        return True, f"[obol: user {username} deleted]"
 
-    def list_groups(self) -> (bool, List[OSGroup]):
+
+    def list_groups(self) -> (bool, List[Tuple[str, OSGroupData]]  | str):
         """
         This method will list all OS user groups.
         """
-        result = subprocess.run(['obol', 'group', 'list'], check=True, capture_output=True).stdout
-        lines = result.decode('utf-8').strip().split('\n')
+        obol_cmd = ['obol', 'group', 'list']
+        result = subprocess.run(
+            obol_cmd,
+            check=False,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE)
+
+        if result.returncode != 0:
+            return False, f"[cmd: {obol_cmd}][obol: {result.stderr.decode('utf-8')}]"
+
+        lines = result.stdout.decode('utf-8').strip().split('\n')
         group_items = [line.split(' ') for line in lines]
-        groups = [OSGroup(groupname=groupname, gid=gid) for gid, groupname in group_items]
+        groups = [(groupname, OSGroupData(gid=gid)) for gid, groupname in group_items]
         return True, groups
 
-    def get_group(self, groupname: str) -> (bool, OSGroup):
+    def get_group(self, groupname: str) -> (bool, Tuple[str, OSGroupData] | str):
         """
         This method will list all OS groups.
         """
-        result = subprocess.run(['obol', 'group', 'show', groupname], check=True, capture_output=True).stdout.decode('utf-8')
-        result_json = json.loads(result)
-        # sample output
-        # {
-        #     "cn": "admins",
-        #     "gidNumber": "150"
-        # }
-        group = OSGroup(groupname=result_json['cn'],
+        obol_cmd = ['obol', 'group', 'show', groupname]
+        result = subprocess.run(
+            obol_cmd,
+            check=False,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE)
+        
+        if result.returncode != 0:
+            return False, f"[obol: {result}]"
+        if result.stdout.decode('utf-8') == '':
+            return False, f"[cmd: {obol_cmd}][obol: group {groupname} not found]"
+
+        result_json = json.loads(result.stdout.decode('utf-8').strip())
+        group = OSGroupData(
                         gid=int(result_json['gidNumber']))
         return True, group
 
-    def update_group(self, groupname: str, group: OSGroup) -> bool:
+    def update_group(self, groupname: str, group: OSGroupData) -> (bool, str):
         """
         This method will update a OS groups.
         """
-        if groupname != group.groupname:
-            return False, "groupname mismatch"
-        
-        _, groups = self.list_groups()
-        groupnames = [group.groupname for group in groups]
-        if groupname not in groupnames:
-            result = subprocess.run(['obol', 'group', 'add', groupname], check=True, capture_output=True).stdout.decode('utf-8')
-            return True, result
+        group_exist, old_group = self.get_group(groupname)
+        if group_exist:
+            if group.gid is not None and group.gid != old_group.gid:
+                raise KeyError('cannot update gid')
         else:
-            result = subprocess.run(['obol', 'group', 'modify', groupname], check=True, capture_output=True).stdout.decode('utf-8')
-            return True, result
+            # Create group
+            flags_mapping = {
+                'gid': '--gid'
+            }
+            flags_formatting = {
+                'gid' : lambda gid: str(gid),
+            }
+            obol_flags = []
+            for key, flag in flags_mapping.items():
+                value = group.dict().get(key)
+                if value is not None:
+                    obol_flags += [flag, flags_formatting.get(key, lambda x: x)(value)]
+            obol_cmd = ['obol', 'group', 'add', groupname, *obol_flags]
+            result = subprocess.run(
+                obol_cmd,
+                check=False,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE)
 
-    def delete_group(self, groupname: str) -> bool:
+            if result.returncode != 0:
+                return False, f"[obol: {result}]"
+            if result.stdout.decode('utf-8') != '':
+                return False, f"[obol: {result}]"
+        
+        old_users = (old_group.users if group_exist else None) or []
+        new_users = group.users or []
+
+        users_to_add = [user for user in new_users if user not in old_users]
+        users_to_remove = [user for user in old_users if user not in new_users]
+
+        # Add users to group
+        if len(users_to_add) > 0:
+            obol_cmd = ['obol', 'group', 'addusers', groupname, *users_to_add]
+            result = subprocess.run(
+                obol_cmd,
+                check=False,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE)
+            
+            if result.returncode != 0:
+                return False, f"[obol: {result}]"
+            if result.stdout.decode('utf-8') != '':
+                return False, f"[obol: {result}]"
+        
+        # Remove users from group
+        if len(users_to_remove) > 0:
+            obol_cmd = ['obol', 'group', 'delusers', groupname, *users_to_remove]
+            result = subprocess.run(
+                obol_cmd,
+                check=False,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE)
+            
+            if result.returncode != 0:
+                return False, f"[obol: {result}]"
+            if result.stdout.decode('utf-8') != '':
+                return False, f"[obol: {result}]"
+        
+        if group_exist:
+            return True, f"[obol: group {groupname} updated]"
+        else:
+            return True, f"[obol: group {groupname} created]"
+
+
+    def delete_group(self, groupname: str) -> (bool, str):
         """
         This method will delete a OS groups.
         """
-        result = subprocess.run(['obol', 'group', 'delete', groupname], check=True, capture_output=True).stdout.decode('utf-8')
-        return True, result
+        obol_cmd = ['obol', 'group', 'delete', groupname]
+
+        result = subprocess.run(
+            obol_cmd,
+            check=False,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE)
+
+        if result.returncode != 0:
+            return False, f"[obol: {result}]"
+        if result.stdout.decode('utf-8') != '':
+            return False, f"[cmd: {obol_cmd}][obol: {result.stdout.decode('utf-8')}]"
+
+        return True, f"[obol: group {groupname} deleted]"

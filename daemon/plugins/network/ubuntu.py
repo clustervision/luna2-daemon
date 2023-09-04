@@ -25,6 +25,9 @@ class Plugin():
         """
 
     interface = """
+if [ ! -d $rootmnt/etc/netplan/ ]; then
+    mkdir -p $rootmnt/etc/netplan/
+fi
 if [ ! -f $rootmnt/etc/netplan/99_config.yaml ]; then
 cat << EOF > $rootmnt/etc/netplan/99_config.yaml
 network:
@@ -67,7 +70,7 @@ EOF
         sed -i 's/__'${DEVICE}'__NAMESERVER__/'$NAMESERVER'/' $rootmnt/etc/netplan/99_config.yaml
         echo "search $SEARCH" > $rootmnt/etc/resolv.conf
         echo "nameserver $NAMESERVER" >> $rootmnt/etc/resolv.conf
-        chroot $rootmnt netplan apply
+        chroot $rootmnt netplan apply 2> /dev/null
     """
 
     ntp = """

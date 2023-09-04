@@ -70,7 +70,7 @@ EOF
         sed -i 's/__'${DEVICE}'__NAMESERVER__/'$NAMESERVER'/' $rootmnt/etc/netplan/99_config.yaml
         echo "search $SEARCH" > $rootmnt/etc/resolv.conf
         echo "nameserver $NAMESERVER" >> $rootmnt/etc/resolv.conf
-        chroot $rootmnt netplan apply
+        chroot $rootmnt netplan apply 2> /dev/null
     """
 
     ntp = """

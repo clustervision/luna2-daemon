@@ -6,7 +6,7 @@ production:
   stage: production
   image: python:3.10.0-alpine
   only:
-    - ci/cd-test-omar
+    - main
   script:
     - python setup.py sdist bdist_wheel
     - apk add openssh-client

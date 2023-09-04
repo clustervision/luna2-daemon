@@ -30,3 +30,7 @@ on_exit = luna.on_exit              ## Called when service exits
 on_reload = luna.on_reload          ## Called when service reload
 worker_abort = luna.worker_abort    ## Called when a worker is killed
 #### Automated Process ####
+
+certfile = "/etc/pki/tls/mycert/cert.pem"
+keyfile = "/etc/pki/tls/mycert/key.pem"
+cert_reqs = 0

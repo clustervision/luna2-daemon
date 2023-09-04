@@ -210,7 +210,9 @@ class OsImage(object):
                 if image[0]['osrelease']:
                     osrelease = str(image[0]['osrelease'])
 
-                kernel_modules = image[0]['kernelmodules'].split(',')
+                kernel_modules = []
+                if image[0]['kernelmodules']:
+                    kernel_modules = image[0]['kernelmodules'].split(',')
 
                 # loading the plugin depending on OS
                 OsImagePlugin=Helper().plugin_load(self.osimage_plugins,'osimage',distribution,osrelease)

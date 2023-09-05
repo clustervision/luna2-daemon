@@ -95,9 +95,9 @@ cat << EOF > /sysroot/usr/local/luna/post-install.sh
 # to be run AFTER an install and only once
 # ---------------------------
 
-#LOCALBOOT=`grep luna_localboot /lib/dracut/modules.d/95luna/params.dat 2> /dev/null | cut -f2 -d'='`
-#if [ "$LOCALBOOT" == "1" ] || [ "$LOCALBOOT" == "yes" ]; then
-#	echo 'Luna: localboot so we wont alter the ramdisk'
+#LOCALBOOT=`grep luna_netboot /lib/dracut/modules.d/95luna/params.dat 2> /dev/null | cut -f2 -d'='`
+#if [ "$LOCALBOOT" == "0" ] || [ "$LOCALBOOT" == "no" ]; then
+#	echo 'Luna: no netboot so we wont alter the ramdisk'
 #	exit
 #fi
 echo 'Luna2: preparing the ramdisk for secure boot'

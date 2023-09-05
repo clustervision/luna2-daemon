@@ -409,7 +409,6 @@ def bootstrap(bootstrapfile=None):
         default_node = [
             {'column': 'name', 'value': str(nodex)},
             {'column': 'groupid', 'value': str(groupid)},
-            {'column': 'localboot', 'value': '0'},
             {'column': 'service', 'value': '0'},
         ]
         node_id = Database().insert('node', default_node)

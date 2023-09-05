@@ -373,7 +373,7 @@ class Config(object):
             forwarders = f"""
         // BEGIN forwarders
         forwarders {{
-            """\r
+            """
             for ip in forwarder:
                 forwarders += f"\n\t\t{ip};"
             forwarders += f"""

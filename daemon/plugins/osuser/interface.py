@@ -48,7 +48,7 @@ class OSUserPluginInterface(AbstractBaseClass):
     This class will be used to represent OS user plugins.
     """
 
-    def list_users(self) -> (bool, List[Dict[str, OSUserData]] | str):
+    def list_users(self) -> (bool, Dict[str, OSUserData] | str):
         """
         This method will list all OS users.
         """
@@ -72,7 +72,7 @@ class OSUserPluginInterface(AbstractBaseClass):
         """
         raise NotImplementedError
 
-    def list_groups(self) -> (bool, List[Dict[str, OSGroupData]]  | str):
+    def list_groups(self) -> (bool, Dict[str, OSGroupData]  | str):
         """
         This method will list all OS user groups.
         """

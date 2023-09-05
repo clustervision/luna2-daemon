@@ -41,7 +41,7 @@ class OsUser():
         try:
             result_state, result_msg = self.plugin.list_users()
             if result_state:
-                return True, [{item: data.dict()} for item, data in result_msg]
+                return True, {item: data.dict() for item, data in result_msg.items()}
             else:
                 return False, result_msg
         except Exception as exp:
@@ -98,7 +98,7 @@ class OsUser():
         try:
             result_state, result_msg = self.plugin.list_groups()
             if result_state:
-                return True, [{item: data.dict()} for item, data in result_msg]
+                return True, {item: data.dict() for item, data in result_msg.items()}
             else:
                 return False, result_msg
         except Exception as exp:

@@ -17,7 +17,7 @@ class Plugin(OSUserPluginInterface):
     osuserupdatedata = OSUserUpdateData
     osgroupdata = OSGroupData
 
-    def list_users(self) -> (bool, List[Tuple[str, OSUserData]] | str):
+    def list_users(self) -> (bool, Tuple[str, OSUserData] | str):
         """
         This method will list all OS users.
         """
@@ -32,7 +32,7 @@ class Plugin(OSUserPluginInterface):
             return False, f"[obol: {result}]"
 
         usernames = result.stdout.decode('utf-8').strip().split('\n')
-        users = [ (username, OSUserData()) for username in usernames]
+        users = { username: OSUserData() for username in usernames}
         return True, users
 
     def get_user(self, username: str) -> (bool, Tuple[str, OSUserData]  | str):
@@ -141,7 +141,7 @@ class Plugin(OSUserPluginInterface):
         return True, f"[obol: user {username} deleted]"
 
 
-    def list_groups(self) -> (bool, List[Tuple[str, OSGroupData]]  | str):
+    def list_groups(self) -> (bool, Tuple[str, OSGroupData]  | str):
         """
         This method will list all OS user groups.
         """
@@ -157,7 +157,7 @@ class Plugin(OSUserPluginInterface):
 
         lines = result.stdout.decode('utf-8').strip().split('\n')
         group_items = [line.split(' ') for line in lines]
-        groups = [(groupname, OSGroupData(gid=gid)) for gid, groupname in group_items]
+        groups = {groupname : OSGroupData(gid=gid) for gid, groupname in group_items}
         return True, groups
 
     def get_group(self, groupname: str) -> (bool, Tuple[str, OSGroupData] | str):

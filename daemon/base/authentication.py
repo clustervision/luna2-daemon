@@ -139,9 +139,9 @@ class Authentication():
         else:
             forward_data={}
             if 'username' in request_data:
-                forward_data['username']
+                forward_data['username']=request_data['username']
             if 'password' in request_data:
-                forward_data['password']
+                forward_data['password']=request_data['password']
             fstatus,fresponse = self.get_token(forward_data)
             if fstatus is False:
                 return fstatus, fresponse

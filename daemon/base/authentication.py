@@ -137,6 +137,14 @@ class Authentication():
                 else:
                     response = {'message' : 'invalid node'}
         else:
+            forward_data={}
+            if 'username' in request_data:
+                forward_data['username']
+            if 'password' in request_data:
+                forward_data['password']
+            fstatus,fresponse = self.get_token(forward_data)
+            if fstatus is False:
+                return fstatus, fresponse
             # we do not enforce security. just return the token
             # we store the string though
             if nodename and 'tpm_sha256' in request_data:

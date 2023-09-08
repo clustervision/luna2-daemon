@@ -72,6 +72,7 @@ class Boot():
             ipaddress = controller[0]['ipaddress']
             serverport = controller[0]['serverport']
             protocol = CONSTANT['API']['PROTOCOL']
+            verify_certificate = CONSTANT['API']['VERIFY_CERTIFICATE']
             webserver_port = serverport
             webserver_protocol = protocol
             if 'WEBSERVER' in CONSTANT:
@@ -116,6 +117,7 @@ class Boot():
             'WEBSERVER_PORT': webserver_port,
             'LUNA_API_PROTOCOL': protocol,
             'WEBSERVER_PROTOCOL': webserver_protocol,
+            'VERIFY_CERTIFICATE': verify_certificate,
             'NODES': nodes,
             'AVAILABLE_NODES': available_nodes,
             'GROUPS': groups
@@ -142,6 +144,7 @@ class Boot():
             ipaddress = controller[0]['ipaddress']
             serverport = controller[0]['serverport']
             protocol = CONSTANT['API']['PROTOCOL']
+            verify_certificate = CONSTANT['API']['VERIFY_CERTIFICATE']
             webserver_protocol = protocol
             webserver_port = serverport
             if 'WEBSERVER' in CONSTANT:
@@ -162,6 +165,7 @@ class Boot():
             'LUNA_API_PORT': serverport,
             'WEBSERVER_PORT': webserver_port,
             'LUNA_API_PROTOCOL': protocol,
+            'VERIFY_CERTIFICATE': verify_certificate,
             'WEBSERVER_PROTOCOL': webserver_protocol
         }
         return status, response
@@ -217,6 +221,7 @@ class Boot():
             'nodeip'        : None
         }
         data['protocol'] = CONSTANT['API']['PROTOCOL']
+        data['verify_certificate'] = CONSTANT['API']['VERIFY_CERTIFICATE']
         data['webserver_protocol'] = data['protocol']
         template_path = f'{CONSTANT["TEMPLATES"]["TEMPLATES_DIR"]}/{template}'
         check_template = Helper().check_jinja(template_path)
@@ -348,6 +353,7 @@ class Boot():
             'nodeip'        : None
         }
         data['protocol'] = CONSTANT['API']['PROTOCOL']
+        data['verify_certificate'] = CONSTANT['API']['VERIFY_CERTIFICATE']
         data['webserver_protocol'] = data['protocol']
         template_path = f'{CONSTANT["TEMPLATES"]["TEMPLATES_DIR"]}/{template}'
         check_template = Helper().check_jinja(template_path)
@@ -629,6 +635,7 @@ class Boot():
             'nodeip'        : None
         }
         data['protocol'] = CONSTANT['API']['PROTOCOL']
+        data['verify_certificate'] = CONSTANT['API']['VERIFY_CERTIFICATE']
         data['webserver_protocol'] = data['protocol']
         template_path = f'{CONSTANT["TEMPLATES"]["TEMPLATES_DIR"]}/{template}'
         check_template = Helper().check_jinja(template_path)
@@ -781,6 +788,7 @@ class Boot():
             'bmc'                   : {}
         }
         data['protocol'] = CONSTANT['API']['PROTOCOL']
+        data['verify_certificate'] = CONSTANT['API']['VERIFY_CERTIFICATE']
         data['webserver_protocol'] = data['protocol']
         template_path = f'{CONSTANT["TEMPLATES"]["TEMPLATES_DIR"]}/{template}'
         check_template = Helper().check_jinja(template_path)
@@ -876,7 +884,7 @@ class Boot():
                 data['distribution'] = data['distribution'].lower()
                 data['osrelease'] = osimage[0]['osrelease'] or 'default'
 
-        if data['name']:
+        if data['nodename']:
             nodeinterface = Database().get_record_join(
                 [
                     'nodeinterface.nodeid',
@@ -892,7 +900,7 @@ class Boot():
                     'network.zone as zone'
                 ],
                 ['network.id=ipaddress.networkid', 'ipaddress.tablerefid=nodeinterface.id', 'nodeinterface.nodeid=node.id'],
-                ['tableref="nodeinterface"', f"node.name='+{data['name']}+'"]
+                ['tableref="nodeinterface"', f"node.name='{data['nodename']}'"]
             )
             data['domain_search']=''
             if nodeinterface:
@@ -913,6 +921,7 @@ class Boot():
                         data['interfaces'][interface['interface']] = {
                             'interface': interface['interface'],
                             'ipaddress': interface['ipaddress'],
+                            'prefix': interface['subnet'],
                             'network': node_nwk,
                             'netmask': netmask,
                             'networkname': interface['network'],
@@ -971,7 +980,7 @@ class Boot():
         install_plugin = Helper().plugin_load(
             self.install_plugins,
             'install',
-            [data['nodename'],data['group']]
+            [data['nodename'],data['group'],data['distribution']]
         )
         for script in ['prescript', 'partscript', 'postscript']:
             segment = ""

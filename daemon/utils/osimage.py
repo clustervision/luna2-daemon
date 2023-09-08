@@ -210,7 +210,9 @@ class OsImage(object):
                 if image[0]['osrelease']:
                     osrelease = str(image[0]['osrelease'])
 
-                kernel_modules = image[0]['kernelmodules'].split(',')
+                kernel_modules = []
+                if image[0]['kernelmodules']:
+                    kernel_modules = image[0]['kernelmodules'].split(',')
 
                 # loading the plugin depending on OS
                 OsImagePlugin=Helper().plugin_load(self.osimage_plugins,'osimage',distribution,osrelease)
@@ -576,11 +578,12 @@ class OsImage(object):
                         mesg=f"Imagefile for {osimage} does not exist?"
                         return False
            
-                    server_ipaddress,server_port=None,None
+                    server_ipaddress,server_port,server_protocol=None,None,None
                     controller = Database().get_record_join(['controller.*','ipaddress.ipaddress'], ['ipaddress.tablerefid=controller.id'],['tableref="controller"','controller.hostname="controller"'])
                     if controller:
-                        server_ipaddress   = controller[0]['ipaddress']
-                        server_port  = controller[0]['serverport']
+                        server_ipaddress = controller[0]['ipaddress']
+                        server_port     = controller[0]['serverport']
+                        server_protocol = CONSTANT['API']['PROTOCOL']
          
                     ##path_to_store = f"{image[0]['path']}/boot"  # <-- we will store all files in this path, but add the name of the image to it.
                     if 'FILES' not in CONSTANT:
@@ -596,7 +599,8 @@ class OsImage(object):
                         ret,mesg=ProvisionPlugin().create(image_file=image[0]['imagefile'],
                                                           files_path=files_path,
                                                           server_ipaddress=server_ipaddress,
-                                                          server_port=server_port)
+                                                          server_port=server_port,
+                                                          server_protocol=server_protocol)
 
                         sleep(1) # needed to prevent immediate concurrent access to the database. Pooling,WAL,WIF,WAF,etc won't fix this. Only sleep
                         if ret:

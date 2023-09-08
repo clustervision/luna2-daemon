@@ -119,7 +119,7 @@ class Node():
                         node['switch'] = switch[node['switchid']]['name'] or None
                 node['tpm_present'] = False
                 if node['tpm_uuid'] or node['tpm_sha256'] or node['tpm_pubkey']:
-                    node['tpm_present']=True
+                    node['tpm_present'] = True
                 del node['id']
                 del node['bmcsetupid']
                 del node['groupid']
@@ -129,7 +129,6 @@ class Node():
                 node['status'], *_ = Monitor().installer_state(node['status'])
 
                 node['bootmenu'] = Helper().make_bool(node['bootmenu'])
-                node['localboot'] = Helper().make_bool(node['localboot'])
                 node['localinstall'] = Helper().make_bool(node['localinstall'])
                 node['netboot'] = Helper().make_bool(node['netboot'])
                 node['service'] = Helper().make_bool(node['service'])
@@ -310,7 +309,6 @@ class Node():
             node['status'], *_ = Monitor().installer_state(node['status'])
             node['service'] = Helper().make_bool(node['service'])
             node['setupbmc'] = Helper().make_bool(node['setupbmc'])
-            node['localboot'] = Helper().make_bool(node['localboot'])
             node['interfaces'] = []
             node_interface = Database().get_record_join(
                 [
@@ -357,7 +355,6 @@ class Node():
             # 'localinstall': False,
             # 'bootmenu': False,
             'service': False,
-            'localboot': False
         }
         # minimal required items with defaults. we do inherit things from e.g. groups. but that's
         # real time and not here
@@ -571,7 +568,7 @@ class Node():
     def clone_node(self, name=None, request_data=None):
         """This method will clone a node."""
         data = {}
-        items = {'service': False, 'localboot': False}
+        items = {'service': False}
         status=False
         response="Internal error"
         if request_data:

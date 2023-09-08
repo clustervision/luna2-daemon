@@ -124,7 +124,6 @@ class Plugin():
                     # doc[name]['portname'] = portname
 
         with open('/tmp/switchports.dat','a', encoding='utf-8') as switchport_file:
-            switchport_file.write(var)
             for switch in doc.keys():
                 for port in switch.keys():
                     switchport_file.write(f"{switch}={port}={switch[port]}")

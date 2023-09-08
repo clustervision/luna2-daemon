@@ -68,6 +68,7 @@ class Plugin():
             # ifname_oid = switches[switch]['ifname_oid'] or '.1.3.6.1.2.1.17.1.4.1.2'
             read = switches[switch]['read']
             rw = switches[switch]['rw']
+            doc[name] = {}
             uplinks = [] 
             if 'uplinkports' in switches[switch] and switches[switch]['uplinkports']:
                 uplinks_str = switches[switch]['uplinkports']

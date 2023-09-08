@@ -16,7 +16,6 @@ __status__      = 'Development'
 
 from utils.log import Log
 from utils.helper import Helper
-import netsnmp
 
 
 class Plugin():
@@ -28,7 +27,7 @@ class Plugin():
 
     def __init__(self):
         self.logger = Log.get_logger()
-
+        self.create_script()
 
     def find(self, macaddress=None):
         """
@@ -56,75 +55,72 @@ class Plugin():
     
     def scan(self, switches={}):
         """
-        switches is a dict that contains: switches { id: { name: , oid:, read:, rw:, ipaddress: } }
+        switches is a dict that contains: switches { id: { name: , oid:, read:, rw:, ipaddress, uplinkports: } }
         """
         doc = {}
         # empty what we have
         open('/tmp/switchports.dat', 'w', encoding='utf-8').close()
         for switch in switches.keys():
             name = switches[switch]['name']
-            ipaddress = switches[switch]['name']
+            ipaddress = switches[switch]['ipaddress']
             oid = switches[switch]['oid']
             # port_oid = switches[switch]['port_oid'] or '.1.3.6.1.2.1.31.1.1.1.1'
             # ifname_oid = switches[switch]['ifname_oid'] or '.1.3.6.1.2.1.17.1.4.1.2'
             read = switches[switch]['read']
             rw = switches[switch]['rw']
+            uplinks = [] 
+            if 'uplinkports' in switches[switch] and switches[switch]['uplinkports']:
+                uplinks_str = switches[switch]['uplinkports']
+                uplinks_str = uplinks_str.replace(' ','')
+                uplinks = uplinks_str.split(',')
             self.logger.debug(f"Walking for {name} ...")
 
-            if ipaddress and read and oid:
-                vl = netsnmp.VarList(netsnmp.Varbind(oid))
-                res = netsnmp.snmpwalk(vl, Version=2, DestHost=ipaddress, Community=read, UseNumeric=True)
+            bash_command = f"/bin/bash /tmp/switchprobe.sh '{ipaddress}' '{oid}'"
+            output, exit_code = Helper().runcommand(bash_command,True,60)
+            if output and exit_code == 0:
+                all_data = output[0].decode().split('\n')
+                for port_data in all_data:
+                    if not port_data:
+                        continue
+                    _port, _mac = port_data.split('=')
+                    if _port in uplinks:
+                        continue
+                    doc[name][_port] = _mac
 
-                # vl_ifnames = netsnmp.VarList(netsnmp.Varbind(ifname_oid))
-                # ifnames = netsnmp.snmpwalk(vl_ifnames, Version=2, DestHost=ipaddress, Community=read, UseNumeric=True)
-
-                # vl_portmap = netsnmp.VarList(netsnmp.Varbind(port_oid))
-                # portmap = netsnmp.snmpwalk(vl_portmap, Version=2, DestHost=ipaddress, Community=read, UseNumeric=True)
-
-                # portmaps = {}
-                # for i in range(len(vl_portmap)):
-                #     if vl_portmap[i].iid:
-                #         pornnum = vl_portmap[i].iid
-                #     else:
-                #         pornnum = vl_portmap[i].tag.split('.')[-1:][0]
-
-                #     try:
-                #         portmaps[int(pornnum)] = int(vl_portmap[i].val)
-                #     except:
-                #         pass
-
-                # portnums = {}
-                # for i in range(len(vl_ifnames)):
-                #     if vl_ifnames[i].iid:
-                #         pornnum = vl_ifnames[i].iid
-                #     else:
-                #         pornnum = vl_ifnames[i].tag.split('.')[-1:][0]
-
-                #     tmpvar = vl_ifnames[i]
-                #     try:
-                #         portnums[int(pornnum)] = str(vl_ifnames[i].val)
-                #     except:
-                #         pass
-
-                doc[name]={}
-                for i in enumerate(vl):
-                    mac = ''
-                    port = str(vl[i].val)
-
-                    # try:
-                    #     portname = portnums[portmaps[int(vl[i].val)]]
-                    # except KeyError:
-                    #     portname = port
-
-                    for elem in vl[i].tag.split('.')[-5:]:
-                        mac += hex(int(elem)).split('x')[1].zfill(2) + ':'
-
-                    mac += hex(int(vl[i].iid)).split('x')[1].zfill(2)
-                    doc[name][port] = mac
-                    # doc[name]['portname'] = portname
+        self.logger.debug(f"DOC: {doc}")
 
         with open('/tmp/switchports.dat','a', encoding='utf-8') as switchport_file:
             for switch in doc.keys():
-                for port in switch.keys():
-                    switchport_file.write(f"{switch}={port}={switch[port]}")
- 
+                for port in doc[switch].keys():
+                    switchport_file.write(f"{switch}={port}={doc[switch][port]}\n")
+
+
+    def create_script(self):
+        SCRIPT = """
+#!/bin/bash
+
+HOST=$1
+OID=$2
+
+for string in `snmpwalk -v 2c -c public $HOST $OID -O qn|sed -e "s/^\.//g" -e "s/ /./g"`; do
+    decmac=$(echo $string|awk -F "." '{print $15";"$16";"$17";"$18";"$19";"$20}')
+    vlan=$(echo $string|awk -F "." '{print $14 }')
+    mac=""
+    for hex in `echo "obase=16; $decmac"|bc`; do
+    if [ ${#hex} == "1" ]; then
+        hex="0"$hex
+    fi
+    if [ -z $mac ]; then
+        mac=$hex
+    else
+        mac=$mac":"$hex
+    fi
+    done
+    port=$(echo $string|awk -F "." '{print $21}')
+    echo "${port}=${mac}"
+done
+"""
+        with open('/tmp/switchprobe.sh','w', encoding='utf-8') as probe_script:
+            probe_script.write(f"{SCRIPT}")
+
+

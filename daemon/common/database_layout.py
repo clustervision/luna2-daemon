@@ -148,7 +148,7 @@ DATABASE_LAYOUT_switch = [
 {"column": "oid",                  "datatype": "VARCHAR", "length": "60"},
 {"column": "read",                 "datatype": "VARCHAR", "length": "60"},
 {"column": "rw",                   "datatype": "VARCHAR", "length": "60"},
-{"column": "uplinkports"           "datatype": "VARCHAR", "length": "60"},
+{"column": "uplinkports",          "datatype": "VARCHAR", "length": "60"},
 {"column": "comment",              "datatype": "VARCHAR", "length": "60"}]
 
 DATABASE_LAYOUT_otherdevices = [

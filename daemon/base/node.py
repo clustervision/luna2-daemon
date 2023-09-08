@@ -301,6 +301,9 @@ class Node():
             except Exception as exp:
                 self.logger.error(f"{exp}")
 
+            for my_tpm in ['tpm_uuid','tpm_sha256','tpm_pubkey']:
+                if not node[my_tpm]:
+                    node[my_tpm]=None
             del node['id']
             del node['bmcsetupid']
             del node['groupid']

@@ -146,7 +146,7 @@ class Housekeeper(object):
                         if switches:
                              for switch in switches:
                                 doc[switch['name']]={}
-                                for elem in ['name','oid','rw','read','ipaddress']:
+                                for elem in ['name','oid','rw','read','ipaddress','uplinkports']:
                                     doc[switch['name']][elem]=switch[elem]
                              DetectionPlugin().scan(doc)                            
    

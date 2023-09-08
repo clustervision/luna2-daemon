@@ -195,7 +195,7 @@ class Control():
                         password = password
                     )
                 case _:
-                    return_code, message = False, "NO-Match"
+                    return_code, message = False, "Instruction not implemented"
 
             self.logger.debug(f"return_code=[{return_code}], mesg=[{message}]")
 

@@ -266,6 +266,8 @@ def bootstrap(bootstrapfile=None):
     cluster = Database().get_record(None, 'cluster', None)
     clusterid = cluster[0]['id']
     for nwkx in BOOTSTRAP['NETWORKS'].keys():
+        if BOOTSTRAP['NETWORKS'][nwkx] is None:
+            continue
         network_details=Helper().get_network_details(BOOTSTRAP['NETWORKS'][nwkx]['NETWORK'])
         defaultgw_ip=defaultserver_ip
         dhcp,dhcp_range_begin,dhcp_range_end=0,None,None
@@ -462,6 +464,7 @@ def bootstrap(bootstrapfile=None):
         {'column': 'name', 'value': bmcsetup_name},
         {'column': 'userid', 'value': '2'},
         {'column': 'netchannel', 'value': '1'},
+        {'column': 'mgmtchannel', 'value': '1'},
         {'column': 'username', 'value': str(BOOTSTRAP['BMCSETUP']['USERNAME'])},
         {'column': 'password', 'value': str(BOOTSTRAP['BMCSETUP']['PASSWORD'])}
     ]

@@ -9,12 +9,8 @@ class OSUserData(BaseModel, extra='forbid'):
     """
     # username: str
     uid: Optional[int] = None
-
-    groupname: Optional[str] = None
     gid: Optional[int] = None
-
     groups: Optional[List[str]] = None
-
     password: Optional[str] = None
     surname: Optional[str] = None
     givenname: Optional[str] = None
@@ -29,8 +25,7 @@ class OSUserUpdateData(OSUserData, extra='forbid'):
     """
     This class will be used to represent update for OS users.
     """
-    groupname: str = Field(exclude=True)
-    groups: List[str] = Field(exclude=True)
+    groupname: Optional[str] = None
     last_change: int = Field(exclude=True)
 
 class OSGroupData(BaseModel, extra='forbid'):

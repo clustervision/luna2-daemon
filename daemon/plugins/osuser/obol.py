@@ -1,15 +1,48 @@
 import subprocess
 import json
-from typing import List, Tuple
-from plugins.osuser.interface import (
-    OSUserPluginInterface,
-    OSUserData,
-    OSUserUpdateData,
-    OSGroupData
-)
 import sys
+from typing import List, Dict, Optional, Tuple
+from pydantic import BaseModel, Field
 
-class Plugin(OSUserPluginInterface):
+
+
+class OSUserData(BaseModel, extra='forbid'):
+    """
+    This class will be used to represent OS users.
+    """
+    # username: str
+    uid: Optional[int] = None
+    gid: Optional[int] = None
+    groups: Optional[List[str]] = None
+    password: Optional[str] = None
+    surname: Optional[str] = None
+    givenname: Optional[str] = None
+    email: Optional[str] = None
+    phone: Optional[str] = None
+    shell: Optional[str] = None
+    homedir: Optional[str] = None
+    expire: Optional[int] = None
+    last_change: Optional[int] = None
+
+class OSUserUpdateData(OSUserData, extra='forbid'):
+    """
+    This class will be used to represent update for OS users.
+    """
+    groupname: Optional[str] = None
+    last_change: int = Field(exclude=True)
+
+class OSGroupData(BaseModel, extra='forbid'):
+    """
+    This class will be used to represent OS groups.
+    """
+    # groupname: str
+    gid: Optional[int] = None
+    users: Optional[List[str]] = None
+
+
+
+
+class Plugin():
     """
     This class will be used to represent OS user plugins.
     """

@@ -43,10 +43,8 @@ class Plugin():
                         line = line.strip()
                         switch, port,mac = line.split('=')
                         self.logger.debug(f"{switch} {port} {mac}")
-                        if mac == macaddress:
+                        if mac.lower() == macaddress.lower():
                             self.logger.info(f"Found positive match for {mac} on {switch}:{port}")
-                            status = True
-                            response = f"{switch}", f"{port}"
                             return True, f"{switch}", f"{port}"
             except Exception as exp:
                 self.logger.error(f"plugin threw one.... : {exp}")

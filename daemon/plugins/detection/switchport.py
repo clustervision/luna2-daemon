@@ -16,6 +16,7 @@ __status__      = 'Development'
 
 from utils.log import Log
 from utils.helper import Helper
+import os
 
 
 class Plugin():
@@ -27,6 +28,9 @@ class Plugin():
 
     def __init__(self):
         self.logger = Log.get_logger()
+        self.working_path = "/trinity/local/var/lib/luna/detection"
+        if not os.path.exists(self.working_path):
+            os.makedirs(self.working_path)
         self.create_script()
 
     def find(self, macaddress=None):
@@ -37,7 +41,7 @@ class Plugin():
         response = None
         if macaddress:
             try:
-                with open('/tmp/switchports.dat', 'r', encoding='utf-8') as switchport_file:
+                with open(self.working_path+'/switchports.dat', 'r', encoding='utf-8') as switchport_file:
                     switchport_data = switchport_file.readlines()
                     for line in switchport_data:
                         line = line.strip()
@@ -57,7 +61,7 @@ class Plugin():
         """
         doc = {}
         # empty what we have
-        open('/tmp/switchports.dat', 'w', encoding='utf-8').close()
+        open(self.working_path+'/switchports.dat', 'w', encoding='utf-8').close()
         for switch in switches.keys():
             name = switches[switch]['name']
             ipaddress = switches[switch]['ipaddress']
@@ -74,7 +78,7 @@ class Plugin():
                 uplinks = uplinks_str.split(',')
             self.logger.debug(f"Walking for {name} ...")
 
-            bash_command = f"/bin/bash /tmp/switchprobe.sh '{ipaddress}' '{oid}'"
+            bash_command = f"/bin/bash {self.working_path}/switchprobe.sh '{ipaddress}' '{oid}'"
             output, exit_code = Helper().runcommand(bash_command,True,60)
             if output and exit_code == 0:
                 all_data = output[0].decode().split('\n')
@@ -88,7 +92,7 @@ class Plugin():
 
         self.logger.debug(f"DOC: {doc}")
 
-        with open('/tmp/switchports.dat','a', encoding='utf-8') as switchport_file:
+        with open(self.working_path+'/switchports.dat','a', encoding='utf-8') as switchport_file:
             for switch in doc.keys():
                 for port in doc[switch].keys():
                     switchport_file.write(f"{switch}={port}={doc[switch][port]}\n")
@@ -119,7 +123,7 @@ for string in `snmpwalk -v 2c -c public $HOST $OID -O qn|sed -e "s/^\.//g" -e "s
     echo "${port}=${mac}"
 done
 """
-        with open('/tmp/switchprobe.sh','w', encoding='utf-8') as probe_script:
+        with open(self.working_path+'/switchprobe.sh','w', encoding='utf-8') as probe_script:
             probe_script.write(f"{SCRIPT}")
 
 

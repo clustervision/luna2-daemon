@@ -31,7 +31,6 @@ class OsUser():
         osuser_plugins = Helper().plugin_finder(f'{plugins_path}/osuser')
         Plugin = Helper().plugin_load(osuser_plugins, 'osuser', ['obol'])
         self.plugin = Plugin()
-        # needs to be with constants. pending
 
 
     def list_users(self):
@@ -145,3 +144,4 @@ class OsUser():
                 return False, result_msg
         except Exception as exp:
             return False, f'problem while deleting Os User: {exp}'
+

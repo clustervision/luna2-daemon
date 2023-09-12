@@ -221,6 +221,7 @@ class Node():
                     node['osimage'] = node['group_osimage']
             if 'group_osimage' in node:
                 del node['group_osimage']
+            node['switch'] = None
             if node['switchid']:
                 node['switch'] = Database().name_by_id('switch', node['switchid'])
             if not node['groupid']:

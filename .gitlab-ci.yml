@@ -1,0 +1,25 @@
+stages:
+  - production
+  - development
+
+production:
+  stage: production
+  image: python:3.10.0-alpine
+  only:
+    - main
+  script:
+    - python setup.py sdist bdist_wheel
+    - apk add openssh-client
+    - apk add sshpass
+    - sshpass -p $SSH_PASSWORD scp -r -oStrictHostKeyChecking=no dist/* $SSH_USER@$IPADDRESS:$LOCATION
+
+development:
+  stage: development
+  image: python:3.10.0-alpine
+  only:
+    - development
+  script:
+    - python setup.py sdist bdist_wheel
+    - apk add openssh-client
+    - apk add sshpass
+    - sshpass -p $SSH_PASSWORD scp -r -oStrictHostKeyChecking=no dist/* $SSH_USER@$IPADDRESS:$LOCATION

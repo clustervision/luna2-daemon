@@ -81,7 +81,7 @@ class OSImage():
 #            table_cap = self.table_cap
 #        )
         status = False
-        all_records = Database().get_record(table=table, where=f' WHERE name = "{name}"')
+        all_records = Database().get_record(table=self.table, where=f' WHERE name = "{name}"')
         if all_records:
             status = True
             response = {'config': {self.table: {} }}

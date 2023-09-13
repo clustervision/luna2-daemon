@@ -436,7 +436,7 @@ class OsImage(object):
             return False 
  
     # ---------------------------------------------------------------------------
-"""
+    """
     def tag_osimage(self,taskid,request_id):
 
         self.logger.info(f"tag_osimage called")
@@ -493,7 +493,7 @@ class OsImage(object):
             except Exception as nexp:
                 self.logger.error(f"tag_osimage has problems during exception handling: {nexp}")
             return False 
- """
+    """
     # ---------------------------------------------------------------------------
 
     def push_osimage(self,taskid,request_id,object='node'):
@@ -838,7 +838,7 @@ class OsImage(object):
                         if not ret:
                             Queue().remove_task_from_queue_by_request_id(request_id)
                             Status().add_message(request_id,"luna",f"EOF")
-"""
+                """
                 elif action == "tag_osimage":
                     if first and second:
                         Queue().update_task_status_in_queue(next_id,'in progress')
@@ -847,7 +847,7 @@ class OsImage(object):
                         if not ret:
                             Queue().remove_task_from_queue_by_request_id(request_id)
                             Status().add_message(request_id,"luna",f"EOF")
-"""
+                """
                 elif action == "pack_osimage":
                     if first:
                         Queue().update_task_status_in_queue(next_id,'in progress')

@@ -754,6 +754,7 @@ class Helper(object):
             myplugin = {}
             d = {}
             for treestep in root:
+                self.logger.info(f"treestep = [{treestep}]")
                 temp = d
                 if treestep not in temp:
                     temp[treestep] = {}

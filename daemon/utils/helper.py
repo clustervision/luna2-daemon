@@ -741,6 +741,7 @@ class Helper(object):
         This method will load the plugin.
         """
         roottree = root.split('/')
+        root = root.replace('/','.')
         self.logger.info(f"Loading module {class_name}/Plugin from plugins.{root}.{levelone}.{leveltwo} / {plugins}")
         if (not plugins): # or (root and root not in plugins):
             self.logger.error(f"Provided Plugins tree is empty or is missing root. plugins = [{plugins}], root = [{root}]")
@@ -753,8 +754,6 @@ class Helper(object):
             for treestep in roottree:
                 if treestep in myplugin:
                     myplugin = myplugin[treestep]
-            root = root[-1]
-            myplugin[root] = myplugin
         except Exception as exp:
             self.logger.error(f"Loading module caused a problem in roottree: {exp}") 
             return None
@@ -764,21 +763,21 @@ class Helper(object):
             levelones = levelone
         try:
             for levelone in levelones:
-                if leveltwo and levelone+leveltwo+'.py' in myplugin[root]:
+                if leveltwo and levelone+leveltwo+'.py' in myplugin:
                     self.logger.info(f"loading plugins.{root}.{levelone}{leveltwo}")
                     module = __import__('plugins.'+root+'.'+levelone+leveltwo,fromlist=[class_name])
                     break
                 elif levelone in myplugin[root].keys():
-                    if leveltwo and leveltwo in myplugin[root][levelone]:
+                    if leveltwo and leveltwo in myplugin[levelone]:
                         plugin = leveltwo.rsplit('.',1)
                         self.logger.info(f"loading plugins.{root}.{levelone}.{plugin[0]}")
                         module = __import__('plugins.'+root+'.'+levelone+'.'+plugin[0],fromlist=[class_name])
                         break
-                    elif 'default.py' in myplugin[root][levelone]:
+                    elif 'default.py' in myplugin[levelone]:
                         self.logger.info(f"loading plugins.{root}.{levelone}.default")
                         module = __import__('plugins.'+root+'.'+levelone+'.default',fromlist=[class_name])
                         break
-                elif levelone+'.py' in myplugin[root]:
+                elif levelone+'.py' in myplugin:
                     self.logger.info(f"loading plugins.{root}.{levelone}")
                     module = __import__('plugins.'+root+'.'+levelone,fromlist=[class_name])
                     break

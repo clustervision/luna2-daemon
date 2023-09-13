@@ -148,7 +148,8 @@ class OsImage(object):
             return result
 
         except Exception as exp:
-            self.logger.error(f"grab_osimage has problems: {exp}")
+            exc_type, exc_obj, exc_tb = sys.exc_info()
+            self.logger.error(f"grab_osimage has problems: {exp}, {exc_type}, in {exc_tb.tb_lineno}")
             try:
                 Status().add_message(request_id,"luna",f"Grabbing failed: {exp}")
                 Status().add_message(request_id,"luna",f"EOF")
@@ -256,7 +257,8 @@ class OsImage(object):
             return result
 
         except Exception as exp:
-            self.logger.error(f"pack_osimage has problems: {exp}")
+            exc_type, exc_obj, exc_tb = sys.exc_info()
+            self.logger.error(f"pack_osimage has problems: {exp}, {exc_type}, in {exc_tb.tb_lineno}")
             try:
                 Status().add_message(request_id,"luna",f"Packing failed: {exp}")
                 Status().add_message(request_id,"luna",f"EOF")
@@ -347,7 +349,8 @@ class OsImage(object):
             return result
 
         except Exception as exp:
-            self.logger.error(f"build_osimage has problems: {exp}")
+            exc_type, exc_obj, exc_tb = sys.exc_info()
+            self.logger.error(f"build_osimage has problems: {exp}, {exc_type}, in {exc_tb.tb_lineno}")
             try:
                 Status().add_message(request_id,"luna",f"Packing failed: {exp}")
                 Status().add_message(request_id,"luna",f"EOF")
@@ -384,7 +387,7 @@ class OsImage(object):
                         # loading the plugin depending on OS
                         OsClonePlugin=Helper().plugin_load(self.osimage_plugins,'osimage/filesystem','default')
                         if not srcimage[0]['path'] or srcimage[0]['tag']:
-                            tagname = Database().name_by_id('osimagetag', srcimage['tagid'])
+                            tagname = Database().name_by_id('osimagetag', srcimage[0]['tagid'])
                             ret, data = OsClonePlugin().getpath(image_directory=image_directory, osimage=srcimage[0]['name'], tag=tagname)
                             if ret is True:
                                 srcimage[0]['path'] = data
@@ -615,7 +618,8 @@ class OsImage(object):
                 self.logger.info(f"{details['task']} is not for us.")
 
         except Exception as exp:
-            self.logger.error(f"push_osimage has problems: {exp}")
+            exc_type, exc_obj, exc_tb = sys.exc_info()
+            self.logger.error(f"push_osimage has problems: {exp}, {exc_type}, in {exc_tb.tb_lineno}")
             try:
                 Status().add_message(request_id,"luna",f"Pushing failed: {exp}")
                 Status().add_message(request_id,"luna",f"EOF")
@@ -697,7 +701,8 @@ class OsImage(object):
             return True
 
         except Exception as exp:
-            self.logger.error(f"provision_osimage has problems: {exp}")
+            exc_type, exc_obj, exc_tb = sys.exc_info()
+            self.logger.error(f"provision_osimage has problems: {exp}, {exc_type}, in {exc_tb.tb_lineno}")
             try:
                 Status().add_message(request_id,"luna",f"Create provision failed: {exp}")
                 Status().add_message(request_id,"luna",f"EOF")
@@ -913,7 +918,8 @@ class OsImage(object):
                     sleep(10)
 
         except Exception as exp:
-            self.logger.error(f"osimage_mother has problems: {exp}")
+            exc_type, exc_obj, exc_tb = sys.exc_info()
+            self.logger.error(f"osimage_mother has problems: {exp}, {exc_type}, in {exc_tb.tb_lineno}")
             try:
                 Status().add_message(request_id,"luna",f"Operation failed: {exp}")
                 Status().add_message(request_id,"luna",f"EOF")

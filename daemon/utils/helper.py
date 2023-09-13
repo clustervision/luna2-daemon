@@ -736,12 +736,13 @@ class Helper(object):
         return tree
 
 
-    def plugin_load(self, plugins=None, root=None, levelone=None, leveltwo=None, class_name=None):
+    def plugin_load(self, fullplugins=None, root=None, levelone=None, leveltwo=None, class_name=None):
         """
         This method will load the plugin.
         """
         if root:
             root = root.replace('/','.')
+        roottree = root.split('.')
         self.logger.info(f"Loading module {class_name}/Plugin from plugins.{root}.{levelone}.{leveltwo} / {plugins}")
         if (not plugins): # or (root and root not in plugins):
             self.logger.error(f"Provided Plugins tree is empty or is missing root. plugins = [{plugins}], root = [{root}]")
@@ -749,6 +750,17 @@ class Helper(object):
         module = None
         class_name = class_name or 'Plugin'
         levelones = []
+        try:
+            plugins = {}
+            temp = {}
+            for treestep in root:
+                treestep not in temp:
+                    temp[treestep] = {}
+                temp = temp[treestep]
+            plugins[roottree[-1]] = fullplugins[temp]
+        except Exception as exp:
+            self.logger.error(f"Loading module caused a problem in roottree: {exp}") 
+            return None
         if type(levelone) == type('string'):
             levelones.append(levelone)
         else:
@@ -777,7 +789,7 @@ class Helper(object):
                 self.logger.info(f"loading plugins.{root}.default")
                 module = __import__('plugins.'+root+'.default',fromlist=[class_name])
         except Exception as exp:
-            self.logger.error(f"Loading module caused a problem: {exp}") 
+            self.logger.error(f"Loading module caused a problem loading: {exp}") 
             return None
 
         try:

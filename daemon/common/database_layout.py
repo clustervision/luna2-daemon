@@ -115,7 +115,7 @@ DATABASE_LAYOUT_group = [
 {"column": "setupbmc",             "datatype": "INTEGER", "length": "10"},
 {"column": "domain",               "datatype": "VARCHAR", "length": "20"},
 {"column": "osimageid",            "datatype": "INTEGER", "length": "10"},
-{"column": "osimagetagid"          "datatype": "VARCHAR", "length": "60"},
+{"column": "osimagetagid",         "datatype": "VARCHAR", "length": "60"},
 {"column": "prescript",            "datatype": "TEXT"},
 {"column": "partscript",           "datatype": "TEXT"},
 {"column": "postscript",           "datatype": "TEXT"},

@@ -429,7 +429,7 @@ class OsImage(object):
 
         except Exception as exp:
             exc_type, exc_obj, exc_tb = sys.exc_info()
-            self.logger.error(f"copy_osimage has problems: {exp}, {exp_type}, in {exc_tb.tb_lineno}")
+            self.logger.error(f"copy_osimage has problems: {exp}, {exc_type}, in {exc_tb.tb_lineno}")
             try:
                 Status().add_message(request_id,"luna",f"Packing failed: {exp}")
                 Status().add_message(request_id,"luna",f"EOF")

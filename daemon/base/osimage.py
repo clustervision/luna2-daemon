@@ -62,9 +62,14 @@ class OSImage():
             for record in all_records:
                 record_id = record['id']
                 del record['id']
-                if (not record['path']) or record['tag']:
-                    record['path'] = 'undefined'
-                    ret, data = OsImagePlugin().getpath(image_directory=self.image_directory, osimage=record['name'], tag=record['tag'])
+                del record['changed']
+                tagname = None
+                if record['tagid']:
+                    tagname = Database().name_by_id('osimagetag', record['tagid'])
+                del record['tagid']
+                if (not record['path']) or record['tagid']:
+                    record['path'] = '!undefined!'
+                    ret, data = OsImagePlugin().getpath(image_directory=self.image_directory, osimage=record['name'], tag=tagname)
                     if ret is True:
                         record['path'] = data
                 response['config'][self.table][record['name']] = record
@@ -89,9 +94,14 @@ class OSImage():
             for record in all_records:
                 record_id = record['id']
                 del record['id']
-                if (not record['path']) or record['tag']:
-                    record['path'] = 'undefined'
-                    ret, data = OsImagePlugin().getpath(image_directory=self.image_directory, osimage=record['name'], tag=record['tag'])
+                del record['changed']
+                tagname = None
+                if record['tagid']:
+                    tagname = Database().name_by_id('osimagetag', record['tagid'])
+                del record['tagid']
+                if (not record['path']) or record['tagid']:
+                    record['path'] = '!undefined!'
+                    ret, data = OsImagePlugin().getpath(image_directory=self.image_directory, osimage=record['name'], tag=tagname)
                     if ret is True:
                         record['path'] = data
                 response['config'][self.table][record['name']] = record
@@ -118,11 +128,16 @@ class OSImage():
         status=False
         response="Internal error"
         create, update = False, False
+        current_tag, new_tag = None, None
         if request_data:
             data = request_data['config']['osimage'][name]
             image = Database().get_record(None, 'osimage', f' WHERE name = "{name}"')
             if image:
                 image_id = image[0]['id']
+                if 'tag' in data:
+                    current_tag = Database().name_by_id('osimagetag', image[0]['tagid'])
+                    new_tag = data['tag']
+                    del data['tag']
                 if 'newosimage' in data:
                     newosimage = data['newosimage']
                     where = f' WHERE `name` = "{newosimage}"'
@@ -141,6 +156,16 @@ class OSImage():
             osimage_columns = Database().get_columns('osimage')
             column_check = Helper().compare_list(data, osimage_columns)
             if column_check:
+                if new_tag != current_tag:
+                    new_tagid = Database().id_by_name('osimagetag', new_tag)
+                    if not new_tagid and image_id:
+                        tag_data = {}
+                        tag_data['tag'] = new_tag
+                        tag_data['osimageid'] = image_id
+                        tag_row = Helper().make_rows(tag_data)
+                        new_tagid = Database().insert('osimagetag', tag_row)
+                    if new_tagid:
+                        data['tagid'] = new_tagid
                 if update:
                     where = [{"column": "id", "value": image_id}]
                     row = Helper().make_rows(data)
@@ -150,9 +175,19 @@ class OSImage():
                 if create:
                     data['name'] = name
                     row = Helper().make_rows(data)
-                    Database().insert('osimage', row)
+                    image_id = Database().insert('osimage', row)
                     response = f'OS Image {name} created'
                     status=True
+                # copy kernel, ramdisk, image to tag:
+                if new_tag != current_tag:
+                    request_id  = str(time()) + str(randint(1001, 9999)) + str(getpid())
+                    task = f"tag_osimage:{name}:{new_tag}"
+                    task_id, text = Queue().add_task_to_queue(task, 'osimage', request_id)
+                    next_id = Queue().next_task_in_queue('osimage')
+                    if task_id == next_id:
+                        executor = ThreadPoolExecutor(max_workers=1)
+                        executor.submit(OsImager().osimage_mother, request_id)
+                        executor.shutdown(wait=False)
             else:
                 response = 'Invalid request: Columns are incorrect'
                 status=False

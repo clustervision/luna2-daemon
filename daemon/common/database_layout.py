@@ -46,13 +46,16 @@ DATABASE_LAYOUT_osimage = [
 {"column": "imagefile",            "datatype": "VARCHAR", "length": "100"},
 {"column": "distribution",         "datatype": "VARCHAR", "length": "20"},
 {"column": "osrelease",            "datatype": "VARCHAR", "length": "20"},
-{"column": "tag",                  "datatype": "VARCHAR", "length": "60"},
+{"column": "tagid",                "datatype": "VARCHAR", "length": "60"},
 {"column": "comment",              "datatype": "VARCHAR", "length": "20"}]
 
 DATABASE_LAYOUT_osimagetags = [
 {"column": "id",                   "datatype": "INTEGER", "key": "PRIMARY", "keyadd": "AUTOINCREMENT"},
 {"column": "osimageid",            "datatype": "INTEGER", "length": "10"},
-{"column": "tag",                  "datatype": "VARCHAR", "length": "60"}]
+{"column": "tag",                  "datatype": "VARCHAR", "length": "60"},
+{"column": "initrdfile",           "datatype": "VARCHAR", "length": "100"},
+{"column": "kernelfile",           "datatype": "VARCHAR", "length": "100"},
+{"column": "imagefile",            "datatype": "VARCHAR", "length": "100"}]
 
 DATABASE_LAYOUT_nodesecrets = [
 {"column": "id",                   "datatype": "INTEGER", "key": "PRIMARY", "keyadd": "AUTOINCREMENT"},

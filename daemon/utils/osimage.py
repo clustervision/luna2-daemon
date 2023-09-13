@@ -384,7 +384,8 @@ class OsImage(object):
                         # loading the plugin depending on OS
                         OsClonePlugin=Helper().plugin_load(self.osimage_plugins,'osimage/filesystem','default')
                         if not srcimage[0]['path'] or srcimage[0]['tag']:
-                            ret, data = OsClonePlugin().getpath(image_directory=image_directory, osimage=srcimage[0]['name'], tag=srcimage[0]['tag'])
+                            tagname = Database().name_by_id('osimagetag', srcimage['tagid'])
+                            ret, data = OsClonePlugin().getpath(image_directory=image_directory, osimage=srcimage[0]['name'], tag=tagname)
                             if ret is True:
                                 srcimage[0]['path'] = data
                         if not dstimage[0]['path']:

@@ -436,6 +436,65 @@ class OsImage(object):
             return False 
  
     # ---------------------------------------------------------------------------
+"""
+    def tag_osimage(self,taskid,request_id):
+
+        self.logger.info(f"tag_osimage called")
+        try:
+
+            result=False
+            details=Queue().get_task_details(taskid)
+            request_id=details['request_id']
+            action,osimage,tag,noeof,*_=(details['task'].split(':')+[None]+[None])
+
+            if action == "tag_osimage":
+                Status().add_message(request_id,"luna",f"tagging osimage {osimage} default->{tag}")
+   
+                # --- let's copy
+
+                srcimage,dstimage,mesg=None,None,None
+                if osimage and tag:
+                    files_path = CONSTANT['FILES']['IMAGE_FILES']
+                    image = Database().get_record(None, 'osimage', f"WHERE name='{osimage}'")
+                    if image:
+                        tagdata = {}
+                        tagdata['kernelfile'] = image[0]['kernelfile']
+                        tagdata['initrdfile'] = image[0]['initrdfile']
+                        tagdata['imagefile'] = image[0]['imagefile']
+                        for item in ['kernelfile','initrdfile','imagefile']:
+                            left,right = tagdata[item].split('-')
+                            #if right: # and we assume this will be a split between e.g. <imagename> and <data.... etc....tar.gz>
+                            # - stopped development as we _might_ do this differently                            
+
+                    sleep(1) # needed to prevent immediate concurrent access to the database. Pooling,WAL,WIF,WAF,etc won't fix this. Only sleep
+                    if result is True:
+                        self.logger.info(f'OS image copied successfully.')
+                        Status().add_message(request_id,"luna",f"finished copying osimage")
+
+                    else:
+                        self.logger.info(f'Copy osimage {src}->{dst} error: {mesg}.')
+                        Status().add_message(request_id,"luna",f"error copying osimage: {mesg}")
+
+                else:
+                    self.logger.info(f'Copy osimage src and/or dst not provided.')
+                    Status().add_message(request_id,"luna",f"error copying osimage as 'src' and/or 'dst' not provided.")
+
+                if not noeof:
+                    Status().add_message(request_id,"luna",f"EOF")
+                return result
+            else:
+                self.logger.info(f"{details['task']} is not for us.")
+
+        except Exception as exp:
+            self.logger.error(f"tag_osimage has problems: {exp}")
+            try:
+                Status().add_message(request_id,"luna",f"Packing failed: {exp}")
+                Status().add_message(request_id,"luna",f"EOF")
+            except Exception as nexp:
+                self.logger.error(f"tag_osimage has problems during exception handling: {nexp}")
+            return False 
+ """
+    # ---------------------------------------------------------------------------
 
     def push_osimage(self,taskid,request_id,object='node'):
 
@@ -779,7 +838,16 @@ class OsImage(object):
                         if not ret:
                             Queue().remove_task_from_queue_by_request_id(request_id)
                             Status().add_message(request_id,"luna",f"EOF")
-
+"""
+                elif action == "tag_osimage":
+                    if first and second:
+                        Queue().update_task_status_in_queue(next_id,'in progress')
+                        ret=self.tag_osimage(next_id,request_id)
+                        Queue().remove_task_from_queue(next_id)
+                        if not ret:
+                            Queue().remove_task_from_queue_by_request_id(request_id)
+                            Status().add_message(request_id,"luna",f"EOF")
+"""
                 elif action == "pack_osimage":
                     if first:
                         Queue().update_task_status_in_queue(next_id,'in progress')

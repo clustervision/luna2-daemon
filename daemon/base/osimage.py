@@ -137,7 +137,6 @@ class OSImage():
                 if 'tag' in data:
                     current_tag = Database().name_by_id('osimagetag', image[0]['tagid'])
                     new_tag = data['tag']
-                    del data['tag']
                 if 'newosimage' in data:
                     newosimage = data['newosimage']
                     where = f' WHERE `name` = "{newosimage}"'
@@ -153,20 +152,25 @@ class OSImage():
             else:
                 create = True
 
+            if 'tag' in data:
+                del data['tag']
             osimage_columns = Database().get_columns('osimage')
             column_check = Helper().compare_list(data, osimage_columns)
             if column_check:
-                if new_tag != current_tag:
-                    new_tagid = Database().id_by_name('osimagetag', new_tag)
-                    if not new_tagid and image_id:
-                        tag_data = {}
-                        tag_data['tag'] = new_tag
-                        tag_data['osimageid'] = image_id
-                        tag_row = Helper().make_rows(tag_data)
-                        new_tagid = Database().insert('osimagetag', tag_row)
-                    if new_tagid:
-                        data['tagid'] = new_tagid
                 if update:
+                    if new_tag != current_tag:
+                        new_tagid = Database().id_by_name('osimagetag', new_tag)
+                        if not new_tagid and image_id:
+                            tag_data = {}
+                            tag_data['tag'] = new_tag
+                            tag_data['osimageid'] = image_id
+                            tag_data['kernelfile'] = image[0]['kernelfile']
+                            tag_data['initrdfile'] = image[0]['initrdfile']
+                            tag_data['imagefile'] = image[0]['imagefile']
+                            tag_row = Helper().make_rows(tag_data)
+                            new_tagid = Database().insert('osimagetag', tag_row)
+                        if new_tagid:
+                            data['tagid'] = new_tagid
                     where = [{"column": "id", "value": image_id}]
                     row = Helper().make_rows(data)
                     Database().update('osimage', row, where)
@@ -175,9 +179,10 @@ class OSImage():
                 if create:
                     data['name'] = name
                     row = Helper().make_rows(data)
-                    image_id = Database().insert('osimage', row)
+                    Database().insert('osimage', row)
                     response = f'OS Image {name} created'
                     status=True
+                """
                 # copy kernel, ramdisk, image to tag:
                 if new_tag != current_tag:
                     request_id  = str(time()) + str(randint(1001, 9999)) + str(getpid())
@@ -188,6 +193,7 @@ class OSImage():
                         executor = ThreadPoolExecutor(max_workers=1)
                         executor.submit(OsImager().osimage_mother, request_id)
                         executor.shutdown(wait=False)
+                """
             else:
                 response = 'Invalid request: Columns are incorrect'
                 status=False

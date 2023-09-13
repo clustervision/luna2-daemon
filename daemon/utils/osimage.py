@@ -49,10 +49,7 @@ class OsImage(object):
         self.logger = Log.get_logger()
         plugins_path=CONSTANT["PLUGINS"]["PLUGINS_DIR"]
         self.osimage_plugins = Helper().plugin_finder(f'{plugins_path}/osimage')
-        self.osgrab_plugins = Helper().plugin_finder(f'{plugins_path}/osgrab')
         self.provision_plugins = Helper().plugin_finder(f'{plugins_path}/provision')
-        self.osclone_plugins = Helper().plugin_finder(f'{plugins_path}/osclone')
-        self.ospush_plugins = Helper().plugin_finder(f'{plugins_path}/ospush')
 
 
     # ---------------------------------------------------------------------------
@@ -104,7 +101,7 @@ class OsImage(object):
                 distribution=distribution.lower()
 
                 # loading the plugin depending on OS
-                OsGrabPlugin=Helper().plugin_load(self.osgrab_plugins,'osgrab',[dbnode[0]['nodename'],distribution,osimage,dbnode[0]['groupname']])
+                OsGrabPlugin=Helper().plugin_load(self.osimage_plugins,'osimage/operations/osgrab',[dbnode[0]['nodename'],distribution,osimage,dbnode[0]['groupname']])
 
                 #------------------------------------------------------
                 grab_fs=[]
@@ -215,7 +212,7 @@ class OsImage(object):
                     kernel_modules = image[0]['kernelmodules'].split(',')
 
                 # loading the plugin depending on OS
-                OsImagePlugin=Helper().plugin_load(self.osimage_plugins,'osimage',distribution,osrelease)
+                OsImagePlugin=Helper().plugin_load(self.osimage_plugins,'osimage/operations/image',distribution,osrelease)
 
                 #------------------------------------------------------
                 Status().add_message(request_id,"luna",f"packing osimage {osimage}")
@@ -306,7 +303,7 @@ class OsImage(object):
                 files_path = CONSTANT['FILES']['IMAGE_FILES']
         
                 # loading the plugin depending on OS
-                OsImagePlugin=Helper().plugin_load(self.osimage_plugins,'osimage',distribution,osrelease)
+                OsImagePlugin=Helper().plugin_load(self.osimage_plugins,'osimage/operations/image',distribution,osrelease)
 
                 Status().add_message(request_id,"luna",f"building osimage {osimage}")
                 response=OsImagePlugin().build(
@@ -382,7 +379,7 @@ class OsImage(object):
                                     mesg,exit_code = Helper().runcommand(command,True,10)
                                 if exit_code == 0:
                                     # loading the plugin depending on OS
-                                    OsClonePlugin=Helper().plugin_load(self.osclone_plugins,'osclone',[dst,distribution],osrelease)
+                                    OsClonePlugin=Helper().plugin_load(self.osimage_plugins,'osimage/filesystem','default')
 
                                     self.logger.info(f"Copy image from \"{srcimage[0]['path']}\" to \"{dstimage[0]['path']}\"")
                                     response=OsClonePlugin().clone(source=srcimage[0]['path'],destination=dstimage[0]['path'])
@@ -467,7 +464,7 @@ class OsImage(object):
                                 Status().add_message(request_id,"luna",f"error pushing osimage {osimage}: Node {dst} does not exist?")
                                 return False
                             # loading the plugin depending on OS
-                            OsPushPlugin=Helper().plugin_load(self.ospush_plugins,'ospush',[dbnode[0]['nodename'],distribution,osimage,dbnode[0]['groupname']])
+                            OsPushPlugin=Helper().plugin_load(self.osimage_plugins,'osimage/operations/ospush',[dbnode[0]['nodename'],distribution,osimage,dbnode[0]['groupname']])
 
                             self.logger.info(f"Push image from \"{image[0]['path']}\" to \"{dst}\"")
                             response=OsPushPlugin().push(osimage=osimage,
@@ -484,7 +481,7 @@ class OsImage(object):
                             if not dbnodes:
                                 Status().add_message(request_id,"luna",f"error pushing osimage {osimage}: Group {dst} does not exist?")
                                 return False
-                            OsPushPlugin=Helper().plugin_load(self.ospush_plugins,'ospush',[distribution,osimage,dst])
+                            OsPushPlugin=Helper().plugin_load(self.osimage_plugins,'osimage/operations/ospush',[distribution,osimage,dst])
 
                             try:
                                 batch=10
@@ -648,7 +645,7 @@ class OsImage(object):
         files_path = CONSTANT['FILES']['IMAGE_FILES']
 
         # loading the plugin depending on OS
-        OsImagePlugin=Helper().plugin_load(self.osimage_plugins,'osimage',distribution,osrelease)
+        OsImagePlugin=Helper().plugin_load(self.osimage_plugins,'osimage/filesystem','default')
         ret,mesg=OsImagePlugin().cleanup(osimage=osimage,files_path=files_path,
                                 current_packed_image_file=current_packed_image_file,
                                 current_kernel_file=current_kernel_file,

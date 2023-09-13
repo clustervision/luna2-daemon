@@ -133,7 +133,7 @@ class Housekeeper(object):
         #detection_plugins = Helper().plugin_finder(f'{plugins_path}/detection')
         #DetectionPlugin=Helper().plugin_load(detection_plugins,'detection','switchport')
         try: 
-            from plugins.detection.switchport import Plugin as DetectionPlugin
+            from plugins.boot.detection.switchport import Plugin as DetectionPlugin
             # doc =  { id: { name: , oid:, read:, rw:, ipaddress: } }
             while True:
                 try:

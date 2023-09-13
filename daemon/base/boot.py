@@ -45,9 +45,7 @@ class Boot():
         self.logger = Log.get_logger()
         plugins_path=CONSTANT["PLUGINS"]["PLUGINS_DIR"]
         self.provision_plugins = Helper().plugin_finder(f'{plugins_path}/provision')
-        self.network_plugins = Helper().plugin_finder(f'{plugins_path}/network')
-        self.bmc_plugins = Helper().plugin_finder(f'{plugins_path}/bmc')
-        self.install_plugins = Helper().plugin_finder(f'{plugins_path}/install')
+        self.boot_plugins = Helper().plugin_finder(f'{plugins_path}/boot')
         self.osimage_plugins = Helper().plugin_finder(f'{plugins_path}/osimage')
         # self.detection_plugins = Helper().plugin_finder(f'{plugins_path}/detection')
         # self.DetectionPlugin=Helper().plugin_load(self.detection_plugins,'detection','switchport')
@@ -936,7 +934,7 @@ class Boot():
                             data['domain_search']=interface['network'] + ',' + data['domain_search']
 
         ## SYSTEMROOT
-        osimage_plugin = Helper().plugin_load(self.osimage_plugins,'osimage',data['distribution'],data['osrelease'])
+        osimage_plugin = Helper().plugin_load(self.osimage_plugins,'osimage/operations/image',data['distribution'],data['osrelease'])
         data['systemroot'] = str(osimage_plugin().systemroot or '/sysroot')
 
         ## FETCH CODE SEGMENT
@@ -951,8 +949,8 @@ class Boot():
 
         ## INTERFACE CODE SEGMENT
         network_plugin = Helper().plugin_load(
-            self.network_plugins,
-            'network',
+            self.boot_plugins,
+            'boot/network',
             data['distribution'],
             data['osrelease']
         )
@@ -969,8 +967,8 @@ class Boot():
 
         ## BMC CODE SEGMENT
         bmc_plugin = Helper().plugin_load(
-            self.bmc_plugins,
-            'bmc',
+            self.boot_plugins,
+            'boot/bmc',
             [data['nodename'], data['group']]
         )
         segment = str(bmc_plugin().config)
@@ -978,8 +976,8 @@ class Boot():
 
         ## INSTALL <PRE|PART|POST>SCRIPT CODE SEGMENT
         install_plugin = Helper().plugin_load(
-            self.install_plugins,
-            'install',
+            self.boot_plugins,
+            'boot/install',
             [data['nodename'],data['group'],data['distribution']]
         )
         for script in ['prescript', 'partscript', 'postscript']:

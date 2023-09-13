@@ -100,74 +100,74 @@ class Group():
         groups = Database().get_record(None, 'group', f' WHERE name = "{name}"')
         if groups:
             response = {'config': {'group': {} }}
-            for group in groups:
-                group_id = group['id']
-                group_interface = Database().get_record_join(
-                    [
-                        'groupinterface.interface',
-                        'network.name as network',
-                        'groupinterface.options'
-                    ],
-                    ['network.id=groupinterface.networkid'],
-                    [f"groupid = '{group_id}'"]
-                )
-                if group_interface:
-                    group['interfaces'] = []
-                    for interface in group_interface:
-                        if not interface['options']:
-                            del interface['options']
-                        group['interfaces'].append(interface)
-                del group['id']
-                for key, value in items.items():
-                    if key in cluster[0]:
-                        if isinstance(value, bool):
-                            cluster[0][key] = str(Helper().make_bool(cluster[0][key]))
-                        if cli:
-                            cluster[0][key] = cluster[0][key] or str(value+' (default)')
-                        else:
-                            cluster[0][key] = cluster[0][key] or str(value)
+            group = group[0]
+            group_id = group['id']
+            group_interface = Database().get_record_join(
+                [
+                    'groupinterface.interface',
+                    'network.name as network',
+                    'groupinterface.options'
+                ],
+                ['network.id=groupinterface.networkid'],
+                [f"groupid = '{group_id}'"]
+            )
+            if group_interface:
+                group['interfaces'] = []
+                for interface in group_interface:
+                    if not interface['options']:
+                        del interface['options']
+                    group['interfaces'].append(interface)
+            del group['id']
+            for key, value in items.items():
+                if key in cluster[0]:
+                    if isinstance(value, bool):
+                        cluster[0][key] = str(Helper().make_bool(cluster[0][key]))
+                    if cli:
+                        cluster[0][key] = cluster[0][key] or str(value+' (default)')
+                    else:
+                        cluster[0][key] = cluster[0][key] or str(value)
+                if key in group:
+                    if isinstance(value, bool):
+                        group[key] = str(Helper().make_bool(group[key]))
+                if key in cluster[0] and ((not key in group) or (not group[key])):
+                    if cli:
+                        group[key] = str(cluster[0][key])+' (cluster)'
+                    else:
+                        group[key] = str(cluster[0][key])
+                else:
                     if key in group:
+                        if cli:
+                            group[key] = group[key] or str(value+' (default)')
+                        else:
+                            group[key] = group[key] or str(value)
+                    else:
                         if isinstance(value, bool):
                             group[key] = str(Helper().make_bool(group[key]))
-                    if key in cluster[0] and ((not key in group) or (not group[key])):
                         if cli:
-                            group[key] = str(cluster[0][key])+' (cluster)'
+                            group[key] = str(value+' (default)')
                         else:
-                            group[key] = str(cluster[0][key])
+                            group[key] = str(value)
+            try:
+                for key, value in b64items.items():
+                    if cli:
+                        default_str = str(value+' (default)')
                     else:
-                        if key in group:
-                            if cli:
-                                group[key] = group[key] or str(value+' (default)')
-                            else:
-                                group[key] = group[key] or str(value)
-                        else:
-                            if isinstance(value, bool):
-                                group[key] = str(Helper().make_bool(group[key]))
-                            if cli:
-                                group[key] = str(value+' (default)')
-                            else:
-                                group[key] = str(value)
-                try:
-                    for key, value in b64items.items():
-                        if cli:
-                            default_str = str(value+' (default)')
-                        else:
-                            default_str = str(value)
-                        default_data = b64encode(default_str.encode())
-                        default_data = default_data.decode("ascii")
-                        if key in group:
-                            group[key] = group[key] or default_data
-                        else:
-                            group[key] = default_data
-                except Exception as exp:
-                    self.logger.error(f"{exp}")
+                        default_str = str(value)
+                    default_data = b64encode(default_str.encode())
+                    default_data = default_data.decode("ascii")
+                    if key in group:
+                        group[key] = group[key] or default_data
+                    else:
+                        group[key] = default_data
+            except Exception as exp:
+                self.logger.error(f"{exp}")
 
-                group['osimage'] = Database().name_by_id('osimage', group['osimageid'])
-                del group['osimageid']
-                if group['bmcsetupid']:
-                    group['bmcsetupname'] = Database().name_by_id('bmcsetup', group['bmcsetupid'])
-                del group['bmcsetupid']
-                response['config']['group'][name] = group
+            group['osimage'] = Database().name_by_id('osimage', group['osimageid'])
+            del group['osimageid']
+            if group['bmcsetupid']:
+                group['bmcsetupname'] = Database().name_by_id('bmcsetup', group['bmcsetupid'])
+            del group['bmcsetupid']
+            response['config']['group'][name] = group
             self.logger.info(f'Returned Group {name} with Details.')
         else:
             self.logger.error('No group is available.')

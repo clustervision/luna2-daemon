@@ -43,7 +43,6 @@ class OSImage():
         self.image_directory = CONSTANT['FILES']['IMAGE_DIRECTORY']
         plugins_path=CONSTANT["PLUGINS"]["PLUGINS_DIR"]
         self.osimage_plugins = Helper().plugin_finder(f'{plugins_path}/osimage')
-        OsImagePlugin=Helper().plugin_load(self.osimage_plugins,'osimage/filesystem','default')
 
 
     def get_all_osimages(self):
@@ -55,6 +54,7 @@ class OSImage():
 #            table_cap = self.table_cap
 #        )
         status = False
+        OsImagePlugin=Helper().plugin_load(self.osimage_plugins,'osimage/filesystem','default')
         all_records = Database().get_record(table=self.table)
         if all_records:
             status = True
@@ -81,6 +81,7 @@ class OSImage():
 #            table_cap = self.table_cap
 #        )
         status = False
+        OsImagePlugin=Helper().plugin_load(self.osimage_plugins,'osimage/filesystem','default')
         all_records = Database().get_record(table=self.table, where=f' WHERE name = "{name}"')
         if all_records:
             status = True

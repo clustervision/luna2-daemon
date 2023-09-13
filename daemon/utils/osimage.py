@@ -838,16 +838,16 @@ class OsImage(object):
                         if not ret:
                             Queue().remove_task_from_queue_by_request_id(request_id)
                             Status().add_message(request_id,"luna",f"EOF")
-                """
-                elif action == "tag_osimage":
-                    if first and second:
-                        Queue().update_task_status_in_queue(next_id,'in progress')
-                        ret=self.tag_osimage(next_id,request_id)
-                        Queue().remove_task_from_queue(next_id)
-                        if not ret:
-                            Queue().remove_task_from_queue_by_request_id(request_id)
-                            Status().add_message(request_id,"luna",f"EOF")
-                """
+ 
+#                elif action == "tag_osimage":
+#                    if first and second:
+#                        Queue().update_task_status_in_queue(next_id,'in progress')
+#                        ret=self.tag_osimage(next_id,request_id)
+#                        Queue().remove_task_from_queue(next_id)
+#                        if not ret:
+#                            Queue().remove_task_from_queue_by_request_id(request_id)
+#                            Status().add_message(request_id,"luna",f"EOF")
+ 
                 elif action == "pack_osimage":
                     if first:
                         Queue().update_task_status_in_queue(next_id,'in progress')

@@ -25,6 +25,7 @@ from utils.log import Log
 from utils.queue import Queue
 from utils.helper import Helper
 from utils.model import Model
+from utils.database import Database
 
 class OSImage():
     """
@@ -38,16 +39,34 @@ class OSImage():
         self.logger = Log.get_logger()
         self.table = 'osimage'
         self.table_cap = 'OS Image'
+        self.image_directory = CONSTANT['FILES']['IMAGE_DIRECTORY']
+        plugins_path=CONSTANT["PLUGINS"]["PLUGINS_DIR"]
+        self.osimage_plugins = Helper().plugin_finder(f'{plugins_path}/osimage')
+        OsImagePlugin=Helper().plugin_load(self.osimage_plugins,'osimage/filesystem','default')
 
 
     def get_all_osimages(self):
         """
         This method will return all the osimage in detailed format.
         """
-        status, response = Model().get_record(
-            table = self.table,
-            table_cap = self.table_cap
-        )
+#        status, response = Model().get_record(
+#            table = self.table,
+#            table_cap = self.table_cap
+#        )
+        status = False
+        all_records = Database().get_record(table=self.table)
+        if all_records:
+            status = True
+            response = {'config': {self.table: {} }}
+            for record in all_records:
+                record_id = record['id']
+                del record['id']
+                if (not record['path']) or record['tag']:
+                    record['path'] = 'undefined'
+                    ret, data = OsImagePlugin().getpath(images_path=self.image_directory, osimage=record['name'], tag=record['tag'])
+                    if ret is True:
+                        record['path'] = data
+                response['config'][self.table][record['name']] = record
         return status, response
 
 
@@ -55,11 +74,25 @@ class OSImage():
         """
         This method will return requested osimage in detailed format.
         """
-        status, response = Model().get_record(
-            name = name,
-            table = self.table,
-            table_cap = self.table_cap
-        )
+#        status, response = Model().get_record(
+#            name = name,
+#            table = self.table,
+#            table_cap = self.table_cap
+#        )
+        status = False
+        all_records = Database().get_record(table=table, where=f' WHERE name = "{name}"')
+        if all_records:
+            status = True
+            response = {'config': {self.table: {} }}
+            for record in all_records:
+                record_id = record['id']
+                del record['id']
+                if (not record['path']) or record['tag']:
+                    record['path'] = 'undefined'
+                    ret, data = OsImagePlugin().getpath(images_path=self.image_directory, osimage=record['name'], tag=record['tag'])
+                    if ret is True:
+                        record['path'] = data
+                response['config'][self.table][record['name']] = record
         return status, response
 
 

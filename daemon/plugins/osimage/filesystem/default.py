@@ -84,7 +84,7 @@ class Plugin():
 
     # ---------------------------------------------------------------------------
 
-    def getpath(self, osimage=None, images_path=None, tag=None):
+    def getpath(self, images_path=None, osimage=None, tag=None):
         return True,images_path+osimage
 
 

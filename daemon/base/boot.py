@@ -304,7 +304,7 @@ class Boot():
         if data['osimageid']:
             osimage = None
             if data['osimagetagid']:
-                osimage = Database().get_record_join(['osimagetag.*'],['osimage.tagid=osimagetag.id'],
+                osimage = Database().get_record_join(['osimagetag.*'],['osimage.id=osimagetag.osimageid'],
                                 [f'osimagetag.id={data["osimagetagid"]}',f'osimage.id={data["osimageid"]}'])
             else:
                 osimage = Database().get_record(None, 'osimage', f' WHERE id = {data["osimageid"]}')
@@ -595,7 +595,7 @@ class Boot():
         if data['osimageid']:
             osimage = None
             if data['osimagetagid']:
-                osimage = Database().get_record_join(['osimagetag.*'],['osimage.tagid=osimagetag.id'],
+                osimage = Database().get_record_join(['osimagetag.*'],['osimage.id=osimagetag.osimageid'],
                                 [f'osimagetag.id={data["osimagetagid"]}',f'osimage.id={data["osimageid"]}'])
             else:
                 osimage = Database().get_record(None, 'osimage', f' WHERE id = {data["osimageid"]}')

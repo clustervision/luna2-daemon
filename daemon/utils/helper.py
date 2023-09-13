@@ -736,7 +736,7 @@ class Helper(object):
         return tree
 
 
-    def plugin_load(self, fullplugins=None, root=None, levelone=None, leveltwo=None, class_name=None):
+    def plugin_load(self, plugins=None, root=None, levelone=None, leveltwo=None, class_name=None):
         """
         This method will load the plugin.
         """
@@ -751,13 +751,13 @@ class Helper(object):
         class_name = class_name or 'Plugin'
         levelones = []
         try:
-            plugins = {}
+            myplugin = {}
             temp = {}
             for treestep in root:
                 if treestep not in temp:
                     temp[treestep] = {}
                 temp = temp[treestep]
-            plugins[roottree[-1]] = fullplugins[temp]
+            myplugin[roottree[-1]] = plugins[temp]
         except Exception as exp:
             self.logger.error(f"Loading module caused a problem in roottree: {exp}") 
             return None
@@ -767,21 +767,21 @@ class Helper(object):
             levelones = levelone
         try:
             for levelone in levelones:
-                if leveltwo and levelone+leveltwo+'.py' in plugins[root]:
+                if leveltwo and levelone+leveltwo+'.py' in myplugin[root]:
                     self.logger.info(f"loading plugins.{root}.{levelone}{leveltwo}")
                     module = __import__('plugins.'+root+'.'+levelone+leveltwo,fromlist=[class_name])
                     break
-                elif levelone in plugins[root].keys():
-                    if leveltwo and leveltwo in plugins[root][levelone]:
+                elif levelone in myplugin[root].keys():
+                    if leveltwo and leveltwo in myplugin[root][levelone]:
                         plugin = leveltwo.rsplit('.',1)
                         self.logger.info(f"loading plugins.{root}.{levelone}.{plugin[0]}")
                         module = __import__('plugins.'+root+'.'+levelone+'.'+plugin[0],fromlist=[class_name])
                         break
-                    elif 'default.py' in plugins[root][levelone]:
+                    elif 'default.py' in myplugin[root][levelone]:
                         self.logger.info(f"loading plugins.{root}.{levelone}.default")
                         module = __import__('plugins.'+root+'.'+levelone+'.default',fromlist=[class_name])
                         break
-                elif levelone+'.py' in plugins[root]:
+                elif levelone+'.py' in myplugin[root]:
                     self.logger.info(f"loading plugins.{root}.{levelone}")
                     module = __import__('plugins.'+root+'.'+levelone,fromlist=[class_name])
                     break

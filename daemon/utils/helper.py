@@ -763,6 +763,7 @@ class Helper(object):
             levelones = levelone
         try:
             for levelone in levelones:
+                self.logger.info("HERE 1")
                 if leveltwo and levelone+leveltwo+'.py' in myplugin:
                     self.logger.info(f"loading plugins.{root}.{levelone}{leveltwo}")
 #                    module = __import__('plugins.'+root+'.'+levelone+leveltwo,fromlist=[class_name])
@@ -782,10 +783,11 @@ class Helper(object):
 #                    module = __import__('plugins.'+root+'.'+levelone,fromlist=[class_name])
                     break
             if not module:
+                self.logger.info("HERE 2")
                 self.logger.info(f"loading plugins.{root}.default")
 #                module = __import__('plugins.'+root+'.default',fromlist=[class_name])
         except Exception as exp:
-            self.logger.error(f"Loading module caused a problem loading: {exp}. myplugin: [{myplugin}]") 
+            self.logger.error(f"Loading module caused a problem during selection: {exp}. myplugin: [{myplugin}]") 
             return None
 
         try:

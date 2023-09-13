@@ -68,6 +68,7 @@ class OsImage(object):
             nodry = Helper().make_bool(nodry)
 
             if action == "grab_osimage":
+                image_directory = CONSTANT['FILES']['IMAGE_DIRECTORY']
                 image = Database().get_record(None, 'osimage', f"WHERE name='{osimage}'")
                 if not image:
                     Status().add_message(request_id,"luna",f"error grabbing osimage {osimage}: Image {osimage} does not exist?")
@@ -78,14 +79,14 @@ class OsImage(object):
                     Status().add_message(request_id,"luna",f"error grabbing osimage {osimage}: Node {node} does not exist?")
                     return False
 
-                if ('path' not in image[0]) or (image[0]['path'] is None):
+                if not image[0]['path']:
                     Status().add_message(request_id,"luna",f"error grabbinging osimage {osimage}: Image path not defined")
                     return False
 
                 image_path = str(image[0]['path'])
                 if image_path[0] != '/': # means that we don't have an absolute path. good, let's prepend what's in luna.ini
-                    if 'IMAGE_DIRECTORY' in CONSTANT['FILES']:
-                        image_path = f"{CONSTANT['FILES']['IMAGE_DIRECTORY']}/{image[0]['path']}"
+                    if len(image_directory) > 1:
+                        image_path = f"{image_directory}/{image[0]['path']}"
                     else:
                         Status().add_message(request_id,"luna",f"error grabbing osimage {osimage}: image path {image_path} is not an absolute path while IMAGE_DIRECTORY setting in FILES is not defined")
                         return False
@@ -169,22 +170,28 @@ class OsImage(object):
             action,osimage,noeof,*_=(details['task'].split(':')+[None]+[None])
 
             if action == "pack_osimage":
+                image_directory = CONSTANT['FILES']['IMAGE_DIRECTORY']
                 image = Database().get_record(None, 'osimage', f"WHERE name='{osimage}'")
                 if not image:
                     Status().add_message(request_id,"luna",f"error packing osimage {osimage}: Image {osimage} does not exist?")
                     return False
 
-                if ('path' not in image[0]) or (image[0]['path'] is None):
-                    Status().add_message(request_id,"luna",f"error packing osimage {osimage}: Image path not defined")
-                    return False
+                if not image[0]['path']:
+                    OsImagePlugin=Helper().plugin_load(self.osimage_plugins,'osimage/filesystem','default')
+                    ret, data = OsImagePlugin().getpath(image_directory=image_directory, osimage=image[0]['name'], tag=None) # we feed no tag as tagged/versioned FS is normally R/O
+                    if ret is True:
+                        image[0]['path'] = data
+                    else:
+                        Status().add_message(request_id,"luna",f"error packing osimage {osimage}: Image path not defined")
+                        return False
                 if ('kernelversion' not in image[0]) or (image[0]['kernelversion'] is None):
                     Status().add_message(request_id,"luna",f"error packing osimage {osimage}: Kernel version not defined")
                     return False
 
                 image_path = str(image[0]['path'])
                 if image_path[0] != '/': # means that we don't have an absolute path. good, let's prepend what's in luna.ini
-                    if 'IMAGE_DIRECTORY' in CONSTANT['FILES']:
-                        image_path = f"{CONSTANT['FILES']['IMAGE_DIRECTORY']}/{image[0]['path']}"
+                    if len(image_directory) > 1:
+                        image_path = f"{image_directory}/{image[0]['path']}"
                     else:
                         Status().add_message(request_id,"luna",f"error packing osimage {osimage}: image path {image_path} is not an absolute path while IMAGE_DIRECTORY setting in FILES is not defined")
                         return False
@@ -270,19 +277,25 @@ class OsImage(object):
             action,osimage,noeof,*_=(details['task'].split(':')+[None]+[None])
 
             if action == "build_osimage":
+                image_directory = CONSTANT['FILES']['IMAGE_DIRECTORY']
                 image = Database().get_record(None, 'osimage', f"WHERE name='{osimage}'")
                 if not image:
                     Status().add_message(request_id,"luna",f"error packing osimage {osimage}: Image {osimage} does not exist?")
                     return False
 
-                if ('path' not in image[0]) or (image[0]['path'] is None):
-                    Status().add_message(request_id,"luna",f"error packing osimage {osimage}: Image path not defined")
-                    return False
+                if not image[0]['path']:
+                    OsImagePlugin=Helper().plugin_load(self.osimage_plugins,'osimage/filesystem','default')
+                    ret, data = OsImagePlugin().getpath(image_directory=image_directory, osimage=image[0]['name'], tag=None) # we feed no tag as tagged/versioned FS is normally R/O
+                    if ret is True:
+                        image[0]['path'] = data
+                    else:
+                        Status().add_message(request_id,"luna",f"error packing osimage {osimage}: Image path not defined")
+                        return False
 
                 image_path = str(image[0]['path'])
                 if image_path[0] != '/': # means that we don't have an absolute path. good, let's prepend what's in luna.ini
-                    if 'IMAGE_DIRECTORY' in CONSTANT['FILES']:
-                        image_path = f"{CONSTANT['FILES']['IMAGE_DIRECTORY']}/{image[0]['path']}"
+                    if len(image_directory) > 1:
+                        image_path = f"{image_directory}/{image[0]['path']}"
                     else:
                         Status().add_message(request_id,"luna",f"error packing osimage {osimage}: image path {image_path} is not an absolute path while IMAGE_DIRECTORY setting in FILES is not defined")
                         return False
@@ -361,12 +374,23 @@ class OsImage(object):
 
                 srcimage,dstimage,mesg=None,None,None
                 if src and dst:
+                    image_directory = CONSTANT['FILES']['IMAGE_DIRECTORY']
                     srcimage = Database().get_record(None, 'osimage', f"WHERE name='{src}'")
                     dstimage = Database().get_record(None, 'osimage', f"WHERE name='{dst}'")
                     distribution = str(dstimage[0]['distribution']) or 'redhat'
                     distribution=distribution.lower()
                     osrelease = str(dstimage[0]['osrelease']) or 'default.py'
                     if srcimage and dstimage:
+                        # loading the plugin depending on OS
+                        OsClonePlugin=Helper().plugin_load(self.osimage_plugins,'osimage/filesystem','default')
+                        if not srcimage[0]['path'] or srcimage[0]['tag']:
+                            ret, data = OsClonePlugin().getpath(image_directory=image_directory, osimage=srcimage[0]['name'], tag=srcimage[0]['tag'])
+                            if ret is True:
+                                srcimage[0]['path'] = data
+                        if not dstimage[0]['path']:
+                            ret, data = OsClonePlugin().getpath(image_directory=image_directory, osimage=dstimage[0]['name'], tag=None) # we feed no tag as tagged/versioned FS is normally R/O
+                            if ret is True:
+                                dstimage[0]['path'] = data
                         if not os.path.exists(srcimage[0]['path']):
                             mesg=f"{src}:{srcimage[0]['path']} does not exist"
                         elif dstimage[0]['path'] and len(dstimage[0]['path'])>1:
@@ -378,9 +402,6 @@ class OsImage(object):
                                     command=f"mkdir -p \"{dstimage[0]['path']}\""
                                     mesg,exit_code = Helper().runcommand(command,True,10)
                                 if exit_code == 0:
-                                    # loading the plugin depending on OS
-                                    OsClonePlugin=Helper().plugin_load(self.osimage_plugins,'osimage/filesystem','default')
-
                                     self.logger.info(f"Copy image from \"{srcimage[0]['path']}\" to \"{dstimage[0]['path']}\"")
                                     response=OsClonePlugin().clone(source=srcimage[0]['path'],destination=dstimage[0]['path'])
                                     result=response[0]

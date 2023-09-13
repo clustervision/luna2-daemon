@@ -64,7 +64,7 @@ class OSImage():
                 del record['id']
                 if (not record['path']) or record['tag']:
                     record['path'] = 'undefined'
-                    ret, data = OsImagePlugin().getpath(images_path=self.image_directory, osimage=record['name'], tag=record['tag'])
+                    ret, data = OsImagePlugin().getpath(image_directory=self.image_directory, osimage=record['name'], tag=record['tag'])
                     if ret is True:
                         record['path'] = data
                 response['config'][self.table][record['name']] = record
@@ -91,7 +91,7 @@ class OSImage():
                 del record['id']
                 if (not record['path']) or record['tag']:
                     record['path'] = 'undefined'
-                    ret, data = OsImagePlugin().getpath(images_path=self.image_directory, osimage=record['name'], tag=record['tag'])
+                    ret, data = OsImagePlugin().getpath(image_directory=self.image_directory, osimage=record['name'], tag=record['tag'])
                     if ret is True:
                         record['path'] = data
                 response['config'][self.table][record['name']] = record

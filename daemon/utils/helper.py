@@ -754,7 +754,7 @@ class Helper(object):
             plugins = {}
             temp = {}
             for treestep in root:
-                treestep not in temp:
+                if treestep not in temp:
                     temp[treestep] = {}
                 temp = temp[treestep]
             plugins[roottree[-1]] = fullplugins[temp]

@@ -753,6 +753,7 @@ class Helper(object):
             for treestep in roottree:
                 if treestep in myplugin:
                     myplugin = myplugin[treestep]
+            root = root[-1]
         except Exception as exp:
             self.logger.error(f"Loading module caused a problem in roottree: {exp}") 
             return None
@@ -784,7 +785,7 @@ class Helper(object):
                 self.logger.info(f"loading plugins.{root}.default")
                 module = __import__('plugins.'+root+'.default',fromlist=[class_name])
         except Exception as exp:
-            self.logger.error(f"Loading module caused a problem loading: {exp}") 
+            self.logger.error(f"Loading module caused a problem loading: {exp}. myplugin: [{myplugin}]") 
             return None
 
         try:

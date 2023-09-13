@@ -72,6 +72,7 @@ class OSImage():
                     ret, data = OsImagePlugin().getpath(image_directory=self.image_directory, osimage=record['name'], tag=tagname)
                     if ret is True:
                         record['path'] = data
+                record['tag'] = tagname or 'default'
                 response['config'][self.table][record['name']] = record
         return status, response
 
@@ -104,6 +105,7 @@ class OSImage():
                     ret, data = OsImagePlugin().getpath(image_directory=self.image_directory, osimage=record['name'], tag=tagname)
                     if ret is True:
                         record['path'] = data
+                record['tag'] = tagname or 'default'
                 response['config'][self.table][record['name']] = record
         return status, response
 

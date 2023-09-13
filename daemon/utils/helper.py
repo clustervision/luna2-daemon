@@ -754,6 +754,7 @@ class Helper(object):
                 if treestep in myplugin:
                     myplugin = myplugin[treestep]
             root = root[-1]
+            myplugin[root] = myplugin
         except Exception as exp:
             self.logger.error(f"Loading module caused a problem in roottree: {exp}") 
             return None

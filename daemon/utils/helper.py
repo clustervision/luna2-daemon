@@ -758,7 +758,7 @@ class Helper(object):
                 if treestep not in temp:
                     temp[treestep] = {}
                 temp = temp[treestep]
-            myplugin[roottree[-1]] = plugins[temp]
+            #myplugin[roottree[-1]] = plugins[temp]
         except Exception as exp:
             self.logger.error(f"Loading module caused a problem in roottree: {exp}") 
             return None

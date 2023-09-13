@@ -18,6 +18,7 @@ from time import sleep, time
 from os import getpid, path
 from random import randint
 from concurrent.futures import ThreadPoolExecutor
+from common.constant import CONSTANT, LUNAKEY
 from utils.status import Status
 from utils.osimage import OsImage as OsImager
 from utils.database import Database

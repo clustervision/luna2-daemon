@@ -1,0 +1,14 @@
+# OSIMAGE PLUGIN
+#
+#        three defined methods are mandatory:
+#        - pack   returns kernel_file_name,ramdisk_file_name upon success
+#        - build  returns image_file_name upon success
+#        - cleanup
+
+# Plugin selection based on the following search path and priority:
+#
+# 1 distribution + osrelease, e.g. plugins/osimage/redhat/el9.py
+# 2 distribution              e.g. plugins/osimage/redhat/default.py  or  plugins/osimage/redhat.py
+# 3 default                   e.g. plugins/osimage/default.py
+#
+#

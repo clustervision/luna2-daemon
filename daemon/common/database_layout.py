@@ -47,6 +47,7 @@ DATABASE_LAYOUT_osimage = [
 {"column": "distribution",         "datatype": "VARCHAR", "length": "20"},
 {"column": "osrelease",            "datatype": "VARCHAR", "length": "20"},
 {"column": "tagid",                "datatype": "VARCHAR", "length": "60"},
+{"column": "changed",              "datatype": "INTEGER", "length": "10"},
 {"column": "comment",              "datatype": "VARCHAR", "length": "20"}]
 
 DATABASE_LAYOUT_osimagetags = [

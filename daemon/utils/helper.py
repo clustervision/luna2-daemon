@@ -752,8 +752,9 @@ class Helper(object):
         levelones = []
         try:
             myplugin = {}
-            temp = {}
+            d = {}
             for treestep in root:
+                temp = d
                 if treestep not in temp:
                     temp[treestep] = {}
                 temp = temp[treestep]

@@ -290,18 +290,24 @@ class Boot():
         # -----------------------------------------------------------------------
         if data['nodeid']:
             node = Database().get_record_join(
-                ['node.*','group.osimageid as grouposimageid'],
+                ['node.*','group.osimageid as grouposimageid','group.osimagetagid as grouposimagetagid'],
                 ['group.id=node.groupid'],
                 [f'node.id={data["nodeid"]}']
             )
             if node:
+                data['osimagetagid'] = node[0]['osimagetagid'] or node[0]['grouposimagetagid']
                 data['osimageid'] = node[0]['osimageid'] or node[0]['grouposimageid']
                 data['nodename'] = node[0]['name']
                 # data['nodehostname'] = node[0]['hostname']
                 data['nodehostname'] = node[0]['name'] # + fqdn - pending
                 data['nodeservice'] = node[0]['service']
         if data['osimageid']:
-            osimage = Database().get_record(None, 'osimage', f' WHERE id = {data["osimageid"]}')
+            osimage = None
+            if data['osimagetagid']:
+                osimage = Database().get_record_join(['osimagetag.*'],['osimage.tagid=osimagetag.id'],
+                                [f'osimagetag.id={data["osimagetagid"]}',f'osimage.id={data["osimageid"]}'])
+            else:
+                osimage = Database().get_record(None, 'osimage', f' WHERE id = {data["osimageid"]}')
             if osimage:
                 if ('kernelfile' in osimage[0]) and (osimage[0]['kernelfile']):
                     data['kernelfile'] = osimage[0]['kernelfile']
@@ -548,11 +554,12 @@ class Boot():
         # below here is almost identical to a manual node selection boot -----------------
 
         node = Database().get_record_join(
-            ['node.*', 'group.osimageid as grouposimageid'],
+            ['node.*', 'group.osimageid as grouposimageid','group.osimagetagid as grouposimagetagid'],
             ['group.id=node.groupid'],
             [f'node.name="{hostname}"']
         )
         if node:
+            data['osimagetagid'] = node[0]['osimagetagid'] or node[0]['grouposimagetagid']
             data['osimageid'] = node[0]['osimageid'] or node[0]['grouposimageid']
             data['nodename'] = node[0]['name']
             # data['nodehostname'] = node[0]['hostname']
@@ -586,7 +593,12 @@ class Boot():
                 data['nodeip'] = None
 
         if data['osimageid']:
-            osimage = Database().get_record(None, 'osimage', f' WHERE id = {data["osimageid"]}')
+            osimage = None
+            if data['osimagetagid']:
+                osimage = Database().get_record_join(['osimagetag.*'],['osimage.tagid=osimagetag.id'],
+                                [f'osimagetag.id={data["osimagetagid"]}',f'osimage.id={data["osimageid"]}'])
+            else:
+                osimage = Database().get_record(None, 'osimage', f' WHERE id = {data["osimageid"]}')
             if osimage:
                 if ('kernelfile' in osimage[0]) and (osimage[0]['kernelfile']):
                     data['kernelfile'] = osimage[0]['kernelfile']
@@ -839,7 +851,7 @@ class Boot():
             self.logger.debug(f"DEBUG: {node_details}")
             for item in ['provision_method','provision_fallback','prescript','partscript','postscript',
                          'netboot','localinstall','bootmenu','provision_interface','unmanaged_bmc_users',
-                         'name','setupbmc','bmcsetup','group','osimage']:
+                         'name','setupbmc','bmcsetup','group','osimage','osimagetag']:
                 if item in items and isinstance(items[item], bool):
                     if node_details[item] is None or node_details[item] == 'None':
                         data[item]=False
@@ -873,7 +885,12 @@ class Boot():
         data['osrelease'] = 'default'
         data['distribution'] = 'redhat'
         if data['osimage']:
-            osimage = Database().get_record(None, 'osimage', " WHERE name = '"+data['osimage']+"'")
+            osimage = None
+            if data['osimagetagid']:
+                osimage = Database().get_record_join(['osimage.*','osimagetag.imagefile'],['osimage.tagid=osimagetag.id'],
+                                [f'osimagetag.id="'+data["osimagetag"]+'"',f'osimage.name="'+data["osimage"]+'"'])
+            else:
+                osimage = Database().get_record(None, 'osimage', " WHERE name = '"+data['osimage']+"'")
             if osimage:
                 data['osimageid'] = osimage[0]['id']
                 data['osimagename'] = osimage[0]['name']

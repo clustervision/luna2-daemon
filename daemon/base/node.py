@@ -178,6 +178,7 @@ class Node():
                 'node.*',
                 'group.name AS group',
                 'osimage.name AS group_osimage',
+                'group.osimagetagid AS group_osimagetagid',
                 'group.setupbmc AS group_setupbmc',
                 'group.bmcsetupid AS group_bmcsetupid',
                 'group.prescript AS group_prescript',
@@ -212,6 +213,7 @@ class Node():
                     node['bmcsetup'] = Database().name_by_id('bmcsetup', node['group_bmcsetupid'])
             if 'group_bmcsetupid' in node:
                 del node['group_bmcsetupid']
+            #---
             if node['osimageid']:
                 node['osimage'] = Database().name_by_id('osimage', node['osimageid']) or '!!Invalid!!'
             elif 'group_osimage' in node and node['group_osimage']:
@@ -221,9 +223,22 @@ class Node():
                     node['osimage'] = node['group_osimage']
             if 'group_osimage' in node:
                 del node['group_osimage']
+            #---
+            if node['osimagetagid']:
+                node['osimagetag'] = Database().name_by_id('osimagetag', node['osimagetagid']) or 'default'
+            elif 'group_osimagetagid' in node and node['group_osimagetagid']:
+                node['osimagetag'] = Database().name_by_id('osimagetag', node['group_osimagetagid']) or 'default'
+                if cli:
+                    node['osimagetag'] = node['nodeosimagetag']+f" ({node['group']})"
+            if 'osimagetagid' in node:
+                del node['osimagetagid']
+            if 'group_osimagetagid' in node:
+                del node['group_osimagetagid']
+            #---
             node['switch'] = None
             if node['switchid']:
                 node['switch'] = Database().name_by_id('switch', node['switchid'])
+            #---
             if not node['groupid']:
                 node['group'] = '!!Invalid!!'
 

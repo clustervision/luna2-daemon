@@ -886,9 +886,9 @@ class Boot():
         data['distribution'] = 'redhat'
         if data['osimage']:
             osimage = None
-            if data['osimagetagid']:
+            if data['osimagetag']:
                 osimage = Database().get_record_join(['osimage.*','osimagetag.imagefile'],['osimage.tagid=osimagetag.id'],
-                                [f'osimagetag.id="'+data["osimagetag"]+'"',f'osimage.name="'+data["osimage"]+'"'])
+                                [f'osimagetag.name="'+data["osimagetag"]+'"',f'osimage.name="'+data["osimage"]+'"'])
             else:
                 osimage = Database().get_record(None, 'osimage', " WHERE name = '"+data['osimage']+"'")
             if osimage:

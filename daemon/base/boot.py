@@ -28,7 +28,7 @@ from common.constant import CONSTANT
 from base.node import Node
 
 try:
-    from plugins.detection.switchport import Plugin as DetectionPlugin
+    from plugins.boot.detection.switchport import Plugin as DetectionPlugin
 except ImportError as import_error:
     LOGGER = Log.get_logger()
     LOGGER.error(f"Problems encountered while loading detection plugin: {import_error}")

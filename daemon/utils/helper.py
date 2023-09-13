@@ -742,7 +742,7 @@ class Helper(object):
         """
         if root:
             root = root.replace('/','.')
-        self.logger.debug(f"Loading module {class_name}/Plugin from plugins.{root}.{levelone}.{leveltwo} / {plugins}")
+        self.logger.info(f"Loading module {class_name}/Plugin from plugins.{root}.{levelone}.{leveltwo} / {plugins}")
         if (not plugins): # or (root and root not in plugins):
             self.logger.error(f"Provided Plugins tree is empty or is missing root. plugins = [{plugins}], root = [{root}]")
             return None
@@ -790,6 +790,7 @@ class Helper(object):
         except Exception as exp:
             self.logger.error(f"Getattr caused a problem: {exp}") 
             return None
+
 
     def get_access_code(self,status,response=None):
         # this def is not suitable for 200 reponses

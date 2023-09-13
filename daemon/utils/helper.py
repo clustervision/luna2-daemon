@@ -787,7 +787,10 @@ class Helper(object):
                 self.logger.info(f"loading plugins.{root}.default")
 #                module = __import__('plugins.'+root+'.default',fromlist=[class_name])
         except Exception as exp:
-            self.logger.error(f"Loading module caused a problem during selection: {exp}. myplugin: [{myplugin}]") 
+            exc_type, exc_obj, exc_tb = sys.exc_info()
+            #fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
+            print(exc_type, fname, exc_tb.tb_lineno)
+            self.logger.error(f"Loading module caused a problem during selection: {exp}, {exc_type} in {exc_tb.tb_lineno}. myplugin: [{myplugin}]") 
             return None
 
         try:

@@ -67,7 +67,7 @@ class OSImage():
                 if record['tagid']:
                     tagname = Database().name_by_id('osimagetag', record['tagid'])
                 del record['tagid']
-                if (not record['path']) or record['tagid']:
+                if (not record['path']) or tagname:
                     record['path'] = '!undefined!'
                     ret, data = OsImagePlugin().getpath(image_directory=self.image_directory, osimage=record['name'], tag=tagname)
                     if ret is True:
@@ -99,7 +99,7 @@ class OSImage():
                 if record['tagid']:
                     tagname = Database().name_by_id('osimagetag', record['tagid'])
                 del record['tagid']
-                if (not record['path']) or record['tagid']:
+                if (not record['path']) or tagname:
                     record['path'] = '!undefined!'
                     ret, data = OsImagePlugin().getpath(image_directory=self.image_directory, osimage=record['name'], tag=tagname)
                     if ret is True:

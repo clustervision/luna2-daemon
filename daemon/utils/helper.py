@@ -749,16 +749,10 @@ class Helper(object):
         class_name = class_name or 'Plugin'
         levelones = []
         try:
-            myplugin = {}
-            d = {}
-            temp = d
+            myplugin = plugins
             for treestep in roottree:
-                self.logger.info(f"treestep = [{treestep}]")
-                if treestep not in temp:
-                    temp[treestep] = {}
-                temp = temp[treestep]
-            self.logger.info(f"temp = [{temp}]")
-            #myplugin[roottree[-1]] = plugins[temp]
+                if treestep in myplugin:
+                    myplugin = myplugin[treestep]
         except Exception as exp:
             self.logger.error(f"Loading module caused a problem in roottree: {exp}") 
             return None

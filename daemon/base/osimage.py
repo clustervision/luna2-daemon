@@ -58,7 +58,7 @@ class OSImage():
         if 'IMAGE_FILESYSTEM' in CONSTANT['PLUGINS'] and CONSTANT['PLUGINS']['IMAGE_FILESYSTEM']:
             filesystem_plugin = CONSTANT['PLUGINS']['IMAGE_FILESYSTEM']
         OsImagePlugin=Helper().plugin_load(self.osimage_plugins,'osimage/filesystem',filesystem_plugin)
-        all_records = Database().get_record(table=self.table)
+        all_records = Database().get_record(table='osimage')
         if all_records:
             status = True
             response = {'config': {self.table: {} }}
@@ -94,25 +94,31 @@ class OSImage():
         if 'IMAGE_FILESYSTEM' in CONSTANT['PLUGINS'] and CONSTANT['PLUGINS']['IMAGE_FILESYSTEM']:
             filesystem_plugin = CONSTANT['PLUGINS']['IMAGE_FILESYSTEM']
         OsImagePlugin=Helper().plugin_load(self.osimage_plugins,'osimage/filesystem',filesystem_plugin)
-        all_records = Database().get_record(table=self.table, where=f' WHERE name = "{name}"')
+        all_records = Database().get_record(table='osimage', where=f' WHERE name = "{name}"')
         if all_records:
             status = True
             response = {'config': {self.table: {} }}
-            for record in all_records:
-                record_id = record['id']
-                del record['id']
-                del record['changed']
-                tagname = None
-                if record['tagid']:
-                    tagname = Database().name_by_id('osimagetag', record['tagid'])
-                del record['tagid']
-                if (not record['path']) or tagname:
-                    record['path'] = '!!undefined!!'
-                    ret, data = OsImagePlugin().getpath(image_directory=self.image_directory, osimage=record['name'], tag=tagname)
-                    if ret is True:
-                        record['path'] = data
-                record['tag'] = tagname or 'default'
-                response['config'][self.table][record['name']] = record
+            record = all_records[0]
+            record_id = record['id']
+            del record['id']
+            del record['changed']
+            tagname = None
+            if record['tagid']:
+                tagname = Database().name_by_id('osimagetag', record['tagid'])
+            del record['tagid']
+            if (not record['path']) or tagname:
+                record['path'] = '!!undefined!!'
+                ret, data = OsImagePlugin().getpath(image_directory=self.image_directory, osimage=record['name'], tag=tagname)
+                if ret is True:
+                    record['path'] = data
+            record['tag'] = tagname or 'default'
+            image_tags = []
+            all_tags = Database().get_record(table='osimagetag', where=f' WHERE osimageid = "{record_id}"')
+            if all_tags:
+                for tag in all_tags:
+                    image_tags.append(tag['name'])
+                record['assigned_tags'] = ','.join(image_tags)
+            response['config'][self.table][record['name']] = record
         return status, response
 
 

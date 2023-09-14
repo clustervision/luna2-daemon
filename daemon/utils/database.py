@@ -365,7 +365,7 @@ class Database():
             column_string = column_string + ' ' +column['datatype'].upper() + ' '
         if 'length' in column.keys():
             column_string = column_string + ' (' +column['length'] + ') '
-        query = f'ALTER TABLE `{table}` ADD ({column_string})'
+        query = f'ALTER TABLE `{table}` ADD {column_string}'
         self.logger.debug(f"Query executing => {query}")
         try:
             local_thread.cursor.execute(query)

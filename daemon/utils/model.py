@@ -128,6 +128,31 @@ class Model():
         return status, response
 
 
+    def delete_record_by_id(self, id=None, table=None, table_cap=None, ip_check=None):
+        """
+        This method will delete the requested.
+        """
+        status=False
+        record = Database().get_record(table=table, where=f' WHERE `id` = "{id}"')
+        if record:
+            if ip_check:
+                ip_clause = [
+                    {"column": "tablerefid", "value": record[0]['id']},
+                    {"column": "tableref", "value": table}
+                ]
+                Database().delete_row('ipaddress', ip_clause)
+                self.logger.info(f'{table_cap} linked IP Address is deleted.')
+            Database().delete_row(table, [{"column": "id", "value": id}])
+            self.logger.info(f'{table_cap} removed from database.')
+            response = f'{table_cap} removed from database.'
+            status=True
+        else:
+            self.logger.info(f'{name} is not present in the database.')
+            response = f'{name} is not present in the database.'
+            status=False
+        return status, response
+
+
     def change_record(
             self,
             name=None,

@@ -334,6 +334,26 @@ class OSImage():
         return status, response
 
 
+    def delete_osimagetag(self, name=None, tagname=None):
+        """
+        This method will delete an osimagetag.
+        """
+        image_details = Database().get_record_join(
+            ['osimagetag.id as tagid'],
+            ['osimagetag.osimageid=osimage.id'],
+            ['osimage.name="{name}"','osimagetag.name="{tagname}"']
+        )
+        if not image_details:
+            status = False
+            return status, "image {name} and/or tag {tagname} not found or invalid combination"
+        status, response = Model().delete_record_by_id(
+            id = image_details[0]['tagid'],
+            table = 'osimagetag',
+            table_cap = 'OS image tag'
+        )
+        return status, response
+
+
     def grab(self, node=None, request_data=None):
         """
         This method will grab a osimage.

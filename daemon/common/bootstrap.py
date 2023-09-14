@@ -144,7 +144,7 @@ def check_db_tables():
                     LOGGER.error(f"fix database: column {column['column']} not found in table {table} and will be added")
                     Database().add_column(table, column)
         else:
-            LOGGER.error(f'Database table {table} does not seem to exist and will be created.')
+            LOGGER.error(f'Database table {table} does not seem to exist and will be created')
             layout = get_database_tables_structure(table=table)
             Database().create(table, layout)
     if num == 0:
@@ -289,6 +289,7 @@ def bootstrap(bootstrapfile=None):
     """
     get_config(bootstrapfile)
     LOGGER.info('###################### Bootstrap Start ######################')
+#   below no longer needed but kept for old-time sake
 #    create_database_tables()
 
     defaultserver_ip=None

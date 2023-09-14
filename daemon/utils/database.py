@@ -343,6 +343,31 @@ class Database():
         return response
 
 
+    def add_column(self, table=None, column=None):
+        """
+        Input - tablename and column
+        Process - It is Create operation on the DB.
+            table is the table name which need to be created.
+            column is a list of dict ex:
+            where = [
+                {"column": "id", "datatype": "INTEGER", "length": "10", "key": "PRIMARY", 
+                "keyadd": "autoincrement"},
+                {"column": "id", "datatype": "INTEGER", "length": "20", "key": "UNIQUE"},
+                {"column": "id", "datatype": "INTEGER", "length": "20", "key": "UNIQUE", 
+                "with": "name"},
+                {"column": "name", "datatype": "VARCHAR", "length": "40"}]
+        Output - adds column to table.
+        """
+        column_string = ''
+        if 'column' in column.keys():
+            column_string = column_string + ' `' + column['column'] + '` '
+        if 'datatype' in column.keys():
+            column_string = column_string + ' ' +column['datatype'].upper() + ' '
+        if 'length' in column.keys():
+            column_string = column_string + ' (' +column['length'] + ') '
+        self.logger.info(f"What i have created: {column_string}")
+
+
     def truncate(self, table=None):
         """
         Input - tablename

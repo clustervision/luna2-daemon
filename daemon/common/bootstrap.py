@@ -137,7 +137,7 @@ def check_db_tables():
             num = num+1
             fix_database_tables(table=table, task="verify")
         else:
-            LOGGER.debug(f'Database table {table} does not seem to exist or is empty.')
+            LOGGER.debug(f'Database table {table} does not seem to exist or is empty and will be created.')
             fix_database_tables(table=table, task="create")
     if num == 0:
         return False

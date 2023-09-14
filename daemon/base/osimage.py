@@ -229,6 +229,7 @@ class OSImage():
             data = request_data['config']['osimage'][name]
             bare = False
             nocopy = False
+            tag = None
             if 'bare' in data:
                 bare = data['bare']
                 bare = Helper().make_bool(bare)
@@ -237,6 +238,9 @@ class OSImage():
                 nocopy = data['nocopy']
                 nocopy = Helper().make_bool(nocopy)
                 del data['nocopy']
+            if 'tag' in data and data['tag']:
+                tag = data['tag']
+                del data['tag']
             image = Database().get_record(None, 'osimage', f' WHERE name = "{name}"')
             if image:
                 if 'newosimage' in data:
@@ -275,10 +279,10 @@ class OSImage():
                     return status, f"OS Image cloned successfully"
                 request_id  = str(time()) + str(randint(1001, 9999)) + str(getpid())
                 if bare is not False:
-                    task = f"clone_osimage:{name}:{data['name']}"
+                    task = f"clone_osimage:{name}:{tag}:{data['name']}"
                     task_id, text = Queue().add_task_to_queue(task, 'osimage', request_id)
                 else:
-                    task = f"clone_n_pack_osimage:{name}:{data['name']}"
+                    task = f"clone_n_pack_osimage:{name}:{tag}:{data['name']}"
                     task_id, text = Queue().add_task_to_queue(task, 'osimage', request_id)
                 if not task_id:
                     self.logger.info("config_osimage_clone cannot get queue_id")

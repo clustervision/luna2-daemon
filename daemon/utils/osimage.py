@@ -360,7 +360,7 @@ class OsImage(object):
             result=False
             details=Queue().get_task_details(taskid)
             request_id=details['request_id']
-            action,src,dst,noeof,*_=(details['task'].split(':')+[None]+[None])
+            action,src,tag,dst,noeof,*_=(details['task'].split(':')+[None]+[None]+[None])
 
             if action == "copy_osimage" or action == "clone_osimage":
                 Status().add_message(request_id,"luna",f"copying osimage {src}->{dst}")
@@ -381,8 +381,10 @@ class OsImage(object):
                         if 'IMAGE_FILESYSTEM' in CONSTANT['PLUGINS'] and CONSTANT['PLUGINS']['IMAGE_FILESYSTEM']:
                             filesystem_plugin = CONSTANT['PLUGINS']['IMAGE_FILESYSTEM']
                         OsClonePlugin=Helper().plugin_load(self.osimage_plugins,'osimage/filesystem',filesystem_plugin)
-                        if not srcimage[0]['path'] or srcimage[0]['tagid']:
-                            tagname = Database().name_by_id('osimagetag', srcimage[0]['tagid'])
+                        if (not srcimage[0]['path']) or srcimage[0]['tagid'] or tag:
+                            tagname = tag or None
+                            if (not tag) and srcimage[0]['tagid']:
+                                tagname = Database().name_by_id('osimagetag', srcimage[0]['tagid'])
                             ret, data = OsClonePlugin().getpath(image_directory=image_directory, osimage=srcimage[0]['name'], tag=tagname)
                             if ret is True:
                                 srcimage[0]['path'] = data
@@ -740,15 +742,15 @@ class OsImage(object):
             while next_id := Queue().next_task_in_queue('osimage','queued'):
                 details=Queue().get_task_details(next_id)
                 request_id=details['request_id']
-                action,first,second,*_=(details['task'].split(':')+[None]+[None])
+                action,first,second,third,*_=(details['task'].split(':')+[None]+[None]+[None])
                 self.logger.info(f"osimage_mother sees job {action} in queue as next: {next_id}")
 
                 if action == "clone_n_pack_osimage":
                     Queue().update_task_status_in_queue(next_id,'in progress')
                     if first and second:
-                        queue_id,queue_response = Queue().add_task_to_queue(f"copy_osimage:{first}:{second}:noeof",'osimage',request_id)
+                        queue_id,queue_response = Queue().add_task_to_queue(f"copy_osimage:{first}:{second}:{third}:noeof",'osimage',request_id)
                         if queue_id:
-                            queue_id,queue_response = Queue().add_task_to_queue(f"pack_n_build_osimage:{second}",'osimage',request_id)
+                            queue_id,queue_response = Queue().add_task_to_queue(f"pack_n_build_osimage:{third}",'osimage',request_id)
                             if queue_id:
                                 queue_id,queue_response = Queue().add_task_to_queue(f"close_task:{next_id}",'osimage',request_id)
 

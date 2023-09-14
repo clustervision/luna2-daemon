@@ -144,17 +144,16 @@ def check_db_tables():
 
 
 def fix_database_tables(table=None, task=None):
-    if table:
-        if task
-            if task == "create":
-                create_database_tables(table=table)
-            elif task == "fix":
-                dbcolumns = Database().get_columns(table)
-                layout = get_database_tables_structure(table=table)
-                LOGGER.info(f"Table {table} columns: {columns}")
-                for column in layout:
-                    if column not in dbcolumns:
-                        LOGGER.error(f"fix database: column {column} not found in table {table}")
+    if table and task:
+        if task == "create":
+            create_database_tables(table=table)
+        elif task == "fix":
+            dbcolumns = Database().get_columns(table)
+            layout = get_database_tables_structure(table=table)
+            LOGGER.info(f"Table {table} columns: {columns}")
+            for column in layout:
+                if column not in dbcolumns:
+                    LOGGER.error(f"fix database: column {column} not found in table {table}")
 
 
 def create_database_tables(table=None):

@@ -728,16 +728,15 @@ class OsImage(object):
         image = Database().get_record(None, 'osimage', f"WHERE name='{osimage}'")
         if not image:
             return False, f"error packing osimage {osimage}: Image {osimage} does not exist?"
-        if image[0]['tagid']:
-            imagetags = Database().get_record(None, 'osimagetag', f"WHERE osimageid='{image[0]['tagid']}'")
-            if imagetags:
-                for imagetag in imagetags:
-                    if imagetag['kernelfile']:
-                        inuse_kernelfiles.append(imagetag['kernelfile'])
-                    if imagetag['initrdfile']:
-                        inuse_initrdfiles.append(imagetag['initrdfile'])
-                    if imagetag['imagefile']:
-                        inuse_imagefiles.append(imagetag['imagefile'])
+        imagetags = Database().get_record(None, 'osimagetag', f"WHERE osimageid='{image[0]['id']}'")
+        if imagetags:
+            for imagetag in imagetags:
+                if imagetag['kernelfile']:
+                    inuse_kernelfiles.append(imagetag['kernelfile'])
+                if imagetag['initrdfile']:
+                    inuse_initrdfiles.append(imagetag['initrdfile'])
+                if imagetag['imagefile']:
+                    inuse_imagefiles.append(imagetag['imagefile'])
 #        distribution = str(image[0]['distribution']) or 'redhat'
 #        distribution=distribution.lower()
 #        osrelease = str(image[0]['osrelease']) or 'default.py'
@@ -771,12 +770,11 @@ class OsImage(object):
         image = Database().get_record(None, 'osimage', f"WHERE name='{osimage}'")
         if not image:
             return False, f"error cleaning provisioning osimage {osimage}: Image {osimage} does not exist?"
-        if image[0]['tagid']:
-            imagetags = Database().get_record(None, 'osimagetag', f"WHERE osimageid='{image[0]['tagid']}'")
-            if imagetags:
-                for imagetag in imagetags:
-                    if imagetag['imagefile']:
-                        inuse_imagefiles.append(imagetag['imagefile'])
+        imagetags = Database().get_record(None, 'osimagetag', f"WHERE osimageid='{image[0]['tagid']}'")
+        if imagetags:
+            for imagetag in imagetags:
+                if imagetag['imagefile']:
+                    inuse_imagefiles.append(imagetag['imagefile'])
         inuse_imagefiles.append(image[0]['imagefile'])
 
         cluster_provision_methods=[]

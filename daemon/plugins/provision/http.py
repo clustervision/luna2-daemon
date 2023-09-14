@@ -33,10 +33,10 @@ class Plugin():
     def __init__(self):
         self.logger = ""
 
-    def create(self,image_file,files_path,server_ipaddress=None,server_port=None,server_protocol=None):
+    def create(self, image_file, files_path, server_ipaddress=None, server_port=None, server_protocol=None):
         return True,"Success"
 
-    def cleanup(self,osimage,files_path,current_packed_image_file):
+    def cleanup(self, osimage=None, files_path=None, current_packed_image_files=[]):
         return True,"Success"
 
     # -------------------------------

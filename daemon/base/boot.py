@@ -990,23 +990,21 @@ class Boot():
         segment = str(bmc_plugin().config)
         template_data = template_data.replace("## BMC CODE SEGMENT",segment)
 
-        ## INSTALL <PRE|PART|POST>SCRIPT CODE SEGMENT
-        install_plugin = Helper().plugin_load(
-            self.boot_plugins,
-            'boot/install',
-            [data['nodename'],data['group'],data['distribution']]
+        ## SCRIPT <PRE|PART|POST>SCRIPT CODE SEGMENT
+        script_plugin = Helper().plugin_load(self.boot_plugins, 'boot/scripts',
+                       [data['nodename'],data['group'],data['distribution']]
         )
         for script in ['prescript', 'partscript', 'postscript']:
             segment = ""
             match script:
                 case 'prescript':
-                    segment = str(install_plugin().prescript)
+                    segment = str(script_plugin().prescript)
                 case 'partscript':
-                    segment = str(install_plugin().partscript)
+                    segment = str(script_plugin().partscript)
                 case 'postscript':
-                    segment = str(install_plugin().postscript)
+                    segment = str(script_plugin().postscript)
             template_data = template_data.replace(
-                f"## INSTALL {script.upper()} CODE SEGMENT",
+                f"## SCRIPT {script.upper()} CODE SEGMENT",
                 segment
             )
 

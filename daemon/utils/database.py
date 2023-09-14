@@ -366,6 +366,15 @@ class Database():
         if 'length' in column.keys():
             column_string = column_string + ' (' +column['length'] + ') '
         self.logger.info(f"What i have created: {column_string}")
+        query = f'ALTER TABLE `{table}` ADD ({column_strings})'
+        try:
+            local_thread.cursor.execute(query)
+            self.commit()
+            response = True
+        except Exception as exp:
+            self.logger.error(f'Error while adding column to {table}. Error: {exp}')
+            response = False
+        return response
 
 
     def truncate(self, table=None):

@@ -340,16 +340,23 @@ class OSImage():
         """
         This method will delete an osimagetag.
         """
-        image_details = Database().get_record_join(
+        tag_details = Database().get_record_join(
             ['osimagetag.id as tagid'],
             ['osimagetag.osimageid=osimage.id'],
             [f'osimage.name="{name}"',f'osimagetag.name="{tagname}"']
         )
-        if not image_details:
+        if not tag_details:
             status = False
             return status, f"image {name} and/or tag {tagname} not found or invalid combination"
+        cur_tag = Database().get_record(None , 'osimage', f' WHERE name="{name}"')
+        if cur_tag and cur_tag[0]['tagid'] == tag_details[0]['tagid']:
+            udata={}
+            udata['tagid'] = ""
+            where = [{"column": "id", "value": image_id}]
+            row = Helper().make_rows(udata)
+            res = Database().update('osimage', row, where)
         status, response = Model().delete_record_by_id(
-            id = image_details[0]['tagid'],
+            id = tag_details[0]['tagid'],
             table = 'osimagetag',
             table_cap = 'OS image tag'
         )

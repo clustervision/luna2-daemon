@@ -54,7 +54,10 @@ class OSImage():
 #            table_cap = self.table_cap
 #        )
         status = False
-        OsImagePlugin=Helper().plugin_load(self.osimage_plugins,'osimage/filesystem','default')
+        filesystem_plugin = 'default'
+        if 'IMAGE_FILESYSTEM' in CONSTANT['PLUGINS'] and CONSTANT['PLUGINS']['IMAGE_FILESYSTEM']:
+            filesystem_plugin = CONSTANT['PLUGINS']['IMAGE_FILESYSTEM']
+        OsImagePlugin=Helper().plugin_load(self.osimage_plugins,'osimage/filesystem',filesystem_plugin)
         all_records = Database().get_record(table=self.table)
         if all_records:
             status = True
@@ -87,7 +90,10 @@ class OSImage():
 #            table_cap = self.table_cap
 #        )
         status = False
-        OsImagePlugin=Helper().plugin_load(self.osimage_plugins,'osimage/filesystem','default')
+        filesystem_plugin = 'default'
+        if 'IMAGE_FILESYSTEM' in CONSTANT['PLUGINS'] and CONSTANT['PLUGINS']['IMAGE_FILESYSTEM']:
+            filesystem_plugin = CONSTANT['PLUGINS']['IMAGE_FILESYSTEM']
+        OsImagePlugin=Helper().plugin_load(self.osimage_plugins,'osimage/filesystem',filesystem_plugin)
         all_records = Database().get_record(table=self.table, where=f' WHERE name = "{name}"')
         if all_records:
             status = True

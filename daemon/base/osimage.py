@@ -341,7 +341,7 @@ class OSImage():
         image_details = Database().get_record_join(
             ['osimagetag.id as tagid'],
             ['osimagetag.osimageid=osimage.id'],
-            ['osimage.name="{name}"','osimagetag.name="{tagname}"']
+            [f'osimage.name="{name}"',f'osimagetag.name="{tagname}"']
         )
         if not image_details:
             status = False

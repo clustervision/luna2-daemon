@@ -158,6 +158,7 @@ def fix_database_tables(table=None, task=None):
                 if column['column'] not in dbcolumns:
                     LOGGER.error(f"fix database: column {column['column']} not found in table {table}")
                     LOGGER.info(f" ... column = {column}")
+                    Database().add_column(table, column)
 
 
 def create_database_tables(table=None):

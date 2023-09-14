@@ -362,6 +362,9 @@ class OsImage(object):
             request_id=details['request_id']
             action,src,tag,dst,noeof,*_=(details['task'].split(':')+[None]+[None]+[None])
 
+            if tag and tag == "None":
+                tag = None
+
             if action == "copy_osimage" or action == "clone_osimage":
                 Status().add_message(request_id,"luna",f"copying osimage {src}->{dst}")
    

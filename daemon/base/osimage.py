@@ -229,7 +229,7 @@ class OSImage():
             data = request_data['config']['osimage'][name]
             bare = False
             nocopy = False
-            tag = ''
+            tag = None
             if 'bare' in data:
                 bare = data['bare']
                 bare = Helper().make_bool(bare)

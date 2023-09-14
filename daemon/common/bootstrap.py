@@ -196,7 +196,7 @@ def get_database_tables_structure(table=None):
         return DATABASE_LAYOUT_user
     if table == "switch":
         return DATABASE_LAYOUT_switch
-    if table == "othterdevices":
+    if table == "otherdevices":
         return DATABASE_LAYOUT_otherdevices
     if table == "controller":
         return DATABASE_LAYOUT_controller

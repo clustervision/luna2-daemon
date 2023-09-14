@@ -770,7 +770,7 @@ class OsImage(object):
         image = Database().get_record(None, 'osimage', f"WHERE name='{osimage}'")
         if not image:
             return False, f"error cleaning provisioning osimage {osimage}: Image {osimage} does not exist?"
-        imagetags = Database().get_record(None, 'osimagetag', f"WHERE osimageid='{image[0]['tagid']}'")
+        imagetags = Database().get_record(None, 'osimagetag', f"WHERE osimageid='{image[0]['id']}'")
         if imagetags:
             for imagetag in imagetags:
                 if imagetag['imagefile']:

@@ -153,7 +153,7 @@ def fix_database_tables(table=None, task=None):
             layout = get_database_tables_structure(table=table)
             LOGGER.info(f"Table {table} columns: {dbcolumns}")
             for column in layout:
-                if column not in dbcolumns:
+                if column['column'] not in dbcolumns:
                     LOGGER.error(f"fix database: column {column} not found in table {table}")
 
 

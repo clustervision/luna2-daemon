@@ -170,6 +170,8 @@ class Group():
             # ---
             if group['osimagetagid']:
                 group['osimagetag'] = Database().name_by_id('osimagetag', group['osimagetagid']) or 'default'
+            else:
+                group['osimagetag'] = 'default'
             del group['osimagetagid']
             # ---
             response['config']['group'][name] = group

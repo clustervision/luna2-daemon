@@ -230,6 +230,8 @@ class Node():
                 node['osimagetag'] = Database().name_by_id('osimagetag', node['group_osimagetagid']) or 'default'
                 if cli:
                     node['osimagetag'] = node['osimagetag']+f" ({node['group']})"
+            else:
+                node['osimagetag'] = 'default'
             if 'osimagetagid' in node:
                 del node['osimagetagid']
             if 'group_osimagetagid' in node:

@@ -629,6 +629,23 @@ def config_osimage_kernel_post(name=None):
     return response, access_code
 
 
+@config_blueprint.route("/config/osimage/<string:name>/tag", methods=['POST'])
+@token_required
+@validate_name
+@input_filter(checks=['config:osimage'], skip=None)
+def config_osimage_tag_post(name=None):
+    """
+    Input - OS Image Name
+    Process - Manually add/assign a tag to an image.
+    Output - Tag name.
+    """
+    access_code=404
+    status, response = OSImage().set_tag(name, request.data)
+    access_code=Helper().get_access_code(status,response)
+    response = {'message': response}
+    return response, access_code
+
+
 ############################# Cluster configuration #############################
 
 

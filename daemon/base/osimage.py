@@ -142,7 +142,7 @@ class OSImage():
         status=False
         response="Internal error"
         create, update = False, False
-        current_tag, new_tag = None, None
+        current_tag, tagname, new_tagid = None, None, None
         if request_data:
             data = request_data['config']['osimage'][name]
             image = Database().get_record(None, 'osimage', f' WHERE name = "{name}"')
@@ -150,7 +150,7 @@ class OSImage():
                 image_id = image[0]['id']
                 if 'tag' in data:
                     current_tag = Database().name_by_id('osimagetag', image[0]['tagid'])
-                    new_tag = data['tag']
+                    tagname = data['tag']
                 if 'newosimage' in data:
                     newosimage = data['newosimage']
                     where = f' WHERE `name` = "{newosimage}"'
@@ -172,13 +172,15 @@ class OSImage():
             column_check = Helper().compare_list(data, osimage_columns)
             if column_check:
                 if update:
-                    if new_tag == "": # to clear tag
+                    if tagname == "": # to clear tag
                         data['tagid'] = ""
-                    elif new_tag != current_tag:
-                        new_tagid = Database().id_by_name('osimagetag', new_tag)
+                    elif tagname != current_tag:
+                        imagetag = Database().get_record(None, 'osimagetag', f' WHERE osimageid = "{image_id}" AND name = "{tagname}"')
+                        if imagetag:
+                            new_tagid = imagetag[0]['id']
                         if not new_tagid and image_id:
                             tag_data = {}
-                            tag_data['tag'] = new_tag
+                            tag_data['name'] = tagname
                             tag_data['osimageid'] = image_id
                             tag_data['kernelfile'] = image[0]['kernelfile']
                             tag_data['initrdfile'] = image[0]['initrdfile']
@@ -648,6 +650,60 @@ class OSImage():
             response = 'Invalid request: Did not receive data'
             status=False
         return status, response
+
+
+    def set_tag(self, name=None, request_data=None)
+        """
+        This method will change the kernel of an image and pack again that image.
+        """
+        data = {}
+        status=False
+        response="Internal error"
+        if request_data:
+            data = request_data['config']['osimage'][name]
+            if 'tag' in data:
+                image = Database().get_record(None, 'osimage', f' WHERE name = "{name}"')
+                if image:
+                    image_id = image[0]['id']
+                    tagname, new_tagid = data['tag'], None
+                    if tagname == "":
+                        new_tagid = ""
+                    else:
+                        imagetag = Database().get_record(None, 'osimagetag', f' WHERE osimageid = "{image_id}" AND name = "{tagname}"')
+                        if imagetag:
+                            new_tagid = imagetag[0]['id']
+                        if not new_tagid:
+                            tag_data = {}
+                            tag_data['name'] = tagname
+                            tag_data['osimageid'] = image_id
+                            tag_data['kernelfile'] = image[0]['kernelfile']
+                            tag_data['initrdfile'] = image[0]['initrdfile']
+                            tag_data['imagefile'] = image[0]['imagefile']
+                            tag_row = Helper().make_rows(tag_data)
+                            new_tagid = Database().insert('osimagetag', tag_row)
+                    if new_tagid is not None:
+                        udata={}
+                        udata['tagid'] = new_tagid
+                        where = [{"column": "id", "value": image_id}]
+                        row = Helper().make_rows(udata)
+                        res = Database().update('osimage', row, where)
+                        if res:
+                            response=f"Tag {tagname} updated for OS Image {name}"
+                            status=True
+                    else:
+                        response=f"Could not create tag for OS Image {name}"
+                        status=False
+                else:
+                    response=f"OS Image {name} does not exist"
+                    status=False
+            else:
+                response=f"Required field 'tag' not supplied"
+                status=False
+        else:
+            response = 'Invalid request: Did not receive data'
+            status=False
+        return status, response
+
 
     # below has been 'moved' to utils/status
     def get_status(self, request_id=None):

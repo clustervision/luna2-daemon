@@ -178,7 +178,10 @@ class OsImage(object):
                     return False
 
                 if not image[0]['path']:
-                    OsImagePlugin=Helper().plugin_load(self.osimage_plugins,'osimage/filesystem','default')
+                    filesystem_plugin = 'default'
+                    if 'IMAGE_FILESYSTEM' in CONSTANT['PLUGINS'] and CONSTANT['PLUGINS']['IMAGE_FILESYSTEM']:
+                        filesystem_plugin = CONSTANT['PLUGINS']['IMAGE_FILESYSTEM']
+                    OsImagePlugin=Helper().plugin_load(self.osimage_plugins,'osimage/filesystem',filesystem_plugin)
                     ret, data = OsImagePlugin().getpath(image_directory=image_directory, osimage=image[0]['name'], tag=None) # we feed no tag as tagged/versioned FS is normally R/O
                     if ret is True:
                         image[0]['path'] = data
@@ -286,7 +289,10 @@ class OsImage(object):
                     return False
 
                 if not image[0]['path']:
-                    OsImagePlugin=Helper().plugin_load(self.osimage_plugins,'osimage/filesystem','default')
+                    filesystem_plugin = 'default'
+                    if 'IMAGE_FILESYSTEM' in CONSTANT['PLUGINS'] and CONSTANT['PLUGINS']['IMAGE_FILESYSTEM']:
+                        filesystem_plugin = CONSTANT['PLUGINS']['IMAGE_FILESYSTEM']
+                    OsImagePlugin=Helper().plugin_load(self.osimage_plugins,'osimage/filesystem',filesystem_plugin)
                     ret, data = OsImagePlugin().getpath(image_directory=image_directory, osimage=image[0]['name'], tag=None) # we feed no tag as tagged/versioned FS is normally R/O
                     if ret is True:
                         image[0]['path'] = data
@@ -385,7 +391,10 @@ class OsImage(object):
                     osrelease = str(dstimage[0]['osrelease']) or 'default.py'
                     if srcimage and dstimage:
                         # loading the plugin depending on OS
-                        OsClonePlugin=Helper().plugin_load(self.osimage_plugins,'osimage/filesystem','default')
+                        filesystem_plugin = 'default'
+                        if 'IMAGE_FILESYSTEM' in CONSTANT['PLUGINS'] and CONSTANT['PLUGINS']['IMAGE_FILESYSTEM']:
+                            filesystem_plugin = CONSTANT['PLUGINS']['IMAGE_FILESYSTEM']
+                        OsClonePlugin=Helper().plugin_load(self.osimage_plugins,'osimage/filesystem',filesystem_plugin)
                         if not srcimage[0]['path'] or srcimage[0]['tagid']:
                             tagname = Database().name_by_id('osimagetag', srcimage[0]['tagid'])
                             ret, data = OsClonePlugin().getpath(image_directory=image_directory, osimage=srcimage[0]['name'], tag=tagname)
@@ -742,8 +751,11 @@ class OsImage(object):
             return False,"IMAGE_FILES config setting not defined in FILES"
         files_path = CONSTANT['FILES']['IMAGE_FILES']
 
-        # loading the plugin depending on OS
-        OsImagePlugin=Helper().plugin_load(self.osimage_plugins,'osimage/filesystem','default')
+        # loading the plugin depending on setting
+        filesystem_plugin = 'default'
+            if 'IMAGE_FILESYSTEM' in CONSTANT['PLUGINS'] and CONSTANT['PLUGINS']['IMAGE_FILESYSTEM']:
+                filesystem_plugin = CONSTANT['PLUGINS']['IMAGE_FILESYSTEM']
+        OsImagePlugin=Helper().plugin_load(self.osimage_plugins,'osimage/filesystem',filesystem_plugin)
         ret,mesg=OsImagePlugin().cleanup(osimage=osimage,files_path=files_path,
                                 current_packed_image_files=inuse_imagefiles,
                                 current_kernel_files=inuse_kernelfiles,

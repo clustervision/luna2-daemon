@@ -96,7 +96,7 @@ class Plugin():
         """
         self.logger = Log.get_logger()
         grep = '|'.join(current_packed_image_files)
-        command = f"transmission-remote -l | grep {osimage} | grep -vE {grep}"
+        command = f"transmission-remote -l | grep {osimage} | grep -vE \"{grep}\""
         command += " | awk '{ print $1 }' | grep -oE '[0-9]+' | xargs -i transmission-remote -t {} --remove-and-delete"
         self.logger.info(f"what i will run: {command}")
         message, exit_code = Helper().runcommand(command, True, 60)

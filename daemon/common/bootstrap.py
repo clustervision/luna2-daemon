@@ -132,15 +132,14 @@ def check_db_tables():
     """
     num = 0
     for table in TABLES:
-        result = Database().get_record(None, table, None)
+        #result = Database().get_record(None, table, None)
+        result = Database().get_columns(table)
         if result:
             num = num+1
             fix_database_tables(table=table, task="verify")
         else:
-            dbcolumns = Database().get_columns(table)
-            if not dbcolumns:
-                LOGGER.error(f'Database table {table} does not seem to exist and will be created.')
-                fix_database_tables(table=table, task="create")
+            LOGGER.error(f'Database table {table} does not seem to exist and will be created.')
+            fix_database_tables(table=table, task="create")
     if num == 0:
         return False
     return True
@@ -155,7 +154,7 @@ def fix_database_tables(table=None, task=None):
             layout = get_database_tables_structure(table=table)
             LOGGER.info(f"Table {table} columns: {dbcolumns}")
             for column in layout:
-                LOGGER.info(f" ... verifying {column['column']}")
+                #LOGGER.info(f" ... verifying {column['column']}")
                 if column['column'] not in dbcolumns:
                     LOGGER.error(f"fix database: column {column['column']} not found in table {table}")
 

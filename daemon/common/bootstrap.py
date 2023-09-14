@@ -157,8 +157,7 @@ def fix_database_tables(table=None, task=None):
                 #LOGGER.info(f" ... verifying {column['column']}")
                 if column['column'] not in dbcolumns:
                     LOGGER.error(f"fix database: column {column['column']} not found in table {table}")
-                    for t in column.keys():
-                        LOGGER.info(f"... t = {t}")
+                    LOGGER.info(f" ... column = {column}")
 
 
 def create_database_tables(table=None):

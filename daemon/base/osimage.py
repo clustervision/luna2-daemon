@@ -345,7 +345,7 @@ class OSImage():
         )
         if not image_details:
             status = False
-            return status, "image {name} and/or tag {tagname} not found or invalid combination"
+            return status, f"image {name} and/or tag {tagname} not found or invalid combination"
         status, response = Model().delete_record_by_id(
             id = image_details[0]['tagid'],
             table = 'osimagetag',

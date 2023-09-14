@@ -46,7 +46,17 @@ DATABASE_LAYOUT_osimage = [
 {"column": "imagefile",            "datatype": "VARCHAR", "length": "100"},
 {"column": "distribution",         "datatype": "VARCHAR", "length": "20"},
 {"column": "osrelease",            "datatype": "VARCHAR", "length": "20"},
+{"column": "tagid",                "datatype": "VARCHAR", "length": "60"},
+{"column": "changed",              "datatype": "INTEGER", "length": "10"},
 {"column": "comment",              "datatype": "VARCHAR", "length": "20"}]
+
+DATABASE_LAYOUT_osimagetag = [
+{"column": "id",                   "datatype": "INTEGER", "key": "PRIMARY", "keyadd": "AUTOINCREMENT"},
+{"column": "name",                 "datatype": "VARCHAR", "length": "60"},
+{"column": "osimageid",            "datatype": "INTEGER", "length": "10"},
+{"column": "initrdfile",           "datatype": "VARCHAR", "length": "100"},
+{"column": "kernelfile",           "datatype": "VARCHAR", "length": "100"},
+{"column": "imagefile",            "datatype": "VARCHAR", "length": "100"}]
 
 DATABASE_LAYOUT_nodesecrets = [
 {"column": "id",                   "datatype": "INTEGER", "key": "PRIMARY", "keyadd": "AUTOINCREMENT"},
@@ -105,6 +115,7 @@ DATABASE_LAYOUT_group = [
 {"column": "setupbmc",             "datatype": "INTEGER", "length": "10"},
 {"column": "domain",               "datatype": "VARCHAR", "length": "20"},
 {"column": "osimageid",            "datatype": "INTEGER", "length": "10"},
+{"column": "osimagetagid",         "datatype": "VARCHAR", "length": "60"},
 {"column": "prescript",            "datatype": "TEXT"},
 {"column": "partscript",           "datatype": "TEXT"},
 {"column": "postscript",           "datatype": "TEXT"},
@@ -176,6 +187,7 @@ DATABASE_LAYOUT_node = [
 {"column": "name",                 "datatype": "VARCHAR", "length": "10", "key": "UNIQUE"},
 {"column": "groupid",              "datatype": "INTEGER", "length": "10"},
 {"column": "osimageid",            "datatype": "INTEGER", "length": "10"},
+{"column": "osimagetagid",         "datatype": "VARCHAR", "length": "60"},
 {"column": "switchport",           "datatype": "INTEGER", "length": "10"},
 {"column": "service",              "datatype": "INTEGER", "length": "10"},
 {"column": "bmcsetupid",           "datatype": "INTEGER", "length": "10"},

@@ -33,10 +33,9 @@ class Plugin():
 
     def __init__(self):
         """
-        three defined methods are mandatory:
+        two defined methods are mandatory:
         - pack   returns kernel_file_name,ramdisk_file_name upon success
         - build  returns image_file_name upon success
-        - cleanup
         one variable:
         - systemroot   this is where the installer will unpack files (read: ramdisk image) to
           systemroot   for debian/ubuntu is typically set to $rootmnt. note: $ROOT (not $rootmnt) points to /luna
@@ -55,29 +54,6 @@ class Plugin():
     # ---------------------------------------------------------------------------
 
     systemroot = "$rootmnt"
-
-    # ---------------------------------------------------------------------------
-
-    def cleanup(self, osimage=None, files_path=None, current_packed_image_file=None, current_kernel_file=None, current_ramdisk_file=None):
-        # files_path = is the location where the imagefile will be copied.
-        # current_packed_image_file is the currently used packed image
-        # same goes for kernel + ramdisk file
-        message = ''
-        if current_packed_image_file:
-            command = f"cd {files_path} && ls {osimage}-*.tar.bz2 | grep -vw \"{current_packed_image_file}\" | xargs rm -f"
-            self.logger.info(f"I will run: {command}")
-            message, exit_code = Helper().runcommand(command, True, 300)
-            if exit_code == 0:
-                command = f"cd {files_path} && ls {osimage}-*-vmlinuz* | grep -vw \"{current_kernel_file}\" | xargs rm -f"
-                self.logger.info(f"I will run: {command}")
-                message, exit_code = Helper().runcommand(command, True, 300)
-                if exit_code == 0:
-                    command = f"cd {files_path} && ls {osimage}-*-initramfs* | grep -vw \"{current_ramdisk_file}\" | xargs rm -f"
-                    self.logger.info(f"I will run: {command}")
-                    message, exit_code = Helper().runcommand(command, True, 300)
-            if exit_code == 0:
-                return True, message
-        return False, message
 
     # ---------------------------------------------------------------------------
             

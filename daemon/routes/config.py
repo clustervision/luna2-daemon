@@ -561,6 +561,21 @@ def config_osimage_delete(name=None):
     return response, access_code
 
 
+@config_blueprint.route("/config/osimage/<string:name>/osimagetag/<string:tagname>/_delete", methods=['GET'])
+@token_required
+@validate_name
+def config_osimagetag_delete(name=None, tagname=None):
+    """
+    Input - OS Image Name and osimagetag name
+    Process - Delete the OS Imagetag belonging to osimage.
+    Output - Success or Failure.
+    """
+    status, response = OSImage().delete_osimagetag(name,tagname)
+    access_code=Helper().get_access_code(status,response)
+    response = {'message': response}
+    return response, access_code
+
+
 # BELOW SEGMENT HAS BEEN TESTED AND CONFIRMED WORKING BY ANTOINE ON APRIL 3 2023
 @config_blueprint.route("/config/osimage/<string:name>/_pack", methods=['GET'])
 @token_required
@@ -611,6 +626,23 @@ def config_osimage_kernel_post(name=None):
             response = {'message': response}
     else:
         response = {'message': response}
+    return response, access_code
+
+
+@config_blueprint.route("/config/osimage/<string:name>/tag", methods=['POST'])
+@token_required
+@validate_name
+@input_filter(checks=['config:osimage'], skip=None)
+def config_osimage_tag_post(name=None):
+    """
+    Input - OS Image Name
+    Process - Manually add/assign a tag to an image.
+    Output - Tag name.
+    """
+    access_code=404
+    status, response = OSImage().set_tag(name, request.data)
+    access_code=Helper().get_access_code(status,response)
+    response = {'message': response}
     return response, access_code
 
 

@@ -49,10 +49,7 @@ class OsImage(object):
         self.logger = Log.get_logger()
         plugins_path=CONSTANT["PLUGINS"]["PLUGINS_DIR"]
         self.osimage_plugins = Helper().plugin_finder(f'{plugins_path}/osimage')
-        self.osgrab_plugins = Helper().plugin_finder(f'{plugins_path}/osgrab')
-        self.provision_plugins = Helper().plugin_finder(f'{plugins_path}/provision')
-        self.osclone_plugins = Helper().plugin_finder(f'{plugins_path}/osclone')
-        self.ospush_plugins = Helper().plugin_finder(f'{plugins_path}/ospush')
+        self.boot_plugins = Helper().plugin_finder(f'{plugins_path}/boot')
 
 
     # ---------------------------------------------------------------------------
@@ -71,6 +68,7 @@ class OsImage(object):
             nodry = Helper().make_bool(nodry)
 
             if action == "grab_osimage":
+                image_directory = CONSTANT['FILES']['IMAGE_DIRECTORY']
                 image = Database().get_record(None, 'osimage', f"WHERE name='{osimage}'")
                 if not image:
                     Status().add_message(request_id,"luna",f"error grabbing osimage {osimage}: Image {osimage} does not exist?")
@@ -81,14 +79,14 @@ class OsImage(object):
                     Status().add_message(request_id,"luna",f"error grabbing osimage {osimage}: Node {node} does not exist?")
                     return False
 
-                if ('path' not in image[0]) or (image[0]['path'] is None):
+                if not image[0]['path']:
                     Status().add_message(request_id,"luna",f"error grabbinging osimage {osimage}: Image path not defined")
                     return False
 
                 image_path = str(image[0]['path'])
                 if image_path[0] != '/': # means that we don't have an absolute path. good, let's prepend what's in luna.ini
-                    if 'IMAGE_DIRECTORY' in CONSTANT['FILES']:
-                        image_path = f"{CONSTANT['FILES']['IMAGE_DIRECTORY']}/{image[0]['path']}"
+                    if len(image_directory) > 1:
+                        image_path = f"{image_directory}/{image[0]['path']}"
                     else:
                         Status().add_message(request_id,"luna",f"error grabbing osimage {osimage}: image path {image_path} is not an absolute path while IMAGE_DIRECTORY setting in FILES is not defined")
                         return False
@@ -104,7 +102,7 @@ class OsImage(object):
                 distribution=distribution.lower()
 
                 # loading the plugin depending on OS
-                OsGrabPlugin=Helper().plugin_load(self.osgrab_plugins,'osgrab',[dbnode[0]['nodename'],distribution,osimage,dbnode[0]['groupname']])
+                OsGrabPlugin=Helper().plugin_load(self.osimage_plugins,'osimage/operations/osgrab',[dbnode[0]['nodename'],distribution,osimage,dbnode[0]['groupname']])
 
                 #------------------------------------------------------
                 grab_fs=[]
@@ -150,7 +148,8 @@ class OsImage(object):
             return result
 
         except Exception as exp:
-            self.logger.error(f"grab_osimage has problems: {exp}")
+            exc_type, exc_obj, exc_tb = sys.exc_info()
+            self.logger.error(f"grab_osimage has problems: {exp}, {exc_type}, in {exc_tb.tb_lineno}")
             try:
                 Status().add_message(request_id,"luna",f"Grabbing failed: {exp}")
                 Status().add_message(request_id,"luna",f"EOF")
@@ -172,33 +171,35 @@ class OsImage(object):
             action,osimage,noeof,*_=(details['task'].split(':')+[None]+[None])
 
             if action == "pack_osimage":
+                image_directory = CONSTANT['FILES']['IMAGE_DIRECTORY']
                 image = Database().get_record(None, 'osimage', f"WHERE name='{osimage}'")
                 if not image:
                     Status().add_message(request_id,"luna",f"error packing osimage {osimage}: Image {osimage} does not exist?")
                     return False
 
-                if ('path' not in image[0]) or (image[0]['path'] is None):
-                    Status().add_message(request_id,"luna",f"error packing osimage {osimage}: Image path not defined")
-                    return False
+                if not image[0]['path']:
+                    filesystem_plugin = 'default'
+                    if 'IMAGE_FILESYSTEM' in CONSTANT['PLUGINS'] and CONSTANT['PLUGINS']['IMAGE_FILESYSTEM']:
+                        filesystem_plugin = CONSTANT['PLUGINS']['IMAGE_FILESYSTEM']
+                    OsImagePlugin=Helper().plugin_load(self.osimage_plugins,'osimage/filesystem',filesystem_plugin)
+                    ret, data = OsImagePlugin().getpath(image_directory=image_directory, osimage=image[0]['name'], tag=None) # we feed no tag as tagged/versioned FS is normally R/O
+                    if ret is True:
+                        image[0]['path'] = data
+                    else:
+                        Status().add_message(request_id,"luna",f"error packing osimage {osimage}: Image path not defined")
+                        return False
                 if ('kernelversion' not in image[0]) or (image[0]['kernelversion'] is None):
                     Status().add_message(request_id,"luna",f"error packing osimage {osimage}: Kernel version not defined")
                     return False
 
                 image_path = str(image[0]['path'])
                 if image_path[0] != '/': # means that we don't have an absolute path. good, let's prepend what's in luna.ini
-                    if 'IMAGE_DIRECTORY' in CONSTANT['FILES']:
-                        image_path = f"{CONSTANT['FILES']['IMAGE_DIRECTORY']}/{image[0]['path']}"
+                    if len(image_directory) > 1:
+                        image_path = f"{image_directory}/{image[0]['path']}"
                     else:
                         Status().add_message(request_id,"luna",f"error packing osimage {osimage}: image path {image_path} is not an absolute path while IMAGE_DIRECTORY setting in FILES is not defined")
                         return False
 
-                ##path_to_store = f"{image[0]['path']}/boot"  # <-- we will store all files in this path, but add the name of the image to it.
-                if 'FILES' not in CONSTANT:
-                    Status().add_message(request_id,"luna",f"error packing osimage {osimage}: FILES config setting not defined")
-                    return False
-                if 'IMAGE_FILES' not in CONSTANT['FILES']:
-                    Status().add_message(request_id,"luna",f"error packing osimage {osimage}: IMAGE_FILES config setting not defined in FILES")
-                    return False
                 files_path = CONSTANT['FILES']['IMAGE_FILES']
        
                 kernel_version = str(image[0]['kernelversion'])
@@ -215,7 +216,7 @@ class OsImage(object):
                     kernel_modules = image[0]['kernelmodules'].split(',')
 
                 # loading the plugin depending on OS
-                OsImagePlugin=Helper().plugin_load(self.osimage_plugins,'osimage',distribution,osrelease)
+                OsImagePlugin=Helper().plugin_load(self.osimage_plugins,'osimage/operations/image',distribution,osrelease)
 
                 #------------------------------------------------------
                 Status().add_message(request_id,"luna",f"packing osimage {osimage}")
@@ -252,7 +253,8 @@ class OsImage(object):
             return result
 
         except Exception as exp:
-            self.logger.error(f"pack_osimage has problems: {exp}")
+            exc_type, exc_obj, exc_tb = sys.exc_info()
+            self.logger.error(f"pack_osimage has problems: {exp}, {exc_type}, in {exc_tb.tb_lineno}")
             try:
                 Status().add_message(request_id,"luna",f"Packing failed: {exp}")
                 Status().add_message(request_id,"luna",f"EOF")
@@ -273,19 +275,28 @@ class OsImage(object):
             action,osimage,noeof,*_=(details['task'].split(':')+[None]+[None])
 
             if action == "build_osimage":
+                image_directory = CONSTANT['FILES']['IMAGE_DIRECTORY']
                 image = Database().get_record(None, 'osimage', f"WHERE name='{osimage}'")
                 if not image:
                     Status().add_message(request_id,"luna",f"error packing osimage {osimage}: Image {osimage} does not exist?")
                     return False
 
-                if ('path' not in image[0]) or (image[0]['path'] is None):
-                    Status().add_message(request_id,"luna",f"error packing osimage {osimage}: Image path not defined")
-                    return False
+                if not image[0]['path']:
+                    filesystem_plugin = 'default'
+                    if 'IMAGE_FILESYSTEM' in CONSTANT['PLUGINS'] and CONSTANT['PLUGINS']['IMAGE_FILESYSTEM']:
+                        filesystem_plugin = CONSTANT['PLUGINS']['IMAGE_FILESYSTEM']
+                    OsImagePlugin=Helper().plugin_load(self.osimage_plugins,'osimage/filesystem',filesystem_plugin)
+                    ret, data = OsImagePlugin().getpath(image_directory=image_directory, osimage=image[0]['name'], tag=None) # we feed no tag as tagged/versioned FS is normally R/O
+                    if ret is True:
+                        image[0]['path'] = data
+                    else:
+                        Status().add_message(request_id,"luna",f"error packing osimage {osimage}: Image path not defined")
+                        return False
 
                 image_path = str(image[0]['path'])
                 if image_path[0] != '/': # means that we don't have an absolute path. good, let's prepend what's in luna.ini
-                    if 'IMAGE_DIRECTORY' in CONSTANT['FILES']:
-                        image_path = f"{CONSTANT['FILES']['IMAGE_DIRECTORY']}/{image[0]['path']}"
+                    if len(image_directory) > 1:
+                        image_path = f"{image_directory}/{image[0]['path']}"
                     else:
                         Status().add_message(request_id,"luna",f"error packing osimage {osimage}: image path {image_path} is not an absolute path while IMAGE_DIRECTORY setting in FILES is not defined")
                         return False
@@ -296,17 +307,10 @@ class OsImage(object):
                 if image[0]['osrelease']:
                     osrelease = str(image[0]['osrelease'])
 
-                ##path_to_store = f"{image[0]['path']}/boot"  # <-- we will store all files in this path, but add the name of the image to it.
-                if 'FILES' not in CONSTANT:
-                    Status().add_message(request_id,"luna",f"error packing osimage {osimage}: FILES config setting not defined")
-                    return False
-                if 'IMAGE_FILES' not in CONSTANT['FILES']:
-                    Status().add_message(request_id,"luna",f"error packing osimage {osimage}: IMAGE_FILES config setting not defined in FILES")
-                    return False
                 files_path = CONSTANT['FILES']['IMAGE_FILES']
         
                 # loading the plugin depending on OS
-                OsImagePlugin=Helper().plugin_load(self.osimage_plugins,'osimage',distribution,osrelease)
+                OsImagePlugin=Helper().plugin_load(self.osimage_plugins,'osimage/operations/image',distribution,osrelease)
 
                 Status().add_message(request_id,"luna",f"building osimage {osimage}")
                 response=OsImagePlugin().build(
@@ -337,7 +341,8 @@ class OsImage(object):
             return result
 
         except Exception as exp:
-            self.logger.error(f"build_osimage has problems: {exp}")
+            exc_type, exc_obj, exc_tb = sys.exc_info()
+            self.logger.error(f"build_osimage has problems: {exp}, {exc_type}, in {exc_tb.tb_lineno}")
             try:
                 Status().add_message(request_id,"luna",f"Packing failed: {exp}")
                 Status().add_message(request_id,"luna",f"EOF")
@@ -355,7 +360,10 @@ class OsImage(object):
             result=False
             details=Queue().get_task_details(taskid)
             request_id=details['request_id']
-            action,src,dst,noeof,*_=(details['task'].split(':')+[None]+[None])
+            action,src,tag,dst,noeof,*_=(details['task'].split(':')+[None]+[None]+[None])
+
+            if tag and tag == "None":
+                tag = None
 
             if action == "copy_osimage" or action == "clone_osimage":
                 Status().add_message(request_id,"luna",f"copying osimage {src}->{dst}")
@@ -364,12 +372,29 @@ class OsImage(object):
 
                 srcimage,dstimage,mesg=None,None,None
                 if src and dst:
+                    image_directory = CONSTANT['FILES']['IMAGE_DIRECTORY']
                     srcimage = Database().get_record(None, 'osimage', f"WHERE name='{src}'")
                     dstimage = Database().get_record(None, 'osimage', f"WHERE name='{dst}'")
                     distribution = str(dstimage[0]['distribution']) or 'redhat'
                     distribution=distribution.lower()
                     osrelease = str(dstimage[0]['osrelease']) or 'default.py'
                     if srcimage and dstimage:
+                        # loading the plugin depending on setting in luna.ini
+                        filesystem_plugin = 'default'
+                        if 'IMAGE_FILESYSTEM' in CONSTANT['PLUGINS'] and CONSTANT['PLUGINS']['IMAGE_FILESYSTEM']:
+                            filesystem_plugin = CONSTANT['PLUGINS']['IMAGE_FILESYSTEM']
+                        OsClonePlugin=Helper().plugin_load(self.osimage_plugins,'osimage/filesystem',filesystem_plugin)
+                        if (not srcimage[0]['path']) or srcimage[0]['tagid'] or tag:
+                            tagname = tag or None
+                            if (not tag) and srcimage[0]['tagid']:
+                                tagname = Database().name_by_id('osimagetag', srcimage[0]['tagid'])
+                            ret, data = OsClonePlugin().getpath(image_directory=image_directory, osimage=srcimage[0]['name'], tag=tagname)
+                            if ret is True:
+                                srcimage[0]['path'] = data
+                        if not dstimage[0]['path']:
+                            ret, data = OsClonePlugin().getpath(image_directory=image_directory, osimage=dstimage[0]['name'], tag=None) # we feed no tag as tagged/versioned FS is normally R/O
+                            if ret is True:
+                                dstimage[0]['path'] = data
                         if not os.path.exists(srcimage[0]['path']):
                             mesg=f"{src}:{srcimage[0]['path']} does not exist"
                         elif dstimage[0]['path'] and len(dstimage[0]['path'])>1:
@@ -381,9 +406,6 @@ class OsImage(object):
                                     command=f"mkdir -p \"{dstimage[0]['path']}\""
                                     mesg,exit_code = Helper().runcommand(command,True,10)
                                 if exit_code == 0:
-                                    # loading the plugin depending on OS
-                                    OsClonePlugin=Helper().plugin_load(self.osclone_plugins,'osclone',[dst,distribution],osrelease)
-
                                     self.logger.info(f"Copy image from \"{srcimage[0]['path']}\" to \"{dstimage[0]['path']}\"")
                                     response=OsClonePlugin().clone(source=srcimage[0]['path'],destination=dstimage[0]['path'])
                                     result=response[0]
@@ -409,7 +431,8 @@ class OsImage(object):
                 self.logger.info(f"{details['task']} is not for us.")
 
         except Exception as exp:
-            self.logger.error(f"copy_osimage has problems: {exp}")
+            exc_type, exc_obj, exc_tb = sys.exc_info()
+            self.logger.error(f"copy_osimage has problems: {exp}, {exc_type}, in {exc_tb.tb_lineno}")
             try:
                 Status().add_message(request_id,"luna",f"Packing failed: {exp}")
                 Status().add_message(request_id,"luna",f"EOF")
@@ -467,7 +490,7 @@ class OsImage(object):
                                 Status().add_message(request_id,"luna",f"error pushing osimage {osimage}: Node {dst} does not exist?")
                                 return False
                             # loading the plugin depending on OS
-                            OsPushPlugin=Helper().plugin_load(self.ospush_plugins,'ospush',[dbnode[0]['nodename'],distribution,osimage,dbnode[0]['groupname']])
+                            OsPushPlugin=Helper().plugin_load(self.osimage_plugins,'osimage/operations/ospush',[dbnode[0]['nodename'],distribution,osimage,dbnode[0]['groupname']])
 
                             self.logger.info(f"Push image from \"{image[0]['path']}\" to \"{dst}\"")
                             response=OsPushPlugin().push(osimage=osimage,
@@ -484,7 +507,7 @@ class OsImage(object):
                             if not dbnodes:
                                 Status().add_message(request_id,"luna",f"error pushing osimage {osimage}: Group {dst} does not exist?")
                                 return False
-                            OsPushPlugin=Helper().plugin_load(self.ospush_plugins,'ospush',[distribution,osimage,dst])
+                            OsPushPlugin=Helper().plugin_load(self.osimage_plugins,'osimage/operations/ospush',[distribution,osimage,dst])
 
                             try:
                                 batch=10
@@ -536,7 +559,8 @@ class OsImage(object):
                 self.logger.info(f"{details['task']} is not for us.")
 
         except Exception as exp:
-            self.logger.error(f"push_osimage has problems: {exp}")
+            exc_type, exc_obj, exc_tb = sys.exc_info()
+            self.logger.error(f"push_osimage has problems: {exp}, {exc_type}, in {exc_tb.tb_lineno}")
             try:
                 Status().add_message(request_id,"luna",f"Pushing failed: {exp}")
                 Status().add_message(request_id,"luna",f"EOF")
@@ -585,17 +609,10 @@ class OsImage(object):
                         server_port     = controller[0]['serverport']
                         server_protocol = CONSTANT['API']['PROTOCOL']
          
-                    ##path_to_store = f"{image[0]['path']}/boot"  # <-- we will store all files in this path, but add the name of the image to it.
-                    if 'FILES' not in CONSTANT:
-                        Status().add_message(request_id,"luna",f"error packing osimage {osimage}: FILES config setting not defined")
-                        return False
-                    if 'IMAGE_FILES' not in CONSTANT['FILES']:
-                        Status().add_message(request_id,"luna",f"error packing osimage {osimage}: IMAGE_FILES config setting not defined in FILES")
-                        return False
                     files_path = CONSTANT['FILES']['IMAGE_FILES']
 
                     for method in cluster_provision_methods:
-                        ProvisionPlugin=Helper().plugin_load(self.provision_plugins,'provision',method)
+                        ProvisionPlugin=Helper().plugin_load(self.boot_plugins,'boot/provision',method)
                         ret,mesg=ProvisionPlugin().create(image_file=image[0]['imagefile'],
                                                           files_path=files_path,
                                                           server_ipaddress=server_ipaddress,
@@ -618,7 +635,8 @@ class OsImage(object):
             return True
 
         except Exception as exp:
-            self.logger.error(f"provision_osimage has problems: {exp}")
+            exc_type, exc_obj, exc_tb = sys.exc_info()
+            self.logger.error(f"provision_osimage has problems: {exp}, {exc_type}, in {exc_tb.tb_lineno}")
             try:
                 Status().add_message(request_id,"luna",f"Create provision failed: {exp}")
                 Status().add_message(request_id,"luna",f"EOF")
@@ -631,28 +649,33 @@ class OsImage(object):
     def cleanup_images(self,osimage):
         self.logger.info(f"I was called to cleanup old images: {osimage}")
 
+        inuse_kernelfiles, inuse_initrdfiles, inuse_imagefiles = [], [], []
         image = Database().get_record(None, 'osimage', f"WHERE name='{osimage}'")
         if not image:
             return False, f"error packing osimage {osimage}: Image {osimage} does not exist?"
-        distribution = str(image[0]['distribution']) or 'redhat'
-        distribution=distribution.lower()
-        osrelease = str(image[0]['osrelease']) or 'default.py'
-        current_packed_image_file = str(image[0]['imagefile'])
-        current_kernel_file = str(image[0]['kernelfile'])
-        current_ramdisk_file = str(image[0]['initrdfile'])
+        imagetags = Database().get_record(None, 'osimagetag', f"WHERE osimageid='{image[0]['id']}'")
+        if imagetags:
+            for imagetag in imagetags:
+                if imagetag['kernelfile']:
+                    inuse_kernelfiles.append(imagetag['kernelfile'])
+                if imagetag['initrdfile']:
+                    inuse_initrdfiles.append(imagetag['initrdfile'])
+                if imagetag['imagefile']:
+                    inuse_imagefiles.append(imagetag['imagefile'])
+#        distribution = str(image[0]['distribution']) or 'redhat'
+#        distribution=distribution.lower()
+#        osrelease = str(image[0]['osrelease']) or 'default.py'
+        inuse_imagefiles.append(image[0]['imagefile'])
+        inuse_kernelfiles.append(image[0]['kernelfile'])
+        inuse_initrdfiles.append(image[0]['initrdfile'])
 
-        if 'FILES' not in CONSTANT:
-            return False,"FILES config setting not defined"
-        if 'IMAGE_FILES' not in CONSTANT['FILES']:
-            return False,"IMAGE_FILES config setting not defined in FILES"
         files_path = CONSTANT['FILES']['IMAGE_FILES']
 
-        # loading the plugin depending on OS
-        OsImagePlugin=Helper().plugin_load(self.osimage_plugins,'osimage',distribution,osrelease)
+        OsImagePlugin=Helper().plugin_load(self.osimage_plugins,'osimage/other','cleanup')
         ret,mesg=OsImagePlugin().cleanup(osimage=osimage,files_path=files_path,
-                                current_packed_image_file=current_packed_image_file,
-                                current_kernel_file=current_kernel_file,
-                                current_ramdisk_file=current_ramdisk_file)
+                                current_packed_image_files=inuse_imagefiles,
+                                current_kernel_files=inuse_kernelfiles,
+                                current_ramdisk_files=inuse_initrdfiles)
         return ret,mesg
 
     # -------------------------------------------------------------------
@@ -660,10 +683,16 @@ class OsImage(object):
     def cleanup_provisioning(self,osimage):
         self.logger.info(f"I was called to cleanup old provisioning: {osimage}")
 
+        inuse_imagefiles = []
         image = Database().get_record(None, 'osimage', f"WHERE name='{osimage}'")
         if not image:
             return False, f"error cleaning provisioning osimage {osimage}: Image {osimage} does not exist?"
-        current_packed_image_file = str(image[0]['imagefile'])
+        imagetags = Database().get_record(None, 'osimagetag', f"WHERE osimageid='{image[0]['id']}'")
+        if imagetags:
+            for imagetag in imagetags:
+                if imagetag['imagefile']:
+                    inuse_imagefiles.append(imagetag['imagefile'])
+        inuse_imagefiles.append(image[0]['imagefile'])
 
         cluster_provision_methods=[]
         cluster = Database().get_record(None, 'cluster', None)
@@ -673,15 +702,11 @@ class OsImage(object):
         else:
             cluster_provision_methods.append('http')
 
-        if 'FILES' not in CONSTANT:
-            return False,"FILES config setting not defined"
-        if 'IMAGE_FILES' not in CONSTANT['FILES']:
-            return False,"IMAGE_FILES config setting not defined in FILES"
         files_path = CONSTANT['FILES']['IMAGE_FILES']
 
         for method in cluster_provision_methods:
-            ProvisionPlugin=Helper().plugin_load(self.provision_plugins,'provision',method)
-            ret,mesg=ProvisionPlugin().cleanup(osimage=osimage, files_path=files_path, current_packed_image_file=current_packed_image_file)
+            ProvisionPlugin=Helper().plugin_load(self.boot_plugins,'boot/provision',method)
+            ret,mesg=ProvisionPlugin().cleanup(osimage=osimage, files_path=files_path, current_packed_image_files=inuse_imagefiles)
 
         return ret,mesg
 
@@ -716,15 +741,15 @@ class OsImage(object):
             while next_id := Queue().next_task_in_queue('osimage','queued'):
                 details=Queue().get_task_details(next_id)
                 request_id=details['request_id']
-                action,first,second,*_=(details['task'].split(':')+[None]+[None])
+                action,first,second,third,*_=(details['task'].split(':')+[None]+[None]+[None])
                 self.logger.info(f"osimage_mother sees job {action} in queue as next: {next_id}")
 
                 if action == "clone_n_pack_osimage":
                     Queue().update_task_status_in_queue(next_id,'in progress')
                     if first and second:
-                        queue_id,queue_response = Queue().add_task_to_queue(f"copy_osimage:{first}:{second}:noeof",'osimage',request_id)
+                        queue_id,queue_response = Queue().add_task_to_queue(f"copy_osimage:{first}:{second}:{third}:noeof",'osimage',request_id)
                         if queue_id:
-                            queue_id,queue_response = Queue().add_task_to_queue(f"pack_n_build_osimage:{second}",'osimage',request_id)
+                            queue_id,queue_response = Queue().add_task_to_queue(f"pack_n_build_osimage:{third}",'osimage',request_id)
                             if queue_id:
                                 queue_id,queue_response = Queue().add_task_to_queue(f"close_task:{next_id}",'osimage',request_id)
 
@@ -761,7 +786,7 @@ class OsImage(object):
                         if not ret:
                             Queue().remove_task_from_queue_by_request_id(request_id)
                             Status().add_message(request_id,"luna",f"EOF")
-
+ 
                 elif action == "pack_osimage":
                     if first:
                         Queue().update_task_status_in_queue(next_id,'in progress')
@@ -825,7 +850,8 @@ class OsImage(object):
                     sleep(10)
 
         except Exception as exp:
-            self.logger.error(f"osimage_mother has problems: {exp}")
+            exc_type, exc_obj, exc_tb = sys.exc_info()
+            self.logger.error(f"osimage_mother has problems: {exp}, {exc_type}, in {exc_tb.tb_lineno}")
             try:
                 Status().add_message(request_id,"luna",f"Operation failed: {exp}")
                 Status().add_message(request_id,"luna",f"EOF")

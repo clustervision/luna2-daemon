@@ -14,7 +14,7 @@ __maintainer__  = 'Sumit Sharma'
 __email__       = 'sumit.sharma@clustervision.com'
 __status__      = 'Development'
 
-import os
+import os, sys
 import subprocess
 import queue
 import json
@@ -502,7 +502,7 @@ class Helper(object):
         parser.read(filename)
         for item in list(parent_dict.keys()):
             if item not in parser.sections():
-                self.logger.error(f'{item} is missing, kindly check {filename}.')
+                self.logger.error(f'{item} is missing, please check {filename}.')
                 check = False
         return check
 
@@ -516,7 +516,7 @@ class Helper(object):
         parser.read(filename)
         for item in list(parent_dict[section].keys()):
             if item.lower() not in list(dict(parser.items(section)).keys()):
-                self.logger.error(f'{section} do not have {option}, kindly check {filename}.')
+                self.logger.error(f'{section} does not have {option}, please check {filename}.')
                 check = False
         return check
 
@@ -740,34 +740,45 @@ class Helper(object):
         """
         This method will load the plugin.
         """
+        roottree = root.split('/')
+        root = root.replace('/','.')
         self.logger.debug(f"Loading module {class_name}/Plugin from plugins.{root}.{levelone}.{leveltwo} / {plugins}")
-        if (not plugins) or (root and root not in plugins):
+        if (not plugins): # or (root and root not in plugins):
             self.logger.error(f"Provided Plugins tree is empty or is missing root. plugins = [{plugins}], root = [{root}]")
             return None
         module = None
         class_name = class_name or 'Plugin'
         levelones = []
+        try:
+            myplugin = plugins
+            for treestep in roottree:
+                if treestep in myplugin:
+                    myplugin = myplugin[treestep]
+            self.logger.debug(f"myplugin = [{myplugin}]")
+        except Exception as exp:
+            self.logger.error(f"Loading module caused a problem in roottree: {exp}") 
+            return None
         if type(levelone) == type('string'):
             levelones.append(levelone)
         else:
             levelones = levelone
         try:
             for levelone in levelones:
-                if leveltwo and levelone+leveltwo+'.py' in plugins[root]:
+                if leveltwo and levelone+leveltwo+'.py' in myplugin:
                     self.logger.info(f"loading plugins.{root}.{levelone}{leveltwo}")
                     module = __import__('plugins.'+root+'.'+levelone+leveltwo,fromlist=[class_name])
                     break
-                elif levelone in plugins[root].keys():
-                    if leveltwo and leveltwo in plugins[root][levelone]:
+                elif levelone in myplugin.keys():
+                    if leveltwo and leveltwo in myplugin[levelone]:
                         plugin = leveltwo.rsplit('.',1)
                         self.logger.info(f"loading plugins.{root}.{levelone}.{plugin[0]}")
                         module = __import__('plugins.'+root+'.'+levelone+'.'+plugin[0],fromlist=[class_name])
                         break
-                    elif 'default.py' in plugins[root][levelone]:
+                    elif 'default.py' in myplugin[levelone]:
                         self.logger.info(f"loading plugins.{root}.{levelone}.default")
                         module = __import__('plugins.'+root+'.'+levelone+'.default',fromlist=[class_name])
                         break
-                elif levelone+'.py' in plugins[root]:
+                elif levelone+'.py' in myplugin:
                     self.logger.info(f"loading plugins.{root}.{levelone}")
                     module = __import__('plugins.'+root+'.'+levelone,fromlist=[class_name])
                     break
@@ -775,7 +786,10 @@ class Helper(object):
                 self.logger.info(f"loading plugins.{root}.default")
                 module = __import__('plugins.'+root+'.default',fromlist=[class_name])
         except Exception as exp:
-            self.logger.error(f"Loading module caused a problem: {exp}") 
+            exc_type, exc_obj, exc_tb = sys.exc_info()
+            #fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
+            #print(exc_type, fname, exc_tb.tb_lineno)
+            self.logger.error(f"Loading module caused a problem during selection: {exp}, {exc_type} in {exc_tb.tb_lineno}]") 
             return None
 
         try:
@@ -788,6 +802,7 @@ class Helper(object):
         except Exception as exp:
             self.logger.error(f"Getattr caused a problem: {exp}") 
             return None
+
 
     def get_access_code(self,status,response=None):
         # this def is not suitable for 200 reponses

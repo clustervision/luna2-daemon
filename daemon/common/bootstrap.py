@@ -128,7 +128,7 @@ def check_db_tables():
     This method will check whether the database is empty or not.
     """
     table = ['cluster', 'bmcsetup', 'group', 'groupinterface', 'groupsecrets', 'status', 'queue',
-             'network', 'osimage', 'switch', 'tracker', 'node', 'nodeinterface', 'nodesecrets']
+             'network', 'osimage', 'osimagetag', 'switch', 'tracker', 'node', 'nodeinterface', 'nodesecrets']
     num = 0
     for table_x in table:
         result = Database().get_record(None, table_x, None)
@@ -221,6 +221,7 @@ def create_database_tables():
     Database().create("status", DATABASE_LAYOUT_status)
     Database().create("queue", DATABASE_LAYOUT_queue)
     Database().create("osimage", DATABASE_LAYOUT_osimage)
+    Database().create("osimagetag", DATABASE_LAYOUT_osimagetag)
     Database().create("nodesecrets", DATABASE_LAYOUT_nodesecrets)
     Database().create("nodeinterface", DATABASE_LAYOUT_nodeinterface)
     Database().create("bmcsetup", DATABASE_LAYOUT_bmcsetup)

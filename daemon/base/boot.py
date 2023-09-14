@@ -28,7 +28,7 @@ from common.constant import CONSTANT
 from base.node import Node
 
 try:
-    from plugins.detection.switchport import Plugin as DetectionPlugin
+    from plugins.boot.detection.switchport import Plugin as DetectionPlugin
 except ImportError as import_error:
     LOGGER = Log.get_logger()
     LOGGER.error(f"Problems encountered while loading detection plugin: {import_error}")
@@ -44,10 +44,7 @@ class Boot():
         """
         self.logger = Log.get_logger()
         plugins_path=CONSTANT["PLUGINS"]["PLUGINS_DIR"]
-        self.provision_plugins = Helper().plugin_finder(f'{plugins_path}/provision')
-        self.network_plugins = Helper().plugin_finder(f'{plugins_path}/network')
-        self.bmc_plugins = Helper().plugin_finder(f'{plugins_path}/bmc')
-        self.install_plugins = Helper().plugin_finder(f'{plugins_path}/install')
+        self.boot_plugins = Helper().plugin_finder(f'{plugins_path}/boot')
         self.osimage_plugins = Helper().plugin_finder(f'{plugins_path}/osimage')
         # self.detection_plugins = Helper().plugin_finder(f'{plugins_path}/detection')
         # self.DetectionPlugin=Helper().plugin_load(self.detection_plugins,'detection','switchport')
@@ -292,18 +289,24 @@ class Boot():
         # -----------------------------------------------------------------------
         if data['nodeid']:
             node = Database().get_record_join(
-                ['node.*','group.osimageid as grouposimageid'],
+                ['node.*','group.osimageid as grouposimageid','group.osimagetagid as grouposimagetagid'],
                 ['group.id=node.groupid'],
                 [f'node.id={data["nodeid"]}']
             )
             if node:
+                data['osimagetagid'] = node[0]['osimagetagid'] or node[0]['grouposimagetagid']
                 data['osimageid'] = node[0]['osimageid'] or node[0]['grouposimageid']
                 data['nodename'] = node[0]['name']
                 # data['nodehostname'] = node[0]['hostname']
                 data['nodehostname'] = node[0]['name'] # + fqdn - pending
                 data['nodeservice'] = node[0]['service']
         if data['osimageid']:
-            osimage = Database().get_record(None, 'osimage', f' WHERE id = {data["osimageid"]}')
+            osimage = None
+            if data['osimagetagid']:
+                osimage = Database().get_record_join(['osimagetag.*'],['osimage.id=osimagetag.osimageid'],
+                                [f'osimagetag.id={data["osimagetagid"]}',f'osimage.id={data["osimageid"]}'])
+            else:
+                osimage = Database().get_record(None, 'osimage', f' WHERE id = {data["osimageid"]}')
             if osimage:
                 if ('kernelfile' in osimage[0]) and (osimage[0]['kernelfile']):
                     data['kernelfile'] = osimage[0]['kernelfile']
@@ -550,11 +553,12 @@ class Boot():
         # below here is almost identical to a manual node selection boot -----------------
 
         node = Database().get_record_join(
-            ['node.*', 'group.osimageid as grouposimageid'],
+            ['node.*', 'group.osimageid as grouposimageid','group.osimagetagid as grouposimagetagid'],
             ['group.id=node.groupid'],
             [f'node.name="{hostname}"']
         )
         if node:
+            data['osimagetagid'] = node[0]['osimagetagid'] or node[0]['grouposimagetagid']
             data['osimageid'] = node[0]['osimageid'] or node[0]['grouposimageid']
             data['nodename'] = node[0]['name']
             # data['nodehostname'] = node[0]['hostname']
@@ -588,7 +592,12 @@ class Boot():
                 data['nodeip'] = None
 
         if data['osimageid']:
-            osimage = Database().get_record(None, 'osimage', f' WHERE id = {data["osimageid"]}')
+            osimage = None
+            if data['osimagetagid']:
+                osimage = Database().get_record_join(['osimagetag.*'],['osimage.id=osimagetag.osimageid'],
+                                [f'osimagetag.id={data["osimagetagid"]}',f'osimage.id={data["osimageid"]}'])
+            else:
+                osimage = Database().get_record(None, 'osimage', f' WHERE id = {data["osimageid"]}')
             if osimage:
                 if ('kernelfile' in osimage[0]) and (osimage[0]['kernelfile']):
                     data['kernelfile'] = osimage[0]['kernelfile']
@@ -841,7 +850,7 @@ class Boot():
             self.logger.debug(f"DEBUG: {node_details}")
             for item in ['provision_method','provision_fallback','prescript','partscript','postscript',
                          'netboot','localinstall','bootmenu','provision_interface','unmanaged_bmc_users',
-                         'name','setupbmc','bmcsetup','group','osimage']:
+                         'name','setupbmc','bmcsetup','group','osimage','osimagetag']:
                 if item in items and isinstance(items[item], bool):
                     if node_details[item] is None or node_details[item] == 'None':
                         data[item]=False
@@ -875,7 +884,12 @@ class Boot():
         data['osrelease'] = 'default'
         data['distribution'] = 'redhat'
         if data['osimage']:
-            osimage = Database().get_record(None, 'osimage', " WHERE name = '"+data['osimage']+"'")
+            osimage = None
+            if data['osimagetag']:
+                osimage = Database().get_record_join(['osimage.*','osimagetag.imagefile'],['osimage.id=osimagetag.osimageid'],
+                                [f'osimagetag.name="'+data["osimagetag"]+'"',f'osimage.name="'+data["osimage"]+'"'])
+            else:
+                osimage = Database().get_record(None, 'osimage', " WHERE name = '"+data['osimage']+"'")
             if osimage:
                 data['osimageid'] = osimage[0]['id']
                 data['osimagename'] = osimage[0]['name']
@@ -936,14 +950,14 @@ class Boot():
                             data['domain_search']=interface['network'] + ',' + data['domain_search']
 
         ## SYSTEMROOT
-        osimage_plugin = Helper().plugin_load(self.osimage_plugins,'osimage',data['distribution'],data['osrelease'])
+        osimage_plugin = Helper().plugin_load(self.osimage_plugins,'osimage/operations/image',data['distribution'],data['osrelease'])
         data['systemroot'] = str(osimage_plugin().systemroot or '/sysroot')
 
         ## FETCH CODE SEGMENT
         cluster_provision_methods = [data['provision_method'], data['provision_fallback']]
 
         for method in cluster_provision_methods:
-            provision_plugin = Helper().plugin_load(self.provision_plugins, 'provision', method)
+            provision_plugin = Helper().plugin_load(self.boot_plugins, 'boot/provision', method)
             segment = str(provision_plugin().fetch)
             segment = f"function download_{method} {{\n{segment}\n}}\n## FETCH CODE SEGMENT"
             # self.logger.info(f"SEGMENT {method}:\n{segment}")
@@ -951,8 +965,8 @@ class Boot():
 
         ## INTERFACE CODE SEGMENT
         network_plugin = Helper().plugin_load(
-            self.network_plugins,
-            'network',
+            self.boot_plugins,
+            'boot/network',
             data['distribution'],
             data['osrelease']
         )
@@ -969,8 +983,8 @@ class Boot():
 
         ## BMC CODE SEGMENT
         bmc_plugin = Helper().plugin_load(
-            self.bmc_plugins,
-            'bmc',
+            self.boot_plugins,
+            'boot/bmc',
             [data['nodename'], data['group']]
         )
         segment = str(bmc_plugin().config)
@@ -978,8 +992,8 @@ class Boot():
 
         ## INSTALL <PRE|PART|POST>SCRIPT CODE SEGMENT
         install_plugin = Helper().plugin_load(
-            self.install_plugins,
-            'install',
+            self.boot_plugins,
+            'boot/install',
             [data['nodename'],data['group'],data['distribution']]
         )
         for script in ['prescript', 'partscript', 'postscript']:

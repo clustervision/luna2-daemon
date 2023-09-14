@@ -18,6 +18,7 @@ from time import sleep, time
 from os import getpid, path
 from random import randint
 from concurrent.futures import ThreadPoolExecutor
+from common.constant import CONSTANT, LUNAKEY
 from utils.status import Status
 from utils.osimage import OsImage as OsImager
 from utils.database import Database
@@ -25,6 +26,7 @@ from utils.log import Log
 from utils.queue import Queue
 from utils.helper import Helper
 from utils.model import Model
+from utils.database import Database
 
 class OSImage():
     """
@@ -38,16 +40,43 @@ class OSImage():
         self.logger = Log.get_logger()
         self.table = 'osimage'
         self.table_cap = 'OS Image'
+        self.image_directory = CONSTANT['FILES']['IMAGE_DIRECTORY']
+        plugins_path=CONSTANT["PLUGINS"]["PLUGINS_DIR"]
+        self.osimage_plugins = Helper().plugin_finder(f'{plugins_path}/osimage')
 
 
     def get_all_osimages(self):
         """
         This method will return all the osimage in detailed format.
         """
-        status, response = Model().get_record(
-            table = self.table,
-            table_cap = self.table_cap
-        )
+#        status, response = Model().get_record(
+#            table = self.table,
+#            table_cap = self.table_cap
+#        )
+        status = False
+        filesystem_plugin = 'default'
+        if 'IMAGE_FILESYSTEM' in CONSTANT['PLUGINS'] and CONSTANT['PLUGINS']['IMAGE_FILESYSTEM']:
+            filesystem_plugin = CONSTANT['PLUGINS']['IMAGE_FILESYSTEM']
+        OsImagePlugin=Helper().plugin_load(self.osimage_plugins,'osimage/filesystem',filesystem_plugin)
+        all_records = Database().get_record(table='osimage')
+        if all_records:
+            status = True
+            response = {'config': {self.table: {} }}
+            for record in all_records:
+                record_id = record['id']
+                del record['id']
+                del record['changed']
+                tagname = None
+                if record['tagid']:
+                    tagname = Database().name_by_id('osimagetag', record['tagid'])
+                del record['tagid']
+                if (not record['path']) or tagname:
+                    record['path'] = '!!undefined!!'
+                    ret, data = OsImagePlugin().getpath(image_directory=self.image_directory, osimage=record['name'], tag=tagname)
+                    if ret is True:
+                        record['path'] = data
+                record['tag'] = tagname or 'default'
+                response['config'][self.table][record['name']] = record
         return status, response
 
 
@@ -55,11 +84,41 @@ class OSImage():
         """
         This method will return requested osimage in detailed format.
         """
-        status, response = Model().get_record(
-            name = name,
-            table = self.table,
-            table_cap = self.table_cap
-        )
+#        status, response = Model().get_record(
+#            name = name,
+#            table = self.table,
+#            table_cap = self.table_cap
+#        )
+        status = False
+        filesystem_plugin = 'default'
+        if 'IMAGE_FILESYSTEM' in CONSTANT['PLUGINS'] and CONSTANT['PLUGINS']['IMAGE_FILESYSTEM']:
+            filesystem_plugin = CONSTANT['PLUGINS']['IMAGE_FILESYSTEM']
+        OsImagePlugin=Helper().plugin_load(self.osimage_plugins,'osimage/filesystem',filesystem_plugin)
+        all_records = Database().get_record(table='osimage', where=f' WHERE name = "{name}"')
+        if all_records:
+            status = True
+            response = {'config': {self.table: {} }}
+            record = all_records[0]
+            record_id = record['id']
+            del record['id']
+            del record['changed']
+            tagname = None
+            if record['tagid']:
+                tagname = Database().name_by_id('osimagetag', record['tagid'])
+            del record['tagid']
+            if (not record['path']) or tagname:
+                record['path'] = '!!undefined!!'
+                ret, data = OsImagePlugin().getpath(image_directory=self.image_directory, osimage=record['name'], tag=tagname)
+                if ret is True:
+                    record['path'] = data
+            record['tag'] = tagname or 'default'
+            image_tags = []
+            all_tags = Database().get_record(table='osimagetag', where=f' WHERE osimageid = "{record_id}"')
+            if all_tags:
+                for tag in all_tags:
+                    image_tags.append(tag['name'])
+                record['assigned_tags'] = ','.join(image_tags)
+            response['config'][self.table][record['name']] = record
         return status, response
 
 
@@ -83,11 +142,15 @@ class OSImage():
         status=False
         response="Internal error"
         create, update = False, False
+        current_tag, tagname, new_tagid = None, None, None
         if request_data:
             data = request_data['config']['osimage'][name]
             image = Database().get_record(None, 'osimage', f' WHERE name = "{name}"')
             if image:
                 image_id = image[0]['id']
+                if 'tag' in data:
+                    current_tag = Database().name_by_id('osimagetag', image[0]['tagid'])
+                    tagname = data['tag']
                 if 'newosimage' in data:
                     newosimage = data['newosimage']
                     where = f' WHERE `name` = "{newosimage}"'
@@ -103,10 +166,29 @@ class OSImage():
             else:
                 create = True
 
+            if 'tag' in data:
+                del data['tag']
             osimage_columns = Database().get_columns('osimage')
             column_check = Helper().compare_list(data, osimage_columns)
             if column_check:
                 if update:
+                    if tagname == "": # to clear tag
+                        data['tagid'] = ""
+                    elif tagname != current_tag:
+                        imagetag = Database().get_record(None, 'osimagetag', f' WHERE osimageid = "{image_id}" AND name = "{tagname}"')
+                        if imagetag:
+                            new_tagid = imagetag[0]['id']
+                        if not new_tagid and image_id:
+                            tag_data = {}
+                            tag_data['name'] = tagname
+                            tag_data['osimageid'] = image_id
+                            tag_data['kernelfile'] = image[0]['kernelfile']
+                            tag_data['initrdfile'] = image[0]['initrdfile']
+                            tag_data['imagefile'] = image[0]['imagefile']
+                            tag_row = Helper().make_rows(tag_data)
+                            new_tagid = Database().insert('osimagetag', tag_row)
+                        if new_tagid:
+                            data['tagid'] = new_tagid
                     where = [{"column": "id", "value": image_id}]
                     row = Helper().make_rows(data)
                     Database().update('osimage', row, where)
@@ -149,6 +231,7 @@ class OSImage():
             data = request_data['config']['osimage'][name]
             bare = False
             nocopy = False
+            tag = None
             if 'bare' in data:
                 bare = data['bare']
                 bare = Helper().make_bool(bare)
@@ -157,6 +240,9 @@ class OSImage():
                 nocopy = data['nocopy']
                 nocopy = Helper().make_bool(nocopy)
                 del data['nocopy']
+            if 'tag' in data and data['tag']:
+                tag = data['tag']
+                del data['tag']
             image = Database().get_record(None, 'osimage', f' WHERE name = "{name}"')
             if image:
                 if 'newosimage' in data:
@@ -195,10 +281,10 @@ class OSImage():
                     return status, f"OS Image cloned successfully"
                 request_id  = str(time()) + str(randint(1001, 9999)) + str(getpid())
                 if bare is not False:
-                    task = f"clone_osimage:{name}:{data['name']}"
+                    task = f"clone_osimage:{name}:{tag}:{data['name']}"
                     task_id, text = Queue().add_task_to_queue(task, 'osimage', request_id)
                 else:
-                    task = f"clone_n_pack_osimage:{name}:{data['name']}"
+                    task = f"clone_n_pack_osimage:{name}:{tag}:{data['name']}"
                     task_id, text = Queue().add_task_to_queue(task, 'osimage', request_id)
                 if not task_id:
                     self.logger.info("config_osimage_clone cannot get queue_id")
@@ -246,6 +332,26 @@ class OSImage():
             name = name,
             table = self.table,
             table_cap = self.table_cap
+        )
+        return status, response
+
+
+    def delete_osimagetag(self, name=None, tagname=None):
+        """
+        This method will delete an osimagetag.
+        """
+        image_details = Database().get_record_join(
+            ['osimagetag.id as tagid'],
+            ['osimagetag.osimageid=osimage.id'],
+            [f'osimage.name="{name}"',f'osimagetag.name="{tagname}"']
+        )
+        if not image_details:
+            status = False
+            return status, f"image {name} and/or tag {tagname} not found or invalid combination"
+        status, response = Model().delete_record_by_id(
+            id = image_details[0]['tagid'],
+            table = 'osimagetag',
+            table_cap = 'OS image tag'
         )
         return status, response
 
@@ -544,6 +650,60 @@ class OSImage():
             response = 'Invalid request: Did not receive data'
             status=False
         return status, response
+
+
+    def set_tag(self, name=None, request_data=None):
+        """
+        This method will change the tag of an image.
+        """
+        data = {}
+        status=False
+        response="Internal error"
+        if request_data:
+            data = request_data['config']['osimage'][name]
+            if 'tag' in data:
+                image = Database().get_record(None, 'osimage', f' WHERE name = "{name}"')
+                if image:
+                    image_id = image[0]['id']
+                    tagname, new_tagid = data['tag'], None
+                    if tagname == "":
+                        new_tagid = ""
+                    else:
+                        imagetag = Database().get_record(None, 'osimagetag', f' WHERE osimageid = "{image_id}" AND name = "{tagname}"')
+                        if imagetag:
+                            new_tagid = imagetag[0]['id']
+                        if not new_tagid:
+                            tag_data = {}
+                            tag_data['name'] = tagname
+                            tag_data['osimageid'] = image_id
+                            tag_data['kernelfile'] = image[0]['kernelfile']
+                            tag_data['initrdfile'] = image[0]['initrdfile']
+                            tag_data['imagefile'] = image[0]['imagefile']
+                            tag_row = Helper().make_rows(tag_data)
+                            new_tagid = Database().insert('osimagetag', tag_row)
+                    if new_tagid is not None:
+                        udata={}
+                        udata['tagid'] = new_tagid
+                        where = [{"column": "id", "value": image_id}]
+                        row = Helper().make_rows(udata)
+                        res = Database().update('osimage', row, where)
+                        if res:
+                            response=f"Tag {tagname} updated for OS Image {name}"
+                            status=True
+                    else:
+                        response=f"Could not create tag for OS Image {name}"
+                        status=False
+                else:
+                    response=f"OS Image {name} does not exist"
+                    status=False
+            else:
+                response=f"Required field 'tag' not supplied"
+                status=False
+        else:
+            response = 'Invalid request: Did not receive data'
+            status=False
+        return status, response
+
 
     # below has been 'moved' to utils/status
     def get_status(self, request_id=None):

@@ -885,7 +885,7 @@ class Boot():
         data['distribution'] = 'redhat'
         if data['osimage']:
             osimage = None
-            if data['osimagetag']:
+            if data['osimagetag'] and data['osimagetag'] != 'default':
                 osimage = Database().get_record_join(['osimage.*','osimagetag.imagefile'],['osimage.id=osimagetag.osimageid'],
                                 [f'osimagetag.name="'+data["osimagetag"]+'"',f'osimage.name="'+data["osimage"]+'"'])
             else:

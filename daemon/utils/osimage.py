@@ -715,15 +715,26 @@ class OsImage(object):
     def cleanup_images(self,osimage):
         self.logger.info(f"I was called to cleanup old images: {osimage}")
 
+        inuse_kernelfiles, inuse_initrdfiles, inuse_imagefiles = [], [], []
         image = Database().get_record(None, 'osimage', f"WHERE name='{osimage}'")
         if not image:
             return False, f"error packing osimage {osimage}: Image {osimage} does not exist?"
-        distribution = str(image[0]['distribution']) or 'redhat'
-        distribution=distribution.lower()
-        osrelease = str(image[0]['osrelease']) or 'default.py'
-        current_packed_image_file = str(image[0]['imagefile'])
-        current_kernel_file = str(image[0]['kernelfile'])
-        current_ramdisk_file = str(image[0]['initrdfile'])
+        if image[0]['tagid']:
+            imagetags = Database().get_record(None, 'osimagetag', f"WHERE osimageid='{image[0]['tagid']}'")
+            if imagetags:
+                for imagetag in imagetags:
+                    if imagetag['kernelfile']:
+                        inuse_kernelfiles.append(imagetag['kernelfile'])
+                    if imagetag['initrdfile']:
+                        inuse_initrdfiles.append(imagetag['initrdfile'])
+                    if imagetag['imagefile']:
+                        inuse_imagefiles.append(imagetag['imagefile'])
+#        distribution = str(image[0]['distribution']) or 'redhat'
+#        distribution=distribution.lower()
+#        osrelease = str(image[0]['osrelease']) or 'default.py'
+        inuse_imagefiles.append(image[0]['imagefile'])
+        inuse_kernelfiles.append(image[0]['kernelfile'])
+        inuse_initrdfiles.append(image[0]['initrdfile'])
 
         if 'FILES' not in CONSTANT:
             return False,"FILES config setting not defined"
@@ -734,9 +745,9 @@ class OsImage(object):
         # loading the plugin depending on OS
         OsImagePlugin=Helper().plugin_load(self.osimage_plugins,'osimage/filesystem','default')
         ret,mesg=OsImagePlugin().cleanup(osimage=osimage,files_path=files_path,
-                                current_packed_image_file=current_packed_image_file,
-                                current_kernel_file=current_kernel_file,
-                                current_ramdisk_file=current_ramdisk_file)
+                                current_packed_image_files=inuse_imagefiles,
+                                current_kernel_files=inuse_kernelfiles,
+                                current_ramdisk_files=inuse_initrdfiles)
         return ret,mesg
 
     # -------------------------------------------------------------------
@@ -744,10 +755,17 @@ class OsImage(object):
     def cleanup_provisioning(self,osimage):
         self.logger.info(f"I was called to cleanup old provisioning: {osimage}")
 
+        inuse_imagefiles = []
         image = Database().get_record(None, 'osimage', f"WHERE name='{osimage}'")
         if not image:
             return False, f"error cleaning provisioning osimage {osimage}: Image {osimage} does not exist?"
-        current_packed_image_file = str(image[0]['imagefile'])
+        if image[0]['tagid']:
+            imagetags = Database().get_record(None, 'osimagetag', f"WHERE osimageid='{image[0]['tagid']}'")
+            if imagetags:
+                for imagetag in imagetags:
+                    if imagetag['imagefile']:
+                        inuse_imagefiles.append(imagetag['imagefile'])
+        inuse_imagefiles.append(image[0]['imagefile'])
 
         cluster_provision_methods=[]
         cluster = Database().get_record(None, 'cluster', None)
@@ -765,7 +783,7 @@ class OsImage(object):
 
         for method in cluster_provision_methods:
             ProvisionPlugin=Helper().plugin_load(self.provision_plugins,'provision',method)
-            ret,mesg=ProvisionPlugin().cleanup(osimage=osimage, files_path=files_path, current_packed_image_file=current_packed_image_file)
+            ret,mesg=ProvisionPlugin().cleanup(osimage=osimage, files_path=files_path, current_packed_image_files=inuse_imagefiles)
 
         return ret,mesg
 

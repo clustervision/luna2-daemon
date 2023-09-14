@@ -90,17 +90,18 @@ class Plugin():
 
     # osimage = the name of the image, e.g. compute
     # current_packed_image_file = the currently used compressed image file, most likely a tar.bz2 file
-    def cleanup(self, osimage=None, files_path=None, current_packed_image_file=None):
+    def cleanup(self, osimage=None, files_path=None, current_packed_image_files=[]):
         """
         This method will cleanup the imagefile.
         """
         self.logger = Log.get_logger()
-        command = f"transmission-remote -l | grep {osimage} | grep -v {current_packed_image_file}"
+        grep = '|'.join(current_packed_image_files)
+        command = f"transmission-remote -l | grep {osimage} | grep -vE {grep}"
         command += " | awk '{ print $1 }' | grep -oE '[0-9]+' | xargs -i transmission-remote -t {} --remove-and-delete"
         self.logger.info(f"what i will run: {command}")
         message, exit_code = Helper().runcommand(command, True, 60)
         self.logger.debug(f"what i got back: {message}")
-        command = f"cd {files_path} && ls {osimage}*.torrent | grep -vw \"{current_packed_image_file}.torrent\" | xargs rm -f"
+        command = f"cd {files_path} && ls {osimage}*.torrent | grep -vwE \"{grep}\" | grep \".torrent\" | xargs rm -f"
         self.logger.info(f"what i will run: {command}")
         message, exit_code = Helper().runcommand(command, True, 60)
         if exit_code == 0:

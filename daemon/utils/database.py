@@ -343,6 +343,40 @@ class Database():
         return response
 
 
+    def add_column(self, table=None, column=None):
+        """
+        Input - tablename and column
+        Process - It is Create operation on the DB.
+            table is the table name which need to be created.
+            column is a list of dict ex:
+            where = [
+                {"column": "id", "datatype": "INTEGER", "length": "10", "key": "PRIMARY", 
+                "keyadd": "autoincrement"},
+                {"column": "id", "datatype": "INTEGER", "length": "20", "key": "UNIQUE"},
+                {"column": "id", "datatype": "INTEGER", "length": "20", "key": "UNIQUE", 
+                "with": "name"},
+                {"column": "name", "datatype": "VARCHAR", "length": "40"}]
+        Output - adds column to table.
+        """
+        column_string = ''
+        if 'column' in column.keys():
+            column_string = column_string + ' `' + column['column'] + '` '
+        if 'datatype' in column.keys():
+            column_string = column_string + ' ' +column['datatype'].upper() + ' '
+        if 'length' in column.keys():
+            column_string = column_string + ' (' +column['length'] + ') '
+        query = f'ALTER TABLE `{table}` ADD {column_string}'
+        self.logger.debug(f"Query executing => {query}")
+        try:
+            local_thread.cursor.execute(query)
+            self.commit()
+            response = True
+        except Exception as exp:
+            self.logger.error(f'Error while adding column to {table}. Error: {exp}')
+            response = False
+        return response
+
+
     def truncate(self, table=None):
         """
         Input - tablename

@@ -24,6 +24,11 @@ from common.constant import CONSTANT
 
 configParser = RawConfigParser()
 
+#TABLES = ['cluster', 'bmcsetup', 'group', 'groupinterface', 'groupsecrets', 'status', 'queue',
+#          'network', 'osimage', 'osimagetag', 'switch', 'tracker', 'node', 'nodeinterface', 'nodesecrets']
+TABLES = ['status', 'queue', 'osimage', 'osimagetag', 'nodesecrets', 'nodeinterface', 'bmcsetup', 
+          'monitor', 'ipaddress', 'groupinterface', 'roles', 'group', 'network', 'user', 'switch', 
+          'otherdevices', 'controller', 'groupsecrets', 'node', 'cluster', 'tracker']
 
 def db_status():
     """
@@ -127,18 +132,82 @@ def check_db_tables():
     """
     This method will check whether the database is empty or not.
     """
-    table = ['cluster', 'bmcsetup', 'group', 'groupinterface', 'groupsecrets', 'status', 'queue',
-             'network', 'osimage', 'osimagetag', 'switch', 'tracker', 'node', 'nodeinterface', 'nodesecrets']
     num = 0
-    for table_x in table:
-        result = Database().get_record(None, table_x, None)
-        if result:
+    for table in TABLES:
+        #result = Database().get_record(None, table, None)
+        dbcolumns = Database().get_columns(table)
+        if dbcolumns:
             num = num+1
+            layout = get_database_tables_structure(table=table)
+            for column in layout:
+                if column['column'] not in dbcolumns:
+                    LOGGER.error(f"fix database: column {column['column']} not found in table {table} and will be added")
+                    Database().add_column(table, column)
         else:
-            LOGGER.debug(f'Database table {table_x} does not seem to exist or is empty.')
+            LOGGER.error(f'Database table {table} does not seem to exist and will be created')
+            layout = get_database_tables_structure(table=table)
+            Database().create(table, layout)
     if num == 0:
+        # if we reach here this means nothing was there.
         return False
     return True
+
+
+def create_database_tables(table=None):
+    """
+    This method will create DB table
+    """
+    for table in TABLES:
+        layout = get_database_tables_structure(table=table)
+        Database().create(table, layout)
+
+
+def get_database_tables_structure(table=None):
+    if not table:
+        return
+    if table == "status":
+        return DATABASE_LAYOUT_status
+    if table == "queue":
+        return DATABASE_LAYOUT_queue
+        Database().create("queue", DATABASE_LAYOUT_queue)
+    if table == "osimage":
+        return DATABASE_LAYOUT_osimage
+    if table == "osimagetag":
+        return DATABASE_LAYOUT_osimagetag
+    if table == "nodesecrets":
+        return DATABASE_LAYOUT_nodesecrets
+    if table == "nodeinterface":
+        return DATABASE_LAYOUT_nodeinterface
+    if table == "bmcsetup":
+        return DATABASE_LAYOUT_bmcsetup
+    if table == "monitor":
+        return DATABASE_LAYOUT_monitor
+    if table == "ipaddress":
+        return DATABASE_LAYOUT_ipaddress
+    if table == "groupinterface":
+        return DATABASE_LAYOUT_groupinterface
+    if table == "roles":
+        return DATABASE_LAYOUT_roles
+    if table == "group":
+        return DATABASE_LAYOUT_group
+    if table == "network":
+        return DATABASE_LAYOUT_network
+    if table == "user":
+        return DATABASE_LAYOUT_user
+    if table == "switch":
+        return DATABASE_LAYOUT_switch
+    if table == "otherdevices":
+        return DATABASE_LAYOUT_otherdevices
+    if table == "controller":
+        return DATABASE_LAYOUT_controller
+    if table == "groupsecrets":
+        return DATABASE_LAYOUT_groupsecrets
+    if table == "node":
+        return DATABASE_LAYOUT_node
+    if table == "cluster":
+        return DATABASE_LAYOUT_cluster
+    if table == "tracker":
+        return DATABASE_LAYOUT_tracker
 
 
 def cleanup_queue_and_status():
@@ -214,40 +283,14 @@ def get_config(filename=None):
                 BOOTSTRAP[section][option.upper()] = item
 
 
-def create_database_tables():
-    """
-    This method will create DB table.
-    """
-    Database().create("status", DATABASE_LAYOUT_status)
-    Database().create("queue", DATABASE_LAYOUT_queue)
-    Database().create("osimage", DATABASE_LAYOUT_osimage)
-    Database().create("osimagetag", DATABASE_LAYOUT_osimagetag)
-    Database().create("nodesecrets", DATABASE_LAYOUT_nodesecrets)
-    Database().create("nodeinterface", DATABASE_LAYOUT_nodeinterface)
-    Database().create("bmcsetup", DATABASE_LAYOUT_bmcsetup)
-    Database().create("monitor", DATABASE_LAYOUT_monitor)
-    Database().create("ipaddress", DATABASE_LAYOUT_ipaddress)
-    Database().create("groupinterface", DATABASE_LAYOUT_groupinterface)
-    Database().create("roles", DATABASE_LAYOUT_roles)
-    Database().create("group", DATABASE_LAYOUT_group)
-    Database().create("network", DATABASE_LAYOUT_network)
-    Database().create("user", DATABASE_LAYOUT_user)
-    Database().create("switch", DATABASE_LAYOUT_switch)
-    Database().create("otherdevices", DATABASE_LAYOUT_otherdevices)
-    Database().create("controller", DATABASE_LAYOUT_controller)
-    Database().create("groupsecrets", DATABASE_LAYOUT_groupsecrets)
-    Database().create("node", DATABASE_LAYOUT_node)
-    Database().create("cluster", DATABASE_LAYOUT_cluster)
-    Database().create("tracker", DATABASE_LAYOUT_tracker)
-
-
 def bootstrap(bootstrapfile=None):
     """
     Insert default data into the database.
     """
     get_config(bootstrapfile)
     LOGGER.info('###################### Bootstrap Start ######################')
-    create_database_tables()
+#   below no longer needed but kept for old-time sake
+#    create_database_tables()
 
     defaultserver_ip=None
     if 'CONTROLLER' in BOOTSTRAP['HOSTS'].keys():  # the virtual host+ip

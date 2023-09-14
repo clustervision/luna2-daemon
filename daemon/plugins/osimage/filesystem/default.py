@@ -16,13 +16,7 @@ __status__      = 'Development'
 
 import os
 import pwd
-import subprocess
-import shutil
-from time import sleep, time
 import sys
-import uuid
-# from datetime import datetime
-# import json
 from utils.log import Log
 from utils.helper import Helper
 
@@ -43,6 +37,8 @@ class Plugin():
     # ---------------------------------------------------------------------------
 
     def clone(self, source=None, destination=None):
+        if (not destination) or (not source):
+            return False,"source/destination not provided"
         command=f"tar -C \"{source}\"/ --one-file-system --exclude=/proc/* --exclude=/sys/* --xattrs --acls --selinux -cf - . | (cd \"{destination}\"/ && tar -xf -)"
         mesg,exit_code = Helper().runcommand(command,True,3600)
         if exit_code == 0:

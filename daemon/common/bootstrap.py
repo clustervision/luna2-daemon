@@ -164,6 +164,7 @@ def create_database_tables(table=None):
     """
     if table:
         layout = get_database_tables_structure(table=table)
+        LOGGER.info(f"Layout for {table}: {layout}")
         Database().create(table, layout)
     else:
         for table in TABLES:

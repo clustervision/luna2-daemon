@@ -24,9 +24,11 @@ from common.constant import CONSTANT
 
 configParser = RawConfigParser()
 
-TABLES = ['cluster', 'bmcsetup', 'group', 'groupinterface', 'groupsecrets', 'status', 'queue',
-          'network', 'osimage', 'osimagetag', 'switch', 'tracker', 'node', 'nodeinterface', 'nodesecrets']
-
+#TABLES = ['cluster', 'bmcsetup', 'group', 'groupinterface', 'groupsecrets', 'status', 'queue',
+#          'network', 'osimage', 'osimagetag', 'switch', 'tracker', 'node', 'nodeinterface', 'nodesecrets']
+TABLES = ['status', 'queue', 'osimage', 'osimagetag', 'nodesecrets', 'nodeinterface', 'bmcsetup', 
+          'monitor', 'ipaddress', 'groupinterface', 'roles', 'group', 'network', 'user', 'switch', 
+          'otherdevices', 'controller', 'groupsecrets', 'node', 'cluster', 'tracker']
 
 def db_status():
     """

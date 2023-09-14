@@ -135,6 +135,7 @@ def check_db_tables():
         result = Database().get_record(None, table, None)
         if result:
             num = num+1
+            fix_database_tables(table=table, task="verify")
         else:
             LOGGER.debug(f'Database table {table} does not seem to exist or is empty.')
             fix_database_tables(table=table, task="create")
@@ -147,7 +148,7 @@ def fix_database_tables(table=None, task=None):
     if table and task:
         if task == "create":
             create_database_tables(table=table)
-        elif task == "fix":
+        elif task == "verify":
             dbcolumns = Database().get_columns(table)
             layout = get_database_tables_structure(table=table)
             LOGGER.info(f"Table {table} columns: {columns}")

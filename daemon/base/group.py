@@ -167,6 +167,11 @@ class Group():
             if group['bmcsetupid']:
                 group['bmcsetupname'] = Database().name_by_id('bmcsetup', group['bmcsetupid'])
             del group['bmcsetupid']
+            # ---
+            if group['osimagetagid']:
+                group['osimagetag'] = Database().name_by_id('osimagetag', group['osimagetagid']) or 'default'
+            del group['osimagetagid']
+            # ---
             response['config']['group'][name] = group
             self.logger.info(f'Returned Group {name} with Details.')
         else:

@@ -133,46 +133,31 @@ def check_db_tables():
     num = 0
     for table in TABLES:
         #result = Database().get_record(None, table, None)
-        result = Database().get_columns(table)
-        if result:
+        dbcolumns = Database().get_columns(table)
+        if dbcolumns:
             num = num+1
-            fix_database_tables(table=table, task="verify")
+            layout = get_database_tables_structure(table=table)
+            for column in layout:
+                if column['column'] not in dbcolumns:
+                    LOGGER.error(f"fix database: column {column['column']} not found in table {table} and will be added")
+                    Database().add_column(table, column)
         else:
             LOGGER.error(f'Database table {table} does not seem to exist and will be created.')
-            fix_database_tables(table=table, task="create")
+            layout = get_database_tables_structure(table=table)
+            Database().create(table, layout)
     if num == 0:
+        # if we reach here this means nothing was there.
         return False
     return True
 
 
-def fix_database_tables(table=None, task=None):
-    if table and task:
-        if task == "create":
-            create_database_tables(table=table)
-        elif task == "verify":
-            dbcolumns = Database().get_columns(table)
-            layout = get_database_tables_structure(table=table)
-            LOGGER.info(f"Table {table} columns: {dbcolumns}")
-            for column in layout:
-                #LOGGER.info(f" ... verifying {column['column']}")
-                if column['column'] not in dbcolumns:
-                    LOGGER.error(f"fix database: column {column['column']} not found in table {table}")
-                    LOGGER.info(f" ... column = {column}")
-                    Database().add_column(table, column)
-
-
 def create_database_tables(table=None):
     """
-    This method will create DB table or parts of it on request.
+    This method will create DB table
     """
-    if table:
+    for table in TABLES:
         layout = get_database_tables_structure(table=table)
-        LOGGER.info(f"Layout for {table}: {layout}")
         Database().create(table, layout)
-    else:
-        for table in TABLES:
-            layout = get_database_tables_structure(table=table)
-            Database().create(table, layout)
 
 
 def get_database_tables_structure(table=None):
@@ -302,7 +287,7 @@ def bootstrap(bootstrapfile=None):
     """
     get_config(bootstrapfile)
     LOGGER.info('###################### Bootstrap Start ######################')
-    create_database_tables()
+#    create_database_tables()
 
     defaultserver_ip=None
     if 'CONTROLLER' in BOOTSTRAP['HOSTS'].keys():  # the virtual host+ip

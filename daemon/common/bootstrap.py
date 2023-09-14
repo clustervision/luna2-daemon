@@ -137,8 +137,10 @@ def check_db_tables():
             num = num+1
             fix_database_tables(table=table, task="verify")
         else:
-            LOGGER.error(f'Database table {table} does not seem to exist or is empty and will be created.')
-            fix_database_tables(table=table, task="create")
+            dbcolumns = Database().get_columns(table)
+            if not dbcolumns:
+                LOGGER.error(f'Database table {table} does not seem to exist and will be created.')
+                fix_database_tables(table=table, task="create")
     if num == 0:
         return False
     return True

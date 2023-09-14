@@ -671,11 +671,7 @@ class OsImage(object):
 
         files_path = CONSTANT['FILES']['IMAGE_FILES']
 
-        # loading the plugin depending on setting
-        filesystem_plugin = 'default'
-        if 'IMAGE_FILESYSTEM' in CONSTANT['PLUGINS'] and CONSTANT['PLUGINS']['IMAGE_FILESYSTEM']:
-            filesystem_plugin = CONSTANT['PLUGINS']['IMAGE_FILESYSTEM']
-        OsImagePlugin=Helper().plugin_load(self.osimage_plugins,'osimage/filesystem',filesystem_plugin)
+        OsImagePlugin=Helper().plugin_load(self.osimage_plugins,'osimage/other','cleanup')
         ret,mesg=OsImagePlugin().cleanup(osimage=osimage,files_path=files_path,
                                 current_packed_image_files=inuse_imagefiles,
                                 current_kernel_files=inuse_kernelfiles,

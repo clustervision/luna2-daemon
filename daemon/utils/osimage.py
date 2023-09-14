@@ -49,7 +49,7 @@ class OsImage(object):
         self.logger = Log.get_logger()
         plugins_path=CONSTANT["PLUGINS"]["PLUGINS_DIR"]
         self.osimage_plugins = Helper().plugin_finder(f'{plugins_path}/osimage')
-        self.provision_plugins = Helper().plugin_finder(f'{plugins_path}/provision')
+        self.boot_plugins = Helper().plugin_finder(f'{plugins_path}/boot')
 
 
     # ---------------------------------------------------------------------------
@@ -612,7 +612,7 @@ class OsImage(object):
                     files_path = CONSTANT['FILES']['IMAGE_FILES']
 
                     for method in cluster_provision_methods:
-                        ProvisionPlugin=Helper().plugin_load(self.provision_plugins,'provision',method)
+                        ProvisionPlugin=Helper().plugin_load(self.boot_plugins,'boot/provision',method)
                         ret,mesg=ProvisionPlugin().create(image_file=image[0]['imagefile'],
                                                           files_path=files_path,
                                                           server_ipaddress=server_ipaddress,
@@ -705,7 +705,7 @@ class OsImage(object):
         files_path = CONSTANT['FILES']['IMAGE_FILES']
 
         for method in cluster_provision_methods:
-            ProvisionPlugin=Helper().plugin_load(self.provision_plugins,'provision',method)
+            ProvisionPlugin=Helper().plugin_load(self.boot_plugins,'boot/provision',method)
             ret,mesg=ProvisionPlugin().cleanup(osimage=osimage, files_path=files_path, current_packed_image_files=inuse_imagefiles)
 
         return ret,mesg

@@ -44,7 +44,6 @@ class Boot():
         """
         self.logger = Log.get_logger()
         plugins_path=CONSTANT["PLUGINS"]["PLUGINS_DIR"]
-        self.provision_plugins = Helper().plugin_finder(f'{plugins_path}/provision')
         self.boot_plugins = Helper().plugin_finder(f'{plugins_path}/boot')
         self.osimage_plugins = Helper().plugin_finder(f'{plugins_path}/osimage')
         # self.detection_plugins = Helper().plugin_finder(f'{plugins_path}/detection')
@@ -958,7 +957,7 @@ class Boot():
         cluster_provision_methods = [data['provision_method'], data['provision_fallback']]
 
         for method in cluster_provision_methods:
-            provision_plugin = Helper().plugin_load(self.provision_plugins, 'provision', method)
+            provision_plugin = Helper().plugin_load(self.boot_plugins, 'boot/provision', method)
             segment = str(provision_plugin().fetch)
             segment = f"function download_{method} {{\n{segment}\n}}\n## FETCH CODE SEGMENT"
             # self.logger.info(f"SEGMENT {method}:\n{segment}")

@@ -100,7 +100,7 @@ class Group():
         groups = Database().get_record(None, 'group', f' WHERE name = "{name}"')
         if groups:
             response = {'config': {'group': {} }}
-            group = group[0]
+            group = groups[0]
             group_id = group['id']
             group_interface = Database().get_record_join(
                 [

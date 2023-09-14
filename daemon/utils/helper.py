@@ -502,7 +502,7 @@ class Helper(object):
         parser.read(filename)
         for item in list(parent_dict.keys()):
             if item not in parser.sections():
-                self.logger.error(f'{item} is missing, kindly check {filename}.')
+                self.logger.error(f'{item} is missing, please check {filename}.')
                 check = False
         return check
 
@@ -514,9 +514,7 @@ class Helper(object):
         check = True
         parser = RawConfigParser()
         parser.read(filename)
-        self.logger.info(f"parent_dict: [{parent_dict}]")
         for item in list(parent_dict[section].keys()):
-            self.logger.info(f"- item = [{item}]")
             if item.lower() not in list(dict(parser.items(section)).keys()):
                 self.logger.error(f'{section} does not have {option}, please check {filename}.')
                 check = False

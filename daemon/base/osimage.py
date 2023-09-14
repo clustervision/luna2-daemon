@@ -652,9 +652,9 @@ class OSImage():
         return status, response
 
 
-    def set_tag(self, name=None, request_data=None)
+    def set_tag(self, name=None, request_data=None):
         """
-        This method will change the kernel of an image and pack again that image.
+        This method will change the tag of an image.
         """
         data = {}
         status=False

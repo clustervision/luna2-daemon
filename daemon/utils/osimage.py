@@ -200,13 +200,6 @@ class OsImage(object):
                         Status().add_message(request_id,"luna",f"error packing osimage {osimage}: image path {image_path} is not an absolute path while IMAGE_DIRECTORY setting in FILES is not defined")
                         return False
 
-                ##path_to_store = f"{image[0]['path']}/boot"  # <-- we will store all files in this path, but add the name of the image to it.
-                if 'FILES' not in CONSTANT:
-                    Status().add_message(request_id,"luna",f"error packing osimage {osimage}: FILES config setting not defined")
-                    return False
-                if 'IMAGE_FILES' not in CONSTANT['FILES']:
-                    Status().add_message(request_id,"luna",f"error packing osimage {osimage}: IMAGE_FILES config setting not defined in FILES")
-                    return False
                 files_path = CONSTANT['FILES']['IMAGE_FILES']
        
                 kernel_version = str(image[0]['kernelversion'])
@@ -314,13 +307,6 @@ class OsImage(object):
                 if image[0]['osrelease']:
                     osrelease = str(image[0]['osrelease'])
 
-                ##path_to_store = f"{image[0]['path']}/boot"  # <-- we will store all files in this path, but add the name of the image to it.
-                if 'FILES' not in CONSTANT:
-                    Status().add_message(request_id,"luna",f"error packing osimage {osimage}: FILES config setting not defined")
-                    return False
-                if 'IMAGE_FILES' not in CONSTANT['FILES']:
-                    Status().add_message(request_id,"luna",f"error packing osimage {osimage}: IMAGE_FILES config setting not defined in FILES")
-                    return False
                 files_path = CONSTANT['FILES']['IMAGE_FILES']
         
                 # loading the plugin depending on OS
@@ -390,7 +376,7 @@ class OsImage(object):
                     distribution=distribution.lower()
                     osrelease = str(dstimage[0]['osrelease']) or 'default.py'
                     if srcimage and dstimage:
-                        # loading the plugin depending on OS
+                        # loading the plugin depending on setting in luna.ini
                         filesystem_plugin = 'default'
                         if 'IMAGE_FILESYSTEM' in CONSTANT['PLUGINS'] and CONSTANT['PLUGINS']['IMAGE_FILESYSTEM']:
                             filesystem_plugin = CONSTANT['PLUGINS']['IMAGE_FILESYSTEM']
@@ -449,65 +435,6 @@ class OsImage(object):
                 self.logger.error(f"copy_osimage has problems during exception handling: {nexp}")
             return False 
  
-    # ---------------------------------------------------------------------------
-    """
-    def tag_osimage(self,taskid,request_id):
-
-        self.logger.info(f"tag_osimage called")
-        try:
-
-            result=False
-            details=Queue().get_task_details(taskid)
-            request_id=details['request_id']
-            action,osimage,tag,noeof,*_=(details['task'].split(':')+[None]+[None])
-
-            if action == "tag_osimage":
-                Status().add_message(request_id,"luna",f"tagging osimage {osimage} default->{tag}")
-   
-                # --- let's copy
-
-                srcimage,dstimage,mesg=None,None,None
-                if osimage and tag:
-                    files_path = CONSTANT['FILES']['IMAGE_FILES']
-                    image = Database().get_record(None, 'osimage', f"WHERE name='{osimage}'")
-                    if image:
-                        tagdata = {}
-                        tagdata['kernelfile'] = image[0]['kernelfile']
-                        tagdata['initrdfile'] = image[0]['initrdfile']
-                        tagdata['imagefile'] = image[0]['imagefile']
-                        for item in ['kernelfile','initrdfile','imagefile']:
-                            left,right = tagdata[item].split('-')
-                            #if right: # and we assume this will be a split between e.g. <imagename> and <data.... etc....tar.gz>
-                            # - stopped development as we _might_ do this differently                            
-
-                    sleep(1) # needed to prevent immediate concurrent access to the database. Pooling,WAL,WIF,WAF,etc won't fix this. Only sleep
-                    if result is True:
-                        self.logger.info(f'OS image copied successfully.')
-                        Status().add_message(request_id,"luna",f"finished copying osimage")
-
-                    else:
-                        self.logger.info(f'Copy osimage {src}->{dst} error: {mesg}.')
-                        Status().add_message(request_id,"luna",f"error copying osimage: {mesg}")
-
-                else:
-                    self.logger.info(f'Copy osimage src and/or dst not provided.')
-                    Status().add_message(request_id,"luna",f"error copying osimage as 'src' and/or 'dst' not provided.")
-
-                if not noeof:
-                    Status().add_message(request_id,"luna",f"EOF")
-                return result
-            else:
-                self.logger.info(f"{details['task']} is not for us.")
-
-        except Exception as exp:
-            self.logger.error(f"tag_osimage has problems: {exp}")
-            try:
-                Status().add_message(request_id,"luna",f"Packing failed: {exp}")
-                Status().add_message(request_id,"luna",f"EOF")
-            except Exception as nexp:
-                self.logger.error(f"tag_osimage has problems during exception handling: {nexp}")
-            return False 
-    """
     # ---------------------------------------------------------------------------
 
     def push_osimage(self,taskid,request_id,object='node'):
@@ -677,13 +604,6 @@ class OsImage(object):
                         server_port     = controller[0]['serverport']
                         server_protocol = CONSTANT['API']['PROTOCOL']
          
-                    ##path_to_store = f"{image[0]['path']}/boot"  # <-- we will store all files in this path, but add the name of the image to it.
-                    if 'FILES' not in CONSTANT:
-                        Status().add_message(request_id,"luna",f"error packing osimage {osimage}: FILES config setting not defined")
-                        return False
-                    if 'IMAGE_FILES' not in CONSTANT['FILES']:
-                        Status().add_message(request_id,"luna",f"error packing osimage {osimage}: IMAGE_FILES config setting not defined in FILES")
-                        return False
                     files_path = CONSTANT['FILES']['IMAGE_FILES']
 
                     for method in cluster_provision_methods:
@@ -744,10 +664,6 @@ class OsImage(object):
         inuse_kernelfiles.append(image[0]['kernelfile'])
         inuse_initrdfiles.append(image[0]['initrdfile'])
 
-        if 'FILES' not in CONSTANT:
-            return False,"FILES config setting not defined"
-        if 'IMAGE_FILES' not in CONSTANT['FILES']:
-            return False,"IMAGE_FILES config setting not defined in FILES"
         files_path = CONSTANT['FILES']['IMAGE_FILES']
 
         # loading the plugin depending on setting
@@ -785,10 +701,6 @@ class OsImage(object):
         else:
             cluster_provision_methods.append('http')
 
-        if 'FILES' not in CONSTANT:
-            return False,"FILES config setting not defined"
-        if 'IMAGE_FILES' not in CONSTANT['FILES']:
-            return False,"IMAGE_FILES config setting not defined in FILES"
         files_path = CONSTANT['FILES']['IMAGE_FILES']
 
         for method in cluster_provision_methods:
@@ -873,15 +785,6 @@ class OsImage(object):
                         if not ret:
                             Queue().remove_task_from_queue_by_request_id(request_id)
                             Status().add_message(request_id,"luna",f"EOF")
- 
-#                elif action == "tag_osimage":
-#                    if first and second:
-#                        Queue().update_task_status_in_queue(next_id,'in progress')
-#                        ret=self.tag_osimage(next_id,request_id)
-#                        Queue().remove_task_from_queue(next_id)
-#                        if not ret:
-#                            Queue().remove_task_from_queue_by_request_id(request_id)
-#                            Status().add_message(request_id,"luna",f"EOF")
  
                 elif action == "pack_osimage":
                     if first:

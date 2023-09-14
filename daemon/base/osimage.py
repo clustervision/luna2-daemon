@@ -166,7 +166,9 @@ class OSImage():
             column_check = Helper().compare_list(data, osimage_columns)
             if column_check:
                 if update:
-                    if new_tag != current_tag:
+                    if new_tag == "": # to clear tag
+                        data['tagid'] = ""
+                    elif new_tag != current_tag:
                         new_tagid = Database().id_by_name('osimagetag', new_tag)
                         if not new_tagid and image_id:
                             tag_data = {}
@@ -190,18 +192,6 @@ class OSImage():
                     Database().insert('osimage', row)
                     response = f'OS Image {name} created'
                     status=True
-                """
-                # copy kernel, ramdisk, image to tag:
-                if new_tag != current_tag:
-                    request_id  = str(time()) + str(randint(1001, 9999)) + str(getpid())
-                    task = f"tag_osimage:{name}:{new_tag}"
-                    task_id, text = Queue().add_task_to_queue(task, 'osimage', request_id)
-                    next_id = Queue().next_task_in_queue('osimage')
-                    if task_id == next_id:
-                        executor = ThreadPoolExecutor(max_workers=1)
-                        executor.submit(OsImager().osimage_mother, request_id)
-                        executor.shutdown(wait=False)
-                """
             else:
                 response = 'Invalid request: Columns are incorrect'
                 status=False

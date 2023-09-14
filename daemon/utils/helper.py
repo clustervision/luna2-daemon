@@ -514,9 +514,11 @@ class Helper(object):
         check = True
         parser = RawConfigParser()
         parser.read(filename)
+        self.logger.info(f"parent_dict: [{parent_dict}]")
         for item in list(parent_dict[section].keys()):
+            self.logger.info(f"- item = [{item}]")
             if item.lower() not in list(dict(parser.items(section)).keys()):
-                self.logger.error(f'{section} do not have {option}, kindly check {filename}.')
+                self.logger.error(f'{section} does not have {option}, please check {filename}.')
                 check = False
         return check
 

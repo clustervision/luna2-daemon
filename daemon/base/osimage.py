@@ -220,7 +220,7 @@ class OSImage():
                 if update:
                     if tagname == "": # to clear tag
                         data['tagid'] = ""
-                    elif str(tagname) != str(current_tag):
+                    elif tagname != current_tag:
                         imagetag = Database().get_record(None, 'osimagetag', f' WHERE osimageid = "{image_id}" AND name = "{tagname}"')
                         if imagetag:
                             new_tagid = imagetag[0]['id']
@@ -235,11 +235,11 @@ class OSImage():
                             new_tagid = Database().insert('osimagetag', tag_row)
                         if new_tagid:
                             data['tagid'] = new_tagid
-                    self.logger.info(f"DATA: {data}")
+                    if not data:
+                        status=True
+                        return status, f'OS Image {name} updated'
                     where = [{"column": "id", "value": image_id}]
                     row = Helper().make_rows(data)
-                    self.logger.info(f"WHERE: {where}")
-                    self.logger.info(f"ROW: {row}")
                     Database().update('osimage', row, where)
                     response = f'OS Image {name} updated'
                     status=True

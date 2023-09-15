@@ -282,7 +282,7 @@ def config_group_get(cli=None, name=None):
     return response, access_code
 
 
-@config_blueprint.route("/config/group/<string:name>/_list", methods=['GET'])
+@config_blueprint.route("/config/group/<string:name>/_member", methods=['GET'])
 @token_required
 @validate_name
 def config_group_member(name=None):
@@ -484,7 +484,7 @@ def config_osimage_get(name=None):
     return response, access_code
 
 
-@config_blueprint.route("/config/osimage/<string:name>/_list", methods=['GET'])
+@config_blueprint.route("/config/osimage/<string:name>/_member", methods=['GET'])
 @token_required
 @validate_name
 def config_osimage_member(name=None):
@@ -494,6 +494,61 @@ def config_osimage_member(name=None):
     """
     access_code=404
     status, response = OSImage().get_osimage_member(name)
+    if status is True:
+        access_code = 200
+        response = dumps(response)
+    else:
+        response = {'message': response}
+    return response, access_code
+
+
+@config_blueprint.route("/config/osimagetag", methods=['GET'])
+@token_required
+def config_osimage():
+    """
+    Input - OS Imagetag ID or Name
+    Process - Fetch the OS Image tag information.
+    Output - OSImage tag Info.
+    """
+    access_code=404
+    status, response = OSImage().get_all_osimagetags()
+    if status is True:
+        access_code = 200
+        response = dumps(response)
+    else:
+        response = {'message': response}
+    return response, access_code
+
+
+@config_blueprint.route("/config/osimagetag/<string:name>", methods=['GET'])
+@token_required
+@validate_name
+def config_osimage_get(name=None):
+    """
+    Input - OS Image tag ID or Name
+    Process - Fetch the OS Image tag information.
+    Output - OSImage tag Info.
+    """
+    access_code=404
+    status, response = OSImage().get_osimagetag(name)
+    if status is True:
+        access_code = 200
+        response = dumps(response)
+    else:
+        response = {'message': response}
+    return response, access_code
+
+
+@config_blueprint.route("/config/osimagetag/<string:name>/_member", methods=['GET'])
+@token_required
+@validate_name
+def config_osimagetag_member(name=None):
+    """
+    This method will fetch all the nodes+groups, which is connected to
+    the provided osimagetag.
+    """
+    access_code=404
+    status, response = OSImage().get_osimagetag_member(name)
     if status is True:
         access_code = 200
         response = dumps(response)
@@ -718,7 +773,7 @@ def config_bmcsetup_get(name=None):
     return response, access_code
 
 
-@config_blueprint.route("/config/bmcsetup/<string:name>/_list", methods=['GET'])
+@config_blueprint.route("/config/bmcsetup/<string:name>/_member", methods=['GET'])
 @token_required
 @validate_name
 def config_bmcsetup_member(name=None):
@@ -1016,7 +1071,7 @@ def config_network_ip(name=None, ipaddress=None):
     return response, access_code
 
 
-@config_blueprint.route("/config/network/<string:name>/_list", methods=['GET'])
+@config_blueprint.route("/config/network/<string:name>/_member", methods=['GET'])
 @token_required
 @validate_name
 def config_network_taken(name=None):

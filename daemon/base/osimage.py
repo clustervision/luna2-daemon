@@ -53,7 +53,7 @@ class OSImage():
 #            table = self.table,
 #            table_cap = self.table_cap
 #        )
-        status = False
+        status = False, response = "No osimage is available"
         filesystem_plugin = 'default'
         if 'IMAGE_FILESYSTEM' in CONSTANT['PLUGINS'] and CONSTANT['PLUGINS']['IMAGE_FILESYSTEM']:
             filesystem_plugin = CONSTANT['PLUGINS']['IMAGE_FILESYSTEM']
@@ -89,7 +89,7 @@ class OSImage():
 #            table = self.table,
 #            table_cap = self.table_cap
 #        )
-        status = False
+        status = False, response = f"No {name} is available"
         filesystem_plugin = 'default'
         if 'IMAGE_FILESYSTEM' in CONSTANT['PLUGINS'] and CONSTANT['PLUGINS']['IMAGE_FILESYSTEM']:
             filesystem_plugin = CONSTANT['PLUGINS']['IMAGE_FILESYSTEM']
@@ -132,6 +132,62 @@ class OSImage():
             table_cap = self.table_cap
         )
         return status, response
+
+
+    def get_all_osimagetags(self):
+        """
+        This method will return all the osimage tags in detailed format.
+        """
+#        status, response = Model().get_record(
+#            table = self.table,
+#            table_cap = self.table_cap
+#        )
+        status = False, response = "No osimagetag is available"
+        filesystem_plugin = 'default'
+        if 'IMAGE_FILESYSTEM' in CONSTANT['PLUGINS'] and CONSTANT['PLUGINS']['IMAGE_FILESYSTEM']:
+            filesystem_plugin = CONSTANT['PLUGINS']['IMAGE_FILESYSTEM']
+        OsImagePlugin=Helper().plugin_load(self.osimage_plugins,'osimage/filesystem',filesystem_plugin)
+        image_details = Database().get_record_join(
+            ['osimagetag.*','osimage.path','osimage.name as osimagename','osimage.id as osid','osimagetag.id as tagid'],
+            ['osimagetag.osimageid=osimage.id'],
+            []
+        )
+        if image_details:
+            allgroups = Database().get_record(table='group')
+            allnodes = Database().get_record(table='node')
+            groups = Helper().convert_list_to_dict(allgroups, 'id')
+            nodes = Helper().convert_list_to_dict(allnodes, 'id')
+            response = {'config': {'osimagetag': {} }}
+            for image in image_details:
+                nodes_using = []
+                groups_using = []
+                data = {}
+                data['name'] = image['name']
+                data['kernelfile'] = image['kernelfile']
+                data['initrdfile'] = image['initrdfile']
+                data['imagefile'] = image['imagefile']
+                for image in image_details:
+                     if (not image['path']) or image['tagid']:
+                        data['path'] = '!!undefined!!'
+                        ret, path = OsImagePlugin().getpath(image_directory=self.image_directory, osimage=image['osimagename'], tag=name)
+                        if ret:
+                            data['path'] = path
+                    for node in nodes.keys():
+                        if nodes[node]['osimagetagid'] == image['tagid']:
+                            nodes_using.append(nodes[node]['name'])
+                    if nodes_using:
+                        data['nodes'] = ', '.join(nodes_using)
+                    for group in groups.keys():
+                        if groups[node]['osimagetagid'] == image['tagid']:
+                            groups_using.append(groups[node]['name'])
+                    if groups_using:
+                        data['groups'] = ', '.join(groups_using)
+                response['config']['osimagetag'][data['name']] = data
+        return status, response
+   
+
+
+  group[groupid] and group[groupid]['osimageid'] 
 
 
     def update_osimage(self, name=None, request_data=None):

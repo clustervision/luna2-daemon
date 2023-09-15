@@ -53,7 +53,8 @@ class OSImage():
 #            table = self.table,
 #            table_cap = self.table_cap
 #        )
-        status = False, response = "No osimage is available"
+        status = False
+        response = "No osimage is available"
         filesystem_plugin = 'default'
         if 'IMAGE_FILESYSTEM' in CONSTANT['PLUGINS'] and CONSTANT['PLUGINS']['IMAGE_FILESYSTEM']:
             filesystem_plugin = CONSTANT['PLUGINS']['IMAGE_FILESYSTEM']
@@ -89,7 +90,8 @@ class OSImage():
 #            table = self.table,
 #            table_cap = self.table_cap
 #        )
-        status = False, response = f"No {name} is available"
+        status = False
+        response = f"No {name} is available"
         filesystem_plugin = 'default'
         if 'IMAGE_FILESYSTEM' in CONSTANT['PLUGINS'] and CONSTANT['PLUGINS']['IMAGE_FILESYSTEM']:
             filesystem_plugin = CONSTANT['PLUGINS']['IMAGE_FILESYSTEM']
@@ -142,7 +144,8 @@ class OSImage():
 #            table = self.table,
 #            table_cap = self.table_cap
 #        )
-        status = False, response = "No osimagetag is available"
+        status = False
+        response = "No osimagetag is available"
         filesystem_plugin = 'default'
         if 'IMAGE_FILESYSTEM' in CONSTANT['PLUGINS'] and CONSTANT['PLUGINS']['IMAGE_FILESYSTEM']:
             filesystem_plugin = CONSTANT['PLUGINS']['IMAGE_FILESYSTEM']

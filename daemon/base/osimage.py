@@ -145,7 +145,7 @@ class OSImage():
         filesystem_plugin = 'default'
         where = None
         if name:
-            where = f"osimage.name={name}"
+            where = f"osimage.name='{name}'"
         if 'IMAGE_FILESYSTEM' in CONSTANT['PLUGINS'] and CONSTANT['PLUGINS']['IMAGE_FILESYSTEM']:
             filesystem_plugin = CONSTANT['PLUGINS']['IMAGE_FILESYSTEM']
         OsImagePlugin=Helper().plugin_load(self.osimage_plugins,'osimage/filesystem',filesystem_plugin)

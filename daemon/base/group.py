@@ -255,7 +255,7 @@ class Group():
 
             # we reset to make sure we don't assing something that won't work
             if 'osimage' in data:
-                data['osimagetagid'] = ""
+                data['osimagetagid'] = "default"
 
             for key, value in items.items():
                 if key in data:

@@ -419,7 +419,7 @@ class Node():
 
             # we reset to make sure we don't assing something that won't work
             if 'osimage' in data:
-                data['osimagetagid'] = ""
+                data['osimagetagid'] = "default"
 
             # True means: cannot be empty if supplied. False means: can only be empty or correct
             checks = {'bmcsetup': False, 'group': True, 'osimage': False, 'switch': False}

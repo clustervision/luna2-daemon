@@ -231,6 +231,7 @@ class Group():
             'provision_interface': 'BOOTIF'
         }
         create, update = False, False
+        extra_message = None
         if request_data:
             data = request_data['config']['group'][name]
             group = Database().get_record(None, 'group', f' WHERE name = "{name}"')
@@ -255,7 +256,8 @@ class Group():
 
             # we reset to make sure we don't assing something that won't work
             if 'osimage' in data:
-                data['osimagetagid'] = ""
+                data['osimagetagid'] = "default"
+                extra_message = "osimage tag set to default"
 
             for key, value in items.items():
                 if key in data:
@@ -315,7 +317,10 @@ class Group():
                     where = [{"column": "id", "value": group_id}]
                     row = Helper().make_rows(data)
                     Database().update('group', row, where)
-                    response = f'Group {name} updated successfully'
+                    if extra_message:
+                        response = f'Group {name} updated successfully. {extra_message}'
+                    else:
+                        response = f'Group {name} updated successfully'
                     status=True
                 if create:
                     data['name'] = name

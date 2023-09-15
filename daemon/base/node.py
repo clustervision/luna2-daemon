@@ -381,6 +381,7 @@ class Node():
         # real time and not here
         create, update = False, False
         status = False
+        extra_message = None
         response = "Internal error"
         if request_data:
             data = request_data['config']['node'][name]
@@ -419,7 +420,8 @@ class Node():
 
             # we reset to make sure we don't assing something that won't work
             if 'osimage' in data:
-                data['osimagetagid'] = ""
+                data['osimagetagid'] = "default"
+                extra_message = "osimage tag set to default"
 
             # True means: cannot be empty if supplied. False means: can only be empty or correct
             checks = {'bmcsetup': False, 'group': True, 'osimage': False, 'switch': False}
@@ -466,7 +468,10 @@ class Node():
                     where = [{"column": "id", "value": nodeid}]
                     row = Helper().make_rows(data)
                     Database().update('node', row, where)
-                    response = f'Node {name} updated successfully'
+                    if extra_message:
+                        response = f'Node {name} updated successfully. {extra_message}'
+                    else:
+                        response = f'Node {name} updated successfully'
                     status = True
                 if create:
                     if 'groupid' not in data:
@@ -477,7 +482,10 @@ class Node():
                     data['name'] = name
                     row = Helper().make_rows(data)
                     nodeid = Database().insert('node', row)
-                    response = f'Node {name} created successfully'
+                    if extra_message:
+                        response = f'Node {name} created successfully. {extra_message}'
+                    else:
+                        response = f'Node {name} created successfully'
                     status = True
                     if nodeid and 'groupid' in data and data['groupid']:
                         # ----> GROUP interface. WIP. pending. should work but i keep it WIP

@@ -237,6 +237,8 @@ class OSImage():
                             data['tagid'] = new_tagid
                     where = [{"column": "id", "value": image_id}]
                     row = Helper().make_rows(data)
+                    self.logger.info(f"WHERE: {where}")
+                    self.logger.info(f"ROW: {row}")
                     Database().update('osimage', row, where)
                     response = f'OS Image {name} updated'
                     status=True

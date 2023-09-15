@@ -474,7 +474,7 @@ class Database():
                     [{"column": "active", "value": "1"}, {"column": "network", "value": "ib"}]
         Output - Update the rows.
         """
-        columns, where_list = [], []
+        column_strings, columns, where_list = None, [], []
         for cols in row:
             column = ''
             if 'column' in cols.keys():
@@ -491,6 +491,9 @@ class Database():
                 column = column + ' = "' +str(cols['value']) +'"'
             where_list.append(column)
             join_where = ' AND '.join(map(str, where_list))
+        if not column_strings:
+            self.logger.error(f"column_strings is empty. no cols in row?")
+            return False
         query = f'UPDATE "{table}" SET {column_strings} WHERE {join_where};'
         self.logger.debug(f"Update Query ---> {query}")
         attempt = 1

@@ -235,6 +235,7 @@ class OSImage():
                             new_tagid = Database().insert('osimagetag', tag_row)
                         if new_tagid:
                             data['tagid'] = new_tagid
+                    self.logger.info(f"DATA: {data}")
                     where = [{"column": "id", "value": image_id}]
                     row = Helper().make_rows(data)
                     self.logger.info(f"WHERE: {where}")

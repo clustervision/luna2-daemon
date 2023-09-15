@@ -450,7 +450,7 @@ class Node():
                     if 'osimageid' in data:
                         osimagetagids = Database().get_record(None, 'osimagetag', f" WHERE osimageid = '"+data['osimageid']+"' AND name = '{osimagetag}'")
                     elif 'osimageid' in node[0]:
-                        osimagetagids = Database().get_record(None, 'osimagetag', f" WHERE osimageid = '"+node['osimageid']+"' AND name = '{osimagetag}'")
+                        osimagetagids = Database().get_record(None, 'osimagetag', f" WHERE osimageid = '"+node[0]['osimageid']+"' AND name = '{osimagetag}'")
                     else:
                         osimagetagids = Database().get_record_join(['osimagetag.id'],['osimagetag.osimageid=group.osimageid','group.id=node.groupid'],[f"node.name='{name}'",f"osimagetag.name='{osimagetag}'"])
                     if osimagetagids:

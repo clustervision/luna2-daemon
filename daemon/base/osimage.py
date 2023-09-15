@@ -187,6 +187,8 @@ class OSImage():
                         if groups[group]['osimagetagid'] == image['tagid']:
                             self.logger.info("HERE for group")
                             groups_using.append(groups[group]['name'])
+                        else:
+                            self.logger.info("NOT the same")
                     if groups_using:
                         self.logger.info("HERE too for group")
                         data['groups'] = ', '.join(groups_using)

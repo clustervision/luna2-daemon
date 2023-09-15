@@ -253,6 +253,10 @@ class Group():
                     return status, 'Invalid request: newgroupname is not allowed while creating a new group'
                 create = True
 
+            # we reset to make sure we don't assing something that won't work
+            if 'osimage' in data:
+                data['osimagetagid'] = ""
+
             for key, value in items.items():
                 if key in data:
                     data[key] = data[key]
@@ -286,6 +290,23 @@ class Group():
             if 'interfaces' in data:
                 new_interface = data['interfaces']
                 del data['interfaces']
+
+            if 'osimagetag' in data:
+                osimagetag = data['osimagetag']
+                del data['osimagetag']
+                if osimagetag == "":
+                    data['osimagetagid'] = ""
+                else:
+                    osimagetagids = None
+                    if 'osimageid' in data:
+                        osimagetagids = Database().get_record(None, 'osimagetag', f" WHERE osimageid = '{data['osimageid']}' AND name = '{osimagetag}'")
+                    elif 'osimageid' in group[0]:
+                        osimagetagids = Database().get_record(None, 'osimagetag', f" WHERE osimageid = '{group[0]['osimageid']}' AND name = '{osimagetag}'")
+                    if osimagetagids:
+                        data['osimagetagid'] = osimagetagids[0]['id']
+                    else:
+                        status = False
+                        return status, f'Unknown tag or osimage and tag not related'
 
             group_columns = Database().get_columns('group')
             column_check = Helper().compare_list(data, group_columns)

@@ -157,6 +157,7 @@ class OSImage():
                 groups_using = []
                 data = {}
                 data['name'] = image['name']
+                data['osimage'] = image['osimagename']
                 data['kernelfile'] = image['kernelfile']
                 data['initrdfile'] = image['initrdfile']
                 data['imagefile'] = image['imagefile']
@@ -223,7 +224,7 @@ class OSImage():
                         imagetag = Database().get_record(None, 'osimagetag', f' WHERE osimageid = "{image_id}" AND name = "{tagname}"')
                         if imagetag:
                             new_tagid = imagetag[0]['id']
-                        if not new_tagid and image_id:
+                        if (not new_tagid) and image_id:
                             tag_data = {}
                             tag_data['name'] = tagname
                             tag_data['osimageid'] = image_id
@@ -234,6 +235,9 @@ class OSImage():
                             new_tagid = Database().insert('osimagetag', tag_row)
                         if new_tagid:
                             data['tagid'] = new_tagid
+                    if not data:
+                        status=True
+                        return status, f'OS Image {name} updated'
                     where = [{"column": "id", "value": image_id}]
                     row = Helper().make_rows(data)
                     Database().update('osimage', row, where)

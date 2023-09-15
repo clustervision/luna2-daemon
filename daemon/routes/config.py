@@ -504,7 +504,7 @@ def config_osimage_member(name=None):
 
 @config_blueprint.route("/config/osimagetag", methods=['GET'])
 @token_required
-def config_osimage():
+def config_osimagetag():
     """
     Input - OS Imagetag ID or Name
     Process - Fetch the OS Image tag information.
@@ -523,7 +523,7 @@ def config_osimage():
 @config_blueprint.route("/config/osimagetag/<string:name>", methods=['GET'])
 @token_required
 @validate_name
-def config_osimage_get(name=None):
+def config_osimagetag_get(name=None):
     """
     Input - OS Image tag ID or Name
     Process - Fetch the OS Image tag information.

@@ -300,10 +300,10 @@ class Group():
                     osimagetagids = None
                     self.logger.info(f"HERE 0")
                     if 'osimageid' in data:
-                        osimagetagids = Database().get_record(None, 'osimagetag', f" WHERE osimageid = '"+data['osimageid']+"' AND name = '{osimagetag}'")
+                        osimagetagids = Database().get_record(None, 'osimagetag', f" WHERE osimageid = '{data['osimageid']}' AND name = '{osimagetag}'")
                         self.logger.info(f"HERE 1 {osimagetagids}")
                     elif 'osimageid' in group[0]:
-                        osimagetagids = Database().get_record(None, 'osimagetag', f" WHERE osimageid = '"+group[0]['osimageid']+"' AND name = '{osimagetag}'")
+                        osimagetagids = Database().get_record(None, 'osimagetag', f" WHERE osimageid = '{group[0]['osimageid']}' AND name = '{osimagetag}'")
                         self.logger.info(f"HERE 2 {osimagetagids}")
                     if osimagetagids:
                         data['osimagetagid'] = osimagetagids[0]['id']

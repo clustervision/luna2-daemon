@@ -417,6 +417,10 @@ class Node():
                 if key in data and (not data[key]) and (key not in items):
                     del data[key]
 
+            # we reset to make sure we don't assing something that won't work
+            if 'osimage' in data:
+                data['osimagetagid'] = ""
+
             # True means: cannot be empty if supplied. False means: can only be empty or correct
             checks = {'bmcsetup': False, 'group': True, 'osimage': False, 'switch': False}
             for key, value in checks.items():
@@ -435,6 +439,25 @@ class Node():
             if 'interfaces' in data:
                 interfaces = data['interfaces']
                 del data['interfaces']
+
+            if 'osimagetag' in data:
+                osimagetag = data['osimagetag']
+                del data['osimagetag']
+                if osimagetag == "":
+                    data['osimagetagid'] = ""
+                else:
+                    osimagetagids = None
+                    if 'osimageid' in data:
+                        osimagetagids = Database().get_record(None, 'osimagetag', f" WHERE osimageid = '"+data['osimageid']+"' AND name = '{osimagetag}'")
+                    elif 'osimageid' in node:
+                        osimagetagids = Database().get_record(None, 'osimagetag', f" WHERE osimageid = '"+node['osimageid']+"' AND name = '{osimagetag}'")
+                    else:
+                        osimagetagids = Database().get_record_join(['osimagetag.id'],['osimage.id=group.osimageid','group.id=node.groupid'],["node.name='{name}'"])
+                    if osimagetagids:
+                        data['osimagetagid'] = osimagetagids[0]['id']
+                    else:
+                        status = False
+                        return status, f'Unknown tag or osimage and tag not related'
 
             node_columns = Database().get_columns('node')
             columns_check = Helper().compare_list(data, node_columns)

@@ -160,22 +160,21 @@ class OSImage():
                 data['kernelfile'] = image['kernelfile']
                 data['initrdfile'] = image['initrdfile']
                 data['imagefile'] = image['imagefile']
-                for image in image_details:
-                    if (not image['path']) or image['tagid']:
-                        data['path'] = '!!undefined!!'
-                        ret, path = OsImagePlugin().getpath(image_directory=self.image_directory, osimage=image['osimagename'], tag=image['name'])
-                        if ret:
-                            data['path'] = path
-                    for node in nodes.keys():
-                        if str(nodes[node]['osimagetagid']) == str(image['tagid']):
-                            nodes_using.append(nodes[node]['name'])
-                    if nodes_using:
-                        data['nodes'] = ', '.join(nodes_using)
-                    for group in groups.keys():
-                        if str(groups[group]['osimagetagid']) == str(image['tagid']):
-                            groups_using.append(groups[group]['name'])
-                    if groups_using:
-                        data['groups'] = ', '.join(groups_using)
+                if (not image['path']) or image['tagid']:
+                    data['path'] = '!!undefined!!'
+                    ret, path = OsImagePlugin().getpath(image_directory=self.image_directory, osimage=image['osimagename'], tag=image['name'])
+                    if ret:
+                        data['path'] = path
+                for node in nodes.keys():
+                    if str(nodes[node]['osimagetagid']) == str(image['tagid']):
+                        nodes_using.append(nodes[node]['name'])
+                if nodes_using:
+                    data['nodes'] = ', '.join(nodes_using)
+                for group in groups.keys():
+                    if str(groups[group]['osimagetagid']) == str(image['tagid']):
+                        groups_using.append(groups[group]['name'])
+                if groups_using:
+                    data['groups'] = ', '.join(groups_using)
                 response['config']['osimagetag'][data['name']] = data
         return status, response
    

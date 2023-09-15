@@ -170,7 +170,7 @@ class OSImage():
                 data['initrdfile'] = image['initrdfile']
                 data['imagefile'] = image['imagefile']
                 for image in image_details:
-                     if (not image['path']) or image['tagid']:
+                    if (not image['path']) or image['tagid']:
                         data['path'] = '!!undefined!!'
                         ret, path = OsImagePlugin().getpath(image_directory=self.image_directory, osimage=image['osimagename'], tag=name)
                         if ret:

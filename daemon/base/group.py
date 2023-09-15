@@ -298,6 +298,7 @@ class Group():
                     data['osimagetagid'] = ""
                 else:
                     osimagetagids = None
+                    self.logger.info(f"HERE 0")
                     if 'osimageid' in data:
                         osimagetagids = Database().get_record(None, 'osimagetag', f" WHERE osimageid = '"+data['osimageid']+"' AND name = '{osimagetag}'")
                         self.logger.info(f"HERE 1 {osimagetagids}")

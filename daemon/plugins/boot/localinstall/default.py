@@ -22,8 +22,7 @@ class Plugin():
     This plugin needs a mandatory variable set for template functionality
     -- grub
     """
-
-    def __init__(self):
+        
 
     """ Other usefull info that can be used or incorporated:
 

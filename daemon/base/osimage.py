@@ -134,7 +134,7 @@ class OSImage():
         status = False
         response = "No osimagetag is available"
         filesystem_plugin = 'default'
-        where = ""
+        where = None
         if name:
             where = f"osimage.name='{name}'"
         if 'IMAGE_FILESYSTEM' in CONSTANT['PLUGINS'] and CONSTANT['PLUGINS']['IMAGE_FILESYSTEM']:
@@ -143,7 +143,7 @@ class OSImage():
         image_details = Database().get_record_join(
             ['osimagetag.*','osimage.path','osimage.name as osimagename','osimage.id as osid','osimagetag.id as tagid'],
             ['osimagetag.osimageid=osimage.id'],
-            [where]
+            where
         )
         if image_details:
             status = True

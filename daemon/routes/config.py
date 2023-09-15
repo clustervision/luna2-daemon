@@ -530,7 +530,8 @@ def config_osimagetag_get(name=None):
     Output - OSImage tag Info.
     """
     access_code=404
-    status, response = OSImage().get_osimagetag(name)
+    #status, response = OSImage().get_osimagetag(name)
+    status, response = OSImage().get_all_osimagetags(name)
     if status is True:
         access_code = 200
         response = dumps(response)

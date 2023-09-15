@@ -134,7 +134,7 @@ class OSImage():
         status = False
         response = "No osimagetag is available"
         filesystem_plugin = 'default'
-        where = None
+        where = ""
         if name:
             where = f"osimage.name='{name}'"
         if 'IMAGE_FILESYSTEM' in CONSTANT['PLUGINS'] and CONSTANT['PLUGINS']['IMAGE_FILESYSTEM']:

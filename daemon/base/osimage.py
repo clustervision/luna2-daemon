@@ -172,7 +172,7 @@ class OSImage():
                 for image in image_details:
                     if (not image['path']) or image['tagid']:
                         data['path'] = '!!undefined!!'
-                        ret, path = OsImagePlugin().getpath(image_directory=self.image_directory, osimage=image['osimagename'], tag=name)
+                        ret, path = OsImagePlugin().getpath(image_directory=self.image_directory, osimage=image['osimagename'], tag=image['name'])
                         if ret:
                             data['path'] = path
                     for node in nodes.keys():

@@ -177,12 +177,13 @@ class OSImage():
                         if ret:
                             data['path'] = path
                     for node in nodes.keys():
-                        self.logger.info(f"node {node} {node['name']}: {node['osimagetagid']}")
+                        self.logger.info(f"node {node} {nodes[node]['name']}: {nodes[node]['osimagetagid']}")
                         if nodes[node]['osimagetagid'] == image['tagid']:
                             nodes_using.append(nodes[node]['name'])
                     if nodes_using:
                         data['nodes'] = ', '.join(nodes_using)
                     for group in groups.keys():
+                        self.logger.info(f"group {group} {groups[group]['name']}: {groups[group]['osimagetagid']}")
                         if groups[group]['osimagetagid'] == image['tagid']:
                             groups_using.append(groups[group]['name'])
                     if groups_using:

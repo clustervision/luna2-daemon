@@ -49,10 +49,6 @@ class OSImage():
         """
         This method will return all the osimage in detailed format.
         """
-#        status, response = Model().get_record(
-#            table = self.table,
-#            table_cap = self.table_cap
-#        )
         status = False
         response = "No osimage is available"
         filesystem_plugin = 'default'
@@ -85,11 +81,6 @@ class OSImage():
         """
         This method will return requested osimage in detailed format.
         """
-#        status, response = Model().get_record(
-#            name = name,
-#            table = self.table,
-#            table_cap = self.table_cap
-#        )
         status = False
         response = f"No {name} is available"
         filesystem_plugin = 'default'

@@ -184,7 +184,7 @@ class OSImage():
                         data['nodes'] = ', '.join(nodes_using)
                     for group in groups.keys():
                         self.logger.info(f"group {group} {groups[group]['name']}: [{image['tagid']}] == [{groups[group]['osimagetagid']}]")
-                        if groups[group]['osimagetagid'] == image['tagid']:
+                        if str(groups[group]['osimagetagid']) == str(image['tagid']):
                             self.logger.info("HERE for group")
                             groups_using.append(groups[group]['name'])
                         else:

@@ -1008,6 +1008,17 @@ class Boot():
                 segment
             )
 
+        if data['localinstall'] is True:
+            ## SCRIPT LOCALINSTALL CODE SEGMENT
+            localinstall_plugin = Helper().plugin_load(self.boot_plugins, 'boot/localinstall',
+                       [data['nodename'],data['group'],data['distribution']]
+            )
+            segment = str(localinstall_plugin().grub)
+            template_data = template_data.replace(
+                f"## SCRIPT LOCALINSTALL CODE SEGMENT",
+                segment
+            )
+
         #self.logger.info(f"boot install data: [{data}]")
         if None not in data.values():
             status=True

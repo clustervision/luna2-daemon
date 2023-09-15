@@ -189,10 +189,6 @@ class OSImage():
         return status, response
    
 
-
-  group[groupid] and group[groupid]['osimageid'] 
-
-
     def update_osimage(self, name=None, request_data=None):
         """
         This method will create or update a osimage.

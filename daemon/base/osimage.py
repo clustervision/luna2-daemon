@@ -185,8 +185,10 @@ class OSImage():
                     for group in groups.keys():
                         self.logger.info(f"group {group} {groups[group]['name']}: [{image['tagid']}] == [{groups[group]['osimagetagid']}]")
                         if groups[group]['osimagetagid'] == image['tagid']:
+                            self.logger.info("HERE for group")
                             groups_using.append(groups[group]['name'])
                     if groups_using:
+                        self.logger.info("HERE too for group")
                         data['groups'] = ', '.join(groups_using)
                 response['config']['osimagetag'][data['name']] = data
         return status, response

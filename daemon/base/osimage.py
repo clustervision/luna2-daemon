@@ -220,11 +220,11 @@ class OSImage():
                 if update:
                     if tagname == "": # to clear tag
                         data['tagid'] = ""
-                    elif tagname != current_tag:
+                    elif str(tagname) != str(current_tag):
                         imagetag = Database().get_record(None, 'osimagetag', f' WHERE osimageid = "{image_id}" AND name = "{tagname}"')
                         if imagetag:
                             new_tagid = imagetag[0]['id']
-                        if not new_tagid and image_id:
+                        if (not new_tagid) and image_id:
                             tag_data = {}
                             tag_data['name'] = tagname
                             tag_data['osimageid'] = image_id

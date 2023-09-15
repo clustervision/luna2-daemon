@@ -181,8 +181,8 @@ class OSImage():
                     if nodes_using:
                         data['nodes'] = ', '.join(nodes_using)
                     for group in groups.keys():
-                        if groups[node]['osimagetagid'] == image['tagid']:
-                            groups_using.append(groups[node]['name'])
+                        if groups[group]['osimagetagid'] == image['tagid']:
+                            groups_using.append(groups[group]['name'])
                     if groups_using:
                         data['groups'] = ', '.join(groups_using)
                 response['config']['osimagetag'][data['name']] = data

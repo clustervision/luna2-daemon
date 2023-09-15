@@ -156,6 +156,7 @@ class OSImage():
             []
         )
         if image_details:
+            status = True
             allgroups = Database().get_record(table='group')
             allnodes = Database().get_record(table='node')
             groups = Helper().convert_list_to_dict(allgroups, 'id')
@@ -176,6 +177,7 @@ class OSImage():
                         if ret:
                             data['path'] = path
                     for node in nodes.keys():
+                        self.logger.info(f"node {node} {node['name']}: {node['osimagetagid']}")
                         if nodes[node]['osimagetagid'] == image['tagid']:
                             nodes_using.append(nodes[node]['name'])
                     if nodes_using:

@@ -157,6 +157,7 @@ class OSImage():
                 groups_using = []
                 data = {}
                 data['name'] = image['name']
+                data['osimage'] = image['osimagename']
                 data['kernelfile'] = image['kernelfile']
                 data['initrdfile'] = image['initrdfile']
                 data['imagefile'] = image['imagefile']

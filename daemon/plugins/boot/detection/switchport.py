@@ -33,6 +33,14 @@ class Plugin():
             os.makedirs(self.working_path)
         self.create_script()
 
+    # ----------------------------------------------------------------------------------
+
+    def clear(self):
+        # empty what we have
+        open(self.working_path+'/switchports.dat', 'w', encoding='utf-8').close()
+
+    # ----------------------------------------------------------------------------------
+
     def find(self, macaddress=None):
         """
         This method will be used to find switch ports.
@@ -54,42 +62,29 @@ class Plugin():
                 self.logger.error(f"plugin threw one.... : {exp}")
         return status, response
 
+    # ----------------------------------------------------------------------------------
     
-    def scan(self, switches={}):
-        #def scan(self, name=None, ipaddress=None, oid=None, read=None, rw=None, uplinkports=[]):
-        """
-        switches is a dict that contains: switches { id: { name: , oid:, read:, rw:, ipaddress, uplinkports: } }
-        """
+    def scan(self, name=None, ipaddress=None, oid=None, read=None, rw=None, uplinkports=[]):
+        # port_oid = switches[switch]['port_oid'] or '.1.3.6.1.2.1.31.1.1.1.1'
+        # ifname_oid = switches[switch]['ifname_oid'] or '.1.3.6.1.2.1.17.1.4.1.2'
         doc = {}
-        # empty what we have
-        open(self.working_path+'/switchports.dat', 'w', encoding='utf-8').close()
-        for switch in switches.keys():
-            name = switches[switch]['name']
-            ipaddress = switches[switch]['ipaddress']
-            oid = switches[switch]['oid']
-            # port_oid = switches[switch]['port_oid'] or '.1.3.6.1.2.1.31.1.1.1.1'
-            # ifname_oid = switches[switch]['ifname_oid'] or '.1.3.6.1.2.1.17.1.4.1.2'
-            read = switches[switch]['read']
-            rw = switches[switch]['rw']
-            doc[name] = {}
-            uplinks = [] 
-            if 'uplinkports' in switches[switch] and switches[switch]['uplinkports']:
-                uplinks_str = switches[switch]['uplinkports']
-                uplinks_str = uplinks_str.replace(' ','')
-                uplinks = uplinks_str.split(',')
-            self.logger.debug(f"Walking for {name} ...")
+        doc[name] = {}
+        self.logger.debug(f"Walking for {name} ...")
 
-            bash_command = f"/bin/bash {self.working_path}/switchprobe.sh '{ipaddress}' '{oid}'"
-            output, exit_code = Helper().runcommand(bash_command,True,60)
-            if output and exit_code == 0:
-                all_data = output[0].decode().split('\n')
-                for port_data in all_data:
-                    if not port_data:
-                        continue
-                    _port, _mac = port_data.split('=')
-                    if _port in uplinks:
-                        continue
-                    doc[name][_port] = _mac
+        if (not ipaddress) or (not oid):
+            return False, "no ipaddress or oid"
+
+        bash_command = f"/bin/bash {self.working_path}/switchprobe.sh '{ipaddress}' '{oid}'"
+        output, exit_code = Helper().runcommand(bash_command,True,60)
+        if output and exit_code == 0:
+            all_data = output[0].decode().split('\n')
+            for port_data in all_data:
+                if not port_data:
+                    continue
+                _port, _mac = port_data.split('=')
+                if _port in uplinkports:
+                    continue
+                doc[name][_port] = _mac
 
         self.logger.debug(f"DOC: {doc}")
 
@@ -98,6 +93,7 @@ class Plugin():
                 for port in doc[switch].keys():
                     switchport_file.write(f"{switch}={port}={doc[switch][port]}\n")
 
+    # ----------------------------------------------------------------------------------
 
     def create_script(self):
         SCRIPT = """

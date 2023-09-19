@@ -134,22 +134,23 @@ class Housekeeper(object):
         #DetectionPlugin=Helper().plugin_load(detection_plugins,'detection','switchport')
         try: 
             from plugins.boot.detection.switchport import Plugin as DetectionPlugin
-            # doc =  { id: { name: , oid:, read:, rw:, ipaddress: } }
             while True:
                 try:
                     tel+=1
                     if tel > 120:
                         tel=0
-                        doc={}
                         switches = Database().get_record_join(['switch.*','ipaddress.ipaddress'], ['ipaddress.tablerefid=switch.id'], ['ipaddress.tableref="switch"'])
                         self.logger.debug(f"switches {switches}")
                         if switches:
+                             DetectionPlugin().clear()
                              for switch in switches:
-                                doc[switch['name']]={}
-                                for elem in ['name','oid','rw','read','ipaddress','uplinkports']:
-                                    doc[switch['name']][elem]=switch[elem]
-                             DetectionPlugin().scan(doc)                            
-   
+                                uplinkports = []
+                                if switch['uplinkports']:
+                                    uplinkportsstring = switch['uplinkports'].replace(' ','')
+                                    uplinkports = uplinkportsstring.split(',')
+                                DetectionPlugin().scan(name=switch['name'], ipaddress=switch['ipaddress'], 
+                                                       oid=switch['oid'], read=switch['read'], rw=switch['rw'], 
+                                                       uplinkports=uplinkports)
                     if event.is_set():
                         return
                 except Exception as exp:

@@ -889,7 +889,7 @@ class Boot():
                 osimage = Database().get_record_join(['osimage.*','osimagetag.imagefile'],['osimage.id=osimagetag.osimageid'],
                                 [f'osimagetag.name="{data["osimagetag"]}"',f'osimage.name="{data["osimage"]}"'])
             else:
-                osimage = Database().get_record(None, 'osimage', " WHERE name = '{data['osimage']}'")
+                osimage = Database().get_record(None, 'osimage', f" WHERE name = '{data['osimage']}'")
             if osimage:
                 data['osimageid'] = osimage[0]['id']
                 data['osimagename'] = osimage[0]['name']

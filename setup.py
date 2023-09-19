@@ -89,13 +89,13 @@ setup(
         "daemon/plugins/boot/detection": ["README","*.py"],
         "daemon/plugins/boot/scripts": ["README","*py"],
         "daemon/plugins/boot/network": ["README","*.py"],
-        "daemon/plugins/boot/provision": ["README","*.py"]
-        "daemon/plugins/boot/localinstall": ["README","*.py"]
+        "daemon/plugins/boot/provision": ["README","*.py"],
+        "daemon/plugins/boot/localinstall": ["README","*.py"],
         "daemon/plugins/osimage/operations/osgrab": ["README","*.py"],
         "daemon/plugins/osimage/operations/ospush": ["README","*py"],
         "daemon/plugins/osimage/operations/image": ["README","*py"],
         "daemon/plugins/osimage/filesystem": ["README","*py"],
-        "daemon/plugins/osimage/other": ["README","*py"],
+        "daemon/plugins/osimage/other": ["README","*py"]
     },
     data_files = [],
     zip_safe = False,

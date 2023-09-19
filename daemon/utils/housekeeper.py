@@ -144,9 +144,13 @@ class Housekeeper(object):
                         if switches:
                              DetectionPlugin().clear()
                              for switch in switches:
+                                uplinkports = []
+                                if switch['uplinkports']:
+                                    uplinkportsstring = switch['uplinkports'].replace(' ','')
+                                    uplinkports = uplinkportsstring.split(',')
                                 DetectionPlugin().scan(name=switch['name'], ipaddress=switch['ipaddress'], 
                                                        oid=switch['oid'], read=switch['read'], rw=switch['rw'], 
-                                                       uplinkports=switch['uplinkports'])
+                                                       uplinkports=uplinkports)
                     if event.is_set():
                         return
                 except Exception as exp:

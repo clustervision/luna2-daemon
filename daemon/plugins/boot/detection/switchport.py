@@ -56,6 +56,7 @@ class Plugin():
 
     
     def scan(self, switches={}):
+        #def scan(self, name=None, ipaddress=None, oid=None, read=None, rw=None, uplinkports=[]):
         """
         switches is a dict that contains: switches { id: { name: , oid:, read:, rw:, ipaddress, uplinkports: } }
         """

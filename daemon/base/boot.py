@@ -302,7 +302,7 @@ class Boot():
                 data['nodeservice'] = node[0]['service']
         if data['osimageid']:
             osimage = None
-            if data['osimagetagid']:
+            if data['osimagetagid'] and data['osimagetagid'] != 'default':
                 osimage = Database().get_record_join(['osimagetag.*'],['osimage.id=osimagetag.osimageid'],
                                 [f'osimagetag.id={data["osimagetagid"]}',f'osimage.id={data["osimageid"]}'])
             else:
@@ -593,7 +593,7 @@ class Boot():
 
         if data['osimageid']:
             osimage = None
-            if data['osimagetagid']:
+            if data['osimagetagid'] and data['osimagetagid'] != 'default':
                 osimage = Database().get_record_join(['osimagetag.*'],['osimage.id=osimagetag.osimageid'],
                                 [f'osimagetag.id={data["osimagetagid"]}',f'osimage.id={data["osimageid"]}'])
             else:
@@ -887,9 +887,9 @@ class Boot():
             osimage = None
             if data['osimagetag'] and data['osimagetag'] != 'default':
                 osimage = Database().get_record_join(['osimage.*','osimagetag.imagefile'],['osimage.id=osimagetag.osimageid'],
-                                [f'osimagetag.name="'+data["osimagetag"]+'"',f'osimage.name="'+data["osimage"]+'"'])
+                                [f'osimagetag.name="{data["osimagetag"]}"',f'osimage.name="{data["osimage"]}"'])
             else:
-                osimage = Database().get_record(None, 'osimage', " WHERE name = '"+data['osimage']+"'")
+                osimage = Database().get_record(None, 'osimage', f" WHERE name = '{data['osimage']}'")
             if osimage:
                 data['osimageid'] = osimage[0]['id']
                 data['osimagename'] = osimage[0]['name']

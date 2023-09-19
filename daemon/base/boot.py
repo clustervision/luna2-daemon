@@ -294,7 +294,7 @@ class Boot():
                 [f'node.id={data["nodeid"]}']
             )
             if node:
-                data['osimagetagid'] = node[0]['osimagetagid'] or node[0]['grouposimagetagid']
+                data['osimagetagid'] = node[0]['osimagetagid'] or node[0]['grouposimagetagid'] or 'default'
                 data['osimageid'] = node[0]['osimageid'] or node[0]['grouposimageid']
                 data['nodename'] = node[0]['name']
                 # data['nodehostname'] = node[0]['hostname']
@@ -558,7 +558,7 @@ class Boot():
             [f'node.name="{hostname}"']
         )
         if node:
-            data['osimagetagid'] = node[0]['osimagetagid'] or node[0]['grouposimagetagid']
+            data['osimagetagid'] = node[0]['osimagetagid'] or node[0]['grouposimagetagid'] or 'default'
             data['osimageid'] = node[0]['osimageid'] or node[0]['grouposimageid']
             data['nodename'] = node[0]['name']
             # data['nodehostname'] = node[0]['hostname']

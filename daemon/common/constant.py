@@ -121,7 +121,7 @@ def check_option(filename, section, option=None):
         if option.lower() not in list(dict(configParser.items(section)).keys()):
             try:
                 LOGGER.error(f'{option} is not available in {section}, please check {filename}.')
-            else:
+            except:
                 # getconfig + check_option are needed to read config file to know where to store logs
                 # this then inits logger. it's a chicken egg problem. unsolvable - Antoine sep 20 2023
                 sys.stderr.write(f"{option} is not available in {section}, please check {filename}\n")

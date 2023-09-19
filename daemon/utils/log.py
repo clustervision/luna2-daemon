@@ -41,12 +41,12 @@ class Log:
         logging.basicConfig(filename=logfile, format=log_format, filemode='a', level=log_level)
         cls.__logger = logging.getLogger('luna2-daemon')
         cls.__logger.setLevel(log_level)
+        formatter = logging.Formatter(log_format)
+        cnsl = logging.StreamHandler(sys.stdout)
+        cnsl.setLevel(log_level)
+        cnsl.setFormatter(formatter)
+        cls.__logger.addHandler(cnsl)
         cls.__logger.propagate = False
-#        formatter = logging.Formatter(log_format)
-#        cnsl = logging.StreamHandler(sys.stdout)
-#        cnsl.setLevel(log_level)
-#        cnsl.setFormatter(formatter)
-#        cls.__logger.addHandler(cnsl)
         levels = {0: 'NOTSET', 10: 'DEBUG', 20: 'INFO', 30: 'WARNING', 40: 'ERROR', 50: 'CRITICAL'}
         cls.__logger.info(f'######### Luna Logging Level IsSet To [{levels[log_level]}] #########')
         return cls.__logger

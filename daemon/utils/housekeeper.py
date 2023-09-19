@@ -26,6 +26,7 @@ from threading import Event
 from time import sleep, time
 from datetime import datetime
 import signal
+import os, sys
 # below are need to accomodate for the housekeeper
 from utils.status import Status
 from utils.queue import Queue
@@ -154,8 +155,10 @@ class Housekeeper(object):
                     if event.is_set():
                         return
                 except Exception as exp:
-                    self.logger.error(f"switch port scan thread encountered problem: {exp}")
+                    exc_type, exc_obj, exc_tb = sys.exc_info()
+                    self.logger.error(f"switch port scan thread encountered problem: {exp}, {exc_type}, in {exc_tb.tb_lineno}")
                 sleep(5)
         except Exception as exp:
-            self.logger.error(f"switch port scan thread encountered problem: {exp}")
+            exc_type, exc_obj, exc_tb = sys.exc_info()
+            self.logger.error(f"switch port scan thread encountered problem: {exp}, {exc_type}, in {exc_tb.tb_lineno}")
 

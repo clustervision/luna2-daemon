@@ -176,7 +176,7 @@ def getconfig(filename=None):
     configParser.read(filename)
     check_section(filename)
     for section in configParser.sections():
-        check_option(filename, section, option.upper())
+        check_option(filename, section)
         for (option, item) in configParser.items(section):
             if section in getlist(CONSTANT):
                 set_constants(section, option.upper(), item)

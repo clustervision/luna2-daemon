@@ -14,7 +14,7 @@ __maintainer__  = 'Sumit Sharma'
 __email__       = 'sumit.sharma@clustervision.com'
 __status__      = 'Development'
 
-import os
+import os, sys
 import subprocess
 import json
 from configparser import RawConfigParser
@@ -112,13 +112,30 @@ def check_section(filename=None):
             LOGGER.error(f'Section {item} is missing, kindly check the file {filename}.')
 
 
-def check_option(filename=None, section=None, option=None):
+def check_option(filename, section, option=None):
     """
     Compare the ini option with the predefined dictionary options.
     """
-    for item in list(CONSTANT[section].keys()):
-        if item.lower() not in list(dict(configParser.items(section)).keys()):
-            LOGGER.error(f'{option} is not available in {section}, kindly check {filename}.')
+
+    if option:
+        if option.lower() not in list(dict(configParser.items(section)).keys()):
+            try:
+                LOGGER.error(f'{option} is not available in {section}, please check {filename}.')
+            else:
+                # getconfig + check_option are needed to read config file to know where to store logs
+                # this then inits logger. it's a chicken egg problem. unsolvable - Antoine sep 20 2023
+                sys.stderr.write(f"{option} is not available in {section}, please check {filename}\n")
+    else:
+        if section in CONSTANT.keys():
+            for item in list(CONSTANT[section].keys()):
+                if item.lower() not in list(dict(configParser.items(section)).keys()):
+                    try:
+                        LOGGER.error(f'{item} is not available in {section}, please check {filename}.')
+                    except:
+                        # getconfig + check_option are needed to read config file to know where to store logs
+                        # this then inits logger. it's a chicken egg problem. unsolvable - Antoine sep 20 2023
+                        sys.stderr.write(f"{item} is not available in {section}, please check {filename}\n")
+
 
 def set_constants(section=None, option=None, item=None):
     """
@@ -159,9 +176,9 @@ def getconfig(filename=None):
     configParser.read(filename)
     check_section(filename)
     for section in configParser.sections():
+        check_option(filename, section, option.upper())
         for (option, item) in configParser.items(section):
             if section in getlist(CONSTANT):
-                check_option(filename, section, option.upper())
                 set_constants(section, option.upper(), item)
             else:
                 CONSTANT[section] = {}

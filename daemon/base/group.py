@@ -255,10 +255,7 @@ class Group():
 
             # we reset to make sure we don't assing something that won't work
             if 'osimage' in data:
-                if data['osimage'] == "":
-                    data['osimagetagid'] = ""
-                else:
-                    data['osimagetagid'] = "default"
+                data['osimagetagid'] = "default"
 
             for key, value in items.items():
                 if key in data:
@@ -303,13 +300,13 @@ class Group():
                     osimagetagids = None
                     if 'osimageid' in data:
                         osimagetagids = Database().get_record(None, 'osimagetag', f" WHERE osimageid = '{data['osimageid']}' AND name = '{osimagetag}'")
-                    elif 'osimageid' in group[0]:
+                    elif group and 'osimageid' in group[0]:
                         osimagetagids = Database().get_record(None, 'osimagetag', f" WHERE osimageid = '{group[0]['osimageid']}' AND name = '{osimagetag}'")
                     if osimagetagids:
                         data['osimagetagid'] = osimagetagids[0]['id']
                     else:
                         status = False
-                        return status, f'Unknown tag or osimage and tag not related'
+                        return status, f'Unknown tag, or osimage and tag not related'
 
             group_columns = Database().get_columns('group')
             column_check = Helper().compare_list(data, group_columns)

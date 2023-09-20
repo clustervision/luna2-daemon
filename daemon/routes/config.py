@@ -1367,9 +1367,12 @@ def config_post_os_user(name=None):
     Process - Create Or Update System (ldap/ssd/pam) users.
     Output - None.
     """
-    userdata = request.json['config']['osuser'][name]
-    status, response = OsUser().update_user(name, **userdata)
-    access_code=Helper().get_access_code(status,response)
+    access_code = 503
+    response = "Invalid request: missing data"
+    if name and name in request.json['config']['osuser']:
+        userdata = request.json['config']['osuser'][name]
+        status, response = OsUser().update_user(name, **userdata)
+        access_code=Helper().get_access_code(status,response)
     return {'message': response}, access_code
 
 
@@ -1434,9 +1437,12 @@ def config_post_os_group(name=None):
     Process - Create Or Update System (ldap/ssd/pam) groups.
     Output - None.
     """
-    groupdata = request.json['config']['osgroup'][name]
-    status, response = OsUser().update_group(name, **groupdata)
-    access_code=Helper().get_access_code(status,response)
+    access_code = 503
+    response = "Invalid request: data missing"
+    if name and name in request.json['config']['osgroup']:
+        groupdata = request.json['config']['osgroup'][name]
+        status, response = OsUser().update_group(name, **groupdata)
+        access_code=Helper().get_access_code(status,response)
     return {'message': response}, access_code
 
 

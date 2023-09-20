@@ -46,6 +46,7 @@ class Log:
         cnsl.setLevel(log_level)
         cnsl.setFormatter(formatter)
         cls.__logger.addHandler(cnsl)
+        #cnsl.propagate = False
         levels = {0: 'NOTSET', 10: 'DEBUG', 20: 'INFO', 30: 'WARNING', 40: 'ERROR', 50: 'CRITICAL'}
         cls.__logger.info(f'######### Luna Logging Level IsSet To [{levels[log_level]}] #########')
         return cls.__logger

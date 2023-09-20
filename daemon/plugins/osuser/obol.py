@@ -4,7 +4,9 @@ import sys
 from typing import List, Dict, Optional, Tuple
 from pydantic import BaseModel, Field
 
-
+"""
+Helper classes for the plugin
+"""
 
 class OSUserData(BaseModel, extra='forbid'):
     """
@@ -34,11 +36,12 @@ class OSGroupData(BaseModel, extra='forbid'):
     users: Optional[List[str]] = None
 
 
-
+# ----------------------------------------------------------------------------------------
 
 class Plugin():
     """
-    This class will be used to represent OS user plugins.
+    This class represents OS user plugin.
+    It's the interface between Daemon API and obol to manage users and groups
     """
 
     def list_users(self):
@@ -58,6 +61,8 @@ class Plugin():
         obol_output = json.loads(result.stdout.decode('utf-8'))
         users = { user['uid']: {'uid': user['uidNumber']} for user in obol_output}
         return True, users
+
+    # ----------------------------------------------
 
     def get_user(self, username: str):
         """
@@ -90,6 +95,8 @@ class Plugin():
                       )
         return True, user.dict()
 
+    # ----------------------------------------------
+
     def update_user(self, 
                     username: str, 
                     password: str = None,
@@ -104,7 +111,7 @@ class Plugin():
                     groups: List[str] = None,
                     expire: int = None,
                     homedir: str = None,
-                    ) -> (bool, str):
+                    ):
         """
         This method will update a OS users.
         """
@@ -171,7 +178,9 @@ class Plugin():
         else:
             return True, f"[obol: user {username} created]"
 
-    def delete_user(self, username: str) :
+    # ----------------------------------------------
+
+    def delete_user(self, username: str):
         """
         This method will delete a OS users.
         """
@@ -187,6 +196,8 @@ class Plugin():
         
         return True, f"[obol: user {username} deleted]"
 
+
+    # ----------------------------------------------
 
     def list_groups(self):
         """
@@ -205,6 +216,8 @@ class Plugin():
         obol_output = json.loads(result.stdout.decode('utf-8'))
         groups = { group['cn']: {'gid':['gidNumber']} for group in obol_output}
         return True, groups
+
+    # ----------------------------------------------
 
     def get_group(self, groupname: str):
         """
@@ -226,6 +239,8 @@ class Plugin():
                         users=obol_output.get('users', [])
         )
         return True, group.dict()
+
+    # ----------------------------------------------
 
     def update_group(self, 
                      groupname: str,
@@ -274,6 +289,8 @@ class Plugin():
         else:
             return True, f"[obol: group {groupname} created]"
 
+    # ----------------------------------------------
+
     def delete_group(self, groupname: str):
         """
         This method will delete a OS groups.
@@ -290,3 +307,4 @@ class Plugin():
             return False, f"[obol: {result}]"
 
         return True, f"[obol: group {groupname} deleted]"
+

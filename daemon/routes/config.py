@@ -1460,7 +1460,7 @@ def config_post_os_group_delete(name=None):
 
     if status is True:
         access_code=204
-    return {'message': response}, 404
+    return {'message': response}, access_code
 
 
 @config_blueprint.route('/config/status/<string:request_id>', methods=['GET'])

@@ -79,7 +79,7 @@ class OsUser():
         """
         try:
             result_state, result_msg = self.plugin.list_groups()
-            return
+            return result_state, result_msg
         except Exception as exp:
             return False, f'Problem while listing OS Groups: {exp}'
 

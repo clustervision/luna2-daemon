@@ -42,6 +42,7 @@ class Plugin():
     """
     This class represents OS user plugin.
     It's the interface between Daemon API and obol to manage users and groups
+    All functions are expected to return: Bool, (Str|Dict)
     """
 
     def list_users(self):

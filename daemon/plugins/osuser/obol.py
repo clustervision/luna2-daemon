@@ -4,7 +4,9 @@ import sys
 from typing import List, Dict, Optional, Tuple
 from pydantic import BaseModel, Field
 
-
+"""
+Helper classes for the plugin
+"""
 
 class OSUserData(BaseModel, extra='forbid'):
     """
@@ -13,6 +15,7 @@ class OSUserData(BaseModel, extra='forbid'):
     # username: str
     uid: Optional[int] = None
     gid: Optional[int] = None
+    groupname: Optional[str] = None
     groups: Optional[List[str]] = None
     password: Optional[str] = None
     surname: Optional[str] = None
@@ -24,13 +27,6 @@ class OSUserData(BaseModel, extra='forbid'):
     expire: Optional[int] = None
     last_change: Optional[int] = None
 
-class OSUserUpdateData(OSUserData, extra='forbid'):
-    """
-    This class will be used to represent update for OS users.
-    """
-    groupname: Optional[str] = None
-    last_change: int = Field(exclude=True)
-
 class OSGroupData(BaseModel, extra='forbid'):
     """
     This class will be used to represent OS groups.
@@ -40,17 +36,16 @@ class OSGroupData(BaseModel, extra='forbid'):
     users: Optional[List[str]] = None
 
 
-
+# ----------------------------------------------------------------------------------------
 
 class Plugin():
     """
-    This class will be used to represent OS user plugins.
+    This class represents OS user plugin.
+    It's the interface between Daemon API and obol to manage users and groups
+    All functions are expected to return: Bool, (Str|Dict)
     """
-    osuserdata = OSUserData
-    osuserupdatedata = OSUserUpdateData
-    osgroupdata = OSGroupData
 
-    def list_users(self) -> (bool, Tuple[str, OSUserData] | str):
+    def list_users(self):
         """
         This method will list all OS users.
         """
@@ -64,11 +59,13 @@ class Plugin():
         if result.returncode != 0:
             return False, f"[obol: {result}]"
 
-        _users = json.loads(result.stdout.decode('utf-8'))
-        users = { user['uid']: OSUserData(uid=user['uidNumber']) for user in _users}
+        obol_output = json.loads(result.stdout.decode('utf-8'))
+        users = { user['uid']: {'uid': user['uidNumber']} for user in obol_output}
         return True, users
 
-    def get_user(self, username: str) -> (bool, Tuple[str, OSUserData]  | str):
+    # ----------------------------------------------
+
+    def get_user(self, username: str):
         """
         This method will list all OS users.
         """
@@ -82,27 +79,59 @@ class Plugin():
         if result.returncode != 0:
             return False, f"[obol: {result}]"
         
-        result_json = json.loads(result.stdout.decode('utf-8').strip())
+        obol_output = json.loads(result.stdout.decode('utf-8').strip())
         user = OSUserData(
-                      uid=result_json.get('uidNumber'),
-                      gid=result_json.get('gidNumber'),
-                      homedir=result_json.get('homeDirectory'),
-                      shell=result_json.get('loginShell'),
-                      surname=result_json.get('sn'),
-                      givenname=result_json.get('givenName'),
-                      phone=result_json.get('telephoneNumber'),
-                      email=result_json.get('mail'),
-                      expire=result_json.get('shadowExpire'),
-                      last_change=result_json.get('shadowLastChange'),
-                      password=result_json.get('userPassword'),
-                      groups=result_json.get('groups', [])
+                      uid=obol_output.get('uidNumber'),
+                      gid=obol_output.get('gidNumber'),
+                      homedir=obol_output.get('homeDirectory'),
+                      shell=obol_output.get('loginShell'),
+                      surname=obol_output.get('sn'),
+                      givenname=obol_output.get('givenName'),
+                      phone=obol_output.get('telephoneNumber'),
+                      email=obol_output.get('mail'),
+                      expire=obol_output.get('shadowExpire'),
+                      last_change=obol_output.get('shadowLastChange'),
+                      password=obol_output.get('userPassword'),
+                      groups=obol_output.get('groups', [])
                       )
-        return True, user
+        return True, user.dict()
 
-    def update_user(self, username: str, user: OSUserUpdateData) -> (bool, str):
+    # ----------------------------------------------
+
+    def update_user(self, 
+                    username: str, 
+                    password: str = None,
+                    surname: str = None,
+                    givenname: str = None,
+                    groupname: str = None,
+                    uid: int = None,
+                    gid: int = None,
+                    email: str = None,
+                    phone: str = None,
+                    shell: str = None,
+                    groups: List[str] = None,
+                    expire: int = None,
+                    homedir: str = None,
+                    ):
         """
         This method will update a OS users.
         """
+        user_exist, old_user = self.get_user(username)
+        new_user = OSUserData(
+            uid=uid,
+            gid=gid,
+            groups=groups,
+            password=password,
+            surname=surname,
+            givenname=givenname,
+            groupname=groupname,
+            email=email,
+            phone=phone,
+            shell=shell,
+            expire=expire,
+            homedir=homedir
+        )
+        
         flags_mapping = {
             'password': '--password',
             'surname': '--sn',
@@ -123,12 +152,10 @@ class Plugin():
             'expire': lambda expire: str(expire),
             'groups': lambda groups: ",".join(groups)
         }
-        
-        user_exist, old_user = self.get_user(username)
 
         obol_flags = []
         for key, flag in flags_mapping.items():
-            value = user.dict().get(key)
+            value = new_user.dict().get(key)
             if value is None:
                 continue
             obol_flags += [flag, flags_formatting.get(key, lambda x: x)(value)]
@@ -152,7 +179,9 @@ class Plugin():
         else:
             return True, f"[obol: user {username} created]"
 
-    def delete_user(self, username: str) -> (bool, str):
+    # ----------------------------------------------
+
+    def delete_user(self, username: str):
         """
         This method will delete a OS users.
         """
@@ -169,7 +198,9 @@ class Plugin():
         return True, f"[obol: user {username} deleted]"
 
 
-    def list_groups(self) -> (bool, Tuple[str, OSGroupData]  | str):
+    # ----------------------------------------------
+
+    def list_groups(self):
         """
         This method will list all OS user groups.
         """
@@ -183,11 +214,13 @@ class Plugin():
         if result.returncode != 0:
             return False, f"[cmd: {obol_cmd}][obol: {result.stderr.decode('utf-8')}]"
 
-        _groups = json.loads(result.stdout.decode('utf-8'))
-        groups = { group['cn']: OSGroupData(gid=group['gidNumber']) for group in _groups}
+        obol_output = json.loads(result.stdout.decode('utf-8'))
+        groups = { group['cn']: {'gid':['gidNumber']} for group in obol_output}
         return True, groups
 
-    def get_group(self, groupname: str) -> (bool, Tuple[str, OSGroupData] | str):
+    # ----------------------------------------------
+
+    def get_group(self, groupname: str):
         """
         This method will list all OS groups.
         """
@@ -201,20 +234,28 @@ class Plugin():
         if result.returncode != 0:
             return False, f"[obol: {result}]"
 
-        result_json = json.loads(result.stdout.decode('utf-8'))
+        obol_output = json.loads(result.stdout.decode('utf-8'))
         group = OSGroupData(
-                        gid=result_json['gidNumber'],
-                        users=result_json.get('users', [])
+                        gid=obol_output['gidNumber'],
+                        users=obol_output.get('users', [])
         )
-        return True, group
+        return True, group.dict()
 
-    def update_group(self, groupname: str, group: OSGroupData) -> (bool, str):
+    # ----------------------------------------------
+
+    def update_group(self, 
+                     groupname: str,
+                     gid: str = None,
+                     users: List[str] = None):
         """
         This method will update a OS groups.
         """
         group_exist, old_group = self.get_group(groupname)
-        print(group)
-        sys.stdout.flush()
+        new_group = OSGroupData(
+            gid=gid,
+            users=users
+        )
+
         # Create group
         flags_mapping = {
             'gid': '--gid',
@@ -226,7 +267,7 @@ class Plugin():
         }
         obol_flags = []
         for key, flag in flags_mapping.items():
-            value = group.dict().get(key)
+            value = new_group.dict().get(key)
             if value is not None:
                 obol_flags += [flag, flags_formatting.get(key, lambda x: x)(value)]
 
@@ -244,44 +285,14 @@ class Plugin():
         if result.returncode != 0:
             return False, f"[obol: {result}]"
         
-        # old_users = (old_group.users if group_exist else None) or []
-        # new_users = group.users or []
-
-        # users_to_add = [user for user in new_users if user not in old_users]
-        # users_to_remove = [user for user in old_users if user not in new_users]
-
-        # # Add users to group
-        # if len(users_to_add) > 0:
-        #     obol_cmd = ['obol', 'group', 'addusers', groupname, *users_to_add]
-        #     result = subprocess.run(
-        #         obol_cmd,
-        #         check=False,
-        #         stdout=subprocess.PIPE,
-        #         stderr=subprocess.PIPE)
-            
-        #     if result.returncode != 0:
-        #         return False, f"[obol: {result}]"
-        #     if result.stdout.decode('utf-8') != '':
-        #         return False, f"[obol: {result}]"
-        
-        # # Remove users from group
-        # if len(users_to_remove) > 0:
-        #     obol_cmd = ['obol', 'group', 'delusers', groupname, *users_to_remove]
-        #     result = subprocess.run(
-        #         obol_cmd,
-        #         check=False,
-        #         stdout=subprocess.PIPE,
-        #         stderr=subprocess.PIPE)
-            
-        #     if result.returncode != 0:
-        #         return False, f"[obol: {result}]"
-        
         if group_exist:
             return True, f"[obol: group {groupname} updated]"
         else:
             return True, f"[obol: group {groupname} created]"
 
-    def delete_group(self, groupname: str) -> (bool, str):
+    # ----------------------------------------------
+
+    def delete_group(self, groupname: str):
         """
         This method will delete a OS groups.
         """
@@ -297,3 +308,4 @@ class Plugin():
             return False, f"[obol: {result}]"
 
         return True, f"[obol: group {groupname} deleted]"
+

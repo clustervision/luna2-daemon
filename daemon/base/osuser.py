@@ -35,113 +35,83 @@ class OsUser():
 
     def list_users(self):
         """
-        This method will list all OS users.
+        This method will list all OS Users.
         """
         try:
             result_state, result_msg = self.plugin.list_users()
-            if result_state:
-                return True, {item: data.dict() for item, data in result_msg.items()}
-            else:
-                return False, result_msg
+            return result_state, result_msg
         except Exception as exp:
-            return False, f'problem while listing Os Users: {exp}'
-
+            return False, f'Problem while listing OS Users: {exp}'
 
     def get_user(self, name):
         """
-        This method will list all OS users.
+        This method will get data of a OS User.
         """
         try:
             result_state, result_msg = self.plugin.get_user(name)
-            if result_state:
-                return True, result_msg.dict()
-            else:
-                return False, result_msg
+            return result_state, result_msg
         except Exception as exp:
-            return False, f'problem while getting Os User: {exp}'
+            return False, f'Problem while getting Os User: {exp}'
 
     def update_user(self, name, **kwargs):
         """
-        This method will list all OS users.
+        This method will update data of a OS User.
         """
         try:
-            osuserdata = self.plugin.osuserdata(**kwargs)
-            result_state, result_msg = self.plugin.update_user(name, osuserdata)
-            if result_state:
-                return True, result_msg
-            else:
-                return False, result_msg
+            result_state, result_msg = self.plugin.update_user(name, **kwargs)
+            return result_state, result_msg
         except Exception as exp:
-            return False, f'problem while updating Os User: {exp}'
-
+            return False, f'Problem while updating Os User: {exp}'
 
     def delete_user(self, name):
         """
-        This method will list all OS users.
+        This method will delete a OS User.
         """
         try:
             result_state, result_msg = self.plugin.delete_user(name)
-            print(result_state, result_msg)
-            if result_state:
-                return True, result_msg
-            else:
-                return False, result_msg
+            return result_state, result_msg
         except Exception as exp:
-            return False, f'problem while deleting Os User: {exp}'
-        
+            return False, f'Problem while deleting Os User: {exp}'
 
     def list_groups(self):
         """
-        This method will list all OS groups.
+        This method will list all OS Groups.
         """
         try:
             result_state, result_msg = self.plugin.list_groups()
-            if result_state:
-                return True, {item: data.dict() for item, data in result_msg.items()}
-            else:
-                return False, result_msg
+            return
         except Exception as exp:
-            return False, f'problem while listing Os Users: {exp}'
-
+            return False, f'Problem while listing OS Groups: {exp}'
 
     def get_group(self, name):
         """
-        This method will list all OS groups.
+        This method will get data of a OS Group.
         """
         try:
             result_state, result_msg = self.plugin.get_group(name)
-            if result_state:
-                return True, result_msg.dict()
-            else:
-                return False, result_msg
+            return result_state, result_msg
         except Exception as exp:
-            return False, f'problem while getting Os User: {exp}'
+            return False, f'Problem while getting Os Group: {exp}'
 
     def update_group(self, name, **kwargs):
         """
-        This method will list all OS groups.
+        This method will update data of a OS Group.
         """
         try:
-            osgroupdata = self.plugin.osgroupdata(**kwargs)
-            result_state, result_msg = self.plugin.update_group(name, osgroupdata)
-            if result_state:
-                return True, result_msg
-            else:
-                return False, result_msg
+            result_state, result_msg = self.plugin.update_group(name, **kwargs)
+            return result_state, result_msg
         except Exception as exp:
-            return False, f'problem while updating Os User: {exp}'
-
+            return False, f'Problem while updating Os Group: {exp}'
 
     def delete_group(self, name):
         """
-        This method will list all OS groups.
+        This method will delete a OS Group.
         """
         try:
             result_state, result_msg = self.plugin.delete_group(name)
-            if result_state:
-                return True, result_msg
-            else:
-                return False, result_msg
+            return result_state, result_msg
         except Exception as exp:
-            return False, f'problem while deleting Os User: {exp}'
+            return False, f'Problem while deleting Os Group: {exp}'
+        
 
+    

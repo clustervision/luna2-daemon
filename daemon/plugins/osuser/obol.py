@@ -13,6 +13,7 @@ class OSUserData(BaseModel, extra='forbid'):
     # username: str
     uid: Optional[int] = None
     gid: Optional[int] = None
+    groupname: Optional[str] = None
     groups: Optional[List[str]] = None
     password: Optional[str] = None
     surname: Optional[str] = None
@@ -23,13 +24,6 @@ class OSUserData(BaseModel, extra='forbid'):
     homedir: Optional[str] = None
     expire: Optional[int] = None
     last_change: Optional[int] = None
-
-class OSUserUpdateData(OSUserData, extra='forbid'):
-    """
-    This class will be used to represent update for OS users.
-    """
-    groupname: Optional[str] = None
-    last_change: int = Field(exclude=True)
 
 class OSGroupData(BaseModel, extra='forbid'):
     """
@@ -47,7 +41,7 @@ class Plugin():
     This class will be used to represent OS user plugins.
     """
 
-    def list_users(self) -> (True, List[Dict]) | (False, str):
+    def list_users(self):
         """
         This method will list all OS users.
         """
@@ -65,7 +59,7 @@ class Plugin():
         users = { user['uid']: {'uid': user['uidNumber']} for user in obol_output}
         return True, users
 
-    def get_user(self, username: str) -> (True, Dict) | (False, str):
+    def get_user(self, username: str):
         """
         This method will list all OS users.
         """
@@ -115,7 +109,7 @@ class Plugin():
         This method will update a OS users.
         """
         user_exist, old_user = self.get_user(username)
-        new_user = OSUserUpdateData(
+        new_user = OSUserData(
             uid=uid,
             gid=gid,
             groups=groups,
@@ -177,7 +171,7 @@ class Plugin():
         else:
             return True, f"[obol: user {username} created]"
 
-    def delete_user(self, username: str) -> (bool, str):
+    def delete_user(self, username: str) :
         """
         This method will delete a OS users.
         """
@@ -194,7 +188,7 @@ class Plugin():
         return True, f"[obol: user {username} deleted]"
 
 
-    def list_groups(self) -> (True, List[Dict]) | (False, str):
+    def list_groups(self):
         """
         This method will list all OS user groups.
         """
@@ -210,9 +204,9 @@ class Plugin():
 
         obol_output = json.loads(result.stdout.decode('utf-8'))
         groups = { group['cn']: {'gid':['gidNumber']} for group in obol_output}
-        return True, groups.dict()
+        return True, groups
 
-    def get_group(self, groupname: str) -> (True, Dict) | (False, str):
+    def get_group(self, groupname: str):
         """
         This method will list all OS groups.
         """
@@ -235,8 +229,8 @@ class Plugin():
 
     def update_group(self, 
                      groupname: str,
-                     gid: str,
-                     users: List[str]) -> (bool, str):
+                     gid: str = None,
+                     users: List[str] = None):
         """
         This method will update a OS groups.
         """
@@ -280,7 +274,7 @@ class Plugin():
         else:
             return True, f"[obol: group {groupname} created]"
 
-    def delete_group(self, groupname: str) -> (bool, str):
+    def delete_group(self, groupname: str):
         """
         This method will delete a OS groups.
         """

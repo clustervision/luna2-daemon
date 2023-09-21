@@ -55,7 +55,7 @@ class OsUser():
             if result_state is True:
                 return True, {"config": {"osuser": {name: result_msg}}}
             else:
-            return False, result_msg
+                return False, result_msg
         except Exception as exp:
             return False, f'Problem while getting Os User: {exp}'
 

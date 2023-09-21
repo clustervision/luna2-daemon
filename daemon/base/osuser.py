@@ -99,7 +99,7 @@ class OsUser():
         try:
             result_state, result_msg = self.plugin.get_group(name)
             if result_state is True:
-                return True, {"config": {"osgroup": {name: result_msg}}}, access_code
+                return True, {"config": {"osgroup": {name: result_msg}}}
             else:
                 return False, result_msg
         except Exception as exp:

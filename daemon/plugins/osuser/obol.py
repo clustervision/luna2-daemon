@@ -215,7 +215,7 @@ class Plugin():
             return False, f"[cmd: {obol_cmd}][obol: {result.stderr.decode('utf-8')}]"
 
         obol_output = json.loads(result.stdout.decode('utf-8'))
-        groups = { group['cn']: {'gid':['gidNumber']} for group in obol_output}
+        groups = { group['cn']: {'gid':group['gidNumber']} for group in obol_output}
         return True, groups
 
     # ----------------------------------------------

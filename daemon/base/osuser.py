@@ -39,7 +39,10 @@ class OsUser():
         """
         try:
             result_state, result_msg = self.plugin.list_users()
-            return result_state, result_msg
+            if result_state is True:
+                return True, {"config": {"osuser": result_msg}}
+            else:
+                return False, result_msg
         except Exception as exp:
             return False, f'Problem while listing OS Users: {exp}'
 
@@ -49,7 +52,10 @@ class OsUser():
         """
         try:
             result_state, result_msg = self.plugin.get_user(name)
-            return result_state, result_msg
+            if result_state is True:
+                return True, {"config": {"osuser": {name: result_msg}}}
+            else:
+                return False, result_msg
         except Exception as exp:
             return False, f'Problem while getting Os User: {exp}'
 
@@ -79,7 +85,10 @@ class OsUser():
         """
         try:
             result_state, result_msg = self.plugin.list_groups()
-            return result_state, result_msg
+            if result_state is True:
+                return True, {"config": {"osgroup": result_msg}}
+            else:
+                return False, result_msg
         except Exception as exp:
             return False, f'Problem while listing OS Groups: {exp}'
 
@@ -89,7 +98,10 @@ class OsUser():
         """
         try:
             result_state, result_msg = self.plugin.get_group(name)
-            return result_state, result_msg
+            if result_state is True:
+                return True, {"config": {"osgroup": {name: result_msg}}}
+            else:
+                return False, result_msg
         except Exception as exp:
             return False, f'Problem while getting Os Group: {exp}'
 

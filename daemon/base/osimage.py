@@ -396,7 +396,7 @@ class OSImage():
         )
         if not tag_details:
             status = False
-            return status, f"image {name} and/or tag {tagname} not found or invalid combination"
+            return status, f"image {name} and/or tag {tagname} not found or incorrect combination"
         cur_tag = Database().get_record(None , 'osimage', f' WHERE name="{name}"')
         if cur_tag and cur_tag[0]['tagid'] == tag_details[0]['tagid']:
             udata={}

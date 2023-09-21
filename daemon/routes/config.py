@@ -1336,25 +1336,27 @@ def config_get_os_user_list():
     status, response = OsUser().list_users()
     if status is True:
         access_code=200
-        return {"config": {"osuser": response}}, access_code
+        response=dumps(response)
     else:
-        return {'message': response}, access_code
+        response = {'message': response}
+    return response, access_code
 
 
-@config_blueprint.route("/config/osuser/<string:username>", methods=['GET'])
+@config_blueprint.route("/config/osuser/<string:name>", methods=['GET'])
 @token_required
-def config_get_os_user(username):
+def config_get_os_user(name):
     """
     Input - username
     Process - Show info of OSUser (ldap/ssd/pam).
     """
     access_code=404
-    status, response = OsUser().get_user(username)
+    status, response = OsUser().get_user(name)
     if status is True:
         access_code=200
-        return {"config": {"osuser": {username: response}}}, access_code
+        response=dumps(response)
     else:
-        return {'message': response}, access_code
+        response = {'message': response}
+    return response, access_code
 
 
 @config_blueprint.route("/config/osuser/<string:name>", methods=['POST'])
@@ -1405,26 +1407,28 @@ def config_get_os_group_list():
 
     if status is True:
         access_code=200
-        return {"config": {"osgroup": response}}, access_code
+        response=dumps(response)
     else:
-        return {'message': response}, access_code
+        response = {'message': response}
+    return response, access_code
 
 
-@config_blueprint.route("/config/osgroup/<string:groupname>", methods=['GET'])
+@config_blueprint.route("/config/osgroup/<string:name>", methods=['GET'])
 @token_required
-def config_get_os_group(groupname):
+def config_get_os_group(name):
     """
     Input - groupname
     Process - Show info of OSUser (ldap/ssd/pam).
     """
     access_code=404
-    status, response = OsUser().get_group(groupname)
+    status, response = OsUser().get_group(name)
 
     if status is True:
         access_code=200
-        return {"config": {"osgroup": {groupname: response}}}, access_code
+        response=dumps(response)
     else:
-        return {'message': response}, access_code
+        response = {'message': response}
+    return response, access_code
 
 
 @config_blueprint.route("/config/osgroup/<string:name>", methods=['POST'])

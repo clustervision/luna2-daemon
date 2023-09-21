@@ -59,6 +59,8 @@ class Plugin():
         if result.returncode != 0:
             return False, f"[obol: {result}]"
 
+        if not stdout.decode('utf-8'):
+            return False, "No users available"
         obol_output = json.loads(result.stdout.decode('utf-8'))
         users = { user['uid']: {'uid': user['uidNumber']} for user in obol_output}
         return True, users
@@ -79,6 +81,9 @@ class Plugin():
         if result.returncode != 0:
             return False, f"[obol: {result}]"
         
+        if not stdout.decode('utf-8'):
+            return False, f"No user {username} available"
+
         obol_output = json.loads(result.stdout.decode('utf-8').strip())
         user = OSUserData(
                       uid=obol_output.get('uidNumber'),
@@ -214,6 +219,9 @@ class Plugin():
         if result.returncode != 0:
             return False, f"[cmd: {obol_cmd}][obol: {result.stderr.decode('utf-8')}]"
 
+        if not stdout.decode('utf-8'):
+            return False, "No groups available"
+
         obol_output = json.loads(result.stdout.decode('utf-8'))
         groups = { group['cn']: {'gid':group['gidNumber']} for group in obol_output}
         return True, groups
@@ -233,6 +241,9 @@ class Plugin():
         
         if result.returncode != 0:
             return False, f"[obol: {result}]"
+
+        if not stdout.decode('utf-8'):
+            return False, f"No group {groupname} available"
 
         obol_output = json.loads(result.stdout.decode('utf-8'))
         group = OSGroupData(

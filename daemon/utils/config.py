@@ -65,6 +65,7 @@ class Config(object):
         if shared:
             for sharednw in shared:
                 shared_dhcp_header += self.shared_header(sharednw['name'])
+            shared_dhcp_header += "shared-network shared {\n"
         networks = Database().get_record(None, 'network', ' WHERE `dhcp` = 1')
         if networks:
             for nwk in networks:
@@ -120,12 +121,15 @@ class Config(object):
                                 )
                     else:
                         self.logger.debug(f'{item} not available for {network_name} {network_ip}')
+        if shared:
+            shared_dhcp_header += "}\n"
         config = self.dhcp_config(domain,ntp_server)
         config = f'{config}{shared_dhcp_header}{dhcp_subnet_block}'
         for node in node_block:
             config = f'{config}{node}'
         for dev in device_block:
             config = f'{config}{dev}'
+        config += "\n"
 
         try:
             with open(dhcp_file, 'w', encoding='utf-8') as dhcp:

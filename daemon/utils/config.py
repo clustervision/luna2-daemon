@@ -72,7 +72,7 @@ class Config(object):
                 dhcp_subnet_block += self.dhcp_decl_config(sharednw,True)
                 handled.append(sharednw['name'])
                 pool_denies.append(sharednw['name'])
-            dhcp_subnet_block += shared_pool_denies(pool_denies)
+            dhcp_subnet_block += self.shared_pool_denies(pool_denies)
             dhcp_subnet_block += "\n".join(shared_dhcp_pool)
             dhcp_subnet_block += "\n}\n"
                     

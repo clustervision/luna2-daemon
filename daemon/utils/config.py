@@ -173,7 +173,8 @@ class Config(object):
             )
         if padding:
             lines = subnet_block.splitlines()
-            subnet_block = "\n".join(line.ljust(4,".") for lines in lines)
+            width = max(len(l) for l in lines)
+            subnet_block = "\n".join(line.ljust(width,".") for line in lines)
         return subnet_block
 
 

@@ -67,8 +67,9 @@ class Config(object):
                     mainshared = Database().get_record(None, 'network', ' WHERE name = "'+sharednw['shared']+'"')
                     if mainshared:
                         handled.append(sharednw['shared'])
-                        dhcp_subnet_block += self.dhcp_decl_config(mainshared[0])
-                dhcp_subnet_block += self.dhcp_decl_config(sharednw)
+                        dhcp_subnet_block += self.dhcp_decl_config(mainshared[0],True)
+                dhcp_subnet_block += self.dhcp_decl_config(sharednw,True)
+                handled.append(sharednw['name'])
             dhcp_subnet_block += "}\n"
                     
         networks = Database().get_record(None, 'network', ' WHERE `dhcp` = 1')
@@ -139,7 +140,7 @@ class Config(object):
         return validate
 
 
-    def dhcp_decl_config (self,nwk=[]):
+    def dhcp_decl_config (self,nwk=[],padding=False):
         """ 
         dhcp subnetblock with config
         glue between the various other subnet blocks: prepare for dhcp_subnet function
@@ -170,6 +171,9 @@ class Config(object):
                 nwk['network'], netmask, None, None, nwk['gateway'],
                 nwk['dhcp_range_begin'], nwk['dhcp_range_end']
             )
+        if padding:
+            lines = subnet_block.splitlines()
+            subnet_block = "\n".join(line.ljust(4,".") for lines in lines)
         return subnet_block
 
 

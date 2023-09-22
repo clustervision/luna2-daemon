@@ -58,7 +58,7 @@ class Config(object):
         # do we have shared networks?
         shared_dhcp_header, shared_dhcp_pool, pool_denies, denied_dhcp_pool, mainnets = [], [], [], [], []
         dhcp_decl_header,dhcp_subnet_block = "",""
-        shared = Database().get_record(None, 'network', ' WHERE `dhcp` = 1 AND (shared != "" OR shared != "None")')
+        shared = Database().get_record(None, 'network', ' WHERE `dhcp` = 1 AND (shared != "" AND shared != "None")')
         if shared:
             dhcp_subnet_block += "\nshared-network shared {"
             for sharednw in shared:

@@ -69,8 +69,8 @@ class Config(object):
                     if mainshared:
                         handled.append(sharednw['shared'])
                         mainnets.append(sharednw['shared'])
-                        dhcp_subnet_block += self.dhcp_decl_config(mainshared[0],True)
-                dhcp_subnet_block += self.dhcp_decl_config(sharednw,True)
+                        dhcp_subnet_block += self.dhcp_decl_config(mainshared[0],'shared')
+                dhcp_subnet_block += self.dhcp_decl_config(sharednw,'shared')
                 handled.append(sharednw['name'])
                 pool_denies.append(sharednw['name'])
             for net in mainnets:
@@ -150,7 +150,7 @@ class Config(object):
         return validate
 
 
-    def dhcp_decl_config (self,nwk=[],padding=False):
+    def dhcp_decl_config (self,nwk=[],shared=False):
         """ 
         dhcp subnetblock with config
         glue between the various other subnet blocks: prepare for dhcp_subnet function
@@ -163,6 +163,8 @@ class Config(object):
         network_id = nwk['id']
         network_name = nwk['name']
         network_ip = nwk['network']
+        if shared:
+            nwk['dhcp_range_begin'], nwk['dhcp_range_end'] = None, None
         netmask = Helper().get_netmask(f"{nwk['network']}/{nwk['subnet']}")
         controller = Database().get_record_join(
             ['ipaddress.ipaddress'],
@@ -295,7 +297,8 @@ class Config(object):
                 }}""")
         if nextserver:
             subnet_block += f"""\n    next-server {nextserver};"""
-        subnet_block += f"""\n    range {dhcp_range_start} {dhcp_range_end};"""
+        if dhcp_range_start and dhcp_range_end:
+            subnet_block += f"""\n    range {dhcp_range_start} {dhcp_range_end};"""
         if gateway:
             subnet_block += f"""\n    option routers {gateway};"""
         subnet_block += """\n    option luna-id "lunaclient";\n}\n"""

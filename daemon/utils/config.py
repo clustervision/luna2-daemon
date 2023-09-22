@@ -60,7 +60,7 @@ class Config(object):
         dhcp_decl_header,dhcp_subnet_block = "",""
         shared = Database().get_record(None, 'network', ' WHERE `dhcp` = 1 AND (shared != "" OR shared != "None")')
         if shared:
-            dhcp_decl_header = "\nshared-network shared {"
+            dhcp_subnet_block += "\nshared-network shared {"
             for sharednw in shared:
                 shared_dhcp_header.append(self.shared_header(sharednw['name']))
                 if sharednw['shared'] not in handled:
@@ -69,10 +69,9 @@ class Config(object):
                         handled.append(sharednw['shared'])
                         dhcp_subnet_block += self.dhcp_decl_config(mainshared[0])
                 dhcp_subnet_block += self.dhcp_decl_config(sharednw)
-            dhcp_decl_header = "}\n"
+            dhcp_subnet_block += "}\n"
                     
         networks = Database().get_record(None, 'network', ' WHERE `dhcp` = 1')
-        
         if networks:
             for nwk in networks:
                 if nwk['name'] not in handled:
@@ -113,7 +112,7 @@ class Config(object):
 
 
         config = self.dhcp_config(domain,ntp_server)
-        config = f'{config}{shared_dhcp_header}{dhcp_subnet_block}'
+        config = f'{config}{"\n".join(shared_dhcp_header)}{dhcp_subnet_block}'
         for node in node_block:
             config = f'{config}{node}'
         for dev in device_block:

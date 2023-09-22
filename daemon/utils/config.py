@@ -59,39 +59,33 @@ class Config(object):
             # ipxe does support https but has issues dealing with self signed certificates
             serverport = CONSTANT['WEBSERVER']['PORT']
         domain = None
+        handled=[]
         # do we have shared networks?
-        shared_dhcp_header=""
+        shared_dhcp_header=[]
+        dhcp_decl_header,dhcp_subnet_block = "",""
         shared = Database().get_record(None, 'network', ' WHERE `dhcp` = 1 AND (shared != "" OR shared != "None")')
         if shared:
+            dhcp_decl_header = "\nshared-network shared {"
             for sharednw in shared:
-                shared_dhcp_header += self.shared_header(sharednw['name'])
-            shared_dhcp_header += "shared-network shared {\n"
+                shared_dhcp_header.append(self.shared_header(sharednw['name']))
+                if sharednw['shared'] not in handled:
+                    mainshared = Database().get_record(None, 'network', ' WHERE name = "'+sharednw['shared']+'"')
+                    if mainshared:
+                        handled.append(sharednw['shared'])
+                        dhcp_subnet_block += dhcp_decl_config (controller[0],mainshared[0])
+                dhcp_subnet_block += dhcp_decl_config (controller[0],sharednw)
+            dhcp_decl_header = "}\n"
+                    
         networks = Database().get_record(None, 'network', ' WHERE `dhcp` = 1')
+        
         if networks:
             for nwk in networks:
+                if nwk['name'] not in handled:
+                    dhcp_subnet_block += dhcp_decl_config (controller[0],nwk):
+                    handled.append(nwk['name'])
                 network_id = nwk['id']
                 network_name = nwk['name']
                 network_ip = nwk['network']
-                netmask = Helper().get_netmask(f"{nwk['network']}/{nwk['subnet']}")
-                controller = Database().get_record_join(
-                    ['ipaddress.ipaddress'],
-                    ['ipaddress.tablerefid=controller.id'],
-                    ['tableref="controller"', 'controller.hostname="controller"', f'ipaddress.networkid="{network_id}"']
-                )
-                self.logger.info(f"Building DHCP block for {network_name}")
-                if controller:
-                    domain = nwk['name']
-                    subnet_block = self.dhcp_subnet(
-                        nwk['network'], netmask, serverport, controller[0]['ipaddress'], nwk['gateway'],
-                        nwk['dhcp_range_begin'], nwk['dhcp_range_end']
-                    )
-                else:
-                    subnet_block = self.dhcp_subnet(
-                        nwk['network'], netmask, None, None, nwk['gateway'],
-                        nwk['dhcp_range_begin'], nwk['dhcp_range_end']
-                    )
-                dhcp_subnet_block = f'{dhcp_subnet_block}{subnet_block}'
-
                 node_interface = Database().get_record_join(
                     ['node.name as nodename', 'ipaddress.ipaddress', 'nodeinterface.macaddress'],
                     ['ipaddress.tablerefid=nodeinterface.id', 'nodeinterface.nodeid=node.id'],
@@ -121,8 +115,7 @@ class Config(object):
                                 )
                     else:
                         self.logger.debug(f'{item} not available for {network_name} {network_ip}')
-        if shared:
-            dhcp_subnet_block += "}\n"
+
         config = self.dhcp_config(domain,ntp_server)
         config = f'{config}{shared_dhcp_header}{dhcp_subnet_block}'
         for node in node_block:
@@ -149,6 +142,39 @@ class Config(object):
         except Exception as exp:
             self.logger.error(f"Uh oh... {exp}")
         return validate
+
+
+    def dhcp_decl_config (controller=[],nwk=[]):
+        """ 
+        dhcp subnetblock with config
+        glue between the various other subnet blocks: prepare for dhcp_subnet function
+        """
+        network_id = nwk['id']
+        network_name = nwk['name']
+        network_ip = nwk['network']
+        netmask = Helper().get_netmask(f"{nwk['network']}/{nwk['subnet']}")
+        controller = Database().get_record_join(
+            ['ipaddress.ipaddress'],
+            ['ipaddress.tablerefid=controller.id'],
+            ['tableref="controller"', 'controller.hostname="controller"', f'ipaddress.networkid="{network_id}"']
+        )
+        self.logger.info(f"Building DHCP block for {network_name}")
+        if controller:
+            domain = nwk['name']
+            subnet_block = self.dhcp_subnet(
+                nwk['network'], netmask, serverport, controller[0]['ipaddress'], nwk['gateway'],
+                nwk['dhcp_range_begin'], nwk['dhcp_range_end']
+            )
+        else:
+            subnet_block = self.dhcp_subnet(
+                nwk['network'], netmask, None, None, nwk['gateway'],
+                nwk['dhcp_range_begin'], nwk['dhcp_range_end']
+            )
+        dhcp_subnet_block = f'{dhcp_subnet_block}{subnet_block}'
+
+        if shared:
+            dhcp_subnet_block += "}\n"
+       return dhcp_subnet_block
 
 
     def dhcp_config(self, domain=None, ntp_server=None):

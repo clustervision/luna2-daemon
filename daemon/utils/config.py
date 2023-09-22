@@ -144,7 +144,7 @@ class Config(object):
         return validate
 
 
-    def dhcp_decl_config (nwk=[]):
+    def dhcp_decl_config (self,nwk=[]):
         """ 
         dhcp subnetblock with config
         glue between the various other subnet blocks: prepare for dhcp_subnet function

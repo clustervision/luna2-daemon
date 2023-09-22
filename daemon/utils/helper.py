@@ -704,7 +704,7 @@ class Helper(object):
 
     def add_padding(self, inp=None):
         islist = True
-        if isinstance(lines, str):
+        if isinstance(inp, str):
             islist = False
         if islist is False:
             lines = inp.splitlines()

@@ -254,12 +254,10 @@ class Config(object):
         return header_block
 
     def shared_pool(self, network=None, dhcp_start=None, dhcp_end=None):
-        pool_block = dedent(f"""
-            pool {{
-                allow members of "{network}";
-                range {dhcp_start} {dhcp_end};
-            }}""")
-        pool_block += "\n\n"
+        pool_block = "pool {\n"
+        pool_block += f"    allow members of \"{network}\";\n"
+        pool_block += f"    range {dhcp_start} {dhcp_end};\n"
+        pool_block += "}\n"
         pool_block = Helper().add_padding(pool_block)
         return pool_block
 

@@ -325,7 +325,7 @@ def bootstrap(bootstrapfile=None):
                     dhcp_range_begin=''
                     dhcp_range_end=''
         shared=None
-        if 'SHARED' in in BOOTSTRAP['NETWORKS'][nwkx]:
+        if 'SHARED' in BOOTSTRAP['NETWORKS'][nwkx]:
             shared=BOOTSTRAP['NETWORKS'][nwkx]['SHARED']
         default_network = [
                 {'column': 'name', 'value': str(nwkx)},

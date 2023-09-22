@@ -174,7 +174,7 @@ class Config(object):
 
         if shared:
             dhcp_subnet_block += "}\n"
-       return dhcp_subnet_block
+        return dhcp_subnet_block
 
 
     def dhcp_config(self, domain=None, ntp_server=None):

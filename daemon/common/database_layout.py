@@ -131,7 +131,7 @@ DATABASE_LAYOUT_group = [
 
 DATABASE_LAYOUT_network = [
 {"column": "id",                   "datatype": "INTEGER", "key": "PRIMARY", "keyadd": "AUTOINCREMENT"},
-{"column": "name",                 "datatype": "VARCHAR", "length": "20", "key": "UNIQUE"},
+{"column": "name",                 "datatype": "VARCHAR", "length": "60", "key": "UNIQUE"},
 {"column": "network",              "datatype": "VARCHAR", "length": "20"},
 {"column": "subnet",               "datatype": "VARCHAR", "length": "20"},
 {"column": "gateway",              "datatype": "VARCHAR", "length": "60"},
@@ -141,6 +141,7 @@ DATABASE_LAYOUT_network = [
 {"column": "dhcp_range_begin",     "datatype": "VARCHAR", "length": "20"},
 {"column": "dhcp_range_end",       "datatype": "VARCHAR", "length": "60"},
 {"column": "zone",                 "datatype": "VARCHAR", "length": "60"},
+{"column": "physical",             "datatype": "VARCHAR", "length": "60"},
 {"column": "comment",              "datatype": "VARCHAR", "length": "200"}]
 
 DATABASE_LAYOUT_user = [

@@ -56,13 +56,14 @@ class Config(object):
         domain = None
         handled=[]
         # do we have shared networks?
-        shared_dhcp_header=[]
+        shared_dhcp_header, shared_dhcp_pool, pool_denies = [], [], []
         dhcp_decl_header,dhcp_subnet_block = "",""
         shared = Database().get_record(None, 'network', ' WHERE `dhcp` = 1 AND (shared != "" OR shared != "None")')
         if shared:
             dhcp_subnet_block += "\nshared-network shared {"
             for sharednw in shared:
                 shared_dhcp_header.append(self.shared_header(sharednw['name']))
+                shared_dhcp_pool.append(self.shared_pool(sharednw['name'],sharednw['dhcp_range_begin'],sharednw['dhcp_range_end']))
                 if sharednw['shared'] not in handled:
                     mainshared = Database().get_record(None, 'network', ' WHERE name = "'+sharednw['shared']+'"')
                     if mainshared:
@@ -70,7 +71,10 @@ class Config(object):
                         dhcp_subnet_block += self.dhcp_decl_config(mainshared[0],True)
                 dhcp_subnet_block += self.dhcp_decl_config(sharednw,True)
                 handled.append(sharednw['name'])
-            dhcp_subnet_block += "}\n"
+                pool_denies.append(sharednw['name'])
+            dhcp_subnet_block += shared_pool_denies(pool_denies)
+            dhcp_subnet_block += "\n".join(shared_dhcp_pool)
+            dhcp_subnet_block += "\n}\n"
                     
         networks = Database().get_record(None, 'network', ' WHERE `dhcp` = 1')
         if networks:
@@ -246,6 +250,21 @@ class Config(object):
         header_block += "\n"
         return header_block
 
+    def shared_pool(self, network=None, dhcp_start=None, dhcp_end=None):
+        pool_block = dedent(f"""
+            pool {{
+                allow members of "{network}";
+                range {dhcp_start} {dhcp_end};
+            }}""")
+        pool_block += "\n"
+        return pool_block
+
+    def shared_pool_denies(self, networks=[]):
+        pool_block = "pool {\n"
+        for deny in networks:
+            pool_block += f"    deny members of \"{deny}\";"
+        pool_block += "}\n"
+        return pool_block
 
     def dhcp_subnet(self, network=None, netmask=None, serverport=None, nextserver=None, gateway=None,
                     dhcp_range_start=None, dhcp_range_end=None):

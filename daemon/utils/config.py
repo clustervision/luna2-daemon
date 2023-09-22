@@ -53,38 +53,44 @@ class Config(object):
         if cluster and 'ntp_server' in cluster[0] and cluster[0]['ntp_server']:
             ntp_server = cluster[0]['ntp_server']
         dhcp_file = f"{CONSTANT['TEMPLATES']['TEMP_DIR']}/dhcpd.conf"
-        serverport = 7050
-        if CONSTANT['API']['PROTOCOL'] == 'https' and 'WEBSERVER' in CONSTANT and 'PORT' in CONSTANT['WEBSERVER']:
-            # we rely on nginx serving non https stuff for e.g. /boot. 
-            # ipxe does support https but has issues dealing with self signed certificates
-            serverport = CONSTANT['WEBSERVER']['PORT']
         domain = None
+        handled=[]
+        # do we have shared networks?
+        shared_dhcp_header, shared_dhcp_pool, pool_denies, denied_dhcp_pool, mainnets = [], [], [], [], []
+        dhcp_decl_header,dhcp_subnet_block = "",""
+        shared = Database().get_record(None, 'network', ' WHERE `dhcp` = 1 AND (shared != "" AND shared != "None")')
+        if shared:
+            dhcp_subnet_block += "\nshared-network shared {"
+            for sharednw in shared:
+                shared_dhcp_header.append(self.shared_header(sharednw['name']))
+                shared_dhcp_pool.append(self.shared_pool(sharednw['name'],sharednw['dhcp_range_begin'],sharednw['dhcp_range_end']))
+                if sharednw['shared'] not in handled:
+                    mainshared = Database().get_record(None, 'network', ' WHERE `dhcp` = 1 AND name = "'+sharednw['shared']+'"')
+                    if mainshared:
+                        handled.append(sharednw['shared'])
+                        mainnets.append(sharednw['shared'])
+                        dhcp_subnet_block += self.dhcp_decl_config(mainshared[0],'shared')
+                dhcp_subnet_block += self.dhcp_decl_config(sharednw,'shared')
+                handled.append(sharednw['name'])
+                pool_denies.append(sharednw['name'])
+            for net in mainnets:
+                mainnet = Database().get_record(None, 'network', f' WHERE `dhcp` = 1 AND name = "{net}"')
+                if mainnet:
+                    denied_dhcp_pool.append(self.shared_pool_denies(pool_denies,mainnet[0]['dhcp_range_begin'],mainnet[0]['dhcp_range_end']))
+
+            dhcp_subnet_block += "\n".join(shared_dhcp_pool)
+            dhcp_subnet_block += "\n".join(denied_dhcp_pool)
+            dhcp_subnet_block += "\n}\n"
+                    
         networks = Database().get_record(None, 'network', ' WHERE `dhcp` = 1')
         if networks:
             for nwk in networks:
+                if nwk['name'] not in handled:
+                    dhcp_subnet_block += self.dhcp_decl_config(nwk)
+                    handled.append(nwk['name'])
                 network_id = nwk['id']
                 network_name = nwk['name']
                 network_ip = nwk['network']
-                netmask = Helper().get_netmask(f"{nwk['network']}/{nwk['subnet']}")
-                controller = Database().get_record_join(
-                    ['ipaddress.ipaddress'],
-                    ['ipaddress.tablerefid=controller.id'],
-                    ['tableref="controller"', 'controller.hostname="controller"', f'ipaddress.networkid="{network_id}"']
-                )
-                self.logger.info(f"Building DHCP block for {network_name}")
-                if controller:
-                    domain = nwk['name']
-                    subnet_block = self.dhcp_subnet(
-                        nwk['network'], netmask, serverport, controller[0]['ipaddress'], nwk['gateway'],
-                        nwk['dhcp_range_begin'], nwk['dhcp_range_end']
-                    )
-                else:
-                    subnet_block = self.dhcp_subnet(
-                        nwk['network'], netmask, None, None, nwk['gateway'],
-                        nwk['dhcp_range_begin'], nwk['dhcp_range_end']
-                    )
-                dhcp_subnet_block = f'{dhcp_subnet_block}{subnet_block}'
-
                 node_interface = Database().get_record_join(
                     ['node.name as nodename', 'ipaddress.ipaddress', 'nodeinterface.macaddress'],
                     ['ipaddress.tablerefid=nodeinterface.id', 'nodeinterface.nodeid=node.id'],
@@ -114,12 +120,15 @@ class Config(object):
                                 )
                     else:
                         self.logger.debug(f'{item} not available for {network_name} {network_ip}')
+
+        shared_header_block = "\n".join(shared_dhcp_header)
         config = self.dhcp_config(domain,ntp_server)
-        config = f'{config}{dhcp_subnet_block}'
+        config = f'{config}{shared_header_block}{dhcp_subnet_block}'
         for node in node_block:
             config = f'{config}{node}'
         for dev in device_block:
             config = f'{config}{dev}'
+        config += "\n"
 
         try:
             with open(dhcp_file, 'w', encoding='utf-8') as dhcp:
@@ -139,6 +148,44 @@ class Config(object):
         except Exception as exp:
             self.logger.error(f"Uh oh... {exp}")
         return validate
+
+
+    def dhcp_decl_config (self,nwk=[],shared=False):
+        """ 
+        dhcp subnetblock with config
+        glue between the various other subnet blocks: prepare for dhcp_subnet function
+        """
+        serverport = 7050
+        if CONSTANT['API']['PROTOCOL'] == 'https' and 'WEBSERVER' in CONSTANT and 'PORT' in CONSTANT['WEBSERVER']:
+            # we rely on nginx serving non https stuff for e.g. /boot. 
+            # ipxe does support https but has issues dealing with self signed certificates
+            serverport = CONSTANT['WEBSERVER']['PORT']
+        network_id = nwk['id']
+        network_name = nwk['name']
+        network_ip = nwk['network']
+        if shared:
+            nwk['dhcp_range_begin'], nwk['dhcp_range_end'] = None, None
+        netmask = Helper().get_netmask(f"{nwk['network']}/{nwk['subnet']}")
+        controller = Database().get_record_join(
+            ['ipaddress.ipaddress'],
+            ['ipaddress.tablerefid=controller.id'],
+            ['tableref="controller"', 'controller.hostname="controller"', f'ipaddress.networkid="{network_id}"']
+        )
+        self.logger.info(f"Building DHCP block for {network_name}")
+        if controller:
+            domain = nwk['name']
+            subnet_block = self.dhcp_subnet(
+                nwk['network'], netmask, serverport, controller[0]['ipaddress'], nwk['gateway'],
+                nwk['dhcp_range_begin'], nwk['dhcp_range_end']
+            )
+        else:
+            subnet_block = self.dhcp_subnet(
+                nwk['network'], netmask, None, None, nwk['gateway'],
+                nwk['dhcp_range_begin'], nwk['dhcp_range_end']
+            )
+        if shared:
+            subnet_block = Helper().add_padding(subnet_block)
+        return subnet_block
 
 
     def dhcp_config(self, domain=None, ntp_server=None):
@@ -197,6 +244,32 @@ class Config(object):
         return config
 
 
+    def shared_header(self, network=None, identifier=None):
+        identifier = identifier or "udhcp" 
+        header_block = dedent(f"""
+            class "{network}" {{
+                match if substring (option vendor-class-identifier, 0, 5) = "{identifier}";
+            }}""")
+        header_block += "\n"
+        return header_block
+
+    def shared_pool(self, network=None, dhcp_start=None, dhcp_end=None):
+        pool_block = "\npool {\n"
+        pool_block += f"    allow members of \"{network}\";\n"
+        pool_block += f"    range {dhcp_start} {dhcp_end};\n"
+        pool_block += "}\n"
+        pool_block = Helper().add_padding(pool_block)
+        return pool_block
+
+    def shared_pool_denies(self, networks=[], dhcp_start=None, dhcp_end=None):
+        pool_block = "\npool {\n"
+        for deny in networks:
+            pool_block += f"    deny members of \"{deny}\";\n"
+        pool_block += f"    range {dhcp_start} {dhcp_end};\n"
+        pool_block += "}\n"
+        pool_block = Helper().add_padding(pool_block)
+        return pool_block
+
     def dhcp_subnet(self, network=None, netmask=None, serverport=None, nextserver=None, gateway=None,
                     dhcp_range_start=None, dhcp_range_end=None):
         """
@@ -219,7 +292,8 @@ class Config(object):
                 }}""")
         if nextserver:
             subnet_block += f"""\n    next-server {nextserver};"""
-        subnet_block += f"""\n    range {dhcp_range_start} {dhcp_range_end};"""
+        if dhcp_range_start and dhcp_range_end:
+            subnet_block += f"""\n    range {dhcp_range_start} {dhcp_range_end};"""
         if gateway:
             subnet_block += f"""\n    option routers {gateway};"""
         subnet_block += """\n    option luna-id "lunaclient";\n}\n"""

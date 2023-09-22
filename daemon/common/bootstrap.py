@@ -268,7 +268,7 @@ def get_config(filename=None):
                     except Exception:
                         LOGGER.error(f'Invalid node list range: {item}, kindly use the numbers in incremental order.')
                 elif 'NETWORKS' in section:
-                    network,dhcp,dhcprange,physical,*_ = (item.split(':')+[None]+[None]+[None])
+                    network,dhcp,dhcprange,shared,*_ = (item.split(':')+[None]+[None]+[None])
                     #Helper().get_netmask(item)  # <-- not used?
                     BOOTSTRAP[section][option.lower()]={}
                     BOOTSTRAP[section][option.lower()]['NETWORK'] = network
@@ -276,8 +276,8 @@ def get_config(filename=None):
                         BOOTSTRAP[section][option.lower()]['DHCP'] = 1
                         if dhcprange:
                             BOOTSTRAP[section][option.lower()]['RANGE'] = dhcprange
-                    if physical:
-                        BOOTSTRAP[section][option.lower()]['PHYSICAL'] = physical
+                    if shared:
+                        BOOTSTRAP[section][option.lower()]['SHARED'] = shared
                 else:
                     BOOTSTRAP[section][option.upper()] = item
             else:
@@ -324,9 +324,9 @@ def bootstrap(bootstrapfile=None):
                 if dhcp_range_end is None:
                     dhcp_range_begin=''
                     dhcp_range_end=''
-        physical=nwkx
-        if 'PHYSICAL' in in BOOTSTRAP['NETWORKS'][nwkx]:
-            physical=BOOTSTRAP['NETWORKS'][nwkx]['PHYSICAL']
+        shared=None
+        if 'SHARED' in in BOOTSTRAP['NETWORKS'][nwkx]:
+            shared=BOOTSTRAP['NETWORKS'][nwkx]['SHARED']
         default_network = [
                 {'column': 'name', 'value': str(nwkx)},
                 {'column': 'network', 'value': network_details['network']},
@@ -335,7 +335,7 @@ def bootstrap(bootstrapfile=None):
                 {'column': 'dhcp_range_begin', 'value': dhcp_range_begin},
                 {'column': 'dhcp_range_end', 'value': dhcp_range_end},
                 {'column': 'gateway', 'value': defaultgw_ip},
-                {'column': 'physical', 'value': physical},
+                {'column': 'shared', 'value': shared},
                 {'column': 'zone', 'value': 'internal'}
             ]
         Database().insert('network', default_network)

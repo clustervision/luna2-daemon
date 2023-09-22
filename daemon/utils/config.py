@@ -122,7 +122,7 @@ class Config(object):
                     else:
                         self.logger.debug(f'{item} not available for {network_name} {network_ip}')
         if shared:
-            shared_dhcp_header += "}\n"
+            dhcp_subnet_block += "}\n"
         config = self.dhcp_config(domain,ntp_server)
         config = f'{config}{shared_dhcp_header}{dhcp_subnet_block}'
         for node in node_block:

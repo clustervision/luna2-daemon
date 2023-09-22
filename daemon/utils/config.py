@@ -110,9 +110,9 @@ class Config(object):
                     else:
                         self.logger.debug(f'{item} not available for {network_name} {network_ip}')
 
-
+        shared_header_block = "\n".join(shared_dhcp_header)
         config = self.dhcp_config(domain,ntp_server)
-        config = f'{config}{"\n".join(shared_dhcp_header)}{dhcp_subnet_block}'
+        config = f'{config}{shared_header_block}{dhcp_subnet_block}'
         for node in node_block:
             config = f'{config}{node}'
         for dev in device_block:

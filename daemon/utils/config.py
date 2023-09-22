@@ -174,7 +174,7 @@ class Config(object):
         if padding:
             lines = subnet_block.splitlines()
             for line in lines:
-                lines[lines] = "    "+lines[line]
+                lines[line] = "    "+lines[line]
             subnet_block = "\n".join(lines)
         return subnet_block
 

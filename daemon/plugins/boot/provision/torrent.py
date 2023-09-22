@@ -79,8 +79,7 @@ class Plugin():
             self.logger.error(f"{files_path}/{torrent_file} does not exist.")
             return False, f"{files_path}/{torrent_file} does not exist"
 
-        torrent_file = files_path + '/' + torrent_file
-        command = f"transmission-remote --add {torrent_file}"
+        command = "systemctl restart aria2c.service"
         message, exit_code = Helper().runcommand(command, True, 60)
         if exit_code == 0:
             return True,"Success"
@@ -96,13 +95,10 @@ class Plugin():
         """
         self.logger = Log.get_logger()
         grep = '|'.join(current_packed_image_files)
-        command = f"transmission-remote -l | grep {osimage} | grep -vE \"{grep}\""
-        command += " | awk '{ print $1 }' | grep -oE '[0-9]+' | xargs -i transmission-remote -t {} --remove-and-delete"
-        self.logger.info(f"what i will run: {command}")
-        message, exit_code = Helper().runcommand(command, True, 60)
-        self.logger.debug(f"what i got back: {message}")
         command = f"cd {files_path} && ls {osimage}*.torrent | grep -vwE \"{grep}\" | grep \".torrent\" | xargs rm -f"
         self.logger.info(f"what i will run: {command}")
+        message, exit_code = Helper().runcommand(command, True, 60)
+        command = "systemctl restart aria2c.service"
         message, exit_code = Helper().runcommand(command, True, 60)
         if exit_code == 0:
             return True, message

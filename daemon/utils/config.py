@@ -184,12 +184,7 @@ class Config(object):
                 nwk['dhcp_range_begin'], nwk['dhcp_range_end']
             )
         if shared:
-            lines = subnet_block.splitlines()
-            line = 0
-            while line < len(lines):
-                lines[line] = "    "+lines[line]
-                line+=1
-            subnet_block = "\n".join(lines)
+            subnet_block = Helper().add_padding(subnet_block)
         return subnet_block
 
 
@@ -265,6 +260,7 @@ class Config(object):
                 range {dhcp_start} {dhcp_end};
             }}""")
         pool_block += "\n"
+        pool_block = Helper().add_padding(pool_block)
         return pool_block
 
     def shared_pool_denies(self, networks=[], dhcp_start=None, dhcp_end=None):
@@ -273,6 +269,7 @@ class Config(object):
             pool_block += f"    deny members of \"{deny}\";\n"
         pool_block += "    range {dhcp_start} {dhcp_end};\n"
         pool_block += "}\n"
+        pool_block = Helper().add_padding(pool_block)
         return pool_block
 
     def dhcp_subnet(self, network=None, netmask=None, serverport=None, nextserver=None, gateway=None,

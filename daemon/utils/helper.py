@@ -702,6 +702,24 @@ class Helper(object):
 
     # -----------------------------------------------------------------
 
+    def add_padding(self, inp=None):
+        islist = True
+        if isinstance(lines, str):
+            islist = False
+        if islist is False:
+            lines = inp.splitlines()
+        else:
+            lines = inp
+        line = 0
+        while line < len(lines):
+            lines[line] = "    "+lines[line]
+            line+=1
+        if islist is False:
+            return "\n".join(lines)
+        return lines
+
+    # -----------------------------------------------------------------
+
     def plugin_finder(self, startpath=None):
         """
         This method will find the plugin.

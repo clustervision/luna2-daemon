@@ -74,10 +74,8 @@ class Config(object):
                 handled.append(sharednw['name'])
                 pool_denies.append(sharednw['name'])
             for net in mainnets:
-                self.logger.info(f"HERE 1 {net}")
-                mainnet = Database().get_record(None, 'network', ' WHERE `dhcp` = 1 AND name = "{net}"')
+                mainnet = Database().get_record(None, f'network', ' WHERE `dhcp` = 1 AND name = "{net}"')
                 if mainnet:
-                    self.logger.info(f"HERE 2 {mainnet}")
                     denied_dhcp_pool.append(shared_pool_denies(pool_denies,mainnet[0]['dhcp_range_begin'],mainnet[0]['dhcp_range_end']))
 
             dhcp_subnet_block += "\n".join(shared_dhcp_pool)

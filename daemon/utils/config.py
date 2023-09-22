@@ -173,8 +173,10 @@ class Config(object):
             )
         if padding:
             lines = subnet_block.splitlines()
-            for line in lines:
+            line = 0
+            while line < len(lines):
                 lines[line] = "    "+lines[line]
+                line+=1
             subnet_block = "\n".join(lines)
         return subnet_block
 

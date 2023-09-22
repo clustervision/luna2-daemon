@@ -78,8 +78,8 @@ class Config(object):
                 if mainnet:
                     denied_dhcp_pool.append(self.shared_pool_denies(pool_denies,mainnet[0]['dhcp_range_begin'],mainnet[0]['dhcp_range_end']))
 
-            dhcp_subnet_block += "\n\n".join(shared_dhcp_pool)
-            dhcp_subnet_block += "\n\n".join(denied_dhcp_pool)
+            dhcp_subnet_block += "\n".join(shared_dhcp_pool)
+            dhcp_subnet_block += "\n".join(denied_dhcp_pool)
             dhcp_subnet_block += "\n}\n"
                     
         networks = Database().get_record(None, 'network', ' WHERE `dhcp` = 1')
@@ -254,7 +254,7 @@ class Config(object):
         return header_block
 
     def shared_pool(self, network=None, dhcp_start=None, dhcp_end=None):
-        pool_block = "pool {\n"
+        pool_block = "\npool {\n"
         pool_block += f"    allow members of \"{network}\";\n"
         pool_block += f"    range {dhcp_start} {dhcp_end};\n"
         pool_block += "}\n"
@@ -262,7 +262,7 @@ class Config(object):
         return pool_block
 
     def shared_pool_denies(self, networks=[], dhcp_start=None, dhcp_end=None):
-        pool_block = "pool {\n"
+        pool_block = "\npool {\n"
         for deny in networks:
             pool_block += f"    deny members of \"{deny}\";\n"
         pool_block += f"    range {dhcp_start} {dhcp_end};\n"

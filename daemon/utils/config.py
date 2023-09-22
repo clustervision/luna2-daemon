@@ -111,6 +111,7 @@ class Config(object):
                     else:
                         self.logger.debug(f'{item} not available for {network_name} {network_ip}')
 
+
         config = self.dhcp_config(domain,ntp_server)
         config = f'{config}{shared_dhcp_header}{dhcp_subnet_block}'
         for node in node_block:
@@ -170,11 +171,7 @@ class Config(object):
                 nwk['network'], netmask, None, None, nwk['gateway'],
                 nwk['dhcp_range_begin'], nwk['dhcp_range_end']
             )
-        dhcp_subnet_block = f'{dhcp_subnet_block}{subnet_block}'
-
-        if shared:
-            dhcp_subnet_block += "}\n"
-        return dhcp_subnet_block
+        return subnet_block
 
 
     def dhcp_config(self, domain=None, ntp_server=None):

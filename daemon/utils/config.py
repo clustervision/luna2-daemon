@@ -183,7 +183,7 @@ class Config(object):
                 nwk['network'], netmask, None, None, nwk['gateway'],
                 nwk['dhcp_range_begin'], nwk['dhcp_range_end']
             )
-        if padding:
+        if shared:
             lines = subnet_block.splitlines()
             line = 0
             while line < len(lines):

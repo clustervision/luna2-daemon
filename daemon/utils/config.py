@@ -59,6 +59,12 @@ class Config(object):
             # ipxe does support https but has issues dealing with self signed certificates
             serverport = CONSTANT['WEBSERVER']['PORT']
         domain = None
+        # do we have shared networks?
+        shared_dhcp_header=""
+        shared = Database().get_record(None, 'network', ' WHERE `dhcp` = 1 AND (shared != "" OR shared != "None")')
+        if shared:
+            for sharednw in shared:
+                shared_dhcp_header += self.shared_header(sharednw['name'])
         networks = Database().get_record(None, 'network', ' WHERE `dhcp` = 1')
         if networks:
             for nwk in networks:
@@ -115,7 +121,7 @@ class Config(object):
                     else:
                         self.logger.debug(f'{item} not available for {network_name} {network_ip}')
         config = self.dhcp_config(domain,ntp_server)
-        config = f'{config}{dhcp_subnet_block}'
+        config = f'{config}{shared_dhcp_header}{dhcp_subnet_block}'
         for node in node_block:
             config = f'{config}{node}'
         for dev in device_block:
@@ -195,6 +201,16 @@ class Config(object):
             #
             """)
         return config
+
+
+    def shared_header(self, network=None, identifier=None):
+        identifier = identifier or "udhcp" 
+        header_block = dedent(f"""
+            class "{networks}" {{
+                match if substring (option vendor-class-identifier, 0, 5) = "{identifier}";
+            }}""")
+        header_block += "\n"
+        return header_block
 
 
     def dhcp_subnet(self, network=None, netmask=None, serverport=None, nextserver=None, gateway=None,

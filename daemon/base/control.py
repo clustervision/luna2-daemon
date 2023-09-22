@@ -174,6 +174,7 @@ class Control():
 
                     Status().mark_messages_read(request_id)
                     response = {
+                        'request_id': request_id,
                         'control': {
                             subsystem: {
                                 'ok': ok_nodes,
@@ -181,12 +182,11 @@ class Control():
                                 'off': off_nodes
                             },
                             'failed': failed_nodes,
-                            'request_id': request_id
                         }
                     }
                     status=True
                 else:
-                    response = {'control': {subsystem: {'request_id': request_id} } }
+                    response = {'request_id': request_id}
                     status=True
                 # end Antoine ---------------------------------------------------------------
             else:
@@ -232,6 +232,7 @@ class Control():
 
             Status().mark_messages_read(request_id)
             response = {
+                'request_id': request_id,
                 'control': {
                     subsystem: {
                         'ok': ok_nodes,
@@ -239,7 +240,6 @@ class Control():
                         'off': off_nodes,
                     },
                     'failed': failed_nodes,
-                    'request_id': request_id
                 }
             }
             return True, response

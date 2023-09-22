@@ -81,7 +81,7 @@ class Config(object):
         if networks:
             for nwk in networks:
                 if nwk['name'] not in handled:
-                    dhcp_subnet_block += dhcp_decl_config (controller[0],nwk):
+                    dhcp_subnet_block += dhcp_decl_config (controller[0],nwk)
                     handled.append(nwk['name'])
                 network_id = nwk['id']
                 network_name = nwk['name']

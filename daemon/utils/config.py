@@ -76,7 +76,7 @@ class Config(object):
             for net in mainnets:
                 mainnet = Database().get_record(None, 'network', ' WHERE `dhcp` = 1 AND name = "{net}"')
                 if mainnet:
-                    denied_dhcp_pool.append(shared_pool_denies(pool_denies,mainnet[0],mainnet[0]['dhcp_range_begin'],mainnet[0]['dhcp_range_end']))
+                    denied_dhcp_pool.append(shared_pool_denies(pool_denies,mainnet[0]['dhcp_range_begin'],mainnet[0]['dhcp_range_end']))
 
             dhcp_subnet_block += "\n".join(shared_dhcp_pool)
             dhcp_subnet_block += "\n".join(denied_dhcp_pool)

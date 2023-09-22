@@ -72,9 +72,9 @@ class Config(object):
                 dhcp_subnet_block += self.dhcp_decl_config(sharednw,True)
                 handled.append(sharednw['name'])
                 pool_denies.append(sharednw['name'])
-            dhcp_subnet_block += self.shared_pool_denies(pool_denies)
             dhcp_subnet_block += "\n".join(shared_dhcp_pool)
             dhcp_subnet_block += "\n}\n"
+            dhcp_subnet_block += self.shared_pool_denies(pool_denies)
                     
         networks = Database().get_record(None, 'network', ' WHERE `dhcp` = 1')
         if networks:
@@ -262,7 +262,7 @@ class Config(object):
     def shared_pool_denies(self, networks=[]):
         pool_block = "pool {\n"
         for deny in networks:
-            pool_block += f"    deny members of \"{deny}\";"
+            pool_block += f"    deny members of \"{deny}\";\n"
         pool_block += "}\n"
         return pool_block
 

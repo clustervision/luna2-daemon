@@ -206,7 +206,7 @@ class Config(object):
     def shared_header(self, network=None, identifier=None):
         identifier = identifier or "udhcp" 
         header_block = dedent(f"""
-            class "{networks}" {{
+            class "{network}" {{
                 match if substring (option vendor-class-identifier, 0, 5) = "{identifier}";
             }}""")
         header_block += "\n"

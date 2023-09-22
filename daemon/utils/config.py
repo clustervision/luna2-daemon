@@ -53,11 +53,6 @@ class Config(object):
         if cluster and 'ntp_server' in cluster[0] and cluster[0]['ntp_server']:
             ntp_server = cluster[0]['ntp_server']
         dhcp_file = f"{CONSTANT['TEMPLATES']['TEMP_DIR']}/dhcpd.conf"
-        serverport = 7050
-        if CONSTANT['API']['PROTOCOL'] == 'https' and 'WEBSERVER' in CONSTANT and 'PORT' in CONSTANT['WEBSERVER']:
-            # we rely on nginx serving non https stuff for e.g. /boot. 
-            # ipxe does support https but has issues dealing with self signed certificates
-            serverport = CONSTANT['WEBSERVER']['PORT']
         domain = None
         handled=[]
         # do we have shared networks?
@@ -149,6 +144,11 @@ class Config(object):
         dhcp subnetblock with config
         glue between the various other subnet blocks: prepare for dhcp_subnet function
         """
+        serverport = 7050
+        if CONSTANT['API']['PROTOCOL'] == 'https' and 'WEBSERVER' in CONSTANT and 'PORT' in CONSTANT['WEBSERVER']:
+            # we rely on nginx serving non https stuff for e.g. /boot. 
+            # ipxe does support https but has issues dealing with self signed certificates
+            serverport = CONSTANT['WEBSERVER']['PORT']
         network_id = nwk['id']
         network_name = nwk['name']
         network_ip = nwk['network']

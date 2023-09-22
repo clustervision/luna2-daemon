@@ -130,6 +130,10 @@ class Control():
                 for hostname in hostlist:
                     pipeline.add_nodes({hostname: subsystem+' '+action})
                 request_id = str(time()) + str(randint(1001, 9999)) + str(getpid())
+                # ------------------ ugly work around when output takes longer than 5 seconds -----------------
+                Status().add_message(request_id,"lpower",f"Operation in progress...")
+                Status().mark_messages_read(request_id)
+                # -------------------------- end of work around -----------------------------------------------
                 executor = ThreadPoolExecutor(max_workers=1)
                 executor.submit(NodeControl().control_mother, pipeline, request_id, size, delay)
                 executor.shutdown(wait=False)
@@ -142,8 +146,7 @@ class Control():
                 while(pipeline.has_nodes() and wait_count > 0):
                     sleep(1)
                     wait_count -= 1
-                where = f' WHERE request_id = "{request_id}"'
-                status = Database().get_record(None , 'status', where)
+                status = Database().get_record(None , 'status', f' WHERE request_id = "{request_id}"')
                 if status:
                     on_nodes = {}
                     off_nodes = {}

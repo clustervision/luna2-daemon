@@ -54,6 +54,14 @@ class Config(object):
             ntp_server = cluster[0]['ntp_server']
         dhcp_file = f"{CONSTANT['TEMPLATES']['TEMP_DIR']}/dhcpd.conf"
         domain = None
+
+        networksbyname = {}
+        networks = Database().get_record(None, 'network', ' WHERE `dhcp` = 1')
+        if networks:
+            networksbyname = Helper().convert_list_to_dict(networks, 'name')
+
+        self.logger.info(f"BYNAME: {networksbyname}")
+
         handled=[]
         # do we have shared networks?
         shared_dhcp_header, shared_dhcp_pool, pool_denies, denied_dhcp_pool, mainnets = [], [], [], [], []

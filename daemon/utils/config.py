@@ -73,7 +73,7 @@ class Config(object):
 
 #        handled=[]
         # do we have shared networks?
-        shared_dhcp_header, shared_dhcp_pool, pool_denies, denied_dhcp_pool = [], [], [], []
+        shared_dhcp_header, shared_dhcp_pool, pool_denies, denied_dhcp_pool, handled = [], [], [], [], []
         dhcp_decl_header,dhcp_subnet_block = "",""
 #        shared = Database().get_record(None, 'network', ' WHERE `dhcp` = 1 AND (shared != "" AND shared != "None")')
         for network in shared.keys():
@@ -89,8 +89,10 @@ class Config(object):
                 if networksbyname[piggyback]['shared'] == shared[network]:
                     dhcp_subnet_block += self.dhcp_decl_config(networksbyname[piggyback],'shared')
                     pool_denies.append(piggyback)
-                    del networksbyname[piggyback]
-            del networksbyname[network]
+                    #del networksbyname[piggyback]
+                    handled.append(piggyback)
+            #del networksbyname[network]
+            handled.append(network)
 
             dhcp_subnet_block += "\n".join(shared_dhcp_pool)
             dhcp_subnet_block += "\n".join(denied_dhcp_pool)

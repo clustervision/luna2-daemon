@@ -97,11 +97,15 @@ class Config(object):
             dhcp_subnet_block += "\n".join(shared_dhcp_pool)
             dhcp_subnet_block += "\n".join(denied_dhcp_pool)
             dhcp_subnet_block += "\n}\n"
-                    
+
+        self.logger.info(f"HANDLED: [{handled}]")
+
+    
 #        networks = Database().get_record(None, 'network', ' WHERE `dhcp` = 1')
 #        if networks:
         if networksbyname:
-            for nwk in networksbyname.keys():
+            for network in networksbyname.keys():
+                nwk = networksbyname[network]
                 if nwk['name'] not in handled:
                     dhcp_subnet_block += self.dhcp_decl_config(nwk)
                     handled.append(nwk['name'])

@@ -81,7 +81,7 @@ class Config(object):
             dhcp_subnet_block += "\nshared-network {shared_name} {"
             # main network
             denied_dhcp_pool.append(self.shared_pool_denies(shared[network],networksbyname[network]['dhcp_range_begin'],networksbyname[network]['dhcp_range_end']))
-            dhcp_subnet_block += self.dhcp_decl_config(networksbyname[shared[network]],'shared')
+            dhcp_subnet_block += self.dhcp_decl_config(networksbyname[network],'shared')
             # the networks that ride with it
             for piggyback in shared[network]:
                 shared_dhcp_header.append(self.shared_header(piggyback))

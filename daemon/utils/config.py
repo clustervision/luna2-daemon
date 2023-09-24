@@ -90,7 +90,7 @@ class Config(object):
                     dhcp_subnet_block += self.dhcp_decl_config(networksbyname[piggyback],'shared')
                     pool_denies.append(piggyback)
                     del networksbyname[piggyback]
-            del networksbyname[shared[network]]
+            del networksbyname[network]
 
             dhcp_subnet_block += "\n".join(shared_dhcp_pool)
             dhcp_subnet_block += "\n".join(denied_dhcp_pool)

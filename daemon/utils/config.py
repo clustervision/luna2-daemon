@@ -66,7 +66,8 @@ class Config(object):
         for network in networksbyname.keys():
             if networksbyname[network]['shared']:
                 self.logger.info(f"BYNAME {network}: {networksbyname[network]}")
-                if not shared[networksbyname[network]['shared']]:
+                self.logger.info(f"BYNAME shared {network}: {networksbyname[network]['shared']}")
+                if not networksbyname[network]['shared'] in shared.keys():
                     shared[networksbyname[network]['shared']] = []
                 networksbyname[network]['shared'].append(network)
 

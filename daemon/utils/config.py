@@ -70,7 +70,7 @@ class Config(object):
                 if not networksbyname[network]['shared'] in shared.keys():
                     shared[networksbyname[network]['shared']] = []
                 shared[networksbyname[network]['shared']].append(network)
-            self.logger.info(f"SHARED LIST {network}: [{shared[networksbyname[network]['shared']]}]") 
+            self.logger.info(f"SHARED LIST {network}: [{shared}]") 
 
 #        handled=[]
         # do we have shared networks?

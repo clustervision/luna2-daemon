@@ -87,6 +87,7 @@ class Config(object):
             
             self.logger.info(f"SHARED LIST {network}: [{shared[network]}]") 
             for piggyback in shared[network]:
+                self.logger.info("AM HERE 1")
                 shared_dhcp_header.append(self.shared_header(piggyback))
                 shared_dhcp_pool.append(self.shared_pool(piggyback,networksbyname[piggyback]['dhcp_range_begin'],networksbyname[piggyback]['dhcp_range_end']))
                 if networksbyname[piggyback]['shared'] == shared[network]:

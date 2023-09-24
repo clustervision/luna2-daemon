@@ -80,7 +80,7 @@ class Config(object):
         for network in shared.keys():
             shared_dhcp_pool, pool_denies, denied_dhcp_pool = [], [], []
             shared_name = f"{network}-" + "-".join(shared[network])
-            dhcp_subnet_block += f"\nshared-network {shared_name} {"
+            dhcp_subnet_block += "\n" + f"shared-network {shared_name} {"
             # main network
             denied_dhcp_pool.append(self.shared_pool_denies(shared[network],networksbyname[network]['dhcp_range_begin'],networksbyname[network]['dhcp_range_end']))
             dhcp_subnet_block += self.dhcp_decl_config(networksbyname[network],'shared')

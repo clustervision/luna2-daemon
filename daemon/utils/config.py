@@ -85,16 +85,13 @@ class Config(object):
             dhcp_subnet_block += self.dhcp_decl_config(networksbyname[network],'shared')
             # the networks that ride with it
             
-            self.logger.info(f"SHARED LIST {network}: [{shared[network]}]") 
             for piggyback in shared[network]:
-                self.logger.info("AM HERE 1")
                 shared_dhcp_header.append(self.shared_header(piggyback))
                 shared_dhcp_pool.append(self.shared_pool(piggyback,networksbyname[piggyback]['dhcp_range_begin'],networksbyname[piggyback]['dhcp_range_end']))
-                if networksbyname[piggyback]['shared'] == shared[network]:
-                    dhcp_subnet_block += self.dhcp_decl_config(networksbyname[piggyback],'shared')
-                    pool_denies.append(piggyback)
-                    #del networksbyname[piggyback]
-                    handled.append(piggyback)
+                dhcp_subnet_block += self.dhcp_decl_config(networksbyname[piggyback],'shared')
+                #pool_denies.append(piggyback)
+                #del networksbyname[piggyback]
+                handled.append(piggyback)
             #del networksbyname[network]
             handled.append(network)
 

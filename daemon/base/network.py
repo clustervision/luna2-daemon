@@ -277,6 +277,7 @@ class Network():
         if network:
             Database().delete_row('network', [{"column": "name", "value": name}])
             Service().queue('dns','restart')
+            Service().queue('dhcp','restart')
             response = 'Network removed'
             status=True
         else:

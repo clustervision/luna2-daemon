@@ -62,7 +62,7 @@ class Config(object):
 
         shared = {}
         for network in networksbyname.keys():
-            if networksbyname[network]['shared']:
+            if networksbyname[network]['shared'] and networksbyname[network]['shared'] in networksbyname.keys():
                 if not networksbyname[network]['shared'] in shared.keys():
                     shared[networksbyname[network]['shared']] = []
                 shared[networksbyname[network]['shared']].append(network)

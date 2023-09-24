@@ -70,15 +70,17 @@ class Config(object):
                 if not networksbyname[network]['shared'] in shared.keys():
                     shared[networksbyname[network]['shared']] = []
                 shared[networksbyname[network]['shared']].append(network)
+            self.logger.info(f"SHARED LIST {network}: [{shared[networksbyname[network]['shared']]}]") 
 
 #        handled=[]
         # do we have shared networks?
-        shared_dhcp_header, shared_dhcp_pool, pool_denies, denied_dhcp_pool, handled = [], [], [], [], []
+        shared_dhcp_header, handled = [], []
         dhcp_decl_header,dhcp_subnet_block = "",""
 #        shared = Database().get_record(None, 'network', ' WHERE `dhcp` = 1 AND (shared != "" AND shared != "None")')
         for network in shared.keys():
+            shared_dhcp_pool, pool_denies, denied_dhcp_pool = [], [], []
             shared_name = f"{network}-" + "-".join(shared[network])
-            dhcp_subnet_block += "\nshared-network {shared_name} {"
+            dhcp_subnet_block += f"\nshared-network {shared_name} {"
             # main network
             denied_dhcp_pool.append(self.shared_pool_denies(shared[network],networksbyname[network]['dhcp_range_begin'],networksbyname[network]['dhcp_range_end']))
             dhcp_subnet_block += self.dhcp_decl_config(networksbyname[network],'shared')

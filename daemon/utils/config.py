@@ -62,37 +62,42 @@ class Config(object):
 
         self.logger.info(f"BYNAME: {networksbyname}")
 
-        handled=[]
+        shared = {}
+        for network in networkbyname.keys():
+            if networkbyname[network]['shared']:
+                if not shared[networkbyname[network]['shared']]:
+                    shared[networkbyname[network]['shared']] = []
+                networkbyname[network]['shared'].append(network)
+
+#        handled=[]
         # do we have shared networks?
-        shared_dhcp_header, shared_dhcp_pool, pool_denies, denied_dhcp_pool, mainnets = [], [], [], [], []
+        shared_dhcp_header, shared_dhcp_pool, pool_denies, denied_dhcp_pool = [], [], [], []
         dhcp_decl_header,dhcp_subnet_block = "",""
-        shared = Database().get_record(None, 'network', ' WHERE `dhcp` = 1 AND (shared != "" AND shared != "None")')
-        if shared:
-            dhcp_subnet_block += "\nshared-network shared {"
-            for sharednw in shared:
-                shared_dhcp_header.append(self.shared_header(sharednw['name']))
-                shared_dhcp_pool.append(self.shared_pool(sharednw['name'],sharednw['dhcp_range_begin'],sharednw['dhcp_range_end']))
-                if sharednw['shared'] not in handled:
-                    mainshared = Database().get_record(None, 'network', ' WHERE `dhcp` = 1 AND name = "'+sharednw['shared']+'"')
-                    if mainshared:
-                        handled.append(sharednw['shared'])
-                        mainnets.append(sharednw['shared'])
-                        dhcp_subnet_block += self.dhcp_decl_config(mainshared[0],'shared')
-                dhcp_subnet_block += self.dhcp_decl_config(sharednw,'shared')
-                handled.append(sharednw['name'])
-                pool_denies.append(sharednw['name'])
-            for net in mainnets:
-                mainnet = Database().get_record(None, 'network', f' WHERE `dhcp` = 1 AND name = "{net}"')
-                if mainnet:
-                    denied_dhcp_pool.append(self.shared_pool_denies(pool_denies,mainnet[0]['dhcp_range_begin'],mainnet[0]['dhcp_range_end']))
+#        shared = Database().get_record(None, 'network', ' WHERE `dhcp` = 1 AND (shared != "" AND shared != "None")')
+        for network in shared.keys():
+            shared_name = f"{network}-" + "-".join(shared[network])
+            dhcp_subnet_block += "\nshared-network {shared_name} {"
+            # main network
+            denied_dhcp_pool.append(self.shared_pool_denies(shared[network],networkbyname[network]['dhcp_range_begin'],networkbyname[network]['dhcp_range_end']))
+            dhcp_subnet_block += self.dhcp_decl_config(networkbyname[shared[network]],'shared')
+            # the networks that ride with it
+            for piggyback in shared[network]:
+                shared_dhcp_header.append(self.shared_header(piggyback))
+                shared_dhcp_pool.append(self.shared_pool(piggyback,networkbyname[piggyback]['dhcp_range_begin'],networkbyname[piggyback]['dhcp_range_end']))
+                if networkbyname[piggyback]['shared'] == shared[network]:
+                    dhcp_subnet_block += self.dhcp_decl_config(networkbyname[piggyback],'shared')
+                    pool_denies.append(piggyback)
+                    del networkbyname[piggyback]
+            del networkbyname[shared[network]]
 
             dhcp_subnet_block += "\n".join(shared_dhcp_pool)
             dhcp_subnet_block += "\n".join(denied_dhcp_pool)
             dhcp_subnet_block += "\n}\n"
                     
-        networks = Database().get_record(None, 'network', ' WHERE `dhcp` = 1')
-        if networks:
-            for nwk in networks:
+#        networks = Database().get_record(None, 'network', ' WHERE `dhcp` = 1')
+#        if networks:
+        if networkbyname:
+            for nwk in networkbyname.keys():
                 if nwk['name'] not in handled:
                     dhcp_subnet_block += self.dhcp_decl_config(nwk)
                     handled.append(nwk['name'])

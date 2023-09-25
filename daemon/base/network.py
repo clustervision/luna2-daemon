@@ -280,6 +280,7 @@ class Network():
             Database().delete_row('network', [{"column": "name", "value": name}])
             data = {}
             data['shared'] = ""
+            row = Helper().make_rows(data)
             where = [{"column": "shared", "value": name}]
             Database().update('network', row, where)
             Service().queue('dns','restart')

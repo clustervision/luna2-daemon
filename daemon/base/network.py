@@ -278,6 +278,10 @@ class Network():
         network = Database().get_record(None, 'network', f' WHERE `name` = "{name}"')
         if network:
             Database().delete_row('network', [{"column": "name", "value": name}])
+            data = {}
+            data['shared'] = ""
+            where = [{"column": "shared", "value": name}]
+            Database().update('network', row, where)
             Service().queue('dns','restart')
             Service().queue('dhcp','restart')
             response = 'Network removed'

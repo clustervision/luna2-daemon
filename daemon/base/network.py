@@ -54,6 +54,7 @@ class Network():
                     network['dhcp'] = False
                 else:
                     network['dhcp'] = True
+                network['shared'] = network['shared'] or None
                 response['config']['network'][network['name']] = network
             status=True
         else:
@@ -82,6 +83,7 @@ class Network():
                     network['dhcp'] = False
                 else:
                     network['dhcp'] = True
+                network['shared'] = network['shared'] or None
                 response['config']['network'][name] = network
             status=True
         else:
@@ -276,6 +278,11 @@ class Network():
         network = Database().get_record(None, 'network', f' WHERE `name` = "{name}"')
         if network:
             Database().delete_row('network', [{"column": "name", "value": name}])
+            data = {}
+            data['shared'] = ""
+            row = Helper().make_rows(data)
+            where = [{"column": "shared", "value": name}]
+            Database().update('network', row, where)
             Service().queue('dns','restart')
             Service().queue('dhcp','restart')
             response = 'Network removed'

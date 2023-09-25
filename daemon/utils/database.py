@@ -480,7 +480,10 @@ class Database():
             if 'column' in cols.keys():
                 column = column+ cols['column']
             if 'value' in cols.keys():
-                column = column + ' = "' +str(cols['value']) +'"'
+                if cols['value']:
+                    column = column + ' = "' +str(cols['value']) +'"'
+                else:
+                    column = column + ' = NULL'
             columns.append(column)
             column_strings = ', '.join(map(str, columns))
         for cols in where:
@@ -488,7 +491,10 @@ class Database():
             if 'column' in cols.keys():
                 column = column + cols['column']
             if 'value' in cols.keys():
-                column = column + ' = "' +str(cols['value']) +'"'
+                if cols['value']:
+                    column = column + ' = "' +str(cols['value']) +'"'
+                else:
+                    column = column + ' = NULL'
             where_list.append(column)
             join_where = ' AND '.join(map(str, where_list))
         if not column_strings:

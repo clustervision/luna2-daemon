@@ -54,7 +54,7 @@ class Network():
                     network['dhcp'] = False
                 else:
                     network['dhcp'] = True
-                network['shared'] = network['shared'] or None
+                #network['shared'] = network['shared'] or None
                 response['config']['network'][network['name']] = network
             status=True
         else:
@@ -83,7 +83,7 @@ class Network():
                     network['dhcp'] = False
                 else:
                     network['dhcp'] = True
-                network['shared'] = network['shared'] or None
+                #network['shared'] = network['shared'] or None
                 response['config']['network'][name] = network
             status=True
         else:

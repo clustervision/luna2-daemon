@@ -34,9 +34,7 @@ class Group():
         This constructor will initialize all required variables here.
         """
         self.logger = Log.get_logger()
-        plugins_path=CONSTANT["PLUGINS"]["PLUGINS_DIR"]
-        self.group_plugins = Helper().plugin_finder(f'{plugins_path}/group')
-        self.GroupPlugin=Helper().plugin_load(self.group_plugins,'group','default')
+        self.plugins_path=CONSTANT["PLUGINS"]["PLUGINS_DIR"]
 
 
     def get_all_group(self):
@@ -394,11 +392,14 @@ class Group():
                                 executor.submit(Config().update_interface_on_group_nodes,name)
                                 executor.shutdown(wait=False)
                                 # Config().update_interface_on_group_nodes(name)
+
+                group_plugins = Helper().plugin_finder(f'{self.plugins_path}/group')
+                GroupPlugin=Helper().plugin_load(group_plugins,'group','default')
                 try:
                     if create:
-                        self.GroupPlugin().postcreate(name = name)
+                        GroupPlugin().postcreate(name = name)
                     elif update:
-                        self.GroupPlugin().postupdate(name = name)
+                        GroupPlugin().postupdate(name = name)
                 except Exception as exp:
                     self.logger.error(f"{exp}")
 

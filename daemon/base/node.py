@@ -35,9 +35,7 @@ class Node():
         This constructor will initialize all required variables here.
         """
         self.logger = Log.get_logger()
-        plugins_path=CONSTANT["PLUGINS"]["PLUGINS_DIR"]
-        self.node_plugins = Helper().plugin_finder(f'{plugins_path}/node')
-        self.NodePlugin=Helper().plugin_load(self.node_plugins,'node','default')
+        self.plugins_path=CONSTANT["PLUGINS"]["PLUGINS_DIR"]
 
 
     def get_all_nodes(self):
@@ -617,11 +615,13 @@ class Node():
                             if name in enclosed_node_details['config']['node']:
                                 node_details=enclosed_node_details['config']['node'][name]
                     if node_details:
+                        node_plugins = Helper().plugin_finder(f'{self.plugins_path}/node')
+                        NodePlugin=Helper().plugin_load(node_plugins,'node','default')
                         try:
                             if create:
-                                self.NodePlugin().postcreate(name = name, group = node_details['group'])
+                                NodePlugin().postcreate(name = name, group = node_details['group'])
                             elif update:
-                                self.NodePlugin().postupdate(name = name, group = node_details['group'])
+                                NodePlugin().postupdate(name = name, group = node_details['group'])
                         except Exception as exp:
                             self.logger.error(f"{exp}")
             else:

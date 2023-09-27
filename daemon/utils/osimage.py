@@ -680,7 +680,7 @@ class OsImage(object):
         """
         files_path = CONSTANT['FILES']['IMAGE_FILES']
         OsImagePlugin=Helper().plugin_load(self.osimage_plugins,'osimage/other','cleanup')
-        ret,mesg=OsImagePlugin().cleanup(osimage=osimage,files_path=files_path,file_to_remove=file_to_remove)
+        ret,mesg=OsImagePlugin().cleanup(files_path=files_path,file_to_remove=file_to_remove)
         return ret,mesg
 
     # -------------------------------------------------------------------
@@ -725,7 +725,7 @@ class OsImage(object):
         files_path = CONSTANT['FILES']['IMAGE_FILES']
         for method in cluster_provision_methods:
             ProvisionPlugin=Helper().plugin_load(self.boot_plugins,'boot/provision',method)
-            ret,mesg=ProvisionPlugin().cleanup(osimage=osimage, files_path=files_path, image_file=image_file)
+            ret,mesg=ProvisionPlugin().cleanup(files_path=files_path, image_file=image_file)
         return ret,mesg
 
    

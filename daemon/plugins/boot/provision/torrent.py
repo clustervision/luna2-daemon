@@ -87,9 +87,8 @@ class Plugin():
 
 
 
-    # osimage = the name of the image, e.g. compute
     # image_file is what the name usggests, the image file, most likely a tar.bz2 file
-    def cleanup(self, osimage=None, files_path=None, image_file=None):
+    def cleanup(self, files_path=None, image_file=None):
         """
         This method will cleanup the imagefile torrent.
         """

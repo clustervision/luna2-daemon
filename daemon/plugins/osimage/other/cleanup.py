@@ -41,7 +41,7 @@ class Plugin():
 
     # ---------------------------------------------------------------------------
 
-    def cleanup(self, osimage=None, files_path=None, file_to_remove=None):
+    def cleanup(self, files_path=None, file_to_remove=None):
         # files_path = is the location where the imagefile will be copied.
         # file_to_remove is the file that needs to be removed
         message = 'No file found'

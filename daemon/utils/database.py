@@ -482,7 +482,7 @@ class Database():
                 column = column + cols['column']
                 cur_col = cols['column']
             if 'value' in cols.keys():
-                if str(cur_col == "created" or cur_col == "updated":
+                if str(cur_col) == "created" or str(cur_col) == "updated":
                     # wee ugly but fast.
                     if str(cols["value"]) == "NOW":
                         column = column + " = datetime('now')"

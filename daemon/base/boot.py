@@ -224,8 +224,8 @@ class Boot():
         check_template = Helper().check_jinja(template_path)
         if not check_template:
             return False, 'Empty'
-        # Antoine
-        # LOGGER.info(f"BOOT/SEARCH/MAC received for {mac}")
+        if mac:
+            mac = mac.lower()
         controller = Database().get_record_join(
             ['controller.*', 'ipaddress.ipaddress'],
             ['ipaddress.tablerefid=controller.id'],
@@ -362,7 +362,8 @@ class Boot():
         check_template = Helper().check_jinja(template_path)
         if not check_template:
             return False, 'Empty'
-        # Antoine
+        if mac:
+            mac = mac.lower()
         networkname, network, createnode_ondemand = None, None, True # used below
 
         # get controller and cluster info

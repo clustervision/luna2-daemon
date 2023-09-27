@@ -614,8 +614,8 @@ class Node():
                 if ret is True:
                     if 'config' in enclosed_node_details.keys():
                         if 'node' in enclosed_node_details['config'].keys():
-                            if node in enclosed_node_details['config']['node']:
-                                node_details=enclosed_node_details['config']['node'][node]
+                            if name in enclosed_node_details['config']['node']:
+                                node_details=enclosed_node_details['config']['node'][name]
                     if node_details:
                         try:
                             if create:

@@ -646,9 +646,10 @@ class OsImage(object):
 
     # -------------------------------------------------------------------
   
-    def cleanup_images(self,osimage):
-        self.logger.info(f"I was called to cleanup old images: {osimage}")
+    def cleanup_file(self,file_to_remove):
+        self.logger.info(f"I was called to cleanup old file: {file_to_remove}")
 
+        """
         inuse_kernelfiles, inuse_initrdfiles, inuse_imagefiles = [], [], []
         image = Database().get_record(None, 'osimage', f"WHERE name='{osimage}'")
         if not image:
@@ -676,13 +677,18 @@ class OsImage(object):
                                 current_packed_image_files=inuse_imagefiles,
                                 current_kernel_files=inuse_kernelfiles,
                                 current_ramdisk_files=inuse_initrdfiles)
+        """
+        files_path = CONSTANT['FILES']['IMAGE_FILES']
+        OsImagePlugin=Helper().plugin_load(self.osimage_plugins,'osimage/other','cleanup')
+        ret,mesg=OsImagePlugin().cleanup(osimage=osimage,files_path=files_path,file_to_remove=file_to_remove)
         return ret,mesg
 
     # -------------------------------------------------------------------
 
-    def cleanup_provisioning(self,osimage):
-        self.logger.info(f"I was called to cleanup old provisioning: {osimage}")
+    def cleanup_provisioning(self,image_file):
+        self.logger.info(f"I was called to cleanup old provisioning: {image_file}")
 
+        """
         inuse_imagefiles = []
         image = Database().get_record(None, 'osimage', f"WHERE name='{osimage}'")
         if not image:
@@ -707,7 +713,19 @@ class OsImage(object):
         for method in cluster_provision_methods:
             ProvisionPlugin=Helper().plugin_load(self.boot_plugins,'boot/provision',method)
             ret,mesg=ProvisionPlugin().cleanup(osimage=osimage, files_path=files_path, current_packed_image_files=inuse_imagefiles)
+        """
+        cluster_provision_methods=[]
+        cluster = Database().get_record(None, 'cluster', None)
+        if cluster:
+            cluster_provision_methods.append(cluster[0]['provision_method'])
+            cluster_provision_methods.append(cluster[0]['provision_fallback'])
+        else:
+            cluster_provision_methods.append('http')
 
+        files_path = CONSTANT['FILES']['IMAGE_FILES']
+        for method in cluster_provision_methods:
+            ProvisionPlugin=Helper().plugin_load(self.boot_plugins,'boot/provision',method)
+            ret,mesg=ProvisionPlugin().cleanup(osimage=osimage, files_path=files_path, image_file=image_file)
         return ret,mesg
 
    
@@ -762,9 +780,15 @@ class OsImage(object):
                             if queue_id:
                                 queue_id,queue_response = Queue().add_task_to_queue(f"provision_osimage:{first}",'osimage',request_id)
                                 if queue_id:
-                                    queue_id,queue_response = Queue().add_task_to_queue(f'cleanup_old_images:{first}','housekeeper',request_id,None,'1h')
-                                    if queue_id:
-                                        queue_id,queue_response = Queue().add_task_to_queue(f"close_task:{next_id}",'osimage',request_id)
+                                    image = Database().get_record(None, 'osimage', f"WHERE name='{first}'")
+                                    if image:
+                                        for item in ['kernelfile','initrdfile','imagefile']:
+                                            inusebytag = Database().get_record(None, 'osimagetag', f"WHERE osimageid='{image[0]['id']} AND {item}='"+image[0][item]+"'")
+                                            if not inusebytag:
+                                                queue_id,queue_response = Queue().add_task_to_queue(f'cleanup_old_file:'+image[0][item],'housekeeper',request_id,None,'5m')
+                                                if item == 'imagefile':
+                                                    queue_id,queue_response = Queue().add_task_to_queue(f'cleanup_old_provisioning:'+image[0][item],'housekeeper',request_id,None,'5m')
+                                    queue_id,queue_response = Queue().add_task_to_queue(f"close_task:{next_id}",'osimage',request_id)
 
                 elif action == "grab_n_pack_n_build_osimage":
                     Queue().update_task_status_in_queue(next_id,'in progress')

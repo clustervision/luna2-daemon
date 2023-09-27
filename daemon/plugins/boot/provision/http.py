@@ -36,7 +36,7 @@ class Plugin():
     def create(self, image_file, files_path, server_ipaddress=None, server_port=None, server_protocol=None):
         return True,"Success"
 
-    def cleanup(self, osimage=None, files_path=None, current_packed_image_files=[]):
+    def cleanup(self, osimage=None, files_path=None, image_file=None):
         return True,"Success"
 
     # -------------------------------

@@ -81,12 +81,13 @@ class Housekeeper(object):
                                     executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
                                     executor.submit(OsImage().pack_n_tar_mother,osimage,request_id)
                                     executor.shutdown(wait=False)
-                            case 'cleanup_old_images':
+                            case 'cleanup_old_file':
                                 Queue().update_task_status_in_queue(next_id,'in progress')
-                                returned=OsImage().cleanup_images(second)
+                                returned=OsImage().cleanup_file(second)
                                 status=returned[0]
                                 if status is False and len(returned)>1:
-                                    self.logger.error(f"cleanup_image: {returned[1]}")
+                                    self.logger.error(f"cleanup_file: {returned[1]}")
+                            case 'cleanup_old_provisioning':
                                 returned=OsImage().cleanup_provisioning(second)
                                 status=returned[0]
                                 if status is False and len(returned)>1:

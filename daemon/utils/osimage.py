@@ -783,7 +783,7 @@ class OsImage(object):
                                     image = Database().get_record(None, 'osimage', f"WHERE name='{first}'")
                                     if image:
                                         for item in ['kernelfile','initrdfile','imagefile']:
-                                            inusebytag = Database().get_record(None, 'osimagetag', f"WHERE osimageid='{image[0]['id']} AND {item}='"+image[0][item]+"'")
+                                            inusebytag = Database().get_record(None, 'osimagetag', f"WHERE osimageid='{image[0]['id']}' AND {item}='"+image[0][item]+"'")
                                             if not inusebytag:
                                                 queue_id,queue_response = Queue().add_task_to_queue(f'cleanup_old_file:'+image[0][item],'housekeeper',request_id,None,'5m')
                                                 if item == 'imagefile':

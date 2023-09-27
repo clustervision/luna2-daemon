@@ -21,6 +21,7 @@ from utils.log import Log
 from utils.config import Config
 from utils.queue import Queue
 from utils.helper import Helper
+from common.constant import CONSTANT
 
 
 class Group():
@@ -33,6 +34,9 @@ class Group():
         This constructor will initialize all required variables here.
         """
         self.logger = Log.get_logger()
+        plugins_path=CONSTANT["PLUGINS"]["PLUGINS_DIR"]
+        self.group_plugins = Helper().plugin_finder(f'{plugins_path}/group')
+        self.GroupPlugin=Helper().plugin_load(self.group_plugins,'group','default')
 
 
     def get_all_group(self):
@@ -390,6 +394,13 @@ class Group():
                                 executor.submit(Config().update_interface_on_group_nodes,name)
                                 executor.shutdown(wait=False)
                                 # Config().update_interface_on_group_nodes(name)
+                try:
+                    if create:
+                        self.GroupPlugin().postcreate(name = name)
+                    elif update:
+                        self.GroupPlugin().postupdate(name = name)
+                except Exception as exp:
+                    self.logger.error(f"{exp}")
 
             else:
                 status=False

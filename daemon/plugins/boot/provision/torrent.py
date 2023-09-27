@@ -87,21 +87,21 @@ class Plugin():
 
 
 
-    # osimage = the name of the image, e.g. compute
-    # current_packed_image_file = the currently used compressed image file, most likely a tar.bz2 file
-    def cleanup(self, osimage=None, files_path=None, current_packed_image_files=[]):
+    # image_file is what the name usggests, the image file, most likely a tar.bz2 file
+    def cleanup(self, files_path=None, image_file=None):
         """
-        This method will cleanup the imagefile.
+        This method will cleanup the imagefile torrent.
         """
         self.logger = Log.get_logger()
-        grep = '|'.join(current_packed_image_files)
-        command = f"cd {files_path} && ls {osimage}*.torrent | grep -vwE \"{grep}\" | grep \".torrent\" | xargs rm -f"
-        self.logger.info(f"what i will run: {command}")
-        message, exit_code = Helper().runcommand(command, True, 60)
-        command = "systemctl restart aria2c.service"
-        message, exit_code = Helper().runcommand(command, True, 60)
-        if exit_code == 0:
-            return True, message
+        if files_path and image_file:
+            torrent_file = image_file + ".torrent"
+            command = f"cd {files_path} && rm -f {torrent_file}"
+            self.logger.info(f"what i will run: {command}")
+            message, exit_code = Helper().runcommand(command, True, 60)
+            command = "systemctl restart aria2c.service"
+            message, exit_code = Helper().runcommand(command, True, 60)
+            if exit_code == 0:
+                return True, message
         return False, message
 
     # -------------------------------

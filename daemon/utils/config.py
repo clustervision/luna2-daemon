@@ -695,7 +695,7 @@ $TTL 604800
             my_interface['interface'] = interface_name
             my_interface['nodeid'] = nodeid
             if macaddress is not None:
-                my_interface['macaddress'] = macaddress
+                my_interface['macaddress'] = macaddress.lower()
             if options is not None:
                 my_interface['options'] = options
             row = Helper().make_rows(my_interface)
@@ -704,7 +704,7 @@ $TTL 604800
         else:
             # we have to update the interface
             if macaddress is not None:
-                my_interface['macaddress'] = macaddress
+                my_interface['macaddress'] = macaddress.lower()
             if options is not None:
                 my_interface['options'] = options
             if my_interface:

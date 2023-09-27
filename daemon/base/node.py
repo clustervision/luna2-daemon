@@ -34,6 +34,9 @@ class Node():
         This constructor will initialize all required variables here.
         """
         self.logger = Log.get_logger()
+        plugins_path=CONSTANT["PLUGINS"]["PLUGINS_DIR"]
+        self.node_plugins = Helper().plugin_finder(f'{plugins_path}/node')
+        self.NodePlugin=Helper().plugin_load(self.node_plugins,'node','default')
 
 
     def get_all_nodes(self):
@@ -601,8 +604,25 @@ class Node():
                 # below might look as redundant but is added to prevent a possible race condition
                 # when many nodes are added in a loop.
                 # the below tasks ensures that even the last node will be included in dhcp/dns
-                Queue().add_task_to_queue('dhcp:restart', 'housekeeper', '__node_post__')
-                Queue().add_task_to_queue('dns:restart', 'housekeeper', '__node_post__')
+                Queue().add_task_to_queue('dhcp:restart', 'housekeeper', '__node_update__')
+                Queue().add_task_to_queue('dns:restart', 'housekeeper', '__node_update__')
+
+                # ---- we call the node plugin - maybe someone wants to run something after create/update?
+                ret, enclosed_node_details = self.get_node(cli=False, name=name)
+                node_details=None
+                if ret is True:
+                    if 'config' in enclosed_node_details.keys():
+                        if 'node' in enclosed_node_details['config'].keys():
+                            if node in enclosed_node_details['config']['node']:
+                                node_details=enclosed_node_details['config']['node'][node]
+                    if node_details:
+                        try:
+                            if create:
+                                self.NodePlugin().postcreate(name = name, group = node_details['group'])
+                            elif update:
+                                self.NodePlugin().postupdate(name = name, group = node_details['group'])
+                        except Exception as exp:
+                            self.logger.error(f"{exp}")
             else:
                 response = 'Invalid request: Columns are incorrect'
                 status = False

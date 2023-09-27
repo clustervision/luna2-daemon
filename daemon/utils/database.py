@@ -477,13 +477,33 @@ class Database():
         column_strings, columns, where_list = None, [], []
         for cols in row:
             column = ''
+            cur_col = None
             if 'column' in cols.keys():
-                column = column+ cols['column']
+                column = column + cols['column']
+                cur_col = cols['column']
             if 'value' in cols.keys():
-                if cols['value']:
-                    column = column + ' = "' +str(cols['value']) +'"'
+                if str(cur_col == "created" or cur_col == "updated":
+                    # wee ugly but fast.
+                    if str(cols["value"]) == "NOW":
+                        column = column + " = datetime('now')"
+                    else:
+                        result = re.search(
+                            r"^NOW\s*(\+|\-)\s*([0-9]+)\s*(hour|minute|second)$",
+                            str(cols["value"])
+                        )
+                        symbol = result.group(1)
+                        time_value = result.group(2)
+                        time_denom = result.group(3)
+                        if symbol and time_value and time_denom:
+                            column = column + f" = datetime('now','{symbol}{time_value} {time_denom}')"
+                            # only sqlite complaint! pending
+                        else:
+                            values.append('"'+str(each["value"])+'"')
                 else:
-                    column = column + ' = NULL'
+                    if cols['value']:
+                        column = column + ' = "' +str(cols['value']) +'"'
+                    else:
+                        column = column + ' = NULL'
             columns.append(column)
             column_strings = ', '.join(map(str, columns))
         for cols in where:

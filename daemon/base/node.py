@@ -22,6 +22,7 @@ from utils.service import Service
 from utils.queue import Queue
 from utils.helper import Helper
 from utils.monitor import Monitor
+from common.constant import CONSTANT
 
 
 class Node():

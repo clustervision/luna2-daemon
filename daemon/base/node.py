@@ -135,7 +135,12 @@ class Node():
                 node['netboot'] = Helper().make_bool(node['netboot'])
                 node['service'] = Helper().make_bool(node['service'])
                 node['setupbmc'] = Helper().make_bool(node['setupbmc'])
+                node['hostname'] = node['name']
                 node['interfaces']=[]
+                all_node_interfaces_by_name = {}
+                all_node_interfaces = Database().get_record(None, 'nodeinterface', f"WHERE nodeinterface.nodeid='{nodeid}'")
+                if all_node_interfaces:
+                    all_node_interfaces_by_name = Helper().convert_list_to_dict(all_node_interfaces, 'interface')
                 node_interface = Database().get_record_join(
                     [
                         'nodeinterface.interface',
@@ -147,7 +152,6 @@ class Node():
                     ['network.id=ipaddress.networkid', 'ipaddress.tablerefid=nodeinterface.id'],
                     ['tableref="nodeinterface"', f"nodeinterface.nodeid='{nodeid}'"]
                 )
-                node['hostname'] = node['name']
                 if node_interface:
                     node['interfaces'] = []
                     for interface in node_interface:
@@ -160,6 +164,16 @@ class Node():
                         if not interface['options']:
                             del interface['options']
                         node['interfaces'].append(interface)
+                        if interface['interface'] in all_node_interfaces_by_name.keys():
+                            del all_node_interfaces_by_name[interface['interface']]
+                # for incomplete interfaces
+                for empty_interface in all_node_interfaces_by_name.keys():
+                    interface = all_node_interfaces_by_name[empty_interface]
+                    del interface['id']
+                    if not interface['options']:
+                        del interface['options']
+                    node['interfaces'].append(interface)
+
                 response['config']['node'][node_name] = node
             self.logger.info('Provided list of all nodes.')
             status = True
@@ -332,7 +346,12 @@ class Node():
             node['status'], *_ = Monitor().installer_state(node['status'])
             node['service'] = Helper().make_bool(node['service'])
             node['setupbmc'] = Helper().make_bool(node['setupbmc'])
+            node['hostname'] = nodename
             node['interfaces'] = []
+            all_node_interfaces_by_name = {}
+            all_node_interfaces = Database().get_record(None, 'nodeinterface', f"WHERE nodeinterface.nodeid='{nodeid}'")
+            if all_node_interfaces:
+                all_node_interfaces_by_name = Helper().convert_list_to_dict(all_node_interfaces, 'interface')
             node_interface = Database().get_record_join(
                 [
                     'nodeinterface.interface',
@@ -344,7 +363,6 @@ class Node():
                 ['network.id=ipaddress.networkid', 'ipaddress.tablerefid=nodeinterface.id'],
                 ['tableref="nodeinterface"', f"nodeinterface.nodeid='{nodeid}'"]
             )
-            node['hostname'] = nodename
             if node_interface:
                 for interface in node_interface:
                     interface_name, *_ = (node['provision_interface'].split(' ') + [None])
@@ -356,6 +374,15 @@ class Node():
                     if not interface['options']:
                         del interface['options']
                     node['interfaces'].append(interface)
+                    if interface['interface'] in all_node_interfaces_by_name.keys():
+                        del all_node_interfaces_by_name[interface['interface']]
+            # for incomplete interfaces
+            for empty_interface in all_node_interfaces_by_name.keys():
+                interface = all_node_interfaces_by_name[empty_interface]
+                del interface['id']
+                if not interface['options']:
+                    del interface['options']
+                node['interfaces'].append(interface)
 
             response['config']['node'][nodename] = node
             self.logger.info(f'Provided details for node {name}.')
@@ -619,9 +646,9 @@ class Node():
                         NodePlugin=Helper().plugin_load(node_plugins,'node','default')
                         try:
                             if create:
-                                NodePlugin().postcreate(name = name, group = node_details['group'])
+                                NodePlugin().postcreate(name=name, group=node_details['group'])
                             elif update:
-                                NodePlugin().postupdate(name = name, group = node_details['group'])
+                                NodePlugin().postupdate(name=name, group=node_details['group'])
                         except Exception as exp:
                             self.logger.error(f"{exp}")
             else:

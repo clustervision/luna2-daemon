@@ -393,13 +393,19 @@ class Group():
                                 executor.shutdown(wait=False)
                                 # Config().update_interface_on_group_nodes(name)
 
+                # ---- we call the node plugin - maybe someone wants to run something after create/update?
+                nodes_in_group = []
+                group_details=Database().get_record_join(['node.name AS nodename'],['node.groupid=group.id'],[f"`group`.name='{name}'"])
+                if group_details:
+                    for group_detail in group_details:
+                        nodes_in_group.append(group_detail['nodename'])
                 group_plugins = Helper().plugin_finder(f'{self.plugins_path}/group')
                 GroupPlugin=Helper().plugin_load(group_plugins,'group','default')
                 try:
                     if create:
-                        GroupPlugin().postcreate(name = name)
+                        GroupPlugin().postcreate(name=name, nodes=nodes_in_group)
                     elif update:
-                        GroupPlugin().postupdate(name = name)
+                        GroupPlugin().postupdate(name=name, nodes=nodes_in_group)
                 except Exception as exp:
                     self.logger.error(f"{exp}")
 

@@ -234,7 +234,8 @@ def get_config(filename=None):
         for (option, item) in configParser.items(section):
             globals()[option.upper()] = item
             if section in list(BOOTSTRAP.keys()):
-                Helper().check_option(filename, section, option.upper(), BOOTSTRAP)
+                # commented out as it doesn't work as intended. pending
+                #Helper().check_option(filename, section, option.upper(), BOOTSTRAP)
                 for num in range(1, 10):
                     if 'CONTROLLER'+str(num) in option.upper():
                         BOOTSTRAP[section][option.upper()]={}

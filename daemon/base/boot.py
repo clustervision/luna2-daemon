@@ -912,12 +912,14 @@ class Boot():
                     'network.subnet',
                     'network.gateway',
                     'network.id as networkid',
-                    'network.zone as zone'
+                    'network.zone as zone',
+                    'network.type as type'
                 ],
                 ['network.id=ipaddress.networkid', 'ipaddress.tablerefid=nodeinterface.id', 'nodeinterface.nodeid=node.id'],
                 ['tableref="nodeinterface"', f"node.name='{data['nodename']}'"]
             )
-            data['domain_search']=''
+            data['domain_search'] = ''
+            domain_search = []
             if nodeinterface:
                 for interface in nodeinterface:
                     node_nwk = f'{interface["ipaddress"]}/{interface["subnet"]}'
@@ -942,13 +944,16 @@ class Boot():
                             'networkname': interface['network'],
                             'gateway': interface['gateway'],
                             'options': interface['options'] or "",
-                            'zone': interface['zone']
+                            'zone': interface['zone'],
+                            'type': interface['type'] or "ethernet"
                         }
-                        data['domain_search']=interface['network'] + ','
+                        domain_search.append(interface['network'])
                         if interface['interface'] == data['provision_interface'] and interface['network']:
                             # if it is my prov interface then it will get that domain as a FQDN.
                             data['nodehostname'] = data['nodename'] + '.' + interface['network']
-                            data['domain_search']=interface['network'] + ',' + data['domain_search']
+                            domain_search.insert(0, interface['network'])
+            if domain_search:
+                data['domain_search'] = ','.join(domain_search)
 
         ## SYSTEMROOT
         osimage_plugin = Helper().plugin_load(self.osimage_plugins,'osimage/operations/image',data['distribution'],data['osrelease'])

@@ -69,9 +69,12 @@ class OSImage():
                 del record['tagid']
                 if (not record['path']) or tagname:
                     record['path'] = '!!undefined!!'
-                    ret, data = OsImagePlugin().getpath(image_directory=self.image_directory, osimage=record['name'], tag=tagname)
-                    if ret is True:
-                        record['path'] = data
+                    try:
+                        ret, data = OsImagePlugin().getpath(image_directory=self.image_directory, osimage=record['name'], tag=tagname)
+                        if ret is True:
+                            record['path'] = data
+                    except Exception as exp:
+                        self.logger.error(f"Plugin exception in getpath: {exp}")
                 record['tag'] = tagname or 'default'
                 response['config'][self.table][record['name']] = record
         return status, response
@@ -101,9 +104,12 @@ class OSImage():
             del record['tagid']
             if (not record['path']) or tagname:
                 record['path'] = '!!undefined!!'
-                ret, data = OsImagePlugin().getpath(image_directory=self.image_directory, osimage=record['name'], tag=tagname)
-                if ret is True:
-                    record['path'] = data
+                try:
+                    ret, data = OsImagePlugin().getpath(image_directory=self.image_directory, osimage=record['name'], tag=tagname)
+                    if ret is True:
+                        record['path'] = data
+                except Exception as exp:
+                    self.logger.error(f"Plugin exception in getpath: {exp}")
             record['tag'] = tagname or 'default'
             image_tags = []
             all_tags = Database().get_record(table='osimagetag', where=f' WHERE osimageid = "{record_id}"')
@@ -163,9 +169,12 @@ class OSImage():
                 data['imagefile'] = image['imagefile']
                 if (not image['path']) or image['tagid']:
                     data['path'] = '!!undefined!!'
-                    ret, path = OsImagePlugin().getpath(image_directory=self.image_directory, osimage=image['osimagename'], tag=image['name'])
-                    if ret:
-                        data['path'] = path
+                    try:
+                        ret, path = OsImagePlugin().getpath(image_directory=self.image_directory, osimage=image['osimagename'], tag=image['name'])
+                        if ret:
+                            data['path'] = path
+                    except Exception as exp:
+                        self.logger.error(f"Plugin exception in getpath: {exp}")
                 for node in nodes.keys():
                     if str(nodes[node]['osimagetagid']) == str(image['tagid']):
                         nodes_using.append(nodes[node]['name'])
@@ -210,6 +219,9 @@ class OSImage():
                         data['changed']=1
                 update = True
             else:
+                if 'newosimage' in data:
+                    status=False
+                    return status, f'{name} not present in database for rename'
                 create = True
 
             if 'tag' in data:

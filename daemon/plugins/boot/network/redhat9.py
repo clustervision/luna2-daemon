@@ -25,26 +25,59 @@ class Plugin():
         """
 
     interface = """
-        chroot /sysroot "nmcli connection add con-name Connection_$DEVICE ifname $DEVICE type ethernet"
-        #chroot /sysroot "nmcli connection modify Connection_$DEVICE ipv4.addresses $IPADDR/$PREFIX"
-        chroot /sysroot "nmcli connection modify Connection_$DEVICE ipv4.addresses $IPADDR/$NETMASK"
-        chroot /sysroot "nmcli connection modify Connection_$DEVICE ipv4.method manual"
+cat << EOF > /sysroot/etc/NetworkManager/system-connections/Connection_${DEVICE}.nmconnection
+[connection]
+id=Connection_${DEVICE}
+type=${TYPE}
+interface-name=${DEVICE}
+autoconnect=true
+
+[$TYPE]
+EOF
+
+if [ "$TYPE" == "infiniband" ]; then
+cat << EOF >> /sysroot/etc/NetworkManager/system-connections/Connection_${DEVICE}.nmconnection
+#mtu=65520
+#transport-mode=connected
+transport-mode=datagram
+
+EOF
+fi
+
+cat << EOF >> /sysroot/etc/NetworkManager/system-connections/Connection_${DEVICE}.nmconnection
+[ipv4]
+address1=$IPADDR/$PREFIX
+dns=
+dns-search=
+method=manual
+
+[ipv6]
+addr-gen-mode=default
+method=auto
+
+[proxy]
+EOF
+chown root:root /sysroot/etc/NetworkManager/system-connections/Connection_${DEVICE}.nmconnection
+chmod 600 /sysroot/etc/NetworkManager/system-connections/Connection_${DEVICE}.nmconnection
+
         #$ZONE
         #$OPTIONS
     """
 
     hostname = """
         echo "$HOSTNAME" > /proc/sys/kernel/hostname
-        chroot /sysroot "hostnamectl --static set-hostname $HOSTNAME"
+        chroot /sysroot hostnamectl --static set-hostname $HOSTNAME 2> /dev/null
     """
 
     gateway = """
-        chroot /sysroot "nmcli connection modify Connection_$DEVICE ipv4.gateway $GATEWAY"
-        chroot /sysroot "nmcli connection modify Connection_$DEVICE ipv4.route-metric $METRIC"
+        GREP=$(grep '^address1' /sysroot/etc/NetworkManager/system-connections/Connection_${DEVICE}.nmconnection)
+        sed -i 's%^'$GREP'%'$GREP','$GATEWAY'%' /sysroot/etc/NetworkManager/system-connections/Connection_${DEVICE}.nmconnection
     """
 
     dns = """
-        chroot /sysroot "nmcli connection modify Connection_$DEVICE ipv4.dns $NAMESERVER ipv4.dns-search $SEARCH"
+        SEARCH=$(echo $SEARCH | sed -e 's/,/;/g')
+        sed -i 's/^dns=/dns='$NAMESERVER'/' /sysroot/etc/NetworkManager/system-connections/Connection_${DEVICE}.nmconnection
+        sed -i 's/^dns-search=/dns-search='$SEARCH'/' /sysroot/etc/NetworkManager/system-connections/Connection_${DEVICE}.nmconnection
     """
 
     ntp = """

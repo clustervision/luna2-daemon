@@ -21,6 +21,7 @@ import subprocess
 import threading
 import sys
 from common.constant import CONSTANT
+from utils.helper import Helper
 
 configParser = RawConfigParser()
 
@@ -233,7 +234,8 @@ def get_config(filename=None):
         for (option, item) in configParser.items(section):
             globals()[option.upper()] = item
             if section in list(BOOTSTRAP.keys()):
-                Helper().check_option(filename, section, option.upper(), BOOTSTRAP)
+                # commented out as it doesn't work as intended. pending
+                #Helper().check_option(filename, section, option.upper(), BOOTSTRAP)
                 for num in range(1, 10):
                     if 'CONTROLLER'+str(num) in option.upper():
                         BOOTSTRAP[section][option.upper()]={}
@@ -268,10 +270,11 @@ def get_config(filename=None):
                     except Exception:
                         LOGGER.error(f'Invalid node list range: {item}, kindly use the numbers in incremental order.')
                 elif 'NETWORKS' in section:
-                    network,dhcp,dhcprange,shared,*_ = (item.split(':')+[None]+[None]+[None])
+                    nwtype,network,dhcp,dhcprange,shared,*_ = (item.split(':')+[None]+[None]+[None]+[None])
                     #Helper().get_netmask(item)  # <-- not used?
                     BOOTSTRAP[section][option.lower()]={}
                     BOOTSTRAP[section][option.lower()]['NETWORK'] = network
+                    BOOTSTRAP[section][option.lower()]['TYPE'] = nwtype
                     if dhcp:
                         BOOTSTRAP[section][option.lower()]['DHCP'] = 1
                         if dhcprange:
@@ -314,8 +317,15 @@ def bootstrap(bootstrapfile=None):
     for nwkx in BOOTSTRAP['NETWORKS'].keys():
         if BOOTSTRAP['NETWORKS'][nwkx] is None:
             continue
+        nwtype = BOOTSTRAP['NETWORKS'][nwkx]['TYPE']
         network_details=Helper().get_network_details(BOOTSTRAP['NETWORKS'][nwkx]['NETWORK'])
-        defaultgw_ip=defaultserver_ip
+        defaultgw_ip=None
+        valid_ip = Helper().check_ip_range(
+            defaultserver_ip,
+            f"{network_details['network']}/{network_details['subnet']}"
+        )
+        if valid_ip:
+            defaultgw_ip=defaultserver_ip
         dhcp,dhcp_range_begin,dhcp_range_end=0,None,None
         if 'DHCP' in BOOTSTRAP['NETWORKS'][nwkx]:
             dhcp=1
@@ -336,10 +346,10 @@ def bootstrap(bootstrapfile=None):
                 {'column': 'dhcp_range_end', 'value': dhcp_range_end},
                 {'column': 'gateway', 'value': defaultgw_ip},
                 {'column': 'shared', 'value': shared},
-                {'column': 'zone', 'value': 'internal'}
+                {'column': 'zone', 'value': 'internal'},
+                {'column': 'type', 'value': nwtype}
             ]
         Database().insert('network', default_network)
-        defaultgw_ip='' # a little tricky but we assume that 'cluster' network is the first to be dealt with and so it works. pending
     network = Database().get_record(None, 'network', None)
     networkid = network[0]['id']
     networkname = network[0]['name']

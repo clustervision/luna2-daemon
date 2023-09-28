@@ -731,7 +731,8 @@ class OsImage(object):
                                                 queue_id,queue_response = Queue().add_task_to_queue(f'cleanup_old_file:'+image[0][item],'housekeeper',request_id,None,'1h')
                                                 if item == 'imagefile':
                                                     queue_id,queue_response = Queue().add_task_to_queue(f'cleanup_old_provisioning:'+image[0][item],'housekeeper',request_id,None,'1h')
-                                    queue_id,queue_response = Queue().add_task_to_queue(f"close_task:{next_id}",'osimage',request_id)
+                                    if queue_id:
+                                        queue_id,queue_response = Queue().add_task_to_queue(f"close_task:{next_id}",'osimage',request_id)
 
                 elif action == "grab_n_pack_n_build_osimage":
                     Queue().update_task_status_in_queue(next_id,'in progress')

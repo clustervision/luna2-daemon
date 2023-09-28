@@ -54,6 +54,7 @@ class Network():
                     network['dhcp'] = False
                 else:
                     network['dhcp'] = True
+                network['type'] = network['type'] or 'ethernet'
                 response['config']['network'][network['name']] = network
             status=True
         else:
@@ -82,6 +83,7 @@ class Network():
                     network['dhcp'] = False
                 else:
                     network['dhcp'] = True
+                network['type'] = network['type'] or 'ethernet'
                 response['config']['network'][name] = network
             status=True
         else:

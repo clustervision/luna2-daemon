@@ -142,6 +142,7 @@ DATABASE_LAYOUT_network = [
 {"column": "dhcp_range_end",       "datatype": "VARCHAR", "length": "60"},
 {"column": "zone",                 "datatype": "VARCHAR", "length": "60"},
 {"column": "shared",               "datatype": "VARCHAR", "length": "60"},
+{"column": "type",                 "datatype": "VARCHAR", "length": "100"},
 {"column": "comment",              "datatype": "VARCHAR", "length": "200"}]
 
 DATABASE_LAYOUT_user = [

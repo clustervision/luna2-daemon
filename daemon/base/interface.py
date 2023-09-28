@@ -88,7 +88,7 @@ class Interface():
                     for interface in request_data['config']['node'][name]['interfaces']:
                         # Antoine
                         interface_name = interface['interface']
-                        macaddress, network, options = None, None, None
+                        ipaddress, macaddress, network, options = None, None, None, None
                         if 'macaddress' in interface.keys():
                             macaddress = interface['macaddress']
                         if 'options' in interface.keys():
@@ -101,18 +101,6 @@ class Interface():
                             macaddress,
                             options
                         )
-                        """
-                        if result and 'ipaddress' in interface.keys():
-                            ipaddress=interface['ipaddress']
-                            if 'network' in interface.keys():
-                                network=interface['network']
-                            result, message = Config().node_interface_ipaddress_config(
-                                nodeid,
-                                interface_name,
-                                ipaddress,
-                                network
-                           )
-                        """
                         if result:
                             if not 'ipaddress' in interface.keys():
                                 existing = Database().get_record_join(

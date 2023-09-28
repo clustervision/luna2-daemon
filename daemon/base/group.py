@@ -395,10 +395,10 @@ class Group():
 
                 # ---- we call the node plugin - maybe someone wants to run something after create/update?
                 nodes_in_group = []
-                group_details=Database().get_record_join(['node.name AS nodename'],['node.groupid=group.id'],[f'group.name={name}'])
+                group_details=Database().get_record_join(['node.name AS nodename'],['node.groupid=group.id'],[f"`group`.name='{name}'"])
                 if group_details:
                     for group_detail in group_details:
-                        nodes_in_group.append(group_details[group_detail]['nodename'])
+                        nodes_in_group.append(group_detail['nodename'])
                 group_plugins = Helper().plugin_finder(f'{self.plugins_path}/group')
                 GroupPlugin=Helper().plugin_load(group_plugins,'group','default')
                 try:

@@ -69,9 +69,12 @@ class OSImage():
                 del record['tagid']
                 if (not record['path']) or tagname:
                     record['path'] = '!!undefined!!'
-                    ret, data = OsImagePlugin().getpath(image_directory=self.image_directory, osimage=record['name'], tag=tagname)
-                    if ret is True:
-                        record['path'] = data
+                    try:
+                        ret, data = OsImagePlugin().getpath(image_directory=self.image_directory, osimage=record['name'], tag=tagname)
+                        if ret is True:
+                            record['path'] = data
+                    except Exception as exp:
+                        self.logger.error(f"Plugin exception in getpath: {exp}")
                 record['tag'] = tagname or 'default'
                 response['config'][self.table][record['name']] = record
         return status, response
@@ -101,9 +104,12 @@ class OSImage():
             del record['tagid']
             if (not record['path']) or tagname:
                 record['path'] = '!!undefined!!'
-                ret, data = OsImagePlugin().getpath(image_directory=self.image_directory, osimage=record['name'], tag=tagname)
-                if ret is True:
-                    record['path'] = data
+                try:
+                    ret, data = OsImagePlugin().getpath(image_directory=self.image_directory, osimage=record['name'], tag=tagname)
+                    if ret is True:
+                        record['path'] = data
+                except Exception as exp:
+                    self.logger.error(f"Plugin exception in getpath: {exp}")
             record['tag'] = tagname or 'default'
             image_tags = []
             all_tags = Database().get_record(table='osimagetag', where=f' WHERE osimageid = "{record_id}"')

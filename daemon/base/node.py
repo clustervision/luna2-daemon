@@ -613,6 +613,7 @@ class Node():
                                             ipaddress = avail
                             else:
                                 ipaddress=interface['ipaddress']
+
                             result, message = Config().node_interface_ipaddress_config(
                                 nodeid,
                                 interface_name,

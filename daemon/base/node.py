@@ -365,7 +365,8 @@ class Node():
                     node['interfaces'].append(interface)
                     if interface_name in all_node_interfaces_by_name.keys():
                         del all_node_interfaces_by_name[interface_name]
-            for interface in all_node_interfaces_by_name.keys():
+            for empty_interface in all_node_interfaces_by_name.keys():
+                interface = all_node_interfaces[empty_interface]
                 if not interface['options']:
                     del interface['options']
                 node['interfaces'].append(interface)

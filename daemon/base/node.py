@@ -136,10 +136,10 @@ class Node():
                 node['service'] = Helper().make_bool(node['service'])
                 node['setupbmc'] = Helper().make_bool(node['setupbmc'])
                 node['interfaces']=[]
-                self.logger.info("------------------- --------------------- --------------------- -------------------")
                 all_node_interfaces_by_name = {}
+                self.logger.info("I AM HERE ------------------- --------------------- --------------------- -------------------")
                 all_node_interfaces = Database().get_record(None, 'nodeinterface', f"WHERE nodeinterface.nodeid='{nodeid}'")
-                self.logger.info("------------------- --------------------- --------------------- -------------------")
+                self.logger.info("I WAS HERE ------------------- --------------------- --------------------- -------------------")
                 if all_node_interfaces:
                     all_node_interfaces_by_name = Helper().convert_list_to_dict(all_node_interfaces, 'id')
                 node_interface = Database().get_record_join(

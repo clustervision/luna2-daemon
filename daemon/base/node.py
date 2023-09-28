@@ -22,6 +22,7 @@ from utils.service import Service
 from utils.queue import Queue
 from utils.helper import Helper
 from utils.monitor import Monitor
+from base.interface import Interface
 from common.constant import CONSTANT
 
 
@@ -170,6 +171,7 @@ class Node():
                 for empty_interface in all_node_interfaces_by_name.keys():
                     interface = all_node_interfaces_by_name[empty_interface]
                     del interface['id']
+                    del interface['nodeid']
                     if not interface['options']:
                         del interface['options']
                     node['interfaces'].append(interface)
@@ -380,6 +382,7 @@ class Node():
             for empty_interface in all_node_interfaces_by_name.keys():
                 interface = all_node_interfaces_by_name[empty_interface]
                 del interface['id']
+                del interface['nodeid']
                 if not interface['options']:
                     del interface['options']
                 node['interfaces'].append(interface)
@@ -567,6 +570,14 @@ class Node():
                                         #     max-= 1
 
                 if interfaces:
+                    new_request_data={"config": {"node": {data['name']: {"interfaces": {interfaces}}}}}
+                    result, message = Interface().change_node_interface(name=data['name'], request_data=request_data):
+                    if result is False:
+                        status = False
+                        return status, f'{message}'
+
+                """
+                if interfaces:
                     for interface in interfaces:
                         # Antoine
                         interface_name = interface['interface']
@@ -624,7 +635,7 @@ class Node():
                         if result is False:
                             status = False
                             return status, f'{message}'
-
+                """
                 # For now i have the below two disabled. it's testing. -Antoine aug 8 2023
                 #Service().queue('dhcp', 'restart')
                 #Service().queue('dns', 'restart')

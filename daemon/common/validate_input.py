@@ -33,7 +33,8 @@ control_char_re = re.compile(f'[{re.escape(CONTROL_CHAR)}]')
 REG_EXP = {
     'name': r'^[a-z0-9\-]+$',
     'ipaddress': r'^[0-9a-f:\.]+$',
-    'macaddress': r'^[a-fA-F0-9:\-]+$'
+    'macaddress': r'^[a-fA-F0-9:\-]+$',
+    'minimal': r'^.+$'
 }
 MATCH = {
     'name': 'name',
@@ -45,7 +46,16 @@ MATCH = {
     'newotherdevname': 'name',
     'ipaddress':'ipaddress',
     'macaddress':'macaddress'
+    'newosimage': 'minimal',
+    'newgroupname': 'minimal'
+    'newbmcname': 'minimal',
+    'newotherdevicename': 'name',
+    'newotherdevname': 'name',
+    'newsecretname': 'minimal',
+    'newswitchname': 'name',
+    'newnetname': 'name'
 }
+
 maxlength = {'request_id': '256'}
 convert = {'macaddress': {'-':':'}}
 

@@ -169,9 +169,12 @@ class OSImage():
                 data['imagefile'] = image['imagefile']
                 if (not image['path']) or image['tagid']:
                     data['path'] = '!!undefined!!'
-                    ret, path = OsImagePlugin().getpath(image_directory=self.image_directory, osimage=image['osimagename'], tag=image['name'])
-                    if ret:
-                        data['path'] = path
+                    try:
+                        ret, path = OsImagePlugin().getpath(image_directory=self.image_directory, osimage=image['osimagename'], tag=image['name'])
+                        if ret:
+                            data['path'] = path
+                    except Exception as exp:
+                        self.logger.error(f"Plugin exception in getpath: {exp}")
                 for node in nodes.keys():
                     if str(nodes[node]['osimagetagid']) == str(image['tagid']):
                         nodes_using.append(nodes[node]['name'])

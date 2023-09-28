@@ -219,6 +219,9 @@ class OSImage():
                         data['changed']=1
                 update = True
             else:
+                if 'newosimage' in data:
+                    status=False
+                    return status, f'{name} not present in database for rename'
                 create = True
 
             if 'tag' in data:

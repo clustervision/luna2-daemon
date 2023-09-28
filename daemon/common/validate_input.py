@@ -46,12 +46,12 @@ MATCH = {
     'newotherdevname': 'name',
     'ipaddress':'ipaddress',
     'macaddress':'macaddress',
-    'newosimage': 'minimal',
-    'newgroupname': 'minimal',
-    'newbmcname': 'minimal',
+    'newosimage': 'name',
+    'newgroupname': 'name',
+    'newbmcname': 'name',
     'newotherdevicename': 'name',
     'newotherdevname': 'name',
-    'newsecretname': 'minimal',
+    'newsecretname': 'name',
     'newswitchname': 'name',
     'newnetname': 'name'
 }

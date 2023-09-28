@@ -269,10 +269,11 @@ def get_config(filename=None):
                     except Exception:
                         LOGGER.error(f'Invalid node list range: {item}, kindly use the numbers in incremental order.')
                 elif 'NETWORKS' in section:
-                    network,dhcp,dhcprange,shared,*_ = (item.split(':')+[None]+[None]+[None])
+                    nwtype,network,dhcp,dhcprange,shared,*_ = (item.split(':')+[None]+[None]+[None]+[None])
                     #Helper().get_netmask(item)  # <-- not used?
                     BOOTSTRAP[section][option.lower()]={}
                     BOOTSTRAP[section][option.lower()]['NETWORK'] = network
+                    BOOTSTRAP[section][option.lower()]['TYPE'] = nwtype
                     if dhcp:
                         BOOTSTRAP[section][option.lower()]['DHCP'] = 1
                         if dhcprange:
@@ -315,6 +316,7 @@ def bootstrap(bootstrapfile=None):
     for nwkx in BOOTSTRAP['NETWORKS'].keys():
         if BOOTSTRAP['NETWORKS'][nwkx] is None:
             continue
+        nwtype = BOOTSTRAP['NETWORKS'][nwkx]['TYPE']
         network_details=Helper().get_network_details(BOOTSTRAP['NETWORKS'][nwkx]['NETWORK'])
         defaultgw_ip=None
         valid_ip = Helper().check_ip_range(
@@ -343,7 +345,8 @@ def bootstrap(bootstrapfile=None):
                 {'column': 'dhcp_range_end', 'value': dhcp_range_end},
                 {'column': 'gateway', 'value': defaultgw_ip},
                 {'column': 'shared', 'value': shared},
-                {'column': 'zone', 'value': 'internal'}
+                {'column': 'zone', 'value': 'internal'},
+                {'column': 'type', 'value': nwtype}
             ]
         Database().insert('network', default_network)
     network = Database().get_record(None, 'network', None)

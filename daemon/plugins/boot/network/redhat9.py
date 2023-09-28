@@ -25,10 +25,16 @@ class Plugin():
         """
 
     interface = """
-        chroot /sysroot "nmcli connection add con-name Connection_$DEVICE ifname $DEVICE type $TYPE"
+        if [ "$TYPE" == "infiniband" ]; then
+            PARAMS = "transport-mode Connected mtu 65520"
+        fi
+        chroot /sysroot "nmcli connection add con-name Connection_$DEVICE ifname $DEVICE type $TYPE $PARAMS"
         #chroot /sysroot "nmcli connection modify Connection_$DEVICE ipv4.addresses $IPADDR/$PREFIX"
         chroot /sysroot "nmcli connection modify Connection_$DEVICE ipv4.addresses $IPADDR/$NETMASK"
         chroot /sysroot "nmcli connection modify Connection_$DEVICE ipv4.method manual"
+        if [ "$TYPE" == "infiniband" ]; then
+            chroot /sysroot "nmcli connection modify Connection_$DEVICE infiniband.p-key 0x8002"
+        fi
         #$ZONE
         #$OPTIONS
     """

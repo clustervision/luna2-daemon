@@ -745,8 +745,7 @@ $TTL 604800
             )
                 
         if not network_details:
-            message = "not enough information provided. network name incorrect or \
-                need network name if there is no existing ipaddress"
+            message = "not enough information provided. network name incorrect or need network name if there is no existing ipaddress"
             self.logger.info(message)
             return False, message
 

@@ -570,7 +570,7 @@ class Node():
                                         #     max-= 1
 
                 if interfaces:
-                    new_request_data={"config": {"node": {data['name']: {"interfaces": {interfaces}}}}}
+                    new_request_data={"config": {"node": {data['name']: {"interfaces": interfaces}}}}
                     result, message = Interface().change_node_interface(name=data['name'], request_data=new_request_data)
                     if result is False:
                         status = False

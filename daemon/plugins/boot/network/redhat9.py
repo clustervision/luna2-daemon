@@ -66,21 +66,18 @@ chmod 600 /sysroot/etc/NetworkManager/system-connections/Connection_${DEVICE}.nm
 
     hostname = """
         echo "$HOSTNAME" > /proc/sys/kernel/hostname
-        chroot /sysroot hostnamectl --static set-hostname $HOSTNAME
+        chroot /sysroot hostnamectl --static set-hostname $HOSTNAME 2> /dev/null
     """
 
     gateway = """
-        GREP=$(grep '^address1' /sysroot/etc/NetworkManager/system-connections/Connection_${DEVICE}.nmconnection | sed -e 's/\//\\\//')
-        sed -i 's/^'$GREP'/'$GREP','$GATEWAY'/' /sysroot/etc/NetworkManager/system-connections/Connection_${DEVICE}.nmconnection
-        #chroot /sysroot "nmcli connection modify Connection_$DEVICE ipv4.gateway $GATEWAY"
-        #chroot /sysroot "nmcli connection modify Connection_$DEVICE ipv4.route-metric $METRIC"
+        GREP=$(grep '^address1' /sysroot/etc/NetworkManager/system-connections/Connection_${DEVICE}.nmconnection)
+        sed -i 's%^'$GREP'%'$GREP','$GATEWAY'%' /sysroot/etc/NetworkManager/system-connections/Connection_${DEVICE}.nmconnection
     """
 
     dns = """
         SEARCH=$(echo $SEARCH | sed -e 's/,/;/g')
         sed -i 's/^dns=/dns='$NAMESERVER'/' /sysroot/etc/NetworkManager/system-connections/Connection_${DEVICE}.nmconnection
         sed -i 's/^dns-search=/dns-search='$SEARCH'/' /sysroot/etc/NetworkManager/system-connections/Connection_${DEVICE}.nmconnection
-        #chroot /sysroot "nmcli connection modify Connection_$DEVICE ipv4.dns $NAMESERVER ipv4.dns-search $SEARCH"
     """
 
     ntp = """

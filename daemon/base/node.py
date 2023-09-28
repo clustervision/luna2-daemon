@@ -340,7 +340,7 @@ class Node():
             all_node_interfaces = Database().get_record(None, 'nodeinterface', f"WHERE nodeinterface.nodeid='{nodeid}'")
             self.logger.info("I WAS HERE ------------------- --------------------- --------------------- -------------------")
             if all_node_interfaces:
-                all_node_interfaces_by_name = Helper().convert_list_to_dict(all_node_interfaces, 'id')
+                all_node_interfaces_by_name = Helper().convert_list_to_dict(all_node_interfaces, 'interface')
             node_interface = Database().get_record_join(
                 [
                     'nodeinterface.interface',

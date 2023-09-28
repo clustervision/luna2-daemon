@@ -576,66 +576,6 @@ class Node():
                         status = False
                         return status, f'{message}'
 
-                """
-                if interfaces:
-                    for interface in interfaces:
-                        # Antoine
-                        interface_name = interface['interface']
-                        ipaddress,macaddress,network,options=None,None,None,None
-                        if 'macaddress' in interface.keys():
-                            macaddress = interface['macaddress']
-                        if 'options' in interface.keys():
-                            options = interface['options']
-                        if 'network' in interface.keys():
-                            network = interface['network']
-                        result, message = Config().node_interface_config(
-                            nodeid,
-                            interface_name,
-                            macaddress,
-                            options
-                        )
-                        if result:
-                            if not 'ipaddress' in interface.keys():
-                                existing = Database().get_record_join(
-                                    ['ipaddress.ipaddress'],
-                                    [
-                                        'nodeinterface.nodeid=node.id',
-                                        'ipaddress.tablerefid=nodeinterface.id'
-                                    ],
-                                    [
-                                        f"node.name='{name}'",
-                                        "ipaddress.tableref='nodeinterface'",
-                                        f"nodeinterface.interface='{interface_name}'"
-                                    ]
-                                )
-                                if existing:
-                                    ipaddress = existing[0]['ipaddress']
-                                else:
-                                    ips = Config().get_all_occupied_ips_from_network(network)
-                                    where = f" WHERE `name` = '{network}'"
-                                    network_details = Database().get_record(None, 'network', where)
-                                    if network_details:
-                                        avail = Helper().get_available_ip(
-                                            network_details[0]['network'],
-                                            network_details[0]['subnet'],
-                                            ips
-                                        )
-                                        if avail:
-                                            ipaddress = avail
-                            else:
-                                ipaddress=interface['ipaddress']
-
-                            result, message = Config().node_interface_ipaddress_config(
-                                nodeid,
-                                interface_name,
-                                ipaddress,
-                                network
-                            )
-
-                        if result is False:
-                            status = False
-                            return status, f'{message}'
-                """
                 # For now i have the below two disabled. it's testing. -Antoine aug 8 2023
                 #Service().queue('dhcp', 'restart')
                 #Service().queue('dns', 'restart')

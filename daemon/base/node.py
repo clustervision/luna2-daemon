@@ -363,7 +363,7 @@ class Node():
                     if not interface['options']:
                         del interface['options']
                     node['interfaces'].append(interface)
-                    self.logger.info(f" ==== ===== ====== {interface['interface']} ======== ======")
+                    self.logger.info(f" ==== ===== ====== {interface['interface']} {all_node_interfaces_by_name.keys()} ======== ======")
                     if interface['interface'] in all_node_interfaces_by_name.keys():
                         del all_node_interfaces_by_name[interface['interface']]
             for empty_interface in all_node_interfaces_by_name.keys():

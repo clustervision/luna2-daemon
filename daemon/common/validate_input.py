@@ -47,7 +47,7 @@ MATCH = {
     'ipaddress':'ipaddress',
     'macaddress':'macaddress',
     'newosimage': 'minimal',
-    'newgroupname': 'minimal'
+    'newgroupname': 'minimal',
     'newbmcname': 'minimal',
     'newotherdevicename': 'name',
     'newotherdevname': 'name',

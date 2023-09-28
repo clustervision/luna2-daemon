@@ -22,6 +22,7 @@ from utils.service import Service
 from utils.queue import Queue
 from utils.helper import Helper
 from utils.monitor import Monitor
+from base.interface import Interface
 from common.constant import CONSTANT
 
 
@@ -170,6 +171,7 @@ class Node():
                 for empty_interface in all_node_interfaces_by_name.keys():
                     interface = all_node_interfaces_by_name[empty_interface]
                     del interface['id']
+                    del interface['nodeid']
                     if not interface['options']:
                         del interface['options']
                     node['interfaces'].append(interface)
@@ -380,6 +382,7 @@ class Node():
             for empty_interface in all_node_interfaces_by_name.keys():
                 interface = all_node_interfaces_by_name[empty_interface]
                 del interface['id']
+                del interface['nodeid']
                 if not interface['options']:
                     del interface['options']
                 node['interfaces'].append(interface)
@@ -567,62 +570,11 @@ class Node():
                                         #     max-= 1
 
                 if interfaces:
-                    for interface in interfaces:
-                        # Antoine
-                        interface_name = interface['interface']
-                        ipaddress,macaddress,network,options=None,None,None,None
-                        if 'macaddress' in interface.keys():
-                            macaddress = interface['macaddress']
-                        if 'options' in interface.keys():
-                            options = interface['options']
-                        if 'network' in interface.keys():
-                            network = interface['network']
-                        result, message = Config().node_interface_config(
-                            nodeid,
-                            interface_name,
-                            macaddress,
-                            options
-                        )
-                        if result:
-                            if not 'ipaddress' in interface.keys():
-                                existing = Database().get_record_join(
-                                    ['ipaddress.ipaddress'],
-                                    [
-                                        'nodeinterface.nodeid=node.id',
-                                        'ipaddress.tablerefid=nodeinterface.id'
-                                    ],
-                                    [
-                                        f"node.name='{name}'",
-                                        "ipaddress.tableref='nodeinterface'",
-                                        f"nodeinterface.interface='{interface_name}'"
-                                    ]
-                                )
-                                if existing:
-                                    ipaddress = existing[0]['ipaddress']
-                                else:
-                                    ips = Config().get_all_occupied_ips_from_network(network)
-                                    where = f" WHERE `name` = '{network}'"
-                                    network_details = Database().get_record(None, 'network', where)
-                                    if network_details:
-                                        avail = Helper().get_available_ip(
-                                            network_details[0]['network'],
-                                            network_details[0]['subnet'],
-                                            ips
-                                        )
-                                        if avail:
-                                            ipaddress = avail
-                            else:
-                                ipaddress=interface['ipaddress']
-                            result, message = Config().node_interface_ipaddress_config(
-                                nodeid,
-                                interface_name,
-                                ipaddress,
-                                network
-                            )
-
-                        if result is False:
-                            status = False
-                            return status, f'{message}'
+                    new_request_data={"config": {"node": {data['name']: {"interfaces": interfaces}}}}
+                    result, message = Interface().change_node_interface(name=data['name'], request_data=new_request_data)
+                    if result is False:
+                        status = False
+                        return status, f'{message}'
 
                 # For now i have the below two disabled. it's testing. -Antoine aug 8 2023
                 #Service().queue('dhcp', 'restart')

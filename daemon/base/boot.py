@@ -912,7 +912,8 @@ class Boot():
                     'network.subnet',
                     'network.gateway',
                     'network.id as networkid',
-                    'network.zone as zone'
+                    'network.zone as zone',
+                    'network.type as type'
                 ],
                 ['network.id=ipaddress.networkid', 'ipaddress.tablerefid=nodeinterface.id', 'nodeinterface.nodeid=node.id'],
                 ['tableref="nodeinterface"', f"node.name='{data['nodename']}'"]
@@ -942,7 +943,8 @@ class Boot():
                             'networkname': interface['network'],
                             'gateway': interface['gateway'],
                             'options': interface['options'] or "",
-                            'zone': interface['zone']
+                            'zone': interface['zone'],
+                            'type': interface['type']
                         }
                         data['domain_search']=interface['network'] + ','
                         if interface['interface'] == data['provision_interface'] and interface['network']:

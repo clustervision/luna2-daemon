@@ -21,6 +21,7 @@ import subprocess
 import threading
 import sys
 from common.constant import CONSTANT
+from utils.helper import Helper
 
 configParser = RawConfigParser()
 
@@ -315,7 +316,13 @@ def bootstrap(bootstrapfile=None):
         if BOOTSTRAP['NETWORKS'][nwkx] is None:
             continue
         network_details=Helper().get_network_details(BOOTSTRAP['NETWORKS'][nwkx]['NETWORK'])
-        defaultgw_ip=defaultserver_ip
+        defaultgw_ip=None
+        valid_ip = Helper().check_ip_range(
+            defaultserver_ip,
+            f"{network_details['network']}/{network_details['subnet']}"
+        )
+        if valid_ip:
+            defaultgw_ip=defaultserver_ip
         dhcp,dhcp_range_begin,dhcp_range_end=0,None,None
         if 'DHCP' in BOOTSTRAP['NETWORKS'][nwkx]:
             dhcp=1
@@ -339,7 +346,6 @@ def bootstrap(bootstrapfile=None):
                 {'column': 'zone', 'value': 'internal'}
             ]
         Database().insert('network', default_network)
-        defaultgw_ip='' # a little tricky but we assume that 'cluster' network is the first to be dealt with and so it works. pending
     network = Database().get_record(None, 'network', None)
     networkid = network[0]['id']
     networkname = network[0]['name']

@@ -70,7 +70,6 @@ DATABASE_LAYOUT_nodeinterface = [
 {"column": "nodeid",               "datatype": "INTEGER", "length": "10", "key": "UNIQUE", "with": "interface"},
 {"column": "interface",            "datatype": "VARCHAR", "length": "50"},
 {"column": "macaddress",           "datatype": "VARCHAR", "length": "200"},
-{"column": "type",                 "datatype": "VARCHAR", "length": "100"},
 {"column": "options",              "datatype": "TEXT"}]
 
 DATABASE_LAYOUT_bmcsetup = [

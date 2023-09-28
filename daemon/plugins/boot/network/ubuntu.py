@@ -41,12 +41,6 @@ cat << EOF >> $rootmnt/etc/netplan/99_config.yaml
     ${DEVICE}:
       addresses:
         - $IPADDR/$PREFIX
-      routes:
-        - to: default
-          via: __${DEVICE}_GATEWAY__
-      nameservers:
-          search: [__${DEVICE}__SEARCH__]
-          addresses: [__${DEVICE}__NAMESERVER__]
 EOF
         #$NETMASK
         #$ZONE
@@ -60,14 +54,20 @@ EOF
     """
 
     gateway = """
-        sed -i 's/__'${DEVICE}'_GATEWAY__/'$GATEWAY'/' $rootmnt/etc/netplan/99_config.yaml
+cat << EOF >> $rootmnt/etc/netplan/99_config.yaml
+      routes:
+        - to: default
+          via: $GATEWAY
+EOF
         # $METRIC
-
     """
 
     dns = """
-        sed -i 's/__'${DEVICE}'__SEARCH__/'$SEARCH'/' $rootmnt/etc/netplan/99_config.yaml
-        sed -i 's/__'${DEVICE}'__NAMESERVER__/'$NAMESERVER'/' $rootmnt/etc/netplan/99_config.yaml
+cat << EOF >> $rootmnt/etc/netplan/99_config.yaml
+      nameservers:
+          search: [$SEARCH]
+          addresses: [$NAMESERVER]
+EOF
         echo "search $SEARCH" > $rootmnt/etc/resolv.conf
         echo "nameserver $NAMESERVER" >> $rootmnt/etc/resolv.conf
         chroot $rootmnt netplan apply 2> /dev/null

@@ -166,6 +166,7 @@ class Node():
                         node['interfaces'].append(interface)
                         if interface['interface'] in all_node_interfaces_by_name.keys():
                             del all_node_interfaces_by_name[interface['interface']]
+                # for incomplete interfaces
                 for empty_interface in all_node_interfaces_by_name.keys():
                     interface = all_node_interfaces_by_name[empty_interface]
                     del interface['id']
@@ -375,6 +376,7 @@ class Node():
                     node['interfaces'].append(interface)
                     if interface['interface'] in all_node_interfaces_by_name.keys():
                         del all_node_interfaces_by_name[interface['interface']]
+            # for incomplete interfaces
             for empty_interface in all_node_interfaces_by_name.keys():
                 interface = all_node_interfaces_by_name[empty_interface]
                 del interface['id']

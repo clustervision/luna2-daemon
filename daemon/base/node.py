@@ -136,6 +136,10 @@ class Node():
                 node['service'] = Helper().make_bool(node['service'])
                 node['setupbmc'] = Helper().make_bool(node['setupbmc'])
                 node['interfaces']=[]
+                all_node_interfaces_by_name = {}
+                all_node_interfaces = Database().get_record(None, 'nodeinterface', f"WHERE nodeinterface.nodeid='{nodeid}'")
+                if all_node_interfaces:
+                    all_node_interfaces_by_name = Helper().convert_list_to_dict(all_node_interfaces, 'id')
                 node_interface = Database().get_record_join(
                     [
                         'nodeinterface.interface',
@@ -160,6 +164,13 @@ class Node():
                         if not interface['options']:
                             del interface['options']
                         node['interfaces'].append(interface)
+                        if interface_name in all_node_interfaces_by_name.keys():
+                            del all_node_interfaces_by_name[interface_name]
+                for interface in all_node_interfaces_by_name.keys():
+                    if not interface['options']:
+                        del interface['options']
+                    node['interfaces'].append(interface)
+
                 response['config']['node'][node_name] = node
             self.logger.info('Provided list of all nodes.')
             status = True

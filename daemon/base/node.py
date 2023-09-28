@@ -333,6 +333,7 @@ class Node():
             node['status'], *_ = Monitor().installer_state(node['status'])
             node['service'] = Helper().make_bool(node['service'])
             node['setupbmc'] = Helper().make_bool(node['setupbmc'])
+            node['hostname'] = nodename
             node['interfaces'] = []
             all_node_interfaces_by_name = {}
             self.logger.info("I AM HERE ------------------- --------------------- --------------------- -------------------")
@@ -351,7 +352,6 @@ class Node():
                 ['network.id=ipaddress.networkid', 'ipaddress.tablerefid=nodeinterface.id'],
                 ['tableref="nodeinterface"', f"nodeinterface.nodeid='{nodeid}'"]
             )
-            node['hostname'] = nodename
             if node_interface:
                 for interface in node_interface:
                     interface_name, *_ = (node['provision_interface'].split(' ') + [None])
@@ -363,10 +363,12 @@ class Node():
                     if not interface['options']:
                         del interface['options']
                     node['interfaces'].append(interface)
+                    self.logger.info(f" ==== ===== ====== {interface['interface']} ======== ======")
                     if interface['interface'] in all_node_interfaces_by_name.keys():
                         del all_node_interfaces_by_name[interface['interface']]
             for empty_interface in all_node_interfaces_by_name.keys():
                 interface = all_node_interfaces_by_name[empty_interface]
+                del interface['id']
                 if not interface['options']:
                     del interface['options']
                 node['interfaces'].append(interface)

@@ -619,9 +619,9 @@ class Node():
                         NodePlugin=Helper().plugin_load(node_plugins,'node','default')
                         try:
                             if create:
-                                NodePlugin().postcreate(name = name, group = node_details['group'])
+                                NodePlugin().postcreate(name=name, group=node_details['group'])
                             elif update:
-                                NodePlugin().postupdate(name = name, group = node_details['group'])
+                                NodePlugin().postupdate(name=name, group=node_details['group'])
                         except Exception as exp:
                             self.logger.error(f"{exp}")
             else:

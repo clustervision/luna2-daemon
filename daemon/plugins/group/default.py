@@ -35,12 +35,12 @@ class Plugin():
 
     # ---------------------------------------------------------------------------
 
-    def postcreate(self, name=None):
+    def postcreate(self, name=None, nodes=[]):
         return True, "Nothing done"
 
     # ---------------------------------------------------------------------------
 
-    def postupdate(self, name=None):
+    def postupdate(self, name=None, nodes=[]):
         return True, "Nothing done"
 
     # ---------------------------------------------------------------------------

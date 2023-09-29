@@ -235,7 +235,7 @@ def config_node_delete_interface(name=None, interface=None):
     Process - Delete the Node Interface.
     Output - Success or Failure.
     """
-    status, response = Interface().delete_node_interface(name, interface)
+    status, response = Interface().delete_node_interface_by_name(name, interface)
     access_code=Helper().get_access_code(status,response)
     response = {'message': response}
     return response, access_code

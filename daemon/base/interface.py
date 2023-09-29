@@ -274,6 +274,7 @@ class Interface():
                 if if_dict:
                     for interface in if_dict.keys():
                         self.logger.info(f"6: i would remove {if_dict[interface]['interface']}")
+                        self.delete_node_interface(nodeid=nodeid, interface=if_dict[interface]['interface'])
         else:
             return False, "name and/or group not defined"
         return True, "success"
@@ -322,14 +323,27 @@ class Interface():
         return status, response
 
 
-    def delete_node_interface(self, name=None, interface=None):
+    def delete_node_interface_by_name(self, name=None, interface=None):
         """
-        This method will delete a node.
+        This method will delete a node's interface.
+        same as function below but this one can be called by node name
         """
         status=False
         node = Database().get_record(None, 'node', f' WHERE `name` = "{name}"')
         if node:
-            nodeid = node[0]['id']
+            status, response = self.delete_node_interface(node[0]['name'], interface)
+        else:
+            response = f'Node {name} not present in database'
+            status=False
+        return status, response
+
+
+    def delete_node_interface(self, nodeid=None, interface=None):
+        """
+        This method will delete a node's interface.
+        """
+        status=False
+        if nodeid:
             where = f' WHERE `interface` = "{interface}" AND `nodeid` = "{nodeid}"'
             node_interface = Database().get_record_join(
                 ['nodeinterface.id as ifid', 'ipaddress.id as ipid'],
@@ -363,7 +377,7 @@ class Interface():
                 response = f'Node {name} interface {interface} not present in database'
                 status=False
         else:
-            response = f'Node {name} not present in database'
+            response = 'Invalid request: did not receive Data'
             status=False
         return status, response
 

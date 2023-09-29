@@ -177,9 +177,6 @@ class Interface():
         It tries to figure out what needs to be added or removed for a node. pffffff......
         """
         if nodeid and groupid:
-            self.logger.info(f"-----------------------------------------------------------------")
-            self.logger.info(f"## nodeid: {nodeid}, groupid: {groupid}, oldgroupid: {oldgroupid}")
-            self.logger.info(f"-----------------------------------------------------------------")
             # ----> GROUP interface. WIP. pending. should work but i keep it WIP
             # we fetch interfaces and ip-s separate as interfaces might not have IPs set in weird cases
             existing_if = Database().get_record(None, 'nodeinterface', f"WHERE nodeid={nodeid}")
@@ -193,11 +190,6 @@ class Interface():
                 if_dict = Helper().convert_list_to_dict(existing_if, 'interface')
             if existing_ip:
                 ip_dict = Helper().convert_list_to_dict(existing_ip, 'interface')
-            self.logger.info(f"-----------------------------------------------------------------")
-            self.logger.info(f"IF_DICT: {if_dict}")
-            self.logger.info(f"-----------------------------------------------------------------")
-            self.logger.info(f"IP_DICT: {ip_dict}")
-            self.logger.info(f"-----------------------------------------------------------------")
             if_old_group_dict = None
             if oldgroupid:
                 old_group_interfaces = Database().get_record_join(
@@ -212,9 +204,6 @@ class Interface():
                 )
                 if old_group_interfaces:
                     if_old_group_dict = Helper().convert_list_to_dict(old_group_interfaces, 'interface')
-                    self.logger.info(f"-----------------------------------------------------------------")
-                    self.logger.info(f"IF_OLD_GROUP_DICT: {if_old_group_dict}")
-                    self.logger.info(f"-----------------------------------------------------------------")
             group_interfaces = Database().get_record_join(
                 [
                     'groupinterface.interface',
@@ -226,26 +215,21 @@ class Interface():
                 [f"groupinterface.groupid={groupid}"]
             )
             if group_interfaces:
-                self.logger.info(f"0: ALL grp {groupid} if: {group_interfaces}")
                 for group_interface in group_interfaces:
                     add_interface = True
+                    # now we go into the rabbit hole. we figure if the node already has this interface
+                    # confgured, with network and matching ip. if so, we leave it alone.
                     if group_interface['interface'] in if_dict.keys():
                         # good, we already have an interface with that name
-                        self.logger.info(f"1: {group_interface['interface']} in if_dict")
                         if group_interface['interface'] in ip_dict.keys():
                             # and it already has an IP
-                            self.logger.info(f"2: {group_interface['interface']} in ip_dict")
                             if 'networkid' in ip_dict[group_interface['interface']]:
-                                self.logger.info(f"3: 'networkid' in ip_dict[{group_interface['interface']}]")
                                 if group_interface['networkid'] == ip_dict[group_interface['interface']]['networkid']:
-                                    self.logger.info(f"4: 'networks' match for {group_interface['interface']}")
                                     if ip_dict[group_interface['interface']]['ipaddress']:
-                                        self.logger.info(f"5: 'ipaddress' there for {group_interface['interface']}")
                                         # we already have such interface with matching config. we do nothing
                                         add_interface = False
                                         del if_dict[group_interface['interface']]
                     if add_interface is True:
-                        self.logger.info(f"6: Adding {group_interface['interface']}")
                         result, message = Config().node_interface_config(
                             nodeid,
                             group_interface['interface'],
@@ -274,9 +258,6 @@ class Interface():
                                     if result:
                                         if group_interface['interface'] in if_dict.keys():
                                             del if_dict[group_interface['interface']]
-                                        self.logger.info(f"-2---------------------------------------------------------------")
-                                        self.logger.info(f" 2 IF_DICT: {if_dict}")
-                                        self.logger.info(f"-2---------------------------------------------------------------")
                                 # we do not ping nodes as it will take time if we add bulk
                                 # nodes, it'll take 1s per node. code block removal pending?
                                 # ret=0
@@ -293,15 +274,15 @@ class Interface():
                                 #     command = f"ping -w1 -c1 {avail}"
                                 #     output, ret = Helper().runcommand(command, True, 3)
                                 #     max-= 1
-                if if_dict:
+
+                if if_dict and if_old_group_dict:
                     for interface in if_dict.keys():
-                        if if_old_group_dict and if_dict[interface]['interface'] in if_old_group_dict.keys():
-                            self.logger.info(f"6: i would remove {if_dict[interface]['interface']}")
+                        if if_dict[interface]['interface'] in if_old_group_dict.keys():
+                            # This means that the interface existed in the previous group, therefor we 
+                            # conclude to remove it. Seems legit no?
                             self.delete_node_interface(nodeid=nodeid, interface=if_dict[interface]['interface'])
-                        else:
-                            self.logger.info(f"6: nothing to do for {if_dict[interface]['interface']}")
         else:
-            return False, "name and/or group not defined"
+            return False, "nodeid and/or group not defined"
         return True, "success"
 
 

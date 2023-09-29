@@ -227,6 +227,7 @@ class Interface():
                                             self.logger.info(f"5: 'ipaddress' there for {group_interface['interface']}")
                                             # we already have such interface with matching config. we do nothing
                                             skip = True
+                                            del if_dict[group_interface['interface']]
                         if skip is False:
                             ips = Config().get_all_occupied_ips_from_network(
                                 group_interface['network']
@@ -268,6 +269,9 @@ class Interface():
                                 #     command = f"ping -w1 -c1 {avail}"
                                 #     output, ret = Helper().runcommand(command, True, 3)
                                 #     max-= 1
+                        if if_dict:
+                            for interface in if_dict.keys():
+                                self.logger.info(f"6: i would remove {if_dict[interface]['interface']}")
         else:
             return False, "name and/or group not defined"
         return True, "success"

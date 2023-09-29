@@ -278,6 +278,10 @@ class Interface():
 
                 if if_dict and if_old_group_dict:
                     for interface in if_dict.keys():
+                        # should we really police everything? what if a node has something else for a bootif?
+                        # We leave it up to the intelligence of the admins and we commented out the below section
+                        #if if_dict[interface]['interface'] == "BOOTIF":
+                        #    continue
                         if if_dict[interface]['interface'] in if_old_group_dict.keys():
                             # This means that the interface existed in the previous group, therefor we 
                             # conclude to remove it. Seems legit no?

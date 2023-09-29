@@ -503,10 +503,8 @@ class Node():
                     Database().update('node', row, where)
                     response = f'Node {name} updated successfully'
                     status = True
-                    if nodeid and 'groupid' in data and data['groupid']:
-                        Interface().update_node_group_interface(nodeid=nodeid, group=data['groupid'])
-                    elif nodeid and 'groupid' in node[0] and node[0]['groupid']:
-                        Interface().update_node_group_interface(nodeid=nodeid, group=node[0]['groupid'])
+                    if node and len(node)>0 and 'groupid' in node[0] and 'groupid' not in data:
+                        data['groupid'] = node[0]['groupid']
                 if create:
                     if 'groupid' not in data:
                         # ai, we DO need this for new nodes...... kind of.
@@ -518,9 +516,10 @@ class Node():
                     nodeid = Database().insert('node', row)
                     response = f'Node {name} created successfully'
                     status = True
-                    if nodeid and 'groupid' in data and data['groupid']:
-                        Interface().update_node_group_interface(nodeid=nodeid, group=data['groupid'])
-                        """
+
+                if nodeid and 'groupid' in data and data['groupid']:
+                    Interface().update_node_group_interface(nodeid=nodeid, group=data['groupid'])
+                    """
                         # ----> GROUP interface. WIP. pending. should work but i keep it WIP
                         group_interfaces = Database().get_record_join(
                             [
@@ -574,7 +573,7 @@ class Node():
                                         #     command = f"ping -w1 -c1 {avail}"
                                         #     output, ret = Helper().runcommand(command, True, 3)
                                         #     max-= 1
-                        """
+                    """
 
                 if interfaces:
                     result, message = Interface().change_node_interface(nodeid=nodeid, data=interfaces)

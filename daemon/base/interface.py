@@ -169,12 +169,12 @@ class Interface():
         return status, response
 
 
-    def update_node_group_interface(self, nodeid=None, group=None):
+    def update_node_group_interface(self, nodeid=None, groupid=None):
         """
         This function adds/updates group interfaces for one node
         Typically used when a node is changed, added or when a group has changed for a node
         """
-        if nodeid and group:
+        if nodeid and groupid:
             # ----> GROUP interface. WIP. pending. should work but i keep it WIP
             # we fetch interfaces and ip-s separate as interfaces might not have IPs set in weird cases
             existing_if = Database().get_record(None, 'nodeinterface', f"WHERE nodeid={nodeid}")
@@ -201,7 +201,7 @@ class Interface():
                     'groupinterface.options'
                 ],
                 ['network.id=groupinterface.networkid'],
-                [f"groupinterface.groupid={group}"]
+                [f"groupinterface.groupid={groupid}"]
             )
             if group_interfaces:
                 for group_interface in group_interfaces:
@@ -222,6 +222,7 @@ class Interface():
                                         add_interface = False
                                         del if_dict[group_interface['interface']]
                     if add_interface is True:
+                        self.logger.info(f"6: Adding {group_interface['interface']}")
                         result, message = Config().node_interface_config(
                             nodeid,
                             group_interface['interface'],

@@ -205,7 +205,7 @@ class Interface():
             )
             if group_interfaces:
                 for group_interface in group_interfaces:
-                    skip = False
+                    add_interface = True
                     if group_interface['interface'] in if_dict.keys():
                         # good, we already have an interface with that name
                         self.logger.info(f"1: {group_interface['interface']} in if_dict")
@@ -219,9 +219,9 @@ class Interface():
                                     if ip_dict[group_interface['interface']]['ipaddress']:
                                         self.logger.info(f"5: 'ipaddress' there for {group_interface['interface']}")
                                         # we already have such interface with matching config. we do nothing
-                                        skip = True
+                                        add_interface = False
                                         del if_dict[group_interface['interface']]
-                    if skip is False:
+                    if add_interface is True:
                         result, message = Config().node_interface_config(
                             nodeid,
                             group_interface['interface'],

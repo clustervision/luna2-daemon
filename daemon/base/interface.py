@@ -134,7 +134,7 @@ class Interface():
                                 f"nodeinterface.interface='{interface_name}'"
                             ]
                         )
-                        if existing and existing['networkname'] == network:
+                        if existing and existing[0]['networkname'] == network:
                             ipaddress = existing[0]['ipaddress']
                         else:
                             ips = Config().get_all_occupied_ips_from_network(network)

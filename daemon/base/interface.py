@@ -169,10 +169,12 @@ class Interface():
         return status, response
 
 
-    def update_node_group_interface(self, nodeid=None, groupid=None):
+    def update_node_group_interface(self, nodeid=None, groupid=None, oldgroupid=None):
         """
         This function adds/updates group interfaces for one node
         Typically used when a node is changed, added or when a group has changed for a node
+        If oldgroup id is provided we compare with what the old group has versus the node.
+        It tries to figure out what needs to be added or removed for a node. pffffff......
         """
         if nodeid and groupid:
             # ----> GROUP interface. WIP. pending. should work but i keep it WIP
@@ -193,6 +195,20 @@ class Interface():
             self.logger.info(f"-----------------------------------------------------------------")
             self.logger.info(f"IP_DICT: {ip_dict}")
             self.logger.info(f"-----------------------------------------------------------------")
+            if_old_group_dict = None
+            if oldgroupid:
+                old_group_interfaces = Database().get_record_join(
+                    [
+                        'groupinterface.interface',
+                        'network.name as network',
+                        'network.id as networkid',
+                        'groupinterface.options'
+                    ],
+                    ['network.id=groupinterface.networkid'],
+                    [f"groupinterface.groupid={groupid}"]
+                )
+                if old_group_interfaces:
+                    if_old_group_dict = Helper().convert_list_to_dict(old_group_interfaces, 'interface')
             group_interfaces = Database().get_record_join(
                 [
                     'groupinterface.interface',
@@ -273,8 +289,9 @@ class Interface():
                                 #     max-= 1
                 if if_dict:
                     for interface in if_dict.keys():
-                        self.logger.info(f"6: i would remove {if_dict[interface]['interface']}")
-                        self.delete_node_interface(nodeid=nodeid, interface=if_dict[interface]['interface'])
+                        if if_old_group_dict and interface in if_old_group_dict.keys():
+                            self.logger.info(f"6: i would remove {if_dict[interface]['interface']}")
+                            self.delete_node_interface(nodeid=nodeid, interface=if_dict[interface]['interface'])
         else:
             return False, "name and/or group not defined"
         return True, "success"

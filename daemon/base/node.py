@@ -487,6 +487,7 @@ class Node():
                     elif node and 'osimageid' in node[0]:
                         osimagetagids = Database().get_record(None, 'osimagetag', f" WHERE osimageid = '{node[0]['osimageid']}' AND name = '{osimagetag}'")
                     else:
+                        # there is a race condition where someone changes the group AND sets a tag at the same time. ... who will do such a thing?? - Antoine
                         osimagetagids = Database().get_record_join(['osimagetag.id'],['osimagetag.osimageid=group.osimageid','group.id=node.groupid'],[f"node.name='{name}'",f"osimagetag.name='{osimagetag}'"])
                     if osimagetagids:
                         data['osimagetagid'] = osimagetagids[0]['id']
@@ -503,8 +504,8 @@ class Node():
                     Database().update('node', row, where)
                     response = f'Node {name} updated successfully'
                     status = True
-                    if node and len(node)>0 and 'groupid' in node[0] and 'groupid' not in data:
-                        data['groupid'] = node[0]['groupid']
+                    if nodeid and 'groupid' in data and node and len(node)>0 and 'groupid' in node[0]:
+                        Interface().update_node_group_interface(nodeid=nodeid, groupid=data['groupid'], oldgroupid=node[0]['groupid'])
                 if create:
                     if 'groupid' not in data:
                         # ai, we DO need this for new nodes...... kind of.
@@ -517,9 +518,9 @@ class Node():
                     response = f'Node {name} created successfully'
                     status = True
 
-                if nodeid and 'groupid' in data and data['groupid']:
-                    Interface().update_node_group_interface(nodeid=nodeid, groupid=data['groupid'])
-                    """
+                    if nodeid and 'groupid' in data and data['groupid']:
+                        Interface().update_node_group_interface(nodeid=nodeid, groupid=data['groupid'])
+                        """
                         # ----> GROUP interface. WIP. pending. should work but i keep it WIP
                         group_interfaces = Database().get_record_join(
                             [
@@ -573,7 +574,7 @@ class Node():
                                         #     command = f"ping -w1 -c1 {avail}"
                                         #     output, ret = Helper().runcommand(command, True, 3)
                                         #     max-= 1
-                    """
+                        """
 
                 if interfaces:
                     result, message = Interface().change_node_interface(nodeid=nodeid, data=interfaces)

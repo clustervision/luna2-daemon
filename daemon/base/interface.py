@@ -371,10 +371,10 @@ class Interface():
                     '__node_interface_delete__'
                 )
                 Queue().add_task_to_queue('dns:restart', 'housekeeper', '__node_interface_delete__')
-                response = f'Node {name} interface {interface} removed successfully'
+                response = f'Interface {interface} removed successfully'
                 status=True
             else:
-                response = f'Node {name} interface {interface} not present in database'
+                response = f'Interface {interface} not present in database'
                 status=False
         else:
             response = 'Invalid request: did not receive Data'

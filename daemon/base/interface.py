@@ -106,6 +106,7 @@ class Interface():
         if data and nodeid:
             for interface in data:
                 # Antoine
+                interface_name = interface['interface']
                 ipaddress, macaddress, network, options = None, None, None, None
                 if 'macaddress' in interface.keys():
                     macaddress = interface['macaddress']

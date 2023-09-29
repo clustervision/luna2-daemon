@@ -487,6 +487,7 @@ class Node():
                     elif node and 'osimageid' in node[0]:
                         osimagetagids = Database().get_record(None, 'osimagetag', f" WHERE osimageid = '{node[0]['osimageid']}' AND name = '{osimagetag}'")
                     else:
+                        # there is a race condition where someone changes the group AND sets a tag at the same time. ... who will do such a thing?? - Antoine
                         osimagetagids = Database().get_record_join(['osimagetag.id'],['osimagetag.osimageid=group.osimageid','group.id=node.groupid'],[f"node.name='{name}'",f"osimagetag.name='{osimagetag}'"])
                     if osimagetagids:
                         data['osimagetagid'] = osimagetagids[0]['id']
@@ -503,6 +504,8 @@ class Node():
                     Database().update('node', row, where)
                     response = f'Node {name} updated successfully'
                     status = True
+                    if nodeid and 'groupid' in data and node and len(node)>0 and 'groupid' in node[0]:
+                        Interface().update_node_group_interface(nodeid=nodeid, groupid=data['groupid'], oldgroupid=node[0]['groupid'])
                 if create:
                     if 'groupid' not in data:
                         # ai, we DO need this for new nodes...... kind of.
@@ -514,64 +517,12 @@ class Node():
                     nodeid = Database().insert('node', row)
                     response = f'Node {name} created successfully'
                     status = True
+
                     if nodeid and 'groupid' in data and data['groupid']:
-                        # ----> GROUP interface. WIP. pending. should work but i keep it WIP
-                        group_interfaces = Database().get_record_join(
-                            [
-                                'groupinterface.interface',
-                                'network.name as network',
-                                'groupinterface.options'
-                            ],
-                            ['network.id=groupinterface.networkid'],
-                            [f"groupinterface.groupid={data['groupid']}"]
-                        )
-                        if group_interfaces:
-                            for group_interface in group_interfaces:
-                                result, message = Config().node_interface_config(
-                                    nodeid,
-                                    group_interface['interface'],
-                                    None,
-                                    group_interface['options']
-                                )
-                                if result:
-                                    ips = Config().get_all_occupied_ips_from_network(
-                                        group_interface['network']
-                                    )
-                                    where = f" WHERE `name` = \"{group_interface['network']}\""
-                                    network = Database().get_record(None, 'network', where)
-                                    if network:
-                                        avail = Helper().get_available_ip(
-                                            network[0]['network'],
-                                            network[0]['subnet'],
-                                            ips
-                                        )
-                                        if avail:
-                                            result, message = Config().node_interface_ipaddress_config(
-                                                nodeid,
-                                                group_interface['interface'],
-                                                avail,
-                                                group_interface['network']
-                                            )
-                                        # we do not ping nodes as it will take time if we add bulk
-                                        # nodes, it'll take 1s per node. code block removal pending?
-                                        # ret=0
-                                        # max=5
-                                        # we try to ping for X ips, if none of these are free,
-                                        # something else is going on (read: rogue devices)....
-                                        # while(max>0 and ret!=1):
-                                        #     avail = Helper().get_available_ip(
-                                        #       network[0]['network'],
-                                        #       network[0]['subnet'],
-                                        #       ips
-                                        #     )
-                                        #     ips.append(avail)
-                                        #     command = f"ping -w1 -c1 {avail}"
-                                        #     output, ret = Helper().runcommand(command, True, 3)
-                                        #     max-= 1
+                        Interface().update_node_group_interface(nodeid=nodeid, groupid=data['groupid'])
 
                 if interfaces:
-                    new_request_data={"config": {"node": {data['name']: {"interfaces": interfaces}}}}
-                    result, message = Interface().change_node_interface(name=data['name'], request_data=new_request_data)
+                    result, message = Interface().change_node_interface(nodeid=nodeid, data=interfaces)
                     if result is False:
                         status = False
                         return status, f'{message}'

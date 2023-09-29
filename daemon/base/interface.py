@@ -298,6 +298,8 @@ class Interface():
                         if if_old_group_dict and if_dict[interface]['interface'] in if_old_group_dict.keys():
                             self.logger.info(f"6: i would remove {if_dict[interface]['interface']}")
                             self.delete_node_interface(nodeid=nodeid, interface=if_dict[interface]['interface'])
+                        else:
+                            self.logger.info(f"6: nothing to do for {if_dict[interface]['interface']}")
         else:
             return False, "name and/or group not defined"
         return True, "success"

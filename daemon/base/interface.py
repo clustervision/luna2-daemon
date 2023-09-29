@@ -208,7 +208,7 @@ class Interface():
                         'groupinterface.options'
                     ],
                     ['network.id=groupinterface.networkid'],
-                    [f"groupinterface.groupid={groupid}"]
+                    [f"groupinterface.groupid={oldgroupid}"]
                 )
                 if old_group_interfaces:
                     if_old_group_dict = Helper().convert_list_to_dict(old_group_interfaces, 'interface')

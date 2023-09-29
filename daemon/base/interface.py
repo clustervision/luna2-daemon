@@ -205,30 +205,30 @@ class Interface():
             )
             if group_interfaces:
                 for group_interface in group_interfaces:
-                    result, message = Config().node_interface_config(
-                        nodeid,
-                        group_interface['interface'],
-                        None,
-                        group_interface['options']
-                    )
-                    if result:
-                        skip = False
-                        if group_interface['interface'] in if_dict.keys():
-                            # good, we already have an interface with that name
-                            self.logger.info(f"1: {group_interface['interface']} in if_dict")
-                            if group_interface['interface'] in ip_dict.keys():
-                                # and it already has an IP
-                                self.logger.info(f"2: {group_interface['interface']} in ip_dict")
-                                if 'networkid' in ip_dict[group_interface['interface']]:
-                                    self.logger.info(f"3: 'networkid' in ip_dict[{group_interface['interface']}]")
-                                    if group_interface['networkid'] == ip_dict[group_interface['interface']]['networkid']:
-                                        self.logger.info(f"4: 'networks' match for {group_interface['interface']}")
-                                        if ip_dict[group_interface['interface']]['ipaddress']:
-                                            self.logger.info(f"5: 'ipaddress' there for {group_interface['interface']}")
-                                            # we already have such interface with matching config. we do nothing
-                                            skip = True
-                                            del if_dict[group_interface['interface']]
-                        if skip is False:
+                    skip = False
+                    if group_interface['interface'] in if_dict.keys():
+                        # good, we already have an interface with that name
+                        self.logger.info(f"1: {group_interface['interface']} in if_dict")
+                        if group_interface['interface'] in ip_dict.keys():
+                            # and it already has an IP
+                            self.logger.info(f"2: {group_interface['interface']} in ip_dict")
+                            if 'networkid' in ip_dict[group_interface['interface']]:
+                                self.logger.info(f"3: 'networkid' in ip_dict[{group_interface['interface']}]")
+                                if group_interface['networkid'] == ip_dict[group_interface['interface']]['networkid']:
+                                    self.logger.info(f"4: 'networks' match for {group_interface['interface']}")
+                                    if ip_dict[group_interface['interface']]['ipaddress']:
+                                        self.logger.info(f"5: 'ipaddress' there for {group_interface['interface']}")
+                                        # we already have such interface with matching config. we do nothing
+                                        skip = True
+                                        del if_dict[group_interface['interface']]
+                    if skip is False:
+                        result, message = Config().node_interface_config(
+                            nodeid,
+                            group_interface['interface'],
+                            None,
+                            group_interface['options']
+                        )
+                        if result:
                             ips = Config().get_all_occupied_ips_from_network(
                                 group_interface['network']
                             )

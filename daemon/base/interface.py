@@ -209,6 +209,9 @@ class Interface():
                 )
                 if old_group_interfaces:
                     if_old_group_dict = Helper().convert_list_to_dict(old_group_interfaces, 'interface')
+                    self.logger.info(f"-----------------------------------------------------------------")
+                    self.logger.info(f"IF_OLD_GROUP_DICT: {if_old_group_dict}")
+                    self.logger.info(f"-----------------------------------------------------------------")
             group_interfaces = Database().get_record_join(
                 [
                     'groupinterface.interface',

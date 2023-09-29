@@ -102,7 +102,6 @@ class Interface():
         This method will add or update the node interface.
         """
         status=False
-        self.logger.info(f"=======> [ {data} ]")
         if data and nodeid:
             for interface in data:
                 # Antoine

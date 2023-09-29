@@ -515,6 +515,8 @@ class Node():
                     response = f'Node {name} created successfully'
                     status = True
                     if nodeid and 'groupid' in data and data['groupid']:
+                        Interface().update_node_group_interface(nodeid=nodeid, group=data['groupid'])
+                        """
                         # ----> GROUP interface. WIP. pending. should work but i keep it WIP
                         group_interfaces = Database().get_record_join(
                             [
@@ -568,6 +570,7 @@ class Node():
                                         #     command = f"ping -w1 -c1 {avail}"
                                         #     output, ret = Helper().runcommand(command, True, 3)
                                         #     max-= 1
+                        """
 
                 if interfaces:
                     result, message = Interface().change_node_interface(nodeid=nodeid, data=interfaces)

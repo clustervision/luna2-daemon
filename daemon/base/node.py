@@ -520,61 +520,6 @@ class Node():
 
                     if nodeid and 'groupid' in data and data['groupid']:
                         Interface().update_node_group_interface(nodeid=nodeid, groupid=data['groupid'])
-                        """
-                        # ----> GROUP interface. WIP. pending. should work but i keep it WIP
-                        group_interfaces = Database().get_record_join(
-                            [
-                                'groupinterface.interface',
-                                'network.name as network',
-                                'groupinterface.options'
-                            ],
-                            ['network.id=groupinterface.networkid'],
-                            [f"groupinterface.groupid={data['groupid']}"]
-                        )
-                        if group_interfaces:
-                            for group_interface in group_interfaces:
-                                result, message = Config().node_interface_config(
-                                    nodeid,
-                                    group_interface['interface'],
-                                    None,
-                                    group_interface['options']
-                                )
-                                if result:
-                                    ips = Config().get_all_occupied_ips_from_network(
-                                        group_interface['network']
-                                    )
-                                    where = f" WHERE `name` = \"{group_interface['network']}\""
-                                    network = Database().get_record(None, 'network', where)
-                                    if network:
-                                        avail = Helper().get_available_ip(
-                                            network[0]['network'],
-                                            network[0]['subnet'],
-                                            ips
-                                        )
-                                        if avail:
-                                            result, message = Config().node_interface_ipaddress_config(
-                                                nodeid,
-                                                group_interface['interface'],
-                                                avail,
-                                                group_interface['network']
-                                            )
-                                        # we do not ping nodes as it will take time if we add bulk
-                                        # nodes, it'll take 1s per node. code block removal pending?
-                                        # ret=0
-                                        # max=5
-                                        # we try to ping for X ips, if none of these are free,
-                                        # something else is going on (read: rogue devices)....
-                                        # while(max>0 and ret!=1):
-                                        #     avail = Helper().get_available_ip(
-                                        #       network[0]['network'],
-                                        #       network[0]['subnet'],
-                                        #       ips
-                                        #     )
-                                        #     ips.append(avail)
-                                        #     command = f"ping -w1 -c1 {avail}"
-                                        #     output, ret = Helper().runcommand(command, True, 3)
-                                        #     max-= 1
-                        """
 
                 if interfaces:
                     result, message = Interface().change_node_interface(nodeid=nodeid, data=interfaces)

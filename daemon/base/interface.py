@@ -84,7 +84,7 @@ class Interface():
                 new_data = request_data['config']['node'][name]['interfaces']
                 node = Database().get_record(None, 'node', f' WHERE name = "{name}"')
                 if node:
-                    status, response = self.change_node_interface(node[0]['id'], data)
+                    status, response = self.change_node_interface(node[0]['id'], new_data)
                 else:
                     response = f'Node {name} is not available'
                     status=False

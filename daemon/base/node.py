@@ -518,7 +518,7 @@ class Node():
                     status = True
 
                 if nodeid and 'groupid' in data and data['groupid']:
-                    Interface().update_node_group_interface(nodeid=nodeid, group=data['groupid'])
+                    Interface().update_node_group_interface(nodeid=nodeid, groupid=data['groupid'])
                     """
                         # ----> GROUP interface. WIP. pending. should work but i keep it WIP
                         group_interfaces = Database().get_record_join(

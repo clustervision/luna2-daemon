@@ -177,6 +177,9 @@ class Interface():
         It tries to figure out what needs to be added or removed for a node. pffffff......
         """
         if nodeid and groupid:
+            self.logger.info(f"-----------------------------------------------------------------")
+            self.logger.info(f"## nodeid: {nodeid}, groupid: {groupid}, oldgroupid: {oldgroupid}")
+            self.logger.info(f"-----------------------------------------------------------------")
             # ----> GROUP interface. WIP. pending. should work but i keep it WIP
             # we fetch interfaces and ip-s separate as interfaces might not have IPs set in weird cases
             existing_if = Database().get_record(None, 'nodeinterface', f"WHERE nodeid={nodeid}")

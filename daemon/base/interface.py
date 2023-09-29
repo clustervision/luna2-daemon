@@ -219,9 +219,9 @@ class Interface():
                             if group_interface['interface'] in ip_dict.keys():
                                 # and it already has an IP
                                 self.logger.info(f"2: {group_interface['interface']} in ip_dict")
-                                if 'id' in ip_dict[group_interface['interface']]:
-                                    self.logger.info(f"3: 'id' in ip_dict[{group_interface['interface']}]")
-                                    if group_interface['networkid'] == ip_dict[group_interface['interface']]['id']:
+                                if 'networkid' in ip_dict[group_interface['interface']]:
+                                    self.logger.info(f"3: 'networkid' in ip_dict[{group_interface['interface']}]")
+                                    if group_interface['networkid'] == ip_dict[group_interface['interface']]['networkid']:
                                         self.logger.info(f"4: 'networks' match for {group_interface['interface']}")
                                         if ip_dict[group_interface['interface']]['ipaddress']:
                                             self.logger.info(f"5: 'ipaddress' there for {group_interface['interface']}")

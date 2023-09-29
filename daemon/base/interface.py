@@ -219,9 +219,9 @@ class Interface():
                     add_interface = True
                     # now we go into the rabbit hole. we figure if the node already has this interface
                     # confgured, with network and matching ip. if so, we leave it alone.
-                    if group_interface['interface'] in if_dict.keys():
+                    if if_dict and group_interface['interface'] in if_dict.keys():
                         # good, we already have an interface with that name
-                        if group_interface['interface'] in ip_dict.keys():
+                        if ip_dict and group_interface['interface'] in ip_dict.keys():
                             # and it already has an IP
                             if 'networkid' in ip_dict[group_interface['interface']]:
                                 if group_interface['networkid'] == ip_dict[group_interface['interface']]['networkid']:
@@ -256,7 +256,7 @@ class Interface():
                                         group_interface['network']
                                     )
                                     if result:
-                                        if group_interface['interface'] in if_dict.keys():
+                                        if if_dict and group_interface['interface'] in if_dict.keys():
                                             del if_dict[group_interface['interface']]
                                 # we do not ping nodes as it will take time if we add bulk
                                 # nodes, it'll take 1s per node. code block removal pending?

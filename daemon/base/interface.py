@@ -204,7 +204,7 @@ class Interface():
                 [f"groupinterface.groupid={groupid}"]
             )
             if group_interfaces:
-                self.logger.info(f"0: ALL grp if: {group_interfaces}")
+                self.logger.info(f"0: ALL grp {groupid} if: {group_interfaces}")
                 for group_interface in group_interfaces:
                     add_interface = True
                     if group_interface['interface'] in if_dict.keys():

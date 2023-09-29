@@ -200,7 +200,7 @@ def config_node_post_interfaces(name=None):
     Process - Create Or Update The Node Interface.
     Output - Node Interface.
     """
-    status, response = Interface().change_node_interface(name, request.data)
+    status, response = Interface().change_node_interface_by_name(name, request.data)
     access_code=Helper().get_access_code(status,response)
     response = {'message': response}
     return response, access_code

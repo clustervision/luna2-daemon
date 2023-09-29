@@ -811,6 +811,7 @@ $TTL 604800
     def update_interface_on_group_nodes(self, name=None, request_id=None):
         """
         This method will update node/group interfaces.
+        It's called from a group add/change. it handles all nodes in that group
         """
         self.logger.info(f'request_id: {request_id}')
         self.logger.info("update_interface_on_group_nodes called")

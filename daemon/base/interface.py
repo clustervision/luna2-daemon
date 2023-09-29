@@ -269,9 +269,9 @@ class Interface():
                                 #     command = f"ping -w1 -c1 {avail}"
                                 #     output, ret = Helper().runcommand(command, True, 3)
                                 #     max-= 1
-                        if if_dict:
-                            for interface in if_dict.keys():
-                                self.logger.info(f"6: i would remove {if_dict[interface]['interface']}")
+                    if if_dict:
+                        for interface in if_dict.keys():
+                            self.logger.info(f"6: i would remove {if_dict[interface]['interface']}")
         else:
             return False, "name and/or group not defined"
         return True, "success"

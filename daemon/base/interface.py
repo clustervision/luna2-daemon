@@ -215,11 +215,16 @@ class Interface():
                         skip = False
                         if group_interface['interface'] in if_dict.keys():
                             # good, we already have an interface with that name
+                            self.logger.info(f"1: {group_interface['interface']} in if_dict")
                             if group_interface['interface'] in ip_dict.keys():
                                 # and it already has an IP
+                                self.logger.info(f"2: {group_interface['interface']} in ip_dict")
                                 if 'id' in ip_dict[group_interface['interface']]:
+                                    self.logger.info(f"3: 'id' in ip_dict[{group_interface['interface']}]")
                                     if group_interface['networkid'] == ip_dict[group_interface['interface']]['id']:
+                                        self.logger.info(f"4: 'networks' match for {group_interface['interface']}")
                                         if ip_dict[group_interface['interface']]['ipaddress']:
+                                            self.logger.info(f"5: 'ipaddress' there for {group_interface['interface']}")
                                             # we already have such interface with matching config. we do nothing
                                             skip = True
                         if skip is False:

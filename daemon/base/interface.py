@@ -295,7 +295,7 @@ class Interface():
                                 #     max-= 1
                 if if_dict:
                     for interface in if_dict.keys():
-                        if if_old_group_dict and interface in if_old_group_dict.keys():
+                        if if_old_group_dict and if_dict[interface]['interface'] in if_old_group_dict.keys():
                             self.logger.info(f"6: i would remove {if_dict[interface]['interface']}")
                             self.delete_node_interface(nodeid=nodeid, interface=if_dict[interface]['interface'])
         else:

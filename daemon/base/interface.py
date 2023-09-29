@@ -179,15 +179,15 @@ class Interface():
             # we fetch interfaces and ip-s separate as interfaces might not have IPs set in weird cases
             existing_if = Database().get_record(None, 'nodeinterface', f"WHERE nodeid={nodeid}")
             existing_ip = Database().get_record_join(
-                ['nodeinterface.name','ipaddress.*'],
+                ['nodeinterface.interface','ipaddress.*'],
                 ['ipaddress.tablerefid=nodeinterface.id'],
                 ["ipaddress.tableref='nodeinterface'",f"nodeinterface.nodeid={nodeid}"]
             )
             if_dict, ip_dict = None, None
             if existing_if:
-                if_dict = Helper().convert_list_to_dict(existing_if, 'name')
+                if_dict = Helper().convert_list_to_dict(existing_if, 'interface')
             if existing_ip:
-                ip_dict = Helper().convert_list_to_dict(existing_ip, 'name')
+                ip_dict = Helper().convert_list_to_dict(existing_ip, 'interface')
             self.logger.info(f"-----------------------------------------------------------------")
             self.logger.info(f"IF_DICT: {if_dict}")
             self.logger.info(f"-----------------------------------------------------------------")

@@ -176,10 +176,28 @@ class Interface():
         """
         if nodeid and group:
             # ----> GROUP interface. WIP. pending. should work but i keep it WIP
+            # we fetch interfaces and ip-s separate as interfaces might not have IPs set in weird cases
+            existing_if = Database().get_record(None, 'nodeinterface', f"WHERE nodeid={nodeid}")
+            existing_ip = Database().get_record_join(
+                ['nodeinterface.name','ipaddress.*'],
+                ['ipaddress.tablerefid=nodeinterface.id'],
+                ["ipaddress.tableref='nodeinterface'",f"nodeinterface.nodeid={nodeid}"]
+            )
+            if_dict, ip_dict = None, None
+            if existing_if:
+                if_dict = Helper().convert_list_to_dict(existing_if, 'name')
+            if existing_ip:
+                ip_dict = Helper().convert_list_to_dict(existing_ip, 'name')
+            self.logger.info(f"-----------------------------------------------------------------")
+            self.logger.info(f"IF_DICT: {if_dict}")
+            self.logger.info(f"-----------------------------------------------------------------")
+            self.logger.info(f"IP_DICT: {ip_dict}")
+            self.logger.info(f"-----------------------------------------------------------------")
             group_interfaces = Database().get_record_join(
                 [
                     'groupinterface.interface',
                     'network.name as network',
+                    'network.id as networkid',
                     'groupinterface.options'
                 ],
                 ['network.id=groupinterface.networkid'],
@@ -194,40 +212,57 @@ class Interface():
                         group_interface['options']
                     )
                     if result:
-                        ips = Config().get_all_occupied_ips_from_network(
-                            group_interface['network']
-                        )
-                        where = f" WHERE `name` = \"{group_interface['network']}\""
-                        network = Database().get_record(None, 'network', where)
-                        if network:
-                            avail = Helper().get_available_ip(
-                                network[0]['network'],
-                                network[0]['subnet'],
-                                ips
+                        skip = False
+                        if group_interface['interface'] in if_dict.keys():
+                            # good, we already have an interface with that name
+                            if group_interface['interface'] in ip_dict.keys():
+                                # and it already has an IP
+                                if 'id' in ip_dict[group_interface['interface']]:
+                                    if group_interface['networkid'] == ip_dict[group_interface['interface']]['id']:
+                                        if ip_dict[group_interface['interface']]['ipaddress']:
+                                            # we already have such interface with matching config. we do nothing
+                                            skip = True
+                        if skip is False:
+                            ips = Config().get_all_occupied_ips_from_network(
+                                group_interface['network']
                             )
-                            if avail:
-                                result, message = Config().node_interface_ipaddress_config(
-                                    nodeid,
-                                    group_interface['interface'],
-                                    avail,
-                                    group_interface['network']
+                            where = f" WHERE `name` = \"{group_interface['network']}\""
+                            network = Database().get_record(None, 'network', where)
+                            if network:
+                                avail = Helper().get_available_ip(
+                                    network[0]['network'],
+                                    network[0]['subnet'],
+                                    ips
                                 )
-                            # we do not ping nodes as it will take time if we add bulk
-                            # nodes, it'll take 1s per node. code block removal pending?
-                            # ret=0
-                            # max=5
-                            # we try to ping for X ips, if none of these are free,
-                            # something else is going on (read: rogue devices)....
-                            # while(max>0 and ret!=1):
-                            #     avail = Helper().get_available_ip(
-                            #       network[0]['network'],
-                            #       network[0]['subnet'],
-                            #       ips
-                            #     )
-                            #     ips.append(avail)
-                            #     command = f"ping -w1 -c1 {avail}"
-                            #     output, ret = Helper().runcommand(command, True, 3)
-                            #     max-= 1
+                                if avail:
+                                    result, message = Config().node_interface_ipaddress_config(
+                                        nodeid,
+                                        group_interface['interface'],
+                                        avail,
+                                        group_interface['network']
+                                    )
+                                    if result:
+                                        if group_interface['interface'] in if_dict.keys():
+                                            del if_dict[group_interface['interface']]
+                                        self.logger.info(f"-2---------------------------------------------------------------")
+                                        self.logger.info(f" 2 IF_DICT: {if_dict}")
+                                        self.logger.info(f"-2---------------------------------------------------------------")
+                                # we do not ping nodes as it will take time if we add bulk
+                                # nodes, it'll take 1s per node. code block removal pending?
+                                # ret=0
+                                # max=5
+                                # we try to ping for X ips, if none of these are free,
+                                # something else is going on (read: rogue devices)....
+                                # while(max>0 and ret!=1):
+                                #     avail = Helper().get_available_ip(
+                                #       network[0]['network'],
+                                #       network[0]['subnet'],
+                                #       ips
+                                #     )
+                                #     ips.append(avail)
+                                #     command = f"ping -w1 -c1 {avail}"
+                                #     output, ret = Helper().runcommand(command, True, 3)
+                                #     max-= 1
         else:
             return False, "name and/or group not defined"
         return True, "success"

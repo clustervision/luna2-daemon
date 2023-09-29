@@ -104,7 +104,7 @@ class Interface():
         status=False
         self.logger.info(f"=======> [ {data} ]")
         if data and nodeid:
-            for interface in data.keys():
+            for interface in data:
                 # Antoine
                 ipaddress, macaddress, network, options = None, None, None, None
                 if 'macaddress' in interface.keys():

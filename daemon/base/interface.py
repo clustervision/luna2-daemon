@@ -122,10 +122,11 @@ class Interface():
                 if result:
                     if not 'ipaddress' in interface.keys():
                         existing = Database().get_record_join(
-                            ['ipaddress.ipaddress'],
+                            ['ipaddress.ipaddress','network.name as networkname'],
                             [
                                 'nodeinterface.nodeid=node.id',
-                                'ipaddress.tablerefid=nodeinterface.id'
+                                'ipaddress.tablerefid=nodeinterface.id',
+                                'network.id=ipaddress.networkid'
                             ],
                             [
                                 f"node.id='{nodeid}'",
@@ -133,7 +134,7 @@ class Interface():
                                 f"nodeinterface.interface='{interface_name}'"
                             ]
                         )
-                        if existing:
+                        if existing and existing['networkname'] == network:
                             ipaddress = existing[0]['ipaddress']
                         else:
                             ips = Config().get_all_occupied_ips_from_network(network)

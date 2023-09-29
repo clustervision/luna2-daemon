@@ -402,7 +402,8 @@ class OSImage():
         This method will delete an osimagetag.
         """
         tag_details = Database().get_record_join(
-            ['osimagetag.id as tagid'],
+            ['osimagetag.id as tagid','osimagetag.*','osimage.kernelfile as osimagekernelfile',
+              'osimage.initrdfile as osimageinitrdfile','osimage.imagefile as osimageimagefile'],
             ['osimagetag.osimageid=osimage.id'],
             [f'osimage.name="{name}"',f'osimagetag.name="{tagname}"']
         )
@@ -421,6 +422,14 @@ class OSImage():
             table = 'osimagetag',
             table_cap = 'OS image tag'
         )
+        for item in ['kernelfile','initrdfile','imagefile']:
+            if tag_details[0][item]:
+                if tag_details[0]['osimage'+item] == tag_details[0][item]:
+                    # meaning: we are still using one for osimage itself!
+                    continue
+                queue_id,queue_response = Queue().add_task_to_queue(f'cleanup_old_file:'+tag_details[0][item],'housekeeper','__tag_delete__',None,'1h')
+                if item == 'imagefile':
+                    queue_id,queue_response = Queue().add_task_to_queue(f'cleanup_old_provisioning:'+tag_details[0][item],'housekeeper','__tag_delete__',None,'1h')
         return status, response
 
 

@@ -421,6 +421,11 @@ class OSImage():
             table = 'osimagetag',
             table_cap = 'OS image tag'
         )
+        for item in ['kernelfile','initrdfile','imagefile']:
+            if tag_details[0][item]:
+                queue_id,queue_response = Queue().add_task_to_queue(f'cleanup_old_file:'+tag_details[0][item],'housekeeper','__tag_delete__',None,'1h')
+                if item == 'imagefile':
+                    queue_id,queue_response = Queue().add_task_to_queue(f'cleanup_old_provisioning:'+tag_details[0][item],'housekeeper','__tag_delete__',None,'1h')
         return status, response
 
 

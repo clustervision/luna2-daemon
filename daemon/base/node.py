@@ -503,6 +503,8 @@ class Node():
                     Database().update('node', row, where)
                     response = f'Node {name} updated successfully'
                     status = True
+                    if nodeid and 'groupid' in node[0] and node[0]['groupid']:
+                        Interface().update_node_group_interface(nodeid=nodeid, group=node[0]['groupid'])
                 if create:
                     if 'groupid' not in data:
                         # ai, we DO need this for new nodes...... kind of.

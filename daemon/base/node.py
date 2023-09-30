@@ -195,7 +195,7 @@ class Node():
             [
                 'node.*',
                 'group.name AS group',
-                'osimage.name AS group_osimage',
+                'group.osimageid AS group_osimageid',
                 'group.osimagetagid AS group_osimagetagid',
                 'group.setupbmc AS group_setupbmc',
                 'group.bmcsetupid AS group_bmcsetupid',
@@ -209,7 +209,7 @@ class Node():
                 'group.provision_fallback AS group_provision_fallback',
                 'group.provision_interface AS group_provision_interface'
             ],
-            ['group.id=node.groupid','osimage.id=group.osimageid'],
+            ['group.id=node.groupid'],
             f"node.name='{name}'"
         )
         if all_nodes and nodes:
@@ -219,28 +219,27 @@ class Node():
             response = {'config': {'node': {} }}
             nodename = node['name']
             nodeid = node['id']
-            if node['bmcsetupid']:
-                node['bmcsetup'] = Database().name_by_id(
-                    'bmcsetup',
-                    node['bmcsetupid']
-                ) or '!!Invalid!!'
-            elif 'group_bmcsetupid' in node and node['group_bmcsetupid']:
+            if node['osimageid']:
+                node['osimage'] = Database().name_by_id('osimage',node['osimageid']) or '!!Invalid!!'
+            elif 'group_osimageid' in node and node['group_osimageid']:
+                node['osimage'] = Database().name_by_id('osimage', node['group_osimageid']) or '!!Invalid!!'
                 if cli:
-                    node['bmcsetup'] = Database().name_by_id('bmcsetup', node['group_bmcsetupid']) + f" ({node['group']})"
-                else:
-                    node['bmcsetup'] = Database().name_by_id('bmcsetup', node['group_bmcsetupid'])
+                    node['osimage'] += f" ({node['group']})"
+            else:
+                node['osimage'] = None
+            if 'group_osimageid' in node:
+                del node['group_osimageid']
+            #---
+            if node['bmcsetupid']:
+                node['bmcsetup'] = Database().name_by_id('bmcsetup',node['bmcsetupid']) or '!!Invalid!!'
+            elif 'group_bmcsetupid' in node and node['group_bmcsetupid']:
+                node['bmcsetup'] = Database().name_by_id('bmcsetup', node['group_bmcsetupid']) or '!!Invalid!!'
+                if cli:
+                    node['bmcsetup'] += f" ({node['group']})"
+            else:
+                node['bmcsetup'] = None
             if 'group_bmcsetupid' in node:
                 del node['group_bmcsetupid']
-            #---
-            if node['osimageid']:
-                node['osimage'] = Database().name_by_id('osimage', node['osimageid']) or '!!Invalid!!'
-            elif 'group_osimage' in node and node['group_osimage']:
-                if cli:
-                    node['osimage'] = node['group_osimage']+f" ({node['group']})"
-                else:
-                    node['osimage'] = node['group_osimage']
-            if 'group_osimage' in node:
-                del node['group_osimage']
             #---
             if node['osimagetagid']:
                 node['osimagetag'] = Database().name_by_id('osimagetag', node['osimagetagid']) or 'default'
@@ -537,23 +536,19 @@ class Node():
                 Queue().add_task_to_queue('dns:restart', 'housekeeper', '__node_update__')
 
                 # ---- we call the node plugin - maybe someone wants to run something after create/update?
-                ret, enclosed_node_details = self.get_node(cli=False, name=name)
-                node_details=None
-                if ret is True:
-                    if 'config' in enclosed_node_details.keys():
-                        if 'node' in enclosed_node_details['config'].keys():
-                            if name in enclosed_node_details['config']['node']:
-                                node_details=enclosed_node_details['config']['node'][name]
-                    if node_details:
-                        node_plugins = Helper().plugin_finder(f'{self.plugins_path}/node')
-                        NodePlugin=Helper().plugin_load(node_plugins,'node','default')
-                        try:
-                            if create:
-                                NodePlugin().postcreate(name=name, group=node_details['group'])
-                            elif update:
-                                NodePlugin().postupdate(name=name, group=node_details['group'])
-                        except Exception as exp:
-                            self.logger.error(f"{exp}")
+                group_details = Database().get_record_join(['group.name'],
+                                                           ['group.id=node.groupid'],
+                                                           [f"node.name='{name}'"])
+                if group_details:
+                    node_plugins = Helper().plugin_finder(f'{self.plugins_path}/node')
+                    NodePlugin=Helper().plugin_load(node_plugins,'node','default')
+                    try:
+                        if create:
+                            NodePlugin().postcreate(name=name, group=group_details[0]['name'])
+                        elif update:
+                            NodePlugin().postupdate(name=name, group=group_details[0]['name'])
+                    except Exception as exp:
+                        self.logger.error(f"{exp}")
             else:
                 response = 'Invalid request: Columns are incorrect'
                 status = False

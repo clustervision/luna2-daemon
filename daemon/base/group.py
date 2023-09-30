@@ -132,10 +132,9 @@ class Group():
                     if isinstance(value, bool):
                         group[key] = str(Helper().make_bool(group[key]))
                 if key in cluster[0] and ((not key in group) or (not group[key])):
+                    group[key] = str(cluster[0][key])
                     if cli:
-                        group[key] = str(cluster[0][key])+' (cluster)'
-                    else:
-                        group[key] = str(cluster[0][key])
+                        group[key] +=' (cluster)'
                 else:
                     if key in group:
                         if cli:
@@ -145,16 +144,14 @@ class Group():
                     else:
                         if isinstance(value, bool):
                             group[key] = str(Helper().make_bool(group[key]))
+                        group[key] = str(value)
                         if cli:
-                            group[key] = str(value+' (default)')
-                        else:
-                            group[key] = str(value)
+                            group[key] += ' (default)'
             try:
                 for key, value in b64items.items():
+                    default_str = str(value)
                     if cli:
-                        default_str = str(value+' (default)')
-                    else:
-                        default_str = str(value)
+                        default_str += ' (default)'
                     default_data = b64encode(default_str.encode())
                     default_data = default_data.decode("ascii")
                     if key in group:

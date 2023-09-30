@@ -537,23 +537,19 @@ class Node():
                 Queue().add_task_to_queue('dns:restart', 'housekeeper', '__node_update__')
 
                 # ---- we call the node plugin - maybe someone wants to run something after create/update?
-                ret, enclosed_node_details = self.get_node(cli=False, name=name)
-                node_details=None
-                if ret is True:
-                    if 'config' in enclosed_node_details.keys():
-                        if 'node' in enclosed_node_details['config'].keys():
-                            if name in enclosed_node_details['config']['node']:
-                                node_details=enclosed_node_details['config']['node'][name]
-                    if node_details:
-                        node_plugins = Helper().plugin_finder(f'{self.plugins_path}/node')
-                        NodePlugin=Helper().plugin_load(node_plugins,'node','default')
-                        try:
-                            if create:
-                                NodePlugin().postcreate(name=name, group=node_details['group'])
-                            elif update:
-                                NodePlugin().postupdate(name=name, group=node_details['group'])
-                        except Exception as exp:
-                            self.logger.error(f"{exp}")
+                group_details = Database().get_record_join(['group.name'],
+                                                           ['group.id=node.groupid'],
+                                                           [f"node.name='{name}'"])
+                if group_details:
+                    node_plugins = Helper().plugin_finder(f'{self.plugins_path}/node')
+                    NodePlugin=Helper().plugin_load(node_plugins,'node','default')
+                    try:
+                        if create:
+                            NodePlugin().postcreate(name=name, group=group_details[0]['name'])
+                        elif update:
+                            NodePlugin().postupdate(name=name, group=group_details[0]['name'])
+                    except Exception as exp:
+                        self.logger.error(f"{exp}")
             else:
                 response = 'Invalid request: Columns are incorrect'
                 status = False

@@ -222,34 +222,24 @@ class Node():
             if node['osimageid']:
                 node['osimage'] = Database().name_by_id('osimage',node['osimageid']) or '!!Invalid!!'
             elif 'group_osimageid' in node and node['group_osimageid']:
+                node['osimage'] = Database().name_by_id('osimage', node['group_osimageid']) or '!!Invalid!!'
                 if cli:
-                    node['osimage'] = Database().name_by_id('osimage', node['group_osimageid']) + f" ({node['group']})"
-                else:
-                    node['osimage'] = Database().name_by_id('osimage', node['group_osimageid'])
+                    node['osimage'] += f" ({node['group']})"
             else:
-                node['osimage'] = '!!Invalid!!'
+                node['osimage'] = None
             if 'group_osimageid' in node:
                 del node['group_osimageid']
             #---
             if node['bmcsetupid']:
                 node['bmcsetup'] = Database().name_by_id('bmcsetup',node['bmcsetupid']) or '!!Invalid!!'
             elif 'group_bmcsetupid' in node and node['group_bmcsetupid']:
+                node['bmcsetup'] = Database().name_by_id('bmcsetup', node['group_bmcsetupid']) or '!!Invalid!!'
                 if cli:
-                    node['bmcsetup'] = Database().name_by_id('bmcsetup', node['group_bmcsetupid']) + f" ({node['group']})"
-                else:
-                    node['bmcsetup'] = Database().name_by_id('bmcsetup', node['group_bmcsetupid'])
+                    node['bmcsetup'] += f" ({node['group']})"
+            else:
+                node['bmcsetup'] = None
             if 'group_bmcsetupid' in node:
                 del node['group_bmcsetupid']
-            #---
-            if node['osimageid']:
-                node['osimage'] = Database().name_by_id('osimage', node['osimageid']) or '!!Invalid!!'
-            elif 'group_osimage' in node and node['group_osimage']:
-                if cli:
-                    node['osimage'] = node['group_osimage']+f" ({node['group']})"
-                else:
-                    node['osimage'] = node['group_osimage']
-            if 'group_osimage' in node:
-                del node['group_osimage']
             #---
             if node['osimagetagid']:
                 node['osimagetag'] = Database().name_by_id('osimagetag', node['osimagetagid']) or 'default'

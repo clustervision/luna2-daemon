@@ -226,6 +226,8 @@ class Node():
                     node['osimage'] = Database().name_by_id('osimage', node['group_osimageid']) + f" ({node['group']})"
                 else:
                     node['osimage'] = Database().name_by_id('osimage', node['group_osimageid'])
+            else:
+                node['osimage'] = '!!Invalid!!'
             if 'group_osimageid' in node:
                 del node['group_osimageid']
             #---

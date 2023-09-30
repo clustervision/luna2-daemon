@@ -28,3 +28,5 @@ include daemon/plugins/osimage/operations/*
 include daemon/plugins/osimage/other/*
 include daemon/plugins/osimage/filesystem/*
 include daemon/plugins/osuser/*
+include daemon/plugins/node/*
+include daemon/plugins/group/*

@@ -195,7 +195,7 @@ class Node():
             [
                 'node.*',
                 'group.name AS group',
-                'osimage.name AS group_osimage',
+                'group.osimageid AS group_osimageid',
                 'group.osimagetagid AS group_osimagetagid',
                 'group.setupbmc AS group_setupbmc',
                 'group.bmcsetupid AS group_bmcsetupid',
@@ -209,7 +209,7 @@ class Node():
                 'group.provision_fallback AS group_provision_fallback',
                 'group.provision_interface AS group_provision_interface'
             ],
-            ['group.id=node.groupid','osimage.id=group.osimageid'],
+            ['group.id=node.groupid'],
             f"node.name='{name}'"
         )
         if all_nodes and nodes:
@@ -219,11 +219,18 @@ class Node():
             response = {'config': {'node': {} }}
             nodename = node['name']
             nodeid = node['id']
+            if node['osimageid']:
+                node['osimage'] = Database().name_by_id('osimage',node['osimageid']) or '!!Invalid!!'
+            elif 'group_osimageid' in node and node['group_osimageid']:
+                if cli:
+                    node['osimage'] = Database().name_by_id('osimage', node['group_osimageid']) + f" ({node['group']})"
+                else:
+                    node['osimage'] = Database().name_by_id('osimage', node['group_osimageid'])
+            if 'group_osimageid' in node:
+                del node['group_osimageid']
+            #---
             if node['bmcsetupid']:
-                node['bmcsetup'] = Database().name_by_id(
-                    'bmcsetup',
-                    node['bmcsetupid']
-                ) or '!!Invalid!!'
+                node['bmcsetup'] = Database().name_by_id('bmcsetup',node['bmcsetupid']) or '!!Invalid!!'
             elif 'group_bmcsetupid' in node and node['group_bmcsetupid']:
                 if cli:
                     node['bmcsetup'] = Database().name_by_id('bmcsetup', node['group_bmcsetupid']) + f" ({node['group']})"

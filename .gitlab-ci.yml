@@ -22,4 +22,4 @@ development:
     - python setup.py sdist bdist_wheel
     - apk add openssh-client
     - apk add sshpass
-     sshpass -p $SSH_PASSWORD scp -r -oStrictHostKeyChecking=no dist/* $SSH_USER@$IPADDRESS:$LOCATIONDEV
+     sshpass -p $SSH_PASSWORD scp -r -oStrictHostKeyChecking=no dist/* $SSH_USER@$IPADDRESS:$DEV_LOCATION

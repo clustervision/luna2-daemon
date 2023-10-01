@@ -1,4 +1,4 @@
-; Kindly use this file for Daemon bootstrap.
+; use this file for Daemon bootstrap.
 
 [HOSTS]
 ; used in cluster, "clusterips" for templates

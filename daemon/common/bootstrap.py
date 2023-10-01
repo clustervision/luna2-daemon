@@ -350,11 +350,20 @@ def bootstrap(bootstrapfile=None):
                 {'column': 'type', 'value': nwtype}
             ]
         Database().insert('network', default_network)
-    network = Database().get_record(None, 'network', None)
-    networkid = network[0]['id']
-    networkname = network[0]['name']
-    bmcnetworkid = network[1]['id']
-    bmcnetworkname = network[1]['name']
+    networkid, networkname, bmcnetworkid, bmcnetworkname = None, None, None, None
+    network = None
+    if PRIMARY_NETWORK in BOOTSTRAP['HOSTS']:
+        network = Database().get_record(None, 'network', "WHERE name = '{BOOTSTRAP['HOSTS']['PRIMARY_NETWORK]}'")
+    else:
+        #dangerous assumption as id[0] doesn't have to be the primary network but we need to fallback onto something.
+        network = Database().get_record(None, 'network', "WHERE name = 'cluster'")
+    if network:
+        networkid = network[0]['id']
+        networkname = network[0]['name']
+    network = Database().get_record(None, 'network', "WHERE name = 'ipmi'") # also a bit dangerous but no choice
+    if network:
+        bmcnetworkid = network[0]['id']
+        bmcnetworkname = network[0]['name']
 
     # -------------------
     # section here to add the virtual controller named "controller"
@@ -555,7 +564,7 @@ def validate_bootstrap():
     bootstrapfile = '/trinity/local/luna/daemon/config/bootstrap.ini'
     global BOOTSTRAP
     BOOTSTRAP = {
-        'HOSTS': {'HOSTNAME': None, 'CONTROLLER1': None, 'CONTROLLER2': None, 'NODELIST': None},
+        'HOSTS': {'HOSTNAME': None, 'CONTROLLER1': None, 'CONTROLLER2': None, 'NODELIST': None, 'PRIMARY_DOMAIN': None},
         'NETWORKS': {'cluster': None, 'ipmi': None, 'ib': None},
         'GROUPS': {'NAME': None},
         'OSIMAGE': {'NAME': None},

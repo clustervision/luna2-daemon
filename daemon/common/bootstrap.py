@@ -356,7 +356,7 @@ def bootstrap(bootstrapfile=None):
     networkid, networkname, bmcnetworkid, bmcnetworkname = None, None, None, None
     network = None
     if 'default' in network_functions:
-        network = Database().get_record(None, 'network', "WHERE name = '{network_functions['default']}'")
+        network = Database().get_record(None, 'network', f"WHERE name = '{network_functions['default']}'")
     else:
         #dangerous assumption as id[0] doesn't have to be the primary network but we need to fallback onto something.
         network = Database().get_record(None, 'network', "WHERE name = 'cluster'")
@@ -364,7 +364,7 @@ def bootstrap(bootstrapfile=None):
         networkid = network[0]['id']
         networkname = network[0]['name']
     if 'bmc' in network_functions:
-        network = Database().get_record(None, 'network', "WHERE name = '{network_functions['bmc']'")
+        network = Database().get_record(None, 'network', f"WHERE name = '{network_functions['bmc']}'")
     else:
         network = Database().get_record(None, 'network', "WHERE name = 'ipmi'") # also a bit dangerous but no choice
     if network:

@@ -270,11 +270,12 @@ def get_config(filename=None):
                     except Exception:
                         LOGGER.error(f'Invalid node list range: {item}, kindly use the numbers in incremental order.')
                 elif 'NETWORKS' in section:
-                    nwtype,network,dhcp,dhcprange,shared,*_ = (item.split(':')+[None]+[None]+[None]+[None])
+                    function,nwtype,network,dhcp,dhcprange,shared,*_ = (item.split(':')+[None]+[None]+[None]+[None]+[None])
                     #Helper().get_netmask(item)  # <-- not used?
                     BOOTSTRAP[section][option.lower()]={}
                     BOOTSTRAP[section][option.lower()]['NETWORK'] = network
                     BOOTSTRAP[section][option.lower()]['TYPE'] = nwtype
+                    BOOTSTRAP[section][option.lower()]['FUNCTION'] = function
                     if dhcp:
                         BOOTSTRAP[section][option.lower()]['DHCP'] = 1
                         if dhcprange:
@@ -314,10 +315,12 @@ def bootstrap(bootstrapfile=None):
     Database().insert('cluster', default_cluster)
     cluster = Database().get_record(None, 'cluster', None)
     clusterid = cluster[0]['id']
+    network_functions={}
     for nwkx in BOOTSTRAP['NETWORKS'].keys():
         if BOOTSTRAP['NETWORKS'][nwkx] is None:
             continue
         nwtype = BOOTSTRAP['NETWORKS'][nwkx]['TYPE']
+        network_functions[BOOTSTRAP['NETWORKS'][nwkx]['FUNCTION']] = nwkx
         network_details=Helper().get_network_details(BOOTSTRAP['NETWORKS'][nwkx]['NETWORK'])
         defaultgw_ip=None
         valid_ip = Helper().check_ip_range(
@@ -352,15 +355,18 @@ def bootstrap(bootstrapfile=None):
         Database().insert('network', default_network)
     networkid, networkname, bmcnetworkid, bmcnetworkname = None, None, None, None
     network = None
-    if PRIMARY_NETWORK in BOOTSTRAP['HOSTS']:
-        network = Database().get_record(None, 'network', "WHERE name = '{BOOTSTRAP['HOSTS']['PRIMARY_NETWORK]}'")
+    if 'default' in network_functions:
+        network = Database().get_record(None, 'network', "WHERE name = '{network_functions['default']}'")
     else:
         #dangerous assumption as id[0] doesn't have to be the primary network but we need to fallback onto something.
         network = Database().get_record(None, 'network', "WHERE name = 'cluster'")
     if network:
         networkid = network[0]['id']
         networkname = network[0]['name']
-    network = Database().get_record(None, 'network', "WHERE name = 'ipmi'") # also a bit dangerous but no choice
+    if 'bmc' in network_functions:
+        network = Database().get_record(None, 'network', "WHERE name = '{network_functions['bmc']'")
+    else:
+        network = Database().get_record(None, 'network', "WHERE name = 'ipmi'") # also a bit dangerous but no choice
     if network:
         bmcnetworkid = network[0]['id']
         bmcnetworkname = network[0]['name']

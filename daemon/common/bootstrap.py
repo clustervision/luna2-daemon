@@ -262,10 +262,6 @@ def get_config(filename=None):
                         BOOTSTRAP[section][option.upper()] = {}
                         BOOTSTRAP[section][option.upper()]['IP'] = ip
                         BOOTSTRAP[section][option.upper()]['HOSTNAME'] = hostname
-                elif 'PRIMARY_NETWORK'  in option.upper():
-                        if option.upper() not in BOOTSTRAP[section].keys():
-                            BOOTSTRAP[section][option.upper()] = {}
-                        BOOTSTRAP[section][option.upper()]['PRIMARY_NETWORK'] = item
                 elif 'NODELIST' in option.upper():
                     ### TODO Nodelist also check for the length
                     try:
@@ -356,6 +352,7 @@ def bootstrap(bootstrapfile=None):
         Database().insert('network', default_network)
     networkid, networkname, bmcnetworkid, bmcnetworkname = None, None, None, None
     network = None
+    if PRIMARY_NETWORK in BOOTSTRAP['HOSTS']:
         network = Database().get_record(None, 'network', "WHERE name = '{BOOTSTRAP['HOSTS']['PRIMARY_NETWORK]}'")
     else:
         #dangerous assumption as id[0] doesn't have to be the primary network but we need to fallback onto something.

@@ -129,6 +129,8 @@ class Interface():
                     options = interface['options']
                 if 'network' in interface.keys():
                     network = interface['network']
+                if 'ipaddress' in interface.keys():
+                    ipaddress = interface['ipaddress']
                 result, message = Config().node_interface_config(
                     nodeid,
                     interface_name,
@@ -136,11 +138,11 @@ class Interface():
                     options
                 )
                 if result:
-                    if not 'ipaddress' in interface.keys():
+                    if network or ipaddress:
                         existing = Database().get_record_join(
                             ['ipaddress.ipaddress','network.name as networkname'],
                             [
-                                'nodeinterface.nodeid=node.id',
+                                'nodeinterface.nodeid=node.id',  
                                 'ipaddress.tablerefid=nodeinterface.id',
                                 'network.id=ipaddress.networkid'
                             ],
@@ -150,29 +152,32 @@ class Interface():
                                 f"nodeinterface.interface='{interface_name}'"
                             ]
                         )
-                        if existing and existing[0]['networkname'] == network:
-                            ipaddress = existing[0]['ipaddress']
-                        else:
-                            ips = Config().get_all_occupied_ips_from_network(network)
-                            where = f" WHERE `name` = '{network}'"
-                            network_details = Database().get_record(None, 'network', where)
-                            if network_details:
-                                avail = Helper().get_available_ip(
-                                    network_details[0]['network'],
-                                    network_details[0]['subnet'],
-                                    ips
-                                )
-                                if avail:
-                                    ipaddress = avail
-                    else:
-                        ipaddress=interface['ipaddress']
+                        if not ipaddress:
+                            if existing:
+                                if network == existing[0]['networkname']:
+                                    ipaddress = existing[0]['ipaddress']
+                                else:
+                                    ips = Config().get_all_occupied_ips_from_network(network)
+                                    where = f" WHERE `name` = '{network}'"
+                                    network_details = Database().get_record(None, 'network', where)
+                                    if network_details:
+                                        avail = Helper().get_available_ip(
+                                            network_details[0]['network'],
+                                            network_details[0]['subnet'],
+                                            ips
+                                        )
+                                        if avail:
+                                            ipaddress = avail
+                        elif not network:
+                            if existing:
+                                network = existing[0]['networkname']
 
-                    result, message = Config().node_interface_ipaddress_config(
-                        nodeid,
-                        interface_name,
-                        ipaddress,
-                        network
-                    )
+                        result, message = Config().node_interface_ipaddress_config(
+                            nodeid,
+                            interface_name,
+                            ipaddress,
+                            network
+                        )
 
                 if result is False:
                     response = f'{message}'

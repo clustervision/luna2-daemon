@@ -220,7 +220,7 @@ class Control():
         """
         status = Database().get_record(None , 'status', f' WHERE request_id = "{request_id}"')
         if status:
-            subsystem=None
+            subsystem='unknown'
             on_nodes = {}
             off_nodes = {}
             ok_nodes = {}

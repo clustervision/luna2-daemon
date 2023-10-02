@@ -136,23 +136,8 @@ class Interface():
                     options
                 )
                 if result:
-                    if not 'ipaddress' in interface.keys():
-                        existing = Database().get_record_join(
-                            ['ipaddress.ipaddress','network.name as networkname'],
-                            [
-                                'nodeinterface.nodeid=node.id',
-                                'ipaddress.tablerefid=nodeinterface.id',
-                                'network.id=ipaddress.networkid'
-                            ],
-                            [
-                                f"node.id='{nodeid}'",
-                                "ipaddress.tableref='nodeinterface'",
-                                f"nodeinterface.interface='{interface_name}'"
-                            ]
-                        )
-                        if existing and existing[0]['networkname'] == network:
-                            ipaddress = existing[0]['ipaddress']
-                        else:
+                    if network or ipaddress:
+                        if not ipaddress:
                             ips = Config().get_all_occupied_ips_from_network(network)
                             where = f" WHERE `name` = '{network}'"
                             network_details = Database().get_record(None, 'network', where)
@@ -164,15 +149,29 @@ class Interface():
                                 )
                                 if avail:
                                     ipaddress = avail
-                    else:
-                        ipaddress=interface['ipaddress']
+                        elif not network:
+                            existing = Database().get_record_join(
+                                ['ipaddress.ipaddress','network.name as networkname'],
+                                [
+                                    'nodeinterface.nodeid=node.id',  
+                                    'ipaddress.tablerefid=nodeinterface.id',
+                                    'network.id=ipaddress.networkid'
+                                ],
+                                [
+                                    f"node.id='{nodeid}'",
+                                    "ipaddress.tableref='nodeinterface'",
+                                    f"nodeinterface.interface='{interface_name}'"
+                                ]
+                            )
+                            if existing:
+                                network = existing[0]['networkname']
 
-                    result, message = Config().node_interface_ipaddress_config(
-                        nodeid,
-                        interface_name,
-                        ipaddress,
-                        network
-                    )
+                        result, message = Config().node_interface_ipaddress_config(
+                            nodeid,
+                            interface_name,
+                            ipaddress,
+                            network
+                        )
 
                 if result is False:
                     response = f'{message}'

@@ -129,6 +129,8 @@ class Interface():
                     options = interface['options']
                 if 'network' in interface.keys():
                     network = interface['network']
+                if 'ipaddress' in interface.keys():
+                    ipaddress = interface['ipaddress']
                 result, message = Config().node_interface_config(
                     nodeid,
                     interface_name,

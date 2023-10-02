@@ -139,32 +139,34 @@ class Interface():
                 )
                 if result:
                     if network or ipaddress:
+                        existing = Database().get_record_join(
+                            ['ipaddress.ipaddress','network.name as networkname'],
+                            [
+                                'nodeinterface.nodeid=node.id',  
+                                'ipaddress.tablerefid=nodeinterface.id',
+                                'network.id=ipaddress.networkid'
+                            ],
+                            [
+                                f"node.id='{nodeid}'",
+                                "ipaddress.tableref='nodeinterface'",
+                                f"nodeinterface.interface='{interface_name}'"
+                            ]
+                        )
                         if not ipaddress:
-                            ips = Config().get_all_occupied_ips_from_network(network)
-                            where = f" WHERE `name` = '{network}'"
-                            network_details = Database().get_record(None, 'network', where)
-                            if network_details:
-                                avail = Helper().get_available_ip(
-                                    network_details[0]['network'],
-                                    network_details[0]['subnet'],
-                                    ips
-                                )
-                                if avail:
-                                    ipaddress = avail
+                            if existing:
+                                if network != existing[0]['networkname']:
+                                    ips = Config().get_all_occupied_ips_from_network(network)
+                                    where = f" WHERE `name` = '{network}'"
+                                    network_details = Database().get_record(None, 'network', where)
+                                    if network_details:
+                                        avail = Helper().get_available_ip(
+                                            network_details[0]['network'],
+                                            network_details[0]['subnet'],
+                                            ips
+                                        )
+                                        if avail:
+                                            ipaddress = avail
                         elif not network:
-                            existing = Database().get_record_join(
-                                ['ipaddress.ipaddress','network.name as networkname'],
-                                [
-                                    'nodeinterface.nodeid=node.id',  
-                                    'ipaddress.tablerefid=nodeinterface.id',
-                                    'network.id=ipaddress.networkid'
-                                ],
-                                [
-                                    f"node.id='{nodeid}'",
-                                    "ipaddress.tableref='nodeinterface'",
-                                    f"nodeinterface.interface='{interface_name}'"
-                                ]
-                            )
                             if existing:
                                 network = existing[0]['networkname']
 

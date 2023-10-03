@@ -1,6 +1,22 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
+# This code is part of the TrinityX software suite
+# Copyright (C) 2023  ClusterVision Solutions b.v.
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <https://www.gnu.org/licenses/>
+
 """
 This Is a class to assist in housekeeping related items. e.g. the cleanup thread lives here.
 
@@ -26,6 +42,7 @@ from threading import Event
 from time import sleep, time
 from datetime import datetime
 import signal
+import os, sys
 # below are need to accomodate for the housekeeper
 from utils.status import Status
 from utils.queue import Queue
@@ -80,12 +97,13 @@ class Housekeeper(object):
                                     executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
                                     executor.submit(OsImage().pack_n_tar_mother,osimage,request_id)
                                     executor.shutdown(wait=False)
-                            case 'cleanup_old_images':
+                            case 'cleanup_old_file':
                                 Queue().update_task_status_in_queue(next_id,'in progress')
-                                returned=OsImage().cleanup_images(second)
+                                returned=OsImage().cleanup_file(second)
                                 status=returned[0]
                                 if status is False and len(returned)>1:
-                                    self.logger.error(f"cleanup_image: {returned[1]}")
+                                    self.logger.error(f"cleanup_file: {returned[1]}")
+                            case 'cleanup_old_provisioning':
                                 returned=OsImage().cleanup_provisioning(second)
                                 status=returned[0]
                                 if status is False and len(returned)>1:
@@ -133,28 +151,31 @@ class Housekeeper(object):
         #detection_plugins = Helper().plugin_finder(f'{plugins_path}/detection')
         #DetectionPlugin=Helper().plugin_load(detection_plugins,'detection','switchport')
         try: 
-            from plugins.detection.switchport import Plugin as DetectionPlugin
-            # doc =  { id: { name: , oid:, read:, rw:, ipaddress: } }
+            from plugins.boot.detection.switchport import Plugin as DetectionPlugin
             while True:
                 try:
                     tel+=1
                     if tel > 120:
                         tel=0
-                        doc={}
                         switches = Database().get_record_join(['switch.*','ipaddress.ipaddress'], ['ipaddress.tablerefid=switch.id'], ['ipaddress.tableref="switch"'])
                         self.logger.debug(f"switches {switches}")
                         if switches:
+                             DetectionPlugin().clear()
                              for switch in switches:
-                                doc[switch['name']]={}
-                                for elem in ['name','oid','rw','read','ipaddress']:
-                                    doc[switch['name']][elem]=switch[elem]
-                             DetectionPlugin().scan(doc)                            
-   
+                                uplinkports = []
+                                if switch['uplinkports']:
+                                    uplinkportsstring = switch['uplinkports'].replace(' ','')
+                                    uplinkports = uplinkportsstring.split(',')
+                                DetectionPlugin().scan(name=switch['name'], ipaddress=switch['ipaddress'], 
+                                                       oid=switch['oid'], read=switch['read'], rw=switch['rw'], 
+                                                       uplinkports=uplinkports)
                     if event.is_set():
                         return
                 except Exception as exp:
-                    self.logger.error(f"switch port scan thread encountered problem: {exp}")
+                    exc_type, exc_obj, exc_tb = sys.exc_info()
+                    self.logger.error(f"switch port scan thread encountered problem: {exp}, {exc_type}, in {exc_tb.tb_lineno}")
                 sleep(5)
         except Exception as exp:
-            self.logger.error(f"switch port scan thread encountered problem: {exp}")
+            exc_type, exc_obj, exc_tb = sys.exc_info()
+            self.logger.error(f"switch port scan thread encountered problem: {exp}, {exc_type}, in {exc_tb.tb_lineno}")
 

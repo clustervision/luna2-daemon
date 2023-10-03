@@ -1,6 +1,22 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
+# This code is part of the TrinityX software suite
+# Copyright (C) 2023  ClusterVision Solutions b.v.
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <https://www.gnu.org/licenses/>
+
 """
 This File is responsible to Check & Perform all bootstrap-related activity.
 """
@@ -21,9 +37,15 @@ import subprocess
 import threading
 import sys
 from common.constant import CONSTANT
+from utils.helper import Helper
 
 configParser = RawConfigParser()
 
+#TABLES = ['cluster', 'bmcsetup', 'group', 'groupinterface', 'groupsecrets', 'status', 'queue',
+#          'network', 'osimage', 'osimagetag', 'switch', 'tracker', 'node', 'nodeinterface', 'nodesecrets']
+TABLES = ['status', 'queue', 'osimage', 'osimagetag', 'nodesecrets', 'nodeinterface', 'bmcsetup', 
+          'monitor', 'ipaddress', 'groupinterface', 'roles', 'group', 'network', 'user', 'switch', 
+          'otherdevices', 'controller', 'groupsecrets', 'node', 'cluster', 'tracker']
 
 def db_status():
     """
@@ -127,18 +149,82 @@ def check_db_tables():
     """
     This method will check whether the database is empty or not.
     """
-    table = ['cluster', 'bmcsetup', 'group', 'groupinterface', 'groupsecrets', 'status', 'queue',
-             'network', 'osimage', 'switch', 'tracker', 'node', 'nodeinterface', 'nodesecrets']
     num = 0
-    for table_x in table:
-        result = Database().get_record(None, table_x, None)
-        if result:
+    for table in TABLES:
+        #result = Database().get_record(None, table, None)
+        dbcolumns = Database().get_columns(table)
+        if dbcolumns:
             num = num+1
+            layout = get_database_tables_structure(table=table)
+            for column in layout:
+                if column['column'] not in dbcolumns:
+                    LOGGER.error(f"fix database: column {column['column']} not found in table {table} and will be added")
+                    Database().add_column(table, column)
         else:
-            LOGGER.debug(f'Database table {table_x} does not seem to exist or is empty.')
+            LOGGER.error(f'Database table {table} does not seem to exist and will be created')
+            layout = get_database_tables_structure(table=table)
+            Database().create(table, layout)
     if num == 0:
+        # if we reach here this means nothing was there.
         return False
     return True
+
+
+def create_database_tables(table=None):
+    """
+    This method will create DB table
+    """
+    for table in TABLES:
+        layout = get_database_tables_structure(table=table)
+        Database().create(table, layout)
+
+
+def get_database_tables_structure(table=None):
+    if not table:
+        return
+    if table == "status":
+        return DATABASE_LAYOUT_status
+    if table == "queue":
+        return DATABASE_LAYOUT_queue
+        Database().create("queue", DATABASE_LAYOUT_queue)
+    if table == "osimage":
+        return DATABASE_LAYOUT_osimage
+    if table == "osimagetag":
+        return DATABASE_LAYOUT_osimagetag
+    if table == "nodesecrets":
+        return DATABASE_LAYOUT_nodesecrets
+    if table == "nodeinterface":
+        return DATABASE_LAYOUT_nodeinterface
+    if table == "bmcsetup":
+        return DATABASE_LAYOUT_bmcsetup
+    if table == "monitor":
+        return DATABASE_LAYOUT_monitor
+    if table == "ipaddress":
+        return DATABASE_LAYOUT_ipaddress
+    if table == "groupinterface":
+        return DATABASE_LAYOUT_groupinterface
+    if table == "roles":
+        return DATABASE_LAYOUT_roles
+    if table == "group":
+        return DATABASE_LAYOUT_group
+    if table == "network":
+        return DATABASE_LAYOUT_network
+    if table == "user":
+        return DATABASE_LAYOUT_user
+    if table == "switch":
+        return DATABASE_LAYOUT_switch
+    if table == "otherdevices":
+        return DATABASE_LAYOUT_otherdevices
+    if table == "controller":
+        return DATABASE_LAYOUT_controller
+    if table == "groupsecrets":
+        return DATABASE_LAYOUT_groupsecrets
+    if table == "node":
+        return DATABASE_LAYOUT_node
+    if table == "cluster":
+        return DATABASE_LAYOUT_cluster
+    if table == "tracker":
+        return DATABASE_LAYOUT_tracker
 
 
 def cleanup_queue_and_status():
@@ -164,7 +250,8 @@ def get_config(filename=None):
         for (option, item) in configParser.items(section):
             globals()[option.upper()] = item
             if section in list(BOOTSTRAP.keys()):
-                Helper().check_option(filename, section, option.upper(), BOOTSTRAP)
+                # commented out as it doesn't work as intended. pending
+                #Helper().check_option(filename, section, option.upper(), BOOTSTRAP)
                 for num in range(1, 10):
                     if 'CONTROLLER'+str(num) in option.upper():
                         BOOTSTRAP[section][option.upper()]={}
@@ -199,45 +286,23 @@ def get_config(filename=None):
                     except Exception:
                         LOGGER.error(f'Invalid node list range: {item}, kindly use the numbers in incremental order.')
                 elif 'NETWORKS' in section:
-                    network,dhcp,dhcprange,*_ = (item.split(':')+[None]+[None])
+                    function,nwtype,network,dhcp,dhcprange,shared,*_ = (item.split(':')+[None]+[None]+[None]+[None]+[None])
                     #Helper().get_netmask(item)  # <-- not used?
                     BOOTSTRAP[section][option.lower()]={}
                     BOOTSTRAP[section][option.lower()]['NETWORK'] = network
+                    BOOTSTRAP[section][option.lower()]['TYPE'] = nwtype
+                    BOOTSTRAP[section][option.lower()]['FUNCTION'] = function
                     if dhcp:
                         BOOTSTRAP[section][option.lower()]['DHCP'] = 1
                         if dhcprange:
                             BOOTSTRAP[section][option.lower()]['RANGE'] = dhcprange
+                    if shared:
+                        BOOTSTRAP[section][option.lower()]['SHARED'] = shared
                 else:
                     BOOTSTRAP[section][option.upper()] = item
             else:
                 BOOTSTRAP[section] = {}
                 BOOTSTRAP[section][option.upper()] = item
-
-
-def create_database_tables():
-    """
-    This method will create DB table.
-    """
-    Database().create("status", DATABASE_LAYOUT_status)
-    Database().create("queue", DATABASE_LAYOUT_queue)
-    Database().create("osimage", DATABASE_LAYOUT_osimage)
-    Database().create("nodesecrets", DATABASE_LAYOUT_nodesecrets)
-    Database().create("nodeinterface", DATABASE_LAYOUT_nodeinterface)
-    Database().create("bmcsetup", DATABASE_LAYOUT_bmcsetup)
-    Database().create("monitor", DATABASE_LAYOUT_monitor)
-    Database().create("ipaddress", DATABASE_LAYOUT_ipaddress)
-    Database().create("groupinterface", DATABASE_LAYOUT_groupinterface)
-    Database().create("roles", DATABASE_LAYOUT_roles)
-    Database().create("group", DATABASE_LAYOUT_group)
-    Database().create("network", DATABASE_LAYOUT_network)
-    Database().create("user", DATABASE_LAYOUT_user)
-    Database().create("switch", DATABASE_LAYOUT_switch)
-    Database().create("otherdevices", DATABASE_LAYOUT_otherdevices)
-    Database().create("controller", DATABASE_LAYOUT_controller)
-    Database().create("groupsecrets", DATABASE_LAYOUT_groupsecrets)
-    Database().create("node", DATABASE_LAYOUT_node)
-    Database().create("cluster", DATABASE_LAYOUT_cluster)
-    Database().create("tracker", DATABASE_LAYOUT_tracker)
 
 
 def bootstrap(bootstrapfile=None):
@@ -246,7 +311,8 @@ def bootstrap(bootstrapfile=None):
     """
     get_config(bootstrapfile)
     LOGGER.info('###################### Bootstrap Start ######################')
-    create_database_tables()
+#   below no longer needed but kept for old-time sake
+#    create_database_tables()
 
     defaultserver_ip=None
     if 'CONTROLLER' in BOOTSTRAP['HOSTS'].keys():  # the virtual host+ip
@@ -265,9 +331,20 @@ def bootstrap(bootstrapfile=None):
     Database().insert('cluster', default_cluster)
     cluster = Database().get_record(None, 'cluster', None)
     clusterid = cluster[0]['id']
+    network_functions={}
     for nwkx in BOOTSTRAP['NETWORKS'].keys():
+        if BOOTSTRAP['NETWORKS'][nwkx] is None:
+            continue
+        nwtype = BOOTSTRAP['NETWORKS'][nwkx]['TYPE']
+        network_functions[BOOTSTRAP['NETWORKS'][nwkx]['FUNCTION']] = nwkx
         network_details=Helper().get_network_details(BOOTSTRAP['NETWORKS'][nwkx]['NETWORK'])
-        defaultgw_ip=defaultserver_ip
+        defaultgw_ip=None
+        valid_ip = Helper().check_ip_range(
+            defaultserver_ip,
+            f"{network_details['network']}/{network_details['subnet']}"
+        )
+        if valid_ip:
+            defaultgw_ip=defaultserver_ip
         dhcp,dhcp_range_begin,dhcp_range_end=0,None,None
         if 'DHCP' in BOOTSTRAP['NETWORKS'][nwkx]:
             dhcp=1
@@ -276,6 +353,9 @@ def bootstrap(bootstrapfile=None):
                 if dhcp_range_end is None:
                     dhcp_range_begin=''
                     dhcp_range_end=''
+        shared=None
+        if 'SHARED' in BOOTSTRAP['NETWORKS'][nwkx]:
+            shared=BOOTSTRAP['NETWORKS'][nwkx]['SHARED']
         default_network = [
                 {'column': 'name', 'value': str(nwkx)},
                 {'column': 'network', 'value': network_details['network']},
@@ -284,15 +364,28 @@ def bootstrap(bootstrapfile=None):
                 {'column': 'dhcp_range_begin', 'value': dhcp_range_begin},
                 {'column': 'dhcp_range_end', 'value': dhcp_range_end},
                 {'column': 'gateway', 'value': defaultgw_ip},
-                {'column': 'zone', 'value': 'internal'}
+                {'column': 'shared', 'value': shared},
+                {'column': 'zone', 'value': 'internal'},
+                {'column': 'type', 'value': nwtype}
             ]
         Database().insert('network', default_network)
-        defaultgw_ip='' # a little tricky but we assume that 'cluster' network is the first to be dealt with and so it works. pending
-    network = Database().get_record(None, 'network', None)
-    networkid = network[0]['id']
-    networkname = network[0]['name']
-    bmcnetworkid = network[1]['id']
-    bmcnetworkname = network[1]['name']
+    networkid, networkname, bmcnetworkid, bmcnetworkname = None, None, None, None
+    network = None
+    if 'default' in network_functions:
+        network = Database().get_record(None, 'network', f"WHERE name = '{network_functions['default']}'")
+    else:
+        #dangerous assumption as id[0] doesn't have to be the primary network but we need to fallback onto something.
+        network = Database().get_record(None, 'network', "WHERE name = 'cluster'")
+    if network:
+        networkid = network[0]['id']
+        networkname = network[0]['name']
+    if 'bmc' in network_functions:
+        network = Database().get_record(None, 'network', f"WHERE name = '{network_functions['bmc']}'")
+    else:
+        network = Database().get_record(None, 'network', "WHERE name = 'ipmi'") # also a bit dangerous but no choice
+    if network:
+        bmcnetworkid = network[0]['id']
+        bmcnetworkname = network[0]['name']
 
     # -------------------
     # section here to add the virtual controller named "controller"
@@ -409,7 +502,6 @@ def bootstrap(bootstrapfile=None):
         default_node = [
             {'column': 'name', 'value': str(nodex)},
             {'column': 'groupid', 'value': str(groupid)},
-            {'column': 'localboot', 'value': '0'},
             {'column': 'service', 'value': '0'},
         ]
         node_id = Database().insert('node', default_node)
@@ -463,6 +555,7 @@ def bootstrap(bootstrapfile=None):
         {'column': 'name', 'value': bmcsetup_name},
         {'column': 'userid', 'value': '2'},
         {'column': 'netchannel', 'value': '1'},
+        {'column': 'mgmtchannel', 'value': '1'},
         {'column': 'username', 'value': str(BOOTSTRAP['BMCSETUP']['USERNAME'])},
         {'column': 'password', 'value': str(BOOTSTRAP['BMCSETUP']['PASSWORD'])}
     ]
@@ -493,7 +586,7 @@ def validate_bootstrap():
     bootstrapfile = '/trinity/local/luna/daemon/config/bootstrap.ini'
     global BOOTSTRAP
     BOOTSTRAP = {
-        'HOSTS': {'HOSTNAME': None, 'CONTROLLER1': None, 'CONTROLLER2': None, 'NODELIST': None},
+        'HOSTS': {'HOSTNAME': None, 'CONTROLLER1': None, 'CONTROLLER2': None, 'NODELIST': None, 'PRIMARY_DOMAIN': None},
         'NETWORKS': {'cluster': None, 'ipmi': None, 'ib': None},
         'GROUPS': {'NAME': None},
         'OSIMAGE': {'NAME': None},

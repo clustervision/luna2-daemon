@@ -1,6 +1,22 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
+# This code is part of the TrinityX software suite
+# Copyright (C) 2023  ClusterVision Solutions b.v.
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <https://www.gnu.org/licenses/>
+
 """
 This Is the Torrent plugin, which takes care of nay torrent related things
 
@@ -79,8 +95,7 @@ class Plugin():
             self.logger.error(f"{files_path}/{torrent_file} does not exist.")
             return False, f"{files_path}/{torrent_file} does not exist"
 
-        torrent_file = files_path + '/' + torrent_file
-        command = f"transmission-remote --add {torrent_file}"
+        command = "systemctl restart aria2c.service"
         message, exit_code = Helper().runcommand(command, True, 60)
         if exit_code == 0:
             return True,"Success"
@@ -88,23 +103,21 @@ class Plugin():
 
 
 
-    # osimage = the name of the image, e.g. compute
-    # current_packed_image_file = the currently used compressed image file, most likely a tar.bz2 file
-    def cleanup(self, osimage=None, files_path=None, current_packed_image_file=None):
+    # image_file is what the name usggests, the image file, most likely a tar.bz2 file
+    def cleanup(self, files_path=None, image_file=None):
         """
-        This method will cleanup the imagefile.
+        This method will cleanup the imagefile torrent.
         """
         self.logger = Log.get_logger()
-        command = f"transmission-remote -l | grep {osimage} | grep -v {current_packed_image_file}"
-        command += " | awk '{ print $1 }' | grep -oE '[0-9]+' | xargs -i transmission-remote -t {} --remove-and-delete"
-        self.logger.info(f"what i will run: {command}")
-        message, exit_code = Helper().runcommand(command, True, 60)
-        self.logger.debug(f"what i got back: {message}")
-        command = f"cd {files_path} && ls {osimage}*.torrent | grep -vw \"{current_packed_image_file}.torrent\" | xargs rm -f"
-        self.logger.info(f"what i will run: {command}")
-        message, exit_code = Helper().runcommand(command, True, 60)
-        if exit_code == 0:
-            return True, message
+        if files_path and image_file:
+            torrent_file = image_file + ".torrent"
+            command = f"cd {files_path} && rm -f {torrent_file}"
+            self.logger.info(f"what i will run: {command}")
+            message, exit_code = Helper().runcommand(command, True, 60)
+            command = "systemctl restart aria2c.service"
+            message, exit_code = Helper().runcommand(command, True, 60)
+            if exit_code == 0:
+                return True, message
         return False, message
 
     # -------------------------------

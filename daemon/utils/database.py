@@ -1,6 +1,22 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
+# This code is part of the TrinityX software suite
+# Copyright (C) 2023  ClusterVision Solutions b.v.
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <https://www.gnu.org/licenses/>
+
 This Class Identify the specified Database Connection from Configuration
 and return the Cursor of correct Database.
 Database have the default methods for CRUD. In case of changing database
@@ -343,6 +359,40 @@ class Database():
         return response
 
 
+    def add_column(self, table=None, column=None):
+        """
+        Input - tablename and column
+        Process - It is Create operation on the DB.
+            table is the table name which need to be created.
+            column is a list of dict ex:
+            where = [
+                {"column": "id", "datatype": "INTEGER", "length": "10", "key": "PRIMARY", 
+                "keyadd": "autoincrement"},
+                {"column": "id", "datatype": "INTEGER", "length": "20", "key": "UNIQUE"},
+                {"column": "id", "datatype": "INTEGER", "length": "20", "key": "UNIQUE", 
+                "with": "name"},
+                {"column": "name", "datatype": "VARCHAR", "length": "40"}]
+        Output - adds column to table.
+        """
+        column_string = ''
+        if 'column' in column.keys():
+            column_string = column_string + ' `' + column['column'] + '` '
+        if 'datatype' in column.keys():
+            column_string = column_string + ' ' +column['datatype'].upper() + ' '
+        if 'length' in column.keys():
+            column_string = column_string + ' (' +column['length'] + ') '
+        query = f'ALTER TABLE `{table}` ADD {column_string}'
+        self.logger.debug(f"Query executing => {query}")
+        try:
+            local_thread.cursor.execute(query)
+            self.commit()
+            response = True
+        except Exception as exp:
+            self.logger.error(f'Error while adding column to {table}. Error: {exp}')
+            response = False
+        return response
+
+
     def truncate(self, table=None):
         """
         Input - tablename
@@ -440,13 +490,36 @@ class Database():
                     [{"column": "active", "value": "1"}, {"column": "network", "value": "ib"}]
         Output - Update the rows.
         """
-        columns, where_list = [], []
+        column_strings, columns, where_list = None, [], []
         for cols in row:
             column = ''
+            cur_col = None
             if 'column' in cols.keys():
-                column = column+ cols['column']
+                column = column + cols['column']
+                cur_col = cols['column']
             if 'value' in cols.keys():
-                column = column + ' = "' +str(cols['value']) +'"'
+                if str(cur_col) == "created" or str(cur_col) == "updated":
+                    # wee ugly but fast.
+                    if str(cols["value"]) == "NOW":
+                        column = column + " = datetime('now')"
+                    else:
+                        result = re.search(
+                            r"^NOW\s*(\+|\-)\s*([0-9]+)\s*(hour|minute|second)$",
+                            str(cols["value"])
+                        )
+                        symbol = result.group(1)
+                        time_value = result.group(2)
+                        time_denom = result.group(3)
+                        if symbol and time_value and time_denom:
+                            column = column + f" = datetime('now','{symbol}{time_value} {time_denom}')"
+                            # only sqlite complaint! pending
+                        else:
+                            values.append('"'+str(each["value"])+'"')
+                else:
+                    if cols['value']:
+                        column = column + ' = "' +str(cols['value']) +'"'
+                    else:
+                        column = column + ' = NULL'
             columns.append(column)
             column_strings = ', '.join(map(str, columns))
         for cols in where:
@@ -454,9 +527,15 @@ class Database():
             if 'column' in cols.keys():
                 column = column + cols['column']
             if 'value' in cols.keys():
-                column = column + ' = "' +str(cols['value']) +'"'
+                if cols['value']:
+                    column = column + ' = "' +str(cols['value']) +'"'
+                else:
+                    column = column + ' = NULL'
             where_list.append(column)
             join_where = ' AND '.join(map(str, where_list))
+        if not column_strings:
+            self.logger.error(f"column_strings is empty. no cols in row?")
+            return False
         query = f'UPDATE "{table}" SET {column_strings} WHERE {join_where};'
         self.logger.debug(f"Update Query ---> {query}")
         attempt = 1

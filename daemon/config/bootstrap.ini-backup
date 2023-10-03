@@ -1,4 +1,4 @@
-; Kindly use this file for Daemon bootstrap.
+; use this file for Daemon bootstrap.
 
 [HOSTS]
 ; used in cluster, "clusterips" for templates
@@ -6,15 +6,16 @@
 CONTROLLER = controller:10.141.255.254
 ; CONTROLLER1 = controller1:10.141.255.254
 ; CONTROLLER2 = None
+PRIMARY_NETWORK = cluster
 SERVERPORT = 7050
 NODELIST = node[001-004]
 
 [NETWORKS]
 ; ipmi and ib default is empty or None
 ; cluster is the default internal cluster network
-cluster = 10.141.0.0/16:DHCP:10.141.155.0-10.141.165.0
-ipmi = 10.148.0.0/16
-ib = 10.149.0.0/16
+cluster = ethernet:10.141.0.0/16:DHCP:10.141.155.0-10.141.165.0
+ipmi = ethernet:10.148.0.0/16
+ib = infiniband:10.149.0.0/16
 
 [GROUPS]
 NAME = compute
@@ -26,4 +27,5 @@ PATH = /trinity/images/compute
 [BMCSETUP]
 NAME = compute
 USERNAME = admin
-PASSWORD = password
+PASSWORD = P@ssword!
+

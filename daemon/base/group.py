@@ -1,6 +1,22 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
+# This code is part of the TrinityX software suite
+# Copyright (C) 2023  ClusterVision Solutions b.v.
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <https://www.gnu.org/licenses/>
+
 """
 Group Class have all kind of group operations.
 """
@@ -21,6 +37,7 @@ from utils.log import Log
 from utils.config import Config
 from utils.queue import Queue
 from utils.helper import Helper
+from common.constant import CONSTANT
 
 
 class Group():
@@ -33,6 +50,7 @@ class Group():
         This constructor will initialize all required variables here.
         """
         self.logger = Log.get_logger()
+        self.plugins_path=CONSTANT["PLUGINS"]["PLUGINS_DIR"]
 
 
     def get_all_group(self):
@@ -100,74 +118,78 @@ class Group():
         groups = Database().get_record(None, 'group', f' WHERE name = "{name}"')
         if groups:
             response = {'config': {'group': {} }}
-            for group in groups:
-                group_id = group['id']
-                group_interface = Database().get_record_join(
-                    [
-                        'groupinterface.interface',
-                        'network.name as network',
-                        'groupinterface.options'
-                    ],
-                    ['network.id=groupinterface.networkid'],
-                    [f"groupid = '{group_id}'"]
-                )
-                if group_interface:
-                    group['interfaces'] = []
-                    for interface in group_interface:
-                        if not interface['options']:
-                            del interface['options']
-                        group['interfaces'].append(interface)
-                del group['id']
-                for key, value in items.items():
-                    if key in cluster[0]:
-                        if isinstance(value, bool):
-                            cluster[0][key] = str(Helper().make_bool(cluster[0][key]))
-                        if cli:
-                            cluster[0][key] = cluster[0][key] or str(value+' (default)')
-                        else:
-                            cluster[0][key] = cluster[0][key] or str(value)
+            group = groups[0]
+            group_id = group['id']
+            group_interface = Database().get_record_join(
+                [
+                    'groupinterface.interface',
+                    'network.name as network',
+                    'groupinterface.options'
+                ],
+                ['network.id=groupinterface.networkid'],
+                [f"groupid = '{group_id}'"]
+            )
+            if group_interface:
+                group['interfaces'] = []
+                for interface in group_interface:
+                    if not interface['options']:
+                        del interface['options']
+                    group['interfaces'].append(interface)
+            del group['id']
+            for key, value in items.items():
+                if key in cluster[0]:
+                    if isinstance(value, bool):
+                        cluster[0][key] = str(Helper().make_bool(cluster[0][key]))
+                    if cli:
+                        cluster[0][key] = cluster[0][key] or str(value+' (default)')
+                    else:
+                        cluster[0][key] = cluster[0][key] or str(value)
+                if key in group:
+                    if isinstance(value, bool):
+                        group[key] = str(Helper().make_bool(group[key]))
+                if key in cluster[0] and ((not key in group) or (not group[key])):
+                    group[key] = str(cluster[0][key])
+                    if cli:
+                        group[key] +=' (cluster)'
+                else:
                     if key in group:
+                        if cli:
+                            group[key] = group[key] or str(value+' (default)')
+                        else:
+                            group[key] = group[key] or str(value)
+                    else:
                         if isinstance(value, bool):
                             group[key] = str(Helper().make_bool(group[key]))
-                    if key in cluster[0] and ((not key in group) or (not group[key])):
+                        group[key] = str(value)
                         if cli:
-                            group[key] = str(cluster[0][key])+' (cluster)'
-                        else:
-                            group[key] = str(cluster[0][key])
+                            group[key] += ' (default)'
+            try:
+                for key, value in b64items.items():
+                    default_str = str(value)
+                    if cli:
+                        default_str += ' (default)'
+                    default_data = b64encode(default_str.encode())
+                    default_data = default_data.decode("ascii")
+                    if key in group:
+                        group[key] = group[key] or default_data
                     else:
-                        if key in group:
-                            if cli:
-                                group[key] = group[key] or str(value+' (default)')
-                            else:
-                                group[key] = group[key] or str(value)
-                        else:
-                            if isinstance(value, bool):
-                                group[key] = str(Helper().make_bool(group[key]))
-                            if cli:
-                                group[key] = str(value+' (default)')
-                            else:
-                                group[key] = str(value)
-                try:
-                    for key, value in b64items.items():
-                        if cli:
-                            default_str = str(value+' (default)')
-                        else:
-                            default_str = str(value)
-                        default_data = b64encode(default_str.encode())
-                        default_data = default_data.decode("ascii")
-                        if key in group:
-                            group[key] = group[key] or default_data
-                        else:
-                            group[key] = default_data
-                except Exception as exp:
-                    self.logger.error(f"{exp}")
+                        group[key] = default_data
+            except Exception as exp:
+                self.logger.error(f"{exp}")
 
-                group['osimage'] = Database().name_by_id('osimage', group['osimageid'])
-                del group['osimageid']
-                if group['bmcsetupid']:
-                    group['bmcsetupname'] = Database().name_by_id('bmcsetup', group['bmcsetupid'])
-                del group['bmcsetupid']
-                response['config']['group'][name] = group
+            group['osimage'] = Database().name_by_id('osimage', group['osimageid'])
+            del group['osimageid']
+            if group['bmcsetupid']:
+                group['bmcsetupname'] = Database().name_by_id('bmcsetup', group['bmcsetupid'])
+            del group['bmcsetupid']
+            # ---
+            if group['osimagetagid']:
+                group['osimagetag'] = Database().name_by_id('osimagetag', group['osimagetagid']) or 'default'
+            else:
+                group['osimagetag'] = 'default'
+            del group['osimagetagid']
+            # ---
+            response['config']['group'][name] = group
             self.logger.info(f'Returned Group {name} with Details.')
         else:
             self.logger.error('No group is available.')
@@ -246,6 +268,10 @@ class Group():
                     return status, 'Invalid request: newgroupname is not allowed while creating a new group'
                 create = True
 
+            # we reset to make sure we don't assing something that won't work
+            if 'osimage' in data:
+                data['osimagetagid'] = "default"
+
             for key, value in items.items():
                 if key in data:
                     data[key] = data[key]
@@ -279,6 +305,23 @@ class Group():
             if 'interfaces' in data:
                 new_interface = data['interfaces']
                 del data['interfaces']
+
+            if 'osimagetag' in data:
+                osimagetag = data['osimagetag']
+                del data['osimagetag']
+                if osimagetag == "":
+                    data['osimagetagid'] = ""
+                else:
+                    osimagetagids = None
+                    if 'osimageid' in data:
+                        osimagetagids = Database().get_record(None, 'osimagetag', f" WHERE osimageid = '{data['osimageid']}' AND name = '{osimagetag}'")
+                    elif group and 'osimageid' in group[0]:
+                        osimagetagids = Database().get_record(None, 'osimagetag', f" WHERE osimageid = '{group[0]['osimageid']}' AND name = '{osimagetag}'")
+                    if osimagetagids:
+                        data['osimagetagid'] = osimagetagids[0]['id']
+                    else:
+                        status = False
+                        return status, f'Unknown tag, or osimage and tag not related'
 
             group_columns = Database().get_columns('group')
             column_check = Helper().compare_list(data, group_columns)
@@ -362,6 +405,22 @@ class Group():
                                 executor.submit(Config().update_interface_on_group_nodes,name)
                                 executor.shutdown(wait=False)
                                 # Config().update_interface_on_group_nodes(name)
+
+                # ---- we call the node plugin - maybe someone wants to run something after create/update?
+                nodes_in_group = []
+                group_details=Database().get_record_join(['node.name AS nodename'],['node.groupid=group.id'],[f"`group`.name='{name}'"])
+                if group_details:
+                    for group_detail in group_details:
+                        nodes_in_group.append(group_detail['nodename'])
+                group_plugins = Helper().plugin_finder(f'{self.plugins_path}/group')
+                GroupPlugin=Helper().plugin_load(group_plugins,'group','default')
+                try:
+                    if create:
+                        GroupPlugin().postcreate(name=name, nodes=nodes_in_group)
+                    elif update:
+                        GroupPlugin().postupdate(name=name, nodes=nodes_in_group)
+                except Exception as exp:
+                    self.logger.error(f"{exp}")
 
             else:
                 status=False

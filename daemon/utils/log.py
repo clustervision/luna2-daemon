@@ -1,6 +1,22 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
+# This code is part of the TrinityX software suite
+# Copyright (C) 2023  ClusterVision Solutions b.v.
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <https://www.gnu.org/licenses/>
+
 """
 This Log Class is responsible to start the Logger depend on the Level.
 Level Should be configured in config/luna.ini or by the argument --debug.
@@ -46,6 +62,7 @@ class Log:
         cnsl.setLevel(log_level)
         cnsl.setFormatter(formatter)
         cls.__logger.addHandler(cnsl)
+        #cnsl.propagate = False
         levels = {0: 'NOTSET', 10: 'DEBUG', 20: 'INFO', 30: 'WARNING', 40: 'ERROR', 50: 'CRITICAL'}
         cls.__logger.info(f'######### Luna Logging Level IsSet To [{levels[log_level]}] #########')
         return cls.__logger

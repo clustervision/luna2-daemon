@@ -1,6 +1,22 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
+# This code is part of the TrinityX software suite
+# Copyright (C) 2023  ClusterVision Solutions b.v.
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <https://www.gnu.org/licenses/>
+
 """
 Plugin Class ::  Default Install for pre, part, and post plugin while node install.
 """
@@ -95,9 +111,9 @@ cat << EOF > /sysroot/usr/local/luna/post-install.sh
 # to be run AFTER an install and only once
 # ---------------------------
 
-#LOCALBOOT=`grep luna_localboot /lib/dracut/modules.d/95luna/params.dat 2> /dev/null | cut -f2 -d'='`
-#if [ "$LOCALBOOT" == "1" ] || [ "$LOCALBOOT" == "yes" ]; then
-#	echo 'Luna: localboot so we wont alter the ramdisk'
+#LOCALBOOT=`grep luna_netboot /lib/dracut/modules.d/95luna/params.dat 2> /dev/null | cut -f2 -d'='`
+#if [ "$LOCALBOOT" == "0" ] || [ "$LOCALBOOT" == "no" ]; then
+#	echo 'Luna: no netboot so we wont alter the ramdisk'
 #	exit
 #fi
 echo 'Luna2: preparing the ramdisk for secure boot'

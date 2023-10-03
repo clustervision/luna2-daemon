@@ -1,6 +1,22 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
+# This code is part of the TrinityX software suite
+# Copyright (C) 2023  ClusterVision Solutions b.v.
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <https://www.gnu.org/licenses/>
+
 """
 Plugin Class ::  Default Network Interface Plugin.
 """
@@ -25,6 +41,9 @@ class Plugin():
         """
 
     interface = """
+if [ ! -d $rootmnt/etc/netplan/ ]; then
+    mkdir -p $rootmnt/etc/netplan/
+fi
 if [ ! -f $rootmnt/etc/netplan/99_config.yaml ]; then
 cat << EOF > $rootmnt/etc/netplan/99_config.yaml
 network:
@@ -38,12 +57,6 @@ cat << EOF >> $rootmnt/etc/netplan/99_config.yaml
     ${DEVICE}:
       addresses:
         - $IPADDR/$PREFIX
-      routes:
-        - to: default
-          via: __${DEVICE}_GATEWAY__
-      nameservers:
-          search: [__${DEVICE}__SEARCH__]
-          addresses: [__${DEVICE}__NAMESERVER__]
 EOF
         #$NETMASK
         #$ZONE
@@ -57,17 +70,23 @@ EOF
     """
 
     gateway = """
-        sed -i 's/__'${DEVICE}'_GATEWAY__/'$GATEWAY'/' $rootmnt/etc/netplan/99_config.yaml
+cat << EOF >> $rootmnt/etc/netplan/99_config.yaml
+      routes:
+        - to: default
+          via: $GATEWAY
+EOF
         # $METRIC
-
     """
 
     dns = """
-        sed -i 's/__'${DEVICE}'__SEARCH__/'$SEARCH'/' $rootmnt/etc/netplan/99_config.yaml
-        sed -i 's/__'${DEVICE}'__NAMESERVER__/'$NAMESERVER'/' $rootmnt/etc/netplan/99_config.yaml
+cat << EOF >> $rootmnt/etc/netplan/99_config.yaml
+      nameservers:
+          search: [$SEARCH]
+          addresses: [$NAMESERVER]
+EOF
         echo "search $SEARCH" > $rootmnt/etc/resolv.conf
         echo "nameserver $NAMESERVER" >> $rootmnt/etc/resolv.conf
-        chroot $rootmnt netplan apply
+        chroot $rootmnt netplan apply 2> /dev/null
     """
 
     ntp = """

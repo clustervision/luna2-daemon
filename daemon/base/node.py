@@ -1,6 +1,23 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
+#This code is part of the TrinityX software suite
+#Copyright (C) 2023  ClusterVision Solutions b.v.
+#
+#This program is free software: you can redistribute it and/or modify
+#it under the terms of the GNU General Public License as published by
+#the Free Software Foundation, either version 3 of the License, or
+#(at your option) any later version.
+#
+#This program is distributed in the hope that it will be useful,
+#but WITHOUT ANY WARRANTY; without even the implied warranty of
+#MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#GNU General Public License for more details.
+#
+#You should have received a copy of the GNU General Public License
+#along with this program.  If not, see <https://www.gnu.org/licenses/>
+
+
 """
 Node Class, to filter and make data set for nodes.
 """
@@ -22,6 +39,8 @@ from utils.service import Service
 from utils.queue import Queue
 from utils.helper import Helper
 from utils.monitor import Monitor
+from base.interface import Interface
+from common.constant import CONSTANT
 
 
 class Node():
@@ -34,6 +53,7 @@ class Node():
         This constructor will initialize all required variables here.
         """
         self.logger = Log.get_logger()
+        self.plugins_path=CONSTANT["PLUGINS"]["PLUGINS_DIR"]
 
 
     def get_all_nodes(self):
@@ -129,12 +149,16 @@ class Node():
                 node['status'], *_ = Monitor().installer_state(node['status'])
 
                 node['bootmenu'] = Helper().make_bool(node['bootmenu'])
-                node['localboot'] = Helper().make_bool(node['localboot'])
                 node['localinstall'] = Helper().make_bool(node['localinstall'])
                 node['netboot'] = Helper().make_bool(node['netboot'])
                 node['service'] = Helper().make_bool(node['service'])
                 node['setupbmc'] = Helper().make_bool(node['setupbmc'])
+                node['hostname'] = node['name']
                 node['interfaces']=[]
+                all_node_interfaces_by_name = {}
+                all_node_interfaces = Database().get_record(None, 'nodeinterface', f"WHERE nodeinterface.nodeid='{nodeid}'")
+                if all_node_interfaces:
+                    all_node_interfaces_by_name = Helper().convert_list_to_dict(all_node_interfaces, 'interface')
                 node_interface = Database().get_record_join(
                     [
                         'nodeinterface.interface',
@@ -146,7 +170,6 @@ class Node():
                     ['network.id=ipaddress.networkid', 'ipaddress.tablerefid=nodeinterface.id'],
                     ['tableref="nodeinterface"', f"nodeinterface.nodeid='{nodeid}'"]
                 )
-                node['hostname'] = node['name']
                 if node_interface:
                     node['interfaces'] = []
                     for interface in node_interface:
@@ -159,6 +182,17 @@ class Node():
                         if not interface['options']:
                             del interface['options']
                         node['interfaces'].append(interface)
+                        if interface['interface'] in all_node_interfaces_by_name.keys():
+                            del all_node_interfaces_by_name[interface['interface']]
+                # for incomplete interfaces
+                for empty_interface in all_node_interfaces_by_name.keys():
+                    interface = all_node_interfaces_by_name[empty_interface]
+                    del interface['id']
+                    del interface['nodeid']
+                    if not interface['options']:
+                        del interface['options']
+                    node['interfaces'].append(interface)
+
                 response['config']['node'][node_name] = node
             self.logger.info('Provided list of all nodes.')
             status = True
@@ -178,7 +212,8 @@ class Node():
             [
                 'node.*',
                 'group.name AS group',
-                'osimage.name AS group_osimage',
+                'group.osimageid AS group_osimageid',
+                'group.osimagetagid AS group_osimagetagid',
                 'group.setupbmc AS group_setupbmc',
                 'group.bmcsetupid AS group_bmcsetupid',
                 'group.prescript AS group_prescript',
@@ -191,7 +226,7 @@ class Node():
                 'group.provision_fallback AS group_provision_fallback',
                 'group.provision_interface AS group_provision_interface'
             ],
-            ['group.id=node.groupid','osimage.id=group.osimageid'],
+            ['group.id=node.groupid'],
             f"node.name='{name}'"
         )
         if all_nodes and nodes:
@@ -201,29 +236,45 @@ class Node():
             response = {'config': {'node': {} }}
             nodename = node['name']
             nodeid = node['id']
-            if node['bmcsetupid']:
-                node['bmcsetup'] = Database().name_by_id(
-                    'bmcsetup',
-                    node['bmcsetupid']
-                ) or '!!Invalid!!'
-            elif 'group_bmcsetupid' in node and node['group_bmcsetupid']:
+            if node['osimageid']:
+                node['osimage'] = Database().name_by_id('osimage',node['osimageid']) or '!!Invalid!!'
+            elif 'group_osimageid' in node and node['group_osimageid']:
+                node['osimage'] = Database().name_by_id('osimage', node['group_osimageid']) or '!!Invalid!!'
                 if cli:
-                    node['bmcsetup'] = Database().name_by_id('bmcsetup', node['group_bmcsetupid']) + f" ({node['group']})"
-                else:
-                    node['bmcsetup'] = Database().name_by_id('bmcsetup', node['group_bmcsetupid'])
+                    node['osimage'] += f" ({node['group']})"
+            else:
+                node['osimage'] = None
+            if 'group_osimageid' in node:
+                del node['group_osimageid']
+            #---
+            if node['bmcsetupid']:
+                node['bmcsetup'] = Database().name_by_id('bmcsetup',node['bmcsetupid']) or '!!Invalid!!'
+            elif 'group_bmcsetupid' in node and node['group_bmcsetupid']:
+                node['bmcsetup'] = Database().name_by_id('bmcsetup', node['group_bmcsetupid']) or '!!Invalid!!'
+                if cli:
+                    node['bmcsetup'] += f" ({node['group']})"
+            else:
+                node['bmcsetup'] = None
             if 'group_bmcsetupid' in node:
                 del node['group_bmcsetupid']
-            if node['osimageid']:
-                node['osimage'] = Database().name_by_id('osimage', node['osimageid']) or '!!Invalid!!'
-            elif 'group_osimage' in node and node['group_osimage']:
+            #---
+            if node['osimagetagid']:
+                node['osimagetag'] = Database().name_by_id('osimagetag', node['osimagetagid']) or 'default'
+            elif 'group_osimagetagid' in node and node['group_osimagetagid']:
+                node['osimagetag'] = Database().name_by_id('osimagetag', node['group_osimagetagid']) or 'default'
                 if cli:
-                    node['osimage'] = node['group_osimage']+f" ({node['group']})"
-                else:
-                    node['osimage'] = node['group_osimage']
-            if 'group_osimage' in node:
-                del node['group_osimage']
+                    node['osimagetag'] = node['osimagetag']+f" ({node['group']})"
+            else:
+                node['osimagetag'] = 'default'
+            if 'osimagetagid' in node:
+                del node['osimagetagid']
+            if 'group_osimagetagid' in node:
+                del node['group_osimagetagid']
+            #---
+            node['switch'] = None
             if node['switchid']:
                 node['switch'] = Database().name_by_id('switch', node['switchid'])
+            #---
             if not node['groupid']:
                 node['group'] = '!!Invalid!!'
 
@@ -302,6 +353,9 @@ class Node():
             except Exception as exp:
                 self.logger.error(f"{exp}")
 
+            for my_tpm in ['tpm_uuid','tpm_sha256','tpm_pubkey']:
+                if not node[my_tpm]:
+                    node[my_tpm]=None
             del node['id']
             del node['bmcsetupid']
             del node['groupid']
@@ -310,8 +364,12 @@ class Node():
             node['status'], *_ = Monitor().installer_state(node['status'])
             node['service'] = Helper().make_bool(node['service'])
             node['setupbmc'] = Helper().make_bool(node['setupbmc'])
-            node['localboot'] = Helper().make_bool(node['localboot'])
+            node['hostname'] = nodename
             node['interfaces'] = []
+            all_node_interfaces_by_name = {}
+            all_node_interfaces = Database().get_record(None, 'nodeinterface', f"WHERE nodeinterface.nodeid='{nodeid}'")
+            if all_node_interfaces:
+                all_node_interfaces_by_name = Helper().convert_list_to_dict(all_node_interfaces, 'interface')
             node_interface = Database().get_record_join(
                 [
                     'nodeinterface.interface',
@@ -323,7 +381,6 @@ class Node():
                 ['network.id=ipaddress.networkid', 'ipaddress.tablerefid=nodeinterface.id'],
                 ['tableref="nodeinterface"', f"nodeinterface.nodeid='{nodeid}'"]
             )
-            node['hostname'] = nodename
             if node_interface:
                 for interface in node_interface:
                     interface_name, *_ = (node['provision_interface'].split(' ') + [None])
@@ -335,6 +392,16 @@ class Node():
                     if not interface['options']:
                         del interface['options']
                     node['interfaces'].append(interface)
+                    if interface['interface'] in all_node_interfaces_by_name.keys():
+                        del all_node_interfaces_by_name[interface['interface']]
+            # for incomplete interfaces
+            for empty_interface in all_node_interfaces_by_name.keys():
+                interface = all_node_interfaces_by_name[empty_interface]
+                del interface['id']
+                del interface['nodeid']
+                if not interface['options']:
+                    del interface['options']
+                node['interfaces'].append(interface)
 
             response['config']['node'][nodename] = node
             self.logger.info(f'Provided details for node {name}.')
@@ -357,7 +424,6 @@ class Node():
             # 'localinstall': False,
             # 'bootmenu': False,
             'service': False,
-            'localboot': False
         }
         # minimal required items with defaults. we do inherit things from e.g. groups. but that's
         # real time and not here
@@ -399,6 +465,13 @@ class Node():
                 if key in data and (not data[key]) and (key not in items):
                     del data[key]
 
+            # we reset to make sure we don't assing something that won't work
+            if 'osimage' in data:
+                if data['osimage'] == "":
+                    data['osimagetagid'] = ""
+                else:
+                    data['osimagetagid'] = "default"
+
             # True means: cannot be empty if supplied. False means: can only be empty or correct
             checks = {'bmcsetup': False, 'group': True, 'osimage': False, 'switch': False}
             for key, value in checks.items():
@@ -418,6 +491,26 @@ class Node():
                 interfaces = data['interfaces']
                 del data['interfaces']
 
+            if 'osimagetag' in data:
+                osimagetag = data['osimagetag']
+                del data['osimagetag']
+                if osimagetag == "":
+                    data['osimagetagid'] = ""
+                else:
+                    osimagetagids = None
+                    if 'osimageid' in data:
+                        osimagetagids = Database().get_record(None, 'osimagetag', f" WHERE osimageid = '{data['osimageid']}' AND name = '{osimagetag}'")
+                    elif node and 'osimageid' in node[0]:
+                        osimagetagids = Database().get_record(None, 'osimagetag', f" WHERE osimageid = '{node[0]['osimageid']}' AND name = '{osimagetag}'")
+                    else:
+                        # there is a race condition where someone changes the group AND sets a tag at the same time. ... who will do such a thing?? - Antoine
+                        osimagetagids = Database().get_record_join(['osimagetag.id'],['osimagetag.osimageid=group.osimageid','group.id=node.groupid'],[f"node.name='{name}'",f"osimagetag.name='{osimagetag}'"])
+                    if osimagetagids:
+                        data['osimagetagid'] = osimagetagids[0]['id']
+                    else:
+                        status = False
+                        return status, f'Unknown tag or osimage and tag not related'
+
             node_columns = Database().get_columns('node')
             columns_check = Helper().compare_list(data, node_columns)
             if columns_check:
@@ -427,6 +520,8 @@ class Node():
                     Database().update('node', row, where)
                     response = f'Node {name} updated successfully'
                     status = True
+                    if nodeid and 'groupid' in data and node and len(node)>0 and 'groupid' in node[0]:
+                        Interface().update_node_group_interface(nodeid=nodeid, groupid=data['groupid'], oldgroupid=node[0]['groupid'])
                 if create:
                     if 'groupid' not in data:
                         # ai, we DO need this for new nodes...... kind of.
@@ -438,118 +533,15 @@ class Node():
                     nodeid = Database().insert('node', row)
                     response = f'Node {name} created successfully'
                     status = True
+
                     if nodeid and 'groupid' in data and data['groupid']:
-                        # ----> GROUP interface. WIP. pending. should work but i keep it WIP
-                        group_interfaces = Database().get_record_join(
-                            [
-                                'groupinterface.interface',
-                                'network.name as network',
-                                'groupinterface.options'
-                            ],
-                            ['network.id=groupinterface.networkid'],
-                            [f"groupinterface.groupid={data['groupid']}"]
-                        )
-                        if group_interfaces:
-                            for group_interface in group_interfaces:
-                                result, message = Config().node_interface_config(
-                                    nodeid,
-                                    group_interface['interface'],
-                                    None,
-                                    group_interface['options']
-                                )
-                                if result:
-                                    ips = Config().get_all_occupied_ips_from_network(
-                                        group_interface['network']
-                                    )
-                                    where = f" WHERE `name` = \"{group_interface['network']}\""
-                                    network = Database().get_record(None, 'network', where)
-                                    if network:
-                                        avail = Helper().get_available_ip(
-                                            network[0]['network'],
-                                            network[0]['subnet'],
-                                            ips
-                                        )
-                                        if avail:
-                                            result, message = Config().node_interface_ipaddress_config(
-                                                nodeid,
-                                                group_interface['interface'],
-                                                avail,
-                                                group_interface['network']
-                                            )
-                                        # we do not ping nodes as it will take time if we add bulk
-                                        # nodes, it'll take 1s per node. code block removal pending?
-                                        # ret=0
-                                        # max=5
-                                        # we try to ping for X ips, if none of these are free,
-                                        # something else is going on (read: rogue devices)....
-                                        # while(max>0 and ret!=1):
-                                        #     avail = Helper().get_available_ip(
-                                        #       network[0]['network'],
-                                        #       network[0]['subnet'],
-                                        #       ips
-                                        #     )
-                                        #     ips.append(avail)
-                                        #     command = f"ping -w1 -c1 {avail}"
-                                        #     output, ret = Helper().runcommand(command, True, 3)
-                                        #     max-= 1
+                        Interface().update_node_group_interface(nodeid=nodeid, groupid=data['groupid'])
 
                 if interfaces:
-                    for interface in interfaces:
-                        # Antoine
-                        interface_name = interface['interface']
-                        ipaddress,macaddress,network,options=None,None,None,None
-                        if 'macaddress' in interface.keys():
-                            macaddress = interface['macaddress']
-                        if 'options' in interface.keys():
-                            options = interface['options']
-                        if 'network' in interface.keys():
-                            network = interface['network']
-                        result, message = Config().node_interface_config(
-                            nodeid,
-                            interface_name,
-                            macaddress,
-                            options
-                        )
-                        if result:
-                            if not 'ipaddress' in interface.keys():
-                                existing = Database().get_record_join(
-                                    ['ipaddress.ipaddress'],
-                                    [
-                                        'nodeinterface.nodeid=node.id',
-                                        'ipaddress.tablerefid=nodeinterface.id'
-                                    ],
-                                    [
-                                        f"node.name='{name}'",
-                                        "ipaddress.tableref='nodeinterface'",
-                                        f"nodeinterface.interface='{interface_name}'"
-                                    ]
-                                )
-                                if existing:
-                                    ipaddress = existing[0]['ipaddress']
-                                else:
-                                    ips = Config().get_all_occupied_ips_from_network(network)
-                                    where = f" WHERE `name` = '{network}'"
-                                    network_details = Database().get_record(None, 'network', where)
-                                    if network_details:
-                                        avail = Helper().get_available_ip(
-                                            network_details[0]['network'],
-                                            network_details[0]['subnet'],
-                                            ips
-                                        )
-                                        if avail:
-                                            ipaddress = avail
-                            else:
-                                ipaddress=interface['ipaddress']
-                            result, message = Config().node_interface_ipaddress_config(
-                                nodeid,
-                                interface_name,
-                                ipaddress,
-                                network
-                            )
-
-                        if result is False:
-                            status = False
-                            return status, f'{message}'
+                    result, message = Interface().change_node_interface(nodeid=nodeid, data=interfaces)
+                    if result is False:
+                        status = False
+                        return status, f'{message}'
 
                 # For now i have the below two disabled. it's testing. -Antoine aug 8 2023
                 #Service().queue('dhcp', 'restart')
@@ -557,8 +549,23 @@ class Node():
                 # below might look as redundant but is added to prevent a possible race condition
                 # when many nodes are added in a loop.
                 # the below tasks ensures that even the last node will be included in dhcp/dns
-                Queue().add_task_to_queue('dhcp:restart', 'housekeeper', '__node_post__')
-                Queue().add_task_to_queue('dns:restart', 'housekeeper', '__node_post__')
+                Queue().add_task_to_queue('dhcp:restart', 'housekeeper', '__node_update__')
+                Queue().add_task_to_queue('dns:restart', 'housekeeper', '__node_update__')
+
+                # ---- we call the node plugin - maybe someone wants to run something after create/update?
+                group_details = Database().get_record_join(['group.name'],
+                                                           ['group.id=node.groupid'],
+                                                           [f"node.name='{name}'"])
+                if group_details:
+                    node_plugins = Helper().plugin_finder(f'{self.plugins_path}/node')
+                    NodePlugin=Helper().plugin_load(node_plugins,'node','default')
+                    try:
+                        if create:
+                            NodePlugin().postcreate(name=name, group=group_details[0]['name'])
+                        elif update:
+                            NodePlugin().postupdate(name=name, group=group_details[0]['name'])
+                    except Exception as exp:
+                        self.logger.error(f"{exp}")
             else:
                 response = 'Invalid request: Columns are incorrect'
                 status = False
@@ -571,7 +578,7 @@ class Node():
     def clone_node(self, name=None, request_data=None):
         """This method will clone a node."""
         data = {}
-        items = {'service': False, 'localboot': False}
+        items = {'service': False}
         status=False
         response="Internal error"
         if request_data:

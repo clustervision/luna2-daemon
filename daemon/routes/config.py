@@ -1,6 +1,22 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
+# This code is part of the TrinityX software suite
+# Copyright (C) 2023  ClusterVision Solutions b.v.
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <https://www.gnu.org/licenses/>
+
 """
 This File is a A Entry Point of Every Configuration Related Activity.
 @token_required is a Wrapper Method to Validate the POST API. It contains
@@ -200,7 +216,7 @@ def config_node_post_interfaces(name=None):
     Process - Create Or Update The Node Interface.
     Output - Node Interface.
     """
-    status, response = Interface().change_node_interface(name, request.data)
+    status, response = Interface().change_node_interface_by_name(name, request.data)
     access_code=Helper().get_access_code(status,response)
     response = {'message': response}
     return response, access_code
@@ -235,7 +251,7 @@ def config_node_delete_interface(name=None, interface=None):
     Process - Delete the Node Interface.
     Output - Success or Failure.
     """
-    status, response = Interface().delete_node_interface(name, interface)
+    status, response = Interface().delete_node_interface_by_name(name, interface)
     access_code=Helper().get_access_code(status,response)
     response = {'message': response}
     return response, access_code
@@ -282,7 +298,7 @@ def config_group_get(cli=None, name=None):
     return response, access_code
 
 
-@config_blueprint.route("/config/group/<string:name>/_list", methods=['GET'])
+@config_blueprint.route("/config/group/<string:name>/_member", methods=['GET'])
 @token_required
 @validate_name
 def config_group_member(name=None):
@@ -484,7 +500,7 @@ def config_osimage_get(name=None):
     return response, access_code
 
 
-@config_blueprint.route("/config/osimage/<string:name>/_list", methods=['GET'])
+@config_blueprint.route("/config/osimage/<string:name>/_member", methods=['GET'])
 @token_required
 @validate_name
 def config_osimage_member(name=None):
@@ -494,6 +510,62 @@ def config_osimage_member(name=None):
     """
     access_code=404
     status, response = OSImage().get_osimage_member(name)
+    if status is True:
+        access_code = 200
+        response = dumps(response)
+    else:
+        response = {'message': response}
+    return response, access_code
+
+
+@config_blueprint.route("/config/osimagetag", methods=['GET'])
+@token_required
+def config_osimagetag():
+    """
+    Input - OS Imagetag ID or Name
+    Process - Fetch the OS Image tag information.
+    Output - OSImage tag Info.
+    """
+    access_code=404
+    status, response = OSImage().get_all_osimagetags()
+    if status is True:
+        access_code = 200
+        response = dumps(response)
+    else:
+        response = {'message': response}
+    return response, access_code
+
+
+@config_blueprint.route("/config/osimagetag/<string:name>", methods=['GET'])
+@token_required
+@validate_name
+def config_osimagetag_get(name=None):
+    """
+    Input - OS Image tag ID or Name
+    Process - Fetch the OS Image tag information.
+    Output - OSImage tag Info.
+    """
+    access_code=404
+    #status, response = OSImage().get_osimagetag(name)
+    status, response = OSImage().get_all_osimagetags(name)
+    if status is True:
+        access_code = 200
+        response = dumps(response)
+    else:
+        response = {'message': response}
+    return response, access_code
+
+
+@config_blueprint.route("/config/osimagetag/<string:name>/_member", methods=['GET'])
+@token_required
+@validate_name
+def config_osimagetag_member(name=None):
+    """
+    This method will fetch all the nodes+groups, which is connected to
+    the provided osimagetag.
+    """
+    access_code=404
+    status, response = OSImage().get_osimagetag_member(name)
     if status is True:
         access_code = 200
         response = dumps(response)
@@ -561,6 +633,21 @@ def config_osimage_delete(name=None):
     return response, access_code
 
 
+@config_blueprint.route("/config/osimage/<string:name>/osimagetag/<string:tagname>/_delete", methods=['GET'])
+@token_required
+@validate_name
+def config_osimagetag_delete(name=None, tagname=None):
+    """
+    Input - OS Image Name and osimagetag name
+    Process - Delete the OS Imagetag belonging to osimage.
+    Output - Success or Failure.
+    """
+    status, response = OSImage().delete_osimagetag(name,tagname)
+    access_code=Helper().get_access_code(status,response)
+    response = {'message': response}
+    return response, access_code
+
+
 # BELOW SEGMENT HAS BEEN TESTED AND CONFIRMED WORKING BY ANTOINE ON APRIL 3 2023
 @config_blueprint.route("/config/osimage/<string:name>/_pack", methods=['GET'])
 @token_required
@@ -611,6 +698,23 @@ def config_osimage_kernel_post(name=None):
             response = {'message': response}
     else:
         response = {'message': response}
+    return response, access_code
+
+
+@config_blueprint.route("/config/osimage/<string:name>/tag", methods=['POST'])
+@token_required
+@validate_name
+@input_filter(checks=['config:osimage'], skip=None)
+def config_osimage_tag_post(name=None):
+    """
+    Input - OS Image Name
+    Process - Manually add/assign a tag to an image.
+    Output - Tag name.
+    """
+    access_code=404
+    status, response = OSImage().set_tag(name, request.data)
+    access_code=Helper().get_access_code(status,response)
+    response = {'message': response}
     return response, access_code
 
 
@@ -686,7 +790,7 @@ def config_bmcsetup_get(name=None):
     return response, access_code
 
 
-@config_blueprint.route("/config/bmcsetup/<string:name>/_list", methods=['GET'])
+@config_blueprint.route("/config/bmcsetup/<string:name>/_member", methods=['GET'])
 @token_required
 @validate_name
 def config_bmcsetup_member(name=None):
@@ -984,7 +1088,7 @@ def config_network_ip(name=None, ipaddress=None):
     return response, access_code
 
 
-@config_blueprint.route("/config/network/<string:name>/_list", methods=['GET'])
+@config_blueprint.route("/config/network/<string:name>/_member", methods=['GET'])
 @token_required
 @validate_name
 def config_network_taken(name=None):
@@ -1236,39 +1340,38 @@ def config_group_secret_delete(name=None, secret=None):
     return response, access_code
 
 
+########### OSUSER
 @config_blueprint.route("/config/osuser", methods=['GET'])
 @token_required
 def config_get_os_user_list():
     """
     Input - None
-    Process - List OSystem (ldap/ssd/pam) group.
-    Output - None.
+    Output - List of OSUsers (ldap/ssd/pam).
     """
-    access_code = 404
+    access_code=404
     status, response = OsUser().list_users()
     if status is True:
         access_code=200
         response=dumps(response)
     else:
-        response={'message': response}
+        response = {'message': response}
     return response, access_code
 
 
-@config_blueprint.route("/config/osgroup", methods=['GET'])
+@config_blueprint.route("/config/osuser/<string:name>", methods=['GET'])
 @token_required
-def config_get_os_group_list():
+def config_get_os_user(name):
     """
-    Input - None
-    Process - List OSystem (ldap/ssd/pam) group.
-    Output - None.
+    Input - username
+    Process - Show info of OSUser (ldap/ssd/pam).
     """
-    access_code = 404
-    status, response = OsUser().list_groups()
+    access_code=404
+    status, response = OsUser().get_user(name)
     if status is True:
         access_code=200
         response=dumps(response)
     else:
-        response={'message': response}
+        response = {'message': response}
     return response, access_code
 
 
@@ -1282,10 +1385,13 @@ def config_post_os_user(name=None):
     Process - Create Or Update System (ldap/ssd/pam) users.
     Output - None.
     """
-    status, response = OsUser().update_user(name, request.data)
-    access_code=Helper().get_access_code(status,response)
-    response = {'message': response}
-    return response, access_code
+    access_code = 503
+    response = "Invalid request: missing data"
+    if name and name in request.json['config']['osuser']:
+        userdata = request.json['config']['osuser'][name]
+        status, response = OsUser().update_user(name, **userdata)
+        access_code=Helper().get_access_code(status,response)
+    return {'message': response}, access_code
 
 
 @config_blueprint.route("/config/osuser/<string:name>/_delete", methods=['GET'])
@@ -1297,9 +1403,47 @@ def config_post_os_user_delete(name=None):
     Process - Delete System (ldap/ssd/pam) group.
     Output - None.
     """
+    access_code=404
     status, response = OsUser().delete_user(name)
-    access_code=Helper().get_access_code(status,response)
-    response = {'message': response}
+
+    if status is True:
+        access_code=204
+    return {'message': response}, access_code
+
+########### OSGROUP
+@config_blueprint.route("/config/osgroup", methods=['GET'])
+@token_required
+def config_get_os_group_list():
+    """
+    Input - None
+    Output - List of OSUsers (ldap/ssd/pam).
+    """
+    access_code=404
+    status, response = OsUser().list_groups()
+
+    if status is True:
+        access_code=200
+        response=dumps(response)
+    else:
+        response = {'message': response}
+    return response, access_code
+
+
+@config_blueprint.route("/config/osgroup/<string:name>", methods=['GET'])
+@token_required
+def config_get_os_group(name):
+    """
+    Input - groupname
+    Process - Show info of OSUser (ldap/ssd/pam).
+    """
+    access_code=404
+    status, response = OsUser().get_group(name)
+
+    if status is True:
+        access_code=200
+        response=dumps(response)
+    else:
+        response = {'message': response}
     return response, access_code
 
 
@@ -1309,14 +1453,17 @@ def config_post_os_user_delete(name=None):
 @input_filter(checks=['config:osgroup'], skip=None)
 def config_post_os_group(name=None):
     """
-    Input - Group Name & Payload
-    Process - Create Or Update System (ldap/ssd/pam) group.
+    Input - User Name & Payload
+    Process - Create Or Update System (ldap/ssd/pam) groups.
     Output - None.
     """
-    status, response = OsUser().update_group(name, request.data)
-    access_code=Helper().get_access_code(status,response)
-    response = {'message': response}
-    return response, access_code
+    access_code = 503
+    response = "Invalid request: data missing"
+    if name and name in request.json['config']['osgroup']:
+        groupdata = request.json['config']['osgroup'][name]
+        status, response = OsUser().update_group(name, **groupdata)
+        access_code=Helper().get_access_code(status,response)
+    return {'message': response}, access_code
 
 
 @config_blueprint.route("/config/osgroup/<string:name>/_delete", methods=['GET'])
@@ -1324,14 +1471,16 @@ def config_post_os_group(name=None):
 @validate_name
 def config_post_os_group_delete(name=None):
     """
-    Input - Group Name
+    Input - User Name
     Process - Delete System (ldap/ssd/pam) group.
     Output - None.
     """
+    access_code=404
     status, response = OsUser().delete_group(name)
-    access_code=Helper().get_access_code(status,response)
-    response = {'message': response}
-    return response, access_code
+
+    if status is True:
+        access_code=204
+    return {'message': response}, access_code
 
 
 @config_blueprint.route('/config/status/<string:request_id>', methods=['GET'])

@@ -1,6 +1,22 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
+# This code is part of the TrinityX software suite
+# Copyright (C) 2023  ClusterVision Solutions b.v.
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <https://www.gnu.org/licenses/>
+
 """
 Security class which provides functions and method to verify,
 check and secure input and other related things
@@ -33,7 +49,8 @@ control_char_re = re.compile(f'[{re.escape(CONTROL_CHAR)}]')
 REG_EXP = {
     'name': r'^[a-z0-9\-]+$',
     'ipaddress': r'^[0-9a-f:\.]+$',
-    'macaddress': r'^[a-fA-F0-9:\-]+$'
+    'macaddress': r'^(([0-9A-Za-f]{2}((-|:)[0-9A-Za-f]{2}){5})|)$',
+    'minimal': r'^.+$'
 }
 MATCH = {
     'name': 'name',
@@ -44,8 +61,17 @@ MATCH = {
     'newotherdevicename': 'name',
     'newotherdevname': 'name',
     'ipaddress':'ipaddress',
-    'macaddress':'macaddress'
+    'macaddress':'macaddress',
+    'newosimage': 'name',
+    'newgroupname': 'name',
+    'newbmcname': 'name',
+    'newotherdevicename': 'name',
+    'newotherdevname': 'name',
+    'newsecretname': 'name',
+    'newswitchname': 'name',
+    'newnetname': 'name'
 }
+
 maxlength = {'request_id': '256'}
 convert = {'macaddress': {'-':':'}}
 

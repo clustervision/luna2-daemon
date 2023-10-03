@@ -1,6 +1,22 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
+# This code is part of the TrinityX software suite
+# Copyright (C) 2023  ClusterVision Solutions b.v.
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <https://www.gnu.org/licenses/>
+
 """
 This is a Config Class, which provide the configuration
 to DHN and DHCP methods.
@@ -53,38 +69,50 @@ class Config(object):
         if cluster and 'ntp_server' in cluster[0] and cluster[0]['ntp_server']:
             ntp_server = cluster[0]['ntp_server']
         dhcp_file = f"{CONSTANT['TEMPLATES']['TEMP_DIR']}/dhcpd.conf"
-        serverport = 7050
-        if CONSTANT['API']['PROTOCOL'] == 'https' and 'WEBSERVER' in CONSTANT and 'PORT' in CONSTANT['WEBSERVER']:
-            # we rely on nginx serving non https stuff for e.g. /boot. 
-            # ipxe does support https but has issues dealing with self signed certificates
-            serverport = CONSTANT['WEBSERVER']['PORT']
         domain = None
+
+        networksbyname = {}
         networks = Database().get_record(None, 'network', ' WHERE `dhcp` = 1')
         if networks:
-            for nwk in networks:
+            networksbyname = Helper().convert_list_to_dict(networks, 'name')
+
+        shared = {}
+        for network in networksbyname.keys():
+            if networksbyname[network]['shared'] and networksbyname[network]['shared'] in networksbyname.keys():
+                if not networksbyname[network]['shared'] in shared.keys():
+                    shared[networksbyname[network]['shared']] = []
+                shared[networksbyname[network]['shared']].append(network)
+
+        shared_dhcp_header, handled = [], []
+        dhcp_decl_header,dhcp_subnet_block = "",""
+        for network in shared.keys():
+            shared_dhcp_pool, denied_dhcp_pool = [], []
+            shared_name = f"{network}-" + "-".join(shared[network])
+            dhcp_subnet_block += "\n" + f"shared-network {shared_name} {{"
+            # main network
+            denied_dhcp_pool.append(self.shared_pool_denies(shared[network],networksbyname[network]['dhcp_range_begin'],networksbyname[network]['dhcp_range_end']))
+            dhcp_subnet_block += self.dhcp_decl_config(networksbyname[network],'shared')
+            # the networks that ride with it
+            for piggyback in shared[network]:
+                shared_dhcp_header.append(self.shared_header(piggyback))
+                shared_dhcp_pool.append(self.shared_pool(piggyback,networksbyname[piggyback]['dhcp_range_begin'],networksbyname[piggyback]['dhcp_range_end']))
+                dhcp_subnet_block += self.dhcp_decl_config(networksbyname[piggyback],'shared')
+                handled.append(piggyback)
+            handled.append(network)
+
+            dhcp_subnet_block += "\n".join(shared_dhcp_pool)
+            dhcp_subnet_block += "\n".join(denied_dhcp_pool)
+            dhcp_subnet_block += "\n}\n"
+
+        if networksbyname:
+            for network in networksbyname.keys():
+                nwk = networksbyname[network]
+                if nwk['name'] not in handled:
+                    dhcp_subnet_block += self.dhcp_decl_config(nwk)
+                    handled.append(nwk['name'])
                 network_id = nwk['id']
                 network_name = nwk['name']
                 network_ip = nwk['network']
-                netmask = Helper().get_netmask(f"{nwk['network']}/{nwk['subnet']}")
-                controller = Database().get_record_join(
-                    ['ipaddress.ipaddress'],
-                    ['ipaddress.tablerefid=controller.id'],
-                    ['tableref="controller"', 'controller.hostname="controller"', f'ipaddress.networkid="{network_id}"']
-                )
-                self.logger.info(f"Building DHCP block for {network_name}")
-                if controller:
-                    domain = nwk['name']
-                    subnet_block = self.dhcp_subnet(
-                        nwk['network'], netmask, serverport, controller[0]['ipaddress'], nwk['gateway'],
-                        nwk['dhcp_range_begin'], nwk['dhcp_range_end']
-                    )
-                else:
-                    subnet_block = self.dhcp_subnet(
-                        nwk['network'], netmask, None, None, nwk['gateway'],
-                        nwk['dhcp_range_begin'], nwk['dhcp_range_end']
-                    )
-                dhcp_subnet_block = f'{dhcp_subnet_block}{subnet_block}'
-
                 node_interface = Database().get_record_join(
                     ['node.name as nodename', 'ipaddress.ipaddress', 'nodeinterface.macaddress'],
                     ['ipaddress.tablerefid=nodeinterface.id', 'nodeinterface.nodeid=node.id'],
@@ -114,12 +142,15 @@ class Config(object):
                                 )
                     else:
                         self.logger.debug(f'{item} not available for {network_name} {network_ip}')
+
+        shared_header_block = "\n".join(shared_dhcp_header)
         config = self.dhcp_config(domain,ntp_server)
-        config = f'{config}{dhcp_subnet_block}'
+        config = f'{config}{shared_header_block}{dhcp_subnet_block}'
         for node in node_block:
             config = f'{config}{node}'
         for dev in device_block:
             config = f'{config}{dev}'
+        config += "\n"
 
         try:
             with open(dhcp_file, 'w', encoding='utf-8') as dhcp:
@@ -139,6 +170,44 @@ class Config(object):
         except Exception as exp:
             self.logger.error(f"Uh oh... {exp}")
         return validate
+
+
+    def dhcp_decl_config (self,nwk=[],shared=False):
+        """ 
+        dhcp subnetblock with config
+        glue between the various other subnet blocks: prepare for dhcp_subnet function
+        """
+        serverport = 7050
+        if CONSTANT['API']['PROTOCOL'] == 'https' and 'WEBSERVER' in CONSTANT and 'PORT' in CONSTANT['WEBSERVER']:
+            # we rely on nginx serving non https stuff for e.g. /boot. 
+            # ipxe does support https but has issues dealing with self signed certificates
+            serverport = CONSTANT['WEBSERVER']['PORT']
+        network_id = nwk['id']
+        network_name = nwk['name']
+        network_ip = nwk['network']
+        if shared:
+            nwk['dhcp_range_begin'], nwk['dhcp_range_end'] = None, None
+        netmask = Helper().get_netmask(f"{nwk['network']}/{nwk['subnet']}")
+        controller = Database().get_record_join(
+            ['ipaddress.ipaddress'],
+            ['ipaddress.tablerefid=controller.id'],
+            ['tableref="controller"', 'controller.hostname="controller"', f'ipaddress.networkid="{network_id}"']
+        )
+        self.logger.info(f"Building DHCP block for {network_name}")
+        if controller:
+            domain = nwk['name']
+            subnet_block = self.dhcp_subnet(
+                nwk['network'], netmask, serverport, controller[0]['ipaddress'], nwk['gateway'],
+                nwk['dhcp_range_begin'], nwk['dhcp_range_end']
+            )
+        else:
+            subnet_block = self.dhcp_subnet(
+                nwk['network'], netmask, None, None, nwk['gateway'],
+                nwk['dhcp_range_begin'], nwk['dhcp_range_end']
+            )
+        if shared:
+            subnet_block = Helper().add_padding(subnet_block)
+        return subnet_block
 
 
     def dhcp_config(self, domain=None, ntp_server=None):
@@ -197,6 +266,32 @@ class Config(object):
         return config
 
 
+    def shared_header(self, network=None, identifier=None):
+        identifier = identifier or "udhcp" 
+        header_block = dedent(f"""
+            class "{network}" {{
+                match if substring (option vendor-class-identifier, 0, 5) = "{identifier}";
+            }}""")
+        header_block += "\n"
+        return header_block
+
+    def shared_pool(self, network=None, dhcp_start=None, dhcp_end=None):
+        pool_block = "\npool {\n"
+        pool_block += f"    allow members of \"{network}\";\n"
+        pool_block += f"    range {dhcp_start} {dhcp_end};\n"
+        pool_block += "}\n"
+        pool_block = Helper().add_padding(pool_block)
+        return pool_block
+
+    def shared_pool_denies(self, networks=[], dhcp_start=None, dhcp_end=None):
+        pool_block = "\npool {\n"
+        for deny in networks:
+            pool_block += f"    deny members of \"{deny}\";\n"
+        pool_block += f"    range {dhcp_start} {dhcp_end};\n"
+        pool_block += "}\n"
+        pool_block = Helper().add_padding(pool_block)
+        return pool_block
+
     def dhcp_subnet(self, network=None, netmask=None, serverport=None, nextserver=None, gateway=None,
                     dhcp_range_start=None, dhcp_range_end=None):
         """
@@ -219,7 +314,8 @@ class Config(object):
                 }}""")
         if nextserver:
             subnet_block += f"""\n    next-server {nextserver};"""
-        subnet_block += f"""\n    range {dhcp_range_start} {dhcp_range_end};"""
+        if dhcp_range_start and dhcp_range_end:
+            subnet_block += f"""\n    range {dhcp_range_start} {dhcp_range_end};"""
         if gateway:
             subnet_block += f"""\n    option routers {gateway};"""
         subnet_block += """\n    option luna-id "lunaclient";\n}\n"""
@@ -375,7 +471,7 @@ class Config(object):
         forwarders {{
             """
             for ip in forwarder:
-                forwarders += f"{ip};"
+                forwarders += f"\n\t\t{ip};"
             forwarders += f"""
         }};
         // END forwarders
@@ -615,7 +711,7 @@ $TTL 604800
             my_interface['interface'] = interface_name
             my_interface['nodeid'] = nodeid
             if macaddress is not None:
-                my_interface['macaddress'] = macaddress
+                my_interface['macaddress'] = macaddress.lower()
             if options is not None:
                 my_interface['options'] = options
             row = Helper().make_rows(my_interface)
@@ -624,7 +720,7 @@ $TTL 604800
         else:
             # we have to update the interface
             if macaddress is not None:
-                my_interface['macaddress'] = macaddress
+                my_interface['macaddress'] = macaddress.lower()
             if options is not None:
                 my_interface['options'] = options
             if my_interface:
@@ -665,8 +761,7 @@ $TTL 604800
             )
                 
         if not network_details:
-            message = "not enough information provided. network name incorrect or \
-                need network name if there is no existing ipaddress"
+            message = "not enough information provided. network name incorrect or need network name if there is no existing ipaddress"
             self.logger.info(message)
             return False, message
 
@@ -732,6 +827,7 @@ $TTL 604800
     def update_interface_on_group_nodes(self, name=None, request_id=None):
         """
         This method will update node/group interfaces.
+        It's called from a group add/change. it handles all nodes in that group
         """
         self.logger.info(f'request_id: {request_id}')
         self.logger.info("update_interface_on_group_nodes called")

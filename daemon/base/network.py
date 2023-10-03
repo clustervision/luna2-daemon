@@ -1,6 +1,22 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
+# This code is part of the TrinityX software suite
+# Copyright (C) 2023  ClusterVision Solutions b.v.
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <https://www.gnu.org/licenses/>
+
 """
 Network Class will handle all network operations.
 """
@@ -54,6 +70,7 @@ class Network():
                     network['dhcp'] = False
                 else:
                     network['dhcp'] = True
+                network['type'] = network['type'] or 'ethernet'
                 response['config']['network'][network['name']] = network
             status=True
         else:
@@ -82,6 +99,7 @@ class Network():
                     network['dhcp'] = False
                 else:
                     network['dhcp'] = True
+                network['type'] = network['type'] or 'ethernet'
                 response['config']['network'][name] = network
             status=True
         else:
@@ -276,7 +294,13 @@ class Network():
         network = Database().get_record(None, 'network', f' WHERE `name` = "{name}"')
         if network:
             Database().delete_row('network', [{"column": "name", "value": name}])
+            data = {}
+            data['shared'] = ""
+            row = Helper().make_rows(data)
+            where = [{"column": "shared", "value": name}]
+            Database().update('network', row, where)
             Service().queue('dns','restart')
+            Service().queue('dhcp','restart')
             response = 'Network removed'
             status=True
         else:

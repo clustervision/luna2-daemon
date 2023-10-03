@@ -18,14 +18,31 @@ from setuptools import setup, find_packages
 
 PRE = "{Personal-Access-Token-Name}:{Personal-Access-Token}"
 
-try: # for pip >= 10
-    from pip._internal.req import parse_requirements
-    install_requirements = list(parse_requirements('requirements.txt', session='hack'))
-    requirements = [str(ir.requirement) for ir in install_requirements]
-except ImportError: # for pip <= 9.0.3
-    from pip.req import parse_requirements
-    install_requirements = parse_requirements('requirements.txt', session='hack')
-    requirements = [str(ir.req) for ir in install_requirements]
+def get_requirements():
+    """
+    This Method will read the requirements.txt file and return the list of requirements.
+    """
+
+    # for pip <= 9.0.3
+    try: 
+        from pip.req import parse_requirements
+        install_requirements = parse_requirements('requirements.txt', session='hack')
+        return  [str(ir.req) for ir in install_requirements]
+    except ImportError: 
+        pass
+
+    # for pip >= 10 AND pip <= 23.1
+    try:
+        from pip._internal.req import parse_requirements
+        install_requirements = list(parse_requirements('requirements.txt', session='hack'))
+        return [str(ir.requirement) for ir in install_requirements]
+    except ImportError: 
+        pass
+
+    # anything else
+    with open('requirements.txt', 'r', encoding='utf-8') as f:
+        requirements = f.read().splitlines()
+    return requirements
 
 
 def new_version():
@@ -59,7 +76,7 @@ setup(
             'daemon = daemon.daemon:main'
         ]
     },
-    install_requires = requirements,
+    install_requires = get_requirements(),
     dependency_links = [],
     package_data = {
         "daemon": ["*.txt"],
@@ -67,14 +84,18 @@ setup(
         "daemon/config/third-party": ["*.service","*.conf"],
         "daemon/log": ["*.log"],
         "daemon/templates": ["*.cfg"],
-        "daemon/plugins/bmc": ["README"],
-        "daemon/plugins/control": ["README"],
-        "daemon/plugins/detection": ["README"],
-        "daemon/plugins/install": ["README"],
-        "daemon/plugins/network": ["README"],
-        "daemon/plugins/osgrab": ["README"],
-        "daemon/plugins/osimage": ["README"],
-        "daemon/plugins/provision": ["README"]
+        "daemon/plugins/control": ["README","*.py"],
+        "daemon/plugins/boot/bmc": ["README","*.py"],
+        "daemon/plugins/boot/detection": ["README","*.py"],
+        "daemon/plugins/boot/scripts": ["README","*py"],
+        "daemon/plugins/boot/network": ["README","*.py"],
+        "daemon/plugins/boot/provision": ["README","*.py"],
+        "daemon/plugins/boot/localinstall": ["README","*.py"],
+        "daemon/plugins/osimage/operations/osgrab": ["README","*.py"],
+        "daemon/plugins/osimage/operations/ospush": ["README","*py"],
+        "daemon/plugins/osimage/operations/image": ["README","*py"],
+        "daemon/plugins/osimage/filesystem": ["README","*py"],
+        "daemon/plugins/osimage/other": ["README","*py"]
     },
     data_files = [],
     zip_safe = False,

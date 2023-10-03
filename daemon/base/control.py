@@ -1,6 +1,22 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
+# This code is part of the TrinityX software suite
+# Copyright (C) 2023  ClusterVision Solutions b.v.
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <https://www.gnu.org/licenses/>
+
 """
 This file is the entry point for provisioning
 """
@@ -130,6 +146,10 @@ class Control():
                 for hostname in hostlist:
                     pipeline.add_nodes({hostname: subsystem+' '+action})
                 request_id = str(time()) + str(randint(1001, 9999)) + str(getpid())
+                # ------------------ ugly work around when output takes longer than 5 seconds -----------------
+                Status().add_message(request_id,"lpower",f"Operation in progress...")
+                Status().mark_messages_read(request_id)
+                # -------------------------- end of work around -----------------------------------------------
                 executor = ThreadPoolExecutor(max_workers=1)
                 executor.submit(NodeControl().control_mother, pipeline, request_id, size, delay)
                 executor.shutdown(wait=False)
@@ -142,8 +162,7 @@ class Control():
                 while(pipeline.has_nodes() and wait_count > 0):
                     sleep(1)
                     wait_count -= 1
-                where = f' WHERE request_id = "{request_id}"'
-                status = Database().get_record(None , 'status', where)
+                status = Database().get_record(None , 'status', f' WHERE request_id = "{request_id}"')
                 if status:
                     on_nodes = {}
                     off_nodes = {}
@@ -174,6 +193,7 @@ class Control():
 
                     Status().mark_messages_read(request_id)
                     response = {
+                        'request_id': request_id,
                         'control': {
                             subsystem: {
                                 'ok': ok_nodes,
@@ -181,12 +201,11 @@ class Control():
                                 'off': off_nodes
                             },
                             'failed': failed_nodes,
-                            'request_id': request_id
                         }
                     }
                     status=True
                 else:
-                    response = {'control': {subsystem: {'request_id': request_id} } }
+                    response = {'request_id': request_id}
                     status=True
                 # end Antoine ---------------------------------------------------------------
             else:
@@ -201,7 +220,7 @@ class Control():
         """
         status = Database().get_record(None , 'status', f' WHERE request_id = "{request_id}"')
         if status:
-            subsystem=None
+            subsystem='unknown'
             on_nodes = {}
             off_nodes = {}
             ok_nodes = {}
@@ -232,6 +251,7 @@ class Control():
 
             Status().mark_messages_read(request_id)
             response = {
+                'request_id': request_id,
                 'control': {
                     subsystem: {
                         'ok': ok_nodes,
@@ -239,7 +259,6 @@ class Control():
                         'off': off_nodes,
                     },
                     'failed': failed_nodes,
-                    'request_id': request_id
                 }
             }
             return True, response

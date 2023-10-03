@@ -1,6 +1,22 @@
 #!/usr/bin/env python3
 # -*- coding: UTF-8 -*-
 
+# This code is part of the TrinityX software suite
+# Copyright (C) 2023  ClusterVision Solutions b.v.
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <https://www.gnu.org/licenses/>
+
 """
 This File is responsible to fetch each variable configured in config/luna.ini.
 Import this file will provide all variables which is fetched here.
@@ -14,7 +30,7 @@ __maintainer__  = 'Sumit Sharma'
 __email__       = 'sumit.sharma@clustervision.com'
 __status__      = 'Development'
 
-import os
+import os, sys
 import subprocess
 import json
 from configparser import RawConfigParser
@@ -112,13 +128,30 @@ def check_section(filename=None):
             LOGGER.error(f'Section {item} is missing, kindly check the file {filename}.')
 
 
-def check_option(filename=None, section=None, option=None):
+def check_option(filename, section, option=None):
     """
     Compare the ini option with the predefined dictionary options.
     """
-    for item in list(CONSTANT[section].keys()):
-        if item.lower() not in list(dict(configParser.items(section)).keys()):
-            LOGGER.error(f'{option} is not available in {section}, kindly check {filename}.')
+
+    if option:
+        if option.lower() not in list(dict(configParser.items(section)).keys()):
+            try:
+                LOGGER.error(f'{option} is not available in {section}, please check {filename}.')
+            except:
+                # getconfig + check_option are needed to read config file to know where to store logs
+                # this then inits logger. it's a chicken egg problem. unsolvable - Antoine sep 20 2023
+                sys.stderr.write(f"{option} is not available in {section}, please check {filename}\n")
+    else:
+        if section in CONSTANT.keys():
+            for item in list(CONSTANT[section].keys()):
+                if item.lower() not in list(dict(configParser.items(section)).keys()):
+                    try:
+                        LOGGER.error(f'{item} is not available in {section}, please check {filename}.')
+                    except:
+                        # getconfig + check_option are needed to read config file to know where to store logs
+                        # this then inits logger. it's a chicken egg problem. unsolvable - Antoine sep 20 2023
+                        sys.stderr.write(f"{item} is not available in {section}, please check {filename}\n")
+
 
 def set_constants(section=None, option=None, item=None):
     """
@@ -159,9 +192,9 @@ def getconfig(filename=None):
     configParser.read(filename)
     check_section(filename)
     for section in configParser.sections():
+        check_option(filename, section)
         for (option, item) in configParser.items(section):
             if section in getlist(CONSTANT):
-                check_option(filename, section, option.upper())
                 set_constants(section, option.upper(), item)
             else:
                 CONSTANT[section] = {}
@@ -177,6 +210,7 @@ CONSTANT = {
     'DATABASE': {'DRIVER': None, 'DATABASE': None, 'DBUSER': None,
                 'DBPASSWORD': None, 'HOST': None, 'PORT': None},
     'FILES': {'KEYFILE': None, 'IMAGE_FILES': None, 'IMAGE_DIRECTORY': None, 'MAXPACKAGINGTIME': None},
+    'PLUGINS':  {'PLUGINS_DIR': None, 'IMAGE_FILESYSTEM': None},
     'SERVICES': {'DHCP': None, 'DNS': None, 'CONTROL': None, 'COOLDOWN': None, 'COMMAND': None},
     'DHCP': {'OMAPIKEY': None},
     'BMCCONTROL': {'BMC_BATCH_SIZE': None, 'BMC_BATCH_DELAY': None},

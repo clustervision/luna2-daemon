@@ -1,6 +1,22 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
+# This code is part of the TrinityX software suite
+# Copyright (C) 2023  ClusterVision Solutions b.v.
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <https://www.gnu.org/licenses/>
+
 """
 The database table layouts are listed below
 supposedly both SQLite and MySQL compliant
@@ -46,7 +62,17 @@ DATABASE_LAYOUT_osimage = [
 {"column": "imagefile",            "datatype": "VARCHAR", "length": "100"},
 {"column": "distribution",         "datatype": "VARCHAR", "length": "20"},
 {"column": "osrelease",            "datatype": "VARCHAR", "length": "20"},
+{"column": "tagid",                "datatype": "VARCHAR", "length": "60"},
+{"column": "changed",              "datatype": "INTEGER", "length": "10"},
 {"column": "comment",              "datatype": "VARCHAR", "length": "20"}]
+
+DATABASE_LAYOUT_osimagetag = [
+{"column": "id",                   "datatype": "INTEGER", "key": "PRIMARY", "keyadd": "AUTOINCREMENT"},
+{"column": "name",                 "datatype": "VARCHAR", "length": "60"},
+{"column": "osimageid",            "datatype": "INTEGER", "length": "10"},
+{"column": "initrdfile",           "datatype": "VARCHAR", "length": "100"},
+{"column": "kernelfile",           "datatype": "VARCHAR", "length": "100"},
+{"column": "imagefile",            "datatype": "VARCHAR", "length": "100"}]
 
 DATABASE_LAYOUT_nodesecrets = [
 {"column": "id",                   "datatype": "INTEGER", "key": "PRIMARY", "keyadd": "AUTOINCREMENT"},
@@ -105,6 +131,7 @@ DATABASE_LAYOUT_group = [
 {"column": "setupbmc",             "datatype": "INTEGER", "length": "10"},
 {"column": "domain",               "datatype": "VARCHAR", "length": "20"},
 {"column": "osimageid",            "datatype": "INTEGER", "length": "10"},
+{"column": "osimagetagid",         "datatype": "VARCHAR", "length": "60"},
 {"column": "prescript",            "datatype": "TEXT"},
 {"column": "partscript",           "datatype": "TEXT"},
 {"column": "postscript",           "datatype": "TEXT"},
@@ -120,7 +147,7 @@ DATABASE_LAYOUT_group = [
 
 DATABASE_LAYOUT_network = [
 {"column": "id",                   "datatype": "INTEGER", "key": "PRIMARY", "keyadd": "AUTOINCREMENT"},
-{"column": "name",                 "datatype": "VARCHAR", "length": "20", "key": "UNIQUE"},
+{"column": "name",                 "datatype": "VARCHAR", "length": "60", "key": "UNIQUE"},
 {"column": "network",              "datatype": "VARCHAR", "length": "20"},
 {"column": "subnet",               "datatype": "VARCHAR", "length": "20"},
 {"column": "gateway",              "datatype": "VARCHAR", "length": "60"},
@@ -130,6 +157,8 @@ DATABASE_LAYOUT_network = [
 {"column": "dhcp_range_begin",     "datatype": "VARCHAR", "length": "20"},
 {"column": "dhcp_range_end",       "datatype": "VARCHAR", "length": "60"},
 {"column": "zone",                 "datatype": "VARCHAR", "length": "60"},
+{"column": "shared",               "datatype": "VARCHAR", "length": "60"},
+{"column": "type",                 "datatype": "VARCHAR", "length": "100"},
 {"column": "comment",              "datatype": "VARCHAR", "length": "200"}]
 
 DATABASE_LAYOUT_user = [
@@ -148,6 +177,7 @@ DATABASE_LAYOUT_switch = [
 {"column": "oid",                  "datatype": "VARCHAR", "length": "60"},
 {"column": "read",                 "datatype": "VARCHAR", "length": "60"},
 {"column": "rw",                   "datatype": "VARCHAR", "length": "60"},
+{"column": "uplinkports",          "datatype": "VARCHAR", "length": "60"},
 {"column": "comment",              "datatype": "VARCHAR", "length": "60"}]
 
 DATABASE_LAYOUT_otherdevices = [
@@ -175,6 +205,7 @@ DATABASE_LAYOUT_node = [
 {"column": "name",                 "datatype": "VARCHAR", "length": "10", "key": "UNIQUE"},
 {"column": "groupid",              "datatype": "INTEGER", "length": "10"},
 {"column": "osimageid",            "datatype": "INTEGER", "length": "10"},
+{"column": "osimagetagid",         "datatype": "VARCHAR", "length": "60"},
 {"column": "switchport",           "datatype": "INTEGER", "length": "10"},
 {"column": "service",              "datatype": "INTEGER", "length": "10"},
 {"column": "bmcsetupid",           "datatype": "INTEGER", "length": "10"},

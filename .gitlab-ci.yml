@@ -23,3 +23,4 @@ development:
     - apk add openssh-client
     - apk add sshpass
     - sshpass -p $SSH_PASSWORD scp -r -oStrictHostKeyChecking=no dist/* $SSH_USER@$IPADDRESS:$DEV_LOCATION
+

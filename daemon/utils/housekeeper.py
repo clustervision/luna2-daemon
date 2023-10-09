@@ -30,23 +30,26 @@ __maintainer__  = 'Antoine Schonewille'
 __email__       = 'antoine.schonewille@clustervision.com'
 __status__      = 'Development'
 
-import subprocess
-import json
-from configparser import RawConfigParser
+#import subprocess
+#import json
+#from configparser import RawConfigParser
 from utils.log import Log
 from utils.database import Database
-from common.constant import CONSTANT, LUNAKEY
-from utils.helper import Helper
+from common.constant import CONSTANT
+#from common.constant import CONSTANT, LUNAKEY
+#from utils.helper import Helper
 import concurrent.futures
-from threading import Event
-from time import sleep, time
-from datetime import datetime
-import signal
-import os, sys
+#from threading import Event
+#from time import sleep, time
+from time import sleep
+#from datetime import datetime
+#import signal
+#import os, sys
+import sys
 # below are need to accomodate for the housekeeper
-from utils.status import Status
+#from utils.status import Status
 from utils.queue import Queue
-from utils.config import Config
+#from utils.config import Config
 from utils.osimage import OsImage
 from utils.service import Service
 
@@ -71,7 +74,7 @@ class Housekeeper(object):
                         request_id=None
                         if 'request_id' in details:
                             request_id=details['request_id']
-                        first,second,third,*_=(details['task'].split(':')+[None]+[None]+[None])
+                        first,second,third,*_=details['task'].split(':')+[None]+[None]+[None]
                         self.logger.info(f"tasks_mother will work on {first} {second}")
 
                         match first:
@@ -79,7 +82,8 @@ class Housekeeper(object):
                                 service=first
                                 action=second
                                 Queue().update_task_status_in_queue(next_id,'in progress')
-                                response, code = Service().luna_service(service, action)
+                                #response, code = Service().luna_service(service, action)
+                                Service().luna_service(service, action)
                             case 'copy_osimage':
                                 remove_from_queue=False
                                 Queue().change_subsystem(next_id,'osimage')
@@ -108,10 +112,10 @@ class Housekeeper(object):
                                 status=returned[0]
                                 if status is False and len(returned)>1:
                                     self.logger.error(f"cleanup_provisioning: {returned[1]}")
-                            
+
                         if remove_from_queue:
                             Queue().remove_task_from_queue(next_id)
-                            
+
                 if event.is_set():
                     return
             except Exception as exp:
@@ -150,7 +154,7 @@ class Housekeeper(object):
         plugins_path=CONSTANT["PLUGINS"]["PLUGINS_DIR"]
         #detection_plugins = Helper().plugin_finder(f'{plugins_path}/detection')
         #DetectionPlugin=Helper().plugin_load(detection_plugins,'detection','switchport')
-        try: 
+        try:
             from plugins.boot.detection.switchport import Plugin as DetectionPlugin
             while True:
                 try:
@@ -160,22 +164,21 @@ class Housekeeper(object):
                         switches = Database().get_record_join(['switch.*','ipaddress.ipaddress'], ['ipaddress.tablerefid=switch.id'], ['ipaddress.tableref="switch"'])
                         self.logger.debug(f"switches {switches}")
                         if switches:
-                             DetectionPlugin().clear()
-                             for switch in switches:
+                            DetectionPlugin().clear()
+                            for switch in switches:
                                 uplinkports = []
                                 if switch['uplinkports']:
                                     uplinkportsstring = switch['uplinkports'].replace(' ','')
                                     uplinkports = uplinkportsstring.split(',')
-                                DetectionPlugin().scan(name=switch['name'], ipaddress=switch['ipaddress'], 
-                                                       oid=switch['oid'], read=switch['read'], rw=switch['rw'], 
+                                DetectionPlugin().scan(name=switch['name'], ipaddress=switch['ipaddress'],
+                                                       oid=switch['oid'], read=switch['read'], rw=switch['rw'],
                                                        uplinkports=uplinkports)
                     if event.is_set():
                         return
                 except Exception as exp:
-                    exc_type, exc_obj, exc_tb = sys.exc_info()
+                    exc_type, _, exc_tb = sys.exc_info()
                     self.logger.error(f"switch port scan thread encountered problem: {exp}, {exc_type}, in {exc_tb.tb_lineno}")
                 sleep(5)
         except Exception as exp:
-            exc_type, exc_obj, exc_tb = sys.exc_info()
+            exc_type, _, exc_tb = sys.exc_info()
             self.logger.error(f"switch port scan thread encountered problem: {exp}, {exc_type}, in {exc_tb.tb_lineno}")
-

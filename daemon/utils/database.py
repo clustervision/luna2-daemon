@@ -534,7 +534,7 @@ class Database():
             where_list.append(column)
             join_where = ' AND '.join(map(str, where_list))
         if not column_strings:
-            self.logger.error(f"column_strings is empty. no cols in row?")
+            self.logger.error("column_strings is empty. no cols in row?")
             return False
         query = f'UPDATE "{table}" SET {column_strings} WHERE {join_where};'
         self.logger.debug(f"Update Query ---> {query}")

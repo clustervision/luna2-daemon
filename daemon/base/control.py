@@ -30,7 +30,7 @@ __email__       = 'sumit.sharma@clustervision.com'
 __status__      = 'Development'
 
 
-from json import dumps
+#from json import dumps
 from time import sleep, time
 from random import randint
 from os import getpid
@@ -62,7 +62,7 @@ class Control():
         on, off, status.
         """
         status=False
-        result=False
+        #result=False
         command=subsystem+' '+action
         node = Database().get_record_join(
             [
@@ -98,7 +98,7 @@ class Control():
                 username = bmcsetup[0]['username']
                 password = bmcsetup[0]['password']
                 action = action.replace('_', '')
-                result, message = NodeControl().control_action(
+                _, message = NodeControl().control_action(
                     node[0]['nodename'],
                     node[0]['groupname'],
                     command,
@@ -147,7 +147,7 @@ class Control():
                     pipeline.add_nodes({hostname: subsystem+' '+action})
                 request_id = str(time()) + str(randint(1001, 9999)) + str(getpid())
                 # ------------------ ugly work around when output takes longer than 5 seconds -----------------
-                Status().add_message(request_id,"lpower",f"Operation in progress...")
+                Status().add_message(request_id,"lpower","Operation in progress...")
                 Status().mark_messages_read(request_id)
                 # -------------------------- end of work around -----------------------------------------------
                 executor = ThreadPoolExecutor(max_workers=1)
@@ -171,7 +171,7 @@ class Control():
                     for record in status:
                         if 'message' in record:
                             if record['read'] == 0:
-                                node, command, result, message, *_ = (record['message'].split(':', 3) + [None] + [None] + [None])
+                                node, _, result, message, *_ = (record['message'].split(':', 3) + [None] + [None] + [None])
                                 # data is message is like 'node:result:message'
                                 self.logger.debug(f"control POST regexp match: [{node}], [{message}], [{result}]")
 
@@ -263,4 +263,3 @@ class Control():
             }
             return True, response
         return False, 'No data for this request'
-

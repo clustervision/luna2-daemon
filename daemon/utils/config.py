@@ -136,9 +136,11 @@ class Config(object):
                     )
                     if devices:
                         for device in devices:
-                            if device['macaddress']: 
+                            if device['macaddress']:
                                 device_block.append(
-                                    self.dhcp_node(device['name'], device['macaddress'], device['ipaddress'])
+                                    self.dhcp_node(device['name'],
+                                                   device['macaddress'],
+                                                   device['ipaddress'])
                                 )
                     else:
                         self.logger.debug(f'{item} not available for {network_name} {network_ip}')
@@ -179,7 +181,7 @@ class Config(object):
         """
         serverport = 7050
         if CONSTANT['API']['PROTOCOL'] == 'https' and 'WEBSERVER' in CONSTANT and 'PORT' in CONSTANT['WEBSERVER']:
-            # we rely on nginx serving non https stuff for e.g. /boot. 
+            # we rely on nginx serving non https stuff for e.g. /boot.
             # ipxe does support https but has issues dealing with self signed certificates
             serverport = CONSTANT['WEBSERVER']['PORT']
         network_id = nwk['id']
@@ -191,7 +193,8 @@ class Config(object):
         controller = Database().get_record_join(
             ['ipaddress.ipaddress'],
             ['ipaddress.tablerefid=controller.id'],
-            ['tableref="controller"', 'controller.hostname="controller"', f'ipaddress.networkid="{network_id}"']
+            ['tableref="controller"', 'controller.hostname="controller"',
+             f'ipaddress.networkid="{network_id}"']
         )
         self.logger.info(f"Building DHCP block for {network_name}")
         if controller:
@@ -222,7 +225,7 @@ class Config(object):
         if domain:
             option_domain = f'option domain-name "{domain}";'
         else:
-            option_domain = f'option domain-name "cluster";'
+            option_domain = 'option domain-name "cluster";'
 
         omapi_key = ''
         if CONSTANT['DHCP']['OMAPIKEY']:
@@ -236,7 +239,7 @@ class Config(object):
                 }}
             """)
 
-        config = dedent(f"""
+        config = dedent("""
             #
             # DHCP Server Configuration file.
             # created by Luna
@@ -250,10 +253,10 @@ class Config(object):
             option client-architecture code 93 = unsigned integer 16;
             {ntp_server}
             """)
-            
+
         config += omapi_key
 
-        config += dedent(f"""
+        config += dedent("""
             # how to get luna_ipxe.efi and luna_undionly.kpxe :
             # git clone git://git.ipxe.org/ipxe.git
             # cd ipxe/src
@@ -267,7 +270,7 @@ class Config(object):
 
 
     def shared_header(self, network=None, identifier=None):
-        identifier = identifier or "udhcp" 
+        identifier = identifier or "udhcp"
         header_block = dedent(f"""
             class "{network}" {{
                 match if substring (option vendor-class-identifier, 0, 5) = "{identifier}";
@@ -292,7 +295,8 @@ class Config(object):
         pool_block = Helper().add_padding(pool_block)
         return pool_block
 
-    def dhcp_subnet(self, network=None, netmask=None, serverport=None, nextserver=None, gateway=None,
+    def dhcp_subnet(self, network=None, netmask=None,
+                    serverport=None, nextserver=None, gateway=None,
                     dhcp_range_start=None, dhcp_range_end=None):
         """
         This method prepare the network block for all DHCP enabled networks
@@ -371,7 +375,8 @@ class Config(object):
             # TWAN
             node_interface = Database().get_record_join(
                 ['node.name as nodename', 'ipaddress.ipaddress', 'network.name as networkname'],
-                ['ipaddress.tablerefid=nodeinterface.id', 'nodeinterface.nodeid=node.id', 'network.id=ipaddress.networkid'],
+                ['ipaddress.tablerefid=nodeinterface.id', 'nodeinterface.nodeid=node.id',
+                 'network.id=ipaddress.networkid'],
                 ['tableref="nodeinterface"', f'ipaddress.networkid="{network_id}"']
             )
             nodelist, ptr_node_list= [], []
@@ -385,7 +390,8 @@ class Config(object):
 
             for item in ['otherdevices','switch']:
                 devices = Database().get_record_join(
-                    [f'{item}.name as devname', 'ipaddress.ipaddress', 'network.name as networkname'],
+                    [f'{item}.name as devname', 'ipaddress.ipaddress',
+                     'network.name as networkname'],
                     [f'ipaddress.tablerefid={item}.id', 'network.id=ipaddress.networkid'],
                     [f'tableref="{item}"', f'ipaddress.networkid="{network_id}"']
                 )
@@ -466,20 +472,20 @@ class Config(object):
         caching=""
         # -------------
         if forwarder:
-            forwarders = f"""
+            forwarders = """
         // BEGIN forwarders
         forwarders {{
             """
             for ip in forwarder:
                 forwarders += f"\n\t\t{ip};"
-            forwarders += f"""
+            forwarders += """
         }};
         // END forwarders
             """
         # -------------
         else:
             forwarders=''
-            caching = f"""
+            caching = """
         zone "." IN {{
                 type hint;
                 file "named.ca";
@@ -697,7 +703,8 @@ $TTL 604800
         return False,"not enough details"
 
 
-    def node_interface_config(self, nodeid=None, interface_name=None, macaddress=None, options=None):
+    def node_interface_config(self, nodeid=None, interface_name=None,
+                              macaddress=None, options=None):
         """
         This method will collect node interfaces and return configuration.
         """
@@ -759,7 +766,7 @@ $TTL 604800
                     f'nodeinterface.interface="{interface_name}"'
                 ]
             )
-                
+
         if not network_details:
             message = "not enough information provided. network name incorrect or need network name if there is no existing ipaddress"
             self.logger.info(message)
@@ -837,7 +844,7 @@ $TTL 604800
                 self.logger.info(message)
                 details=Queue().get_task_details(next_id)
                 # request_id = details['request_id']
-                action, group, interface, *_ = (details['task'].split(':') + [None] + [None] )
+                action, group, interface, *_ = details['task'].split(':') + [None] + [None]
 
                 if group == name:
                     # ADDING/UPDATING --------------------------------------------------------
@@ -929,7 +936,7 @@ $TTL 604800
 
                                     if avail:
                                         ipaddress = avail
-                                        result, response = self.node_interface_ipaddress_config(
+                                        _, response = self.node_interface_ipaddress_config(
                                             node['nodeid'],
                                             interface,
                                             ipaddress,
@@ -1006,7 +1013,7 @@ $TTL 604800
                 message += f"sees job in queue as next: {next_id}"
                 self.logger.info(message)
                 details = Queue().get_task_details(next_id)
-                action, network, *_ = (details['task'].split(':') + [None] + [None])
+                action, network, *_ = details['task'].split(':') + [None] + [None]
 
                 if (name and network==name) or network:
                     if action == 'update_all_interface_ipaddress':

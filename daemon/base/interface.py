@@ -29,12 +29,12 @@ __maintainer__  = 'Sumit Sharma'
 __email__       = 'sumit.sharma@clustervision.com'
 __status__      = 'Development'
 
-from json import dumps
+#from json import dumps
 from concurrent.futures import ThreadPoolExecutor
 from utils.database import Database
 from utils.log import Log
 from utils.config import Config
-from utils.service import Service
+#from utils.service import Service
 from utils.queue import Queue
 from utils.helper import Helper
 
@@ -252,7 +252,7 @@ class Interface():
                                         add_interface = False
                                         del if_dict[group_interface['interface']]
                     if add_interface is True:
-                        result, message = Config().node_interface_config(
+                        result, _ = Config().node_interface_config(
                             nodeid,
                             group_interface['interface'],
                             None,
@@ -271,7 +271,7 @@ class Interface():
                                     ips
                                 )
                                 if avail:
-                                    result, message = Config().node_interface_ipaddress_config(
+                                    result, _ = Config().node_interface_ipaddress_config(
                                         nodeid,
                                         group_interface['interface'],
                                         avail,
@@ -304,7 +304,7 @@ class Interface():
                     #if if_dict[interface]['interface'] == "BOOTIF":
                     #    continue
                     if if_dict[interface]['interface'] in if_old_group_dict.keys():
-                        # This means that the interface existed in the previous group, therefor we 
+                        # This means that the interface existed in the previous group, therefor we
                         # conclude to remove it. Seems legit no?
                         self.delete_node_interface(nodeid=nodeid, interface=if_dict[interface]['interface'])
         else:
@@ -578,4 +578,3 @@ class Interface():
             response = f'Group {name} not present in database'
             status=False
         return status, response
-

@@ -29,12 +29,13 @@ __maintainer__  = 'Sumit Sharma'
 __email__       = 'sumit.sharma@clustervision.com'
 __status__      = 'Development'
 
-from json import dumps
+#from json import dumps
 from time import sleep, time
 from os import getpid, path
 from random import randint
 from concurrent.futures import ThreadPoolExecutor
-from common.constant import CONSTANT, LUNAKEY
+#from common.constant import CONSTANT, LUNAKEY
+from common.constant import CONSTANT
 from utils.status import Status
 from utils.osimage import OsImage as OsImager
 from utils.database import Database
@@ -70,7 +71,8 @@ class OSImage():
         filesystem_plugin = 'default'
         if 'IMAGE_FILESYSTEM' in CONSTANT['PLUGINS'] and CONSTANT['PLUGINS']['IMAGE_FILESYSTEM']:
             filesystem_plugin = CONSTANT['PLUGINS']['IMAGE_FILESYSTEM']
-        OsImagePlugin=Helper().plugin_load(self.osimage_plugins,'osimage/filesystem',filesystem_plugin)
+        os_image_plugin=Helper().plugin_load(self.osimage_plugins,
+                                           'osimage/filesystem',filesystem_plugin)
         all_records = Database().get_record(table='osimage')
         if all_records:
             status = True
@@ -86,7 +88,8 @@ class OSImage():
                 if (not record['path']) or tagname:
                     record['path'] = '!!undefined!!'
                     try:
-                        ret, data = OsImagePlugin().getpath(image_directory=self.image_directory, osimage=record['name'], tag=tagname)
+                        ret, data = os_image_plugin().getpath(image_directory=self.image_directory,
+                                                              osimage=record['name'], tag=tagname)
                         if ret is True:
                             record['path'] = data
                     except Exception as exp:
@@ -105,7 +108,8 @@ class OSImage():
         filesystem_plugin = 'default'
         if 'IMAGE_FILESYSTEM' in CONSTANT['PLUGINS'] and CONSTANT['PLUGINS']['IMAGE_FILESYSTEM']:
             filesystem_plugin = CONSTANT['PLUGINS']['IMAGE_FILESYSTEM']
-        OsImagePlugin=Helper().plugin_load(self.osimage_plugins,'osimage/filesystem',filesystem_plugin)
+        os_image_plugin=Helper().plugin_load(self.osimage_plugins,
+                                           'osimage/filesystem',filesystem_plugin)
         all_records = Database().get_record(table='osimage', where=f' WHERE name = "{name}"')
         if all_records:
             status = True
@@ -121,14 +125,16 @@ class OSImage():
             if (not record['path']) or tagname:
                 record['path'] = '!!undefined!!'
                 try:
-                    ret, data = OsImagePlugin().getpath(image_directory=self.image_directory, osimage=record['name'], tag=tagname)
+                    ret, data = os_image_plugin().getpath(image_directory=self.image_directory,
+                                                          osimage=record['name'], tag=tagname)
                     if ret is True:
                         record['path'] = data
                 except Exception as exp:
                     self.logger.error(f"Plugin exception in getpath: {exp}")
             record['tag'] = tagname or 'default'
             image_tags = []
-            all_tags = Database().get_record(table='osimagetag', where=f' WHERE osimageid = "{record_id}"')
+            all_tags = Database().get_record(table='osimagetag',
+                                             where=f' WHERE osimageid = "{record_id}"')
             if all_tags:
                 for tag in all_tags:
                     image_tags.append(tag['name'])
@@ -161,9 +167,11 @@ class OSImage():
             where = f"osimage.name='{name}'"
         if 'IMAGE_FILESYSTEM' in CONSTANT['PLUGINS'] and CONSTANT['PLUGINS']['IMAGE_FILESYSTEM']:
             filesystem_plugin = CONSTANT['PLUGINS']['IMAGE_FILESYSTEM']
-        OsImagePlugin=Helper().plugin_load(self.osimage_plugins,'osimage/filesystem',filesystem_plugin)
+        os_image_plugin=Helper().plugin_load(self.osimage_plugins,
+                                           'osimage/filesystem',filesystem_plugin)
         image_details = Database().get_record_join(
-            ['osimagetag.*','osimage.path','osimage.name as osimagename','osimage.id as osid','osimagetag.id as tagid'],
+            ['osimagetag.*','osimage.path','osimage.name as osimagename',
+             'osimage.id as osid','osimagetag.id as tagid'],
             ['osimagetag.osimageid=osimage.id'],
             where
         )
@@ -186,7 +194,9 @@ class OSImage():
                 if (not image['path']) or image['tagid']:
                     data['path'] = '!!undefined!!'
                     try:
-                        ret, path = OsImagePlugin().getpath(image_directory=self.image_directory, osimage=image['osimagename'], tag=image['name'])
+                        ret, path = os_image_plugin().getpath(image_directory=self.image_directory,
+                                                              osimage=image['osimagename'],
+                                                              tag=image['name'])
                         if ret:
                             data['path'] = path
                     except Exception as exp:
@@ -203,7 +213,7 @@ class OSImage():
                     data['groups'] = ', '.join(groups_using)
                 response['config']['osimagetag'][data['name']] = data
         return status, response
-   
+
 
     def update_osimage(self, name=None, request_data=None):
         """
@@ -352,10 +362,10 @@ class OSImage():
                 img_id = Database().insert('osimage', row)
                 if not img_id:
                     status = False
-                    return status, f"Failed cloning image"
+                    return status, "Failed cloning image"
                 if nocopy is True:
                     status = True
-                    return status, f"OS Image cloned successfully"
+                    return status, "OS Image cloned successfully"
                 request_id  = str(time()) + str(randint(1001, 9999)) + str(getpid())
                 if bare is not False:
                     task = f"clone_osimage:{name}:{tag}:{data['name']}"
@@ -432,7 +442,8 @@ class OSImage():
             udata['tagid'] = ""
             where = [{"column": "id", "value": image_id}]
             row = Helper().make_rows(udata)
-            res = Database().update('osimage', row, where)
+            #res = Database().update('osimage', row, where)
+            Database().update('osimage', row, where)
         status, response = Model().delete_record_by_id(
             id = tag_details[0]['tagid'],
             table = 'osimagetag',
@@ -443,9 +454,13 @@ class OSImage():
                 if tag_details[0]['osimage'+item] == tag_details[0][item]:
                     # meaning: we are still using one for osimage itself!
                     continue
-                queue_id,queue_response = Queue().add_task_to_queue(f'cleanup_old_file:'+tag_details[0][item],'housekeeper','__tag_delete__',None,'1h')
+                #queue_id,queue_response = Queue().add_task_to_queue(f'cleanup_old_file:'+tag_details[0][item],'housekeeper','__tag_delete__',None,'1h')
+                Queue().add_task_to_queue('cleanup_old_file:'+tag_details[0][item],
+                                          'housekeeper','__tag_delete__',None,'1h')
                 if item == 'imagefile':
-                    queue_id,queue_response = Queue().add_task_to_queue(f'cleanup_old_provisioning:'+tag_details[0][item],'housekeeper','__tag_delete__',None,'1h')
+                    #queue_id,queue_response = Queue().add_task_to_queue(f'cleanup_old_provisioning:'+tag_details[0][item],'housekeeper','__tag_delete__',None,'1h')
+                    Queue().add_task_to_queue('cleanup_old_provisioning:'+tag_details[0][item],
+                                              'housekeeper','__tag_delete__',None,'1h')
         return status, response
 
 
@@ -485,7 +500,8 @@ class OSImage():
                     osimage=image_details[0]['osimagename']
                 else:
                     status=False
-                    return status, f"Grab failed for {osimage}. This node has osimage or group configured?"
+                    ret_msg=f"Grab failed for {osimage}. This node has osimage or group configured?"
+                    return status, ret_msg
 
             request_id = str(time()) + str(randint(1001, 9999)) + str(getpid())
             task_id, text = None,None
@@ -575,7 +591,8 @@ class OSImage():
                     osimage=image_details[0]['osimagename']
                 else:
                     status=False
-                    return status, f"Push failed for {osimage}. No osimage configured for this node or group?"
+                    ret_msg=f"Push failed for {osimage}. No osimage configured for this node or group?"
+                    return status, ret_msg
 
             request_id = str(time()) + str(randint(1001, 9999)) + str(getpid())
             task_id, text = None, None
@@ -695,7 +712,7 @@ class OSImage():
                     img_id = Database().update('osimage', row, where)
                     if not img_id:
                         status = False
-                        return status, f"Failed updating image"
+                        return status, "Failed updating image"
                     if bare is True:
                         status=True
                         response = f'OS Image {name} Kernel updated'
@@ -790,7 +807,7 @@ class OSImage():
                     response=f"OS Image {name} does not exist"
                     status=False
             else:
-                response=f"Required field 'tag' not supplied"
+                response="Required field 'tag' not supplied"
                 status=False
         else:
             response = 'Invalid request: Did not receive data'
@@ -813,10 +830,9 @@ class OSImage():
                             if record['message'] == "EOF":
                                 Status().del_messages(request_id)
                             else:
-                                created, *_ = (record['created'].split('.') + [None])
+                                created, *_ = record['created'].split('.') + [None]
                                 message.append(created + " :: " + record['message'])
             response = {'message': (';;').join(message) }
             Status().mark_messages_read(request_id)
             return True, response
         return False, 'No data for this request'
-

@@ -29,10 +29,10 @@ __email__       = "sumit.sharma@clustervision.com"
 __status__      = "Development"
 
 
-from json import dumps
+#from json import dumps
 from utils.log import Log
 from utils.service import Service
-from utils.helper import Helper
+#from utils.helper import Helper
 from utils.database import Database
 from utils.monitor import Monitor as monitor
 
@@ -58,7 +58,7 @@ class Monitor():
             # response, code = Helper().checkdbstatus()
             response, status = 'Helper Method checkdbstatus is missing', True
             self.logger.info(f'Database status is: {response}.')
-        returned = service().luna_service(name, 'status')
+        returned = Service().luna_service(name, 'status')
         status=returned[0]
         response=returned[1]
         return status, response

@@ -30,7 +30,6 @@ __email__       = 'sumit.sharma@clustervision.com'
 __status__      = 'Development'
 
 
-#from json import dumps
 from time import sleep, time
 from random import randint
 from os import getpid

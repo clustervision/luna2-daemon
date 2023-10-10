@@ -474,22 +474,22 @@ class Config(object):
         if forwarder:
             forwarders = """
         // BEGIN forwarders
-        forwarders {{
+        forwarders {
             """
             for ip in forwarder:
                 forwarders += f"\n\t\t{ip};"
             forwarders += """
-        }};
+        };
         // END forwarders
             """
         # -------------
         else:
             forwarders=''
             caching = """
-        zone "." IN {{
+        zone "." IN {
                 type hint;
                 file "named.ca";
-        }};
+        };
             """
         # -------------
         managed_keys=''

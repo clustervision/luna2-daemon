@@ -30,9 +30,9 @@ __maintainer__  = 'Antoine Schonewille'
 __email__       = 'antoine.schonewille@clustervision.com'
 __status__      = 'Development'
 
+import os
 from utils.log import Log
 from utils.helper import Helper
-import os
 
 
 class Plugin():
@@ -79,7 +79,7 @@ class Plugin():
         return status, response
 
     # ----------------------------------------------------------------------------------
-    
+
     def scan(self, name=None, ipaddress=None, oid=None, read=None, rw=None, uplinkports=[]):
         # port_oid = switches[switch]['port_oid'] or '.1.3.6.1.2.1.31.1.1.1.1'
         # ifname_oid = switches[switch]['ifname_oid'] or '.1.3.6.1.2.1.17.1.4.1.2'
@@ -112,7 +112,7 @@ class Plugin():
     # ----------------------------------------------------------------------------------
 
     def create_script(self):
-        SCRIPT = """
+        script = """
 #!/bin/bash
 
 HOST=$1
@@ -137,6 +137,4 @@ for string in `snmpwalk -v 2c -c public $HOST $OID -O qn|sed -e "s/^\.//g" -e "s
 done
 """
         with open(self.working_path+'/switchprobe.sh','w', encoding='utf-8') as probe_script:
-            probe_script.write(f"{SCRIPT}")
-
-
+            probe_script.write(f"{script}")

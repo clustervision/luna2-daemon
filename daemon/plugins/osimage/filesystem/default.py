@@ -30,9 +30,9 @@ __maintainer__  = 'Antoine Schonewille'
 __email__       = 'antoine.schonewille@clustervision.com'
 __status__      = 'Development'
 
-import os
-import pwd
-import sys
+#import os
+#import pwd
+#import sys
 from utils.log import Log
 from utils.helper import Helper
 
@@ -45,7 +45,7 @@ class Plugin():
     def __init__(self):
         """
         two defined methods are mandatory:
-        - clone  
+        - clone
         - getpath
         """
         self.logger = Log.get_logger()
@@ -53,6 +53,9 @@ class Plugin():
     # ---------------------------------------------------------------------------
 
     def clone(self, source=None, destination=None):
+        """
+        Method for operating cloning
+        """
         if (not destination) or (not source):
             return False,"source/destination not provided"
         command=f"tar -C \"{source}\"/ --one-file-system --exclude=/proc/* --exclude=/sys/* --xattrs --acls --selinux -cf - . | (cd \"{destination}\"/ && tar -xf -)"
@@ -68,5 +71,3 @@ class Plugin():
             self.logger.info(f"Filesystem tag {tag} requested for {osimage}")
             #return True,image_directory+'/'+osimage+'@'+tag
         return True,image_directory+'/'+osimage
-
-

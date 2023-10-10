@@ -38,7 +38,7 @@ class Plugin():
     This plugin needs a mandatory variable set for template functionality
     -- grub
     """
-        
+
 
     """ Other usefull info that can be used or incorporated:
 
@@ -83,5 +83,3 @@ umount /sysroot/dev
 umount /sysroot/proc
 umount /sysroot/sys
     """
-
-

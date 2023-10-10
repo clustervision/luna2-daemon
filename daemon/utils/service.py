@@ -30,13 +30,14 @@ __maintainer__  = 'Sumit Sharma'
 __email__       = 'sumit.sharma@clustervision.com'
 __status__      = 'Development'
 
+#from time import sleep,time
+from time import sleep
+import concurrent.futures
 from utils.helper import Helper
 from utils.log import Log
 from utils.config import Config
 from common.constant import CONSTANT
 from utils.status import Status
-import concurrent.futures
-from time import sleep,time
 from utils.queue import Queue
 
 class Service(object):
@@ -65,8 +66,8 @@ class Service(object):
             name = CONSTANT['SERVICES']['DHCP']
         if "dns" == name:
             name = CONSTANT['SERVICES']['DNS']
-       
-        status=False 
+
+        status=False
         match name:
             case self.dhcp:
                 match action:
@@ -188,7 +189,7 @@ class Service(object):
 
     def service_mother(self,service,action,request_id):  # service and action not really mandatory unless we use the below commented block
 
-        self.logger.info(f"service_mother called")
+        self.logger.info("service_mother called")
         try:
 #            # Below section is already done in config/pack GET call but kept here in case we want to move it back
 #            queue_id,response = Queue().add_task_to_queue(f'{service}:{action}','service',request_id)
@@ -201,7 +202,7 @@ class Service(object):
 #
 #            next_id = Queue().next_task_in_queue('service')
 #            if queue_id != next_id:
-#                # little tricky. we assume that another mother proces was spawned that took care of the runs... 
+#                # little tricky. we assume that another mother proces was spawned that took care of the runs...
 #                # we need a check based on last hear queue entry, then we continue. pending in next_task_in_queue.
 #                return
 
@@ -212,7 +213,7 @@ class Service(object):
                 service,action=details['task'].split(':')
 
                 if action and service:
-    
+
                     Queue().update_task_status_in_queue(next_id,'in progress')
                     Status().add_message(request_id,"luna",f"{action} service {service}")
 
@@ -226,7 +227,7 @@ class Service(object):
                         Status().add_message(request_id,"luna",f"error {action} service {service}: {response}")
 
                     Queue().remove_task_from_queue(next_id)
-                    Status().add_message(request_id,"luna",f"EOF")
+                    Status().add_message(request_id,"luna","EOF")
                 else:
                     self.logger.info(f"{details['task']} is not for us.")
                     sleep(10)
@@ -236,7 +237,7 @@ class Service(object):
 
 
     def queue(self,service,action):
-        queue_id,response = Queue().add_task_to_queue(f'{service}:{action}','service','__internal__')
+        queue_id,_ = Queue().add_task_to_queue(f'{service}:{action}','service','__internal__')
         if queue_id:
             next_id = Queue().next_task_in_queue('service')
             if queue_id == next_id:
@@ -244,5 +245,5 @@ class Service(object):
                 executor.submit(self.service_mother,service,action,'__internal__')
                 executor.shutdown(wait=False)
         else: # fallback, worst case
-            status, response = self.luna_service(service, action)
-
+            #status, response = self.luna_service(service, action)
+            self.luna_service(service, action)

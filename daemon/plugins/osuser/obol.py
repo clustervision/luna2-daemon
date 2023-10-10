@@ -140,7 +140,7 @@ class Plugin():
         """
         This method will update a OS users.
         """
-        user_exist, _ = self.get_user(username)
+        user_exist, old_user = self.get_user(username)
         new_user = OSUserData(
             uid=uid,
             gid=gid,
@@ -282,7 +282,7 @@ class Plugin():
         """
         This method will update a OS groups.
         """
-        group_exist, _ = self.get_group(groupname)
+        group_exist, old_group = self.get_group(groupname)
         new_group = OSGroupData(
             gid=gid,
             users=users

@@ -31,7 +31,6 @@ __email__       = "sumit.sharma@clustervision.com"
 __status__      = "Development"
 
 
-#from json import dumps
 import re
 import jwt
 from flask import send_file

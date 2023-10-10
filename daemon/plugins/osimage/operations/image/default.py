@@ -33,12 +33,8 @@ import os
 import pwd
 import subprocess
 import shutil
-# from time import sleep, time
 from time import time
 import sys
-#import uuid
-# from datetime import datetime
-# import json
 from utils.log import Log
 #from utils.helper import Helper
 
@@ -134,12 +130,12 @@ class Plugin():
 
 
         except:
-            exc_type, exc_value, _ = sys.exc_info()
+            exc_type, exc_value, exc_traceback = sys.exc_info()
             if exc_type == exceptions.KeyboardInterrupt:
                 self.logger.error('Keyboard interrupt.')
             else:
                 self.logger.error(exc_value)
-                self.logger.debug(traceback.format_exc())
+                self.logger.debug(exc_traceback.format_exc())
 
             if os.path.isfile('/tmp/' + packed_image_file):
                 os.remove('/tmp/' + packed_image_file)
@@ -267,9 +263,9 @@ class Plugin():
                 line = create.stdout.readline()
 
         except:
-            _, exc_value, _ = sys.exc_info()
+            exc_type, exc_value, exc_traceback= sys.exc_info()
             self.logger.info(exc_value)
-            # self.logger.debug(traceback.format_exc())
+            self.logger.debug(exc_traceback.format_exc())
             dracut_succeed = False
 
         if create and create.returncode:

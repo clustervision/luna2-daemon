@@ -52,17 +52,11 @@ class Plugin():
     # ---------------------------------------------------------------------------
 
     def postcreate(self, name=None, group=None):
-        """
-        Method for creating 
-        """
         return True, "Nothing done"
 
     # ---------------------------------------------------------------------------
 
     def postupdate(self, name=None, group=None):
-        """
-        Method for updating 
-        """
         return True, "Nothing done"
 
     # ---------------------------------------------------------------------------

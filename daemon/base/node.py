@@ -31,11 +31,10 @@ __email__       = 'sumit.sharma@clustervision.com'
 __status__      = 'Development'
 
 from base64 import b64decode, b64encode
-#from json import dumps
 from utils.database import Database
 from utils.log import Log
 from utils.config import Config
-#from utils.service import Service
+from utils.service import Service
 from utils.queue import Queue
 from utils.helper import Helper
 from utils.monitor import Monitor

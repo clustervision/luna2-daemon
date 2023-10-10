@@ -29,7 +29,6 @@ __maintainer__  = 'Sumit Sharma'
 __email__       = 'sumit.sharma@clustervision.com'
 __status__      = 'Development'
 
-#from json import dumps
 from concurrent.futures import ThreadPoolExecutor
 from utils.queue import Queue
 from utils.database import Database
@@ -161,8 +160,7 @@ class Network():
                 data['subnet'] = network[0]['subnet']
             else:
                 status=False
-                ret_msg = 'Invalid request: Not enough details provided.' \
-                          ' network/subnet in CIDR notation expected'
+                ret_msg = 'Invalid request: Not enough details provided. network/subnet in CIDR notation expected'
                 return status, ret_msg
             if 'zone' in data:
                 if (data['zone'] != "external") and (data['zone'] != "internal"):

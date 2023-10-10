@@ -54,7 +54,7 @@ class Plugin():
 
     def clone(self, source=None, destination=None):
         """
-        Method for operating cloning
+        Method that does the actual copy task
         """
         if (not destination) or (not source):
             return False,"source/destination not provided"

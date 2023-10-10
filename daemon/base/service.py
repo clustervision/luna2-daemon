@@ -32,7 +32,6 @@ __maintainer__  = "Sumit Sharma"
 __email__       = "sumit.sharma@clustervision.com"
 __status__      = "Development"
 
-#from json import dumps
 from random import randint
 from time import sleep, time
 from os import getpid

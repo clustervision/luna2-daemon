@@ -31,9 +31,7 @@ __email__       = 'antoine.schonewille@clustervision.com'
 __status__      = 'Development'
 
 import os
-#import libtorrent
 from utils.log import Log
-#from common.constant import CONSTANT
 from utils.helper import Helper
 
 

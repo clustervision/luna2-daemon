@@ -30,7 +30,6 @@ __email__       = 'sumit.sharma@clustervision.com'
 __status__      = 'Development'
 
 
-#from json import dumps
 from common.constant import CONFIGFILE
 from utils.log import Log
 from utils.database import Database

@@ -29,12 +29,10 @@ __maintainer__  = 'Sumit Sharma'
 __email__       = 'sumit.sharma@clustervision.com'
 __status__      = 'Development'
 
-#from json import dumps
 from time import sleep, time
 from os import getpid, path
 from random import randint
 from concurrent.futures import ThreadPoolExecutor
-#from common.constant import CONSTANT, LUNAKEY
 from common.constant import CONSTANT
 from utils.status import Status
 from utils.osimage import OsImage as OsImager
@@ -442,7 +440,6 @@ class OSImage():
             udata['tagid'] = ""
             where = [{"column": "id", "value": image_id}]
             row = Helper().make_rows(udata)
-            #res = Database().update('osimage', row, where)
             Database().update('osimage', row, where)
         status, response = Model().delete_record_by_id(
             id = tag_details[0]['tagid'],
@@ -452,15 +449,13 @@ class OSImage():
         for item in ['kernelfile','initrdfile','imagefile']:
             if tag_details[0][item]:
                 if tag_details[0]['osimage'+item] == tag_details[0][item]:
-                    # meaning: we are still using one for osimage itself!
+                    # meaning: we are still using one for osimage itself! Antoine
                     continue
-                #queue_id,queue_response = Queue().add_task_to_queue(f'cleanup_old_file:'+tag_details[0][item],'housekeeper','__tag_delete__',None,'1h')
-                Queue().add_task_to_queue('cleanup_old_file:'+tag_details[0][item],
-                                          'housekeeper','__tag_delete__',None,'1h')
+                queue_id,queue_response = Queue().add_task_to_queue(f'cleanup_old_file:'+tag_details[0][item],
+                                                                    'housekeeper','__tag_delete__',None,'1h')
                 if item == 'imagefile':
-                    #queue_id,queue_response = Queue().add_task_to_queue(f'cleanup_old_provisioning:'+tag_details[0][item],'housekeeper','__tag_delete__',None,'1h')
-                    Queue().add_task_to_queue('cleanup_old_provisioning:'+tag_details[0][item],
-                                              'housekeeper','__tag_delete__',None,'1h')
+                    queue_id,queue_response = Queue().add_task_to_queue(f'cleanup_old_provisioning:'+tag_details[0][item],
+                                                                    'housekeeper','__tag_delete__',None,'1h')
         return status, response
 
 

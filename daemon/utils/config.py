@@ -931,7 +931,7 @@ $TTL 604800
                                                 ips
                                             )
                                             ips.append(avail)
-                                            _, ret = Helper().runcommand(f"ping -w1 -c1 {avail}", True, 3)
+                                            result, ret = Helper().runcommand(f"ping -w1 -c1 {avail}", True, 3)
                                             maximum -= 1
 
                                     if avail:

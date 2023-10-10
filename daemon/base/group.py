@@ -30,7 +30,6 @@ __email__       = 'sumit.sharma@clustervision.com'
 __status__      = 'Development'
 
 from base64 import b64encode
-#from json import dumps
 from concurrent.futures import ThreadPoolExecutor
 from utils.database import Database
 from utils.log import Log

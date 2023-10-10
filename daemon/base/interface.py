@@ -29,12 +29,11 @@ __maintainer__  = 'Sumit Sharma'
 __email__       = 'sumit.sharma@clustervision.com'
 __status__      = 'Development'
 
-#from json import dumps
 from concurrent.futures import ThreadPoolExecutor
 from utils.database import Database
 from utils.log import Log
 from utils.config import Config
-#from utils.service import Service
+from utils.service import Service
 from utils.queue import Queue
 from utils.helper import Helper
 
@@ -252,7 +251,7 @@ class Interface():
                                         add_interface = False
                                         del if_dict[group_interface['interface']]
                     if add_interface is True:
-                        result, _ = Config().node_interface_config(
+                        result, message = Config().node_interface_config(
                             nodeid,
                             group_interface['interface'],
                             None,
@@ -271,7 +270,7 @@ class Interface():
                                     ips
                                 )
                                 if avail:
-                                    result, _ = Config().node_interface_ipaddress_config(
+                                    result, message = Config().node_interface_ipaddress_config(
                                         nodeid,
                                         group_interface['interface'],
                                         avail,

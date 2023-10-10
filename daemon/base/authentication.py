@@ -29,7 +29,6 @@ __maintainer__  = 'Sumit Sharma'
 __email__       = 'sumit.sharma@clustervision.com'
 __status__      = 'Development'
 
-#from json import dumps
 from  hashlib import md5
 from datetime import datetime, timedelta
 from re import search

@@ -62,7 +62,7 @@ class Control():
         on, off, status.
         """
         status=False
-        #result=False
+        result=False
         command=subsystem+' '+action
         node = Database().get_record_join(
             [
@@ -98,7 +98,7 @@ class Control():
                 username = bmcsetup[0]['username']
                 password = bmcsetup[0]['password']
                 action = action.replace('_', '')
-                _, message = NodeControl().control_action(
+                result, message = NodeControl().control_action(
                     node[0]['nodename'],
                     node[0]['groupname'],
                     command,
@@ -171,7 +171,7 @@ class Control():
                     for record in status:
                         if 'message' in record:
                             if record['read'] == 0:
-                                node, _, result, message, *_ = (record['message'].split(':', 3) + [None] + [None] + [None])
+                                node, command, result, message, *_ = (record['message'].split(':', 3) + [None] + [None] + [None])
                                 # data is message is like 'node:result:message'
                                 self.logger.debug(f"control POST regexp match: [{node}], [{message}], [{result}]")
 

@@ -186,6 +186,7 @@ def get_database_tables_structure(table=None):
         return DATABASE_LAYOUT_status
     if table == "queue":
         return DATABASE_LAYOUT_queue
+        #left in as an example what could be done - Antoine
         #Database().create("queue", DATABASE_LAYOUT_queue)
     if table == "osimage":
         return DATABASE_LAYOUT_osimage
@@ -372,9 +373,7 @@ def bootstrap(bootstrapfile=None):
     networkid, networkname, bmcnetworkid, bmcnetworkname = None, None, None, None
     network = None
     if 'default' in network_functions:
-        network = Database().get_record(None,
-                                        'network',
-                                        f"WHERE name = '{network_functions['default']}'")
+        network = Database().get_record(None,'network',f"WHERE name = '{network_functions['default']}'")
     else:
         #dangerous assumption as id[0] doesn't have to be the primary network but we need to fallback onto something.
         network = Database().get_record(None, 'network', "WHERE name = 'cluster'")
@@ -382,13 +381,10 @@ def bootstrap(bootstrapfile=None):
         networkid = network[0]['id']
         networkname = network[0]['name']
     if 'bmc' in network_functions:
-        network = Database().get_record(None,
-                                        'network',
-                                        f"WHERE name = '{network_functions['bmc']}'")
+        network = Database().get_record(None,'network',f"WHERE name = '{network_functions['bmc']}'")
     else:
-        network = Database().get_record(None,
-                                        'network',
-                                        "WHERE name = 'ipmi'") # also a bit dangerous but no choice
+        # also a bit dangerous but no choice
+        network = Database().get_record(None,'network',"WHERE name = 'ipmi'")
     if network:
         bmcnetworkid = network[0]['id']
         bmcnetworkname = network[0]['name']
@@ -449,7 +445,7 @@ def bootstrap(bootstrapfile=None):
     osimage_path,osimage_kernelversion=None,None
     if 'PATH' in BOOTSTRAP['OSIMAGE']:
         osimage_path=BOOTSTRAP['OSIMAGE']['PATH']
-        osimage_kernelversion,_ = Helper().runcommand(f"ls -tr {osimage_path}/lib/modules/|tail -n1")
+        osimage_kernelversion, exit_code = Helper().runcommand(f"ls -tr {osimage_path}/lib/modules/|tail -n1")
         osimage_kernelversion=osimage_kernelversion.strip()
         osimage_kernelversion=osimage_kernelversion.decode('utf-8')
     default_osimage = [
@@ -544,7 +540,6 @@ def bootstrap(bootstrapfile=None):
             {'column': 'ipaddress', 'value': str(avail_ip)},
             {'column': 'networkid', 'value': bmcnetworkid}
         ]
-        #bmc_id = Database().insert('ipaddress', bmc_ip)
         Database().insert('ipaddress', bmc_ip)
 
     default_group_interface = [

@@ -94,4 +94,3 @@ EOF
         echo "fudge   $NTPSERVER stratum 10" >> $rootmnt/etc/ntp.conf
         echo "driftfile /etc/ntp/drift" >> $rootmnt/etc/ntp.conf
     """
-

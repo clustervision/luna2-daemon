@@ -1,4 +1,3 @@
-import subprocess
 # This code is part of the TrinityX software suite
 # Copyright (C) 2023  ClusterVision Solutions b.v.
 #
@@ -15,6 +14,7 @@ import subprocess
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>
 
+import subprocess
 import json
 import sys
 from typing import List, Dict, Optional, Tuple
@@ -98,7 +98,7 @@ class Plugin():
 
         if result.returncode != 0:
             return False, f"[obol: {result}]"
-        
+
         obol_output = json.loads(result.stdout.decode('utf-8').strip())
 
         if not obol_output:
@@ -122,8 +122,8 @@ class Plugin():
 
     # ----------------------------------------------
 
-    def update_user(self, 
-                    username: str, 
+    def update_user(self,
+                    username: str,
                     password: str = None,
                     surname: str = None,
                     givenname: str = None,
@@ -155,7 +155,7 @@ class Plugin():
             expire=expire,
             homedir=homedir
         )
-        
+
         flags_mapping = {
             'password': '--password',
             'surname': '--sn',
@@ -215,10 +215,10 @@ class Plugin():
             check=False,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE)
-        
+
         if result.returncode != 0:
             return False, f"[obol: {result}]"
-        
+
         return True, f"[obol: user {username} deleted]"
 
 
@@ -258,7 +258,7 @@ class Plugin():
             check=False,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE)
-        
+
         if result.returncode != 0:
             return False, f"[obol: {result}]"
 
@@ -275,7 +275,7 @@ class Plugin():
 
     # ----------------------------------------------
 
-    def update_group(self, 
+    def update_group(self,
                      groupname: str,
                      gid: str = None,
                      users: List[str] = None):
@@ -316,7 +316,7 @@ class Plugin():
 
         if result.returncode != 0:
             return False, f"[obol: {result}]"
-        
+
         if group_exist:
             return True, f"[obol: group {groupname} updated]"
         else:
@@ -340,4 +340,3 @@ class Plugin():
             return False, f"[obol: {result}]"
 
         return True, f"[obol: group {groupname} deleted]"
-

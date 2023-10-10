@@ -1499,4 +1499,3 @@ def control_status(request_id=None):
     else:
         response={'message': response}
     return response, access_code
-

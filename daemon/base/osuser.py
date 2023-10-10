@@ -140,6 +140,3 @@ class OsUser():
             return result_state, result_msg
         except Exception as exp:
             return False, f'Problem while deleting Os Group: {exp}'
-        
-
-    

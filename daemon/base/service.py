@@ -32,7 +32,6 @@ __maintainer__  = "Sumit Sharma"
 __email__       = "sumit.sharma@clustervision.com"
 __status__      = "Development"
 
-from json import dumps
 from random import randint
 from time import sleep, time
 from os import getpid
@@ -130,6 +129,5 @@ class Service():
             response = {'message': (';;').join(message) }
             Status().mark_messages_read(request_id)
             status=True
-            return status, response 
+            return status, response
         return status, 'No data for this request'
-

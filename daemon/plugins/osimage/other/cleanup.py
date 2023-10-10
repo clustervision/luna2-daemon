@@ -30,15 +30,6 @@ __maintainer__  = 'Antoine Schonewille'
 __email__       = 'antoine.schonewille@clustervision.com'
 __status__      = 'Development'
 
-import os
-import pwd
-import subprocess
-import shutil
-from time import sleep, time
-import sys
-import uuid
-# from datetime import datetime
-# import json
 from utils.log import Log
 from utils.helper import Helper
 
@@ -68,4 +59,3 @@ class Plugin():
             if exit_code == 0:
                 return True, message
         return False, message
-

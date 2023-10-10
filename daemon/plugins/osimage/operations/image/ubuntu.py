@@ -33,13 +33,10 @@ import os
 import pwd
 import subprocess
 import shutil
-from time import sleep, time
+from time import time
 import sys
-import uuid
-# from datetime import datetime
-# import json
 from utils.log import Log
-from utils.helper import Helper
+# from utils.helper import Helper
 
 
 class Plugin():
@@ -72,7 +69,7 @@ class Plugin():
     systemroot = "$rootmnt"
 
     # ---------------------------------------------------------------------------
-            
+
     def build(self, osimage=None, image_path=None, files_path=None):
         # osimage = just the name of the image
         # image_path = is the location where the image resides
@@ -139,7 +136,7 @@ class Plugin():
                 self.logger.error('Keyboard interrupt.')
             else:
                 self.logger.error(exc_value)
-                self.logger.debug(traceback.format_exc())
+                self.logger.debug(exc_traceback.format_exc())
 
             if os.path.isfile('/tmp/' + packed_image_file):
                 os.remove('/tmp/' + packed_image_file)
@@ -216,7 +213,7 @@ class Plugin():
 
         # add modules goes in /image/etc/initramfs-tools/modules
 
-#        ramdisk_modules = []        
+#        ramdisk_modules = []
 #        if ramdisk_modules:
 #            for i in ramdisk_modules:
 #                s = i.replace(" ", "")
@@ -267,7 +264,7 @@ class Plugin():
 #                          modules_add + modules_remove + drivers_add +
 #                          drivers_remove + ['/tmp/' + ramdisk_file])
 
-            initramfs_cmd = (['/usr/sbin/mkinitramfs', '-o', '/tmp/' + ramdisk_file, kernel_version ]);
+            initramfs_cmd = (['/usr/sbin/mkinitramfs', '-o', '/tmp/' + ramdisk_file, kernel_version ])
 
             create = subprocess.Popen(initramfs_cmd, stdout=subprocess.PIPE)
             while create.poll() is None:
@@ -276,7 +273,7 @@ class Plugin():
         except:
             exc_type, exc_value, exc_traceback = sys.exc_info()
             self.logger.info(exc_value)
-            # self.logger.debug(traceback.format_exc())
+            self.logger.debug(exc_traceback.format_exc())
             initramfs_succeed = False
 
         if create and create.returncode:
@@ -317,4 +314,3 @@ class Plugin():
         os.chmod(files_path + '/' + kernel_file, 0o644)
 
         return True, "Success", kernel_file, ramdisk_file
-

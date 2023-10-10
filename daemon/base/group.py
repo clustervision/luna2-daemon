@@ -30,7 +30,6 @@ __email__       = 'sumit.sharma@clustervision.com'
 __status__      = 'Development'
 
 from base64 import b64encode
-from json import dumps
 from concurrent.futures import ThreadPoolExecutor
 from utils.database import Database
 from utils.log import Log
@@ -321,7 +320,7 @@ class Group():
                         data['osimagetagid'] = osimagetagids[0]['id']
                     else:
                         status = False
-                        return status, f'Unknown tag, or osimage and tag not related'
+                        return status, 'Unknown tag, or osimage and tag not related'
 
             group_columns = Database().get_columns('group')
             column_check = Helper().compare_list(data, group_columns)
@@ -413,12 +412,12 @@ class Group():
                     for group_detail in group_details:
                         nodes_in_group.append(group_detail['nodename'])
                 group_plugins = Helper().plugin_finder(f'{self.plugins_path}/group')
-                GroupPlugin=Helper().plugin_load(group_plugins,'group','default')
+                group_plugin=Helper().plugin_load(group_plugins,'group','default')
                 try:
                     if create:
-                        GroupPlugin().postcreate(name=name, nodes=nodes_in_group)
+                        group_plugin().postcreate(name=name, nodes=nodes_in_group)
                     elif update:
-                        GroupPlugin().postupdate(name=name, nodes=nodes_in_group)
+                        group_plugin().postupdate(name=name, nodes=nodes_in_group)
                 except Exception as exp:
                     self.logger.error(f"{exp}")
 

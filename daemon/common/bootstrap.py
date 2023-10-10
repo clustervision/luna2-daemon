@@ -29,13 +29,13 @@ __maintainer__ = 'Sumit Sharma'
 __email__ = 'sumit.sharma@clustervision.com'
 __status__ = 'Development'
 
+import subprocess
+import threading
+import sys
 from configparser import RawConfigParser
 import os
 import time
 import hostlist
-import subprocess
-import threading
-import sys
 from common.constant import CONSTANT
 from utils.helper import Helper
 
@@ -186,7 +186,8 @@ def get_database_tables_structure(table=None):
         return DATABASE_LAYOUT_status
     if table == "queue":
         return DATABASE_LAYOUT_queue
-        Database().create("queue", DATABASE_LAYOUT_queue)
+        #left in as an example what could be done - Antoine
+        #Database().create("queue", DATABASE_LAYOUT_queue)
     if table == "osimage":
         return DATABASE_LAYOUT_osimage
     if table == "osimagetag":
@@ -255,8 +256,8 @@ def get_config(filename=None):
                 for num in range(1, 10):
                     if 'CONTROLLER'+str(num) in option.upper():
                         BOOTSTRAP[section][option.upper()]={}
-                        hostname,ip,*_=(item.split(':')+[None])
-                        hostname,*_=(hostname.split('.')+[None])
+                        hostname,ip,*_=item.split(':')+[None]
+                        hostname,*_=hostname.split('.')+[None]
                         # we don't expect a fqdn anywhere in the code!
                         # we generally look for 'controller'. BEWARE!
                         if hostname and not ip and '.' in hostname:
@@ -268,8 +269,8 @@ def get_config(filename=None):
                             BOOTSTRAP[section][option.upper()]['HOSTNAME'] = hostname
                 if 'CONTROLLER' in option.upper() and 'CONTROLLER1' not in option.upper():
                     # we assume we do not have H/A setup. no Virtual IP
-                    hostname,ip,*_=(item.split(':')+[None])
-                    hostname,*_=(hostname.split('.')+[None])
+                    hostname,ip,*_=item.split(':')+[None]
+                    hostname,*_=hostname.split('.')+[None]
                     if hostname and not ip and '.' in hostname:
                         # i guess we only have an IP and no hostname?
                         ip=hostname
@@ -286,7 +287,7 @@ def get_config(filename=None):
                     except Exception:
                         LOGGER.error(f'Invalid node list range: {item}, kindly use the numbers in incremental order.')
                 elif 'NETWORKS' in section:
-                    function,nwtype,network,dhcp,dhcprange,shared,*_ = (item.split(':')+[None]+[None]+[None]+[None]+[None])
+                    function,nwtype,network,dhcp,dhcprange,shared,*_ = item.split(':')+[None]+[None]+[None]+[None]+[None]
                     #Helper().get_netmask(item)  # <-- not used?
                     BOOTSTRAP[section][option.lower()]={}
                     BOOTSTRAP[section][option.lower()]['NETWORK'] = network
@@ -349,7 +350,7 @@ def bootstrap(bootstrapfile=None):
         if 'DHCP' in BOOTSTRAP['NETWORKS'][nwkx]:
             dhcp=1
             if 'RANGE' in BOOTSTRAP['NETWORKS'][nwkx]:
-                dhcp_range_begin,dhcp_range_end,*_=(BOOTSTRAP['NETWORKS'][nwkx]['RANGE'].split('-')+[None])
+                dhcp_range_begin,dhcp_range_end,*_=BOOTSTRAP['NETWORKS'][nwkx]['RANGE'].split('-')+[None]
                 if dhcp_range_end is None:
                     dhcp_range_begin=''
                     dhcp_range_end=''
@@ -372,7 +373,7 @@ def bootstrap(bootstrapfile=None):
     networkid, networkname, bmcnetworkid, bmcnetworkname = None, None, None, None
     network = None
     if 'default' in network_functions:
-        network = Database().get_record(None, 'network', f"WHERE name = '{network_functions['default']}'")
+        network = Database().get_record(None,'network',f"WHERE name = '{network_functions['default']}'")
     else:
         #dangerous assumption as id[0] doesn't have to be the primary network but we need to fallback onto something.
         network = Database().get_record(None, 'network', "WHERE name = 'cluster'")
@@ -380,9 +381,10 @@ def bootstrap(bootstrapfile=None):
         networkid = network[0]['id']
         networkname = network[0]['name']
     if 'bmc' in network_functions:
-        network = Database().get_record(None, 'network', f"WHERE name = '{network_functions['bmc']}'")
+        network = Database().get_record(None,'network',f"WHERE name = '{network_functions['bmc']}'")
     else:
-        network = Database().get_record(None, 'network', "WHERE name = 'ipmi'") # also a bit dangerous but no choice
+        # also a bit dangerous but no choice
+        network = Database().get_record(None,'network',"WHERE name = 'ipmi'")
     if network:
         bmcnetworkid = network[0]['id']
         bmcnetworkname = network[0]['name']
@@ -443,7 +445,7 @@ def bootstrap(bootstrapfile=None):
     osimage_path,osimage_kernelversion=None,None
     if 'PATH' in BOOTSTRAP['OSIMAGE']:
         osimage_path=BOOTSTRAP['OSIMAGE']['PATH']
-        osimage_kernelversion,exit_code = Helper().runcommand(f"ls -tr {osimage_path}/lib/modules/|tail -n1")
+        osimage_kernelversion, exit_code = Helper().runcommand(f"ls -tr {osimage_path}/lib/modules/|tail -n1")
         osimage_kernelversion=osimage_kernelversion.strip()
         osimage_kernelversion=osimage_kernelversion.decode('utf-8')
     default_osimage = [
@@ -506,7 +508,9 @@ def bootstrap(bootstrapfile=None):
         ]
         node_id = Database().insert('node', default_node)
         network_details=Helper().get_network_details(BOOTSTRAP['NETWORKS'][networkname]['NETWORK'])
-        avail_ip = Helper().get_available_ip(network_details['network'],network_details['subnet'],taken_ips)
+        avail_ip = Helper().get_available_ip(network_details['network'],
+                                             network_details['subnet'],
+                                             taken_ips)
         taken_ips.append(avail_ip)
         default_int = [
             {'column': 'nodeid', 'value': str(node_id)},
@@ -519,7 +523,8 @@ def bootstrap(bootstrapfile=None):
             {'column': 'ipaddress', 'value': str(avail_ip)},
             {'column': 'networkid', 'value': networkid}
         ]
-        ip_id = Database().insert('ipaddress', default_ip)
+        #ip_id = Database().insert('ipaddress', default_ip)
+        Database().insert('ipaddress', default_ip)
 
         bmcnetwork_details = Helper().get_network_details(BOOTSTRAP['NETWORKS'][bmcnetworkname]['NETWORK'])
         avail_ip = Helper().get_available_ip(bmcnetwork_details['network'],network_details['subnet'],bmctaken_ips)
@@ -535,7 +540,7 @@ def bootstrap(bootstrapfile=None):
             {'column': 'ipaddress', 'value': str(avail_ip)},
             {'column': 'networkid', 'value': bmcnetworkid}
         ]
-        bmc_id = Database().insert('ipaddress', bmc_ip)
+        Database().insert('ipaddress', bmc_ip)
 
     default_group_interface = [
         {'column': 'groupid', 'value': '1'},
@@ -566,7 +571,7 @@ def bootstrap(bootstrapfile=None):
         {'column': 'read', 'value': 'public'},
         {'column': 'rw', 'value': 'trusted'}
     ]
-    
+
     Database().insert('groupinterface', default_group_interface)
     Database().insert('groupinterface', bmc_group_interface)
     Database().insert('bmcsetup', default_bmcsetup)

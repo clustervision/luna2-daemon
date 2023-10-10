@@ -30,7 +30,6 @@ __maintainer__  = 'Sumit Sharma'
 __email__       = 'sumit.sharma@clustervision.com'
 __status__      = 'Development'
 
-from json import dumps
 from utils.log import Log
 from utils.helper import Helper
 from utils.database import Database

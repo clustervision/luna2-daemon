@@ -256,4 +256,3 @@ DATABASE_LAYOUT_tracker = [
 {"column": "left",                 "datatype": "INTEGER", "length": "10"},
 {"column": "updated",              "datatype": "numeric"},
 {"column": "status",               "datatype": "VARCHAR", "length": "20"}]
-

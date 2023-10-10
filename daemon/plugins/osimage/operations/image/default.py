@@ -33,13 +33,10 @@ import os
 import pwd
 import subprocess
 import shutil
-from time import sleep, time
+from time import time
 import sys
-import uuid
-# from datetime import datetime
-# import json
 from utils.log import Log
-from utils.helper import Helper
+#from utils.helper import Helper
 
 
 class Plugin():
@@ -71,7 +68,7 @@ class Plugin():
     systemroot = "/sysroot"
 
     # ---------------------------------------------------------------------------
-            
+
     def build(self, osimage=None, image_path=None, files_path=None):
         # osimage = just the name of the image
         # image_path = is the location where the image resides
@@ -138,7 +135,7 @@ class Plugin():
                 self.logger.error('Keyboard interrupt.')
             else:
                 self.logger.error(exc_value)
-                self.logger.debug(traceback.format_exc())
+                self.logger.debug(exc_traceback.format_exc())
 
             if os.path.isfile('/tmp/' + packed_image_file):
                 os.remove('/tmp/' + packed_image_file)
@@ -209,8 +206,8 @@ class Plugin():
         modules_remove = []
         drivers_add = []
         drivers_remove = []
-        grab_filesystems = ['/','/boot']
-       
+        #grab_filesystems = ['/','/boot']
+
         # hard coded ramdisk modules
         ramdisk_modules = ['luna','-18n','-plymouth']
         if ramdisk_modules:
@@ -266,9 +263,9 @@ class Plugin():
                 line = create.stdout.readline()
 
         except:
-            exc_type, exc_value, exc_traceback = sys.exc_info()
+            exc_type, exc_value, exc_traceback= sys.exc_info()
             self.logger.info(exc_value)
-            # self.logger.debug(traceback.format_exc())
+            self.logger.debug(exc_traceback.format_exc())
             dracut_succeed = False
 
         if create and create.returncode:
@@ -309,4 +306,3 @@ class Plugin():
         os.chmod(files_path + '/' + kernel_file, 0o644)
 
         return True, "Success", kernel_file, ramdisk_file
-

@@ -176,7 +176,7 @@ def parse_item(data=None, name=None):
     if isinstance(data, dict):
         data.update(parse_dict(data))
     elif isinstance(data, list):
-        data = (parse_list(data))
+        data = parse_list(data)
     elif isinstance(data, str):
         data = filter_data(data,name)
     return data
@@ -236,4 +236,3 @@ def check_structure(data=None, checks=None):
     except Exception as exp:
         LOGGER.debug(f"filter encountered issue due to incorrect data/json/dict?: {exp}")
         return False
-

@@ -162,8 +162,8 @@ class Model():
             response = f'{table_cap} removed from database.'
             status=True
         else:
-            self.logger.info(f'{name} is not present in the database.')
-            response = f'{name} is not present in the database.'
+            self.logger.info(f'{id} is not present in the database.')
+            response = f'{id} is not present in the database.'
             status=False
         return status, response
 

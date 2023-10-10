@@ -32,18 +32,9 @@ __maintainer__  = 'Antoine Schonewille'
 __email__       = 'antoine.schonewille@clustervision.com'
 __status__      = 'Development'
 
-#import subprocess
-#import json
-#from configparser import RawConfigParser
 from utils.log import Log
 from utils.database import Database
-#from common.constant import CONSTANT, LUNAKEY
 #from utils.helper import Helper
-#import concurrent.futures
-#from threading import Event
-#from time import sleep, time
-#from datetime import datetime
-#import signal
 
 
 class Status(object):

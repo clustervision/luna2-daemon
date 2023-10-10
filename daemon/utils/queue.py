@@ -31,19 +31,9 @@ __email__       = 'antoine.schonewille@clustervision.com'
 __status__      = 'Development'
 
 import re
-#import subprocess
-#import json
-#from configparser import RawConfigParser
 from utils.log import Log
 from utils.database import Database
-#from common.constant import CONSTANT, LUNAKEY
 #from utils.helper import Helper
-#import concurrent.futures
-#import threading
-#from threading import Event
-#from time import sleep, time
-#from datetime import datetime, timedelta
-#import signal
 
 class Queue(object):
 

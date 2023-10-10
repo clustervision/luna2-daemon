@@ -30,7 +30,6 @@ __maintainer__  = 'Sumit Sharma'
 __email__       = 'sumit.sharma@clustervision.com'
 __status__      = 'Development'
 
-#from time import sleep,time
 from time import sleep
 import concurrent.futures
 from utils.helper import Helper
@@ -237,7 +236,7 @@ class Service(object):
 
 
     def queue(self,service,action):
-        queue_id,_ = Queue().add_task_to_queue(f'{service}:{action}','service','__internal__')
+        queue_id,response = Queue().add_task_to_queue(f'{service}:{action}','service','__internal__')
         if queue_id:
             next_id = Queue().next_task_in_queue('service')
             if queue_id == next_id:
@@ -245,5 +244,4 @@ class Service(object):
                 executor.submit(self.service_mother,service,action,'__internal__')
                 executor.shutdown(wait=False)
         else: # fallback, worst case
-            #status, response = self.luna_service(service, action)
-            self.luna_service(service, action)
+            status, response = self.luna_service(service, action)

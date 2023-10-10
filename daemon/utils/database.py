@@ -512,9 +512,9 @@ class Database():
                         time_denom = result.group(3)
                         if symbol and time_value and time_denom:
                             column = column + f" = datetime('now','{symbol}{time_value} {time_denom}')"
-                            # only sqlite complaint! pending
+                            # only sqlite compliant! pending
                         else:
-                            values.append('"'+str(each["value"])+'"')
+                            column = column + f" = '{cols['value']}'"
                 else:
                     if cols['value']:
                         column = column + ' = "' +str(cols['value']) +'"'

@@ -176,7 +176,7 @@ class Plugin():
             try:
                 subprocess.Popen(['/usr/bin/umount', source])
             except Exception as error:
-                self.logger(f"Umount {target} failed with {error}")
+                self.logger(f"Umount {source} failed with {error}")
 
         def prepare_mounts(path):
             mount('devtmpfs', f"{path}/dev", 'devtmpfs')

@@ -33,8 +33,8 @@ __status__      = 'Development'
 from utils.log import Log
 from utils.helper import Helper
 
-import random
-from time import sleep
+#import random
+#from time import sleep
 
 class Plugin():
     """

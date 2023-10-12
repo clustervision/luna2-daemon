@@ -30,16 +30,17 @@ __maintainer__  = 'Sumit Sharma'
 __email__       = 'sumit.sharma@clustervision.com'
 __status__      = 'Development'
 
-import os, sys
+import os
+import sys
 import subprocess
+import threading
+import re
 import queue
 import json
 import ipaddress
 from configparser import RawConfigParser
 import hostlist
 from netaddr import IPNetwork
-import threading
-import re
 from jinja2 import Environment, meta, FileSystemLoader
 from utils.log import Log
 from utils.database import Database
@@ -105,7 +106,8 @@ class Helper(object):
         kill = lambda process: process.kill()
         output = None
         self.logger.debug(f'Command Executed [{command}]')
-        my_process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
+        my_process = subprocess.Popen(command, stdout=subprocess.PIPE,
+                                      stderr=subprocess.PIPE, shell=True)
         my_timer = threading.Timer(timeout_sec,kill,[my_process])
         try:
             my_timer.start()
@@ -364,12 +366,12 @@ class Helper(object):
         This method will provide the range size of IP.
         """
         try:
-            list=[]
+            ip_list=[]
             start_ip = ipaddress.IPv4Address(start)
             end_ip = ipaddress.IPv4Address(end)
             for ip in range(int(start_ip),(int(end_ip)+1)):
-                list.append(str(ipaddress.IPv4Address(ip)))
-            return list
+                ip_list.append(str(ipaddress.IPv4Address(ip)))
+            return ip_list
         except Exception as exp:
             return []
 
@@ -398,7 +400,7 @@ class Helper(object):
             if offset:
                 first_int = int(first) + offset
                 last_int = int(last) + offset
-                first = ipaddress.IPv4Address(first_int) 
+                first = ipaddress.IPv4Address(first_int)
                 # ip_address instead of IPv4Address might also work and is ipv6 complaint? pending
                 last = ipaddress.IPv4Address(last_int)
             return str(first),str(last)
@@ -597,7 +599,7 @@ class Helper(object):
         status = Database().update('node', row, where)
         return status
 
-    """ 
+    """
     Below Classes/Functions maintained by Antoine antoine.schonewille@clustervision.com
     """
 
@@ -675,7 +677,7 @@ class Helper(object):
 
     # ---------------------------------------------------------
     # not sure if below is still being used
- 
+
     def insert_mesg_in_status(self, request_id=None, username_initiator=None, message=None):
         """
         This method will insert the message in the status table.
@@ -701,7 +703,7 @@ class Helper(object):
     # This def receives a 'Database().get_record' list of dicts
     # and converts it into a dictionary where the main key is the value of 'byname' of the dict objects inside the list
     # eg group[0]{id:'1',....} with a byname of 'id' makes a dict like group{'1':{.....
-    
+
         mydict={}
         if not byname:
             byname='name'
@@ -777,7 +779,7 @@ class Helper(object):
         roottree = root.split('/')
         root = root.replace('/','.')
         self.logger.debug(f"Loading module {class_name}/Plugin from plugins.{root}.{levelone}.{leveltwo} / {plugins}")
-        if (not plugins): # or (root and root not in plugins):
+        if not plugins: # or (root and root not in plugins):
             self.logger.error(f"Provided Plugins tree is empty or is missing root. plugins = [{plugins}], root = [{root}]")
             return None
         module = None
@@ -790,7 +792,7 @@ class Helper(object):
                     myplugin = myplugin[treestep]
             self.logger.debug(f"myplugin = [{myplugin}]")
         except Exception as exp:
-            self.logger.error(f"Loading module caused a problem in roottree: {exp}") 
+            self.logger.error(f"Loading module caused a problem in roottree: {exp}")
             return None
         if type(levelone) == type('string'):
             levelones.append(levelone)
@@ -823,7 +825,7 @@ class Helper(object):
             exc_type, exc_obj, exc_tb = sys.exc_info()
             #fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
             #print(exc_type, fname, exc_tb.tb_lineno)
-            self.logger.error(f"Loading module caused a problem during selection: {exp}, {exc_type} in {exc_tb.tb_lineno}]") 
+            self.logger.error(f"Loading module caused a problem during selection: {exp}, {exc_type} in {exc_tb.tb_lineno}]")
             return None
 
         try:
@@ -834,7 +836,7 @@ class Helper(object):
                 return my_class
             return None
         except Exception as exp:
-            self.logger.error(f"Getattr caused a problem: {exp}") 
+            self.logger.error(f"Getattr caused a problem: {exp}")
             return None
 
 
@@ -855,5 +857,3 @@ class Helper(object):
             elif 'ervice unavailable' in response:
                 access_code=503
         return access_code
-
-

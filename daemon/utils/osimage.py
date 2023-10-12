@@ -31,25 +31,14 @@ __email__       = 'antoine.schonewille@clustervision.com'
 __status__      = 'Development'
 
 import os
-import pwd
-import subprocess
-import shutil
-import queue
-import json
-import ipaddress
-from configparser import RawConfigParser
-from netaddr import IPNetwork
+import sys
+import threading
+from time import sleep
+import concurrent.futures
 from utils.log import Log
 from utils.database import Database
-from common.constant import CONSTANT, LUNAKEY
+from common.constant import CONSTANT
 from utils.helper import Helper
-import concurrent.futures
-import threading
-from time import sleep, time
-from datetime import datetime
-import sys
-import uuid
-import shutil
 from utils.status import Status
 from utils.queue import Queue
 
@@ -72,13 +61,13 @@ class OsImage(object):
 
     def grab_osimage(self,taskid,request_id):
 
-        self.logger.info(f"grab_osimage called")
+        self.logger.info("grab_osimage called")
         try:
 
             result=False
             details=Queue().get_task_details(taskid)
             request_id=details['request_id']
-            action,node,osimage,nodry,noeof,*_=(details['task'].split(':')+[None]+[None]+[None]+[None])
+            action,node,osimage,nodry,noeof,*_=details['task'].split(':')+[None]+[None]+[None]+[None]
             if not nodry:
                 nodry=False
             nodry = Helper().make_bool(nodry)
@@ -118,7 +107,7 @@ class OsImage(object):
                 distribution=distribution.lower()
 
                 # loading the plugin depending on OS
-                OsGrabPlugin=Helper().plugin_load(self.osimage_plugins,'osimage/operations/osgrab',[dbnode[0]['nodename'],distribution,osimage,dbnode[0]['groupname']])
+                os_grab_plugin=Helper().plugin_load(self.osimage_plugins,'osimage/operations/osgrab',[dbnode[0]['nodename'],distribution,osimage,dbnode[0]['groupname']])
 
                 #------------------------------------------------------
                 grab_fs=[]
@@ -132,7 +121,7 @@ class OsImage(object):
                     image[0]['grab_exclude']=image[0]['grab_exclude'].replace(',,',',')
                     grab_ex=image[0]['grab_exclude'].split(",")
                 Status().add_message(request_id,"luna",f"grabbing osimage {osimage}")
-                response=OsGrabPlugin().grab(
+                response=os_grab_plugin().grab(
                                             osimage=osimage,
                                             image_path=image_path,
                                             node=dbnode[0]['nodename'],
@@ -158,7 +147,7 @@ class OsImage(object):
                     Status().add_message(request_id,"luna",f"error grabbing osimage {osimage}: {mesg}")
                 
                 if not noeof:
-                    Status().add_message(request_id,"luna",f"EOF")
+                    Status().add_message(request_id,"luna","EOF")
             else:
                 self.logger.info(f"{details['task']} is not for us.")
             return result
@@ -168,7 +157,7 @@ class OsImage(object):
             self.logger.error(f"grab_osimage has problems: {exp}, {exc_type}, in {exc_tb.tb_lineno}")
             try:
                 Status().add_message(request_id,"luna",f"Grabbing failed: {exp}")
-                Status().add_message(request_id,"luna",f"EOF")
+                Status().add_message(request_id,"luna","EOF")
             except Exception as nexp:
                 self.logger.error(f"grab_osimage has problems during exception handling: {nexp}")
             return False
@@ -178,13 +167,13 @@ class OsImage(object):
 
     def pack_osimage(self,taskid,request_id):
 
-        self.logger.info(f"pack_osimage called")
+        self.logger.info("pack_osimage called")
         try:
 
             result=False
             details=Queue().get_task_details(taskid)
             request_id=details['request_id']
-            action,osimage,noeof,*_=(details['task'].split(':')+[None]+[None])
+            action,osimage,noeof,*_=details['task'].split(':')+[None]+[None]
 
             if action == "pack_osimage":
                 image_directory = CONSTANT['FILES']['IMAGE_DIRECTORY']
@@ -197,8 +186,8 @@ class OsImage(object):
                     filesystem_plugin = 'default'
                     if 'IMAGE_FILESYSTEM' in CONSTANT['PLUGINS'] and CONSTANT['PLUGINS']['IMAGE_FILESYSTEM']:
                         filesystem_plugin = CONSTANT['PLUGINS']['IMAGE_FILESYSTEM']
-                    OsImagePlugin=Helper().plugin_load(self.osimage_plugins,'osimage/filesystem',filesystem_plugin)
-                    ret, data = OsImagePlugin().getpath(image_directory=image_directory, osimage=image[0]['name'], tag=None) # we feed no tag as tagged/versioned FS is normally R/O
+                    os_image_plugin=Helper().plugin_load(self.osimage_plugins,'osimage/filesystem',filesystem_plugin)
+                    ret, data = os_image_plugin().getpath(image_directory=image_directory, osimage=image[0]['name'], tag=None) # we feed no tag as tagged/versioned FS is normally R/O
                     if ret is True:
                         image[0]['path'] = data
                     else:
@@ -232,11 +221,11 @@ class OsImage(object):
                     kernel_modules = image[0]['kernelmodules'].split(',')
 
                 # loading the plugin depending on OS
-                OsImagePlugin=Helper().plugin_load(self.osimage_plugins,'osimage/operations/image',distribution,osrelease)
+                os_image_plugin=Helper().plugin_load(self.osimage_plugins,'osimage/operations/image',distribution,osrelease)
 
                 #------------------------------------------------------
                 Status().add_message(request_id,"luna",f"packing osimage {osimage}")
-                response=OsImagePlugin().pack(
+                response=os_image_plugin().pack(
                                             osimage=osimage,
                                             image_path=image_path,
                                             files_path=files_path,
@@ -263,7 +252,7 @@ class OsImage(object):
                     Status().add_message(request_id,"luna",f"error packing osimage {osimage}: {mesg}")
                 
                 if not noeof:
-                    Status().add_message(request_id,"luna",f"EOF")
+                    Status().add_message(request_id,"luna","EOF")
             else:
                 self.logger.info(f"{details['task']} is not for us.")
             return result
@@ -273,7 +262,7 @@ class OsImage(object):
             self.logger.error(f"pack_osimage has problems: {exp}, {exc_type}, in {exc_tb.tb_lineno}")
             try:
                 Status().add_message(request_id,"luna",f"Packing failed: {exp}")
-                Status().add_message(request_id,"luna",f"EOF")
+                Status().add_message(request_id,"luna","EOF")
             except Exception as nexp:
                 self.logger.error(f"pack_osimage has problems during exception handling: {nexp}")
             return False
@@ -282,13 +271,13 @@ class OsImage(object):
 
     def build_osimage(self,taskid,request_id):
 
-        self.logger.info(f"build_osimage called")
+        self.logger.info("build_osimage called")
         try:
 
             result=False
             details=Queue().get_task_details(taskid)
             request_id=details['request_id']
-            action,osimage,noeof,*_=(details['task'].split(':')+[None]+[None])
+            action,osimage,noeof,*_=details['task'].split(':')+[None]+[None]
 
             if action == "build_osimage":
                 image_directory = CONSTANT['FILES']['IMAGE_DIRECTORY']
@@ -301,8 +290,8 @@ class OsImage(object):
                     filesystem_plugin = 'default'
                     if 'IMAGE_FILESYSTEM' in CONSTANT['PLUGINS'] and CONSTANT['PLUGINS']['IMAGE_FILESYSTEM']:
                         filesystem_plugin = CONSTANT['PLUGINS']['IMAGE_FILESYSTEM']
-                    OsImagePlugin=Helper().plugin_load(self.osimage_plugins,'osimage/filesystem',filesystem_plugin)
-                    ret, data = OsImagePlugin().getpath(image_directory=image_directory, osimage=image[0]['name'], tag=None) # we feed no tag as tagged/versioned FS is normally R/O
+                    os_image_plugin=Helper().plugin_load(self.osimage_plugins,'osimage/filesystem',filesystem_plugin)
+                    ret, data = os_image_plugin().getpath(image_directory=image_directory, osimage=image[0]['name'], tag=None) # we feed no tag as tagged/versioned FS is normally R/O
                     if ret is True:
                         image[0]['path'] = data
                     else:
@@ -326,10 +315,10 @@ class OsImage(object):
                 files_path = CONSTANT['FILES']['IMAGE_FILES']
         
                 # loading the plugin depending on OS
-                OsImagePlugin=Helper().plugin_load(self.osimage_plugins,'osimage/operations/image',distribution,osrelease)
+                os_image_plugin=Helper().plugin_load(self.osimage_plugins,'osimage/operations/image',distribution,osrelease)
 
                 Status().add_message(request_id,"luna",f"building osimage {osimage}")
-                response=OsImagePlugin().build(
+                response=os_image_plugin().build(
                                        osimage=osimage,
                                        image_path=image_path,
                                        files_path=files_path)
@@ -351,7 +340,7 @@ class OsImage(object):
                     Status().add_message(request_id,"luna",f"error building osimage {osimage}: {mesg}")
                 
                 if not noeof:
-                    Status().add_message(request_id,"luna",f"EOF")
+                    Status().add_message(request_id,"luna","EOF")
             else:
                 self.logger.info(f"{details['task']} is not for us.")
             return result
@@ -361,7 +350,7 @@ class OsImage(object):
             self.logger.error(f"build_osimage has problems: {exp}, {exc_type}, in {exc_tb.tb_lineno}")
             try:
                 Status().add_message(request_id,"luna",f"Packing failed: {exp}")
-                Status().add_message(request_id,"luna",f"EOF")
+                Status().add_message(request_id,"luna","EOF")
             except Exception as nexp:
                 self.logger.error(f"build_osimage has problems during exception handling: {nexp}")
             return False
@@ -370,13 +359,13 @@ class OsImage(object):
 
     def copy_osimage(self,taskid,request_id):
 
-        self.logger.info(f"copy_osimage called")
+        self.logger.info("copy_osimage called")
         try:
 
             result=False
             details=Queue().get_task_details(taskid)
             request_id=details['request_id']
-            action,src,tag,dst,noeof,*_=(details['task'].split(':')+[None]+[None]+[None])
+            action,src,tag,dst,noeof,*_=details['task'].split(':')+[None]+[None]+[None]
 
             if tag and tag == "None":
                 tag = None
@@ -399,16 +388,16 @@ class OsImage(object):
                         filesystem_plugin = 'default'
                         if 'IMAGE_FILESYSTEM' in CONSTANT['PLUGINS'] and CONSTANT['PLUGINS']['IMAGE_FILESYSTEM']:
                             filesystem_plugin = CONSTANT['PLUGINS']['IMAGE_FILESYSTEM']
-                        OsClonePlugin=Helper().plugin_load(self.osimage_plugins,'osimage/filesystem',filesystem_plugin)
+                        os_clone_plugin=Helper().plugin_load(self.osimage_plugins,'osimage/filesystem',filesystem_plugin)
                         if (not srcimage[0]['path']) or srcimage[0]['tagid'] or tag:
                             tagname = tag or None
                             if (not tag) and srcimage[0]['tagid']:
                                 tagname = Database().name_by_id('osimagetag', srcimage[0]['tagid'])
-                            ret, data = OsClonePlugin().getpath(image_directory=image_directory, osimage=srcimage[0]['name'], tag=tagname)
+                            ret, data = os_clone_plugin().getpath(image_directory=image_directory, osimage=srcimage[0]['name'], tag=tagname)
                             if ret is True:
                                 srcimage[0]['path'] = data
                         if not dstimage[0]['path']:
-                            ret, data = OsClonePlugin().getpath(image_directory=image_directory, osimage=dstimage[0]['name'], tag=None) # we feed no tag as tagged/versioned FS is normally R/O
+                            ret, data = os_clone_plugin().getpath(image_directory=image_directory, osimage=dstimage[0]['name'], tag=None) # we feed no tag as tagged/versioned FS is normally R/O
                             if ret is True:
                                 dstimage[0]['path'] = data
                         if not os.path.exists(srcimage[0]['path']):
@@ -423,14 +412,14 @@ class OsImage(object):
                                     mesg,exit_code = Helper().runcommand(command,True,10)
                                 if exit_code == 0:
                                     self.logger.info(f"Copy image from \"{srcimage[0]['path']}\" to \"{dstimage[0]['path']}\"")
-                                    response=OsClonePlugin().clone(source=srcimage[0]['path'],destination=dstimage[0]['path'])
+                                    response=os_clone_plugin().clone(source=srcimage[0]['path'],destination=dstimage[0]['path'])
                                     result=response[0]
                                     mesg=response[1]
 
                     sleep(1) # needed to prevent immediate concurrent access to the database. Pooling,WAL,WIF,WAF,etc won't fix this. Only sleep
                     if result is True:
                         self.logger.info(f'OS image copied successfully.')
-                        Status().add_message(request_id,"luna",f"finished copying osimage")
+                        Status().add_message(request_id,"luna","finished copying osimage")
 
                     else:
                         self.logger.info(f'Copy osimage {src}->{dst} error: {mesg}.')
@@ -438,10 +427,10 @@ class OsImage(object):
 
                 else:
                     self.logger.info(f'Copy osimage src and/or dst not provided.')
-                    Status().add_message(request_id,"luna",f"error copying osimage as 'src' and/or 'dst' not provided.")
+                    Status().add_message(request_id,"luna","error copying osimage as 'src' and/or 'dst' not provided.")
 
                 if not noeof:
-                    Status().add_message(request_id,"luna",f"EOF")
+                    Status().add_message(request_id,"luna","EOF")
                 return result
             else:
                 self.logger.info(f"{details['task']} is not for us.")
@@ -451,7 +440,7 @@ class OsImage(object):
             self.logger.error(f"copy_osimage has problems: {exp}, {exc_type}, in {exc_tb.tb_lineno}")
             try:
                 Status().add_message(request_id,"luna",f"Packing failed: {exp}")
-                Status().add_message(request_id,"luna",f"EOF")
+                Status().add_message(request_id,"luna","EOF")
             except Exception as nexp:
                 self.logger.error(f"copy_osimage has problems during exception handling: {nexp}")
             return False 
@@ -460,13 +449,13 @@ class OsImage(object):
 
     def push_osimage(self,taskid,request_id,object='node'):
 
-        self.logger.info(f"push_osimage called")
+        self.logger.info("push_osimage called")
         try:
 
             result=False
             details=Queue().get_task_details(taskid)
             request_id=details['request_id']
-            action,dst,osimage,nodry,noeof,*_=(details['task'].split(':')+[None]+[None]+[None])
+            action,dst,osimage,nodry,noeof,*_=details['task'].split(':')+[None]+[None]+[None]
             if not nodry:
                 nodry=False
             nodry = Helper().make_bool(nodry)
@@ -506,10 +495,10 @@ class OsImage(object):
                                 Status().add_message(request_id,"luna",f"error pushing osimage {osimage}: Node {dst} does not exist?")
                                 return False
                             # loading the plugin depending on OS
-                            OsPushPlugin=Helper().plugin_load(self.osimage_plugins,'osimage/operations/ospush',[dbnode[0]['nodename'],distribution,osimage,dbnode[0]['groupname']])
+                            os_push_plugin=Helper().plugin_load(self.osimage_plugins,'osimage/operations/ospush',[dbnode[0]['nodename'],distribution,osimage,dbnode[0]['groupname']])
 
                             self.logger.info(f"Push image from \"{image[0]['path']}\" to \"{dst}\"")
-                            response=OsPushPlugin().push(osimage=osimage,
+                            response=os_push_plugin().push(osimage=osimage,
                                                          image_path=image[0]['path'],
                                                          node=dst,
                                                          grab_filesystems=grab_fs,
@@ -523,7 +512,7 @@ class OsImage(object):
                             if not dbnodes:
                                 Status().add_message(request_id,"luna",f"error pushing osimage {osimage}: Group {dst} does not exist?")
                                 return False
-                            OsPushPlugin=Helper().plugin_load(self.osimage_plugins,'osimage/operations/ospush',[distribution,osimage,dst])
+                            os_push_plugin=Helper().plugin_load(self.osimage_plugins,'osimage/operations/ospush',[distribution,osimage,dst])
 
                             try:
                                 batch=10
@@ -533,10 +522,10 @@ class OsImage(object):
                                 for dbnode in dbnodes:
                                     nodename=dbnode['nodename']
                                     pipeline.add_nodes({nodename: 'ospush'})
-                                while(pipeline.has_nodes()):
+                                while pipeline.has_nodes():
 
                                     with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
-                                        _ = [executor.submit(self.ospush_child, pipeline, t, OsPushPlugin, osimage, image[0]['path'], grab_fs, grab_ex, nodry) for t in range(1,batch)]
+                                        _ = [executor.submit(self.ospush_child, pipeline, t, os_push_plugin, osimage, image[0]['path'], grab_fs, grab_ex, nodry) for t in range(1,batch)]
 
                                     sleep(0.1) # not needed but just in case a child does a lock right after i fetch the list.
                                     results=pipeline.get_messages()
@@ -558,7 +547,7 @@ class OsImage(object):
                     sleep(1) # needed to prevent immediate concurrent access to the database. Pooling,WAL,WIF,WAF,etc won't fix this. Only sleep
                     if result is True:
                         self.logger.info(f'OS image pushed successfully.')
-                        Status().add_message(request_id,"luna",f"finished pushing osimage")
+                        Status().add_message(request_id,"luna","finished pushing osimage")
 
                     else:
                         self.logger.info(f'Push osimage {osimage}->{dst} error: {mesg}.')
@@ -566,10 +555,10 @@ class OsImage(object):
 
                 else:
                     self.logger.info(f'Push osimage src and/or dst not provided.')
-                    Status().add_message(request_id,"luna",f"error pushing osimage as 'osimage' and/or 'destination' not provided.")
+                    Status().add_message(request_id,"luna","error pushing osimage as 'osimage' and/or 'destination' not provided.")
 
                 if not noeof:
-                    Status().add_message(request_id,"luna",f"EOF")
+                    Status().add_message(request_id,"luna","EOF")
                 return result
             else:
                 self.logger.info(f"{details['task']} is not for us.")
@@ -579,7 +568,7 @@ class OsImage(object):
             self.logger.error(f"push_osimage has problems: {exp}, {exc_type}, in {exc_tb.tb_lineno}")
             try:
                 Status().add_message(request_id,"luna",f"Pushing failed: {exp}")
-                Status().add_message(request_id,"luna",f"EOF")
+                Status().add_message(request_id,"luna","EOF")
             except Exception as nexp:
                 self.logger.error(f"push_osimage has problems during exception handling: {nexp}")
             return False 
@@ -588,13 +577,13 @@ class OsImage(object):
 
     def provision_osimage(self,taskid,request_id):
 
-        self.logger.info(f"provision_osimage called")
+        self.logger.info("provision_osimage called")
         try:
 
             result,mesg=False,None
             details=Queue().get_task_details(taskid)
             request_id=details['request_id']
-            action,osimage,noeof,*_=(details['task'].split(':')+[None]+[None])
+            action,osimage,noeof,*_=details['task'].split(':')+[None]+[None]
 
             if action == "provision_osimage":
                 Status().add_message(request_id,"luna",f"creating provisioning for osimage {osimage}")
@@ -628,8 +617,8 @@ class OsImage(object):
                     files_path = CONSTANT['FILES']['IMAGE_FILES']
 
                     for method in cluster_provision_methods:
-                        ProvisionPlugin=Helper().plugin_load(self.boot_plugins,'boot/provision',method)
-                        ret,mesg=ProvisionPlugin().create(image_file=image[0]['imagefile'],
+                        provision_plugin=Helper().plugin_load(self.boot_plugins,'boot/provision',method)
+                        ret,mesg=provision_plugin().create(image_file=image[0]['imagefile'],
                                                           files_path=files_path,
                                                           server_ipaddress=server_ipaddress,
                                                           server_port=server_port,
@@ -645,7 +634,7 @@ class OsImage(object):
                             self.logger.info(f'failed creating {method} provisioning for osimage {osimage}')
  
                 if not noeof:
-                    Status().add_message(request_id,"luna",f"EOF")
+                    Status().add_message(request_id,"luna","EOF")
             else:
                 self.logger.info(f"{details['task']} is not for us.")
             return True
@@ -655,7 +644,7 @@ class OsImage(object):
             self.logger.error(f"provision_osimage has problems: {exp}, {exc_type}, in {exc_tb.tb_lineno}")
             try:
                 Status().add_message(request_id,"luna",f"Create provision failed: {exp}")
-                Status().add_message(request_id,"luna",f"EOF")
+                Status().add_message(request_id,"luna","EOF")
             except Exception as nexp:
                 self.logger.error(f"provision_osimage has problems during exception handling: {nexp}")
             return False
@@ -665,8 +654,8 @@ class OsImage(object):
     def cleanup_file(self,file_to_remove):
         self.logger.info(f"I was called to cleanup old file: {file_to_remove}")
         files_path = CONSTANT['FILES']['IMAGE_FILES']
-        OsImagePlugin=Helper().plugin_load(self.osimage_plugins,'osimage/other','cleanup')
-        ret,mesg=OsImagePlugin().cleanup(files_path=files_path,file_to_remove=file_to_remove)
+        os_image_plugin=Helper().plugin_load(self.osimage_plugins,'osimage/other','cleanup')
+        ret,mesg=os_image_plugin().cleanup(files_path=files_path,file_to_remove=file_to_remove)
         return ret,mesg
 
     # -------------------------------------------------------------------
@@ -683,8 +672,8 @@ class OsImage(object):
 
         files_path = CONSTANT['FILES']['IMAGE_FILES']
         for method in cluster_provision_methods:
-            ProvisionPlugin=Helper().plugin_load(self.boot_plugins,'boot/provision',method)
-            ret,mesg=ProvisionPlugin().cleanup(files_path=files_path, image_file=image_file)
+            provision_plugin=Helper().plugin_load(self.boot_plugins,'boot/provision',method)
+            ret,mesg=provision_plugin().cleanup(files_path=files_path, image_file=image_file)
         return ret,mesg
 
    
@@ -693,7 +682,7 @@ class OsImage(object):
 
     def osimage_mother(self,request_id):
 
-        self.logger.info(f"osimage_mother called")
+        self.logger.info("osimage_mother called")
         try:
 
 #            # Below section is already done in config/pack GET call but kept here in case we want to move it back
@@ -718,7 +707,7 @@ class OsImage(object):
             while next_id := Queue().next_task_in_queue('osimage','queued'):
                 details=Queue().get_task_details(next_id)
                 request_id=details['request_id']
-                action,first,second,third,*_=(details['task'].split(':')+[None]+[None]+[None])
+                action,first,second,third,*_=details['task'].split(':')+[None]+[None]+[None]
                 self.logger.info(f"osimage_mother sees job {action} in queue as next: {next_id}")
 
                 if action == "clone_n_pack_osimage":
@@ -770,7 +759,7 @@ class OsImage(object):
                         Queue().remove_task_from_queue(next_id)
                         if not ret:
                             Queue().remove_task_from_queue_by_request_id(request_id)
-                            Status().add_message(request_id,"luna",f"EOF")
+                            Status().add_message(request_id,"luna","EOF")
  
                 elif action == "pack_osimage":
                     if first:
@@ -779,7 +768,7 @@ class OsImage(object):
                         Queue().remove_task_from_queue(next_id)
                         if not ret:
                             Queue().remove_task_from_queue_by_request_id(request_id)
-                            Status().add_message(request_id,"luna",f"EOF")
+                            Status().add_message(request_id,"luna","EOF")
 
                 elif action == "build_osimage":
                     if first:
@@ -788,7 +777,7 @@ class OsImage(object):
                         Queue().remove_task_from_queue(next_id)
                         if not ret:
                             Queue().remove_task_from_queue_by_request_id(request_id)
-                            Status().add_message(request_id,"luna",f"EOF")
+                            Status().add_message(request_id,"luna","EOF")
 
                 elif action == "provision_osimage":
                     if first:
@@ -797,7 +786,7 @@ class OsImage(object):
                         Queue().remove_task_from_queue(next_id)
                         if not ret:
                             Queue().remove_task_from_queue_by_request_id(request_id)
-                            Status().add_message(request_id,"luna",f"EOF")
+                            Status().add_message(request_id,"luna","EOF")
 
                 elif action == "grab_osimage":
                     if first and second:
@@ -806,7 +795,7 @@ class OsImage(object):
                         Queue().remove_task_from_queue(next_id)
                         if not ret:
                             Queue().remove_task_from_queue_by_request_id(request_id)
-                            Status().add_message(request_id,"luna",f"EOF")
+                            Status().add_message(request_id,"luna","EOF")
 
                 elif action == "push_osimage_to_group":
                     if first and second:
@@ -815,7 +804,7 @@ class OsImage(object):
                         Queue().remove_task_from_queue(next_id)
                         if not ret:
                             Queue().remove_task_from_queue_by_request_id(request_id)
-                            Status().add_message(request_id,"luna",f"EOF")
+                            Status().add_message(request_id,"luna","EOF")
 
                 elif action == "push_osimage_to_node":
                     if first and second:
@@ -824,7 +813,7 @@ class OsImage(object):
                         Queue().remove_task_from_queue(next_id)
                         if not ret:
                             Queue().remove_task_from_queue_by_request_id(request_id)
-                            Status().add_message(request_id,"luna",f"EOF")
+                            Status().add_message(request_id,"luna","EOF")
 
                 elif action == "close_task" and first:
                     Queue().remove_task_from_queue(first)
@@ -839,22 +828,22 @@ class OsImage(object):
             self.logger.error(f"osimage_mother has problems: {exp}, {exc_type}, in {exc_tb.tb_lineno}")
             try:
                 Status().add_message(request_id,"luna",f"Operation failed: {exp}")
-                Status().add_message(request_id,"luna",f"EOF")
+                Status().add_message(request_id,"luna","EOF")
             except Exception as nexp:
                 self.logger.error(f"osimage_mother has problems during exception handling: {nexp}")
            
 
     # ---------------------- child for bulk parallel operations --------------------------------
 
-    def ospush_child(self,pipeline,t,Plugin,osimage,image_path,grab_fs,grab_ex,nodry):
+    def ospush_child(self,pipeline,t,def_plugin,osimage,image_path,grab_fs,grab_ex,nodry):
         nodename,action=pipeline.get_node()
         self.logger.info("control_child thread "+str(t)+" called for: "+nodename+" ospush")
         if nodename:
-            response=Plugin().push(osimage=osimage,image_path=image_path,node=nodename,
+            response=def_plugin().push(osimage=osimage,image_path=image_path,node=nodename,
                                            grab_filesystems=grab_fs,
                                            grab_exclude=grab_ex,nodry=nodry)
             result=response[0]
-            mesg=response[1] 
+            mesg=response[1]
             pipeline.add_message({nodename: f"{result}={mesg}"})
 
 

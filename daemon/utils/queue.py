@@ -30,20 +30,10 @@ __maintainer__  = 'Antoine Schonewille'
 __email__       = 'antoine.schonewille@clustervision.com'
 __status__      = 'Development'
 
-import subprocess
-import json
-from configparser import RawConfigParser
+import re
 from utils.log import Log
 from utils.database import Database
-from common.constant import CONSTANT, LUNAKEY
-from utils.helper import Helper
-import concurrent.futures
-#import threading
-from threading import Event
-from time import sleep, time
-from datetime import datetime, timedelta
-import signal
-import re
+#from utils.helper import Helper
 
 class Queue(object):
 
@@ -86,9 +76,9 @@ class Queue(object):
 #                        current_datetime=datetime.now().replace(microsecond=0) + timedelta(seconds=delay)
                         current_datetime=f"NOW +{delay} second"
                 self.logger.info(f"Scheduling task {task} into the future: {current_datetime}")
-                
-        row=[{"column": "created", "value": str(current_datetime)}, 
-             {"column": "username_initiator", "value": "luna"}, 
+
+        row=[{"column": "created", "value": str(current_datetime)},
+             {"column": "username_initiator", "value": "luna"},
              {"column": "task", "value": f"{task}"},
              {"column": "subsystem", "value": f"{subsystem}"},
              {"column": "request_id", "value": f"{request_id}"},
@@ -139,6 +129,3 @@ class Queue(object):
         row = [{"column": "subsystem", "value": f"{subsystem}"}]
         where = [{"column": "id", "value": f"{taskid}"}]
         status = Database().update('queue', row, where)
-
-
-

@@ -29,7 +29,6 @@ __maintainer__  = 'Sumit Sharma'
 __email__       = 'sumit.sharma@clustervision.com'
 __status__      = 'Development'
 
-from json import dumps
 from concurrent.futures import ThreadPoolExecutor
 from utils.queue import Queue
 from utils.database import Database
@@ -161,11 +160,13 @@ class Network():
                 data['subnet'] = network[0]['subnet']
             else:
                 status=False
-                return status, 'Invalid request: Not enough details provided. network/subnet in CIDR notation expected'
+                ret_msg = 'Invalid request: Not enough details provided. network/subnet in CIDR notation expected'
+                return status, ret_msg
             if 'zone' in data:
                 if (data['zone'] != "external") and (data['zone'] != "internal"):
                     status=False
-                    return status, f'Invalid request: Incorrect zone. Must be either internal or external'
+                    ret_msg = 'Invalid request: Incorrect zone. Must be either internal or external'
+                    return status, ret_msg
             elif create is True:
                 data['zone']="internal"
             if 'gateway' in data:
@@ -183,7 +184,8 @@ class Network():
                 )
                 if (not nsip_details) and data['nameserver_ip'] != '':
                     status=False
-                    return status, f'Invalid request: Incorrect Nameserver IP: {data["nameserver_ip"]}'
+                    ret_msg = f'Invalid request: Incorrect Nameserver IP: {data["nameserver_ip"]}'
+                    return status, ret_msg
             if 'ntp_server' in data:
                 subnet = data['network'] + '/' + data['subnet']
                 ntp_details = Helper().check_ip_range(data['ntp_server'], subnet)
@@ -198,19 +200,21 @@ class Network():
                     dhcp_start_details = Helper().check_ip_range(data['dhcp_range_begin'], subnet)
                     if not dhcp_start_details:
                         status=False
-                        return status, f'Invalid request: Incorrect dhcp start: {data["dhcp_range_begin"]}'
+                        ret_msg = f'Invalid request: Incorrect dhcp start: {data["dhcp_range_begin"]}'
+                        return status, ret_msg
                 elif data['dhcp'] != "0":
                     status=False
-                    return status, f'Invalid request: DHCP start range is a required parameter'
+                    return status, 'Invalid request: DHCP start range is a required parameter'
                 if 'dhcp_range_end' in data:
                     subnet = data['network']+'/'+data['subnet']
                     dhcp_end_details = Helper().check_ip_range(data['dhcp_range_end'], subnet)
                     if not dhcp_end_details:
                         status=False
-                        return status, f'Invalid request: Incorrect dhcp end: {data["dhcp_range_end"]}'
+                        ret_msg = f'Invalid request: Incorrect dhcp end: {data["dhcp_range_end"]}'
+                        return status, ret_msg
                 elif data['dhcp'] != "0":
                     status=False
-                    return status, f'Invalid request: DHCP end range is a required parameter'
+                    return status, 'Invalid request: DHCP end range is a required parameter'
                 if data['dhcp'] == "1":
                     dhcp_size = Helper().get_ip_range_size(
                         data['dhcp_range_begin'],
@@ -410,4 +414,3 @@ class Network():
             response = f'Network {name} not present in database.'
             status=False
         return status, response
-

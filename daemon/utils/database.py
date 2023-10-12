@@ -512,9 +512,9 @@ class Database():
                         time_denom = result.group(3)
                         if symbol and time_value and time_denom:
                             column = column + f" = datetime('now','{symbol}{time_value} {time_denom}')"
-                            # only sqlite complaint! pending
+                            # only sqlite compliant! pending
                         else:
-                            values.append('"'+str(each["value"])+'"')
+                            column = column + f" = '{cols['value']}'"
                 else:
                     if cols['value']:
                         column = column + ' = "' +str(cols['value']) +'"'
@@ -534,7 +534,7 @@ class Database():
             where_list.append(column)
             join_where = ' AND '.join(map(str, where_list))
         if not column_strings:
-            self.logger.error(f"column_strings is empty. no cols in row?")
+            self.logger.error("column_strings is empty. no cols in row?")
             return False
         query = f'UPDATE "{table}" SET {column_strings} WHERE {join_where};'
         self.logger.debug(f"Update Query ---> {query}")

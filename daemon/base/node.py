@@ -31,7 +31,6 @@ __email__       = 'sumit.sharma@clustervision.com'
 __status__      = 'Development'
 
 from base64 import b64decode, b64encode
-from json import dumps
 from utils.database import Database
 from utils.log import Log
 from utils.config import Config
@@ -173,7 +172,7 @@ class Node():
                 if node_interface:
                     node['interfaces'] = []
                     for interface in node_interface:
-                        interface_name, *_ = (node['provision_interface'].split(' ') + [None])
+                        interface_name, *_ = node['provision_interface'].split(' ') + [None]
                         # we skim off parts that we added for clarity in above section
                         # (e.g. (default)). also works if there's no additional info
                         if interface['interface'] == interface_name and interface['network']:
@@ -383,7 +382,7 @@ class Node():
             )
             if node_interface:
                 for interface in node_interface:
-                    interface_name, *_ = (node['provision_interface'].split(' ') + [None])
+                    interface_name, *_ = node['provision_interface'].split(' ') + [None]
                     # we skim off parts that we added for clarity in above section
                     # (e.g. (default)). also works if there's no additional info
                     if interface['interface'] == interface_name and interface['network']:
@@ -450,7 +449,8 @@ class Node():
                 if 'newnodename' in data:
                     nodename_new = data['newnodename']
                     status = False
-                    return status, 'newnodename is only allowed while update, rename or clone a node'
+                    ret_msg = 'newnodename is only allowed while update, rename or clone a node'
+                    return status, ret_msg
                 create = True
 
             for key, value in items.items():
@@ -509,7 +509,8 @@ class Node():
                         data['osimagetagid'] = osimagetagids[0]['id']
                     else:
                         status = False
-                        return status, f'Unknown tag or osimage and tag not related'
+                        ret_msg = 'Unknown tag or osimage and tag not related'
+                        return status, ret_msg
 
             node_columns = Database().get_columns('node')
             columns_check = Helper().compare_list(data, node_columns)
@@ -558,12 +559,12 @@ class Node():
                                                            [f"node.name='{name}'"])
                 if group_details:
                     node_plugins = Helper().plugin_finder(f'{self.plugins_path}/node')
-                    NodePlugin=Helper().plugin_load(node_plugins,'node','default')
+                    node_plugin=Helper().plugin_load(node_plugins,'node','default')
                     try:
                         if create:
-                            NodePlugin().postcreate(name=name, group=group_details[0]['name'])
+                            node_plugin().postcreate(name=name, group=group_details[0]['name'])
                         elif update:
-                            NodePlugin().postupdate(name=name, group=group_details[0]['name'])
+                            node_plugin().postupdate(name=name, group=group_details[0]['name'])
                     except Exception as exp:
                         self.logger.error(f"{exp}")
             else:

@@ -154,5 +154,3 @@ umount /sysroot/sys
 umount /sysroot/dev
 umount /sysroot/proc
     """
-
-

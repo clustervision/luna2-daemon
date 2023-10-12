@@ -31,7 +31,6 @@ __email__       = "sumit.sharma@clustervision.com"
 __status__      = "Development"
 
 
-from json import dumps
 import re
 import jwt
 from flask import send_file
@@ -78,7 +77,7 @@ class File():
         # is available (think: PXE+kernel+ramdisk)
         # we do enforce authentication for specific files. .bz2 + .torrent are
         # most likely the images.
-        # request_ip serves no other purpose other than just update the status table.... 
+        # request_ip serves no other purpose other than just update the status table....
         auth_ext = [".gz", ".tar", ".bz", ".bz2", ".torrent"]
         response = "Internal error"
         status=False
@@ -131,4 +130,3 @@ class File():
             status=False
             return status, f'Service unavailable: {filename} is not present in {CONSTANT["FILES"]["IMAGE_FILES"]}'
         return status, response
-

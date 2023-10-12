@@ -35,7 +35,7 @@ import binascii
 from struct import pack
 from socket import inet_aton
 from libtorrent import bencode
-from flask import Response
+#from flask import Response
 from utils.log import Log
 from utils.database import Database
 
@@ -93,7 +93,9 @@ class Tracker():
 
 
     # CREATE TABLE `tracker` ( `id`  INTEGER  NOT NULL ,  `infohash`  VARCHAR ,  `peer`  VARCHAR ,  `ipaddress`  VARCHAR ,  `port`  INTEGER ,  `download`  INTEGER ,  `upload`  INTEGER ,  `left`  INTEGER ,  `updated`  VARCHAR ,  `status`  VARCHAR , PRIMARY KEY (`id` AUTOINCREMENT));
-    def update_peers(self, info_hash=None, peer_id=None, ip=None, port=None, status=None, uploaded=None, downloaded=None, left=None):
+    def update_peers(self, info_hash=None, peer_id=None,
+                     ip=None, port=None, status=None, uploaded=None,
+                     downloaded=None, left=None):
         """
         Store the information about the peer
         """
@@ -133,7 +135,7 @@ class Tracker():
         n_leechers = 0
         n_seeders = 0
         if not age:
-           age=21600
+            age=21600
         peers = Database().get_record(None, 'tracker', f"WHERE infohash='{info_hash}' AND updated>datetime('now','-{age} second') GROUP BY ipaddress ORDER BY updated DESC")
         # data = base64.b64decode(node['group_'+item])
         # data = data.decode("ascii")
@@ -149,7 +151,7 @@ class Tracker():
                         n_seeders += int(peer['status'] == 'completed')
                     except:
                         pass
-            
+
 
 #        nodes = self.mongo_db['tracker'].find({'info_hash': info_hash,
 #                                               'updated': {'$gte': time_age}},
@@ -294,7 +296,9 @@ class Tracker():
         if warning_message:
             response['warning message'] = warning_message
 
-        n_seeders, n_leechers, n_peers = self.get_peers(info_hash, numwant, compact, no_peer_id, self.tracker_interval * 2)
+        n_seeders, n_leechers, n_peers = self.get_peers(info_hash, numwant,
+                                                        compact, no_peer_id,
+                                                        self.tracker_interval * 2)
 
         response['complete'] = n_seeders
         response['incomplete'] = n_leechers
@@ -302,7 +306,7 @@ class Tracker():
         self.logger.debug(f"response: {response}")
         response = bencode(response)
         return True, response
- 
+
 #        try:
 #            resp = Response(response)
 #            resp.mimetype='text/plain'
@@ -343,7 +347,9 @@ class Tracker():
             no_peer_id = 1
 
             self.logger.debug(f"Inside scrape base class. info_hash: {info_hash}")
-            n_seeders, n_leechers, n_peers = self.get_peers(info_hash, numwant, compact, no_peer_id, self.tracker_interval * 2)
+            n_seeders, n_leechers, _ = self.get_peers(info_hash, numwant,
+                                                      compact, no_peer_id,
+                                                      self.tracker_interval * 2)
 
             info_hash = bytes.decode(binascii.unhexlify(info_hash))
             response['files'][info_hash] = {}

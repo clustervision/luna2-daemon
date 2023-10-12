@@ -78,7 +78,7 @@ class Filter(object):
         for item in data.keys():
             data[item]=self.parse_item(data[item],item)
         return data
-        
+
     def parse_list(self,data):
         ndata=[]
         for item in data:
@@ -95,7 +95,7 @@ class Filter(object):
         if what is dict:
             data.update(self.parse_dict(data))
         elif what is list:
-            data=(self.parse_list(data))
+            data=self.parse_list(data)
         elif what is str:
             data=self.filter(data,name)
         return data
@@ -135,13 +135,13 @@ class Filter(object):
         try:
             for check in mychecks:
                 arr=check.split(':')
-                slice=data
+                sliced_data=data
                 for element in arr:
-                    if not element in slice:
-                        self.logger.debug(f"{element} not found in data {slice}")
+                    if not element in sliced_data:
+                        self.logger.debug(f"{element} not found in data {sliced_data}")
                         return False
-                    self.logger.debug(f"OK: {element} found in data {slice}")
-                    slice=slice[element]
+                    self.logger.debug(f"OK: {element} found in data {sliced_data}")
+                    sliced_data=sliced_data[element]
             return True
         except Exception as exp:
             self.logger.debug(f"filter encountered issue due to incorrect data/json/dict?: {exp}")

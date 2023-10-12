@@ -30,7 +30,8 @@ __maintainer__  = 'Sumit Sharma'
 __email__       = 'sumit.sharma@clustervision.com'
 __status__      = 'Development'
 
-import os, sys
+import os
+import sys
 import subprocess
 import json
 from configparser import RawConfigParser

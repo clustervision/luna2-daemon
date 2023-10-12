@@ -62,7 +62,7 @@ DATABASE_LAYOUT_osimage = [
 {"column": "imagefile",            "datatype": "VARCHAR", "length": "100"},
 {"column": "distribution",         "datatype": "VARCHAR", "length": "20"},
 {"column": "osrelease",            "datatype": "VARCHAR", "length": "20"},
-{"column": "tagid",                "datatype": "VARCHAR", "length": "60"},
+{"column": "tagid",                "datatype": "INTEGER", "length": "10"},
 {"column": "changed",              "datatype": "INTEGER", "length": "10"},
 {"column": "comment",              "datatype": "VARCHAR", "length": "20"}]
 
@@ -109,8 +109,8 @@ DATABASE_LAYOUT_ipaddress = [
 {"column": "id",                   "datatype": "INTEGER", "key": "PRIMARY", "keyadd": "AUTOINCREMENT"},
 {"column": "ipaddress",            "datatype": "VARCHAR", "length": "60", "key": "UNIQUE"},
 {"column": "tableref",             "datatype": "VARCHAR", "length": "100", "key": "UNIQUE", "with": "tablerefid"},
-{"column": "tablerefid",           "datatype": "integer", "length": "10"},
-{"column": "networkid",            "datatype": "interger", "length": "10"}]
+{"column": "tablerefid",           "datatype": "INTEGER", "length": "10"},
+{"column": "networkid",            "datatype": "INTEGER", "length": "10"}]
 
 DATABASE_LAYOUT_groupinterface = [
 {"column": "id",                   "datatype": "INTEGER", "key": "PRIMARY", "keyadd": "AUTOINCREMENT"},
@@ -131,7 +131,7 @@ DATABASE_LAYOUT_group = [
 {"column": "setupbmc",             "datatype": "INTEGER", "length": "10"},
 {"column": "domain",               "datatype": "VARCHAR", "length": "20"},
 {"column": "osimageid",            "datatype": "INTEGER", "length": "10"},
-{"column": "osimagetagid",         "datatype": "VARCHAR", "length": "60"},
+{"column": "osimagetagid",         "datatype": "INTEGER", "length": "10"},
 {"column": "prescript",            "datatype": "TEXT"},
 {"column": "partscript",           "datatype": "TEXT"},
 {"column": "postscript",           "datatype": "TEXT"},
@@ -205,7 +205,7 @@ DATABASE_LAYOUT_node = [
 {"column": "name",                 "datatype": "VARCHAR", "length": "10", "key": "UNIQUE"},
 {"column": "groupid",              "datatype": "INTEGER", "length": "10"},
 {"column": "osimageid",            "datatype": "INTEGER", "length": "10"},
-{"column": "osimagetagid",         "datatype": "VARCHAR", "length": "60"},
+{"column": "osimagetagid",         "datatype": "INTEGER", "length": "10"},
 {"column": "switchport",           "datatype": "INTEGER", "length": "10"},
 {"column": "service",              "datatype": "INTEGER", "length": "10"},
 {"column": "bmcsetupid",           "datatype": "INTEGER", "length": "10"},
@@ -256,4 +256,3 @@ DATABASE_LAYOUT_tracker = [
 {"column": "left",                 "datatype": "INTEGER", "length": "10"},
 {"column": "updated",              "datatype": "numeric"},
 {"column": "status",               "datatype": "VARCHAR", "length": "20"}]
-

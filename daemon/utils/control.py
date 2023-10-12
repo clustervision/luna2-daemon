@@ -135,7 +135,8 @@ class Control():
                 run = 0
 
 
-    def control_action(self, nodename=None, groupname=None, command=None, device=None, username=None, password=None):
+    def control_action(self, nodename=None, groupname=None,
+                       command=None, device=None, username=None, password=None):
         """
         This method will handle the power control actions.
         """
@@ -247,4 +248,3 @@ class Control():
             Status().add_message(request_id, "lpower", "EOF")
         except Exception as exp:
             self.logger.error(f"service_mother has problems: {exp}")
-

@@ -30,7 +30,6 @@ __email__       = 'sumit.sharma@clustervision.com'
 __status__      = 'Development'
 
 
-from json import dumps
 from time import sleep, time
 from random import randint
 from os import getpid
@@ -147,7 +146,7 @@ class Control():
                     pipeline.add_nodes({hostname: subsystem+' '+action})
                 request_id = str(time()) + str(randint(1001, 9999)) + str(getpid())
                 # ------------------ ugly work around when output takes longer than 5 seconds -----------------
-                Status().add_message(request_id,"lpower",f"Operation in progress...")
+                Status().add_message(request_id,"lpower","Operation in progress...")
                 Status().mark_messages_read(request_id)
                 # -------------------------- end of work around -----------------------------------------------
                 executor = ThreadPoolExecutor(max_workers=1)
@@ -263,4 +262,3 @@ class Control():
             }
             return True, response
         return False, 'No data for this request'
-

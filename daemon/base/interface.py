@@ -29,7 +29,6 @@ __maintainer__  = 'Sumit Sharma'
 __email__       = 'sumit.sharma@clustervision.com'
 __status__      = 'Development'
 
-from json import dumps
 from concurrent.futures import ThreadPoolExecutor
 from utils.database import Database
 from utils.log import Log
@@ -304,7 +303,7 @@ class Interface():
                     #if if_dict[interface]['interface'] == "BOOTIF":
                     #    continue
                     if if_dict[interface]['interface'] in if_old_group_dict.keys():
-                        # This means that the interface existed in the previous group, therefor we 
+                        # This means that the interface existed in the previous group, therefor we
                         # conclude to remove it. Seems legit no?
                         self.delete_node_interface(nodeid=nodeid, interface=if_dict[interface]['interface'])
         else:
@@ -578,4 +577,3 @@ class Interface():
             response = f'Group {name} not present in database'
             status=False
         return status, response
-

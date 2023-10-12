@@ -32,18 +32,9 @@ __maintainer__  = 'Antoine Schonewille'
 __email__       = 'antoine.schonewille@clustervision.com'
 __status__      = 'Development'
 
-import subprocess
-import json
-from configparser import RawConfigParser
 from utils.log import Log
 from utils.database import Database
-from common.constant import CONSTANT, LUNAKEY
-from utils.helper import Helper
-import concurrent.futures
-from threading import Event
-from time import sleep, time
-from datetime import datetime
-import signal
+#from utils.helper import Helper
 
 
 class Status(object):
@@ -56,10 +47,10 @@ class Status(object):
         mymessage=mymessage.replace('"',"'")
         #current_datetime=datetime.now().replace(microsecond=0)
         current_datetime="NOW"
-        row=[{"column": "request_id", "value": f"{request_id}"}, 
-             {"column": "created", "value": str(current_datetime)}, 
-             {"column": "username_initiator", "value": f"{username_initiator}"}, 
-             {"column": "read", "value": "0"}, 
+        row=[{"column": "request_id", "value": f"{request_id}"},
+             {"column": "created", "value": str(current_datetime)},
+             {"column": "username_initiator", "value": f"{username_initiator}"},
+             {"column": "read", "value": "0"},
              {"column": "message", "value": f"{mymessage}"}]
         Database().insert('status', row)
 
@@ -92,11 +83,9 @@ class Status(object):
                             if record['message'] == "EOF":
                                 self.del_messages(request_id)
                             else:
-                                created, *_ = (record['created'].split('.') + [None])
+                                created, *_ = record['created'].split('.') + [None]
                                 message.append(created + " :: " + record['message'])
             response = {'message': (';;').join(message) }
             self.mark_messages_read(request_id)
             return True, response
         return False, 'No data for this request'
-
-

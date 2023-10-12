@@ -121,4 +121,3 @@ class BMCSetup():
             table_cap = self.table_cap
         )
         return status, response
-

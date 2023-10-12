@@ -102,4 +102,3 @@ chmod 600 /sysroot/etc/NetworkManager/system-connections/Connection_${DEVICE}.nm
         echo "fudge   $NTPSERVER stratum 10" >> etc/ntp.conf
         echo "driftfile /etc/ntp/drift" >> etc/ntp.conf
     """
-

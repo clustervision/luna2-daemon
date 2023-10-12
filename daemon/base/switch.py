@@ -29,7 +29,6 @@ __maintainer__  = 'Sumit Sharma'
 __email__       = 'sumit.sharma@clustervision.com'
 __status__      = 'Development'
 
-from json import dumps
 from utils.database import Database
 from utils.log import Log
 from utils.helper import Helper
@@ -183,8 +182,8 @@ class Switch():
                         where = f' WHERE `name` = "{name}"'
                         switch = Database().get_record(table=self.table, where=where)
                         if not switch:
-                           status = False
-                           return status, f"Source switch {name} does not exist"
+                            status = False
+                            return status, f"Source switch {name} does not exist"
                         del switch[0]['id']
                         for key in switch[0]:
                             if key not in data:

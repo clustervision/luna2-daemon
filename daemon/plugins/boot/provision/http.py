@@ -30,9 +30,6 @@ __maintainer__  = 'Antoine Schonewille'
 __email__       = 'antoine.schonewille@clustervision.com'
 __status__      = 'Development'
 
-from utils.log import Log
-from utils.helper import Helper
-
 
 class Plugin():
     """

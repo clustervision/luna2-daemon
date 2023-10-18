@@ -362,7 +362,7 @@ class Interface():
         status=False
         node = Database().get_record(None, 'node', f' WHERE `name` = "{name}"')
         if node:
-            status, response = self.delete_node_interface(node[0]['name'], interface)
+            status, response = self.delete_node_interface(node[0]['id'], interface)
         else:
             response = f'Node {name} not present in database'
             status=False

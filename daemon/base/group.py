@@ -158,8 +158,10 @@ class Group():
                         if cli:
                             group[key] = group[key] or str(value+' (default)')
                         else:
-                            group[key] = group[key] or str(value)
                             group[key+'_source'] = 'default'
+                            if group[key]
+                                group[key+'_source'] = 'group'
+                            group[key] = group[key] or str(value)
                     else:
                         if isinstance(value, bool):
                             group[key] = str(Helper().make_bool(group[key]))

@@ -75,6 +75,7 @@ MATCH = {
     'newsecretname': 'name',
     'newswitchname': 'name',
     'newnetname': 'name',
+    'osimagetag': 'anything',
     'tag': 'anything'
 }
 

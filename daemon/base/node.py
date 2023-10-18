@@ -242,7 +242,7 @@ class Node():
                 if cli:
                     node['osimage'] += f" ({node['group']})"
                 else:
-                    node['osimage_source'] = node['group']
+                    node['osimage_source'] = 'group'
             else:
                 node['osimage'] = None
             if 'group_osimageid' in node:
@@ -255,7 +255,7 @@ class Node():
                 if cli:
                     node['bmcsetup'] += f" ({node['group']})"
                 else:
-                    node['bmcsetup_source'] = node['group']
+                    node['bmcsetup_source'] = 'group'
             else:
                 node['bmcsetup'] = None
             if 'group_bmcsetupid' in node:
@@ -268,7 +268,7 @@ class Node():
                 if cli:
                     node['osimagetag'] = node['osimagetag']+f" ({node['group']})"
                 else:
-                    node['osimagetag_source'] = node['group']
+                    node['osimagetag_source'] = 'group'
             else:
                 node['osimagetag'] = 'default'
                 node['osimagetag_source'] = 'default'
@@ -321,7 +321,7 @@ class Node():
                             node[key] = node[key] or node['group_'+key] or str(value+' (default)')
                         else:
                             node[key] = node[key] or node['group_'+key] or str(value)
-                            node[key+'_source'] = node['group']
+                            node[key+'_source'] = 'group'
                     else:
                         if isinstance(value, bool):
                             node[key] = str(Helper().make_bool(node[key]))
@@ -349,7 +349,7 @@ class Node():
                         if cli:
                             data = f"({node['group']}) {data}"
                         else:
-                            node[key+'_source'] = node['group']
+                            node[key+'_source'] = 'group'
                         group_data = b64encode(data.encode())
                         group_data = group_data.decode("ascii")
                         node[key] = node[key] or group_data

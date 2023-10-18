@@ -198,7 +198,14 @@ class Group():
                 group['osimagetag'] = Database().name_by_id('osimagetag', group['osimagetagid']) or 'default'
             else:
                 group['osimagetag'] = 'default'
+                if not cli:
             del group['osimagetagid']
+            if not cli:
+                group['osimage_source'] = 'group'
+                group['bmcsetupname_source'] = 'group'
+                group['osimagetag_source'] = 'default'
+                if group['osimagetag']:
+                    group['osimagetag_source'] = 'group'
             # ---
             response['config']['group'][name] = group
             self.logger.info(f'Returned Group {name} with Details.')

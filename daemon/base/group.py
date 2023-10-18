@@ -179,7 +179,7 @@ class Group():
                     default_data = default_data.decode("ascii")
                     if key in group:
                         group[key] = group[key] or default_data
-                        if (not cli) and (not group[key]):
+                        if (not cli) and group[key]:
                             group[key+'_source'] = 'group'
                     else:
                         group[key] = default_data

@@ -50,10 +50,12 @@ REG_EXP = {
     'name': r'^[a-z0-9\-]+$',
     'ipaddress': r'^[0-9a-f:\.]+$',
     'macaddress': r'^(([0-9A-Za-f]{2}((-|:)[0-9A-Za-f]{2}){5})|)$',
-    'minimal': r'^.+$'
+    'minimal': r'^.+$',
+    'anything': r''
 }
 RESERVED = {
-    'name': ['default']
+    'name': ['default'],
+    'anything': ['default']
 }
 MATCH = {
     'name': 'name',
@@ -72,7 +74,8 @@ MATCH = {
     'newotherdevname': 'name',
     'newsecretname': 'name',
     'newswitchname': 'name',
-    'newnetname': 'name'
+    'newnetname': 'name',
+    'tag': 'anything'
 }
 
 maxlength = {'request_id': '256'}

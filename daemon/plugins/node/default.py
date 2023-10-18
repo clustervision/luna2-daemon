@@ -60,3 +60,13 @@ class Plugin():
         return True, "Nothing done"
 
     # ---------------------------------------------------------------------------
+
+    def rename(self, name=None, newname=None):
+        return True, "Nothing done"
+
+    # ---------------------------------------------------------------------------
+
+    def delete(self, name=None):
+        return True, "Nothing done"
+
+    # ---------------------------------------------------------------------------

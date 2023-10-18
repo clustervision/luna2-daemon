@@ -247,11 +247,13 @@ class Group():
         create, update = False, False
         if request_data:
             data = request_data['config']['group'][name]
+            oldgroupname = None
             group = Database().get_record(None, 'group', f' WHERE name = "{name}"')
             if group:
                 group_id = group[0]['id']
                 if 'newgroupname' in data:
                     newgroupname = data['newgroupname']
+                    oldgroupname = name
                     where = f' WHERE `name` = "{newgroupname}"'
                     check_group = Database().get_record(None, 'group', where)
                     if check_group:
@@ -405,7 +407,7 @@ class Group():
                                 executor.shutdown(wait=False)
                                 # Config().update_interface_on_group_nodes(name)
 
-                # ---- we call the node plugin - maybe someone wants to run something after create/update?
+                # ---- we call the group plugin - maybe someone wants to run something after create/update?
                 nodes_in_group = []
                 group_details=Database().get_record_join(['node.name AS nodename'],['node.groupid=group.id'],[f"`group`.name='{name}'"])
                 if group_details:
@@ -414,7 +416,9 @@ class Group():
                 group_plugins = Helper().plugin_finder(f'{self.plugins_path}/group')
                 group_plugin=Helper().plugin_load(group_plugins,'group','default')
                 try:
-                    if create:
+                    if oldgroupname and newgroupname:
+                        group_plugin().rename(name=oldgroupname, newname=newgroupname)
+                    elif create:
                         group_plugin().postcreate(name=name, nodes=nodes_in_group)
                     elif update:
                         group_plugin().postupdate(name=name, nodes=nodes_in_group)
@@ -570,6 +574,10 @@ class Group():
             Database().delete_row('groupsecrets', where)
             response = f'Group {name} with all its interfaces removed'
             status=True
+            # ---- we call the group plugin - maybe someone wants to run something after delete?
+            group_plugins = Helper().plugin_finder(f'{self.plugins_path}/group')
+            group_plugin=Helper().plugin_load(group_plugins,'group','default')
+            group_plugin().delete(name=name)
         else:
             response = f'Group {name} not present in database'
             status=False

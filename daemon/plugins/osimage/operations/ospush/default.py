@@ -66,13 +66,14 @@ class Plugin():
         self.logger.debug(f"excludes = {excludes}, grab_filesystems = {grab_filesystems}, grab_exclude = {grab_exclude}")
         exit_code,message=1,None
         if len(grab_filesystems)>0:
+            Helper().runcommand("truncate -s 0 /tmp/ospush.out")
             exit_code=0
             for grab in grab_filesystems:
                 if exit_code == 0:
                     if nodry is True: # nodry is True means it's for real
                         command=f"rsync -aH --one-file-system {exclude_string} {image_path}/{grab} {node}:/"
                     else:
-                        command=f"rsync -aHvn --one-file-system {exclude_string} {image_path}/{grab} {node}:/ > /tmp/ospush.out"
+                        command=f"rsync -aHvn --one-file-system {exclude_string} {image_path}/{grab} {node}:/ >> /tmp/ospush.out"
                     self.logger.info(command)
                     message,exit_code = Helper().runcommand(command,True,3600)
                     self.logger.debug(f"exit_code = {exit_code}")

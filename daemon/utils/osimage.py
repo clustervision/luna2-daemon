@@ -85,8 +85,16 @@ class OsImage(object):
                     return False
 
                 if not image[0]['path']:
-                    Status().add_message(request_id,"luna",f"error grabbinging osimage {osimage}: Image path not defined")
-                    return False
+                    filesystem_plugin = 'default'
+                    if 'IMAGE_FILESYSTEM' in CONSTANT['PLUGINS'] and CONSTANT['PLUGINS']['IMAGE_FILESYSTEM']:
+                        filesystem_plugin = CONSTANT['PLUGINS']['IMAGE_FILESYSTEM']
+                    os_image_plugin=Helper().plugin_load(self.osimage_plugins,'osimage/filesystem',filesystem_plugin)
+                    ret, data = os_image_plugin().getpath(image_directory=image_directory, osimage=image[0]['name'], tag=None) # we feed no tag as tagged/versioned FS is normally R/O
+                    if ret is True:
+                        image[0]['path'] = data
+                    else:
+                        Status().add_message(request_id,"luna",f"error grabbing osimage {osimage}: Image path not defined")
+                        return False
 
                 image_path = str(image[0]['path'])
                 if image_path[0] != '/': # means that we don't have an absolute path. good, let's prepend what's in luna.ini
@@ -485,6 +493,18 @@ class OsImage(object):
                         self.logger.info(f'Push osimage {osimage} does not exist.')
                         Status().add_message(request_id,"luna",f"error pushing osimage as osimage {osimage} does not exist.")
                         return False
+
+                    if not image[0]['path']:
+                        filesystem_plugin = 'default'
+                        if 'IMAGE_FILESYSTEM' in CONSTANT['PLUGINS'] and CONSTANT['PLUGINS']['IMAGE_FILESYSTEM']:
+                            filesystem_plugin = CONSTANT['PLUGINS']['IMAGE_FILESYSTEM']
+                        os_image_plugin=Helper().plugin_load(self.osimage_plugins,'osimage/filesystem',filesystem_plugin)
+                        ret, data = os_image_plugin().getpath(image_directory=image_directory, osimage=image[0]['name'], tag=None) # we feed no tag as tagged/versioned FS is normally R/O
+                        if ret is True:
+                            image[0]['path'] = data
+                        else:
+                            Status().add_message(request_id,"luna",f"error pushing osimage {osimage}: Image path not defined")
+                            return False
 
                     if not os.path.exists(image[0]['path']):
                         mesg=f"{osimage}:{image[0]['path']} does not exist"

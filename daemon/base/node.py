@@ -237,6 +237,8 @@ class Node():
             nodeid = node['id']
             if node['osimageid']:
                 node['osimage'] = Database().name_by_id('osimage',node['osimageid']) or '!!Invalid!!'
+                if not cli:
+                    node['osimage_source'] = 'node'
             elif 'group_osimageid' in node and node['group_osimageid']:
                 node['osimage'] = Database().name_by_id('osimage', node['group_osimageid']) or '!!Invalid!!'
                 if cli:
@@ -250,6 +252,8 @@ class Node():
             #---
             if node['bmcsetupid']:
                 node['bmcsetup'] = Database().name_by_id('bmcsetup',node['bmcsetupid']) or '!!Invalid!!'
+                if not cli:
+                    node['bmcsetup_source'] = 'node'
             elif 'group_bmcsetupid' in node and node['group_bmcsetupid']:
                 node['bmcsetup'] = Database().name_by_id('bmcsetup', node['group_bmcsetupid']) or '!!Invalid!!'
                 if cli:
@@ -263,6 +267,8 @@ class Node():
             #---
             if node['osimagetagid']:
                 node['osimagetag'] = Database().name_by_id('osimagetag', node['osimagetagid']) or 'default'
+                if not cli:
+                    node['osimagetag_source'] = 'node'
             elif 'group_osimagetagid' in node and node['group_osimagetagid']:
                 node['osimagetag'] = Database().name_by_id('osimagetag', node['group_osimagetagid']) or 'default'
                 if cli:

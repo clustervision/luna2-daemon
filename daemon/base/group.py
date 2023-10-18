@@ -143,6 +143,7 @@ class Group():
                         cluster[0][key] = cluster[0][key] or str(value+' (default)')
                     else:
                         cluster[0][key] = cluster[0][key] or str(value)
+                        group[key+'_source'] = 'default'
                 if key in group:
                     if isinstance(value, bool):
                         group[key] = str(Helper().make_bool(group[key]))
@@ -150,11 +151,16 @@ class Group():
                     group[key] = str(cluster[0][key])
                     if cli:
                         group[key] +=' (cluster)'
+                    else:
+                        group[key+'_source'] = 'cluster'
                 else:
                     if key in group:
                         if cli:
                             group[key] = group[key] or str(value+' (default)')
                         else:
+                            group[key+'_source'] = 'default'
+                            if group[key]:
+                                group[key+'_source'] = 'group'
                             group[key] = group[key] or str(value)
                     else:
                         if isinstance(value, bool):
@@ -162,15 +168,21 @@ class Group():
                         group[key] = str(value)
                         if cli:
                             group[key] += ' (default)'
+                        else:
+                            group[key+'_source'] = 'default'
             try:
                 for key, value in b64items.items():
                     default_str = str(value)
                     if cli:
                         default_str += ' (default)'
+                    else:
+                        group[key+'_source'] = 'default'
                     default_data = b64encode(default_str.encode())
                     default_data = default_data.decode("ascii")
                     if key in group:
                         group[key] = group[key] or default_data
+                        if (not cli) and group[key]:
+                            group[key+'_source'] = 'group'
                     else:
                         group[key] = default_data
             except Exception as exp:
@@ -187,6 +199,12 @@ class Group():
             else:
                 group['osimagetag'] = 'default'
             del group['osimagetagid']
+            if not cli:
+                group['osimage_source'] = 'group'
+                group['bmcsetupname_source'] = 'group'
+                group['osimagetag_source'] = 'group'
+                if group['osimagetag'] == 'default':
+                    group['osimagetag_source'] = 'default'
             # ---
             response['config']['group'][name] = group
             self.logger.info(f'Returned Group {name} with Details.')

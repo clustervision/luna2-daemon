@@ -52,6 +52,9 @@ REG_EXP = {
     'macaddress': r'^(([0-9A-Za-f]{2}((-|:)[0-9A-Za-f]{2}){5})|)$',
     'minimal': r'^.+$'
 }
+RESERVED = {
+    'name': ['default']
+}
 MATCH = {
     'name': 'name',
     'newnodename': 'name',
@@ -197,12 +200,20 @@ def filter_data(data=None, name=None):
         if len(data) > int(maxlength[name]):
             LOGGER.info(f"length of {name} exceeds {maxlength[name]}")
             ERROR = f"length of {name} exceeds {maxlength[name]}"
+            return
     if name in MATCH.keys():
+        if MATCH[name] in RESERVED.keys():
+            for reserved in RESERVED[MATCH['name']]:
+                if str(data) == reserved:
+                    LOGGER.info(f"RESERVED name = {name} with data = {data} is a reserved keyword")
+                    ERROR = f"field {name} with content {data} is a reserved keyword: {reserved}")
+                    return
         regex = re.compile(r"" + REG_EXP[MATCH[name]])
         if not regex.match(data):
             LOGGER.info(f"MATCH name = {name} with data = {data} mismatch with:")
             LOGGER.info(f"    REG_EXP['{MATCH[name]}'] = {REG_EXP[MATCH[name]]}")
             ERROR = f"field {name} with content {data} does match criteria {REG_EXP[MATCH[name]]}"
+            return
     if name in convert.keys():
         LOGGER.debug(f"CONVERT IN {name} = {data}")
         for rep in convert[name].keys():

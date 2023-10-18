@@ -788,7 +788,10 @@ class Node():
             # ---- we call the node plugin - maybe someone wants to run something after delete?
             node_plugins = Helper().plugin_finder(f'{self.plugins_path}/node')
             node_plugin=Helper().plugin_load(node_plugins,'node','default')
-            node_plugin().delete(name=name)
+            try:
+                node_plugin().delete(name=name)
+            except Exception as exp:
+                self.logger.error(f"{exp}")
         else:
             response = f'Node {name} not present in database'
             status=False

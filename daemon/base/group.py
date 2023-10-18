@@ -577,7 +577,10 @@ class Group():
             # ---- we call the group plugin - maybe someone wants to run something after delete?
             group_plugins = Helper().plugin_finder(f'{self.plugins_path}/group')
             group_plugin=Helper().plugin_load(group_plugins,'group','default')
-            group_plugin().delete(name=name)
+            try:
+                group_plugin().delete(name=name)
+            except Exception as exp:
+                self.logger.error(f"{exp}")
         else:
             response = f'Group {name} not present in database'
             status=False

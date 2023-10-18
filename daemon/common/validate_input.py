@@ -206,7 +206,7 @@ def filter_data(data=None, name=None):
             for reserved in RESERVED[MATCH['name']]:
                 if str(data) == reserved:
                     LOGGER.info(f"RESERVED name = {name} with data = {data} is a reserved keyword")
-                    ERROR = f"field {name} with content {data} is a reserved keyword: {reserved}")
+                    ERROR = f"field {name} with content {data} is a reserved keyword: {reserved}"
                     return
         regex = re.compile(r"" + REG_EXP[MATCH[name]])
         if not regex.match(data):

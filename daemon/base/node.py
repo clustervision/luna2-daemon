@@ -432,10 +432,12 @@ class Node():
         if request_data:
             data = request_data['config']['node'][name]
             node = Database().get_record(None, 'node', f' WHERE name = "{name}"')
+            oldnodename = None
             if node:
                 nodeid = node[0]['id']
                 if 'newnodename' in data: # is mentioned as newhostname in design documents!
                     nodename_new = data['newnodename']
+                    oldnodename = name
                     where = f' WHERE `name` = "{nodename_new}"'
                     node_check = Database().get_record(None, 'node', where)
                     if node_check:
@@ -561,7 +563,9 @@ class Node():
                     node_plugins = Helper().plugin_finder(f'{self.plugins_path}/node')
                     node_plugin=Helper().plugin_load(node_plugins,'node','default')
                     try:
-                        if create:
+                        if oldnodename and nodename_new:
+                            node_plugin().rename(name=oldnodename, newname=nodename_new)
+                        elif create:
                             node_plugin().postcreate(name=name, group=group_details[0]['name'])
                         elif update:
                             node_plugin().postupdate(name=name, group=group_details[0]['name'])
@@ -781,6 +785,13 @@ class Node():
             Queue().add_task_to_queue('dns:restart', 'housekeeper', '__node_delete__')
             response = f'Node {name} with all its interfaces removed'
             status=True
+            # ---- we call the node plugin - maybe someone wants to run something after delete?
+            node_plugins = Helper().plugin_finder(f'{self.plugins_path}/node')
+            node_plugin=Helper().plugin_load(node_plugins,'node','default')
+            try:
+                node_plugin().delete(name=name)
+            except Exception as exp:
+                self.logger.error(f"{exp}")
         else:
             response = f'Node {name} not present in database'
             status=False

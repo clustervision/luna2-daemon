@@ -202,9 +202,9 @@ class Group():
             if not cli:
                 group['osimage_source'] = 'group'
                 group['bmcsetupname_source'] = 'group'
-                group['osimagetag_source'] = 'default'
-                if group['osimagetag']:
-                    group['osimagetag_source'] = 'group'
+                group['osimagetag_source'] = 'group'
+                if group['osimagetag'] == 'default':
+                    group['osimagetag_source'] = 'default'
             # ---
             response['config']['group'][name] = group
             self.logger.info(f'Returned Group {name} with Details.')

@@ -159,7 +159,7 @@ class Group():
                             group[key] = group[key] or str(value+' (default)')
                         else:
                             group[key+'_source'] = 'default'
-                            if group[key]
+                            if group[key]:
                                 group[key+'_source'] = 'group'
                             group[key] = group[key] or str(value)
                     else:

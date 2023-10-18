@@ -198,7 +198,6 @@ class Group():
                 group['osimagetag'] = Database().name_by_id('osimagetag', group['osimagetagid']) or 'default'
             else:
                 group['osimagetag'] = 'default'
-                if not cli:
             del group['osimagetagid']
             if not cli:
                 group['osimage_source'] = 'group'

@@ -143,6 +143,7 @@ class Group():
                         cluster[0][key] = cluster[0][key] or str(value+' (default)')
                     else:
                         cluster[0][key] = cluster[0][key] or str(value)
+                        group[key+'_source'] = 'default'
                 if key in group:
                     if isinstance(value, bool):
                         group[key] = str(Helper().make_bool(group[key]))
@@ -150,27 +151,36 @@ class Group():
                     group[key] = str(cluster[0][key])
                     if cli:
                         group[key] +=' (cluster)'
+                    else:
+                        group[key+'_source'] = 'cluster'
                 else:
                     if key in group:
                         if cli:
                             group[key] = group[key] or str(value+' (default)')
                         else:
                             group[key] = group[key] or str(value)
+                            group[key+'_source'] = 'default'
                     else:
                         if isinstance(value, bool):
                             group[key] = str(Helper().make_bool(group[key]))
                         group[key] = str(value)
                         if cli:
                             group[key] += ' (default)'
+                        else:
+                            group[key+'_source'] = 'default'
             try:
                 for key, value in b64items.items():
                     default_str = str(value)
                     if cli:
                         default_str += ' (default)'
+                    else:
+                        group[key+'_source'] = 'default'
                     default_data = b64encode(default_str.encode())
                     default_data = default_data.decode("ascii")
                     if key in group:
                         group[key] = group[key] or default_data
+                        if not cli:
+                            group[key+'_source'] = 'group'
                     else:
                         group[key] = default_data
             except Exception as exp:

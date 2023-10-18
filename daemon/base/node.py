@@ -241,6 +241,8 @@ class Node():
                 node['osimage'] = Database().name_by_id('osimage', node['group_osimageid']) or '!!Invalid!!'
                 if cli:
                     node['osimage'] += f" ({node['group']})"
+                else:
+                    node['osimage_source'] = node['group']
             else:
                 node['osimage'] = None
             if 'group_osimageid' in node:
@@ -252,6 +254,8 @@ class Node():
                 node['bmcsetup'] = Database().name_by_id('bmcsetup', node['group_bmcsetupid']) or '!!Invalid!!'
                 if cli:
                     node['bmcsetup'] += f" ({node['group']})"
+                else:
+                    node['bmcsetup_source'] = node['group']
             else:
                 node['bmcsetup'] = None
             if 'group_bmcsetupid' in node:
@@ -263,8 +267,11 @@ class Node():
                 node['osimagetag'] = Database().name_by_id('osimagetag', node['group_osimagetagid']) or 'default'
                 if cli:
                     node['osimagetag'] = node['osimagetag']+f" ({node['group']})"
+                else:
+                    node['osimagetag_source'] = node['group']
             else:
                 node['osimagetag'] = 'default'
+                node['osimagetag_source'] = 'default'
             if 'osimagetagid' in node:
                 del node['osimagetagid']
             if 'group_osimagetagid' in node:
@@ -306,6 +313,7 @@ class Node():
                         node[key] = node[key] or node['cluster_'+key] or str(value+' (default)')
                     else:
                         node[key] = node[key] or node['cluster_'+key] or str(value)
+                        node[key+'_source'] = 'cluster'
                 else:
                     if 'group_'+key in node and node['group_'+key] and not node[key]:
                         if cli:
@@ -313,6 +321,7 @@ class Node():
                             node[key] = node[key] or node['group_'+key] or str(value+' (default)')
                         else:
                             node[key] = node[key] or node['group_'+key] or str(value)
+                            node[key+'_source'] = node['group']
                     else:
                         if isinstance(value, bool):
                             node[key] = str(Helper().make_bool(node[key]))
@@ -320,6 +329,7 @@ class Node():
                             node[key] = node[key] or str(value)+' (default)'
                         else:
                             node[key] = node[key] or str(value)
+                            node[key+'_source'] = 'node'
                 if 'group_'+key in node:
                     del node['group_'+key]
                 if 'cluster_'+key in node:
@@ -331,11 +341,15 @@ class Node():
                 b64items = {'prescript': '', 'partscript': '', 'postscript': ''}
             try:
                 for key, value in b64items.items():
+                    if not cli:
+                        node[key+'_source'] = 'node'
                     if 'group_'+key in node and node['group_'+key] and not node[key]:
                         data = b64decode(node['group_'+key])
                         data = data.decode("ascii")
                         if cli:
                             data = f"({node['group']}) {data}"
+                        else:
+                            node[key+'_source'] = node['group']
                         group_data = b64encode(data.encode())
                         group_data = group_data.decode("ascii")
                         node[key] = node[key] or group_data
@@ -344,6 +358,7 @@ class Node():
                             default_str = str(value+' (default)')
                         else:
                             default_str = str(value)
+                            node[key+'_source'] = 'default'
                         default_data = b64encode(default_str.encode())
                         default_data = default_data.decode("ascii")
                         node[key] = node[key] or default_data

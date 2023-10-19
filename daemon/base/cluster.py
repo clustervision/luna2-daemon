@@ -51,7 +51,7 @@ class Cluster():
 
     def information(self):
         """
-        This method will return all the osimage in detailed format.
+        This method will return all the cluster info in detailed format.
         """
         status=False
         cluster = Database().get_record(None, 'cluster', None)

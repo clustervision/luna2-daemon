@@ -59,6 +59,7 @@ class Plugin():
         self.logger.debug(f"excludes = {excludes}, grab_filesystems = {grab_filesystems}, grab_exclude = {grab_exclude}")
         exit_code,message=1,None
         if len(grab_filesystems)>0:
+            Helper().runcommand("truncate -s 0 /tmp/osgrab.out")
             exit_code=0
             for grab in grab_filesystems:
                 if exit_code == 0:
@@ -66,7 +67,7 @@ class Plugin():
                     if nodry is True: # nodry is True means it's for real
                         command=f"mkdir -p {image_path}/{grab} 2> /dev/null; rsync -aH --one-file-system --delete-after {exclude_string} {node}:{grab}/* {image_path}/{grab}/"
                     else:
-                        command=f"mkdir -p {image_path}/{grab} 2> /dev/null; rsync -aHvn --one-file-system --delete-after {exclude_string} {node}:{grab}/* {image_path}/{grab}/ > /tmp/osgrab.out"
+                        command=f"mkdir -p {image_path}/{grab} 2> /dev/null; rsync -aHvn --one-file-system --delete-after {exclude_string} {node}:{grab}/* {image_path}/{grab}/ >> /tmp/osgrab.out"
                     self.logger.info(command)
                     message,exit_code = Helper().runcommand(command,True,3600)
                     self.logger.debug(f"exit_code = {exit_code}")

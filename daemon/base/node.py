@@ -277,7 +277,8 @@ class Node():
                     node['osimagetag_source'] = 'group'
             else:
                 node['osimagetag'] = 'default'
-                node['osimagetag_source'] = 'default'
+                if not cli:
+                    node['osimagetag_source'] = 'default'
             if 'osimagetagid' in node:
                 del node['osimagetagid']
             if 'group_osimagetagid' in node:

@@ -143,6 +143,7 @@ class Group():
                         cluster[0][key] = cluster[0][key] or str(value+' (default)')
                     else:
                         cluster[0][key] = cluster[0][key] or str(value)
+                        group[key+'_source'] = 'default'
                 if key in group:
                     if isinstance(value, bool):
                         group[key] = str(Helper().make_bool(group[key]))
@@ -150,11 +151,16 @@ class Group():
                     group[key] = str(cluster[0][key])
                     if cli:
                         group[key] +=' (cluster)'
+                    else:
+                        group[key+'_source'] = 'cluster'
                 else:
                     if key in group:
                         if cli:
                             group[key] = group[key] or str(value+' (default)')
                         else:
+                            group[key+'_source'] = 'default'
+                            if group[key]:
+                                group[key+'_source'] = 'group'
                             group[key] = group[key] or str(value)
                     else:
                         if isinstance(value, bool):
@@ -162,15 +168,21 @@ class Group():
                         group[key] = str(value)
                         if cli:
                             group[key] += ' (default)'
+                        else:
+                            group[key+'_source'] = 'default'
             try:
                 for key, value in b64items.items():
                     default_str = str(value)
                     if cli:
                         default_str += ' (default)'
+                    else:
+                        group[key+'_source'] = 'default'
                     default_data = b64encode(default_str.encode())
                     default_data = default_data.decode("ascii")
                     if key in group:
                         group[key] = group[key] or default_data
+                        if (not cli) and group[key]:
+                            group[key+'_source'] = 'group'
                     else:
                         group[key] = default_data
             except Exception as exp:
@@ -187,6 +199,12 @@ class Group():
             else:
                 group['osimagetag'] = 'default'
             del group['osimagetagid']
+            if not cli:
+                group['osimage_source'] = 'group'
+                group['bmcsetupname_source'] = 'group'
+                group['osimagetag_source'] = 'group'
+                if group['osimagetag'] == 'default':
+                    group['osimagetag_source'] = 'default'
             # ---
             response['config']['group'][name] = group
             self.logger.info(f'Returned Group {name} with Details.')
@@ -247,11 +265,13 @@ class Group():
         create, update = False, False
         if request_data:
             data = request_data['config']['group'][name]
+            oldgroupname = None
             group = Database().get_record(None, 'group', f' WHERE name = "{name}"')
             if group:
                 group_id = group[0]['id']
                 if 'newgroupname' in data:
                     newgroupname = data['newgroupname']
+                    oldgroupname = name
                     where = f' WHERE `name` = "{newgroupname}"'
                     check_group = Database().get_record(None, 'group', where)
                     if check_group:
@@ -405,7 +425,7 @@ class Group():
                                 executor.shutdown(wait=False)
                                 # Config().update_interface_on_group_nodes(name)
 
-                # ---- we call the node plugin - maybe someone wants to run something after create/update?
+                # ---- we call the group plugin - maybe someone wants to run something after create/update?
                 nodes_in_group = []
                 group_details=Database().get_record_join(['node.name AS nodename'],['node.groupid=group.id'],[f"`group`.name='{name}'"])
                 if group_details:
@@ -414,7 +434,9 @@ class Group():
                 group_plugins = Helper().plugin_finder(f'{self.plugins_path}/group')
                 group_plugin=Helper().plugin_load(group_plugins,'group','default')
                 try:
-                    if create:
+                    if oldgroupname and newgroupname:
+                        group_plugin().rename(name=oldgroupname, newname=newgroupname)
+                    elif create:
                         group_plugin().postcreate(name=name, nodes=nodes_in_group)
                     elif update:
                         group_plugin().postupdate(name=name, nodes=nodes_in_group)
@@ -570,6 +592,13 @@ class Group():
             Database().delete_row('groupsecrets', where)
             response = f'Group {name} with all its interfaces removed'
             status=True
+            # ---- we call the group plugin - maybe someone wants to run something after delete?
+            group_plugins = Helper().plugin_finder(f'{self.plugins_path}/group')
+            group_plugin=Helper().plugin_load(group_plugins,'group','default')
+            try:
+                group_plugin().delete(name=name)
+            except Exception as exp:
+                self.logger.error(f"{exp}")
         else:
             response = f'Group {name} not present in database'
             status=False

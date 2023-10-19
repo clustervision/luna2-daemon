@@ -237,10 +237,14 @@ class Node():
             nodeid = node['id']
             if node['osimageid']:
                 node['osimage'] = Database().name_by_id('osimage',node['osimageid']) or '!!Invalid!!'
+                if not cli:
+                    node['osimage_source'] = 'node'
             elif 'group_osimageid' in node and node['group_osimageid']:
                 node['osimage'] = Database().name_by_id('osimage', node['group_osimageid']) or '!!Invalid!!'
                 if cli:
                     node['osimage'] += f" ({node['group']})"
+                else:
+                    node['osimage_source'] = 'group'
             else:
                 node['osimage'] = None
             if 'group_osimageid' in node:
@@ -248,10 +252,14 @@ class Node():
             #---
             if node['bmcsetupid']:
                 node['bmcsetup'] = Database().name_by_id('bmcsetup',node['bmcsetupid']) or '!!Invalid!!'
+                if not cli:
+                    node['bmcsetup_source'] = 'node'
             elif 'group_bmcsetupid' in node and node['group_bmcsetupid']:
                 node['bmcsetup'] = Database().name_by_id('bmcsetup', node['group_bmcsetupid']) or '!!Invalid!!'
                 if cli:
                     node['bmcsetup'] += f" ({node['group']})"
+                else:
+                    node['bmcsetup_source'] = 'group'
             else:
                 node['bmcsetup'] = None
             if 'group_bmcsetupid' in node:
@@ -259,12 +267,18 @@ class Node():
             #---
             if node['osimagetagid']:
                 node['osimagetag'] = Database().name_by_id('osimagetag', node['osimagetagid']) or 'default'
+                if not cli:
+                    node['osimagetag_source'] = 'node'
             elif 'group_osimagetagid' in node and node['group_osimagetagid']:
                 node['osimagetag'] = Database().name_by_id('osimagetag', node['group_osimagetagid']) or 'default'
                 if cli:
                     node['osimagetag'] = node['osimagetag']+f" ({node['group']})"
+                else:
+                    node['osimagetag_source'] = 'group'
             else:
                 node['osimagetag'] = 'default'
+                if not cli:
+                    node['osimagetag_source'] = 'default'
             if 'osimagetagid' in node:
                 del node['osimagetagid']
             if 'group_osimagetagid' in node:
@@ -306,6 +320,7 @@ class Node():
                         node[key] = node[key] or node['cluster_'+key] or str(value+' (default)')
                     else:
                         node[key] = node[key] or node['cluster_'+key] or str(value)
+                        node[key+'_source'] = 'cluster'
                 else:
                     if 'group_'+key in node and node['group_'+key] and not node[key]:
                         if cli:
@@ -313,6 +328,7 @@ class Node():
                             node[key] = node[key] or node['group_'+key] or str(value+' (default)')
                         else:
                             node[key] = node[key] or node['group_'+key] or str(value)
+                            node[key+'_source'] = 'group'
                     else:
                         if isinstance(value, bool):
                             node[key] = str(Helper().make_bool(node[key]))
@@ -320,6 +336,7 @@ class Node():
                             node[key] = node[key] or str(value)+' (default)'
                         else:
                             node[key] = node[key] or str(value)
+                            node[key+'_source'] = 'node'
                 if 'group_'+key in node:
                     del node['group_'+key]
                 if 'cluster_'+key in node:
@@ -331,11 +348,15 @@ class Node():
                 b64items = {'prescript': '', 'partscript': '', 'postscript': ''}
             try:
                 for key, value in b64items.items():
+                    if not cli:
+                        node[key+'_source'] = 'node'
                     if 'group_'+key in node and node['group_'+key] and not node[key]:
                         data = b64decode(node['group_'+key])
                         data = data.decode("ascii")
                         if cli:
                             data = f"({node['group']}) {data}"
+                        else:
+                            node[key+'_source'] = 'group'
                         group_data = b64encode(data.encode())
                         group_data = group_data.decode("ascii")
                         node[key] = node[key] or group_data
@@ -344,6 +365,7 @@ class Node():
                             default_str = str(value+' (default)')
                         else:
                             default_str = str(value)
+                            node[key+'_source'] = 'default'
                         default_data = b64encode(default_str.encode())
                         default_data = default_data.decode("ascii")
                         node[key] = node[key] or default_data
@@ -432,10 +454,12 @@ class Node():
         if request_data:
             data = request_data['config']['node'][name]
             node = Database().get_record(None, 'node', f' WHERE name = "{name}"')
+            oldnodename = None
             if node:
                 nodeid = node[0]['id']
                 if 'newnodename' in data: # is mentioned as newhostname in design documents!
                     nodename_new = data['newnodename']
+                    oldnodename = name
                     where = f' WHERE `name` = "{nodename_new}"'
                     node_check = Database().get_record(None, 'node', where)
                     if node_check:
@@ -561,7 +585,9 @@ class Node():
                     node_plugins = Helper().plugin_finder(f'{self.plugins_path}/node')
                     node_plugin=Helper().plugin_load(node_plugins,'node','default')
                     try:
-                        if create:
+                        if oldnodename and nodename_new:
+                            node_plugin().rename(name=oldnodename, newname=nodename_new)
+                        elif create:
                             node_plugin().postcreate(name=name, group=group_details[0]['name'])
                         elif update:
                             node_plugin().postupdate(name=name, group=group_details[0]['name'])
@@ -781,6 +807,13 @@ class Node():
             Queue().add_task_to_queue('dns:restart', 'housekeeper', '__node_delete__')
             response = f'Node {name} with all its interfaces removed'
             status=True
+            # ---- we call the node plugin - maybe someone wants to run something after delete?
+            node_plugins = Helper().plugin_finder(f'{self.plugins_path}/node')
+            node_plugin=Helper().plugin_load(node_plugins,'node','default')
+            try:
+                node_plugin().delete(name=name)
+            except Exception as exp:
+                self.logger.error(f"{exp}")
         else:
             response = f'Node {name} not present in database'
             status=False

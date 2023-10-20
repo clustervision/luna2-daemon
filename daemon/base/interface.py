@@ -182,9 +182,13 @@ class Interface():
                         )
                     elif (not macaddress) and (not options):
                         # this means we just made an empty interface. a no no - Antoine
+                        if not existing:
+                            self.delete_node_interface(nodeid=nodeid, interface=interface_name)
                         result=False
                         message="Invalid request: missing minimal parameters"
                     elif not existing:
+                        if not existing:
+                            self.delete_node_interface(nodeid=nodeid, interface=interface_name)
                         result=False
                         message="Invalid request: missing minimal parameters"
 
@@ -385,7 +389,6 @@ class Interface():
         """
         status=False
         if nodeid:
-            where = f' WHERE `interface` = "{interface}" AND `nodeid` = "{nodeid}"'
             node_interface = Database().get_record_join(
                 ['nodeinterface.id as ifid', 'ipaddress.id as ipid'],
                 ['ipaddress.tablerefid=nodeinterface.id'],
@@ -415,8 +418,16 @@ class Interface():
                 response = f'Interface {interface} removed successfully'
                 status=True
             else:
-                response = f'Interface {interface} not present in database'
-                status=False
+                where = f' WHERE `interface` = "{interface}" AND `nodeid` = "{nodeid}"'
+                node_interface = Database().get_record(None, 'nodeinterface', where)
+                if node_interface:
+                    where = [{"column": "id", "value": node_interface[0]['id']}]
+                    Database().delete_row('nodeinterface', where)
+                    response = f'Interface {interface} removed successfully'
+                    status=True
+                else:
+                    response = f'Interface {interface} not present in database'
+                    status=False
         else:
             response = 'Invalid request: did not receive Data'
             status=False

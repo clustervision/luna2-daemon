@@ -155,7 +155,10 @@ class Interface():
                             if existing:
                                 if network == existing[0]['networkname']:
                                     ipaddress = existing[0]['ipaddress']
-                                else:
+                            if not ipaddress:
+                                if not network and existing:
+                                    network = existing[0]['networkname']
+                                if network:
                                     ips = Config().get_all_occupied_ips_from_network(network)
                                     where = f" WHERE `name` = '{network}'"
                                     network_details = Database().get_record(None, 'network', where)

@@ -315,6 +315,12 @@ def bootstrap(bootstrapfile=None):
 #   below no longer needed but kept for old-time sake
 #    create_database_tables()
 
+    plugins_path=CONSTANT["PLUGINS"]["PLUGINS_DIR"]
+    group_plugins = Helper().plugin_finder(f'{plugins_path}/group')
+    group_plugin=Helper().plugin_load(group_plugins,'group','default')
+    node_plugins = Helper().plugin_finder(f'{plugins_path}/node')
+    node_plugin=Helper().plugin_load(node_plugins,'node','default')
+
     defaultserver_ip=None
     if 'CONTROLLER' in BOOTSTRAP['HOSTS'].keys():  # the virtual host+ip
         defaultserver_ip=BOOTSTRAP['HOSTS']['CONTROLLER']['IP']
@@ -485,6 +491,14 @@ def bootstrap(bootstrapfile=None):
             {'column': 'postscript', 'value': "ZWNobyAndG1wZnMgLyB0bXBmcyBkZWZhdWx0cyAwIDAnID4+IC9zeXNyb290L2V0Yy9mc3RhYgo="}
         ]
     Database().insert('group', default_group)
+
+    # we call create plugin after group creation
+    try:
+        group_plugin().postcreate(name=str(BOOTSTRAP['GROUPS']['NAME']), nodes=[])
+    except Exception as exp:
+        LOGGER.error(f"{exp}")
+    # ------------------------------------------
+
 #    ubuntu_group = [
 #            {'column': 'name', 'value': 'ubuntu'},
 #            {'column': 'setupbmc', 'value': '1'},
@@ -498,8 +512,17 @@ def bootstrap(bootstrapfile=None):
 #            {'column': 'postscript', 'value': "ZWNobyB0bXBmcyAvIHRtcGZzIGRlZmF1bHRzIDAgMCA+PiAiJHJvb3RtbnQiL2V0Yy9mc3RhYgo="}
 #        ]
 #    Database().insert('group', ubuntu_group)
+#
+#    # we call create plugin after group creation
+#    try:
+#        group_plugin().postcreate(name='ubuntu', nodes=[])
+#    except Exception as exp:
+#        LOGGER.error(f"{exp}")
+#    # ------------------------------------------
+
     group = Database().get_record(None, 'group', None)
     groupid = group[0]['id']
+    groupname = group[0]['name']
     for nodex in BOOTSTRAP['HOSTS']['NODELIST']:
         default_node = [
             {'column': 'name', 'value': str(nodex)},
@@ -507,6 +530,14 @@ def bootstrap(bootstrapfile=None):
             {'column': 'service', 'value': '0'},
         ]
         node_id = Database().insert('node', default_node)
+
+        # we call create plugin after node creation
+        try:
+            node_plugin().postcreate(name=str(nodex), group=groupname)
+        except Exception as exp:
+            LOGGER.error(f"{exp}")
+        # ------------------------------------------
+
         network_details=Helper().get_network_details(BOOTSTRAP['NETWORKS'][networkname]['NETWORK'])
         avail_ip = Helper().get_available_ip(network_details['network'],
                                              network_details['subnet'],

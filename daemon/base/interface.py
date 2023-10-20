@@ -137,25 +137,28 @@ class Interface():
                     options
                 )
                 if result:
+                    existing = Database().get_record_join(
+                        ['ipaddress.ipaddress','network.name as networkname'],
+                        [
+                            'nodeinterface.nodeid=node.id',  
+                            'ipaddress.tablerefid=nodeinterface.id',
+                            'network.id=ipaddress.networkid'
+                        ],
+                        [
+                            f"node.id='{nodeid}'",
+                            "ipaddress.tableref='nodeinterface'",
+                            f"nodeinterface.interface='{interface_name}'"
+                        ]
+                    )
                     if network or ipaddress:
-                        existing = Database().get_record_join(
-                            ['ipaddress.ipaddress','network.name as networkname'],
-                            [
-                                'nodeinterface.nodeid=node.id',  
-                                'ipaddress.tablerefid=nodeinterface.id',
-                                'network.id=ipaddress.networkid'
-                            ],
-                            [
-                                f"node.id='{nodeid}'",
-                                "ipaddress.tableref='nodeinterface'",
-                                f"nodeinterface.interface='{interface_name}'"
-                            ]
-                        )
                         if not ipaddress:
                             if existing:
                                 if network == existing[0]['networkname']:
                                     ipaddress = existing[0]['ipaddress']
-                                else:
+                            if not ipaddress:
+                                if not network and existing:
+                                    network = existing[0]['networkname']
+                                if network:
                                     ips = Config().get_all_occupied_ips_from_network(network)
                                     where = f" WHERE `name` = '{network}'"
                                     network_details = Database().get_record(None, 'network', where)
@@ -177,6 +180,13 @@ class Interface():
                             ipaddress,
                             network
                         )
+                    elif (not macaddress) and (not options):
+                        # this means we just made an empty interface. a no no - Antoine
+                        result=False
+                        message="Invalid request: missing minimal parameters"
+                    elif not existing:
+                        result=False
+                        message="Invalid request: missing minimal parameters"
 
                 if result is False:
                     response = f'{message}'

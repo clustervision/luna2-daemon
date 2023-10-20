@@ -191,6 +191,9 @@ class Interface():
                             self.delete_node_interface(nodeid=nodeid, interface=interface_name)
                         result=False
                         message="Invalid request: missing minimal parameters"
+                    if result is False and not existing:
+                        # roll back
+                        self.delete_node_interface(nodeid=nodeid, interface=interface_name)
 
                 if result is False:
                     response = f'{message}'

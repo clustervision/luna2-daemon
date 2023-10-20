@@ -516,7 +516,7 @@ class Database():
                         else:
                             column = column + f" = '{cols['value']}'"
                 else:
-                    if cols['value']:
+                    if cols['value'] is not None:
                         column = column + ' = "' +str(cols['value']) +'"'
                     else:
                         column = column + ' = NULL'
@@ -527,7 +527,7 @@ class Database():
             if 'column' in cols.keys():
                 column = column + cols['column']
             if 'value' in cols.keys():
-                if cols['value']:
+                if cols['value'] is not None:
                     column = column + ' = "' +str(cols['value']) +'"'
                 else:
                     column = column + ' = NULL'

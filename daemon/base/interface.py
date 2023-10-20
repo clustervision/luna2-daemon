@@ -423,6 +423,8 @@ class Interface():
                 if node_interface:
                     where = [{"column": "id", "value": node_interface[0]['id']}]
                     Database().delete_row('nodeinterface', where)
+                    response = f'Interface {interface} removed successfully'
+                    status=True
                 else:
                     response = f'Interface {interface} not present in database'
                     status=False

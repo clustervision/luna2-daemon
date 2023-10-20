@@ -140,7 +140,7 @@ class Group():
                     if isinstance(value, bool):
                         cluster[0][key] = str(Helper().make_bool(cluster[0][key]))
                     if cli:
-                        cluster[0][key] = cluster[0][key] or str(value+' (default)')
+                        cluster[0][key] = cluster[0][key] or str(value)+' (default)'
                     else:
                         cluster[0][key] = cluster[0][key] or str(value)
                         group[key+'_source'] = 'default'
@@ -156,7 +156,7 @@ class Group():
                 else:
                     if key in group:
                         if cli:
-                            group[key] = group[key] or str(value+' (default)')
+                            group[key] = group[key] or str(value)+' (default)'
                         else:
                             group[key+'_source'] = 'default'
                             if group[key]:

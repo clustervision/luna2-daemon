@@ -32,6 +32,7 @@ __status__      = 'Development'
 #import os
 #import pwd
 #import sys
+import subprocess
 from utils.log import Log
 #from utils.helper import Helper
 
@@ -40,6 +41,7 @@ class Plugin():
     """
     Class for running custom scripts during group create/update actions
     """
+    SCRIPTS_PATH = "/trinity/local/sbin"
 
     def __init__(self):
         """
@@ -52,21 +54,90 @@ class Plugin():
     # ---------------------------------------------------------------------------
 
     def postcreate(self, name=None, nodes=[]):
-        return True, "Nothing done"
+        processes = []
+        return_code = 0
+        nodes_arg = [','.join(nodes)] if nodes else []
+        processes.append(subprocess.run([self.SCRIPTS_PATH + "/write_pdsh_genders.py", "group", "create", name, *nodes_arg], check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE))
+        processes.append(subprocess.run([self.SCRIPTS_PATH + "/write_slurm_nodes.py", "group", "create", name, *nodes_arg], check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE))
+        processes.append(subprocess.run([self.SCRIPTS_PATH + "/write_slurm_partitions.py", "group", "create", name, *nodes_arg], check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE))
+
+        for process in processes:
+            process_return_code = process.returncode
+            if process_return_code == 0:
+                self.logger.info(f"Script {process.args} executed successfully")
+            else:
+                self.logger.error(f"Script {process.args} failed with return code {process_return_code}")
+                return_code = max(return_code, process_return_code)
+        if return_code == 0:
+            return True, "Config files written"
+        else:
+            return False, "Error writing config files"
 
     # ---------------------------------------------------------------------------
 
     def postupdate(self, name=None, nodes=[]):
-        return True, "Nothing done"
+        processes = []
+        return_code = 0
+        nodes_arg = [','.join(nodes)] if nodes else []
+        processes.append(subprocess.run([self.SCRIPTS_PATH + "/write_pdsh_genders.py", "group", "update", name, *nodes_arg], check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE))
+        processes.append(subprocess.run([self.SCRIPTS_PATH + "/write_slurm_nodes.py", "group", "update", name, *nodes_arg], check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE))
+        processes.append(subprocess.run([self.SCRIPTS_PATH + "/write_slurm_partitions.py", "group", "update", name, *nodes_arg], check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE))
+
+        for process in processes:
+            process_return_code = process.returncode
+            if process_return_code == 0:
+                self.logger.info(f"Script {process.args} executed successfully")
+            else:
+                self.logger.error(f"Script {process.args} failed with return code {process_return_code}")
+                return_code = max(return_code, process_return_code)
+        if return_code == 0:
+            return True, "Config files written"
+        else:
+            return False, "Error writing config files"
+
 
     # ---------------------------------------------------------------------------
 
     def rename(self, name=None, newname=None):
-        return True, "Nothing done"
+        processes = []
+        return_code = 0
+        processes.append(subprocess.run([self.SCRIPTS_PATH + "/write_pdsh_genders.py", "group", "rename", name, newname], check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE))
+        processes.append(subprocess.run([self.SCRIPTS_PATH + "/write_slurm_nodes.py", "group", "rename", name, newname], check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE))
+        processes.append(subprocess.run([self.SCRIPTS_PATH + "/write_slurm_partitions.py", "group", "rename", name, newname], check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE))
+
+        for process in processes:
+            process_return_code = process.returncode
+            if process_return_code == 0:
+                self.logger.info(f"Script {process.args} executed successfully")
+            else:
+                self.logger.error(f"Script {process.args} failed with return code {process_return_code}")
+                return_code = max(return_code, process_return_code)
+        if return_code == 0:
+            return True, "Config files written"
+        else:
+            return False, "Error writing config files"
+
 
     # ---------------------------------------------------------------------------
 
     def delete(self, name=None):
-        return True, "Nothing done"
+        processes = []
+        return_code = 0
+        processes.append(subprocess.run([self.SCRIPTS_PATH + "/write_pdsh_genders.py", "group", "delete", name], check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE))
+        processes.append(subprocess.run([self.SCRIPTS_PATH + "/write_slurm_nodes.py", "group", "delete", name], check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE))
+        processes.append(subprocess.run([self.SCRIPTS_PATH + "/write_slurm_partitions.py", "group", "delete", name], check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE))
+
+        for process in processes:
+            process_return_code = process.returncode
+            if process_return_code == 0:
+                self.logger.info(f"Script {process.args} executed successfully")
+            else:
+                self.logger.error(f"Script {process.args} failed with return code {process_return_code}")
+                return_code = max(return_code, process_return_code)
+        if return_code == 0:
+            return True, "Config files written"
+        else:
+            return False, "Error writing config files"
+
 
     # ---------------------------------------------------------------------------

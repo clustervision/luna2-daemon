@@ -768,6 +768,18 @@ class Node():
                 #Service().queue('dns','restart')
             	#Queue().add_task_to_queue('dhcp:restart', 'housekeeper', '__node_clone__')
                 Queue().add_task_to_queue('dns:restart', 'housekeeper', '__node_clone__')
+
+                # ---- we call the node plugin - maybe someone wants to run something after clone?
+                group_details = Database().get_record_join(['group.name'],
+                                                           ['group.id=node.groupid'],
+                                                           [f"node.name='{newnodename}'"])
+                if group_details:
+                    node_plugins = Helper().plugin_finder(f'{self.plugins_path}/node')
+                    node_plugin=Helper().plugin_load(node_plugins,'node','default')
+                    try:
+                        node_plugin().postcreate(name=newnodename, group=group_details[0]['name'])
+                    except Exception as exp:
+                        self.logger.error(f"{exp}")
             else:
                 response = 'Invalid request: Columns are incorrect'
                 status=False

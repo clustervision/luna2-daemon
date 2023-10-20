@@ -317,7 +317,7 @@ class Node():
                 if 'cluster_'+key in node and node['cluster_'+key] and ((not 'group_'+key in node) or (not node['group_'+key])) and not node[key]:
                     if cli:
                         node['cluster_'+key] += " (cluster)"
-                        node[key] = node[key] or node['cluster_'+key] or str(value+' (default)')
+                        node[key] = node[key] or node['cluster_'+key] or str(value)+' (default)'
                     else:
                         node[key] = node[key] or node['cluster_'+key] or str(value)
                         node[key+'_source'] = 'cluster'
@@ -325,7 +325,7 @@ class Node():
                     if 'group_'+key in node and node['group_'+key] and not node[key]:
                         if cli:
                             node['group_'+key] += f" ({node['group']})"
-                            node[key] = node[key] or node['group_'+key] or str(value+' (default)')
+                            node[key] = node[key] or node['group_'+key] or str(value)+' (default)'
                         else:
                             node[key] = node[key] or node['group_'+key] or str(value)
                             node[key+'_source'] = 'group'

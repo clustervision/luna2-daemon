@@ -177,6 +177,10 @@ class Interface():
                             ipaddress,
                             network
                         )
+                    elif (not macaddress) and (not options):
+                        # this means we just made an empty interface. a no no - Antoine
+                        result=False
+                        message="Invalid request: missing minimal parameters"
 
                 if result is False:
                     response = f'{message}'

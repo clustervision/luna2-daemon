@@ -350,8 +350,6 @@ class Node():
                 b64items = {'prescript': '', 'partscript': '', 'postscript': ''}
             try:
                 for key, value in b64items.items():
-                    if not cli:
-                        node[key+'_source'] = 'node'
                     if 'group_'+key in node and node['group_'+key] and not node[key]:
                         data = b64decode(node['group_'+key])
                         data = data.decode("ascii")
@@ -368,6 +366,8 @@ class Node():
                         else:
                             default_str = str(value)
                             node[key+'_source'] = 'default'
+                            if node[key]:
+                                node[key+'_source'] = 'node'
                         default_data = b64encode(default_str.encode())
                         default_data = default_data.decode("ascii")
                         node[key] = node[key] or default_data

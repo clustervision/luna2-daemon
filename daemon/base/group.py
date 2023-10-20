@@ -470,6 +470,7 @@ class Group():
             'bootmenu': False,
         }
         if request_data:
+            newgroupname = None
             data = request_data['config']['group'][name]
             grp = Database().get_record(None, 'group', f' WHERE name = "{name}"')
             if grp:
@@ -568,6 +569,19 @@ class Group():
                     ifx['groupid'] = new_group_id
                     row = Helper().make_rows(ifx)
                     Database().insert('groupinterface', row)
+
+                # ---- we call the group plugin - maybe someone wants to run something after clone?
+                nodes_in_group = []
+                group_details=Database().get_record_join(['node.name AS nodename'],['node.groupid=group.id'],[f"`group`.name='{newgroupname}'"])
+                if group_details:
+                    for group_detail in group_details:
+                        nodes_in_group.append(group_detail['nodename'])
+                group_plugins = Helper().plugin_finder(f'{self.plugins_path}/group')
+                group_plugin=Helper().plugin_load(group_plugins,'group','default')
+                try:
+                    group_plugin().postcreate(name=newgroupname, nodes=nodes_in_group)
+                except Exception as exp:
+                    self.logger.error(f"{exp}")
             else:
                 response = 'Invalid request: Columns are incorrect'
                 status=False

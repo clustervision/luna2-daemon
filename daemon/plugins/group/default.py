@@ -123,9 +123,9 @@ class Plugin():
     def delete(self, name=None):
         processes = []
         return_code = 0
-        processes.append(subprocess.run([self.SCRIPTS_PATH + "/write_pdsh_genders.py", "group", "create", name], check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE))
-        processes.append(subprocess.run([self.SCRIPTS_PATH + "/write_slurm_nodes.py", "group", "create", name], check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE))
-        processes.append(subprocess.run([self.SCRIPTS_PATH + "/write_slurm_partitions.py", "group", "create", name], check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE))
+        processes.append(subprocess.run([self.SCRIPTS_PATH + "/write_pdsh_genders.py", "group", "delete", name], check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE))
+        processes.append(subprocess.run([self.SCRIPTS_PATH + "/write_slurm_nodes.py", "group", "delete", name], check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE))
+        processes.append(subprocess.run([self.SCRIPTS_PATH + "/write_slurm_partitions.py", "group", "delete", name], check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE))
 
         for process in processes:
             process_return_code = process.returncode

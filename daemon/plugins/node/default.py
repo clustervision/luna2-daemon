@@ -79,9 +79,9 @@ class Plugin():
         processes = []
         return_code = 0
         groups_arg = [group] if group else []
-        processes.append(subprocess.run([self.SCRIPTS_PATH + "/write_pdsh_genders.py", "node", "create", name, *groups_arg], check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE))
-        processes.append(subprocess.run([self.SCRIPTS_PATH + "/write_slurm_nodes.py", "node", "create", name, *groups_arg], check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE))
-        processes.append(subprocess.run([self.SCRIPTS_PATH + "/write_slurm_partitions.py", "node", "create", name, *groups_arg], check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE))
+        processes.append(subprocess.run([self.SCRIPTS_PATH + "/write_pdsh_genders.py", "node", "update", name, *groups_arg], check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE))
+        processes.append(subprocess.run([self.SCRIPTS_PATH + "/write_slurm_nodes.py", "node", "update", name, *groups_arg], check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE))
+        processes.append(subprocess.run([self.SCRIPTS_PATH + "/write_slurm_partitions.py", "node", "update", name, *groups_arg], check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE))
 
         for process in processes:
             process_return_code = process.returncode
@@ -100,9 +100,9 @@ class Plugin():
     def rename(self, name=None, newname=None):
         processes = []
         return_code = 0
-        processes.append(subprocess.run([self.SCRIPTS_PATH + "/write_pdsh_genders.py", "node", "create", name, newname], check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE))
-        processes.append(subprocess.run([self.SCRIPTS_PATH + "/write_slurm_nodes.py", "node", "create", name, newname], check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE))
-        processes.append(subprocess.run([self.SCRIPTS_PATH + "/write_slurm_partitions.py", "node", "create", name, newname], check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE))
+        processes.append(subprocess.run([self.SCRIPTS_PATH + "/write_pdsh_genders.py", "node", "rename", name, newname], check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE))
+        processes.append(subprocess.run([self.SCRIPTS_PATH + "/write_slurm_nodes.py", "node", "rename", name, newname], check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE))
+        processes.append(subprocess.run([self.SCRIPTS_PATH + "/write_slurm_partitions.py", "node", "rename", name, newname], check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE))
 
         for process in processes:
             process_return_code = process.returncode
@@ -121,9 +121,9 @@ class Plugin():
     def delete(self, name=None):
         processes = []
         return_code = 0
-        processes.append(subprocess.run([self.SCRIPTS_PATH + "/write_pdsh_genders.py", "node", "create", name], check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE))
-        processes.append(subprocess.run([self.SCRIPTS_PATH + "/write_slurm_nodes.py", "node", "create", name], check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE))
-        processes.append(subprocess.run([self.SCRIPTS_PATH + "/write_slurm_partitions.py", "node", "create", name], check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE))
+        processes.append(subprocess.run([self.SCRIPTS_PATH + "/write_pdsh_genders.py", "node", "delete", name], check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE))
+        processes.append(subprocess.run([self.SCRIPTS_PATH + "/write_slurm_nodes.py", "node", "delete", name], check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE))
+        processes.append(subprocess.run([self.SCRIPTS_PATH + "/write_slurm_partitions.py", "node", "delete", name], check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE))
 
         for process in processes:
             process_return_code = process.returncode

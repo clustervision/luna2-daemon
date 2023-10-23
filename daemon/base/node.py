@@ -781,6 +781,10 @@ class Node():
                                         self.delete_node(new_nodeid)
                                         status=False
                                         return status, f'{message}'
+                    if result is False:
+                        self.delete_node(new_nodeid)
+                        status=False
+                        return status, f'Interface {interface_name} creation failed'
                 # Service().queue('dhcp','restart')
                 # do we need dhcp restart? MAC is wiped on new NIC so no real need i guess. pending
                 #Service().queue('dns','restart')
@@ -807,28 +811,28 @@ class Node():
         return status, response
 
 
-    def delete_node(self, nodeid=None):
+    def delete_node_by_name(self, name=None):
         """
-        This method will delete a node by id.
+        This method will delete a node by name.
         """
         status=False
-        response = 'Node not present in database'
-        node = Database().get_record(None, 'node', f' WHERE `id` = "{nodeid}"')
+        response = f'Node {name} not present in database'
+        node = Database().get_record(None, 'node', f' WHERE `name` = "{name}"')
         if node:
-            status, response=self.delete_node_by_name(node[0]['id'])
+            status, response=self.delete_node(node[0]['id'])
         return status, response
 
 
-    def delete_node_by_name(self, name=None):
+    def delete_node(self, nodeid=None):
         """
         This method will delete a node.
         """
         status=False
         response="Internal error"
-        node = Database().get_record(None, 'node', f' WHERE `name` = "{name}"')
+        node = Database().get_record(None, 'node', f' WHERE `id` = "{nodeid}"')
         if node:
-            nodeid = node[0]['id']
-            Database().delete_row('node', [{"column": "name", "value": name}])
+            name = node[0]['name']
+            Database().delete_row('node', [{"column": "id", "value": nodeid}])
             ipaddress = Database().get_record_join(
                 ['ipaddress.id'],
                 ['ipaddress.tablerefid=nodeinterface.id'],
@@ -857,6 +861,6 @@ class Node():
             except Exception as exp:
                 self.logger.error(f"{exp}")
         else:
-            response = f'Node {name} not present in database'
+            response = f'Node not present in database'
             status=False
         return status, response

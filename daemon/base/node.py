@@ -689,6 +689,7 @@ class Node():
                         status=False
                         return status, f'Secrets copy for {newnodename} failed'
 
+
                 # ------ interfaces -------
                 node_interfaces = Database().get_record_join(
                     [

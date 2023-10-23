@@ -791,7 +791,19 @@ class Node():
         return status, response
 
 
-    def delete_node(self, name=None):
+    def delete_node(self, nodeid=None):
+        """
+        This method will delete a node by id.
+        """
+        status=False
+        response = 'Node not present in database'
+        node = Database().get_record(None, 'node', f' WHERE `id` = "{nodeid}"')
+        if node:
+            status, response=self.delete_node_by_name(node[0]['id'])
+        return status, response
+
+
+    def delete_node_by_name(self, name=None):
         """
         This method will delete a node.
         """

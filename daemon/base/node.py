@@ -704,6 +704,7 @@ class Node():
                     ['network.id=ipaddress.networkid', 'ipaddress.tablerefid=nodeinterface.id'],
                     ['tableref="nodeinterface"', f"nodeinterface.nodeid='{nodeid}'"]
                 )
+                # supplied by API
                 if interfaces:
                     for interface in interfaces:
                         # Antoine
@@ -714,32 +715,60 @@ class Node():
                             if interface_name == node_interface['interface']:
                                 del node_interfaces[index]
                             index += 1
-                        macaddress, network, options = None, None, None
+                        macaddress, networkname, options, ipaddress = None, None, None, None
                         if 'macaddress' in interface.keys():
                             macaddress = interface['macaddress']
                         if 'options' in interface.keys():
                             options = interface['options']
+                        if 'network' in interface.keys():
+                            networkname = interface['network']
+                        if 'ipaddress' in interface.keys():
+                            ipaddress = interface['ipaddress']
                         result, message = Config().node_interface_config(
                             new_nodeid,
                             interface_name,
                             macaddress,
                             options
                         )
-                        if result and 'ipaddress' in interface.keys():
-                            ipaddress = interface['ipaddress']
-                            if 'network' in interface.keys():
-                                network = interface['network']
-                            result, message = Config().node_interface_ipaddress_config(
-                                new_nodeid,
-                                interface_name,
-                                ipaddress,
-                                network
-                            )
+                        if result:
+                            if networkname and not ipaddress:
+                                ips = Config().get_all_occupied_ips_from_network(networkname)
+                                where = f' WHERE `name` = "{networkname}"'
+                                network = Database().get_record(None, 'network', where)
+                                if network:
+                                    ret, avail = 0, None
+                                    max_count = 5
+                                    # we try to ping for X ips, if none of these are free, something
+                                    # else is going on (read: rogue devices)....
+                                    while(max_count>0 and ret!=1):
+                                        avail = Helper().get_available_ip(
+                                            network[0]['network'],
+                                            network[0]['subnet'],
+                                            ips
+                                        )
+                                        ips.append(avail)
+                                        _, ret = Helper().runcommand(f"ping -w1 -c1 {avail}", True, 3)
+                                        max_count -= 1
+                                    if avail:
+                                        ipaddress = avail
+
+                            if networkname and ipaddress:
+                                result, message = Config().node_interface_ipaddress_config(
+                                    new_nodeid,
+                                    interface_name,
+                                    ipaddress,
+                                    networkname
+                                )
+                            else:
+                                self.delete_node(new_nodeid)
+                                status=False
+                                return status, f"Interface {interface_name} creation failed. Network and/or ip address missing or incorrect"
                         if result is False:
                             self.delete_node(new_nodeid)
                             status=False
                             return status, f'{message}'
 
+                # what we have in the database
                 for node_interface in node_interfaces:
                     interface_name = node_interface['interface']
                     interface_options = node_interface['options']

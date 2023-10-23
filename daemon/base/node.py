@@ -679,6 +679,17 @@ class Node():
                     return status, f'Node {newnodename} is not created due to possible property clash'
                 response = f'Node {newnodename} created successfully'
                 status=True
+
+                # ------ secrets ------
+                secrets = Database().get_record(None, 'nodesecrets', f' WHERE nodeid = "{nodeid}"')
+                for secret in secrets:
+                    row = Helper().make_rows(secret)
+                    result = Database().insert('nodesecrets', row)
+                    if not result:
+                        status=False
+                        return status, f'Secrets copy for {newnodename} failed'
+
+                # ------ interfaces -------
                 node_interfaces = Database().get_record_join(
                     [
                         'nodeinterface.interface',

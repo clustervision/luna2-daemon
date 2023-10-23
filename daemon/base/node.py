@@ -683,12 +683,14 @@ class Node():
                 # ------ secrets ------
                 secrets = Database().get_record(None, 'nodesecrets', f' WHERE nodeid = "{nodeid}"')
                 for secret in secrets:
+                    del secret['id']
+                    secret['nodeid'] = new_nodeid
                     row = Helper().make_rows(secret)
                     result = Database().insert('nodesecrets', row)
                     if not result:
+                        self.delete_node(new_nodeid)
                         status=False
                         return status, f'Secrets copy for {newnodename} failed'
-
 
                 # ------ interfaces -------
                 node_interfaces = Database().get_record_join(
@@ -734,6 +736,7 @@ class Node():
                                 network
                             )
                         if result is False:
+                            self.delete_node(new_nodeid)
                             status=False
                             return status, f'{message}'
 
@@ -775,6 +778,7 @@ class Node():
                                         networkname
                                     )
                                     if result is False:
+                                        self.delete_node(new_nodeid)
                                         status=False
                                         return status, f'{message}'
                 # Service().queue('dhcp','restart')

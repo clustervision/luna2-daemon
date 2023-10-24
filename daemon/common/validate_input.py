@@ -50,7 +50,7 @@ REG_EXP = {
     'name': r'^[a-z0-9\-]+$',
     'ipaddress': r'^[0-9a-f:\.]+$',
     'macaddress': r'^(([0-9A-Za-f]{2}((-|:)[0-9A-Za-f]{2}){5})|)$',
-    'minimal': r'^.+$',
+    'minimal': r'^\S.*$',
     'anything': r''
 }
 RESERVED = {
@@ -76,7 +76,8 @@ MATCH = {
     'newswitchname': 'name',
     'newnetname': 'name',
     'osimagetag': 'anything',
-    'tag': 'anything'
+    'tag': 'anything',
+    'interface': 'minimal'
 }
 
 maxlength = {'request_id': '256'}

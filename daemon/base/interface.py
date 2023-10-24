@@ -192,8 +192,9 @@ class Interface():
                         self.delete_node_interface(nodeid=nodeid, interface=interface_name)
 
                 if result is False:
-                    response = f'{message}'
+                    response = f'{message} for {interface_name}'
                     status=False
+                    break
                 else:
                     response = 'Interface updated'
                     status=True

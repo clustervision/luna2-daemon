@@ -544,29 +544,56 @@ class Group():
                     [f"groupid = '{group_id}'"]
                 )
 
+                # ------ secrets ------
+                secrets = Database().get_record(None, 'groupsecrets', f' WHERE groupid = "{group_id}"')
+                for secret in secrets:
+                    del secret['id']
+                    secret['groupid'] = new_group_id
+                    row = Helper().make_rows(secret)
+                    result = Database().insert('groupsecrets', row)
+                    if not result:
+                        self.delete_group(new_group_id)
+                        status=False
+                        return status, f'Secrets copy for {newgroupname} failed'
+
+                # ------ interfaces -------
                 if new_interface:
                     for ifx in new_interface:
+                        interface_name = ifx['interface']
+                        index = 0
+                        for grp_ifx in group_interfaces:
+                            # delete interfaces we already have
+                            if interface_name == grp_ifx['interface']:
+                                del group_interfaces[index]
+                            index += 1
+                    for ifx in new_interface:
+                        interface_name = ifx['interface']
+                        if 'network' not in ifx:
+                            status=False
+                            response=f'Network not specified for interface {interface_name}'
+                            break
                         network = Database().id_by_name('network', ifx['network'])
                         if network is None:
                             status=False
-                            return status, f'Network {network} does not exist'
+                            response=f'Network {network} does not exist'
+                            break
                         else:
                             ifx['networkid'] = network
-                            ifx['groupid'] = group_id
+                            if 'options' in ifx:
+                                ifx['options'] = ifx['options'] or ""
+                            ifx['groupid'] = new_group_id
                             del ifx['network']
-                        interface_name = ifx['interface']
-                        for grp_ifx in group_interfaces:
-                            if grp_ifx['interface'] == interface_name:
-                                del group_interfaces[grp_ifx]
                         row = Helper().make_rows(ifx)
                         Database().insert('groupinterface', row)
 
-                for interface in group_interfaces:
-                    ifx = {}
-                    ifx['networkid'] = interface['networkid']
-                    ifx['interface'] = interface['interface']
-                    ifx['options'] = interface['options'] or ""
+                if status is False:
+                    # rollback
+                    self.delete_group(new_group_id)
+                    return status, response
+
+                for ifx in group_interfaces:
                     ifx['groupid'] = new_group_id
+                    del ifx['network']
                     row = Helper().make_rows(ifx)
                     Database().insert('groupinterface', row)
 
@@ -591,20 +618,34 @@ class Group():
         return status, response
 
 
-    def delete_group(self, name=None):
+    def delete_group_by_name(self, name=None):
+        """
+        This method will delete a group by name.
+        """
+        status=False
+        response=f'Group {name} not present in database'
+        where = f' WHERE `name` = "{name}"'
+        group = Database().get_record(None, 'group', where)
+        if group:
+            status, response=self.delete_group(group[0]['id'])
+        return status, response
+
+
+    def delete_group(self, groupid=None):
         """
         This method will delete a group.
         """
         status=False
-        where = f' WHERE `name` = "{name}"'
+        where = f' WHERE `id` = "{groupid}"'
         group = Database().get_record(None, 'group', where)
         if group:
-            where = [{"column": "name", "value": name}]
+            name=group[0]['name']
+            where = [{"column": "id", "value": groupid}]
             Database().delete_row('group', where)
             where = [{"column": "groupid", "value": group[0]['id']}]
             Database().delete_row('groupinterface', where)
             Database().delete_row('groupsecrets', where)
-            response = f'Group {name} with all its interfaces removed'
+            response = f'Group {name} removed'
             status=True
             # ---- we call the group plugin - maybe someone wants to run something after delete?
             group_plugins = Helper().plugin_finder(f'{self.plugins_path}/group')
@@ -614,6 +655,6 @@ class Group():
             except Exception as exp:
                 self.logger.error(f"{exp}")
         else:
-            response = f'Group {name} not present in database'
+            response = 'Group not present in database'
             status=False
         return status, response

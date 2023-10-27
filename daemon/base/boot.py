@@ -297,11 +297,62 @@ class Boot():
                         )
                         if nodeinterface:
                             data['nodeid'] = nodeinterface[0]['nodeid']
-                            nodeip = f'{nodeinterface[0]["ipaddress"]}/{nodeinterface[0]["subnet"]}'
-                            data['nodeip'] = nodeip
+                            data['nodeip'] = f'{nodeinterface[0]["ipaddress"]}/{nodeinterface[0]["subnet"]}'
                             Service().queue('dhcp', 'restart')
             except Exception as exp:
                 self.logger.info(f"port detection call in boot returned: {exp}")
+            # ------------- port detection was not successfull, lets try a last resort -----------------
+            # ------------------ "don't nag give me the next node" detection ---------------------------
+            if not data['nodeid']:
+                createnode_ondemand, nextnode_discover = None, None
+                where = f" WHERE id='{controller[0]['clusterid']}'"
+                cluster = Database().get_record(None, 'cluster', where)
+                if cluster:
+                    if 'createnode_ondemand' in cluster[0]:
+                        createnode_ondemand=Helper().bool_revert(cluster[0]['createnode_ondemand'])
+                    if 'nextnode_discover' in cluster[0]:
+                        nextnode_discover=Helper().bool_revert(cluster[0]['nextnode_discover'])
+                if nextnode_discover:
+                    # then we fetch a list of all nodes that we have, with or without interface config
+                    list1 = Database().get_record_join(
+                        ['node.*', 'group.name as groupname', 'group.provision_interface as group_provision_interface',
+                        'nodeinterface.interface', 'nodeinterface.macaddress'],
+                        ['nodeinterface.nodeid=node.id','group.id=node.groupid']
+                    )
+                    list2 = Database().get_record_join(
+                        ['node.*', 'group.name as groupname'],
+                        ['group.id=node.groupid']
+                    )
+                    node_list = list1 + list2
+
+                    checked = []
+                    if node_list:
+                        # we already have some nodes in the list. let's see if we can re-use
+                        for node in node_list:
+                            if node['name'] not in checked:
+                                checked.append(node['name'])
+                                if 'interface' in node and 'macaddress' in node and not node['macaddress']:
+                                    # mac is empty. candidate!
+                                    provision_interface = node['provision_interface'] or node['group_provision_interface'] or 'BOOTIF'
+                                    result, _ = Config().node_interface_config(
+                                        node['id'],
+                                        provision_interface,
+                                        mac
+                                    )
+                                    break
+
+                        nodeinterface = Database().get_record_join(
+                            ['nodeinterface.nodeid', 'nodeinterface.interface',
+                             'ipaddress.ipaddress', 'network.name as network',
+                             'network.network as networkip', 'network.subnet'],
+                            ['network.id=ipaddress.networkid',
+                             'ipaddress.tablerefid=nodeinterface.id'],
+                            ['tableref="nodeinterface"', f"nodeinterface.macaddress='{mac}'"]
+                        )
+                        if nodeinterface:
+                            data['nodeid'] = nodeinterface[0]['nodeid']
+                            data['nodeip'] = f'{nodeinterface[0]["ipaddress"]}/{nodeinterface[0]["subnet"]}'
+                            Service().queue('dhcp', 'restart')
         # -----------------------------------------------------------------------
         if data['nodeid']:
             node = Database().get_record_join(

@@ -70,6 +70,10 @@ class Cluster():
                 cluster[0]['createnode_ondemand'] = True
             else:
                 cluster[0]['createnode_ondemand'] = False
+            if cluster[0]['nextnode_discover']:
+                cluster[0]['nextnode_discover'] = True
+            else:
+                cluster[0]['nextnode_discover'] = False
             response = {'config': {'cluster': cluster[0] }}
             controllers = Database().get_record_join(
                 ['controller.*', 'ipaddress.ipaddress'],

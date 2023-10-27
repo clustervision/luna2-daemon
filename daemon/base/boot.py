@@ -315,7 +315,7 @@ class Boot():
                 if nextnode_discover:
                     # then we fetch a list of all nodes that we have, with or without interface config
                     list1 = Database().get_record_join(
-                        ['node.*', 'group.name as groupname', 'group.provision_interface',
+                        ['node.*', 'group.name as groupname', 'group.provision_interface as group_provision_interface',
                         'nodeinterface.interface', 'nodeinterface.macaddress'],
                         ['nodeinterface.nodeid=node.id','group.id=node.groupid']
                     )

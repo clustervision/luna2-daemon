@@ -332,6 +332,7 @@ def bootstrap(bootstrapfile=None):
             {'column': 'security', 'value': '0'},
             {'column': 'debug', 'value': '0'},
             {'column': 'createnode_ondemand', 'value': '1'},
+            {'column': 'nextnode_discover', 'value': '0'},
             {'column': 'nameserver_ip', 'value': defaultserver_ip},
             {'column': 'ntp_server', 'value': defaultserver_ip}
         ]

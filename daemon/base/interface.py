@@ -137,25 +137,28 @@ class Interface():
                     options
                 )
                 if result:
+                    existing = Database().get_record_join(
+                        ['ipaddress.ipaddress','network.name as networkname'],
+                        [
+                            'nodeinterface.nodeid=node.id',  
+                            'ipaddress.tablerefid=nodeinterface.id',
+                            'network.id=ipaddress.networkid'
+                        ],
+                        [
+                            f"node.id='{nodeid}'",
+                            "ipaddress.tableref='nodeinterface'",
+                            f"nodeinterface.interface='{interface_name}'"
+                        ]
+                    )
                     if network or ipaddress:
-                        existing = Database().get_record_join(
-                            ['ipaddress.ipaddress','network.name as networkname'],
-                            [
-                                'nodeinterface.nodeid=node.id',  
-                                'ipaddress.tablerefid=nodeinterface.id',
-                                'network.id=ipaddress.networkid'
-                            ],
-                            [
-                                f"node.id='{nodeid}'",
-                                "ipaddress.tableref='nodeinterface'",
-                                f"nodeinterface.interface='{interface_name}'"
-                            ]
-                        )
                         if not ipaddress:
                             if existing:
                                 if network == existing[0]['networkname']:
                                     ipaddress = existing[0]['ipaddress']
-                                else:
+                            if not ipaddress:
+                                if not network and existing:
+                                    network = existing[0]['networkname']
+                                if network:
                                     ips = Config().get_all_occupied_ips_from_network(network)
                                     where = f" WHERE `name` = '{network}'"
                                     network_details = Database().get_record(None, 'network', where)
@@ -177,10 +180,21 @@ class Interface():
                             ipaddress,
                             network
                         )
+                    elif (not macaddress) and (not options):
+                        # this means we just made an empty interface. a no no - Antoine
+                        result=False
+                        message="Invalid request: missing minimal parameters"
+                    elif not existing:
+                        result=False
+                        message="Invalid request: missing minimal parameters"
+                    if result is False and not existing:
+                        # roll back
+                        self.delete_node_interface(nodeid=nodeid, interface=interface_name)
 
                 if result is False:
-                    response = f'{message}'
+                    response = f'{message} for {interface_name}'
                     status=False
+                    break
                 else:
                     response = 'Interface updated'
                     status=True
@@ -375,7 +389,6 @@ class Interface():
         """
         status=False
         if nodeid:
-            where = f' WHERE `interface` = "{interface}" AND `nodeid` = "{nodeid}"'
             node_interface = Database().get_record_join(
                 ['nodeinterface.id as ifid', 'ipaddress.id as ipid'],
                 ['ipaddress.tablerefid=nodeinterface.id'],
@@ -405,8 +418,16 @@ class Interface():
                 response = f'Interface {interface} removed successfully'
                 status=True
             else:
-                response = f'Interface {interface} not present in database'
-                status=False
+                where = f' WHERE `interface` = "{interface}" AND `nodeid` = "{nodeid}"'
+                node_interface = Database().get_record(None, 'nodeinterface', where)
+                if node_interface:
+                    where = [{"column": "id", "value": node_interface[0]['id']}]
+                    Database().delete_row('nodeinterface', where)
+                    response = f'Interface {interface} removed successfully'
+                    status=True
+                else:
+                    response = f'Interface {interface} not present in database'
+                    status=False
         else:
             response = 'Invalid request: did not receive Data'
             status=False

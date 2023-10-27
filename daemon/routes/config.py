@@ -127,7 +127,7 @@ def config_node_delete(name=None):
     Process - Delete the Node and it's interfaces.
     Output - Success or Failure.
     """
-    status, response = Node().delete_node(name)
+    status, response = Node().delete_node_by_name(name)
     access_code=Helper().get_access_code(status,response)
     response = {'message': response}
     return response, access_code
@@ -386,7 +386,7 @@ def config_group_delete(name=None):
     Process - Delete the Group and it's interfaces.
     Output - Success or Failure.
     """
-    status, response = Group().delete_group(name)
+    status, response = Group().delete_group_by_name(name)
     access_code=Helper().get_access_code(status,response)
     response = {'message': response}
     return response, access_code

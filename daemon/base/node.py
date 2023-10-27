@@ -317,17 +317,17 @@ class Node():
                 if 'cluster_'+key in node and node['cluster_'+key] and ((not 'group_'+key in node) or (not node['group_'+key])) and not node[key]:
                     if cli:
                         node['cluster_'+key] += " (cluster)"
-                        node[key] = node[key] or node['cluster_'+key] or str(value+' (default)')
+                        node[key] = node['cluster_'+key] or str(value)+' (default)'
                     else:
-                        node[key] = node[key] or node['cluster_'+key] or str(value)
+                        node[key] = node['cluster_'+key] or str(value)
                         node[key+'_source'] = 'cluster'
                 else:
                     if 'group_'+key in node and node['group_'+key] and not node[key]:
                         if cli:
                             node['group_'+key] += f" ({node['group']})"
-                            node[key] = node[key] or node['group_'+key] or str(value+' (default)')
+                            node[key] = node['group_'+key] or str(value)+' (default)'
                         else:
-                            node[key] = node[key] or node['group_'+key] or str(value)
+                            node[key] = node['group_'+key] or str(value)
                             node[key+'_source'] = 'group'
                     else:
                         if isinstance(value, bool):
@@ -335,8 +335,10 @@ class Node():
                         if cli:
                             node[key] = node[key] or str(value)+' (default)'
                         else:
+                            node[key+'_source'] = 'default'
+                            if node[key]:
+                                node[key+'_source'] = 'node'
                             node[key] = node[key] or str(value)
-                            node[key+'_source'] = 'node'
                 if 'group_'+key in node:
                     del node['group_'+key]
                 if 'cluster_'+key in node:
@@ -348,8 +350,6 @@ class Node():
                 b64items = {'prescript': '', 'partscript': '', 'postscript': ''}
             try:
                 for key, value in b64items.items():
-                    if not cli:
-                        node[key+'_source'] = 'node'
                     if 'group_'+key in node and node['group_'+key] and not node[key]:
                         data = b64decode(node['group_'+key])
                         data = data.decode("ascii")
@@ -366,6 +366,8 @@ class Node():
                         else:
                             default_str = str(value)
                             node[key+'_source'] = 'default'
+                            if node[key]:
+                                node[key+'_source'] = 'node'
                         default_data = b64encode(default_str.encode())
                         default_data = default_data.decode("ascii")
                         node[key] = node[key] or default_data
@@ -677,6 +679,20 @@ class Node():
                     return status, f'Node {newnodename} is not created due to possible property clash'
                 response = f'Node {newnodename} created successfully'
                 status=True
+
+                # ------ secrets ------
+                secrets = Database().get_record(None, 'nodesecrets', f' WHERE nodeid = "{nodeid}"')
+                for secret in secrets:
+                    del secret['id']
+                    secret['nodeid'] = new_nodeid
+                    row = Helper().make_rows(secret)
+                    result = Database().insert('nodesecrets', row)
+                    if not result:
+                        self.delete_node(new_nodeid)
+                        status=False
+                        return status, f'Secrets copy for {newnodename} failed'
+
+                # ------ interfaces -------
                 node_interfaces = Database().get_record_join(
                     [
                         'nodeinterface.interface',
@@ -688,6 +704,7 @@ class Node():
                     ['network.id=ipaddress.networkid', 'ipaddress.tablerefid=nodeinterface.id'],
                     ['tableref="nodeinterface"', f"nodeinterface.nodeid='{nodeid}'"]
                 )
+                # supplied by API
                 if interfaces:
                     for interface in interfaces:
                         # Antoine
@@ -698,31 +715,60 @@ class Node():
                             if interface_name == node_interface['interface']:
                                 del node_interfaces[index]
                             index += 1
-                        macaddress, network, options = None, None, None
+                        macaddress, networkname, options, ipaddress = None, None, None, None
                         if 'macaddress' in interface.keys():
                             macaddress = interface['macaddress']
                         if 'options' in interface.keys():
                             options = interface['options']
+                        if 'network' in interface.keys():
+                            networkname = interface['network']
+                        if 'ipaddress' in interface.keys():
+                            ipaddress = interface['ipaddress']
                         result, message = Config().node_interface_config(
                             new_nodeid,
                             interface_name,
                             macaddress,
                             options
                         )
-                        if result and 'ipaddress' in interface.keys():
-                            ipaddress = interface['ipaddress']
-                            if 'network' in interface.keys():
-                                network = interface['network']
-                            result, message = Config().node_interface_ipaddress_config(
-                                new_nodeid,
-                                interface_name,
-                                ipaddress,
-                                network
-                            )
+                        if result:
+                            if networkname and not ipaddress:
+                                ips = Config().get_all_occupied_ips_from_network(networkname)
+                                where = f' WHERE `name` = "{networkname}"'
+                                network = Database().get_record(None, 'network', where)
+                                if network:
+                                    ret, avail = 0, None
+                                    max_count = 5
+                                    # we try to ping for X ips, if none of these are free, something
+                                    # else is going on (read: rogue devices)....
+                                    while(max_count>0 and ret!=1):
+                                        avail = Helper().get_available_ip(
+                                            network[0]['network'],
+                                            network[0]['subnet'],
+                                            ips
+                                        )
+                                        ips.append(avail)
+                                        _, ret = Helper().runcommand(f"ping -w1 -c1 {avail}", True, 3)
+                                        max_count -= 1
+                                    if avail:
+                                        ipaddress = avail
+
+                            if networkname and ipaddress:
+                                result, message = Config().node_interface_ipaddress_config(
+                                    new_nodeid,
+                                    interface_name,
+                                    ipaddress,
+                                    networkname
+                                )
+                            else:
+                                self.delete_node(new_nodeid)
+                                status=False
+                                return status, f"Interface {interface_name} creation failed. Network and/or ip address missing or incorrect"
                         if result is False:
+                            self.delete_node(new_nodeid)
                             status=False
                             return status, f'{message}'
 
+                # what we have in the database
                 for node_interface in node_interfaces:
                     interface_name = node_interface['interface']
                     interface_options = node_interface['options']
@@ -761,13 +807,30 @@ class Node():
                                         networkname
                                     )
                                     if result is False:
+                                        self.delete_node(new_nodeid)
                                         status=False
                                         return status, f'{message}'
+                    if result is False:
+                        self.delete_node(new_nodeid)
+                        status=False
+                        return status, f'Interface {interface_name} creation failed'
                 # Service().queue('dhcp','restart')
                 # do we need dhcp restart? MAC is wiped on new NIC so no real need i guess. pending
                 #Service().queue('dns','restart')
             	#Queue().add_task_to_queue('dhcp:restart', 'housekeeper', '__node_clone__')
                 Queue().add_task_to_queue('dns:restart', 'housekeeper', '__node_clone__')
+
+                # ---- we call the node plugin - maybe someone wants to run something after clone?
+                group_details = Database().get_record_join(['group.name'],
+                                                           ['group.id=node.groupid'],
+                                                           [f"node.name='{newnodename}'"])
+                if group_details:
+                    node_plugins = Helper().plugin_finder(f'{self.plugins_path}/node')
+                    node_plugin=Helper().plugin_load(node_plugins,'node','default')
+                    try:
+                        node_plugin().postcreate(name=newnodename, group=group_details[0]['name'])
+                    except Exception as exp:
+                        self.logger.error(f"{exp}")
             else:
                 response = 'Invalid request: Columns are incorrect'
                 status=False
@@ -777,16 +840,28 @@ class Node():
         return status, response
 
 
-    def delete_node(self, name=None):
+    def delete_node_by_name(self, name=None):
+        """
+        This method will delete a node by name.
+        """
+        status=False
+        response = f'Node {name} not present in database'
+        node = Database().get_record(None, 'node', f' WHERE `name` = "{name}"')
+        if node:
+            status, response=self.delete_node(node[0]['id'])
+        return status, response
+
+
+    def delete_node(self, nodeid=None):
         """
         This method will delete a node.
         """
         status=False
         response="Internal error"
-        node = Database().get_record(None, 'node', f' WHERE `name` = "{name}"')
+        node = Database().get_record(None, 'node', f' WHERE `id` = "{nodeid}"')
         if node:
-            nodeid = node[0]['id']
-            Database().delete_row('node', [{"column": "name", "value": name}])
+            name = node[0]['name']
+            Database().delete_row('node', [{"column": "id", "value": nodeid}])
             ipaddress = Database().get_record_join(
                 ['ipaddress.id'],
                 ['ipaddress.tablerefid=nodeinterface.id'],
@@ -815,6 +890,6 @@ class Node():
             except Exception as exp:
                 self.logger.error(f"{exp}")
         else:
-            response = f'Node {name} not present in database'
+            response = f'Node not present in database'
             status=False
         return status, response

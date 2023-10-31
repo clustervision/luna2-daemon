@@ -99,7 +99,7 @@ class Cluster():
         """
         status=False
         response="Internal error"
-        items = {'debug': False, 'security': False, 'createnode_ondemand': True}
+        items = {'debug': False, 'security': False, 'createnode_ondemand': True, 'nextnode_discovery': False}
         if request_data:
             data = request_data['config']['cluster']
             cluster_columns = Database().get_columns('cluster')

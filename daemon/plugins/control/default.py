@@ -85,7 +85,7 @@ class Plugin():
         This method will be used for power cycle.
         """
         try:
-            return self.execute(device, 'chassis', 'power status', username, password)
+            return self.execute(device, 'chassis', 'power cycle', username, password)
         except Exception as exp:
             return False, f"{exp}"
 

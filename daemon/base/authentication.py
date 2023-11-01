@@ -196,10 +196,11 @@ class Authentication():
         self.logger.debug(f"Auth request made for {uri}")
         if uri:
             result = search(r"^.+(\..[^.]+)(\?|\&|;|#)?", uri)
-            ext = result.group(1)
-            if ext in auth_ext:
-                self.logger.debug(f"We enforce authentication for file extension = [{ext}]")
-                needs_auth=True
+            if result:
+                ext = result.group(1)
+                if ext in auth_ext:
+                    self.logger.debug(f"We enforce authentication for file extension = [{ext}]")
+                    needs_auth=True
         else:
             status=False
             return status, "Missing request uri"

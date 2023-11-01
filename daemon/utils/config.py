@@ -36,6 +36,7 @@ import subprocess
 import shutil
 from time import time, sleep
 import re
+from jinja2 import Environment, FileSystemLoader
 from ipaddress import ip_address
 from textwrap import dedent
 from utils.log import Log
@@ -63,14 +64,35 @@ class Config(object):
         other devices which have the mac address. write and validates the /var/tmp/luna/dhcpd.conf
         """
         validate = True
-        ntp_server, dhcp_subnet_block = '', ''
-        node_block, device_block = [] , []
+        template = 'templ_dhcpd.cfg'
+        template_path = f'{CONSTANT["TEMPLATES"]["TEMPLATES_DIR"]}/{template}'
+        check_template = Helper().check_jinja(template_path)
+        if not check_template:
+            return False
+        ntp_server = None
         cluster = Database().get_record(None, 'cluster', None)
         if cluster and 'ntp_server' in cluster[0] and cluster[0]['ntp_server']:
             ntp_server = cluster[0]['ntp_server']
         dhcp_file = f"{CONSTANT['TEMPLATES']['TEMP_DIR']}/dhcpd.conf"
         domain = None
-
+        controller = Database().get_record_join(
+            ['ipaddress.ipaddress','network.name as domain'],
+            ['ipaddress.tablerefid=controller.id','network.id=ipaddress.networkid'],
+            ['tableref="controller"', 'controller.hostname="controller"']
+        )
+        if controller:
+            domain=controller[0]['domain']
+        #
+        omapikey=None
+        if CONSTANT['DHCP']['OMAPIKEY']:
+            omapikey=CONSTANT['DHCP']['OMAPIKEY']
+        #
+        config_classes = {}
+        config_shared = {}
+        config_subnets = {}
+        config_hosts = {}
+        config_pools = {}
+        #
         networksbyname = {}
         networks = Database().get_record(None, 'network', ' WHERE `dhcp` = 1')
         if networks:
@@ -83,32 +105,38 @@ class Config(object):
                     shared[networksbyname[network]['shared']] = []
                 shared[networksbyname[network]['shared']].append(network)
 
-        shared_dhcp_header, handled = [], []
-        dhcp_decl_header,dhcp_subnet_block = "",""
+        handled = []
         for network in shared.keys():
             shared_dhcp_pool, denied_dhcp_pool = [], []
             shared_name = f"{network}-" + "-".join(shared[network])
-            dhcp_subnet_block += "\n" + f"shared-network {shared_name} {{"
-            # main network
-            denied_dhcp_pool.append(self.shared_pool_denies(shared[network],networksbyname[network]['dhcp_range_begin'],networksbyname[network]['dhcp_range_end']))
-            dhcp_subnet_block += self.dhcp_decl_config(networksbyname[network],'shared')
-            # the networks that ride with it
-            for piggyback in shared[network]:
-                shared_dhcp_header.append(self.shared_header(piggyback))
-                shared_dhcp_pool.append(self.shared_pool(piggyback,networksbyname[piggyback]['dhcp_range_begin'],networksbyname[piggyback]['dhcp_range_end']))
-                dhcp_subnet_block += self.dhcp_decl_config(networksbyname[piggyback],'shared')
-                handled.append(piggyback)
+            #
+            config_pools[shared_name]={}
+            config_pools[shared_name]['policy']='deny'
+            config_pools[shared_name]['members']=shared[network]
+            config_pools[shared_name]['range_begin']=networksbyname[network]['dhcp_range_begin']
+            config_pools[shared_name]['range_end']=networksbyname[network]['dhcp_range_end']
+            #
+            config_shared[shared_name]={}
+            config_shared[shared_name][network]=self.dhcp_subnet_config(networksbyname[network],'shared')
             handled.append(network)
-
-            dhcp_subnet_block += "\n".join(shared_dhcp_pool)
-            dhcp_subnet_block += "\n".join(denied_dhcp_pool)
-            dhcp_subnet_block += "\n}\n"
-
+            #
+            for piggyback in shared[network]:
+                config_pools[piggyback]={}
+                config_pools[piggyback]['policy']='allow'
+                config_pools[piggyback]['members']=[piggyback]
+                config_pools[piggyback]['range_begin']=networksbyname[piggyback]['dhcp_range_begin']
+                config_pools[piggyback]['range_end']=networksbyname[piggyback]['dhcp_range_end']
+                #
+                config_shared[shared_name][piggyback]=self.dhcp_subnet_config(networksbyname[piggyback],'shared')
+                config_classes[piggyback]={}
+                config_classes[piggyback]['network']=piggyback
+                handled.append(piggyback)
+            #
         if networksbyname:
             for network in networksbyname.keys():
                 nwk = networksbyname[network]
                 if nwk['name'] not in handled:
-                    dhcp_subnet_block += self.dhcp_decl_config(nwk)
+                    config_subnets[nwk['name']] = self.dhcp_subnet_config(nwk)
                     handled.append(nwk['name'])
                 network_id = nwk['id']
                 network_name = nwk['name']
@@ -118,14 +146,19 @@ class Config(object):
                     ['ipaddress.tablerefid=nodeinterface.id', 'nodeinterface.nodeid=node.id'],
                     ['tableref="nodeinterface"', f'ipaddress.networkid="{network_id}"']
                 )
+                nodedomain=nwk['name']
                 if node_interface:
                     for interface in node_interface:
-                        if interface['macaddress']:
-                            node_block.append(self.dhcp_node(
-                                interface['nodename'],
-                                interface['macaddress'],
-                                interface['ipaddress']
-                            ))
+                        if nodedomain == domain:
+                            node=interface['nodename']
+                        else:
+                            node=f"{interface['nodename']}.{nodedomain}"
+                        if interface['macaddress'] and node not in config_hosts:
+                            config_hosts[node]={}
+                            config_hosts[node]['name']=interface['nodename']
+                            config_hosts[node]['domain']=nodedomain
+                            config_hosts[node]['ipaddress']=interface['ipaddress']
+                            config_hosts[node]['macaddress']=interface['macaddress']
                 else:
                     self.logger.info(f'No Nodes available for this network {network_name}  {network_ip}')
                 for item in ['otherdevices', 'switch']:
@@ -137,26 +170,22 @@ class Config(object):
                     if devices:
                         for device in devices:
                             if device['macaddress']:
-                                device_block.append(
-                                    self.dhcp_node(device['name'],
-                                                   device['macaddress'],
-                                                   device['ipaddress'])
-                                )
+                                config_hosts[device['name']]={}
+                                config_hosts[device['name']]['name']=device['name']
+                                config_hosts[device['name']]['ipaddress']=device['ipaddress']
+                                config_hosts[device['name']]['maccaddress']=device['macaddress']
                     else:
                         self.logger.debug(f'{item} not available for {network_name} {network_ip}')
-
-        shared_header_block = "\n".join(shared_dhcp_header)
-        config = self.dhcp_config(domain,ntp_server)
-        config = f'{config}{shared_header_block}{dhcp_subnet_block}'
-        for node in node_block:
-            config = f'{config}{node}'
-        for dev in device_block:
-            config = f'{config}{dev}'
-        config += "\n"
-
+        
         try:
+            file_loader = FileSystemLoader(CONSTANT["TEMPLATES"]["TEMPLATES_DIR"])
+            env = Environment(loader=file_loader)
+            dhcpd_template = env.get_template(template)
+            dhcpd_config = dhcpd_template.render(CLASSES=config_classes,SHARED=config_shared,SUBNETS=config_subnets,
+                                                 HOSTS=config_hosts,POOLS=config_pools,DOMAINNAME=domain,
+                                                 TIMESERVERS=ntp_server,OMAPIKEY=omapikey)
             with open(dhcp_file, 'w', encoding='utf-8') as dhcp:
-                dhcp.write(config)
+                dhcp.write(dhcpd_config)
             try:
                 validate_config = subprocess.run(["dhcpd", "-t", "-cf", dhcp_file], check=True)
                 if validate_config.returncode:
@@ -174,21 +203,18 @@ class Config(object):
         return validate
 
 
-    def dhcp_decl_config (self,nwk=[],shared=False):
+    def dhcp_subnet_config (self,nwk=[],shared=False):
         """ 
         dhcp subnetblock with config
         glue between the various other subnet blocks: prepare for dhcp_subnet function
         """
-        serverport = 7050
-        if CONSTANT['API']['PROTOCOL'] == 'https' and 'WEBSERVER' in CONSTANT and 'PORT' in CONSTANT['WEBSERVER']:
-            # we rely on nginx serving non https stuff for e.g. /boot.
-            # ipxe does support https but has issues dealing with self signed certificates
-            serverport = CONSTANT['WEBSERVER']['PORT']
+        subnet={}
         network_id = nwk['id']
         network_name = nwk['name']
         network_ip = nwk['network']
-        if shared:
-            nwk['dhcp_range_begin'], nwk['dhcp_range_end'] = None, None
+        if not shared:
+            subnet['range_begin']=nwk['dhcp_range_begin']
+            subnet['range_end']=nwk['dhcp_range_end']
         netmask = Helper().get_netmask(f"{nwk['network']}/{nwk['subnet']}")
         controller = Database().get_record_join(
             ['ipaddress.ipaddress'],
@@ -197,148 +223,20 @@ class Config(object):
              f'ipaddress.networkid="{network_id}"']
         )
         self.logger.info(f"Building DHCP block for {network_name}")
+        subnet['network']=nwk['network']
+        subnet['netmask']=netmask
+        subnet['domain']=nwk['name']
+        if nwk['gateway'] and nwk['gateway'] != "None": # left over from database().update/insert bug - Antoine
+            subnet['gateway']=nwk['gateway']
         if controller:
-            domain = nwk['name']
-            subnet_block = self.dhcp_subnet(
-                nwk['network'], netmask, serverport, controller[0]['ipaddress'], nwk['gateway'],
-                nwk['dhcp_range_begin'], nwk['dhcp_range_end']
-            )
-        else:
-            subnet_block = self.dhcp_subnet(
-                nwk['network'], netmask, None, None, nwk['gateway'],
-                nwk['dhcp_range_begin'], nwk['dhcp_range_end']
-            )
-        if shared:
-            subnet_block = Helper().add_padding(subnet_block)
-        return subnet_block
-
-
-    def dhcp_config(self, domain=None, ntp_server=None):
-        """
-        This method will prepare DHCP configuration.
-        """
-        if ntp_server:
-            ntp_server = f'option time-servers {ntp_server};\n'
-        else:
-            ntp_server = ''
-
-        if domain:
-            option_domain = f'option domain-name "{domain}";'
-        else:
-            option_domain = 'option domain-name "cluster";'
-
-        omapi_key = ''
-        if CONSTANT['DHCP']['OMAPIKEY']:
-            omapi_key = dedent(f"""
-                omapi-port 7911;
-                omapi-key omapi_key;
-
-                key omapi_key {{
-                    algorithm hmac-md5;
-                    secret {CONSTANT['DHCP']['OMAPIKEY']};
-                }}
-            """)
-
-        config = dedent("""
-            #
-            # DHCP Server Configuration file.
-            # created by Luna
-            #
-            """)
-
-        config += option_domain
-
-        config += dedent(f"""
-            option luna-id code 129 = text;
-            option client-architecture code 93 = unsigned integer 16;
-            {ntp_server}
-            """)
-
-        config += omapi_key
-
-        config += dedent("""
-            # how to get luna_ipxe.efi and luna_undionly.kpxe :
-            # git clone git://git.ipxe.org/ipxe.git
-            # cd ipxe/src
-            # make bin/undionly.kpxe
-            # cp bin/undionly.kpxe /tftpboot/luna_undionly.kpxe
-            # make bin-x86_64-efi/ipxe.efi
-            # cp bin-x86_64-efi/ipxe.efi /tftpboot/luna_ipxe.efi
-            #
-            """)
-        return config
-
-
-    def shared_header(self, network=None, identifier=None):
-        identifier = identifier or "udhcp"
-        header_block = dedent(f"""
-            class "{network}" {{
-                match if substring (option vendor-class-identifier, 0, 5) = "{identifier}";
-            }}""")
-        header_block += "\n"
-        return header_block
-
-    def shared_pool(self, network=None, dhcp_start=None, dhcp_end=None):
-        pool_block = "\npool {\n"
-        pool_block += f"    allow members of \"{network}\";\n"
-        pool_block += f"    range {dhcp_start} {dhcp_end};\n"
-        pool_block += "}\n"
-        pool_block = Helper().add_padding(pool_block)
-        return pool_block
-
-    def shared_pool_denies(self, networks=[], dhcp_start=None, dhcp_end=None):
-        pool_block = "\npool {\n"
-        for deny in networks:
-            pool_block += f"    deny members of \"{deny}\";\n"
-        pool_block += f"    range {dhcp_start} {dhcp_end};\n"
-        pool_block += "}\n"
-        pool_block = Helper().add_padding(pool_block)
-        return pool_block
-
-    def dhcp_subnet(self, network=None, netmask=None,
-                    serverport=None, nextserver=None, gateway=None,
-                    dhcp_range_start=None, dhcp_range_end=None):
-        """
-        This method prepare the network block for all DHCP enabled networks
-        """
-        subnet_block = dedent(f"""
-            subnet {network} netmask {netmask} {{
-                max-lease-time 28800;
-                if exists user-class and option user-class = "iPXE" {{
-                    filename "http://{nextserver}:{serverport}/boot";
-                }} else {{
-                    if option client-architecture = 00:07 {{
-                        filename "luna_ipxe.efi";
-                    }} elsif option client-architecture = 00:0e {{
-                    # OpenPower do not need binary to execure.
-                    # Petitboot will request for config
-                    }} else {{
-                        filename "luna_undionly.kpxe";
-                    }}
-                }}""")
-        if nextserver:
-            subnet_block += f"""\n    next-server {nextserver};"""
-        if dhcp_range_start and dhcp_range_end:
-            subnet_block += f"""\n    range {dhcp_range_start} {dhcp_range_end};"""
-        if gateway:
-            subnet_block += f"""\n    option routers {gateway};"""
-        subnet_block += """\n    option luna-id "lunaclient";\n}\n"""
-        return subnet_block
-
-
-    def dhcp_node(self, node=None, macaddress=None, ipaddr=None):
-        """
-        This method will generate node and other devices configuration for the DHCP
-        """
-        if macaddress:
-            if re.match("[0-9a-f]{2}([-:]?)[0-9a-f]{2}(\\1[0-9a-f]{2}){4}$", macaddress.lower()):
-                node_block = dedent(f"""
-                    host {node}  {{
-                        hardware ethernet {macaddress};
-                        fixed-address {ipaddr};
-                    }}""")
-                return node_block
-        return ""  # has to be ""
+            serverport = 7050
+            if CONSTANT['API']['PROTOCOL'] == 'https' and 'WEBSERVER' in CONSTANT and 'PORT' in CONSTANT['WEBSERVER']:
+                # we rely on nginx serving non https stuff for e.g. /boot.
+                # ipxe does support https but has issues dealing with self signed certificates
+                serverport = CONSTANT['WEBSERVER']['PORT']
+            subnet['nextserver']=controller[0]['ipaddress']
+            subnet['nextport']=serverport
+        return subnet
 
 
     def dns_configure(self):

@@ -422,7 +422,7 @@ class Database():
         [{"column": "name", "value": "node004"}, {"column": "ip", "value": "10.141.0.1"}]
         Output - Creates Table.
         """
-        keys, values, where_list = [], [], []
+        keys, values = [], []
         where_keys, where_values = [], []
         where = ' WHERE '
         response = False
@@ -447,9 +447,12 @@ class Database():
                         else:
                             values.append('"'+str(each["value"])+'"')
                 else:
-                    values.append('"'+str(each["value"])+'"')
-                    where_keys = keys
-                    where_values = values
+                    if each["value"] is not None:
+                        values.append('"'+str(each["value"])+'"')
+                    else:
+                        values.append('NULL')
+            where_keys = keys
+            where_values = values
             keys = ','.join(keys)
             values = ','.join(values)
         query = f'INSERT INTO "{table}" ({keys}) VALUES ({values});'
@@ -460,7 +463,10 @@ class Database():
                 local_thread.cursor.execute(query)
                 self.commit()
                 new_where = where
+                where_list = []
                 for key,value in zip(where_keys, where_values):
+                    if value == "NULL":
+                        continue
                     where_list.append(f'{key} = {value}')
                 if len(where_list) > 0:
                     new_where = new_where + ' AND '.join(where_list)
@@ -475,7 +481,7 @@ class Database():
                     attempt += 1
                     sleep(3)
                 else:
-                    return False
+                    break
         return response
 
 
@@ -555,7 +561,7 @@ class Database():
                     attempt += 1
                     sleep(3)
                 else:
-                    return False
+                    break
         return False
 
 
@@ -592,7 +598,7 @@ class Database():
                     attempt += 1
                     sleep(3)
                 else:
-                    return False
+                    break
         return False
 
 

@@ -268,7 +268,7 @@ class Boot():
         if nodeinterface:
             data['nodeid'] = nodeinterface[0]['nodeid']
             data['nodeip'] = f'{nodeinterface[0]["ipaddress"]}/{nodeinterface[0]["subnet"]}'
-            if nodeinterface['network'] == data['network']: # node on default network
+            if nodeinterface[0]['network'] == data['network']: # node on default network
                 data['gateway'] = ''
             else:
                 data['gateway'] = nodeinterface[0]['gateway'] or ''
@@ -305,7 +305,7 @@ class Boot():
                         if nodeinterface:
                             data['nodeid'] = nodeinterface[0]['nodeid']
                             data['nodeip'] = f'{nodeinterface[0]["ipaddress"]}/{nodeinterface[0]["subnet"]}'
-                            if nodeinterface['network'] == data['network']: # node on default network
+                            if nodeinterface[0]['network'] == data['network']: # node on default network
                                 data['gateway'] = ''
                             else:
                                 data['gateway'] = nodeinterface[0]['gateway'] or ''
@@ -363,7 +363,7 @@ class Boot():
                         if nodeinterface:
                             data['nodeid'] = nodeinterface[0]['nodeid']
                             data['nodeip'] = f'{nodeinterface[0]["ipaddress"]}/{nodeinterface[0]["subnet"]}'
-                            if nodeinterface['network'] == data['network']: # node on default network
+                            if nodeinterface[0]['network'] == data['network']: # node on default network
                                 data['gateway'] = ''
                             else:
                                 data['gateway'] = nodeinterface[0]['gateway'] or ''
@@ -677,7 +677,7 @@ class Boot():
             )
             if nodeinterface:
                 data['nodeip'] = f'{nodeinterface[0]["ipaddress"]}/{nodeinterface[0]["subnet"]}'
-                if nodeinterface['network'] == data['network']: # node on default network
+                if nodeinterface[0]['network'] == data['network']: # node on default network
                     data['gateway'] = ''
                 else:
                     data['gateway'] = nodeinterface[0]['gateway'] or ''
@@ -839,7 +839,7 @@ class Boot():
             )
             if nodeinterface:
                 data['nodeip'] = f'{nodeinterface[0]["ipaddress"]}/{nodeinterface[0]["subnet"]}'
-                if nodeinterface['network'] == data['network']: # node on default network
+                if nodeinterface[0]['network'] == data['network']: # node on default network
                     data['gateway'] = ''
                 else:
                     data['gateway'] = nodeinterface[0]['gateway'] or ''

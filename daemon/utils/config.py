@@ -268,10 +268,10 @@ class Config(object):
         tmpdir=f"{CONSTANT['TEMPLATES']['TEMP_DIR']}"
         files, forwarder = [], []
         unix_time = int(time())
-        Nallowed=['any']
-        Nzones=[]
-        Nrecords={}
-        Nauthoritative={}
+        dns_allowed_query=['any']
+        dns_zones=[]
+        dns_zone_records={}
+        dns_authoritative={}
  
         cluster = Database().get_record(None, 'cluster', None)
         controller = Database().get_record_join(
@@ -287,7 +287,7 @@ class Config(object):
             forwarder = cluster[0]['forwardserver_ip'].split(',')
         networks = Database().get_record(None, 'network', None)
         if networks:
-            Nallowed=['127.0.0.0/8']
+            dns_allowed_query=['127.0.0.0/8']
  
         for nwk in networks:
             network_id = nwk['id']
@@ -300,17 +300,17 @@ class Config(object):
                 rev_ip = rev_ip[2:]
                 rev_ip = '.'.join(rev_ip)
                 #
-                Nallowed.append(nwk['network']+"/"+nwk['subnet']) # used for e.g. named. allow query
-                Nzones.append(networkname)
-                Nzones.append(rev_ip)
-                Nrecords[networkname]={}
-                Nrecords[networkname]['controller']={}
-                Nrecords[networkname]['controller']['key']='controller'
-                Nrecords[networkname]['controller']['type']='A'
-                Nrecords[networkname]['controller']['value']=controller_ip
-                Nrecords[rev_ip]={}
-                Nauthoritative[networkname]='controller'
-                Nauthoritative[rev_ip]='controller'
+                dns_allowed_query.append(nwk['network']+"/"+nwk['subnet']) # used for e.g. named. allow query
+                dns_zones.append(networkname)
+                dns_zones.append(rev_ip)
+                dns_zone_records[networkname]={}
+                dns_zone_records[networkname]['controller']={}
+                dns_zone_records[networkname]['controller']['key']='controller'
+                dns_zone_records[networkname]['controller']['type']='A'
+                dns_zone_records[networkname]['controller']['value']=controller_ip
+                dns_zone_records[rev_ip]={}
+                dns_authoritative[networkname]='controller'
+                dns_authoritative[rev_ip]='controller'
  
             node_interface = Database().get_record_join(
                 ['node.name as nodename', 'ipaddress.ipaddress', 'network.name as networkname'],
@@ -324,14 +324,14 @@ class Config(object):
                     sub_ip = interface['ipaddress'].split('.')  # NOT IPv6 COMPLIANT!! needs overhaul. PENDING
                     node_ptr = sub_ip[2] + '.' + sub_ip[3]
                     #
-                    Nrecords[networkname][interface['nodename']]={}
-                    Nrecords[networkname][interface['nodename']]['key']=interface['nodename']
-                    Nrecords[networkname][interface['nodename']]['type']='A'
-                    Nrecords[networkname][interface['nodename']]['value']=interface['ipaddress']
-                    Nrecords[rev_ip][interface['nodename']]={}
-                    Nrecords[rev_ip][interface['nodename']]['key']=node_ptr
-                    Nrecords[rev_ip][interface['nodename']]['type']='PTR'
-                    Nrecords[rev_ip][interface['nodename']]['value']=f"{interface['nodename']}.{interface['networkname']}"
+                    dns_zone_records[networkname][interface['nodename']]={}
+                    dns_zone_records[networkname][interface['nodename']]['key']=interface['nodename']
+                    dns_zone_records[networkname][interface['nodename']]['type']='A'
+                    dns_zone_records[networkname][interface['nodename']]['value']=interface['ipaddress']
+                    dns_zone_records[rev_ip][interface['nodename']]={}
+                    dns_zone_records[rev_ip][interface['nodename']]['key']=node_ptr
+                    dns_zone_records[rev_ip][interface['nodename']]['type']='PTR'
+                    dns_zone_records[rev_ip][interface['nodename']]['value']=f"{interface['nodename']}.{interface['networkname']}"
 
             for item in ['otherdevices','switch']:
                 devices = Database().get_record_join(
@@ -345,14 +345,14 @@ class Config(object):
                         sub_ip = device['ipaddress'].split('.')  # NOT IPv6 COMPLIANT!! needs overhaul. PENDING
                         node_ptr = sub_ip[2] + '.' + sub_ip[3]
                         #
-                        Nrecords[networkname][device['devname']]={}
-                        Nrecords[networkname][device['devname']]['key']=device['devname']
-                        Nrecords[networkname][device['devname']]['type']='A'
-                        Nrecords[networkname][device['devname']]['value']=device['ipaddress']
-                        Nrecords[rev_ip][device['devname']]={}
-                        Nrecords[rev_ip][device['devname']]['key']=node_ptr
-                        Nrecords[rev_ip][device['devname']]['type']='PTR'
-                        Nrecords[rev_ip][device['devname']]['value']=f"{device['devname']}.{device['networkname']}"
+                        dns_zone_records[networkname][device['devname']]={}
+                        dns_zone_records[networkname][device['devname']]['key']=device['devname']
+                        dns_zone_records[networkname][device['devname']]['type']='A'
+                        dns_zone_records[networkname][device['devname']]['value']=device['ipaddress']
+                        dns_zone_records[rev_ip][device['devname']]={}
+                        dns_zone_records[rev_ip][device['devname']]['key']=node_ptr
+                        dns_zone_records[rev_ip][device['devname']]['type']='PTR'
+                        dns_zone_records[rev_ip][device['devname']]['value']=f"{device['devname']}.{device['networkname']}"
 
             name_file = {
                 'source': f'{tmpdir}/{networkname}.luna.zone',
@@ -369,7 +369,7 @@ class Config(object):
             try:
                 dns_zone_template = env.get_template(template_dns_zone)
                 for zone in [networkname,rev_ip]:
-                    dns_zone_config = dns_zone_template.render(RECORDS=Nrecords[zone],
+                    dns_zone_config = dns_zone_template.render(RECORDS=dns_zone_records[zone],
                                                                AUTHORITATIVE_SERVER=f"controller.{networkname}",
                                                                SERIAL=unix_time)
                     with open(f'{tmpdir}/{zone}.luna.zone', 'w', encoding='utf-8') as filename:
@@ -390,9 +390,9 @@ class Config(object):
         if not os.path.exists(managed_keys):
             managed_keys=None
         dns_conf_template = env.get_template(template_dns_conf)
-        dns_conf_config = dns_conf_template.render(ALLOWED_QUERY=Nallowed,FORWARDERS=forwarder,MANAGED_KEYS=managed_keys)
+        dns_conf_config = dns_conf_template.render(ALLOWED_QUERY=dns_allowed_query,FORWARDERS=forwarder,MANAGED_KEYS=managed_keys)
         dns_zones_conf_template = env.get_template(template_dns_zones_conf)
-        dns_zones_conf_config = dns_zones_conf_template.render(ZONES=Nzones)
+        dns_zones_conf_config = dns_zones_conf_template.render(ZONES=dns_zones)
 
         dns_file = {'source': f'{tmpdir}/named.conf', 'destination': '/etc/named.conf'}
         files.append(dns_file)

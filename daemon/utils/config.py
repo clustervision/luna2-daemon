@@ -217,10 +217,9 @@ class Config(object):
             subnet['range_end']=nwk['dhcp_range_end']
         netmask = Helper().get_netmask(f"{nwk['network']}/{nwk['subnet']}")
         controller = Database().get_record_join(
-            ['ipaddress.ipaddress'],
-            ['ipaddress.tablerefid=controller.id'],
-            ['tableref="controller"', 'controller.hostname="controller"',
-             f'ipaddress.networkid="{network_id}"']
+            ['ipaddress.ipaddress','network.name as networkname'],
+            ['ipaddress.tablerefid=controller.id','network.id=ipaddress.networkid'],
+            ['tableref="controller"', 'controller.hostname="controller"']
         )
         self.logger.info(f"Building DHCP block for {network_name}")
         subnet['network']=nwk['network']
@@ -228,7 +227,10 @@ class Config(object):
         subnet['domain']=nwk['name']
         if nwk['gateway'] and nwk['gateway'] != "None": # left over from database().update/insert bug - Antoine
             subnet['gateway']=nwk['gateway']
-        if controller:
+        if controller and (controller[0]['networkname'] == nwk['name'] or 'gateway' in subnet):
+            # if the controller is in this network (cluster default as such), we can serve next-server stuff.
+            # we allow to have an alternate route to the next-server (which is us) but ONLY when gateway is configured,
+            # this is usefull if we want to support booting on other networks as well.
             serverport = 7050
             if CONSTANT['API']['PROTOCOL'] == 'https' and 'WEBSERVER' in CONSTANT and 'PORT' in CONSTANT['WEBSERVER']:
                 # we rely on nginx serving non https stuff for e.g. /boot.

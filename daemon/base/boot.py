@@ -225,6 +225,8 @@ class Boot():
             'nodeid'        : None,
             'osimageid'     : None,
             'ipaddress'     : None,
+            'network'       : None,
+            'gateway'       : None,
             'serverport'    : None,
             'initrdfile'    : None,
             'kernelfile'    : None,
@@ -243,12 +245,13 @@ class Boot():
         if mac:
             mac = mac.lower()
         controller = Database().get_record_join(
-            ['controller.*', 'ipaddress.ipaddress'],
-            ['ipaddress.tablerefid=controller.id'],
+            ['controller.*', 'ipaddress.ipaddress','network.name as network'],
+            ['ipaddress.tablerefid=controller.id','network.id=ipaddress.networkid'],
             ['tableref="controller"', 'controller.hostname="controller"']
         )
         if controller:
             data['ipaddress'] = controller[0]['ipaddress']
+            data['network'] = controller[0]['network']
             data['serverport'] = controller[0]['serverport']
             data['webserver_port'] = data['serverport']
             if 'WEBSERVER' in CONSTANT:
@@ -258,13 +261,17 @@ class Boot():
                     data['webserver_protocol'] = CONSTANT['WEBSERVER']['PROTOCOL']
         nodeinterface = Database().get_record_join(
             ['nodeinterface.nodeid', 'nodeinterface.interface', 'ipaddress.ipaddress',
-            'network.name as network', 'network.network as networkip', 'network.subnet'],
+            'network.name as network', 'network.network as networkip', 'network.subnet', 'network.gateway'],
             ['network.id=ipaddress.networkid', 'ipaddress.tablerefid=nodeinterface.id'],
             ['tableref="nodeinterface"', f"nodeinterface.macaddress='{mac}'"]
         )
         if nodeinterface:
             data['nodeid'] = nodeinterface[0]['nodeid']
             data['nodeip'] = f'{nodeinterface[0]["ipaddress"]}/{nodeinterface[0]["subnet"]}'
+            if nodeinterface['network'] == data['network']: # node on default network
+                data['gateway'] = ''
+            else:
+                data['gateway'] = nodeinterface[0]['gateway'] or ''
         else:
           # --------------------- port detection ----------------------------------
             try:
@@ -287,7 +294,7 @@ class Boot():
                         Database().update('nodeinterface', row, where)
                         nodeinterface = Database().get_record_join(
                             ['nodeinterface.nodeid', 'nodeinterface.interface',
-                             'ipaddress.ipaddress', 'network.name as network',
+                             'ipaddress.ipaddress', 'network.name as network', 'network.gateway',
                              'network.network as networkip', 'network.subnet'],
                             [
                                 'network.id=ipaddress.networkid',
@@ -298,6 +305,10 @@ class Boot():
                         if nodeinterface:
                             data['nodeid'] = nodeinterface[0]['nodeid']
                             data['nodeip'] = f'{nodeinterface[0]["ipaddress"]}/{nodeinterface[0]["subnet"]}'
+                            if nodeinterface['network'] == data['network']: # node on default network
+                                data['gateway'] = ''
+                            else:
+                                data['gateway'] = nodeinterface[0]['gateway'] or ''
                             Service().queue('dhcp', 'restart')
             except Exception as exp:
                 self.logger.info(f"port detection call in boot returned: {exp}")
@@ -343,7 +354,7 @@ class Boot():
 
                         nodeinterface = Database().get_record_join(
                             ['nodeinterface.nodeid', 'nodeinterface.interface',
-                             'ipaddress.ipaddress', 'network.name as network',
+                             'ipaddress.ipaddress', 'network.name as network', 'network.gateway',
                              'network.network as networkip', 'network.subnet'],
                             ['network.id=ipaddress.networkid',
                              'ipaddress.tablerefid=nodeinterface.id'],
@@ -352,6 +363,10 @@ class Boot():
                         if nodeinterface:
                             data['nodeid'] = nodeinterface[0]['nodeid']
                             data['nodeip'] = f'{nodeinterface[0]["ipaddress"]}/{nodeinterface[0]["subnet"]}'
+                            if nodeinterface['network'] == data['network']: # node on default network
+                                data['gateway'] = ''
+                            else:
+                                data['gateway'] = nodeinterface[0]['gateway'] or ''
                             Service().queue('dhcp', 'restart')
         # -----------------------------------------------------------------------
         if data['nodeid']:
@@ -414,6 +429,8 @@ class Boot():
             'nodeid'        : None,
             'osimageid'     : None,
             'ipaddress'     : None,
+            'network'       : None,
+            'gateway'       : None,
             'serverport'    : None,
             'initrdfile'    : None,
             'kernelfile'    : None,
@@ -439,18 +456,22 @@ class Boot():
             ['ipaddress.tablerefid=controller.id', 'network.id=ipaddress.networkid'],
             ['tableref="controller"', 'controller.hostname="controller"']
         )
-        if not controller:
-            # e.g. when the controller has some other IP address that is reachable by 
-            # a node but not configured in luna.
-            controller = Database().get_record_join(
-                ['controller.*', 'ipaddress.ipaddress'],
-                ['ipaddress.tablerefid=controller.id'],
-                ['tableref="controller"', 'controller.hostname="controller"']
-            )
-            altnetwork = Database().get_record(None, 'network', f"WHERE dhcp='1' or dhcp='true'")
-            if controller[0] and altnetwork:
-                controller[0]['networkname']=altnetwork[0]['name']
+#       The below section tries to work around a non-preferred situation where someone
+#       creates a new network, removes the old and does not move the controller in this one.
+#       The controller is then in faxct 'floating'. It should not exist ...  - Antoine
+#        if not controller:
+#            # e.g. when the controller has some other IP address that is reachable by 
+#            # a node but not configured in luna.
+#            controller = Database().get_record_join(
+#                ['controller.*', 'ipaddress.ipaddress'],
+#                ['ipaddress.tablerefid=controller.id'],
+#                ['tableref="controller"', 'controller.hostname="controller"']
+#            )
+#            altnetwork = Database().get_record(None, 'network', f"WHERE dhcp='1' or dhcp='true'")
+#            if controller[0] and altnetwork:
+#                controller[0]['networkname']=altnetwork[0]['name']
         if controller:
+            data['network'] = controller[0]['networkname']
             data['ipaddress'] = controller[0]['ipaddress']
             data['serverport'] = controller[0]['serverport']
             data['webserver_port'] = data['serverport']
@@ -644,7 +665,8 @@ class Boot():
                     'ipaddress.ipaddress',
                     'network.name as network',
                     'network.network as networkip',
-                    'network.subnet'
+                    'network.subnet',
+                    'network.gateway'
                 ],
                 ['network.id=ipaddress.networkid', 'ipaddress.tablerefid=nodeinterface.id'],
                 [
@@ -655,6 +677,10 @@ class Boot():
             )
             if nodeinterface:
                 data['nodeip'] = f'{nodeinterface[0]["ipaddress"]}/{nodeinterface[0]["subnet"]}'
+                if nodeinterface['network'] == data['network']: # node on default network
+                    data['gateway'] = ''
+                else:
+                    data['gateway'] = nodeinterface[0]['gateway'] or ''
             else:
                 # uh oh... no bootif??
                 data['nodeip'] = None
@@ -703,6 +729,8 @@ class Boot():
             'nodeid'        : None,
             'osimageid'     : None,
             'ipaddress'     : None,
+            'network'       : None,
+            'gateway'       : None,
             'serverport'    : None,
             'initrdfile'    : None,
             'kernelfile'    : None,
@@ -720,11 +748,12 @@ class Boot():
             return False, 'Empty'
         # Antoine
         controller = Database().get_record_join(
-            ['controller.*', 'ipaddress.ipaddress'],
-            ['ipaddress.tablerefid=controller.id'],
+            ['controller.*', 'ipaddress.ipaddress', 'network.name as network'],
+            ['ipaddress.tablerefid=controller.id','network.id=ipaddress.networkid'],
             ['tableref="controller"','controller.hostname="controller"']
         )
         if controller:
+            data['network'] = controller[0]['network']
             data['ipaddress'] = controller[0]['ipaddress']
             data['serverport'] = controller[0]['serverport']
             data['webserver_port'] = data['serverport']
@@ -798,7 +827,8 @@ class Boot():
                     'ipaddress.ipaddress',
                     'network.name as network',
                     'network.network as networkip',
-                    'network.subnet'
+                    'network.subnet',
+                    'network.gateway'
                 ],
                 ['network.id=ipaddress.networkid', 'ipaddress.tablerefid=nodeinterface.id'],
                 [
@@ -809,6 +839,10 @@ class Boot():
             )
             if nodeinterface:
                 data['nodeip'] = f'{nodeinterface[0]["ipaddress"]}/{nodeinterface[0]["subnet"]}'
+                if nodeinterface['network'] == data['network']: # node on default network
+                    data['gateway'] = ''
+                else:
+                    data['gateway'] = nodeinterface[0]['gateway'] or ''
             else:
                 # uh oh... no bootif??
                 data['nodeip'] = None

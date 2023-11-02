@@ -23,12 +23,12 @@ to DHN and DHCP methods.
 
 """
 
-__author__      = 'Sumit Sharma'
-__copyright__   = 'Copyright 2022, Luna2 Project'
+__author__      = 'Sumit Sharma/Antoine Schonewille'
+__copyright__   = 'Copyright 2023, Luna2 Project'
 __license__     = 'GPL'
 __version__     = '2.0'
-__maintainer__  = 'Sumit Sharma'
-__email__       = 'sumit.sharma@clustervision.com'
+__maintainer__  = 'Sumit Sharma/Antoine Schonewille'
+__email__       = 'support@clustervision.com'
 __status__      = 'Development'
 
 import os
@@ -53,7 +53,7 @@ class Config(object):
 
     def __init__(self):
         """
-        Constructor - As of now, nothing have to initialize.
+        Constructor - As of now, nothing has to initialize.
         """
         self.logger = Log.get_logger()
 
@@ -68,6 +68,7 @@ class Config(object):
         template_path = f'{CONSTANT["TEMPLATES"]["TEMPLATES_DIR"]}/{template}'
         check_template = Helper().check_jinja(template_path)
         if not check_template:
+            self.logger.error(f"Error building dns config. {template_path} does not exist")
             return False
         ntp_server = None
         cluster = Database().get_record(None, 'cluster', None)
@@ -197,7 +198,6 @@ class Config(object):
                 self.logger.error(f'DHCP file : {dhcp_file} containing errors.')
             else:
                 shutil.copyfile(dhcp_file, '/etc/dhcp/dhcpd.conf')
-                self.logger.info(f'DHCP File created : {dhcp_file}')
         except Exception as exp:
             self.logger.error(f"Uh oh... {exp}")
         return validate
@@ -244,33 +244,74 @@ class Config(object):
         This method will write /etc/named.conf and zone files for every network
         """
         validate = True
-        files, nameserver_ip, forwarder, network = [], [], [], []
-        zone_config, rev_ip = '', ''
+        template_dns_conf = 'templ_dns_conf.cfg' # i.e. /etc/named.conf
+        template_dns_zones_conf = 'templ_dns_zones_conf.cfg' # i.e. /etc/named.luna.zones
+        template_dns_zone = 'templ_dns_zone.cfg' # the actual zone data
+        template_path = f'{CONSTANT["TEMPLATES"]["TEMPLATES_DIR"]}/{template_dns_conf}'
+        check_template = Helper().check_jinja(template_path)
+        if not check_template:
+            self.logger.error(f"Error building dns config. {template_path} does not exist")
+            return False
+        template_path = f'{CONSTANT["TEMPLATES"]["TEMPLATES_DIR"]}/{template_dns_zones_conf}'
+        check_template = Helper().check_jinja(template_path)
+        if not check_template:
+            self.logger.error(f"Error building dns config. {template_path} does not exist")
+            return False
+        template_path = f'{CONSTANT["TEMPLATES"]["TEMPLATES_DIR"]}/{template_dns_zone}'
+        check_template = Helper().check_jinja(template_path)
+        if not check_template:
+            self.logger.error(f"Error building dns config. {template_path} does not exist")
+            return False
+        file_loader = FileSystemLoader(CONSTANT["TEMPLATES"]["TEMPLATES_DIR"])
+        env = Environment(loader=file_loader)
+
+        tmpdir=f"{CONSTANT['TEMPLATES']['TEMP_DIR']}"
+        files, forwarder = [], []
+        unix_time = int(time())
+        Nallowed=['any']
+        Nzones=[]
+        Nrecords={}
+        Nauthoritative={}
+ 
         cluster = Database().get_record(None, 'cluster', None)
-        if cluster and 'nameserver_ip' in cluster[0]:
-            nameserver_ip.append(cluster[0]['nameserver_ip'])
         controller = Database().get_record_join(
             ['ipaddress.ipaddress'],
             ['ipaddress.tablerefid=controller.id'],
             ['tableref="controller"', 'controller.hostname="controller"']
         )
+        if (not controller) or (not cluster):
+            self.logger.error("Error building dns config. either controller or cluster does not exist")
+            return False
         controller_ip = controller[0]['ipaddress']
         if 'forwardserver_ip' in cluster[0] and cluster[0]['forwardserver_ip']:
             forwarder = cluster[0]['forwardserver_ip'].split(',')
         networks = Database().get_record(None, 'network', None)
+        if networks:
+            Nallowed=['127.0.0.0/8']
+ 
         for nwk in networks:
             network_id = nwk['id']
-            if nwk['nameserver_ip']: # Technically mean, authoritative server is outside cluster
-                nameserver_ip.append(nwk['nameserver_ip'])
+            rev_ip=0
             if nwk['network'] and nwk['name']:
-                network.append(nwk['network']+"/"+nwk['subnet']) # used for e.g. named. allow query
                 networkname = nwk['name']
+                self.logger.info(f"Building DNS block for {networkname}")
                 rev_ip = ip_address(nwk['network']).reverse_pointer
                 rev_ip = rev_ip.split('.')
                 rev_ip = rev_ip[2:]
                 rev_ip = '.'.join(rev_ip)
-                zone_config = f'{zone_config}{self.dns_zone_config(networkname, rev_ip)}'
-            # TWAN
+                #
+                Nallowed.append(nwk['network']+"/"+nwk['subnet']) # used for e.g. named. allow query
+                Nzones.append(networkname)
+                Nzones.append(rev_ip)
+                Nrecords[networkname]={}
+                Nrecords[networkname]['controller']={}
+                Nrecords[networkname]['controller']['key']='controller'
+                Nrecords[networkname]['controller']['type']='A'
+                Nrecords[networkname]['controller']['value']=controller_ip
+                Nrecords[rev_ip]={}
+                Nauthoritative[networkname]='controller'
+                Nauthoritative[rev_ip]='controller'
+ 
             node_interface = Database().get_record_join(
                 ['node.name as nodename', 'ipaddress.ipaddress', 'network.name as networkname'],
                 ['ipaddress.tablerefid=nodeinterface.id', 'nodeinterface.nodeid=node.id',
@@ -280,11 +321,17 @@ class Config(object):
             nodelist, ptr_node_list= [], []
             if node_interface:
                 for interface in node_interface:
-                    # nodeip = interface['ipaddress']
-                    nodelist.append(f"{interface['nodename']}                 IN A {interface['ipaddress']}")
                     sub_ip = interface['ipaddress'].split('.')  # NOT IPv6 COMPLIANT!! needs overhaul. PENDING
                     node_ptr = sub_ip[2] + '.' + sub_ip[3]
-                    ptr_node_list.append(f"{node_ptr}                    IN PTR {interface['nodename']}.{interface['networkname']}.")
+                    #
+                    Nrecords[networkname][interface['nodename']]={}
+                    Nrecords[networkname][interface['nodename']]['key']=interface['nodename']
+                    Nrecords[networkname][interface['nodename']]['type']='A'
+                    Nrecords[networkname][interface['nodename']]['value']=interface['ipaddress']
+                    Nrecords[rev_ip][interface['nodename']]={}
+                    Nrecords[rev_ip][interface['nodename']]['key']=node_ptr
+                    Nrecords[rev_ip][interface['nodename']]['type']='PTR'
+                    Nrecords[rev_ip][interface['nodename']]['value']=f"{interface['nodename']}.{interface['networkname']}"
 
             for item in ['otherdevices','switch']:
                 devices = Database().get_record_join(
@@ -295,63 +342,70 @@ class Config(object):
                 )
                 if devices:
                     for device in devices:
-                        # devip = device['ipaddress']
-                        nodelist.append(f"{device['devname']}                 IN A {device['ipaddress']}")
                         sub_ip = device['ipaddress'].split('.')  # NOT IPv6 COMPLIANT!! needs overhaul. PENDING
                         node_ptr = sub_ip[2] + '.' + sub_ip[3]
-                        ptr_node_list.append(f"{node_ptr}                    IN PTR {device['devname']}.{device['networkname']}.")
+                        #
+                        Nrecords[networkname][device['devname']]={}
+                        Nrecords[networkname][device['devname']]['key']=device['devname']
+                        Nrecords[networkname][device['devname']]['type']='A'
+                        Nrecords[networkname][device['devname']]['value']=device['ipaddress']
+                        Nrecords[rev_ip][device['devname']]={}
+                        Nrecords[rev_ip][device['devname']]['key']=node_ptr
+                        Nrecords[rev_ip][device['devname']]['type']='PTR'
+                        Nrecords[rev_ip][device['devname']]['value']=f"{device['devname']}.{device['networkname']}"
 
-            zone_name_config = self.dns_zone_name(networkname, controller_ip, nodelist)
-            zone_ptr_config = self.dns_zone_ptr(networkname, ptr_node_list)
             name_file = {
-                'source': f'/var/tmp/luna2/{networkname}.luna.zone',
+                'source': f'{tmpdir}/{networkname}.luna.zone',
                 'destination': f'/var/named/{networkname}.luna.zone'
             }
             ptr_file = {
-                'source': f'/var/tmp/luna2/{rev_ip}.luna.zone',
+                'source': f'{tmpdir}/{rev_ip}.luna.zone',
                 'destination': f'/var/named/{rev_ip}.luna.zone'
             }
             files.append(name_file)
             files.append(ptr_file)
+
+            # we create the zone files with zone info like addresses
             try:
-                with open(name_file['source'], 'w', encoding='utf-8') as filename:
-                    filename.write(zone_name_config)
-                with open(ptr_file['source'], 'w', encoding='utf-8') as fileptr:
-                    fileptr.write(zone_ptr_config)
-                try:
-                    zone_cmd = ['named-checkzone', f'luna.{networkname}', name_file['source']]
-                    validate_zone_name = subprocess.run(zone_cmd, check = True)
-                    if validate_zone_name.returncode:
-                        validate = False
-                        self.logger.error(f'DNS zone file: {name_file["source"]} containing errors.')
-                except Exception as exp:
-                    self.logger.error(f'DNS zone file: {name_file["source"]} containing errors.')
-                try:
-                    ptr_cmd = ['named-checkzone', f'luna.{networkname}', ptr_file['source']]
-                    validate_ptr_name = subprocess.run(ptr_cmd, check = True)
-                    if validate_ptr_name.returncode:
-                        validate = False
-                        self.logger.error(f'DNS zone file: {ptr_file["source"]} containing errors.')
-                except:
-                    self.logger.error(f'DNS zone file: {ptr_file["source"]} containing errors.')
+                dns_zone_template = env.get_template(template_dns_zone)
+                for zone in [networkname,rev_ip]:
+                    dns_zone_config = dns_zone_template.render(RECORDS=Nrecords[zone],
+                                                               AUTHORITATIVE_SERVER=f"controller.{networkname}",
+                                                               SERIAL=unix_time)
+                    with open(f'{tmpdir}/{zone}.luna.zone', 'w', encoding='utf-8') as filename:
+                        filename.write(dns_zone_config)
+                    try:
+                        zone_cmd = ['named-checkzone', f'luna.{zone}', name_file['source']]
+                        validate_zone_name = subprocess.run(zone_cmd, check = True)
+                        if validate_zone_name.returncode:
+                            validate = False
+                            self.logger.error(f'DNS zone file: {tmpdir}/{zone}.luna.zone containing errors.')
+                    except Exception as exp:
+                        self.logger.error(f'DNS zone file: {tmpdir}/{zone}.luna.zone containing errors. {exp}')
             except Exception as exp:
                 self.logger.error(f"Uh oh... {exp}")
 
-        config = self.dns_config(forwarder,network)
-        dns_file = {'source': '/var/tmp/luna2/named.conf', 'destination': '/etc/named.conf'}
-        try:
-            files.append(dns_file)
-            with open(dns_file["source"], 'w', encoding='utf-8') as dns:
-                dns.write(config)
-            dns_zone_file = {
-                'source': '/var/tmp/luna2/named.luna.zones',
-#                'destination': '/trinity/local/etc/named.luna.zones'
+        # we create the actual /etc/named.conf and /etc/named.luna.zones
+        managed_keys="/trinity/local/var/lib/named/dynamic"
+        if not os.path.exists(managed_keys):
+            managed_keys=None
+        dns_conf_template = env.get_template(template_dns_conf)
+        dns_conf_config = dns_conf_template.render(ALLOWED_QUERY=Nallowed,FORWARDERS=forwarder,MANAGED_KEYS=managed_keys)
+        dns_zones_conf_template = env.get_template(template_dns_zones_conf)
+        dns_zones_conf_config = dns_zones_conf_template.render(ZONES=Nzones)
+
+        dns_file = {'source': f'{tmpdir}/named.conf', 'destination': '/etc/named.conf'}
+        files.append(dns_file)
+        dns_zone_file = {
+                'source': f'{tmpdir}/named.luna.zones',
                 'destination': '/etc/named.luna.zones'
-            }
-            files.append(dns_zone_file)
+        }
+        files.append(dns_zone_file)
+        try:
+            with open(dns_file["source"], 'w', encoding='utf-8') as dns:
+                dns.write(dns_conf_config)
             with open(dns_zone_file["source"], 'w', encoding='utf-8') as dns_zone:
-                dns_zone.write(zone_config)
-#            self.logger.info(f'DNS files : {files}')
+                dns_zone.write(dns_zones_conf_config)
             if validate:
                 if not os.path.exists('/var/named'):
                     os.makedirs('/var/named')
@@ -362,191 +416,7 @@ class Config(object):
         return validate
 
 
-    def dns_config(self, forwarder=None, network=None):
-        """
-        This method prepare the dns configuration
-        with forwarder IP's
-        """
-        caching=""
-        # -------------
-        if forwarder:
-            forwarders = """
-        // BEGIN forwarders
-        forwarders {
-            """
-            for ip in forwarder:
-                forwarders += f"\n\t\t{ip};"
-            forwarders += """
-        };
-        // END forwarders
-            """
-        # -------------
-        else:
-            forwarders=''
-            caching = """
-        zone "." IN {
-                type hint;
-                file "named.ca";
-        };
-            """
-        # -------------
-        managed_keys=''
-        if os.path.exists("/trinity/local/var/lib/named/dynamic"):
-            managed_keys="managed-keys-directory \"/trinity/local/var/lib/named/dynamic\";"
-        # -------------
-        allow="any;"
-        if network:
-            allow="127.0.0.0/8; "
-            for ip in network:
-                allow+=ip+"; "
-
-        config = f"""
-//
-// named.conf
-//
-// Provided by Red Hat bind package to configure the ISC BIND named(8) DNS
-// server as a caching only nameserver (as a localhost DNS resolver only).
-//
-// See /usr/share/doc/bind*/sample/ for example named configuration files.
-//
-
-options {{
-        listen-on port 53 {{ any; }};
-        listen-on-v6 port 53 {{ any; }};
-        /* BELOW NEEDS REVISION IN utils/config.py !!! */
-        /*directory       "/trinity/local/var/lib/named";
-        dump-file       "/trinity/local/var/lib/named/data/cache_dump.db";
-        statistics-file "/trinity/local/var/lib/named/data/named_stats.txt";
-        memstatistics-file "/trinity/local/var/lib/named/data/named_mem_stats.txt";
-        secroots-file   "/trinity/local/var/lib/named/data/named.secroots";
-        recursing-file  "/trinity/local/var/lib/named/data/named.recursing";*/
-        directory       "/var/named";
-        allow-query     {{ {allow} }};
-
-        /*
-         - If you are building an AUTHORITATIVE DNS server, do NOT enable recursion.
-         - If you are building a RECURSIVE (caching) DNS server, you need to enable
-           recursion.
-         - If your recursive DNS server has a public IP address, you MUST enable access
-           control to limit queries to your legitimate users. Failing to do so will
-           cause your server to become part of large scale DNS amplification
-           attacks. Implementing BCP38 within your network would greatly
-           reduce such attack surface
-        */
-        recursion yes;
-        {forwarders}
-
-        dnssec-enable no;
-        dnssec-validation no;
-
-        {managed_keys}
-
-        pid-file "/run/named/named.pid";
-        session-keyfile "/run/named/session.key";
-
-        /* https://fedoraproject.org/wiki/Changes/CryptoPolicy */
-        include "/etc/crypto-policies/back-ends/bind.config";
-}};
-
-logging {{
-        channel default_debug {{
-                file "data/named.run";
-                severity dynamic;
-        }};
-}};
-
-{caching}
-
-include "/etc/named.rfc1912.zones";
-include "/etc/named.root.key";
-
-include "/etc/named.luna.zones";
-/*include "/trinity/local/etc/named.luna.zones";*/
-
-"""
-        return config
-
-
-    def dns_zone_config(self, networkname=None, reverse_ip=None):
-        """
-        This method will generate the configuration for zone file
-        """
-        zone_config = f"""
-zone "{networkname}" IN {{
-    type master;
-    file "/var/named/{networkname}.luna.zone";
-    allow-update {{ none; }};
-    allow-transfer {{none; }};
-}};
-zone "{reverse_ip}" IN {{
-    type master;
-    file "/var/named/{reverse_ip}.luna.zone";
-    allow-update {{ none; }};
-    allow-transfer {{none; }};
-}};
-
-"""
-        return zone_config
-
-
-    def dns_zone_name(self, networkname=None, controller_ip=None, nodelist=None):
-        """
-        This method will generate the DNS network
-        name zone file.
-        """
-        unix_time = int(time())
-        if nodelist:
-            nodelist = '\n'.join(nodelist)
-        else:
-            nodelist = ''
-        zone_name_config = f"""
-$TTL 604800
-@ IN SOA                controller.{networkname}. root.controller.{networkname}. ( ; domain email
-                        {unix_time}        ; serial number
-                        86400       ; refresh
-                        14400       ; retry
-                        3628800       ; expire
-                        604800 )     ; min TTL
-
-                        IN NS controller.{networkname}.
-"""
-        if controller_ip is not None:
-            zone_name_config += f"""
-controller              IN A {controller_ip}
-"""
-        zone_name_config += f"""
-{nodelist}
-
-"""
-        return zone_name_config
-
-
-    def dns_zone_ptr(self, networkname=None, nodelist=None):
-        """
-        This method will generate the DNS network name zone file.
-        """
-        unix_time = int(time())
-        if nodelist:
-            nodelist = '\n'.join(nodelist)
-        else:
-            nodelist = ''
-        zone_name_config = f"""
-$TTL 604800
-@ IN SOA                controller.{networkname}. root.controller.{networkname}. ( ; domain email
-                        {unix_time}        ; serial number
-                        86400       ; refresh
-                        14400       ; retry
-                        3628800       ; expire
-                        604800 )     ; min TTL
-
-                        IN NS controller.{networkname}.
-
-
-{nodelist}
-
-"""
-        return zone_name_config
-
+    # ----------------------------------------------------------------------------------------------
 
     def device_ipaddress_config(self, device_id=None, device=None, ipaddress=None, network=None):
         """

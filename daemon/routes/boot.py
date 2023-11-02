@@ -145,7 +145,8 @@ def boot_search_mac(macaddress=None):
             NODE_NAME           = data['nodename'],
             NODE_HOSTNAME       = data['nodehostname'],
             NODE_SERVICE        = data['nodeservice'],
-            NODE_IPADDRESS      = data['nodeip']
+            NODE_IPADDRESS      = data['nodeip'],
+            NETWORK_GATEWAY     = data['gateway']
         ), access_code
 
 
@@ -179,7 +180,8 @@ def boot_manual_group(groupname=None, macaddress=None):
         NODE_NAME           = data['nodename'],
         NODE_HOSTNAME       = data['nodehostname'],
         NODE_SERVICE        = data['nodeservice'],
-        NODE_IPADDRESS      = data['nodeip']
+        NODE_IPADDRESS      = data['nodeip'],
+        NETWORK_GATEWAY     = data['gateway']
     ), access_code
 
 
@@ -213,7 +215,8 @@ def boot_manual_hostname(hostname=None, macaddress=None):
         NODE_NAME           = data['nodename'],
         NODE_HOSTNAME       = data['nodehostname'],
         NODE_SERVICE        = data['nodeservice'],
-        NODE_IPADDRESS      = data['nodeip']
+        NODE_IPADDRESS      = data['nodeip'],
+        NETWORK_GATEWAY     = data['gateway']
     ), access_code
 
 

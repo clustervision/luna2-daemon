@@ -321,8 +321,7 @@ class Boot():
             # ------------------ "don't nag give me the next node" detection ---------------------------
             if not data['nodeid']:
                 createnode_ondemand, nextnode_discover = None, None
-                where = f" WHERE id='{controller[0]['clusterid']}'"
-                cluster = Database().get_record(None, 'cluster', where)
+                cluster = Database().get_record(None, 'cluster')
                 if cluster:
                     if 'createnode_ondemand' in cluster[0]:
                         createnode_ondemand=Helper().bool_revert(cluster[0]['createnode_ondemand'])

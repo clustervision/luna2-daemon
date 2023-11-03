@@ -452,7 +452,7 @@ class Boot():
             return False, 'Empty'
         if mac:
             mac = mac.lower()
-        network, createnode_ondemand = None, None, True # used below
+        network, createnode_ondemand = None, None # used below
 
         # get controller and cluster info
         controller = Database().get_record_join(

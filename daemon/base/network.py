@@ -415,7 +415,6 @@ class Network():
                     device_name = ""
                 response = {'config': {'network': {name: {'taken': taken} } } }
                 status=True
-                self.logger.info(response)
             else:
                 response = 'All IP Address are free on Network {name}. None is Taken.'
                 status=False

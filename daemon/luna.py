@@ -142,7 +142,7 @@ def all_routes():
         route = f"http://{request.environ['HTTP_HOST']}{rule}"
         if "static" != str(rule.endpoint):
             routes.append({"route": route, "function": str(rule.endpoint), "method": method})
-    LOGGER.info(routes)
+    LOGGER.debug(routes)
     return routes, 200
 
 

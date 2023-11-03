@@ -162,6 +162,13 @@ class Network():
                 status=False
                 ret_msg = 'Invalid request: Not enough details provided. network/subnet in CIDR notation expected'
                 return status, ret_msg
+
+            claship = Database().get_record(None, 'network', f" WHERE (`name`!='{name}' AND `name`!='{data['name']}') AND `network`='{data['network']}' AND `subnet`='{data['subnet']}'")
+            if claship:
+                status=False
+                ret_msg = f"Invalid request: Clashing network/subnet configuration with existing network {claship[0]['name']}"
+                return status, ret_msg
+
             if 'zone' in data:
                 if (data['zone'] != "external") and (data['zone'] != "internal"):
                     status=False

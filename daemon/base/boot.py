@@ -452,16 +452,16 @@ class Boot():
             return False, 'Empty'
         if mac:
             mac = mac.lower()
-        networkname, network, createnode_ondemand = None, None, True # used below
+        network, createnode_ondemand = None, None, True # used below
 
         # get controller and cluster info
         controller = Database().get_record_join(
-            ['controller.*', 'ipaddress.ipaddress', 'network.name as networkname'],
+            ['controller.*', 'ipaddress.ipaddress', 'network.name as network'],
             ['ipaddress.tablerefid=controller.id', 'network.id=ipaddress.networkid'],
             ['tableref="controller"', 'controller.hostname="controller"']
         )
         if controller:
-            data['network'] = controller[0]['networkname']
+            data['network'] = controller[0]['network']
             data['ipaddress'] = controller[0]['ipaddress']
             data['serverport'] = controller[0]['serverport']
             data['webserver_port'] = data['serverport']
@@ -470,8 +470,6 @@ class Boot():
                     data['webserver_port'] = CONSTANT['WEBSERVER']['PORT']
                 if 'PROTOCOL' in CONSTANT['WEBSERVER']:
                     data['webserver_protocol'] = CONSTANT['WEBSERVER']['PROTOCOL']
-            if 'networkname' in controller[0]:
-                networkname = controller[0]['networkname']
             where = f" WHERE id='{controller[0]['clusterid']}'"
             cluster = Database().get_record(None, 'cluster', where)
             if cluster and 'createnode_ondemand' in cluster[0]:
@@ -512,17 +510,15 @@ class Boot():
 
         # first we generate a list of taken ips. we might need it later
         ips = []
-        if networkname:
+        if data['network']:
             network = Database().get_record_join(
                 ['ipaddress.ipaddress', 'network.network', 'network.subnet'],
                 ['network.id=ipaddress.networkid'],
-                [f"network.name='{networkname}'"]
+                [f"network.name='{data['network']}'"]
             )
             if network:
                 for network_ip in network:
                     ips.append(network_ip['ipaddress'])
-        else:
-            return False, "we do not have enough network information"
 
         hostname = None # we use it further down below.
         checked = []
@@ -575,8 +571,6 @@ class Boot():
                         hostname = new_nodename
                         nodeid = Database().id_by_name('node', new_nodename)
                         ret, _ = Config().node_interface_config(nodeid, provision_interface, mac)
-                
-#                Service().queue('dns', 'restart')
         else:
             # we already have some nodes in the list. let's see if we can re-use
             for node in node_list:
@@ -591,30 +585,35 @@ class Boot():
                             mac
                         )
                         break
-                    elif not 'interface' in node:
-                        # node is there but no interface. we'll take it!
-                        hostname = node['name']
-                        # we need to pick the current network in a smart way. we assume
-                        # the default network where controller is in as well
-                        avail_ip = Helper().get_available_ip(
-                            network[0]['network'],
-                            network[0]['subnet'],
-                            ips
-                        )
-                        result, _ = Config().node_interface_config(
-                            node['id'],
-                            provision_interface,
-                            mac
-                        )
-                        if result:
-                            result, _ = Config().node_interface_ipaddress_config(
-                                node['id'],
-                                provision_interface,
-                                avail_ip,
-                                networkname
-                            )
-                            Service().queue('dns','restart')
-                        break
+
+#                    Below section commented out as it not really up to use to create interface
+#                    for nodes if they are not configured. We better just use what's valid and ok
+#                    We could also ditch list2 from above if we want - Antoine
+#
+#                    elif not 'interface' in node and data['network']:
+#                        # node is there but no interface. we'll take it!
+#                        hostname = node['name']
+#                        # we need to pick the current network in a smart way. we assume
+#                        # the default network where controller is in as well
+#                        avail_ip = Helper().get_available_ip(
+#                            network[0]['network'],
+#                            network[0]['subnet'],
+#                            ips
+#                        )
+#                        result, _ = Config().node_interface_config(
+#                            node['id'],
+#                            provision_interface,
+#                            mac
+#                        )
+#                        if result:
+#                            result, _ = Config().node_interface_ipaddress_config(
+#                                node['id'],
+#                                provision_interface,
+#                                avail_ip,
+#                                data['network']
+#                            )
+#                            Service().queue('dns','restart')
+#                        break
 
         if not hostname:
             # we bail out because we could not re-use a node or create one.

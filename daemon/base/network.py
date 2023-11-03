@@ -163,10 +163,12 @@ class Network():
                 ret_msg = 'Invalid request: Not enough details provided. network/subnet in CIDR notation expected'
                 return status, ret_msg
 
-            claship = Database().get_record(None, 'network', f" WHERE (`name`!='{name}' AND `name`!='{data['name']}') AND `network`='{data['network']}' AND `subnet`='{data['subnet']}'")
+            where = f" WHERE (`name`!='{name}' AND `name`!='{data['name']}')"
+            where += f" AND `network`='{data['network']}' AND `subnet`='{data['subnet']}'"
+            claship = Database().get_record(None, 'network', where)
             if claship:
                 status=False
-                ret_msg = f"Invalid request: Clashing network/subnet configuration with existing network {claship[0]['name']}"
+                ret_msg = f"Invalid request: Clashing network/subnet with existing network {claship[0]['name']}"
                 return status, ret_msg
 
             if 'zone' in data:

@@ -297,16 +297,25 @@ class Network():
         status=False
         network = Database().get_record(None, 'network', f' WHERE `name` = "{name}"')
         if network:
-            Database().delete_row('network', [{"column": "name", "value": name}])
-            data = {}
-            data['shared'] = ""
-            row = Helper().make_rows(data)
-            where = [{"column": "shared", "value": name}]
-            Database().update('network', row, where)
-            Service().queue('dns','restart')
-            Service().queue('dhcp','restart')
-            response = 'Network removed'
-            status=True
+            controller = Database().get_record_join(
+                ['controller.*'],
+                ['ipaddress.tablerefid=controller.id','network.id=ipaddress.networkid'],
+                ['tableref="controller"','controller.hostname="controller"',f"network.name='{name}'"]
+            )
+            if not controller:
+                Database().delete_row('network', [{"column": "name", "value": name}])
+                data = {}
+                data['shared'] = ""
+                row = Helper().make_rows(data)
+                where = [{"column": "shared", "value": name}]
+                Database().update('network', row, where)
+                Service().queue('dns','restart')
+                Service().queue('dhcp','restart')
+                response = 'Network removed'
+                status=True
+            else:
+                response = f'Network {name} cannot be removed because it is in use by controller'
+                status=False
         else:
             response = f'Network {name} not present in database'
             status=False

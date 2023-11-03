@@ -118,6 +118,7 @@ class Boot():
                     groups.append(group['name'])
             status=True
         else:
+            self.logger.error(f"configuration error: No controller available or missing network for controller")
             environment = jinja2.Environment()
             template = environment.from_string('No Controller is available.')
             ipaddress, serverport = '', ''
@@ -167,6 +168,7 @@ class Boot():
                     webserver_protocol = CONSTANT['WEBSERVER']['PROTOCOL']
             status=True
         else:
+            self.logger.error(f"configuration error: No controller available or missing network for controller")
             environment = jinja2.Environment()
             template = environment.from_string('No Controller is available.')
             ipaddress, serverport = '', ''
@@ -204,6 +206,7 @@ class Boot():
             serverport = controller[0]['serverport']
             status=True
         else:
+            self.logger.error(f"configuration error: No controller available or missing network for controller")
             environment = jinja2.Environment()
             template = environment.from_string('No Controller is available.')
             ipaddress, serverport = '', ''
@@ -259,6 +262,8 @@ class Boot():
                     data['webserver_port'] = CONSTANT['WEBSERVER']['PORT']
                 if 'PROTOCOL' in CONSTANT['WEBSERVER']:
                     data['webserver_protocol'] = CONSTANT['WEBSERVER']['PROTOCOL']
+        else:
+            self.logger.warning(f"possible configuration error: No controller available or missing network for controller")
         nodeinterface = Database().get_record_join(
             ['nodeinterface.nodeid', 'nodeinterface.interface', 'ipaddress.ipaddress',
             'network.name as network', 'network.network as networkip', 'network.subnet', 'network.gateway'],
@@ -456,20 +461,6 @@ class Boot():
             ['ipaddress.tablerefid=controller.id', 'network.id=ipaddress.networkid'],
             ['tableref="controller"', 'controller.hostname="controller"']
         )
-#       The below section tries to work around a non-preferred situation where someone
-#       creates a new network, removes the old and does not move the controller in this one.
-#       The controller is then in faxct 'floating'. It should not exist ...  - Antoine
-#        if not controller:
-#            # e.g. when the controller has some other IP address that is reachable by 
-#            # a node but not configured in luna.
-#            controller = Database().get_record_join(
-#                ['controller.*', 'ipaddress.ipaddress'],
-#                ['ipaddress.tablerefid=controller.id'],
-#                ['tableref="controller"', 'controller.hostname="controller"']
-#            )
-#            altnetwork = Database().get_record(None, 'network', f"WHERE dhcp='1' or dhcp='true'")
-#            if controller[0] and altnetwork:
-#                controller[0]['networkname']=altnetwork[0]['name']
         if controller:
             data['network'] = controller[0]['networkname']
             data['ipaddress'] = controller[0]['ipaddress']
@@ -486,6 +477,8 @@ class Boot():
             cluster = Database().get_record(None, 'cluster', where)
             if cluster and 'createnode_ondemand' in cluster[0]:
                 createnode_ondemand=Helper().bool_revert(cluster[0]['createnode_ondemand'])
+        else:
+            self.logger.warning(f"possible configuration error: No controller available or missing network for controller")
         # clear mac if it already exists. let's check
         nodeinterface_check = Database().get_record_join(
             ['nodeinterface.nodeid as nodeid', 'nodeinterface.interface'],
@@ -762,6 +755,8 @@ class Boot():
                     data['webserver_port'] = CONSTANT['WEBSERVER']['PORT']
                 if 'PROTOCOL' in CONSTANT['WEBSERVER']:
                     data['webserver_protocol'] = CONSTANT['WEBSERVER']['PROTOCOL']
+        else:
+            self.logger.warning(f"possible configuration error: No controller available or missing network for controller")
 
         # we probably have to cut the fqdn off of hostname?
         node = Database().get_record_join(
@@ -931,6 +926,8 @@ class Boot():
                     data['webserver_port'] = CONSTANT['WEBSERVER']['PORT']
                 if 'PROTOCOL' in CONSTANT['WEBSERVER']:
                     data['webserver_protocol'] = CONSTANT['WEBSERVER']['PROTOCOL']
+        else:
+            self.logger.warning(f"possible configuration error: No controller available or missing network for controller")
         
         items = {
             'setupbmc': False,

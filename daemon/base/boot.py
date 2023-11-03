@@ -784,10 +784,10 @@ class Boot():
                     # MAC and assign this mac to us.
                     # note to other developers: We hard assign a node's IP address
                     # (hard config inside image/node) we must be careful - Antoine
-                    message = f"Warning: node with id {nodeinterface_check[0]['nodeid']} "
+                    message = f"Node with id {nodeinterface_check[0]['nodeid']} "
                     message += f"will have its MAC cleared and node {hostname} with "
                     message += f"id {data['nodeid']} will use MAC {mac}"
-                    self.logger.info(message)
+                    self.logger.warning(message)
                     row = [{"column": "macaddress", "value": ""}]
                     where = [
                         {"column": "nodeid", "value": nodeinterface_check[0]['nodeid']},
@@ -803,6 +803,11 @@ class Boot():
                     we_need_dhcpd_restart = True
             else:
                 # we do not have anyone with this mac yet. we can safely move ahead.
+                # BIG NOTE!: This is being done without token! By itself not a threat
+                # but some someone could mess up node/interface configs.
+                # The alternative would be to use IP from dhcp pool and set MAC after
+                # the node has a token. This again will break things where a node is
+                # using dhcp as bootproto. e.g. a manual override inside an image. -Antoine
                 row = [{"column": "macaddress", "value": mac}]
                 where = [
                     {"column": "nodeid", "value": data["nodeid"]},

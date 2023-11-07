@@ -72,23 +72,6 @@ class Housekeeper(object):
                                 action=second
                                 Queue().update_task_status_in_queue(next_id,'in progress')
                                 response, code = Service().luna_service(service, action)
-                            case 'copy_osimage':
-                                remove_from_queue=False
-                                Queue().change_subsystem(next_id,'osimage')
-                                my_next_id = Queue().next_task_in_queue('osimage')
-                                if next_id == my_next_id:
-                                    executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
-                                    executor.submit(OsImage().copy_mother,second,third,request_id)
-                                    executor.shutdown(wait=False)
-                            case 'pack_n_build_osimage':
-                                osimage=second
-                                remove_from_queue=False
-                                Queue().change_subsystem(next_id,'osimage')
-                                my_next_id = Queue().next_task_in_queue('osimage')
-                                if next_id == my_next_id:
-                                    executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
-                                    executor.submit(OsImage().pack_n_tar_mother,osimage,request_id)
-                                    executor.shutdown(wait=False)
                             case 'cleanup_old_file':
                                 Queue().update_task_status_in_queue(next_id,'in progress')
                                 returned=OsImage().cleanup_file(second)

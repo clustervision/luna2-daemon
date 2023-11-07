@@ -68,8 +68,10 @@ class OsImage(object):
             details=Queue().get_task_details(taskid)
             request_id=details['request_id']
             action,node,osimage,nodry,noeof,*_=details['task'].split(':')+[None]+[None]+[None]+[None]
+            runtype='DRY RUN'
             if not nodry:
                 nodry=False
+                runtype='REAL/NODRY RUN'
             nodry = Helper().make_bool(nodry)
 
             if action == "grab_osimage":
@@ -128,7 +130,7 @@ class OsImage(object):
                     image[0]['grab_exclude']=image[0]['grab_exclude'].replace(' ',',')
                     image[0]['grab_exclude']=image[0]['grab_exclude'].replace(',,',',')
                     grab_ex=image[0]['grab_exclude'].split(",")
-                Status().add_message(request_id,"luna",f"grabbing osimage {osimage}")
+                Status().add_message(request_id,"luna",f"grabbing osimage {osimage} [{runtype}]")
                 response=os_grab_plugin().grab(
                                             osimage=osimage,
                                             image_path=image_path,
@@ -464,12 +466,14 @@ class OsImage(object):
             details=Queue().get_task_details(taskid)
             request_id=details['request_id']
             action,dst,osimage,nodry,noeof,*_=details['task'].split(':')+[None]+[None]+[None]
+            runtype='DRY RUN'
             if not nodry:
                 nodry=False
+                runtype='REAL/NODRY RUN'
             nodry = Helper().make_bool(nodry)
 
             if action == "push_osimage_to_node" or action == "push_osimage_to_group":
-                Status().add_message(request_id,"luna",f"pushing osimage {osimage}->{object} {dst}")
+                Status().add_message(request_id,"luna",f"pushing osimage {osimage}->{object} {dst} [{runtype}]")
    
                 # --- let's push
 
@@ -700,9 +704,9 @@ class OsImage(object):
     # ------------------------------------------------------------------- 
     # The mother of all.
 
-    def osimage_mother(self,request_id):
+    def osimage_mother(self,only_request_id=None):
 
-        self.logger.info("osimage_mother called")
+        self.logger.info(f"osimage_mother called with request_id {only_request_id}")
         try:
 
 #            # Below section is already done in config/pack GET call but kept here in case we want to move it back
@@ -724,7 +728,7 @@ class OsImage(object):
 #           a bit of a draw back is that the placeholder tasks has to remain in the queue (so that other similar CLI requests will be ditched)
 #           we clean up the placeholder request as a last task to do. it's like eating its own tail :)  --Antoine
 
-            while next_id := Queue().next_task_in_queue('osimage','queued'):
+            while next_id := Queue().next_task_in_queue('osimage','queued',only_request_id):
                 details=Queue().get_task_details(next_id)
                 request_id=details['request_id']
                 action,first,second,third,*_=details['task'].split(':')+[None]+[None]+[None]
@@ -852,6 +856,7 @@ class OsImage(object):
             except Exception as nexp:
                 self.logger.error(f"osimage_mother has problems during exception handling: {nexp}")
            
+        self.logger.info(f"osimage_mother finished with request_id {only_request_id}")
 
     # ---------------------- child for bulk parallel operations --------------------------------
 

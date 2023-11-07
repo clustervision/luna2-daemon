@@ -98,12 +98,28 @@ class Queue(object):
     def remove_task_from_queue_by_request_id(self,request_id):
         Database().delete_row('queue', [{"column": "request_id", "value": request_id}])
 
-    def next_task_in_queue(self,subsystem,filter=None):
+    def next_task_in_queue(self,subsystem,status=None,request_id=None):
         where=None
-        if filter:
-            where=f" WHERE subsystem='{subsystem}' AND status='{filter}' AND created>datetime('now','-15 minute') AND created<=datetime('now') ORDER BY id ASC LIMIT 1"
-        else:
-            where=f" WHERE subsystem='{subsystem}' AND created>datetime('now','-15 minute') AND created<=datetime('now') ORDER BY id ASC LIMIT 1"
+        status_query, request_id_query = "", ""
+        if status:
+            status_query=f"status='{status}' AND"
+        if request_id:
+            request_id_query=f"request_id='{request_id}' AND"
+        where=f" WHERE subsystem='{subsystem}' AND {status_query} {request_id_query} created>datetime('now','-20 minute') AND created<=datetime('now') ORDER BY id ASC LIMIT 1"
+        task = Database().get_record(None , 'queue', where)
+        if task:
+            return task[0]['id']
+        return False
+
+    def next_parallel_task_in_queue(self,subsystem,subitem,status=None,request_id=None):
+        # A wee bit ugly since we now let queue have some knowledge of a task, but it improves the user experience - Antoine
+        where=None
+        status_query, request_id_query = "", ""
+        if status:
+            status_query=f"status='{status}' AND"
+        if request_id:
+            request_id_query=f"request_id='{request_id}' AND"
+        where=f" WHERE subsystem='{subsystem}' AND {status_query} {request_id_query} task LIKE '%:{subitem}%' AND created>datetime('now','-20 minute') AND created<=datetime('now') ORDER BY id ASC LIMIT 1"
         task = Database().get_record(None , 'queue', where)
         if task:
             return task[0]['id']

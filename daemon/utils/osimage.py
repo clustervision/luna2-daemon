@@ -68,8 +68,10 @@ class OsImage(object):
             details=Queue().get_task_details(taskid)
             request_id=details['request_id']
             action,node,osimage,nodry,noeof,*_=details['task'].split(':')+[None]+[None]+[None]+[None]
+            runtype='DRY RUN'
             if not nodry:
                 nodry=False
+                runtype='REAL/NODRY RUN'
             nodry = Helper().make_bool(nodry)
 
             if action == "grab_osimage":
@@ -128,7 +130,7 @@ class OsImage(object):
                     image[0]['grab_exclude']=image[0]['grab_exclude'].replace(' ',',')
                     image[0]['grab_exclude']=image[0]['grab_exclude'].replace(',,',',')
                     grab_ex=image[0]['grab_exclude'].split(",")
-                Status().add_message(request_id,"luna",f"grabbing osimage {osimage}")
+                Status().add_message(request_id,"luna",f"grabbing osimage {osimage} [{runtype}]")
                 response=os_grab_plugin().grab(
                                             osimage=osimage,
                                             image_path=image_path,
@@ -464,12 +466,14 @@ class OsImage(object):
             details=Queue().get_task_details(taskid)
             request_id=details['request_id']
             action,dst,osimage,nodry,noeof,*_=details['task'].split(':')+[None]+[None]+[None]
+            runtype='DRY RUN'
             if not nodry:
                 nodry=False
+                runtype='REAL/NODRY RUN'
             nodry = Helper().make_bool(nodry)
 
             if action == "push_osimage_to_node" or action == "push_osimage_to_group":
-                Status().add_message(request_id,"luna",f"pushing osimage {osimage}->{object} {dst}")
+                Status().add_message(request_id,"luna",f"pushing osimage {osimage}->{object} {dst} [{runtype}]")
    
                 # --- let's push
 

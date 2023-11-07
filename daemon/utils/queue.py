@@ -102,22 +102,24 @@ class Queue(object):
         where=None
         filter_query, request_id_query = "", ""
         if filter:
-            filter_query="status='{filter}' AND"
+            filter_query=f"status='{filter}' AND"
         if request_id:
-            request_id_query="request_id='{request_id}' AND"
+            request_id_query=f"request_id='{request_id}' AND"
         where=f" WHERE subsystem='{subsystem}' AND {filter_query} {request_id_query} created>datetime('now','-15 minute') AND created<=datetime('now') ORDER BY id ASC LIMIT 1"
         task = Database().get_record(None , 'queue', where)
         if task:
             return task[0]['id']
         return False
 
-    def next_parallel_task_in_queue(self,subsystem,subitem,filter=None):
+    def next_parallel_task_in_queue(self,subsystem,subitem,filter=None,request_id=None):
         # A wee bit ugly since we now let queue have some knowledge of a task, but it improves the user experience - Antoine
         where=None
+        filter_query, request_id_query = "", ""
         if filter:
-            where=f" WHERE subsystem='{subsystem}' AND task LIKE '%:{subitem}%' AND status='{filter}' AND created>datetime('now','-15 minute') AND created<=datetime('now') ORDER BY id ASC LIMIT 1"
-        else:
-            where=f" WHERE subsystem='{subsystem}' AND task LIKE '%:{subitem}%' AND created>datetime('now','-15 minute') AND created<=datetime('now') ORDER BY id ASC LIMIT 1"
+            filter_query=f"status='{filter}' AND"
+        if request_id:
+            request_id_query=f"request_id='{request_id}' AND"
+        where=f" WHERE subsystem='{subsystem}' AND {filter_query} {request_id_query} task LIKE '%:{subitem}%' AND created>datetime('now','-15 minute') AND created<=datetime('now') ORDER BY id ASC LIMIT 1"
         task = Database().get_record(None , 'queue', where)
         if task:
             return task[0]['id']

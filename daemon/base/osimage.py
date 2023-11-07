@@ -246,6 +246,12 @@ class OSImage():
                 if 'newosimage' in data:
                     status=False
                     return status, f'{name} not present in database for rename'
+                if 'grab_filesystems' not in data:
+                    data['grab_filesystems'] = "/, /boot"
+                if 'grab_exclude' not in data:
+                    data['grab_exclude'] = "/proc/*, /sys/*, /dev/*, /tmp/*, /var/log/*"
+                if 'kernelmodules' not in data:
+                    data['kernelmodules'] = "ipmi_devintf, ipmi_si, ipmi_msghandler"
                 create = True
 
             if 'tag' in data:

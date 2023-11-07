@@ -113,9 +113,9 @@ class Queue(object):
         # A wee bit ugly since we now let queue have some knowledge of a task, but it improves the user experience - Antoine
         where=None
         if filter:
-            where=f" WHERE subsystem='{subsystem}' AND task LIKE '%:{subitem}:%' AND status='{filter}' AND created>datetime('now','-15 minute') AND created<=datetime('now') ORDER BY id ASC LIMIT 1"
+            where=f" WHERE subsystem='{subsystem}' AND task LIKE '%:{subitem}%' AND status='{filter}' AND created>datetime('now','-15 minute') AND created<=datetime('now') ORDER BY id ASC LIMIT 1"
         else:
-            where=f" WHERE subsystem='{subsystem}' AND task LIKE '%:{subitem}:%' AND created>datetime('now','-15 minute') AND created<=datetime('now') ORDER BY id ASC LIMIT 1"
+            where=f" WHERE subsystem='{subsystem}' AND task LIKE '%:{subitem}%' AND created>datetime('now','-15 minute') AND created<=datetime('now') ORDER BY id ASC LIMIT 1"
         task = Database().get_record(None , 'queue', where)
         if task:
             return task[0]['id']

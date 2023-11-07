@@ -706,7 +706,7 @@ class OsImage(object):
 
     def osimage_mother(self,request_id=None):
 
-        self.logger.info("osimage_mother called")
+        self.logger.info(f"osimage_mother called with request_id {request_id}")
         try:
 
 #            # Below section is already done in config/pack GET call but kept here in case we want to move it back

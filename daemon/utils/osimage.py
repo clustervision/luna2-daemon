@@ -704,9 +704,9 @@ class OsImage(object):
     # ------------------------------------------------------------------- 
     # The mother of all.
 
-    def osimage_mother(self,request_id=None):
+    def osimage_mother(self,only_request_id=None):
 
-        self.logger.info(f"osimage_mother called with request_id {request_id}")
+        self.logger.info(f"osimage_mother called with request_id {only_request_id}")
         try:
 
 #            # Below section is already done in config/pack GET call but kept here in case we want to move it back
@@ -728,7 +728,7 @@ class OsImage(object):
 #           a bit of a draw back is that the placeholder tasks has to remain in the queue (so that other similar CLI requests will be ditched)
 #           we clean up the placeholder request as a last task to do. it's like eating its own tail :)  --Antoine
 
-            while next_id := Queue().next_task_in_queue('osimage','queued',request_id):
+            while next_id := Queue().next_task_in_queue('osimage','queued',only_request_id):
                 details=Queue().get_task_details(next_id)
                 request_id=details['request_id']
                 action,first,second,third,*_=details['task'].split(':')+[None]+[None]+[None]
@@ -856,6 +856,7 @@ class OsImage(object):
             except Exception as nexp:
                 self.logger.error(f"osimage_mother has problems during exception handling: {nexp}")
            
+        self.logger.info(f"osimage_mother finished with request_id {only_request_id}")
 
     # ---------------------- child for bulk parallel operations --------------------------------
 

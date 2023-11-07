@@ -499,7 +499,7 @@ class OSImage():
                     return status, ret_msg
 
             request_id = str(time()) + str(randint(1001, 9999)) + str(getpid())
-            task_id, text = None,None
+            task_id, text = None, None
             if (bare is not False) or (nodry is False):
                 task = f'grab_osimage:{node}:{osimage}:{nodry}'
                 task_id, text = Queue().add_task_to_queue(task, 'osimage', request_id)
@@ -521,7 +521,7 @@ class OSImage():
             message = f"queued grab osimage {osimage} with queue_id {task_id}"
             Status().add_message(request_id, "luna", message)
 
-            next_id = Queue().next_task_in_queue('osimage')
+            next_id = Queue().next_parallel_task_in_queue('osimage',osimage)
             if task_id == next_id:
                 executor = ThreadPoolExecutor(max_workers=1)
                 executor.submit(OsImager().osimage_mother, request_id)
@@ -612,7 +612,7 @@ class OSImage():
             message = f"queued push osimage {osimage} with queue_id {task_id}"
             Status().add_message(request_id, "luna", message)
 
-            next_id = Queue().next_task_in_queue('osimage')
+            next_id = Queue().next_parallel_task_in_queue('osimage',osimage)
             if task_id == next_id:
                 executor = ThreadPoolExecutor(max_workers=1)
                 executor.submit(OsImager().osimage_mother, request_id)
@@ -664,7 +664,7 @@ class OSImage():
         message = f"queued pack osimage {name} with queue_id {queue_id}"
         Status().add_message(request_id, "luna", message)
 
-        next_id = Queue().next_task_in_queue('osimage')
+        next_id = Queue().next_parallel_task_in_queue('osimage',name)
         if queue_id == next_id:
             executor = ThreadPoolExecutor(max_workers=1)
             executor.submit(OsImager().osimage_mother,request_id)
@@ -730,7 +730,7 @@ class OSImage():
                     self.logger.info(f"config_osimage_kernel added task to queue: {task_id}")
                     message = f"queued pack osimage {name} with queue_id {task_id}"
                     Status().add_message(request_id, "luna", message)
-                    next_id = Queue().next_task_in_queue('osimage')
+                    next_id = Queue().next_parallel_task_in_queue('osimage',name)
                     if task_id == next_id:
                         executor = ThreadPoolExecutor(max_workers=1)
                         executor.submit(OsImager().osimage_mother, request_id)

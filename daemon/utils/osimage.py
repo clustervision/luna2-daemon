@@ -704,7 +704,7 @@ class OsImage(object):
     # ------------------------------------------------------------------- 
     # The mother of all.
 
-    def osimage_mother(self,request_id):
+    def osimage_mother(self,request_id=None):
 
         self.logger.info("osimage_mother called")
         try:
@@ -728,7 +728,7 @@ class OsImage(object):
 #           a bit of a draw back is that the placeholder tasks has to remain in the queue (so that other similar CLI requests will be ditched)
 #           we clean up the placeholder request as a last task to do. it's like eating its own tail :)  --Antoine
 
-            while next_id := Queue().next_task_in_queue('osimage','queued'):
+            while next_id := Queue().next_task_in_queue('osimage','queued',request_id):
                 details=Queue().get_task_details(next_id)
                 request_id=details['request_id']
                 action,first,second,third,*_=details['task'].split(':')+[None]+[None]+[None]

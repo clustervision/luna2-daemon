@@ -98,12 +98,14 @@ class Queue(object):
     def remove_task_from_queue_by_request_id(self,request_id):
         Database().delete_row('queue', [{"column": "request_id", "value": request_id}])
 
-    def next_task_in_queue(self,subsystem,filter=None):
+    def next_task_in_queue(self,subsystem,filter=None,request_id=None):
         where=None
+        filter_query, request_id_query = "", ""
         if filter:
-            where=f" WHERE subsystem='{subsystem}' AND status='{filter}' AND created>datetime('now','-15 minute') AND created<=datetime('now') ORDER BY id ASC LIMIT 1"
-        else:
-            where=f" WHERE subsystem='{subsystem}' AND created>datetime('now','-15 minute') AND created<=datetime('now') ORDER BY id ASC LIMIT 1"
+            filter_query="status='{filter}' AND"
+        if request_id:
+            request_id_query="request_id='{request_id}' AND"
+        where=f" WHERE subsystem='{subsystem}' AND {filter_query} {request_id_query} created>datetime('now','-15 minute') AND created<=datetime('now') ORDER BY id ASC LIMIT 1"
         task = Database().get_record(None , 'queue', where)
         if task:
             return task[0]['id']

@@ -389,7 +389,7 @@ class OSImage():
                 next_id = Queue().next_task_in_queue('osimage')
                 if task_id == next_id:
                     executor = ThreadPoolExecutor(max_workers=1)
-                    executor.submit(OsImager().osimage_mother, request_id)
+                    executor.submit(OsImager().osimage_mother)
                     executor.shutdown(wait=False)
                 # we should check after a few seconds if there is a status update for us.
                 # if so, that means mother is taking care of things
@@ -521,14 +521,22 @@ class OSImage():
             message = f"queued grab osimage {osimage} with queue_id {task_id}"
             Status().add_message(request_id, "luna", message)
 
-            next_id = Queue().next_parallel_task_in_queue('osimage',osimage)
+            next_id = Queue().next_task_in_queue('osimage')
             if task_id == next_id:
+                # we're first in the queue. wake up mother!
                 executor = ThreadPoolExecutor(max_workers=1)
-                executor.submit(OsImager().osimage_mother, request_id)
+                executor.submit(OsImager().osimage_mother)
                 executor.shutdown(wait=False)
                 # OsImager().osimage_mother(request_id)
                 # we should check after a few seconds if there is a status update for us.
                 # if so, that means mother is taking care of things
+            else:
+                next_id = Queue().next_parallel_task_in_queue('osimage',osimage)
+                if task_id == next_id:
+                    # ok, so we are not the first mother running... let's only do our own request
+                    executor = ThreadPoolExecutor(max_workers=1)
+                    executor.submit(OsImager().osimage_mother, request_id)
+                    executor.shutdown(wait=False)
             sleep(1)
             status = Database().get_record(None , 'status', f' WHERE request_id = "{request_id}"')
             if status:
@@ -612,14 +620,22 @@ class OSImage():
             message = f"queued push osimage {osimage} with queue_id {task_id}"
             Status().add_message(request_id, "luna", message)
 
-            next_id = Queue().next_parallel_task_in_queue('osimage',osimage)
+            next_id = Queue().next_task_in_queue('osimage')
             if task_id == next_id:
+                # w're first in the queue. let's wake up mother
                 executor = ThreadPoolExecutor(max_workers=1)
-                executor.submit(OsImager().osimage_mother, request_id)
+                executor.submit(OsImager().osimage_mother)
                 executor.shutdown(wait=False)
                 # OsImager().osimage_mother(request_id)
                 # we should check after a few seconds if there is a status update for us.
                 # if so, that means mother is taking care of things
+            else:
+                next_id = Queue().next_parallel_task_in_queue('osimage',osimage)
+                if task_id == next_id:
+                    # We're not the first mother running... we only do our own stuff
+                    executor = ThreadPoolExecutor(max_workers=1)
+                    executor.submit(OsImager().osimage_mother, request_id)
+                    executor.shutdown(wait=False)
             sleep(1)
             status = Database().get_record(None , 'status', f' WHERE request_id = "{request_id}"')
             if status:
@@ -664,14 +680,22 @@ class OSImage():
         message = f"queued pack osimage {name} with queue_id {queue_id}"
         Status().add_message(request_id, "luna", message)
 
-        next_id = Queue().next_parallel_task_in_queue('osimage',name)
+        next_id = Queue().next_task_in_queue('osimage')
         if queue_id == next_id:
+            # w're first in the queue. let's wake up mother
             executor = ThreadPoolExecutor(max_workers=1)
-            executor.submit(OsImager().osimage_mother,request_id)
+            executor.submit(OsImager().osimage_mother)
             executor.shutdown(wait=False)
             # OsImager().osimage_mother(request_id)
             # we should check after a few seconds if there is a status update for us.
             # if so, that means mother is taking care of things
+        else:
+            next_id = Queue().next_parallel_task_in_queue('osimage',name)
+            if queue_id == next_id:
+                # We're not the first mother running... we only do our own stuff
+                executor = ThreadPoolExecutor(max_workers=1)
+                executor.submit(OsImager().osimage_mother, request_id)
+                executor.shutdown(wait=False)
         sleep(1)
         status = Database().get_record(None , 'status', f' WHERE request_id = "{request_id}"')
         if status:
@@ -730,11 +754,19 @@ class OSImage():
                     self.logger.info(f"config_osimage_kernel added task to queue: {task_id}")
                     message = f"queued pack osimage {name} with queue_id {task_id}"
                     Status().add_message(request_id, "luna", message)
-                    next_id = Queue().next_parallel_task_in_queue('osimage',name)
+                    next_id = Queue().next_task_in_queue('osimage')
                     if task_id == next_id:
+                        # we're first in the queue, let's wake up mother
                         executor = ThreadPoolExecutor(max_workers=1)
-                        executor.submit(OsImager().osimage_mother, request_id)
+                        executor.submit(OsImager().osimage_mother)
                         executor.shutdown(wait=False)
+                    else:
+                        next_id = Queue().next_parallel_task_in_queue('osimage',name)
+                        if task_id == next_id:
+                            # there is another mother running so we focus on our own stuff
+                            executor = ThreadPoolExecutor(max_workers=1)
+                            executor.submit(OsImager().osimage_mother, request_id)
+                            executor.shutdown(wait=False)
                     # we should check after a few seconds if there is a status update for us.
                     # if so, that means mother is taking care of things
                     sleep(1)

@@ -313,9 +313,9 @@ class Config(object):
                     dns_zone_records[networkname]['controller']['key']='controller'
                     dns_zone_records[networkname]['controller']['type']='A'
                     dns_zone_records[networkname]['controller']['value']=controller_ip
-                    dns_zone_records[rev_ip]={}
-                    dns_authoritative[networkname]='controller'
-                    dns_authoritative[rev_ip]='controller'
+                dns_zone_records[rev_ip]={}
+                dns_authoritative[networkname]='controller'
+                dns_authoritative[rev_ip]='controller'
  
             node_interface = Database().get_record_join(
                 ['node.name as nodename', 'ipaddress.ipaddress', 'network.name as networkname'],
@@ -375,6 +375,13 @@ class Config(object):
                     dns_zone_records[rev_ip][host['host']]['key']=host_ptr
                     dns_zone_records[rev_ip][host['host']]['type']='PTR'
                     dns_zone_records[rev_ip][host['host']]['value']=f"{host['host']}.{host['networkname']}"
+
+            if 'controller' not in dns_zone_records[networkname]:
+                # and we add the controller here as a failsafe
+                dns_zone_records[networkname]['controller']={}
+                dns_zone_records[networkname]['controller']['key']='controller'
+                dns_zone_records[networkname]['controller']['type']='A'
+                dns_zone_records[networkname]['controller']['value']=controller_ip
 
             name_file = {
                 'source': f'{tmpdir}/{networkname}.luna.zone',

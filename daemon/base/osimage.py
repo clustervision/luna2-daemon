@@ -222,6 +222,12 @@ class OSImage():
         response="Internal error"
         create, update = False, False
         current_tag, tagname, new_tagid = None, None, None
+        # things we have to set for a group
+        items = {
+            'grab_filesystems': '/, /boot',
+            'grab_exclude': '/proc/*, /sys/*, /dev/*, /tmp/*, /var/log/*',
+            'kernelmodules': 'ipmi_devintf, ipmi_si, ipmi_msghandler'
+        }
         if request_data:
             data = request_data['config']['osimage'][name]
             image = Database().get_record(None, 'osimage', f' WHERE name = "{name}"')
@@ -246,13 +252,19 @@ class OSImage():
                 if 'newosimage' in data:
                     status=False
                     return status, f'{name} not present in database for rename'
-                if 'grab_filesystems' not in data:
-                    data['grab_filesystems'] = "/, /boot"
-                if 'grab_exclude' not in data:
-                    data['grab_exclude'] = "/proc/*, /sys/*, /dev/*, /tmp/*, /var/log/*"
-                if 'kernelmodules' not in data:
-                    data['kernelmodules'] = "ipmi_devintf, ipmi_si, ipmi_msghandler"
                 create = True
+
+            for key, value in items.items():
+                if key in data:
+                    data[key] = data[key]
+                    if isinstance(value, bool):
+                        data[key] = str(Helper().bool_to_string(data[key]))
+                elif create:
+                    data[key] = value
+                    if isinstance(value, bool):
+                        data[key] = str(Helper().bool_to_string(data[key]))
+                if key in data and (not data[key]) and (key not in items):
+                    del data[key]
 
             if 'tag' in data:
                 del data['tag']

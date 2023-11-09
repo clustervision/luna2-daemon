@@ -29,6 +29,7 @@ __maintainer__  = 'Sumit Sharma'
 __email__       = 'sumit.sharma@clustervision.com'
 __status__      = 'Development'
 
+import uuid
 from utils.log import Log
 from utils.model import Model
 
@@ -86,6 +87,31 @@ class BMCSetup():
         This method will create or update a bmcsetup.
         """
         new_name = 'newbmcname'
+        # things we have to set for a bmcsetup
+        items = {
+            'userid': '2',
+            'netchannel': '2',
+            'mgmtchannel': '2',
+            'username': 'luna'
+        }
+        items['password']=uuid.uuid4().hex
+        create, update = False, False
+        status, _ = self.get_bmcsetup(name)
+        if status:
+            update=True
+        else:
+            create=True
+        for key, value in items.items():
+            if key in data:
+                data[key] = data[key]
+                if isinstance(value, bool):
+                    data[key] = str(Helper().bool_to_string(data[key]))
+            elif create:
+                data[key] = value
+                if isinstance(value, bool):
+                    data[key] = str(Helper().bool_to_string(data[key]))
+            if key in data and (not data[key]) and (key not in items):
+                del data[key]
         status, response = Model().change_record(
             name = name,
             new_name = new_name,

@@ -410,7 +410,7 @@ class OSImage():
                     executor.submit(OsImager().osimage_mother)
                     executor.shutdown(wait=False)
                 else:
-                    Status().add_message(request_id, "luna", "other task with id {next_id} is being processed first. please wait")
+                    Status().add_message(request_id, "luna", f"other task with id {next_id} is being processed first. please wait")
                 # we should check after a few seconds if there is a status update for us.
                 # if so, that means mother is taking care of things
                 sleep(1)
@@ -558,7 +558,7 @@ class OSImage():
                     executor.submit(OsImager().osimage_mother, request_id)
                     executor.shutdown(wait=False)
                 else:
-                    Status().add_message(request_id, "luna", "other task with id {next_id} is being processed first. please wait")
+                    Status().add_message(request_id, "luna", f"other task with id {next_id} is being processed first. please wait")
             sleep(1)
             status = Database().get_record(None , 'status', f' WHERE request_id = "{request_id}"')
             if status:
@@ -659,7 +659,7 @@ class OSImage():
                     executor.submit(OsImager().osimage_mother, request_id)
                     executor.shutdown(wait=False)
                 else:
-                    Status().add_message(request_id, "luna", "other task with id {next_id} is being processed first. please wait")
+                    Status().add_message(request_id, "luna", f"other task with id {next_id} is being processed first. please wait")
             sleep(1)
             status = Database().get_record(None , 'status', f' WHERE request_id = "{request_id}"')
             if status:
@@ -721,7 +721,7 @@ class OSImage():
                 executor.submit(OsImager().osimage_mother, request_id)
                 executor.shutdown(wait=False)
             else:
-                Status().add_message(request_id, "luna", "other task with id {next_id} is being processed first. please wait")
+                Status().add_message(request_id, "luna", f"other task with id {next_id} is being processed first. please wait")
         sleep(1)
         status = Database().get_record(None , 'status', f' WHERE request_id = "{request_id}"')
         if status:
@@ -794,7 +794,7 @@ class OSImage():
                             executor.submit(OsImager().osimage_mother, request_id)
                             executor.shutdown(wait=False)
                         else:
-                            Status().add_message(request_id, "luna", "other task with id {next_id} is being processed first. please wait")
+                            Status().add_message(request_id, "luna", f"other task with id {next_id} is being processed first. please wait")
                     # we should check after a few seconds if there is a status update for us.
                     # if so, that means mother is taking care of things
                     sleep(1)

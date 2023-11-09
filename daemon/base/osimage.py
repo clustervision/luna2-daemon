@@ -397,7 +397,7 @@ class OSImage():
                 if text != "added":
                     # this means we already have an equal request in the queue
                     Status().add_message(text, "luna", f"similar task with id {task_id} is already queued. its progress is listed here")
-                    response = f"osimage clone for {data['name']} already queued with id {task_id}"
+                    response = f"osimage clone for {data['name']} already queued"
                     #response = {"message": message, "request_id": text}
                     self.logger.info(f"my response [{response}] [{text}]")
                     status=True
@@ -534,7 +534,7 @@ class OSImage():
             if text != "added":
                 # this means we already have an equal request in the queue
                 Status().add_message(text, "luna", f"similar task with id {task_id} is already queued. its progress is listed here")
-                response = f"osimage grab for {osimage} already queued with id {task_id}"
+                response = f"osimage grab for {osimage} already queued"
                 self.logger.info(f"my response [{response}] [{text}]")
                 status=True
                 return status, response, text
@@ -636,7 +636,7 @@ class OSImage():
             if text != "added":
                 # this means we already have an equal request in the queue
                 Status().add_message(text, "luna", f"similar task with id {task_id} is already queued. its progress is listed here")
-                response = f"osimage push for {osimage} already queued with id {task_id}"
+                response = f"osimage push for {osimage} already queued"
                 status=True
                 self.logger.info(f"my response [{response}] [{text}]")
                 return status, response, text
@@ -699,7 +699,7 @@ class OSImage():
         if queue_response != "added":
             # this means we already have an equal request in the queue
             Status().add_message(queue_response, "luna", f"similar task with id {queue_id} is already queued. its progress is listed here")
-            response = f"osimage pack for {name} already queued with id {queue_id}"
+            response = f"osimage pack for {name} already queued"
             self.logger.info(f"my response [{response}] [{queue_response}]")
             status=True
             return status, response, queue_response
@@ -778,7 +778,7 @@ class OSImage():
                     if text != "added":
                         # this means we already have an equal request in the queue
                         Status().add_message(text, "luna", f"similar task with id {task_id} is already queued. its progress is listed here")
-                        response = f"osimage pack for {name} already queued with id {task_id}"
+                        response = f"osimage pack for {name} already queued"
                         self.logger.info(f"my response [{response}] [{text}]")
                         status=True
                         return status, response, text

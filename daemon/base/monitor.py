@@ -111,22 +111,23 @@ class Monitor():
         """
         This method generates a list of tasks in the queue
         """
-        status=False
-        response = 'Bad Request'
+        status=True
+        response = []
         queue = Database().get_record(None, 'queue', "ORDER BY created ASC")
         if queue:
             status=True
-            response=[]
-            regex=re.compile(r":noeof")
+            data=[]
+            regex=re.compile(r"^.*:noeof$")
             for task in queue:
                 details={}
                 for item in ['request_id','username_initiator','created','subsystem','task','status']:
                     if item == 'task':
-                        if regex.match(task[item]):
+                        if regex.match(task['task']):
                             details['level']='subtask'
                         else:
                             details['level']='maintask'
                     details[item]=task[item]
-                response.append(details)
+                data.append(details)
+            response=data
         return status, response
 

@@ -92,6 +92,7 @@ def monitor_status_post(node=None):
     response = {'message': response}
     return response, access_code
 
+
 @monitor_blueprint.route('/monitor/queue', methods=['GET'])
 @token_required
 def monitor_queue():
@@ -104,6 +105,6 @@ def monitor_queue():
     status, response = Monitor().get_queue()
     if status is True:
         access_code = 200
-    response = {'monitor': {'queue': {response} } }
+    response = {'monitor': {'queue': response } }
     return response, access_code
 

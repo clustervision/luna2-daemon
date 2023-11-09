@@ -116,7 +116,6 @@ class Monitor():
         queue = Database().get_record(None, 'queue', "ORDER BY created ASC")
         if queue:
             status=True
-            data=[]
             regex=re.compile(r"^.*:noeof$")
             for task in queue:
                 details={}
@@ -127,7 +126,6 @@ class Monitor():
                         else:
                             details['level']='maintask'
                     details[item]=task[item]
-                data.append(details)
-            response=data
+                response.append(details)
         return status, response
 

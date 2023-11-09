@@ -1522,7 +1522,7 @@ def config_dns(name=None):
 @token_required
 @validate_name
 @input_filter(checks=['config:dns'], skip=None)
-def config_post_os_group(name=None):
+def config_dns(name=None):
     """
     Input - User Name & Payload
     Process - Create Or Update additional DNS entries.

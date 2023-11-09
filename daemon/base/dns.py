@@ -33,6 +33,7 @@ from utils.queue import Queue
 from utils.database import Database
 from utils.log import Log
 from utils.helper import Helper
+from utils.service import Service
 
 
 class DNS():
@@ -92,6 +93,7 @@ class DNS():
                             Database().update('dns', row, where)
                         else:
                             Database().insert('dns', row)
+                Service().queue('dns','restart')
             else:
                 status=False
                 response=f'Network {name} not present in database'
@@ -111,5 +113,6 @@ class DNS():
             Database().delete_row('dns', [{"column": "id", "value": exist[0]['id']}])
             status=True
             response="Entry removed"
+            Service().queue('dns','restart')
         return status, response
 

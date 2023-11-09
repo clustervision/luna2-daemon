@@ -62,7 +62,13 @@ class Plugin():
     gateway = """
         cd /sysroot
         echo "# Gateway belonging to $DEVICE" >> etc/sysconfig/network
-        echo "GATEWAY=$GATEWAY" >> etc/sysconfig/network
+        EXISTMETRIC=$(grep GATEWAYMETRIC etc/sysconfig/network || echo "999")
+        if [ "$GATEWAY" ] && [ "$EXISTMETRIC" -gt "$METRIC" ]; then
+            grep -v GATEWAY etc/sysconfig/network > network.tmp
+            cat network.tmp > etc/sysconfig/network
+            echo "GATEWAY=$GATEWAY" >> etc/sysconfig/network
+            echo "METRIC=$METRIC" >> etc/sysconfig/network
+        fi
     """
 
     dns = """

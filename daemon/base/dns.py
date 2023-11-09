@@ -87,9 +87,9 @@ class DNS():
                         data={}
                         data['host']=host
                         data['ipaddress']=ipaddress
+                        row = Helper().make_rows(data)
                         exist = Database().get_record(None, "dns", f"WHERE `host`='{host}' AND `networkid`='{networkid}'")
                         if exist:
-                            row = Helper().make_rows(data)
                             where = [{"column": "id", "value": exist[0]['id']}]
                             Database().update('dns', row, where)
                         else:
@@ -101,6 +101,7 @@ class DNS():
         else:
             status=False
             response='Invalid request: Did not receive data'
+        return status, response
 
 
     def delete_dns(self, name=None, network=None):

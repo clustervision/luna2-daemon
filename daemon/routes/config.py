@@ -1528,7 +1528,7 @@ def config_dns(name=None):
     Process - Create Or Update additional DNS entries.
     Output - None.
     """
-    status, response = DNS().update_dns(name, request_data)
+    status, response = DNS().update_dns(name, request.data)
     access_code=Helper().get_access_code(status,response)
     return {'message': response}, access_code
 

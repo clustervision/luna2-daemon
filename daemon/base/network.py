@@ -255,9 +255,6 @@ class Network():
                     data['dhcp_range_begin'] = ""
                     data['dhcp_range_end'] = ""
 
-            if 'zone' in data and data['zone'] == "external":
-                if
-
             network_columns = Database().get_columns('network')
             column_check = Helper().compare_list(data, network_columns)
             if column_check:

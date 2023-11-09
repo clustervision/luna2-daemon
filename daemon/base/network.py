@@ -135,10 +135,13 @@ class Network():
                 update = True
             else:
                 create = True
-            used_ips, dhcp_size, redistribute_ipaddress = 0, 0, None
+
+            used_ips, dhcp_size, redistribute_ipaddress, default_gateway_metric, default_zone = 0, 0, None, "101", "internal"
             if 'network' in data:
                 network_ip = Helper().check_ip(data['network'])
                 if network_ip:
+                    default_gateway_metric=network[0]['gateway_metric']
+                    default_zone=network[0]['zone']
                     network_details = Helper().get_network_details(data['network'])
                     data['network'] = network_ip
                     data['subnet'] = network_details['subnet']
@@ -148,7 +151,8 @@ class Network():
                             redistribute_ipaddress = True
                             self.logger.info("We will redistribute ip addresses")
                             if 'gateway' not in data:
-                                data['gateway'] = ''
+                                data['gateway'] = None
+                                data['gateway_metric'] = None
                                 # we have to remove the gateway if we did not get a new one and an
                                 # existing is in place. should we warn the user? pending
                 else:
@@ -186,6 +190,12 @@ class Network():
                 if (not gateway_details) and data['gateway'] != '':
                     status=False
                     return status, f'Invalid request: Incorrect gateway IP: {data["gateway"]}'
+                if 'gateway_metric' not in data:
+                    if default_zone == "external":
+                        default_gateway_metric="100"
+                    if 'zone' in data and data['zone'] == "external":
+                        default_gateway_metric="100"
+                    data['gateway_metric'] = default_gateway_metric
             if 'nameserver_ip' in data:
                 nsip_details = Helper().check_ip_range(
                     data['nameserver_ip'],
@@ -244,6 +254,9 @@ class Network():
                     data['dhcp'] = 0
                     data['dhcp_range_begin'] = ""
                     data['dhcp_range_end'] = ""
+
+            if 'zone' in data and data['zone'] == "external":
+                if
 
             network_columns = Database().get_columns('network')
             column_check = Helper().compare_list(data, network_columns)

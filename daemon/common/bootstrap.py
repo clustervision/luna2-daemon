@@ -347,12 +347,14 @@ def bootstrap(bootstrapfile=None):
         network_functions[BOOTSTRAP['NETWORKS'][nwkx]['FUNCTION']] = nwkx
         network_details=Helper().get_network_details(BOOTSTRAP['NETWORKS'][nwkx]['NETWORK'])
         defaultgw_ip=None
+        defaultgw_metric=None
         valid_ip = Helper().check_ip_range(
             defaultserver_ip,
             f"{network_details['network']}/{network_details['subnet']}"
         )
         if valid_ip:
             defaultgw_ip=defaultserver_ip
+            defaultgw_metric="100"
         dhcp,dhcp_range_begin,dhcp_range_end=0,None,None
         if 'DHCP' in BOOTSTRAP['NETWORKS'][nwkx]:
             dhcp=1
@@ -372,6 +374,7 @@ def bootstrap(bootstrapfile=None):
                 {'column': 'dhcp_range_begin', 'value': dhcp_range_begin},
                 {'column': 'dhcp_range_end', 'value': dhcp_range_end},
                 {'column': 'gateway', 'value': defaultgw_ip},
+                {'column': 'gateway_metric', 'value': defaultgw_metric},
                 {'column': 'shared', 'value': shared},
                 {'column': 'zone', 'value': 'internal'},
                 {'column': 'type', 'value': nwtype}

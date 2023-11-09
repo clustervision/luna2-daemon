@@ -151,6 +151,7 @@ DATABASE_LAYOUT_network = [
 {"column": "network",              "datatype": "VARCHAR", "length": "20"},
 {"column": "subnet",               "datatype": "VARCHAR", "length": "20"},
 {"column": "gateway",              "datatype": "VARCHAR", "length": "60"},
+{"column": "gateway_metric",       "datatype": "INTEGER", "length": "10"},
 {"column": "nameserver_ip",        "datatype": "VARCHAR", "length": "20"},
 {"column": "ntp_server",           "datatype": "VARCHAR", "length": "60"},
 {"column": "dhcp",                 "datatype": "INTEGER", "length": "10"},

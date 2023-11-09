@@ -396,8 +396,8 @@ class OSImage():
 
                 if text != "added":
                     # this means we already have an equal request in the queue
-                    Status().add_message(request_id, "luna", f"similar task with id {task_id} is already queued. its progress is listed here")
-                    response = f"osimage clone for {data['name']} already queued"
+                    Status().add_message(text, "luna", f"similar task with id {task_id} is already queued. its progress is listed here")
+                    response = f"osimage clone for {data['name']} already queued with id {task_id}"
                     #response = {"message": message, "request_id": text}
                     self.logger.info(f"my response [{response}] [{text}]")
                     status=True
@@ -533,8 +533,8 @@ class OSImage():
                 return status, f'OS image {osimage} grab queuing failed'
             if text != "added":
                 # this means we already have an equal request in the queue
-                Status().add_message(request_id, "luna", f"similar task with id {task_id} is already queued. its progress is listed here")
-                response = f"osimage grab for {osimage} already queued"
+                Status().add_message(text, "luna", f"similar task with id {task_id} is already queued. its progress is listed here")
+                response = f"osimage grab for {osimage} already queued with id {task_id}"
                 self.logger.info(f"my response [{response}] [{text}]")
                 status=True
                 return status, response, text
@@ -635,8 +635,8 @@ class OSImage():
                 return status, f'Internal error: OS image {osimage} push queuing failed'
             if text != "added":
                 # this means we already have an equal request in the queue
-                Status().add_message(request_id, "luna", f"similar task with id {task_id} is already queued. its progress is listed here")
-                response = f"osimage push for {osimage} already queued"
+                Status().add_message(text, "luna", f"similar task with id {task_id} is already queued. its progress is listed here")
+                response = f"osimage push for {osimage} already queued with id {task_id}"
                 status=True
                 self.logger.info(f"my response [{response}] [{text}]")
                 return status, response, text
@@ -698,8 +698,8 @@ class OSImage():
             return status, f'Internal error: OS image {name} pack queuing failed'
         if queue_response != "added":
             # this means we already have an equal request in the queue
-            Status().add_message(request_id, "luna", f"similar task with id {queue_id} is already queued. its progress is listed here")
-            response = f"osimage pack for {name} already queued"
+            Status().add_message(queue_response, "luna", f"similar task with id {queue_id} is already queued. its progress is listed here")
+            response = f"osimage pack for {name} already queued with id {queue_id}"
             self.logger.info(f"my response [{response}] [{queue_response}]")
             status=True
             return status, response, queue_response
@@ -777,8 +777,8 @@ class OSImage():
                         return status, f'OS image {name} pack queuing failed'
                     if text != "added":
                         # this means we already have an equal request in the queue
-                        Status().add_message(request_id, "luna", f"similar task with id {task_id} is already queued. its progress is listed here")
-                        response = f"osimage pack for {name} already queued"
+                        Status().add_message(text, "luna", f"similar task with id {task_id} is already queued. its progress is listed here")
+                        response = f"osimage pack for {name} already queued with id {task_id}"
                         self.logger.info(f"my response [{response}] [{text}]")
                         status=True
                         return status, response, text

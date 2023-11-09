@@ -257,7 +257,6 @@ class Group():
             'partscript': 'bW91bnQgLXQgdG1wZnMgdG1wZnMgL3N5c3Jvb3QK',
             'postscript': 'ZWNobyAndG1wZnMgLyB0bXBmcyBkZWZhdWx0cyAwIDAnID4+IC9zeXNyb290L2V0Yy9mc3RhYgo=',
             'setupbmc': False,
-            'bmcsetupname': None,
             'netboot': True,
             'localinstall': False,
             'bootmenu': False,

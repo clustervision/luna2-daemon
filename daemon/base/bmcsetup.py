@@ -94,7 +94,7 @@ class BMCSetup():
             'mgmtchannel': '2',
             'username': 'luna'
         }
-        items['password']=uuid.uuid4().hex
+        items['password']=str(uuid.uuid4().hex.upper()[0:6])+str(uuid.uuid4().hex[0:6])+'#!'
         create, update = False, False
         status, _ = self.get_bmcsetup(name)
         if status:
@@ -103,20 +103,20 @@ class BMCSetup():
             create=True
         if request_data:
             if 'config' in request_data and self.table in request_data['config'] and name in request_data['config'][self.table]:
-            data=request_data['config'][self.table][name]
-            for key, value in items.items():
-                if key in data:
-                    data[key] = data[key]
-                    if isinstance(value, bool):
-                        data[key] = str(Helper().bool_to_string(data[key]))
-                elif create:
-                    data[key] = value
-                    if isinstance(value, bool):
-                        data[key] = str(Helper().bool_to_string(data[key]))
-                if key in data and (not data[key]) and (key not in items):
-                    del data[key]
-            for key in data:
-                request_data['config'][self.table][name][key] = data[key]
+                data=request_data['config'][self.table][name]
+                for key, value in items.items():
+                    if key in data:
+                        data[key] = data[key]
+                        if isinstance(value, bool):
+                            data[key] = str(Helper().bool_to_string(data[key]))
+                    elif create:
+                        data[key] = value
+                        if isinstance(value, bool):
+                            data[key] = str(Helper().bool_to_string(data[key]))
+                    if key in data and (not data[key]) and (key not in items):
+                        del data[key]
+                for key in data:
+                    request_data['config'][self.table][name][key] = data[key]
         status, response = Model().change_record(
             name = name,
             new_name = new_name,

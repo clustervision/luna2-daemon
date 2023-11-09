@@ -30,11 +30,13 @@ __maintainer__  = 'Antoine Schonewille'
 __email__       = 'antoine.schonewille@clustervision.com'
 __status__      = 'Development'
 
+import re
 import os
 import sys
 import threading
 from time import sleep
 import concurrent.futures
+from base64 import b64decode, b64encode
 from utils.log import Log
 from utils.database import Database
 from common.constant import CONSTANT
@@ -122,13 +124,20 @@ class OsImage(object):
                 #------------------------------------------------------
                 grab_fs=[]
                 grab_ex=[]
+                regex=re.compile(r"^([A-Za-z0-9+/]{4})*([A-Za-z0-9+/]{3}=|[A-Za-z0-9+/]{2}==)?$")
                 if image[0]['grab_filesystems']:
-                    image[0]['grab_filesystems']=image[0]['grab_filesystems'].replace(' ',',')
-                    image[0]['grab_filesystems']=image[0]['grab_filesystems'].replace(',,',',')
+                    if regex.match(image[0]['grab_filesystems']):
+                        data = b64decode(image[0]['grab_filesystems'])
+                        image[0]['grab_filesystems'] = data.decode("ascii")
+                    for char in [' ',',,','\r\n','\n']:
+                        image[0]['grab_filesystems']=image[0]['grab_filesystems'].replace(char,',')
                     grab_fs=image[0]['grab_filesystems'].split(",")
                 if image[0]['grab_exclude']:
-                    image[0]['grab_exclude']=image[0]['grab_exclude'].replace(' ',',')
-                    image[0]['grab_exclude']=image[0]['grab_exclude'].replace(',,',',')
+                    if regex.match(image[0]['grab_exclude']):
+                        data = b64decode(image[0]['grab_exclude'])
+                        image[0]['grab_exclude'] = data.decode("ascii")
+                    for char in [' ',',,','\r\n','\n']:
+                        image[0]['grab_exclude']=image[0]['grab_exclude'].replace(char,',')
                     grab_ex=image[0]['grab_exclude'].split(",")
                 Status().add_message(request_id,"luna",f"grabbing osimage {osimage} [{runtype}]")
                 response=os_grab_plugin().grab(
@@ -485,13 +494,20 @@ class OsImage(object):
                         distribution=distribution.lower()
                         grab_fs=[]
                         grab_ex=[]
+                        regex=re.compile(r"^([A-Za-z0-9+/]{4})*([A-Za-z0-9+/]{3}=|[A-Za-z0-9+/]{2}==)?$")
                         if image[0]['grab_filesystems']:
-                            image[0]['grab_filesystems']=image[0]['grab_filesystems'].replace(' ',',')
-                            image[0]['grab_filesystems']=image[0]['grab_filesystems'].replace(',,',',')
+                            if regex.match(image[0]['grab_filesystems']):
+                                data = b64decode(image[0]['grab_filesystems'])
+                                image[0]['grab_filesystems'] = data.decode("ascii")
+                            for char in [' ',',,','\r\n','\n']:
+                                image[0]['grab_filesystems']=image[0]['grab_filesystems'].replace(char,',')
                             grab_fs=image[0]['grab_filesystems'].split(",")
                         if image[0]['grab_exclude']:
-                            image[0]['grab_exclude']=image[0]['grab_exclude'].replace(' ',',')
-                            image[0]['grab_exclude']=image[0]['grab_exclude'].replace(',,',',')
+                            if regex.match(image[0]['grab_exclude']):
+                                data = b64decode(image[0]['grab_exclude'])
+                                image[0]['grab_exclude'] = data.decode("ascii")
+                            for char in [' ',',,','\r\n','\n']:
+                                image[0]['grab_exclude']=image[0]['grab_exclude'].replace(char,',')
                             grab_ex=image[0]['grab_exclude'].split(",")
                     else:
                         self.logger.info(f'Push osimage {osimage} does not exist.')

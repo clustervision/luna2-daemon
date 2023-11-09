@@ -51,6 +51,7 @@ REG_EXP = {
     'ipaddress': r'^[0-9a-f:\.]+$',
     'macaddress': r'^(([0-9A-Za-f]{2}((-|:)[0-9A-Za-f]{2}){5})|)$',
     'minimal': r'^\S.*$',
+    'integer': r'^[0-9]+$',
     'anything': r''
 }
 RESERVED = {
@@ -77,7 +78,8 @@ MATCH = {
     'newnetname': 'name',
     'osimagetag': 'anything',
     'tag': 'anything',
-    'interface': 'minimal'
+    'interface': 'minimal',
+    'gateway_metric': 'integer'
 }
 
 maxlength = {'request_id': '256'}

@@ -29,9 +29,11 @@ __maintainer__  = 'Sumit Sharma'
 __email__       = 'sumit.sharma@clustervision.com'
 __status__      = 'Development'
 
+import re
 from time import sleep, time
 from os import getpid, path
 from random import randint
+from base64 import b64decode, b64encode
 from concurrent.futures import ThreadPoolExecutor
 from common.constant import CONSTANT
 from utils.status import Status
@@ -137,6 +139,18 @@ class OSImage():
                 for tag in all_tags:
                     image_tags.append(tag['name'])
                 record['assigned_tags'] = ','.join(image_tags)
+
+            regex=re.compile(r"^([A-Za-z0-9+/]{4})*([A-Za-z0-9+/]{3}=|[A-Za-z0-9+/]{2}==)?$")
+            try:
+                for item in ['grab_filesystems','grab_exclude']:
+                    if not regex.match(record[item]):
+                        data = record[item]
+                        data = b64encode(data.encode())
+                        record[item] = data.decode("ascii")
+            except Exception as exp:
+                self.logger.error(f"{exp}")
+
+
             response['config'][self.table][record['name']] = record
         return status, response
 
@@ -268,6 +282,7 @@ class OSImage():
 
             if 'tag' in data:
                 del data['tag']
+
             osimage_columns = Database().get_columns('osimage')
             column_check = Helper().compare_list(data, osimage_columns)
             if column_check:

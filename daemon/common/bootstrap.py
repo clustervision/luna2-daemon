@@ -354,7 +354,7 @@ def bootstrap(bootstrapfile=None):
         )
         if valid_ip:
             defaultgw_ip=defaultserver_ip
-            defaultgw_metric="100"
+            defaultgw_metric="101"
         dhcp,dhcp_range_begin,dhcp_range_end=0,None,None
         if 'DHCP' in BOOTSTRAP['NETWORKS'][nwkx]:
             dhcp=1

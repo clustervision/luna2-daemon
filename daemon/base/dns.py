@@ -54,6 +54,7 @@ class DNS():
         This method will return requested additional dns record for the network.
         """
         status=True
+        response=f"No entries for network {name}"
         dns = Database().get_record_join(['dns.*'],['dns.networkid=network.id'],[f"network.name='{name}'"])
 
         if dns:

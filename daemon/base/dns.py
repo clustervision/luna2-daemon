@@ -87,6 +87,7 @@ class DNS():
                         data={}
                         data['host']=host
                         data['ipaddress']=ipaddress
+                        data['networkid']=networkid
                         row = Helper().make_rows(data)
                         exist = Database().get_record(None, "dns", f"WHERE `host`='{host}' AND `networkid`='{networkid}'")
                         if exist:

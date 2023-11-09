@@ -107,6 +107,7 @@ class Monitor():
                 status=False
         return status, response
 
+
     def get_queue(self):
         """
         This method generates a list of tasks in the queue

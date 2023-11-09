@@ -140,8 +140,6 @@ class Network():
             if 'network' in data:
                 network_ip = Helper().check_ip(data['network'])
                 if network_ip:
-                    default_gateway_metric=network[0]['gateway_metric']
-                    default_zone=network[0]['zone']
                     network_details = Helper().get_network_details(data['network'])
                     data['network'] = network_ip
                     data['subnet'] = network_details['subnet']
@@ -162,6 +160,8 @@ class Network():
                 # we fetch what we have from the DB
                 data['network'] = network[0]['network']
                 data['subnet'] = network[0]['subnet']
+                default_gateway_metric=network[0]['gateway_metric']
+                default_zone=network[0]['zone']
             else:
                 status=False
                 ret_msg = 'Invalid request: Not enough details provided. network/subnet in CIDR notation expected'
@@ -180,6 +180,7 @@ class Network():
                     status=False
                     ret_msg = 'Invalid request: Incorrect zone. Must be either internal or external'
                     return status, ret_msg
+                default_zone=data['zone']
             elif create is True:
                 data['zone']="internal"
             if 'gateway' in data:

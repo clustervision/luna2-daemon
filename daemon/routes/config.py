@@ -46,6 +46,7 @@ from base.bmcsetup import BMCSetup
 from base.switch import Switch
 from base.otherdev import OtherDev
 from base.network import Network
+from base.dns import DNS
 from base.secret import Secret
 from base.osuser import OsUser
 from utils.helper import Helper
@@ -1499,3 +1500,48 @@ def control_status(request_id=None):
     else:
         response={'message': response}
     return response, access_code
+
+
+@config_blueprint.route('/config/dns/<string:name>', methods=['GET'])
+@token_required
+def config_dns(name=None):
+    """
+    This api will send all records for additional dns for the network.
+    """
+    access_code = 404
+    status, response = DNS().get_dns(name)
+    if status is True:
+        access_code = 200
+        response = dumps(response)
+    else:
+        response = {'message': response}
+    return response, access_code
+
+
+@config_blueprint.route("/config/dns/<string:name>", methods=['POST'])
+@token_required
+@validate_name
+@input_filter(checks=['config:dns'], skip=None)
+def config_post_os_group(name=None):
+    """
+    Input - User Name & Payload
+    Process - Create Or Update additional DNS entries.
+    Output - None.
+    """
+    status, response = DNS().update_dns(name, request_data)
+    access_code=Helper().get_access_code(status,response)
+    return {'message': response}, access_code
+
+
+@config_blueprint.route('/config/dns/<string:network>/<string:name>/_delete', methods=['GET'])
+@token_required
+def delete_dns(name=None,network=None):
+    """
+    This api deletes an additional dns entry.
+    """
+    access_code = 404
+    status, response = DNS().delete_dns(name,network)
+    if status is True:
+        access_code=204
+    return {'message': response}, access_code
+

@@ -194,8 +194,6 @@ class Network():
                 if 'gateway_metric' not in data:
                     if default_zone == "external":
                         default_gateway_metric="100"
-                    if 'zone' in data and data['zone'] == "external":
-                        default_gateway_metric="100"
                     data['gateway_metric'] = default_gateway_metric
             if 'nameserver_ip' in data:
                 nsip_details = Helper().check_ip_range(

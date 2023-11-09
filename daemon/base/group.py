@@ -296,8 +296,8 @@ class Group():
                     if controller:
                         data['interfaces'].append(
                         {
-                            interface: 'BOOTIF',
-                            network: controller[0]['network']
+                            'interface': 'BOOTIF',
+                            'network': controller[0]['network']
                         })
                 create = True
 

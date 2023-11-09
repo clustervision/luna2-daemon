@@ -84,6 +84,13 @@ class Switch():
         network = False
         data, response = {}, {}
         create, update = False, False
+
+        # things we have to set for a switch
+        items = {
+            'oid': '.1.3.6.1.2.1.17.7.1.2.2.1.2',
+            'read': 'public',
+            'rw': 'trusted'
+        }
         if request_data:
             data = request_data['config'][self.table][name]
             data['name'] = name
@@ -97,7 +104,19 @@ class Switch():
                 update = True
             else:
                 create = True
-            switch_columns = Database().get_columns(self.table)
+
+            for key, value in items.items():
+                if key in data:
+                    data[key] = data[key]
+                    if isinstance(value, bool):
+                        data[key] = str(Helper().bool_to_string(data[key]))
+                elif create:
+                    data[key] = value
+                    if isinstance(value, bool):
+                        data[key] = str(Helper().bool_to_string(data[key]))
+                if key in data and (not data[key]) and (key not in items):
+                    del data[key]
+
             ipaddress, network = None, None
             if 'ipaddress' in data.keys():
                 ipaddress = data['ipaddress']
@@ -105,6 +124,8 @@ class Switch():
             if 'network' in data.keys():
                 network = data['network']
                 del data['network']
+
+            switch_columns = Database().get_columns(self.table)
             column_check = Helper().compare_list(data, switch_columns)
             data = Helper().check_ip_exist(data)
             if data:

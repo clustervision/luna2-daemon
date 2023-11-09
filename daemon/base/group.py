@@ -254,10 +254,10 @@ class Group():
         # things we have to set for a group
         items = {
             'prescript': '',
-            'partscript': '',
-            'postscript': '',
+            'partscript': 'bW91bnQgLXQgdG1wZnMgdG1wZnMgL3N5c3Jvb3QK',
+            'postscript': 'ZWNobyAndG1wZnMgLyB0bXBmcyBkZWZhdWx0cyAwIDAnID4+IC9zeXNyb290L2V0Yy9mc3RhYgo=',
             'setupbmc': False,
-            'netboot': False,
+            'netboot': True,
             'localinstall': False,
             'bootmenu': False,
             'provision_interface': 'BOOTIF'
@@ -285,6 +285,19 @@ class Group():
                 if 'newgroupname' in data:
                     status=False
                     return status, 'Invalid request: newgroupname is not allowed while creating a new group'
+                if 'interfaces' not in data:
+                    controller = Database().get_record_join(
+                        ['network.name as network'],
+                        ['ipaddress.tablerefid=controller.id','network.id=ipaddress.networkid'],
+                        ['tableref="controller"', 'controller.hostname="controller"']
+                    )
+                    data['interfaces']=[]
+                    if controller:
+                        data['interfaces'].append(
+                        {
+                            'interface': 'BOOTIF',
+                            'network': controller[0]['network']
+                        })
                 create = True
 
             # we reset to make sure we don't assing something that won't work

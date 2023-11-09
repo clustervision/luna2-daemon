@@ -42,6 +42,7 @@ from common.constant import CONSTANT
 from utils.helper import Helper
 from utils.status import Status
 from utils.queue import Queue
+from base64 import b64decode, b64encode
 
 
 class OsImage(object):

@@ -144,7 +144,8 @@ class OSImage():
             try:
                 for item in ['grab_filesystems','grab_exclude']:
                     if not regex.match(record[item]):
-                        data = b64encode(record[item])
+                        data = record[item]
+                        data = b64encode(data.encode())
                         record[item] = data.decode("ascii")
             except Exception as exp:
                 self.logger.error(f"{exp}")

@@ -1504,7 +1504,7 @@ def control_status(request_id=None):
 
 @config_blueprint.route('/config/dns/<string:name>', methods=['GET'])
 @token_required
-def config_dns(name=None):
+def get_dns(name=None):
     """
     This api will send all records for additional dns for the network.
     """

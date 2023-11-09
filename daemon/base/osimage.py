@@ -396,19 +396,22 @@ class OSImage():
 
                 if text != "added":
                     # this means we already have an equal request in the queue
+                    Status().add_message(text, "luna", f"similar task with id {task_id} is already queued. its progress is listed here")
                     response = f"osimage clone for {data['name']} already queued"
                     #response = {"message": message, "request_id": text}
                     self.logger.info(f"my response [{response}] [{text}]")
                     status=True
                     return status, response, text
-                self.logger.info(f"config_osimage_clone added task to queue: {task_id}")
-                message = f"queued clone osimage {name}->{data['name']} with queue_id {task_id}"
+                self.logger.info(f"config_osimage_clone added task with id {task_id} to queue")
+                message = f"queued clone osimage {name}->{data['name']} with id {task_id}"
                 Status().add_message(request_id, "luna", message)
                 next_id = Queue().next_task_in_queue('osimage')
                 if task_id == next_id:
                     executor = ThreadPoolExecutor(max_workers=1)
                     executor.submit(OsImager().osimage_mother)
                     executor.shutdown(wait=False)
+                else:
+                    Status().add_message(request_id, "luna", f"other task with id {next_id} is being processed first. please wait")
                 # we should check after a few seconds if there is a status update for us.
                 # if so, that means mother is taking care of things
                 sleep(1)
@@ -530,13 +533,14 @@ class OSImage():
                 return status, f'OS image {osimage} grab queuing failed'
             if text != "added":
                 # this means we already have an equal request in the queue
+                Status().add_message(text, "luna", f"similar task with id {task_id} is already queued. its progress is listed here")
                 response = f"osimage grab for {osimage} already queued"
                 self.logger.info(f"my response [{response}] [{text}]")
                 status=True
                 return status, response, text
 
-            self.logger.info(f"config_osimage_grab added task to queue: {task_id}")
-            message = f"queued grab osimage {osimage} with queue_id {task_id}"
+            self.logger.info(f"config_osimage_grab added task with id {task_id} to queue")
+            message = f"queued grab osimage {osimage} with id {task_id}"
             Status().add_message(request_id, "luna", message)
 
             next_id = Queue().next_task_in_queue('osimage')
@@ -555,6 +559,8 @@ class OSImage():
                     executor = ThreadPoolExecutor(max_workers=1)
                     executor.submit(OsImager().osimage_mother, request_id)
                     executor.shutdown(wait=False)
+                else:
+                    Status().add_message(request_id, "luna", f"other task with id {next_id} is being processed first. please wait")
             sleep(1)
             status = Database().get_record(None , 'status', f' WHERE request_id = "{request_id}"')
             if status:
@@ -629,13 +635,14 @@ class OSImage():
                 return status, f'Internal error: OS image {osimage} push queuing failed'
             if text != "added":
                 # this means we already have an equal request in the queue
+                Status().add_message(text, "luna", f"similar task with id {task_id} is already queued. its progress is listed here")
                 response = f"osimage push for {osimage} already queued"
                 status=True
                 self.logger.info(f"my response [{response}] [{text}]")
                 return status, response, text
 
-            self.logger.info(f"config_osimage_push added task to queue: {task_id}")
-            message = f"queued push osimage {osimage} with queue_id {task_id}"
+            self.logger.info(f"config_osimage_push added task with id {task_id} to queue")
+            message = f"queued push osimage {osimage} with id {task_id}"
             Status().add_message(request_id, "luna", message)
 
             next_id = Queue().next_task_in_queue('osimage')
@@ -654,6 +661,8 @@ class OSImage():
                     executor = ThreadPoolExecutor(max_workers=1)
                     executor.submit(OsImager().osimage_mother, request_id)
                     executor.shutdown(wait=False)
+                else:
+                    Status().add_message(request_id, "luna", f"other task with id {next_id} is being processed first. please wait")
             sleep(1)
             status = Database().get_record(None , 'status', f' WHERE request_id = "{request_id}"')
             if status:
@@ -689,13 +698,14 @@ class OSImage():
             return status, f'Internal error: OS image {name} pack queuing failed'
         if queue_response != "added":
             # this means we already have an equal request in the queue
+            Status().add_message(queue_response, "luna", f"similar task with id {queue_id} is already queued. its progress is listed here")
             response = f"osimage pack for {name} already queued"
             self.logger.info(f"my response [{response}] [{queue_response}]")
             status=True
             return status, response, queue_response
 
-        self.logger.info(f"config_osimage_pack added task to queue: {queue_id}")
-        message = f"queued pack osimage {name} with queue_id {queue_id}"
+        self.logger.info(f"config_osimage_pack added task with id {queue_id} to queue")
+        message = f"queued pack osimage {name} with id {queue_id}"
         Status().add_message(request_id, "luna", message)
 
         next_id = Queue().next_task_in_queue('osimage')
@@ -714,6 +724,8 @@ class OSImage():
                 executor = ThreadPoolExecutor(max_workers=1)
                 executor.submit(OsImager().osimage_mother, request_id)
                 executor.shutdown(wait=False)
+            else:
+                Status().add_message(request_id, "luna", f"other task with id {next_id} is being processed first. please wait")
         sleep(1)
         status = Database().get_record(None , 'status', f' WHERE request_id = "{request_id}"')
         if status:
@@ -765,12 +777,13 @@ class OSImage():
                         return status, f'OS image {name} pack queuing failed'
                     if text != "added":
                         # this means we already have an equal request in the queue
+                        Status().add_message(text, "luna", f"similar task with id {task_id} is already queued. its progress is listed here")
                         response = f"osimage pack for {name} already queued"
                         self.logger.info(f"my response [{response}] [{text}]")
                         status=True
                         return status, response, text
-                    self.logger.info(f"config_osimage_kernel added task to queue: {task_id}")
-                    message = f"queued pack osimage {name} with queue_id {task_id}"
+                    self.logger.info(f"config_osimage_kernel added task with id {task_id} to queue")
+                    message = f"queued pack osimage {name} with id {task_id}"
                     Status().add_message(request_id, "luna", message)
                     next_id = Queue().next_task_in_queue('osimage')
                     if task_id == next_id:
@@ -785,6 +798,8 @@ class OSImage():
                             executor = ThreadPoolExecutor(max_workers=1)
                             executor.submit(OsImager().osimage_mother, request_id)
                             executor.shutdown(wait=False)
+                        else:
+                            Status().add_message(request_id, "luna", f"other task with id {next_id} is being processed first. please wait")
                     # we should check after a few seconds if there is a status update for us.
                     # if so, that means mother is taking care of things
                     sleep(1)

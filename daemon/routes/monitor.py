@@ -91,3 +91,20 @@ def monitor_status_post(node=None):
         access_code = 204
     response = {'message': response}
     return response, access_code
+
+
+@monitor_blueprint.route('/monitor/queue', methods=['GET'])
+@token_required
+def monitor_queue():
+    """
+    Input - nothing
+    Process - generates a list of items or tasks in mother's queue
+    Output - the generated list in json format
+    """
+    access_code = 503
+    status, response = Monitor().get_queue()
+    if status is True:
+        access_code = 200
+    response = {'monitor': {'queue': response } }
+    return response, access_code
+

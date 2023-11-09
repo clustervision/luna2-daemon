@@ -29,6 +29,7 @@ __email__       = "sumit.sharma@clustervision.com"
 __status__      = "Development"
 
 
+import re
 from utils.log import Log
 from utils.service import Service
 from utils.helper import Helper
@@ -105,3 +106,26 @@ class Monitor():
                 response = 'Invalid request: URL Node is not matching with requested node'
                 status=False
         return status, response
+
+    def get_queue(self):
+        """
+        This method generates a list of tasks in the queue
+        """
+        status=True
+        response = []
+        queue = Database().get_record(None, 'queue', "ORDER BY created ASC")
+        if queue:
+            status=True
+            regex=re.compile(r"^.*:noeof$")
+            for task in queue:
+                details={}
+                for item in ['request_id','username_initiator','created','subsystem','task','status']:
+                    if item == 'task':
+                        if regex.match(task['task']):
+                            details['level']='subtask'
+                        else:
+                            details['level']='maintask'
+                    details[item]=task[item]
+                response.append(details)
+        return status, response
+

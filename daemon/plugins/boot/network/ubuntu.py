@@ -74,8 +74,8 @@ cat << EOF >> $rootmnt/etc/netplan/99_config.yaml
       routes:
         - to: default
           via: $GATEWAY
+          metric: $METRIC
 EOF
-        # $METRIC
     """
 
     dns = """

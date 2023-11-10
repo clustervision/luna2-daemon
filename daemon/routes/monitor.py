@@ -111,7 +111,7 @@ def monitor_queue():
 
 @monitor_blueprint.route('/monitor/status', methods=['GET'])
 @token_required
-def monitor_queue():
+def monitor_status():
     """
     Input - nothing
     Process - generates a list of messages still in status table

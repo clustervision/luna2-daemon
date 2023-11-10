@@ -65,7 +65,7 @@ def monitor_status_get(node=None):
     Output - Status.
     """
     access_code = 404
-    status, response = Monitor().get_status(node)
+    status, response = Monitor().get_nodestatus(node)
     if status is True:
         access_code = 200
         response = dumps(response)
@@ -86,7 +86,7 @@ def monitor_status_post(node=None):
     Output - Status.
     """
     access_code = 404
-    status, response = Monitor().update_status(node, request.data)
+    status, response = Monitor().update_nodestatus(node, request.data)
     if status is True:
         access_code = 204
     response = {'message': response}
@@ -103,6 +103,23 @@ def monitor_queue():
     """
     access_code = 503
     status, response = Monitor().get_queue()
+    if status is True:
+        access_code = 200
+    response = {'monitor': {'queue': response } }
+    return response, access_code
+
+
+@monitor_blueprint.route('/monitor/status', methods=['GET'])
+@token_required
+def monitor_queue():
+    """
+    Input - nothing
+    Process - generates a list of messages still in status table
+              Not te be confused with above status calls. they should have been named 'node'.
+    Output - the generated list in json format
+    """
+    access_code = 503
+    status, response = Monitor().get_status()
     if status is True:
         access_code = 200
     response = {'monitor': {'queue': response } }

@@ -277,14 +277,15 @@ class Config(object):
  
         cluster = Database().get_record(None, 'cluster', None)
         controller = Database().get_record_join(
-            ['ipaddress.ipaddress'],
-            ['ipaddress.tablerefid=controller.id'],
+            ['ipaddress.ipaddress','network.name as networkname'],
+            ['ipaddress.tablerefid=controller.id','network.id=ipaddress.networkid'],
             ['tableref="controller"', 'controller.hostname="controller"']
         )
         if (not controller) or (not cluster):
             self.logger.error("Error building dns config. either controller or cluster does not exist")
             return False
         controller_ip = controller[0]['ipaddress']
+        controller_network = controller[0]['networkname']
         if 'forwardserver_ip' in cluster[0] and cluster[0]['forwardserver_ip']:
             forwarder = cluster[0]['forwardserver_ip'].split(',')
         networks = Database().get_record(None, 'network', None)
@@ -306,10 +307,12 @@ class Config(object):
                 dns_zones.append(networkname)
                 dns_zones.append(rev_ip)
                 dns_zone_records[networkname]={}
-                dns_zone_records[networkname]['controller']={}
-                dns_zone_records[networkname]['controller']['key']='controller'
-                dns_zone_records[networkname]['controller']['type']='A'
-                dns_zone_records[networkname]['controller']['value']=controller_ip
+                if networkname == controller_network:
+                    # we only add a zone record for controller when we're actually in it
+                    dns_zone_records[networkname]['controller']={}
+                    dns_zone_records[networkname]['controller']['key']='controller'
+                    dns_zone_records[networkname]['controller']['type']='A'
+                    dns_zone_records[networkname]['controller']['value']=controller_ip
                 dns_zone_records[rev_ip]={}
                 dns_authoritative[networkname]='controller'
                 dns_authoritative[rev_ip]='controller'
@@ -355,6 +358,30 @@ class Config(object):
                         dns_zone_records[rev_ip][device['devname']]['key']=node_ptr
                         dns_zone_records[rev_ip][device['devname']]['type']='PTR'
                         dns_zone_records[rev_ip][device['devname']]['value']=f"{device['devname']}.{device['networkname']}"
+
+            additional = Database().get_record_join(
+                    ['dns.*','network.name as networkname'],
+                    ['dns.networkid=network.id'],
+                    [f"network.name='{networkname}'"])
+            if additional:
+                for host in additional:
+                    sub_ip = host['ipaddress'].split('.')  # NOT IPv6 COMPLIANT!! needs overhaul. PENDING
+                    host_ptr = sub_ip[2] + '.' + sub_ip[3]
+                    dns_zone_records[networkname][host['host']]={}
+                    dns_zone_records[networkname][host['host']]['key']=host['host']
+                    dns_zone_records[networkname][host['host']]['type']='A'
+                    dns_zone_records[networkname][host['host']]['value']=host['ipaddress']
+                    dns_zone_records[rev_ip][host['host']]={}
+                    dns_zone_records[rev_ip][host['host']]['key']=host_ptr
+                    dns_zone_records[rev_ip][host['host']]['type']='PTR'
+                    dns_zone_records[rev_ip][host['host']]['value']=f"{host['host']}.{host['networkname']}"
+
+            if 'controller' not in dns_zone_records[networkname]:
+                # and we add the controller here as a failsafe
+                dns_zone_records[networkname]['controller']={}
+                dns_zone_records[networkname]['controller']['key']='controller'
+                dns_zone_records[networkname]['controller']['type']='A'
+                dns_zone_records[networkname]['controller']['value']=controller_ip
 
             name_file = {
                 'source': f'{tmpdir}/{networkname}.luna.zone',

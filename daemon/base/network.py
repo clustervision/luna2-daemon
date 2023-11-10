@@ -270,7 +270,7 @@ class Network():
                             response = f'The proposed network config allows for {nwk_size} ip '
                             response += f'addresses. DHCP range will occupy {dhcp_size} ip '
                             response += 'addresses. The request will not accomodate for the '
-                            response += f'currently {used_ips} in use ip addresses.'
+                            response += f'currently {used_ips} in use ip addresses'
                             status=False
                             return status, response
                     where = [{"column": "id", "value": networkid}]
@@ -434,9 +434,10 @@ class Network():
                 response = {'config': {'network': {name: {'taken': taken} } } }
                 status=True
             else:
-                response = 'All IP Address are free on Network {name}. None is Taken.'
+                response = 'All IP Address are free on Network {name}. None is Taken'
                 status=False
         else:
-            response = f'Network {name} not present in database.'
+            response = f'Network {name} not present in database'
             status=False
         return status, response
+

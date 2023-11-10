@@ -80,21 +80,22 @@ class DNS():
                 response='DNS entries added or changed'
                 networkid=network[0]['id']
                 for entry in data:
-                    host=data['host']
-                    ipaddress=data['ipaddress']
-                    valid_ip = Helper().check_ip(ipaddress)
-                    if valid_ip:
-                        data={}
-                        data['host']=host
-                        data['ipaddress']=ipaddress
-                        data['networkid']=networkid
-                        row = Helper().make_rows(data)
-                        exist = Database().get_record(None, "dns", f"WHERE `host`='{host}' AND `networkid`='{networkid}'")
-                        if exist:
-                            where = [{"column": "id", "value": exist[0]['id']}]
-                            Database().update('dns', row, where)
-                        else:
-                            Database().insert('dns', row)
+                    if 'host' in entry and 'ipaddress' in entry:
+                        host=entry['host']
+                        ipaddress=entry['ipaddress']
+                        valid_ip = Helper().check_ip(ipaddress)
+                        if valid_ip:
+                            ndata={}
+                            ndata['host']=host
+                            ndata['ipaddress']=ipaddress
+                            ndata['networkid']=networkid
+                            row = Helper().make_rows(ndata)
+                            exist = Database().get_record(None, "dns", f"WHERE `host`='{host}' AND `networkid`='{networkid}'")
+                            if exist:
+                                where = [{"column": "id", "value": exist[0]['id']}]
+                                Database().update('dns', row, where)
+                            else:
+                                Database().insert('dns', row)
                 Service().queue('dns','restart')
             else:
                 status=False

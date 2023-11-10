@@ -56,7 +56,7 @@ DATABASE_LAYOUT_osimage = [
 {"column": "initrdfile",           "datatype": "VARCHAR", "length": "100"},
 {"column": "kernelfile",           "datatype": "VARCHAR", "length": "100"},
 {"column": "kernelmodules",        "datatype": "VARCHAR", "length": "100"},
-{"column": "kerneloptions",        "datatype": "VARCHAR", "length": "60"},
+{"column": "kerneloptions",        "datatype": "VARCHAR", "length": "100"},
 {"column": "kernelversion",        "datatype": "VARCHAR", "length": "60"},
 {"column": "path",                 "datatype": "VARCHAR", "length": "60"},
 {"column": "imagefile",            "datatype": "VARCHAR", "length": "100"},
@@ -72,6 +72,7 @@ DATABASE_LAYOUT_osimagetag = [
 {"column": "osimageid",            "datatype": "INTEGER", "length": "10"},
 {"column": "initrdfile",           "datatype": "VARCHAR", "length": "100"},
 {"column": "kernelfile",           "datatype": "VARCHAR", "length": "100"},
+{"column": "kerneloptions",        "datatype": "VARCHAR", "length": "100"},
 {"column": "imagefile",            "datatype": "VARCHAR", "length": "100"}]
 
 DATABASE_LAYOUT_nodesecrets = [

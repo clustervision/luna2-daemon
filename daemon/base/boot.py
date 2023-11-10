@@ -398,6 +398,8 @@ class Boot():
                     data['kernelfile'] = osimage[0]['kernelfile']
                 if ('initrdfile' in osimage[0]) and (osimage[0]['initrdfile']):
                     data['initrdfile'] = osimage[0]['initrdfile']
+                if ('kerneloptions' in osimage[0]) and (osimage[0]['kerneloptions']):
+                    data['kerneloptions'] = osimage[0]['kerneloptions']
 
         if None not in data.values():
             status=True
@@ -688,6 +690,8 @@ class Boot():
                     data['kernelfile'] = osimage[0]['kernelfile']
                 if ('initrdfile' in osimage[0]) and (osimage[0]['initrdfile']):
                     data['initrdfile'] = osimage[0]['initrdfile']
+                if ('kerneloptions' in osimage[0]) and (osimage[0]['kerneloptions']):
+                    data['kerneloptions'] = osimage[0]['kerneloptions']
         #self.logger.info(f"manual group boot template data: [{data}]")
 
         if None not in data.values():
@@ -758,12 +762,13 @@ class Boot():
 
         # we probably have to cut the fqdn off of hostname?
         node = Database().get_record_join(
-            ['node.*', 'group.osimageid as grouposimageid'],
+            ['node.*', 'group.osimageid as grouposimageid','group.osimagetagid as grouposimagetagid'],
             ['group.id=node.groupid'],
             [f'node.name="{hostname}"']
         )
         if node:
             data['osimageid'] = node[0]['osimageid'] or node[0]['grouposimageid']
+            data['osimagetagid'] = node[0]['osimagetagid'] or node[0]['grouposimagetagid'] or 'default'
             data['nodename'] = node[0]['name']
             # data['nodehostname'] = node[0]['hostname']
             data['nodehostname'] = node[0]['name'] # + fqdn ?
@@ -846,13 +851,19 @@ class Boot():
                 data['nodeip'] = None
 
         if data['osimageid']:
-            osimage = Database().get_record(None, 'osimage', f' WHERE id = {data["osimageid"]}')
+            osimage = None
+            if data['osimagetagid'] and data['osimagetagid'] != 'default':
+                osimage = Database().get_record_join(['osimagetag.*'],['osimage.id=osimagetag.osimageid'],
+                                [f'osimagetag.id={data["osimagetagid"]}',f'osimage.id={data["osimageid"]}'])
+            else:
+                osimage = Database().get_record(None, 'osimage', f' WHERE id = {data["osimageid"]}')
             if osimage:
                 if ('kernelfile' in osimage[0]) and (osimage[0]['kernelfile']):
                     data['kernelfile'] = osimage[0]['kernelfile']
                 if ('initrdfile' in osimage[0]) and (osimage[0]['initrdfile']):
                     data['initrdfile'] = osimage[0]['initrdfile']
-        #self.logger.info(f"manual node boot template data: [{data}]")
+                if ('kerneloptions' in osimage[0]) and (osimage[0]['kerneloptions']):
+                    data['kerneloptions'] = osimage[0]['kerneloptions']
 
         if None not in data.values():
             status=True

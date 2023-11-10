@@ -133,20 +133,21 @@ def boot_search_mac(macaddress=None):
         return data, access_code
     return render_template(
             data['template'],
-            LUNA_CONTROLLER     = data['ipaddress'],
-            LUNA_API_PORT       = data['serverport'],
-            LUNA_API_PROTOCOL   = data['protocol'],
-            VERIFY_CERTIFICATE  = data['verify_certificate'],
-            WEBSERVER_PORT      = data['webserver_port'],
-            WEBSERVER_PROTOCOL  = data['webserver_protocol'],
-            NODE_MAC_ADDRESS    = data['mac'],
-            OSIMAGE_INITRDFILE  = data['initrdfile'],
-            OSIMAGE_KERNELFILE  = data['kernelfile'],
-            NODE_NAME           = data['nodename'],
-            NODE_HOSTNAME       = data['nodehostname'],
-            NODE_SERVICE        = data['nodeservice'],
-            NODE_IPADDRESS      = data['nodeip'],
-            NETWORK_GATEWAY     = data['gateway']
+            LUNA_CONTROLLER        = data['ipaddress'],
+            LUNA_API_PORT          = data['serverport'],
+            LUNA_API_PROTOCOL      = data['protocol'],
+            VERIFY_CERTIFICATE     = data['verify_certificate'],
+            WEBSERVER_PORT         = data['webserver_port'],
+            WEBSERVER_PROTOCOL     = data['webserver_protocol'],
+            NODE_MAC_ADDRESS       = data['mac'],
+            OSIMAGE_INITRDFILE     = data['initrdfile'],
+            OSIMAGE_KERNELFILE     = data['kernelfile'],
+            OSIMAGE_KERNELOPTIONS  = data['kerneloptions'],
+            NODE_NAME              = data['nodename'],
+            NODE_HOSTNAME          = data['nodehostname'],
+            NODE_SERVICE           = data['nodeservice'],
+            NODE_IPADDRESS         = data['nodeip'],
+            NETWORK_GATEWAY        = data['gateway']
         ), access_code
 
 
@@ -168,20 +169,21 @@ def boot_manual_group(groupname=None, macaddress=None):
         return data, access_code
     return render_template(
         data['template'],
-        LUNA_CONTROLLER     = data['ipaddress'],
-        LUNA_API_PORT       = data['serverport'],
-        LUNA_API_PROTOCOL   = data['protocol'],
-        VERIFY_CERTIFICATE  = data['verify_certificate'],
-        WEBSERVER_PORT      = data['webserver_port'],
-        WEBSERVER_PROTOCOL  = data['webserver_protocol'],
-        NODE_MAC_ADDRESS    = data['mac'],
-        OSIMAGE_INITRDFILE  = data['initrdfile'],
-        OSIMAGE_KERNELFILE  = data['kernelfile'],
-        NODE_NAME           = data['nodename'],
-        NODE_HOSTNAME       = data['nodehostname'],
-        NODE_SERVICE        = data['nodeservice'],
-        NODE_IPADDRESS      = data['nodeip'],
-        NETWORK_GATEWAY     = data['gateway']
+        LUNA_CONTROLLER        = data['ipaddress'],
+        LUNA_API_PORT          = data['serverport'],
+        LUNA_API_PROTOCOL      = data['protocol'],
+        VERIFY_CERTIFICATE     = data['verify_certificate'],
+        WEBSERVER_PORT         = data['webserver_port'],
+        WEBSERVER_PROTOCOL     = data['webserver_protocol'],
+        NODE_MAC_ADDRESS       = data['mac'],
+        OSIMAGE_INITRDFILE     = data['initrdfile'],
+        OSIMAGE_KERNELFILE     = data['kernelfile'],
+        OSIMAGE_KERNELOPTIONS  = data['kerneloptions'],
+        NODE_NAME              = data['nodename'],
+        NODE_HOSTNAME          = data['nodehostname'],
+        NODE_SERVICE           = data['nodeservice'],
+        NODE_IPADDRESS         = data['nodeip'],
+        NETWORK_GATEWAY        = data['gateway']
     ), access_code
 
 
@@ -203,20 +205,21 @@ def boot_manual_hostname(hostname=None, macaddress=None):
         return data, access_code
     return render_template(
         data['template'],
-        LUNA_CONTROLLER     = data['ipaddress'],
-        LUNA_API_PORT       = data['serverport'],
-        LUNA_API_PROTOCOL   = data['protocol'],
-        VERIFY_CERTIFICATE  = data['verify_certificate'],
-        WEBSERVER_PORT      = data['webserver_port'],
-        WEBSERVER_PROTOCOL  = data['webserver_protocol'],
-        NODE_MAC_ADDRESS    = data['mac'],
-        OSIMAGE_INITRDFILE  = data['initrdfile'],
-        OSIMAGE_KERNELFILE  = data['kernelfile'],
-        NODE_NAME           = data['nodename'],
-        NODE_HOSTNAME       = data['nodehostname'],
-        NODE_SERVICE        = data['nodeservice'],
-        NODE_IPADDRESS      = data['nodeip'],
-        NETWORK_GATEWAY     = data['gateway']
+        LUNA_CONTROLLER        = data['ipaddress'],
+        LUNA_API_PORT          = data['serverport'],
+        LUNA_API_PROTOCOL      = data['protocol'],
+        VERIFY_CERTIFICATE     = data['verify_certificate'],
+        WEBSERVER_PORT         = data['webserver_port'],
+        WEBSERVER_PROTOCOL     = data['webserver_protocol'],
+        NODE_MAC_ADDRESS       = data['mac'],
+        OSIMAGE_INITRDFILE     = data['initrdfile'],
+        OSIMAGE_KERNELFILE     = data['kernelfile'],
+        OSIMAGE_KERNELOPTIONS  = data['kerneloptions'],
+        NODE_NAME              = data['nodename'],
+        NODE_HOSTNAME          = data['nodehostname'],
+        NODE_SERVICE           = data['nodeservice'],
+        NODE_IPADDRESS         = data['nodeip'],
+        NETWORK_GATEWAY        = data['gateway']
     ), access_code
 
 
@@ -269,3 +272,4 @@ def boot_install(node=None):
         NTP_SERVER              = data['ntp_server'],
         LUNA_TOKEN              = data['jwt_token']
     ), access_code
+

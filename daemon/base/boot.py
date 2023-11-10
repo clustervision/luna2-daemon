@@ -388,7 +388,7 @@ class Boot():
                 data['nodeservice'] = node[0]['service']
         if data['osimageid']:
             osimage = None
-            osimage[0]['kerneloptions']=""
+            data['kerneloptions']=""
             if data['osimagetagid'] and data['osimagetagid'] != 'default':
                 osimage = Database().get_record_join(['osimagetag.*'],['osimage.id=osimagetag.osimageid'],
                                 [f'osimagetag.id={data["osimagetagid"]}',f'osimage.id={data["osimageid"]}'])
@@ -681,7 +681,7 @@ class Boot():
 
         if data['osimageid']:
             osimage = None
-            osimage[0]['kerneloptions']=""
+            data['kerneloptions']=""
             if data['osimagetagid'] and data['osimagetagid'] != 'default':
                 osimage = Database().get_record_join(['osimagetag.*'],['osimage.id=osimagetag.osimageid'],
                                 [f'osimagetag.id={data["osimagetagid"]}',f'osimage.id={data["osimageid"]}'])
@@ -854,7 +854,7 @@ class Boot():
 
         if data['osimageid']:
             osimage = None
-            osimage[0]['kerneloptions']=""
+            data['kerneloptions']=""
             if data['osimagetagid'] and data['osimagetagid'] != 'default':
                 osimage = Database().get_record_join(['osimagetag.*'],['osimage.id=osimagetag.osimageid'],
                                 [f'osimagetag.id={data["osimagetagid"]}',f'osimage.id={data["osimageid"]}'])

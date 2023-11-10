@@ -864,6 +864,7 @@ class OSImage():
                             tag_data['kernelfile'] = image[0]['kernelfile']
                             tag_data['initrdfile'] = image[0]['initrdfile']
                             tag_data['imagefile'] = image[0]['imagefile']
+                            tag_data['kerneloptions'] = image[0]['kerneloptions']
                             tag_row = Helper().make_rows(tag_data)
                             new_tagid = Database().insert('osimagetag', tag_row)
                     if new_tagid is not None:

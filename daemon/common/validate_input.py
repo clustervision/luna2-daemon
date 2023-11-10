@@ -79,7 +79,8 @@ MATCH = {
     'osimagetag': 'anything',
     'tag': 'anything',
     'interface': 'minimal',
-    'gateway_metric': 'integer'
+    'gateway_metric': 'integer',
+    'host': 'name'
 }
 
 maxlength = {'request_id': '256'}

@@ -305,7 +305,8 @@ class Config(object):
                 #
                 dns_allowed_query.append(nwk['network']+"/"+nwk['subnet']) # used for e.g. named. allow query
                 dns_zones.append(networkname)
-                dns_zones.append(rev_ip)
+                if rev_ip not in dns_zones:
+                    dns_zones.append(rev_ip)
                 dns_zone_records[networkname]={}
                 if networkname == controller_network:
                     # we only add a zone record for controller when we're actually in it

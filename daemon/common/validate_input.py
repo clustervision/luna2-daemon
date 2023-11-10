@@ -79,11 +79,15 @@ MATCH = {
     'osimagetag': 'anything',
     'tag': 'anything',
     'interface': 'minimal',
-    'gateway_metric': 'integer'
+    'gateway_metric': 'integer',
+    'host': 'name'
 }
-
-maxlength = {'request_id': '256'}
-convert = {'macaddress': {'-':':'}}
+MAXLENGTH = {
+    'request_id': '256',
+    'newnodename': '63',
+    'host': '63'
+}
+CONVERT = {'macaddress': {'-':':'}}
 
 ERROR = None
 SKIP_LIST = []
@@ -203,10 +207,10 @@ def filter_data(data=None, name=None):
     data = control_char_re.sub('', data)
     data = data.replace("'", "")
     data = data.replace('"', "")
-    if name in maxlength.keys():
-        if len(data) > int(maxlength[name]):
-            LOGGER.info(f"length of {name} exceeds {maxlength[name]}")
-            ERROR = f"length of {name} exceeds {maxlength[name]}"
+    if name in MAXLENGTH.keys():
+        if len(data) > int(MAXLENGTH[name]):
+            LOGGER.info(f"length of {name} exceeds {MAXLENGTH[name]}")
+            ERROR = f"length of {name} exceeds {MAXLENGTH[name]}"
             return
     if name in MATCH.keys():
         if MATCH[name] in RESERVED.keys():
@@ -221,10 +225,10 @@ def filter_data(data=None, name=None):
             LOGGER.info(f"    REG_EXP['{MATCH[name]}'] = {REG_EXP[MATCH[name]]}")
             ERROR = f"field {name} with content {data} does match criteria {REG_EXP[MATCH[name]]}"
             return
-    if name in convert.keys():
+    if name in CONVERT.keys():
         LOGGER.debug(f"CONVERT IN {name} = {data}")
-        for rep in convert[name].keys():
-            data = data.replace(rep ,convert[name][rep])
+        for rep in CONVERT[name].keys():
+            data = data.replace(rep ,CONVERT[name][rep])
         LOGGER.debug(f"CONVERT OUT {name} = {data}")
     return data
 

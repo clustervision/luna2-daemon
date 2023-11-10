@@ -413,8 +413,8 @@ class Config(object):
                         self.logger.error(f'DNS zone file: {tmpdir}/{zone}.luna.zone containing errors.')
                 except Exception as exp:
                     self.logger.error(f'DNS zone file: {tmpdir}/{zone}.luna.zone containing errors. {exp}')
-        except Exception as exp:
-            self.logger.error(f"Uh oh... {exp}")
+            except Exception as exp:
+                self.logger.error(f"Uh oh... {exp}")
 
         # we create the actual /etc/named.conf and /etc/named.luna.zones
         managed_keys="/trinity/local/var/lib/named/dynamic"

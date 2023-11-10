@@ -122,6 +122,6 @@ def monitor_status():
     status, response = Monitor().get_status()
     if status is True:
         access_code = 200
-    response = {'monitor': {'queue': response } }
+    response = {'monitor': {'status': response } }
     return response, access_code
 

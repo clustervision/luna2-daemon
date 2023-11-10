@@ -137,10 +137,10 @@ class Monitor():
         """
         status=True
         response = []
-        status = Database().get_record(None, 'status', "ORDER BY created ASC")
-        if status:
+        statuslist = Database().get_record(None, 'status', "ORDER BY created ASC")
+        if statuslist:
             status=True
-            for line in status:
+            for line in statuslist:
                 details={}
                 for item in ['request_id','username_initiator','created','read','message']:
                     details[item]=line[item]

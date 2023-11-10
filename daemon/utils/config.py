@@ -274,6 +274,7 @@ class Config(object):
         dns_zones=[]
         dns_zone_records={}
         dns_authoritative={}
+        dns_rev_domain={}
  
         cluster = Database().get_record(None, 'cluster', None)
         controller = Database().get_record_join(
@@ -302,11 +303,13 @@ class Config(object):
                 rev_ip = rev_ip.split('.')
                 rev_ip = rev_ip[2:]
                 rev_ip = '.'.join(rev_ip)
+                self.logger.info(f"Building DNS block for {rev_ip}")
                 #
                 dns_allowed_query.append(nwk['network']+"/"+nwk['subnet']) # used for e.g. named. allow query
                 dns_zones.append(networkname)
                 if rev_ip not in dns_zones:
                     dns_zones.append(rev_ip)
+                    dns_rev_domain[rev_ip]=networkname
                 dns_zone_records[networkname]={}
                 if networkname == controller_network:
                     # we only add a zone record for controller when we're actually in it
@@ -314,7 +317,8 @@ class Config(object):
                     dns_zone_records[networkname]['controller']['key']='controller'
                     dns_zone_records[networkname]['controller']['type']='A'
                     dns_zone_records[networkname]['controller']['value']=controller_ip
-                dns_zone_records[rev_ip]={}
+                if rev_ip not in dns_zone_records.keys():
+                    dns_zone_records[rev_ip]={}
                 dns_authoritative[networkname]='controller'
                 dns_authoritative[rev_ip]='controller'
  
@@ -384,36 +388,33 @@ class Config(object):
                 dns_zone_records[networkname]['controller']['type']='A'
                 dns_zone_records[networkname]['controller']['value']=controller_ip
 
-            name_file = {
-                'source': f'{tmpdir}/{networkname}.luna.zone',
-                'destination': f'/var/named/{networkname}.luna.zone'
+        # we create the zone files with zone info like addresses
+        for zone in dns_zones:
+            zone_file = {
+                'source': f'{tmpdir}/{zone}.luna.zone',
+                'destination': f'/var/named/{zone}.luna.zone'
             }
-            ptr_file = {
-                'source': f'{tmpdir}/{rev_ip}.luna.zone',
-                'destination': f'/var/named/{rev_ip}.luna.zone'
-            }
-            files.append(name_file)
-            files.append(ptr_file)
-
-            # we create the zone files with zone info like addresses
+            files.append(zone_file)
             try:
                 dns_zone_template = env.get_template(template_dns_zone)
-                for zone in [networkname,rev_ip]:
-                    dns_zone_config = dns_zone_template.render(RECORDS=dns_zone_records[zone],
-                                                               AUTHORITATIVE_SERVER=f"controller.{networkname}",
-                                                               SERIAL=unix_time)
-                    with open(f'{tmpdir}/{zone}.luna.zone', 'w', encoding='utf-8') as filename:
-                        filename.write(dns_zone_config)
-                    try:
-                        zone_cmd = ['named-checkzone', f'luna.{zone}', name_file['source']]
-                        validate_zone_name = subprocess.run(zone_cmd, check = True)
-                        if validate_zone_name.returncode:
-                            validate = False
-                            self.logger.error(f'DNS zone file: {tmpdir}/{zone}.luna.zone containing errors.')
-                    except Exception as exp:
-                        self.logger.error(f'DNS zone file: {tmpdir}/{zone}.luna.zone containing errors. {exp}')
-            except Exception as exp:
-                self.logger.error(f"Uh oh... {exp}")
+                networkname=zone
+                if zone in dns_rev_domain:
+                    networkname=dns_rev_domain[zone]
+                dns_zone_config = dns_zone_template.render(RECORDS=dns_zone_records[zone],
+                                                           AUTHORITATIVE_SERVER=f"controller.{networkname}",
+                                                           SERIAL=unix_time)
+                with open(f'{tmpdir}/{zone}.luna.zone', 'w', encoding='utf-8') as filename:
+                    filename.write(dns_zone_config)
+                try:
+                    zone_cmd = ['named-checkzone', f'luna.{zone}', f'{tmpdir}/{zone}.luna.zone']
+                    validate_zone_name = subprocess.run(zone_cmd, check = True)
+                    if validate_zone_name.returncode:
+                        validate = False
+                        self.logger.error(f'DNS zone file: {tmpdir}/{zone}.luna.zone containing errors.')
+                except Exception as exp:
+                    self.logger.error(f'DNS zone file: {tmpdir}/{zone}.luna.zone containing errors. {exp}')
+        except Exception as exp:
+            self.logger.error(f"Uh oh... {exp}")
 
         # we create the actual /etc/named.conf and /etc/named.luna.zones
         managed_keys="/trinity/local/var/lib/named/dynamic"

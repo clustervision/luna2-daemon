@@ -62,6 +62,11 @@ class DNS():
             data=[]
             for host in dns:
                 response['config']['dns'][name].append({ "host": host['host'], "ipaddress": host['ipaddress'] })
+        else:
+            network = Database().get_record(None, "network", f"WHERE `name`='{name}'")
+            if not network:
+                status=False
+                response=f"Network {name} does not exist"
         return status, response
 
 

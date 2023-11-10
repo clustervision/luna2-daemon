@@ -64,7 +64,7 @@ class Monitor():
         return status, response
 
 
-    def get_status(self, node=None):
+    def get_nodestatus(self, node=None):
         """
         This method will check the status of a node
         """
@@ -81,7 +81,7 @@ class Monitor():
         return status, response
 
 
-    def update_status(self, node=None, request_data=None):
+    def update_nodestatus(self, node=None, request_data=None):
         """
         This method will update the status of a node
         """
@@ -127,6 +127,23 @@ class Monitor():
                         else:
                             details['level']='maintask'
                     details[item]=task[item]
+                response.append(details)
+        return status, response
+
+
+    def get_status(self):
+        """
+        This method generates a list of messages in the status table
+        """
+        status=True
+        response = []
+        statuslist = Database().get_record(None, 'status', "ORDER BY created ASC")
+        if statuslist:
+            status=True
+            for line in statuslist:
+                details={}
+                for item in ['request_id','username_initiator','created','read','message']:
+                    details[item]=line[item]
                 response.append(details)
         return status, response
 

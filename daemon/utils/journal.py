@@ -47,7 +47,20 @@ from utils.queue import Queue
 from utils.helper import Helper
 from utils.model import Model
 
-# id, request, payload, sendfor sendby tries created
+from base.node import Node
+from base.group import Group
+from base.interface import Interface
+from base.osimage import OSImage
+from base.cluster import Cluster
+from base.bmcsetup import BMCSetup
+from base.switch import Switch
+from base.otherdev import OtherDev
+from base.network import Network
+from base.dns import DNS
+from base.secret import Secret
+from base.osuser import OsUser
+
+# id, function, object, payload, sendfor sendby tries created
 
 class Journal():
     """
@@ -56,6 +69,7 @@ class Journal():
 
     def __init__(self):
         self.logger = Log.get_logger()
+        self.plugins = Helper().plugin_finder('/trinity/local/luna/daemon/base')
         self.me=None
         self.all_controllers = Database().get_record_join(['ipaddress.ipaddress','controller.hostname'],
                                                           ['ipaddress.tablerefid=controller.id'],
@@ -73,7 +87,7 @@ class Journal():
                         self.logger.info(f"My ipaddress is {ip} and i am {self.me}")
 
 
-    def add_request(self,request,payload=None):
+    def add_request(self,function,object,payload=None):
         if payload:
             string = dumps(payload)
             encoded = b64encode(string.encode())
@@ -81,7 +95,8 @@ class Journal():
         if self.me:
             if self.all_controllers:
                 data={}
-                data['request'] = request
+                data['function'] = function
+                data['object'] = object
                 data['payload'] = payload
                 data['sendby'] = self.me
                 data['created'] = "NOW"
@@ -92,7 +107,7 @@ class Journal():
                     data['sendfor'] = controller['hostname']
                     row = Helper().make_rows(data)
                     request_id = Database().insert('journal', row)
-                    self.logger.info(f"replicating {request} to {controller['hostname']} with id {request_id}")
+                    self.logger.info(f"replicating {function}({object}) to {controller['hostname']} with id {request_id}")
             else:
                 self.logger.error(f"No controllers are configured")
         else:
@@ -105,10 +120,23 @@ class Journal():
             all_records = Database().get_record(None,'journal',f"WHERE sendfor='{self.me}' AND tries<'5' ORDER BY created ASC")
             if all_records:
                 for record in all_records:
-                    decoded = b64decode(record['payload'])
-                    string = decoded.decode("ascii")
-                    record['payload'] = loads(string)
-                    self.logger.info(f"executing {record['request']}/{record['tries']} received by {record['sendby']} on {record['created']}")
-        return
+                    payload=None
+                    if record['payload']:
+                        decoded = b64decode(record['payload'])
+                        string = decoded.decode("ascii")
+                        payload = loads(string)
+                        self.logger.info(f"payload: {payload}")
+                   
+                    class_name,function_name=record['function'].split('.')
+                    self.logger.info(f"executing {class_name}().{function_name}({record['object']},payload)/{record['tries']} received by {record['sendby']} on {record['created']}")
 
+                    repl_class = globals()[class_name]                # -> base.node.Node
+                    repl_function = getattr(repl_class,function_name) # -> base.node.Node.node_update
+                    status,message=repl_function(repl_class(),record['object'],payload)
+
+                    self.logger.info(f"result for {record['function']}({record['object']}): {status}, {message}")
+                    if status is True:
+                        Database().delete_row('journal', [{"column": "id", "value": record['id']}])
+                        
+        return
 

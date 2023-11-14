@@ -117,7 +117,7 @@ class Journal():
 
     def handle_requests(self):
         if self.me:
-            all_records = Database().get_record(None,'journal',f"WHERE sendfor='{self.me}' AND tries<'5' ORDER BY created ASC")
+            all_records = Database().get_record(None,'journal',f"WHERE sendfor='{self.me}' ORDER BY created,id ASC")
             if all_records:
                 for record in all_records:
                     payload=None
@@ -125,7 +125,7 @@ class Journal():
                         decoded = b64decode(record['payload'])
                         string = decoded.decode("ascii")
                         payload = loads(string)
-                        self.logger.info(f"payload: {payload}")
+                        self.logger.debug(f"replication payload: {payload}")
                    
                     class_name,function_name=record['function'].split('.')
                     self.logger.info(f"executing {class_name}().{function_name}({record['object']},payload)/{record['tries']} received by {record['sendby']} on {record['created']}")
@@ -137,6 +137,5 @@ class Journal():
                     self.logger.info(f"result for {record['function']}({record['object']}): {status}, {message}")
                     if status is True:
                         Database().delete_row('journal', [{"column": "id", "value": record['id']}])
-                        
         return
 

@@ -265,3 +265,13 @@ DATABASE_LAYOUT_tracker = [
 {"column": "left",                 "datatype": "INTEGER", "length": "10"},
 {"column": "updated",              "datatype": "numeric"},
 {"column": "status",               "datatype": "VARCHAR", "length": "20"}]
+
+DATABASE_LAYOUT_journal = [
+{"column": "id",                   "datatype": "INTEGER", "key": "PRIMARY", "keyadd": "AUTOINCREMENT"},
+{"column": "request",              "datatype": "VARCHAR", "length": "4096"},
+{"column": "payload",              "datatype": "VARCHAR", "length": "65536"},
+{"column": "sendfor"               "datatype": "VARCHAR", "length": "80"},
+{"column": "sendby"                "datatype": "VARCHAR", "length": "80"},
+{"column": "tries"                 "datatype": "INTEGER", "length": "10"},
+{"column": "created",              "datatype": "numeric"}]
+

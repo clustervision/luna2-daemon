@@ -142,7 +142,7 @@ class OSImage():
 
             regex=re.compile(r"^([A-Za-z0-9+/]{4})*([A-Za-z0-9+/]{3}=|[A-Za-z0-9+/]{2}==)?$")
             try:
-                for item in ['grab_filesystems','grab_exclude']:
+                for item in ['grab_filesystems','grab_exclude','kerneloptions']:
                     if not regex.match(record[item]):
                         data = record[item]
                         data = b64encode(data.encode())

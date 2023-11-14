@@ -34,6 +34,7 @@ import datetime
 import jinja2
 import jwt
 #from flask import abort
+from base64 import b64decode, b64encode
 from common.constant import CONSTANT
 from utils.log import Log
 from utils.database import Database
@@ -401,6 +402,11 @@ class Boot():
                     data['initrdfile'] = osimage[0]['initrdfile']
                 if ('kerneloptions' in osimage[0]) and (osimage[0]['kerneloptions']):
                     data['kerneloptions'] = osimage[0]['kerneloptions']
+                    regex=re.compile(r"^([A-Za-z0-9+/]{4})*([A-Za-z0-9+/]{3}=|[A-Za-z0-9+/]{2}==)?$")
+                    if regex.match(data['kerneloptions']):
+                        data = b64decode(data['kerneloptions'])
+                        data['kerneloptions'] = data.decode("ascii")
+                    data['kerneloptions']=data['kerneloptions'].replace('\n', ' ').replace('\r', '')
 
         if None not in data.values():
             status=True
@@ -694,7 +700,11 @@ class Boot():
                     data['initrdfile'] = osimage[0]['initrdfile']
                 if ('kerneloptions' in osimage[0]) and (osimage[0]['kerneloptions']):
                     data['kerneloptions'] = osimage[0]['kerneloptions']
-        #self.logger.info(f"manual group boot template data: [{data}]")
+                    regex=re.compile(r"^([A-Za-z0-9+/]{4})*([A-Za-z0-9+/]{3}=|[A-Za-z0-9+/]{2}==)?$")
+                    if regex.match(data['kerneloptions']):
+                        data = b64decode(data['kerneloptions'])
+                        data['kerneloptions'] = data.decode("ascii")
+                    data['kerneloptions']=data['kerneloptions'].replace('\n', ' ').replace('\r', '')
 
         if None not in data.values():
             status=True
@@ -867,6 +877,11 @@ class Boot():
                     data['initrdfile'] = osimage[0]['initrdfile']
                 if ('kerneloptions' in osimage[0]) and (osimage[0]['kerneloptions']):
                     data['kerneloptions'] = osimage[0]['kerneloptions']
+                    regex=re.compile(r"^([A-Za-z0-9+/]{4})*([A-Za-z0-9+/]{3}=|[A-Za-z0-9+/]{2}==)?$")
+                    if regex.match(data['kerneloptions']):
+                        data = b64decode(data['kerneloptions'])
+                        data['kerneloptions'] = data.decode("ascii")
+                    data['kerneloptions']=data['kerneloptions'].replace('\n', ' ').replace('\r', '')
 
         if None not in data.values():
             status=True

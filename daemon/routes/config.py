@@ -49,7 +49,7 @@ from base.network import Network
 from base.dns import DNS
 from base.secret import Secret
 from base.osuser import OsUser
-from base.journal import Journal
+from utils.journal import Journal
 from utils.helper import Helper
 from utils.status import Status
 

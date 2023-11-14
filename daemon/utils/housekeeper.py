@@ -153,3 +153,23 @@ class Housekeeper(object):
         except Exception as exp:
             exc_type, exc_obj, exc_tb = sys.exc_info()
             self.logger.error(f"switch port scan thread encountered problem: {exp}, {exc_type}, in {exc_tb.tb_lineno}")
+
+
+    def journal_mother(self,event):
+        self.logger.info("Starting Journal/Replication thread")
+        try:
+            from utils.journal import Journal
+            journal_object=Journal()
+            while True:
+                try:
+                    journal_object.handle_requests()
+                except Exception as exp:
+                    exc_type, exc_obj, exc_tb = sys.exc_info()
+                    self.logger.error(f"journal_mother thread encountered problem: {exp}, {exc_type}, in {exc_tb.tb_lineno}")
+                if event.is_set():
+                    return
+                sleep(5)
+        except Exception as exp:
+            exc_type, exc_obj, exc_tb = sys.exc_info()
+            self.logger.error(f"journal_mother thread encountered problem: {exp}, {exc_type}, in {exc_tb.tb_lineno}")
+

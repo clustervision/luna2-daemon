@@ -43,7 +43,7 @@ configParser = RawConfigParser()
 
 TABLES = ['status', 'queue', 'osimage', 'osimagetag', 'nodesecrets', 'nodeinterface', 'bmcsetup', 
           'monitor', 'ipaddress', 'groupinterface', 'roles', 'group', 'network', 'user', 'switch', 
-          'otherdevices', 'controller', 'groupsecrets', 'node', 'cluster', 'tracker','dns']
+          'otherdevices', 'controller', 'groupsecrets', 'node', 'cluster', 'tracker','dns','journal']
 
 def db_status():
     """
@@ -226,6 +226,8 @@ def get_database_tables_structure(table=None):
         return DATABASE_LAYOUT_tracker
     if table == "dns":
         return DATABASE_LAYOUT_dns
+    if table == "journal":
+        return DATABASE_LAYOUT_journal
 
 
 def cleanup_queue_and_status():

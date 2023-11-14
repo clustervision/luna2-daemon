@@ -78,6 +78,10 @@ def on_starting(server):
     executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
     executor.submit(Housekeeper().switchport_scan, event)
     executor.shutdown(wait=False)
+    # --------------- journal / replication thread -----------------
+    executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
+    executor.submit(Housekeeper().journal_mother, event)
+    executor.shutdown(wait=False)
     # --------------------------------------------------------------
     LOGGER.info(vars(server))
     LOGGER.info('Gunicorn server hook on start')

@@ -37,6 +37,7 @@ from os import getpid, path
 from random import randint
 from base64 import b64decode, b64encode
 from concurrent.futures import ThreadPoolExecutor
+from json import dumps,loads
 from common.constant import CONSTANT
 from utils.status import Status
 from utils.osimage import OsImage as OsImager
@@ -62,38 +63,51 @@ class Journal():
         if self.all_controllers:
             me=None
             for interface in ni.interfaces():
-                ip = ni.ifaddresses('eth0')[ni.AF_INET][0]['addr']
+                ip = ni.ifaddresses(interface)[ni.AF_INET][0]['addr']
+                self.logger.debug(f"Interface {interface} has ip {ip}")
                 for controller in self.all_controllers:
                     if controller['hostname'] == "controller":
-                        next
+                        continue
                     if controller['ipaddress'] == ip:
-                        me=controller['hostname']
-                        self.logger.info(f"My ipaddress is {ip} and i am {me}")
+                        self.me=controller['hostname']
+                        self.logger.info(f"My ipaddress is {ip} and i am {self.me}")
 
 
-    def add_request(self,request,payload):
-        if me:
+    def add_request(self,request,payload=None):
+        if payload:
+            string = dumps(payload)
+            encoded = b64encode(string.encode())
+            payload = encoded.decode("ascii")
+        if self.me:
             if self.all_controllers:
                 data={}
                 data['request'] = request
                 data['payload'] = payload
-                data['sendby'] = me
+                data['sendby'] = self.me
                 data['created'] = "NOW"
-                for controller in all_controllers:
-                    if controller['hostname'] == "controller":
-                        next
+                data['tries'] = "0"
+                for controller in self.all_controllers:
+                    if controller['hostname'] in ["controller",self.me]:
+                        continue
                     data['sendfor'] = controller['hostname']
                     row = Helper().make_rows(data)
-                    request_id = Database().insert('journal', data)
+                    request_id = Database().insert('journal', row)
                     self.logger.info(f"replicating {request} to {controller['hostname']} with id {request_id}")
+            else:
+                self.logger.error(f"No controllers are configured")
+        else:
+            self.logger.error(f"I do not know who i am. cannot replicate")
         return
 
 
-    def handle_requests(self,success=0):
-        if me:
-            all_records = Database().get_record_join(None,'journal',f"WHERE sendfor='{me}' AND tries<'5' ORDER BY created ASC")
+    def handle_requests(self):
+        if self.me:
+            all_records = Database().get_record(None,'journal',f"WHERE sendfor='{self.me}' AND tries<'5' ORDER BY created ASC")
             if all_records:
                 for record in all_records:
+                    decoded = b64decode(record['payload'])
+                    string = decoded.decode("ascii")
+                    record['payload'] = loads(string)
                     self.logger.info(f"executing {record['request']}/{record['tries']} received by {record['sendby']} on {record['created']}")
         return
 

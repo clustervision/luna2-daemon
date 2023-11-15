@@ -47,6 +47,12 @@ from utils.queue import Queue
 from utils.helper import Helper
 from utils.model import Model
 
+import requests
+from requests import Session
+from requests.adapters import HTTPAdapter
+import urllib3
+from urllib3.util import Retry
+
 from base.node import Node
 from base.group import Group
 from base.interface import Interface
@@ -60,6 +66,16 @@ from base.dns import DNS
 from base.secret import Secret
 from base.osuser import OsUser
 
+urllib3.disable_warnings()
+session = Session()
+retries = Retry(
+    total = 10,
+    backoff_factor = 0.3,
+    status_forcelist = [502, 503, 504, 500, 404],
+    allowed_methods = {'GET', 'POST'}
+)
+session.mount('https://', HTTPAdapter(max_retries=retries))
+
 # id, function, object, payload, sendfor sendby tries created
 
 class Journal():
@@ -69,13 +85,14 @@ class Journal():
 
     def __init__(self):
         self.logger = Log.get_logger()
-        self.plugins = Helper().plugin_finder('/trinity/local/luna/daemon/base')
         self.me=None
-        self.all_controllers = Database().get_record_join(['ipaddress.ipaddress','controller.hostname'],
-                                                          ['ipaddress.tablerefid=controller.id'],
+        self.dict_controllers=None
+        self.token=None
+        self.all_controllers = Database().get_record_join(['controller.*','ipaddress.ipaddress','network.name as domain'],
+                                                          ['ipaddress.tablerefid=controller.id','network.id=ipaddress.networkid'],
                                                           ["ipaddress.tableref='controller'"])
         if self.all_controllers:
-            me=None
+            self.dict_controllers = Helper().convert_list_to_dict(controller, 'hostname')
             for interface in ni.interfaces():
                 ip = ni.ifaddresses(interface)[ni.AF_INET][0]['addr']
                 self.logger.debug(f"Interface {interface} has ip {ip}")
@@ -135,7 +152,65 @@ class Journal():
                     status,message=repl_function(repl_class(),record['object'],payload)
 
                     self.logger.info(f"result for {record['function']}({record['object']}): {status}, {message}")
-                    if status is True:
-                        Database().delete_row('journal', [{"column": "id", "value": record['id']}])
+                    # we always have to remove the entries in the DB regarding outcome.
+                    Database().delete_row('journal', [{"column": "id", "value": record['id']}])
         return
+
+
+    def sync_controllers(self):
+        if self.me and self.dict_controllers:
+            current_controller=None
+            failed_controllers=[]
+            all_records = Database().get_record(None,'journal',f"WHERE sendby='{self.me}' ORDER BY sendfor,created,id ASC")
+            if all_records:
+                for record in all_records:
+                    if (not current_controller) or current_controller != record['sendfor']:
+                        current_controller=record['sendfor']
+                        self.token=None
+                    if current_controller not in failed_controllers:
+                        function=record['function']
+                        object=record['object']
+                        payload=record['payload']
+                        host=record['sendfor']
+                        status=self.send_request(host,function,object,payload)
+                        if status is True:
+                            Database().delete_row('journal', [{"column": "id", "value": record['id']}])
+                        else:
+                            failed_controllers.append(current_controller)
+                            self.logger.info(f"attempt to sync {current_controller} failed. stopping all attempts for this controller")
+        return
+
+
+    def send_request(self,host,function,object,payload=None):
+        protocol = CONSTANT['API']['PROTOCOL']
+                #ipaddress = controller[0]['ipaddress']
+                #serverport = controller[0]['serverport']
+        bad_ret=['400','401','500','502','503']
+        good_ret=['200','201','204']
+        domain=controllers[host]['domain']
+        serverport=controllers[host]['serverport']
+        if not self.token:
+            token_credentials = {'username': CONSTANT['API']['USERNAME'], 'password': CONSTANT['API']['PASSWORD']}
+            try:
+                x = session.post(f'{protocol}://{current_controller}.{domain}:{serverport}/token', json=token_credentials, stream=True, timeout=10, verify=CONSTANT['API']["VERIFY_CERTIFICATE"])
+                if (str(x.status_code) not in bad_ret) and x.text:
+                    DATA = loads(x.text)
+                    if 'token' in DATA:
+                        self.token=DATA["token"]
+            except Exception as exp:
+                self.logger.error(f"{exp}")
+        if self.token:
+            try:
+                x = session.post(f'{protocol}://{current_controller}.{domain}:{serverport}://journal', json=token_credentials, stream=True, timeout=10, verify=CONSTANT['API']["VERIFY_CERTIFICATE"])
+                if str(x.status_code) in good_ret:
+                    self.logger.info(f"journal for {function}({object})/payload sync to {host} success. Returned {x.status_code}")
+                    return True
+                else:
+                    self.logger.info(f"journal for {function}({object})/payload sync to {host} failed. Returned {x.status_code}")
+                    return False
+            except Exception as exp:
+                self.logger.error(f"{exp}")
+        else:
+            self.logger.error(f"No token to forward {function}({object})/payload sync to {host}. Invalid credentials or host is down.")
+        return False
 

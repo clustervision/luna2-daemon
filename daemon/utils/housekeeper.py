@@ -162,6 +162,7 @@ class Housekeeper(object):
             journal_object=Journal()
             while True:
                 try:
+                    journal_object.sync_controllers()
                     journal_object.handle_requests()
                 except Exception as exp:
                     exc_type, exc_obj, exc_tb = sys.exc_info()

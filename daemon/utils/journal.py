@@ -99,7 +99,7 @@ class Journal():
                 for controller in self.all_controllers:
                     if controller['hostname'] == "controller":
                         continue
-                    if controller['ipaddress'] == ip:
+                    if not self.me and controller['ipaddress'] == ip:
                         self.me=controller['hostname']
                         self.logger.info(f"My ipaddress is {ip} and i am {self.me}")
 
@@ -124,7 +124,8 @@ class Journal():
                     data['sendfor'] = controller['hostname']
                     row = Helper().make_rows(data)
                     request_id = Database().insert('journal', row)
-                    self.logger.info(f"replicating {function}({object}) to {controller['hostname']} with id {request_id}")
+                    self.logger.info(f"adding {function}({object}) to journal for {controller['hostname']} with id {request_id}")
+                self.sync_controllers()
             else:
                 self.logger.error(f"No controllers are configured")
         else:
@@ -195,17 +196,20 @@ class Journal():
         if not self.token:
             token_credentials = {'username': CONSTANT['API']['USERNAME'], 'password': CONSTANT['API']['PASSWORD']}
             try:
+                self.logger.debug(f"json for token: {token_credentials}")
                 x = session.post(f'{protocol}://{endpoint}:{serverport}/token', json=token_credentials, stream=True, timeout=10, verify=CONSTANT['API']["VERIFY_CERTIFICATE"])
                 if (str(x.status_code) not in bad_ret) and x.text:
                     DATA = loads(x.text)
+                    self.logger.debug(f"data received for token: {DATA}")
                     if 'token' in DATA:
                         self.token=DATA["token"]
             except Exception as exp:
                 self.logger.error(f"{exp}")
         if self.token:
-            entry={'journal': [{'function': function, 'object': object, 'payload': payload}] }
+            entry={'journal': [{'function': function, 'object': object, 'payload': payload, 'sendfor': host, 'sendby': self.me}] }
+            headers = {'x-access-tokens': self.token}
             try:
-                x = session.post(f'{protocol}://{endpoint}:{serverport}:/journal', json=entry, stream=True, timeout=10, verify=CONSTANT['API']["VERIFY_CERTIFICATE"])
+                x = session.post(f'{protocol}://{endpoint}:{serverport}/journal', json=entry, headers=headers, stream=True, timeout=10, verify=CONSTANT['API']["VERIFY_CERTIFICATE"])
                 if str(x.status_code) in good_ret:
                     self.logger.info(f"journal for {function}({object})/payload sync to {host} success. Returned {x.status_code}")
                     return True

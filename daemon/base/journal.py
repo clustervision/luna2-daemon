@@ -31,8 +31,8 @@ __email__       = 'antoine.schonewille@clustervision.com'
 __status__      = 'Development'
 
 from utils.database import Database
+from utils.helper import Helper
 from utils.log import Log
-from utils.Journal import Journal
 
 
 class Journal():
@@ -49,23 +49,25 @@ class Journal():
         This method will return update requested node.
         """
         status = True
-        response = "Success"
+        response = "success"
         if request_data:
             data = request_data['journal']
-            jorunal_columns = Database().get_columns('journal')
+            journal_columns = Database().get_columns('journal')
             for entry in data:
                 if 'function' in entry and 'object' in entry:
                     columns_check = Helper().compare_list(entry, journal_columns)
                     if columns_check:
                         row = Helper().make_rows(entry)
                         request_id = Database().insert('journal', row)
-                        if not request_id:
-                            response = f"failed adding {entry['function']}(entry['object']) to the journal"
+                        if request_id:
+                            self.logger.error(f"added {entry['function']}({entry['object']}) to the journal")
+                        else:
+                            response = f"failed adding {entry['function']}({entry['object']}) to the journal"
                             self.logger.error(f"failed adding {entry['function']}(entry['object']) to the journal")
                             return False, response
                     else:
                         response = 'Invalid request: Columns are incorrect'
-                        return False, reponse
+                        return False, response
         else:
             response = 'Invalid request: Did not receive data'
             status = False

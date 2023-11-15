@@ -44,7 +44,7 @@ LOGGER = Log.get_logger()
 journal_blueprint = Blueprint('journal', __name__)
 
 
-@config_blueprint.route('/journal', methods=['POST'])
+@journal_blueprint.route('/journal', methods=['POST'])
 @token_required
 @validate_name
 @input_filter(checks=['journal'], skip=None)
@@ -55,4 +55,5 @@ def journal_post(name=None):
     status, response = Journal().update_journal(request.data)
     access_code=Helper().get_access_code(status,response)
     response = {'message': response}
+    return response, access_code
 

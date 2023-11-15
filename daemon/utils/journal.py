@@ -92,7 +92,7 @@ class Journal():
                                                           ['ipaddress.tablerefid=controller.id','network.id=ipaddress.networkid'],
                                                           ["ipaddress.tableref='controller'"])
         if self.all_controllers:
-            self.dict_controllers = Helper().convert_list_to_dict(controller, 'hostname')
+            self.dict_controllers = Helper().convert_list_to_dict(self.all_controllers, 'hostname')
             for interface in ni.interfaces():
                 ip = ni.ifaddresses(interface)[ni.AF_INET][0]['addr']
                 self.logger.debug(f"Interface {interface} has ip {ip}")
@@ -177,7 +177,7 @@ class Journal():
                             Database().delete_row('journal', [{"column": "id", "value": record['id']}])
                         else:
                             failed_controllers.append(current_controller)
-                            self.logger.info(f"attempt to sync {current_controller} failed. stopping all attempts for this controller")
+                            self.logger.error(f"attempt to sync {current_controller} failed. stopping all attempts for this controller")
         return
 
 
@@ -187,12 +187,15 @@ class Journal():
                 #serverport = controller[0]['serverport']
         bad_ret=['400','401','500','502','503']
         good_ret=['200','201','204']
-        domain=controllers[host]['domain']
-        serverport=controllers[host]['serverport']
+        domain=self.dict_controllers[host]['domain']
+        _,alt_serverport,*_=(CONSTANT['API']['ENDPOINT'].split(':')+[None]+[None])
+        serverport=self.dict_controllers[host]['serverport'] or alt_serverport
+        #endpoint=f"{host}.{domain}"
+        endpoint=self.dict_controllers[host]['ipaddress']
         if not self.token:
             token_credentials = {'username': CONSTANT['API']['USERNAME'], 'password': CONSTANT['API']['PASSWORD']}
             try:
-                x = session.post(f'{protocol}://{current_controller}.{domain}:{serverport}/token', json=token_credentials, stream=True, timeout=10, verify=CONSTANT['API']["VERIFY_CERTIFICATE"])
+                x = session.post(f'{protocol}://{endpoint}:{serverport}/token', json=token_credentials, stream=True, timeout=10, verify=CONSTANT['API']["VERIFY_CERTIFICATE"])
                 if (str(x.status_code) not in bad_ret) and x.text:
                     DATA = loads(x.text)
                     if 'token' in DATA:
@@ -201,7 +204,7 @@ class Journal():
                 self.logger.error(f"{exp}")
         if self.token:
             try:
-                x = session.post(f'{protocol}://{current_controller}.{domain}:{serverport}://journal', json=token_credentials, stream=True, timeout=10, verify=CONSTANT['API']["VERIFY_CERTIFICATE"])
+                x = session.post(f'{protocol}://{endpoint}:{serverport}:/journal', json=token_credentials, stream=True, timeout=10, verify=CONSTANT['API']["VERIFY_CERTIFICATE"])
                 if str(x.status_code) in good_ret:
                     self.logger.info(f"journal for {function}({object})/payload sync to {host} success. Returned {x.status_code}")
                     return True

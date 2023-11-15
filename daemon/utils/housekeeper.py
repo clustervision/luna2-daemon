@@ -157,12 +157,16 @@ class Housekeeper(object):
 
     def journal_mother(self,event):
         self.logger.info("Starting Journal/Replication thread")
+        sync_tel=0
         try:
             from utils.journal import Journal
             journal_object=Journal()
             while True:
                 try:
-                    journal_object.sync_controllers()
+                    if sync_tel<1:
+                        journal_object.sync_controllers()
+                        sync_tel=7
+                    sync_tel-=1
                     journal_object.handle_requests()
                 except Exception as exp:
                     exc_type, exc_obj, exc_tb = sys.exc_info()

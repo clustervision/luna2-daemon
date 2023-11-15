@@ -203,8 +203,9 @@ class Journal():
             except Exception as exp:
                 self.logger.error(f"{exp}")
         if self.token:
+            entry={'journal': [{'function': function, 'object': object, 'payload': payload}] }
             try:
-                x = session.post(f'{protocol}://{endpoint}:{serverport}:/journal', json=token_credentials, stream=True, timeout=10, verify=CONSTANT['API']["VERIFY_CERTIFICATE"])
+                x = session.post(f'{protocol}://{endpoint}:{serverport}:/journal', json=entry, stream=True, timeout=10, verify=CONSTANT['API']["VERIFY_CERTIFICATE"])
                 if str(x.status_code) in good_ret:
                     self.logger.info(f"journal for {function}({object})/payload sync to {host} success. Returned {x.status_code}")
                     return True

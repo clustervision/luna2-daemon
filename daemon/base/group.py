@@ -467,7 +467,7 @@ class Group():
 
     def clone_group(self, name=None, request_data=None):
         """
-        This method will clone a node.
+        This method will clone a group.
         """
         data = {}
         status=False
@@ -543,8 +543,9 @@ class Group():
                 new_group_id = Database().insert('group', row)
                 if not new_group_id:
                     status=False
-                    return status, f'Node {newgroupname} is not created due to possible property clash'
-                response = f'Group {name} created successfully'
+                    return status, f'Group {newgroupname} is not created due to possible property clash'
+                # response = f'Group {name} created successfully'
+                response = f'Group {name} cloned as {newgroupname} successfully'
                 status=True
                 group_interfaces = Database().get_record_join(
                     [

@@ -85,11 +85,13 @@ class Journal():
 
     def __init__(self):
         self.logger = Log.get_logger()
+        self.protocol = CONSTANT['API']['PROTOCOL']
+        self.bad_ret=['400','401','500','502','503']
+        self.good_ret=['200','201','204']
         self.me=None
         self.insync=False
         self.hastate=None
         self.dict_controllers=None
-        self.token=None
         self.all_controllers = Database().get_record_join(['controller.*','ipaddress.ipaddress','network.name as domain'],
                                                           ['ipaddress.tablerefid=controller.id','network.id=ipaddress.networkid'],
                                                           ["ipaddress.tableref='controller'"])
@@ -217,7 +219,6 @@ class Journal():
                 for record in all_records:
                     if (not current_controller) or current_controller != record['sendfor']:
                         current_controller=record['sendfor']
-                        self.token=None
                     if current_controller not in failed_controllers:
                         function=record['function']
                         object=record['object']
@@ -235,32 +236,18 @@ class Journal():
 
 
     def send_request(self,host,function,object,created,param=None,payload=None):
-        protocol = CONSTANT['API']['PROTOCOL']
-        bad_ret=['400','401','500','502','503']
-        good_ret=['200','201','204']
         domain=self.dict_controllers[host]['domain']
         _,alt_serverport,*_=(CONSTANT['API']['ENDPOINT'].split(':')+[None]+[None])
         serverport=self.dict_controllers[host]['serverport'] or alt_serverport
         #endpoint=f"{host}.{domain}"
         endpoint=self.dict_controllers[host]['ipaddress']
-        if not self.token:
-            token_credentials = {'username': CONSTANT['API']['USERNAME'], 'password': CONSTANT['API']['PASSWORD']}
-            try:
-                self.logger.debug(f"json for token: {token_credentials}")
-                x = session.post(f'{protocol}://{endpoint}:{serverport}/token', json=token_credentials, stream=True, timeout=10, verify=CONSTANT['API']["VERIFY_CERTIFICATE"])
-                if (str(x.status_code) not in bad_ret) and x.text:
-                    DATA = loads(x.text)
-                    self.logger.debug(f"data received for token: {DATA}")
-                    if 'token' in DATA:
-                        self.token=DATA["token"]
-            except Exception as exp:
-                self.logger.error(f"{exp}")
-        if self.token:
+        token=self.get_token(host)
+        if token:
             entry={'journal': [{'function': function, 'object': object, 'param': param, 'payload': payload, 'sendfor': host, 'sendby': self.me, 'created': created}] }
-            headers = {'x-access-tokens': self.token}
+            headers = {'x-access-tokens': token}
             try:
-                x = session.post(f'{protocol}://{endpoint}:{serverport}/journal', json=entry, headers=headers, stream=True, timeout=10, verify=CONSTANT['API']["VERIFY_CERTIFICATE"])
-                if str(x.status_code) in good_ret:
+                x = session.post(f'{self.protocol}://{endpoint}:{serverport}/journal', json=entry, headers=headers, stream=True, timeout=10, verify=CONSTANT['API']["VERIFY_CERTIFICATE"])
+                if str(x.status_code) in self.good_ret:
                     self.logger.info(f"journal for {function}({object})/payload sync to {host} success. Returned {x.status_code}")
                     return True
                 else:
@@ -291,31 +278,17 @@ class Journal():
 
 
     def pull_journal(self,host):
-        protocol = CONSTANT['API']['PROTOCOL']
-        bad_ret=['400','401','500','502','503']
-        good_ret=['200','201','204']
         domain=self.dict_controllers[host]['domain']
         _,alt_serverport,*_=(CONSTANT['API']['ENDPOINT'].split(':')+[None]+[None])
         serverport=self.dict_controllers[host]['serverport'] or alt_serverport
         #endpoint=f"{host}.{domain}"
         endpoint=self.dict_controllers[host]['ipaddress']
-        if not self.token:
-            token_credentials = {'username': CONSTANT['API']['USERNAME'], 'password': CONSTANT['API']['PASSWORD']}
+        token=self.get_token(host)
+        if token:
+            headers = {'x-access-tokens': token}
             try:
-                self.logger.debug(f"json for token: {token_credentials}")
-                x = session.post(f'{protocol}://{endpoint}:{serverport}/token', json=token_credentials, stream=True, timeout=10, verify=CONSTANT['API']["VERIFY_CERTIFICATE"])
-                if (str(x.status_code) not in bad_ret) and x.text:
-                    DATA = loads(x.text)
-                    self.logger.debug(f"data received for token: {DATA}")
-                    if 'token' in DATA:
-                        self.token=DATA["token"]
-            except Exception as exp:
-                self.logger.error(f"{exp}")
-        if self.token:
-            headers = {'x-access-tokens': self.token}
-            try:
-                x = session.get(f'{protocol}://{endpoint}:{serverport}/journal/{self.me}', headers=headers, stream=True, timeout=10, verify=CONSTANT['API']["VERIFY_CERTIFICATE"])
-                if str(x.status_code) in good_ret:
+                x = session.get(f'{self.protocol}://{endpoint}:{serverport}/journal/{self.me}', headers=headers, stream=True, timeout=10, verify=CONSTANT['API']["VERIFY_CERTIFICATE"])
+                if str(x.status_code) in self.good_ret:
                     self.logger.info(f"journal pull from {host} success. Returned {x.status_code}")
                     if x.text:
                         DATA = loads(x.text)
@@ -337,31 +310,17 @@ class Journal():
 
 
     def delete_journal(self,host):
-        protocol = CONSTANT['API']['PROTOCOL']
-        bad_ret=['400','401','500','502','503']
-        good_ret=['200','201','204']
         domain=self.dict_controllers[host]['domain']
         _,alt_serverport,*_=(CONSTANT['API']['ENDPOINT'].split(':')+[None]+[None])
         serverport=self.dict_controllers[host]['serverport'] or alt_serverport
         #endpoint=f"{host}.{domain}"
         endpoint=self.dict_controllers[host]['ipaddress']
-        if not self.token:
-            token_credentials = {'username': CONSTANT['API']['USERNAME'], 'password': CONSTANT['API']['PASSWORD']}
+        token=self.get_token(host)
+        if token:
+            headers = {'x-access-tokens': token}
             try:
-                self.logger.debug(f"json for token: {token_credentials}")
-                x = session.post(f'{protocol}://{endpoint}:{serverport}/token', json=token_credentials, stream=True, timeout=10, verify=CONSTANT['API']["VERIFY_CERTIFICATE"])
-                if (str(x.status_code) not in bad_ret) and x.text:
-                    DATA = loads(x.text)
-                    self.logger.debug(f"data received for token: {DATA}")
-                    if 'token' in DATA:
-                        self.token=DATA["token"]
-            except Exception as exp:
-                self.logger.error(f"{exp}")
-        if self.token:
-            headers = {'x-access-tokens': self.token}
-            try:
-                x = session.get(f'{protocol}://{endpoint}:{serverport}/journal/{self.me}/_delete', headers=headers, stream=True, timeout=10, verify=CONSTANT['API']["VERIFY_CERTIFICATE"])
-                if str(x.status_code) in good_ret:
+                x = session.get(f'{self.protocol}://{endpoint}:{serverport}/journal/{self.me}/_delete', headers=headers, stream=True, timeout=10, verify=CONSTANT['API']["VERIFY_CERTIFICATE"])
+                if str(x.status_code) in self.good_ret:
                     self.logger.info(f"journal delete from {host} success. Returned {x.status_code}")
                     return True
                 else:
@@ -372,4 +331,26 @@ class Journal():
         else:
             self.logger.error(f"No token to delete journal from host {host}. Invalid credentials or host is down.")
         return False
+
+
+    def get_token(self,host):
+        domain=self.dict_controllers[host]['domain']
+        _,alt_serverport,*_=(CONSTANT['API']['ENDPOINT'].split(':')+[None]+[None])
+        serverport=self.dict_controllers[host]['serverport'] or alt_serverport
+        #endpoint=f"{host}.{domain}"
+        endpoint=self.dict_controllers[host]['ipaddress']
+        token_credentials = {'username': CONSTANT['API']['USERNAME'], 'password': CONSTANT['API']['PASSWORD']}
+        token = None
+        try:
+            self.logger.debug(f"json for token: {token_credentials}")
+            x = session.post(f'{self.protocol}://{endpoint}:{serverport}/token', json=token_credentials, stream=True, timeout=10, verify=CONSTANT['API']["VERIFY_CERTIFICATE"])
+            if (str(x.status_code) not in self.bad_ret) and x.text:
+                DATA = loads(x.text)
+                self.logger.debug(f"data received for token: {DATA}")
+                if 'token' in DATA:
+                    token=DATA["token"]
+        except Exception as exp:
+            self.logger.error(f"{exp}")
+        return token
+
 

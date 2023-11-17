@@ -161,18 +161,11 @@ class Housekeeper(object):
         try:
             from utils.journal import Journal
             journal_object=Journal()
-            ha_state={}
-            ha_state['insync']=0
-            where = [{"column": "insync", "value": "1"}]
-            row = Helper().make_rows(ha_state)
-            request_id = Database().update('ha', row, where)
-            while ha_state['insync'] == 0:
+            journal_object.set_insync(False)
+            while journal_object.get_insync() is False:
                 status=journal_object.pullfrom_controllers()
                 if status is True:
-                    ha_state['insync']=1
-                    where = [{"column": "insync", "value": "0"}]
-                    row = Helper().make_rows(ha_state)
-                    request_id = Database().update('ha', row, where)
+                    journal_object.set_insync(True)
                 if event.is_set():
                     return
                 sleep(10)

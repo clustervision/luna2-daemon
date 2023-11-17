@@ -99,8 +99,9 @@ def config_node_post(name=None):
     """
     This api will create or update a node depends on the availability of the node name.
     """
-    Journal().add_request(function="Node.update_node",object=name,payload=request.data)
-    status, response = Node().update_node(name, request.data)
+    status, response = Journal().add_request(function="Node.update_node",object=name,payload=request.data)
+    if status is True:
+        status, response = Node().update_node(name, request.data)
     access_code=Helper().get_access_code(status,response)
     response = {'message': response}
     return response, access_code
@@ -114,8 +115,9 @@ def config_node_clone(name=None):
     """
     This api will clone a node depends on the availability of the node name.
     """
-    Journal().add_request(function="Node.clone_node",object=name,payload=request.data)
-    status, response = Node().clone_node(name, request.data)
+    status, response = Journal().add_request(function="Node.clone_node",object=name,payload=request.data)
+    if status is True:
+        status, response = Node().clone_node(name, request.data)
     access_code=Helper().get_access_code(status,response)
     response = {'message': response}
     return response, access_code
@@ -131,8 +133,9 @@ def config_node_delete(name=None):
     Process - Delete the Node and it's interfaces.
     Output - Success or Failure.
     """
-    Journal().add_request(function="Node.delete_node_by_name",object=name)
-    status, response = Node().delete_node_by_name(name)
+    status, response = Journal().add_request(function="Node.delete_node_by_name",object=name)
+    if status is True:
+        status, response = Node().delete_node_by_name(name)
     access_code=Helper().get_access_code(status,response)
     response = {'message': response}
     return response, access_code

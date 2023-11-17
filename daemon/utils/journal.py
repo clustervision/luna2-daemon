@@ -86,6 +86,7 @@ class Journal():
     def __init__(self):
         self.logger = Log.get_logger()
         self.me=None
+        self.insync=False
         self.dict_controllers=None
         self.token=None
         self.all_controllers = Database().get_record_join(['controller.*','ipaddress.ipaddress','network.name as domain'],
@@ -106,7 +107,32 @@ class Journal():
     def get_me(self):
         return self.me
 
+    def set_insync(self,state):
+        ha_state={}
+        ha_state['insync']=0
+        if state is True:
+            ha_state['insync']=1
+        self.logger.debug(f"set_insync ha_state: {ha_state}")
+        ha_data = Database().get_record(None, 'ha')
+        if ha_data:
+            where = [{"column": "insync", "value": ha_data[0]['insync']}]
+            row = Helper().make_rows(ha_state)
+            Database().update('ha', row, where)
+        return self.get_insync()
+
+    def get_insync(self):
+        if self.insync is False:
+            ha_data = Database().get_record(None, 'ha')
+            if ha_data:
+                self.logger.debug(f"get_insync new ha_state: {ha_data}")
+                self.insync=Helper().make_bool(ha_data[0]['insync'])
+                self.logger.debug(f"get_insync new_self.insync: {self.insync}")
+        return self.insync
+
+
     def add_request(self,function,object,payload=None):
+        if not self.get_insync:
+            return False, "Currently not able to handle request as i am not in sync yet"
         if payload:
             string = dumps(payload)
             encoded = b64encode(string.encode())
@@ -132,7 +158,7 @@ class Journal():
                 self.logger.error(f"No controllers are configured")
         else:
             self.logger.error(f"I do not know who i am. cannot replicate")
-        return
+        return True, "request added to journal"
 
 
     def handle_requests(self):
@@ -232,6 +258,7 @@ class Journal():
                         continue
                     self.logger.info(f"pulling journal from {controller['hostname']}")
                     status=self.pull_journal(controller['hostname'])
+                    self.logger.info(f"pulling status: {status}")
                     if status is False:
                         return False
         return True

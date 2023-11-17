@@ -344,11 +344,14 @@ class Database():
                         key_list.append(f"{cols['key'].upper()} (`{cols['column']}`)")
             if 'with' in cols.keys() and 'column' in cols.keys():
                 key_list.append(f"UNIQUE (`{cols['column']}`,`{cols['with']}`)")
-            columns.append(column_string)
-        join_keys = ', '.join(map(str, key_list))
-        columns.append(join_keys)
+            if len(column_string)>0:
+                columns.append(column_string)
+        if key_list:
+            join_keys = ', '.join(map(str, key_list))
+            columns.append(join_keys)
         column_strings = ', '.join(map(str, columns))
         query = f'CREATE TABLE IF NOT EXISTS `{table}` ({column_strings})'
+        self.logger.debug(f"Query executing => {query}")
         try:
             local_thread.cursor.execute(query)
             self.commit()
@@ -438,14 +441,17 @@ class Database():
                             r"^NOW\s*(\+|\-)\s*([0-9]+)\s*(hour|minute|second)$",
                             str(each["value"])
                         )
-                        symbol = result.group(1)
-                        time_value = result.group(2)
-                        time_denom = result.group(3)
-                        if symbol and time_value and time_denom:
-                            values.append(f"datetime('now','{symbol}{time_value} {time_denom}')")
-                            # only sqlite complaint! pending
+                        if result:
+                            symbol = result.group(1)
+                            time_value = result.group(2)
+                            time_denom = result.group(3)
+                            if symbol and time_value and time_denom:
+                                values.append(f"datetime('now','{symbol}{time_value} {time_denom}')")
+                                # only sqlite complaint! pending
+                            else:
+                                values.append('datetime('+str(each["value"])+',"unixepoch")')
                         else:
-                            values.append('"'+str(each["value"])+'"')
+                            values.append('datetime('+str(each["value"])+',"unixepoch")')
                 else:
                     if each["value"] is not None:
                         values.append('"'+str(each["value"])+'"')
@@ -513,14 +519,17 @@ class Database():
                             r"^NOW\s*(\+|\-)\s*([0-9]+)\s*(hour|minute|second)$",
                             str(cols["value"])
                         )
-                        symbol = result.group(1)
-                        time_value = result.group(2)
-                        time_denom = result.group(3)
-                        if symbol and time_value and time_denom:
-                            column = column + f" = datetime('now','{symbol}{time_value} {time_denom}')"
-                            # only sqlite compliant! pending
+                        if result:
+                            symbol = result.group(1)
+                            time_value = result.group(2)
+                            time_denom = result.group(3)
+                            if symbol and time_value and time_denom:
+                                column = column + f" = datetime('now','{symbol}{time_value} {time_denom}')"
+                                # only sqlite compliant! pending
+                            else:
+                                column = column + f" = datetime({cols['value']}, 'unixepoch')"
                         else:
-                            column = column + f" = '{cols['value']}'"
+                            column = column + f" = datetime({cols['value']}, 'unixepoch')"
                 else:
                     if cols['value'] is not None:
                         column = column + ' = "' +str(cols['value']) +'"'

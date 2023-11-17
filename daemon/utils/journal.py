@@ -162,7 +162,7 @@ class Journal():
         if self.me and self.dict_controllers:
             current_controller=None
             failed_controllers=[]
-            all_records = Database().get_record("*,strftime('%s',created) AS created","journal",f"WHERE sendby='{self.me}' ORDER BY sendfor,created,id ASC")
+            all_records = Database().get_record(["*","strftime('%s',created) AS created"],"journal",f"WHERE sendby='{self.me}' ORDER BY sendfor,created,id ASC")
             if all_records:
                 for record in all_records:
                     if (not current_controller) or current_controller != record['sendfor']:

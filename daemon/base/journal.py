@@ -55,6 +55,7 @@ class Journal():
             journal_columns = Database().get_columns('journal')
             for entry in data:
                 if 'function' in entry and 'object' in entry:
+                    self.logger.info(f"received: {data}")
                     columns_check = Helper().compare_list(entry, journal_columns)
                     if columns_check:
                         row = Helper().make_rows(entry)

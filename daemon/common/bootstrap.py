@@ -325,6 +325,10 @@ def bootstrap(bootstrapfile=None):
     node_plugins = Helper().plugin_finder(f'{plugins_path}/node')
     node_plugin=Helper().plugin_load(node_plugins,'node','default')
 
+    ha_state = [{'column': 'insync', 'value': '0'},
+                {'column': 'master', 'value': '0'}]
+    Database().insert('ha', ha_state)
+
     defaultserver_ip=None
     if 'CONTROLLER' in BOOTSTRAP['HOSTS'].keys():  # the virtual host+ip
         defaultserver_ip=BOOTSTRAP['HOSTS']['CONTROLLER']['IP']

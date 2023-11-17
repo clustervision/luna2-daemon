@@ -44,6 +44,31 @@ class Journal():
         self.logger = Log.get_logger()
 
 
+    def get_journal(self, host=None):
+        where=""
+        data=[]
+        if host:
+            controller=None
+            all_controllers = Database().get_record_join(['controller.*','ipaddress.ipaddress','network.name as domain'],
+                                                          ['ipaddress.tablerefid=controller.id','network.id=ipaddress.networkid'],
+                                                          ["ipaddress.tableref='controller'"])
+            if all_controllers:
+                dict_controllers_byname = Helper().convert_list_to_dict(all_controllers, 'hostname')
+                dict_controllers_byipaddress = Helper().convert_list_to_dict(all_controllers, 'ipaddress')
+                if host in dict_controllers_byname:
+                    controller=host
+                elif host in dict_controllers_byipaddress:
+                    controller=dict_controllers_byipaddress[host]['hostname']
+                if controller:
+                    where=f"WHERE sendfor='{controller}' ORDER BY created,id ASC"
+        entries=Database().get_record(["*","strftime('%s',created) AS created"],"journal",where)
+        if entries:
+            for entry in entries:
+                data.append(entry)
+        response={'journal': data}
+        return True, response
+
+
     def update_journal(self, request_data=None):
         """
         This method will return update requested node.
@@ -55,7 +80,7 @@ class Journal():
             journal_columns = Database().get_columns('journal')
             for entry in data:
                 if 'function' in entry and 'object' in entry:
-                    self.logger.info(f"received: {data}")
+                    self.logger.debug(f"received: {data}")
                     columns_check = Helper().compare_list(entry, journal_columns)
                     if columns_check:
                         row = Helper().make_rows(entry)

@@ -33,7 +33,7 @@ __status__      = 'Development'
 from utils.log import Log
 from utils.database import Database
 from common.constant import CONSTANT
-#from utils.helper import Helper
+from utils.helper import Helper
 import concurrent.futures
 from time import sleep
 import sys
@@ -161,10 +161,25 @@ class Housekeeper(object):
         try:
             from utils.journal import Journal
             journal_object=Journal()
+            ha_state={}
+            ha_state['insync']=0
+            where = [{"column": "insync", "value": "1"}]
+            row = Helper().make_rows(ha_state)
+            request_id = Database().update('ha', row, where)
+            while ha_state['insync'] == 0:
+                status=journal_object.pullfrom_controllers()
+                if status is True:
+                    ha_state['insync']=1
+                    where = [{"column": "insync", "value": "0"}]
+                    row = Helper().make_rows(ha_state)
+                    request_id = Database().update('ha', row, where)
+                if event.is_set():
+                    return
+                sleep(10)
             while True:
                 try:
                     if sync_tel<1:
-                        journal_object.sync_controllers()
+                        journal_object.pushto_controllers()
                         sync_tel=7
                     sync_tel-=1
                     journal_object.handle_requests()

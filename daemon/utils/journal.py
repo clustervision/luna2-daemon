@@ -158,7 +158,7 @@ class Journal():
         return
 
 
-    def sync_controllers(self):
+    def pushto_controllers(self):
         if self.me and self.dict_controllers:
             current_controller=None
             failed_controllers=[]
@@ -222,6 +222,19 @@ class Journal():
         return False
 
 
+    def pullfrom_controllers(self):
+        if self.me:
+            if self.all_controllers:
+                for controller in self.all_controllers:
+                    if controller['hostname'] in ["controller",self.me]:
+                        continue
+                    self.logger.info(f"pulling journal from {controller['hostname']}")
+                    status=self.pull_journal(controller['hostname'])
+                    if status is False:
+                        return False
+        return True
+
+
     def pull_journal(self,host):
         protocol = CONSTANT['API']['PROTOCOL']
         bad_ret=['400','401','500','502','503']
@@ -248,20 +261,22 @@ class Journal():
             try:
                 x = session.get(f'{protocol}://{endpoint}:{serverport}/journal', headers=headers, stream=True, timeout=10, verify=CONSTANT['API']["VERIFY_CERTIFICATE"])
                 if str(x.status_code) in good_ret:
-                    self.logger.info(f"journal for {function}({object})/payload sync to {host} success. Returned {x.status_code}")
+                    self.logger.info(f"journal pull from {host} success. Returned {x.status_code}")
                     if x.text:
                         DATA = loads(x.text)
-                        self.logger.debug(f"data received for pull: {DATA}")
-                        for entry in DATA:
-                            row = Helper().make_rows(entry)
-                            request_id = Database().insert('journal', row)
+                        self.logger.info(f"data received for pull: {DATA}")
+                        if 'journal' in DATA:
+                            NDATA=DATA['journal']
+                            for entry in NDATA:
+                                row = Helper().make_rows(entry)
+                                request_id = Database().insert('journal', row)
                     return True
                 else:
-                    self.logger.info(f"journal for {function}({object})/payload sync to {host} failed. Returned {x.status_code}")
+                    self.logger.info(f"journal pull from {host} failed. Returned {x.status_code}")
                     return False
             except Exception as exp:
                 self.logger.error(f"{exp}")
         else:
-            self.logger.error(f"No token to forward {function}({object})/payload sync to {host}. Invalid credentials or host is down.")
+            self.logger.error(f"No token to pull journal from host {host}. Invalid credentials or host is down.")
         return False
 

@@ -325,7 +325,8 @@ def bootstrap(bootstrapfile=None):
     node_plugins = Helper().plugin_finder(f'{plugins_path}/node')
     node_plugin=Helper().plugin_load(node_plugins,'node','default')
 
-    ha_state = [{'column': 'insync', 'value': '0'},
+    ha_state = [{'column': 'enabled', 'value': '0'},
+                {'column': 'insync', 'value': '0'},
                 {'column': 'master', 'value': '0'}]
     Database().insert('ha', ha_state)
 

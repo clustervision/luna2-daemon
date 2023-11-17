@@ -91,3 +91,20 @@ def journal_get_byname(name=None):
         response = {'message': response}
     return response, access_code
 
+
+@journal_blueprint.route('/journal/<string:name>/_delete', methods=['GET'])
+@token_required
+@validate_name
+def journal_del_byname(name=None):
+    """
+    This api will delete all host related journal entries
+    """
+    access_code = 404
+    status, response = Journal().delete_journal(name)
+    if status is True:
+        access_code = 200
+        response = dumps(response)
+    else:
+        response = {'message': response}
+    return response, access_code
+

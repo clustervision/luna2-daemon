@@ -87,6 +87,7 @@ class Journal():
         self.logger = Log.get_logger()
         self.me=None
         self.insync=False
+        self.hastate=None
         self.dict_controllers=None
         self.token=None
         self.all_controllers = Database().get_record_join(['controller.*','ipaddress.ipaddress','network.name as domain'],
@@ -129,8 +130,19 @@ class Journal():
                 self.logger.debug(f"get_insync new_self.insync: {self.insync}")
         return self.insync
 
+    def get_hastate(self):
+        if self.hastate is None:
+            ha_data = Database().get_record(None, 'ha')
+            if ha_data:
+                self.logger.debug(f"get_hastate new ha_state: {ha_data}")
+                self.hastate=Helper().make_bool(ha_data[0]['enabled'])
+                self.logger.debug(f"get_hastate new_self.hastate: {self.hastate}")
+        return self.hastate
+
 
     def add_request(self,function,object,param=None,payload=None):
+        if not self.get_hastate:
+            return True, "Not in H/A mode"
         if not self.get_insync:
             return False, "Currently not able to handle request as i am not in sync yet"
         if payload:
@@ -272,6 +284,9 @@ class Journal():
                     self.logger.info(f"pulling status: {status}")
                     if status is False:
                         return False
+                    status=self.delete_journal(controller['hostname'])
+                    if status is False:
+                        return False
         return True
 
 
@@ -318,5 +333,43 @@ class Journal():
                 self.logger.error(f"{exp}")
         else:
             self.logger.error(f"No token to pull journal from host {host}. Invalid credentials or host is down.")
+        return False
+
+
+    def delete_journal(self,host):
+        protocol = CONSTANT['API']['PROTOCOL']
+        bad_ret=['400','401','500','502','503']
+        good_ret=['200','201','204']
+        domain=self.dict_controllers[host]['domain']
+        _,alt_serverport,*_=(CONSTANT['API']['ENDPOINT'].split(':')+[None]+[None])
+        serverport=self.dict_controllers[host]['serverport'] or alt_serverport
+        #endpoint=f"{host}.{domain}"
+        endpoint=self.dict_controllers[host]['ipaddress']
+        if not self.token:
+            token_credentials = {'username': CONSTANT['API']['USERNAME'], 'password': CONSTANT['API']['PASSWORD']}
+            try:
+                self.logger.debug(f"json for token: {token_credentials}")
+                x = session.post(f'{protocol}://{endpoint}:{serverport}/token', json=token_credentials, stream=True, timeout=10, verify=CONSTANT['API']["VERIFY_CERTIFICATE"])
+                if (str(x.status_code) not in bad_ret) and x.text:
+                    DATA = loads(x.text)
+                    self.logger.debug(f"data received for token: {DATA}")
+                    if 'token' in DATA:
+                        self.token=DATA["token"]
+            except Exception as exp:
+                self.logger.error(f"{exp}")
+        if self.token:
+            headers = {'x-access-tokens': self.token}
+            try:
+                x = session.get(f'{protocol}://{endpoint}:{serverport}/journal/{self.me}/_delete', headers=headers, stream=True, timeout=10, verify=CONSTANT['API']["VERIFY_CERTIFICATE"])
+                if str(x.status_code) in good_ret:
+                    self.logger.info(f"journal delete from {host} success. Returned {x.status_code}")
+                    return True
+                else:
+                    self.logger.info(f"journal delete from {host} failed. Returned {x.status_code}")
+                    return False
+            except Exception as exp:
+                self.logger.error(f"{exp}")
+        else:
+            self.logger.error(f"No token to delete journal from host {host}. Invalid credentials or host is down.")
         return False
 

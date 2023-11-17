@@ -102,3 +102,28 @@ class Journal():
             status = False
         return status, response
 
+
+    def delete_journal(self, host=None):
+        response="Invalid request: no host specified"
+        if host:
+            response="journal entries deleted"
+            controller=None
+            all_controllers = Database().get_record_join(['controller.*','ipaddress.ipaddress','network.name as domain'],
+                                                          ['ipaddress.tablerefid=controller.id','network.id=ipaddress.networkid'],
+                                                          ["ipaddress.tableref='controller'"])
+            if all_controllers:
+                dict_controllers_byname = Helper().convert_list_to_dict(all_controllers, 'hostname')
+                dict_controllers_byipaddress = Helper().convert_list_to_dict(all_controllers, 'ipaddress')
+                if host in dict_controllers_byname:
+                    controller=host
+                elif host in dict_controllers_byipaddress:
+                    controller=dict_controllers_byipaddress[host]['hostname']
+                if controller:
+                    where=f"WHERE sendfor='{controller}'"
+                    self.logger.debug(f"where: {where}")
+                    entries=Database().get_record(["id"],"journal",where)
+                    if entries:
+                        for entry in entries:
+                            Database().delete_row('node', [{"column": "id", "value": entry['id']}])
+
+        return True, response

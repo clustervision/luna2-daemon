@@ -343,7 +343,7 @@ class OSImage():
             'kerneloptions',
             'kernelversion',
             'distribution',
-            'release'
+            'osrelease'
         }
         response = {"message": 'OS image copy failed. No sign of life of spawned thread'}
         if request_data:

@@ -60,13 +60,30 @@ def journal_post(name=None):
 
 @journal_blueprint.route('/journal', methods=['GET'])
 @token_required
-def journal_get(name=None):
+def journal_get():
     """
     This api will generate the current journal and send it back
     """
     access_code = 404
     remote_ip = request.environ['REMOTE_ADDR']
     status, response = Journal().get_journal(remote_ip)
+    if status is True:
+        access_code = 200
+        response = dumps(response)
+    else:
+        response = {'message': response}
+    return response, access_code
+
+
+@journal_blueprint.route('/journal/<string:name>', methods=['GET'])
+@token_required
+@validate_name
+def journal_get_byname(name=None):
+    """
+    This api will generate the current journal and send it back
+    """
+    access_code = 404
+    status, response = Journal().get_journal(name)
     if status is True:
         access_code = 200
         response = dumps(response)

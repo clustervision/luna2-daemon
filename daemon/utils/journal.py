@@ -103,6 +103,8 @@ class Journal():
                         self.me=controller['hostname']
                         self.logger.info(f"My ipaddress is {ip} and i am {self.me}")
 
+    def get_me(self):
+        return self.me
 
     def add_request(self,function,object,payload=None):
         if payload:
@@ -125,7 +127,7 @@ class Journal():
                     row = Helper().make_rows(data)
                     request_id = Database().insert('journal', row)
                     self.logger.info(f"adding {function}({object}) to journal for {controller['hostname']} with id {request_id}")
-                self.sync_controllers()
+                self.pushto_controllers()
             else:
                 self.logger.error(f"No controllers are configured")
         else:
@@ -259,12 +261,12 @@ class Journal():
         if self.token:
             headers = {'x-access-tokens': self.token}
             try:
-                x = session.get(f'{protocol}://{endpoint}:{serverport}/journal', headers=headers, stream=True, timeout=10, verify=CONSTANT['API']["VERIFY_CERTIFICATE"])
+                x = session.get(f'{protocol}://{endpoint}:{serverport}/journal/{self.me}', headers=headers, stream=True, timeout=10, verify=CONSTANT['API']["VERIFY_CERTIFICATE"])
                 if str(x.status_code) in good_ret:
                     self.logger.info(f"journal pull from {host} success. Returned {x.status_code}")
                     if x.text:
                         DATA = loads(x.text)
-                        self.logger.info(f"data received for pull: {DATA}")
+                        self.logger.debug(f"data received for pull: {DATA}")
                         if 'journal' in DATA:
                             NDATA=DATA['journal']
                             for entry in NDATA:

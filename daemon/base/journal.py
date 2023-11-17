@@ -61,11 +61,14 @@ class Journal():
                     controller=dict_controllers_byipaddress[host]['hostname']
                 if controller:
                     where=f"WHERE sendfor='{controller}' ORDER BY created,id ASC"
+                    self.logger.debug(f"where: {where}")
         entries=Database().get_record(["*","strftime('%s',created) AS created"],"journal",where)
         if entries:
             for entry in entries:
+                del entry['id']
                 data.append(entry)
         response={'journal': data}
+        self.logger.debug(f"sending: {data}")
         return True, response
 
 

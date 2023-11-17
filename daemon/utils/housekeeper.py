@@ -159,17 +159,19 @@ class Housekeeper(object):
         self.logger.info("Starting Journal/Replication thread")
         sync_tel=0
         try:
+            from utils.ha import HA
+            ha_object=HA()
             from utils.journal import Journal
             journal_object=Journal()
-            if not journal_object.get_hastate():
+            if not ha_object.get_hastate():
                 self.logger.info(f"Currently not configured to run in H/A mode. Exiting journal thread")
                 return
-            journal_object.set_insync(False)
-            while journal_object.get_insync() is False:
+            ha_object.set_insync(False)
+            while ha_object.get_insync() is False:
                 if sync_tel<1:
                     status=journal_object.pullfrom_controllers()
                     if status is True:
-                        journal_object.set_insync(True)
+                        ha_object.set_insync(True)
                     sync_tel=2
                 sync_tel-=1
                 if event.is_set():

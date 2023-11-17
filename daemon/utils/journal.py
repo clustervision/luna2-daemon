@@ -46,6 +46,7 @@ from utils.log import Log
 from utils.queue import Queue
 from utils.helper import Helper
 from utils.model import Model
+from utils.ha import HA
 
 import requests
 from requests import Session
@@ -110,45 +111,11 @@ class Journal():
     def get_me(self):
         return self.me
 
-    def set_insync(self,state):
-        ha_state={}
-        ha_state['insync']=0
-        if state is True:
-            ha_state['insync']=1
-        self.logger.info(f"set_insync ha_state: {ha_state}")
-        ha_data = Database().get_record(None, 'ha')
-        if ha_data:
-            where = [{"column": "insync", "value": ha_data[0]['insync']}]
-            row = Helper().make_rows(ha_state)
-            Database().update('ha', row, where)
-        return self.get_insync()
-
-    def get_insync(self):
-        #if self.insync is False:
-        if True:
-            ha_data = Database().get_record(None, 'ha')
-            if ha_data:
-                self.logger.debug(f"get_insync new ha_state: {ha_data}")
-                self.insync=Helper().make_bool(ha_data[0]['insync'])
-                self.logger.debug(f"get_insync new_self.insync: {self.insync}")
-            else:
-                return False
-        return self.insync
-
-    def get_hastate(self):
-        if self.hastate is None:
-            ha_data = Database().get_record(None, 'ha')
-            if ha_data:
-                self.logger.info(f"get_hastate new ha_state: {ha_data}")
-                self.hastate=Helper().make_bool(ha_data[0]['enabled'])
-                self.logger.debug(f"get_hastate new_self.hastate: {self.hastate}")
-        return self.hastate
-
 
     def add_request(self,function,object,param=None,payload=None):
-        if not self.get_hastate():
+        if not HA().get_hastate():
             return True, "Not in H/A mode"
-        if not self.get_insync():
+        if not HA().get_insync():
             return False, "Currently not able to handle request as i am not in sync yet"
         if payload:
             string = dumps(payload)
@@ -210,7 +177,7 @@ class Journal():
                     self.logger.info(f"result for {record['function']}({record['object']}): {status}, {message}")
                     # we always have to remove the entries in the DB regarding outcome.
                     Database().delete_row('journal', [{"column": "id", "value": record['id']}])
-                self.set_insync(True)
+                HA().set_insync(True)
         return
 
 

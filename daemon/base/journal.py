@@ -33,6 +33,7 @@ __status__      = 'Development'
 from utils.database import Database
 from utils.helper import Helper
 from utils.log import Log
+from utils.journal import Journal as UJournal
 
 
 class Journal():
@@ -90,6 +91,7 @@ class Journal():
                         request_id = Database().insert('journal', row)
                         if request_id:
                             self.logger.error(f"added {entry['function']}({entry['object']}) to the journal")
+                            UJournal().set_insync(False)
                         else:
                             response = f"failed adding {entry['function']}({entry['object']}) to the journal"
                             self.logger.error(f"failed adding {entry['function']}(entry['object']) to the journal")

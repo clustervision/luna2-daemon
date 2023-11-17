@@ -115,7 +115,7 @@ class Journal():
         ha_state['insync']=0
         if state is True:
             ha_state['insync']=1
-        self.logger.debug(f"set_insync ha_state: {ha_state}")
+        self.logger.info(f"set_insync ha_state: {ha_state}")
         ha_data = Database().get_record(None, 'ha')
         if ha_data:
             where = [{"column": "insync", "value": ha_data[0]['insync']}]
@@ -124,28 +124,31 @@ class Journal():
         return self.get_insync()
 
     def get_insync(self):
-        if self.insync is False:
+        #if self.insync is False:
+        if True:
             ha_data = Database().get_record(None, 'ha')
             if ha_data:
                 self.logger.debug(f"get_insync new ha_state: {ha_data}")
                 self.insync=Helper().make_bool(ha_data[0]['insync'])
                 self.logger.debug(f"get_insync new_self.insync: {self.insync}")
+            else:
+                return False
         return self.insync
 
     def get_hastate(self):
         if self.hastate is None:
             ha_data = Database().get_record(None, 'ha')
             if ha_data:
-                self.logger.debug(f"get_hastate new ha_state: {ha_data}")
+                self.logger.info(f"get_hastate new ha_state: {ha_data}")
                 self.hastate=Helper().make_bool(ha_data[0]['enabled'])
                 self.logger.debug(f"get_hastate new_self.hastate: {self.hastate}")
         return self.hastate
 
 
     def add_request(self,function,object,param=None,payload=None):
-        if not self.get_hastate:
+        if not self.get_hastate():
             return True, "Not in H/A mode"
-        if not self.get_insync:
+        if not self.get_insync():
             return False, "Currently not able to handle request as i am not in sync yet"
         if payload:
             string = dumps(payload)
@@ -207,6 +210,7 @@ class Journal():
                     self.logger.info(f"result for {record['function']}({record['object']}): {status}, {message}")
                     # we always have to remove the entries in the DB regarding outcome.
                     Database().delete_row('journal', [{"column": "id", "value": record['id']}])
+                self.set_insync(True)
         return
 
 

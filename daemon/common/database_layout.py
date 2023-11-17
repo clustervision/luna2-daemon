@@ -270,6 +270,7 @@ DATABASE_LAYOUT_journal = [
 {"column": "id",                   "datatype": "INTEGER", "key": "PRIMARY", "keyadd": "AUTOINCREMENT"},
 {"column": "function",             "datatype": "VARCHAR", "length": "4096"},
 {"column": "object",               "datatype": "VARCHAR", "length": "1024"},
+{"column": "param",                "datatype": "VARCHAR", "length": "1024"},
 {"column": "payload",              "datatype": "VARCHAR", "length": "65536"},
 {"column": "sendfor",              "datatype": "VARCHAR", "length": "80"},
 {"column": "sendby",               "datatype": "VARCHAR", "length": "80"},

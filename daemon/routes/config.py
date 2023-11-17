@@ -224,7 +224,9 @@ def config_node_post_interfaces(name=None):
     Process - Create Or Update The Node Interface.
     Output - Node Interface.
     """
-    status, response = Interface().change_node_interface_by_name(name, request.data)
+    status, response = Journal().add_request(function="Interface.change_node_interface_by_name",object=name,payload=request.data)
+    if status is True:
+        status, response = Interface().change_node_interface_by_name(name, request.data)
     access_code=Helper().get_access_code(status,response)
     response = {'message': response}
     return response, access_code
@@ -259,7 +261,9 @@ def config_node_delete_interface(name=None, interface=None):
     Process - Delete the Node Interface.
     Output - Success or Failure.
     """
-    status, response = Interface().delete_node_interface_by_name(name, interface)
+    status, response = Journal().add_request(function="Interface.delete_node_interface_by_name",object=name,param=interface)
+    if status is True:
+        status, response = Interface().delete_node_interface_by_name(name, interface)
     access_code=Helper().get_access_code(status,response)
     response = {'message': response}
     return response, access_code
@@ -334,7 +338,9 @@ def config_group_post(name=None):
     Process - Create Or Update The Groups.
     Output - Group Information.
     """
-    status, response = Group().update_group(name, request.data)
+    status, response = Journal().add_request(function="Group.update_group",object=name,payload=request.data)
+    if status is True:
+        status, response = Group().update_group(name, request.data)
     access_code=Helper().get_access_code(status,response)
     response = {'message': response}
     return response, access_code
@@ -378,7 +384,9 @@ def config_group_clone(name=None):
     Process - Create Or Update The Groups.
     Output - Group Information.
     """
-    status, response = Group().clone_group(name, request.data)
+    status, response = Journal().add_request(function="Group.clone_group",object=name,payload=request.data)
+    if status is True:
+        status, response = Group().clone_group(name, request.data)
     access_code=Helper().get_access_code(status,response)
     response = {'message': response}
     return response, access_code
@@ -394,7 +402,9 @@ def config_group_delete(name=None):
     Process - Delete the Group and it's interfaces.
     Output - Success or Failure.
     """
-    status, response = Group().delete_group_by_name(name)
+    status, response = Journal().add_request(function="Group.delete_group_by_name",object=name)
+    if status is True:
+        status, response = Group().delete_group_by_name(name)
     access_code=Helper().get_access_code(status,response)
     response = {'message': response}
     return response, access_code
@@ -430,7 +440,9 @@ def config_group_post_interfaces(name=None):
     Process - Create Or Update The Group Interface.
     Output - Group Interface.
     """
-    status, response = Interface().change_group_interface(name, request.data)
+    status, response = Journal().add_request(function="Interface.change_group_interface",object=name,payload=request.data)
+    if status is True:
+        status, response = Interface().change_group_interface(name, request.data)
     access_code=Helper().get_access_code(status,response)
     response = {'message': response}
     return response, access_code
@@ -464,7 +476,9 @@ def config_group_delete_interface(name=None, interface=None):
     Process - Delete the Group Interface.
     Output - Success or Failure.
     """
-    status, response = Interface().delete_group_interface(name, interface)
+    status, response = Journal().add_request(function="Interface.delete_group_interface",object=name,param=interface)
+    if status is True:
+        status, response = Interface().delete_group_interface(name, interface)
     access_code=Helper().get_access_code(status,response)
     response = {'message': response}
     return response, access_code
@@ -592,7 +606,9 @@ def config_osimage_post(name=None):
     Process - Create or Update the OS Image information.
     Output - OSImage Info.
     """
-    status, response = OSImage().update_osimage(name, request.data)
+    status, response = Journal().add_request(function="OSImage.update_osimage",object=name,payload=request.data)
+    if status is True:
+        status, response = OSImage().update_osimage(name, request.data)
     access_code=Helper().get_access_code(status,response)
     response = {'message': response}
     return response, access_code
@@ -610,16 +626,20 @@ def config_osimage_clone(name=None):
     Output - OSImage Info.
     """
     access_code=404
-    returned = OSImage().clone_osimage(name, request.data)
-    status=returned[0]
-    response=returned[1]
+    status, response = Journal().add_request(function="OSImage.clone_osimage",object=name,payload=request.data)
     if status is True:
-        access_code=200
-        if len(returned)==3:
-            request_id=returned[2]
-            response = {"message": response, "request_id": request_id}
+        returned = OSImage().clone_osimage(name, request.data)
+        status=returned[0]
+        response=returned[1]
+        if status is True:
+            access_code=200
+            if len(returned)==3:
+                request_id=returned[2]
+                response = {"message": response, "request_id": request_id}
+            else:
+                access_code = 201
+                response = {'message': response}
         else:
-            access_code = 201
             response = {'message': response}
     else:
         response = {'message': response}
@@ -635,7 +655,9 @@ def config_osimage_delete(name=None):
     Process - Delete the OS Image.
     Output - Success or Failure.
     """
-    status, response = OSImage().delete_osimage(name)
+    status, response = Journal().add_request(function="OSImage.delete_osimage",object=name)
+    if status is True:
+        status, response = OSImage().delete_osimage(name)
     access_code=Helper().get_access_code(status,response)
     response = {'message': response}
     return response, access_code
@@ -650,7 +672,9 @@ def config_osimagetag_delete(name=None, tagname=None):
     Process - Delete the OS Imagetag belonging to osimage.
     Output - Success or Failure.
     """
-    status, response = OSImage().delete_osimagetag(name,tagname)
+    status, response = Journal().add_request(function="OSImage.delete_osimagetag",object=name,param=tagname)
+    if status is True:
+        status, response = OSImage().delete_osimagetag(name,tagname)
     access_code=Helper().get_access_code(status,response)
     response = {'message': response}
     return response, access_code
@@ -693,16 +717,20 @@ def config_osimage_kernel_post(name=None):
     Output - Kernel Version.
     """
     access_code=404
-    returned = OSImage().change_kernel(name, request.data)
-    status=returned[0]
-    response=returned[1]
+    status, response = Journal().add_request(function="OSImage.change_kernel",object=name,payload=request.data)
     if status is True:
-        access_code=200
-        if len(returned)==3:
-            request_id=returned[2]
-            response = {"message": response, "request_id": request_id}
+        returned = OSImage().change_kernel(name, request.data)
+        status=returned[0]
+        response=returned[1]
+        if status is True:
+            access_code=200
+            if len(returned)==3:
+                request_id=returned[2]
+                response = {"message": response, "request_id": request_id}
+            else:
+                access_code = 204
+                response = {'message': response}
         else:
-            access_code = 204
             response = {'message': response}
     else:
         response = {'message': response}
@@ -720,7 +748,9 @@ def config_osimage_tag_post(name=None):
     Output - Tag name.
     """
     access_code=404
-    status, response = OSImage().set_tag(name, request.data)
+    status, response = Journal().add_request(function="OSImage.set_tag",object=name,payload=request.data)
+    if status is True:
+        status, response = OSImage().set_tag(name, request.data)
     access_code=Helper().get_access_code(status,response)
     response = {'message': response}
     return response, access_code
@@ -757,7 +787,9 @@ def config_cluster_post():
     Process - Fetch The Cluster Information.
     Output - Cluster Information.
     """
-    status, response = Cluster().update_cluster(request.data)
+    status, response = Journal().add_request(function="Cluster.update_cluster",payload=request.data)
+    if status is True:
+        status, response = Cluster().update_cluster(request.data)
     access_code=Helper().get_access_code(status,response)
     response = {'message': response}
     return response, access_code
@@ -823,7 +855,9 @@ def config_bmcsetup_post(name=None):
     """
     This route will create or update requested BMC Setup.
     """
-    status, response = BMCSetup().update_bmcsetup(name, request.data)
+    status, response = Journal().add_request(function="BMCSetup.update_bmcsetup",object=name,payload=request.data)
+    if status is True:
+        status, response = BMCSetup().update_bmcsetup(name, request.data)
     access_code=Helper().get_access_code(status,response)
     response = {'message': response}
     return response, access_code
@@ -837,7 +871,9 @@ def config_bmcsetup_clone(name=None):
     """
     This route will clone a requested BMC Setup.
     """
-    status, response = BMCSetup().clone_bmcsetup(name, request.data)
+    status, response = Journal().add_request(function="BMCSetup.clone_bmcsetup",object=name,payload=request.data)
+    if status is True:
+        status, response = BMCSetup().clone_bmcsetup(name, request.data)
     access_code=Helper().get_access_code(status,response)
     response = {'message': response}
     return response, access_code
@@ -850,7 +886,9 @@ def config_bmcsetup_delete(name=None):
     """
     This route will delete a requested BMC Setup.
     """
-    status, response = BMCSetup().delete_bmcsetup(name)
+    status, response = Journal().add_request(function="BMCSetup.delete_bmcsetup",object=name)
+    if status is True:
+        status, response = BMCSetup().delete_bmcsetup(name)
     access_code=Helper().get_access_code(status,response)
     response = {'message': response}
     return response, access_code
@@ -899,7 +937,9 @@ def config_switch_post(name=None):
     """
     This route will create or update a requested Switch.
     """
-    status, response = Switch().update_switch(name, request.data)
+    status, response = Journal().add_request(function="Switch.update_switch",object=name,payload=request.data)
+    if status is True:
+        status, response = Switch().update_switch(name, request.data)
     access_code=Helper().get_access_code(status,response)
     response = {'message': response}
     return response, access_code
@@ -913,7 +953,9 @@ def config_switch_clone(name=None):
     """
     This route will clone a requested Switch.
     """
-    status, response = Switch().clone_switch(name, request.data)
+    status, response = Journal().add_request(function="Switch.clone_switch",object=name,payload=request.data)
+    if status is True:
+        status, response = Switch().clone_switch(name, request.data)
     access_code=Helper().get_access_code(status,response)
     response = {'message': response}
     return response, access_code
@@ -926,7 +968,9 @@ def config_switch_delete(name=None):
     """
     This route will delete a requested Switch.
     """
-    status, response = Switch().delete_switch(name)
+    status, response = Journal().add_request(function="Switch.delete_switch",object=name)
+    if status is True:
+        status, response = Switch().delete_switch(name)
     access_code=Helper().get_access_code(status,response)
     response = {'message': response}
     return response, access_code
@@ -974,7 +1018,9 @@ def config_otherdev_post(name=None):
     """
     This route will create or update a requested Other Device.
     """
-    status, response = OtherDev().update_otherdev(name, request.data)
+    status, response = Journal().add_request(function="OtherDev.update_otherdev",object=name,payload=request.data)
+    if status is True:
+        status, response = OtherDev().update_otherdev(name, request.data)
     access_code=Helper().get_access_code(status,response)
     response = {'message': response}
     return response, access_code
@@ -988,7 +1034,9 @@ def config_otherdev_clone(name=None):
     """
     This route will clone a requested Other Device.
     """
-    status, response = OtherDev().clone_otherdev(name, request.data)
+    status, response = Journal().add_request(function="OtherDev.clone_otherdev",object=name,payload=request.data)
+    if status is True:
+        status, response = OtherDev().clone_otherdev(name, request.data)
     access_code=Helper().get_access_code(status,response)
     response = {'message': response}
     return response, access_code
@@ -1001,7 +1049,9 @@ def config_otherdev_delete(name=None):
     """
     This route will delete a requested Other Device.
     """
-    status, response = OtherDev().delete_otherdev(name)
+    status, response = Journal().add_request(function="OtherDev.delete_otherdev",object=name)
+    if status is True:
+        status, response = OtherDev().delete_otherdev(name)
     access_code=Helper().get_access_code(status,response)
     response = {'message': response}
     return response, access_code
@@ -1055,7 +1105,9 @@ def config_network_post(name=None):
     Process - Create or Update Network information.
     Output - Success or Failure.
     """
-    status, response = Network().update_network(name, request.data)
+    status, response = Journal().add_request(function="Network.update_network",object=name,payload=request.data)
+    if status is True:
+        status, response = Network().update_network(name, request.data)
     access_code=Helper().get_access_code(status,response)
     response = {'message': response}
     return response, access_code
@@ -1070,7 +1122,9 @@ def config_network_delete(name=None):
     Process - Delete The Network.
     Output - Success or Failure.
     """
-    status, response = Network().delete_network(name)
+    status, response = Journal().add_request(function="Network.delete_network",object=name)
+    if status is True:
+        status, response = Network().delete_network(name)
     access_code=Helper().get_access_code(status,response)
     response = {'message': response}
     return response, access_code
@@ -1180,7 +1234,9 @@ def config_post_secrets_node(name=None):
     Process - Create Or Update Node Secrets.
     Output - None.
     """
-    status, response = Secret().update_node_secrets(name, request.data)
+    status, response = Journal().add_request(function="Secret.update_node_secrets",object=name,payload=request.data)
+    if status is True:
+        status, response = Secret().update_node_secrets(name, request.data)
     access_code=Helper().get_access_code(status,response)
     response = {'message': response}
     return response, access_code
@@ -1214,7 +1270,9 @@ def config_post_node_secret(name=None, secret=None):
     Process - Create Or Update Node Secrets.
     Output - None.
     """
-    status, response = Secret().update_node_secret(name, secret, request.data)
+    status, response = Journal().add_request(function="Secret.update_node_secret",object=name,param=secret,payload=request.data)
+    if status is True:
+        status, response = Secret().update_node_secret(name, secret, request.data)
     access_code=Helper().get_access_code(status,response)
     response = {'message': response}
     return response, access_code
@@ -1230,7 +1288,9 @@ def config_clone_node_secret(name=None, secret=None):
     Process - Create Or Update Node Secrets.
     Output - None.
     """
-    status, response = Secret().clone_node_secret(name, secret, request.data)
+    status, response = Journal().add_request(function="Secret.clone_node_secret",object=name,param=secret,payload=request.data)
+    if status is True:
+        status, response = Secret().clone_node_secret(name, secret, request.data)
     access_code=Helper().get_access_code(status,response)
     response = {'message': response}
     return response, access_code
@@ -1244,7 +1304,9 @@ def config_node_secret_delete(name=None, secret=None):
     Input - Node Name & Secret Name
     Output - Success or Failure
     """
-    status, response = Secret().delete_node_secret(name, secret)
+    status, response = Journal().add_request(function="Secret.delete_node_secret",object=name,param=secret)
+    if status is True:
+        status, response = Secret().delete_node_secret(name, secret)
     access_code=Helper().get_access_code(status,response)
     response = {'message': response}
     return response, access_code
@@ -1278,7 +1340,9 @@ def config_post_secrets_group(name=None):
     Process - Create Or Update Group Secrets.
     Output - None.
     """
-    status, response = Secret().update_group_secrets(name, request.data)
+    status, response = Journal().add_request(function="Secret.update_group_secrets",object=name,payload=request.data)
+    if status is True:
+        status, response = Secret().update_group_secrets(name, request.data)
     access_code=Helper().get_access_code(status,response)
     response = {'message': response}
     return response, access_code
@@ -1312,7 +1376,9 @@ def config_post_group_secret(name=None, secret=None):
     Process - Create Or Update Group Secrets.
     Output - None.
     """
-    status, response = Secret().update_group_secret(name, secret, request.data)
+    status, response = Journal().add_request(function="Secret.update_group_secret",object=name,param=secret,payload=request.data)
+    if status is True:
+        status, response = Secret().update_group_secret(name, secret, request.data)
     access_code=Helper().get_access_code(status,response)
     response = {'message': response}
     return response, access_code
@@ -1328,7 +1394,9 @@ def config_clone_group_secret(name=None, secret=None):
     Process - Clone Group Secrets.
     Output - None.
     """
-    status, response = Secret().clone_group_secret(name, secret, request.data)
+    status, response = Journal().add_request(function="Secret.clone_group_secret",object=name,param=secret,payload=request.data)
+    if status is True:
+        status, response = Secret().clone_group_secret(name, secret, request.data)
     access_code=Helper().get_access_code(status,response)
     response = {'message': response}
     return response, access_code
@@ -1342,7 +1410,9 @@ def config_group_secret_delete(name=None, secret=None):
     Input - Group Name & Secret Name
     Output - Success or Failure
     """
-    status, response = Secret().delete_group_secret(name, secret)
+    status, response = Journal().add_request(function="Secret.delete_group_secret",object=name,param=secret)
+    if status is True:
+        status, response = Secret().delete_group_secret(name, secret)
     access_code=Helper().get_access_code(status,response)
     response = {'message': response}
     return response, access_code
@@ -1535,7 +1605,9 @@ def config_dns(name=None):
     Process - Create Or Update additional DNS entries.
     Output - None.
     """
-    status, response = DNS().update_dns(name, request.data)
+    status, response = Journal().add_request(function="DNS.update_dns",object=name,payload=request.data)
+    if status is True:
+        status, response = DNS().update_dns(name, request.data)
     access_code=Helper().get_access_code(status,response)
     return {'message': response}, access_code
 
@@ -1547,7 +1619,9 @@ def delete_dns(name=None,network=None):
     This api deletes an additional dns entry.
     """
     access_code = 404
-    status, response = DNS().delete_dns(name,network)
+    status, response = Journal().add_request(function="DNS.delete_dns",object=name,param=network)
+    if status is True:
+        status, response = DNS().delete_dns(name,network)
     if status is True:
         access_code=204
     return {'message': response}, access_code

@@ -130,7 +130,7 @@ class Journal():
         return self.insync
 
 
-    def add_request(self,function,object,payload=None):
+    def add_request(self,function,object,param=None,payload=None):
         if not self.get_insync:
             return False, "Currently not able to handle request as i am not in sync yet"
         if payload:
@@ -142,6 +142,7 @@ class Journal():
                 data={}
                 data['function'] = function
                 data['object'] = object
+                data['param'] = param
                 data['payload'] = payload
                 data['sendby'] = self.me
                 data['created'] = "NOW"
@@ -152,7 +153,7 @@ class Journal():
                     data['sendfor'] = controller['hostname']
                     row = Helper().make_rows(data)
                     request_id = Database().insert('journal', row)
-                    self.logger.info(f"adding {function}({object}) to journal for {controller['hostname']} with id {request_id}")
+                    self.logger.info(f"adding {function}({object},{param},payload) to journal for {controller['hostname']} with id {request_id}")
                 self.pushto_controllers()
             else:
                 self.logger.error(f"No controllers are configured")
@@ -174,11 +175,20 @@ class Journal():
                         self.logger.debug(f"replication payload: {payload}")
                    
                     class_name,function_name=record['function'].split('.')
-                    self.logger.info(f"executing {class_name}().{function_name}({record['object']},payload)/{record['tries']} received by {record['sendby']} on {record['created']}")
+                    self.logger.info(f"executing {class_name}().{function_name}({record['object']},{record['param']},payload)/{record['tries']} received by {record['sendby']} on {record['created']}")
 
                     repl_class = globals()[class_name]                # -> base.node.Node
                     repl_function = getattr(repl_class,function_name) # -> base.node.Node.node_update
-                    status,message=repl_function(repl_class(),record['object'],payload)
+                    if record['param'] and payload:
+                        status,message=repl_function(repl_class(),record['object'],record['param'],payload)
+                    if record['param']:
+                        status,message=repl_function(repl_class(),record['object'],record['param'])
+                    elif record['object'] and payload:
+                        status,message=repl_function(repl_class(),record['object'],payload)
+                    elif payload:
+                        status,message=repl_function(repl_class(),payload)
+                    else:
+                        status,message=repl_function(repl_class(),record['object'])
 
                     self.logger.info(f"result for {record['function']}({record['object']}): {status}, {message}")
                     # we always have to remove the entries in the DB regarding outcome.
@@ -199,10 +209,11 @@ class Journal():
                     if current_controller not in failed_controllers:
                         function=record['function']
                         object=record['object']
+                        param=record['param']
                         payload=record['payload']
                         host=record['sendfor']
                         created=record['created']
-                        status=self.send_request(host,function,object,created,payload)
+                        status=self.send_request(host=host,function=function,object=object,param=param,created=created,payload=payload)
                         if status is True:
                             Database().delete_row('journal', [{"column": "id", "value": record['id']}])
                         else:
@@ -211,7 +222,7 @@ class Journal():
         return
 
 
-    def send_request(self,host,function,object,created,payload=None):
+    def send_request(self,host,function,object,created,param=None,payload=None):
         protocol = CONSTANT['API']['PROTOCOL']
         bad_ret=['400','401','500','502','503']
         good_ret=['200','201','204']
@@ -233,7 +244,7 @@ class Journal():
             except Exception as exp:
                 self.logger.error(f"{exp}")
         if self.token:
-            entry={'journal': [{'function': function, 'object': object, 'payload': payload, 'sendfor': host, 'sendby': self.me, 'created': created}] }
+            entry={'journal': [{'function': function, 'object': object, 'param': param, 'payload': payload, 'sendfor': host, 'sendby': self.me, 'created': created}] }
             headers = {'x-access-tokens': self.token}
             try:
                 x = session.post(f'{protocol}://{endpoint}:{serverport}/journal', json=entry, headers=headers, stream=True, timeout=10, verify=CONSTANT['API']["VERIFY_CERTIFICATE"])

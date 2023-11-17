@@ -63,15 +63,13 @@ class HA():
         return self.get_insync()
 
     def get_insync(self):
-        #if self.insync is False:
-        if True:
-            ha_data = Database().get_record(None, 'ha')
-            if ha_data:
-                self.logger.debug(f"get_insync new ha_state: {ha_data}")
-                self.insync=Helper().make_bool(ha_data[0]['insync'])
-                self.logger.debug(f"get_insync new_self.insync: {self.insync}")
-            else:
-                return False
+        ha_data = Database().get_record(None, 'ha')
+        if ha_data:
+            self.logger.debug(f"get_insync new ha_state: {ha_data}")
+            self.insync=Helper().make_bool(ha_data[0]['insync'])
+            self.logger.debug(f"get_insync new_self.insync: {self.insync}")
+        else:
+            return False
         return self.insync
 
     def get_hastate(self):

@@ -81,3 +81,16 @@ class HA():
                 self.logger.debug(f"get_hastate new_self.hastate: {self.hastate}")
         return self.hastate
 
+    def set_hastate(self,state):
+        ha_state={}
+        ha_state['enabled']=0
+        if state is True:
+            ha_state['enabled']=1
+        self.logger.info(f"set_hastate ha_state: {ha_state}")
+        ha_data = Database().get_record(None, 'ha')
+        if ha_data:
+            where = [{"column": "enabled", "value": ha_data[0]['enabled']}]
+            row = Helper().make_rows(ha_state)
+            Database().update('ha', row, where)
+        return self.get_hastate()
+

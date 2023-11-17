@@ -162,7 +162,7 @@ class Journal():
         if self.me and self.dict_controllers:
             current_controller=None
             failed_controllers=[]
-            all_records = Database().get_record(None,'journal',f"WHERE sendby='{self.me}' ORDER BY sendfor,created,id ASC")
+            all_records = Database().get_record("*,strftime('%s',created) AS created","journal",f"WHERE sendby='{self.me}' ORDER BY sendfor,created,id ASC")
             if all_records:
                 for record in all_records:
                     if (not current_controller) or current_controller != record['sendfor']:
@@ -173,7 +173,8 @@ class Journal():
                         object=record['object']
                         payload=record['payload']
                         host=record['sendfor']
-                        status=self.send_request(host,function,object,payload)
+                        created=record['created']
+                        status=self.send_request(host,function,object,created,payload)
                         if status is True:
                             Database().delete_row('journal', [{"column": "id", "value": record['id']}])
                         else:
@@ -182,10 +183,8 @@ class Journal():
         return
 
 
-    def send_request(self,host,function,object,payload=None):
+    def send_request(self,host,function,object,created,payload=None):
         protocol = CONSTANT['API']['PROTOCOL']
-                #ipaddress = controller[0]['ipaddress']
-                #serverport = controller[0]['serverport']
         bad_ret=['400','401','500','502','503']
         good_ret=['200','201','204']
         domain=self.dict_controllers[host]['domain']
@@ -206,12 +205,56 @@ class Journal():
             except Exception as exp:
                 self.logger.error(f"{exp}")
         if self.token:
-            entry={'journal': [{'function': function, 'object': object, 'payload': payload, 'sendfor': host, 'sendby': self.me}] }
+            entry={'journal': [{'function': function, 'object': object, 'payload': payload, 'sendfor': host, 'sendby': self.me, 'created': created}] }
             headers = {'x-access-tokens': self.token}
             try:
                 x = session.post(f'{protocol}://{endpoint}:{serverport}/journal', json=entry, headers=headers, stream=True, timeout=10, verify=CONSTANT['API']["VERIFY_CERTIFICATE"])
                 if str(x.status_code) in good_ret:
                     self.logger.info(f"journal for {function}({object})/payload sync to {host} success. Returned {x.status_code}")
+                    return True
+                else:
+                    self.logger.info(f"journal for {function}({object})/payload sync to {host} failed. Returned {x.status_code}")
+                    return False
+            except Exception as exp:
+                self.logger.error(f"{exp}")
+        else:
+            self.logger.error(f"No token to forward {function}({object})/payload sync to {host}. Invalid credentials or host is down.")
+        return False
+
+
+    def pull_journal(self,host):
+        protocol = CONSTANT['API']['PROTOCOL']
+        bad_ret=['400','401','500','502','503']
+        good_ret=['200','201','204']
+        domain=self.dict_controllers[host]['domain']
+        _,alt_serverport,*_=(CONSTANT['API']['ENDPOINT'].split(':')+[None]+[None])
+        serverport=self.dict_controllers[host]['serverport'] or alt_serverport
+        #endpoint=f"{host}.{domain}"
+        endpoint=self.dict_controllers[host]['ipaddress']
+        if not self.token:
+            token_credentials = {'username': CONSTANT['API']['USERNAME'], 'password': CONSTANT['API']['PASSWORD']}
+            try:
+                self.logger.debug(f"json for token: {token_credentials}")
+                x = session.post(f'{protocol}://{endpoint}:{serverport}/token', json=token_credentials, stream=True, timeout=10, verify=CONSTANT['API']["VERIFY_CERTIFICATE"])
+                if (str(x.status_code) not in bad_ret) and x.text:
+                    DATA = loads(x.text)
+                    self.logger.debug(f"data received for token: {DATA}")
+                    if 'token' in DATA:
+                        self.token=DATA["token"]
+            except Exception as exp:
+                self.logger.error(f"{exp}")
+        if self.token:
+            headers = {'x-access-tokens': self.token}
+            try:
+                x = session.get(f'{protocol}://{endpoint}:{serverport}/journal', headers=headers, stream=True, timeout=10, verify=CONSTANT['API']["VERIFY_CERTIFICATE"])
+                if str(x.status_code) in good_ret:
+                    self.logger.info(f"journal for {function}({object})/payload sync to {host} success. Returned {x.status_code}")
+                    if x.text:
+                        DATA = loads(x.text)
+                        self.logger.debug(f"data received for pull: {DATA}")
+                        for entry in DATA:
+                            row = Helper().make_rows(entry)
+                            request_id = Database().insert('journal', row)
                     return True
                 else:
                     self.logger.info(f"journal for {function}({object})/payload sync to {host} failed. Returned {x.status_code}")

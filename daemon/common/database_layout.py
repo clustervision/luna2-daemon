@@ -276,3 +276,7 @@ DATABASE_LAYOUT_journal = [
 {"column": "tries",                "datatype": "INTEGER", "length": "10"},
 {"column": "created",              "datatype": "numeric"}]
 
+DATABASE_LAYOUT_ha = [
+{"column": "insync",               "datatype": "INTEGER", "length": "10"},
+{"column": "master",               "datatype": "INTEGER", "length": "10"}]
+

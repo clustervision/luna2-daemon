@@ -41,7 +41,7 @@ from utils.helper import Helper
 
 configParser = RawConfigParser()
 
-TABLES = ['status', 'queue', 'osimage', 'osimagetag', 'nodesecrets', 'nodeinterface', 'bmcsetup', 
+TABLES = ['status', 'queue', 'osimage', 'osimagetag', 'nodesecrets', 'nodeinterface', 'bmcsetup','ha', 
           'monitor', 'ipaddress', 'groupinterface', 'roles', 'group', 'network', 'user', 'switch', 
           'otherdevices', 'controller', 'groupsecrets', 'node', 'cluster', 'tracker','dns','journal']
 
@@ -228,6 +228,8 @@ def get_database_tables_structure(table=None):
         return DATABASE_LAYOUT_dns
     if table == "journal":
         return DATABASE_LAYOUT_journal
+    if table == "ha":
+        return DATABASE_LAYOUT_ha
 
 
 def cleanup_queue_and_status():

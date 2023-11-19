@@ -80,9 +80,10 @@ class HA():
         ha_state['insync']=0
         if state is True:
             ha_state['insync']=1
-        self.logger.info(f"set_insync ha_state: {ha_state}")
         ha_data = Database().get_record(None, 'ha')
         if ha_data:
+            if state != ha_data[0]['insync']:
+                self.logger.info(f"set_insync ha_state: {ha_state}")
             where = [{"column": "insync", "value": ha_data[0]['insync']}]
             row = Helper().make_rows(ha_state)
             Database().update('ha', row, where)

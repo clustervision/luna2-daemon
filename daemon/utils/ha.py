@@ -39,6 +39,22 @@ from utils.database import Database
 from utils.log import Log
 from utils.helper import Helper
 
+import requests
+from requests import Session
+from requests.adapters import HTTPAdapter
+import urllib3
+from urllib3.util import Retry
+
+urllib3.disable_warnings()
+session = Session()
+retries = Retry(
+    total = 10,
+    backoff_factor = 0.3,
+    status_forcelist = [502, 503, 504, 500, 404],
+    allowed_methods = {'GET', 'POST'}
+)
+session.mount('https://', HTTPAdapter(max_retries=retries))
+
 class HA():
     """
     This class is responsible for all H/A related business

@@ -222,7 +222,7 @@ class Journal():
                     self.logger.info(f"journal for {function}({object})/payload sync to {host} success. Returned {x.status_code}")
                     return True
                 else:
-                    self.logger.info(f"journal for {function}({object})/payload sync to {host} failed. Returned {x.status_code}")
+                    self.logger.error(f"journal for {function}({object})/payload sync to {host} failed. Returned {x.status_code}")
                     return False
             except Exception as exp:
                 self.logger.error(f"{exp}")
@@ -271,7 +271,7 @@ class Journal():
                                 request_id = Database().insert('journal', row)
                     return True
                 else:
-                    self.logger.info(f"journal pull from {host} failed. Returned {x.status_code}")
+                    self.logger.error(f"journal pull from {host} failed. Returned {x.status_code}")
                     return False
             except Exception as exp:
                 self.logger.error(f"{exp}")
@@ -295,7 +295,7 @@ class Journal():
                     self.logger.info(f"journal delete from {host} success. Returned {x.status_code}")
                     return True
                 else:
-                    self.logger.info(f"journal delete from {host} failed. Returned {x.status_code}")
+                    self.logger.error(f"journal delete from {host} failed. Returned {x.status_code}")
                     return False
             except Exception as exp:
                 self.logger.error(f"{exp}")

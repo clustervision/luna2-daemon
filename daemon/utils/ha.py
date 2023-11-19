@@ -125,7 +125,7 @@ class HA():
         if ha_data:
             master=ha_data[0]['master'] or False
             self.master=Helper().make_bool(master)
-            self.logger.info(f"Master state: {self.master}")
+            self.logger.debug(f"Master state: {self.master}")
         return self.master
 
 
@@ -153,10 +153,10 @@ class HA():
                 #x = session.get(f'{self.protocol}://{endpoint}:{serverport}/ping', headers=headers, stream=True, timeout=10, verify=CONSTANT['API']["VERIFY_CERTIFICATE"])
                 x = session.get(f'{self.protocol}://{endpoint}:{serverport}/ping', stream=True, timeout=10, verify=CONSTANT['API']["VERIFY_CERTIFICATE"])
                 if str(x.status_code) in self.good_ret:
-                    self.logger.info(f"ping from {host} success. Returned {x.status_code}")
+                    self.logger.debug(f"ping from {host} success. Returned {x.status_code}")
                     return True
                 else:
-                    self.logger.info(f"ping from {host} failed. Returned {x.status_code}")
+                    self.logger.error(f"ping from {host} failed. Returned {x.status_code}")
                     return False
             except Exception as exp:
                 self.logger.error(f"{exp}")

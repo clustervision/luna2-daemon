@@ -193,7 +193,7 @@ class Housekeeper(object):
                     if ping_tel<1:
                         master=ha_object.get_role()
                         if master is False: # i am not a master
-                            status=ha_object.ping()
+                            status=ha_object.ping_all_controllers()
                             ha_object.set_insync(status)
                             ping_tel=6
                     ping_tel-=1

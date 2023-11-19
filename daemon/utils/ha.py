@@ -107,15 +107,17 @@ class HA():
     def get_role(self):
         ha_data = Database().get_record(None, 'ha')
         if ha_data:
-            self.master=Helper().make_bool(ha_data[0]['master'])
+            master=ha_data[0]['master'] or False
+            self.master=Helper().make_bool(master)
+            self.logger.info(f"Master state: {self.master}")
         return self.master
 
 
-    def ping(self):
+    def ping_all_controllers(self):
         status=True
         if self.all_controllers:
             for controller in self.all_controllers:
-                status=self.ping_host(controller)
+                status=self.ping_host(controller['hostname'])
                 if status is False:
                     return False
         return status

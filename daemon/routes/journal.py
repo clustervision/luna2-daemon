@@ -18,7 +18,7 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>
 
 """
-This File is a A Entry Point of Every Configuration Related Activity.
+This File is a A Entry Point of Every Journal Related Activity.
 @token_required is a Wrapper Method to Validate the POST API. It contains
 arguments and keyword arguments Of The API
 """

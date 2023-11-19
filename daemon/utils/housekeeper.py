@@ -158,6 +158,7 @@ class Housekeeper(object):
     def journal_mother(self,event):
         self.logger.info("Starting Journal/Replication thread")
         sync_tel=0
+        ping_tel=6
         try:
             from utils.ha import HA
             ha_object=HA()
@@ -185,6 +186,17 @@ class Housekeeper(object):
                         sync_tel=7
                     sync_tel-=1
                     journal_object.handle_requests()
+                except Exception as exp:
+                    exc_type, exc_obj, exc_tb = sys.exc_info()
+                    self.logger.error(f"journal_mother thread encountered problem: {exp}, {exc_type}, in {exc_tb.tb_lineno}")
+                try:
+                    if ping_tel<1:
+                        master=ha_object.get_role()
+                        if master is False: # i am not a master
+                            status=ha_object.ping()
+                            ha_object.set_insync(status)
+                            ping_tel=6
+                    ping_tel-=1
                 except Exception as exp:
                     exc_type, exc_obj, exc_tb = sys.exc_info()
                     self.logger.error(f"journal_mother thread encountered problem: {exp}, {exc_type}, in {exc_tb.tb_lineno}")

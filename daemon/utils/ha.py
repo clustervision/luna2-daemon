@@ -48,6 +48,16 @@ class HA():
         self.logger = Log.get_logger()
         self.insync=False
         self.hastate=None
+        self.master=False
+        self.protocol = CONSTANT['API']['PROTOCOL']
+        self.bad_ret=['400','401','500','502','503']
+        self.good_ret=['200','201','204']
+        self.dict_controllers=None
+        self.all_controllers = Database().get_record_join(['controller.*','ipaddress.ipaddress','network.name as domain'],
+                                                          ['ipaddress.tablerefid=controller.id','network.id=ipaddress.networkid'],
+                                                          ["ipaddress.tableref='controller'"])
+        if self.all_controllers:
+            self.dict_controllers = Helper().convert_list_to_dict(self.all_controllers, 'hostname')
 
     def set_insync(self,state):
         ha_state={}
@@ -93,4 +103,68 @@ class HA():
             row = Helper().make_rows(ha_state)
             Database().update('ha', row, where)
         return self.get_hastate()
+
+    def get_role(self):
+        ha_data = Database().get_record(None, 'ha')
+        if ha_data:
+            self.master=Helper().make_bool(ha_data[0]['master'])
+        return self.master
+
+
+    def ping(self):
+        status=True
+        if self.all_controllers:
+            for controller in self.all_controllers:
+                status=self.ping_host(controller)
+                if status is False:
+                    return False
+        return status
+
+
+    def ping_host(self,host):
+        domain=self.dict_controllers[host]['domain']
+        _,alt_serverport,*_=(CONSTANT['API']['ENDPOINT'].split(':')+[None]+[None])
+        serverport=self.dict_controllers[host]['serverport'] or alt_serverport
+        #endpoint=f"{host}.{domain}"
+        endpoint=self.dict_controllers[host]['ipaddress']
+        #token=self.get_token(host)
+        #if token:
+        if True:
+            #headers = {'x-access-tokens': token}
+            try:
+                #x = session.get(f'{self.protocol}://{endpoint}:{serverport}/ping', headers=headers, stream=True, timeout=10, verify=CONSTANT['API']["VERIFY_CERTIFICATE"])
+                x = session.get(f'{self.protocol}://{endpoint}:{serverport}/ping', stream=True, timeout=10, verify=CONSTANT['API']["VERIFY_CERTIFICATE"])
+                if str(x.status_code) in self.good_ret:
+                    self.logger.info(f"ping from {host} success. Returned {x.status_code}")
+                    return True
+                else:
+                    self.logger.info(f"ping from {host} failed. Returned {x.status_code}")
+                    return False
+            except Exception as exp:
+                self.logger.error(f"{exp}")
+        else:
+            self.logger.error(f"No token to ping host {host}. Invalid credentials or host is down.")
+        return False
+
+
+    def get_token(self,host):
+        domain=self.dict_controllers[host]['domain']
+        _,alt_serverport,*_=(CONSTANT['API']['ENDPOINT'].split(':')+[None]+[None])
+        serverport=self.dict_controllers[host]['serverport'] or alt_serverport
+        #endpoint=f"{host}.{domain}"
+        endpoint=self.dict_controllers[host]['ipaddress']
+        token_credentials = {'username': CONSTANT['API']['USERNAME'], 'password': CONSTANT['API']['PASSWORD']}
+        token = None
+        try:
+            self.logger.debug(f"json for token: {token_credentials}")
+            x = session.post(f'{self.protocol}://{endpoint}:{serverport}/token', json=token_credentials, stream=True, timeout=10, verify=CONSTANT['API']["VERIFY_CERTIFICATE"])
+            if (str(x.status_code) not in self.bad_ret) and x.text:
+                DATA = loads(x.text)
+                self.logger.debug(f"data received for token: {DATA}")
+                if 'token' in DATA:
+                    token=DATA["token"]
+        except Exception as exp:
+            self.logger.error(f"{exp}")
+        return token
+
 

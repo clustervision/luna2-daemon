@@ -132,6 +132,7 @@ daemon.register_blueprint(monitor_blueprint)
 daemon.register_blueprint(control_blueprint)
 daemon.register_blueprint(tracker_blueprint)
 daemon.register_blueprint(journal_blueprint)
+daemon.register_blueprint(ha_blueprint)
 
 
 @daemon.route('/all-routes')

@@ -52,6 +52,7 @@ from routes.monitor import monitor_blueprint
 from routes.control import control_blueprint
 from routes.tracker import tracker_blueprint
 from routes.journal import journal_blueprint
+from routes.ha import ha_blueprint
 
 event = Event()
 

@@ -197,13 +197,14 @@ class Tables():
                     self.logger.error(f"{exp}")
             else:
                 self.logger.error(f"No token to fetch table hashes from host {host}. Invalid credentials or host is down.")
-        return True
+        return response
 
 
     def import_table(self,table,data):
         if table == 'ipaddress':
             return True
-        if table and data:
+        #if table and data:
+        try:
             for record in data:
                 where=None
                 if 'name' in record:
@@ -240,6 +241,9 @@ class Tables():
 #                    except Exception as exp:
 #                        self.logger.error(f"{exp}")
 #                        return False
+        except Exception as exp:
+            exc_type, exc_obj, exc_tb = sys.exc_info()
+            self.logger.error(f"journal_mother thread encountered problem: {exp}, {exc_type}, in {exc_tb.tb_lineno}")
         return True
 
 

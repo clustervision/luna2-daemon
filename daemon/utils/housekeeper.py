@@ -223,7 +223,7 @@ class Housekeeper(object):
                                         tables_object.import_table(mismatch['table'],data)
                                     Queue().add_task_to_queue('dhcp:restart', 'housekeeper', '__node_update__')
                                     Queue().add_task_to_queue('dns:restart', 'housekeeper', '__node_update__')
-                                sum_tel=720
+                            sum_tel=720
                         sum_tel-=1
                     # --------------------------- end of magic
                 except Exception as exp:

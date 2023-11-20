@@ -63,6 +63,7 @@ class Tables():
         response="Invalid request: table not supplied"
         if table:
             response={}
+            response[table]=[]
             dbcolumns = Database().get_columns(table)
             if dbcolumns:
                 status=True
@@ -71,9 +72,10 @@ class Tables():
                 data=Database().get_record(dbcolumns,table)
                 if data:
                     for record in data:
-                        response[table]=record
+                        response[table].append(record)
                         #group_data = b64encode(data.encode())
                         #group_data = group_data.decode("ascii")
+                response={'table': {'data': response}}
             else:
                 response=f"Table {table} not in database"
         return status, response

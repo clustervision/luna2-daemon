@@ -102,6 +102,8 @@ class Tables():
                 if 'name' not in dbcolumns:
                     if 'tablerefid' in dbcolumns:
                         order='tablerefid'
+                        if 'tableref' in dbcolumns:
+                            order+=',tableref'
                     elif 'host' in dbcolumns:
                         order='host'
                         if 'networkid' in dbcolumns:
@@ -172,6 +174,7 @@ class Tables():
 
 
     def fetch_table(self,table,host):
+        response=None
         if self.all_controllers:
             serverport=self.dict_controllers[host]['serverport'] or self.alt_serverport
             endpoint=self.dict_controllers[host]['ipaddress']
@@ -184,8 +187,8 @@ class Tables():
                         if x.text:
                             DATA = loads(x.text)
                             if 'table' in DATA and 'data' in DATA['table'] and table in DATA['table']['data']:
-                                data=DATA['table']['data'][table]
-                                self.logger.info(f"DATA: {data}")
+                                response=DATA['table']['data'][table]
+                                self.logger.info(f"DATA: {response}")
                         else:
                             self.logger.warning(f"no data supplied by {host}")
                     else:
@@ -196,5 +199,47 @@ class Tables():
                 self.logger.error(f"No token to fetch table hashes from host {host}. Invalid credentials or host is down.")
         return True
 
+
+    def import_table(self,table,data):
+        if table == 'ipaddress':
+            return True
+        if table and data:
+            for record in data:
+                where=None
+                if 'name' in record:
+                    where = [{"column": "name", "value": {record['name']}}]
+                else:
+                    if 'tablerefid' in record:
+                        where = [{"column": "tablerefid", "value": {record['tablerefid']}}]
+                        if 'tableref' in record:
+                            where.append({"column": "tableref", "value": {record['tableref']}}
+                    elif 'host' in record:
+                        where = [{"column": "host", "value": {record['host']}}]
+                        if 'networkid' in record:
+                            where.append({"column": "networkid", "value": {record['networkid']}}
+                    elif 'nodeid' in record:
+                        where = [{"column": "", "value": {record['']}}]
+                        primary='nodeid'
+                        if 'interface' in record:
+                            where.append({"column": "interface", "value": {record['interface']}}
+                    elif 'groupid' in record:
+                        where = [{"column": "", "value": {record['']}}]
+                        if 'interface' in record:
+                            where.append({"column": "interface", "value": {record['interface']}}
+                    elif 'username' in record:
+                        where = [{"column": "username", "value": {record['name']}}]
+                row = Helper().make_rows(record)
+                self.logger.info(f"---------------------------------------------------")
+                self.logger.info(f"ROW: {row}")
+                self.logger.info(f"WHERE: {where}")
+#                try:
+#                    result=Database().update(table,row,where)
+#                except:
+#                    try:
+#                        result=Database().insert(table,row)
+#                    except Exception as exp:
+#                        self.logger.error(f"{exp}")
+#                        return False
+        return True
 
 

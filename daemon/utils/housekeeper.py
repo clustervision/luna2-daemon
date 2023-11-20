@@ -207,7 +207,8 @@ class Housekeeper(object):
                             mismatch_tables=tables_object.verify_tablehashes_controllers()
                             if mismatch_tables:
                                 for mismatch in mismatch_tables:
-                                    tables_object.fetch_table(mismatch['table'],mismatch['host'])
+                                    data=tables_object.fetch_table(mismatch['table'],mismatch['host'])
+                                    tables_object.import_table(mismatch['table'],data)
                             sum_tel=100
                     sum_tel-=1
                     # --------------------------- we ping the others. if someone is down, we become paranoid

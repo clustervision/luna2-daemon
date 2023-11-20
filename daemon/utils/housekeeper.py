@@ -200,16 +200,16 @@ class Housekeeper(object):
                         sync_tel=7
                     sync_tel-=1
                     # --------------------------- then we process what we have received
-                    journal_object.handle_requests()
+                    handled=journal_object.handle_requests()
                     # --------------------------- then on top of that, we verify checksums. if mismatch, we import from the master
-                    if sum_tel<1:
+                    if sum_tel<1 or handled is True:
                         if master is False: # i am not a master
                             mismatch_tables=tables_object.verify_tablehashes_controllers()
                             if mismatch_tables:
                                 for mismatch in mismatch_tables:
                                     data=tables_object.fetch_table(mismatch['table'],mismatch['host'])
                                     tables_object.import_table(mismatch['table'],data)
-                            sum_tel=100
+                            sum_tel=720
                     sum_tel-=1
                     # --------------------------- we ping the others. if someone is down, we become paranoid
                     if ping_tel<1:

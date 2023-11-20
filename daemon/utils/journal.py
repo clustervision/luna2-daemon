@@ -152,9 +152,11 @@ class Journal():
 
 
     def handle_requests(self):
+        status=False
         if self.me:
             all_records = Database().get_record(None,'journal',f"WHERE sendfor='{self.me}' ORDER BY created,id ASC")
             if all_records:
+                status=True
                 for record in all_records:
                     payload=None
                     if record['payload']:
@@ -183,7 +185,7 @@ class Journal():
                     # we always have to remove the entries in the DB regarding outcome.
                     Database().delete_row('journal', [{"column": "id", "value": record['id']}])
                 HA().set_insync(True)
-        return
+        return status
 
 
     def pushto_controllers(self):

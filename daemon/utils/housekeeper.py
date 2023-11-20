@@ -204,7 +204,7 @@ class Housekeeper(object):
                     handled=journal_object.handle_requests()
                     if handled is True:
                         ha_object.set_insync(True)
-                        sum_tel=5
+                        sum_tel=11
                     # --------------------------- we ping the others. if someone is down, we become paranoid
                     if ping_tel<1:
                         if master is False: # i am not a master
@@ -221,6 +221,8 @@ class Housekeeper(object):
                                     for mismatch in mismatch_tables:
                                         data=tables_object.fetch_table(mismatch['table'],mismatch['host'])
                                         tables_object.import_table(mismatch['table'],data)
+                                    Queue().add_task_to_queue('dhcp:restart', 'housekeeper', '__node_update__')
+                                    Queue().add_task_to_queue('dns:restart', 'housekeeper', '__node_update__')
                                 sum_tel=720
                         sum_tel-=1
                     # --------------------------- end of magic

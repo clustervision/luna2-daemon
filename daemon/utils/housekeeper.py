@@ -161,6 +161,7 @@ class Housekeeper(object):
 
     def journal_mother(self,event):
         self.logger.info("Starting Journal/Replication thread")
+        hardsync_enabled=False # experimental hard table sync based on checksums. handle with care!
         sync_tel=0
         ping_tel=3
         sum_tel=0
@@ -202,15 +203,16 @@ class Housekeeper(object):
                     # --------------------------- then we process what we have received
                     handled=journal_object.handle_requests()
                     # --------------------------- then on top of that, we verify checksums. if mismatch, we import from the master
-                    if sum_tel<1 or handled is True:
-                        if master is False: # i am not a master
-                            mismatch_tables=tables_object.verify_tablehashes_controllers()
-                            if mismatch_tables:
-                                for mismatch in mismatch_tables:
-                                    data=tables_object.fetch_table(mismatch['table'],mismatch['host'])
-                                    tables_object.import_table(mismatch['table'],data)
-                            sum_tel=720
-                    sum_tel-=1
+                    if hardsync_enabled:
+                        if sum_tel<1 or handled is True:
+                            if master is False: # i am not a master
+                                mismatch_tables=tables_object.verify_tablehashes_controllers()
+                                if mismatch_tables:
+                                    for mismatch in mismatch_tables:
+                                        data=tables_object.fetch_table(mismatch['table'],mismatch['host'])
+                                        tables_object.import_table(mismatch['table'],data)
+                                sum_tel=720
+                        sum_tel-=1
                     # --------------------------- we ping the others. if someone is down, we become paranoid
                     if ping_tel<1:
                         if master is False: # i am not a master

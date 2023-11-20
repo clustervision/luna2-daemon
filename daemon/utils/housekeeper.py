@@ -159,6 +159,7 @@ class Housekeeper(object):
         self.logger.info("Starting Journal/Replication thread")
         sync_tel=0
         ping_tel=3
+        sum_tel=0
         try:
             from utils.ha import HA
             ha_object=HA()
@@ -168,41 +169,54 @@ class Housekeeper(object):
                 self.logger.info(f"Currently not configured to run in H/A mode. Exiting journal thread")
                 return
             ha_object.set_insync(False)
+            # ---------------------------- we keep asking the journal for others until successful
             while ha_object.get_insync() is False:
-                if sync_tel<1:
-                    status=journal_object.pullfrom_controllers()
-                    if status is True:
-                        ha_object.set_insync(True)
-                    sync_tel=2
-                sync_tel-=1
+                try:
+                    if sync_tel<1:
+                        status=journal_object.pullfrom_controllers()
+                        if status is True:
+                            ha_object.set_insync(True)
+                        sync_tel=2
+                    sync_tel-=1
+                except Exception as exp:
+                    exc_type, exc_obj, exc_tb = sys.exc_info()
+                    self.logger.error(f"journal_mother thread encountered problem in initial sync: {exp}, {exc_type}, in {exc_tb.tb_lineno}")
+                sleep(5)
                 if event.is_set():
                     return
-                sleep(5)
+            # ---------------------------- good. now we can proceed with the main loop
             sync_tel=0
             while True:
                 try:
+                    # --------------------------- am i a master or not?
+                    master=ha_object.get_role()
+                    # --------------------------- first we sync with the others. we push what's still in the journal
                     if sync_tel<1:
                         journal_object.pushto_controllers()
                         sync_tel=7
                     sync_tel-=1
+                    # --------------------------- then we process what we have received
                     journal_object.handle_requests()
-                except Exception as exp:
-                    exc_type, exc_obj, exc_tb = sys.exc_info()
-                    self.logger.error(f"journal_mother thread encountered problem: {exp}, {exc_type}, in {exc_tb.tb_lineno}")
-                try:
+                    # --------------------------- then on top of that, we verify checksums. if mismatch, we import from the master
+                    if sum_tel<1:
+                        if master is False: # i am not a master
+                            journal_object.verify_tablehashes_controllers()
+                            sum_tel=100
+                    sum_tel-=1
+                    # --------------------------- we ping the others. if someone is down, we become paranoid
                     if ping_tel<1:
-                        master=ha_object.get_role()
                         if master is False: # i am not a master
                             status=ha_object.ping_all_controllers()
                             ha_object.set_insync(status)
                             ping_tel=3
                     ping_tel-=1
+                    # --------------------------- end of magic
                 except Exception as exp:
                     exc_type, exc_obj, exc_tb = sys.exc_info()
-                    self.logger.error(f"journal_mother thread encountered problem: {exp}, {exc_type}, in {exc_tb.tb_lineno}")
+                    self.logger.error(f"journal_mother thread encountered problem in main loop: {exp}, {exc_type}, in {exc_tb.tb_lineno}")
+                sleep(5)
                 if event.is_set():
                     return
-                sleep(5)
         except Exception as exp:
             exc_type, exc_obj, exc_tb = sys.exc_info()
             self.logger.error(f"journal_mother thread encountered problem: {exp}, {exc_type}, in {exc_tb.tb_lineno}")

@@ -44,7 +44,7 @@ LOGGER = Log.get_logger()
 tables_blueprint = Blueprint('tables', __name__)
 
 
-@journal_blueprint.route('/table/hashes', methods=['GET'])
+@tables_blueprint.route('/table/hashes', methods=['GET'])
 @token_required
 def tablehash_get():
     """

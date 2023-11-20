@@ -166,8 +166,9 @@ class Housekeeper(object):
         sum_tel=0
         try:
             ha_object=HA()
-            journal_object=Journal()
-            tables_object=Tables()
+            me=ha_object.get_me()
+            journal_object=Journal(me)
+            tables_object=Tables(me)
             if not ha_object.get_hastate():
                 self.logger.info(f"Currently not configured to run in H/A mode. Exiting journal thread")
                 return

@@ -342,13 +342,14 @@ class Journal():
                             if str(x.status_code) in self.good_ret:
                                 if x.text:
                                     DATA = loads(x.text)
+                                    self.logger.info(f"DATA: {DATA}")
                                     if 'message' in DATA and DATA['message'] == "not master":
                                         pass
                                     else:
                                         if 'table' in DATA and 'hashes' in DATA['table']:
                                             other_hashes=DATA['table']['hashes']
-                                            for table in my_hashes:
-                                                if table in other_hashes:
+                                            for table in my_hashes.keys():
+                                                if table in other_hashes.keys():
                                                     if my_hashes[table] != other_hashes[table]:
                                                         self.logger.info(f"table {table} hash mismatch. me: {my_hashes[table]}, {host}: {other_hashes[table]}")
                                                 else:

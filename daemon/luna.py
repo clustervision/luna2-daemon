@@ -52,6 +52,7 @@ from routes.monitor import monitor_blueprint
 from routes.control import control_blueprint
 from routes.tracker import tracker_blueprint
 from routes.journal import journal_blueprint
+from routes.tables import tables_blueprint
 from routes.ha import ha_blueprint
 
 event = Event()
@@ -133,6 +134,7 @@ daemon.register_blueprint(monitor_blueprint)
 daemon.register_blueprint(control_blueprint)
 daemon.register_blueprint(tracker_blueprint)
 daemon.register_blueprint(journal_blueprint)
+daemon.register_blueprint(tables_blueprint)
 daemon.register_blueprint(ha_blueprint)
 
 

@@ -108,19 +108,3 @@ def journal_del_byname(name=None):
         response = {'message': response}
     return response, access_code
 
-
-@journal_blueprint.route('/table/hashes', methods=['GET'])
-@token_required
-def tablehash_get():
-    """
-    This api will generate the hashes of the database tables and returns it
-    """
-    access_code = 404
-    status, response = Journal().get_table_hashes()
-    if status is True:
-        access_code = 200
-        response = dumps(response)
-    else:
-        response = {'message': response}
-    return response, access_code
-

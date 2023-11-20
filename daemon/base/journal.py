@@ -34,7 +34,6 @@ from utils.database import Database
 from utils.helper import Helper
 from utils.log import Log
 from utils.ha import HA
-from utils.tables import Tables
 
 
 class Journal():
@@ -130,15 +129,4 @@ class Journal():
                             Database().delete_row('node', [{"column": "id", "value": entry['id']}])
 
         return True, response
-
-
-    def get_table_hashes(self):
-        status=True
-        response='not master'
-        master = HA().get_role()
-        if master is True:
-            hashes = Tables().get_table_hashes()
-            response = {'table': {'hashes': hashes} }
-        return status, response
-        
 

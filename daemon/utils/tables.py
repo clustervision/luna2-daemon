@@ -209,7 +209,7 @@ class Tables():
             Database().clear(table)
             for record in data:
                 if 'SQLITE_SEQUENCE' in record:
-                    seq=record['SQLITE_SEQUENCE'
+                    seq=record['SQLITE_SEQUENCE']
                     continue
 #                where=None
 #                if 'name' in record:

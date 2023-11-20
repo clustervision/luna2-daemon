@@ -212,20 +212,20 @@ class Tables():
                     if 'tablerefid' in record:
                         where = [{"column": "tablerefid", "value": {record['tablerefid']}}]
                         if 'tableref' in record:
-                            where.append({"column": "tableref", "value": {record['tableref']}}
+                            where.append({"column": "tableref", "value": {record['tableref']}})
                     elif 'host' in record:
                         where = [{"column": "host", "value": {record['host']}}]
                         if 'networkid' in record:
-                            where.append({"column": "networkid", "value": {record['networkid']}}
+                            where.append({"column": "networkid", "value": {record['networkid']}})
                     elif 'nodeid' in record:
                         where = [{"column": "", "value": {record['']}}]
                         primary='nodeid'
                         if 'interface' in record:
-                            where.append({"column": "interface", "value": {record['interface']}}
+                            where.append({"column": "interface", "value": {record['interface']}})
                     elif 'groupid' in record:
                         where = [{"column": "", "value": {record['']}}]
                         if 'interface' in record:
-                            where.append({"column": "interface", "value": {record['interface']}}
+                            where.append({"column": "interface", "value": {record['interface']}})
                     elif 'username' in record:
                         where = [{"column": "username", "value": {record['name']}}]
                 row = Helper().make_rows(record)

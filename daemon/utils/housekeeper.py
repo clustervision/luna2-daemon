@@ -202,10 +202,18 @@ class Housekeeper(object):
                     sync_tel-=1
                     # --------------------------- then we process what we have received
                     handled=journal_object.handle_requests()
+                    if handled is True:
+                        ha_object.set_insync(True)
+                        sum_tel=5
+                    # --------------------------- we ping the others. if someone is down, we become paranoid
+                    if ping_tel<1:
+                        if master is False: # i am not a master
+                            status=ha_object.ping_all_controllers()
+                            ha_object.set_insync(status)
+                            ping_tel=3
+                    ping_tel-=1
                     # --------------------------- then on top of that, we verify checksums. if mismatch, we import from the master
                     if hardsync_enabled:
-                        if handled is True:
-                            sum_tel=5
                         if sum_tel<1:
                             if master is False: # i am not a master
                                 mismatch_tables=tables_object.verify_tablehashes_controllers()
@@ -215,13 +223,6 @@ class Housekeeper(object):
                                         tables_object.import_table(mismatch['table'],data)
                                 sum_tel=720
                         sum_tel-=1
-                    # --------------------------- we ping the others. if someone is down, we become paranoid
-                    if ping_tel<1:
-                        if master is False: # i am not a master
-                            status=ha_object.ping_all_controllers()
-                            ha_object.set_insync(status)
-                            ping_tel=3
-                    ping_tel-=1
                     # --------------------------- end of magic
                 except Exception as exp:
                     exc_type, exc_obj, exc_tb = sys.exc_info()

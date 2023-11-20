@@ -184,7 +184,6 @@ class Journal():
                     self.logger.info(f"result for {record['function']}({record['object']}): {status}, {message}")
                     # we always have to remove the entries in the DB regarding outcome.
                     Database().delete_row('journal', [{"column": "id", "value": record['id']}])
-                HA().set_insync(True)
         return status
 
 

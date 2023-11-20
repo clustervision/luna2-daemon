@@ -87,7 +87,7 @@ class Journal():
     This class is responsible for all journal and replication operations
     """
 
-    def __init__(self,me):
+    def __init__(self,me=None):
         self.logger = Log.get_logger()
         self.protocol = CONSTANT['API']['PROTOCOL']
         _,self.alt_serverport,*_=(CONSTANT['API']['ENDPOINT'].split(':')+[None]+[None])

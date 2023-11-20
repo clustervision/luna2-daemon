@@ -62,7 +62,7 @@ class Tables():
     This class offer table specific functions, like hasing, verification etc
     """
 
-    def __init__(self,me):
+    def __init__(self,me=None):
         self.logger = Log.get_logger()
         self.tables = ['osimage', 'osimagetag', 'nodesecrets', 'nodeinterface', 'bmcsetup', 
               'ipaddress', 'groupinterface', 'roles', 'group', 'network', 'user', 'switch', 

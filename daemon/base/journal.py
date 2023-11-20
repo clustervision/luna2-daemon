@@ -137,7 +137,7 @@ class Journal():
         response='not master'
         master = HA().get_role()
         if master is True:
-            status, hashes = Tables().get_table_hashes()
+            hashes = Tables().get_table_hashes()
             response = {'table': {'hashes': [hashes]} }
         return status, response
         

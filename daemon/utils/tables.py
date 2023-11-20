@@ -68,6 +68,7 @@ class Tables():
               'ipaddress', 'groupinterface', 'roles', 'group', 'network', 'user', 'switch', 
               'otherdevices', 'groupsecrets', 'node', 'cluster', 'dns']
         self.protocol = CONSTANT['API']['PROTOCOL']
+        _,self.alt_serverport,*_=(CONSTANT['API']['ENDPOINT'].split(':')+[None]+[None])
         self.bad_ret=['400','401','500','502','503']
         self.good_ret=['200','201','204']
         self.dict_controllers=None

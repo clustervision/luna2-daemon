@@ -130,9 +130,9 @@ class Database():
         Input - table name fixed: SQLITE_SEQUENCE. name of column optional
         Output - returns sequence numbers of next autoincrement
         """
-        query = f'SELECT * FROM SQLITE_SEQUENCE;'
+        where = None
         if name:
-            query += f" WHERE `name`='{where}';"
+            where = f" WHERE `name`='{name}';"
         data=self.get_record(None,'SQLITE_SEQUENCE', where)
         if data:
             if name:

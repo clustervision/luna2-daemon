@@ -97,6 +97,7 @@ class Tables():
             order='name'
             dbcolumns = Database().get_columns(table)
             self.logger.debug(f"TABLE: {table}, DBCOLUMNS: {dbcolumns}")
+            hashes[table]="0"
             if dbcolumns:
 #                if 'id' in dbcolumns:
 #                    dbcolumns.remove('id')

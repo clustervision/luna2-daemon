@@ -136,7 +136,7 @@ class Database():
         data=self.get_record(None,'SQLITE_SEQUENCE', where)
         if data:
             if name:
-                return data[0]['name']
+                return data[0]['seq']
             else:
                 return data
         return None

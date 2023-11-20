@@ -205,54 +205,17 @@ class Tables():
     def import_table(self,table,data=[]):
         if table == 'ipaddress':
             return True
-        try:
-            seq=None
-            Database().clear(table)
-            for record in data:
-                if 'SQLITE_SEQUENCE' in record:
-                    seq=record['SQLITE_SEQUENCE']
-                    continue
-#                where=None
-#                if 'name' in record:
-#                    where = [{"column": "name", "value": {record['name']}}]
-#                else:
-#                    if 'tablerefid' in record:
-#                        where = [{"column": "tablerefid", "value": {record['tablerefid']}}]
-#                        if 'tableref' in record:
-#                            where.append({"column": "tableref", "value": {record['tableref']}})
-#                    elif 'host' in record:
-#                        where = [{"column": "host", "value": {record['host']}}]
-#                        if 'networkid' in record:
-#                            where.append({"column": "networkid", "value": {record['networkid']}})
-#                    elif 'nodeid' in record:
-#                        where = [{"column": "", "value": {record['']}}]
-#                        primary='nodeid'
-#                        if 'interface' in record:
-#                            where.append({"column": "interface", "value": {record['interface']}})
-#                    elif 'groupid' in record:
-#                        where = [{"column": "", "value": {record['']}}]
-#                        if 'interface' in record:
-#                            where.append({"column": "interface", "value": {record['interface']}})
-#                    elif 'username' in record:
-#                        where = [{"column": "username", "value": {record['name']}}]
-                row = Helper().make_rows(record)
-                self.logger.info(f"---------------------------------------------------")
-                self.logger.info(f"ROW: {row}")
-                result=Database().insert(table,row)
-                if not result:
-                    self.logger.error(f"Error importing data for table {table}")
-#                self.logger.info(f"WHERE: {where}")
-#                try:
-#                    result=Database().update(table,row,where)
-#                except:
-#                    try:
-#                        result=Database().insert(table,row)
-#                    except Exception as exp:
-#                        self.logger.error(f"{exp}")
-#                        return False
-            Database().update_sequence(table,seq)
-        except Exception as exp:
-            exc_type, exc_obj, exc_tb = sys.exc_info()
-            self.logger.error(f"journal_mother thread encountered problem: {exp}, {exc_type}, in {exc_tb.tb_lineno}")
+        seq=None
+        Database().clear(table)
+        for record in data:
+            if 'SQLITE_SEQUENCE' in record:
+                seq=record['SQLITE_SEQUENCE']
+                continue
+            row = Helper().make_rows(record)
+            result=Database().insert(table,row)
+            if not result:
+                self.logger.error(f"Error importing data for table {table}")
+                return False
+        Database().update_sequence(table,seq)
         return True
 

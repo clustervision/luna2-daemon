@@ -174,7 +174,7 @@ class Housekeeper(object):
                 self.logger.info(f"Currently not configured to run in H/A mode. Exiting journal thread")
                 return
             ha_object.set_insync(False)
-            # ---------------------------- we keep asking the journal for others until successful
+            # ---------------------------- we keep asking the journal from others until successful
             while ha_object.get_insync() is False:
                 try:
                     if sync_tel<1:

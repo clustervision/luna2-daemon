@@ -31,6 +31,7 @@ __email__       = 'antoine.schonewille@clustervision.com'
 __status__      = 'Development'
 
 import re
+import sys
 import hashlib
 import netifaces as ni
 from base64 import b64decode, b64encode
@@ -188,7 +189,7 @@ class Tables():
                             DATA = loads(x.text)
                             if 'table' in DATA and 'data' in DATA['table'] and table in DATA['table']['data']:
                                 response=DATA['table']['data'][table]
-                                self.logger.info(f"DATA: {response}")
+                                self.logger.debug(f"DATA: {response}")
                         else:
                             self.logger.warning(f"no data supplied by {host}")
                     else:
@@ -203,36 +204,40 @@ class Tables():
     def import_table(self,table,data):
         if table == 'ipaddress':
             return True
-        #if table and data:
         try:
+            Database.clear(table)
             for record in data:
-                where=None
-                if 'name' in record:
-                    where = [{"column": "name", "value": {record['name']}}]
-                else:
-                    if 'tablerefid' in record:
-                        where = [{"column": "tablerefid", "value": {record['tablerefid']}}]
-                        if 'tableref' in record:
-                            where.append({"column": "tableref", "value": {record['tableref']}})
-                    elif 'host' in record:
-                        where = [{"column": "host", "value": {record['host']}}]
-                        if 'networkid' in record:
-                            where.append({"column": "networkid", "value": {record['networkid']}})
-                    elif 'nodeid' in record:
-                        where = [{"column": "", "value": {record['']}}]
-                        primary='nodeid'
-                        if 'interface' in record:
-                            where.append({"column": "interface", "value": {record['interface']}})
-                    elif 'groupid' in record:
-                        where = [{"column": "", "value": {record['']}}]
-                        if 'interface' in record:
-                            where.append({"column": "interface", "value": {record['interface']}})
-                    elif 'username' in record:
-                        where = [{"column": "username", "value": {record['name']}}]
+#                where=None
+#                if 'name' in record:
+#                    where = [{"column": "name", "value": {record['name']}}]
+#                    if 
+#                else:
+#                    if 'tablerefid' in record:
+#                        where = [{"column": "tablerefid", "value": {record['tablerefid']}}]
+#                        if 'tableref' in record:
+#                            where.append({"column": "tableref", "value": {record['tableref']}})
+#                    elif 'host' in record:
+#                        where = [{"column": "host", "value": {record['host']}}]
+#                        if 'networkid' in record:
+#                            where.append({"column": "networkid", "value": {record['networkid']}})
+#                    elif 'nodeid' in record:
+#                        where = [{"column": "", "value": {record['']}}]
+#                        primary='nodeid'
+#                        if 'interface' in record:
+#                            where.append({"column": "interface", "value": {record['interface']}})
+#                    elif 'groupid' in record:
+#                        where = [{"column": "", "value": {record['']}}]
+#                        if 'interface' in record:
+#                            where.append({"column": "interface", "value": {record['interface']}})
+#                    elif 'username' in record:
+#                        where = [{"column": "username", "value": {record['name']}}]
                 row = Helper().make_rows(record)
                 self.logger.info(f"---------------------------------------------------")
                 self.logger.info(f"ROW: {row}")
-                self.logger.info(f"WHERE: {where}")
+                result=Database().insert(table,row)
+                if not result:
+                    self.logger.error(f"Error importing data for table {table}")
+#                self.logger.info(f"WHERE: {where}")
 #                try:
 #                    result=Database().update(table,row,where)
 #                except:

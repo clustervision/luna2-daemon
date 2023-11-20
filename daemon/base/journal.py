@@ -133,7 +133,7 @@ class Journal():
 
 
     def get_table_hashes(self):
-        status=False
+        status=True
         response='not master'
         master = HA().get_role()
         if master is True:

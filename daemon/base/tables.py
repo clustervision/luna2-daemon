@@ -56,8 +56,8 @@ class Tables():
             hashes = UTables().get_table_hashes()
             response = {'table': {'hashes': hashes} }
         return status, response
-        
-
+    
+    
     def get_table_data(self,table=None):
         status=False
         response="Invalid request: table not supplied"
@@ -67,8 +67,9 @@ class Tables():
             dbcolumns = Database().get_columns(table)
             if dbcolumns:
                 status=True
-#                if 'id' in dbcolumns:
-#                    dbcolumns.remove('id')
+                sequence=Database().get_sequence(table)
+                if sequence:
+                    response[table].append({'SQLITE_SEQUENCE': sequence})
                 data=Database().get_record(dbcolumns,table)
                 if data:
                     for record in data:

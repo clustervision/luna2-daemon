@@ -205,9 +205,13 @@ class Tables():
         if table == 'ipaddress':
             return True
         try:
+            seq=None
             Database().clear(table)
             for record in data:
-                where=None
+                if 'SQLITE_SEQUENCE' in record:
+                    seq=record['SQLITE_SEQUENCE'
+                    continue
+#                where=None
 #                if 'name' in record:
 #                    where = [{"column": "name", "value": {record['name']}}]
 #                else:
@@ -245,6 +249,7 @@ class Tables():
 #                    except Exception as exp:
 #                        self.logger.error(f"{exp}")
 #                        return False
+            Database().update_sequence(table,seq)
         except Exception as exp:
             exc_type, exc_obj, exc_tb = sys.exc_info()
             self.logger.error(f"journal_mother thread encountered problem: {exp}, {exc_type}, in {exc_tb.tb_lineno}")

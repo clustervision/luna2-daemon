@@ -125,6 +125,36 @@ class Database():
         return result
 
 
+    def get_sequence(self, name=None):
+        """
+        Input - table name fixed: SQLITE_SEQUENCE. name of column optional
+        Output - returns sequence numbers of next autoincrement
+        """
+        query = f'SELECT * FROM SQLITE_SEQUENCE;'
+        if name:
+            query += f" WHERE `name`='{where}';"
+        data=self.get_record(None,'SQLITE_SEQUENCE', where)
+        if data:
+            if name:
+                return data[0]['name']
+            else:
+                return data
+        return None
+
+
+    def update_sequence(self, name=None, seq=None):
+
+        """
+        Input -  name and seq(uence)
+        Output - Update the rows.
+        """
+        if not name or not seq:
+            return None
+        row=[{"column": "seq", "value": seq}]
+        where=[{"column": "name", "value": name}]
+        return self.update('SQLITE_SEQUENCE', row, where)
+
+
     def get_record(self, select=None, table=None, where=None):
         """
         Input - select fields, tablename, where clause

@@ -98,8 +98,8 @@ class Tables():
             dbcolumns = Database().get_columns(table)
             self.logger.debug(f"TABLE: {table}, DBCOLUMNS: {dbcolumns}")
             if dbcolumns:
-                if 'id' in dbcolumns:
-                    dbcolumns.remove('id')
+#                if 'id' in dbcolumns:
+#                    dbcolumns.remove('id')
                 if 'name' not in dbcolumns:
                     if 'tablerefid' in dbcolumns:
                         order='tablerefid'
@@ -201,16 +201,15 @@ class Tables():
         return response
 
 
-    def import_table(self,table,data):
+    def import_table(self,table,data=[]):
         if table == 'ipaddress':
             return True
         try:
-            Database.clear(table)
+            Database().clear(table)
             for record in data:
-#                where=None
+                where=None
 #                if 'name' in record:
 #                    where = [{"column": "name", "value": {record['name']}}]
-#                    if 
 #                else:
 #                    if 'tablerefid' in record:
 #                        where = [{"column": "tablerefid", "value": {record['tablerefid']}}]
@@ -250,5 +249,4 @@ class Tables():
             exc_type, exc_obj, exc_tb = sys.exc_info()
             self.logger.error(f"journal_mother thread encountered problem: {exp}, {exc_type}, in {exc_tb.tb_lineno}")
         return True
-
 

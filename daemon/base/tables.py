@@ -67,8 +67,8 @@ class Tables():
             dbcolumns = Database().get_columns(table)
             if dbcolumns:
                 status=True
-                if 'id' in dbcolumns:
-                    dbcolumns.remove('id')
+#                if 'id' in dbcolumns:
+#                    dbcolumns.remove('id')
                 data=Database().get_record(dbcolumns,table)
                 if data:
                     for record in data:

@@ -85,6 +85,5 @@ class Tables():
                         merged+=dumps(data)+";"
                     hashes[table]=str(hashlib.sha256(merged.encode()).hexdigest())
         self.logger.debug(f"HASHES: {hashes}")
-        #response={"journal": {"hashes": [hashes]}}
-        return True, hashes
+        return hashes
 

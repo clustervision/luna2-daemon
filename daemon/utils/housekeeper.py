@@ -204,7 +204,9 @@ class Housekeeper(object):
                     # --------------------------- then on top of that, we verify checksums. if mismatch, we import from the master
                     if sum_tel<1:
                         if master is False: # i am not a master
-                            tables_object.verify_tablehashes_controllers()
+                            mismatch_tables=tables_object.verify_tablehashes_controllers()
+                            for mismatch in mismatch_tables:
+                                tables_object.fetch_table(mimatch['table'],mismatch['host'])
                             sum_tel=100
                     sum_tel-=1
                     # --------------------------- we ping the others. if someone is down, we become paranoid

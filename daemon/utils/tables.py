@@ -128,6 +128,7 @@ class Tables():
 
 
     def verify_tablehashes_controllers(self):
+        mismatch_tables=[]
         if self.me:
             if self.all_controllers:
                 my_hashes=Tables().get_table_hashes()
@@ -154,6 +155,7 @@ class Tables():
                                                 if table in other_hashes.keys():
                                                     if my_hashes[table] != other_hashes[table]:
                                                         self.logger.warning(f"table {table} hash mismatch. me: {my_hashes[table]}, {host}: {other_hashes[table]}")
+                                                        mismatch_tables.append({'table': table, 'host': host})
                                                 else:
                                                     self.logger.warning(f"no table hash for table {table} supplied by {host}")
                                         else:
@@ -166,6 +168,33 @@ class Tables():
                             self.logger.error(f"{exp}")
                     else:
                         self.logger.error(f"No token to fetch table hashes from host {host}. Invalid credentials or host is down.")
+        return mismatch_tables
+
+
+    def fetch_table(self,table,host):
+        if self.all_controllers:
+            serverport=self.dict_controllers[host]['serverport'] or self.alt_serverport
+            endpoint=self.dict_controllers[host]['ipaddress']
+            token=Token().get_token(host)
+            if token:
+                headers = {'x-access-tokens': token}
+                try:
+                    x = session.get(f'{self.protocol}://{endpoint}:{serverport}/table/data/{table}', headers=headers, stream=True, timeout=10, verify=CONSTANT['API']["VERIFY_CERTIFICATE"])
+                    if str(x.status_code) in self.good_ret:
+                        if x.text:
+                            DATA = loads(x.text)
+                            if 'table' in DATA and 'data' in DATA['table'] and table in DATA['table']['data']:
+                                data=DATA['table']['data'][table]
+                                self.logger.info(f"DATA: {data}")
+                        else:
+                            self.logger.warning(f"no data supplied by {host}")
+                    else:
+                        self.logger.error(f"table hashes fetch from {host} failed. Returned {x.status_code}")
+                except Exception as exp:
+                    self.logger.error(f"{exp}")
+            else:
+                self.logger.error(f"No token to fetch table hashes from host {host}. Invalid credentials or host is down.")
         return True
+
 
 

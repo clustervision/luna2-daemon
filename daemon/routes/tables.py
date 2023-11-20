@@ -61,7 +61,7 @@ def tablehash_get():
 @tables_blueprint.route('/table/data/<string:name>', methods=['GET'])
 @token_required
 @validate_name
-def tabledata_get():
+def tabledata_get(name=None):
     """
     This api will generate the hashes of the database tables and returns it
     """

@@ -203,8 +203,6 @@ class Tables():
 
 
     def import_table(self,table,data=[]):
-        if table == 'ipaddress':
-            return True
         seq=None
         Database().clear(table)
         for record in data:

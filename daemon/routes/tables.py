@@ -58,3 +58,18 @@ def tablehash_get():
         response = {'message': response}
     return response, access_code
 
+@tables_blueprint.route('/table/data/<string:name>', methods=['GET'])
+@token_required
+@validate_name
+def tabledata_get():
+    """
+    This api will generate the hashes of the database tables and returns it
+    """
+    status, response = Tables().get_table_data(name)
+    access_code=Helper().get_access_code(status,response)
+    if status is True:
+        response = dumps(response)
+    else:
+        response = {'message': response}
+    return response, access_code
+

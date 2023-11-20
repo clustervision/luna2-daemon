@@ -48,6 +48,7 @@ from utils.queue import Queue
 from utils.helper import Helper
 from utils.model import Model
 from utils.tables import Tables
+from utils.token import Token
 from utils.ha import HA
 
 import requests
@@ -214,7 +215,7 @@ class Journal():
         serverport=self.dict_controllers[host]['serverport'] or self.alt_serverport
         #endpoint=f"{host}.{domain}"
         endpoint=self.dict_controllers[host]['ipaddress']
-        token=self.get_token(host)
+        token=Token().get_token(host)
         if token:
             entry={'journal': [{'function': function, 'object': object, 'param': param, 'payload': payload, 'sendfor': host, 'sendby': self.me, 'created': created}] }
             headers = {'x-access-tokens': token}
@@ -255,7 +256,7 @@ class Journal():
         serverport=self.dict_controllers[host]['serverport'] or self.alt_serverport
         #endpoint=f"{host}.{domain}"
         endpoint=self.dict_controllers[host]['ipaddress']
-        token=self.get_token(host)
+        token=Token().get_token(host)
         if token:
             headers = {'x-access-tokens': token}
             try:
@@ -286,7 +287,7 @@ class Journal():
         serverport=self.dict_controllers[host]['serverport'] or self.alt_serverport
         #endpoint=f"{host}.{domain}"
         endpoint=self.dict_controllers[host]['ipaddress']
-        token=self.get_token(host)
+        token=Token().get_token(host)
         if token:
             headers = {'x-access-tokens': token}
             try:
@@ -302,67 +303,4 @@ class Journal():
         else:
             self.logger.error(f"No token to delete journal from host {host}. Invalid credentials or host is down.")
         return False
-
-
-    def get_token(self,host):
-        domain=self.dict_controllers[host]['domain']
-        serverport=self.dict_controllers[host]['serverport'] or self.alt_serverport
-        #endpoint=f"{host}.{domain}"
-        endpoint=self.dict_controllers[host]['ipaddress']
-        token_credentials = {'username': CONSTANT['API']['USERNAME'], 'password': CONSTANT['API']['PASSWORD']}
-        token = None
-        try:
-            self.logger.debug(f"json for token: {token_credentials}")
-            x = session.post(f'{self.protocol}://{endpoint}:{serverport}/token', json=token_credentials, stream=True, timeout=10, verify=CONSTANT['API']["VERIFY_CERTIFICATE"])
-            if (str(x.status_code) not in self.bad_ret) and x.text:
-                DATA = loads(x.text)
-                self.logger.debug(f"data received for token: {DATA}")
-                if 'token' in DATA:
-                    token=DATA["token"]
-        except Exception as exp:
-            self.logger.error(f"{exp}")
-        return token
-
-
-    def verify_tablehashes_controllers(self):
-        if self.me:
-            if self.all_controllers:
-                my_hashes=Tables().get_table_hashes()
-                for controller in self.all_controllers:
-                    if controller['hostname'] in ["controller",self.me]:
-                        continue
-                    host=controller['hostname']
-                    serverport=self.dict_controllers[host]['serverport'] or self.alt_serverport
-                    endpoint=self.dict_controllers[host]['ipaddress']
-                    token=self.get_token(host)
-                    if token:
-                        headers = {'x-access-tokens': token}
-                        try:
-                            x = session.get(f'{self.protocol}://{endpoint}:{serverport}/table/hashes', headers=headers, stream=True, timeout=10, verify=CONSTANT['API']["VERIFY_CERTIFICATE"])
-                            if str(x.status_code) in self.good_ret:
-                                if x.text:
-                                    DATA = loads(x.text)
-                                    if 'message' in DATA and DATA['message'] == "not master":
-                                        pass
-                                    else:
-                                        if 'table' in DATA and 'hashes' in DATA['table']:
-                                            other_hashes=DATA['table']['hashes']
-                                            for table in my_hashes.keys():
-                                                if table in other_hashes.keys():
-                                                    if my_hashes[table] != other_hashes[table]:
-                                                        self.logger.warning(f"table {table} hash mismatch. me: {my_hashes[table]}, {host}: {other_hashes[table]}")
-                                                else:
-                                                    self.logger.warning(f"no table hash for table {table} supplied by {host}")
-                                        else:
-                                            self.logger.warning(f"no table hashes supplied by {host}")
-                                else:
-                                    self.logger.warning(f"no data supplied by {host}")
-                            else:
-                                self.logger.error(f"table hashes fetch from {host} failed. Returned {x.status_code}")
-                        except Exception as exp:
-                            self.logger.error(f"{exp}")
-                    else:
-                        self.logger.error(f"No token to fetch table hashes from host {host}. Invalid credentials or host is down.")
-        return True
-
 

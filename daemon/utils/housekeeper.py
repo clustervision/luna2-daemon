@@ -41,6 +41,10 @@ import sys
 from utils.queue import Queue
 from utils.osimage import OsImage
 from utils.service import Service
+# H/A and journal funcs
+from utils.ha import HA
+from utils.journal import Journal
+from utils.tables import Tables
 
 
 class Housekeeper(object):
@@ -161,10 +165,9 @@ class Housekeeper(object):
         ping_tel=3
         sum_tel=0
         try:
-            from utils.ha import HA
             ha_object=HA()
-            from utils.journal import Journal
             journal_object=Journal()
+            tables_object=Tables()
             if not ha_object.get_hastate():
                 self.logger.info(f"Currently not configured to run in H/A mode. Exiting journal thread")
                 return
@@ -200,7 +203,7 @@ class Housekeeper(object):
                     # --------------------------- then on top of that, we verify checksums. if mismatch, we import from the master
                     if sum_tel<1:
                         if master is False: # i am not a master
-                            journal_object.verify_tablehashes_controllers()
+                            tables_object.verify_tablehashes_controllers()
                             sum_tel=100
                     sum_tel-=1
                     # --------------------------- we ping the others. if someone is down, we become paranoid

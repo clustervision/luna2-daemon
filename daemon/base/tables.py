@@ -30,6 +30,9 @@ __maintainer__  = 'Antoine Schonewille'
 __email__       = 'antoine.schonewille@clustervision.com'
 __status__      = 'Development'
 
+from base64 import b64decode, b64encode
+from utils.database import Database
+from utils.helper import Helper
 from utils.log import Log
 from utils.ha import HA
 from utils.tables import Tables as UTables
@@ -55,4 +58,23 @@ class Tables():
         return status, response
         
 
+    def get_table_data(self,table=None):
+        status=False
+        response="Invalid request: table not supplied"
+        if table:
+            response={}
+            dbcolumns = Database().get_columns(table)
+            if dbcolumns:
+                status=True
+                if 'id' in dbcolumns:
+                    dbcolumns.remove('id')
+                data=Database().get_record(dbcolumns,table)
+                if data:
+                    for record in data:
+                        response[table]=record
+                        #group_data = b64encode(data.encode())
+                        #group_data = group_data.decode("ascii")
+            else:
+                response=f"Table {table} not in database"
+        return status, response
 

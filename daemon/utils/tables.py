@@ -38,10 +38,27 @@ from common.constant import CONSTANT
 from utils.database import Database
 from utils.log import Log
 from utils.helper import Helper
+from utils.token import Token
+
+import requests
+from requests import Session
+from requests.adapters import HTTPAdapter
+import urllib3
+from urllib3.util import Retry
+
+urllib3.disable_warnings()
+session = Session()
+retries = Retry(
+    total = 10,
+    backoff_factor = 0.3,
+    status_forcelist = [502, 503, 504, 500, 404],
+    allowed_methods = {'GET', 'POST'}
+)
+session.mount('https://', HTTPAdapter(max_retries=retries))
 
 class Tables():
     """
-    This class offer table specific functions, like hasing etc
+    This class offer table specific functions, like hasing, verification etc
     """
 
     def __init__(self):
@@ -49,6 +66,15 @@ class Tables():
         self.tables = ['osimage', 'osimagetag', 'nodesecrets', 'nodeinterface', 'bmcsetup', 
               'ipaddress', 'groupinterface', 'roles', 'group', 'network', 'user', 'switch', 
               'otherdevices', 'groupsecrets', 'node', 'cluster', 'dns']
+        self.protocol = CONSTANT['API']['PROTOCOL']
+        self.bad_ret=['400','401','500','502','503']
+        self.good_ret=['200','201','204']
+        self.dict_controllers=None
+        self.all_controllers = Database().get_record_join(['controller.*','ipaddress.ipaddress','network.name as domain'],
+                                                          ['ipaddress.tablerefid=controller.id','network.id=ipaddress.networkid'],
+                                                          ["ipaddress.tableref='controller'"])
+        if self.all_controllers:
+            self.dict_controllers = Helper().convert_list_to_dict(self.all_controllers, 'hostname')
 
 
     def get_table_hashes(self):
@@ -86,4 +112,47 @@ class Tables():
                     hashes[table]=str(hashlib.sha256(merged.encode()).hexdigest())
         self.logger.debug(f"HASHES: {hashes}")
         return hashes
+
+
+    def verify_tablehashes_controllers(self):
+        if self.me:
+            if self.all_controllers:
+                my_hashes=Tables().get_table_hashes()
+                for controller in self.all_controllers:
+                    if controller['hostname'] in ["controller",self.me]:
+                        continue
+                    host=controller['hostname']
+                    serverport=self.dict_controllers[host]['serverport'] or self.alt_serverport
+                    endpoint=self.dict_controllers[host]['ipaddress']
+                    token=Token().get_token(host)
+                    if token:
+                        headers = {'x-access-tokens': token}
+                        try:
+                            x = session.get(f'{self.protocol}://{endpoint}:{serverport}/table/hashes', headers=headers, stream=True, timeout=10, verify=CONSTANT['API']["VERIFY_CERTIFICATE"])
+                            if str(x.status_code) in self.good_ret:
+                                if x.text:
+                                    DATA = loads(x.text)
+                                    if 'message' in DATA and DATA['message'] == "not master":
+                                        pass
+                                    else:
+                                        if 'table' in DATA and 'hashes' in DATA['table']:
+                                            other_hashes=DATA['table']['hashes']
+                                            for table in my_hashes.keys():
+                                                if table in other_hashes.keys():
+                                                    if my_hashes[table] != other_hashes[table]:
+                                                        self.logger.warning(f"table {table} hash mismatch. me: {my_hashes[table]}, {host}: {other_hashes[table]}")
+                                                else:
+                                                    self.logger.warning(f"no table hash for table {table} supplied by {host}")
+                                        else:
+                                            self.logger.warning(f"no table hashes supplied by {host}")
+                                else:
+                                    self.logger.warning(f"no data supplied by {host}")
+                            else:
+                                self.logger.error(f"table hashes fetch from {host} failed. Returned {x.status_code}")
+                        except Exception as exp:
+                            self.logger.error(f"{exp}")
+                    else:
+                        self.logger.error(f"No token to fetch table hashes from host {host}. Invalid credentials or host is down.")
+        return True
+
 

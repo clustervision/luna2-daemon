@@ -169,7 +169,7 @@ class Housekeeper(object):
             ha_object=HA()
             me=ha_object.get_me()
             journal_object=Journal(me)
-            tables_object=Tables(me)
+            tables_object=Tables()
             if not ha_object.get_hastate():
                 self.logger.info(f"Currently not configured to run in H/A mode. Exiting journal thread")
                 return

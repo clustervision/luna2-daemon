@@ -36,6 +36,7 @@ from utils.database import Database
 from utils.log import Log
 from utils.helper import Helper
 
+import re
 import requests
 from requests import Session
 from requests.adapters import HTTPAdapter
@@ -52,7 +53,7 @@ retries = Retry(
 )
 session.mount('https://', HTTPAdapter(max_retries=retries))
 
-class Token():
+class Request():
     """
     This class offers remote token functionality. get remote token etc.
     """
@@ -82,11 +83,61 @@ class Token():
             self.logger.debug(f"json for token: {token_credentials}")
             x = session.post(f'{self.protocol}://{endpoint}:{serverport}/token', json=token_credentials, stream=True, timeout=10, verify=CONSTANT['API']["VERIFY_CERTIFICATE"])
             if (str(x.status_code) not in self.bad_ret) and x.text:
-                DATA = loads(x.text)
-                self.logger.debug(f"data received for token: {DATA}")
-                if 'token' in DATA:
-                    token=DATA["token"]
+                data = loads(x.text)
+                self.logger.debug(f"data received for token: {data}")
+                if 'token' in data:
+                    token=data["token"]
         except Exception as exp:
             self.logger.error(f"{exp}")
         return token
+
+    def get_request(self,host,uri):
+        uri = re.sub('^/', '', uri)
+        serverport=self.dict_controllers[host]['serverport'] or self.alt_serverport
+        endpoint=self.dict_controllers[host]['ipaddress']
+        token=self.get_token(host)
+        if token:
+            headers = {'x-access-tokens': token}
+            try:
+                x = session.get(f'{self.protocol}://{endpoint}:{serverport}/{uri}', headers=headers, stream=True, timeout=10, verify=CONSTANT['API']["VERIFY_CERTIFICATE"])
+                if str(x.status_code) in self.good_ret:
+                    self.logger.info(f"get request {uri} on {host} success. returned {x.status_code}")
+                    data=None
+                    if x.text:
+                        data = loads(x.text)
+                        self.logger.info(f"data received for {uri}: {data}")
+                    return True, data
+                else:
+                    self.logger.error(f"get request {uri} on {host} failed. returned {x.status_code}")
+                    return False, None
+            except Exception as exp:
+                self.logger.error(f"{exp}")
+        else:
+            self.logger.error(f"no token for {uri} on host {host}. invalid credentials or host is down.")
+        return False, None
+
+    def post_request(self,host,uri,json):
+        uri = re.sub('^/', '', uri)
+        serverport=self.dict_controllers[host]['serverport'] or self.alt_serverport
+        endpoint=self.dict_controllers[host]['ipaddress']
+        token=self.get_token(host)
+        if token:
+            headers = {'x-access-tokens': token}
+            try:
+                x = session.post(f'{self.protocol}://{endpoint}:{serverport}/{uri}', headers=headers, json=json, stream=True, timeout=10, verify=CONSTANT['API']["VERIFY_CERTIFICATE"])
+                if str(x.status_code) in self.good_ret:
+                    self.logger.info(f"post request {uri} on {host} success. returned {x.status_code}")
+                    data=None
+                    if x.text:
+                        data = loads(x.text)
+                        self.logger.debug(f"data received for {uri}: {data}")
+                    return True, data
+                else:
+                    self.logger.error(f"post request {uri} on {host} failed. returned {x.status_code}")
+                    return False, None
+            except Exception as exp:
+                self.logger.error(f"{exp}")
+        else:
+            self.logger.error(f"no token for {uri} on host {host}. invalid credentials or host is down.")
+        return False, None
 

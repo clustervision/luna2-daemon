@@ -31,7 +31,6 @@ __email__       = 'antoine.schonewille@clustervision.com'
 __status__      = 'Development'
 
 import re
-import netifaces as ni
 import hashlib
 from time import sleep, time
 from os import getpid, path
@@ -48,14 +47,8 @@ from utils.queue import Queue
 from utils.helper import Helper
 from utils.model import Model
 from utils.tables import Tables
-from utils.token import Token
+from utils.request import Request
 from utils.ha import HA
-
-import requests
-from requests import Session
-from requests.adapters import HTTPAdapter
-import urllib3
-from urllib3.util import Retry
 
 from base.node import Node
 from base.group import Group
@@ -70,16 +63,6 @@ from base.dns import DNS
 from base.secret import Secret
 from base.osuser import OsUser
 
-urllib3.disable_warnings()
-session = Session()
-retries = Retry(
-    total = 10,
-    backoff_factor = 0.3,
-    status_forcelist = [502, 503, 504, 500, 404],
-    allowed_methods = {'GET', 'POST'}
-)
-session.mount('https://', HTTPAdapter(max_retries=retries))
-
 # id, function, object, payload, sendfor sendby tries created
 
 class Journal():
@@ -89,11 +72,9 @@ class Journal():
 
     def __init__(self,me=None):
         self.logger = Log.get_logger()
-        self.protocol = CONSTANT['API']['PROTOCOL']
-        _,self.alt_serverport,*_=(CONSTANT['API']['ENDPOINT'].split(':')+[None]+[None])
-        self.bad_ret=['400','401','500','502','503']
-        self.good_ret=['200','201','204']
         self.me=me
+        if not self.me:
+            self.me=HA().get_me()
         self.insync=False
         self.hastate=None
         self.dict_controllers=None
@@ -102,16 +83,7 @@ class Journal():
                                                           ["ipaddress.tableref='controller'"])
         if self.all_controllers:
             self.dict_controllers = Helper().convert_list_to_dict(self.all_controllers, 'hostname')
-            if not self.me:
-                for interface in ni.interfaces():
-                    ip = ni.ifaddresses(interface)[ni.AF_INET][0]['addr']
-                    self.logger.debug(f"Interface {interface} has ip {ip}")
-                    for controller in self.all_controllers:
-                        if controller['hostname'] == "controller":
-                            continue
-                        if not self.me and controller['ipaddress'] == ip:
-                            self.me=controller['hostname']
-                            self.logger.info(f"My ipaddress is {ip} and i am {self.me}")
+
 
     def get_me(self):
         return self.me
@@ -213,27 +185,11 @@ class Journal():
 
 
     def send_request(self,host,function,object,created,param=None,payload=None):
-        domain=self.dict_controllers[host]['domain']
-        serverport=self.dict_controllers[host]['serverport'] or self.alt_serverport
-        #endpoint=f"{host}.{domain}"
-        endpoint=self.dict_controllers[host]['ipaddress']
-        token=Token().get_token(host)
-        if token:
-            entry={'journal': [{'function': function, 'object': object, 'param': param, 'payload': payload, 'sendfor': host, 'sendby': self.me, 'created': created}] }
-            headers = {'x-access-tokens': token}
-            try:
-                x = session.post(f'{self.protocol}://{endpoint}:{serverport}/journal', json=entry, headers=headers, stream=True, timeout=10, verify=CONSTANT['API']["VERIFY_CERTIFICATE"])
-                if str(x.status_code) in self.good_ret:
-                    self.logger.info(f"journal for {function}({object})/payload sync to {host} success. Returned {x.status_code}")
-                    return True
-                else:
-                    self.logger.error(f"journal for {function}({object})/payload sync to {host} failed. Returned {x.status_code}")
-                    return False
-            except Exception as exp:
-                self.logger.error(f"{exp}")
-        else:
-            self.logger.error(f"No token to forward {function}({object})/payload sync to {host}. Invalid credentials or host is down.")
-        return False
+        entry={'journal': [{'function': function, 'object': object, 'param': param, 'payload': payload, 'sendfor': host, 'sendby': self.me, 'created': created}] }
+        status,_=Request().post_request(host,'/journal',entry)
+        if status is False:
+            self.logger.info(f"journal for {function}({object})/payload forward to {host} failed")
+        return status
 
 
     def pullfrom_controllers(self):
@@ -254,55 +210,22 @@ class Journal():
 
 
     def pull_journal(self,host):
-        domain=self.dict_controllers[host]['domain']
-        serverport=self.dict_controllers[host]['serverport'] or self.alt_serverport
-        #endpoint=f"{host}.{domain}"
-        endpoint=self.dict_controllers[host]['ipaddress']
-        token=Token().get_token(host)
-        if token:
-            headers = {'x-access-tokens': token}
-            try:
-                x = session.get(f'{self.protocol}://{endpoint}:{serverport}/journal/{self.me}', headers=headers, stream=True, timeout=10, verify=CONSTANT['API']["VERIFY_CERTIFICATE"])
-                if str(x.status_code) in self.good_ret:
-                    self.logger.info(f"journal pull from {host} success. Returned {x.status_code}")
-                    if x.text:
-                        DATA = loads(x.text)
-                        self.logger.debug(f"data received for pull: {DATA}")
-                        if 'journal' in DATA:
-                            NDATA=DATA['journal']
-                            for entry in NDATA:
-                                row = Helper().make_rows(entry)
-                                request_id = Database().insert('journal', row)
-                    return True
-                else:
-                    self.logger.error(f"journal pull from {host} failed. Returned {x.status_code}")
-                    return False
-            except Exception as exp:
-                self.logger.error(f"{exp}")
+        status,data=Request().get_request(host,f'/journal/{self.me}')
+        if status is True and data:
+            if 'journal' in data:
+                NDATA=data['journal']
+                for entry in NDATA:
+                    row = Helper().make_rows(entry)
+                    request_id = Database().insert('journal', row)
+                return True
         else:
-            self.logger.error(f"No token to pull journal from host {host}. Invalid credentials or host is down.")
-        return False
+            self.logger.error(f"journal pull from {host} failed")
+        return status
 
 
     def delete_journal(self,host):
-        domain=self.dict_controllers[host]['domain']
-        serverport=self.dict_controllers[host]['serverport'] or self.alt_serverport
-        #endpoint=f"{host}.{domain}"
-        endpoint=self.dict_controllers[host]['ipaddress']
-        token=Token().get_token(host)
-        if token:
-            headers = {'x-access-tokens': token}
-            try:
-                x = session.get(f'{self.protocol}://{endpoint}:{serverport}/journal/{self.me}/_delete', headers=headers, stream=True, timeout=10, verify=CONSTANT['API']["VERIFY_CERTIFICATE"])
-                if str(x.status_code) in self.good_ret:
-                    self.logger.info(f"journal delete from {host} success. Returned {x.status_code}")
-                    return True
-                else:
-                    self.logger.error(f"journal delete from {host} failed. Returned {x.status_code}")
-                    return False
-            except Exception as exp:
-                self.logger.error(f"{exp}")
-        else:
-            self.logger.error(f"No token to delete journal from host {host}. Invalid credentials or host is down.")
-        return False
-
+        status,_=Request().get_request(host,f'/journal/{self.me}/_delete')
+        if status is False:
+            self.logger.error(f"journal delete from {host} failed")
+        return status
+        

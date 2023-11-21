@@ -143,17 +143,17 @@ class Journal():
                     repl_class = globals()[class_name]                # -> base.node.Node
                     repl_function = getattr(repl_class,function_name) # -> base.node.Node.node_update
                     if record['param'] and payload:
-                        status,message=repl_function(repl_class(),record['object'],record['param'],payload)
+                        status_,message=repl_function(repl_class(),record['object'],record['param'],payload)
                     if record['param']:
-                        status,message=repl_function(repl_class(),record['object'],record['param'])
+                        status_,message=repl_function(repl_class(),record['object'],record['param'])
                     elif record['object'] and payload:
-                        status,message=repl_function(repl_class(),record['object'],payload)
+                        status_,message=repl_function(repl_class(),record['object'],payload)
                     elif payload:
-                        status,message=repl_function(repl_class(),payload)
+                        status_,message=repl_function(repl_class(),payload)
                     else:
-                        status,message=repl_function(repl_class(),record['object'])
+                        status_,message=repl_function(repl_class(),record['object'])
 
-                    self.logger.info(f"result for {record['function']}({record['object']}): {status}, {message}")
+                    self.logger.info(f"result for {record['function']}({record['object']}): {status_}, {message}")
                     # we always have to remove the entries in the DB regarding outcome.
                     Database().delete_row('journal', [{"column": "id", "value": record['id']}])
         return status

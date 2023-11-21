@@ -81,6 +81,8 @@ class Tables():
                             order+=',interface'
                     elif 'username' in dbcolumns:
                         order='username'
+                    elif 'hostname' in dbcolumns:
+                        order='hostname'
                 order=f"ORDER BY {order} ASC"
                 data=Database().get_record(dbcolumns,table,order)
                 if data:

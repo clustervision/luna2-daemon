@@ -52,7 +52,7 @@ class Tables():
         self.logger = Log.get_logger()
         self.tables = ['osimage', 'osimagetag', 'nodesecrets', 'nodeinterface', 'bmcsetup', 
               'ipaddress', 'groupinterface', 'roles', 'group', 'network', 'user', 'switch', 
-              'otherdevices', 'groupsecrets', 'node', 'cluster', 'dns']
+              'otherdevices', 'groupsecrets', 'node', 'cluster', 'dns','controller']
 
     def get_table_hashes(self):
         hashes={}

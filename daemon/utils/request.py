@@ -105,7 +105,7 @@ class Request():
                     data=None
                     if x.text:
                         data = loads(x.text)
-                        self.logger.info(f"data received for {uri}: {data}")
+                        self.logger.debug(f"data received for {uri}: {data}")
                     return True, data
                 else:
                     self.logger.error(f"get request {uri} on {host} failed. returned {x.status_code}")

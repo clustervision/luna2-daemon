@@ -86,7 +86,7 @@ class HA():
                             continue
                         if not self.me and controller['ipaddress'] == ip:
                             self.me=controller['hostname']
-                            self.logger.info(f"My ipaddress is {ip} and i am {self.me}")
+                            self.logger.debug(f"My ipaddress is {ip} and i am {self.me}")
 
 
     def get_me(self):

@@ -168,6 +168,7 @@ class Housekeeper(object):
         try:
             ha_object=HA()
             me=ha_object.get_me()
+            self.logger.info(f"I am {me}")
             journal_object=Journal(me)
             tables_object=Tables()
             if not ha_object.get_hastate():

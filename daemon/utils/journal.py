@@ -115,7 +115,10 @@ class Journal():
                     row = Helper().make_rows(data)
                     request_id = Database().insert('journal', row)
                     self.logger.info(f"adding {function}({object},{param},payload) to journal for {controller['hostname']} with id {request_id}")
-                self.pushto_controllers()
+                executor = ThreadPoolExecutor(max_workers=1)
+                executor.submit(self.pushto_controllers)
+                executor.shutdown(wait=False)
+                #self.pushto_controllers()
             else:
                 self.logger.error(f"No controllers are configured")
         else:

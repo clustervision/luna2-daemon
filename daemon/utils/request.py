@@ -101,7 +101,7 @@ class Request():
             try:
                 x = session.get(f'{self.protocol}://{endpoint}:{serverport}/{uri}', headers=headers, stream=True, timeout=10, verify=CONSTANT['API']["VERIFY_CERTIFICATE"])
                 if str(x.status_code) in self.good_ret:
-                    self.logger.info(f"get request {uri} on {host} success. returned {x.status_code}")
+                    self.logger.debug(f"get request {uri} on {host} success. returned {x.status_code}")
                     data=None
                     if x.text:
                         data = loads(x.text)
@@ -126,7 +126,7 @@ class Request():
             try:
                 x = session.post(f'{self.protocol}://{endpoint}:{serverport}/{uri}', headers=headers, json=json, stream=True, timeout=10, verify=CONSTANT['API']["VERIFY_CERTIFICATE"])
                 if str(x.status_code) in self.good_ret:
-                    self.logger.info(f"post request {uri} on {host} success. returned {x.status_code}")
+                    self.logger.debug(f"post request {uri} on {host} success. returned {x.status_code}")
                     data=None
                     if x.text:
                         data = loads(x.text)

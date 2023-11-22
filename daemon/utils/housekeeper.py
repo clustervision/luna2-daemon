@@ -162,6 +162,8 @@ class Housekeeper(object):
     def journal_mother(self,event):
         self.logger.info("Starting Journal/Replication thread")
         hardsync_enabled=True # experimental hard table sync based on checksums. handle with care!
+        startup_controller=True
+        syncpull_status=False
         sync_tel=0
         ping_tel=3
         sum_tel=0
@@ -176,12 +178,10 @@ class Housekeeper(object):
                 return
             ha_object.set_insync(False)
             # ---------------------------- we keep asking the journal from others until successful
-            while ha_object.get_insync() is False:
+            while syncpull_status is False:
                 try:
                     if sync_tel<1:
-                        status=journal_object.pullfrom_controllers()
-                        if status is True:
-                            ha_object.set_insync(True)
+                        syncpull_status=journal_object.pullfrom_controllers()
                         sync_tel=2
                     sync_tel-=1
                 except Exception as exp:
@@ -206,6 +206,9 @@ class Housekeeper(object):
                     if handled is True:
                         ha_object.set_insync(True)
                         sum_tel=11
+                    elif startup_controller is True:
+                        startup_controller=False
+                        ha_object.set_insync(True)
                     # --------------------------- we ping the others. if someone is down, we become paranoid
                     if ping_tel<1:
                         if master is False: # i am not a master

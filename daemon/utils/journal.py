@@ -171,22 +171,23 @@ class Journal():
                         status_, message = None, None
                         if isinstance(returned, bool):
                             status_=returned
+                            self.logger.info(f"result for {record['function']}({record['object']}): {status_}")
                         else:
                             status_=returned[0]
                             message=returned[1]
 
-                        self.logger.info(f"result for {record['function']}({record['object']}): {status_}, {message}")
-                        if len(returned)>2:
-                            request_id=returned[2]
-                            if class_name == 'OSImage':
-                                queue_id,queue_response = Queue().add_task_to_queue(f"sync_osimage_with_master:{record['object']}:{self.me}",'osimage',request_id)
-                                if queue_id:
-                                    Queue().update_task_status_in_queue(queue_id,'parked')
-                            # we have to keep track of the request_id as we have to infor the requestor about the progress.
-                            executor = ThreadPoolExecutor(max_workers=1)
-                            executor.submit(Status().forward_messages, record['misc'], record['sendby'], request_id)
-                            executor.shutdown(wait=False)
-                            #Status().forward_messages(record['misc'], record['sendby'], request_id)
+                            self.logger.info(f"result for {record['function']}({record['object']}): {status_}, {message}")
+                            if len(returned)>2:
+                                request_id=returned[2]
+                                if class_name == 'OSImage':
+                                    queue_id,queue_response = Queue().add_task_to_queue(f"sync_osimage_with_master:{record['object']}:{self.me}",'osimage',request_id)
+                                    if queue_id:
+                                        Queue().update_task_status_in_queue(queue_id,'parked')
+                                # we have to keep track of the request_id as we have to infor the requestor about the progress.
+                                executor = ThreadPoolExecutor(max_workers=1)
+                                executor.submit(Status().forward_messages, record['misc'], record['sendby'], request_id)
+                                executor.shutdown(wait=False)
+                                #Status().forward_messages(record['misc'], record['sendby'], request_id)
                     else:
                         self.logger.info(f"no returned data. could not execute {record['function']}({record['object']}) as i do not have matching criterea?")
 

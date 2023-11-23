@@ -569,7 +569,7 @@ class OSImage():
                 # we should check after a few seconds if there is a status update for us.
                 # if so, that means mother is taking care of things
             else:
-                next_id = Queue().next_parallel_task_in_queue('osimage',osimage)
+                next_id = Queue().next_parallel_task_in_queue('osimage',osimage,'queued')
                 if task_id == next_id:
                     # ok, so we are not the first mother running... let's only do our own request
                     executor = ThreadPoolExecutor(max_workers=1)
@@ -671,7 +671,7 @@ class OSImage():
                 # we should check after a few seconds if there is a status update for us.
                 # if so, that means mother is taking care of things
             else:
-                next_id = Queue().next_parallel_task_in_queue('osimage',osimage)
+                next_id = Queue().next_parallel_task_in_queue('osimage',osimage,'queued')
                 if task_id == next_id:
                     # We're not the first mother running... we only do our own stuff
                     executor = ThreadPoolExecutor(max_workers=1)
@@ -734,7 +734,7 @@ class OSImage():
             # we should check after a few seconds if there is a status update for us.
             # if so, that means mother is taking care of things
         else:
-            next_id = Queue().next_parallel_task_in_queue('osimage',name)
+            next_id = Queue().next_parallel_task_in_queue('osimage',name,'queued')
             if queue_id == next_id:
                 # We're not the first mother running... we only do our own stuff
                 executor = ThreadPoolExecutor(max_workers=1)
@@ -808,7 +808,7 @@ class OSImage():
                         executor.submit(OsImager().osimage_mother)
                         executor.shutdown(wait=False)
                     else:
-                        next_id = Queue().next_parallel_task_in_queue('osimage',name)
+                        next_id = Queue().next_parallel_task_in_queue('osimage',name,'queued')
                         if task_id == next_id:
                             # there is another mother running so we focus on our own stuff
                             executor = ThreadPoolExecutor(max_workers=1)

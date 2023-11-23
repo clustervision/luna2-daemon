@@ -863,6 +863,27 @@ class OsImage(object):
                     self.logger.info(f"{details['task']} is not for us.")
                     sleep(10)
 
+
+            # parked tasks are there to be there. it should be seen as a placeholder for something else.
+            while next_id := Queue().next_task_in_queue('osimage','parked',only_request_id):
+                details=Queue().get_task_details(next_id)
+                request_id=details['request_id']
+                action,first,second,third,*_=details['task'].split(':')+[None]+[None]+[None]
+                self.logger.info(f"osimage_mother sees parked job {action} in queue as next: {next_id}")
+
+                # though we have this task, it's there to make sure all image related activities are done
+                # before we continue let the housekeeper do this. The housekeeper will then send this
+                # pull request to the other controllers (H/A mode)
+                if action == "sync_osimage_with_master":
+                    if first and second:
+                        Queue().change_subsystem(next_id,'housekeeper')
+                        Queue().update_task_status_in_queue(next_id,'queued')
+
+                else:
+                    self.logger.info(f"{details['task']} is not for us.")
+                    sleep(10)
+
+
         except Exception as exp:
             exc_type, exc_obj, exc_tb = sys.exc_info()
             self.logger.error(f"osimage_mother has problems: {exp}, {exc_type}, in {exc_tb.tb_lineno}")

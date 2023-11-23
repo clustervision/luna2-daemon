@@ -47,9 +47,9 @@ from utils.log import Log
 from utils.queue import Queue
 from utils.helper import Helper
 from utils.model import Model
-from utils.tables import Tables
 from utils.request import Request
 from utils.ha import HA
+from utils.tables import Tables
 
 from base.node import Node
 from base.group import Group
@@ -173,11 +173,16 @@ class Journal():
 
                         self.logger.info(f"result for {record['function']}({record['object']}): {status_}, {message}")
                         if len(returned)>2:
+                            request_id=returned[2]
+                            if class_name == 'OSImage':
+                                queue_id,queue_response = Queue().add_task_to_queue(f"sync_osimage_with_master:{record['object']}:{self.me}",'osimage',request_id)
+                                if queue_id:
+                                    Queue().update_task_status_in_queue(queue_id,'parked')
                             # we have to keep track of the request_id as we have to infor the requestor about the progress.
                             executor = ThreadPoolExecutor(max_workers=1)
-                            executor.submit(Status().forward_messages, record['misc'], record['sendby'], returned[2])
+                            executor.submit(Status().forward_messages, record['misc'], record['sendby'], request_id)
                             executor.shutdown(wait=False)
-                            #Status().forward_messages(record['misc'], record['sendby'], returned[2])
+                            #Status().forward_messages(record['misc'], record['sendby'], request_id)
                     else:
                         self.logger.info(f"no returned data. could not execute {record['function']}({record['object']}) as i do not have matching criterea?")
 

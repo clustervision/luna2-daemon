@@ -145,3 +145,4 @@ class Queue(object):
         row = [{"column": "subsystem", "value": f"{subsystem}"}]
         where = [{"column": "id", "value": f"{taskid}"}]
         status = Database().update('queue', row, where)
+

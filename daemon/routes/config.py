@@ -704,6 +704,8 @@ def config_osimage_pack(name=None):
                 Status().mark_messages_read(request_id)
                 access_code=200
                 response = {"message": "request submitted and queued...", "request_id": request_id}
+            else:
+                response={'message': message}
             return response, access_code
     # below only when we are master
     returned = OSImage().pack(name)
@@ -744,6 +746,8 @@ def config_osimage_kernel_post(name=None):
                 Status().mark_messages_read(request_id)
                 access_code=200
                 response = {"message": "request submitted and queued...", "request_id": request_id}
+            else:
+                response={'message': message}
             return response, access_code
     # below only when we are master
     returned = OSImage().change_kernel(name, request.data)

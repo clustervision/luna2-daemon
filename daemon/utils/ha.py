@@ -120,7 +120,7 @@ class HA():
         if self.hastate is None:
             ha_data = Database().get_record(None, 'ha')
             if ha_data:
-                self.logger.info(f"get_hastate new ha_state: {ha_data}")
+                self.logger.debug(f"get_hastate new ha_state: {ha_data}")
                 self.hastate=Helper().make_bool(ha_data[0]['enabled'])
                 self.logger.debug(f"get_hastate new_self.hastate: {self.hastate}")
         return self.hastate

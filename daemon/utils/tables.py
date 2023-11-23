@@ -157,3 +157,11 @@ class Tables():
         Database().update_sequence(table,seq)
         return True
 
+
+    def import_table_from_host(self,table,host):
+        data=self.fetch_table(table,host)
+        if not data:
+            return False
+        self.import_table(table,data)
+        return True
+

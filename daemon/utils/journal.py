@@ -187,36 +187,25 @@ class Journal():
 
     def pushto_controllers(self):
         if self.me and self.dict_controllers:
-            current_controller=None
-            failed_controllers=[]
+            all_entries={}
+            del_ids={}
             all_records = Database().get_record(["*","strftime('%s',created) AS created"],"journal",f"WHERE sendby='{self.me}' ORDER BY sendfor,created,id ASC")
             if all_records:
                 for record in all_records:
-                    if (not current_controller) or current_controller != record['sendfor']:
-                        current_controller=record['sendfor']
-                    if current_controller not in failed_controllers:
-                        function=record['function']
-                        object=record['object']
-                        param=record['param']
-                        misc=record['misc']
-                        payload=record['payload']
-                        host=record['sendfor']
-                        created=record['created']
-                        status=self.send_request(host=host,function=function,object=object,param=param,misc=misc,created=created,payload=payload)
-                        if status is True:
-                            Database().delete_row('journal', [{"column": "id", "value": record['id']}])
-                        else:
-                            failed_controllers.append(current_controller)
-                            self.logger.error(f"attempt to sync {current_controller} failed. stopping all attempts for this controller")
+                    if not record['sendfor'] in all_entries:
+                        all_entries[record['sendfor']]=[]
+                    if not record['sendfor'] in del_ids:
+                        del_ids[record['sendfor']]=[]
+                    all_entries[record['sendfor']].append(record)
+                    del_ids[record['sendfor']].append(record['id'])
+                for host in all_entries:
+                    status,_=Request().post_request(host,'/journal',{'journal': all_entries[host]})
+                    if status is True:
+                        for del_id in del_ids[host]:
+                            Database().delete_row('journal', [{"column": "id", "value": del_id}])
+                    else:
+                        self.logger.error(f"attempt to push journal to {host} failed. host might be down.")
         return
-
-
-    def send_request(self,host,function,object,created,param=None,misc=None,payload=None):
-        entry={'journal': [{'function': function, 'object': object, 'param': param, 'misc': misc, 'payload': payload, 'sendfor': host, 'sendby': self.me, 'created': created}] }
-        status,_=Request().post_request(host,'/journal',entry)
-        if status is False:
-            self.logger.info(f"journal for {function}({object})/payload forward to {host} failed")
-        return status
 
 
     def pullfrom_controllers(self):

@@ -119,7 +119,7 @@ class Status(object):
                             messages.append(record)
                 response = {'monitor': {'status': {'request_id': remote_request_id, 'messages': messages}}}
                 self.mark_messages_read(local_request_id)
-                Request().post_request(host=remote_host, uri='/monitor/status', json=response)
+                Request().post_request(remote_host, '/monitor/status', response)
             sleep(5)
         self.logger.info(f"no (more) messages for {local_request_id} to be forwarded to {remote_host}:{remote_request_id}")
 

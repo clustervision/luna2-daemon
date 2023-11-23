@@ -32,7 +32,8 @@ __maintainer__  = 'Antoine Schonewille'
 __email__       = 'antoine.schonewille@clustervision.com'
 __status__      = 'Development'
 
-from time import sleep
+from time import sleep, time
+from random import randint
 from utils.log import Log
 from utils.database import Database
 #from utils.helper import Helper
@@ -42,6 +43,11 @@ class Status(object):
 
     def __init__(self):
         self.logger = Log.get_logger()
+
+
+    def gen_request_id(self):
+        return str(time()) + str(randint(1001, 9999)) + str(getpid())
+
 
     def add_message(self,request_id,username_initiator,message):
         mymessage=f"{message}"

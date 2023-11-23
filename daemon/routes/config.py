@@ -34,7 +34,6 @@ __status__      = "Development"
 
 from json import dumps
 from flask import Blueprint, request
-from time import time
 from utils.log import Log
 from common.validate_auth import token_required, agent_check
 from common.validate_input import input_filter, validate_name
@@ -698,7 +697,7 @@ def config_osimage_pack(name=None):
         master=HA().get_role()
         if master is False:
             response={'message': 'something went wrong.....'}
-            request_id  = str(time()) + str(randint(1001, 9999)) + str(getpid())
+            request_id = Status().gen_request_id()
             status, message = Journal().add_request(function="OSImage.OSImage.pack",object=name,masteronly=True,misc=request_id)
             if status is True:
                 response = {"message": "request submitted and queued...", "request_id": request_id}

@@ -32,6 +32,7 @@ __maintainer__  = 'Antoine Schonewille'
 __email__       = 'antoine.schonewille@clustervision.com'
 __status__      = 'Development'
 
+from os import getpid
 from time import sleep, time
 from random import randint
 from utils.log import Log

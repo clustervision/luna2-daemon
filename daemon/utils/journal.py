@@ -170,18 +170,17 @@ class Journal():
                         status_=returned[0]
                         message=returned[1]
 
-                        self.logger.info(f"result for {record['function']}({record['object']}): {status_}, {message}")
+                        self.logger.info(f"result for {record['function']}({record['object']}): {status_}, {message} ({returned})")
                         if len(returned)>2:
                             # we have to keep track of the request_id as we have to infor the requestor about the progress.
-                            request_id=returned[2]
-                            executor = ThreadPoolExecutor(max_workers=1)
-                            executor.submit(Status().forward_messages, request_id, record['sendby'], record['misc'])
-                            executor.shutdown(wait=False)
-                            #Status().forward_messages(request_id,record['sendby'],record['misc'])
+                            #executor = ThreadPoolExecutor(max_workers=1)
+                            #executor.submit(Status().forward_messages, record['misc'], record['sendby'], returned[2])
+                            #executor.shutdown(wait=False)
+                            Status().forward_messages(record['misc'],record['sendby'],returned[2])
                     else:
                         self.logger.info(f"no returned data. could not execute {record['function']}({record['object']}) as i do not have matching criterea?")
-                    # we *always* have to remove the entries in the DB regarding outcome.
 
+                    # we *always* have to remove the entries in the DB regarding outcome.
                     Database().delete_row('journal', [{"column": "id", "value": record['id']}])
         return status
 

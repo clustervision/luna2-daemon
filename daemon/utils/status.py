@@ -99,25 +99,26 @@ class Status(object):
         return False, 'No data for this request'
 
 
-    def forward_messages(remote_request_id, remote_host, local_request_id):
+    def forward_messages(self, remote_request_id, remote_host, local_request_id):
         """
         forward local request_id based status message to another host.
         """
+        self.logger.info(f"forwarding messages for {local_request_id} to {remote_host}:{remote_request_id}")
         loop=True
         while loop is True:
             status = Database().get_record(None , 'status', f' WHERE request_id = "{local_request_id}"')
             if status:
-                self.logger.info(f"MESSAGES: {status}")
                 message = []
                 for record in status:
                     if 'read' in record and record['read'] == 0:
                         if 'message' in record:
                             if record['message'] == "EOF":
-                                self.del_messages(request_id)
+                                self.del_messages(local_request_id)
                                 loop=False
                             message.append(record)
                 response = {'request_id': remote_request_id, 'messages': message}
                 self.mark_messages_read(request_id)
-                Request.post_request(remote_host,'/status',response)
+                Request.post_request(remote_host,'/monitor/status',response)
             sleep(5)
+        self.logger.info(f"no (more) messages for {local_request_id} to be forwarded to {remote_host}:{remote_request_id}")
 

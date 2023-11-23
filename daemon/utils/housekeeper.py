@@ -92,7 +92,7 @@ class Housekeeper(object):
                                 master=second
                                 Queue().update_task_status_in_queue(next_id,'in progress')
                                 Journal().add_request(function='Tables.import_table_from_host',object='osimage',param=master)
-                                #Journal().add_request(function='Files.copy_files_from_host,object=osimage,param=master)
+                                #Journal().add_request(function='Files.sync_files_from_host,object='files',param=master)
 
                         if remove_from_queue:
                             Queue().remove_task_from_queue(next_id)

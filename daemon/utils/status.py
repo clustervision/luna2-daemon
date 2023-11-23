@@ -37,6 +37,7 @@ from time import sleep, time
 from random import randint
 from utils.log import Log
 from utils.database import Database
+from utils.request import Request
 #from utils.helper import Helper
 
 
@@ -108,17 +109,17 @@ class Status(object):
         while loop is True:
             status = Database().get_record(None , 'status', f' WHERE request_id = "{local_request_id}"')
             if status:
-                message = []
+                messages = []
                 for record in status:
                     if 'read' in record and record['read'] == 0:
                         if 'message' in record:
                             if record['message'] == "EOF":
                                 self.del_messages(local_request_id)
                                 loop=False
-                            message.append(record)
-                response = {'request_id': remote_request_id, 'messages': message}
-                self.mark_messages_read(request_id)
-                Request.post_request(remote_host,'/monitor/status',response)
+                            messages.append(record)
+                response = {'monitor': {'status': {'request_id': remote_request_id, 'messages': messages}}}
+                self.mark_messages_read(local_request_id)
+                Request().post_request(host=remote_host, uri='/monitor/status', json=response)
             sleep(5)
         self.logger.info(f"no (more) messages for {local_request_id} to be forwarded to {remote_host}:{remote_request_id}")
 

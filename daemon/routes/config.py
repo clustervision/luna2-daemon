@@ -698,7 +698,7 @@ def config_osimage_pack(name=None):
         if master is False:
             response={'message': 'something went wrong.....'}
             request_id = Status().gen_request_id()
-            status, message = Journal().add_request(function="OSImage.OSImage.pack",object=name,masteronly=True,misc=request_id)
+            status, message = Journal().add_request(function="OSImage.pack",object=name,masteronly=True,misc=request_id)
             if status is True:
                 response = {"message": "request submitted and queued...", "request_id": request_id}
             return response, access_code

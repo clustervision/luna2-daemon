@@ -30,6 +30,7 @@ __maintainer__  = 'Antoine Schonewille'
 __email__       = 'antoine.schonewille@clustervision.com'
 __status__      = 'Development'
 
+import sys
 import re
 import hashlib
 from time import sleep, time
@@ -152,7 +153,7 @@ class Journal():
                     class_name,function_name=record['function'].split('.')
                     self.logger.info(f"executing {class_name}().{function_name}({record['object']},{record['param']},payload)/{record['tries']} received by {record['sendby']} on {record['created']}")
 
-                    returned=None
+                    returned=[]
                     repl_class = globals()[class_name]                # -> base.node.Node
                     repl_function = getattr(repl_class,function_name) # -> base.node.Node.node_update
                     if record['param'] and payload:
@@ -176,10 +177,11 @@ class Journal():
                             executor = ThreadPoolExecutor(max_workers=1)
                             executor.submit(Status().messages_forward, request_id, record['sendby'], record['misc'])
                             executor.shutdown(wait=False)
-                            #Status().messages_forward(request_id,record['sendby'],record['misc'])
+                            #Status().forward_messages(request_id,record['sendby'],record['misc'])
                     else:
                         self.logger.info(f"no returned data. could not execute {record['function']}({record['object']}) as i do not have matching criterea?")
                     # we *always* have to remove the entries in the DB regarding outcome.
+
                     Database().delete_row('journal', [{"column": "id", "value": record['id']}])
         return status
 

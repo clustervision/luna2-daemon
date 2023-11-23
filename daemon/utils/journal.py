@@ -138,6 +138,7 @@ class Journal():
                 status=True
                 for record in all_records:
                     masteronly=Helper().make_bool(record['masteronly'])
+                    self.logger.info(f"-------------> master: {master}, masteronly: {masteronly}")
                     if masteronly is True and master is False:
                         self.logger.info(f"request {record['function']}({record['object']}) is not for us. master, {master} != masteronly, {masteronly}")
                         Database().delete_row('journal', [{"column": "id", "value": record['id']}])
@@ -196,9 +197,9 @@ class Journal():
                         all_entries[record['sendfor']]=[]
                     if not record['sendfor'] in del_ids:
                         del_ids[record['sendfor']]=[]
+                    del_ids[record['sendfor']].append(record['id'])
                     del record['id']
                     all_entries[record['sendfor']].append(record)
-                    del_ids[record['sendfor']].append(record['id'])
                 for host in all_entries:
                     status,_=Request().post_request(host,'/journal',{'journal': all_entries[host]})
                     if status is True:

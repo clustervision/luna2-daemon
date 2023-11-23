@@ -175,7 +175,7 @@ class Journal():
                             # we have to keep track of the request_id as we have to infor the requestor about the progress.
                             request_id=returned[2]
                             executor = ThreadPoolExecutor(max_workers=1)
-                            executor.submit(Status().messages_forward, request_id, record['sendby'], record['misc'])
+                            executor.submit(Status().forward_messages, request_id, record['sendby'], record['misc'])
                             executor.shutdown(wait=False)
                             #Status().forward_messages(request_id,record['sendby'],record['misc'])
                     else:

@@ -107,6 +107,7 @@ class Status(object):
         while loop is True:
             status = Database().get_record(None , 'status', f' WHERE request_id = "{local_request_id}"')
             if status:
+                self.logger.info(f"MESSAGES: {status}")
                 message = []
                 for record in status:
                     if 'read' in record and record['read'] == 0:

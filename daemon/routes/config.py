@@ -700,6 +700,8 @@ def config_osimage_pack(name=None):
             request_id = Status().gen_request_id()
             status, message = Journal().add_request(function="OSImage.pack",object=name,masteronly=True,misc=request_id)
             if status is True:
+                Status().add_message(request_id,"luna","Operation in progress...")
+                Status().mark_messages_read(request_id)
                 access_code=200
                 response = {"message": "request submitted and queued...", "request_id": request_id}
             return response, access_code

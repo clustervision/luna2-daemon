@@ -180,7 +180,7 @@ class Journal():
                             if len(returned)>2:
                                 request_id=returned[2]
                                 if class_name == 'OSImage':
-                                    queue_id,queue_response = Queue().add_task_to_queue(f"sync_osimage_with_master:{record['object']}:{self.me}",'osimage',request_id)
+                                    queue_id,queue_response = Queue().add_task_to_queue(f"sync_osimage_with_master:{record['object']}:{self.me}",'osimage',record['misc'])
                                     if queue_id:
                                         Queue().update_task_status_in_queue(queue_id,'parked')
                                 # we have to keep track of the request_id as we have to infor the requestor about the progress.

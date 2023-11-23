@@ -705,17 +705,15 @@ def config_osimage_pack(name=None):
                 access_code=200
                 response = {"message": "request submitted and queued...", "request_id": request_id}
             return response, access_code
+    # below only when we are master
+    returned = OSImage().pack(name)
+    status=returned[0]
+    response=returned[1]
     if status is True:
-        returned = OSImage().pack(name)
-        status=returned[0]
-        response=returned[1]
-        if status is True:
-            access_code=200
-            if len(returned)==3:
-                request_id=returned[2]
-                response = {"message": response, "request_id": request_id}
-            else:
-                response = {'message': response}
+        access_code=200
+        if len(returned)==3:
+            request_id=returned[2]
+            response = {"message": response, "request_id": request_id}
         else:
             response = {'message': response}
     else:
@@ -734,20 +732,30 @@ def config_osimage_kernel_post(name=None):
     Output - Kernel Version.
     """
     access_code=404
-    status, response = Journal().add_request(function="OSImage.change_kernel",object=name,payload=request.data)
+    hastate=HA().get_hastate()
+    if hastate is True:
+        master=HA().get_role()
+        if master is False:
+            response={'message': 'something went wrong.....'}
+            request_id = Status().gen_request_id()
+            status, message = Journal().add_request(function="OSImage.change_kernel",object=name,payload=request.data,masteronly=True,misc=request_id)
+            if status is True:
+                Status().add_message(request_id,"luna","Operation in progress...")
+                Status().mark_messages_read(request_id)
+                access_code=200
+                response = {"message": "request submitted and queued...", "request_id": request_id}
+            return response, access_code
+    # below only when we are master
+    returned = OSImage().change_kernel(name, request.data)
+    status=returned[0]
+    response=returned[1]
     if status is True:
-        returned = OSImage().change_kernel(name, request.data)
-        status=returned[0]
-        response=returned[1]
-        if status is True:
-            access_code=200
-            if len(returned)==3:
-                request_id=returned[2]
-                response = {"message": response, "request_id": request_id}
-            else:
-                access_code = 204
-                response = {'message': response}
+        access_code=200
+        if len(returned)==3:
+            request_id=returned[2]
+            response = {"message": response, "request_id": request_id}
         else:
+            access_code = 204
             response = {'message': response}
     else:
         response = {'message': response}

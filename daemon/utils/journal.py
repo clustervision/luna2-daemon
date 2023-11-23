@@ -138,9 +138,9 @@ class Journal():
                 status=True
                 for record in all_records:
                     masteronly=Helper().make_bool(record['masteronly'])
-                    self.logger.info(f"-------------> master: {master}, masteronly: {masteronly}")
+                    self.logger.debug(f"master: {master}, masteronly: {masteronly}")
                     if masteronly is True and master is False:
-                        self.logger.info(f"request {record['function']}({record['object']}) is not for us. master, {master} != masteronly, {masteronly}")
+                        self.logger.info(f"request {record['function']}({record['object']}) is not for us. master ({master}) != masteronly ({masteronly})")
                         Database().delete_row('journal', [{"column": "id", "value": record['id']}])
                         continue
    
@@ -171,7 +171,7 @@ class Journal():
                         status_=returned[0]
                         message=returned[1]
 
-                        self.logger.info(f"result for {record['function']}({record['object']}): {status_}, {message} ({returned})")
+                        self.logger.info(f"result for {record['function']}({record['object']}): {status_}, {message}")
                         if len(returned)>2:
                             # we have to keep track of the request_id as we have to infor the requestor about the progress.
                             executor = ThreadPoolExecutor(max_workers=1)

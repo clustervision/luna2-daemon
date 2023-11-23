@@ -211,7 +211,7 @@ class Journal():
         return
 
 
-    def send_request(self,host,function,object,created,param=None,misc=misc,payload=None):
+    def send_request(self,host,function,object,created,param=None,misc=None,payload=None):
         entry={'journal': [{'function': function, 'object': object, 'param': param, 'misc': misc, 'payload': payload, 'sendfor': host, 'sendby': self.me, 'created': created}] }
         status,_=Request().post_request(host,'/journal',entry)
         if status is False:

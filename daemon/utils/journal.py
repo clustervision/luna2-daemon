@@ -211,8 +211,8 @@ class Journal():
         return
 
 
-    def send_request(self,host,function,object,created,param=None,payload=None):
-        entry={'journal': [{'function': function, 'object': object, 'param': param, 'payload': payload, 'sendfor': host, 'sendby': self.me, 'created': created}] }
+    def send_request(self,host,function,object,created,param=None,misc=misc,payload=None):
+        entry={'journal': [{'function': function, 'object': object, 'param': param, 'misc': misc, 'payload': payload, 'sendfor': host, 'sendby': self.me, 'created': created}] }
         status,_=Request().post_request(host,'/journal',entry)
         if status is False:
             self.logger.info(f"journal for {function}({object})/payload forward to {host} failed")

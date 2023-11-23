@@ -196,6 +196,7 @@ class Journal():
                         all_entries[record['sendfor']]=[]
                     if not record['sendfor'] in del_ids:
                         del_ids[record['sendfor']]=[]
+                    del record['id']
                     all_entries[record['sendfor']].append(record)
                     del_ids[record['sendfor']].append(record['id'])
                 for host in all_entries:

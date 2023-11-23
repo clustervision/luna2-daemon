@@ -105,7 +105,7 @@ class Queue(object):
             status_query=f"status='{status}' AND"
         if request_id:
             request_id_query=f"request_id='{request_id}' AND"
-        where=f" WHERE subsystem='{subsystem}' AND {status_query} {request_id_query} created>datetime('now','-20 minute') AND created<=datetime('now') ORDER BY id ASC LIMIT 1"
+        where=f" WHERE subsystem='{subsystem}' AND {status_query} {request_id_query} created>datetime('now','-60 minute') AND created<=datetime('now') ORDER BY id ASC LIMIT 1"
         task = Database().get_record(None , 'queue', where)
         if task:
             return task[0]['id']
@@ -119,7 +119,7 @@ class Queue(object):
             status_query=f"status='{status}' AND"
         if request_id:
             request_id_query=f"request_id='{request_id}' AND"
-        where=f" WHERE subsystem='{subsystem}' AND {status_query} {request_id_query} task LIKE '%:{subitem}%' AND created>datetime('now','-20 minute') AND created<=datetime('now') ORDER BY id ASC LIMIT 1"
+        where=f" WHERE subsystem='{subsystem}' AND {status_query} {request_id_query} task LIKE '%:{subitem}%' AND created>datetime('now','-60 minute') AND created<=datetime('now') ORDER BY id ASC LIMIT 1"
         task = Database().get_record(None , 'queue', where)
         if task:
             return task[0]['id']

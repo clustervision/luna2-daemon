@@ -88,8 +88,8 @@ class Housekeeper(object):
                                 if status is False and len(returned)>1:
                                     self.logger.error(f"cleanup_provisioning: {returned[1]}")
                             case 'sync_osimage_with_master':
-                                osimage=first
-                                master=second
+                                osimage=second
+                                master=third
                                 Queue().update_task_status_in_queue(next_id,'in progress')
                                 Journal().add_request(function='Tables.import_table_from_host',object='osimage',param=master)
                                 #Journal().add_request(function='Files.sync_files_from_host,object='files',param=master)

@@ -52,6 +52,7 @@ from base.osuser import OsUser
 from utils.journal import Journal
 from utils.helper import Helper
 from utils.status import Status
+from utils.ha import HA
 
 LOGGER = Log.get_logger()
 config_blueprint = Blueprint('config', __name__)
@@ -691,14 +692,27 @@ def config_osimage_pack(name=None):
     Output - Success or Failure.
     """
     access_code=404
-    returned = OSImage().pack(name)
-    status=returned[0]
-    response=returned[1]
+    hastate=HA().get_hastate()
+    if hastate is True:
+        master=HA().get_role()
+        if master is False:
+            response={'message': 'something went wrong.....'}
+            request_id  = str(time()) + str(randint(1001, 9999)) + str(getpid())
+            status, message = Journal().add_request(function="OSImage.OSImage.pack",object=name,masteronly=True,misc=request_id)
+            if status is True:
+                response = {"message": "request submitted and queued...", "request_id": request_id}
+            return response, access_code
     if status is True:
-        access_code=200
-        if len(returned)==3:
-            request_id=returned[2]
-            response = {"message": response, "request_id": request_id}
+        returned = OSImage().pack(name)
+        status=returned[0]
+        response=returned[1]
+        if status is True:
+            access_code=200
+            if len(returned)==3:
+                request_id=returned[2]
+                response = {"message": response, "request_id": request_id}
+            else:
+                response = {'message': response}
         else:
             response = {'message': response}
     else:

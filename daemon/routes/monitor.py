@@ -125,3 +125,21 @@ def monitor_status():
     response = {'monitor': {'status': response } }
     return response, access_code
 
+
+@monitor_blueprint.route('/monitor/status', methods=['POST'])
+@token_required
+@input_filter(checks=['monitor:status'], skip=None)
+def messages_status_post():
+    """
+    input - messages to be added into local status table
+    process - inserts individual messages into status table
+              This method/route has nothing to do with nodes. 
+              this is a receiver of remote status messages.
+    output - status
+    """
+    status, response = Monitor().insert_status_messages(request.data)
+    access_code=Helper().get_access_code(status,response)
+    response = {'message': response}
+    return response, access_code
+
+

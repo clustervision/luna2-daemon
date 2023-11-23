@@ -89,7 +89,7 @@ class Journal():
         return self.me
 
 
-    def add_request(self,function,object,param=None,payload=None):
+    def add_request(self,function,object,param=None,payload=None,masteronly=False,misc=None):
         if not HA().get_hastate():
             return True, "Not in H/A mode"
         if not HA().get_insync():
@@ -105,6 +105,8 @@ class Journal():
                 data['object'] = object
                 data['param'] = param
                 data['payload'] = payload
+                data['masteronly'] = Helper().bool_to_string(masteronly)
+                data['misc'] = misc
                 data['sendby'] = self.me
                 data['created'] = "NOW"
                 data['tries'] = "0"
@@ -131,8 +133,15 @@ class Journal():
         if self.me:
             all_records = Database().get_record(None,'journal',f"WHERE sendfor='{self.me}' ORDER BY created,id ASC")
             if all_records:
+                master=HA().get_role()
                 status=True
                 for record in all_records:
+                    masteronly=Helper().make_bool(record['masteronly'])
+                    if masteronly is True and master is False:
+                        self.logger.info(f"request {record['function']}({record['object']}) is not for us. master, {master} != masteronly, {masteronly}")
+                        Database().delete_row('journal', [{"column": "id", "value": record['id']}])
+                        continue
+   
                     payload=None
                     if record['payload']:
                         decoded = b64decode(record['payload'])
@@ -143,21 +152,34 @@ class Journal():
                     class_name,function_name=record['function'].split('.')
                     self.logger.info(f"executing {class_name}().{function_name}({record['object']},{record['param']},payload)/{record['tries']} received by {record['sendby']} on {record['created']}")
 
+                    returned=None
                     repl_class = globals()[class_name]                # -> base.node.Node
                     repl_function = getattr(repl_class,function_name) # -> base.node.Node.node_update
                     if record['param'] and payload:
-                        status_,message=repl_function(repl_class(),record['object'],record['param'],payload)
+                        returned=repl_function(repl_class(),record['object'],record['param'],payload)
                     if record['param']:
-                        status_,message=repl_function(repl_class(),record['object'],record['param'])
+                        returned=repl_function(repl_class(),record['object'],record['param'])
                     elif record['object'] and payload:
-                        status_,message=repl_function(repl_class(),record['object'],payload)
+                        returned=repl_function(repl_class(),record['object'],payload)
                     elif payload:
-                        status_,message=repl_function(repl_class(),payload)
+                        returned=repl_function(repl_class(),payload)
                     else:
-                        status_,message=repl_function(repl_class(),record['object'])
+                        returned=repl_function(repl_class(),record['object'])
+                    if returned:
+                        status_=returned[0]
+                        message=returned[1]
 
-                    self.logger.info(f"result for {record['function']}({record['object']}): {status_}, {message}")
-                    # we always have to remove the entries in the DB regarding outcome.
+                        self.logger.info(f"result for {record['function']}({record['object']}): {status_}, {message}")
+                        if len(returned)>2:
+                            # we have to keep track of the request_id as we have to infor the requestor about the progress.
+                            request_id=returned[2]
+                            executor = ThreadPoolExecutor(max_workers=1)
+                            executor.submit(Status().messages_forward, request_id, record['sendby'], record['misc'])
+                            executor.shutdown(wait=False)
+                            #Status().messages_forward(request_id,record['sendby'],record['misc'])
+                    else:
+                        self.logger.info(f"no returned data. could not execute {record['function']}({record['object']}) as i do not have matching criterea?")
+                    # we *always* have to remove the entries in the DB regarding outcome.
                     Database().delete_row('journal', [{"column": "id", "value": record['id']}])
         return status
 

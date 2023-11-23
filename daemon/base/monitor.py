@@ -35,6 +35,7 @@ from utils.service import Service
 from utils.helper import Helper
 from utils.database import Database
 from utils.monitor import Monitor as monitor
+from utils.status import Status
 
 
 class Monitor():
@@ -146,4 +147,20 @@ class Monitor():
                     details[item]=line[item]
                 response.append(details)
         return status, response
+
+
+    def insert_status_messages(self, request_data=None):
+        status=False
+        response = 'Bad Request'
+        if request_data:
+            data=request_data['monitor']['status']
+            if 'request_id' in data and 'messages' in data:
+                status=True
+                response="success"
+                for record in data['messages']:
+                    if 'message' in record:
+                        Status().add_message(data['request_id'], '__remote__', record['message'])
+        return status, response
+
+
 

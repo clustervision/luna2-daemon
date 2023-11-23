@@ -32,6 +32,7 @@ __maintainer__  = 'Antoine Schonewille'
 __email__       = 'antoine.schonewille@clustervision.com'
 __status__      = 'Development'
 
+from time import sleep
 from utils.log import Log
 from utils.database import Database
 #from utils.helper import Helper
@@ -89,3 +90,26 @@ class Status(object):
             self.mark_messages_read(request_id)
             return True, response
         return False, 'No data for this request'
+
+
+    def forward_messages(remote_request_id, remote_host, local_request_id):
+        """
+        forward local request_id based status message to another host.
+        """
+        loop=True
+        while loop is True:
+            status = Database().get_record(None , 'status', f' WHERE request_id = "{local_request_id}"')
+            if status:
+                message = []
+                for record in status:
+                    if 'read' in record and record['read'] == 0:
+                        if 'message' in record:
+                            if record['message'] == "EOF":
+                                self.del_messages(request_id)
+                                loop=False
+                            message.append(record)
+                response = {'request_id': remote_request_id, 'messages': message}
+                self.mark_messages_read(request_id)
+                Request.post_request(remote_host,'/status',response)
+            sleep(5)
+

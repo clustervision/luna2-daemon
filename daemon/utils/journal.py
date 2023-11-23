@@ -168,8 +168,12 @@ class Journal():
                     else:
                         returned=repl_function(repl_class(),record['object'])
                     if returned:
-                        status_=returned[0]
-                        message=returned[1]
+                        status_, message = None, None
+                        if isinstance(returned, bool):
+                            status_=returned
+                        else:
+                            status_=returned[0]
+                            message=returned[1]
 
                         self.logger.info(f"result for {record['function']}({record['object']}): {status_}, {message}")
                         if len(returned)>2:

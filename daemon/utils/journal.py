@@ -173,10 +173,10 @@ class Journal():
                         self.logger.info(f"result for {record['function']}({record['object']}): {status_}, {message} ({returned})")
                         if len(returned)>2:
                             # we have to keep track of the request_id as we have to infor the requestor about the progress.
-                            #executor = ThreadPoolExecutor(max_workers=1)
-                            #executor.submit(Status().forward_messages, record['misc'], record['sendby'], returned[2])
-                            #executor.shutdown(wait=False)
-                            Status().forward_messages(record['misc'],record['sendby'],returned[2])
+                            executor = ThreadPoolExecutor(max_workers=1)
+                            executor.submit(Status().forward_messages, record['misc'], record['sendby'], returned[2])
+                            executor.shutdown(wait=False)
+                            #Status().forward_messages(record['misc'], record['sendby'], returned[2])
                     else:
                         self.logger.info(f"no returned data. could not execute {record['function']}({record['object']}) as i do not have matching criterea?")
 
@@ -198,10 +198,11 @@ class Journal():
                         function=record['function']
                         object=record['object']
                         param=record['param']
+                        misc=record['misc']
                         payload=record['payload']
                         host=record['sendfor']
                         created=record['created']
-                        status=self.send_request(host=host,function=function,object=object,param=param,created=created,payload=payload)
+                        status=self.send_request(host=host,function=function,object=object,param=param,misc=misc,created=created,payload=payload)
                         if status is True:
                             Database().delete_row('journal', [{"column": "id", "value": record['id']}])
                         else:

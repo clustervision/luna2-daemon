@@ -717,7 +717,21 @@ class OsImage(object):
             ret,mesg=provision_plugin().cleanup(files_path=files_path, image_file=image_file)
         return ret,mesg
 
-   
+    # ------------------------------------------------------------------- 
+  
+    def schedule_cleanup(self,osimage,request_id=None): 
+        if not request_id:
+            request_id='__internal__'
+        image = Database().get_record(None, 'osimage', f"WHERE name='{osimage}'")
+        if image:
+            for item in ['kernelfile','initrdfile','imagefile']:
+            if image[0][item]:
+                inusebytag = Database().get_record(None, 'osimagetag', f"WHERE osimageid='{image[0]['id']}' AND {item}='"+image[0][item]+"'")
+                if not inusebytag:
+                    queue_id,queue_response = Queue().add_task_to_queue(f'cleanup_old_file:'+image[0][item],'housekeeper',request_id,None,'1h')
+                    if item == 'imagefile':
+                        queue_id,queue_response = Queue().add_task_to_queue(f'cleanup_old_provisioning:'+image[0][item],'housekeeper',request_id,None,'1h')
+
     # ------------------------------------------------------------------- 
     # The mother of all.
 
@@ -769,15 +783,16 @@ class OsImage(object):
                             if queue_id:
                                 queue_id,queue_response = Queue().add_task_to_queue(f"provision_osimage:{first}",'osimage',request_id)
                                 if queue_id:
-                                    image = Database().get_record(None, 'osimage', f"WHERE name='{first}'")
-                                    if image:
-                                        for item in ['kernelfile','initrdfile','imagefile']:
-                                            if image[0][item]:
-                                                inusebytag = Database().get_record(None, 'osimagetag', f"WHERE osimageid='{image[0]['id']}' AND {item}='"+image[0][item]+"'")
-                                                if not inusebytag:
-                                                    queue_id,queue_response = Queue().add_task_to_queue(f'cleanup_old_file:'+image[0][item],'housekeeper',request_id,None,'1h')
-                                                    if item == 'imagefile':
-                                                        queue_id,queue_response = Queue().add_task_to_queue(f'cleanup_old_provisioning:'+image[0][item],'housekeeper',request_id,None,'1h')
+                                    self.schedule_cleanup(first,request_id)
+#                                    image = Database().get_record(None, 'osimage', f"WHERE name='{first}'")
+#                                    if image:
+#                                        for item in ['kernelfile','initrdfile','imagefile']:
+#                                            if image[0][item]:
+#                                                inusebytag = Database().get_record(None, 'osimagetag', f"WHERE osimageid='{image[0]['id']}' AND {item}='"+image[0][item]+"'")
+#                                                if not inusebytag:
+#                                                    queue_id,queue_response = Queue().add_task_to_queue(f'cleanup_old_file:'+image[0][item],'housekeeper',request_id,None,'1h')
+#                                                    if item == 'imagefile':
+#                                                        queue_id,queue_response = Queue().add_task_to_queue(f'cleanup_old_provisioning:'+image[0][item],'housekeeper',request_id,None,'1h')
                                     if queue_id:
                                         queue_id,queue_response = Queue().add_task_to_queue(f"close_task:{next_id}",'osimage',request_id)
 

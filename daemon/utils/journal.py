@@ -173,6 +173,9 @@ class Journal():
                         if isinstance(returned, bool):
                             status_=returned
                             self.logger.info(f"result for {record['function']}({record['object']}): {status_}")
+                        elif isinstance(returned, int):
+                            status_=returned
+                            self.logger.info(f"result for {record['function']}({record['object']}): {status_}")
                         else:
                             status_=returned[0]
                             message=returned[1]

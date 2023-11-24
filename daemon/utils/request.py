@@ -141,3 +141,43 @@ class Request():
             self.logger.error(f"no token for {uri} on host {host}. invalid credentials or host is down.")
         return False, None
 
+
+    def download_file(self,host,filename,location):
+        filename = re.sub('^/', '', filename)
+        serverport=self.dict_controllers[host]['serverport'] or self.alt_serverport
+        endpoint=self.dict_controllers[host]['ipaddress']
+        token=self.get_token(host)
+        if token:
+            headers = {'x-access-tokens': token}
+            try:
+                url = f'{self.protocol}://{endpoint}:{serverport}/files/{filename}'
+                x = session.get(f'{self.protocol}://{endpoint}:{serverport}/files/{filename}', headers=headers, stream=True, timeout=10, verify=CONSTANT['API']["VERIFY_CERTIFICATE"])
+                if str(x.status_code) in self.good_ret:
+                    self.logger.debug(f"get request download {filename} on {host} success. returned {x.status_code}")
+                    file = open(location+'/'+filename, 'wb')
+                    file.write(x.content)
+                    file.close()
+                    return True, 'success'
+                else:
+                    self.logger.error(f"get request download {filename} on {host} failed. returned {x.status_code}")
+                    return False, None
+            except Exception as exp:
+                self.logger.error(f"{exp}")
+        else:
+            self.logger.error(f"no token for {uri} on host {host}. invalid credentials or host is down.")
+        return False, None
+
+
+
+#                with open(file_name, "wb") as file:
+#                    response = session.get(url)
+#                if str(x.status_code) in self.good_ret:
+#                    self.logger.debug(f"get request {uri} on {host} success. returned {x.status_code}")
+#                    file.write(response.content)
+#
+#
+#req = requests.get(url)
+#file = open(fileName, 'wb')
+#for chunk in req.iter_content(100000):
+#    file.write(chunk)
+#file.close()

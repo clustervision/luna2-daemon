@@ -93,7 +93,9 @@ class Housekeeper(object):
                                 Queue().update_task_status_in_queue(next_id,'in progress')
                                 Journal().add_request(function='Tables.import_table_from_host',object='osimage',param=master)
                                 Journal().add_request(function='Tables.import_table_from_host',object='osimagetag',param=master)
-                                #Journal().add_request(function='Files.sync_files_from_host,object='files',param=master)
+                                Journal().add_request(function='Downloader.pull_image_files',object=osimage,param=master)
+                                if HA().get_syncimages() is True:
+                                    Journal().add_request(function='Downloader.pull_image_data',object=osimage,param=master)
 
                         if remove_from_queue:
                             Queue().remove_task_from_queue(next_id)

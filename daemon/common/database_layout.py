@@ -281,6 +281,7 @@ DATABASE_LAYOUT_journal = [
 
 DATABASE_LAYOUT_ha = [
 {"column": "enabled",              "datatype": "INTEGER", "length": "10"},
+{"column": "syncimages",           "datatype": "INTEGER", "length": "10"},
 {"column": "insync",               "datatype": "INTEGER", "length": "10"},
 {"column": "master",               "datatype": "INTEGER", "length": "10"}]
 

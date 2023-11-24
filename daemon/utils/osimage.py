@@ -43,6 +43,7 @@ from common.constant import CONSTANT
 from utils.helper import Helper
 from utils.status import Status
 from utils.queue import Queue
+from utils.request import Request
 
 
 class OsImage(object):
@@ -907,7 +908,4 @@ class OsImage(object):
             result=response[0]
             mesg=response[1]
             pipeline.add_message({nodename: f"{result}={mesg}"})
-
-
-
 

@@ -50,6 +50,7 @@ from utils.model import Model
 from utils.request import Request
 from utils.ha import HA
 from utils.tables import Tables
+from utils.downloader import Downloader
 
 from base.node import Node
 from base.group import Group

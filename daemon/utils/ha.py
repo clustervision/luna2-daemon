@@ -39,6 +39,7 @@ from common.constant import CONSTANT
 from utils.database import Database
 from utils.log import Log
 from utils.helper import Helper
+from utils.request import Request
 
 import requests
 from requests import Session
@@ -65,6 +66,7 @@ class HA():
         self.logger = Log.get_logger()
         self.insync=False
         self.hastate=None
+        self.syncimages=True
         self.master=False
         self.protocol = CONSTANT['API']['PROTOCOL']
         _,self.alt_serverport,*_=(CONSTANT['API']['ENDPOINT'].split(':')+[None]+[None])
@@ -145,6 +147,27 @@ class HA():
             self.master=Helper().make_bool(master)
             self.logger.debug(f"Master state: {self.master}")
         return self.master
+
+    def get_syncimages(self):
+        ha_data = Database().get_record(None, 'ha')
+        if ha_data:
+            syncimages=ha_data[0]['syncimages'] or False
+            self.syncimages=Helper().make_bool(syncimages)
+            self.logger.debug(f"Syncimages state: {self.syncimages}")
+        return self.syncimages
+
+    def set_syncimages(self,state):
+        ha_state={}
+        ha_state['syncimages']=0
+        if state is True:
+            ha_state['syncimages']=1
+        self.logger.info(f"set_hastate ha_state: {ha_state}")
+        ha_data = Database().get_record(None, 'ha')
+        if ha_data:
+            where = [{"column": "syncimages", "value": ha_data[0]['syncimages']}]
+            row = Helper().make_rows(ha_state)
+            Database().update('ha', row, where)
+        return self.get_syncimages()
 
 
     def ping_all_controllers(self):

@@ -91,8 +91,14 @@ class Housekeeper(object):
                                 osimage=second
                                 master=third
                                 Queue().update_task_status_in_queue(next_id,'in progress')
-                                Journal().add_request(function='Tables.import_table_from_host',object='osimage',param=master)
-                                Journal().add_request(function='Tables.import_table_from_host',object='osimagetag',param=master)
+                                osimage_data=Database().get_record(None, 'osimage', f"WHERE name='{osimage}'")
+                                if osimage_data:
+                                    payload={}
+                                    for file in ['kernelfile','initrdfile','imagefile']:
+                                        payload[file]=osimage_data[0][file]
+                                    Journal().add_request(function='OSImage.update_osimage',object=osimage,payload=payload)
+                                #Journal().add_request(function='Tables.import_table_from_host',object='osimage',param=master)
+                                #Journal().add_request(function='Tables.import_table_from_host',object='osimagetag',param=master)
                                 Journal().add_request(function='Downloader.pull_image_files',object=osimage,param=master)
                                 if HA().get_syncimages() is True:
                                     Journal().add_request(function='Downloader.pull_image_data',object=osimage,param=master)

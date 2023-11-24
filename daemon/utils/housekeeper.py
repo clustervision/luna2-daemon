@@ -93,9 +93,9 @@ class Housekeeper(object):
                                 Queue().update_task_status_in_queue(next_id,'in progress')
                                 osimage_data=Database().get_record(None, 'osimage', f"WHERE name='{osimage}'")
                                 if osimage_data:
-                                    payload={}
+                                    payload={'config':{'osimage':{}}}
                                     for file in ['kernelfile','initrdfile','imagefile']:
-                                        payload[file]=osimage_data[0][file]
+                                        payload['config']['osimage'][osimage][file]=osimage_data[0][file]
                                     Journal().add_request(function='OSImage.update_osimage',object=osimage,payload=payload)
                                 #Journal().add_request(function='Tables.import_table_from_host',object='osimage',param=master)
                                 #Journal().add_request(function='Tables.import_table_from_host',object='osimagetag',param=master)

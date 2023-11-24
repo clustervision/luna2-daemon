@@ -99,8 +99,12 @@ class Housekeeper(object):
                                         payload['config']['osimage'][osimage][file]=osimage_data[0][file]
                                     Journal().add_request(function='OSImage.update_osimage',object=osimage,payload=payload)
                                 Journal().add_request(function='Downloader.pull_image_files',object=osimage,param=master)
+                                Journal().add_request(function='OsImager.schedule_provision',object=osimage,param='housekeeper')
                                 if HA().get_syncimages() is True:
                                     Journal().add_request(function='Downloader.pull_image_data',object=osimage,param=master)
+                            case 'provision_osimage':
+                                Queue().update_task_status_in_queue(next_id,'in progress')
+                                OsImage().provision_osimage(next_id,request_id)
 
                         if remove_from_queue:
                             Queue().remove_task_from_queue(next_id)

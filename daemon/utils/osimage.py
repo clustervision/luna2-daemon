@@ -722,6 +722,7 @@ class OsImage(object):
     def schedule_cleanup(self,osimage,request_id=None): 
         if not request_id:
             request_id='__internal__'
+        queue_id=None
         image = Database().get_record(None, 'osimage', f"WHERE name='{osimage}'")
         if image:
             for item in ['kernelfile','initrdfile','imagefile']:
@@ -731,6 +732,15 @@ class OsImage(object):
                         queue_id,queue_response = Queue().add_task_to_queue(f'cleanup_old_file:'+image[0][item],'housekeeper',request_id,None,'1h')
                         if item == 'imagefile':
                             queue_id,queue_response = Queue().add_task_to_queue(f'cleanup_old_provisioning:'+image[0][item],'housekeeper',request_id,None,'1h')
+        return queue_id
+
+    def schedule_provision(self,osimage,subsystem=None,request_id=None):
+        if not request_id:
+            request_id='__internal__'
+        if not subsystem:
+            subsystem='osimage'
+        queue_id,queue_response = Queue().add_task_to_queue(f"provision_osimage:{osimage}",subsystem,request_id)
+        return queue_id
 
     # ------------------------------------------------------------------- 
     # The mother of all.

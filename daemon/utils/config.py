@@ -43,6 +43,7 @@ from utils.log import Log
 from utils.database import Database
 from utils.helper import Helper
 from utils.queue import Queue
+from utils.ha import HA
 from common.constant import CONSTANT
 
 
@@ -216,10 +217,21 @@ class Config(object):
             subnet['range_begin']=nwk['dhcp_range_begin']
             subnet['range_end']=nwk['dhcp_range_end']
         netmask = Helper().get_netmask(f"{nwk['network']}/{nwk['subnet']}")
+        controller_name = 'controller'
+        # ---------------------------------------------------
+        ha_object=HA()
+        ha_enabled=ha_object.get_hastate()
+        ha_insync=ha_object.get_insync()
+        ha_master=ha_object.get_role()
+        ha_me=ha_object.get_me()
+        # ---------------------------------------------------
+        if ha_enabled and ha_insync:
+                controller_name = ha_me
+        # ---------------------------------------------------
         controller = Database().get_record_join(
             ['ipaddress.ipaddress','network.name as networkname'],
             ['ipaddress.tablerefid=controller.id','network.id=ipaddress.networkid'],
-            ['tableref="controller"', 'controller.hostname="controller"']
+            ['tableref="controller"', f"controller.hostname='{controller_name}'"]
         )
         self.logger.info(f"Building DHCP block for {network_name}")
         subnet['network']=nwk['network']

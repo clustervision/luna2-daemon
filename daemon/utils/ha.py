@@ -74,6 +74,7 @@ class HA():
         self.good_ret=['200','201','204']
         self.dict_controllers=None
         self.me=me
+        self.ip=None
         self.all_controllers = Database().get_record_join(['controller.*','ipaddress.ipaddress','network.name as domain'],
                                                           ['ipaddress.tablerefid=controller.id','network.id=ipaddress.networkid'],
                                                           ["ipaddress.tableref='controller'"])
@@ -88,11 +89,15 @@ class HA():
                             continue
                         if not self.me and controller['ipaddress'] == ip:
                             self.me=controller['hostname']
+                            self.ip=ip
                             self.logger.debug(f"My ipaddress is {ip} and i am {self.me}")
 
 
     def get_me(self):
         return self.me
+
+    def get_my_ip(self):
+        return self.ip
 
     def set_insync(self,state):
         ha_state={}

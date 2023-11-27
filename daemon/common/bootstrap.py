@@ -428,7 +428,7 @@ def bootstrap(bootstrapfile=None):
             {'column': 'hostname', 'value': hostname},
             {'column': 'serverport', 'value': BOOTSTRAP['HOSTS']['SERVERPORT']},
             {'column': 'clusterid', 'value': clusterid}
-            ]
+        ]
         controller_id=Database().insert('controller', default_controller)
         if controller_id:
             controller_ip = [
@@ -446,12 +446,12 @@ def bootstrap(bootstrapfile=None):
             hostname=BOOTSTRAP['HOSTS'][f'CONTROLLER{num}']['HOSTNAME']
             ip=BOOTSTRAP['HOSTS'][f'CONTROLLER{num}']['IP']
             taken_ips.append(ip)
-            default_controller = [
+            other_controller = [
                 {'column': 'hostname', 'value': hostname},
                 {'column': 'serverport', 'value': BOOTSTRAP['HOSTS']['SERVERPORT']},
                 {'column': 'clusterid', 'value': clusterid}
-                ]
-            controller_id=Database().insert('controller', default_controller)
+            ]
+            controller_id=Database().insert('controller', other_controller)
             if controller_id:
                 controller_ip = [
                     {'column': 'tableref', 'value': 'controller'},

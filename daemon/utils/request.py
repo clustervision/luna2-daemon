@@ -61,6 +61,7 @@ class Request():
     def __init__(self):
         self.logger = Log.get_logger()
         self.protocol = CONSTANT['API']['PROTOCOL']
+        self.verify = Helper().make_bool(CONSTANT['API']["VERIFY_CERTIFICATE"])
         _,self.alt_serverport,*_=(CONSTANT['API']['ENDPOINT'].split(':')+[None]+[None])
         self.bad_ret=['400','401','500','502','503']
         self.good_ret=['200','201','204']
@@ -81,7 +82,7 @@ class Request():
         token = None
         try:
             self.logger.debug(f"json for token: {token_credentials}")
-            x = session.post(f'{self.protocol}://{endpoint}:{serverport}/token', json=token_credentials, stream=True, timeout=10, verify=CONSTANT['API']["VERIFY_CERTIFICATE"])
+            x = session.post(f'{self.protocol}://{endpoint}:{serverport}/token', json=token_credentials, stream=True, timeout=10, verify=self.verify)
             if (str(x.status_code) not in self.bad_ret) and x.text:
                 data = loads(x.text)
                 self.logger.debug(f"data received for token: {data}")
@@ -99,7 +100,7 @@ class Request():
         if token:
             headers = {'x-access-tokens': token}
             try:
-                x = session.get(f'{self.protocol}://{endpoint}:{serverport}/{uri}', headers=headers, stream=True, timeout=10, verify=CONSTANT['API']["VERIFY_CERTIFICATE"])
+                x = session.get(f'{self.protocol}://{endpoint}:{serverport}/{uri}', headers=headers, stream=True, timeout=10, verify=self.verify)
                 if str(x.status_code) in self.good_ret:
                     self.logger.debug(f"get request {uri} on {host} success. returned {x.status_code}")
                     data=None
@@ -124,7 +125,7 @@ class Request():
         if token:
             headers = {'x-access-tokens': token}
             try:
-                x = session.post(f'{self.protocol}://{endpoint}:{serverport}/{uri}', headers=headers, json=json, stream=True, timeout=10, verify=CONSTANT['API']["VERIFY_CERTIFICATE"])
+                x = session.post(f'{self.protocol}://{endpoint}:{serverport}/{uri}', headers=headers, json=json, stream=True, timeout=10, verify=self.verify)
                 if str(x.status_code) in self.good_ret:
                     self.logger.debug(f"post request {uri} on {host} success. returned {x.status_code}")
                     data=None
@@ -151,7 +152,7 @@ class Request():
             headers = {'x-access-tokens': token}
             try:
                 url = f'{self.protocol}://{endpoint}:{serverport}/files/{filename}'
-                x = session.get(f'{self.protocol}://{endpoint}:{serverport}/files/{filename}', headers=headers, stream=True, timeout=10, verify=CONSTANT['API']["VERIFY_CERTIFICATE"])
+                x = session.get(f'{self.protocol}://{endpoint}:{serverport}/files/{filename}', headers=headers, stream=True, timeout=10, verify=self.verify)
                 if str(x.status_code) in self.good_ret:
                     self.logger.debug(f"get request download {filename} on {host} success. returned {x.status_code}")
                     file = open(location+'/'+filename, 'wb')

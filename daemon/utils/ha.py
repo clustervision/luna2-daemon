@@ -69,6 +69,7 @@ class HA():
         self.syncimages=True
         self.master=False
         self.protocol = CONSTANT['API']['PROTOCOL']
+        self.verify = Helper().make_bool(CONSTANT['API']["VERIFY_CERTIFICATE"])
         _,self.alt_serverport,*_=(CONSTANT['API']['ENDPOINT'].split(':')+[None]+[None])
         self.bad_ret=['400','401','500','502','503']
         self.good_ret=['200','201','204']
@@ -203,7 +204,7 @@ class HA():
         serverport=self.dict_controllers[host]['serverport'] or self.alt_serverport
         endpoint=self.dict_controllers[host]['ipaddress']
         try:
-            x = session.get(f'{self.protocol}://{endpoint}:{serverport}/ping', stream=True, timeout=10, verify=CONSTANT['API']["VERIFY_CERTIFICATE"])
+            x = session.get(f'{self.protocol}://{endpoint}:{serverport}/ping', stream=True, timeout=10, verify=self.verify)
             if str(x.status_code) in self.good_ret:
                 self.logger.debug(f"ping from {host} success. Returned {x.status_code}")
                 return True

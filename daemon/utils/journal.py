@@ -79,8 +79,11 @@ class Journal():
     def __init__(self,me=None):
         self.logger = Log.get_logger()
         self.me=me
+        self.ip=None
         if not self.me:
             self.me=HA().get_me()
+        if not self.ip:
+            self.ip=HA().get_my_ip()
         self.insync=False
         self.hastate=None
         self.dict_controllers=None
@@ -193,10 +196,11 @@ class Journal():
                                         if queue_id:
                                             Queue().update_task_status_in_queue(queue_id,'parked')
                                 # we have to keep track of the request_id as we have to inform the requestor about the progress.
-                                executor = ThreadPoolExecutor(max_workers=1)
-                                executor.submit(Status().forward_messages, record['misc'], record['sendby'], request_id)
-                                executor.shutdown(wait=False)
+                                #executor = ThreadPoolExecutor(max_workers=1)
+                                #executor.submit(Status().forward_messages, record['misc'], record['sendby'], request_id)
+                                #executor.shutdown(wait=False)
                                 #Status().forward_messages(record['misc'], record['sendby'], request_id)
+                                Status().forward_status_request(record['misc'], record['sendby'], request_id, self.ip)
                     else:
                         self.logger.info(f"no returned data. could not execute {record['function']}({record['object']}) as i do not have matching criterea?")
 

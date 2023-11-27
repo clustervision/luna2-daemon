@@ -159,7 +159,10 @@ class Monitor():
                 response="success"
                 for record in data['messages']:
                     if 'message' in record:
-                        Status().add_message(data['request_id'], '__remote__', record['message'])
+                        if 'remote_request_id' in record and 'remote_host' in record:
+                            Status().add_message(data['request_id'], '__remote__', record['message'], record['remote_request_id'], record['remote_host'])
+                        else:
+                            Status().add_message(data['request_id'], '__remote__', record['message'])
         return status, response
 
 

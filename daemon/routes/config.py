@@ -703,7 +703,7 @@ def config_osimage_pack(name=None):
                 Status().add_message(request_id,"luna","Operation in progress...")
                 Status().mark_messages_read(request_id)
                 access_code=200
-                response = {"message": "request submitted and queued...", "request_id": request_id}
+                response = {"message": "request submitted to master...", "request_id": request_id}
             else:
                 response={'message': message}
             return response, access_code
@@ -745,7 +745,7 @@ def config_osimage_kernel_post(name=None):
                 Status().add_message(request_id,"luna","Operation in progress...")
                 Status().mark_messages_read(request_id)
                 access_code=200
-                response = {"message": "request submitted and queued...", "request_id": request_id}
+                response = {"message": "request submitted to master...", "request_id": request_id}
             else:
                 response={'message': message}
             return response, access_code

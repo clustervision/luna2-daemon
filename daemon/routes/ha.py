@@ -38,6 +38,7 @@ from utils.log import Log
 from common.validate_auth import token_required, agent_check
 from common.validate_input import input_filter, validate_name
 from utils.ha import HA
+from utils.journal import Journal
 from utils.helper import Helper
 
 LOGGER = Log.get_logger()
@@ -54,4 +55,19 @@ def ha_ping():
     response = {'message': 'pong'}
     return response, access_code
 
+
+@ha_blueprint.route('/ha/master/_set', methods=['GET'])
+@token_required
+def ha_set_master(cli=None, name=None):
+    """
+    This api will set the current host as master.
+    """
+    access_code = 404
+    status, response = Journal().add_request(function="HA.set_role",object=False)
+    if status is True:
+        status, response = HA().set_role(True)
+    if status is True:
+        access_code = 200
+    response = {'message': response}
+    return response, access_code
 

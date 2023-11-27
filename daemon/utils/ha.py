@@ -148,6 +148,19 @@ class HA():
             self.logger.debug(f"Master state: {self.master}")
         return self.master
 
+    def set_role(self,state):
+        ha_state={}
+        ha_state['master']=0
+        if state is True:
+            ha_state['master']=1
+        self.logger.info(f"set_hastate ha_state: {ha_state}")
+        ha_data = Database().get_record(None, 'ha')
+        if ha_data:
+            where = [{"column": "master", "value": ha_data[0]['master']}]
+            row = Helper().make_rows(ha_state)
+            Database().update('ha', row, where)
+        return self.get_hastate()
+
     def get_syncimages(self):
         ha_data = Database().get_record(None, 'ha')
         if ha_data:

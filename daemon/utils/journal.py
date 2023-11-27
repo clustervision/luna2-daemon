@@ -33,6 +33,8 @@ __status__      = 'Development'
 import sys
 import re
 import hashlib
+from multiprocessing import Lock
+from threading import Semaphore
 from time import sleep, time
 from os import getpid, path
 from random import randint
@@ -74,6 +76,8 @@ class Journal():
 
     def __init__(self,me=None):
         self.logger = Log.get_logger()
+        self.lock = Lock()
+        self.sem = Semaphore()
         self.me=me
         if not self.me:
             self.me=HA().get_me()
@@ -184,11 +188,11 @@ class Journal():
                             if len(returned)>2:
                                 request_id=returned[2]
                                 if class_name == 'OSImage':
-                                    if function in ['pack','change_kernel','grab']:
+                                    if function_name in ['pack','change_kernel','grab']:
                                         queue_id,queue_response = Queue().add_task_to_queue(f"sync_osimage_with_master:{record['object']}:{self.me}",'osimage',record['misc'])
                                         if queue_id:
                                             Queue().update_task_status_in_queue(queue_id,'parked')
-                                # we have to keep track of the request_id as we have to infor the requestor about the progress.
+                                # we have to keep track of the request_id as we have to inform the requestor about the progress.
                                 executor = ThreadPoolExecutor(max_workers=1)
                                 executor.submit(Status().forward_messages, record['misc'], record['sendby'], request_id)
                                 executor.shutdown(wait=False)
@@ -203,25 +207,33 @@ class Journal():
 
     def pushto_controllers(self):
         if self.me and self.dict_controllers:
-            all_entries={}
-            del_ids={}
-            all_records = Database().get_record(["*","strftime('%s',created) AS created"],"journal",f"WHERE sendby='{self.me}' ORDER BY sendfor,created,id ASC")
-            if all_records:
-                for record in all_records:
-                    if not record['sendfor'] in all_entries:
-                        all_entries[record['sendfor']]=[]
-                    if not record['sendfor'] in del_ids:
-                        del_ids[record['sendfor']]=[]
-                    del_ids[record['sendfor']].append(record['id'])
-                    del record['id']
-                    all_entries[record['sendfor']].append(record)
-                for host in all_entries:
-                    status,_=Request().post_request(host,'/journal',{'journal': all_entries[host]})
-                    if status is True:
-                        for del_id in del_ids[host]:
-                            Database().delete_row('journal', [{"column": "id", "value": del_id}])
-                    else:
-                        self.logger.error(f"attempt to push journal to {host} failed. host might be down.")
+            self.lock.acquire()
+            try:
+                self.sem.acquire()
+                try:
+                    all_entries={}
+                    del_ids={}
+                    all_records = Database().get_record(["*","strftime('%s',created) AS created"],"journal",f"WHERE sendby='{self.me}' ORDER BY sendfor,created,id ASC")
+                    if all_records:
+                        for record in all_records:
+                            if not record['sendfor'] in all_entries:
+                                all_entries[record['sendfor']]=[]
+                            if not record['sendfor'] in del_ids:
+                                del_ids[record['sendfor']]=[]
+                            del_ids[record['sendfor']].append(record['id'])
+                            del record['id']
+                            all_entries[record['sendfor']].append(record)
+                        for host in all_entries:
+                            status,_=Request().post_request(host,'/journal',{'journal': all_entries[host]})
+                            if status is True:
+                                for del_id in del_ids[host]:
+                                    Database().delete_row('journal', [{"column": "id", "value": del_id}])
+                            else:
+                                self.logger.error(f"attempt to push journal to {host} failed. host might be down.")
+                finally:
+                    self.sem.release()
+            finally:
+                self.lock.release()
         return
 
 

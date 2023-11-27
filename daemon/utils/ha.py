@@ -50,7 +50,7 @@ from urllib3.util import Retry
 urllib3.disable_warnings()
 session = Session()
 retries = Retry(
-    total = 10,
+    total = 1,
     backoff_factor = 0.3,
     status_forcelist = [502, 503, 504, 500, 404],
     allowed_methods = {'GET', 'POST'}

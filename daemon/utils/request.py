@@ -168,17 +168,3 @@ class Request():
             self.logger.error(f"no token for {uri} on host {host}. invalid credentials or host is down.")
         return False, None
 
-
-
-#                with open(file_name, "wb") as file:
-#                    response = session.get(url)
-#                if str(x.status_code) in self.good_ret:
-#                    self.logger.debug(f"get request {uri} on {host} success. returned {x.status_code}")
-#                    file.write(response.content)
-#
-#
-#req = requests.get(url)
-#file = open(fileName, 'wb')
-#for chunk in req.iter_content(100000):
-#    file.write(chunk)
-#file.close()

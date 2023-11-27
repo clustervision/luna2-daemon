@@ -138,6 +138,7 @@ def messages_status_post():
               this is a receiver of remote status messages.
     output - status
     """
+    #remote_ip = request.environ['REMOTE_ADDR']
     status, response = Monitor().insert_status_messages(request.data)
     access_code=Helper().get_access_code(status,response)
     response = {'message': response}

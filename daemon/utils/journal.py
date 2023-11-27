@@ -193,10 +193,11 @@ class Journal():
                                         if queue_id:
                                             Queue().update_task_status_in_queue(queue_id,'parked')
                                 # we have to keep track of the request_id as we have to inform the requestor about the progress.
-                                executor = ThreadPoolExecutor(max_workers=1)
-                                executor.submit(Status().forward_messages, record['misc'], record['sendby'], request_id)
-                                executor.shutdown(wait=False)
+                                #executor = ThreadPoolExecutor(max_workers=1)
+                                #executor.submit(Status().forward_messages, record['misc'], record['sendby'], request_id)
+                                #executor.shutdown(wait=False)
                                 #Status().forward_messages(record['misc'], record['sendby'], request_id)
+                                Status().forward_status_request(record['misc'], record['sendby'], request_id, self.me)
                     else:
                         self.logger.info(f"no returned data. could not execute {record['function']}({record['object']}) as i do not have matching criterea?")
 

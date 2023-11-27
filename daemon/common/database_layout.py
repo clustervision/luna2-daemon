@@ -34,7 +34,9 @@ __status__      = 'Development'
 DATABASE_LAYOUT_status = [
 {"column": "id",                   "datatype": "integer", "length": "10", "key": "PRIMARY", "keyadd": "autoincrement"},
 {"column": "request_id",           "datatype": "text"},
-{"column": "username_initiator",   "datatype": "text"},
+{"column": "remote_request_id",    "datatype": "text"},
+{"column": "remote_host",          "datatype": "VARCHAR", "length": "250"},
+{"column": "username_initiator",   "datatype": "VARCHAR", "length": "250"},
 {"column": "created",              "datatype": "numeric"},
 {"column": "read",                 "datatype": "integer"},
 {"column": "message",              "datatype": "text"}]

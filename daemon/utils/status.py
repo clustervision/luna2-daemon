@@ -152,7 +152,7 @@ class Status(object):
         """
         self.logger.info(f"forwarding request_id for {local_request_id} to {remote_host}:{remote_request_id}")
         response = {'monitor': {'status': {'request_id': remote_request_id, 'remote_request_id': local_request_id, 'remote_host': local_host}}}
-        self.logger.info(f"RESPONSE: {response}")
+        self.logger.debug(f"RESPONSE: {response}")
         status,response=Request().post_request(remote_host, '/monitor/status', response)
         return status, response
 

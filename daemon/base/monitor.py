@@ -154,7 +154,7 @@ class Monitor():
         response = 'Bad Request'
         if request_data:
             data=request_data['monitor']['status']
-            self.logger.info(f"RESPONSE RECEIVED: {request_data}")
+            self.logger.debug(f"RESPONSE RECEIVED: {request_data}")
             if 'request_id' in data:
                 status=True
                 response="success"

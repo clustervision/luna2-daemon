@@ -34,7 +34,7 @@ import sys
 import re
 import hashlib
 from multiprocessing import Lock
-from threading import Semaphore
+from threading import Semaphore, Lock as tLock
 from time import sleep, time
 from os import getpid, path
 from random import randint
@@ -67,7 +67,9 @@ from base.dns import DNS
 from base.secret import Secret
 from base.osuser import OsUser
 
-# id, function, object, payload, sendfor sendby tries created
+lock = Lock()
+#sem = Semaphore()
+sem = tLock()
 
 class Journal():
     """
@@ -76,8 +78,6 @@ class Journal():
 
     def __init__(self,me=None):
         self.logger = Log.get_logger()
-        self.lock = Lock()
-        self.sem = Semaphore()
         self.me=me
         if not self.me:
             self.me=HA().get_me()
@@ -207,9 +207,9 @@ class Journal():
 
     def pushto_controllers(self):
         if self.me and self.dict_controllers:
-            self.lock.acquire()
+            lock.acquire()
             try:
-                self.sem.acquire()
+                sem.acquire()
                 try:
                     all_entries={}
                     del_ids={}
@@ -224,6 +224,7 @@ class Journal():
                             del record['id']
                             all_entries[record['sendfor']].append(record)
                         for host in all_entries:
+                            self.logger.debug(f"JOURNAL HOST {host}: {all_entries[host]}")
                             status,_=Request().post_request(host,'/journal',{'journal': all_entries[host]})
                             if status is True:
                                 for del_id in del_ids[host]:
@@ -231,9 +232,9 @@ class Journal():
                             else:
                                 self.logger.error(f"attempt to push journal to {host} failed. host might be down.")
                 finally:
-                    self.sem.release()
+                    sem.release()
             finally:
-                self.lock.release()
+                lock.release()
         return
 
 

@@ -152,19 +152,17 @@ class Monitor():
     def insert_status_messages(self, request_data=None):
         status=False
         response = 'Bad Request'
-        remote_request_id, remote_host = None, None
         if request_data:
             data=request_data['monitor']['status']
-            if 'request_id' in data and 'messages' in data:
+            self.logger.info(f"RESPONSE RECEIVED: {request_data}")
+            if 'request_id' in data:
                 status=True
                 response="success"
                 if 'remote_request_id' in data and 'remote_host' in data:
-                    remote_request_id = data['remote_request_id']
-                    remote_host = data['remote_host']
-                for record in data['messages']:
-                    if 'message' in record:
-                        Status().add_message(data['request_id'], '__remote__', record['message'], remote_request_id, remote_host)
+                    Status().add_message(data['request_id'], '__remote__', 'message on remote host', data['remote_request_id'], data['remote_host'])
+                elif 'messages' in data:
+                    for record in data['messages']:
+                        if 'message' in record:
+                            Status().add_message(data['request_id'], '__remote__', record['message'], remote_request_id, remote_host)
         return status, response
-
-
 

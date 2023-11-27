@@ -103,7 +103,7 @@ class Status(object):
             message = []
             for record in status:
                 if record['remote_host'] and record['remote_request_id']:
-                    status, response = Request().get_request(record['remote_host'], f"/config/status/{record['remote_request_id']}", response)
+                    status, response = Request().get_request(record['remote_host'], f"/config/status/{record['remote_request_id']}")
                     if status is False:
                         self.mark_messages_read(request_id)
                     return status, response
@@ -152,6 +152,7 @@ class Status(object):
         """
         self.logger.info(f"forwarding request_id for {local_request_id} to {remote_host}:{remote_request_id}")
         response = {'monitor': {'status': {'request_id': remote_request_id, 'remote_request_id': local_request_id, 'remote_host': local_host}}}
+        self.logger.info(f"RESPONSE: {response}")
         status,response=Request().post_request(remote_host, '/monitor/status', response)
         return status, response
 

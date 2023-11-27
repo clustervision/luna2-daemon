@@ -65,9 +65,13 @@ def ha_set_master(cli=None, name=None):
     access_code = 404
     status, response = Journal().add_request(function="HA.set_role",object=False)
     if status is True:
-        status, response = HA().set_role(True)
-    if status is True:
-        access_code = 200
+        role = HA().set_role(True)
+        if role is True: # meaning it's what i asked for
+            access_code = 200
+            response="current role set to master"
+        else:
+            access_code = 503
+            response="could not set role to master"
     response = {'message': response}
     return response, access_code
 

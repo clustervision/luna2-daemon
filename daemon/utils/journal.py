@@ -188,7 +188,7 @@ class Journal():
                             if len(returned)>2:
                                 request_id=returned[2]
                                 if class_name == 'OSImage':
-                                    if function_name in ['pack','change_kernel','grab']:
+                                    if function_name in ['pack','change_kernel','grab','clone_osimage']:
                                         queue_id,queue_response = Queue().add_task_to_queue(f"sync_osimage_with_master:{record['object']}:{self.me}",'osimage',request_id)
                                         if queue_id:
                                             Queue().update_task_status_in_queue(queue_id,'parked')

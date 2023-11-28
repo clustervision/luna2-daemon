@@ -839,6 +839,7 @@ class Helper(object):
             self.logger.error(f"Getattr caused a problem: {exp}")
             return None
 
+    # -----------------------------------------------------------------------------------
 
     def get_access_code(self,status,response=None):
         # this def is not suitable for 200 reponses
@@ -857,3 +858,4 @@ class Helper(object):
             elif 'ervice unavailable' in response:
                 access_code=503
         return access_code
+

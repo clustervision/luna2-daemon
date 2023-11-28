@@ -627,20 +627,32 @@ def config_osimage_clone(name=None):
     Output - OSImage Info.
     """
     access_code=404
-    status, response = Journal().add_request(function="OSImage.clone_osimage",object=name,payload=request.data)
-    if status is True:
-        returned = OSImage().clone_osimage(name, request.data)
-        status=returned[0]
-        response=returned[1]
-        if status is True:
-            access_code=200
-            if len(returned)==3:
-                request_id=returned[2]
-                response = {"message": response, "request_id": request_id}
+    hastate=HA().get_hastate()
+    if hastate is True:
+        master=HA().get_role()
+        if master is False:
+            response={'message': 'something went wrong.....'}
+            request_id = Status().gen_request_id()
+            status, message = Journal().add_request(function="OSImage.clone_osimage",object=name,payload=request.data,masteronly=True,misc=request_id)
+            if status is True:
+                Status().add_message(request_id,"luna","request submitted to master...")
+                Status().mark_messages_read(request_id)
+                access_code=200
+                response = {"message": "request submitted to master...", "request_id": request_id}
             else:
-                access_code = 201
-                response = {'message': response}
+                response={'message': message}
+            return response, access_code
+    # below only when we are master
+    returned = OSImage().clone_osimage(name, request.data)
+    status=returned[0]
+    response=returned[1]
+    if status is True:
+        access_code=200
+        if len(returned)==3:
+            request_id=returned[2]
+            response = {"message": response, "request_id": request_id}
         else:
+            access_code = 201
             response = {'message': response}
     else:
         response = {'message': response}
@@ -700,7 +712,7 @@ def config_osimage_pack(name=None):
             request_id = Status().gen_request_id()
             status, message = Journal().add_request(function="OSImage.pack",object=name,masteronly=True,misc=request_id)
             if status is True:
-                Status().add_message(request_id,"luna","Operation in progress...")
+                Status().add_message(request_id,"luna","request submitted to master...")
                 Status().mark_messages_read(request_id)
                 access_code=200
                 response = {"message": "request submitted to master...", "request_id": request_id}
@@ -742,7 +754,7 @@ def config_osimage_kernel_post(name=None):
             request_id = Status().gen_request_id()
             status, message = Journal().add_request(function="OSImage.change_kernel",object=name,payload=request.data,masteronly=True,misc=request_id)
             if status is True:
-                Status().add_message(request_id,"luna","Operation in progress...")
+                Status().add_message(request_id,"luna","request submitted to master...")
                 Status().mark_messages_read(request_id)
                 access_code=200
                 response = {"message": "request submitted to master...", "request_id": request_id}

@@ -34,7 +34,7 @@ from time import sleep, time
 from os import getpid, path
 from random import randint
 from base64 import b64decode, b64encode
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ProcessPoolExecutor
 from common.constant import CONSTANT
 from utils.status import Status
 from utils.osimage import OsImage as OsImager
@@ -423,7 +423,7 @@ class OSImage():
                 Status().add_message(request_id, "luna", message)
                 next_id = Queue().next_task_in_queue('osimage')
                 if task_id == next_id:
-                    executor = ThreadPoolExecutor(max_workers=1)
+                    executor = ProcessPoolExecutor(max_workers=1)
                     executor.submit(OsImager().osimage_mother)
                     executor.shutdown(wait=False)
                 else:
@@ -562,7 +562,7 @@ class OSImage():
             next_id = Queue().next_task_in_queue('osimage')
             if task_id == next_id:
                 # we're first in the queue. wake up mother!
-                executor = ThreadPoolExecutor(max_workers=1)
+                executor = ProcessPoolExecutor(max_workers=1)
                 executor.submit(OsImager().osimage_mother)
                 executor.shutdown(wait=False)
                 # OsImager().osimage_mother(request_id)
@@ -572,7 +572,7 @@ class OSImage():
                 next_id = Queue().next_parallel_task_in_queue('osimage',osimage,'queued')
                 if task_id == next_id:
                     # ok, so we are not the first mother running... let's only do our own request
-                    executor = ThreadPoolExecutor(max_workers=1)
+                    executor = ProcessPoolExecutor(max_workers=1)
                     executor.submit(OsImager().osimage_mother, request_id)
                     executor.shutdown(wait=False)
                 else:
@@ -664,7 +664,7 @@ class OSImage():
             next_id = Queue().next_task_in_queue('osimage')
             if task_id == next_id:
                 # w're first in the queue. let's wake up mother
-                executor = ThreadPoolExecutor(max_workers=1)
+                executor = ProcessPoolExecutor(max_workers=1)
                 executor.submit(OsImager().osimage_mother)
                 executor.shutdown(wait=False)
                 # OsImager().osimage_mother(request_id)
@@ -674,7 +674,7 @@ class OSImage():
                 next_id = Queue().next_parallel_task_in_queue('osimage',osimage,'queued')
                 if task_id == next_id:
                     # We're not the first mother running... we only do our own stuff
-                    executor = ThreadPoolExecutor(max_workers=1)
+                    executor = ProcessPoolExecutor(max_workers=1)
                     executor.submit(OsImager().osimage_mother, request_id)
                     executor.shutdown(wait=False)
                 else:
@@ -727,7 +727,7 @@ class OSImage():
         next_id = Queue().next_task_in_queue('osimage')
         if queue_id == next_id:
             # w're first in the queue. let's wake up mother
-            executor = ThreadPoolExecutor(max_workers=1)
+            executor = ProcessPoolExecutor(max_workers=1)
             executor.submit(OsImager().osimage_mother)
             executor.shutdown(wait=False)
             # OsImager().osimage_mother(request_id)
@@ -737,7 +737,7 @@ class OSImage():
             next_id = Queue().next_parallel_task_in_queue('osimage',name,'queued')
             if queue_id == next_id:
                 # We're not the first mother running... we only do our own stuff
-                executor = ThreadPoolExecutor(max_workers=1)
+                executor = ProcessPoolExecutor(max_workers=1)
                 executor.submit(OsImager().osimage_mother, request_id)
                 executor.shutdown(wait=False)
             else:
@@ -804,14 +804,14 @@ class OSImage():
                     next_id = Queue().next_task_in_queue('osimage')
                     if task_id == next_id:
                         # we're first in the queue, let's wake up mother
-                        executor = ThreadPoolExecutor(max_workers=1)
+                        executor = ProcessPoolExecutor(max_workers=1)
                         executor.submit(OsImager().osimage_mother)
                         executor.shutdown(wait=False)
                     else:
                         next_id = Queue().next_parallel_task_in_queue('osimage',name,'queued')
                         if task_id == next_id:
                             # there is another mother running so we focus on our own stuff
-                            executor = ThreadPoolExecutor(max_workers=1)
+                            executor = ProcessPoolExecutor(max_workers=1)
                             executor.submit(OsImager().osimage_mother, request_id)
                             executor.shutdown(wait=False)
                         else:

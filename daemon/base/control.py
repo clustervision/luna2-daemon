@@ -33,7 +33,7 @@ __status__      = 'Development'
 from time import sleep, time
 from random import randint
 from os import getpid
-from concurrent.futures import ProcessPoolExecutor
+from concurrent.futures import ThreadPoolExecutor
 from common.constant import CONSTANT
 from common.validate_input import check_structure
 from utils.log import Log
@@ -149,7 +149,7 @@ class Control():
                 Status().add_message(request_id,"lpower","Operation in progress...")
                 Status().mark_messages_read(request_id)
                 # -------------------------- end of work around -----------------------------------------------
-                executor = ProcessPoolExecutor(max_workers=1)
+                executor = ThreadPoolExecutor(max_workers=1)
                 executor.submit(NodeControl().control_mother, pipeline, request_id, size, delay)
                 executor.shutdown(wait=False)
                 # use below to not spawn a thread. easy for debugging.

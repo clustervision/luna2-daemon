@@ -47,7 +47,7 @@ class Plugin():
         two defined methods are mandatory:
         - clone
         - getpath
-        - sync_with_remote
+        - syncimage
         """
         self.logger = Log.get_logger()
 
@@ -75,7 +75,7 @@ class Plugin():
 
     # ---------------------------------------------------------------------------
 
-    def sync_with_remote(self,remote_host=None, remote_image_directory=None, osimage=None, local_image_directory=None):
+    def syncimage(self,remote_host=None, remote_image_directory=None, osimage=None, local_image_directory=None):
         """
         Method to rsync image data from remote host to local.
         """

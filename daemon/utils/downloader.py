@@ -62,7 +62,7 @@ class Downloader(object):
             status, path = os_image_plugin().getpath(image_directory=image_directory, osimage=image[0]['name'], tag=None) # we feed no tag as tagged/versioned FS is normally R/O
             if status is True:
                 hostip = Request().get_host_ip(host)
-                status, mesg = os_image_plugin().sync_with_remote(remote_host=hostip, remote_image_directory=path, osimage=image[0]['name'], local_image_directory=path)
+                status, mesg = os_image_plugin().syncimage(remote_host=hostip, remote_image_directory=path, osimage=image[0]['name'], local_image_directory=path)
                 if status is False:
                     self.logger.error(f"error copying data from {host} for {osimage}: {mesg}")
         return status

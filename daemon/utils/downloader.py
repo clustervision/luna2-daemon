@@ -58,9 +58,9 @@ class Downloader(object):
             filesystem_plugin = 'default'
             if 'IMAGE_FILESYSTEM' in CONSTANT['PLUGINS'] and CONSTANT['PLUGINS']['IMAGE_FILESYSTEM']:
                 filesystem_plugin = CONSTANT['PLUGINS']['IMAGE_FILESYSTEM']
+            os_image_plugin=Helper().plugin_load(self.osimage_plugins,'osimage/filesystem',filesystem_plugin)
             status, path = os_image_plugin().getpath(image_directory=image_directory, osimage=image[0]['name'], tag=None) # we feed no tag as tagged/versioned FS is normally R/O
             if status is True:
-                os_image_plugin=Helper().plugin_load(self.osimage_plugins,'osimage/filesystem',filesystem_plugin)
                 status, mesg = os_image_plugin().sync_with_remote(remote_host=host, remote_image_directory=path, osimage=image[0]['name'], local_image_directory=path)
                 if status is False:
                     self.logger.error(f"error copying data from {host} for {osimage}: {mesg}")

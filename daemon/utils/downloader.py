@@ -41,19 +41,30 @@ from utils.request import Request
 
 
 class Downloader(object):
-    """Class for downloading operations"""
+    """Class for downloading and copying operations"""
 
     def __init__(self):
-        """
-        room for comments/help
-        """
+        self.logger = Log.get_logger()
+        plugins_path=CONSTANT["PLUGINS"]["PLUGINS_DIR"]
+        self.osimage_plugins = Helper().plugin_finder(f'{plugins_path}/osimage')
+
 
     def pull_image_data(self,osimage,host):
         # host is the remote server from where we want to pull/sync from
+        status=False
         image = Database().get_record(None, 'osimage', f"WHERE name='{osimage}'")
         if image:
-            path = image[0]['path']
-        return True
+            image_directory = CONSTANT['FILES']['IMAGE_DIRECTORY']
+            filesystem_plugin = 'default'
+            if 'IMAGE_FILESYSTEM' in CONSTANT['PLUGINS'] and CONSTANT['PLUGINS']['IMAGE_FILESYSTEM']:
+                filesystem_plugin = CONSTANT['PLUGINS']['IMAGE_FILESYSTEM']
+            status, path = os_image_plugin().getpath(image_directory=image_directory, osimage=image[0]['name'], tag=None) # we feed no tag as tagged/versioned FS is normally R/O
+            if status is True:
+                os_image_plugin=Helper().plugin_load(self.osimage_plugins,'osimage/filesystem',filesystem_plugin)
+                status, mesg = os_image_plugin().sync_with_remote(remote_host=host, remote_image_directory=path, osimage=image[0]['name'], local_image_directory=path)
+                if status is False:
+                    self.logger.error(f"error copying data from {host} for {osimage}: {mesg}")
+        return status
 
 
     def pull_image_files(self,osimage,host):

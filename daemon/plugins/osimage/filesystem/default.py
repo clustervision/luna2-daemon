@@ -47,6 +47,7 @@ class Plugin():
         two defined methods are mandatory:
         - clone
         - getpath
+        - sync_with_remote
         """
         self.logger = Log.get_logger()
 
@@ -71,3 +72,23 @@ class Plugin():
             self.logger.info(f"Filesystem tag {tag} requested for {osimage}")
             #return True,image_directory+'/'+osimage+'@'+tag
         return True,image_directory+'/'+osimage
+
+    # ---------------------------------------------------------------------------
+
+    def sync_with_remote(self,remote_host=None, remote_image_directory=None, osimage=None, local_image_directory=None):
+        """
+        Method to rsync image data from remote host to local.
+        """
+        if remote_host and remote_image_directory and osimage and local_image_directory:
+            command=f"rsync -aHvn --one-file-system --delete-after {remote_host}:{remote_image_directory/{osimage}/* {local_image_directory}/{osimage}/ >> /tmp/copy_from_remote.out"
+            self.logger.info(command)
+            message,exit_code = Helper().runcommand(command,True,3600)
+            self.logger.debug(f"exit_code = {exit_code}")
+            if exit_code != 0:
+                if len(message) > 0:
+                    message=message[1]
+                return False,f"{message}"
+            return True, "Success"
+        else:
+            return False, "missing information to handle request"
+

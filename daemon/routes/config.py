@@ -650,6 +650,8 @@ def config_osimage_clone(name=None):
         access_code=200
         if len(returned)==3:
             request_id=returned[2]
+            if hastate is True:
+                Journal().queue_target_sync(name,request.data,request_id)
             response = {"message": response, "request_id": request_id}
         else:
             access_code = 201
@@ -727,6 +729,8 @@ def config_osimage_pack(name=None):
         access_code=200
         if len(returned)==3:
             request_id=returned[2]
+            if hastate is True:
+                Journal().queue_source_sync(name,request_id)
             response = {"message": response, "request_id": request_id}
         else:
             response = {'message': response}

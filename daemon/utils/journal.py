@@ -189,18 +189,10 @@ class Journal():
                                 request_id=returned[2]
                                 if class_name == 'OSImage':
                                     if function_name in ['pack','change_kernel','grab']:
-                                        queue_id,queue_response = Queue().add_task_to_queue(f"sync_osimage_with_master:{record['object']}:{self.me}",'osimage',request_id)
-                                        if queue_id:
-                                            Queue().update_task_status_in_queue(queue_id,'parked')
+                                        self.queue_source_sync(record['object'],request_id)
                                     elif function_name == 'clone_osimage':
                                         self.logger.debug(f"CLONE object: {record['object']}, payload: {payload}")
-                                        try: 
-                                            target=payload['config']['osimage'][record['object']]['name']
-                                            queue_id,queue_response = Queue().add_task_to_queue(f"sync_osimage_with_master:{target}:{self.me}",'osimage',request_id)
-                                            if queue_id:
-                                                Queue().update_task_status_in_queue(queue_id,'parked')
-                                        except Exception as exp:
-                                            self.logger.error(f"{exp}")
+                                        self.queue_target_sync(payload,request_id)
                                         
                                 # we have to keep track of the request_id as we have to inform the requestor about the progress.
                                 #executor = ThreadPoolExecutor(max_workers=1)
@@ -214,6 +206,22 @@ class Journal():
                     # we *always* have to remove the entries in the DB regarding outcome.
                     Database().delete_row('journal', [{"column": "id", "value": record['id']}])
         return status
+
+
+    def queue_source_sync(self,source,request_id=None):
+        try:
+            queue_id,queue_response = Queue().add_task_to_queue(f"sync_osimage_with_master:{source}:{self.me}",'osimage',request_id)
+            if queue_id:
+                Queue().update_task_status_in_queue(queue_id,'parked')
+        except Exception as exp:
+            self.logger.error(f"{exp}")
+
+    def queue_target_sync(self,source,payload,request_id=None):
+        try:
+            target=payload['config']['osimage'][source]['name']
+            self.queue_source_sync(target,request_id)
+        except Exception as exp:
+            self.logger.error(f"{exp}")
 
 
     def pushto_controllers(self):

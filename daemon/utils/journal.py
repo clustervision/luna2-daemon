@@ -226,10 +226,8 @@ class Journal():
             self.logger.error(f"{exp}")
 
     def queue_source_sync_by_node_name(self,name,request_id=None):
-        self.logger.info(f"JOURNAL: name = [{name}]")
         try:
             _,node_config=Node().get_node(None,name)
-            self.logger.info(f"NODE: {node_config}")
             if node_config and 'config' in node_config and 'node' in node_config['config'] and name in node_config['config']['node']:
                 osimage = node_config['config']['node'][name]['osimage']
                 self.queue_source_sync(osimage,request_id)

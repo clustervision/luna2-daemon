@@ -168,3 +168,8 @@ class Request():
             self.logger.error(f"no token for {uri} on host {host}. invalid credentials or host is down.")
         return False, None
 
+
+    def get_host_ip(self,host):
+        endpoint=self.dict_controllers[host]['ipaddress']
+        return endpoint
+

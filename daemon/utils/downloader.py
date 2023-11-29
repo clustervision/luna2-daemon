@@ -61,7 +61,8 @@ class Downloader(object):
             os_image_plugin=Helper().plugin_load(self.osimage_plugins,'osimage/filesystem',filesystem_plugin)
             status, path = os_image_plugin().getpath(image_directory=image_directory, osimage=image[0]['name'], tag=None) # we feed no tag as tagged/versioned FS is normally R/O
             if status is True:
-                status, mesg = os_image_plugin().sync_with_remote(remote_host=host, remote_image_directory=path, osimage=image[0]['name'], local_image_directory=path)
+                hostip = Request().get_host_ip(host)
+                status, mesg = os_image_plugin().sync_with_remote(remote_host=hostip, remote_image_directory=path, osimage=image[0]['name'], local_image_directory=path)
                 if status is False:
                     self.logger.error(f"error copying data from {host} for {osimage}: {mesg}")
         return status
@@ -72,9 +73,6 @@ class Downloader(object):
         image = Database().get_record(None, 'osimage', f"WHERE name='{osimage}'")
         if image:
             location=CONSTANT["FILES"]["IMAGE_FILES"]
-            #initrdfile = image[0]['initrdfile']
-            #kernelfile = image[0]['kernelfile']
-            #imagefile = image[0]['imagefile']
             for file in ['kernelfile','initrdfile','imagefile']:
                 status,_=Request().download_file(host,image[0][file],location)
         return True

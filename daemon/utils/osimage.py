@@ -694,15 +694,29 @@ class OsImage(object):
   
     def cleanup_file(self,file_to_remove):
         self.logger.info(f"I was called to cleanup old file: {file_to_remove}")
+        inuse = Database().get_record(None, 'osimage', f"WHERE kernelfile='{file_to_remove}' or initrdfile='{file_to_remove}' or imagefile='{file_to_remove}'")
+        if inuse:
+            return False, f"will not remove {file_to_remove} as it is still in use by {inuse[0]['name']}"
+        else:
+            inusebytag = Database().get_record(None, 'osimagetag', f"WHERE kernelfile='{file_to_remove}' or initrdfile='{file_to_remove}' or imagefile='{file_to_remove}'")
+            if inusebytag:
+                return False, f"will not remove {file_to_remove} as it is still in use by tag {inusebytag[0]['name']}"
         files_path = CONSTANT['FILES']['IMAGE_FILES']
         os_image_plugin=Helper().plugin_load(self.osimage_plugins,'osimage/other','cleanup')
         ret,mesg=os_image_plugin().cleanup(files_path=files_path,file_to_remove=file_to_remove)
-        return ret,mesg
+        return ret, mesg
 
     # -------------------------------------------------------------------
 
     def cleanup_provisioning(self,image_file):
         self.logger.info(f"I was called to cleanup old provisioning: {image_file}")
+        inuse = Database().get_record(None, 'osimage', f"WHERE imagefile='{image_file}'")
+        if inuse:
+            return False, f"will not remove {image_file} as it is still in use by {inuse[0]['name']}"
+        else:
+            inusebytag = Database().get_record(None, 'osimagetag', f"WHERE imagefile='{image_file}'")
+            if inusebytag:
+                return False, f"will not remove {image_file} as it is still in use by tag {inusebytag[0]['name']}"
         cluster_provision_methods=[]
         cluster = Database().get_record(None, 'cluster', None)
         if cluster:
@@ -710,12 +724,11 @@ class OsImage(object):
             cluster_provision_methods.append(cluster[0]['provision_fallback'])
         else:
             cluster_provision_methods.append('http')
-
         files_path = CONSTANT['FILES']['IMAGE_FILES']
         for method in cluster_provision_methods:
             provision_plugin=Helper().plugin_load(self.boot_plugins,'boot/provision',method)
             ret,mesg=provision_plugin().cleanup(files_path=files_path, image_file=image_file)
-        return ret,mesg
+        return ret, mesg
 
     # ------------------------------------------------------------------- 
   
@@ -794,15 +807,6 @@ class OsImage(object):
                                 queue_id,queue_response = Queue().add_task_to_queue(f"provision_osimage:{first}",'osimage',request_id)
                                 if queue_id:
                                     self.schedule_cleanup(first,request_id)
-#                                    image = Database().get_record(None, 'osimage', f"WHERE name='{first}'")
-#                                    if image:
-#                                        for item in ['kernelfile','initrdfile','imagefile']:
-#                                            if image[0][item]:
-#                                                inusebytag = Database().get_record(None, 'osimagetag', f"WHERE osimageid='{image[0]['id']}' AND {item}='"+image[0][item]+"'")
-#                                                if not inusebytag:
-#                                                    queue_id,queue_response = Queue().add_task_to_queue(f'cleanup_old_file:'+image[0][item],'housekeeper',request_id,None,'1h')
-#                                                    if item == 'imagefile':
-#                                                        queue_id,queue_response = Queue().add_task_to_queue(f'cleanup_old_provisioning:'+image[0][item],'housekeeper',request_id,None,'1h')
                                     if queue_id:
                                         queue_id,queue_response = Queue().add_task_to_queue(f"close_task:{next_id}",'osimage',request_id)
 

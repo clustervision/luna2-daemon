@@ -188,11 +188,13 @@ class Journal():
                             if len(returned)>2:
                                 request_id=returned[2]
                                 if class_name == 'OSImage':
-                                    if function_name in ['pack','change_kernel','grab']:
+                                    if function_name in ['pack','change_kernel']:
                                         self.queue_source_sync(record['object'],request_id)
                                     elif function_name == 'clone_osimage':
                                         self.logger.debug(f"CLONE object: {record['object']}, payload: {payload}")
                                         self.queue_target_sync(payload,request_id)
+                                    elif function_name == 'grab':
+                                        self.queue_source_sync_by_node_name(record['object'],request_id)
                                         
                                 # we have to keep track of the request_id as we have to inform the requestor about the progress.
                                 #executor = ThreadPoolExecutor(max_workers=1)
@@ -220,6 +222,17 @@ class Journal():
         try:
             target=payload['config']['osimage'][source]['name']
             self.queue_source_sync(target,request_id)
+        except Exception as exp:
+            self.logger.error(f"{exp}")
+
+    def queue_source_sync_by_node_name(self,name,request_id=None):
+        self.logger.info(f"JOURNAL: name = [{name}]")
+        try:
+            _,node_config=Node().get_node(None,name)
+            self.logger.info(f"NODE: {node_config}")
+            if node_config and 'config' in node_config and 'node' in node_config['config'] and name in node_config['config']['node']:
+                osimage = node_config['config']['node'][name]['osimage']
+                self.queue_source_sync(osimage,request_id)
         except Exception as exp:
             self.logger.error(f"{exp}")
 

@@ -154,6 +154,23 @@ def config_node_osgrab(name=None):
     Output - Success or Failure.
     """
     access_code=404
+    osimage=None
+    hastate=HA().get_hastate()
+    if hastate is True:
+        master=HA().get_role()
+        if master is False:
+            response={'message': 'something went wrong.....'}
+            request_id = Status().gen_request_id()
+            status, message = Journal().add_request(function="OSImage.grab",object=name,payload=request.data,masteronly=True,misc=request_id)
+            if status is True:
+                Status().add_message(request_id,"luna","request submitted to master...")
+                Status().mark_messages_read(request_id)
+                access_code=200
+                response = {"message": "request submitted to master...", "request_id": request_id}
+            else:
+                response={'message': message}
+            return response, access_code
+    # below only when we are master
     returned = OSImage().grab(name, request.data)
     status=returned[0]
     response=returned[1]
@@ -161,6 +178,8 @@ def config_node_osgrab(name=None):
         access_code=200
         if len(returned)==3:
             request_id=returned[2]
+            if hastate is True:
+                Journal().queue_source_sync_by_node_name(name, request_id)
             response = {"message": response, "request_id": request_id}
         else:
             response = {'message': response}

@@ -223,7 +223,7 @@ class Housekeeper(object):
                     handled=journal_object.handle_requests()
                     if handled is True:
                         ha_object.set_insync(True)
-                        sum_tel=11
+                        sum_tel=18
                     elif startup_controller is True:
                         startup_controller=False
                         ha_object.set_insync(True)

@@ -208,6 +208,7 @@ class Journal():
                                     if not request_id:
                                         request_id=str(time()) + str(randint(1001, 9999)) + str(getpid())
                                     Status().add_message(request_id, "luna", message)
+                                    Status().add_message(request_id, "luna", "EOF")
                                         
                                 if record['misc'] and request_id:
                                     # we have to keep track of the request_id as we have to inform the requestor about the progress.

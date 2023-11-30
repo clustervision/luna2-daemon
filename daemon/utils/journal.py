@@ -190,9 +190,12 @@ class Journal():
                             message=returned[1]
 
                             self.logger.info(f"result for {record['function']}({record['object']}): {status_}, {message}")
+                            request_id=None
                             if len(returned)>2:
                                 request_id=returned[2]
-                                if class_name == 'OSImage':
+
+                            if class_name == 'OSImage':
+                                if status_ is True:
                                     if function_name in ['pack','change_kernel']:
                                         self.queue_source_sync(record['object'],request_id)
                                     elif function_name == 'clone_osimage':
@@ -200,13 +203,15 @@ class Journal():
                                         self.queue_target_sync(record['object'],payload,request_id)
                                     elif function_name == 'grab':
                                         self.queue_source_sync_by_node_name(record['object'],request_id)
+                                else:
+                                    # something went wrong. we have to inform the remote host
+                                    if not request_id:
+                                        request_id=str(time()) + str(randint(1001, 9999)) + str(getpid())
+                                    Status().add_message(request_id, "luna", message)
                                         
-                                # we have to keep track of the request_id as we have to inform the requestor about the progress.
-                                #executor = ThreadPoolExecutor(max_workers=1)
-                                #executor.submit(Status().forward_messages, record['misc'], record['sendby'], request_id)
-                                #executor.shutdown(wait=False)
-                                #Status().forward_messages(record['misc'], record['sendby'], request_id)
-                                Status().forward_status_request(record['misc'], record['sendby'], request_id, self.me)
+                                if record['misc'] and request_id:
+                                    # we have to keep track of the request_id as we have to inform the requestor about the progress.
+                                    Status().forward_status_request(record['misc'], record['sendby'], request_id, self.me)
                     else:
                         self.logger.info(f"no returned data. could not execute {record['function']}({record['object']}) as i do not have matching criterea?")
 

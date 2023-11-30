@@ -66,6 +66,7 @@ from base.network import Network
 from base.dns import DNS
 from base.secret import Secret
 from base.osuser import OsUser
+from base.monitor import Monitor
 
 lock = Lock()
 #sem = Semaphore()

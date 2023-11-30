@@ -99,6 +99,10 @@ class Journal():
     def add_request(self,function,object,param=None,payload=None,masteronly=False,misc=None,sendnow=True):
         if not HA().get_hastate():
             return True, "Not in H/A mode"
+        trial=5
+        while not HA().get_insync() and trial>0:
+            sleep(1)
+            trial-=1
         if not HA().get_insync():
             return False, "Currently not able to handle request as i am not in sync yet"
         if payload:

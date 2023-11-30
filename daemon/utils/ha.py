@@ -189,6 +189,16 @@ class HA():
         return self.get_syncimages()
 
 
+    def get_full_state(self):
+        data = {}
+        ha_data = Database().get_record(None, 'ha')
+        if ha_data:
+            data = ha_data[0]
+            for item in ['master','syncimages','enabled','insync']:
+                data[item] = Helper().make_bool(data[item])
+        return data
+
+
     def ping_all_controllers(self):
         status=True
         if self.all_controllers:

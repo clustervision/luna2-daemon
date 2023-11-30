@@ -75,3 +75,52 @@ def ha_set_master(cli=None, name=None):
     response = {'message': response}
     return response, access_code
 
+
+@ha_blueprint.route('/ha/master', methods=['GET'])
+@token_required
+def ha_get_master():
+    """
+    This api will set the current host as master.
+    """
+    access_code = 404
+    response = HA().get_role()
+    if response:
+        access_code = 200
+    response = {'message': response}
+    return response, access_code
+
+
+@ha_blueprint.route('/ha/state', methods=['GET'])
+@token_required
+def ha_get_state():
+    """
+    This api will set the current host as master.
+    """
+    access_code = 404
+    response = HA().get_full_state()
+    if response:
+        access_code = 200
+        response = {'ha': response}
+    else:
+        response = {'message': 'HA not available'}
+    return response, access_code
+
+
+@ha_blueprint.route('/ha/syncimage/<string:name>', methods=['GET'])
+@token_required
+@validate_name
+def ha_sync_image(name=None):
+    """
+    This api will set the current host as master.
+    """
+    access_code = 404
+    response = "sync not available for images"
+    ha_object=HA()
+    if ha_object.get_syncimages() is True:
+        status, response = Journal().add_request(function='Downloader.pull_image_data',object=name,param=ha_object.get_me())
+        if status is True:
+            access_code = 201
+            response=f"image sync for {name} added to journal"
+    response = {'message': response}
+    return response, access_code
+

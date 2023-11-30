@@ -88,7 +88,7 @@ class Boot():
         controller = Database().get_record_join(
             ['controller.*','ipaddress.ipaddress'],
             ['ipaddress.tablerefid=controller.id'],
-            ['tableref="controller"',f'controller.hostname="{controller_name}"']
+            ['tableref="controller"',f'controller.hostname="{self.controller_name}"']
         )
         if controller:
             ipaddress = controller[0]['ipaddress']

@@ -34,6 +34,7 @@ import datetime
 import jinja2
 import jwt
 import re
+from time import sleep
 #from flask import abort
 from base64 import b64decode, b64encode
 from common.constant import CONSTANT
@@ -44,6 +45,8 @@ from utils.service import Service
 from utils.config import Config
 from common.constant import CONSTANT
 from base.node import Node
+from utils.journal import Journal
+from utils.ha import HA
 
 try:
     from plugins.boot.detection.switchport import Plugin as DetectionPlugin
@@ -64,8 +67,12 @@ class Boot():
         plugins_path=CONSTANT["PLUGINS"]["PLUGINS_DIR"]
         self.boot_plugins = Helper().plugin_finder(f'{plugins_path}/boot')
         self.osimage_plugins = Helper().plugin_finder(f'{plugins_path}/osimage')
-        # self.detection_plugins = Helper().plugin_finder(f'{plugins_path}/detection')
-        # self.DetectionPlugin=Helper().plugin_load(self.detection_plugins,'detection','switchport')
+        self.controller_name = 'controller'
+        self.ha_object=HA()
+        self.insync = self.ha_object.get_insync()
+        self.hastate = self.ha_object.get_hastate()
+        if self.hastate is True and self.insync is True:
+            self.controller_name=self.ha_object.get_me()
 
 
     def default(self):
@@ -81,7 +88,7 @@ class Boot():
         controller = Database().get_record_join(
             ['controller.*','ipaddress.ipaddress'],
             ['ipaddress.tablerefid=controller.id'],
-            ['tableref="controller"','controller.hostname="controller"']
+            ['tableref="controller"',f'controller.hostname="{controller_name}"']
         )
         if controller:
             ipaddress = controller[0]['ipaddress']
@@ -154,7 +161,7 @@ class Boot():
         controller = Database().get_record_join(
             ['controller.*', 'ipaddress.ipaddress'],
             ['ipaddress.tablerefid=controller.id'],
-            ['tableref="controller"', 'controller.hostname="controller"']
+            ['tableref="controller"', f'controller.hostname="{self.controller_name}"']
         )
         if controller:
             ipaddress = controller[0]['ipaddress']
@@ -201,7 +208,7 @@ class Boot():
         controller = Database().get_record_join(
             ['controller.*', 'ipaddress.ipaddress'],
             ['ipaddress.tablerefid=controller.id'],
-            ['tableref="controller"', 'controller.hostname="controller"']
+            ['tableref="controller"', f'controller.hostname="{self.controller_name}"']
         )
         if controller:
             ipaddress = controller[0]['ipaddress']
@@ -252,7 +259,7 @@ class Boot():
         controller = Database().get_record_join(
             ['controller.*', 'ipaddress.ipaddress','network.name as network'],
             ['ipaddress.tablerefid=controller.id','network.id=ipaddress.networkid'],
-            ['tableref="controller"', 'controller.hostname="controller"']
+            ['tableref="controller"', f'controller.hostname="{self.controller_name}"']
         )
         if controller:
             data['ipaddress'] = controller[0]['ipaddress']
@@ -468,7 +475,7 @@ class Boot():
         controller = Database().get_record_join(
             ['controller.*', 'ipaddress.ipaddress', 'network.name as network'],
             ['ipaddress.tablerefid=controller.id', 'network.id=ipaddress.networkid'],
-            ['tableref="controller"', 'controller.hostname="controller"']
+            ['tableref="controller"', f'controller.hostname="{self.controller_name}"']
         )
         if controller:
             data['network'] = controller[0]['network']
@@ -564,18 +571,31 @@ class Boot():
                 # Antoine aug 15 2023
                 ret,message = None, None
                 if new_nodename:
+                    trial=25
                     if example_node:
                         newnodedata = {'config': {'node': {example_node: {}}}}
                         newnodedata['config']['node'][example_node]['newnodename'] = new_nodename
                         newnodedata['config']['node'][example_node]['name'] = example_node
                         newnodedata['config']['node'][example_node]['group'] = groupname # groupname is given through API call
-                        ret, message = Node().clone_node(example_node,newnodedata)
+                        while self.insync is False and trial>0:
+                            self.insync = self.ha_object.get_insync()
+                            trial-=1
+                            sleep(2)
+                        ret, message = Journal().add_request(function="Node.clone_node",object=example_node,payload=newnodedata)
+                        if ret is True:
+                            ret, message = Node().clone_node(example_node,newnodedata)
                         self.logger.info(f"Group select boot: Cloning {example_node} to {new_nodename}: ret = [{ret}], message = [{message}]")
                     else:
                         newnodedata = {'config': {'node': {new_nodename: {}}}}
                         newnodedata['config']['node'][new_nodename]['name'] = new_nodename
                         newnodedata['config']['node'][new_nodename]['group'] = groupname # groupname is given through API call
-                        ret, message = Node().update(new_nodename,newnodedata)
+                        while self.insync is False and trial>0:
+                            self.insync = self.ha_object.get_insync()
+                            trial-=1
+                            sleep(2)
+                        ret, message = Journal().add_request(function="Node.update",object=example_node,payload=newnodedata)
+                        if ret is True:
+                            ret, message = Node().update(new_nodename,newnodedata)
                         self.logger.info(f"Group select boot: Creating {new_nodename}: ret = [{ret}], message = [{message}]")
                     if ret is True:
                         hostname = new_nodename
@@ -758,7 +778,7 @@ class Boot():
         controller = Database().get_record_join(
             ['controller.*', 'ipaddress.ipaddress', 'network.name as network'],
             ['ipaddress.tablerefid=controller.id','network.id=ipaddress.networkid'],
-            ['tableref="controller"','controller.hostname="controller"']
+            ['tableref="controller"',f'controller.hostname="{self.controller_name}"']
         )
         if controller:
             data['network'] = controller[0]['network']
@@ -948,7 +968,7 @@ class Boot():
         controller = Database().get_record_join(
             ['controller.*', 'ipaddress.ipaddress'],
             ['ipaddress.tablerefid=controller.id'],
-            ['tableref="controller"', 'controller.hostname="controller"']
+            ['tableref="controller"', f'controller.hostname="{self.controller_name}"']
         )
         if controller:
             data['ipaddress']   = controller[0]['ipaddress']

@@ -197,7 +197,7 @@ class Journal():
                                         self.queue_source_sync(record['object'],request_id)
                                     elif function_name == 'clone_osimage':
                                         self.logger.debug(f"CLONE object: {record['object']}, payload: {payload}")
-                                        self.queue_target_sync(payload,request_id)
+                                        self.queue_target_sync(record['object'],payload,request_id)
                                     elif function_name == 'grab':
                                         self.queue_source_sync_by_node_name(record['object'],request_id)
                                         

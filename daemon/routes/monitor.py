@@ -36,6 +36,7 @@ from utils.helper import Helper
 from common.validate_auth import token_required
 from common.validate_input import validate_name, input_filter
 from base.monitor import Monitor
+from utils.journal import Journal
 
 LOGGER = Log.get_logger()
 monitor_blueprint = Blueprint('monitor', __name__)
@@ -87,6 +88,7 @@ def monitor_status_post(node=None):
     Output - Status.
     """
     access_code = 404
+    Journal().add_request(function="Monitor.update_nodestatus",object=node,payload=request.data)
     status, response = Monitor().update_nodestatus(node, request.data)
     if status is True:
         access_code = 204

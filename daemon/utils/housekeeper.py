@@ -91,17 +91,21 @@ class Housekeeper(object):
                                 osimage=second
                                 master=third
                                 Queue().update_task_status_in_queue(next_id,'in progress')
-                                Journal().add_request(function='OsImager.schedule_cleanup',object=osimage)
-                                osimage_data=Database().get_record(None, 'osimage', f"WHERE name='{osimage}'")
-                                if osimage_data:
-                                    payload={'config':{'osimage':{osimage: {}}}}
-                                    for file in ['kernelfile','initrdfile','imagefile']:
-                                        payload['config']['osimage'][osimage][file]=osimage_data[0][file]
-                                    Journal().add_request(function='OSImage.update_osimage',object=osimage,payload=payload)
-                                Journal().add_request(function='Downloader.pull_image_files',object=osimage,param=master)
-                                Journal().add_request(function='OsImager.schedule_provision',object=osimage,param='housekeeper')
-                                if HA().get_syncimages() is True:
-                                    Journal().add_request(function='Downloader.pull_image_data',object=osimage,param=master)
+                                ret,mesg=Journal().add_request(function='OsImager.schedule_cleanup',object=osimage,keeptrying=60)
+                                if ret is True:
+                                    osimage_data=Database().get_record(None, 'osimage', f"WHERE name='{osimage}'")
+                                    if osimage_data:
+                                        payload={'config':{'osimage':{osimage: {}}}}
+                                        for file in ['kernelfile','initrdfile','imagefile']:
+                                            payload['config']['osimage'][osimage][file]=osimage_data[0][file]
+                                        Journal().add_request(function='OSImage.update_osimage',object=osimage,payload=payload)
+                                    Journal().add_request(function='Downloader.pull_image_files',object=osimage,param=master)
+                                    Journal().add_request(function='OsImager.schedule_provision',object=osimage,param='housekeeper')
+                                    if HA().get_syncimages() is True:
+                                        Journal().add_request(function='Downloader.pull_image_data',object=osimage,param=master)
+                                else:
+                                    Queue().update_task_status_in_queue(next_id,'stuck')
+                                    remove_from_queue=False
                             case 'provision_osimage':
                                 Queue().update_task_status_in_queue(next_id,'in progress')
                                 OsImage().provision_osimage(next_id,request_id)

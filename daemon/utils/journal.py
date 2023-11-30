@@ -96,7 +96,7 @@ class Journal():
         return self.me
 
 
-    def add_request(self,function,object,param=None,payload=None,masteronly=False,misc=None):
+    def add_request(self,function,object,param=None,payload=None,masteronly=False,misc=None,sendnow=True):
         if not HA().get_hastate():
             return True, "Not in H/A mode"
         if not HA().get_insync():
@@ -124,10 +124,11 @@ class Journal():
                     row = Helper().make_rows(data)
                     request_id = Database().insert('journal', row)
                     self.logger.info(f"adding {function}({object},{param},payload) to journal for {controller['hostname']} with id {request_id}")
-                executor = ThreadPoolExecutor(max_workers=1)
-                executor.submit(self.pushto_controllers)
-                executor.shutdown(wait=False)
-                #self.pushto_controllers()
+                if sendnow is True:
+                    executor = ThreadPoolExecutor(max_workers=1)
+                    executor.submit(self.pushto_controllers)
+                    executor.shutdown(wait=False)
+                    #self.pushto_controllers()
             else:
                 self.logger.error(f"No controllers are configured")
         else:

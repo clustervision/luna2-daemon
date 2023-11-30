@@ -88,7 +88,7 @@ def monitor_status_post(node=None):
     Output - Status.
     """
     access_code = 404
-    Journal().add_request(function="Monitor.update_nodestatus",object=node,payload=request.data)
+    Journal().add_request(function="Monitor.update_nodestatus",object=node,payload=request.data,sendnow=False)
     status, response = Monitor().update_nodestatus(node, request.data)
     if status is True:
         access_code = 204

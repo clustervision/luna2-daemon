@@ -470,11 +470,11 @@ class OSImage():
             [f'osimage.name="{name}"']
         )
         if tag_details:
-            for tag_details in tag_details:
+            for tag_detail in tag_details:
                 for item in ['kernelfile','initrdfile','imagefile']:
                     queue_id,queue_response = Queue().add_task_to_queue(f'cleanup_old_file:'+tag_detail[item],
                                                                     'housekeeper','__tag_delete__',None,'1h')
-                queue_id,queue_response = Queue().add_task_to_queue(f'cleanup_old_provisioning:'+tag_details['imagefile'],
+                queue_id,queue_response = Queue().add_task_to_queue(f'cleanup_old_provisioning:'+tag_detail['imagefile'],
                                                                     'housekeeper','__tag_delete__',None,'1h')
                 status, response = Model().delete_record_by_id(
                     id = tag_detail['tagid'],

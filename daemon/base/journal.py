@@ -72,7 +72,7 @@ class Journal():
                 data.append(entry)
         if del_ids:
             for id in del_ids:
-                Database().delete_row('node', [{"column": "id", "value": id}])
+                Database().delete_row('journal', [{"column": "id", "value": id}])
         response={'journal': data}
         self.logger.debug(f"sending: {data}")
         return True, response
@@ -134,7 +134,7 @@ class Journal():
                     if entries:
                         for entry in entries:
                             self.logger.debug(f"journal entry deleting {entry['id']}, {where}")
-                            Database().delete_row('node', [{"column": "id", "value": entry['id']}])
+                            Database().delete_row('journal', [{"column": "id", "value": entry['id']}])
 
         return status, response
 

@@ -48,6 +48,7 @@ class Journal():
     def get_journal(self, host=None):
         where=""
         data=[]
+        del_ids=[]
         if host:
             controller=None
             all_controllers = Database().get_record_join(['controller.*','ipaddress.ipaddress','network.name as domain'],
@@ -66,8 +67,12 @@ class Journal():
         entries=Database().get_record(["*","strftime('%s',created) AS created"],"journal",where)
         if entries:
             for entry in entries:
+                del_ids.append(entry['id'])
                 del entry['id']
                 data.append(entry)
+        if del_ids:
+            for id in del_ids:
+                Database().delete_row('node', [{"column": "id", "value": id}])
         response={'journal': data}
         self.logger.debug(f"sending: {data}")
         return True, response

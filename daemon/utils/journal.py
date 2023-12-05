@@ -295,9 +295,9 @@ class Journal():
                     self.logger.info(f"pulling status: {status}")
                     if status is False:
                         return False
-                    status=self.delete_journal(controller['hostname'])
-                    if status is False:
-                        return False
+                    #status=self.delete_journal(controller['hostname'])
+                    #if status is False:
+                    #    return False
         return True
 
 

@@ -215,7 +215,7 @@ class Journal():
                                     # we have to keep track of the request_id as we have to inform the requestor about the progress.
                                     Status().forward_status_request(record['misc'], record['sendby'], request_id, self.me)
                     else:
-                        self.logger.info(f"no returned data. could not execute {record['function']}({record['object']}) as i do not have matching criterea?")
+                        self.logger.info(f"result for {record['function']}({record['object']}): {returned}")
 
                     # we *always* have to remove the entries in the DB regarding outcome.
                     Database().delete_row('journal', [{"column": "id", "value": record['id']}])

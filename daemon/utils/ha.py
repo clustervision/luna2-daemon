@@ -125,7 +125,6 @@ class HA():
         state=Helper().make_bool(state)
         if sec:
             self.master = self.get_role()
-            self.logger.info(f"TYPE of self.master: {type(self.master)}, TYPE of state: {type(state)}")
             if self.master is True and state is False:
                 newer = Database().get_record(["master","strftime('%s', updated) AS updated"],'ha',f"WHERE CAST(strftime('%s', updated) AS integer) > {sec}")
                 if newer:

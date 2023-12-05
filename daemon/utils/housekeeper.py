@@ -214,6 +214,7 @@ class Housekeeper(object):
                     return
             # ---------------------------- good. now we can proceed with the main loop
             sync_tel=0
+            ha_object.set_overrule(False)
             while True:
                 try:
                     # --------------------------- am i a master or not?

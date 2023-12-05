@@ -101,93 +101,74 @@ class HA():
         return self.ip
 
     def set_insync(self,state):
-        ha_state={}
-        ha_state['insync']=0
-        if state is True:
-            ha_state['insync']=1
-        ha_data = Database().get_record(None, 'ha')
-        if ha_data:
-            if state != ha_data[0]['insync']:
-                self.logger.info(f"set_insync ha_state: {ha_state}")
-            where = [{"column": "insync", "value": ha_data[0]['insync']}]
-            row = Helper().make_rows(ha_state)
-            Database().update('ha', row, where)
-        return self.get_insync()
+        oldstate=self.get_insync()
+        if state != oldstate:
+                self.logger.info(f"set_insync state to {state}")
+        self.set_property('insync',state)
+        state=Helper().make_bool(state)
+        return state
 
     def get_insync(self):
-        ha_data = Database().get_record(None, 'ha')
-        if ha_data:
-            self.logger.debug(f"get_insync new ha_state: {ha_data}")
-            self.insync=Helper().make_bool(ha_data[0]['insync'])
-            self.logger.debug(f"get_insync new_self.insync: {self.insync}")
-        else:
-            return False
+        self.insync=self.get_property('insync')
         return self.insync
 
     def get_hastate(self):
-        if self.hastate is None:
-            ha_data = Database().get_record(None, 'ha')
-            if ha_data:
-                self.logger.debug(f"get_hastate new ha_state: {ha_data}")
-                self.hastate=Helper().make_bool(ha_data[0]['enabled'])
-                self.logger.debug(f"get_hastate new_self.hastate: {self.hastate}")
+        self.hastate=self.get_property('enabled')
         return self.hastate
 
     def set_hastate(self,state):
-        ha_state={}
-        ha_state['enabled']=0
-        if state is True:
-            ha_state['enabled']=1
-        self.logger.info(f"set_hastate ha_state: {ha_state}")
-        ha_data = Database().get_record(None, 'ha')
-        if ha_data:
-            where = [{"column": "enabled", "value": ha_data[0]['enabled']}]
-            row = Helper().make_rows(ha_state)
-            Database().update('ha', row, where)
+        self.set_property('enabled',state)
         return self.get_hastate()
 
     def get_role(self):
-        ha_data = Database().get_record(None, 'ha')
-        if ha_data:
-            master=ha_data[0]['master'] or False
-            self.master=Helper().make_bool(master)
-            self.logger.debug(f"Master state: {self.master}")
+        self.master=self.get_property('master')
         return self.master
 
     def set_role(self,state):
-        ha_state={}
-        ha_state['master']=0
-        if state is True:
-            ha_state['master']=1
-        self.logger.info(f"set_hastate ha_state: {ha_state}")
-        ha_data = Database().get_record(None, 'ha')
-        if ha_data:
-            where = [{"column": "master", "value": ha_data[0]['master']}]
-            row = Helper().make_rows(ha_state)
-            Database().update('ha', row, where)
-        return self.get_hastate()
+        self.logger.info(f"set_role (master) to {state}")
+        self.set_property('master',state)
+        return self.get_role()
 
     def get_syncimages(self):
-        ha_data = Database().get_record(None, 'ha')
-        if ha_data:
-            syncimages=ha_data[0]['syncimages'] or False
-            self.syncimages=Helper().make_bool(syncimages)
-            self.logger.debug(f"Syncimages state: {self.syncimages}")
+        self.syncimages=self.get_property('syncimages')
         return self.syncimages
 
     def set_syncimages(self,state):
-        ha_state={}
-        ha_state['syncimages']=0
-        if state is True:
-            ha_state['syncimages']=1
-        self.logger.info(f"set_hastate ha_state: {ha_state}")
-        ha_data = Database().get_record(None, 'ha')
-        if ha_data:
-            where = [{"column": "syncimages", "value": ha_data[0]['syncimages']}]
-            row = Helper().make_rows(ha_state)
-            Database().update('ha', row, where)
+        self.set_property('syncimage',state)
         return self.get_syncimages()
 
+    def get_overrule(self):
+        self.overrule=self.get_property('overrule')
+        return self.overrule
+
+    def set_overrule(self,state):
+        self.set_property('overrule',state)
+        return self.get_overrule()
+
+    # --------------------------------------------------------------------------
+
+    def set_property(self,name,value):
+        property={}
+        property[name]=0
+        if value is True:
+            property[name]=1
+        self.logger.debug(f"set_{name} set to {property}")
+        ha_data = Database().get_record(None, 'ha')
+        if ha_data:
+            where = [{"column": name, "value": ha_data[0][name]}]
+            row = Helper().make_rows(property)
+            Database().update('ha', row, where)
+
+    def get_property(self,name):
+        value=False
+        ha_data = Database().get_record(None, 'ha')
+        if ha_data:
+            value=ha_data[0][name] or False
+        value=Helper().make_bool(value)
+        self.logger.debug(f"{name} state: {value}")
+        return value
+
+    # --------------------------------------------------------------------------
 
     def get_full_state(self):
         data = {}
@@ -198,7 +179,6 @@ class HA():
                 data[item] = Helper().make_bool(data[item])
         return data
 
-
     def ping_all_controllers(self):
         status=True
         if self.all_controllers:
@@ -207,7 +187,6 @@ class HA():
                 if status is False:
                     return False
         return status
-
 
     def ping_host(self,host):
         domain=self.dict_controllers[host]['domain']

@@ -68,10 +68,10 @@ def ha_set_master(cli=None, name=None):
         role = HA().set_role(True)
         if role is True: # meaning it's what i asked for
             access_code = 200
-            response="current role set to master"
+            response = "current role set to master"
         else:
             access_code = 503
-            response="could not set role to master"
+            response = "could not set role to master"
     response = {'message': response}
     return response, access_code
 
@@ -121,6 +121,21 @@ def ha_sync_image(name=None):
         if status is True:
             access_code = 201
             response=f"image sync for {name} added to journal"
+    response = {'message': response}
+    return response, access_code
+
+
+@ha_blueprint.route('/ha/overrule/_set', methods=['GET'])
+@token_required
+def ha_set_overrule(cli=None, name=None):
+    """
+    This api will set the overrule flag for HA.
+    It will not complain being out of sync, even if it's not synced.
+    only really useful when all controllers are down and only one brought up.
+    use with a lot of caution!
+    """
+    access_code = 204
+    response = HA().set_overrule(True)
     response = {'message': response}
     return response, access_code
 

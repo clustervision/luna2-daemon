@@ -328,6 +328,7 @@ def bootstrap(bootstrapfile=None):
     ha_state = [{'column': 'enabled', 'value': '0'},
                 {'column': 'syncimages', 'value': '1'},
                 {'column': 'insync', 'value': '0'},
+                {'column': 'overrule', 'value': '0'},
                 {'column': 'master', 'value': '0'}]
     Database().insert('ha', ha_state)
 

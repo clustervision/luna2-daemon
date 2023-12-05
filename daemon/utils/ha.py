@@ -121,9 +121,14 @@ class HA():
         self.master=self.get_property('master')
         return self.master
 
-    def set_role(self,state):
+    def set_role(self,state,sec=None):
+        if sec:
+            newer = Database().get_record(["strftime('%s', updated) AS updated"],'ha',f"WHERE CAST(strftime('%s', updated) AS integer) > {sec}")
+            if newer:
+                self.logger.warning(f"set_role (master) to {state} denied as request ({sec}) is older than my state ({newer[0]['updated']})")
+                return False
         self.logger.info(f"set_role (master) to {state}")
-        return self.set_property('master',state)
+        return self.set_property('master',state,True)
 
     def get_syncimages(self):
         self.syncimages=self.get_property('syncimages')
@@ -141,7 +146,7 @@ class HA():
 
     # --------------------------------------------------------------------------
 
-    def set_property(self,name,value):
+    def set_property(self,name,value,set_updated=False):
         property={}
         property[name]=0
         if value is True:
@@ -150,6 +155,8 @@ class HA():
         ha_data = Database().get_record(None, 'ha')
         if ha_data:
             where = [{"column": name, "value": ha_data[0][name]}]
+            if set_updated:
+                property['updated']="NOW"
             row = Helper().make_rows(property)
             result=Database().update('ha', row, where)
             if result:

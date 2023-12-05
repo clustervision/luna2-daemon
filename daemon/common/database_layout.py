@@ -286,5 +286,6 @@ DATABASE_LAYOUT_ha = [
 {"column": "syncimages",           "datatype": "INTEGER", "length": "10"},
 {"column": "insync",               "datatype": "INTEGER", "length": "10"},
 {"column": "overrule",             "datatype": "INTEGER", "length": "10"},
-{"column": "master",               "datatype": "INTEGER", "length": "10"}]
+{"column": "master",               "datatype": "INTEGER", "length": "10"},
+{"column": "updated",              "datatype": "numeric"}]
 

@@ -143,7 +143,7 @@ class Journal():
     def handle_requests(self):
         status=False
         if self.me:
-            all_records = Database().get_record(None,'journal',f"WHERE sendfor='{self.me}' ORDER BY created,id ASC")
+            all_records = Database().get_record(["*","strftime('%s',created) AS createdsec"],'journal',f"WHERE sendfor='{self.me}' ORDER BY created,id ASC")
             if all_records:
                 master=HA().get_role()
                 status=True
@@ -168,7 +168,11 @@ class Journal():
                     returned=[]
                     repl_class = globals()[class_name]                # -> base.node.Node
                     repl_function = getattr(repl_class,function_name) # -> base.node.Node.node_update
-                    if record['param'] and payload:
+
+                    # introducing some uglyness since we do not use the created field in classes.
+                    if class_name == "HA" and function_name == "set_role":
+                        returned=repl_function(repl_class(),record['object'],record['createdsec'])
+                    elif record['param'] and payload:
                         returned=repl_function(repl_class(),record['object'],record['param'],payload)
                     if record['param']:
                         returned=repl_function(repl_class(),record['object'],record['param'])

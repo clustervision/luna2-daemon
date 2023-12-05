@@ -64,14 +64,19 @@ def ha_set_master(cli=None, name=None):
     """
     access_code = 404
     status, response = Journal().add_request(function="HA.set_role",object=False)
-    if status is True:
-        role = HA().set_role(True)
-        if role is True: # meaning it's what i asked for
+    # we cannot use the status return to further proceed as setting a master should always be possible
+    role = HA().set_role(True)
+    if role is True: # meaning it's what i asked for
+        insync = HA().set_insync(True)
+        if insync is True:
             access_code = 200
             response = "current role set to master"
         else:
             access_code = 503
-            response = "could not set role to master"
+            response = "could not set insync to true"
+    else:
+        access_code = 503
+        response = "could not set role to master"
     response = {'message': response}
     return response, access_code
 

@@ -103,10 +103,8 @@ class HA():
     def set_insync(self,state):
         oldstate=self.get_insync()
         if state != oldstate:
-                self.logger.info(f"set_insync state to {state}")
-        self.set_property('insync',state)
-        state=Helper().make_bool(state)
-        return state
+            self.logger.info(f"set_insync state to {state}")
+        return self.set_property('insync',state)
 
     def get_insync(self):
         self.insync=self.get_property('insync')
@@ -117,8 +115,7 @@ class HA():
         return self.hastate
 
     def set_hastate(self,state):
-        self.set_property('enabled',state)
-        return self.get_hastate()
+        return self.set_property('enabled',state)
 
     def get_role(self):
         self.master=self.get_property('master')
@@ -126,24 +123,21 @@ class HA():
 
     def set_role(self,state):
         self.logger.info(f"set_role (master) to {state}")
-        self.set_property('master',state)
-        return self.get_role()
+        return self.set_property('master',state)
 
     def get_syncimages(self):
         self.syncimages=self.get_property('syncimages')
         return self.syncimages
 
     def set_syncimages(self,state):
-        self.set_property('syncimage',state)
-        return self.get_syncimages()
+        return self.set_property('syncimage',state)
 
     def get_overrule(self):
         self.overrule=self.get_property('overrule')
         return self.overrule
 
     def set_overrule(self,state):
-        self.set_property('overrule',state)
-        return self.get_overrule()
+        return self.set_property('overrule',state)
 
     # --------------------------------------------------------------------------
 
@@ -157,7 +151,10 @@ class HA():
         if ha_data:
             where = [{"column": name, "value": ha_data[0][name]}]
             row = Helper().make_rows(property)
-            Database().update('ha', row, where)
+            result=Database().update('ha', row, where)
+            if result:
+                return True
+        return False
 
     def get_property(self,name):
         value=False

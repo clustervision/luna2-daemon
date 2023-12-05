@@ -122,6 +122,7 @@ class HA():
         return self.master
 
     def set_role(self,state,sec=None):
+        state=Helper().make_bool(state)
         if sec:
             self.master = self.get_role()
             self.logger.info(f"TYPE of self.master: {type(self.master)}, TYPE of state: {type(state)}")
@@ -153,6 +154,7 @@ class HA():
     def set_property(self,name,value,set_updated=False):
         property={}
         property[name]=0
+        value=Helper().make_bool(value)
         if value is True:
             property[name]=1
         self.logger.debug(f"set_{name} set to {property}")

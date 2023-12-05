@@ -123,14 +123,13 @@ class HA():
 
     def set_role(self,state,sec=None):
         if sec:
-            newer = Database().get_record(["master","strftime('%s', updated) AS updated"],'ha',f"WHERE CAST(strftime('%s', updated) AS integer) > {sec}")
-            if newer:
-                self.master = self.get_role()
-                if self.master != state:
+            self.master = self.get_role()
+            if self.master is True and state is False:
+                newer = Database().get_record(["master","strftime('%s', updated) AS updated"],'ha',f"WHERE CAST(strftime('%s', updated) AS integer) > {sec}")
+                if newer:
                     self.logger.warning(f"set_role (master) to {state} denied as request ({sec}) is older than my state ({newer[0]['updated']})")
                     self.logger.warning(f"set_role (master) to {state} kept current master state of {self.master}")
                     return False
-                return None
         self.logger.info(f"set_role (master) to {state}")
         return self.set_property('master',state,True)
 

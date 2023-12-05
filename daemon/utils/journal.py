@@ -79,10 +79,10 @@ class Journal():
 
     def __init__(self,me=None):
         self.logger = Log.get_logger()
-        ha_object = HA()
+        self.ha_object = HA()
         self.me=me
         if not self.me:
-            self.me=ha_object.get_me()
+            self.me=self.ha_object.get_me()
         
         self.dict_controllers=None
         self.all_controllers = Database().get_record_join(['controller.*','ipaddress.ipaddress','network.name as domain'],
@@ -97,13 +97,13 @@ class Journal():
 
 
     def add_request(self,function,object,param=None,payload=None,masteronly=False,misc=None,sendnow=True,keeptrying=5):
-        if not ha_object.get_hastate():
+        if not self.ha_object.get_hastate():
             return True, "Not in H/A mode"
-        if not ha_object.get_overrule():
-            while not ha_object.get_insync() and keeptrying>0:
+        if not self.ha_object.get_overrule():
+            while not self.ha_object.get_insync() and keeptrying>0:
                 sleep(1)
                 keeptrying-=1
-            if not ha_object.get_insync():
+            if not self.ha_object.get_insync():
                 return False, "Currently not able to handle request as i am not in sync yet"
         if payload:
             string = dumps(payload)

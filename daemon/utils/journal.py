@@ -174,7 +174,7 @@ class Journal():
                         returned=repl_function(repl_class(),record['object'],record['createdsec'])
                     elif record['param'] and payload:
                         returned=repl_function(repl_class(),record['object'],record['param'],payload)
-                    if record['param']:
+                    elif record['param']:
                         returned=repl_function(repl_class(),record['object'],record['param'])
                     elif record['object'] and payload:
                         returned=repl_function(repl_class(),record['object'],payload)

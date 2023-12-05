@@ -125,11 +125,9 @@ class HA():
         if sec:
             newer = Database().get_record(["master","strftime('%s', updated) AS updated"],'ha',f"WHERE CAST(strftime('%s', updated) AS integer) > {sec}")
             if newer:
-                curstate=Helper().make_bool(newer[0]['master'])
-                if curstate != state:
+                self.master = self.get_role()
+                if self.master != state:
                     self.logger.warning(f"set_role (master) to {state} denied as request ({sec}) is older than my state ({newer[0]['updated']})")
-                    if self.master is None:
-                        self.master = self.get_role()
                     self.logger.warning(f"set_role (master) to {state} kept current master state of {self.master}")
                     return False
                 return None

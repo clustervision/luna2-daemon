@@ -583,18 +583,18 @@ class Node():
                 group_details = Database().get_record_join(['group.name'],
                                                            ['group.id=node.groupid'],
                                                            [f"node.name='{name}'"])
-                if group_details:
-                    node_plugins = Helper().plugin_finder(f'{self.plugins_path}/node')
-                    node_plugin=Helper().plugin_load(node_plugins,'node','default')
-                    try:
-                        if oldnodename and nodename_new:
-                            node_plugin().rename(name=oldnodename, newname=nodename_new)
-                        elif create:
+                node_plugins = Helper().plugin_finder(f'{self.plugins_path}/node')
+                node_plugin=Helper().plugin_load(node_plugins,'node','default')
+                try:
+                    if oldnodename and nodename_new:
+                        node_plugin().rename(name=oldnodename, newname=nodename_new)
+                    elif group_details:
+                        if create:
                             node_plugin().postcreate(name=name, group=group_details[0]['name'])
                         elif update:
                             node_plugin().postupdate(name=name, group=group_details[0]['name'])
-                    except Exception as exp:
-                        self.logger.error(f"{exp}")
+                except Exception as exp:
+                    self.logger.error(f"{exp}")
             else:
                 response = 'Invalid request: Columns are incorrect'
                 status = False

@@ -56,10 +56,10 @@ class Plugin():
     def postcreate(self, name=None, nodes=[]):
         processes = []
         return_code = 0
-        nodes_arg = [','.join(nodes)] if nodes else []
-        processes.append(subprocess.run([self.SCRIPTS_PATH + "/write_pdsh_genders.py", "group", "create", name, *nodes_arg], check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE))
-        processes.append(subprocess.run([self.SCRIPTS_PATH + "/write_slurm_nodes.py", "group", "create", name, *nodes_arg], check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE))
-        processes.append(subprocess.run([self.SCRIPTS_PATH + "/write_slurm_partitions.py", "group", "create", name, *nodes_arg], check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE))
+        if not nodes: return
+        processes.append(subprocess.run([self.SCRIPTS_PATH + "/trix-config-manager", "pdsh-genders", "group", "create", name, ','.join(nodes)], check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE))
+        processes.append(subprocess.run([self.SCRIPTS_PATH + "/trix-config-manager", "slurm-nodes", "group", "create", name, ','.join(nodes)], check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE))
+        processes.append(subprocess.run([self.SCRIPTS_PATH + "/trix-config-manager", "slurm-partitions", "create", name, ','.join(nodes)], check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE))
 
         for process in processes:
             process_return_code = process.returncode
@@ -78,10 +78,10 @@ class Plugin():
     def postupdate(self, name=None, nodes=[]):
         processes = []
         return_code = 0
-        nodes_arg = [','.join(nodes)] if nodes else []
-        processes.append(subprocess.run([self.SCRIPTS_PATH + "/write_pdsh_genders.py", "group", "update", name, *nodes_arg], check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE))
-        processes.append(subprocess.run([self.SCRIPTS_PATH + "/write_slurm_nodes.py", "group", "update", name, *nodes_arg], check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE))
-        processes.append(subprocess.run([self.SCRIPTS_PATH + "/write_slurm_partitions.py", "group", "update", name, *nodes_arg], check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE))
+        if not nodes: return
+        processes.append(subprocess.run([self.SCRIPTS_PATH + "/trix-config-manager", "pdsh-genders", "group", "update", name, ','.join(nodes)], check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE))
+        processes.append(subprocess.run([self.SCRIPTS_PATH + "/trix-config-manager", "slurm-nodes", "group", "update", name, ','.join(nodes)], check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE))
+        processes.append(subprocess.run([self.SCRIPTS_PATH + "/trix-config-manager", "slurm-partitions", "group", "update", name, ','.join(nodes)], check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE))
 
         for process in processes:
             process_return_code = process.returncode
@@ -101,9 +101,9 @@ class Plugin():
     def rename(self, name=None, newname=None):
         processes = []
         return_code = 0
-        processes.append(subprocess.run([self.SCRIPTS_PATH + "/write_pdsh_genders.py", "group", "rename", name, newname], check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE))
-        processes.append(subprocess.run([self.SCRIPTS_PATH + "/write_slurm_nodes.py", "group", "rename", name, newname], check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE))
-        processes.append(subprocess.run([self.SCRIPTS_PATH + "/write_slurm_partitions.py", "group", "rename", name, newname], check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE))
+        processes.append(subprocess.run([self.SCRIPTS_PATH + "/trix-config-manager", "pdsh-genders", "group", "rename", name, newname], check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE))
+        processes.append(subprocess.run([self.SCRIPTS_PATH + "/trix-config-manager", "slurm-nodes", "group", "rename", name, newname], check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE))
+        processes.append(subprocess.run([self.SCRIPTS_PATH + "/trix-config-manager", "slurm-partitions", "group", "rename", name, newname], check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE))
 
         for process in processes:
             process_return_code = process.returncode
@@ -123,9 +123,9 @@ class Plugin():
     def delete(self, name=None):
         processes = []
         return_code = 0
-        processes.append(subprocess.run([self.SCRIPTS_PATH + "/write_pdsh_genders.py", "group", "delete", name], check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE))
-        processes.append(subprocess.run([self.SCRIPTS_PATH + "/write_slurm_nodes.py", "group", "delete", name], check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE))
-        processes.append(subprocess.run([self.SCRIPTS_PATH + "/write_slurm_partitions.py", "group", "delete", name], check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE))
+        processes.append(subprocess.run([self.SCRIPTS_PATH + "/trix-config-manager", "pdsh-genders", "group", "delete", name], check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE))
+        processes.append(subprocess.run([self.SCRIPTS_PATH + "/trix-config-manager", "slurm-nodes", "group", "delete", name], check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE))
+        processes.append(subprocess.run([self.SCRIPTS_PATH + "/trix-config-manager", "slurm-partitions", "group", "delete", name], check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE))
 
         for process in processes:
             process_return_code = process.returncode

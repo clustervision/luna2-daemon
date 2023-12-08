@@ -91,7 +91,7 @@ class Group():
         return True,response
 
 
-    def get_group(self, cli=None, name=None):
+    def get_group(self, name=None):
         """
         This method will return requested group in detailed format.
         """
@@ -109,10 +109,7 @@ class Group():
             'provision_fallback': 'http'
         }
         # same as above but now specifically base64
-        if cli:
-            b64items = {'prescript': '<empty>', 'partscript': '<empty>', 'postscript': '<empty>'}
-        else:
-            b64items = {'prescript': '', 'partscript': '', 'postscript': ''}
+        b64items = {'prescript': '', 'partscript': '', 'postscript': ''}
         cluster = Database().get_record(None, 'cluster', None)
         groups = Database().get_record(None, 'group', f' WHERE name = "{name}"')
         if groups:
@@ -136,55 +133,30 @@ class Group():
                     group['interfaces'].append(interface)
             del group['id']
             for key, value in items.items():
-                if key in cluster[0]:
+                if key in cluster[0] and ((not key in group) or (not group[key])):
                     if isinstance(value, bool):
                         cluster[0][key] = str(Helper().make_bool(cluster[0][key]))
-                    if cli:
-                        cluster[0][key] = cluster[0][key] or str(value)+' (default)'
-                    else:
-                        cluster[0][key] = cluster[0][key] or str(value)
-                        group[key+'_source'] = 'default'
-                if key in group:
+                    group[key] = str(cluster[0][key])
+                    group[key+'_source'] = 'cluster'
+                elif key in group and group[key]:
                     if isinstance(value, bool):
                         group[key] = str(Helper().make_bool(group[key]))
-                if key in cluster[0] and ((not key in group) or (not group[key])):
-                    group[key] = str(cluster[0][key])
-                    if cli:
-                        group[key] +=' (cluster)'
-                    else:
-                        group[key+'_source'] = 'cluster'
+                    group[key+'_source'] = 'group'
+                    group[key] = group[key] or str(value)
                 else:
-                    if key in group:
-                        if cli:
-                            group[key] = group[key] or str(value)+' (default)'
-                        else:
-                            group[key+'_source'] = 'default'
-                            if group[key]:
-                                group[key+'_source'] = 'group'
-                            group[key] = group[key] or str(value)
-                    else:
-                        if isinstance(value, bool):
-                            group[key] = str(Helper().make_bool(group[key]))
-                        group[key] = str(value)
-                        if cli:
-                            group[key] += ' (default)'
-                        else:
-                            group[key+'_source'] = 'default'
+                    group[key] = str(value)
+                    group[key+'_source'] = 'default'
             try:
                 for key, value in b64items.items():
                     default_str = str(value)
-                    if cli:
-                        default_str += ' (default)'
-                    else:
-                        group[key+'_source'] = 'default'
                     default_data = b64encode(default_str.encode())
                     default_data = default_data.decode("ascii")
-                    if key in group:
+                    if key in group and group[key]:
                         group[key] = group[key] or default_data
-                        if (not cli) and group[key]:
-                            group[key+'_source'] = 'group'
+                        group[key+'_source'] = 'group'
                     else:
                         group[key] = default_data
+                        group[key+'_source'] = 'default'
             except Exception as exp:
                 self.logger.error(f"{exp}")
 
@@ -199,12 +171,11 @@ class Group():
             else:
                 group['osimagetag'] = 'default'
             del group['osimagetagid']
-            if not cli:
-                group['osimage_source'] = 'group'
-                group['bmcsetupname_source'] = 'group'
-                group['osimagetag_source'] = 'group'
-                if group['osimagetag'] == 'default':
-                    group['osimagetag_source'] = 'default'
+            group['osimage_source'] = 'group'
+            group['bmcsetupname_source'] = 'group'
+            group['osimagetag_source'] = 'group'
+            if group['osimagetag'] == 'default':
+                group['osimagetag_source'] = 'default'
             # ---
             response['config']['group'][name] = group
             self.logger.info(f'Returned Group {name} with Details.')

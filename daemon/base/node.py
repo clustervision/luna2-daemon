@@ -325,7 +325,7 @@ class Node():
                     if 'group_'+key in node and node['group_'+key] and not node[key]:
                         node[key] = node['group_'+key]
                         node[key+'_source'] = 'group'
-                    elif node[key]
+                    elif node[key]:
                         node[key+'_source'] = 'node'
                     else:
                         default_str = str(value)

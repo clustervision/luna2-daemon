@@ -969,7 +969,7 @@ class Boot():
             'bootmenu': False,
             'unmanaged_bmc_users': 'skip',
         }
-        ret, enclosed_node_details = Node().get_node(cli=False, name=node)
+        ret, enclosed_node_details = Node().get_node(name=node)
         node_details=None
         if ret is True:
             if 'config' in enclosed_node_details.keys():

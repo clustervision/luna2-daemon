@@ -35,7 +35,7 @@ __status__      = "Development"
 from json import dumps
 from flask import Blueprint, request
 from utils.log import Log
-from common.validate_auth import token_required, agent_check
+from common.validate_auth import token_required
 from common.validate_input import input_filter, validate_name
 from base.node import Node
 from base.group import Group
@@ -75,13 +75,12 @@ def config_node():
 @config_blueprint.route('/config/node/<string:name>', methods=['GET'])
 @token_required
 @validate_name
-@agent_check
-def config_node_get(cli=None, name=None):
+def config_node_get(name=None):
     """
     This api will send a requested node in details.
     """
     access_code = 404
-    status, response = Node().get_node(cli, name)
+    status, response = Node().get_node(name)
     if status is True:
         access_code = 200
         response = dumps(response)
@@ -282,15 +281,14 @@ def config_group():
 @config_blueprint.route("/config/group/<string:name>", methods=['GET'])
 @token_required
 @validate_name
-@agent_check
-def config_group_get(cli=None, name=None):
+def config_group_get(name=None):
     """
     Input - Group Name
     Process - Fetch the Group information.
     Output - Group Info.
     """
     access_code = 404
-    status, response = Group().get_group(cli, name)
+    status, response = Group().get_group(name)
     if status is True:
         access_code = 200
         response=dumps(response)

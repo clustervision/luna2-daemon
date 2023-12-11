@@ -839,7 +839,7 @@ class Config(object):
                                 )
                                 if valid_ip and ipaddress['ipaddress'] not in ips:
                                     ips.append(ipaddress['ipaddress'])
-                                    self.logger.info(f"no change for {ipaddress['ipaddress']}")
+                                    self.logger.info(f"For network {network} no change for IP {ipaddress['ipaddress']}")
                                     continue
                                 ret, avail = 0, None
                                 maximum = 5

@@ -815,6 +815,7 @@ class Config(object):
                 action, network, *_ = details['task'].split(':') + [None] + [None]
 
                 if (name and network==name) or network:
+                    Queue().update_task_status_in_queue(next_id,'in progress')
                     if action == 'update_all_interface_ipaddress':
                         ips = self.get_dhcp_range_ips_from_network(network)
                         ipaddress_list = Database().get_record_join(
@@ -833,6 +834,13 @@ class Config(object):
                         )
                         if ipaddress_list:
                             for ipaddress in ipaddress_list:
+                                valid_ip = Helper().check_ip_range(ipaddress['ipaddress'],
+                                    f"{ipaddress['network']}/{ipaddress['subnet']}"
+                                )
+                                if valid_ip and ipaddress['ipaddress'] not in ips:
+                                    ips.append(ipaddress['ipaddress'])
+                                    self.logger.info(f"no change for {ipaddress['ipaddress']}")
+                                    continue
                                 ret, avail = 0, None
                                 maximum = 5
                                 # we try to ping for X ips, if none of these are free,

@@ -266,7 +266,7 @@ class Network():
                     response = f'Network {name} created successfully'
                     status=True
                 elif update:
-                    if redistribute_ipaddress:
+                    if redistribute_ipaddress is True:
                         nwk_size = Helper().get_network_size(data['network'], data['subnet'])
                         avail = nwk_size - dhcp_size
                         if avail < used_ips:
@@ -279,7 +279,7 @@ class Network():
                     where = [{"column": "id", "value": networkid}]
                     Database().update('network', row, where)
                     # TWANNIE
-                    if redistribute_ipaddress:
+                    if redistribute_ipaddress is True:
                         Config().update_dhcp_range_on_network_change(name)
                         # below section takes care (in the background), adding/renaming/deleting.
                         # for adding next free ip-s will be selected.
@@ -296,7 +296,6 @@ class Network():
                                 name
                             )
                             executor.shutdown(wait=False)
-                            # Config().update_interface_ipaddress_on_network_change(name)
                     response = f'Network {name} updated successfully'
                     status=True
                 Service().queue('dns','restart')

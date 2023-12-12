@@ -105,7 +105,7 @@ class Plugin():
                 os.mkdir(f"/tmp/{image_file}.dir")
             if os.path.exists(f"/tmp/{image_file}.dir"):
                 unpack=f"cd /tmp/{image_file}.dir && tar -xf {files_path}/{image_file}"
-                regex=re.compiler(r"^.+.bz(ip?)2$")
+                regex=re.compile(r"^.+.bz(ip?)2$")
                 if regex.match(image_file):
                     unpack=f"cd /tmp/{image_file}.dir && lbzip2 -dc < {files_path}/{image_file} | tar xf -"
                 self.logger.info(unpack)

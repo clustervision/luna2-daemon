@@ -31,6 +31,7 @@ __email__       = 'antoine.schonewille@clustervision.com'
 __status__      = 'Development'
 
 import os
+import re
 from utils.log import Log
 from utils.helper import Helper
 
@@ -104,8 +105,12 @@ class Plugin():
                 os.mkdir(f"/tmp/{image_file}.dir")
             if os.path.exists(f"/tmp/{image_file}.dir"):
                 unpack=f"cd /tmp/{image_file}.dir && tar -xf {files_path}/{image_file}"
+                regex=re.compiler(r"^.+.bz(ip?)2$")
+                if regex.match(image_file):
+                    unpack=f"cd /tmp/{image_file}.dir && lbzip2 -dc < {files_path}/{image_file} | tar xf -"
                 self.logger.info(unpack)
                 message,exit_code = Helper().runcommand(unpack,True,60)
+                self.logger.info("sync results: exit_code: {exit_code}, message: {message}")
                 if exit_code == 0:
                     sync=f"rsync --delete-after /tmp/{image_file}.dir/* {image_path}/ > /tmp/extract.out"
                     self.logger.info(sync)

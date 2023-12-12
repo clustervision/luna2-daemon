@@ -118,12 +118,12 @@ def ha_sync_image(name=None):
     """
     access_code = 404
     response = "sync not available for images"
-    ha_object=HA()
-    if ha_object.get_syncimages() is True:
-        status, response = Journal().add_request(function='Downloader.pull_image_data',object=name,param=ha_object.get_me())
-        if status is True:
-            access_code = 201
-            response=f"image sync for {name} added to journal"
+#    ha_object=HA()
+#    if ha_object.get_syncimages() is True:
+#        status, response = Journal().add_request(function='Downloader.pull_image_data',object=name,param=ha_object.get_me())
+#        if status is True:
+#            access_code = 201
+#            response=f"image sync for {name} added to journal"
     response = {'message': response}
     return response, access_code
 

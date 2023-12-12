@@ -110,11 +110,11 @@ class Plugin():
                 if exit_code == 0:
                     sync=f"rsync --delete-after /tmp/{image_file}.dir/* {image_path}/ > /tmp/extract.out"
                     self.logger.info(sync)
-                    message,exit_code = Helper().runcommand(command,True,3600)
+                    message,exit_code = Helper().runcommand(sync,True,3600)
                     self.logger.debug(f"exit_code = {exit_code}")
                 # always cleanup to save space
                 cleanup=f"rm -rf /tmp/{image_file}.dir"
-                Helper().runcommand(command,True,3600)
+                Helper().runcommand(cleanup,True,3600)
                 if exit_code == 0:
                     return True, "Success"
             return False, message

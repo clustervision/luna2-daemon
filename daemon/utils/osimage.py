@@ -691,6 +691,84 @@ class OsImage(object):
             return False
 
     # -------------------------------------------------------------------
+
+    def unpack_osimage(self,taskid,request_id):
+
+        self.logger.info("unpack_osimage called")
+        try:
+
+            result=False
+            details=Queue().get_task_details(taskid)
+            request_id=details['request_id']
+            action,osimage,noeof,*_=details['task'].split(':')+[None]+[None]
+
+            if action == "unpack_osimage":
+                image_directory = CONSTANT['FILES']['IMAGE_DIRECTORY']
+                image = Database().get_record(None, 'osimage', f"WHERE name='{osimage}'")
+                if not image:
+                    Status().add_message(request_id,"luna",f"error unpacking osimage {osimage}: Image {osimage} does not exist?")
+                    return False
+
+                filesystem_plugin = 'default'
+                if 'IMAGE_FILESYSTEM' in CONSTANT['PLUGINS'] and CONSTANT['PLUGINS']['IMAGE_FILESYSTEM']:
+                    filesystem_plugin = CONSTANT['PLUGINS']['IMAGE_FILESYSTEM']
+                if not image[0]['path']:
+                    os_image_plugin=Helper().plugin_load(self.osimage_plugins,'osimage/filesystem',filesystem_plugin)
+                    ret, data = os_image_plugin().getpath(image_directory=image_directory, osimage=image[0]['name'], tag=None) # we feed no tag as tagged/versioned FS is normally R/O
+                    if ret is True:
+                        image[0]['path'] = data
+                    else:
+                        Status().add_message(request_id,"luna",f"error assembling osimage {osimage}: Image path not defined")
+                        return False
+
+                image_path = str(image[0]['path'])
+                if image_path[0] != '/': # means that we don't have an absolute path. good, let's prepend what's in luna.ini
+                    if len(image_directory) > 1:
+                        image_path = f"{image_directory}/{image[0]['path']}"
+                    else:
+                        Status().add_message(request_id,"luna",f"error unpacking osimage {osimage}: image path {image_path} is not an absolute path while IMAGE_DIRECTORY setting in FILES is not defined")
+                        return False
+
+                files_path = CONSTANT['FILES']['IMAGE_FILES']
+                image_file = str(image[0]['imagefile'])
+
+                # loading the plugin depending on OS
+                os_image_plugin=Helper().plugin_load(self.osimage_plugins,'osimage/filesystem',filesystem_plugin)
+
+                #------------------------------------------------------
+                Status().add_message(request_id,"luna",f"unpacking osimage {osimage}")
+                response=os_image_plugin().extract(
+                                            image_path=image_path,
+                                            files_path=files_path,
+                                            image_file=image_file)
+                ret=response[0]
+                mesg=response[1]
+                sleep(1) # needed to prevent immediate concurrent access to the database. Pooling,WAL,WIF,WAF,etc won't fix this. Only sleep
+                if ret is True:
+                    self.logger.info(f'OS image {osimage} unpacked successfully.')
+                    Status().add_message(request_id,"luna",f"finished unpacking osimage {osimage}")
+                    result=True
+                else:
+                    self.logger.info(f'OS image {osimage} unpack error: {mesg}.')
+                    Status().add_message(request_id,"luna",f"error assembling osimage {osimage}: {mesg}")
+                
+                if not noeof:
+                    Status().add_message(request_id,"luna","EOF")
+            else:
+                self.logger.info(f"{details['task']} is not for us.")
+            return result
+
+        except Exception as exp:
+            exc_type, exc_obj, exc_tb = sys.exc_info()
+            self.logger.error(f"unpack_osimage has problems: {exp}, {exc_type}, in {exc_tb.tb_lineno}")
+            try:
+                Status().add_message(request_id,"luna",f"Unpacking failed: {exp}")
+                Status().add_message(request_id,"luna","EOF")
+            except Exception as nexp:
+                self.logger.error(f"unpack_osimage has problems during exception handling: {nexp}")
+            return False
+
+    # -------------------------------------------------------------------
   
     def cleanup_file(self,file_to_remove):
         self.logger.info(f"I was called to cleanup old file: {file_to_remove}")

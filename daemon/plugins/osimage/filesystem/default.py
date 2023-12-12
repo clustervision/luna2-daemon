@@ -94,3 +94,29 @@ class Plugin():
         else:
             return False, "missing information to handle request"
 
+    # ---------------------------------------------------------------------------
+
+    def extract(self, image_path=None, files_path=None, image_file=None):
+        """
+        Method to extract image file to local image path.
+        """
+        if image_path and files_path and image_file:
+            prepare=f"mkdir /tmp/{image_file}.dir"
+            message,exit_code = Helper().runcommand(prepare,True,60)
+            if exit_code == 0:
+                command=f"tar -xf {files_path}/{image_file} /tmp/{image_file}.dir/)"
+                message,exit_code = Helper().runcommand(command,True,60)
+                if exit_code == 0:
+                    sync=f"rsync --delete-after /tmp/{image_file}.dir/* {image_path}/ > /tmp/extract.out"
+                    self.logger.info(sync)
+                    message,exit_code = Helper().runcommand(command,True,3600)
+                    self.logger.debug(f"exit_code = {exit_code}")
+                # always cleanup to save space
+                cleanup=f"rm -rf /tmp/{image_file}.dir"
+                Helper().runcommand(command,True,3600)
+                if exit_code == 0:
+                    return True, "Success"
+            return False, message
+        else:
+            return False, "missing information to handle request"
+

@@ -101,11 +101,14 @@ class Plugin():
         Method to extract image file to local image path.
         """
         if image_path and files_path and image_file:
-            prepare=f"mkdir /tmp/{image_file}.dir"
-            message,exit_code = Helper().runcommand(prepare,True,60)
+            exit_code=0
+            if not os.path.exists(f"/tmp/{image_file}.dir"):
+                prepare=f"mkdir /tmp/{image_file}.dir"
+                message,exit_code = Helper().runcommand(prepare,True,60)
             if exit_code == 0:
-                command=f"tar -xf {files_path}/{image_file} /tmp/{image_file}.dir/"
-                message,exit_code = Helper().runcommand(command,True,60)
+                unpack=f"tar -xf {files_path}/{image_file} /tmp/{image_file}.dir/"
+                self.logger.info(unpack)
+                message,exit_code = Helper().runcommand(unpack,True,60)
                 if exit_code == 0:
                     sync=f"rsync --delete-after /tmp/{image_file}.dir/* {image_path}/ > /tmp/extract.out"
                     self.logger.info(sync)

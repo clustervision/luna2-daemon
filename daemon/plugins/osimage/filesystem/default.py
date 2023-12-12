@@ -100,19 +100,21 @@ class Plugin():
         Method to extract image file to local image path.
         """
         if image_path and files_path and image_file:
+            if not os.path.exists('/usr/bin/tar'):
+                return False, "/usr/bin/tar does not exist. please install tar"
             exit_code=0
             if not os.path.exists(f"/tmp/{image_file}.dir"):
                 os.mkdir(f"/tmp/{image_file}.dir")
             if os.path.exists(f"/tmp/{image_file}.dir"):
                 unpack=f"cd /tmp/{image_file}.dir && tar -xf {files_path}/{image_file}"
                 regex=re.compile(r"^.+\.bz(ip)?2$")
-                if regex.match(image_file):
+                if regex.match(image_file) and os.path.exists('/usr/bin/lbzip2'):
                     unpack=f"cd /tmp/{image_file}.dir && lbzip2 -dc < {files_path}/{image_file} | tar xf -"
                 self.logger.info(unpack)
                 message,exit_code = Helper().runcommand(unpack,True,60)
                 self.logger.info(f"sync results: exit_code: {exit_code}, message: {message}")
                 if exit_code == 0:
-                    sync=f"rsync --delete-after /tmp/{image_file}.dir/* {image_path}/ > /tmp/extract.out"
+                    sync=f"rsync -aHv --delete-after /tmp/{image_file}.dir/* {image_path}/ > /tmp/extract.out"
                     self.logger.info(sync)
                     message,exit_code = Helper().runcommand(sync,True,3600)
                     self.logger.debug(f"exit_code = {exit_code}")

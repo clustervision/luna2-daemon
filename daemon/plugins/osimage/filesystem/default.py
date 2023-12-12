@@ -103,7 +103,7 @@ class Plugin():
             if not os.path.exists(f"/tmp/{image_file}.dir"):
                 os.mkdir(f"/tmp/{image_file}.dir")
             if os.path.exists(f"/tmp/{image_file}.dir"):
-                unpack=f"tar -xf {files_path}/{image_file} /tmp/{image_file}.dir/"
+                unpack=f"cd /tmp/{image_file}.dir && tar -xf {files_path}/{image_file}"
                 self.logger.info(unpack)
                 message,exit_code = Helper().runcommand(unpack,True,60)
                 if exit_code == 0:

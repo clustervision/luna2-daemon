@@ -46,7 +46,8 @@ class Plugin():
         two defined methods are mandatory:
         - clone
         - getpath
-        - syncimage
+        - sync
+        - extract
         """
         self.logger = Log.get_logger()
 
@@ -74,9 +75,10 @@ class Plugin():
 
     # ---------------------------------------------------------------------------
 
-    def syncimage(self,remote_host=None, remote_image_directory=None, osimage=None, local_image_directory=None):
+    def sync(self,remote_host=None, remote_image_directory=None, osimage=None, local_image_directory=None):
         """
-        Method to rsync image data from remote host to local.
+        Method to sync image data from remote host to local.
+        Requires ssh trust between controllers.
         """
         if remote_host and remote_image_directory and osimage and local_image_directory:
             command=f"mkdir -p {local_image_directory}"
@@ -98,6 +100,7 @@ class Plugin():
     def extract(self, image_path=None, files_path=None, image_file=None):
         """
         Method to extract image file to local image path.
+        slower but doesn't require ssh trust between controllers.
         """
         if image_path and files_path and image_file:
             if not os.path.exists('/usr/bin/tar'):
@@ -112,12 +115,12 @@ class Plugin():
                     unpack=f"cd /tmp/{image_file}.dir && lbzip2 -dc < {files_path}/{image_file} | tar xf -"
                 self.logger.info(unpack)
                 message,exit_code = Helper().runcommand(unpack,True,60)
-                self.logger.info(f"sync results: exit_code: {exit_code}, message: {message}")
                 if exit_code == 0:
                     sync=f"rsync -aHv --delete-after /tmp/{image_file}.dir/* {image_path}/ > /tmp/extract.out"
                     self.logger.info(sync)
                     message,exit_code = Helper().runcommand(sync,True,3600)
                     self.logger.debug(f"exit_code = {exit_code}")
+                self.logger.debug(f"exit_code: {exit_code}, message: {message}")
                 # always cleanup to save space
                 cleanup=f"rm -rf /tmp/{image_file}.dir"
                 Helper().runcommand(cleanup,True,3600)

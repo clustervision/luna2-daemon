@@ -110,7 +110,7 @@ class Plugin():
                     unpack=f"cd /tmp/{image_file}.dir && lbzip2 -dc < {files_path}/{image_file} | tar xf -"
                 self.logger.info(unpack)
                 message,exit_code = Helper().runcommand(unpack,True,60)
-                self.logger.info("sync results: exit_code: {exit_code}, message: {message}")
+                self.logger.info(f"sync results: exit_code: {exit_code}, message: {message}")
                 if exit_code == 0:
                     sync=f"rsync --delete-after /tmp/{image_file}.dir/* {image_path}/ > /tmp/extract.out"
                     self.logger.info(sync)

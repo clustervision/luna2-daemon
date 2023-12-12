@@ -101,9 +101,8 @@ class Plugin():
         if image_path and files_path and image_file:
             exit_code=0
             if not os.path.exists(f"/tmp/{image_file}.dir"):
-                prepare=f"mkdir /tmp/{image_file}.dir"
-                message,exit_code = Helper().runcommand(prepare,True,60)
-            if exit_code == 0:
+                os.mkdir(f"/tmp/{image_file}.dir")
+            if os.path.exists(f"/tmp/{image_file}.dir"):
                 unpack=f"tar -xf {files_path}/{image_file} /tmp/{image_file}.dir/"
                 self.logger.info(unpack)
                 message,exit_code = Helper().runcommand(unpack,True,60)
@@ -117,7 +116,9 @@ class Plugin():
                 Helper().runcommand(cleanup,True,3600)
                 if exit_code == 0:
                     return True, "Success"
-            return False, message
+                return False, message
+            else:
+                return False, "temporary extraction path could not be created"
         else:
             return False, "missing information to handle request"
 

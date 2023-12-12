@@ -104,7 +104,7 @@ class Plugin():
             prepare=f"mkdir /tmp/{image_file}.dir"
             message,exit_code = Helper().runcommand(prepare,True,60)
             if exit_code == 0:
-                command=f"tar -xf {files_path}/{image_file} /tmp/{image_file}.dir/)"
+                command=f"tar -xf {files_path}/{image_file} /tmp/{image_file}.dir/"
                 message,exit_code = Helper().runcommand(command,True,60)
                 if exit_code == 0:
                     sync=f"rsync --delete-after /tmp/{image_file}.dir/* {image_path}/ > /tmp/extract.out"

@@ -30,9 +30,7 @@ __maintainer__  = 'Antoine Schonewille'
 __email__       = 'antoine.schonewille@clustervision.com'
 __status__      = 'Development'
 
-#import os
-#import pwd
-#import sys
+import os
 from utils.log import Log
 from utils.helper import Helper
 

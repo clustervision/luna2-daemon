@@ -273,10 +273,8 @@ class Helper(object):
         """
         response = {}
         try:
-            # net = ipaddress.ip_network(ipaddr, strict=False)
-            # response['network'] = str(net)
-            # response['subnet'] = str(net.netmask)
-            net = IPNetwork(f"{ipaddr}")
+            #net = IPNetwork(f"{ipaddr}")
+            net = ipaddress.ip_network(ipaddr, strict=False)
             response['network'], response['subnet'] = str(net).split('/')
         except (ValueError, TypeError) as exp:
             self.logger.error(f'Invalid IP address: {ipaddr}, Exception is {exp}.')

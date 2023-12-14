@@ -141,7 +141,7 @@ class Network():
                 network_ip = Helper().check_ip(data['network'])
                 if network_ip:
                     network_details = Helper().get_network_details(data['network'])
-                    data['network'] = network_ip
+                    data['network'] = network_details['network']
                     data['subnet'] = network_details['subnet']
                     used_ips = Helper().get_quantity_occupied_ipaddress_in_network(name)
                     if network:

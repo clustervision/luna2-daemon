@@ -150,7 +150,6 @@ class OSImage():
             except Exception as exp:
                 self.logger.error(f"{exp}")
 
-
             response['config'][self.table][record['name']] = record
         return status, response
 

@@ -162,6 +162,7 @@ class Group():
 
             group['osimage'] = Database().name_by_id('osimage', group['osimageid'])
             del group['osimageid']
+            group['bmcsetupname'] = None
             if group['bmcsetupid']:
                 group['bmcsetupname'] = Database().name_by_id('bmcsetup', group['bmcsetupid'])
             del group['bmcsetupid']

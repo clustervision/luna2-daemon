@@ -43,10 +43,9 @@ class Plugin():
 
     def __init__(self):
         """
-        two defined methods are mandatory:
+        three defined methods are mandatory:
         - clone
         - getpath
-        - sync
         - extract
         """
         self.logger = Log.get_logger()
@@ -79,6 +78,7 @@ class Plugin():
         """
         Method to sync image data from remote host to local.
         Requires ssh trust between controllers.
+        This segment is no being used but kept in place for possible future use.
         """
         if remote_host and remote_image_directory and osimage and local_image_directory:
             command=f"mkdir -p {local_image_directory}"
@@ -100,7 +100,8 @@ class Plugin():
     def extract(self, image_path=None, files_path=None, image_file=None, tmp_directory=None):
         """
         Method to extract image file to local image path.
-        slower but doesn't require ssh trust between controllers.
+        Typically called after HA master triggers sync cycle.
+        Tad slower but doesn't require ssh trust between controllers.
         """
         if image_path and files_path and image_file:
             if not os.path.exists('/usr/bin/tar'):

@@ -426,7 +426,14 @@ class OSImage():
                     executor.submit(OsImager().osimage_mother)
                     executor.shutdown(wait=False)
                 else:
-                    Status().add_message(request_id, "luna", f"other task with id {next_id} is being processed first. please wait")
+                    next_id = Queue().next_parallel_task_in_queue('osimage',name,'queued')
+                    if task_id == next_id:
+                        # ok, so we are not the first mother running... let's only do our own request
+                        executor = ProcessPoolExecutor(max_workers=1)
+                        executor.submit(OsImager().osimage_mother, request_id)
+                        executor.shutdown(wait=False)
+                    else:
+                        Status().add_message(request_id, "luna", f"other task with id {next_id} is being processed first. please wait")
                 # we should check after a few seconds if there is a status update for us.
                 # if so, that means mother is taking care of things
                 sleep(1)
@@ -449,6 +456,30 @@ class OSImage():
         """
         This method will delete a osimage.
         """
+        image = Database().get_record(None, 'osimage', f' WHERE name = "{name}"')
+        if image:
+            for item in ['kernelfile','initrdfile','imagefile']:
+                queue_id,queue_response = Queue().add_task_to_queue(f'cleanup_old_file:'+image[0][item],
+                                                                    'housekeeper','__image_delete__',None,'1h')
+            queue_id,queue_response = Queue().add_task_to_queue(f'cleanup_old_provisioning:'+image[0]['imagefile'],
+                                                                    'housekeeper','__image_delete__',None,'1h')
+        tag_details = Database().get_record_join(
+            ['osimagetag.id as tagid','osimagetag.*','osimage.id as osimageid'],
+            ['osimagetag.osimageid=osimage.id'],
+            [f'osimage.name="{name}"']
+        )
+        if tag_details:
+            for tag_detail in tag_details:
+                for item in ['kernelfile','initrdfile','imagefile']:
+                    queue_id,queue_response = Queue().add_task_to_queue(f'cleanup_old_file:'+tag_detail[item],
+                                                                    'housekeeper','__tag_delete__',None,'1h')
+                queue_id,queue_response = Queue().add_task_to_queue(f'cleanup_old_provisioning:'+tag_detail['imagefile'],
+                                                                    'housekeeper','__tag_delete__',None,'1h')
+                status, response = Model().delete_record_by_id(
+                    id = tag_detail['tagid'],
+                    table = 'osimagetag',
+                    table_cap = 'OS image tag'
+                )
         status, response = Model().delete_record(
             name = name,
             table = self.table,
@@ -463,7 +494,7 @@ class OSImage():
         """
         tag_details = Database().get_record_join(
             ['osimagetag.id as tagid','osimagetag.*','osimage.id as osimageid','osimage.kernelfile as osimagekernelfile',
-              'osimage.initrdfile as osimageinitrdfile','osimage.imagefile as osimageimagefile'],
+             'osimage.initrdfile as osimageinitrdfile','osimage.imagefile as osimageimagefile'],
             ['osimagetag.osimageid=osimage.id'],
             [f'osimage.name="{name}"',f'osimagetag.name="{tagname}"']
         )
@@ -568,7 +599,7 @@ class OSImage():
                 # we should check after a few seconds if there is a status update for us.
                 # if so, that means mother is taking care of things
             else:
-                next_id = Queue().next_parallel_task_in_queue('osimage',osimage)
+                next_id = Queue().next_parallel_task_in_queue('osimage',osimage,'queued')
                 if task_id == next_id:
                     # ok, so we are not the first mother running... let's only do our own request
                     executor = ProcessPoolExecutor(max_workers=1)
@@ -670,7 +701,7 @@ class OSImage():
                 # we should check after a few seconds if there is a status update for us.
                 # if so, that means mother is taking care of things
             else:
-                next_id = Queue().next_parallel_task_in_queue('osimage',osimage)
+                next_id = Queue().next_parallel_task_in_queue('osimage',osimage,'queued')
                 if task_id == next_id:
                     # We're not the first mother running... we only do our own stuff
                     executor = ProcessPoolExecutor(max_workers=1)
@@ -733,7 +764,7 @@ class OSImage():
             # we should check after a few seconds if there is a status update for us.
             # if so, that means mother is taking care of things
         else:
-            next_id = Queue().next_parallel_task_in_queue('osimage',name)
+            next_id = Queue().next_parallel_task_in_queue('osimage',name,'queued')
             if queue_id == next_id:
                 # We're not the first mother running... we only do our own stuff
                 executor = ProcessPoolExecutor(max_workers=1)
@@ -807,7 +838,7 @@ class OSImage():
                         executor.submit(OsImager().osimage_mother)
                         executor.shutdown(wait=False)
                     else:
-                        next_id = Queue().next_parallel_task_in_queue('osimage',name)
+                        next_id = Queue().next_parallel_task_in_queue('osimage',name,'queued')
                         if task_id == next_id:
                             # there is another mother running so we focus on our own stuff
                             executor = ProcessPoolExecutor(max_workers=1)

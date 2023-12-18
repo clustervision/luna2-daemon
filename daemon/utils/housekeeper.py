@@ -33,7 +33,7 @@ __status__      = 'Development'
 from utils.log import Log
 from utils.database import Database
 from common.constant import CONSTANT
-#from utils.helper import Helper
+from utils.helper import Helper
 import concurrent.futures
 from time import sleep
 import sys
@@ -41,6 +41,10 @@ import sys
 from utils.queue import Queue
 from utils.osimage import OsImage
 from utils.service import Service
+# H/A and journal funcs
+from utils.ha import HA
+from utils.journal import Journal
+from utils.tables import Tables
 
 
 class Housekeeper(object):
@@ -83,6 +87,31 @@ class Housekeeper(object):
                                 status=returned[0]
                                 if status is False and len(returned)>1:
                                     self.logger.error(f"cleanup_provisioning: {returned[1]}")
+                            case 'sync_osimage_with_master':
+                                osimage=second
+                                master=third
+                                Queue().update_task_status_in_queue(next_id,'in progress')
+                                ret,mesg=Journal().add_request(function='OsImager.schedule_cleanup',object=osimage,keeptrying=60)
+                                if ret is True:
+                                    osimage_data=Database().get_record(None, 'osimage', f"WHERE name='{osimage}'")
+                                    if osimage_data:
+                                        payload={'config':{'osimage':{osimage: {}}}}
+                                        for file in ['kernelfile','initrdfile','imagefile']:
+                                            payload['config']['osimage'][osimage][file]=osimage_data[0][file]
+                                        Journal().add_request(function='OSImage.update_osimage',object=osimage,payload=payload)
+                                    Journal().add_request(function='Downloader.pull_image_files',object=osimage,param=master)
+                                    Journal().add_request(function='OsImager.schedule_provision',object=osimage,param='housekeeper')
+                                    if HA().get_syncimages() is True:
+                                        Journal().add_request(function='Queue.add_task_to_queue',object=f'unpack_osimage:{osimage}',param='housekeeper')
+                                else:
+                                    Queue().update_task_status_in_queue(next_id,'stuck')
+                                    remove_from_queue=False
+                            case 'provision_osimage':
+                                Queue().update_task_status_in_queue(next_id,'in progress')
+                                OsImage().provision_osimage(next_id,request_id)
+                            case 'unpack_osimage':
+                                Queue().update_task_status_in_queue(next_id,'in progress')
+                                OsImage().unpack_osimage(next_id,request_id)
 
                         if remove_from_queue:
                             Queue().remove_task_from_queue(next_id)
@@ -153,3 +182,87 @@ class Housekeeper(object):
         except Exception as exp:
             exc_type, exc_obj, exc_tb = sys.exc_info()
             self.logger.error(f"switch port scan thread encountered problem: {exp}, {exc_type}, in {exc_tb.tb_lineno}")
+
+
+    def journal_mother(self,event):
+        self.logger.info("Starting Journal/Replication thread")
+        hardsync_enabled=True # experimental hard table sync based on checksums. handle with care!
+        startup_controller=True
+        syncpull_status=False
+        sync_tel=0
+        ping_tel=3
+        sum_tel=0
+        try:
+            ha_object=HA()
+            me=ha_object.get_me()
+            self.logger.info(f"I am {me}")
+            journal_object=Journal(me)
+            tables_object=Tables()
+            if not ha_object.get_hastate():
+                self.logger.info(f"Currently not configured to run in H/A mode. Exiting journal thread")
+                return
+            ha_object.set_insync(False)
+            # ---------------------------- we keep asking the journal from others until successful
+            while syncpull_status is False:
+                try:
+                    if sync_tel<1:
+                        syncpull_status=journal_object.pullfrom_controllers()
+                        sync_tel=2
+                    sync_tel-=1
+                except Exception as exp:
+                    exc_type, exc_obj, exc_tb = sys.exc_info()
+                    self.logger.error(f"journal_mother thread encountered problem in initial sync: {exp}, {exc_type}, in {exc_tb.tb_lineno}")
+                sleep(5)
+                if event.is_set():
+                    return
+            # ---------------------------- good. now we can proceed with the main loop
+            sync_tel=0
+            ha_object.set_overrule(False)
+            while True:
+                try:
+                    # --------------------------- am i a master or not?
+                    master=ha_object.get_role()
+                    # --------------------------- first we sync with the others. we push what's still in the journal
+                    if sync_tel<1:
+                        journal_object.pushto_controllers()
+                        sync_tel=7
+                    sync_tel-=1
+                    # --------------------------- then we process what we have received
+                    handled=journal_object.handle_requests()
+                    if handled is True:
+                        ha_object.set_insync(True)
+                        sum_tel=18
+                    elif startup_controller is True:
+                        startup_controller=False
+                        ha_object.set_insync(True)
+                    # --------------------------- we ping the others. if someone is down, we become paranoid
+                    if ping_tel<1:
+                        if master is False: # i am not a master
+                            status=ha_object.ping_all_controllers()
+                            ha_object.set_insync(status)
+                            ping_tel=3
+                    ping_tel-=1
+                    # --------------------------- then on top of that, we verify checksums. if mismatch, we import from the master
+                    if hardsync_enabled:
+                        if sum_tel<1:
+                            if master is False: # i am not a master
+                                mismatch_tables=tables_object.verify_tablehashes_controllers()
+                                if mismatch_tables:
+                                    for mismatch in mismatch_tables:
+                                        data=tables_object.fetch_table(mismatch['table'],mismatch['host'])
+                                        tables_object.import_table(mismatch['table'],data)
+                                    Queue().add_task_to_queue('dhcp:restart', 'housekeeper', '__node_update__')
+                                    Queue().add_task_to_queue('dns:restart', 'housekeeper', '__node_update__')
+                            sum_tel=720
+                        sum_tel-=1
+                    # --------------------------- end of magic
+                except Exception as exp:
+                    exc_type, exc_obj, exc_tb = sys.exc_info()
+                    self.logger.error(f"journal_mother thread encountered problem in main loop: {exp}, {exc_type}, in {exc_tb.tb_lineno}")
+                sleep(5)
+                if event.is_set():
+                    return
+        except Exception as exp:
+            exc_type, exc_obj, exc_tb = sys.exc_info()
+            self.logger.error(f"journal_mother thread encountered problem: {exp}, {exc_type}, in {exc_tb.tb_lineno}")
+

@@ -41,9 +41,9 @@ from utils.helper import Helper
 
 configParser = RawConfigParser()
 
-TABLES = ['status', 'queue', 'osimage', 'osimagetag', 'nodesecrets', 'nodeinterface', 'bmcsetup', 
+TABLES = ['status', 'queue', 'osimage', 'osimagetag', 'nodesecrets', 'nodeinterface', 'bmcsetup','ha', 
           'monitor', 'ipaddress', 'groupinterface', 'roles', 'group', 'network', 'user', 'switch', 
-          'otherdevices', 'controller', 'groupsecrets', 'node', 'cluster', 'tracker','dns']
+          'otherdevices', 'controller', 'groupsecrets', 'node', 'cluster', 'tracker','dns','journal']
 
 def db_status():
     """
@@ -226,6 +226,10 @@ def get_database_tables_structure(table=None):
         return DATABASE_LAYOUT_tracker
     if table == "dns":
         return DATABASE_LAYOUT_dns
+    if table == "journal":
+        return DATABASE_LAYOUT_journal
+    if table == "ha":
+        return DATABASE_LAYOUT_ha
 
 
 def cleanup_queue_and_status():
@@ -320,6 +324,13 @@ def bootstrap(bootstrapfile=None):
     group_plugin=Helper().plugin_load(group_plugins,'group','default')
     node_plugins = Helper().plugin_finder(f'{plugins_path}/node')
     node_plugin=Helper().plugin_load(node_plugins,'node','default')
+
+    ha_state = [{'column': 'enabled', 'value': '0'},
+                {'column': 'syncimages', 'value': '1'},
+                {'column': 'insync', 'value': '0'},
+                {'column': 'overrule', 'value': '0'},
+                {'column': 'master', 'value': '0'}]
+    Database().insert('ha', ha_state)
 
     defaultserver_ip=None
     if 'CONTROLLER' in BOOTSTRAP['HOSTS'].keys():  # the virtual host+ip
@@ -418,7 +429,7 @@ def bootstrap(bootstrapfile=None):
             {'column': 'hostname', 'value': hostname},
             {'column': 'serverport', 'value': BOOTSTRAP['HOSTS']['SERVERPORT']},
             {'column': 'clusterid', 'value': clusterid}
-            ]
+        ]
         controller_id=Database().insert('controller', default_controller)
         if controller_id:
             controller_ip = [
@@ -436,12 +447,12 @@ def bootstrap(bootstrapfile=None):
             hostname=BOOTSTRAP['HOSTS'][f'CONTROLLER{num}']['HOSTNAME']
             ip=BOOTSTRAP['HOSTS'][f'CONTROLLER{num}']['IP']
             taken_ips.append(ip)
-            default_controller = [
+            other_controller = [
                 {'column': 'hostname', 'value': hostname},
                 {'column': 'serverport', 'value': BOOTSTRAP['HOSTS']['SERVERPORT']},
                 {'column': 'clusterid', 'value': clusterid}
-                ]
-            controller_id=Database().insert('controller', default_controller)
+            ]
+            controller_id=Database().insert('controller', other_controller)
             if controller_id:
                 controller_ip = [
                     {'column': 'tableref', 'value': 'controller'},

@@ -34,7 +34,9 @@ __status__      = 'Development'
 DATABASE_LAYOUT_status = [
 {"column": "id",                   "datatype": "integer", "length": "10", "key": "PRIMARY", "keyadd": "autoincrement"},
 {"column": "request_id",           "datatype": "text"},
-{"column": "username_initiator",   "datatype": "text"},
+{"column": "remote_request_id",    "datatype": "text"},
+{"column": "remote_host",          "datatype": "VARCHAR", "length": "250"},
+{"column": "username_initiator",   "datatype": "VARCHAR", "length": "250"},
 {"column": "created",              "datatype": "numeric"},
 {"column": "read",                 "datatype": "integer"},
 {"column": "message",              "datatype": "text"}]
@@ -265,3 +267,25 @@ DATABASE_LAYOUT_tracker = [
 {"column": "left",                 "datatype": "INTEGER", "length": "10"},
 {"column": "updated",              "datatype": "numeric"},
 {"column": "status",               "datatype": "VARCHAR", "length": "20"}]
+
+DATABASE_LAYOUT_journal = [
+{"column": "id",                   "datatype": "INTEGER", "key": "PRIMARY", "keyadd": "AUTOINCREMENT"},
+{"column": "function",             "datatype": "VARCHAR", "length": "4096"},
+{"column": "object",               "datatype": "VARCHAR", "length": "1024"},
+{"column": "param",                "datatype": "VARCHAR", "length": "1024"},
+{"column": "payload",              "datatype": "VARCHAR", "length": "65536"},
+{"column": "masteronly",           "datatype": "INTEGER", "length": "10"},
+{"column": "misc",                 "datatype": "VARCHAR", "length": "1024"},
+{"column": "sendfor",              "datatype": "VARCHAR", "length": "80"},
+{"column": "sendby",               "datatype": "VARCHAR", "length": "80"},
+{"column": "tries",                "datatype": "INTEGER", "length": "10"},
+{"column": "created",              "datatype": "numeric"}]
+
+DATABASE_LAYOUT_ha = [
+{"column": "enabled",              "datatype": "INTEGER", "length": "10"},
+{"column": "syncimages",           "datatype": "INTEGER", "length": "10"},
+{"column": "insync",               "datatype": "INTEGER", "length": "10"},
+{"column": "overrule",             "datatype": "INTEGER", "length": "10"},
+{"column": "master",               "datatype": "INTEGER", "length": "10"},
+{"column": "updated",              "datatype": "numeric"}]
+

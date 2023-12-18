@@ -43,6 +43,7 @@ from utils.log import Log
 from utils.database import Database
 from utils.helper import Helper
 from utils.queue import Queue
+from utils.ha import HA
 from common.constant import CONSTANT
 
 
@@ -216,10 +217,21 @@ class Config(object):
             subnet['range_begin']=nwk['dhcp_range_begin']
             subnet['range_end']=nwk['dhcp_range_end']
         netmask = Helper().get_netmask(f"{nwk['network']}/{nwk['subnet']}")
+        controller_name = 'controller'
+        # ---------------------------------------------------
+        ha_object=HA()
+        ha_enabled=ha_object.get_hastate()
+        ha_insync=ha_object.get_insync()
+        ha_master=ha_object.get_role()
+        ha_me=ha_object.get_me()
+        # ---------------------------------------------------
+        if ha_enabled and ha_insync:
+                controller_name = ha_me
+        # ---------------------------------------------------
         controller = Database().get_record_join(
             ['ipaddress.ipaddress','network.name as networkname'],
             ['ipaddress.tablerefid=controller.id','network.id=ipaddress.networkid'],
-            ['tableref="controller"', 'controller.hostname="controller"']
+            ['tableref="controller"', f"controller.hostname='{controller_name}'"]
         )
         self.logger.info(f"Building DHCP block for {network_name}")
         subnet['network']=nwk['network']
@@ -295,7 +307,8 @@ class Config(object):
  
         for nwk in networks:
             network_id = nwk['id']
-            rev_ip=0
+            networkname = None
+            rev_ip = 0
             if nwk['network'] and nwk['name']:
                 networkname = nwk['name']
                 self.logger.info(f"Building DNS block for {networkname}")
@@ -311,67 +324,54 @@ class Config(object):
                     dns_zones.append(rev_ip)
                     dns_rev_domain[rev_ip]=networkname
                 dns_zone_records[networkname]={}
-                if networkname == controller_network:
-                    # we only add a zone record for controller when we're actually in it
-                    dns_zone_records[networkname]['controller']={}
-                    dns_zone_records[networkname]['controller']['key']='controller'
-                    dns_zone_records[networkname]['controller']['type']='A'
-                    dns_zone_records[networkname]['controller']['value']=controller_ip
+                # we always add a zone record for controller even when we're actually in it. we can override.
+                dns_zone_records[networkname]['controller']={}
+                dns_zone_records[networkname]['controller']['key']='controller'
+                dns_zone_records[networkname]['controller']['type']='A'
+                dns_zone_records[networkname]['controller']['value']=controller_ip
                 if rev_ip not in dns_zone_records.keys():
                     dns_zone_records[rev_ip]={}
                 dns_authoritative[networkname]='controller'
                 dns_authoritative[rev_ip]='controller'
- 
-            node_interface = Database().get_record_join(
-                ['node.name as nodename', 'ipaddress.ipaddress', 'network.name as networkname'],
+
+            mergedlist = []
+            controllers = Database().get_record_join(
+                ['controller.hostname as host', 'ipaddress.ipaddress','network.name as networkname'],
+                ['ipaddress.tablerefid=controller.id','network.id=ipaddress.networkid'],
+                ['ipaddress.tableref="controller"', f'ipaddress.networkid="{network_id}"']
+            )
+            if controllers:
+                mergedlist.append(controllers)
+            nodes = Database().get_record_join(
+                ['node.name as host', 'ipaddress.ipaddress', 'network.name as networkname'],
                 ['ipaddress.tablerefid=nodeinterface.id', 'nodeinterface.nodeid=node.id',
                  'network.id=ipaddress.networkid'],
                 ['tableref="nodeinterface"', f'ipaddress.networkid="{network_id}"']
             )
-            nodelist, ptr_node_list= [], []
-            if node_interface:
-                for interface in node_interface:
-                    sub_ip = interface['ipaddress'].split('.')  # NOT IPv6 COMPLIANT!! needs overhaul. PENDING
-                    node_ptr = sub_ip[2] + '.' + sub_ip[3]
-                    #
-                    dns_zone_records[networkname][interface['nodename']]={}
-                    dns_zone_records[networkname][interface['nodename']]['key']=interface['nodename']
-                    dns_zone_records[networkname][interface['nodename']]['type']='A'
-                    dns_zone_records[networkname][interface['nodename']]['value']=interface['ipaddress']
-                    dns_zone_records[rev_ip][interface['nodename']]={}
-                    dns_zone_records[rev_ip][interface['nodename']]['key']=node_ptr
-                    dns_zone_records[rev_ip][interface['nodename']]['type']='PTR'
-                    dns_zone_records[rev_ip][interface['nodename']]['value']=f"{interface['nodename']}.{interface['networkname']}"
+            if nodes:
+                mergedlist.append(nodes)
 
             for item in ['otherdevices','switch']:
                 devices = Database().get_record_join(
-                    [f'{item}.name as devname', 'ipaddress.ipaddress',
+                    [f'{item}.name as host', 'ipaddress.ipaddress',
                      'network.name as networkname'],
                     [f'ipaddress.tablerefid={item}.id', 'network.id=ipaddress.networkid'],
                     [f'tableref="{item}"', f'ipaddress.networkid="{network_id}"']
                 )
                 if devices:
-                    for device in devices:
-                        sub_ip = device['ipaddress'].split('.')  # NOT IPv6 COMPLIANT!! needs overhaul. PENDING
-                        node_ptr = sub_ip[2] + '.' + sub_ip[3]
-                        #
-                        dns_zone_records[networkname][device['devname']]={}
-                        dns_zone_records[networkname][device['devname']]['key']=device['devname']
-                        dns_zone_records[networkname][device['devname']]['type']='A'
-                        dns_zone_records[networkname][device['devname']]['value']=device['ipaddress']
-                        dns_zone_records[rev_ip][device['devname']]={}
-                        dns_zone_records[rev_ip][device['devname']]['key']=node_ptr
-                        dns_zone_records[rev_ip][device['devname']]['type']='PTR'
-                        dns_zone_records[rev_ip][device['devname']]['value']=f"{device['devname']}.{device['networkname']}"
+                    mergedlist.append(devices)
 
             additional = Database().get_record_join(
                     ['dns.*','network.name as networkname'],
                     ['dns.networkid=network.id'],
                     [f"network.name='{networkname}'"])
             if additional:
-                for host in additional:
+                mergedlist.append(additional)
+
+            for hosts in mergedlist:
+                for host in hosts:
                     sub_ip = host['ipaddress'].split('.')  # NOT IPv6 COMPLIANT!! needs overhaul. PENDING
-                    host_ptr = sub_ip[2] + '.' + sub_ip[3]
+                    host_ptr = sub_ip[3] + '.' + sub_ip[2]
                     dns_zone_records[networkname][host['host']]={}
                     dns_zone_records[networkname][host['host']]['key']=host['host']
                     dns_zone_records[networkname][host['host']]['type']='A'
@@ -381,12 +381,6 @@ class Config(object):
                     dns_zone_records[rev_ip][host['host']]['type']='PTR'
                     dns_zone_records[rev_ip][host['host']]['value']=f"{host['host']}.{host['networkname']}"
 
-            if 'controller' not in dns_zone_records[networkname]:
-                # and we add the controller here as a failsafe
-                dns_zone_records[networkname]['controller']={}
-                dns_zone_records[networkname]['controller']['key']='controller'
-                dns_zone_records[networkname]['controller']['type']='A'
-                dns_zone_records[networkname]['controller']['value']=controller_ip
 
         # we create the zone files with zone info like addresses
         for zone in dns_zones:

@@ -43,6 +43,7 @@ from common.constant import CONSTANT
 from utils.helper import Helper
 from utils.status import Status
 from utils.queue import Queue
+from utils.request import Request
 
 
 class OsImage(object):
@@ -690,18 +691,112 @@ class OsImage(object):
             return False
 
     # -------------------------------------------------------------------
+
+    def unpack_osimage(self,taskid,request_id):
+
+        self.logger.info("unpack_osimage called")
+        try:
+
+            result=False
+            details=Queue().get_task_details(taskid)
+            request_id=details['request_id']
+            action,osimage,noeof,*_=details['task'].split(':')+[None]+[None]
+
+            if action == "unpack_osimage":
+                image_directory = CONSTANT['FILES']['IMAGE_DIRECTORY']
+                image = Database().get_record(None, 'osimage', f"WHERE name='{osimage}'")
+                if not image:
+                    Status().add_message(request_id,"luna",f"error unpacking osimage {osimage}: Image {osimage} does not exist?")
+                    return False
+
+                filesystem_plugin = 'default'
+                if 'IMAGE_FILESYSTEM' in CONSTANT['PLUGINS'] and CONSTANT['PLUGINS']['IMAGE_FILESYSTEM']:
+                    filesystem_plugin = CONSTANT['PLUGINS']['IMAGE_FILESYSTEM']
+                if not image[0]['path']:
+                    os_image_plugin=Helper().plugin_load(self.osimage_plugins,'osimage/filesystem',filesystem_plugin)
+                    ret, data = os_image_plugin().getpath(image_directory=image_directory, osimage=image[0]['name'], tag=None) # we feed no tag as tagged/versioned FS is normally R/O
+                    if ret is True:
+                        image[0]['path'] = data
+                    else:
+                        Status().add_message(request_id,"luna",f"error assembling osimage {osimage}: Image path not defined")
+                        return False
+
+                image_path = str(image[0]['path'])
+                if image_path[0] != '/': # means that we don't have an absolute path. good, let's prepend what's in luna.ini
+                    if len(image_directory) > 1:
+                        image_path = f"{image_directory}/{image[0]['path']}"
+                    else:
+                        Status().add_message(request_id,"luna",f"error unpacking osimage {osimage}: image path {image_path} is not an absolute path while IMAGE_DIRECTORY setting in FILES is not defined")
+                        return False
+
+                files_path = CONSTANT['FILES']['IMAGE_FILES']
+                tmp_directory = CONSTANT['FILES']['TMP_DIRECTORY']
+                image_file = str(image[0]['imagefile'])
+
+                # loading the plugin depending on OS
+                os_image_plugin=Helper().plugin_load(self.osimage_plugins,'osimage/filesystem',filesystem_plugin)
+
+                #------------------------------------------------------
+                Status().add_message(request_id,"luna",f"unpacking osimage {osimage}")
+                response=os_image_plugin().extract(
+                                            image_path=image_path,
+                                            files_path=files_path,
+                                            image_file=image_file,
+                                            tmp_directory=tmp_directory)
+                ret=response[0]
+                mesg=response[1]
+                sleep(1) # needed to prevent immediate concurrent access to the database. Pooling,WAL,WIF,WAF,etc won't fix this. Only sleep
+                if ret is True:
+                    self.logger.info(f'OS image {osimage} unpacked successfully.')
+                    Status().add_message(request_id,"luna",f"finished unpacking osimage {osimage}")
+                    result=True
+                else:
+                    self.logger.info(f'OS image {osimage} unpack error: {mesg}.')
+                    Status().add_message(request_id,"luna",f"error assembling osimage {osimage}: {mesg}")
+                
+                if not noeof:
+                    Status().add_message(request_id,"luna","EOF")
+            else:
+                self.logger.info(f"{details['task']} is not for us.")
+            return result
+
+        except Exception as exp:
+            exc_type, exc_obj, exc_tb = sys.exc_info()
+            self.logger.error(f"unpack_osimage has problems: {exp}, {exc_type}, in {exc_tb.tb_lineno}")
+            try:
+                Status().add_message(request_id,"luna",f"Unpacking failed: {exp}")
+                Status().add_message(request_id,"luna","EOF")
+            except Exception as nexp:
+                self.logger.error(f"unpack_osimage has problems during exception handling: {nexp}")
+            return False
+
+    # -------------------------------------------------------------------
   
     def cleanup_file(self,file_to_remove):
         self.logger.info(f"I was called to cleanup old file: {file_to_remove}")
+        inuse = Database().get_record(None, 'osimage', f"WHERE kernelfile='{file_to_remove}' or initrdfile='{file_to_remove}' or imagefile='{file_to_remove}'")
+        if inuse:
+            return False, f"will not remove {file_to_remove} as it is still in use by {inuse[0]['name']}"
+        else:
+            inusebytag = Database().get_record(None, 'osimagetag', f"WHERE kernelfile='{file_to_remove}' or initrdfile='{file_to_remove}' or imagefile='{file_to_remove}'")
+            if inusebytag:
+                return False, f"will not remove {file_to_remove} as it is still in use by tag {inusebytag[0]['name']}"
         files_path = CONSTANT['FILES']['IMAGE_FILES']
         os_image_plugin=Helper().plugin_load(self.osimage_plugins,'osimage/other','cleanup')
         ret,mesg=os_image_plugin().cleanup(files_path=files_path,file_to_remove=file_to_remove)
-        return ret,mesg
+        return ret, mesg
 
     # -------------------------------------------------------------------
 
     def cleanup_provisioning(self,image_file):
         self.logger.info(f"I was called to cleanup old provisioning: {image_file}")
+        inuse = Database().get_record(None, 'osimage', f"WHERE imagefile='{image_file}'")
+        if inuse:
+            return False, f"will not remove {image_file} as it is still in use by {inuse[0]['name']}"
+        else:
+            inusebytag = Database().get_record(None, 'osimagetag', f"WHERE imagefile='{image_file}'")
+            if inusebytag:
+                return False, f"will not remove {image_file} as it is still in use by tag {inusebytag[0]['name']}"
         cluster_provision_methods=[]
         cluster = Database().get_record(None, 'cluster', None)
         if cluster:
@@ -709,14 +804,37 @@ class OsImage(object):
             cluster_provision_methods.append(cluster[0]['provision_fallback'])
         else:
             cluster_provision_methods.append('http')
-
         files_path = CONSTANT['FILES']['IMAGE_FILES']
         for method in cluster_provision_methods:
             provision_plugin=Helper().plugin_load(self.boot_plugins,'boot/provision',method)
             ret,mesg=provision_plugin().cleanup(files_path=files_path, image_file=image_file)
-        return ret,mesg
+        return ret, mesg
 
-   
+    # ------------------------------------------------------------------- 
+  
+    def schedule_cleanup(self,osimage,request_id=None): 
+        if not request_id:
+            request_id='__internal__'
+        queue_id=None
+        image = Database().get_record(None, 'osimage', f"WHERE name='{osimage}'")
+        if image:
+            for item in ['kernelfile','initrdfile','imagefile']:
+                if image[0][item]:
+                    inusebytag = Database().get_record(None, 'osimagetag', f"WHERE osimageid='{image[0]['id']}' AND {item}='"+image[0][item]+"'")
+                    if not inusebytag:
+                        queue_id,queue_response = Queue().add_task_to_queue(f'cleanup_old_file:'+image[0][item],'housekeeper',request_id,None,'1h')
+                        if item == 'imagefile':
+                            queue_id,queue_response = Queue().add_task_to_queue(f'cleanup_old_provisioning:'+image[0][item],'housekeeper',request_id,None,'1h')
+        return queue_id
+
+    def schedule_provision(self,osimage,subsystem=None,request_id=None):
+        if not request_id:
+            request_id='__internal__'
+        if not subsystem:
+            subsystem='osimage'
+        queue_id,queue_response = Queue().add_task_to_queue(f"provision_osimage:{osimage}",subsystem,request_id)
+        return queue_id
+
     # ------------------------------------------------------------------- 
     # The mother of all.
 
@@ -768,15 +886,7 @@ class OsImage(object):
                             if queue_id:
                                 queue_id,queue_response = Queue().add_task_to_queue(f"provision_osimage:{first}",'osimage',request_id)
                                 if queue_id:
-                                    image = Database().get_record(None, 'osimage', f"WHERE name='{first}'")
-                                    if image:
-                                        for item in ['kernelfile','initrdfile','imagefile']:
-                                            if image[0][item]:
-                                                inusebytag = Database().get_record(None, 'osimagetag', f"WHERE osimageid='{image[0]['id']}' AND {item}='"+image[0][item]+"'")
-                                                if not inusebytag:
-                                                    queue_id,queue_response = Queue().add_task_to_queue(f'cleanup_old_file:'+image[0][item],'housekeeper',request_id,None,'1h')
-                                                    if item == 'imagefile':
-                                                        queue_id,queue_response = Queue().add_task_to_queue(f'cleanup_old_provisioning:'+image[0][item],'housekeeper',request_id,None,'1h')
+                                    self.schedule_cleanup(first,request_id)
                                     if queue_id:
                                         queue_id,queue_response = Queue().add_task_to_queue(f"close_task:{next_id}",'osimage',request_id)
 
@@ -863,6 +973,27 @@ class OsImage(object):
                     self.logger.info(f"{details['task']} is not for us.")
                     sleep(10)
 
+
+            # parked tasks are there to be there. it should be seen as a placeholder for something else.
+            while next_id := Queue().next_task_in_queue('osimage','parked',only_request_id):
+                details=Queue().get_task_details(next_id)
+                request_id=details['request_id']
+                action,first,second,third,*_=details['task'].split(':')+[None]+[None]+[None]
+                self.logger.info(f"osimage_mother sees parked job {action} in queue as next: {next_id}")
+
+                # though we have this task, it's there to make sure all image related activities are done
+                # before we continue let the housekeeper do this. The housekeeper will then send this
+                # pull request to the other controllers (H/A mode)
+                if action == "sync_osimage_with_master":
+                    if first and second:
+                        Queue().change_subsystem(next_id,'housekeeper')
+                        Queue().update_task_status_in_queue(next_id,'queued')
+
+                else:
+                    self.logger.info(f"{details['task']} is not for us.")
+                    sleep(10)
+
+
         except Exception as exp:
             exc_type, exc_obj, exc_tb = sys.exc_info()
             self.logger.error(f"osimage_mother has problems: {exp}, {exc_type}, in {exc_tb.tb_lineno}")
@@ -886,7 +1017,4 @@ class OsImage(object):
             result=response[0]
             mesg=response[1]
             pipeline.add_message({nodename: f"{result}={mesg}"})
-
-
-
 

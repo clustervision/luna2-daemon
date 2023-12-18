@@ -371,7 +371,7 @@ class Config(object):
             for hosts in mergedlist:
                 for host in hosts:
                     sub_ip = host['ipaddress'].split('.')  # NOT IPv6 COMPLIANT!! needs overhaul. PENDING
-                    host_ptr = sub_ip[2] + '.' + sub_ip[3]
+                    host_ptr = sub_ip[3] + '.' + sub_ip[2]
                     dns_zone_records[networkname][host['host']]={}
                     dns_zone_records[networkname][host['host']]['key']=host['host']
                     dns_zone_records[networkname][host['host']]['type']='A'

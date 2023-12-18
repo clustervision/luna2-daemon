@@ -730,6 +730,7 @@ class OsImage(object):
                         return False
 
                 files_path = CONSTANT['FILES']['IMAGE_FILES']
+                tmp_directory = CONSTANT['FILES']['TMP_DIRECTORY']
                 image_file = str(image[0]['imagefile'])
 
                 # loading the plugin depending on OS
@@ -740,7 +741,8 @@ class OsImage(object):
                 response=os_image_plugin().extract(
                                             image_path=image_path,
                                             files_path=files_path,
-                                            image_file=image_file)
+                                            image_file=image_file,
+                                            tmp_directory=tmp_directory)
                 ret=response[0]
                 mesg=response[1]
                 sleep(1) # needed to prevent immediate concurrent access to the database. Pooling,WAL,WIF,WAF,etc won't fix this. Only sleep

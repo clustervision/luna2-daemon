@@ -96,7 +96,7 @@ class Journal():
         return self.me
 
 
-    def add_request(self,function,object,param=None,payload=None,masteronly=False,misc=None,sendnow=True,keeptrying=5):
+    def add_request(self,function,object=None,param=None,payload=None,masteronly=False,misc=None,sendnow=True,keeptrying=5):
         if not self.ha_object.get_hastate():
             return True, "Not in H/A mode"
         if not self.ha_object.get_overrule():

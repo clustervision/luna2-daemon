@@ -459,10 +459,12 @@ class OSImage():
         image = Database().get_record(None, 'osimage', f' WHERE name = "{name}"')
         if image:
             for item in ['kernelfile','initrdfile','imagefile']:
-                queue_id,queue_response = Queue().add_task_to_queue(f'cleanup_old_file:'+image[0][item],
-                                                                    'housekeeper','__image_delete__',None,'1h')
-            queue_id,queue_response = Queue().add_task_to_queue(f'cleanup_old_provisioning:'+image[0]['imagefile'],
-                                                                    'housekeeper','__image_delete__',None,'1h')
+                if image[0][item]:
+                    queue_id,queue_response = Queue().add_task_to_queue(f'cleanup_old_file:'+image[0][item],
+                                                                         'housekeeper','__image_delete__',None,'1h')
+            if image[0]['imagefile']:
+                queue_id,queue_response = Queue().add_task_to_queue(f'cleanup_old_provisioning:'+image[0]['imagefile'],
+                                                                     'housekeeper','__image_delete__',None,'1h')
         tag_details = Database().get_record_join(
             ['osimagetag.id as tagid','osimagetag.*','osimage.id as osimageid'],
             ['osimagetag.osimageid=osimage.id'],
@@ -471,10 +473,12 @@ class OSImage():
         if tag_details:
             for tag_detail in tag_details:
                 for item in ['kernelfile','initrdfile','imagefile']:
-                    queue_id,queue_response = Queue().add_task_to_queue(f'cleanup_old_file:'+tag_detail[item],
-                                                                    'housekeeper','__tag_delete__',None,'1h')
-                queue_id,queue_response = Queue().add_task_to_queue(f'cleanup_old_provisioning:'+tag_detail['imagefile'],
-                                                                    'housekeeper','__tag_delete__',None,'1h')
+                    if tag_detail[item]:
+                        queue_id,queue_response = Queue().add_task_to_queue(f'cleanup_old_file:'+tag_detail[item],
+                                                                             'housekeeper','__tag_delete__',None,'1h')
+                if tag_detail['imagefile']:
+                    queue_id,queue_response = Queue().add_task_to_queue(f'cleanup_old_provisioning:'+tag_detail['imagefile'],
+                                                                         'housekeeper','__tag_delete__',None,'1h')
                 status, response = Model().delete_record_by_id(
                     id = tag_detail['tagid'],
                     table = 'osimagetag',

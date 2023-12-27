@@ -234,7 +234,7 @@ class Config(object):
                 controller_name = ha_me
         # ---------------------------------------------------
         controller = Database().get_record_join(
-            ['ipaddress.ipaddress','network.name as networkname','network.nameserver_ip','network.ntp_server'],
+            ['ipaddress.ipaddress','network.name as networkname'],
             ['ipaddress.tablerefid=controller.id','network.id=ipaddress.networkid'],
             ['tableref="controller"', f"controller.hostname='{controller_name}'"]
         )

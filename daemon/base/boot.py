@@ -572,16 +572,18 @@ class Boot():
                 ret,message = None, None
                 if new_nodename:
                     trial=25
+                    ret=True
                     if example_node:
                         newnodedata = {'config': {'node': {example_node: {}}}}
                         newnodedata['config']['node'][example_node]['newnodename'] = new_nodename
                         newnodedata['config']['node'][example_node]['name'] = example_node
                         newnodedata['config']['node'][example_node]['group'] = groupname # groupname is given through API call
-                        while self.insync is False and trial>0:
-                            self.insync = self.ha_object.get_insync()
-                            trial-=1
-                            sleep(2)
-                        ret, message = Journal().add_request(function="Node.clone_node",object=example_node,payload=newnodedata)
+                        if self.hastate is True:
+                            while self.insync is False and trial>0:
+                                self.insync = self.ha_object.get_insync()
+                                trial-=1
+                                sleep(2)
+                            ret, message = Journal().add_request(function="Node.clone_node",object=example_node,payload=newnodedata)
                         if ret is True:
                             ret, message = Node().clone_node(example_node,newnodedata)
                         self.logger.info(f"Group select boot: Cloning {example_node} to {new_nodename}: ret = [{ret}], message = [{message}]")
@@ -589,11 +591,12 @@ class Boot():
                         newnodedata = {'config': {'node': {new_nodename: {}}}}
                         newnodedata['config']['node'][new_nodename]['name'] = new_nodename
                         newnodedata['config']['node'][new_nodename]['group'] = groupname # groupname is given through API call
-                        while self.insync is False and trial>0:
-                            self.insync = self.ha_object.get_insync()
-                            trial-=1
-                            sleep(2)
-                        ret, message = Journal().add_request(function="Node.update",object=example_node,payload=newnodedata)
+                        if self.hastate is True:
+                            while self.insync is False and trial>0:
+                                self.insync = self.ha_object.get_insync()
+                                trial-=1
+                                sleep(2)
+                            ret, message = Journal().add_request(function="Node.update",object=example_node,payload=newnodedata)
                         if ret is True:
                             ret, message = Node().update(new_nodename,newnodedata)
                         self.logger.info(f"Group select boot: Creating {new_nodename}: ret = [{ret}], message = [{message}]")

@@ -71,7 +71,7 @@ class Config(object):
         if not check_template:
             self.logger.error(f"Error building dns config. {template_path} does not exist")
             return False
-        ntp_server, name_server = None, None
+        ntp_server, nameserver_ip = None, None
         cluster = Database().get_record(None, 'cluster', None)
         if cluster:
             if 'ntp_server' in cluster[0] and cluster[0]['ntp_server']:

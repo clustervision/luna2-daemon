@@ -71,10 +71,13 @@ class Config(object):
         if not check_template:
             self.logger.error(f"Error building dns config. {template_path} does not exist")
             return False
-        ntp_server = None
+        ntp_server, nameserver_ip = None, None
         cluster = Database().get_record(None, 'cluster', None)
-        if cluster and 'ntp_server' in cluster[0] and cluster[0]['ntp_server']:
-            ntp_server = cluster[0]['ntp_server']
+        if cluster:
+            if 'ntp_server' in cluster[0] and cluster[0]['ntp_server']:
+                ntp_server = cluster[0]['ntp_server']
+            if 'nameserver_ip' in cluster[0] and cluster[0]['nameserver_ip']:
+                nameserver_ip = cluster[0]['nameserver_ip']
         dhcp_file = f"{CONSTANT['TEMPLATES']['TEMP_DIR']}/dhcpd.conf"
         domain = None
         controller = Database().get_record_join(
@@ -84,6 +87,8 @@ class Config(object):
         )
         if controller:
             domain=controller[0]['domain']
+            ntp_server = ntp_server or controller[0]['ipaddress']
+            nameserver_ip = nameserver_ip or controller[0]['ipaddress']
         #
         omapikey=None
         if CONSTANT['DHCP']['OMAPIKEY']:
@@ -185,7 +190,7 @@ class Config(object):
             dhcpd_template = env.get_template(template)
             dhcpd_config = dhcpd_template.render(CLASSES=config_classes,SHARED=config_shared,SUBNETS=config_subnets,
                                                  HOSTS=config_hosts,POOLS=config_pools,DOMAINNAME=domain,
-                                                 TIMESERVERS=ntp_server,OMAPIKEY=omapikey)
+                                                 NAMESERVERS=nameserver_ip,TIMESERVERS=ntp_server,OMAPIKEY=omapikey)
             with open(dhcp_file, 'w', encoding='utf-8') as dhcp:
                 dhcp.write(dhcpd_config)
             try:
@@ -237,6 +242,8 @@ class Config(object):
         subnet['network']=nwk['network']
         subnet['netmask']=netmask
         subnet['domain']=nwk['name']
+        subnet['nameserver_ip']=nwk['nameserver_ip']
+        subnet['ntp_server']=nwk['ntp_server']
         if nwk['gateway'] and nwk['gateway'] != "None": # left over from database().update/insert bug - Antoine
             subnet['gateway']=nwk['gateway']
         if controller and (controller[0]['networkname'] == nwk['name'] or 'gateway' in subnet):

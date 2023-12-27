@@ -199,17 +199,13 @@ class Network():
                             default_gateway_metric="100"
                         data['gateway_metric'] = default_gateway_metric
             if 'nameserver_ip' in data:
-                nsip_details = Helper().check_ip_range(
-                    data['nameserver_ip'],
-                    data['network'] + '/' + data['subnet']
-                )
+                nsip_details = Helper().check_ip(data['nameserver_ip'])
                 if (not nsip_details) and data['nameserver_ip'] != '':
                     status=False
                     ret_msg = f'Invalid request: Incorrect Nameserver IP: {data["nameserver_ip"]}'
                     return status, ret_msg
             if 'ntp_server' in data:
-                subnet = data['network'] + '/' + data['subnet']
-                ntp_details = Helper().check_ip_range(data['ntp_server'], subnet)
+                ntp_details = Helper().check_ip(data['ntp_server'])
                 if (not ntp_details) and data['ntp_server'] != '':
                     status=False
                     return status, f'Invalid request: Incorrect NTP Server IP: {data["ntp_server"]}'

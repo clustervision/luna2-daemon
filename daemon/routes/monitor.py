@@ -58,7 +58,7 @@ def monitor_service(name=None):
     return response, access_code
 
 
-@monitor_blueprint.route("/monitor/status/<string:node>", methods=['GET'])
+@monitor_blueprint.route("/monitor/node/<string:node>", methods=['GET'])
 @validate_name
 def monitor_status_get(node=None):
     """
@@ -77,7 +77,7 @@ def monitor_status_get(node=None):
     return response, access_code
 
 
-@monitor_blueprint.route("/monitor/status/<string:node>", methods=['POST'])
+@monitor_blueprint.route("/monitor/node/<string:node>", methods=['POST'])
 @validate_name
 @token_required
 @input_filter(checks=['monitor:status'], skip=None)
@@ -118,7 +118,6 @@ def monitor_status():
     """
     Input - nothing
     Process - generates a list of messages still in status table
-              Not te be confused with above status calls. they should have been named 'node'.
     Output - the generated list in json format
     """
     access_code = 503

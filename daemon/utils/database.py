@@ -508,7 +508,9 @@ class Database():
                     new_where = new_where + ' AND '.join(where_list)
                 result = self.get_record(None, table, new_where)
                 if result:
-                    response = result[0]['id']
+                    response = True
+                    if 'id' in result[0]:
+                        response = result[0]['id']
             except Exception as exp:
                 message = f'Error occur while executing => {query}. error is "{exp}" '
                 message += f'on attempt {attempt}.'

@@ -257,8 +257,10 @@ def get_config(filename=None):
             if section in list(BOOTSTRAP.keys()):
                 # commented out as it doesn't work as intended. pending
                 #Helper().check_option(filename, section, option.upper(), BOOTSTRAP)
+                LOGGER.debug(f"OPTION: {option.upper()}")
                 for num in range(1, 10):
                     if 'CONTROLLER'+str(num) in option.upper():
+                        BOOTSTRAP['HA']['ENABLED']=True
                         BOOTSTRAP[section][option.upper()]={}
                         hostname,ip,*_=item.split(':')+[None]
                         hostname,*_=hostname.split('.')+[None]
@@ -271,8 +273,8 @@ def get_config(filename=None):
                         if Helper().check_ip(ip):
                             BOOTSTRAP[section][option.upper()]['IP'] = ip
                             BOOTSTRAP[section][option.upper()]['HOSTNAME'] = hostname
-                if 'CONTROLLER' in option.upper() and 'CONTROLLER1' not in option.upper():
-                    # we assume we do not have H/A setup. no Virtual IP
+                            LOGGER.debug(f"CONTROLLER{num}: {BOOTSTRAP[section][option.upper()]}")
+                if 'CONTROLLER' in option.upper():
                     hostname,ip,*_=item.split(':')+[None]
                     hostname,*_=hostname.split('.')+[None]
                     if hostname and not ip and '.' in hostname:
@@ -283,6 +285,7 @@ def get_config(filename=None):
                         BOOTSTRAP[section][option.upper()] = {}
                         BOOTSTRAP[section][option.upper()]['IP'] = ip
                         BOOTSTRAP[section][option.upper()]['HOSTNAME'] = hostname
+                        LOGGER.debug(f"CONTROLLER: {BOOTSTRAP[section][option.upper()]}")
                 elif 'NODELIST' in option.upper():
                     ### TODO Nodelist also check for the length
                     try:
@@ -325,7 +328,10 @@ def bootstrap(bootstrapfile=None):
     node_plugins = Helper().plugin_finder(f'{plugins_path}/node')
     node_plugin=Helper().plugin_load(node_plugins,'node','default')
 
-    ha_state = [{'column': 'enabled', 'value': '0'},
+    ha_enabled = 0
+    if BOOTSTRAP['HA']['ENABLED'] is True:
+        ha_enabled = 1
+    ha_state = [{'column': 'enabled', 'value': ha_enabled},
                 {'column': 'syncimages', 'value': '1'},
                 {'column': 'insync', 'value': '0'},
                 {'column': 'overrule', 'value': '0'},
@@ -638,6 +644,7 @@ def validate_bootstrap():
     global BOOTSTRAP
     BOOTSTRAP = {
         'HOSTS': {'HOSTNAME': None, 'CONTROLLER1': None, 'CONTROLLER2': None, 'NODELIST': None, 'PRIMARY_DOMAIN': None},
+        'HA': {'ENABLED': False},
         'NETWORKS': {'cluster': None, 'ipmi': None, 'ib': None},
         'GROUPS': {'NAME': None},
         'OSIMAGE': {'NAME': None},

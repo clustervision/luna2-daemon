@@ -468,6 +468,7 @@ def bootstrap(bootstrapfile=None):
                 ]
                 Database().insert('ipaddress', controller_ip)
             num = num + 1
+
     osimage_path,osimage_kernelversion=None,None
     if 'PATH' in BOOTSTRAP['OSIMAGE']:
         osimage_path=BOOTSTRAP['OSIMAGE']['PATH']

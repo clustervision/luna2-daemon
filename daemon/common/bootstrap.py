@@ -257,7 +257,7 @@ def get_config(filename=None):
             if section in list(BOOTSTRAP.keys()):
                 # commented out as it doesn't work as intended. pending
                 #Helper().check_option(filename, section, option.upper(), BOOTSTRAP)
-                LOGGER.info(f"SECTION: {section.upper()}, OPTION: {option.upper()}, ITEM: {item}")
+                LOGGER.debug(f"SECTION: {section.upper()}, OPTION: {option.upper()}, ITEM: {item}")
                 if option.upper() == 'CONTROLLER':
                     hostname,ip,*_=item.split(':')+[None]
                     hostname,*_=hostname.split('.')+[None]
@@ -313,11 +313,9 @@ def get_config(filename=None):
                                 LOGGER.info(f"CONTROLLER{num}: {BOOTSTRAP[section]['CONTROLLER'+str(num)]}")
                     if not skip:
                         BOOTSTRAP[section][option.upper()] = item
-                        LOGGER.info(f"DEVNULL1: {option.upper()}: {item}")
             else:
                 BOOTSTRAP[section] = {}
                 BOOTSTRAP[section][option.upper()] = item
-                LOGGER.info(f"DEVNULL2: {option.upper()}: {item}")
 
 
 def bootstrap(bootstrapfile=None):
@@ -454,7 +452,6 @@ def bootstrap(bootstrapfile=None):
             Database().insert('ipaddress', controller_ip)
     for num in range(1, 10):
         if 'CONTROLLER'+str(num) in BOOTSTRAP['HOSTS'].keys():
-            LOGGER.info(f"FOR DB: controller{num}: {BOOTSTRAP['HOSTS']['CONTROLLER'+str(num)]}")
             hostname=BOOTSTRAP['HOSTS']['CONTROLLER'+str(num)]['HOSTNAME']
             ip=BOOTSTRAP['HOSTS']['CONTROLLER'+str(num)]['IP']
             taken_ips.append(ip)

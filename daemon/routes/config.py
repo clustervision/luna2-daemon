@@ -596,22 +596,23 @@ def config_osimagetag_get(name=None):
     return response, access_code
 
 
-@config_blueprint.route("/config/osimagetag/<string:name>/_member", methods=['GET'])
-@token_required
-@validate_name
-def config_osimagetag_member(name=None):
-    """
-    This method will fetch all the nodes+groups, which is connected to
-    the provided osimagetag.
-    """
-    access_code=404
-    status, response = OSImage().get_osimagetag_member(name)
-    if status is True:
-        access_code = 200
-        response = dumps(response)
-    else:
-        response = {'message': response}
-    return response, access_code
+# luna osimage tag already shows members. commented out for now. Antoine
+#@config_blueprint.route("/config/osimagetag/<string:name>/_member", methods=['GET'])
+#@token_required
+#@validate_name
+#def config_osimagetag_member(name=None):
+#    """
+#    This method will fetch all the nodes+groups, which is connected to
+#    the provided osimagetag.
+#    """
+#    access_code=404
+#    status, response = OSImage().get_osimagetag_member(name)
+#    if status is True:
+#        access_code = 200
+#        response = dumps(response)
+#    else:
+#        response = {'message': response}
+#    return response, access_code
 
 
 @config_blueprint.route("/config/osimage/<string:name>", methods=['POST'])

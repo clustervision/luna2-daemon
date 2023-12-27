@@ -1087,6 +1087,9 @@ class Boot():
                             # <---- not ipv6 compliant! pending
                     else:
                         # regular nic
+                        zone = 'trusted'
+                        if interface['zone'] == 'external' or interface['zone'] == 'public':
+                            zone = 'public'
                         data['interfaces'][interface['interface']] = {
                             'interface': interface['interface'],
                             'ipaddress': interface['ipaddress'],
@@ -1097,7 +1100,7 @@ class Boot():
                             'gateway': interface['gateway'],
                             'gateway_metric': interface['gateway_metric'] or "101",
                             'options': interface['options'] or "",
-                            'zone': interface['zone'],
+                            'zone': zone,
                             'type': interface['type'] or "ethernet"
                         }
                         domain_search.append(interface['network'])

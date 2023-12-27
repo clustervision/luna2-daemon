@@ -47,6 +47,7 @@ id=Connection_${DEVICE}
 type=${TYPE}
 interface-name=${DEVICE}
 autoconnect=true
+zone=${ZONE}
 
 [$TYPE]
 EOF
@@ -77,7 +78,6 @@ EOF
 chown root:root /sysroot/etc/NetworkManager/system-connections/Connection_${DEVICE}.nmconnection
 chmod 600 /sysroot/etc/NetworkManager/system-connections/Connection_${DEVICE}.nmconnection
 
-        #$ZONE
         #$OPTIONS
     """
 
@@ -87,8 +87,6 @@ chmod 600 /sysroot/etc/NetworkManager/system-connections/Connection_${DEVICE}.nm
     """
 
     gateway = """
-        #GREP=$(grep '^address1' /sysroot/etc/NetworkManager/system-connections/Connection_${DEVICE}.nmconnection)
-        #sed -i 's%^'$GREP'%'$GREP','$GATEWAY'%' /sysroot/etc/NetworkManager/system-connections/Connection_${DEVICE}.nmconnection
         if [ "$GATEWAY" ]; then
             sed -i 's%^#route1=%route1=0.0.0.0/0,'$GATEWAY','$METRIC'%' /sysroot/etc/NetworkManager/system-connections/Connection_${DEVICE}.nmconnection
         fi

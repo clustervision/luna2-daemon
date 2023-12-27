@@ -88,7 +88,7 @@ class Config(object):
         if controller:
             domain=controller[0]['domain']
             ntp_server = ntp_server or controller[0]['ipaddress']
-            nameserver_ip = controller[0]['ipaddress'] or nameserver_ip
+            nameserver_ip = nameserver_ip or controller[0]['ipaddress']
         #
         omapikey=None
         if CONSTANT['DHCP']['OMAPIKEY']:

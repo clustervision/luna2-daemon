@@ -259,6 +259,7 @@ def get_config(filename=None):
                 #Helper().check_option(filename, section, option.upper(), BOOTSTRAP)
                 for num in range(1, 10):
                     if 'CONTROLLER'+str(num) in option.upper():
+                        BOOTSTRAP['HA']=True
                         BOOTSTRAP[section][option.upper()]={}
                         hostname,ip,*_=item.split(':')+[None]
                         hostname,*_=hostname.split('.')+[None]
@@ -273,6 +274,7 @@ def get_config(filename=None):
                             BOOTSTRAP[section][option.upper()]['HOSTNAME'] = hostname
                 if 'CONTROLLER' in option.upper() and 'CONTROLLER1' not in option.upper():
                     # we assume we do not have H/A setup. no Virtual IP
+                    BOOTSTRAP['HA']=False
                     hostname,ip,*_=item.split(':')+[None]
                     hostname,*_=hostname.split('.')+[None]
                     if hostname and not ip and '.' in hostname:
@@ -325,7 +327,10 @@ def bootstrap(bootstrapfile=None):
     node_plugins = Helper().plugin_finder(f'{plugins_path}/node')
     node_plugin=Helper().plugin_load(node_plugins,'node','default')
 
-    ha_state = [{'column': 'enabled', 'value': '0'},
+    ha_enabled = 0
+    if BOOTSTRAP['HA']:
+        ha_enabled = 1
+    ha_state = [{'column': 'enabled', 'value': ha_enabled},
                 {'column': 'syncimages', 'value': '1'},
                 {'column': 'insync', 'value': '0'},
                 {'column': 'overrule', 'value': '0'},

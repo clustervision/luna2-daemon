@@ -194,13 +194,13 @@ class Housekeeper(object):
         sum_tel=0
         try:
             ha_object=HA()
+            if not ha_object.get_hastate():
+                self.logger.info(f"Currently not configured to run in H/A mode. Exiting journal thread")
+                return
             me=ha_object.get_me()
             self.logger.info(f"I am {me}")
             journal_object=Journal(me)
             tables_object=Tables()
-            if not ha_object.get_hastate():
-                self.logger.info(f"Currently not configured to run in H/A mode. Exiting journal thread")
-                return
             ha_object.set_insync(False)
             # ---------------------------- we keep asking the journal from others until successful
             while syncpull_status is False:

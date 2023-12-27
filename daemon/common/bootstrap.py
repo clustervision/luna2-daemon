@@ -257,24 +257,8 @@ def get_config(filename=None):
             if section in list(BOOTSTRAP.keys()):
                 # commented out as it doesn't work as intended. pending
                 #Helper().check_option(filename, section, option.upper(), BOOTSTRAP)
-                LOGGER.debug(f"OPTION: {option.upper()}")
-                for num in range(1, 10):
-                    if 'CONTROLLER'+str(num) in option.upper():
-                        BOOTSTRAP['HA']['ENABLED']=True
-                        BOOTSTRAP[section][option.upper()]={}
-                        hostname,ip,*_=item.split(':')+[None]
-                        hostname,*_=hostname.split('.')+[None]
-                        # we don't expect a fqdn anywhere in the code!
-                        # we generally look for 'controller'. BEWARE!
-                        if hostname and not ip and '.' in hostname:
-                            # i guess we only have an IP and no hostname?
-                            ip=hostname
-                            hostname=option.lower()
-                        if Helper().check_ip(ip):
-                            BOOTSTRAP[section][option.upper()]['IP'] = ip
-                            BOOTSTRAP[section][option.upper()]['HOSTNAME'] = hostname
-                            LOGGER.debug(f"CONTROLLER{num}: {BOOTSTRAP[section][option.upper()]}")
-                if 'CONTROLLER' in option.upper():
+                LOGGER.debug(f"SECTION: {section.upper()}, OPTION: {option.upper()}, ITEM: {item}")
+                if option.upper() == 'CONTROLLER':
                     hostname,ip,*_=item.split(':')+[None]
                     hostname,*_=hostname.split('.')+[None]
                     if hostname and not ip and '.' in hostname:
@@ -282,11 +266,11 @@ def get_config(filename=None):
                         ip=hostname
                         hostname=option.lower()
                     if Helper().check_ip(ip):
-                        BOOTSTRAP[section][option.upper()] = {}
-                        BOOTSTRAP[section][option.upper()]['IP'] = ip
-                        BOOTSTRAP[section][option.upper()]['HOSTNAME'] = hostname
-                        LOGGER.debug(f"CONTROLLER: {BOOTSTRAP[section][option.upper()]}")
-                elif 'NODELIST' in option.upper():
+                        BOOTSTRAP[section]['CONTROLLER'] = {}
+                        BOOTSTRAP[section]['CONTROLLER']['IP'] = ip
+                        BOOTSTRAP[section]['CONTROLLER']['HOSTNAME'] = hostname
+                        LOGGER.info(f"CONTROLLER: {BOOTSTRAP[section]['CONTROLLER']}")
+                elif option.upper() == 'NODELIST':
                     ### TODO Nodelist also check for the length
                     try:
                         item = hostlist.expand_hostlist(item)
@@ -307,7 +291,28 @@ def get_config(filename=None):
                     if shared:
                         BOOTSTRAP[section][option.lower()]['SHARED'] = shared
                 else:
-                    BOOTSTRAP[section][option.upper()] = item
+                    skip=False
+                    for num in range(1, 10):
+                        if 'CONTROLLER'+str(num) in option.upper():
+                            skip=True
+                            if 'HA' not in BOOTSTRAP.keys():
+                                BOOTSTRAP['HA']={}
+                            BOOTSTRAP['HA']['ENABLED']=True
+                            BOOTSTRAP[section]['CONTROLLER'+str(num)]={}
+                            hostname,ip,*_=item.split(':')+[None]
+                            hostname,*_=hostname.split('.')+[None]
+                            # we don't expect a fqdn anywhere in the code!
+                            # we generally look for 'controller'. BEWARE!
+                            if hostname and not ip and '.' in hostname:
+                                # i guess we only have an IP and no hostname?
+                                ip=hostname
+                                hostname=option.lower()
+                            if Helper().check_ip(ip):
+                                BOOTSTRAP[section]['CONTROLLER'+str(num)]['IP'] = ip
+                                BOOTSTRAP[section]['CONTROLLER'+str(num)]['HOSTNAME'] = hostname
+                                LOGGER.info(f"CONTROLLER{num}: {BOOTSTRAP[section]['CONTROLLER'+str(num)]}")
+                    if not skip:
+                        BOOTSTRAP[section][option.upper()] = item
             else:
                 BOOTSTRAP[section] = {}
                 BOOTSTRAP[section][option.upper()] = item
@@ -329,7 +334,7 @@ def bootstrap(bootstrapfile=None):
     node_plugin=Helper().plugin_load(node_plugins,'node','default')
 
     ha_enabled = 0
-    if BOOTSTRAP['HA']['ENABLED'] is True:
+    if 'HA' in BOOTSTRAP.keys() and BOOTSTRAP['HA']['ENABLED'] is True:
         ha_enabled = 1
     ha_state = [{'column': 'enabled', 'value': ha_enabled},
                 {'column': 'syncimages', 'value': '1'},
@@ -445,13 +450,10 @@ def bootstrap(bootstrapfile=None):
                 {'column': 'networkid', 'value': networkid}
             ]
             Database().insert('ipaddress', controller_ip)
-    num  = 1
-    for host in BOOTSTRAP['HOSTS']:
-        if f'CONTROLLER{num}' in BOOTSTRAP['HOSTS'].keys():
-            if BOOTSTRAP['HOSTS'][f'CONTROLLER{num}'] is None:
-                break
-            hostname=BOOTSTRAP['HOSTS'][f'CONTROLLER{num}']['HOSTNAME']
-            ip=BOOTSTRAP['HOSTS'][f'CONTROLLER{num}']['IP']
+    for num in range(1, 10):
+        if 'CONTROLLER'+str(num) in BOOTSTRAP['HOSTS'].keys():
+            hostname=BOOTSTRAP['HOSTS']['CONTROLLER'+str(num)]['HOSTNAME']
+            ip=BOOTSTRAP['HOSTS']['CONTROLLER'+str(num)]['IP']
             taken_ips.append(ip)
             other_controller = [
                 {'column': 'hostname', 'value': hostname},
@@ -467,7 +469,6 @@ def bootstrap(bootstrapfile=None):
                     {'column': 'networkid', 'value': networkid}
                 ]
                 Database().insert('ipaddress', controller_ip)
-            num = num + 1
 
     osimage_path,osimage_kernelversion=None,None
     if 'PATH' in BOOTSTRAP['OSIMAGE']:
@@ -643,8 +644,7 @@ def validate_bootstrap():
     bootstrapfile = '/trinity/local/luna/daemon/config/bootstrap.ini'
     global BOOTSTRAP
     BOOTSTRAP = {
-        'HOSTS': {'HOSTNAME': None, 'CONTROLLER1': None, 'CONTROLLER2': None, 'NODELIST': None, 'PRIMARY_DOMAIN': None},
-        'HA': {'ENABLED': False},
+        'HOSTS': {'HOSTNAME': None, 'CONTROLLER': None, 'NODELIST': None, 'PRIMARY_DOMAIN': None},
         'NETWORKS': {'cluster': None, 'ipmi': None, 'ib': None},
         'GROUPS': {'NAME': None},
         'OSIMAGE': {'NAME': None},

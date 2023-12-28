@@ -83,16 +83,18 @@ class HA():
             self.dict_controllers = Helper().convert_list_to_dict(self.all_controllers, 'hostname')
             if not self.me:
                 for interface in ni.interfaces():
-                    ip = ni.ifaddresses(interface)[ni.AF_INET][0]['addr']
-                    self.logger.debug(f"Interface {interface} has ip {ip}")
-                    for controller in self.all_controllers:
-                        if controller['hostname'] == "controller":
-                            continue
-                        if not self.me and controller['ipaddress'] == ip:
-                            self.me=controller['hostname']
-                            self.ip=ip
-                            self.logger.debug(f"My ipaddress is {ip} and i am {self.me}")
-
+                    try:
+                        ip = ni.ifaddresses(interface)[ni.AF_INET][0]['addr']
+                        self.logger.debug(f"Interface {interface} has ip {ip}")
+                        for controller in self.all_controllers:
+                            if controller['hostname'] == "controller":
+                                continue
+                            if not self.me and controller['ipaddress'] == ip:
+                                self.me=controller['hostname']
+                                self.ip=ip
+                                self.logger.debug(f"My ipaddress is {ip} and i am {self.me}")
+                    except:
+                        pass
 
     def get_me(self):
         return self.me

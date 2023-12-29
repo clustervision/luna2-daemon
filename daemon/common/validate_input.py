@@ -58,6 +58,10 @@ RESERVED = {
     'name': ['default'],
     'anything': ['default']
 }
+CONVERT = {
+    'macaddress': {'-':':'},
+    'name': {r'\.+':'.'},
+}
 MATCH = {
     'name': 'name',
     'newnodename': 'name',
@@ -87,7 +91,6 @@ MAXLENGTH = {
     'newnodename': '63',
     'host': '63'
 }
-CONVERT = {'macaddress': {'-':':'}}
 
 ERROR = None
 SKIP_LIST = []
@@ -225,11 +228,12 @@ def filter_data(data=None, name=None):
             LOGGER.info(f"    REG_EXP['{MATCH[name]}'] = {REG_EXP[MATCH[name]]}")
             ERROR = f"field {name} with content {data} does match criteria {REG_EXP[MATCH[name]]}"
             return
-    if name in CONVERT.keys():
-        LOGGER.debug(f"CONVERT IN {name} = {data}")
-        for rep in CONVERT[name].keys():
-            data = data.replace(rep ,CONVERT[name][rep])
-        LOGGER.debug(f"CONVERT OUT {name} = {data}")
+        if MATCH[name] in CONVERT.keys():
+            LOGGER.debug(f"CONVERT IN {MATCH[name]} = {data}")
+            for rep in CONVERT[MATCH[name]].keys():
+                #data = data.replace(rep ,CONVERT[MATCH[name]][rep])
+                data = re.sub(r"" + rep, CONVERT[MATCH[name]][rep], data)
+            LOGGER.debug(f"CONVERT OUT {MATCH[name]} = {data}")
     return data
 
 

@@ -47,7 +47,7 @@ CONTROL_CHAR = ''.join(map(chr, chain(range(0x00, 0x20), range(0x7f, 0xa0))))
 control_char_re = re.compile(f'[{re.escape(CONTROL_CHAR)}]')
 
 REG_EXP = {
-    'name': r'^[a-z0-9\-]+$',
+    'name': r'^[a-z0-9\-\.]+$',
     'ipaddress': r'^[0-9a-f:\.]+$',
     'macaddress': r'^(([0-9A-Za-f]{2}((-|:)[0-9A-Za-f]{2}){5})|)$',
     'minimal': r'^\S.*$',

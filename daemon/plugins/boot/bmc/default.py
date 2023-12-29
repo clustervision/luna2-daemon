@@ -68,10 +68,10 @@ class Plugin():
             RESETIPMI=1
             ipmitool lan set ${NETCHANNEL} netmask ${NETMASK}
         fi
-        if [[ "${CUR_DEFGW}" != "0.0.0.0" ]]
+        if [[ "${CUR_DEFGW}" != "${GATEWAY}" ]]
         then
             RESETIPMI=1
-            ipmitool lan set ${NETCHANNEL} defgw ipaddr 0.0.0.0
+            ipmitool lan set ${NETCHANNEL} defgw ipaddr ${GATEWAY}
         fi
         case $UNMANAGED in
             delete)

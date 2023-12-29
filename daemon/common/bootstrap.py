@@ -481,6 +481,7 @@ def bootstrap(bootstrapfile=None):
         {'column': 'grab_filesystems', 'value': '/, /boot'},
         {'column': 'grab_exclude', 'value': '/proc/*, /sys/*, /dev/*, /tmp/*, /var/log/*'},
         {'column': 'kernelversion', 'value': f'{osimage_kernelversion}'},
+        {'column': 'kerneloptions', 'value': 'net.ifnames=0 biosdevname=0'},
         {'column': 'path', 'value': f'{osimage_path}'},
         {'column': 'kernelmodules', 'value': 'ipmi_devintf, ipmi_si, ipmi_msghandler'},
         {'column': 'distribution', 'value': 'redhat'}

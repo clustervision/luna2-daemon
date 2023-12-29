@@ -903,8 +903,8 @@ class Boot():
                     data['kerneloptions'] = osimage[0]['kerneloptions']
                     regex=re.compile(r"^([A-Za-z0-9+/]{4})*([A-Za-z0-9+/]{3}=|[A-Za-z0-9+/]{2}==)?$")
                     if regex.match(data['kerneloptions']):
-                        data = b64decode(data['kerneloptions'])
-                        data['kerneloptions'] = data.decode("ascii")
+                        ko_data = b64decode(data['kerneloptions'])
+                        data['kerneloptions'] = ko_data.decode("ascii")
                     data['kerneloptions']=data['kerneloptions'].replace('\n', ' ').replace('\r', '')
 
         if None not in data.values():

@@ -67,9 +67,10 @@ class Rack():
                 status=True
                 for device in rack_data:
                     if device['name'] not in response['config']['rack'].keys():
-                        response['config']['rack'][device['name']]={'size': device['size'], 'order': device['order'], 
+                        response['config']['rack'][device['name']]={'size': device['size'] or '42', 
+                                                                    'order': device['order'] or 'ascending', 
                                                                     'room': device['room'], 'site': device['site'], 
-                                                                    'devices': []}
+                                                                    'name': device['name'], 'devices': []}
                     response['config']['rack'][device['name']]['devices'].append({
                                                           'name': device['devicename'],
                                                           'type': device_type,

@@ -45,7 +45,19 @@ from utils.housekeeper import Housekeeper
 from utils.service import Service
 from routes.auth import auth_blueprint
 from routes.boot import boot_blueprint
-from routes.config import config_blueprint
+from routes.config_bmcsetup import bmcsetup_blueprint
+from routes.config_cluster import cluster_blueprint
+from routes.config_dns import dns_blueprint
+from routes.config_group import group_blueprint
+from routes.config_network import network_blueprint
+from routes.config_node import node_blueprint
+from routes.config_osgroup import osgroup_blueprint
+from routes.config_osimage import osimage_blueprint
+from routes.config_osuser import osuser_blueprint
+from routes.config_otherdev import otherdev_blueprint
+from routes.config_secrets import secrets_blueprint
+from routes.config_status import status_blueprint
+from routes.config_switch import switch_blueprint
 from routes.files import files_blueprint
 from routes.service import service_blueprint
 from routes.monitor import monitor_blueprint
@@ -127,7 +139,19 @@ def worker_abort(worker):
 daemon = Flask(__name__)
 daemon.register_blueprint(auth_blueprint)
 daemon.register_blueprint(boot_blueprint)
-daemon.register_blueprint(config_blueprint)
+daemon.register_blueprint(bmcsetup_blueprint)
+daemon.register_blueprint(cluster_blueprint)
+daemon.register_blueprint(dns_blueprint)
+daemon.register_blueprint(group_blueprint)
+daemon.register_blueprint(network_blueprint)
+daemon.register_blueprint(node_blueprint)
+daemon.register_blueprint(osgroup_blueprint)
+daemon.register_blueprint(osimage_blueprint)
+daemon.register_blueprint(osuser_blueprint)
+daemon.register_blueprint(otherdev_blueprint)
+daemon.register_blueprint(secrets_blueprint)
+daemon.register_blueprint(status_blueprint)
+daemon.register_blueprint(switch_blueprint)
 daemon.register_blueprint(files_blueprint)
 daemon.register_blueprint(service_blueprint)
 daemon.register_blueprint(monitor_blueprint)

@@ -59,14 +59,17 @@ class Rack():
             if name:
                 where.append(f"rack.name='{name}'")
             rack_data = Database().get_record_join(
-                   ['rack.*','rack.id as rackid','rackinventory.*','rackinventory.id as invid',f'{device_type}.name as devicename'],
+                   ['rack.*','rack.id as rackid','rackinventory.*',
+                    'rackinventory.id as invid',f'{device_type}.name as devicename'],
                    [f'rackinventory.tablerefid={device_type}.id','rackinventory.rackid=rack.id'],
                    where)
             if rack_data:
                 status=True
                 for device in rack_data:
                     if device['name'] not in response['config']['rack'].keys():
-                        response['config']['rack'][device['name']]={'size': device['size'], 'order': device['order'], 'room': device['room'], 'site': device['site'], 'devices': []}
+                        response['config']['rack'][device['name']]={'size': device['size'], 'order': device['order'], 
+                                                                    'room': device['room'], 'site': device['site'], 
+                                                                    'devices': []}
                     response['config']['rack'][device['name']]['devices'].append({
                                                           'name': device['devicename'],
                                                           'type': device_type,

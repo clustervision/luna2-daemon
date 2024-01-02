@@ -43,7 +43,8 @@ configParser = RawConfigParser()
 
 TABLES = ['status', 'queue', 'osimage', 'osimagetag', 'nodesecrets', 'nodeinterface', 'bmcsetup','ha', 
           'monitor', 'ipaddress', 'groupinterface', 'roles', 'group', 'network', 'user', 'switch', 
-          'otherdevices', 'controller', 'groupsecrets', 'node', 'cluster', 'tracker','dns','journal']
+          'otherdevices', 'controller', 'groupsecrets', 'node', 'cluster', 'tracker', 'dns', 'journal',
+          'rack', 'rackinventory']
 
 def db_status():
     """
@@ -230,6 +231,10 @@ def get_database_tables_structure(table=None):
         return DATABASE_LAYOUT_journal
     if table == "ha":
         return DATABASE_LAYOUT_ha
+    if table == "rack":
+        return DATABASE_LAYOUT_rack
+    if table == "rackinventory":
+        return DATABASE_LAYOUT_rackinventory
 
 
 def cleanup_queue_and_status():

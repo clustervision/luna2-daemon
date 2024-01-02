@@ -296,11 +296,11 @@ DATABASE_LAYOUT_rack = [
 {"column": "order",                "datatype": "VARCHAR", "length": "20"},
 {"column": "size",                 "datatype": "INTEGER", "length": "10"}]
 
-DATABASE_LAYOUT_rackinventory [
+DATABASE_LAYOUT_rackinventory = [
 {"column": "id",                   "datatype": "INTEGER", "key": "PRIMARY", "keyadd": "AUTOINCREMENT"},
 {"column": "tableref",             "datatype": "VARCHAR", "length": "100", "key": "UNIQUE", "with": "tablerefid"},
 {"column": "tablerefid",           "datatype": "INTEGER", "length": "10"},
-{"column": "rackid",               "datatype": "INTEGER", "length": "10"}]
+{"column": "rackid",               "datatype": "INTEGER", "length": "10"},
 {"column": "height",               "datatype": "INTEGER", "length": "10"},
 {"column": "position",             "datatype": "INTEGER", "length": "10"},
 {"column": "orientation",          "datatype": "VARCHAR", "length": "20"}]

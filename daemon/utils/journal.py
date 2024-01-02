@@ -62,6 +62,7 @@ from base.cluster import Cluster
 from base.bmcsetup import BMCSetup
 from base.switch import Switch
 from base.otherdev import OtherDev
+from base.rack import Rack
 from base.network import Network
 from base.dns import DNS
 from base.secret import Secret

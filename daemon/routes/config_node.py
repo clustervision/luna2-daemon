@@ -18,9 +18,10 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>
 
 """
-This File is a A Entry Point of Every Configuration Related Activity.
-@token_required is a Wrapper Method to Validate the POST API. It contains
-arguments and keyword arguments Of The API
+This is a entry file for node configurations.
+@token_required wrapper Method is used to Validate the token.
+@validate_name wrapper Method is used to Validate the URI param.
+@input_filter wrapper Method is used to Validate the POST data.
 """
 
 __author__      = "Sumit Sharma"

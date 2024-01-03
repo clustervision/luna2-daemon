@@ -186,7 +186,6 @@ class Rack():
                     if 'type' in device:
                         device_data['tableref'] = device['type']
                     elif create:
-                        status = False
                         return False, f"Type for {device['name']} not found in data structure"
 
                     for item in ['height','position','orientation']:
@@ -276,7 +275,8 @@ class Rack():
                         response['config']['rack']['inventory'].append({
                                               'name': device,
                                               'type': device_type,
-                                              'height': devices_dict[device_type][device]['height']
+                                              'height': devices_dict[device_type][device]['height'] or '1',
+                                              'orientation': devices_dict[device_type][device]['orientation'] or 'front'
                                               })
                     else:
                         response['config']['rack']['inventory'].append({
@@ -285,5 +285,92 @@ class Rack():
                                               })
                     
         return status, response
+
+
+    def update_inventory(self, request_data=None):
+        """
+        This method will create or update inventory
+        """
+        status=False
+        response="Internal error"
+        network = False
+        data, response = {}, {}
+
+        # things we have to set for devices
+        inventory_items = {
+            'orientation': 'front',
+            'height': '1',
+        }
+        if request_data:
+            data = request_data['config']['rack']['inventory']
+            devices_dict = {}
+            all_devices_dict = {}
+            for device_type in ['node','switch','otherdevices','controller']:
+                dbname='name'
+                if device_type == 'controller':
+                    dbname='hostname'
+                devices_in_db = Database().get_record_join([f'{device_type}.{dbname}', 'rackinventory.id as invid'],
+                                                       [f'rackinventory.tablerefid={device_type}.id'], 
+                                                       [f"rackinventory.tableref='{device_type}'"])
+                if devices_in_db:
+                    devices_dict[device_type] = Helper().convert_list_to_dict(devices_in_db, dbname)
+                all_devices_in_db = Database().get_record(None, device_type)
+                if all_devices_in_db:
+                    all_devices_dict[device_type] = Helper().convert_list_to_dict(all_devices_in_db, dbname)
+
+            for device in data:
+                if 'name' not in device:
+                    return False, "device name not supplied in data structure"
+                create, update = False, False
+                inventory_id = None
+                for device_type in ['node','switch','otherdevices','controller']:
+                    if device_type in devices_dict and device['name'] in devices_dict[device_type]:
+                        update = True
+                        inventory_id = devices_dict[device_type][device['name']]['invid']
+                        break
+                if not update:
+                    create = True
+                    
+                if 'type' in device:
+                    device_data['tableref'] = device['type']
+                elif create:
+                    return False, f"Type for {device['name']} not found in data structure"
+
+                for item in ['height','orientation']:
+                    if item in device:
+                        device_data[item] = device[item]
+                           
+                for key, value in inventory_items.items():
+                    if key in device_data:
+                        if isinstance(value, bool):
+                            device_data[key] = str(Helper().bool_to_string(device_data[key]))
+                    elif create:
+                        device_data[key] = value
+                        if isinstance(value, bool):
+                            device_data[key] = str(Helper().bool_to_string(device_data[key]))
+                    if key in device_data and (not device_data[key]) and (key not in inventory_items):
+                        del device_data[key]
+
+                if update and inventory_id:
+                    self.logger.debug(f"UPDATE: {device_data}")
+                    where = [{"column": "id", "value": inventory_id}]
+                    row = Helper().make_rows(device_data)
+                        Database().update('rackinventory', row, where)
+                elif create:
+                    if device['type'] in all_devices_dict.keys() and device['name'] in all_devices_dict[device['type']].keys():
+                        device_data['tablerefid'] = all_devices_dict[device['type']][device['name']]['id']
+                        self.logger.debug(f"CREATE : {device_data}")
+                        row = Helper().make_rows(device_data)
+                        inventory_id = Database().insert('rackinventory', row)
+                    else:
+                        return False, f"{device['name']} was not found in any inventory"
+
+            response = "Inventory information updated"
+            status = True 
+        else:
+            response = 'Invalid request: Did not received data'
+            status=False
+        return status, response
+
 
 

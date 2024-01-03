@@ -111,10 +111,10 @@ def config_inventory_get():
     return response, access_code
 
 
-@rack_blueprint.route("/config/rack/inventory/<string:name>", methods=['POST'])
+@rack_blueprint.route("/config/rack/inventory", methods=['POST'])
 @token_required
 @validate_name
-@input_filter(checks=['config:rack'], skip=None)
+@input_filter(checks=['config:rack:inventory'], skip=None)
 def config_inventory_post(name=None):
     """
     This route will create or update a requested rack.

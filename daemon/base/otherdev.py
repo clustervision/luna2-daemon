@@ -279,8 +279,12 @@ class OtherDev():
 
     def delete_otherdev(self, name=None):
         """
-        This method will delete a other device.
+        This method will delete an other-device.
         """
+        device = Database().get_record(table='otherdevices', where=f' WHERE `name` = "{name}"')
+        if device:
+            Database().delete_row('rackinventory', [{"column": "tablerefid", "value": device[0]['id']},
+                                                    {"column": "tableref", "value": "otherdevices"}])
         status, response = Model().delete_record(
             name = name,
             table = self.table,
@@ -288,3 +292,4 @@ class OtherDev():
             ip_check = True
         )
         return status, response
+

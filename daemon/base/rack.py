@@ -258,7 +258,7 @@ class Rack():
             dbname='name'
             if device_type == 'controller':
                 dbname='hostname'
-            devices_in_db = Database().get_record_join([f'{device_type}.{dbname}', 'rackinventory.height'],
+            devices_in_db = Database().get_record_join([f'{device_type}.{dbname}', 'rackinventory.*'],
                                                        [f'rackinventory.tablerefid={device_type}.id'], 
                                                        [f"rackinventory.tableref='{device_type}'"])
             if devices_in_db:
@@ -330,7 +330,8 @@ class Rack():
                         break
                 if not update:
                     create = True
-                    
+                   
+                device_data = {} 
                 if 'type' in device:
                     device_data['tableref'] = device['type']
                 elif create:
@@ -355,7 +356,7 @@ class Rack():
                     self.logger.debug(f"UPDATE: {device_data}")
                     where = [{"column": "id", "value": inventory_id}]
                     row = Helper().make_rows(device_data)
-                        Database().update('rackinventory', row, where)
+                    Database().update('rackinventory', row, where)
                 elif create:
                     if device['type'] in all_devices_dict.keys() and device['name'] in all_devices_dict[device['type']].keys():
                         device_data['tablerefid'] = all_devices_dict[device['type']][device['name']]['id']

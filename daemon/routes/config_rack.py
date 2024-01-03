@@ -119,9 +119,9 @@ def config_inventory_post(name=None):
     """
     This route will create or update a requested rack.
     """
-    status, response = Journal().add_request(function="Rack.update_inventory", object=name, payload=request.data)
+    status, response = Journal().add_request(function="Rack.update_inventory", payload=request.data)
     if status is True:
-        status, response = Rack().update_inventory(name, request.data)
+        status, response = Rack().update_inventory(request.data)
     access_code = Helper().get_access_code(status,response)
     response = {'message': response}
     return response, access_code

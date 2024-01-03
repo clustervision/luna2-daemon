@@ -142,16 +142,16 @@ def config_rack_delete(name=None):
     return response, access_code
 
 
-@rack_blueprint.route("/config/rack/inventory/<string:name>/_delete", methods=['GET'])
+@rack_blueprint.route("/config/rack/inventory/<string:name>/type/<string:device_type>/_delete", methods=['GET'])
 @token_required
 @validate_name
-def config_inventory_delete(name=None):
+def config_inventory_delete(name=None,device_type=None):
     """
     This route will delete a requested rack with layout.
     """
-    status, response = Journal().add_request(function="Rack.delete_inventory", object=name)
+    status, response = Journal().add_request(function="Rack.delete_inventory", object=name, param=device_type)
     if status is True:
-        status, response = Rack().delete_inventory(name)
+        status, response = Rack().delete_inventory(name,device_type)
     access_code=Helper().get_access_code(status,response)
     response = {'message': response}
     return response, access_code

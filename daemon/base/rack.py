@@ -241,7 +241,7 @@ class Rack():
             name = name,
             table = self.table,
             table_cap = self.table_cap,
-            ip_check = True
+            ip_check = False
         )
         return status, response
 
@@ -374,4 +374,32 @@ class Rack():
         return status, response
 
 
+    def delete_inventory(self, name=None, device_type=None):
+        """
+        This method will delete (clear) inventory.
+        """
+        status = True
+        response = "Inventory cleared"
+        data = None
+        if name and type:
+            devices_dict = {}
+            dbname='name'
+            if device_type == 'controller':
+                dbname='hostname'
+            device_in_db = Database().get_record_join(['rackinventory.id as invid'],
+                                                       [f'rackinventory.tablerefid={device_type}.id'], 
+                                                       [f"rackinventory.tableref='{device_type}'",f"{device_type}.{dbname}='{name}'"])
+            if device_in_db:
+                where = [{"column": "id", "value": device_in_db[0]['invid']}]
+                device_data = { 'rackid': None, 'position': None }
+                row = Helper().make_rows(device_data)
+                Database().update('rackinventory', row, where)
+            else:
+                status = False
+                response = f"{name} of type {device_type} not in configured inventory"
+        else:
+            status = False
+            response = "device name and/or type not supplied"
+
+        return status, response
 

@@ -58,6 +58,7 @@ from routes.config_otherdev import otherdev_blueprint
 from routes.config_secrets import secrets_blueprint
 from routes.config_status import status_blueprint
 from routes.config_switch import switch_blueprint
+from routes.config_rack import rack_blueprint
 from routes.files import files_blueprint
 from routes.service import service_blueprint
 from routes.monitor import monitor_blueprint
@@ -160,6 +161,7 @@ daemon.register_blueprint(tracker_blueprint)
 daemon.register_blueprint(journal_blueprint)
 daemon.register_blueprint(tables_blueprint)
 daemon.register_blueprint(ha_blueprint)
+daemon.register_blueprint(rack_blueprint)
 
 
 @daemon.route('/all-routes')

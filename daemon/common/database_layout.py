@@ -221,7 +221,6 @@ DATABASE_LAYOUT_node = [
 {"column": "bmcsetupid",           "datatype": "INTEGER", "length": "10"},
 {"column": "setupbmc",             "datatype": "INTEGER", "length": "10"},
 {"column": "status",               "datatype": "VARCHAR", "length": "20"},
-{"column": "position",             "datatype": "VARCHAR", "length": "20"},
 {"column": "switchid",             "datatype": "INTEGER", "length": "10"},
 {"column": "comment",              "datatype": "TEXT"},
 {"column": "roles",                "datatype": "VARCHAR", "length": "512"},
@@ -288,4 +287,21 @@ DATABASE_LAYOUT_ha = [
 {"column": "overrule",             "datatype": "INTEGER", "length": "10"},
 {"column": "master",               "datatype": "INTEGER", "length": "10"},
 {"column": "updated",              "datatype": "numeric"}]
+
+DATABASE_LAYOUT_rack = [
+{"column": "id",                   "datatype": "INTEGER", "key": "PRIMARY", "keyadd": "AUTOINCREMENT"},
+{"column": "name",                 "datatype": "VARCHAR", "length": "20", "key": "UNIQUE"},
+{"column": "room",                 "datatype": "VARCHAR", "length": "100"},
+{"column": "site",                 "datatype": "VARCHAR", "length": "100"},
+{"column": "order",                "datatype": "VARCHAR", "length": "20"},
+{"column": "size",                 "datatype": "INTEGER", "length": "10"}]
+
+DATABASE_LAYOUT_rackinventory = [
+{"column": "id",                   "datatype": "INTEGER", "key": "PRIMARY", "keyadd": "AUTOINCREMENT"},
+{"column": "tableref",             "datatype": "VARCHAR", "length": "100", "key": "UNIQUE", "with": "tablerefid"},
+{"column": "tablerefid",           "datatype": "INTEGER", "length": "10"},
+{"column": "rackid",               "datatype": "INTEGER", "length": "10"},
+{"column": "height",               "datatype": "INTEGER", "length": "10"},
+{"column": "position",             "datatype": "INTEGER", "length": "10"},
+{"column": "orientation",          "datatype": "VARCHAR", "length": "20"}]
 

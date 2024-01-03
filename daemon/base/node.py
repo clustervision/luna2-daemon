@@ -834,6 +834,8 @@ class Node():
                     Database().delete_row('ipaddress', [{"column": "id", "value": node_ip['id']}])
             Database().delete_row('nodeinterface', [{"column": "nodeid", "value": nodeid}])
             Database().delete_row('nodesecrets', [{"column": "nodeid", "value": nodeid}])
+            Database().delete_row('rackinventory', [{"column": "tablerefid", "value": nodeid},
+                                                    {"column": "tableref", "value": "node"}])
             # for now i have disabled the below two lines for testing purposes. Antoine Aug 8 2023
             #Service().queue('dns', 'restart')
             #Service().queue('dhcp', 'restart')

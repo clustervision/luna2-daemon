@@ -55,7 +55,7 @@ REG_EXP = {
     'anything': r''
 }
 RESERVED = {
-    'name': ['default'],
+    'name': ['default','inventory'],
     'anything': ['default']
 }
 CONVERT = {

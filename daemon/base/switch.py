@@ -304,6 +304,10 @@ class Switch():
         """
         This method will delete a switch.
         """
+        switch = Database().get_record(table='switch', where=f' WHERE `name` = "{name}"')
+        if switch:
+            Database().delete_row('rackinventory', [{"column": "tablerefid", "value": switch[0]['id']},
+                                                    {"column": "tableref", "value": "switch"}])
         status, response = Model().delete_record(
             name = name,
             table = self.table,
@@ -311,3 +315,4 @@ class Switch():
             ip_check = True
         )
         return status, response
+

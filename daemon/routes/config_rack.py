@@ -95,15 +95,14 @@ def config_rack_post(name=None):
     return response, access_code
 
 
-@rack_blueprint.route("/config/rack/inventory/<string:name>", methods=['GET'])
+@rack_blueprint.route("/config/rack/inventory", methods=['GET'])
 @token_required
-@validate_name
-def config_inventory_get(name=None):
+def config_inventory_get():
     """
     This route will provide a requested rack with layout.
     """
     access_code = 404
-    status, response = Rack().get_inventory(name)
+    status, response = Rack().get_inventory()
     if status is True:
         access_code = 200
         response=dumps(response)
@@ -141,6 +140,7 @@ def config_rack_delete(name=None):
     access_code=Helper().get_access_code(status,response)
     response = {'message': response}
     return response, access_code
+
 
 @rack_blueprint.route("/config/rack/inventory/<string:name>/_delete", methods=['GET'])
 @token_required

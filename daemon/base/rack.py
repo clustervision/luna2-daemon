@@ -55,14 +55,21 @@ class Rack():
         status=False
         response={'config': {'rack': {} }}
         for device_type in ['node','switch','otherdevices','controller']:
+            empty_rack=False
+            dbname='name'
+            if device_type == 'controller':
+                dbname='hostname'
             where=[f"rackinventory.tableref='{device_type}'"]
             if name:
                 where.append(f"rack.name='{name}'")
             rack_data = Database().get_record_join(
                    ['rack.*','rack.id as rackid','rackinventory.*',
-                    'rackinventory.id as invid',f'{device_type}.name as devicename'],
+                    'rackinventory.id as invid',f'{device_type}.{dbname} as devicename'],
                    [f'rackinventory.tablerefid={device_type}.id','rackinventory.rackid=rack.id'],
                    where)
+            if not rack_data:
+                empty_rack=True
+                rack_data = Database().get_record(None,'rack')
             if rack_data:
                 status=True
                 for device in rack_data:
@@ -71,7 +78,8 @@ class Rack():
                                                                     'order': device['order'] or 'ascending', 
                                                                     'room': device['room'], 'site': device['site'], 
                                                                     'name': device['name'], 'devices': []}
-                    response['config']['rack'][device['name']]['devices'].append({
+                    if not empty_rack:
+                        response['config']['rack'][device['name']]['devices'].append({
                                                           'name': device['devicename'],
                                                           'type': device_type,
                                                           'orientation': device['orientation'],
@@ -79,6 +87,7 @@ class Rack():
                                                           'position': device['position']})
         self.logger.debug(f"RACK: {response}")               
         return status, response
+
 
 
     def update_rack(self, name=None, request_data=None):
@@ -93,17 +102,41 @@ class Rack():
 
         # things we have to set for a rack
         items = {
-            'orientation': 'front',
+            'size': '42',
             'order': 'ascending'
         }
+        # things we have to set for devices
+        inventory_items = {
+            'orientation': 'front',
+            'height': '1',
+        }
         if request_data:
-            data = request_data['config'][self.table][name]
+            devices_dict = {}
+            all_devices_dict = {}
+            for device_type in ['node','switch','otherdevices','controller']:
+                dbname='name'
+                if device_type == 'controller':
+                    dbname='hostname'
+                devices_in_db = Database().get_record_join([f'{device_type}.{dbname}', f'{device_type}.id as devid', 'rackinventory.id as invid'],
+                                                       [f'rackinventory.tablerefid={device_type}.id'], 
+                                                       [f"rackinventory.tableref='{device_type}'"])
+                if devices_in_db:
+                    devices_dict[device_type] = Helper().convert_list_to_dict(devices_in_db, dbname)
+                all_devices_in_db = Database().get_record(None, device_type)
+                if all_devices_in_db:
+                    all_devices_dict[device_type] = Helper().convert_list_to_dict(all_devices_in_db, dbname)
+
+            data = request_data['config']['rack'][name]
             data['name'] = name
-            where = f' WHERE `name` = "{name}"'
-            check_rack = Database().get_record(table=self.table, where=where)
+            devices = None
+            if 'devices' in data:
+                devices = data['devices']
+                del data['devices']
+            rackid = None
+            check_rack = Database().get_record(table='rack', where=f' WHERE `name` = "{name}"')
             if check_rack:
                 rackid = check_rack[0]['id']
-                if 'newrackname' in request_data['config'][self.table][name]:
+                if 'newrackname' in request_data['config']['rack'][name]:
                     data['name'] = data['newrackname']
                     del data['newrackname']
                 update = True
@@ -112,7 +145,6 @@ class Rack():
 
             for key, value in items.items():
                 if key in data:
-                    data[key] = data[key]
                     if isinstance(value, bool):
                         data[key] = str(Helper().bool_to_string(data[key]))
                 elif create:
@@ -122,7 +154,72 @@ class Rack():
                 if key in data and (not data[key]) and (key not in items):
                     del data[key]
 
-            return status, response
+            if update:
+                where = [{"column": "id", "value": rackid}]
+                row = Helper().make_rows(data)
+                Database().update('rack', row, where)
+            elif create:
+                row = Helper().make_rows(data)
+                rackid = Database().insert('rack', row)
+
+            if not rackid:
+                return False, f"Could not update or create rack {name}"
+                
+            if devices:
+                self.logger.debug(f"    DEV: {devices_dict}")
+                self.logger.debug(f" ALLDEV: {all_devices_dict}")
+                self.logger.debug(f"DEVICES: {devices}")
+                for device in devices:
+                    if 'name' not in device:
+                        return False, "device name not supplied in data structure"
+                    inventory_id = None
+                    create, update = False, False
+                    for device_type in ['node','switch','otherdevices','controller']:
+                        if device_type in devices_dict.keys() and device['name'] in devices_dict[device_type].keys():
+                            update = True
+                            inventory_id = devices_dict[device_type][device['name']]['invid']
+                            break
+                    if not update:
+                        create = True
+
+                    device_data = { 'rackid': rackid }
+                    if 'type' in device:
+                        device_data['tableref'] = device['type']
+                    elif create:
+                        status = False
+                        return False, f"Type for {device['name']} not found in data structure"
+
+                    for item in ['height','position','orientation']:
+                        if item in device:
+                            device_data[item] = device[item]
+                            
+                    for key, value in inventory_items.items():
+                        if key in device_data:
+                            if isinstance(value, bool):
+                                device_data[key] = str(Helper().bool_to_string(device_data[key]))
+                        elif create:
+                            device_data[key] = value
+                            if isinstance(value, bool):
+                                device_data[key] = str(Helper().bool_to_string(device_data[key]))
+                        if key in device_data and (not device_data[key]) and (key not in inventory_items):
+                            del device_data[key]
+                    
+                    if update and inventory_id:
+                        self.logger.debug(f"UPDATE: {device_data}")
+                        where = [{"column": "id", "value": inventory_id}]
+                        row = Helper().make_rows(device_data)
+                        Database().update('rackinventory', row, where)
+                    elif create:
+                        if device['type'] in all_devices_dict.keys() and device['name'] in all_devices_dict[device['type']].keys():
+                            device_data['tablerefid'] = all_devices_dict[device['type']][device['name']]['id']
+                            self.logger.debug(f"CREATE : {device_data}")
+                            row = Helper().make_rows(device_data)
+                            inventory_id = Database().insert('rackinventory', row)
+                        else:
+                            return False, f"{device['name']} was not found in any inventory"
+
+            response = "Rack information updated"
+            status = True 
         else:
             response = 'Invalid request: Did not received data'
             status=False
@@ -133,6 +230,14 @@ class Rack():
         """
         This method will delete a rack.
         """
+        status = False
+        response = f"Rack {name} not in inventory"
+        check_rack = Database().get_record(table='rack', where=f' WHERE `name` = "{name}"')
+        if check_rack:
+            device_data = { 'rackid': None, 'position': None }
+            where = [{"column": "rackid", "value": check_rack[0]['id']}]
+            row = Helper().make_rows(device_data)
+            Database().update('rackinventory', row, where)
         status, response = Model().delete_record(
             name = name,
             table = self.table,
@@ -140,4 +245,45 @@ class Rack():
             ip_check = True
         )
         return status, response
+
+
+    def get_inventory(self):
+        """
+        This method will return all inventory, configured or not in detailed format.
+        """
+        status=False
+        response={'config': {'rack': {'inventory': [] }}}
+        devices_dict = {}
+        all_devices_dict = {}
+        for device_type in ['node','switch','otherdevices','controller']:
+            dbname='name'
+            if device_type == 'controller':
+                dbname='hostname'
+            devices_in_db = Database().get_record_join([f'{device_type}.{dbname}', 'rackinventory.height'],
+                                                       [f'rackinventory.tablerefid={device_type}.id'], 
+                                                       [f"rackinventory.tableref='{device_type}'"])
+            if devices_in_db:
+                devices_dict[device_type] = Helper().convert_list_to_dict(devices_in_db, dbname)
+            all_devices_in_db = Database().get_record(None, device_type)
+            if all_devices_in_db:
+                all_devices_dict[device_type] = Helper().convert_list_to_dict(all_devices_in_db, dbname)
+
+        for device_type in ['node','switch','otherdevices','controller']:
+            if device_type in all_devices_dict:
+                for device in all_devices_dict[device_type].keys():
+                    status = True
+                    if device_type in devices_dict.keys() and device in devices_dict[device_type].keys():
+                        response['config']['rack']['inventory'].append({
+                                              'name': device,
+                                              'type': device_type,
+                                              'height': devices_dict[device_type][device]['height']
+                                              })
+                    else:
+                        response['config']['rack']['inventory'].append({
+                                              'name': device,
+                                              'type': device_type
+                                              })
+                    
+        return status, response
+
 

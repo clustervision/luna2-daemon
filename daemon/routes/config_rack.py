@@ -111,6 +111,22 @@ def config_inventory_get():
     return response, access_code
 
 
+@rack_blueprint.route("/config/rack/inventory/<string:subset>", methods=['GET'])
+@token_required
+def config_inventory_get_subset(subset=None):
+    """
+    This route will provide an inventory list based on subset
+    """
+    access_code = 404
+    status, response = Rack().get_inventory(subset)
+    if status is True:
+        access_code = 200
+        response=dumps(response)
+    else:
+        response = {'message': response}
+    return response, access_code
+
+
 @rack_blueprint.route("/config/rack/inventory", methods=['POST'])
 @token_required
 @validate_name

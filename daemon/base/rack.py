@@ -249,7 +249,7 @@ class Rack():
         return status, response
 
 
-    def get_inventory(self):
+    def get_inventory(self,subset=None):
         """
         This method will return all inventory, configured or not in detailed format.
         """
@@ -278,14 +278,16 @@ class Rack():
                         continue
                     status = True
                     if device_type in devices_dict.keys() and device in devices_dict[device_type].keys():
-                        response['config']['rack']['inventory'].append({
+                        if (not subset) or subset == "configured":
+                            response['config']['rack']['inventory'].append({
                                               'name': device,
                                               'type': device_type,
                                               'height': devices_dict[device_type][device]['height'] or self.inventory_items['height'],
                                               'orientation': devices_dict[device_type][device]['orientation'] or self.inventory_items['orientation']
                                               })
                     else:
-                        response['config']['rack']['inventory'].append({
+                        if (not subset) or subset == "unconfigured":
+                            response['config']['rack']['inventory'].append({
                                               'name': device,
                                               'type': device_type,
                                               'height': self.inventory_items['height'],

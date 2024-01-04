@@ -539,7 +539,7 @@ class Database():
             column = ''
             cur_col = None
             if 'column' in cols.keys():
-                column = column + cols['column']
+                column = column + "`" + cols['column'] + "`"
                 cur_col = cols['column']
             if 'value' in cols.keys():
                 if str(cur_col) == "created" or str(cur_col) == "updated":

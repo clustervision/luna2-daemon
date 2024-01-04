@@ -33,6 +33,7 @@ from utils.database import Database
 from utils.log import Log
 from utils.helper import Helper
 from utils.model import Model
+from utils.ha import HA
 
 class Rack():
     """
@@ -46,6 +47,16 @@ class Rack():
         self.logger = Log.get_logger()
         self.table = 'rack'
         self.table_cap = self.table.capitalize()
+        # default we have to set for a rack
+        self.rack_items = {
+            'size': 42,
+            'order': 'ascending'
+        }
+        # default we have to set for devices
+        self.inventory_items = {
+            'orientation': 'front',
+            'height': 1,
+        }
 
 
     def get_rack(self,name=None):
@@ -69,7 +80,10 @@ class Rack():
                    where)
             if not rack_data:
                 empty_rack=True
-                rack_data = Database().get_record(None,'rack')
+                if name:
+                    rack_data = Database().get_record(None,'rack',f"WHERE name='{name}'")
+                else:
+                    rack_data = Database().get_record(None,'rack')
             if rack_data:
                 status=True
                 for device in rack_data:
@@ -89,7 +103,6 @@ class Rack():
         return status, response
 
 
-
     def update_rack(self, name=None, request_data=None):
         """
         This method will create or update a rack.
@@ -100,16 +113,6 @@ class Rack():
         data, response = {}, {}
         create, update = False, False
 
-        # things we have to set for a rack
-        items = {
-            'size': '42',
-            'order': 'ascending'
-        }
-        # things we have to set for devices
-        inventory_items = {
-            'orientation': 'front',
-            'height': '1',
-        }
         if request_data:
             devices_dict = {}
             all_devices_dict = {}
@@ -143,7 +146,7 @@ class Rack():
             else:
                 create = True
 
-            for key, value in items.items():
+            for key, value in self.rack_items.items():
                 if key in data:
                     if isinstance(value, bool):
                         data[key] = str(Helper().bool_to_string(data[key]))
@@ -151,7 +154,7 @@ class Rack():
                     data[key] = value
                     if isinstance(value, bool):
                         data[key] = str(Helper().bool_to_string(data[key]))
-                if key in data and (not data[key]) and (key not in items):
+                if key in data and (not data[key]) and (key not in self.rack_items):
                     del data[key]
 
             if update:
@@ -192,7 +195,7 @@ class Rack():
                         if item in device:
                             device_data[item] = device[item]
                             
-                    for key, value in inventory_items.items():
+                    for key, value in self.inventory_items.items():
                         if key in device_data:
                             if isinstance(value, bool):
                                 device_data[key] = str(Helper().bool_to_string(device_data[key]))
@@ -200,7 +203,7 @@ class Rack():
                             device_data[key] = value
                             if isinstance(value, bool):
                                 device_data[key] = str(Helper().bool_to_string(device_data[key]))
-                        if key in device_data and (not device_data[key]) and (key not in inventory_items):
+                        if key in device_data and (not device_data[key]) and (key not in self.inventory_items):
                             del device_data[key]
                     
                     if update and inventory_id:
@@ -252,6 +255,7 @@ class Rack():
         """
         status=False
         response={'config': {'rack': {'inventory': [] }}}
+        hastate = HA().get_hastate()
         devices_dict = {}
         all_devices_dict = {}
         for device_type in ['node','switch','otherdevices','controller']:
@@ -270,18 +274,22 @@ class Rack():
         for device_type in ['node','switch','otherdevices','controller']:
             if device_type in all_devices_dict:
                 for device in all_devices_dict[device_type].keys():
+                    if device_type == 'controller' and device == 'controller' and hastate is True:
+                        continue
                     status = True
                     if device_type in devices_dict.keys() and device in devices_dict[device_type].keys():
                         response['config']['rack']['inventory'].append({
                                               'name': device,
                                               'type': device_type,
-                                              'height': devices_dict[device_type][device]['height'] or '1',
-                                              'orientation': devices_dict[device_type][device]['orientation'] or 'front'
+                                              'height': devices_dict[device_type][device]['height'] or self.inventory_items['height'],
+                                              'orientation': devices_dict[device_type][device]['orientation'] or self.inventory_items['orientation']
                                               })
                     else:
                         response['config']['rack']['inventory'].append({
                                               'name': device,
-                                              'type': device_type
+                                              'type': device_type,
+                                              'height': self.inventory_items['height'],
+                                              'orientation': self.inventory_items['orientation']
                                               })
                     
         return status, response
@@ -296,11 +304,6 @@ class Rack():
         network = False
         data, response = {}, {}
 
-        # things we have to set for devices
-        inventory_items = {
-            'orientation': 'front',
-            'height': '1',
-        }
         if request_data:
             data = request_data['config']['rack']['inventory']
             devices_dict = {}
@@ -341,7 +344,7 @@ class Rack():
                     if item in device:
                         device_data[item] = device[item]
                            
-                for key, value in inventory_items.items():
+                for key, value in self.inventory_items.items():
                     if key in device_data:
                         if isinstance(value, bool):
                             device_data[key] = str(Helper().bool_to_string(device_data[key]))
@@ -349,7 +352,7 @@ class Rack():
                         device_data[key] = value
                         if isinstance(value, bool):
                             device_data[key] = str(Helper().bool_to_string(device_data[key]))
-                    if key in device_data and (not device_data[key]) and (key not in inventory_items):
+                    if key in device_data and (not device_data[key]) and (key not in self.inventory_items):
                         del device_data[key]
 
                 if update and inventory_id:

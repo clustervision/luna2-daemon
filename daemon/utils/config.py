@@ -710,10 +710,10 @@ class Config(object):
                                     f"groupinterface.interface='{interface}'"
                                 ]
                             )
-                        ips = []
+                        dhcp_ips = []
                         if network:
-                            ips = self.get_dhcp_range_ips_from_network(network[0]['networkname'])
-                        dhcp_ips = ips
+                            dhcp_ips = self.get_dhcp_range_ips_from_network(network[0]['networkname'])
+                        ips = dhcp_ips.copy()
                         if network and 'ipaddress' in network[0]:
                             for ip in network:
                                 ips.append(ip['ipaddress'])

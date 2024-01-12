@@ -233,7 +233,7 @@ class Plugin():
         try:
             initramfs_cmd = (['/usr/sbin/mkinitramfs', '-o', '/tmp/' + ramdisk_file, kernel_version ])
 
-            create = subprocess.Popen(initramfs_cmd, stdout=subprocess.PIPE)
+            create = subprocess.Popen(initramfs_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             while create.poll() is None:
                 line = create.stdout.readline()
 
@@ -243,11 +243,15 @@ class Plugin():
             self.logger.debug(exc_traceback.format_exc())
             initramfs_succeed = False
 
+        message = "Problem building initrd"
         if create and create.returncode:
             initramfs_succeed = False
+            all_messages = create.stderr.read().decode().split('\n')
+            message = '.'.join(all_messages[:3])
 
         if not create:
             initramfs_succeed = False
+            message = "Could not open subprocess to run dracut"
 
         os.fchdir(real_root)
         os.chroot(".")
@@ -256,8 +260,8 @@ class Plugin():
         cleanup_mounts(image_path)
 
         if not initramfs_succeed:
-            self.logger.info("Error while building ramdisk.")
-            return False,"Problem building ramdisk"
+            self.logger.info(f"Error while building ramdisk: {message}")
+            return False,message
 
         # the defaults for redhat derivatives
         initrd_path = image_path + '/tmp/' + ramdisk_file

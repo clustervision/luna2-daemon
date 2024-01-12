@@ -151,9 +151,6 @@ class Housekeeper(object):
     def switchport_scan(self,event):
         tel=118
         self.logger.info("Starting switch port scan thread")
-        plugins_path=CONSTANT["PLUGINS"]["PLUGINS_DIR"]
-        #detection_plugins = Helper().plugin_finder(f'{plugins_path}/detection')
-        #DetectionPlugin=Helper().plugin_load(detection_plugins,'detection','switchport')
         try:
             from plugins.boot.detection.switchport import Plugin as DetectionPlugin
             while True:

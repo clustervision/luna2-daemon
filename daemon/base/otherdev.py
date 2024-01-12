@@ -87,6 +87,10 @@ class OtherDev():
         if request_data:
             data = request_data['config']['otherdev'][name]
             data['name'] = name
+            nonetwork = False
+            if 'nonetwork' in data:
+                nonetwork = Helper().make_bool(data['nonetwork'])
+                del data['nonetwork']
             device = Database().get_record(table=self.table, where=f' WHERE `name` = "{name}"')
             if device:
                 device_id = device[0]['id']
@@ -122,7 +126,16 @@ class OtherDev():
                     status=False
                     return status, 'Invalid request: Columns are incorrect'
             # Antoine --->> interface(s) update/create -------------
-            if ipaddress or network:
+            if nonetwork:
+                result, message = Config().device_raw_ipaddress_config(
+                    device_id,
+                    self.table,
+                    ipaddress
+                )
+                if result is False:
+                    response = f'{message}'
+                    status=False
+            elif ipaddress or network:
                 result, message = Config().device_ipaddress_config(
                     device_id,
                     self.table,

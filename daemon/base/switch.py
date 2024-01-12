@@ -94,6 +94,10 @@ class Switch():
         if request_data:
             data = request_data['config'][self.table][name]
             data['name'] = name
+            nonetwork = False
+            if 'nonetwork' in data:
+                nonetwork = Helper().make_bool(data['nonetwork'])
+                del data['nonetwork']
             where = f' WHERE `name` = "{name}"'
             check_switch = Database().get_record(table=self.table, where=where)
             if check_switch:
@@ -144,7 +148,16 @@ class Switch():
                     response = 'Invalid request: Columns are incorrect'
                     status=False
             # Antoine --->>> ----------- interface(s) update/create -------------
-            if ipaddress or network:
+            if nonetwork:
+                result, message = Config().device_raw_ipaddress_config(
+                    switchid,
+                    self.table,
+                    ipaddress
+                )
+                if result is False:
+                    response = f'{message}'
+                    status=False
+            elif ipaddress or network:
                 result, message = Config().device_ipaddress_config(
                     switchid,
                     self.table,

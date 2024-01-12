@@ -450,9 +450,38 @@ class Config(object):
 
     # ----------------------------------------------------------------------------------------------
 
+    def device_raw_ipaddress_config(self, device_id=None, device=None, ipaddress=None):
+        """
+        This method will set the ipaddress as is. no checks.
+        """
+        if not ipaddress:
+            return False, "IP address not supplied"
+        result_ip = False
+        my_ipaddress={'ipaddress': ipaddress, 'networkid': None}
+        where = f'WHERE tablerefid = "{device_id}" AND tableref = "{device}"'
+        check_ip = Database().get_record(None, 'ipaddress', where)
+        if check_ip:
+            row = Helper().make_rows(my_ipaddress)
+            where = [
+                {"column": "tablerefid", "value": device_id},
+                {"column": "tableref", "value": device}
+            ]
+            result_ip=Database().update('ipaddress', row, where)
+        else:
+            my_ipaddress['tableref'] = device
+            my_ipaddress['tablerefid'] = device_id
+            row = Helper().make_rows(my_ipaddress)
+            result_ip=Database().insert('ipaddress', row)
+            self.logger.info(f"IP for {device} created => {result_ip}.")
+        if result_ip is False:
+            return False,"IP address assignment failed"
+        return True,"ip address changed"
+    
+    # ----------------------------------------------------------------------------------------------
+
     def device_ipaddress_config(self, device_id=None, device=None, ipaddress=None, network=None):
         """
-        This method will collect device ipaddress and return configuration.
+        This method will verify the ipaddress with supplied or pre-configured network and sets it 
         """
         if network:
             network_id = Database().id_by_name('network', network)

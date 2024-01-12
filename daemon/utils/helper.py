@@ -73,6 +73,14 @@ class Helper(object):
         )
         if ip_detail:
             response = ip_detail[0]['ipaddress'], ip_detail[0]['network']
+        else:
+            ip_detail = Database().get_record_join(
+                ['ipaddress.ipaddress'],
+                [f'ipaddress.tablerefid={table}.id'],
+                [f'tableref="{table}"', f"tablerefid='{record_id}'"]
+            )
+            if ip_detail:
+                response = ip_detail[0]['ipaddress'], None
         return response
 
 

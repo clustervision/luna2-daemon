@@ -873,7 +873,7 @@ class OsImage(object):
                     if first and second:
                         queue_id,queue_response = Queue().add_task_to_queue(f"copy_osimage:{first}:{second}:{third}:noeof",'osimage',request_id)
                         if queue_id:
-                            queue_id,queue_response = Queue().add_task_to_queue(f"pack_n_build_osimage:{third}",'osimage',request_id)
+                            queue_id,queue_response = Queue().add_task_to_queue(f"pack_n_build_osimage:{third}:nocleanup",'osimage',request_id)
                             if queue_id:
                                 queue_id,queue_response = Queue().add_task_to_queue(f"close_task:{next_id}",'osimage',request_id)
 
@@ -886,7 +886,8 @@ class OsImage(object):
                             if queue_id:
                                 queue_id,queue_response = Queue().add_task_to_queue(f"provision_osimage:{first}",'osimage',request_id)
                                 if queue_id:
-                                    self.schedule_cleanup(first,request_id)
+                                    if (not second) or (second != "nocleanup"):
+                                        self.schedule_cleanup(first,request_id)
                                     if queue_id:
                                         queue_id,queue_response = Queue().add_task_to_queue(f"close_task:{next_id}",'osimage',request_id)
 

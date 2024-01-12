@@ -258,7 +258,7 @@ class Plugin():
                           modules_add + modules_remove + drivers_add +
                           drivers_remove + ['/tmp/' + ramdisk_file])
 
-            create = subprocess.Popen(dracut_cmd, stdout=subprocess.PIPE)
+            create = subprocess.Popen(dracut_cmd, stdout=subprocess.PIPE,stderr=subprocess.PIPE)
             while create.poll() is None:
                 line = create.stdout.readline()
 
@@ -268,11 +268,15 @@ class Plugin():
             self.logger.debug(exc_traceback.format_exc())
             dracut_succeed = False
 
+        message = "Problem building initrd"
         if create and create.returncode:
             dracut_succeed = False
+            all_messages = create.stderr.read().decode().split('\n')
+            message = '.'.join(all_messages[:3])
 
         if not create:
             dracut_succeed = False
+            message = "Could not open subprocess to run dracut"
 
         os.fchdir(real_root)
         os.chroot(".")
@@ -281,8 +285,8 @@ class Plugin():
         cleanup_mounts(image_path)
 
         if not dracut_succeed:
-            self.logger.info("Error while building initrd.")
-            return False,"Problem building initrd"
+            self.logger.info(f"Error while building initrd: {message}")
+            return False,message
 
         # the defaults for redhat derivatives
         initrd_path = image_path + '/tmp/' + ramdisk_file

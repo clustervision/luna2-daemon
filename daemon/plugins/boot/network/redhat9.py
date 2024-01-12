@@ -74,11 +74,12 @@ addr-gen-mode=default
 method=auto
 
 [proxy]
+
+$OPTIONS
 EOF
 chown root:root /sysroot/etc/NetworkManager/system-connections/Connection_${DEVICE}.nmconnection
 chmod 600 /sysroot/etc/NetworkManager/system-connections/Connection_${DEVICE}.nmconnection
 
-        #$OPTIONS
     """
 
     hostname = """

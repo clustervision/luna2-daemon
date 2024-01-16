@@ -280,23 +280,26 @@ class Rack():
                     if device_type == 'controller' and device == 'controller' and hastate is True:
                         continue
                     status = True
-                    if device_type in devices_dict.keys() and device in devices_dict[device_type].keys() and devices_dict[device_type][device]['rackid']:
-                        if (not subset) or subset == "configured":
+
+                    if device_type in devices_dict.keys() and device in devices_dict[device_type].keys():
+                        if (
+                               (not subset) or
+                               (subset == "configured" and devices_dict[device_type][device]['rackid']) or
+                               (subset == "unconfigured" and not devices_dict[device_type][device]['rackid'])
+                            ):
                             response['config']['rack']['inventory'].append({
                                               'name': device,
                                               'type': device_type,
                                               'height': devices_dict[device_type][device]['height'] or self.inventory_items['height'],
                                               'orientation': devices_dict[device_type][device]['orientation'] or self.inventory_items['orientation']
                                               })
-                    else:
-                        if (not subset) or subset == "unconfigured":
-                            response['config']['rack']['inventory'].append({
+                    elif (not subset) or subset == "unconfigured":
+                        response['config']['rack']['inventory'].append({
                                               'name': device,
                                               'type': device_type,
                                               'height': self.inventory_items['height'],
                                               'orientation': self.inventory_items['orientation']
                                               })
-                    
         return status, response
 
 

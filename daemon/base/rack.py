@@ -65,6 +65,7 @@ class Rack():
         """
         status=False
         response={'config': {'rack': {} }}
+        config={}
         for device_type in ['node','switch','otherdevices','controller']:
             empty_rack=False
             dbname='name'
@@ -74,7 +75,7 @@ class Rack():
             if name:
                 where.append(f"rack.name='{name}'")
             rack_data = Database().get_record_join(
-                   ['rack.*','rack.id as rackid','rackinventory.*',
+                   ['rack.*','rack.id as rackid','rackinventory.*',f'{device_type}.vendor',
                     'rackinventory.id as invid',f'{device_type}.{dbname} as devicename'],
                    [f'rackinventory.tablerefid={device_type}.id','rackinventory.rackid=rack.id'],
                    where)
@@ -82,24 +83,27 @@ class Rack():
                 empty_rack=True
                 if name:
                     rack_data = Database().get_record(None,'rack',f"WHERE name='{name}'")
-                else:
-                    rack_data = Database().get_record(None,'rack')
+            if not name:
+                all_rack_data = Database().get_record(None,'rack')
+                if all_rack_data:
+                    rack_data += all_rack_data
             if rack_data:
                 status=True
                 for device in rack_data:
-                    if device['name'] not in response['config']['rack'].keys():
-                        response['config']['rack'][device['name']]={'size': device['size'] or '42', 
+                    if device['name'] not in config.keys():
+                        config[device['name']]={'size': device['size'] or '42', 
                                                                     'order': device['order'] or 'ascending', 
                                                                     'room': device['room'], 'site': device['site'], 
                                                                     'name': device['name'], 'devices': []}
-                    if not empty_rack:
-                        response['config']['rack'][device['name']]['devices'].append({
+                    if not empty_rack and 'devicename' in device:
+                        config[device['name']]['devices'].append({
                                                           'name': device['devicename'],
                                                           'type': device_type,
+                                                          'vendor': device['vendor'],
                                                           'orientation': device['orientation'],
                                                           'height': device['height'],
                                                           'position': device['position']})
-        self.logger.debug(f"RACK: {response}")               
+            response['config']['rack']=dict(sorted(config.items()))
         return status, response
 
 
@@ -262,7 +266,7 @@ class Rack():
             dbname='name'
             if device_type == 'controller':
                 dbname='hostname'
-            devices_in_db = Database().get_record_join([f'{device_type}.{dbname}', 'rackinventory.*'],
+            devices_in_db = Database().get_record_join([f'{device_type}.{dbname}', f'{device_type}.vendor', 'rackinventory.*'],
                                                        [f'rackinventory.tablerefid={device_type}.id'], 
                                                        [f"rackinventory.tableref='{device_type}'"])
             if devices_in_db:
@@ -277,23 +281,28 @@ class Rack():
                     if device_type == 'controller' and device == 'controller' and hastate is True:
                         continue
                     status = True
+
                     if device_type in devices_dict.keys() and device in devices_dict[device_type].keys():
-                        if (not subset) or subset == "configured":
+                        if (
+                               (not subset) or 
+                               (subset == "configured" and devices_dict[device_type][device]['rackid']) or 
+                               (subset == "unconfigured" and not devices_dict[device_type][device]['rackid'])
+                            ):
                             response['config']['rack']['inventory'].append({
                                               'name': device,
                                               'type': device_type,
+                                              'vendor': devices_dict[device_type][device]['vendor'],
                                               'height': devices_dict[device_type][device]['height'] or self.inventory_items['height'],
                                               'orientation': devices_dict[device_type][device]['orientation'] or self.inventory_items['orientation']
                                               })
-                    else:
-                        if (not subset) or subset == "unconfigured":
-                            response['config']['rack']['inventory'].append({
+                    elif (not subset) or subset == "unconfigured":
+                        response['config']['rack']['inventory'].append({
                                               'name': device,
                                               'type': device_type,
+                                              'vendor': None,
                                               'height': self.inventory_items['height'],
                                               'orientation': self.inventory_items['orientation']
                                               })
-                    
         return status, response
 
 

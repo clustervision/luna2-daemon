@@ -188,12 +188,14 @@ DATABASE_LAYOUT_switch = [
 {"column": "read",                 "datatype": "VARCHAR", "length": "60"},
 {"column": "rw",                   "datatype": "VARCHAR", "length": "60"},
 {"column": "uplinkports",          "datatype": "VARCHAR", "length": "60"},
+{"column": "vendor",               "datatype": "VARCHAR", "length": "60"},
 {"column": "comment",              "datatype": "VARCHAR", "length": "60"}]
 
 DATABASE_LAYOUT_otherdevices = [
 {"column": "id",                   "datatype": "INTEGER", "key": "PRIMARY", "keyadd": "AUTOINCREMENT"},
 {"column": "name",                 "datatype": "VARCHAR", "length": "60", "key": "UNIQUE"},
 {"column": "macaddress",           "datatype": "VARCHAR", "length": "60"},
+{"column": "vendor",               "datatype": "VARCHAR", "length": "60"},
 {"column": "comment",              "datatype": "VARCHAR", "length": "60"}]
 
 DATABASE_LAYOUT_controller = [
@@ -201,6 +203,7 @@ DATABASE_LAYOUT_controller = [
 {"column": "hostname",             "datatype": "VARCHAR", "length": "100", "key": "UNIQUE"},
 {"column": "clusterid",            "datatype": "INTEGER", "length": "10"},
 {"column": "status",               "datatype": "VARCHAR", "length": "20"},
+{"column": "vendor",               "datatype": "VARCHAR", "length": "60"},
 {"column": "serverport",           "datatype": "INTEGER", "length": "10"}]
 
 DATABASE_LAYOUT_groupsecrets = [

@@ -65,6 +65,7 @@ class Rack():
         """
         status=False
         response={'config': {'rack': {} }}
+        config={}
         for device_type in ['node','switch','otherdevices','controller']:
             empty_rack=False
             dbname='name'
@@ -82,24 +83,26 @@ class Rack():
                 empty_rack=True
                 if name:
                     rack_data = Database().get_record(None,'rack',f"WHERE name='{name}'")
-                else:
-                    rack_data = Database().get_record(None,'rack')
+            if not name:
+                all_rack_data = Database().get_record(None,'rack')
+                if all_rack_data:
+                    rack_data += all_rack_data
             if rack_data:
                 status=True
                 for device in rack_data:
-                    if device['name'] not in response['config']['rack'].keys():
-                        response['config']['rack'][device['name']]={'size': device['size'] or '42', 
-                                                                    'order': device['order'] or 'ascending', 
-                                                                    'room': device['room'], 'site': device['site'], 
+                    if device['name'] not in config.keys():
+                        config[device['name']]={'size': device['size'] or '42',
+                                                                    'order': device['order'] or 'ascending',
+                                                                    'room': device['room'], 'site': device['site'],
                                                                     'name': device['name'], 'devices': []}
-                    if not empty_rack:
-                        response['config']['rack'][device['name']]['devices'].append({
+                    if not empty_rack and 'devicename' in device:
+                        config[device['name']]['devices'].append({
                                                           'name': device['devicename'],
                                                           'type': device_type,
                                                           'orientation': device['orientation'],
                                                           'height': device['height'],
                                                           'position': device['position']})
-        self.logger.debug(f"RACK: {response}")               
+            response['config']['rack']=dict(sorted(config.items()))
         return status, response
 
 
@@ -277,7 +280,7 @@ class Rack():
                     if device_type == 'controller' and device == 'controller' and hastate is True:
                         continue
                     status = True
-                    if device_type in devices_dict.keys() and device in devices_dict[device_type].keys():
+                    if device_type in devices_dict.keys() and device in devices_dict[device_type].keys() and devices_dict[device_type][device]['rackid']:
                         if (not subset) or subset == "configured":
                             response['config']['rack']['inventory'].append({
                                               'name': device,

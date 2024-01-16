@@ -75,7 +75,7 @@ class Rack():
             if name:
                 where.append(f"rack.name='{name}'")
             rack_data = Database().get_record_join(
-                   ['rack.*','rack.id as rackid','rackinventory.*',
+                   ['rack.*','rack.id as rackid','rackinventory.*',f'{device_type}.vendor',
                     'rackinventory.id as invid',f'{device_type}.{dbname} as devicename'],
                    [f'rackinventory.tablerefid={device_type}.id','rackinventory.rackid=rack.id'],
                    where)
@@ -91,14 +91,15 @@ class Rack():
                 status=True
                 for device in rack_data:
                     if device['name'] not in config.keys():
-                        config[device['name']]={'size': device['size'] or '42',
-                                                                    'order': device['order'] or 'ascending',
-                                                                    'room': device['room'], 'site': device['site'],
+                        config[device['name']]={'size': device['size'] or '42', 
+                                                                    'order': device['order'] or 'ascending', 
+                                                                    'room': device['room'], 'site': device['site'], 
                                                                     'name': device['name'], 'devices': []}
                     if not empty_rack and 'devicename' in device:
                         config[device['name']]['devices'].append({
                                                           'name': device['devicename'],
                                                           'type': device_type,
+                                                          'vendor': device['vendor'],
                                                           'orientation': device['orientation'],
                                                           'height': device['height'],
                                                           'position': device['position']})
@@ -265,7 +266,7 @@ class Rack():
             dbname='name'
             if device_type == 'controller':
                 dbname='hostname'
-            devices_in_db = Database().get_record_join([f'{device_type}.{dbname}', 'rackinventory.*'],
+            devices_in_db = Database().get_record_join([f'{device_type}.{dbname}', f'{device_type}.vendor', 'rackinventory.*'],
                                                        [f'rackinventory.tablerefid={device_type}.id'], 
                                                        [f"rackinventory.tableref='{device_type}'"])
             if devices_in_db:
@@ -283,13 +284,14 @@ class Rack():
 
                     if device_type in devices_dict.keys() and device in devices_dict[device_type].keys():
                         if (
-                               (not subset) or
-                               (subset == "configured" and devices_dict[device_type][device]['rackid']) or
+                               (not subset) or 
+                               (subset == "configured" and devices_dict[device_type][device]['rackid']) or 
                                (subset == "unconfigured" and not devices_dict[device_type][device]['rackid'])
                             ):
                             response['config']['rack']['inventory'].append({
                                               'name': device,
                                               'type': device_type,
+                                              'vendor': devices_dict[device_type][device]['vendor'],
                                               'height': devices_dict[device_type][device]['height'] or self.inventory_items['height'],
                                               'orientation': devices_dict[device_type][device]['orientation'] or self.inventory_items['orientation']
                                               })
@@ -297,6 +299,7 @@ class Rack():
                         response['config']['rack']['inventory'].append({
                                               'name': device,
                                               'type': device_type,
+                                              'vendor': None,
                                               'height': self.inventory_items['height'],
                                               'orientation': self.inventory_items['orientation']
                                               })

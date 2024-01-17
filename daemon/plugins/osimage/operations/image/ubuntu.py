@@ -70,7 +70,7 @@ class Plugin():
 
     # ---------------------------------------------------------------------------
 
-    def build(self, osimage=None, image_path=None, files_path=None):
+    def build(self, osimage=None, image_path=None, files_path=None, tmp_directory=None):
         # osimage = just the name of the image
         # image_path = is the location where the image resides
         # files_path = is the location where the imagefile will be copied.
@@ -96,8 +96,14 @@ class Plugin():
         if not os.path.exists('/usr/bin/lbzip2'):
             return False,"/usr/bin/lbzip2 does not exist. please install lbzip2"
 
+        tmp_dir=tmp_directory or '/tmp'
+        if not os.path.exists(tmp_dir):
+            os.makedirs(tmp_dir)
+        if not os.path.exists(tmp_dir):
+            return False, f"could not create or use temp directory f{tmp_dir}"
+
         try:
-            self.logger.debug(f"/usr/bin/tar -C {image_path} --one-file-system --xattrs --selinux --acls --checkpoint=100000 --use-compress-program=/usr/bin/lbzip2 -c -f /tmp/{packed_image_file} .")
+            self.logger.debug(f"/usr/bin/tar -C {image_path} --one-file-system --xattrs --selinux --acls --checkpoint=100000 --use-compress-program=/usr/bin/lbzip2 -c -f {tmp_dir}/{packed_image_file} .")
 
             try:
                 output = subprocess.check_output(
@@ -114,14 +120,14 @@ class Plugin():
                         '--exclude=/sys/*',
                         '--checkpoint=100000',
                         '--use-compress-program=/usr/bin/lbzip2',
-                        '-c', '-f', '/tmp/' + packed_image_file, '.'
+                        '-c', '-f', tmp_dir + '/' + packed_image_file, '.'
                     ],
                     stderr=subprocess.STDOUT,
                     universal_newlines=True)
             except subprocess.CalledProcessError as exc:
                 self.logger.info(f"Tarring failed with exit code {exc.returncode} {exc.output}:")
-                if os.path.isfile('/tmp/' + packed_image_file):
-                    os.remove('/tmp/' + packed_image_file)
+                if os.path.isfile(tmp_dir + '/' + packed_image_file):
+                    os.remove(tmp_dir + '/' + packed_image_file)
                 output=f"{exc.output}"
                 outputs=output.split("\n")
                 joined='. '.join(outputs[-5:])
@@ -138,8 +144,8 @@ class Plugin():
                 self.logger.error(exc_value)
                 self.logger.debug(exc_traceback.format_exc())
 
-            if os.path.isfile('/tmp/' + packed_image_file):
-                os.remove('/tmp/' + packed_image_file)
+            if os.path.isfile(tmp_dir + '/' + packed_image_file):
+                os.remove(tmp_dir + '/' + packed_image_file)
 
             sys.stdout.write('\r')
 
@@ -149,8 +155,8 @@ class Plugin():
         # will be inherited from parent folder
 
         try:
-            shutil.copy(f"/tmp/{packed_image_file}", files_path)
-            os.remove(f"/tmp/{packed_image_file}")
+            shutil.copy(tmp_dir + '/' + packed_image_file, files_path)
+            os.remove(tmp_dir + '/' + packed_image_file)
             os.chown(files_path + '/' + packed_image_file, user_id, grp_id)
             os.chmod(files_path + '/' + packed_image_file, 0o644)
         except Exception as error:

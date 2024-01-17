@@ -333,6 +333,7 @@ class OsImage(object):
                     osrelease = str(image[0]['osrelease'])
 
                 files_path = CONSTANT['FILES']['IMAGE_FILES']
+                tmp_directory = CONSTANT['FILES']['TMP_DIRECTORY']
         
                 # loading the plugin depending on OS
                 os_image_plugin=Helper().plugin_load(self.osimage_plugins,'osimage/operations/image',distribution,osrelease)
@@ -341,7 +342,8 @@ class OsImage(object):
                 response=os_image_plugin().build(
                                        osimage=osimage,
                                        image_path=image_path,
-                                       files_path=files_path)
+                                       files_path=files_path,
+                                       tmp_directory=tmp_directory)
                 ret=response[0]
                 mesg=response[1]
                 image_file=None

@@ -242,13 +242,16 @@ class Housekeeper(object):
                             ha_object.set_insync(status)
                         ping_tel=3
                     ping_tel-=1
-                    # --------------------------- we check if we have received pings
+                    # --------------------------- we check if we have received pings. if things are weird we use fallback mechanisms
                     if ping_check<1:
                         check_status=ha_object.verify_pings()
                         if master is False: # i am not a master
                             status = ping_status and check_status
                             ha_object.set_insync(status)
                         if check_status is False:
+                            if ping_status is True:
+                                self.logger.warning("Reverting to pulling journal updates on interval as an emergency measure...")
+                                syncpull_status=journal_object.pullfrom_controllers()
                             ping_check=21
                         else:
                             ping_check=3

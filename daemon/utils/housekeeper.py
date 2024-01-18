@@ -190,6 +190,7 @@ class Housekeeper(object):
         ping_tel=3
         ping_check=4
         sum_tel=0
+        ping_status, check_status = False, False
         try:
             ha_object=HA()
             if not ha_object.get_hastate():
@@ -235,15 +236,17 @@ class Housekeeper(object):
                         ha_object.set_insync(True)
                     # --------------------------- we ping the others. if someone is down, we become paranoid
                     if ping_tel<1:
-                        status=ha_object.ping_all_controllers()
+                        ping_status=ha_object.ping_all_controllers()
                         if master is False: # i am not a master
+                            status = ping_status and check_status
                             ha_object.set_insync(status)
                         ping_tel=3
                     ping_tel-=1
                     # --------------------------- we check if we have received pings
                     if ping_check<1:
-                        status=ha_object.verify_pings()
+                        check_status=ha_object.verify_pings()
                         if master is False: # i am not a master
+                            status = ping_status and check_status
                             ha_object.set_insync(status)
                         ping_check=3
                     ping_check-=1

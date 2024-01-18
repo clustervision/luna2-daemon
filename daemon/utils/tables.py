@@ -153,7 +153,7 @@ class Tables():
             if not result:
                 self.logger.error(f"Error importing data for table {table}")
                 return False
-        self.logger.error(f"Success importing data for table {table}")
+        self.logger.info(f"Success importing data for table {table}")
         Database().update_sequence(table,seq)
         return True
 

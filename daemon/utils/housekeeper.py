@@ -186,6 +186,7 @@ class Housekeeper(object):
         hardsync_enabled=True # experimental hard table sync based on checksums. handle with care!
         startup_controller=True
         syncpull_status=False
+        insync_rw=True
         sync_tel=0
         ping_tel=3
         ping_check=4
@@ -228,7 +229,8 @@ class Housekeeper(object):
                     # --------------------------- then we process what we have received
                     handled=journal_object.handle_requests()
                     if handled is True:
-                        ha_object.set_insync(True)
+                        if insync_rw:
+                            ha_object.set_insync(True)
                         sum_tel=18
                     elif startup_controller is True:
                         startup_controller=False
@@ -238,6 +240,7 @@ class Housekeeper(object):
                         status=ha_object.ping_all_controllers()
                         if master is False: # i am not a master
                             ha_object.set_insync(status)
+                            insync_rw=status
                         ping_tel=3
                     ping_tel-=1
                     # --------------------------- we check if we have received pings
@@ -245,6 +248,7 @@ class Housekeeper(object):
                         status=ha_object.verify_pings()
                         if master is False: # i am not a master
                             ha_object.set_insync(status)
+                            insync_rw=status
                         ping_check=3
                     ping_check-=1
                     # --------------------------- then on top of that, we verify checksums. if mismatch, we import from the master

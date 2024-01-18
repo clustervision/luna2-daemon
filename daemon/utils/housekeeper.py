@@ -188,7 +188,9 @@ class Housekeeper(object):
         syncpull_status=False
         sync_tel=0
         ping_tel=3
+        ping_check=4
         sum_tel=0
+        ping_status, check_status = True, True
         try:
             ha_object=HA()
             if not ha_object.get_hastate():
@@ -227,18 +229,34 @@ class Housekeeper(object):
                     # --------------------------- then we process what we have received
                     handled=journal_object.handle_requests()
                     if handled is True:
-                        ha_object.set_insync(True)
+                        if ping_status and check_status:
+                            ha_object.set_insync(True)
                         sum_tel=18
                     elif startup_controller is True:
                         startup_controller=False
                         ha_object.set_insync(True)
                     # --------------------------- we ping the others. if someone is down, we become paranoid
                     if ping_tel<1:
+                        ping_status=ha_object.ping_all_controllers()
                         if master is False: # i am not a master
-                            status=ha_object.ping_all_controllers()
+                            status = ping_status and check_status
                             ha_object.set_insync(status)
-                            ping_tel=3
+                        ping_tel=3
                     ping_tel-=1
+                    # --------------------------- we check if we have received pings. if things are weird we use fallback mechanisms
+                    if ping_check<1:
+                        check_status=ha_object.verify_pings()
+                        if master is False: # i am not a master
+                            status = ping_status and check_status
+                            ha_object.set_insync(status)
+                        if check_status is False:
+                            if ping_status is True:
+                                self.logger.warning("Reverting to pulling journal updates on interval as an emergency measure...")
+                                syncpull_status=journal_object.pullfrom_controllers()
+                            ping_check=21
+                        else:
+                            ping_check=3
+                    ping_check-=1
                     # --------------------------- then on top of that, we verify checksums. if mismatch, we import from the master
                     if hardsync_enabled:
                         if sum_tel<1:

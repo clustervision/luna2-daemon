@@ -38,6 +38,7 @@ from utils.log import Log
 from common.validate_auth import token_required, agent_check
 from common.validate_input import input_filter, validate_name
 from utils.ha import HA
+from utils.ping import Ping
 from utils.journal import Journal
 from utils.helper import Helper
 
@@ -52,6 +53,7 @@ def ha_ping():
     This api will just send pong back
     """
     access_code=200
+    status = Ping().update()
     response = {'message': 'pong'}
     return response, access_code
 

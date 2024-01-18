@@ -291,6 +291,9 @@ DATABASE_LAYOUT_ha = [
 {"column": "master",               "datatype": "INTEGER", "length": "10"},
 {"column": "updated",              "datatype": "numeric"}]
 
+DATABASE_LAYOUT_ping = [
+{"column": "updated",              "datatype": "numeric"}]
+
 DATABASE_LAYOUT_rack = [
 {"column": "id",                   "datatype": "INTEGER", "key": "PRIMARY", "keyadd": "AUTOINCREMENT"},
 {"column": "name",                 "datatype": "VARCHAR", "length": "20", "key": "UNIQUE"},

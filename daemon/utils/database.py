@@ -523,7 +523,7 @@ class Database():
         return response
 
 
-    def update(self, table=None, row=None, where=None):
+    def update(self, table=None, row=[], where=[]):
         """
         Input - tablename, row, and where clause
         Process - It is SELECT operation on the DB.
@@ -534,7 +534,7 @@ class Database():
                     [{"column": "active", "value": "1"}, {"column": "network", "value": "ib"}]
         Output - Update the rows.
         """
-        column_strings, columns, where_list = None, [], []
+        column_strings, columns, where_list, join_where = None, [], [], None
         for cols in row:
             column = ''
             cur_col = None
@@ -569,6 +569,9 @@ class Database():
                         column = column + ' = NULL'
             columns.append(column)
             column_strings = ', '.join(map(str, columns))
+        if not column_strings:
+            self.logger.error("column_strings is empty. no cols in row?")
+            return False
         for cols in where:
             column = ''
             if 'column' in cols.keys():
@@ -580,10 +583,10 @@ class Database():
                     column = column + ' = NULL'
             where_list.append(column)
             join_where = ' AND '.join(map(str, where_list))
-        if not column_strings:
-            self.logger.error("column_strings is empty. no cols in row?")
-            return False
-        query = f'UPDATE "{table}" SET {column_strings} WHERE {join_where};'
+        if join_where:
+            query = f'UPDATE "{table}" SET {column_strings} WHERE {join_where};'
+        else:
+            query = f'UPDATE "{table}" SET {column_strings};'
         self.logger.debug(f"Update Query ---> {query}")
         attempt = 1
         while attempt < 10:

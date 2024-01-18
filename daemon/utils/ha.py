@@ -40,6 +40,7 @@ from utils.database import Database
 from utils.log import Log
 from utils.helper import Helper
 from utils.request import Request
+from utils.ping import Ping
 
 import requests
 from requests import Session
@@ -159,15 +160,12 @@ class HA():
         if value is True:
             property[name]=1
         self.logger.debug(f"set_{name} set to {property}")
-        ha_data = Database().get_record(None, 'ha')
-        if ha_data:
-            where = [{"column": name, "value": ha_data[0][name]}]
-            if set_updated:
-                property['updated']="NOW"
-            row = Helper().make_rows(property)
-            result=Database().update('ha', row, where)
-            if result:
-                return True
+        if set_updated:
+            property['updated']="NOW"
+        row = Helper().make_rows(property)
+        result=Database().update('ha', row)
+        if result:
+            return True
         return False
 
     def get_property(self,name):
@@ -194,6 +192,8 @@ class HA():
         status=True
         if self.all_controllers:
             for controller in self.all_controllers:
+                if controller['hostname'] in ["controller",self.me]:
+                    continue
                 status=self.ping_host(controller['hostname'])
                 if status is False:
                     return False
@@ -213,5 +213,25 @@ class HA():
                 return False
         except Exception as exp:
             self.logger.error(f"{exp}")
+        return False
+
+    def verify_pings(self):
+        lastping = Ping().received()
+        self.logger.debug(f"LAST PING: {lastping}")
+        if lastping:
+            return True
+        status = False
+        if self.all_controllers:
+            for controller in self.all_controllers:
+                if controller['hostname'] in ["controller",self.me]:
+                    continue
+                status=self.ping_host(controller['hostname'])
+                self.logger.debug(f"PING HOST: {controller['hostname']}, {status}")
+                if status is True:
+                    break
+        if status is True:
+            self.logger.warning(f"I can reach at least one other controller, but they can't reach me! Firewall problems?")
+            if self.master is True:
+                return True
         return False
 

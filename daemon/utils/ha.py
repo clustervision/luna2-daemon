@@ -193,7 +193,7 @@ class HA():
         if self.all_controllers:
             for controller in self.all_controllers:
                 self.logger.info(f"ME 1: {controller['hostname']}")
-                if controller['hostname'] in ["controller",me]:
+                if controller['hostname'] in ["controller",self.me]:
                     continue
                 self.logger.info(f"ME 2: {controller['hostname']}")
                 status=self.ping_host(controller['hostname'])

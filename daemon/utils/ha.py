@@ -192,10 +192,8 @@ class HA():
         status=True
         if self.all_controllers:
             for controller in self.all_controllers:
-                self.logger.info(f"ME 1: {controller['hostname']}")
                 if controller['hostname'] in ["controller",self.me]:
                     continue
-                self.logger.info(f"ME 2: {controller['hostname']}")
                 status=self.ping_host(controller['hostname'])
                 if status is False:
                     return False
@@ -219,14 +217,16 @@ class HA():
 
     def verify_pings(self):
         lastping = Ping().received()
-        self.logger.info(f"LASTPING: {lastping}")
+        self.logger.debug(f"LAST PING: {lastping}")
         if lastping:
             return True
         status = False
         if self.all_controllers:
             for controller in self.all_controllers:
+                if controller['hostname'] in ["controller",self.me]:
+                    continue
                 status=self.ping_host(controller['hostname'])
-                self.logger.info(f"PING HOST: {controller['hostname']}, {status}")
+                self.logger.debug(f"PING HOST: {controller['hostname']}, {status}")
                 if status is True:
                     break
         if status is True:

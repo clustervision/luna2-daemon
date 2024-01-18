@@ -248,7 +248,7 @@ def cleanup_queue_and_status():
 
 def cleanup_and_init_ping():
     Database().clear('ping')
-    ping = [{'column': 'updated', 'value': '0'}]
+    ping = [{'column': 'updated', 'value': 'NOW'}]
     Database().insert('ping', ping)
 
 

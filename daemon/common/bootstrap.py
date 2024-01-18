@@ -44,7 +44,7 @@ configParser = RawConfigParser()
 TABLES = ['status', 'queue', 'osimage', 'osimagetag', 'nodesecrets', 'nodeinterface', 'bmcsetup','ha', 
           'monitor', 'ipaddress', 'groupinterface', 'roles', 'group', 'network', 'user', 'switch', 
           'otherdevices', 'controller', 'groupsecrets', 'node', 'cluster', 'tracker', 'dns', 'journal',
-          'rack', 'rackinventory']
+          'rack', 'rackinventory', 'ping']
 
 def db_status():
     """
@@ -231,6 +231,8 @@ def get_database_tables_structure(table=None):
         return DATABASE_LAYOUT_journal
     if table == "ha":
         return DATABASE_LAYOUT_ha
+    if table == "ping":
+        return DATABASE_LAYOUT_ping
     if table == "rack":
         return DATABASE_LAYOUT_rack
     if table == "rackinventory":
@@ -239,9 +241,15 @@ def get_database_tables_structure(table=None):
 
 def cleanup_queue_and_status():
     """
-    This method will clean the Queue"""
+    This method will clean the Queue
+    """
     Database().clear('queue',"subsystem!='housekeeper'") # we exclude housekeeper tasks being removed
     Database().clear('status')
+
+def cleanup_and_init_ping():
+    Database().clear('ping')
+    ping = [{'column': 'updated', 'value': '0'}]
+    Database().insert('ping', ping)
 
 
 def get_config(filename=None):
@@ -675,4 +683,5 @@ def validate_bootstrap():
         return False
 
     cleanup_queue_and_status()
+    cleanup_and_init_ping()
     return True

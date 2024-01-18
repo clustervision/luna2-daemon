@@ -534,7 +534,7 @@ class Database():
                     [{"column": "active", "value": "1"}, {"column": "network", "value": "ib"}]
         Output - Update the rows.
         """
-        column_strings, columns, where_list = None, [], []
+        column_strings, columns, where_list, join_where = None, [], [], None
         for cols in row:
             column = ''
             cur_col = None
@@ -583,7 +583,10 @@ class Database():
         if not column_strings:
             self.logger.error("column_strings is empty. no cols in row?")
             return False
-        query = f'UPDATE "{table}" SET {column_strings} WHERE {join_where};'
+        if join_where:
+            query = f'UPDATE "{table}" SET {column_strings} WHERE {join_where};'
+        else:
+            query = f'UPDATE "{table}" SET {column_strings};'
         self.logger.debug(f"Update Query ---> {query}")
         attempt = 1
         while attempt < 10:

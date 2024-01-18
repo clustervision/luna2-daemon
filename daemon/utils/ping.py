@@ -30,6 +30,7 @@ __email__       = 'antoine.schonewille@clustervision.com'
 __status__      = 'Development'
 
 from utils.database import Database
+from utils.helper import Helper
 from utils.log import Log
 
 class Ping():
@@ -43,7 +44,7 @@ class Ping():
     def update(self):
         ping={'updated': 'NOW'}
         row = Helper().make_rows(ping)
-        result=Database().update('ping', row)
+        result=Database().update('ping', row, [])
         if result:
             return True
         return False
@@ -54,7 +55,7 @@ class Ping():
             ping = Database().get_record(["strftime('%s', updated) AS updated"],'ping')
         else:
             ping = Database().get_record(["strftime('%s', updated) AS updated"],'ping',f"WHERE updated>datetime('now','-120 second')")
-        self.logger.info(f"last ping: {ping}")
+        self.logger.debug(f"last ping: {ping}")
         if ping:
             if last:
                 return ping[0]['updated']

@@ -159,15 +159,12 @@ class HA():
         if value is True:
             property[name]=1
         self.logger.debug(f"set_{name} set to {property}")
-        ha_data = Database().get_record(None, 'ha')
-        if ha_data:
-            where = [{"column": name, "value": ha_data[0][name]}]
-            if set_updated:
-                property['updated']="NOW"
-            row = Helper().make_rows(property)
-            result=Database().update('ha', row, where)
-            if result:
-                return True
+        if set_updated:
+            property['updated']="NOW"
+        row = Helper().make_rows(property)
+        result=Database().update('ha', row, [])
+        if result:
+            return True
         return False
 
     def get_property(self,name):

@@ -192,11 +192,11 @@ class HA():
         status=True
         if self.all_controllers:
             for controller in self.all_controllers:
-                if self.me and self.me == controller['hostname']:
-                    continue
-                status=self.ping_host(controller['hostname'])
-                if status is False:
-                    return False
+                if (not self.me) or self.me != controller['hostname']:
+                    self.logger.info(f"ME: {controller['hostname']}")
+                    status=self.ping_host(controller['hostname'])
+                    if status is False:
+                        return False
         return status
 
     def ping_host(self,host):

@@ -248,7 +248,10 @@ class Housekeeper(object):
                         if master is False: # i am not a master
                             status = ping_status and check_status
                             ha_object.set_insync(status)
-                        ping_check=3
+                        if check_status is False:
+                            ping_check=21
+                        else:
+                            ping_check=3
                     ping_check-=1
                     # --------------------------- then on top of that, we verify checksums. if mismatch, we import from the master
                     if hardsync_enabled:

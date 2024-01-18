@@ -966,7 +966,6 @@ class Boot():
             data['cluster_provision_method']   = cluster[0]['provision_method']
             data['cluster_provision_fallback'] = cluster[0]['provision_fallback']
             data['name_server'] = cluster[0]['nameserver_ip']
-            data['ntp_server']  = cluster[0]['ntp_server']
         # Antoine
         controller = Database().get_record_join(
             ['controller.*', 'ipaddress.ipaddress'],
@@ -1143,8 +1142,6 @@ class Boot():
         template_data = template_data.replace("## GATEWAY CODE SEGMENT", segment)
         segment = str(network_plugin().dns)
         template_data = template_data.replace("## DNS CODE SEGMENT", segment)
-        segment = str(network_plugin().ntp)
-        template_data = template_data.replace("## NTP CODE SEGMENT", segment)
 
         ## BMC CODE SEGMENT
         bmc_plugin = Helper().plugin_load(

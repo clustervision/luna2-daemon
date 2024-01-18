@@ -82,10 +82,3 @@ class Plugin():
         echo "search $search" >> etc/resolv.conf
     """
 
-    ntp = """
-        cd /sysroot
-        echo "server  $NTPSERVER" > etc/ntp.conf
-        echo "fudge   $NTPSERVER stratum 10" >> etc/ntp.conf
-        echo "driftfile /etc/ntp/drift" >> etc/ntp.conf
-    """
-

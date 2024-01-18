@@ -35,7 +35,7 @@ from utils.log import Log
 
 class Ping():
     """
-    This class is responsible for Ping related matter. used in conjunction with HA.
+    This class is responsible for low level ping related matter. used in conjunction with HA.
     """
 
     def __init__(self,me=None):

@@ -40,6 +40,7 @@ from utils.database import Database
 from utils.log import Log
 from utils.helper import Helper
 from utils.request import Request
+from utils.ping import Ping
 
 import requests
 from requests import Session
@@ -210,5 +211,23 @@ class HA():
                 return False
         except Exception as exp:
             self.logger.error(f"{exp}")
+        return False
+
+    def verify_pings(self):
+        lastping = Ping().received()
+        self.logger.info(f"LASTPING: {lastping}")
+        if lastping:
+            return True
+        status = False
+        if self.all_controllers:
+            for controller in self.all_controllers:
+                status=self.ping_host(controller['hostname'])
+                self.logger.info(f"PING HOST: {controller['hostname']}, {status}")
+                if status is True:
+                    break
+        if status is True:
+            self.logger.warning(f"I can reach at least one other controller, but they can't reach me! Firewall problems?")
+            if self.master is True:
+                return True
         return False
 

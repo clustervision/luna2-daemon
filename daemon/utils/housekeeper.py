@@ -188,6 +188,7 @@ class Housekeeper(object):
         syncpull_status=False
         sync_tel=0
         ping_tel=3
+        ping_check=4
         sum_tel=0
         try:
             ha_object=HA()
@@ -239,6 +240,13 @@ class Housekeeper(object):
                             ha_object.set_insync(status)
                             ping_tel=3
                     ping_tel-=1
+                    # --------------------------- we check if we have received pings
+                    if ping_check<1:
+                        status=ha_object.verify_pings()
+                        if master is False: # i am not a master
+                            ha_object.set_insync(status)
+                        ping_check=3
+                    ping_check-=1
                     # --------------------------- then on top of that, we verify checksums. if mismatch, we import from the master
                     if hardsync_enabled:
                         if sum_tel<1:

@@ -162,7 +162,7 @@ class HA():
         if set_updated:
             property['updated']="NOW"
         row = Helper().make_rows(property)
-        result=Database().update('ha', row, [])
+        result=Database().update('ha', row)
         if result:
             return True
         return False

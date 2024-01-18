@@ -523,7 +523,7 @@ class Database():
         return response
 
 
-    def update(self, table=None, row=None, where=None):
+    def update(self, table=None, row=[], where=[]):
         """
         Input - tablename, row, and where clause
         Process - It is SELECT operation on the DB.
@@ -569,6 +569,9 @@ class Database():
                         column = column + ' = NULL'
             columns.append(column)
             column_strings = ', '.join(map(str, columns))
+        if not column_strings:
+            self.logger.error("column_strings is empty. no cols in row?")
+            return False
         for cols in where:
             column = ''
             if 'column' in cols.keys():
@@ -580,9 +583,6 @@ class Database():
                     column = column + ' = NULL'
             where_list.append(column)
             join_where = ' AND '.join(map(str, where_list))
-        if not column_strings:
-            self.logger.error("column_strings is empty. no cols in row?")
-            return False
         if join_where:
             query = f'UPDATE "{table}" SET {column_strings} WHERE {join_where};'
         else:

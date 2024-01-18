@@ -44,7 +44,7 @@ class Ping():
     def update(self):
         ping={'updated': 'NOW'}
         row = Helper().make_rows(ping)
-        result=Database().update('ping', row, [])
+        result=Database().update('ping', row)
         if result:
             return True
         return False

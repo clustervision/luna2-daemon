@@ -54,7 +54,7 @@ class Ping():
         if last:
             ping = Database().get_record(["strftime('%s', updated) AS updated"],'ping')
         else:
-            ping = Database().get_record(["strftime('%s', updated) AS updated"],'ping',f"WHERE updated>datetime('now','-120 second')")
+            ping = Database().get_record(["strftime('%s', updated) AS updated"],'ping',f"WHERE updated>datetime('now','-60 second')")
         self.logger.debug(f"last ping: {ping}")
         if ping:
             if last:

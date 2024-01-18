@@ -99,9 +99,3 @@ chmod 600 /sysroot/etc/NetworkManager/system-connections/Connection_${DEVICE}.nm
         sed -i 's/^dns-search=/dns-search='$SEARCH'/' /sysroot/etc/NetworkManager/system-connections/Connection_${DEVICE}.nmconnection
     """
 
-    ntp = """
-        cd /sysroot
-        echo "server  $NTPSERVER" > etc/ntp.conf
-        echo "fudge   $NTPSERVER stratum 10" >> etc/ntp.conf
-        echo "driftfile /etc/ntp/drift" >> etc/ntp.conf
-    """

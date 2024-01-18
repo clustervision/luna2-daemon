@@ -269,7 +269,6 @@ def boot_install(node=None):
         PROVISION_FALLBACK      = data['provision_fallback'],
         NAME_SERVER             = data['name_server'],
         DOMAIN_SEARCH           = data['domain_search'],
-        NTP_SERVER              = data['ntp_server'],
         LUNA_TOKEN              = data['jwt_token']
     ), access_code
 

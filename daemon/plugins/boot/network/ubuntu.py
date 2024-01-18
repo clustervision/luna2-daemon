@@ -89,8 +89,3 @@ EOF
         chroot $rootmnt netplan apply 2> /dev/null
     """
 
-    ntp = """
-        echo "server  $NTPSERVER" > $rootmnt/etc/ntp.conf
-        echo "fudge   $NTPSERVER stratum 10" >> $rootmnt/etc/ntp.conf
-        echo "driftfile /etc/ntp/drift" >> $rootmnt/etc/ntp.conf
-    """

@@ -229,7 +229,8 @@ class Housekeeper(object):
                     # --------------------------- then we process what we have received
                     handled=journal_object.handle_requests()
                     if handled is True:
-                        ha_object.set_insync(True)
+                        if ping_status and check_status:
+                            ha_object.set_insync(True)
                         sum_tel=18
                     elif startup_controller is True:
                         startup_controller=False

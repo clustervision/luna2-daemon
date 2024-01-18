@@ -190,7 +190,7 @@ class Housekeeper(object):
         ping_tel=3
         ping_check=4
         sum_tel=0
-        ping_status, check_status = False, False
+        ping_status, check_status = True, True
         try:
             ha_object=HA()
             if not ha_object.get_hastate():

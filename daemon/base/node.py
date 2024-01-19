@@ -70,10 +70,12 @@ class Node():
         osimages = Database().get_record(None, 'osimage', None)
         switches = Database().get_record(None, 'switch', None)
         bmcsetups = Database().get_record(None, 'bmcsetup', None)
+        monitorings = Database().get_record(None, 'monitoring', "WHERE tableref='node'")
         group = Helper().convert_list_to_dict(groups, 'id')
         osimage = Helper().convert_list_to_dict(osimages, 'id')
         switch = Helper().convert_list_to_dict(switches, 'id')
         bmcsetup = Helper().convert_list_to_dict(bmcsetups, 'id')
+        monitoring = Helper().convert_list_to_dict(monitorings, 'tablerefid')
         cluster = Database().get_record(None, 'cluster', None)
         if nodes:
             response['config'] = {}
@@ -139,13 +141,16 @@ class Node():
                 node['tpm_present'] = False
                 if node['tpm_uuid'] or node['tpm_sha256'] or node['tpm_pubkey']:
                     node['tpm_present'] = True
+
+                node['status'] = None
+                if node['id'] in monitoring.keys():
+                    node['status'], *_ = Monitor().installer_state(monitoring[node['id']]['state'])
+
                 del node['id']
                 del node['bmcsetupid']
                 del node['groupid']
                 del node['osimageid']
                 del node['switchid']
-
-                node['status'], *_ = Monitor().installer_state(node['status'])
 
                 node['bootmenu'] = Helper().make_bool(node['bootmenu'])
                 node['localinstall'] = Helper().make_bool(node['localinstall'])

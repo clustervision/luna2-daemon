@@ -71,7 +71,6 @@ class Monitor():
         """
         status=False
         response = {"monitor": {"status": { node: { } } } }
-#        nodes = Database().get_record(None, 'node', f' WHERE id = "{node}" OR name = "{node}"')
         db_node = Database().get_record_join(['monitor.*'],['monitor.tablerefid=node.id'],
                                              ["monitor.tableref='node'",f"node.name='{node}'"])
         if db_node:
@@ -97,9 +96,6 @@ class Monitor():
                 node_db = Database().get_record(None, 'node', where)
                 if node_db:
                     self.logger.info(f"node {node}: {state}")
-#                    row = [{"column": "status", "value": state}]
-#                    where = [{"column": "name", "value": node}]
-#                    Database().update('node', row, where)
                     row = [{"column": "tableref", "value": "node"},
                            {"column": "tablerefid", "value": node_db[0]['id']},
                            {"column": "state", "value": state}]

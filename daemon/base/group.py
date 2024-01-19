@@ -83,7 +83,6 @@ class Group():
                     group['bmcsetupname'] = Database().name_by_id('bmcsetup', group['bmcsetupid'])
                 del group['bmcsetupid']
                 response['config']['group'][name] = group
-            self.logger.info('Provided list of all groups with details.')
         else:
             self.logger.error('No group is available.')
             response = 'No group is available'
@@ -203,7 +202,6 @@ class Group():
                 for node in node_list:
                     nodes.append(node['name'])
                 response['config']['group'][name]['members'] = nodes
-                self.logger.info(f'Provided all group member nodes {nodes}.')
                 status=True
             else:
                 self.logger.error(f'Group {name} is not have any member node.')

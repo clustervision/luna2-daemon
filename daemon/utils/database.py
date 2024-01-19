@@ -403,17 +403,24 @@ class Database():
                 "keyadd": "autoincrement"},
                 {"column": "id", "datatype": "INTEGER", "length": "20", "key": "UNIQUE"},
                 {"column": "id", "datatype": "INTEGER", "length": "20", "key": "UNIQUE", 
-                "with": "name"},
+                    "with": "name"},
                 {"column": "name", "datatype": "VARCHAR", "length": "40"}]
         Output - adds column to table.
         """
-        column_string = ''
+        column_string, key_query = '', []
         if 'column' in column.keys():
             column_string = column_string + ' `' + column['column'] + '` '
         if 'datatype' in column.keys():
             column_string = column_string + ' ' +column['datatype'].upper() + ' '
         if 'length' in column.keys():
             column_string = column_string + ' (' +column['length'] + ') '
+        if 'key' in column.keys() and 'column' in column.keys():
+            if column['key'] == "UNIQUE":
+                if 'with' in column:
+                    key_query.append(f"CREATE UNIQUE INDEX {column['column']}_{column['with']} ON `{table}`(`{column['column']}`,`{column['with']}`)")
+                else:
+                    key_query.append(f"CREATEUNIQUE INDEX {column['column']}_index ON `{table}`(`{column['column']}`)")
+
         query = f'ALTER TABLE `{table}` ADD {column_string}'
         self.logger.debug(f"Query executing => {query}")
         try:
@@ -423,6 +430,15 @@ class Database():
         except Exception as exp:
             self.logger.error(f'Error while adding column to {table}. Error: {exp}')
             response = False
+        if len(key_query) > 0:
+            try:
+                for query in key_query:
+                    local_thread.cursor.execute(query)
+                self.commit()
+                response = True
+            except Exception as exp:
+                self.logger.error(f'Error while creating indexes on {table}. Error: {exp}')
+                response = False
         return response
 
 
@@ -446,7 +462,7 @@ class Database():
         return response
 
 
-    def insert(self, table=None, row=None):
+    def insert(self, table=None, row=None, replace=False):
         """
         Input - tablename and row
         Process - It is Create operation on the DB.
@@ -458,6 +474,9 @@ class Database():
         keys, values = [], []
         where_keys, where_values = [], []
         where = ' WHERE '
+        insert='INSERT'
+        if replace is True:
+            insert='REPLACE'
         response = False
         if row:
             for each in row:
@@ -491,7 +510,7 @@ class Database():
             where_values = values
             keys = ','.join(keys)
             values = ','.join(values)
-        query = f'INSERT INTO "{table}" ({keys}) VALUES ({values});'
+        query = f'{insert} INTO "{table}" ({keys}) VALUES ({values});'
         self.logger.debug(f"Insert Query ---> {query}")
         attempt = 1
         while (not response) and attempt < 10:

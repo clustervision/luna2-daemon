@@ -70,10 +70,12 @@ class Node():
         osimages = Database().get_record(None, 'osimage', None)
         switches = Database().get_record(None, 'switch', None)
         bmcsetups = Database().get_record(None, 'bmcsetup', None)
+        monitorings = Database().get_record(None, 'monitor', "WHERE tableref='node'")
         group = Helper().convert_list_to_dict(groups, 'id')
         osimage = Helper().convert_list_to_dict(osimages, 'id')
         switch = Helper().convert_list_to_dict(switches, 'id')
         bmcsetup = Helper().convert_list_to_dict(bmcsetups, 'id')
+        monitoring = Helper().convert_list_to_dict(monitorings, 'tablerefid')
         cluster = Database().get_record(None, 'cluster', None)
         if nodes:
             response['config'] = {}
@@ -139,13 +141,16 @@ class Node():
                 node['tpm_present'] = False
                 if node['tpm_uuid'] or node['tpm_sha256'] or node['tpm_pubkey']:
                     node['tpm_present'] = True
+
+                node['status'] = None
+                if node['id'] in monitoring.keys():
+                    node['status'], *_ = Monitor().installer_state(monitoring[node['id']]['state'])
+
                 del node['id']
                 del node['bmcsetupid']
                 del node['groupid']
                 del node['osimageid']
                 del node['switchid']
-
-                node['status'], *_ = Monitor().installer_state(node['status'])
 
                 node['bootmenu'] = Helper().make_bool(node['bootmenu'])
                 node['localinstall'] = Helper().make_bool(node['localinstall'])
@@ -193,7 +198,6 @@ class Node():
                     node['interfaces'].append(interface)
 
                 response['config']['node'][node_name] = node
-            self.logger.info('Provided list of all nodes.')
             status = True
         else:
             self.logger.error('No nodes available.')
@@ -341,15 +345,21 @@ class Node():
             for my_tpm in ['tpm_uuid','tpm_sha256','tpm_pubkey']:
                 if not node[my_tpm]:
                     node[my_tpm]=None
+
             del node['id']
             del node['bmcsetupid']
             del node['groupid']
             del node['osimageid']
             del node['switchid']
-            node['status'], *_ = Monitor().installer_state(node['status'])
+
+            node['status'] = None
+            monitoring = Database().get_record(None, 'monitor', f"WHERE tableref='node' AND tablerefid='{nodeid}'")
+            if monitoring:
+                node['status'], *_ = Monitor().installer_state(monitoring[0]['state'])
             node['service'] = Helper().make_bool(node['service'])
             node['setupbmc'] = Helper().make_bool(node['setupbmc'])
             node['hostname'] = nodename
+
             node['interfaces'] = []
             all_node_interfaces_by_name = {}
             all_node_interfaces = Database().get_record(None, 'nodeinterface', f"WHERE nodeinterface.nodeid='{nodeid}'")
@@ -389,7 +399,6 @@ class Node():
                 node['interfaces'].append(interface)
 
             response['config']['node'][nodename] = node
-            self.logger.info(f'Provided details for node {name}.')
             status = True
         else:
             self.logger.error(f'Node {name} is not available.')

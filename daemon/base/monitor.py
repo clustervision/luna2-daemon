@@ -71,11 +71,12 @@ class Monitor():
         """
         status=False
         response = {"monitor": {"status": { node: { } } } }
-        nodes = Database().get_record(None, 'node', f' WHERE id = "{node}" OR name = "{node}"')
-        if nodes:
-            status,servicestatus=monitor().installer_state(nodes[0]['status'])
-            response['monitor']['status'][node]['status'] = servicestatus
-            response['monitor']['status'][node]['state'] = nodes[0]['status']
+        db_node = Database().get_record_join(['monitor.*'],['monitor.tablerefid=node.id'],
+                                             ["monitor.tableref='node'",f"node.name='{node}'"])
+        if db_node:
+            status,servicestatus=monitor().installer_state(db_node[0]['state'])
+            response['monitor']['status'][node]['state'] = servicestatus
+            response['monitor']['status'][node]['status'] = db_node[0]['status']
         else:
             response = None
             status=False
@@ -95,11 +96,16 @@ class Monitor():
                 node_db = Database().get_record(None, 'node', where)
                 if node_db:
                     self.logger.info(f"node {node}: {state}")
-                    row = [{"column": "status", "value": state}]
-                    where = [{"column": "name", "value": node}]
-                    Database().update('node', row, where)
-                    status=True
-                    response = f'Node {node} updated'
+                    row = [{"column": "tableref", "value": "node"},
+                           {"column": "tablerefid", "value": node_db[0]['id']},
+                           {"column": "state", "value": state}]
+                    result = Database().insert('monitor',row,replace=True)
+                    if result:
+                        status=True
+                        response = f'Node {node} updated'
+                    else:
+                        status=False
+                        response = f'Node {node} update not succesful'
                 else:
                     response = 'Node is not present'
                     status=False

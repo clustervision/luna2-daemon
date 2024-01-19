@@ -104,9 +104,11 @@ DATABASE_LAYOUT_bmcsetup = [
 
 DATABASE_LAYOUT_monitor = [
 {"column": "id",                   "datatype": "INTEGER", "key": "PRIMARY", "keyadd": "AUTOINCREMENT"},
-{"column": "nodeid",               "datatype": "INTEGER", "length": "10"},
-{"column": "status",               "datatype": "VARCHAR", "length": "100"},
-{"column": "state",                "datatype": "VARCHAR", "length": "50"}]
+{"column": "tableref",             "datatype": "VARCHAR", "length": "100", "key": "UNIQUE", "with": "tablerefid"},
+{"column": "tablerefid",           "datatype": "INTEGER", "length": "10"},
+{"column": "status",               "datatype": "VARCHAR", "length": "2048"},
+{"column": "state",                "datatype": "VARCHAR", "length": "50"},
+{"column": "updated",              "datatype": "numeric"}]
 
 DATABASE_LAYOUT_ipaddress = [
 {"column": "id",                   "datatype": "INTEGER", "key": "PRIMARY", "keyadd": "AUTOINCREMENT"},

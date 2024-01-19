@@ -380,13 +380,13 @@ class Config(object):
                     sub_ip = host['ipaddress'].split('.')  # NOT IPv6 COMPLIANT!! needs overhaul. PENDING
                     host_ptr = sub_ip[3] + '.' + sub_ip[2]
                     dns_zone_records[networkname][host['host']]={}
-                    dns_zone_records[networkname][host['host']]['key']=host['host']
+                    dns_zone_records[networkname][host['host']]['key']=host['host'].rstrip('.')
                     dns_zone_records[networkname][host['host']]['type']='A'
                     dns_zone_records[networkname][host['host']]['value']=host['ipaddress']
                     dns_zone_records[rev_ip][host['host']]={}
                     dns_zone_records[rev_ip][host['host']]['key']=host_ptr
                     dns_zone_records[rev_ip][host['host']]['type']='PTR'
-                    dns_zone_records[rev_ip][host['host']]['value']=f"{host['host']}.{host['networkname']}"
+                    dns_zone_records[rev_ip][host['host']]['value']=f"{host['host'].rstrip('.')}.{host['networkname']}"
 
 
         # we create the zone files with zone info like addresses

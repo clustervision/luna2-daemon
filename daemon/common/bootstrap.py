@@ -153,12 +153,19 @@ def check_db_tables():
         #result = Database().get_record(None, table, None)
         dbcolumns = Database().get_columns(table)
         if dbcolumns:
+            pending=[]
             num = num+1
             layout = get_database_tables_structure(table=table)
             for column in layout:
                 if column['column'] not in dbcolumns:
-                    LOGGER.error(f"fix database: column {column['column']} not found in table {table} and will be added")
-                    Database().add_column(table, column)
+                    if 'key' in column:
+                        pending.append(column)
+                    else:
+                        LOGGER.error(f"fix database: column {column['column']} not found in table {table} and will be added")
+                        Database().add_column(table, column)
+            for column in pending:
+                LOGGER.error(f"fix database: column {column['column']} not found in table {table} and will be added")
+                Database().add_column(table, column)
         else:
             LOGGER.error(f'Database table {table} does not seem to exist and will be created')
             layout = get_database_tables_structure(table=table)

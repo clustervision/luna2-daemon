@@ -52,15 +52,23 @@ class Plugin():
         if status:
             if 'config' in all_nodes and 'node' in all_nodes['config']:
                 structured, response = {}, []
+                structured['default'] = []
                 data = all_nodes['config']['node']
                 for node in data.keys():
                     if 'group' in data[node]:
                         if data[node]['group'] not in structured.keys():
                             structured[data[node]['group']] = []
                         structured[data[node]['group']].append(f"{data[node]['name']}:{self.port}")
+                    else:
+                        structured['default'].append(f"{data[node]['name']}:{self.port}")
+                if len(structured['default']) < 1:
+                    del structured['default']
 
                 for group in structured.keys():
-                    response.append({"targets": structured[group], "labels": { "__meta_group": group }})
+                    if group == 'default':
+                        response.append({"targets": structured[group]})
+                    else:
+                        response.append({"targets": structured[group], "labels": { "__meta_group": group }})
                 return True, response
         return False, "Failed to generate export data"
 

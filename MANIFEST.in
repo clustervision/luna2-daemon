@@ -31,3 +31,4 @@ include daemon/plugins/osimage/filesystem/*
 include daemon/plugins/osuser/*
 include daemon/plugins/node/*
 include daemon/plugins/group/*
+include daemon/plugins/export/*

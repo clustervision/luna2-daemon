@@ -56,5 +56,5 @@ class Export():
                     status, response = export_plugin().export()
                     return status, response
                 return False, f"plugin {name} could not be loaded"
-        return False, f"allowed_plugins is undefined or using plugin {name} not permitted"
+        return False, f"allowed_exporters is undefined or using plugin {name} not permitted"
 

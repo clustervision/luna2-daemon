@@ -31,6 +31,7 @@ __email__       = 'sumit.sharma@clustervision.com'
 __status__      = 'Development'
 
 import os
+import shutil
 import sys
 import subprocess
 import json
@@ -210,12 +211,12 @@ CONSTANT = {
     'API': {'USERNAME': None, 'PASSWORD': None, 'EXPIRY': None, 'SECRET_KEY': None, 'ENDPOINT': None, 'PROTOCOL': None},
     'DATABASE': {'DRIVER': None, 'DATABASE': None, 'DBUSER': None,
                 'DBPASSWORD': None, 'HOST': None, 'PORT': None},
-    'FILES': {'KEYFILE': None, 'IMAGE_FILES': None, 'IMAGE_DIRECTORY': None, 'MAXPACKAGINGTIME': None},
+    'FILES': {'KEYFILE': None, 'IMAGE_FILES': None, 'IMAGE_DIRECTORY': None, 'MAXPACKAGINGTIME': None, 'TMP_DIRECTORY': None},
     'PLUGINS':  {'PLUGINS_DIR': None, 'IMAGE_FILESYSTEM': None},
     'SERVICES': {'DHCP': None, 'DNS': None, 'CONTROL': None, 'COOLDOWN': None, 'COMMAND': None},
     'DHCP': {'OMAPIKEY': None},
     'BMCCONTROL': {'BMC_BATCH_SIZE': None, 'BMC_BATCH_DELAY': None},
-    'TEMPLATES': {'TEMPLATES_DIR': None, 'TEMPLATELIST': None,  'TEMP_DIR': None}
+    'TEMPLATES': {'TEMPLATES_DIR': None, 'TEMPLATELIST': None,  'TMP_DIRECTORY': None}
 }
 
 if check_path_state(CONFIGFILE):
@@ -256,18 +257,22 @@ with open(CONSTANT['FILES']['KEYFILE'], 'r', encoding='utf-8') as key_file:
 with open(CONSTANT['TEMPLATES']['TEMPLATELIST'], 'r', encoding='utf-8') as template_json:
     data = json.load(template_json)
 if 'files' in data.keys():
-    runcommand(f'rm -rf {CONSTANT["TEMPLATES"]["TEMP_DIR"]}')
-    runcommand(f'mkdir {CONSTANT["TEMPLATES"]["TEMP_DIR"]}')
-    for templatefiles in data['files']:
+    if len(CONSTANT["TEMPLATES"]["TMP_DIRECTORY"]) > 1:
+        shutil.rmtree(CONSTANT["TEMPLATES"]["TMP_DIRECTORY"])
+    if not os.path.exists(CONSTANT["TEMPLATES"]["TMP_DIRECTORY"]):
+        os.makedirs(CONSTANT["TEMPLATES"]["TMP_DIRECTORY"])
+    if not os.path.exists(CONSTANT["TEMPLATES"]["TMP_DIRECTORY"]):
+        LOGGER.error(f"Cannot create directory {CONSTANT["TEMPLATES"]["TMP_DIRECTORY"]}")
+    else:
         if check_path_state(f'{CONSTANT["TEMPLATES"]["TEMPLATES_DIR"]}/{templatefiles}'):
-            copy_source = f'{CONSTANT["TEMPLATES"]["TEMPLATES_DIR"]}/{templatefiles}'
-            copy_destination = f'{CONSTANT["TEMPLATES"]["TEMP_DIR"]}'
-            runcommand(f'cp {copy_source} {copy_destination}')
+            for templatefiles in data['files']:
+                copy_source = f'{CONSTANT["TEMPLATES"]["TEMPLATES_DIR"]}/{templatefiles}'
+                shutil.copyfile(copy_source, CONSTANT["TEMPLATES"]["TMP_DIRECTORY"])
         else:
-            error_msg = f'{CONSTANT["TEMPLATES"]["TEMPLATES_DIR"]}/{templatefiles} is not present.'
+            error_msg = f'{CONSTANT["TEMPLATES"]["TEMPLATES_DIR"]}/{templatefiles} is not writable'
             LOGGER.error(error_msg)
 else:
-    LOGGER.error(f'{CONSTANT["TEMPLATES"]["TEMPLATELIST"]} have no files.')
+    LOGGER.error(f'{CONSTANT["TEMPLATES"]["TEMPLATELIST"]} have no files')
 
 
 

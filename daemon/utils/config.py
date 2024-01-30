@@ -78,7 +78,7 @@ class Config(object):
                 ntp_server = cluster[0]['ntp_server']
             if 'nameserver_ip' in cluster[0] and cluster[0]['nameserver_ip']:
                 nameserver_ip = cluster[0]['nameserver_ip']
-        dhcp_file = f"{CONSTANT['TEMPLATES']['TEMP_DIR']}/dhcpd.conf"
+        dhcp_file = f"{CONSTANT['TEMPLATES']['TMP_DIRECTORY']}/dhcpd.conf"
         domain = None
         controller = Database().get_record_join(
             ['ipaddress.ipaddress','network.name as domain'],
@@ -286,7 +286,7 @@ class Config(object):
         file_loader = FileSystemLoader(CONSTANT["TEMPLATES"]["TEMPLATES_DIR"])
         env = Environment(loader=file_loader)
 
-        tmpdir=f"{CONSTANT['TEMPLATES']['TEMP_DIR']}"
+        tmpdir=f"{CONSTANT['TEMPLATES']['TMP_DIRECTORY']}"
         files, forwarder = [], []
         unix_time = int(time())
         dns_allowed_query=['any']

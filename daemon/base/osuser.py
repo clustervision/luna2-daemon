@@ -43,7 +43,7 @@ class OsUser():
         """
         Default Constructor
         """
-        plugins_path = CONSTANT["PLUGINS"]["PLUGINS_DIR"]
+        plugins_path = CONSTANT["PLUGINS"]["PLUGINS_DIRECTORY"]
         osuser_plugins = Helper().plugin_finder(f'{plugins_path}/osuser')
         Plugin = Helper().plugin_load(osuser_plugins, 'osuser', ['obol'])
         self.plugin = Plugin()

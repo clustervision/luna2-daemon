@@ -42,7 +42,7 @@ class Export():
 
     def __init__(self):
         self.logger = Log.get_logger()
-        plugins_path=CONSTANT["PLUGINS"]["PLUGINS_DIR"]
+        plugins_path=CONSTANT["PLUGINS"]["PLUGINS_DIRECTORY"]
         self.export_plugins = Helper().plugin_finder(f'{plugins_path}/export')
 
     def plugin(self,name):

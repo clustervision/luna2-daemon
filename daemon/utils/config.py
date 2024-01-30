@@ -66,7 +66,7 @@ class Config(object):
         """
         validate = True
         template = 'templ_dhcpd.cfg'
-        template_path = f'{CONSTANT["TEMPLATES"]["TEMPLATES_DIRECTORY"]}/{template}'
+        template_path = f'{CONSTANT["TEMPLATES"]["TEMPLATE_FILES"]}/{template}'
         check_template = Helper().check_jinja(template_path)
         if not check_template:
             self.logger.error(f"Error building dns config. {template_path} does not exist")
@@ -185,7 +185,7 @@ class Config(object):
                         self.logger.debug(f'{item} not available for {network_name} {network_ip}')
         
         try:
-            file_loader = FileSystemLoader(CONSTANT["TEMPLATES"]["TEMPLATES_DIRECTORY"])
+            file_loader = FileSystemLoader(CONSTANT["TEMPLATES"]["TEMPLATE_FILES"])
             env = Environment(loader=file_loader)
             dhcpd_template = env.get_template(template)
             dhcpd_config = dhcpd_template.render(CLASSES=config_classes,SHARED=config_shared,SUBNETS=config_subnets,
@@ -268,22 +268,22 @@ class Config(object):
         template_dns_conf = 'templ_dns_conf.cfg' # i.e. /etc/named.conf
         template_dns_zones_conf = 'templ_dns_zones_conf.cfg' # i.e. /etc/named.luna.zones
         template_dns_zone = 'templ_dns_zone.cfg' # the actual zone data
-        template_path = f'{CONSTANT["TEMPLATES"]["TEMPLATES_DIRECTORY"]}/{template_dns_conf}'
+        template_path = f'{CONSTANT["TEMPLATES"]["TEMPLATE_FILES"]}/{template_dns_conf}'
         check_template = Helper().check_jinja(template_path)
         if not check_template:
             self.logger.error(f"Error building dns config. {template_path} does not exist")
             return False
-        template_path = f'{CONSTANT["TEMPLATES"]["TEMPLATES_DIRECTORY"]}/{template_dns_zones_conf}'
+        template_path = f'{CONSTANT["TEMPLATES"]["TEMPLATE_FILES"]}/{template_dns_zones_conf}'
         check_template = Helper().check_jinja(template_path)
         if not check_template:
             self.logger.error(f"Error building dns config. {template_path} does not exist")
             return False
-        template_path = f'{CONSTANT["TEMPLATES"]["TEMPLATES_DIRECTORY"]}/{template_dns_zone}'
+        template_path = f'{CONSTANT["TEMPLATES"]["TEMPLATE_FILES"]}/{template_dns_zone}'
         check_template = Helper().check_jinja(template_path)
         if not check_template:
             self.logger.error(f"Error building dns config. {template_path} does not exist")
             return False
-        file_loader = FileSystemLoader(CONSTANT["TEMPLATES"]["TEMPLATES_DIRECTORY"])
+        file_loader = FileSystemLoader(CONSTANT["TEMPLATES"]["TEMPLATE_FILES"])
         env = Environment(loader=file_loader)
 
         tmpdir=f"{CONSTANT['TEMPLATES']['TMP_DIRECTORY']}"

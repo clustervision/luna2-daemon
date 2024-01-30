@@ -347,7 +347,7 @@ def bootstrap(bootstrapfile=None):
 #   below no longer needed but kept for old-time sake
 #    create_database_tables()
 
-    plugins_path=CONSTANT["PLUGINS"]["PLUGINS_DIR"]
+    plugins_path=CONSTANT["PLUGINS"]["PLUGINS_DIRECTORY"]
     group_plugins = Helper().plugin_finder(f'{plugins_path}/group')
     group_plugin=Helper().plugin_load(group_plugins,'group','default')
     node_plugins = Helper().plugin_finder(f'{plugins_path}/node')

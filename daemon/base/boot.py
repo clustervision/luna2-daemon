@@ -64,7 +64,7 @@ class Boot():
         This constructor will initialize all required variables here.
         """
         self.logger = Log.get_logger()
-        plugins_path=CONSTANT["PLUGINS"]["PLUGINS_DIR"]
+        plugins_path=CONSTANT["PLUGINS"]["PLUGINS_DIRECTORY"]
         self.boot_plugins = Helper().plugin_finder(f'{plugins_path}/boot')
         self.osimage_plugins = Helper().plugin_finder(f'{plugins_path}/osimage')
         self.controller_name = 'controller'
@@ -81,7 +81,7 @@ class Boot():
         """
         status=False
         template = 'templ_boot_ipxe.cfg'
-        template_path = f'{CONSTANT["TEMPLATES"]["TEMPLATES_DIRECTORY"]}/{template}'
+        template_path = f'{CONSTANT["TEMPLATES"]["TEMPLATE_FILES"]}/{template}'
         check_template = Helper().check_jinja(template_path)
         if not check_template:
             return False, 'Empty'
@@ -154,7 +154,7 @@ class Boot():
         """
         status=False
         template = 'templ_boot_ipxe_short.cfg'
-        template_path = f'{CONSTANT["TEMPLATES"]["TEMPLATES_DIRECTORY"]}/{template}'
+        template_path = f'{CONSTANT["TEMPLATES"]["TEMPLATE_FILES"]}/{template}'
         check_template = Helper().check_jinja(template_path)
         if not check_template:
             return False, 'Empty'
@@ -201,7 +201,7 @@ class Boot():
         """
         status=False
         template = 'templ_boot_disk.cfg'
-        template_path = f'{CONSTANT["TEMPLATES"]["TEMPLATES_DIRECTORY"]}/{template}'
+        template_path = f'{CONSTANT["TEMPLATES"]["TEMPLATE_FILES"]}/{template}'
         check_template = Helper().check_jinja(template_path)
         if not check_template:
             return False, 'Empty'
@@ -250,7 +250,7 @@ class Boot():
         data['protocol'] = CONSTANT['API']['PROTOCOL']
         data['verify_certificate'] = CONSTANT['API']['VERIFY_CERTIFICATE']
         data['webserver_protocol'] = data['protocol']
-        template_path = f'{CONSTANT["TEMPLATES"]["TEMPLATES_DIRECTORY"]}/{template}'
+        template_path = f'{CONSTANT["TEMPLATES"]["TEMPLATE_FILES"]}/{template}'
         check_template = Helper().check_jinja(template_path)
         if not check_template:
             return False, 'Empty'
@@ -463,7 +463,7 @@ class Boot():
         data['protocol'] = CONSTANT['API']['PROTOCOL']
         data['verify_certificate'] = CONSTANT['API']['VERIFY_CERTIFICATE']
         data['webserver_protocol'] = data['protocol']
-        template_path = f'{CONSTANT["TEMPLATES"]["TEMPLATES_DIRECTORY"]}/{template}'
+        template_path = f'{CONSTANT["TEMPLATES"]["TEMPLATE_FILES"]}/{template}'
         check_template = Helper().check_jinja(template_path)
         if not check_template:
             return False, 'Empty'
@@ -773,7 +773,7 @@ class Boot():
         data['protocol'] = CONSTANT['API']['PROTOCOL']
         data['verify_certificate'] = CONSTANT['API']['VERIFY_CERTIFICATE']
         data['webserver_protocol'] = data['protocol']
-        template_path = f'{CONSTANT["TEMPLATES"]["TEMPLATES_DIRECTORY"]}/{template}'
+        template_path = f'{CONSTANT["TEMPLATES"]["TEMPLATE_FILES"]}/{template}'
         check_template = Helper().check_jinja(template_path)
         if not check_template:
             return False, 'Empty'
@@ -952,7 +952,7 @@ class Boot():
         data['protocol'] = CONSTANT['API']['PROTOCOL']
         data['verify_certificate'] = CONSTANT['API']['VERIFY_CERTIFICATE']
         data['webserver_protocol'] = data['protocol']
-        template_path = f'{CONSTANT["TEMPLATES"]["TEMPLATES_DIRECTORY"]}/{template}'
+        template_path = f'{CONSTANT["TEMPLATES"]["TEMPLATE_FILES"]}/{template}'
         check_template = Helper().check_jinja(template_path)
         if not check_template:
             return False, 'Empty'

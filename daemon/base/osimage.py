@@ -58,7 +58,7 @@ class OSImage():
         self.table = 'osimage'
         self.table_cap = 'OS Image'
         self.image_directory = CONSTANT['FILES']['IMAGE_DIRECTORY']
-        plugins_path=CONSTANT["PLUGINS"]["PLUGINS_DIR"]
+        plugins_path=CONSTANT["PLUGINS"]["PLUGINS_DIRECTORY"]
         self.osimage_plugins = Helper().plugin_finder(f'{plugins_path}/osimage')
 
 

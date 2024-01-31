@@ -413,7 +413,12 @@ class Boot():
                     regex=re.compile(r"^([A-Za-z0-9+/]{4})*([A-Za-z0-9+/]{3}=|[A-Za-z0-9+/]{2}==)?$")
                     if regex.match(data['kerneloptions']):
                         ko_data = b64decode(data['kerneloptions'])
-                        data['kerneloptions'] = ko_data.decode("ascii")
+                        try:
+                            data['kerneloptions'] = ko_data.decode("ascii")
+                        except:
+                            # apparently we were not base64! it can happen when a string seems like base64 but is not.
+                            # is it safe to assume we can then just pass what's in the DB?
+                            pass
                     data['kerneloptions']=data['kerneloptions'].replace('\n', ' ').replace('\r', '')
 
         if None not in data.values():
@@ -727,7 +732,12 @@ class Boot():
                     regex=re.compile(r"^([A-Za-z0-9+/]{4})*([A-Za-z0-9+/]{3}=|[A-Za-z0-9+/]{2}==)?$")
                     if regex.match(data['kerneloptions']):
                         ko_data = b64decode(data['kerneloptions'])
-                        data['kerneloptions'] = ko_data.decode("ascii")
+                        try:
+                            data['kerneloptions'] = ko_data.decode("ascii")
+                        except:
+                            # apparently we were not base64! it can happen when a string seems like base64 but is not.
+                            # is it safe to assume we can then just pass what's in the DB?
+                            pass
                     data['kerneloptions']=data['kerneloptions'].replace('\n', ' ').replace('\r', '')
 
         if None not in data.values():
@@ -904,7 +914,12 @@ class Boot():
                     regex=re.compile(r"^([A-Za-z0-9+/]{4})*([A-Za-z0-9+/]{3}=|[A-Za-z0-9+/]{2}==)?$")
                     if regex.match(data['kerneloptions']):
                         ko_data = b64decode(data['kerneloptions'])
-                        data['kerneloptions'] = ko_data.decode("ascii")
+                        try:
+                            data['kerneloptions'] = ko_data.decode("ascii")
+                        except:
+                            # apparently we were not base64! it can happen when a string seems like base64 but is not.
+                            # is it safe to assume we can then just pass what's in the DB?
+                            pass
                     data['kerneloptions']=data['kerneloptions'].replace('\n', ' ').replace('\r', '')
 
         if None not in data.values():

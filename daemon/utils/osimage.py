@@ -129,14 +129,24 @@ class OsImage(object):
                 if image[0]['grab_filesystems']:
                     if regex.match(image[0]['grab_filesystems']):
                         data = b64decode(image[0]['grab_filesystems'])
-                        image[0]['grab_filesystems'] = data.decode("ascii")
+                        try:
+                            image[0]['grab_filesystems'] = data.decode("ascii")
+                        except:
+                            # apparently we were not base64! it can happen when a string seems like base64 but is not.
+                            # is it safe to assume we can then just pass what's in the DB?
+                            pass
                     for char in [' ',',,','\r\n','\n']:
                         image[0]['grab_filesystems']=image[0]['grab_filesystems'].replace(char,',')
                     grab_fs=image[0]['grab_filesystems'].split(",")
                 if image[0]['grab_exclude']:
                     if regex.match(image[0]['grab_exclude']):
                         data = b64decode(image[0]['grab_exclude'])
-                        image[0]['grab_exclude'] = data.decode("ascii")
+                        try:
+                            image[0]['grab_exclude'] = data.decode("ascii")
+                        except:
+                            # apparently we were not base64! it can happen when a string seems like base64 but is not.
+                            # is it safe to assume we can then just pass what's in the DB?
+                            pass
                     for char in [' ',',,','\r\n','\n']:
                         image[0]['grab_exclude']=image[0]['grab_exclude'].replace(char,',')
                     grab_ex=image[0]['grab_exclude'].split(",")
@@ -501,14 +511,24 @@ class OsImage(object):
                         if image[0]['grab_filesystems']:
                             if regex.match(image[0]['grab_filesystems']):
                                 data = b64decode(image[0]['grab_filesystems'])
-                                image[0]['grab_filesystems'] = data.decode("ascii")
+                                try:
+                                    image[0]['grab_filesystems'] = data.decode("ascii")
+                                except:
+                                    # apparently we were not base64! it can happen when a string seems like base64 but is not.
+                                    # is it safe to assume we can then just pass what's in the DB?
+                                    pass
                             for char in [' ',',,','\r\n','\n']:
                                 image[0]['grab_filesystems']=image[0]['grab_filesystems'].replace(char,',')
                             grab_fs=image[0]['grab_filesystems'].split(",")
                         if image[0]['grab_exclude']:
                             if regex.match(image[0]['grab_exclude']):
                                 data = b64decode(image[0]['grab_exclude'])
-                                image[0]['grab_exclude'] = data.decode("ascii")
+                                try:
+                                    image[0]['grab_exclude'] = data.decode("ascii")
+                                except:
+                                    # apparently we were not base64! it can happen when a string seems like base64 but is not.
+                                    # is it safe to assume we can then just pass what's in the DB?
+                                    pass
                             for char in [' ',',,','\r\n','\n']:
                                 image[0]['grab_exclude']=image[0]['grab_exclude'].replace(char,',')
                             grab_ex=image[0]['grab_exclude'].split(",")

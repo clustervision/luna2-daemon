@@ -93,11 +93,11 @@ def check_path(path=None):
     Input - Path of File or Directory
     Output - True or False Is exists or not
     """
+    if not path:
+        return False
     if os.path.exists(path):
-        response = True
-    else:
-        response = None
-    return response
+        return True
+    return False
 
 def runcommand(command):
     """

@@ -31,6 +31,7 @@ __email__       = 'sumit.sharma@clustervision.com'
 __status__      = 'Development'
 
 import os
+import shutil
 import sys
 import subprocess
 import json
@@ -210,12 +211,12 @@ CONSTANT = {
     'API': {'USERNAME': None, 'PASSWORD': None, 'EXPIRY': None, 'SECRET_KEY': None, 'ENDPOINT': None, 'PROTOCOL': None},
     'DATABASE': {'DRIVER': None, 'DATABASE': None, 'DBUSER': None,
                 'DBPASSWORD': None, 'HOST': None, 'PORT': None},
-    'FILES': {'KEYFILE': None, 'IMAGE_FILES': None, 'IMAGE_DIRECTORY': None, 'MAXPACKAGINGTIME': None},
-    'PLUGINS':  {'PLUGINS_DIR': None, 'IMAGE_FILESYSTEM': None},
+    'FILES': {'KEYFILE': None, 'IMAGE_FILES': None, 'IMAGE_DIRECTORY': None, 'MAXPACKAGINGTIME': None, 'TMP_DIRECTORY': None},
+    'PLUGINS':  {'PLUGINS_DIRECTORY': None, 'IMAGE_FILESYSTEM': None},
     'SERVICES': {'DHCP': None, 'DNS': None, 'CONTROL': None, 'COOLDOWN': None, 'COMMAND': None},
     'DHCP': {'OMAPIKEY': None},
     'BMCCONTROL': {'BMC_BATCH_SIZE': None, 'BMC_BATCH_DELAY': None},
-    'TEMPLATES': {'TEMPLATES_DIR': None, 'TEMPLATELIST': None,  'TEMP_DIR': None}
+    'TEMPLATES': {'TEMPLATE_FILES': None, 'TEMPLATE_LIST': None,  'TMP_DIRECTORY': None}
 }
 
 if check_path_state(CONFIGFILE):
@@ -225,7 +226,7 @@ else:
     LOGGER.error(f'Unable to get configurations from {CONFIGFILE} file')
 
 
-## Sanity Checks On LOGFILE, IMAGE_FILES, TEMPLATES_DIR, TEMPLATELIST, KEYFILE
+## Sanity Checks On LOGFILE, IMAGE_FILES, TEMPLATE_FILES, TEMPLATE_LIST, KEYFILE
 
 # the log path, not the file. we can create the file very well by ourselves... - Antoine aug 11 2023
 logpath = os.path.dirname(CONSTANT['LOGGER']['LOGFILE'])
@@ -234,9 +235,9 @@ sanitize = [
 #                CONSTANT['LOGGER']['LOGFILE'],
                 logpath,
                 CONSTANT['FILES']['IMAGE_FILES'],
-                CONSTANT['TEMPLATES']['TEMPLATES_DIR'],
-                CONSTANT['TEMPLATES']['TEMPLATELIST'],
-                CONSTANT['PLUGINS']['PLUGINS_DIR'],
+                CONSTANT['TEMPLATES']['TEMPLATE_FILES'],
+                CONSTANT['TEMPLATES']['TEMPLATE_LIST'],
+                CONSTANT['PLUGINS']['PLUGINS_DIRECTORY'],
                 CONSTANT['FILES']['KEYFILE']
             ]
 for sanity in sanitize:
@@ -253,21 +254,26 @@ with open(CONSTANT['FILES']['KEYFILE'], 'r', encoding='utf-8') as key_file:
     LUNAKEY = key_file.read()
     LUNAKEY = LUNAKEY.replace('\n', '')
 
-with open(CONSTANT['TEMPLATES']['TEMPLATELIST'], 'r', encoding='utf-8') as template_json:
+with open(CONSTANT['TEMPLATES']['TEMPLATE_LIST'], 'r', encoding='utf-8') as template_json:
     data = json.load(template_json)
 if 'files' in data.keys():
-    runcommand(f'rm -rf {CONSTANT["TEMPLATES"]["TEMP_DIR"]}')
-    runcommand(f'mkdir {CONSTANT["TEMPLATES"]["TEMP_DIR"]}')
-    for templatefiles in data['files']:
-        if check_path_state(f'{CONSTANT["TEMPLATES"]["TEMPLATES_DIR"]}/{templatefiles}'):
-            copy_source = f'{CONSTANT["TEMPLATES"]["TEMPLATES_DIR"]}/{templatefiles}'
-            copy_destination = f'{CONSTANT["TEMPLATES"]["TEMP_DIR"]}'
-            runcommand(f'cp {copy_source} {copy_destination}')
-        else:
-            error_msg = f'{CONSTANT["TEMPLATES"]["TEMPLATES_DIR"]}/{templatefiles} is not present.'
-            LOGGER.error(error_msg)
+    if len(CONSTANT["TEMPLATES"]["TMP_DIRECTORY"]) > 1 and os.path.exists(CONSTANT["TEMPLATES"]["TMP_DIRECTORY"]):
+        shutil.rmtree(CONSTANT["TEMPLATES"]["TMP_DIRECTORY"])
+    if not os.path.exists(CONSTANT["TEMPLATES"]["TMP_DIRECTORY"]):
+        os.makedirs(CONSTANT["TEMPLATES"]["TMP_DIRECTORY"])
+    if not os.path.exists(CONSTANT["TEMPLATES"]["TMP_DIRECTORY"]):
+        LOGGER.error(f"Cannot create directory {CONSTANT['TEMPLATES']['TMP_DIRECTORY']}")
+    else:
+        for templatefiles in data['files']:
+            if check_path_state(f'{CONSTANT["TEMPLATES"]["TEMPLATE_FILES"]}/{templatefiles}'):
+                copy_source = f'{CONSTANT["TEMPLATES"]["TEMPLATE_FILES"]}/{templatefiles}'
+                copy_destination = f'{CONSTANT["TEMPLATES"]["TMP_DIRECTORY"]}/{templatefiles}'
+                shutil.copyfile(copy_source, copy_destination)
+            else:
+                error_msg = f'{CONSTANT["TEMPLATES"]["TEMPLATE_FILES"]}/{templatefiles} is not writable'
+                LOGGER.error(error_msg)
 else:
-    LOGGER.error(f'{CONSTANT["TEMPLATES"]["TEMPLATELIST"]} have no files.')
+    LOGGER.error(f'{CONSTANT["TEMPLATES"]["TEMPLATE_LIST"]} have no files')
 
 
 

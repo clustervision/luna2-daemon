@@ -49,7 +49,7 @@ class Group():
         This constructor will initialize all required variables here.
         """
         self.logger = Log.get_logger()
-        self.plugins_path=CONSTANT["PLUGINS"]["PLUGINS_DIR"]
+        self.plugins_path=CONSTANT["PLUGINS"]["PLUGINS_DIRECTORY"]
 
 
     def get_all_group(self):

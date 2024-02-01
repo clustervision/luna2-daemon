@@ -52,23 +52,14 @@ class Plugin():
         if status:
             if 'config' in all_nodes and 'node' in all_nodes['config']:
                 structured, response = {}, []
-                structured['default'] = []
                 data = all_nodes['config']['node']
                 for node in data.keys():
+                    labels = { "exporter": "node" }
                     if 'group' in data[node]:
-                        if data[node]['group'] not in structured.keys():
-                            structured[data[node]['group']] = []
-                        structured[data[node]['group']].append(f"{data[node]['name']}:{self.port}")
-                    else:
-                        structured['default'].append(f"{data[node]['name']}:{self.port}")
-                if len(structured['default']) < 1:
-                    del structured['default']
-
-                for group in structured.keys():
-                    if group == 'default':
-                        response.append({"targets": structured[group]})
-                    else:
-                        response.append({"targets": structured[group], "labels": { "__meta_group": group }})
+                        labels['luna_group'] = data[node]['group']
+                    #if 'roles' in data[node] and data[node]['roles']:
+                    #    labels['luna_role'] = data[node]['roles'].replace(' ','').split(',')[0]
+                    response.append({"targets": [f"{data[node]['hostname']}:{self.port}"], "labels": labels})
                 return True, response
         return False, "Failed to generate export data"
 

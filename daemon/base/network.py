@@ -66,6 +66,8 @@ class Network():
                 if not network['dhcp']:
                     del network['dhcp_range_begin']
                     del network['dhcp_range_end']
+                    del network['dhcp_range_begin_ipv6']
+                    del network['dhcp_range_end_ipv6']
                     network['dhcp'] = False
                 else:
                     network['dhcp'] = True
@@ -89,12 +91,17 @@ class Network():
             response = {'config': {'network': {} }}
             for network in networks:
                 network['network'] = Helper().get_network(network['network'], network['subnet'])
+                if network['network_ipv6']:
+                    network['network_ipv6'] = Helper().get_network(network['network_ipv6'], network['subnet_ipv6'])
                 del network['id']
                 del network['subnet']
+                del network['subnet_ipv6']
                 network['dhcp'] = Helper().make_bool(network['dhcp'])
                 if not network['dhcp']:
                     del network['dhcp_range_begin']
                     del network['dhcp_range_end']
+                    del network['dhcp_range_begin_ipv6']
+                    del network['dhcp_range_end_ipv6']
                     network['dhcp'] = False
                 else:
                     network['dhcp'] = True
@@ -140,11 +147,15 @@ class Network():
             if 'network' in data:
                 network_ip = Helper().check_ip(data['network'])
                 if network_ip:
-                    network_details = Helper().get_network_details(data['network'])
+                    ipv6=Helper().check_if_ipv6(data['network'])
+                    network_details = Helper().get_network_details(data['network'],ipv6)
                     data['network'] = network_details['network']
                     data['subnet'] = network_details['subnet']
-                    used_ips = Helper().get_quantity_occupied_ipaddress_in_network(name)
-                    if network:
+                    if ipv6:
+                        data['_network_ipv6'] = data['network']
+                        data['_subnet_ipv6'] = data['subnet']
+                    used_ips = Helper().get_quantity_occupied_ipaddress_in_network(name,ipv6=True)
+                    if network: #database data
                         if (network[0]['network'] != data['network']) or (network[0]['subnet'] != data['subnet']):
                             redistribute_ipaddress = True
                             self.logger.info("We will redistribute ip addresses")
@@ -160,6 +171,8 @@ class Network():
                 # we fetch what we have from the DB
                 data['network'] = network[0]['network']
                 data['subnet'] = network[0]['subnet']
+                data['_network_ipv6'] = network[0]['network_ipv6']
+                data['_subnet_ipv6'] = network[0]['subnet_ipv6']
                 default_gateway_metric=network[0]['gateway_metric']
                 default_zone=network[0]['zone']
             else:
@@ -187,10 +200,15 @@ class Network():
                 if data['gateway'] == "":
                     data['gateway'] = None
                 elif data['gateway'] is not None:
-                    gateway_details = Helper().check_ip_range(
-                        data['gateway'],
-                        data['network'] + '/' + data['subnet']
-                    )
+                    gateway_details=None
+                    if Helper().check_if_ipv6(data['gateway']):
+                        if '_network_ipv6' not in data and '_subnet_ipv6' not in data:
+                            status=False
+                            ret_msg = f"Invalid request: Network supplied as IPv4 while IPv6 details for gateway provided"
+                            return status, ret_msg
+                        gateway_details = Helper().check_ip_range(data['gateway'],data['_network_ipv6'] + '/' + data['_subnet_ipv6'])
+                    else:
+                        gateway_details = Helper().check_ip_range(data['gateway'],data['network'] + '/' + data['subnet'])
                     if (not gateway_details) and data['gateway'] != '':
                         status=False
                         return status, f'Invalid request: Incorrect gateway IP: {data["gateway"]}'
@@ -213,7 +231,15 @@ class Network():
                 data['dhcp'] = Helper().bool_to_string(data['dhcp'])
                 self.logger.info(f"dhcp is set to {data['dhcp']}")
                 if 'dhcp_range_begin' in data:
-                    subnet = data['network']+'/'+data['subnet']
+                    subnet = None
+                    if Helper().check_if_ipv6(data['dhcp_range_begin']):
+                        if '_network_ipv6' not in data and '_subnet_ipv6' not in data:
+                            status=False
+                            ret_msg = f"Invalid request: Network supplied as IPv4 while IPv6 details for dhcp provided"
+                            return status, ret_msg
+                        subnet = data['_network_ipv6']+'/'+data['_subnet_ipv6']
+                    else:
+                        subnet = data['network']+'/'+data['subnet']
                     dhcp_start_details = Helper().check_ip_range(data['dhcp_range_begin'], subnet)
                     if not dhcp_start_details:
                         status=False
@@ -223,7 +249,15 @@ class Network():
                     status=False
                     return status, 'Invalid request: DHCP start range is a required parameter'
                 if 'dhcp_range_end' in data:
-                    subnet = data['network']+'/'+data['subnet']
+                    subnet = None
+                    if Helper().check_if_ipv6(data['dhcp_range_end']):
+                        if '_network_ipv6' not in data and '_subnet_ipv6' not in data:
+                            status=False
+                            ret_msg = f"Invalid request: Network supplied as IPv4 while IPv6 details for dhcp provided"
+                            return status, ret_msg
+                        subnet = data['_network_ipv6']+'/'+data['_subnet_ipv6']
+                    else:
+                        subnet = data['network']+'/'+data['subnet']
                     dhcp_end_details = Helper().check_ip_range(data['dhcp_range_end'], subnet)
                     if not dhcp_end_details:
                         status=False
@@ -253,6 +287,20 @@ class Network():
                     data['dhcp_range_begin'] = ""
                     data['dhcp_range_end'] = ""
 
+            #IPv6, ipv6. we basically allow both types to be send, but we figure out what we're dealing with. - Antoine
+            for item in ['dhcp_range_begin','dhcp_range_end','gateway','network','nameserver_ip']:
+                if item in data:
+                    if Helper().check_if_ipv6(data[item]):
+                        data[item+'_ipv6'] = data[item]
+                        del data[item]
+            if 'subnet' in data and 'network_ipv6' in data:
+                data['subnet_ipv6'] = data['subnet']
+                del data['subnet']
+            if '_network_ipv6' in data:
+                del data['_network_ipv6']
+            if '_subnet_ipv6' in data:
+                del data['_subnet_ipv6']
+
             network_columns = Database().get_columns('network')
             column_check = Helper().compare_list(data, network_columns)
             if column_check:
@@ -263,7 +311,13 @@ class Network():
                     status=True
                 elif update:
                     if redistribute_ipaddress is True:
-                        nwk_size = Helper().get_network_size(data['network'], data['subnet'])
+                        nwk_size=0
+                        self.logger.info("I AM HERE 1")
+                        if 'network_ipv6' in data:
+                            nwk_size = Helper().get_network_size(data['network_ipv6'], data['subnet_ipv6'])
+                        else:
+                            nwk_size = Helper().get_network_size(data['network'], data['subnet'])
+                        self.logger.info("I AM HERE 2")
                         avail = nwk_size - dhcp_size
                         if avail < used_ips:
                             response = f'The proposed network config allows for {nwk_size} ip '
@@ -284,7 +338,9 @@ class Network():
                             f'update_all_interface_ipaddress:{name}',
                             'network_change'
                         )
+                        self.logger.info("I AM HERE 3")
                         next_id = Queue().next_task_in_queue('network_change')
+                        self.logger.info("I AM HERE 4")
                         if queue_id == next_id:
                             executor = ThreadPoolExecutor(max_workers=1)
                             executor.submit(

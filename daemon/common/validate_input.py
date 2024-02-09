@@ -47,12 +47,12 @@ CONTROL_CHAR = ''.join(map(chr, chain(range(0x00, 0x20), range(0x7f, 0xa0))))
 control_char_re = re.compile(f'[{re.escape(CONTROL_CHAR)}]')
 
 REG_EXP = {
-    'name': r'^[a-z0-9\-\.]+$',
-    'ipaddress': r'^[0-9a-f:\.]+$',
-    'macaddress': r'^(([0-9A-Za-f]{2}((-|:)[0-9A-Za-f]{2}){5})|)$',
-    'minimal': r'^\S.*$',
-    'integer': r'^[0-9]+$',
-    'anything': r''
+    'name': { 'regexp': r'^[a-z0-9\-\.]+$', 'error': 'combination of small characters a-z, numbers 0-9, \'-\' and \'.\'' },
+    'ipaddress': { 'regexp': r'^[0-9a-f:\.]+$', 'error': 'combination of characters small a-f, numbers 0-9, : and \'.\'' },
+    'macaddress': { 'regexp': r'^(([0-9A-Za-f]{2}((-|:)[0-9A-Za-f]{2}){5})|)$', 'error': '6 blocks of 2 characters a-f or numbers 0-9, separated by \':\' or \'-\'' },
+    'minimal': { 'regexp': r'^\S.*$', 'error': 'minimal character requirement. at least one' },
+    'integer': { 'regexp': r'^[0-9]+$', 'error': 'integers only' },
+    'anything': { 'regexp': r'', 'error': 'anything' },
 }
 RESERVED = {
     'name': ['default','inventory'],
@@ -222,11 +222,11 @@ def filter_data(data=None, name=None):
                     LOGGER.info(f"RESERVED name = {name} with data = {data} is a reserved keyword")
                     ERROR = f"field {name} with content {data} is a reserved keyword: {reserved}"
                     return
-        regex = re.compile(r"" + REG_EXP[MATCH[name]])
+        regex = re.compile(r"" + REG_EXP[MATCH[name]]['regexp'])
         if not regex.match(data):
             LOGGER.info(f"MATCH name = {name} with data = {data} mismatch with:")
-            LOGGER.info(f"    REG_EXP['{MATCH[name]}'] = {REG_EXP[MATCH[name]]}")
-            ERROR = f"field {name} with content {data} does match criteria {REG_EXP[MATCH[name]]}"
+            LOGGER.info(f"    REG_EXP['{MATCH[name]}']['regexp'] = {REG_EXP[MATCH[name]]['regexp']}")
+            ERROR = f"field {name} with content {data} does match criteria {REG_EXP[MATCH[name]]['error']}"
             return
         if MATCH[name] in CONVERT.keys():
             LOGGER.debug(f"CONVERT IN {MATCH[name]} = {data}")

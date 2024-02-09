@@ -1080,6 +1080,7 @@ class Boot():
                     'network.subnet',
                     'network.gateway',
                     'network.gateway_metric',
+                    'network.nameserver_ip',
                     'network.id as networkid',
                     'network.zone as zone',
                     'network.type as type'
@@ -1116,6 +1117,7 @@ class Boot():
                             'networkname': interface['network'],
                             'gateway': interface['gateway'],
                             'gateway_metric': interface['gateway_metric'] or "101",
+                            'nameserver_ip': interface['nameserver_ip'] or "",
                             'options': interface['options'] or "",
                             'zone': zone,
                             'type': interface['type'] or "ethernet"

@@ -180,8 +180,10 @@ class Interface():
                             ipaddress,
                             network
                         )
-                    elif (not macaddress) and (not options):
+                    elif (macaddress is None) and (options is None):
                         # this means we just made an empty interface. a no no - Antoine
+                        # beware that we _have_ to test for None as 
+                        #    clearing parameters by "" is caught by 'not maccaddress'
                         result=False
                         message="Invalid request: missing minimal parameters"
                     elif not existing:

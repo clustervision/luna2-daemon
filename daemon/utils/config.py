@@ -81,7 +81,7 @@ class Config(object):
         dhcp_file = f"{CONSTANT['TEMPLATES']['TMP_DIRECTORY']}/dhcpd.conf"
         domain = None
         controller = Database().get_record_join(
-            ['ipaddress.ipaddress','network.name as domain'],
+            ['ipaddress.ipaddress','ipaddress.ipaddress_ipv6','network.name as domain'],
             ['ipaddress.tablerefid=controller.id','network.id=ipaddress.networkid'],
             ['tableref="controller"', 'controller.hostname="controller"']
         )
@@ -107,6 +107,11 @@ class Config(object):
 
         shared = {}
         for network in networksbyname.keys():
+            networksbyname[network]['ipv6'], networksbyname[network]['ipv4'] = False, False
+            if networksbyname[network]['dhcp_range_begin_ipv6'] and networksbyname[network]['dhcp_range_end_ipv6']:
+                networksbyname[network]['ipv6'] = True
+            if networksbyname[network]['dhcp_range_begin'] and networksbyname[network]['dhcp_range_end']:
+                networksbyname[network]['ipv4'] = True
             if networksbyname[network]['shared'] and networksbyname[network]['shared'] in networksbyname.keys():
                 if not networksbyname[network]['shared'] in shared.keys():
                     shared[networksbyname[network]['shared']] = []
@@ -120,36 +125,52 @@ class Config(object):
             config_pools[shared_name]={}
             config_pools[shared_name]['policy']='deny'
             config_pools[shared_name]['members']=shared[network]
+            config_pools[shared_name]['range_begin_ipv6']=networksbyname[network]['dhcp_range_begin_ipv6']
+            config_pools[shared_name]['range_end_ipv6']=networksbyname[network]['dhcp_range_end_ipv6']
             config_pools[shared_name]['range_begin']=networksbyname[network]['dhcp_range_begin']
             config_pools[shared_name]['range_end']=networksbyname[network]['dhcp_range_end']
             #
             config_shared[shared_name]={}
-            config_shared[shared_name][network]=self.dhcp_subnet_config(networksbyname[network],'shared')
-            handled.append(network)
+            if networksbyname[network]['ipv4'] and networksbyname[network]['network']:
+                config_shared[shared_name][network]=self.dhcp_subnet_config(networksbyname[network],'shared','ipv4')
+                handled.append(network)
+            if networksbyname[network]['ipv6'] and networksbyname[network]['network_ipv6']:
+                config_shared[shared_name][network+'_ipv6']=self.dhcp_subnet_config(networksbyname[network],'shared','ipv6')
+                handled.append(network+'_ipv6')
             #
             for piggyback in shared[network]:
                 config_pools[piggyback]={}
                 config_pools[piggyback]['policy']='allow'
                 config_pools[piggyback]['members']=[piggyback]
-                config_pools[piggyback]['range_begin']=networksbyname[piggyback]['dhcp_range_begin']
-                config_pools[piggyback]['range_end']=networksbyname[piggyback]['dhcp_range_end']
+                add_string=''
+                if networksbyname[network]['ipv6']:
+                    add_string='_ipv6'
+                    config_shared[shared_name][piggyback]=self.dhcp_subnet_config(networksbyname[piggyback],'shared','ipv6')
+                else:
+                    config_shared[shared_name][piggyback]=self.dhcp_subnet_config(networksbyname[piggyback],'shared','ipv4')
+                config_pools[piggyback]['range_begin']=networksbyname[piggyback]['dhcp_range_begin'+add_string]
+                config_pools[piggyback]['range_end']=networksbyname[piggyback]['dhcp_range_end'+add_string]
                 #
-                config_shared[shared_name][piggyback]=self.dhcp_subnet_config(networksbyname[piggyback],'shared')
                 config_classes[piggyback]={}
-                config_classes[piggyback]['network']=piggyback
-                handled.append(piggyback)
+                config_classes[piggyback]['network'+add_string]=piggyback
+                handled.append(piggyback+add_string)
             #
         if networksbyname:
             for network in networksbyname.keys():
                 nwk = networksbyname[network]
-                if nwk['name'] not in handled:
-                    config_subnets[nwk['name']] = self.dhcp_subnet_config(nwk)
+                if nwk['name'] not in handled and nwk['ipv4']:
+                    config_subnets[nwk['name']] = self.dhcp_subnet_config(nwk,False,'ipv4')
                     handled.append(nwk['name'])
+                if nwk['name']+'_ipv6' not in handled and nwk['ipv6']:
+                    config_subnets[nwk['name']] = self.dhcp_subnet_config(nwk,False,'ipv6')
+                    handled.append(nwk['name']+'_ipv6')
                 network_id = nwk['id']
                 network_name = nwk['name']
                 network_ip = nwk['network']
+                network_ipv6 = nwk['network_ipv6']
                 node_interface = Database().get_record_join(
-                    ['node.name as nodename', 'ipaddress.ipaddress', 'nodeinterface.macaddress'],
+                    ['node.name as nodename', 'ipaddress.ipaddress', 
+                     'ipaddress.ipaddress_ipv6', 'nodeinterface.macaddress'],
                     ['ipaddress.tablerefid=nodeinterface.id', 'nodeinterface.nodeid=node.id'],
                     ['tableref="nodeinterface"', f'ipaddress.networkid="{network_id}"']
                 )
@@ -164,10 +185,13 @@ class Config(object):
                             config_hosts[node]={}
                             config_hosts[node]['name']=interface['nodename']
                             config_hosts[node]['domain']=nodedomain
-                            config_hosts[node]['ipaddress']=interface['ipaddress']
+                            if interface['ipaddress_ipv6']:
+                                config_hosts[node]['ipaddress']=interface['ipaddress_ipv6']
+                            else:
+                                config_hosts[node]['ipaddress']=interface['ipaddress']
                             config_hosts[node]['macaddress']=interface['macaddress']
                 else:
-                    self.logger.info(f'No Nodes available for this network {network_name}  {network_ip}')
+                    self.logger.info(f'No Nodes available for this network {network_name}  IPv4: {network_ip} or IPv6: {network_ipv6}')
                 for item in ['otherdevices', 'switch']:
                     devices = Database().get_record_join(
                         [f'{item}.name','ipaddress.ipaddress',f'{item}.macaddress'],
@@ -179,10 +203,13 @@ class Config(object):
                             if device['macaddress']:
                                 config_hosts[device['name']]={}
                                 config_hosts[device['name']]['name']=device['name']
-                                config_hosts[device['name']]['ipaddress']=device['ipaddress']
+                                if device['ipaddress_ipv6']:
+                                    config_hosts[device['name']]['ipaddress']=device['ipaddress_ipv6']
+                                else:
+                                    config_hosts[device['name']]['ipaddress']=device['ipaddress']
                                 config_hosts[device['name']]['maccaddress']=device['macaddress']
                     else:
-                        self.logger.debug(f'{item} not available for {network_name} {network_ip}')
+                        self.logger.debug(f'{item} not available for {network_name}  IPv4: {network_ip} or IPv6: {network_ipv6}')
         
         try:
             file_loader = FileSystemLoader(CONSTANT["TEMPLATES"]["TEMPLATE_FILES"])
@@ -209,19 +236,22 @@ class Config(object):
         return validate
 
 
-    def dhcp_subnet_config (self,nwk=[],shared=False):
+    def dhcp_subnet_config (self,nwk=[],shared=False,ipversion='ipv4'):
         """ 
         dhcp subnetblock with config
         glue between the various other subnet blocks: prepare for dhcp_subnet function
         """
         subnet={}
+        add_string=''
+        if ipversion == 'ipv6':
+            add_string='_ipv6'
         network_id = nwk['id']
-        network_name = nwk['name']
-        network_ip = nwk['network']
+        network_name = nwk['name']+add_string
+        network_ip = nwk['network'+add_string]
         if not shared:
-            subnet['range_begin']=nwk['dhcp_range_begin']
-            subnet['range_end']=nwk['dhcp_range_end']
-        netmask = Helper().get_netmask(f"{nwk['network']}/{nwk['subnet']}")
+            subnet['range_begin']=nwk['dhcp_range_begin'+add_string]
+            subnet['range_end']=nwk['dhcp_range_end'+add_string]
+        netmask = Helper().get_netmask(f"{nwk['network'+add_string]}/{nwk['subnet'+add_string]}")
         controller_name = 'controller'
         # ---------------------------------------------------
         ha_object=HA()
@@ -234,18 +264,18 @@ class Config(object):
                 controller_name = ha_me
         # ---------------------------------------------------
         controller = Database().get_record_join(
-            ['ipaddress.ipaddress','network.name as networkname'],
+            ['ipaddress.ipaddress','ipaddress.ipaddress_ipv6','network.name as networkname'],
             ['ipaddress.tablerefid=controller.id','network.id=ipaddress.networkid'],
             ['tableref="controller"', f"controller.hostname='{controller_name}'"]
         )
         self.logger.info(f"Building DHCP block for {network_name}")
-        subnet['network']=nwk['network']
+        subnet['network']=nwk['network'+add_string]
         subnet['netmask']=netmask
         subnet['domain']=nwk['name']
         subnet['nameserver_ip']=nwk['nameserver_ip']
         subnet['ntp_server']=nwk['ntp_server']
-        if nwk['gateway'] and nwk['gateway'] != "None": # left over from database().update/insert bug - Antoine
-            subnet['gateway']=nwk['gateway']
+        if nwk['gateway'+add_string] and nwk['gateway'+add_string] != "None": # left over from database().update/insert bug - Antoine
+            subnet['gateway']=nwk['gateway'+add_string]
         if controller and (controller[0]['networkname'] == nwk['name'] or 'gateway' in subnet):
             # if the controller is in this network (cluster default as such), we can serve next-server stuff.
             # we allow to have an alternate route to the next-server (which is us) but ONLY when gateway is configured,
@@ -255,7 +285,10 @@ class Config(object):
                 # we rely on nginx serving non https stuff for e.g. /boot.
                 # ipxe does support https but has issues dealing with self signed certificates
                 serverport = CONSTANT['WEBSERVER']['PORT']
-            subnet['nextserver']=controller[0]['ipaddress']
+            if controller[0]['ipaddress'+add_string]:
+                subnet['nextserver']=controller[0]['ipaddress'+add_string]
+            else:
+                subnet['nextserver']=controller[0]['ipaddress']
             subnet['nextport']=serverport
         return subnet
 
@@ -327,7 +360,6 @@ class Config(object):
                     rev_ipv6 = ip_address(nwk['network_ipv6']).reverse_pointer
                     rev_ipv6 = rev_ipv6.split('.')
                     rev_ipv6 = '.'.join(rev_ipv6[16:])
-                    self.logger.info(f"-----------------> rev_ipv6: {rev_ipv6}, {ip_address(nwk['network_ipv6']).reverse_pointer}, {nwk['network_ipv6']}")
                 self.logger.info(f"Building DNS block for {rev_ip}")
                 #
                 dns_allowed_query.append(nwk['network']+"/"+nwk['subnet']) # used for e.g. named. allow query

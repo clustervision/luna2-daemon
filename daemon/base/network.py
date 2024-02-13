@@ -233,6 +233,7 @@ class Network():
                 if 'dhcp_range_begin' in data:
                     subnet = None
                     if Helper().check_if_ipv6(data['dhcp_range_begin']):
+                        data['dhcp_ipv6'] = 1
                         if '_network_ipv6' not in data and '_subnet_ipv6' not in data:
                             status=False
                             ret_msg = f"Invalid request: Network supplied as IPv4 while IPv6 details for dhcp provided"
@@ -294,7 +295,6 @@ class Network():
                     data['gateway_ipv6']=None
                     data['dhcp_range_begin_ipv6']=None
                     data['dhcp_range_end_ipv6']=None
-                    data['dhcp_ipv6']=0
                 elif data['clear'] == 'ipv4' and ('_network_ipv6' in data and data['_network_ipv6']):
                     data['network']=None
                     data['subnet']=None
@@ -308,7 +308,7 @@ class Network():
                     return status, ret_msg
             else:
                 #IPv6, ipv6. we basically allow both types to be send, but we figure out what we're dealing with. - Antoine
-                for item in ['dhcp','dhcp_range_begin','dhcp_range_end','gateway','network','nameserver_ip']:
+                for item in ['dhcp_range_begin','dhcp_range_end','gateway','network','nameserver_ip']:
                     if item in data:
                         if Helper().check_if_ipv6(data[item]):
                             data[item+'_ipv6'] = data[item]

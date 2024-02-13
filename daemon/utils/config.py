@@ -297,7 +297,7 @@ class Config(object):
  
         cluster = Database().get_record(None, 'cluster', None)
         controller = Database().get_record_join(
-            ['ipaddress.ipaddress','network.name as networkname'],
+            ['ipaddress.ipaddress','ipaddress.ipaddress_ipv6','network.name as networkname'],
             ['ipaddress.tablerefid=controller.id','network.id=ipaddress.networkid'],
             ['tableref="controller"', 'controller.hostname="controller"']
         )
@@ -315,42 +315,57 @@ class Config(object):
         for nwk in networks:
             network_id = nwk['id']
             networkname = None
-            rev_ip = 0
+            rev_ip, rev_ipv6 = None, None
             if nwk['network'] and nwk['name']:
                 networkname = nwk['name']
                 self.logger.info(f"Building DNS block for {networkname}")
-                rev_ip = ip_address(nwk['network']).reverse_pointer
-                rev_ip = rev_ip.split('.')
-                rev_ip = rev_ip[2:]
-                rev_ip = '.'.join(rev_ip)
+                if nwk['network']:
+                    rev_ip = ip_address(nwk['network']).reverse_pointer
+                    rev_ip = rev_ip.split('.')
+                    rev_ip = '.'.join(rev_ip[2:])
+                if nwk['network_ipv6']:
+                    rev_ipv6 = ip_address(nwk['network_ipv6']).reverse_pointer
+                    rev_ipv6 = rev_ipv6.split('.')
+                    rev_ipv6 = '.'.join(rev_ipv6[16:])
+                    self.logger.info(f"-----------------> rev_ipv6: {rev_ipv6}, {ip_address(nwk['network_ipv6']).reverse_pointer}, {nwk['network_ipv6']}")
                 self.logger.info(f"Building DNS block for {rev_ip}")
                 #
                 dns_allowed_query.append(nwk['network']+"/"+nwk['subnet']) # used for e.g. named. allow query
                 dns_zones.append(networkname)
-                if rev_ip not in dns_zones:
+                if rev_ip and rev_ip not in dns_zones:
                     dns_zones.append(rev_ip)
                     dns_rev_domain[rev_ip]=networkname
+                if rev_ipv6 and rev_ipv6 not in dns_zones:
+                    dns_zones.append(rev_ipv6)
+                    dns_rev_domain[rev_ipv6]=networkname
                 dns_zone_records[networkname]={}
                 # we always add a zone record for controller even when we're actually in it. we can override.
                 dns_zone_records[networkname]['controller']={}
                 dns_zone_records[networkname]['controller']['key']='controller'
                 dns_zone_records[networkname]['controller']['type']='A'
                 dns_zone_records[networkname]['controller']['value']=controller_ip
-                if rev_ip not in dns_zone_records.keys():
-                    dns_zone_records[rev_ip]={}
+                if rev_ip:
+                    if rev_ip not in dns_zone_records.keys():
+                        dns_zone_records[rev_ip]={}
+                    dns_authoritative[rev_ip]='controller'
+                if rev_ipv6:
+                    if rev_ipv6 not in dns_zone_records.keys():
+                        dns_zone_records[rev_ipv6]={}
+                    dns_authoritative[rev_ipv6]='controller'
                 dns_authoritative[networkname]='controller'
-                dns_authoritative[rev_ip]='controller'
 
             mergedlist = []
             controllers = Database().get_record_join(
-                ['controller.hostname as host', 'ipaddress.ipaddress','network.name as networkname'],
+                ['controller.hostname as host', 'ipaddress.ipaddress',
+                 'ipaddress.ipaddress_ipv6','network.name as networkname'],
                 ['ipaddress.tablerefid=controller.id','network.id=ipaddress.networkid'],
                 ['ipaddress.tableref="controller"', f'ipaddress.networkid="{network_id}"']
             )
             if controllers:
                 mergedlist.append(controllers)
             nodes = Database().get_record_join(
-                ['node.name as host', 'ipaddress.ipaddress', 'network.name as networkname'],
+                ['node.name as host', 'ipaddress.ipaddress', 'ipaddress.ipaddress_ipv6',
+                  'network.name as networkname'],
                 ['ipaddress.tablerefid=nodeinterface.id', 'nodeinterface.nodeid=node.id',
                  'network.id=ipaddress.networkid'],
                 ['tableref="nodeinterface"', f'ipaddress.networkid="{network_id}"']
@@ -377,16 +392,27 @@ class Config(object):
 
             for hosts in mergedlist:
                 for host in hosts:
-                    sub_ip = host['ipaddress'].split('.')  # NOT IPv6 COMPLIANT!! needs overhaul. PENDING
-                    host_ptr = sub_ip[3] + '.' + sub_ip[2]
                     dns_zone_records[networkname][host['host']]={}
                     dns_zone_records[networkname][host['host']]['key']=host['host'].rstrip('.')
-                    dns_zone_records[networkname][host['host']]['type']='A'
-                    dns_zone_records[networkname][host['host']]['value']=host['ipaddress']
-                    dns_zone_records[rev_ip][host['host']]={}
-                    dns_zone_records[rev_ip][host['host']]['key']=host_ptr
-                    dns_zone_records[rev_ip][host['host']]['type']='PTR'
-                    dns_zone_records[rev_ip][host['host']]['value']=f"{host['host'].rstrip('.')}.{host['networkname']}"
+                    if 'ipaddress_ipv6' in host and host['ipaddress_ipv6']:
+                        ipv6_rev = ip_address(host['ipaddress_ipv6']).reverse_pointer
+                        ipv6_list = ipv6_rev.split('.')
+                        host_ptr = '.'.join(ipv6_list[0:16])
+                        dns_zone_records[networkname][host['host']]['type']='AAAA'
+                        dns_zone_records[networkname][host['host']]['value']=host['ipaddress_ipv6']
+                        dns_zone_records[rev_ipv6][host['host']]={}
+                        dns_zone_records[rev_ipv6][host['host']]['key']=host_ptr
+                        dns_zone_records[rev_ipv6][host['host']]['type']='PTR'
+                        dns_zone_records[rev_ipv6][host['host']]['value']=f"{host['host'].rstrip('.')}.{host['networkname']}"
+                    if host['ipaddress']:
+                        sub_ip = host['ipaddress'].split('.')
+                        host_ptr = sub_ip[3] + '.' + sub_ip[2]
+                        dns_zone_records[networkname][host['host']]['type']='A'
+                        dns_zone_records[networkname][host['host']]['value']=host['ipaddress']
+                        dns_zone_records[rev_ip][host['host']]={}
+                        dns_zone_records[rev_ip][host['host']]['key']=host_ptr
+                        dns_zone_records[rev_ip][host['host']]['type']='PTR'
+                        dns_zone_records[rev_ip][host['host']]['value']=f"{host['host'].rstrip('.')}.{host['networkname']}"
 
 
         # we create the zone files with zone info like addresses

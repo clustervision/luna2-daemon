@@ -287,19 +287,39 @@ class Network():
                     data['dhcp_range_begin'] = ""
                     data['dhcp_range_end'] = ""
 
-            #IPv6, ipv6. we basically allow both types to be send, but we figure out what we're dealing with. - Antoine
-            for item in ['dhcp_range_begin','dhcp_range_end','gateway','network','nameserver_ip']:
-                if item in data:
-                    if Helper().check_if_ipv6(data[item]):
-                        data[item+'_ipv6'] = data[item]
-                        del data[item]
-            if 'subnet' in data and 'network_ipv6' in data:
-                data['subnet_ipv6'] = data['subnet']
-                del data['subnet']
-            if '_network_ipv6' in data:
-                del data['_network_ipv6']
-            if '_subnet_ipv6' in data:
-                del data['_subnet_ipv6']
+            if 'clear' in data:
+                if data['clear'] == 'ipv6' and data['network']:
+                    data['network_ipv6']=None
+                    data['subnet_ipv6']=None
+                    data['gateway_ipv6']=None
+                    data['dhcp_range_begin_ipv6']=None
+                    data['dhcp_range_end_ipv6']=None
+                    data['dhcp_ipv6']=0
+                elif data['clear'] == 'ipv4' and ('_network_ipv6' in data and data['_network_ipv6']):
+                    data['network']=None
+                    data['subnet']=None
+                    data['gateway']=None
+                    data['dhcp_range_begin']=None
+                    data['dhcp_range_end']=None
+                    data['dhcp']=0
+                else:
+                    status=False
+                    ret_msg = 'Invalid request: clearing ipv4 requires ipv6 to be configured first and vice versa'
+                    return status, ret_msg
+            else:
+                #IPv6, ipv6. we basically allow both types to be send, but we figure out what we're dealing with. - Antoine
+                for item in ['dhcp','dhcp_range_begin','dhcp_range_end','gateway','network','nameserver_ip']:
+                    if item in data:
+                        if Helper().check_if_ipv6(data[item]):
+                            data[item+'_ipv6'] = data[item]
+                            del data[item]
+                if 'subnet' in data and 'network_ipv6' in data:
+                    data['subnet_ipv6'] = data['subnet']
+                    del data['subnet']
+                if '_network_ipv6' in data:
+                    del data['_network_ipv6']
+                if '_subnet_ipv6' in data:
+                    del data['_subnet_ipv6']
 
             network_columns = Database().get_columns('network')
             column_check = Helper().compare_list(data, network_columns)

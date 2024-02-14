@@ -69,7 +69,13 @@ class Config(object):
         template_path = f'{CONSTANT["TEMPLATES"]["TEMPLATE_FILES"]}/{template}'
         check_template = Helper().check_jinja(template_path)
         if not check_template:
-            self.logger.error(f"Error building dns config. {template_path} does not exist")
+            self.logger.error(f"Error building dhcp config. {template_path} does not exist")
+            return False
+        template6 = 'templ_dhcpd6.cfg'
+        template6_path = f'{CONSTANT["TEMPLATES"]["TEMPLATE_FILES"]}/{template6}'
+        check_template6 = Helper().check_jinja(template6_path)
+        if not check_template6:
+            self.logger.error(f"Error building dhcp config. {template6_path} does not exist")
             return False
         ntp_server, nameserver_ip = None, None
         cluster = Database().get_record(None, 'cluster', None)
@@ -79,6 +85,7 @@ class Config(object):
             if 'nameserver_ip' in cluster[0] and cluster[0]['nameserver_ip']:
                 nameserver_ip = cluster[0]['nameserver_ip']
         dhcp_file = f"{CONSTANT['TEMPLATES']['TMP_DIRECTORY']}/dhcpd.conf"
+        dhcp6_file = f"{CONSTANT['TEMPLATES']['TMP_DIRECTORY']}/dhcpd6.conf"
         domain = None
         controller = Database().get_record_join(
             ['ipaddress.ipaddress','ipaddress.ipaddress_ipv6','network.name as domain'],
@@ -95,10 +102,15 @@ class Config(object):
             omapikey=CONSTANT['DHCP']['OMAPIKEY']
         #
         config_classes = {}
+        config_classes6 = {}
         config_shared = {}
+        config_shared6 = {}
         config_subnets = {}
+        config_subnets6 = {}
         config_hosts = {}
+        config_hosts6 = {}
         config_pools = {}
+        config_pools6 = {}
         #
         networksbyname = {}
         networks = Database().get_record(None, 'network', ' WHERE `dhcp` = 1')
@@ -108,9 +120,9 @@ class Config(object):
         shared = {}
         for network in networksbyname.keys():
             networksbyname[network]['ipv6'], networksbyname[network]['ipv4'] = False, False
-            if networksbyname[network]['dhcp_range_begin_ipv6'] and networksbyname[network]['dhcp_range_end_ipv6']:
+            if networksbyname[network]['dhcp_range_begin_ipv6'] and networksbyname[network]['dhcp_range_end_ipv6'] and networksbyname[network]['network_ipv6']:
                 networksbyname[network]['ipv6'] = True
-            if networksbyname[network]['dhcp_range_begin'] and networksbyname[network]['dhcp_range_end']:
+            if networksbyname[network]['dhcp_range_begin'] and networksbyname[network]['dhcp_range_end'] and networksbyname[network]['network']:
                 networksbyname[network]['ipv4'] = True
             if networksbyname[network]['shared'] and networksbyname[network]['shared'] in networksbyname.keys():
                 if not networksbyname[network]['shared'] in shared.keys():
@@ -124,36 +136,48 @@ class Config(object):
             #
             config_pools[shared_name]={}
             config_pools[shared_name]['policy']='deny'
-            config_pools[shared_name]['members']=shared[network]
-            config_pools[shared_name]['range_begin_ipv6']=networksbyname[network]['dhcp_range_begin_ipv6']
-            config_pools[shared_name]['range_end_ipv6']=networksbyname[network]['dhcp_range_end_ipv6']
-            config_pools[shared_name]['range_begin']=networksbyname[network]['dhcp_range_begin']
-            config_pools[shared_name]['range_end']=networksbyname[network]['dhcp_range_end']
+            config_pools6[shared_name]={}
+            config_pools6[shared_name]['policy']='deny'
+            if networksbyname[network]['ipv4']:
+                config_pools[shared_name]['members']=shared[network]
+                config_pools[shared_name]['range_begin']=networksbyname[network]['dhcp_range_begin']
+                config_pools[shared_name]['range_end']=networksbyname[network]['dhcp_range_end']
+            if networksbyname[network]['ipv6']:
+                config_pools6[shared_name]['members']=shared[network]
+                config_pools6[shared_name]['range_begin']=networksbyname[network]['dhcp_range_begin_ipv6']
+                config_pools6[shared_name]['range_end']=networksbyname[network]['dhcp_range_end_ipv6']
             #
-            config_shared[shared_name]={}
-            if networksbyname[network]['ipv4'] and networksbyname[network]['network']:
+            if networksbyname[network]['ipv4']:
+                config_shared[shared_name]={}
                 config_shared[shared_name][network]=self.dhcp_subnet_config(networksbyname[network],'shared','ipv4')
                 handled.append(network)
-            if networksbyname[network]['ipv6'] and networksbyname[network]['network_ipv6']:
-                config_shared[shared_name][network+'_ipv6']=self.dhcp_subnet_config(networksbyname[network],'shared','ipv6')
+            if networksbyname[network]['ipv6']:
+                config_shared6[shared_name]={}
+                config_shared6[shared_name][network]=self.dhcp_subnet_config(networksbyname[network],'shared','ipv6')
                 handled.append(network+'_ipv6')
             #
             for piggyback in shared[network]:
-                config_pools[piggyback]={}
-                config_pools[piggyback]['policy']='allow'
-                config_pools[piggyback]['members']=[piggyback]
-                add_string=''
-                if networksbyname[network]['ipv6']:
-                    add_string='_ipv6'
-                    config_shared[shared_name][piggyback]=self.dhcp_subnet_config(networksbyname[piggyback],'shared','ipv6')
-                else:
+                if networksbyname[network]['ipv4']:
+                    config_pools[piggyback]={}
+                    config_pools[piggyback]['policy']='allow'
+                    config_pools[piggyback]['members']=[piggyback]
                     config_shared[shared_name][piggyback]=self.dhcp_subnet_config(networksbyname[piggyback],'shared','ipv4')
-                config_pools[piggyback]['range_begin']=networksbyname[piggyback]['dhcp_range_begin'+add_string]
-                config_pools[piggyback]['range_end']=networksbyname[piggyback]['dhcp_range_end'+add_string]
+                    config_pools[piggyback]['range_begin']=networksbyname[piggyback]['dhcp_range_begin']
+                    config_pools[piggyback]['range_end']=networksbyname[piggyback]['dhcp_range_end']
+                    config_classes[piggyback]={}
+                    config_classes[piggyback]['network']=piggyback
+                    handled.append(piggyback)
+                if networksbyname[network]['ipv6']:
+                    config_pools6[piggyback]={}
+                    config_pools6[piggyback]['policy']='allow'
+                    config_pools6[piggyback]['members']=[piggyback]
+                    config_shared6[shared_name][piggyback]=self.dhcp_subnet_config(networksbyname[piggyback],'shared','ipv6')
+                    config_pools6[piggyback]['range_begin']=networksbyname[piggyback]['dhcp_range_begin']
+                    config_pools6[piggyback]['range_end']=networksbyname[piggyback]['dhcp_range_end']
+                    config_classes6[piggyback]={}
+                    config_classes6[piggyback]['network']=piggyback
+                    handled.append(piggyback+'_ipv6')
                 #
-                config_classes[piggyback]={}
-                config_classes[piggyback]['network'+add_string]=piggyback
-                handled.append(piggyback+add_string)
             #
         if networksbyname:
             for network in networksbyname.keys():
@@ -162,7 +186,7 @@ class Config(object):
                     config_subnets[nwk['name']] = self.dhcp_subnet_config(nwk,False,'ipv4')
                     handled.append(nwk['name'])
                 if nwk['name']+'_ipv6' not in handled and nwk['ipv6']:
-                    config_subnets[nwk['name']] = self.dhcp_subnet_config(nwk,False,'ipv6')
+                    config_subnets6[nwk['name']] = self.dhcp_subnet_config(nwk,False,'ipv6')
                     handled.append(nwk['name']+'_ipv6')
                 network_id = nwk['id']
                 network_name = nwk['name']
@@ -182,14 +206,18 @@ class Config(object):
                         else:
                             node=f"{interface['nodename']}.{nodedomain}"
                         if interface['macaddress'] and node not in config_hosts:
-                            config_hosts[node]={}
-                            config_hosts[node]['name']=interface['nodename']
-                            config_hosts[node]['domain']=nodedomain
                             if interface['ipaddress_ipv6']:
-                                config_hosts[node]['ipaddress']=interface['ipaddress_ipv6']
+                                config_hosts6[node]={}
+                                config_hosts6[node]['name']=interface['nodename']
+                                config_hosts6[node]['domain']=nodedomain
+                                config_hosts6[node]['ipaddress']=interface['ipaddress_ipv6']
+                                config_hosts6[node]['macaddress']=interface['macaddress']
                             else:
+                                config_hosts[node]={}
+                                config_hosts[node]['name']=interface['nodename']
+                                config_hosts[node]['domain']=nodedomain
                                 config_hosts[node]['ipaddress']=interface['ipaddress']
-                            config_hosts[node]['macaddress']=interface['macaddress']
+                                config_hosts[node]['macaddress']=interface['macaddress']
                 else:
                     self.logger.info(f'No Nodes available for this network {network_name}  IPv4: {network_ip} or IPv6: {network_ipv6}')
                 for item in ['otherdevices', 'switch']:
@@ -201,19 +229,23 @@ class Config(object):
                     if devices:
                         for device in devices:
                             if device['macaddress']:
-                                config_hosts[device['name']]={}
-                                config_hosts[device['name']]['name']=device['name']
                                 if device['ipaddress_ipv6']:
-                                    config_hosts[device['name']]['ipaddress']=device['ipaddress_ipv6']
+                                    config_hosts6[device['name']]={}
+                                    config_hosts6[device['name']]['name']=device['name']
+                                    config_hosts6[device['name']]['ipaddress']=device['ipaddress_ipv6']
+                                    config_hosts6[device['name']]['maccaddress']=device['macaddress']
                                 else:
+                                    config_hosts[device['name']]={}
+                                    config_hosts[device['name']]['name']=device['name']
                                     config_hosts[device['name']]['ipaddress']=device['ipaddress']
-                                config_hosts[device['name']]['maccaddress']=device['macaddress']
+                                    config_hosts[device['name']]['maccaddress']=device['macaddress']
                     else:
                         self.logger.debug(f'{item} not available for {network_name}  IPv4: {network_ip} or IPv6: {network_ipv6}')
         
         try:
             file_loader = FileSystemLoader(CONSTANT["TEMPLATES"]["TEMPLATE_FILES"])
             env = Environment(loader=file_loader)
+            # IPv4 -----------------------------------
             dhcpd_template = env.get_template(template)
             dhcpd_config = dhcpd_template.render(CLASSES=config_classes,SHARED=config_shared,SUBNETS=config_subnets,
                                                  HOSTS=config_hosts,POOLS=config_pools,DOMAINNAME=domain,
@@ -231,6 +263,25 @@ class Config(object):
                 self.logger.error(f'DHCP file : {dhcp_file} containing errors.')
             else:
                 shutil.copyfile(dhcp_file, '/etc/dhcp/dhcpd.conf')
+            # IPv6 -----------------------------------
+            dhcpd_template = env.get_template(template6)
+            dhcpd_config = dhcpd_template.render(CLASSES=config_classes6,SHARED=config_shared6,SUBNETS=config_subnets6,
+                                                 HOSTS=config_hosts6,POOLS=config_pools6,DOMAINNAME=domain,
+                                                 NAMESERVERS=nameserver_ip,TIMESERVERS=ntp_server,OMAPIKEY=omapikey)
+            with open(dhcp6_file, 'w', encoding='utf-8') as dhcp:
+                dhcp.write(dhcpd_config)
+            try:
+                extra_param=''
+                validate_config = subprocess.run(["dhcpd", '-6', "-t", "-cf", dhcp6_file], check=True)
+                if validate_config.returncode:
+                    validate = False
+                    self.logger.error(f'DHCP6 file : {dhcp6_file} containing errors.')
+            except Exception as exp:
+                self.logger.info(exp)
+                validate = False
+                self.logger.error(f'DHCP6 file : {dhcp6_file} containing errors.')
+            else:
+                shutil.copyfile(dhcp6_file, '/etc/dhcp/dhcpd6.conf')
         except Exception as exp:
             self.logger.error(f"Uh oh... {exp}")
         return validate
@@ -251,7 +302,9 @@ class Config(object):
         if not shared:
             subnet['range_begin']=nwk['dhcp_range_begin'+add_string]
             subnet['range_end']=nwk['dhcp_range_end'+add_string]
-        netmask = Helper().get_netmask(f"{nwk['network'+add_string]}/{nwk['subnet'+add_string]}")
+        netmask = nwk['subnet']
+        if ipversion == 'ipv4':
+            netmask = Helper().get_netmask(f"{nwk['network']}/{nwk['subnet']}")
         controller_name = 'controller'
         # ---------------------------------------------------
         ha_object=HA()
@@ -290,6 +343,7 @@ class Config(object):
             else:
                 subnet['nextserver']=controller[0]['ipaddress']
             subnet['nextport']=serverport
+        self.logger.debug(f"SUBNET: {subnet}")
         return subnet
 
 

@@ -264,14 +264,18 @@ class Helper(object):
         Add blacklist filter;
         https://clustervision.atlassian.net/wiki/spaces/TRIX/pages/52461574/2022-11-11+Development+meeting
         """
-        response = ''
+        response = []
         try:
-            if self.IPregex.match(ipaddr):
-                ip_address = IPNetwork(ipaddr)
-                response = str(ip_address.ip)
+            ipaddr = ipaddr.replace(' ','')
+            ipaddr_list = ipaddr.split(',')
+            for ipaddr in ipaddr_list:
+                if self.IPregex.match(ipaddr):
+                    ip_address = IPNetwork(ipaddr)
+                    response.append(str(ip_address.ip))
         except Exception as exp:
             self.logger.error(f'Invalid IP address: {ipaddr}, Exception is {exp}.')
-        return response
+            return None
+        return ','.join(response)
 
 
     def get_network(self, ipaddr=None, subnet=None):

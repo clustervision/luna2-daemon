@@ -29,6 +29,7 @@ __maintainer__  = 'Sumit Sharma'
 __email__       = 'sumit.sharma@clustervision.com'
 __status__      = 'Development'
 
+import re
 from concurrent.futures import ThreadPoolExecutor
 from utils.queue import Queue
 from utils.database import Database
@@ -223,10 +224,15 @@ class Network():
                     ret_msg = f'Invalid request: Incorrect Nameserver IP: {data["nameserver_ip"]}'
                     return status, ret_msg
             if 'ntp_server' in data:
+                if Helper().check_if_ipv6(data['ntp_server']):
+                    status=False
+                    return status, f'Invalid request: Incorrect NTP Server IP: {data["ntp_server"]}. Server name or IPv4 address expected'
                 ntp_details = Helper().check_ip(data['ntp_server'])
                 if (not ntp_details) and data['ntp_server'] != '':
-                    status=False
-                    return status, f'Invalid request: Incorrect NTP Server IP: {data["ntp_server"]}'
+                    regex = re.compile(r"^[a-z0-9\.\-]+$")
+                    if not regex.match(data['ntp_server']):
+                        status=False
+                        return status, f'Invalid request: Incorrect NTP Server IP: {data["ntp_server"]}'
             if 'dhcp' in data:
                 data['dhcp'] = Helper().bool_to_string(data['dhcp'])
                 self.logger.info(f"dhcp is set to {data['dhcp']}")

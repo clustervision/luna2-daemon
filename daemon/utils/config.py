@@ -77,13 +77,15 @@ class Config(object):
         if not check_template6:
             self.logger.error(f"Error building dhcp config. {template6_path} does not exist")
             return False
-        ntp_server, nameserver_ip = None, None
+        ntp_server, nameserver_ip, nameserver_ip_ipv6 = None, None, None
         cluster = Database().get_record(None, 'cluster', None)
         if cluster:
             if 'ntp_server' in cluster[0] and cluster[0]['ntp_server']:
                 ntp_server = cluster[0]['ntp_server']
             if 'nameserver_ip' in cluster[0] and cluster[0]['nameserver_ip']:
                 nameserver_ip = cluster[0]['nameserver_ip']
+            if 'nameserver_ip_ipv6' in cluster[0] and cluster[0]['nameserver_ip_ipv6']:
+                nameserver_ip_ipv6 = cluster[0]['nameserver_ip_ipv6']
         dhcp_file = f"{CONSTANT['TEMPLATES']['TMP_DIRECTORY']}/dhcpd.conf"
         dhcp6_file = f"{CONSTANT['TEMPLATES']['TMP_DIRECTORY']}/dhcpd6.conf"
         domain = None
@@ -96,6 +98,7 @@ class Config(object):
             domain=controller[0]['domain']
             ntp_server = ntp_server or controller[0]['ipaddress']
             nameserver_ip = nameserver_ip or controller[0]['ipaddress']
+            nameserver_ip_ipv6 = nameserver_ip_ipv6 or controller[0]['ipaddress_ipv6']
         #
         omapikey=None
         if CONSTANT['DHCP']['OMAPIKEY']:
@@ -246,44 +249,47 @@ class Config(object):
             file_loader = FileSystemLoader(CONSTANT["TEMPLATES"]["TEMPLATE_FILES"])
             env = Environment(loader=file_loader)
             # IPv4 -----------------------------------
-            dhcpd_template = env.get_template(template)
-            dhcpd_config = dhcpd_template.render(CLASSES=config_classes,SHARED=config_shared,SUBNETS=config_subnets,
-                                                 HOSTS=config_hosts,POOLS=config_pools,DOMAINNAME=domain,
-                                                 NAMESERVERS=nameserver_ip,TIMESERVERS=ntp_server,OMAPIKEY=omapikey)
-            with open(dhcp_file, 'w', encoding='utf-8') as dhcp:
-                dhcp.write(dhcpd_config)
-            try:
-                validate_config = subprocess.run(["dhcpd", "-t", "-cf", dhcp_file], check=True)
-                if validate_config.returncode:
+            if len(config_subnets) > 0:
+                dhcpd_template = env.get_template(template)
+                dhcpd_config = dhcpd_template.render(CLASSES=config_classes,SHARED=config_shared,SUBNETS=config_subnets,
+                                                     HOSTS=config_hosts,POOLS=config_pools,DOMAINNAME=domain,
+                                                     NAMESERVERS=nameserver_ip,TIMESERVERS=ntp_server,OMAPIKEY=omapikey)
+                with open(dhcp_file, 'w', encoding='utf-8') as dhcp:
+                    dhcp.write(dhcpd_config)
+                try:
+                    validate_config = subprocess.run(["dhcpd", "-t", "-cf", dhcp_file], check=True)
+                    if validate_config.returncode:
+                        validate = False
+                        self.logger.error(f'DHCP file : {dhcp_file} containing errors.')
+                except Exception as exp:
+                    self.logger.info(exp)
                     validate = False
                     self.logger.error(f'DHCP file : {dhcp_file} containing errors.')
-            except Exception as exp:
-                self.logger.info(exp)
-                validate = False
-                self.logger.error(f'DHCP file : {dhcp_file} containing errors.')
-            else:
-                shutil.copyfile(dhcp_file, '/etc/dhcp/dhcpd.conf')
+                else:
+                    shutil.copyfile(dhcp_file, '/etc/dhcp/dhcpd.conf')
             # IPv6 -----------------------------------
-            dhcpd_template = env.get_template(template6)
-            dhcpd_config = dhcpd_template.render(CLASSES=config_classes6,SHARED=config_shared6,SUBNETS=config_subnets6,
-                                                 HOSTS=config_hosts6,POOLS=config_pools6,DOMAINNAME=domain,
-                                                 NAMESERVERS=nameserver_ip,TIMESERVERS=ntp_server,OMAPIKEY=omapikey)
-            with open(dhcp6_file, 'w', encoding='utf-8') as dhcp:
-                dhcp.write(dhcpd_config)
-            try:
-                extra_param=''
-                validate_config = subprocess.run(["dhcpd", '-6', "-t", "-cf", dhcp6_file], check=True)
-                if validate_config.returncode:
+            if len(config_subnets6) > 0:
+                dhcpd_template = env.get_template(template6)
+                dhcpd_config = dhcpd_template.render(CLASSES=config_classes6,SHARED=config_shared6,SUBNETS=config_subnets6,
+                                                     HOSTS=config_hosts6,POOLS=config_pools6,DOMAINNAME=domain,
+                                                     NAMESERVERS=nameserver_ip,NAMESERVERS_IPV6=nameserver_ip_ipv6,
+                                                     TIMESERVERS=ntp_server,OMAPIKEY=omapikey)
+                with open(dhcp6_file, 'w', encoding='utf-8') as dhcp:
+                    dhcp.write(dhcpd_config)
+                try:
+                    validate_config = subprocess.run(["dhcpd", '-6', "-t", "-cf", dhcp6_file], check=True)
+                    if validate_config.returncode:
+                        validate = False
+                        self.logger.error(f'DHCP6 file : {dhcp6_file} containing errors.')
+                except Exception as exp:
+                    self.logger.info(exp)
                     validate = False
                     self.logger.error(f'DHCP6 file : {dhcp6_file} containing errors.')
-            except Exception as exp:
-                self.logger.info(exp)
-                validate = False
-                self.logger.error(f'DHCP6 file : {dhcp6_file} containing errors.')
-            else:
-                shutil.copyfile(dhcp6_file, '/etc/dhcp/dhcpd6.conf')
+                else:
+                    shutil.copyfile(dhcp6_file, '/etc/dhcp/dhcpd6.conf')
         except Exception as exp:
             self.logger.error(f"Uh oh... {exp}")
+            validate = False
         return validate
 
 
@@ -326,6 +332,7 @@ class Config(object):
         subnet['netmask']=netmask
         subnet['domain']=nwk['name']
         subnet['nameserver_ip']=nwk['nameserver_ip']
+        subnet['nameserver_ip_ipv6']=nwk['nameserver_ip_ipv6']
         subnet['ntp_server']=nwk['ntp_server']
         if nwk['gateway'+add_string] and nwk['gateway'+add_string] != "None": # left over from database().update/insert bug - Antoine
             subnet['gateway']=nwk['gateway'+add_string]

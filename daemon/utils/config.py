@@ -121,67 +121,74 @@ class Config(object):
             networksbyname = Helper().convert_list_to_dict(networks, 'name')
 
         shared = {}
+        shared6 = {}
         for network in networksbyname.keys():
             networksbyname[network]['ipv6'], networksbyname[network]['ipv4'] = False, False
-            if networksbyname[network]['dhcp_range_begin_ipv6'] and networksbyname[network]['dhcp_range_end_ipv6'] and networksbyname[network]['network_ipv6']:
-                networksbyname[network]['ipv6'] = True
             if networksbyname[network]['dhcp_range_begin'] and networksbyname[network]['dhcp_range_end'] and networksbyname[network]['network']:
                 networksbyname[network]['ipv4'] = True
+            if networksbyname[network]['dhcp_range_begin_ipv6'] and networksbyname[network]['dhcp_range_end_ipv6'] and networksbyname[network]['network_ipv6']:
+                networksbyname[network]['ipv6'] = True
             if networksbyname[network]['shared'] and networksbyname[network]['shared'] in networksbyname.keys():
-                if not networksbyname[network]['shared'] in shared.keys():
-                    shared[networksbyname[network]['shared']] = []
-                shared[networksbyname[network]['shared']].append(network)
+                if networksbyname[network]['ipv4']:
+                    if not networksbyname[network]['shared'] in shared.keys():
+                        shared[networksbyname[network]['shared']] = []
+                    shared[networksbyname[network]['shared']].append(network)
+                if networksbyname[network]['ipv6']:
+                    if not networksbyname[network]['shared'] in shared6.keys():
+                        shared6[networksbyname[network]['shared']] = []
+                    shared6[networksbyname[network]['shared']].append(network)
 
         handled = []
+        # IPv4
         for network in shared.keys():
-            shared_dhcp_pool, denied_dhcp_pool = [], []
             shared_name = f"{network}-" + "-".join(shared[network])
             #
             config_pools[shared_name]={}
             config_pools[shared_name]['policy']='deny'
+            config_pools[shared_name]['members']=shared[network]
+            config_pools[shared_name]['range_begin']=networksbyname[network]['dhcp_range_begin']
+            config_pools[shared_name]['range_end']=networksbyname[network]['dhcp_range_end']
+            #
+            config_shared[shared_name]={}
+            config_shared[shared_name][network]=self.dhcp_subnet_config(networksbyname[network],'shared','ipv4')
+            handled.append(network)
+
+            for piggyback in shared[network]:
+                config_pools[piggyback]={}
+                config_pools[piggyback]['policy']='allow'
+                config_pools[piggyback]['members']=[piggyback]
+                config_shared[shared_name][piggyback]=self.dhcp_subnet_config(networksbyname[piggyback],'shared','ipv4')
+                config_pools[piggyback]['range_begin']=networksbyname[piggyback]['dhcp_range_begin']
+                config_pools[piggyback]['range_end']=networksbyname[piggyback]['dhcp_range_end']
+                config_classes[piggyback]={}
+                config_classes[piggyback]['network']=piggyback
+                handled.append(piggyback)
+
+        # IPv6
+        for network in shared6.keys():
+            shared_name = f"{network}-" + "-".join(shared6[network])
+            #
             config_pools6[shared_name]={}
             config_pools6[shared_name]['policy']='deny'
-            if networksbyname[network]['ipv4']:
-                config_pools[shared_name]['members']=shared[network]
-                config_pools[shared_name]['range_begin']=networksbyname[network]['dhcp_range_begin']
-                config_pools[shared_name]['range_end']=networksbyname[network]['dhcp_range_end']
-            if networksbyname[network]['ipv6']:
-                config_pools6[shared_name]['members']=shared[network]
-                config_pools6[shared_name]['range_begin']=networksbyname[network]['dhcp_range_begin_ipv6']
-                config_pools6[shared_name]['range_end']=networksbyname[network]['dhcp_range_end_ipv6']
+            config_pools6[shared_name]['members']=shared6[network]
+            config_pools6[shared_name]['range_begin']=networksbyname[network]['dhcp_range_begin_ipv6']
+            config_pools6[shared_name]['range_end']=networksbyname[network]['dhcp_range_end_ipv6']
             #
-            if networksbyname[network]['ipv4']:
-                config_shared[shared_name]={}
-                config_shared[shared_name][network]=self.dhcp_subnet_config(networksbyname[network],'shared','ipv4')
-                handled.append(network)
-            if networksbyname[network]['ipv6']:
-                config_shared6[shared_name]={}
-                config_shared6[shared_name][network]=self.dhcp_subnet_config(networksbyname[network],'shared','ipv6')
-                handled.append(network+'_ipv6')
-            #
-            for piggyback in shared[network]:
-                if networksbyname[network]['ipv4']:
-                    config_pools[piggyback]={}
-                    config_pools[piggyback]['policy']='allow'
-                    config_pools[piggyback]['members']=[piggyback]
-                    config_shared[shared_name][piggyback]=self.dhcp_subnet_config(networksbyname[piggyback],'shared','ipv4')
-                    config_pools[piggyback]['range_begin']=networksbyname[piggyback]['dhcp_range_begin']
-                    config_pools[piggyback]['range_end']=networksbyname[piggyback]['dhcp_range_end']
-                    config_classes[piggyback]={}
-                    config_classes[piggyback]['network']=piggyback
-                    handled.append(piggyback)
-                if networksbyname[network]['ipv6']:
-                    config_pools6[piggyback]={}
-                    config_pools6[piggyback]['policy']='allow'
-                    config_pools6[piggyback]['members']=[piggyback]
-                    config_shared6[shared_name][piggyback]=self.dhcp_subnet_config(networksbyname[piggyback],'shared','ipv6')
-                    config_pools6[piggyback]['range_begin']=networksbyname[piggyback]['dhcp_range_begin']
-                    config_pools6[piggyback]['range_end']=networksbyname[piggyback]['dhcp_range_end']
-                    config_classes6[piggyback]={}
-                    config_classes6[piggyback]['network']=piggyback
-                    handled.append(piggyback+'_ipv6')
-                #
-            #
+            config_shared6[shared_name]={}
+            config_shared6[shared_name][network]=self.dhcp_subnet_config(networksbyname[network],'shared','ipv6')
+            handled.append(network+'_ipv6')
+
+            for piggyback in shared6[network]:
+                config_pools6[piggyback]={}
+                config_pools6[piggyback]['policy']='allow'
+                config_pools6[piggyback]['members']=[piggyback]
+                config_shared6[shared_name][piggyback]=self.dhcp_subnet_config(networksbyname[piggyback],'shared','ipv6')
+                config_pools6[piggyback]['range_begin']=networksbyname[piggyback]['dhcp_range_begin_ipv6']
+                config_pools6[piggyback]['range_end']=networksbyname[piggyback]['dhcp_range_end_ipv6']
+                config_classes6[piggyback]={}
+                config_classes6[piggyback]['network']=piggyback
+                handled.append(piggyback+'_ipv6')
+
         if networksbyname:
             for network in networksbyname.keys():
                 nwk = networksbyname[network]
@@ -249,7 +256,7 @@ class Config(object):
             file_loader = FileSystemLoader(CONSTANT["TEMPLATES"]["TEMPLATE_FILES"])
             env = Environment(loader=file_loader)
             # IPv4 -----------------------------------
-            if len(config_subnets) > 0:
+            if len(config_subnets) > 0 or len(config_shared) > 0:
                 dhcpd_template = env.get_template(template)
                 dhcpd_config = dhcpd_template.render(CLASSES=config_classes,SHARED=config_shared,SUBNETS=config_subnets,
                                                      HOSTS=config_hosts,POOLS=config_pools,DOMAINNAME=domain,
@@ -268,7 +275,7 @@ class Config(object):
                 else:
                     shutil.copyfile(dhcp_file, '/etc/dhcp/dhcpd.conf')
             # IPv6 -----------------------------------
-            if len(config_subnets6) > 0:
+            if len(config_subnets6) > 0 or len(config_shared6) > 0:
                 dhcpd_template = env.get_template(template6)
                 dhcpd_config = dhcpd_template.render(CLASSES=config_classes6,SHARED=config_shared6,SUBNETS=config_subnets6,
                                                      HOSTS=config_hosts6,POOLS=config_pools6,DOMAINNAME=domain,
@@ -308,7 +315,7 @@ class Config(object):
         if not shared:
             subnet['range_begin']=nwk['dhcp_range_begin'+add_string]
             subnet['range_end']=nwk['dhcp_range_end'+add_string]
-        netmask = nwk['subnet']
+        netmask = nwk['subnet_ipv6']
         if ipversion == 'ipv4':
             netmask = Helper().get_netmask(f"{nwk['network']}/{nwk['subnet']}")
         controller_name = 'controller'

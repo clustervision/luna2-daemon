@@ -160,8 +160,8 @@ class Network():
                     used_ips = Helper().get_quantity_occupied_ipaddress_in_network(name,ipversion='ipv4')
                     used6_ips = Helper().get_quantity_occupied_ipaddress_in_network(name,ipversion='ipv6')
                     if network: #database data
-                        if ((network[0]['network'] != data['network']) or (network[0]['subnet'] != data['subnet'])) and
-                           ((network[0]['network_ipv6'] != data['network']) or (network[0]['subnet_ipv6'] != data['subnet'])):
+                        if ((network[0]['network'] != data['network'] or network[0]['subnet'] != data['subnet']) and
+                               (network[0]['network_ipv6'] != data['network']) or (network[0]['subnet_ipv6'] != data['subnet'])):
                             redistribute_ipaddress = True
                             self.logger.info("We will redistribute ip addresses")
                             if 'gateway' not in data:
@@ -285,8 +285,8 @@ class Network():
                     data['dhcp'] = network[0]['dhcp']
                     data['dhcp_range_begin'] = network[0]['dhcp_range_begin']
                     data['dhcp_range_end'] = network[0]['dhcp_range_end']
-                    data['dhcp_range_begin_ipv6'] = network[0]['dhcp_range_begin_ipv6']
-                    data['dhcp_range_end_ipv6'] = network[0]['dhcp_range_end_ipv6']
+                    #data['dhcp_range_begin_ipv6'] = network[0]['dhcp_range_begin_ipv6']
+                    #data['dhcp_range_end_ipv6'] = network[0]['dhcp_range_end_ipv6']
                 else:
                     data['dhcp'] = 0
                     data['dhcp_range_begin'] = None

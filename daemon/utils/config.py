@@ -977,6 +977,7 @@ class Config(object):
                         ipaddress_list = Database().get_record_join(
                             [
                                 'ipaddress.ipaddress',
+                                'ipaddress.ipaddress_ipv6',
                                 'ipaddress.networkid as networkid',
                                 'network.network',
                                 'network.subnet',
@@ -1065,74 +1066,87 @@ class Config(object):
         self.logger.info(f'request_id: {request_id}')
         network = Database().get_record(None, 'network', f' WHERE `name` = "{name}"')
         if network:
-            if network[0]['dhcp_range_begin'] and network[0]['dhcp_range_end']:
-                subnet = network[0]['network']+'/'+network[0]['subnet']
-                dhcp_begin_ok = Helper().check_ip_range(network[0]['dhcp_range_begin'], subnet)
-                dhcp_end_ok = Helper().check_ip_range(network[0]['dhcp_range_end'], subnet)
-                if dhcp_begin_ok and dhcp_end_ok:
-                    message = f"{network[0]['network']}/{network[0]['subnet']} :: dhcp "
-                    message += f"{network[0]['dhcp_range_begin']}-{network[0]['dhcp_range_end']} "
-                    message += "fits with in network range. no change"
-                    self.logger.info(message)
-                    return True
-                dhcp_size = Helper().get_ip_range_size(
-                    network[0]['dhcp_range_begin'],
-                    network[0]['dhcp_range_end']
-                )
-                nwk_size = Helper().get_network_size(network[0]['network'], network[0]['subnet'])
-                if ((100 * dhcp_size) / nwk_size) > 50: # == 50%
-                    dhcp_size = int(nwk_size / 10)
-                    # we reduce this to 10%
-                    # how many,  offset start
-                dhcp_begin, dhcp_end = Helper().get_ip_range_first_last_ip(
-                    network[0]['network'],
-                    network[0]['subnet'],
-                    dhcp_size, (int(nwk_size / 2) - 4)
-                )
-                message = f"{network[0]['network']}/{network[0]['subnet']}"
-                message += f" :: new dhcp range {dhcp_begin}-{dhcp_end}"
-                self.logger.info(message)
-                if dhcp_begin and dhcp_end:
-                    row = [
-                        {"column": "dhcp_range_begin", "value": f"{dhcp_begin}"},
-                        {"column": "dhcp_range_end", "value": f"{dhcp_end}"}
-                    ]
-                    where = [{"column": "name", "value": f"{name}"}]
-                    Database().update('network', row, where)
-                    Queue().add_task_to_queue(
-                        'dhcp:restart',
-                        'housekeeper',
-                        '__update_dhcp_range_on_network_change__'
+            for ipv in ['', '_ipv6']:
+                if network[0]['dhcp_range_begin'+ipv] and network[0]['dhcp_range_end'+ipv]:
+                    subnet = network[0]['network'+ipv]+'/'+network[0]['subnet'+ipv]
+                    dhcp_begin_ok = Helper().check_ip_range(network[0]['dhcp_range_begin'+ipv], subnet)
+                    dhcp_end_ok = Helper().check_ip_range(network[0]['dhcp_range_end'+ipv], subnet)
+                    if dhcp_begin_ok and dhcp_end_ok:
+                        message = f"{network[0]['network'+ipv]}/{network[0]['subnet'+ipv]} :: dhcp "
+                        message += f"{network[0]['dhcp_range_begin'+ipv]}-{network[0]['dhcp_range_end'+ipv]} "
+                        message += "fits with in network range. no change"
+                        self.logger.info(message)
+                        return True
+                    dhcp_size = Helper().get_ip_range_size(
+                        network[0]['dhcp_range_begin'+ipv],
+                        network[0]['dhcp_range_end'+ipv]
                     )
+                    nwk_size = Helper().get_network_size(network[0]['network'+ipv], network[0]['subnet'+ipv])
+                    if ((100 * dhcp_size) / nwk_size) > 50: # == 50%
+                        dhcp_size = int(nwk_size / 10)
+                        # we reduce this to 10%
+                        # how many,  offset start
+                    dhcp_begin, dhcp_end = Helper().get_ip_range_first_last_ip(
+                        network[0]['network'+ipv],
+                        network[0]['subnet'+ipv],
+                        dhcp_size, (int(nwk_size / 2) - 4)
+                    )
+                    message = f"{network[0]['network'+ipv]}/{network[0]['subnet'+ipv]}"
+                    message += f" :: new dhcp range {dhcp_begin}-{dhcp_end}"
+                    self.logger.info(message)
+                    if dhcp_begin and dhcp_end:
+                        row = [
+                            {"column": f"dhcp_range_begin{ipv}", "value": f"{dhcp_begin}"},
+                            {"column": f"dhcp_range_end{ipv}", "value": f"{dhcp_end}"}
+                        ]
+                        where = [{"column": "name", "value": f"{name}"}]
+                        Database().update('network', row, where)
+                        Queue().add_task_to_queue(
+                            'dhcp:restart',
+                            'housekeeper',
+                            '__update_dhcp_range_on_network_change__'
+                        )
 
 
-    def get_dhcp_range_ips_from_network(self, network=None):
+    def get_dhcp_range_ips_from_network(self, network=None, ipversion='ipv4'):
         """
         This method will return dhcp range for network.
         """
         ips = []
         network_details = Database().get_record(None, 'network', f' WHERE `name` = "{network}"')
-        if network_details and network_details[0]['dhcp_range_begin'] and network_details[0]['dhcp_range_end']:
-            ips = Helper().get_ip_range_ips(
-                network_details[0]['dhcp_range_begin'],
-                network_details[0]['dhcp_range_end']
-            )
+        if network_details:
+            if ipversion == 'ipv6' and network_details[0]['dhcp_range_begin_ipv6'] and network_details[0]['dhcp_range_end_ipv6']:
+                ips = Helper().get_ip_range_ips(
+                    network_details[0]['dhcp_range_begin_ipv6'],
+                    network_details[0]['dhcp_range_end_ipv6']
+                )
+            elif network_details[0]['dhcp_range_begin'] and network_details[0]['dhcp_range_end']:
+                ips = Helper().get_ip_range_ips(
+                    network_details[0]['dhcp_range_begin'],
+                    network_details[0]['dhcp_range_end']
+                )
         return ips
 
 
-    def get_all_occupied_ips_from_network(self, network=None):
+    def get_all_occupied_ips_from_network(self, network=None, ipversion='ipv4'):
         """
         This method will return all occupied IP from a network.
         """
         ips = []
         network_details = Database().get_record(None, 'network', f' WHERE `name` = "{network}"')
-        if network_details and network_details[0]['dhcp_range_begin'] and network_details[0]['dhcp_range_end']:
-            ips = Helper().get_ip_range_ips(
-                network_details[0]['dhcp_range_begin'],
-                network_details[0]['dhcp_range_end']
-            )
+        if network_details:
+            if ipversion == 'ipv6' and network_details[0]['dhcp_range_begin_ipv6'] and network_details[0]['dhcp_range_end_ipv6']:
+                ips = Helper().get_ip_range_ips(
+                    network_details[0]['dhcp_range_begin_ipv6'],
+                    network_details[0]['dhcp_range_end_ipv6']
+                )
+            elif network_details[0]['dhcp_range_begin'] and network_details[0]['dhcp_range_end']:
+                ips = Helper().get_ip_range_ips(
+                    network_details[0]['dhcp_range_begin'],
+                    network_details[0]['dhcp_range_end']
+                )
         network_details = Database().get_record_join(
-            ['ipaddress.ipaddress'],
+            ['ipaddress.ipaddress','ipaddress.ipaddress_ipv6'],
             ['network.id=ipaddress.networkid'],
             [f"network.name='{network}'"]
         )
@@ -1140,3 +1154,4 @@ class Config(object):
             for each in network_details:
                 ips.append(each['ipaddress'])
         return ips
+

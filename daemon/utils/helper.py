@@ -290,7 +290,7 @@ class Helper(object):
         return str(net)
 
 
-    def get_network_details(self, ipaddr=None, ipv6=False):
+    def get_network_details(self, ipaddr=None):
         """
         Input - IP Address such as 10.141.0.0/16
         Output - Network and Subnet such as 10.141.0.0 and 16
@@ -377,10 +377,16 @@ class Helper(object):
         This method will provide the range size of IP.
         """
         try:
-            start_ip = ipaddress.IPv4Address(start)
-            end_ip = ipaddress.IPv4Address(end)
-            count=int(end_ip)-int(start_ip)
-            return count
+            if self.check_if_ipv6(start):
+                start_ip = ipaddress.IPv6Address(start)
+                end_ip = ipaddress.IPv6Address(end)
+                count=int(end_ip)-int(start_ip)
+                return count
+            else:
+                start_ip = ipaddress.IPv4Address(start)
+                end_ip = ipaddress.IPv4Address(end)
+                count=int(end_ip)-int(start_ip)
+                return count
         except Exception as exp:
             return 0
 
@@ -390,20 +396,26 @@ class Helper(object):
         """
         try:
             ip_list=[]
-            start_ip = ipaddress.IPv4Address(start)
-            end_ip = ipaddress.IPv4Address(end)
-            for ip in range(int(start_ip),(int(end_ip)+1)):
-                ip_list.append(str(ipaddress.IPv4Address(ip)))
+            if self.check_if_ipv6(start):
+                start_ip = ipaddress.IPv6Address(start)
+                end_ip = ipaddress.IPv6Address(end)
+                for ip in range(int(start_ip),(int(end_ip)+1)):
+                    ip_list.append(str(ipaddress.IPv6Address(ip)))
+            else:
+                start_ip = ipaddress.IPv4Address(start)
+                end_ip = ipaddress.IPv4Address(end)
+                for ip in range(int(start_ip),(int(end_ip)+1)):
+                    ip_list.append(str(ipaddress.IPv4Address(ip)))
             return ip_list
         except Exception as exp:
             return []
 
-    def get_network_size(self, network=None, subnet=None, ipv6=False):
+    def get_network_size(self, network=None, subnet=None):
         """
         This method will provide the network size of IP.
         """
         try:
-            if ipv6:
+            if self.check_if_ipv6(network):
                 if subnet:
                     nwk=ipaddress.IPv6Network(network+'/'+subnet)
                     return nwk.num_addresses-2
@@ -420,14 +432,16 @@ class Helper(object):
         except Exception as exp:
             return 0
 
-    def get_ip_range_first_last_ip(self, network=None, subnet=None, size=None, offset=None, ipv6=False):
+    def get_ip_range_first_last_ip(self, network=None, subnet=None, size=None, offset=None):
         """
         This method will provide the range of first and last IP.
         """
         try:
             nwk=None
-            if ipv6:
+            ipv6=False
+            if self.check_if_ipv6(network):
                 nwk = ipaddress.IPv6Network(network+'/'+subnet)
+                ipv6=True
             else:
                 nwk = ipaddress.IPv4Network(network+'/'+subnet)
             first = nwk[1]

@@ -338,12 +338,10 @@ class Network():
                 elif update:
                     if redistribute_ipaddress is True:
                         nwk_size=0
-                        self.logger.info("I AM HERE 1")
                         if 'network_ipv6' in data:
                             nwk_size = Helper().get_network_size(data['network_ipv6'], data['subnet_ipv6'])
                         else:
                             nwk_size = Helper().get_network_size(data['network'], data['subnet'])
-                        self.logger.info("I AM HERE 2")
                         avail = nwk_size - dhcp_size
                         if avail < used_ips:
                             response = f'The proposed network config allows for {nwk_size} ip '
@@ -364,9 +362,7 @@ class Network():
                             f'update_all_interface_ipaddress:{name}',
                             'network_change'
                         )
-                        self.logger.info("I AM HERE 3")
                         next_id = Queue().next_task_in_queue('network_change')
-                        self.logger.info("I AM HERE 4")
                         if queue_id == next_id:
                             executor = ThreadPoolExecutor(max_workers=1)
                             executor.submit(

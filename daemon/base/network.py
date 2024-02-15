@@ -149,7 +149,7 @@ class Network():
                 network_ip = Helper().check_ip(data['network'])
                 if network_ip:
                     ipv6=Helper().check_if_ipv6(data['network'])
-                    network_details = Helper().get_network_details(data['network'],ipv6)
+                    network_details = Helper().get_network_details(data['network'])
                     data['network'] = network_details['network']
                     data['subnet'] = network_details['subnet']
                     if ipv6:
@@ -174,6 +174,8 @@ class Network():
                 data['subnet'] = network[0]['subnet']
                 data['_network_ipv6'] = network[0]['network_ipv6']
                 data['_subnet_ipv6'] = network[0]['subnet_ipv6']
+                data['network_ipv6'] = network[0]['network_ipv6']
+                data['subnet_ipv6'] = network[0]['subnet_ipv6']
                 default_gateway_metric=network[0]['gateway_metric']
                 default_zone=network[0]['zone']
             else:
@@ -239,7 +241,6 @@ class Network():
                 if 'dhcp_range_begin' in data:
                     subnet = None
                     if Helper().check_if_ipv6(data['dhcp_range_begin']):
-                        data['dhcp_ipv6'] = 1
                         if '_network_ipv6' not in data and '_subnet_ipv6' not in data:
                             status=False
                             ret_msg = f"Invalid request: Network supplied as IPv4 while IPv6 details for dhcp provided"
@@ -315,17 +316,16 @@ class Network():
             else:
                 #IPv6, ipv6. we basically allow both types to be send, but we figure out what we're dealing with. - Antoine
                 for item in ['dhcp_range_begin','dhcp_range_end','gateway','network','nameserver_ip']:
-                    if item in data:
-                        if Helper().check_if_ipv6(data[item]):
-                            data[item+'_ipv6'] = data[item]
-                            del data[item]
-                if 'subnet' in data and 'network_ipv6' in data:
-                    data['subnet_ipv6'] = data['subnet']
-                    del data['subnet']
-                if '_network_ipv6' in data:
-                    del data['_network_ipv6']
-                if '_subnet_ipv6' in data:
-                    del data['_subnet_ipv6']
+                    if item in data and Helper().check_if_ipv6(data[item]):
+                        data[item+'_ipv6'] = data[item]
+                        del data[item]
+                        if item == 'network':
+                            data['subnet_ipv6'] = data['subnet']
+                            del data['subnet']
+            if '_network_ipv6' in data:
+                del data['_network_ipv6']
+            if '_subnet_ipv6' in data:
+                del data['_subnet_ipv6']
 
             network_columns = Database().get_columns('network')
             column_check = Helper().compare_list(data, network_columns)
@@ -338,7 +338,7 @@ class Network():
                 elif update:
                     if redistribute_ipaddress is True:
                         nwk_size=0
-                        if 'network_ipv6' in data:
+                        if 'network_ipv6' in data or 'dhcp_range_begin_ipv6' in data:
                             nwk_size = Helper().get_network_size(data['network_ipv6'], data['subnet_ipv6'])
                         else:
                             nwk_size = Helper().get_network_size(data['network'], data['subnet'])

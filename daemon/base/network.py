@@ -144,7 +144,9 @@ class Network():
             else:
                 create = True
 
-            used_ips, dhcp_size, redistribute_ipaddress, default_gateway_metric, default_zone = 0, 0, None, "101", "internal"
+            used_ips, used6_ips, dhcp_size, dhcp6_size = 0, 0, 0, 0
+            redistribute_ipaddress, default_gateway_metric, default_zone = None, "101", "internal"
+
             if 'network' in data:
                 network_ip = Helper().check_ip(data['network'])
                 if network_ip:
@@ -155,9 +157,11 @@ class Network():
                     if ipv6:
                         data['_network_ipv6'] = data['network']
                         data['_subnet_ipv6'] = data['subnet']
-                    used_ips = Helper().get_quantity_occupied_ipaddress_in_network(name,ipv6=True)
+                    used_ips = Helper().get_quantity_occupied_ipaddress_in_network(name,ipversion='ipv4')
+                    used6_ips = Helper().get_quantity_occupied_ipaddress_in_network(name,ipversion='ipv6')
                     if network: #database data
-                        if (network[0]['network'] != data['network']) or (network[0]['subnet'] != data['subnet']):
+                        if ((network[0]['network'] != data['network']) or (network[0]['subnet'] != data['subnet'])) and
+                           ((network[0]['network_ipv6'] != data['network']) or (network[0]['subnet_ipv6'] != data['subnet'])):
                             redistribute_ipaddress = True
                             self.logger.info("We will redistribute ip addresses")
                             if 'gateway' not in data:
@@ -237,7 +241,6 @@ class Network():
                         return status, f'Invalid request: Incorrect NTP Server IP: {data["ntp_server"]}'
             if 'dhcp' in data:
                 data['dhcp'] = Helper().bool_to_string(data['dhcp'])
-                self.logger.info(f"dhcp is set to {data['dhcp']}")
                 if 'dhcp_range_begin' in data:
                     subnet = None
                     if Helper().check_if_ipv6(data['dhcp_range_begin']):
@@ -275,10 +278,6 @@ class Network():
                     status=False
                     return status, 'Invalid request: DHCP end range is a required parameter'
                 if data['dhcp'] == "1":
-                    dhcp_size = Helper().get_ip_range_size(
-                        data['dhcp_range_begin'],
-                        data['dhcp_range_end']
-                    )
                     redistribute_ipaddress = True
                     # to make sure we do not overlap with existing node ip configs
             else:
@@ -286,14 +285,14 @@ class Network():
                     data['dhcp'] = network[0]['dhcp']
                     data['dhcp_range_begin'] = network[0]['dhcp_range_begin']
                     data['dhcp_range_end'] = network[0]['dhcp_range_end']
-                    dhcp_size = Helper().get_ip_range_size(
-                        data['dhcp_range_begin'],
-                        data['dhcp_range_end']
-                    )
+                    data['dhcp_range_begin_ipv6'] = network[0]['dhcp_range_begin_ipv6']
+                    data['dhcp_range_end_ipv6'] = network[0]['dhcp_range_end_ipv6']
                 else:
                     data['dhcp'] = 0
-                    data['dhcp_range_begin'] = ""
-                    data['dhcp_range_end'] = ""
+                    data['dhcp_range_begin'] = None
+                    data['dhcp_range_end'] = None
+                    data['dhcp_range_begin_ipv6'] = None
+                    data['dhcp_range_end_ipv6'] = None
 
             if 'clear' in data:
                 if data['clear'] == 'ipv6' and data['network']:
@@ -337,17 +336,35 @@ class Network():
                     status=True
                 elif update:
                     if redistribute_ipaddress is True:
-                        nwk_size=0
+                        if 'dhcp_range_begin' in data:
+                            dhcp_size = Helper().get_ip_range_size(
+                                data['dhcp_range_begin'],
+                                data['dhcp_range_end']
+                            )
+                        if 'dhcp_range_begin_ipv6' in data:
+                            dhcp6_size = Helper().get_ip_range_size(
+                                data['dhcp_range_begin_ipv6'],
+                                data['dhcp_range_end_ipv6']
+                            )
+                        nwk_size, nwk6_size, avail, avail6 = 0, 0, 0, 0
                         if 'network_ipv6' in data or 'dhcp_range_begin_ipv6' in data:
-                            nwk_size = Helper().get_network_size(data['network_ipv6'], data['subnet_ipv6'])
-                        else:
+                            nwk6_size = Helper().get_network_size(data['network_ipv6'], data['subnet_ipv6'])
+                            avail6 = nwk6_size - dhcp6_size
+                        if 'network' in data:
                             nwk_size = Helper().get_network_size(data['network'], data['subnet'])
-                        avail = nwk_size - dhcp_size
+                            avail = nwk_size - dhcp_size
                         if avail < used_ips:
                             response = f'The proposed network config allows for {nwk_size} ip '
                             response += f'addresses. DHCP range will occupy {dhcp_size} ip '
                             response += 'addresses. The request will not accomodate for the '
                             response += f'currently {used_ips} in use ip addresses'
+                            status=False
+                            return status, response
+                        elif avail6 < used6_ips:
+                            response = f'The proposed IPv6 network config allows for {nwk6_size} ip '
+                            response += f'addresses. DHCP range will occupy {dhcp6_size} ip '
+                            response += 'addresses. The request will not accomodate for the '
+                            response += f'currently {used6_ips} in use ip addresses'
                             status=False
                             return status, response
                     where = [{"column": "id", "value": networkid}]

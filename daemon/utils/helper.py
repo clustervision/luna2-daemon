@@ -462,12 +462,12 @@ class Helper(object):
             self.logger.error(f"something went wrong: {exp}")
             return None, None
 
-    def get_quantity_occupied_ipaddress_in_network(self, network=None, ipv6=False):
+    def get_quantity_occupied_ipaddress_in_network(self, network=None, ipversion='ipv4'):
         """
         This method will provide the quantity occupied in a network by ipaddress.
         """
         IPv6=""
-        if ipv6:
+        if ipversion == 'ipv6':
             IPv6="_ipv6"
         if network:
             ipaddress_list = Database().get_record_join(

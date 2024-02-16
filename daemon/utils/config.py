@@ -32,6 +32,7 @@ __email__       = 'support@clustervision.com'
 __status__      = 'Development'
 
 import os
+import sys
 import subprocess
 import shutil
 from time import time, sleep
@@ -974,6 +975,7 @@ class Config(object):
                     Queue().update_task_status_in_queue(next_id,'in progress')
                     if action == 'update_all_interface_ipaddress':
                         ips = self.get_dhcp_range_ips_from_network(network)
+                        ips6 = self.get_dhcp_range_ips_from_network(network,'ipv6')
                         ipaddress_list = Database().get_record_join(
                             [
                                 'ipaddress.ipaddress',
@@ -981,6 +983,8 @@ class Config(object):
                                 'ipaddress.networkid as networkid',
                                 'network.network',
                                 'network.subnet',
+                                'network.network_ipv6',
+                                'network.subnet_ipv6',
                                 'network.name as networkname',
                                 'ipaddress.id as ipaddressid',
                                 'ipaddress.tableref',
@@ -991,26 +995,59 @@ class Config(object):
                         )
                         if ipaddress_list:
                             for ipaddress in ipaddress_list:
-                                valid_ip = Helper().check_ip_range(ipaddress['ipaddress'],
-                                    f"{ipaddress['network']}/{ipaddress['subnet']}"
-                                )
-                                if valid_ip and ipaddress['ipaddress'] not in ips:
-                                    ips.append(ipaddress['ipaddress'])
-                                    self.logger.info(f"For network {network} no change for IP {ipaddress['ipaddress']}")
-                                    continue
-                                ret, avail = 0, None
-                                maximum = 5
-                                # we try to ping for X ips, if none of these are free,
-                                # something else is going on (read: rogue devices)....
-                                while(maximum > 0 and ret != 1):
-                                    avail = Helper().get_available_ip(
-                                        ipaddress['network'],
-                                        ipaddress['subnet'],
-                                        ips
+                                we_continue = False
+                                we_continue6 = False
+                                if ipaddress['network']:
+                                    if not ipaddress['ipaddress_ipv6']:
+                                        we_continue6 = True
+                                    valid_ip = Helper().check_ip_range(ipaddress['ipaddress'],
+                                        f"{ipaddress['network']}/{ipaddress['subnet']}"
                                     )
-                                    ips.append(avail)
-                                    _, ret = Helper().runcommand(f"ping -w1 -c1 {avail}", True, 3)
-                                    maximum -= 1
+                                    if valid_ip and ipaddress['ipaddress'] not in ips:
+                                        ips.append(ipaddress['ipaddress'])
+                                        self.logger.info(f"For network {network} no change for IP {ipaddress['ipaddress']}")
+                                        we_continue = True
+                                if ipaddress['network_ipv6']:
+                                    if not ipaddress['ipaddress']:
+                                        we_continue = True
+                                    valid_ip6 = Helper().check_ip_range(ipaddress['ipaddress_ipv6'],
+                                        f"{ipaddress['network_ipv6']}/{ipaddress['subnet_ipv6']}"
+                                    )
+                                    if valid_ip6 and ipaddress['ipaddress_ipv6'] not in ips6:
+                                        ips6.append(ipaddress['ipaddress_ipv6'])
+                                        self.logger.info(f"For network {network} no change for IP {ipaddress['ipaddress_ipv6']}")
+                                        we_continue6 = True
+                                if we_continue and we_continue6:
+                                    continue
+                                # we assume that there's always either configured. ipv4 or ipv6
+                                ret, avail, avail6, maximum = 0, ipaddress['ipaddress'], ipaddress['ipaddress_ipv6'], 5
+                                if not we_continue:
+                                    avail = None
+                                    # we try to ping for X ips, if none of these are free,
+                                    # something else is going on (read: rogue devices)....
+                                    while(maximum > 0 and ret != 1):
+                                        avail = Helper().get_available_ip(
+                                            ipaddress['network'],
+                                            ipaddress['subnet'],
+                                            ips
+                                        )
+                                        ips.append(avail)
+                                        _, ret = Helper().runcommand(f"ping -w1 -c1 {avail}", True, 3)
+                                        maximum -= 1
+                                if not we_continue6:
+                                    avail6, maximum = None, 5
+                                    ret = 0
+                                    # we try to ping for X ips, if none of these are free,
+                                    # something else is going on (read: rogue devices)....
+                                    while(maximum > 0 and ret != 1):
+                                        avail6 = Helper().get_available_ip(
+                                            ipaddress['network_ipv6'],
+                                            ipaddress['subnet_ipv6'],
+                                            ips6
+                                        )
+                                        ips6.append(avail)
+                                        _, ret = Helper().runcommand(f"ping -w1 -c1 {avail}", True, 3)
+                                        maximum -= 1
                                 message = f"For network {network} changing IP "
                                 if avail:
                                     # row   = [{"column": "ipaddress", "value": f"{avail}"}]
@@ -1020,6 +1057,12 @@ class Config(object):
                                         'ipaddress',
                                         [{"column": "ipaddress", "value": f"{avail}"}]
                                     )
+                                if avail6:
+                                    Database().delete_row(
+                                        'ipaddress',
+                                        [{"column": "ipaddress_ipv6", "value": f"{avail6}"}]
+                                    )
+                                if avail or avail6:
                                     Database().delete_row(
                                         'ipaddress',
                                         [
@@ -1029,16 +1072,17 @@ class Config(object):
                                     )
                                     row = [
                                         {"column": "ipaddress", "value": f"{avail}"},
+                                        {"column": "ipaddress_ipv6", "value": f"{avail6}"},
                                         {"column": "networkid", "value": f"{ipaddress['networkid']}"},
                                         {"column": "tableref", "value": f"{ipaddress['tableref']}"},
                                         {"column": "tablerefid", "value": f"{ipaddress['tablerefid']}"}
                                     ]
                                     result = Database().insert('ipaddress', row)
 
-                                    message += f"{ipaddress['ipaddress']} to {avail}. {result}"
+                                    message += f"{ipaddress['ipaddress']} to {avail} and {ipaddress['ipaddress_ipv6']} to {avail6}. {result}"
                                     self.logger.info(message)
                                 else:
-                                    message += f"{ipaddress['ipaddress']} not possible. "
+                                    message += f"{ipaddress['ipaddress']} or {ipaddress['ipaddress_ipv6']} not possible. "
                                     message += "no free IP addresses available."
                                     self.logger.error(message)
                     Queue().remove_task_from_queue(next_id)
@@ -1056,7 +1100,8 @@ class Config(object):
                     self.logger.info(f"{details['task']} is not for us.")
                     sleep(10)
         except Exception as exp:
-            self.logger.error(f"update_interface_ipaddress_on_network_change has problems: {exp}")
+            exc_type, exc_obj, exc_tb = sys.exc_info()
+            self.logger.error(f"update_interface_ipaddress_on_network_change has problems: {exp}, {exc_type}, in {exc_tb.tb_lineno}")
 
 
     def update_dhcp_range_on_network_change(self, name=None, request_id=None): # name=network

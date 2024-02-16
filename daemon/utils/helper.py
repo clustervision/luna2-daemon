@@ -357,12 +357,10 @@ class Helper(object):
         return data
 
 
-    def get_available_ip(self, network=None, subnet=None, takenips=None):
+    def get_available_ip(self, network=None, subnet=None, takenips=[]):
         """
         This method will provide the available IP address list.
         """
-        if not takenips:
-            takenips=[]
         if subnet:
             network+=str('/'+subnet)
         try:
@@ -397,10 +395,14 @@ class Helper(object):
         try:
             ip_list=[]
             if self.check_if_ipv6(start):
+                counter = 100000
                 start_ip = ipaddress.IPv6Address(start)
                 end_ip = ipaddress.IPv6Address(end)
                 for ip in range(int(start_ip),(int(end_ip)+1)):
                     ip_list.append(str(ipaddress.IPv6Address(ip)))
+                    if counter < 0:
+                        break
+                    counter -= 1
             else:
                 start_ip = ipaddress.IPv4Address(start)
                 end_ip = ipaddress.IPv4Address(end)

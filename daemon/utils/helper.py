@@ -324,14 +324,13 @@ class Helper(object):
         """
         Check If IP is in range or not
         """
-        response = False
         try:
             if self.check_ip(ipaddr):
                 if IPAddress(ipaddr) in IPNetwork(network):
-                    response = True
+                    return True
         except Exception as exp:
             self.logger.error(f'Invalid subnet: {ipaddr}, Exception is {exp}.')
-        return response
+        return False
 
 
     def check_ip_exist(self, data=None):

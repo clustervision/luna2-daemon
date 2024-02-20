@@ -302,43 +302,47 @@ class Interface():
                             group_interface['options']
                         )
                         if result:
-                            ips = Config().get_all_occupied_ips_from_network(
-                                group_interface['network']
-                            )
                             where = f" WHERE `name` = \"{group_interface['network']}\""
                             network = Database().get_record(None, 'network', where)
                             if network:
-                                avail = Helper().get_available_ip(
-                                    network[0]['network'],
-                                    network[0]['subnet'],
-                                    ips
-                                )
-                                if avail:
-                                    result, message = Config().node_interface_ipaddress_config(
-                                        nodeid,
-                                        group_interface['interface'],
-                                        avail,
+                                if network[0]['network']:
+                                    ips = Config().get_all_occupied_ips_from_network(
                                         group_interface['network']
                                     )
-                                    if result:
-                                        if if_dict and group_interface['interface'] in if_dict.keys():
-                                            del if_dict[group_interface['interface']]
-                                # we do not ping nodes as it will take time if we add bulk
-                                # nodes, it'll take 1s per node. code block removal pending?
-                                # ret=0
-                                # max=5
-                                # we try to ping for X ips, if none of these are free,
-                                # something else is going on (read: rogue devices)....
-                                # while(max>0 and ret!=1):
-                                #     avail = Helper().get_available_ip(
-                                #       network[0]['network'],
-                                #       network[0]['subnet'],
-                                #       ips
-                                #     )
-                                #     ips.append(avail)
-                                #     command = f"ping -w1 -c1 {avail}"
-                                #     output, ret = Helper().runcommand(command, True, 3)
-                                #     max-= 1
+                                    avail = Helper().get_available_ip(
+                                        network[0]['network'],
+                                        network[0]['subnet'],
+                                        ips
+                                    )
+                                    if avail:
+                                        result, message = Config().node_interface_ipaddress_config(
+                                            nodeid,
+                                            group_interface['interface'],
+                                            avail,
+                                            group_interface['network']
+                                        )
+                                        if result:
+                                            if if_dict and group_interface['interface'] in if_dict.keys():
+                                                del if_dict[group_interface['interface']]
+                                if network[0]['network_ipv6']:
+                                    ips = Config().get_all_occupied_ips_from_network(
+                                        group_interface['network'], 'ipv6'
+                                    )
+                                    avail = Helper().get_available_ip(
+                                        network[0]['network_ipv6'],
+                                        network[0]['subnet_ipv6'],
+                                        ips
+                                    )
+                                    if avail:
+                                        result, message = Config().node_interface_ipaddress_config(
+                                            nodeid,
+                                            group_interface['interface'],
+                                            avail,
+                                            group_interface['network']
+                                        )
+                                        if result:
+                                            if if_dict and group_interface['interface'] in if_dict.keys():
+                                                del if_dict[group_interface['interface']]
 
             if if_dict and if_old_group_dict:
                 for interface in if_dict.keys():
@@ -439,11 +443,8 @@ class Interface():
                 # below might look as redundant but is added to prevent a possible race condition
                 # when many nodes are added in a loop.
                 # the below tasks ensures that even the last node will be included in dhcp/dns
-                Queue().add_task_to_queue(
-                    'dhcp:restart',
-                    'housekeeper',
-                    '__node_interface_delete__'
-                )
+                Queue().add_task_to_queue('dhcp:restart','housekeeper','__node_interface_delete__')
+                Queue().add_task_to_queue('dhcp6:restart','housekeeper','__node_interface_delete__')
                 Queue().add_task_to_queue('dns:restart', 'housekeeper', '__node_interface_delete__')
                 response = f'Interface {interface} removed successfully'
                 status=True

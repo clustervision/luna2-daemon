@@ -745,7 +745,7 @@ class Config(object):
                 )
 
         if not valid_ip:
-            message = f"invalid IP address for {interface_name}. "
+            message = f"invalid IP address {ipaddress} for {interface_name}. "
             message += f"Network {network_details[0]['name']}: "
             if network_details[0]['network']:
                 message += f"{network_details[0]['network']}/{network_details[0]['subnet']}"+" "
@@ -822,9 +822,10 @@ class Config(object):
                         network = Database().get_record_join(
                             [
                                 'ipaddress.ipaddress',
+                                'ipaddress.ipaddress_ipv6',
                                 'ipaddress.networkid as networkid',
-                                'network.network',
-                                'network.subnet',
+                                'network.network', 'network.network_ipv6',
+                                'network.subnet', 'network.subnet_ipv6',
                                 'network.name as networkname'
                             ],
                             [
@@ -838,8 +839,8 @@ class Config(object):
                             network = Database().get_record_join(
                                 [
                                     'network.id as networkid',
-                                    'network.network',
-                                    'network.subnet',
+                                    'network.network', 'network.network_ipv6',
+                                    'network.subnet', 'network.subnet_ipv6',
                                     'network.name as networkname'
                                 ],
                                 [
@@ -852,12 +853,19 @@ class Config(object):
                                 ]
                             )
                         dhcp_ips = []
+                        dhcp6_ips = []
                         if network:
                             dhcp_ips = self.get_dhcp_range_ips_from_network(network[0]['networkname'])
+                            dhcp6_ips = self.get_dhcp_range_ips_from_network(network[0]['networkname'],'ipv6')
                         ips = dhcp_ips.copy()
-                        if network and 'ipaddress' in network[0]:
-                            for ip in network:
-                                ips.append(ip['ipaddress'])
+                        ips6 = dhcp6_ips.copy()
+                        if network: 
+                            if 'ipaddress' in network[0]:
+                                for ip in network:
+                                    ips.append(ip['ipaddress'])
+                            if 'ipaddress_ipv6' in network[0]:
+                                for ip in network:
+                                    ips6.append(ip['ipaddress_ipv6'])
                         nodes = Database().get_record_join(
                             ['node.id as nodeid'],
                             ['node.groupid=group.id'],
@@ -870,10 +878,10 @@ class Config(object):
                                 message += f"{node['nodeid']} for group {group}. {text}"
                                 self.logger.info(message)
                                 if check and network:
-                                    valid_ip, avail = None, None
+                                    valid_ip, avail, valid_ip6, avail6 = None, None, None, None
                                     if action == 'update_interface_for_group_nodes':
                                         ip_details = Database().get_record_join(
-                                            ['ipaddress.ipaddress'],
+                                            ['ipaddress.ipaddress','ipaddress.ipaddress_ipv6'],
                                             ['ipaddress.tablerefid=nodeinterface.id'],
                                             [
                                                 "ipaddress.tableref='nodeinterface'",
@@ -882,14 +890,24 @@ class Config(object):
                                             ]
                                         )
                                         if ip_details:
-                                            valid_ip = Helper().check_ip_range(
-                                                ip_details[0]['ipaddress'],
-                                                f"{network[0]['network']}/{network[0]['subnet']}"
-                                            )
+                                            if network[0]['network']:
+                                                valid_ip = Helper().check_ip_range(
+                                                    ip_details[0]['ipaddress'],
+                                                    f"{network[0]['network']}/{network[0]['subnet']}"
+                                                )
+                                            if network[0]['network_ipv6']:
+                                                valid_ip6 = Helper().check_ip_range(
+                                                    ip_details[0]['ipaddress_ipv6'],
+                                                    f"{network[0]['network_ipv6']}/{network[0]['subnet_ipv6']}"
+                                                )
                                         if valid_ip and ip_details[0]['ipaddress'] not in dhcp_ips:
                                             avail = ip_details[0]['ipaddress']
                                             self.logger.info(f"---> reusing ipaddress {avail}")
-                                    if not avail:
+                                        if valid_ip6 and ip_details[0]['ipaddress_ipv6'] not in dhcp_ips6:
+                                            avail6 = ip_details[0]['ipaddress_ipv6']
+                                            self.logger.info(f"---> reusing ipaddress {avail6}")
+                                    # IPv4, ipv4 ------------------------------
+                                    if network[0]['network'] and not avail:
                                         ret = 0
                                         maximum = 5
                                         # we try to ping for X ips, if none of these are free,
@@ -906,6 +924,34 @@ class Config(object):
 
                                     if avail:
                                         ipaddress = avail
+                                        _, response = self.node_interface_ipaddress_config(
+                                            node['nodeid'],
+                                            interface,
+                                            ipaddress,
+                                            network[0]['networkname']
+                                        )
+                                        message = f"Adding IP {ipaddress} to node id "
+                                        message += f"{node['nodeid']} for group {group} interface "
+                                        message += f"{interface}. {response}"
+                                        self.logger.info(message)
+                                    # IPv6, ipv6 ------------------------------
+                                    if network[0]['network_ipv6'] and not avail6:
+                                        ret = 0
+                                        maximum = 5
+                                        # we try to ping for X ips, if none of these are free,
+                                        # something else is going on (read: rogue devices)....
+                                        while(maximum > 0 and ret != 1):
+                                            avail6 = Helper().get_available_ip(
+                                                network[0]['network_ipv6'],
+                                                network[0]['subnet_ipv6'],
+                                                ips6
+                                            )
+                                            ips6.append(avail)
+                                            result, ret = Helper().runcommand(f"ping -w1 -c1 {avail6}", True, 3)
+                                            maximum -= 1
+
+                                    if avail6:
+                                        ipaddress = avail6
                                         _, response = self.node_interface_ipaddress_config(
                                             node['nodeid'],
                                             interface,
@@ -968,7 +1014,8 @@ class Config(object):
                     self.logger.info(f"{details['task']} is not for us.")
                     sleep(10)
         except Exception as exp:
-            self.logger.error(f"update_interface_on_group_nodes has problems: {exp}")
+            exc_type, exc_obj, exc_tb = sys.exc_info()
+            self.logger.error(f"update_interface_on_group_nodes has problems: {exp}, {exc_type}, in {exc_tb.tb_lineno}")
 
 
     def update_interface_ipaddress_on_network_change(self, name=None, request_id=None):  #name=network
@@ -1109,6 +1156,11 @@ class Config(object):
                     )
                     Queue().add_task_to_queue(
                         'dhcp:restart',
+                        'housekeeper',
+                        '__update_interface_ipaddress_on_network_change__'
+                    )
+                    Queue().add_task_to_queue(
+                        'dhcp6:restart',
                         'housekeeper',
                         '__update_interface_ipaddress_on_network_change__'
                     )

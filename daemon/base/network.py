@@ -371,6 +371,7 @@ class Network():
                     status=True
                 Service().queue('dns','restart')
                 Service().queue('dhcp','restart')
+                Service().queue('dhcp6','restart')
                 # technically only needed when dhcp changes, but it doesn't hurt to just do it
             else:
                 status=False
@@ -402,6 +403,7 @@ class Network():
                 Database().update('network', row, where)
                 Service().queue('dns','restart')
                 Service().queue('dhcp','restart')
+                Service().queue('dhcp6','restart')
                 response = 'Network removed'
                 status=True
             else:

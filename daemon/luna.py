@@ -82,6 +82,7 @@ def on_starting(server):
         sys.exit(1)
     # we generate initial dhcpd and dns configs
     Service().luna_service('dhcp', 'restart')
+    Service().luna_service('dhcp6', 'restart')
     Service().luna_service('dns', 'restart')
     # --------------- status message cleanup thread ----------------
     executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)

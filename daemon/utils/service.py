@@ -49,6 +49,9 @@ class Service(object):
         Constructor - Initialize The Service Names.
         """
         self.dhcp = CONSTANT['SERVICES']['DHCP']
+        self.dhcp6 = None
+        if 'DHCP6' in CONSTANT['SERVICES']:
+            self.dhcp6 = CONSTANT['SERVICES']['DHCP6']
         self.dns = CONSTANT['SERVICES']['DNS']
         self.logger = Log.get_logger()
 
@@ -63,6 +66,9 @@ class Service(object):
 
         if "dhcp" == name:
             name = CONSTANT['SERVICES']['DHCP']
+        if "dhcp6" == name:
+            if 'DHCP6' in CONSTANT['SERVICES']:
+                name = CONSTANT['SERVICES']['DHCP6']
         if "dns" == name:
             name = CONSTANT['SERVICES']['DNS']
 
@@ -87,6 +93,24 @@ class Service(object):
                     case _:
                         response = f'Service Action {action} Is Not Recognized'
                         status=False
+            case self.dhcp6:
+                match action:
+                    case 'start' | 'stop' | 'reload' | 'restart':
+                        command = f'{CONSTANT["SERVICES"]["COMMAND"]} {action} {name}'
+                        check_dhcp = Config().dhcp_overwrite()
+                        if check_dhcp:
+                            output, exit_code = Helper().runcommand(command,True,60)
+                            sleep(1)
+                            status, response = self.service_status(name, action, exit_code, output)
+                        else:
+                            response = f'{name} config file has errors'
+                            status=False
+                    case 'status':
+                        command = f'{CONSTANT["SERVICES"]["COMMAND"]} {action} {name}'
+                        output, exit_code = Helper().runcommand(command,True,60)
+                        status, response = self.service_status(name, action, exit_code, output)
+                    case _:
+                        response = f'Service Action {action} Is Not Recognized'
             case self.dns:
                 match action:
                     case 'start' | 'stop' | 'reload' | 'restart':

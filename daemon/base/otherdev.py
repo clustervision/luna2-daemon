@@ -147,6 +147,7 @@ class OtherDev():
                     status=False
                 else:
                     Service().queue('dhcp','restart')
+                    Service().queue('dhcp6','restart')
                     Service().queue('dns','restart')
             return status, response
         else:
@@ -276,6 +277,7 @@ class OtherDev():
                             response = f'{message}'
                         else:
                             Service().queue('dhcp', 'restart')
+                            Service().queue('dhcp6','restart')
                             Service().queue('dns', 'restart')
                             response = 'Device created'
                 else:

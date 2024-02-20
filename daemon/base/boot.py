@@ -324,6 +324,7 @@ class Boot():
                             else:
                                 data['gateway'] = nodeinterface[0]['gateway'] or ''
                             Service().queue('dhcp', 'restart')
+                            Service().queue('dhcp6','restart')
             except Exception as exp:
                 self.logger.info(f"port detection call in boot returned: {exp}")
             # ------------- port detection was not successfull, lets try a last resort -----------------
@@ -381,6 +382,7 @@ class Boot():
                             else:
                                 data['gateway'] = nodeinterface[0]['gateway'] or ''
                             Service().queue('dhcp', 'restart')
+                            Service().queue('dhcp6','restart')
         # -----------------------------------------------------------------------
         if data['nodeid']:
             node = Database().get_record_join(
@@ -651,6 +653,7 @@ class Boot():
 #                                data['network']
 #                            )
 #                            Service().queue('dns','restart')
+#                            Service().queue('dhcp6','restart')
 #                        break
 
         if not hostname:
@@ -686,6 +689,7 @@ class Boot():
 
         if data['nodeid']:
             Service().queue('dhcp','restart')
+            Service().queue('dhcp6','restart')
             nodeinterface = Database().get_record_join(
                 [
                     'nodeinterface.nodeid',
@@ -868,6 +872,7 @@ class Boot():
 
             if we_need_dhcpd_restart is True:
                 Service().queue('dhcp', 'restart')
+                Service().queue('dhcp6','restart')
             nodeinterface = Database().get_record_join(
                 [
                     'nodeinterface.nodeid',

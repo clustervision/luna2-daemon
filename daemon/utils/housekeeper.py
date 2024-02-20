@@ -71,7 +71,7 @@ class Housekeeper(object):
                         self.logger.info(f"tasks_mother will work on {first} {second}")
 
                         match first:
-                            case 'dhcp' | 'dns':
+                            case 'dhcp' | 'dhcp6' | 'dns':
                                 service=first
                                 action=second
                                 Queue().update_task_status_in_queue(next_id,'in progress')

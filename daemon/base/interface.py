@@ -138,7 +138,10 @@ class Interface():
                 )
                 if result:
                     existing = Database().get_record_join(
-                        ['ipaddress.ipaddress','network.name as networkname'],
+                        [
+                            'ipaddress.ipaddress','ipaddress.ipaddress_ipv6',
+                            'network.name as networkname'
+                        ],
                         [
                             'nodeinterface.nodeid=node.id',  
                             'ipaddress.tablerefid=nodeinterface.id',
@@ -151,28 +154,46 @@ class Interface():
                         ]
                     )
                     if network or ipaddress:
+                        ipaddress_ipv6 = None
                         if not ipaddress:
+                            # ipv4
                             if existing:
                                 if network == existing[0]['networkname']:
                                     ipaddress = existing[0]['ipaddress']
+                                    if existing[0]['ipaddress_ipv6'] and not ipaddress:
+                                        ipaddress = existing[0]['ipaddress_ipv6']
                             if not ipaddress:
                                 if not network and existing:
                                     network = existing[0]['networkname']
                                 if network:
-                                    ips = Config().get_all_occupied_ips_from_network(network)
                                     where = f" WHERE `name` = '{network}'"
                                     network_details = Database().get_record(None, 'network', where)
                                     if network_details:
-                                        avail = Helper().get_available_ip(
-                                            network_details[0]['network'],
-                                            network_details[0]['subnet'],
-                                            ips
-                                        )
-                                        if avail:
-                                            ipaddress = avail
+                                        if network_details[0]['network']:
+                                            ips = Config().get_all_occupied_ips_from_network(network)
+                                            avail = Helper().get_available_ip(
+                                                network_details[0]['network'],
+                                                network_details[0]['subnet'],
+                                                ips
+                                            )
+                                            if avail:
+                                                ipaddress = avail
+                                        if network_details[0]['network_ipv6']:
+                                            ips = Config().get_all_occupied_ips_from_network(network,'ipv6')
+                                            avail = Helper().get_available_ip(
+                                                network_details[0]['network_ipv6'],
+                                                network_details[0]['subnet_ipv6'],
+                                                ips
+                                            )
+                                            if avail:
+                                                ipaddress_ipv6 = avail
                         elif not network:
                             if existing:
                                 network = existing[0]['networkname']
+
+                        if ipaddress_ipv6 and not ipaddress:
+                            ipaddress = ipaddress_ipv6
+                            ipaddress_ipv6 = None
 
                         result, message = Config().node_interface_ipaddress_config(
                             nodeid,
@@ -180,6 +201,13 @@ class Interface():
                             ipaddress,
                             network
                         )
+                        if result and ipaddress_ipv6:
+                            result, message = Config().node_interface_ipaddress_config(
+                                nodeid,
+                                interface_name,
+                                ipaddress_ipv6,
+                                network
+                            )
                     elif (macaddress is None) and (options is None):
                         # this means we just made an empty interface. a no no - Antoine
                         # beware that we _have_ to test for None as 

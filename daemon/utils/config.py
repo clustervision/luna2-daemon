@@ -418,20 +418,21 @@ class Config(object):
             network_id = nwk['id']
             networkname = None
             rev_ip, rev_ipv6 = None, None
-            if nwk['network'] and nwk['name']:
+            if (nwk['network'] or nwk['network_ipv6']) and nwk['name']:
                 networkname = nwk['name']
                 self.logger.info(f"Building DNS block for {networkname}")
                 if nwk['network']:
                     rev_ip = ip_address(nwk['network']).reverse_pointer
                     rev_ip = rev_ip.split('.')
                     rev_ip = '.'.join(rev_ip[2:])
+                    dns_allowed_query.append(nwk['network']+"/"+nwk['subnet']) # used for e.g. named. allow query
                 if nwk['network_ipv6']:
                     rev_ipv6 = ip_address(nwk['network_ipv6']).reverse_pointer
                     rev_ipv6 = rev_ipv6.split('.')
                     rev_ipv6 = '.'.join(rev_ipv6[16:])
+                    dns_allowed_query.append(nwk['network_ipv6']+"/"+nwk['subnet_ipv6'])
                 self.logger.info(f"Building DNS block for {rev_ip}")
                 #
-                dns_allowed_query.append(nwk['network']+"/"+nwk['subnet']) # used for e.g. named. allow query
                 dns_zones.append(networkname)
                 if rev_ip and rev_ip not in dns_zones:
                     dns_zones.append(rev_ip)
@@ -730,25 +731,38 @@ class Config(object):
 
         my_ipaddress['networkid'] = network_details[0]['id']
         if ipaddress:
-            my_ipaddress['ipaddress'] = ipaddress
-            valid_ip = Helper().check_ip_range(
-                ipaddress,
-                f"{network_details[0]['network']}/{network_details[0]['subnet']}"
-            )
+            if Helper().check_if_ipv6(ipaddress):
+                my_ipaddress['ipaddress_ipv6'] = ipaddress
+                valid_ip = Helper().check_ip_range(
+                    ipaddress,
+                    f"{network_details[0]['network_ipv6']}/{network_details[0]['subnet_ipv6']}"
+                )
+            else:
+                my_ipaddress['ipaddress'] = ipaddress
+                valid_ip = Helper().check_ip_range(
+                    ipaddress,
+                    f"{network_details[0]['network']}/{network_details[0]['subnet']}"
+                )
 
         if not valid_ip:
             message = f"invalid IP address for {interface_name}. "
             message += f"Network {network_details[0]['name']}: "
-            message += f"{network_details[0]['network']}/{network_details[0]['subnet']}"
+            if network_details[0]['network']:
+                message += f"{network_details[0]['network']}/{network_details[0]['subnet']}"+" "
+            if network_details[0]['network_ipv6']:
+                message += f"{network_details[0]['network_ipv6']}/{network_details[0]['subnet_ipv6']}"
             self.logger.info(message)
             return False, message
 
-        ipaddress_check = Database().get_record(None, 'ipaddress', f"WHERE ipaddress='{ipaddress}'")
+        ipaddress_check = Database().get_record(None, 'ipaddress', f"WHERE ipaddress='{ipaddress}' or ipaddress_ipv6='{ipaddress}'")
         if ipaddress_check:
+            ipaddress_type='ipaddress'
+            if Helper().check_if_ipv6(ipaddress):
+                ipaddress_type='ipaddress_ipv6'
             ipaddress_check_own = Database().get_record_join(
                 ['node.id as nodeid','nodeinterface.interface'],
                 ['ipaddress.tablerefid=nodeinterface.id','nodeinterface.nodeid=node.id'],
-                ['tableref="nodeinterface"',f"ipaddress.ipaddress='{ipaddress}'"]
+                ['tableref="nodeinterface"',f"ipaddress.{ipaddress_type}='{ipaddress}'"]
             )
             if ipaddress_check_own and ((ipaddress_check_own[0]['nodeid'] != nodeid) or (interface_name != ipaddress_check_own[0]['interface'])):
                 return False, f"ip address {ipaddress} is already in use"
@@ -995,10 +1009,13 @@ class Config(object):
                         )
                         if ipaddress_list:
                             for ipaddress in ipaddress_list:
+                                # we assume that there's always either configured. ipv4 or ipv6
+                                ret, avail, avail6, maximum = 0, ipaddress['ipaddress'], ipaddress['ipaddress_ipv6'], 5
                                 we_continue = False
                                 we_continue6 = False
                                 if ipaddress['network']:
                                     if not ipaddress['ipaddress_ipv6']:
+                                        avail6 = None
                                         we_continue6 = True
                                     valid_ip = Helper().check_ip_range(ipaddress['ipaddress'],
                                         f"{ipaddress['network']}/{ipaddress['subnet']}"
@@ -1009,6 +1026,7 @@ class Config(object):
                                         we_continue = True
                                 if ipaddress['network_ipv6']:
                                     if not ipaddress['ipaddress']:
+                                        avail = None
                                         we_continue = True
                                     valid_ip6 = Helper().check_ip_range(ipaddress['ipaddress_ipv6'],
                                         f"{ipaddress['network_ipv6']}/{ipaddress['subnet_ipv6']}"
@@ -1019,8 +1037,6 @@ class Config(object):
                                         we_continue6 = True
                                 if we_continue and we_continue6:
                                     continue
-                                # we assume that there's always either configured. ipv4 or ipv6
-                                ret, avail, avail6, maximum = 0, ipaddress['ipaddress'], ipaddress['ipaddress_ipv6'], 5
                                 if not we_continue:
                                     avail = None
                                     # we try to ping for X ips, if none of these are free,
@@ -1196,7 +1212,11 @@ class Config(object):
             [f"network.name='{network}'"]
         )
         if network_details:
-            for each in network_details:
-                ips.append(each['ipaddress'])
+            if ipversion == 'ipv6':
+                for each in network_details:
+                    ips.append(each['ipaddress_ipv6'])
+            else:
+                for each in network_details:
+                    ips.append(each['ipaddress'])
         return ips
 

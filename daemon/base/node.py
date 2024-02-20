@@ -167,6 +167,7 @@ class Node():
                     [
                         'nodeinterface.interface',
                         'ipaddress.ipaddress',
+                        'ipaddress.ipaddress_ipv6',
                         'nodeinterface.macaddress',
                         'network.name as network',
                         'nodeinterface.options'
@@ -185,6 +186,10 @@ class Node():
                             node['hostname'] = node['name'] + '.' + interface['network']
                         if not interface['options']:
                             del interface['options']
+                        if not interface['ipaddress']:
+                            del interface['ipaddress']
+                        if not interface['ipaddress_ipv6']:
+                            del interface['ipaddress_ipv6']
                         node['interfaces'].append(interface)
                         if interface['interface'] in all_node_interfaces_by_name.keys():
                             del all_node_interfaces_by_name[interface['interface']]
@@ -369,6 +374,7 @@ class Node():
                 [
                     'nodeinterface.interface',
                     'ipaddress.ipaddress',
+                    'ipaddress.ipaddress_ipv6',
                     'nodeinterface.macaddress',
                     'network.name as network',
                     'nodeinterface.options'
@@ -386,6 +392,10 @@ class Node():
                         node['hostname'] = nodename + '.' + interface['network']
                     if not interface['options']:
                         del interface['options']
+                    if not interface['ipaddress']:
+                        del interface['ipaddress']
+                    if not interface['ipaddress_ipv6']:
+                        del interface['ipaddress_ipv6']
                     node['interfaces'].append(interface)
                     if interface['interface'] in all_node_interfaces_by_name.keys():
                         del all_node_interfaces_by_name[interface['interface']]

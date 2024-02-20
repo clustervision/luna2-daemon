@@ -718,20 +718,13 @@ class Node():
                                 ips = Config().get_all_occupied_ips_from_network(networkname)
                                 where = f' WHERE `name` = "{networkname}"'
                                 network = Database().get_record(None, 'network', where)
+                                # IPv6 pending
                                 if network:
-                                    ret, avail = 0, None
-                                    max_count = 5
-                                    # we try to ping for X ips, if none of these are free, something
-                                    # else is going on (read: rogue devices)....
-                                    while(max_count>0 and ret!=1):
-                                        avail = Helper().get_available_ip(
-                                            network[0]['network'],
-                                            network[0]['subnet'],
-                                            ips
-                                        )
-                                        ips.append(avail)
-                                        _, ret = Helper().runcommand(f"ping -w1 -c1 {avail}", True, 3)
-                                        max_count -= 1
+                                    avail = Helper().get_available_ip(
+                                        network[0]['network'],
+                                        network[0]['subnet'],
+                                        ips, ping=True
+                                    )
                                     if avail:
                                         ipaddress = avail
 
@@ -764,23 +757,16 @@ class Node():
                     if result and 'ipaddress' in node_interface.keys():
                         if 'network' in node_interface.keys():
                             networkname = node_interface['network']
+                            # IPv6 pending
                             ips = Config().get_all_occupied_ips_from_network(networkname)
                             where = f' WHERE `name` = "{networkname}"'
                             network = Database().get_record(None, 'network', where)
                             if network:
-                                ret, avail = 0, None
-                                max_count = 5
-                                # we try to ping for X ips, if none of these are free, something
-                                # else is going on (read: rogue devices)....
-                                while(max_count>0 and ret!=1):
-                                    avail = Helper().get_available_ip(
-                                        network[0]['network'],
-                                        network[0]['subnet'],
-                                        ips
-                                    )
-                                    ips.append(avail)
-                                    _, ret = Helper().runcommand(f"ping -w1 -c1 {avail}", True, 3)
-                                    max_count -= 1
+                                avail = Helper().get_available_ip(
+                                    network[0]['network'],
+                                    network[0]['subnet'],
+                                    ips, ping=True
+                                )
 
                                 if avail:
                                     result, message = Config().node_interface_ipaddress_config(

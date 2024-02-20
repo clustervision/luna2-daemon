@@ -908,19 +908,11 @@ class Config(object):
                                             self.logger.info(f"---> reusing ipaddress {avail6}")
                                     # IPv4, ipv4 ------------------------------
                                     if network[0]['network'] and not avail:
-                                        ret = 0
-                                        maximum = 5
-                                        # we try to ping for X ips, if none of these are free,
-                                        # something else is going on (read: rogue devices)....
-                                        while(maximum > 0 and ret != 1):
-                                            avail = Helper().get_available_ip(
-                                                network[0]['network'],
-                                                network[0]['subnet'],
-                                                ips
-                                            )
-                                            ips.append(avail)
-                                            result, ret = Helper().runcommand(f"ping -w1 -c1 {avail}", True, 3)
-                                            maximum -= 1
+                                        avail = Helper().get_available_ip(
+                                            network[0]['network'],
+                                            network[0]['subnet'],
+                                            ips, ping=True
+                                        )
 
                                     if avail:
                                         ipaddress = avail
@@ -936,19 +928,11 @@ class Config(object):
                                         self.logger.info(message)
                                     # IPv6, ipv6 ------------------------------
                                     if network[0]['network_ipv6'] and not avail6:
-                                        ret = 0
-                                        maximum = 5
-                                        # we try to ping for X ips, if none of these are free,
-                                        # something else is going on (read: rogue devices)....
-                                        while(maximum > 0 and ret != 1):
-                                            avail6 = Helper().get_available_ip(
-                                                network[0]['network_ipv6'],
-                                                network[0]['subnet_ipv6'],
-                                                ips6
-                                            )
-                                            ips6.append(avail)
-                                            result, ret = Helper().runcommand(f"ping -w1 -c1 {avail6}", True, 3)
-                                            maximum -= 1
+                                        avail6 = Helper().get_available_ip(
+                                            network[0]['network_ipv6'],
+                                            network[0]['subnet_ipv6'],
+                                            ips6, ping=True
+                                        )
 
                                     if avail6:
                                         ipaddress = avail6
@@ -1085,32 +1069,17 @@ class Config(object):
                                 if we_continue and we_continue6:
                                     continue
                                 if not we_continue:
-                                    avail = None
-                                    # we try to ping for X ips, if none of these are free,
-                                    # something else is going on (read: rogue devices)....
-                                    while(maximum > 0 and ret != 1):
-                                        avail = Helper().get_available_ip(
-                                            ipaddress['network'],
-                                            ipaddress['subnet'],
-                                            ips
-                                        )
-                                        ips.append(avail)
-                                        _, ret = Helper().runcommand(f"ping -w1 -c1 {avail}", True, 3)
-                                        maximum -= 1
+                                    avail = Helper().get_available_ip(
+                                        ipaddress['network'],
+                                        ipaddress['subnet'],
+                                        ips, ping=True
+                                    )
                                 if not we_continue6:
-                                    avail6, maximum = None, 5
-                                    ret = 0
-                                    # we try to ping for X ips, if none of these are free,
-                                    # something else is going on (read: rogue devices)....
-                                    while(maximum > 0 and ret != 1):
-                                        avail6 = Helper().get_available_ip(
-                                            ipaddress['network_ipv6'],
-                                            ipaddress['subnet_ipv6'],
-                                            ips6
-                                        )
-                                        ips6.append(avail)
-                                        _, ret = Helper().runcommand(f"ping -w1 -c1 {avail}", True, 3)
-                                        maximum -= 1
+                                    avail6 = Helper().get_available_ip(
+                                        ipaddress['network_ipv6'],
+                                        ipaddress['subnet_ipv6'],
+                                        ips6, ping=True
+                                    )
                                 message = f"For network {network} changing IP "
                                 if avail:
                                     # row   = [{"column": "ipaddress", "value": f"{avail}"}]

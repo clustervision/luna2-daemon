@@ -454,15 +454,7 @@ class Network():
         avail = None
         if network:
             response = f'Network {name} has no free addresses'
-            ret = 0
-            max_count = 10
-            # we try to ping for 10 ips, if none of these are free, something else is going on
-            # (read: rogue devices)....
-            while(max_count > 0 and ret != 1):
-                avail = Helper().get_available_ip(network[0]['network'], network[0]['subnet'], ips)
-                ips.append(avail)
-                _,ret = Helper().runcommand(f"ping -w1 -c1 {avail}", True, 3)
-                max_count-=1
+            avail = Helper().get_available_ip(network[0]['network'], network[0]['subnet'], ips, ping=True)
         if avail:
             response = {'config': {'network': {name: {'nextip': avail} } } }
             status=True

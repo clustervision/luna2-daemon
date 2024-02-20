@@ -332,7 +332,6 @@ class Helper(object):
             self.logger.error(f'Invalid subnet: {ipaddr}, Exception is {exp}.')
         return False
 
-
     def check_ip_exist(self, data=None):
         """
         check if IP is valid or not
@@ -355,19 +354,32 @@ class Helper(object):
                     data['ipaddress'] = subnet_record[0]['id']
         return data
 
-
-    def get_available_ip(self, network=None, subnet=None, takenips=[]):
+    def get_available_ip(self, network=None, subnet=None, takenips=[], ping=False):
         """
         This method will provide the available IP address list.
+        Optionally we can ping it to just make sure...
         """
         if subnet:
             network+=str('/'+subnet)
         try:
+            avail = None
             net = ipaddress.ip_network(f"{network}")
-            avail = (str(ip) for ip in net.hosts() if str(ip) not in takenips)
+            if not ping:
+                avail = (str(ip) for ip in net.hosts() if str(ip) not in takenips)
+                return str(next(avail))
+            # we try to ping for X ips, if none of these are free,
+            # something else is going on (read: rogue devices)....
+            ret = 0
+            maximum = 5
+            while(maximum > 0 and ret != 1):
+                avail = (str(ip) for ip in net.hosts() if str(ip) not in takenips)
+                takenips.append(avail)
+                result, ret = self.runcommand(f"ping -w1 -c1 {avail}", True, 3)
+                maximum -= 1
             return str(next(avail))
         except Exception as exp:
             return exp
+
 
     def get_ip_range_size(self, start=None, end=None):
         """

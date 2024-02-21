@@ -321,7 +321,7 @@ class Network():
                         elif db_data['network']:
                             network_ipv4 = db_data['network']
                             subnet_ipv4 = db_data['subnet']
-                        if network_ipv4 and 'dhcp_range_begin' in data:
+                        if network_ipv4:
                             nwk_size = Helper().get_network_size(network_ipv4, subnet_ipv4)
                             avail = nwk_size - dhcp_size
                         if 'network_ipv6' in data:
@@ -330,7 +330,7 @@ class Network():
                         elif db_data['network_ipv6']:
                             network_ipv6 = db_data['network_ipv6']
                             subnet_ipv6 = db_data['subnet_ipv6']
-                        if network_ipv6 and 'dhcp_range_begin_ipv6' in data:
+                        if network_ipv6:
                             nwk6_size = Helper().get_network_size(network_ipv6, subnet_ipv6)
                             avail6 = nwk6_size - dhcp6_size
                         if network_ipv4 and avail < used_ips:

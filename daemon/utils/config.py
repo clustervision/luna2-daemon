@@ -426,12 +426,13 @@ class Config(object):
                     rev_ip = rev_ip.split('.')
                     rev_ip = '.'.join(rev_ip[2:])
                     dns_allowed_query.append(nwk['network']+"/"+nwk['subnet']) # used for e.g. named. allow query
+                    self.logger.info(f"Building DNS block for {rev_ip}")
                 if nwk['network_ipv6']:
                     rev_ipv6 = ip_address(nwk['network_ipv6']).reverse_pointer
                     rev_ipv6 = rev_ipv6.split('.')
                     rev_ipv6 = '.'.join(rev_ipv6[16:])
                     dns_allowed_query.append(nwk['network_ipv6']+"/"+nwk['subnet_ipv6'])
-                self.logger.info(f"Building DNS block for {rev_ip}")
+                    self.logger.info(f"Building DNS block for {rev_ipv6}")
                 #
                 dns_zones.append(networkname)
                 if rev_ip and rev_ip not in dns_zones:
@@ -497,24 +498,26 @@ class Config(object):
                     dns_zone_records[networkname][host['host']]={}
                     dns_zone_records[networkname][host['host']]['key']=host['host'].rstrip('.')
                     if 'ipaddress_ipv6' in host and host['ipaddress_ipv6']:
-                        ipv6_rev = ip_address(host['ipaddress_ipv6']).reverse_pointer
-                        ipv6_list = ipv6_rev.split('.')
-                        host_ptr = '.'.join(ipv6_list[0:16])
                         dns_zone_records[networkname][host['host']]['type']='AAAA'
                         dns_zone_records[networkname][host['host']]['value']=host['ipaddress_ipv6']
-                        dns_zone_records[rev_ipv6][host['host']]={}
-                        dns_zone_records[rev_ipv6][host['host']]['key']=host_ptr
-                        dns_zone_records[rev_ipv6][host['host']]['type']='PTR'
-                        dns_zone_records[rev_ipv6][host['host']]['value']=f"{host['host'].rstrip('.')}.{host['networkname']}"
+                        if rev_ipv6:
+                            ipv6_rev = ip_address(host['ipaddress_ipv6']).reverse_pointer
+                            ipv6_list = ipv6_rev.split('.')
+                            host_ptr = '.'.join(ipv6_list[0:16])
+                            dns_zone_records[rev_ipv6][host['host']]={}
+                            dns_zone_records[rev_ipv6][host['host']]['key']=host_ptr
+                            dns_zone_records[rev_ipv6][host['host']]['type']='PTR'
+                            dns_zone_records[rev_ipv6][host['host']]['value']=f"{host['host'].rstrip('.')}.{host['networkname']}"
                     if host['ipaddress']:
-                        sub_ip = host['ipaddress'].split('.')
-                        host_ptr = sub_ip[3] + '.' + sub_ip[2]
                         dns_zone_records[networkname][host['host']]['type']='A'
                         dns_zone_records[networkname][host['host']]['value']=host['ipaddress']
-                        dns_zone_records[rev_ip][host['host']]={}
-                        dns_zone_records[rev_ip][host['host']]['key']=host_ptr
-                        dns_zone_records[rev_ip][host['host']]['type']='PTR'
-                        dns_zone_records[rev_ip][host['host']]['value']=f"{host['host'].rstrip('.')}.{host['networkname']}"
+                        if rev_ip:
+                            sub_ip = host['ipaddress'].split('.')
+                            host_ptr = sub_ip[3] + '.' + sub_ip[2]
+                            dns_zone_records[rev_ip][host['host']]={}
+                            dns_zone_records[rev_ip][host['host']]['key']=host_ptr
+                            dns_zone_records[rev_ip][host['host']]['type']='PTR'
+                            dns_zone_records[rev_ip][host['host']]['value']=f"{host['host'].rstrip('.')}.{host['networkname']}"
 
 
         # we create the zone files with zone info like addresses
@@ -704,7 +707,31 @@ class Config(object):
         return False, message
 
 
-    def node_interface_ipaddress_config(self,nodeid,interface_name,ipaddress,network=None):
+    def node_interface_clear_ipaddress(self, nodeid, interface_name, ipversion='ipv4'):
+        """
+        This method will clear (None) the ipaddress config of a given node interface
+        """
+        where_interface = f'WHERE nodeid = "{nodeid}" AND interface = "{interface_name}"'
+        check_interface = Database().get_record(None, 'nodeinterface', where_interface)
+        if check_interface:
+            clear_ip={}
+            if ipversion == 'ipv4':
+                clear_ip['ipaddress'] = None
+            if ipversion == 'ipv6':
+                clear_ip['ipaddress_ipv6'] = None
+            row = Helper().make_rows(clear_ip)
+            where = [{"column": "id", "value": check_interface[0]['id']}]
+            result_if = Database().update('nodeinterface', row, where)
+        if result_if:
+            message = f"interface {interface_name} cleared of {ipversion} address with result {result_if}"
+            self.logger.info(message)
+            return True, message
+        message = f"interface {interface_name} config failed with result {result_if}"
+        self.logger.info(message)
+        return False, message
+
+
+    def node_interface_ipaddress_config(self, nodeid, interface_name, ipaddress,network=None):
         """
         This method will collect ipaddress of node interfaces and return configuration.
         """
@@ -804,7 +831,7 @@ class Config(object):
     def update_interface_on_group_nodes(self, name=None, request_id=None):
         """
         This method will update node/group interfaces.
-        It's called from a group add/change. it handles all nodes in that group
+        It's called from a group add/change (base/group + base/interface). it handles all nodes in that group.
         """
         self.logger.info(f'request_id: {request_id}')
         self.logger.info("update_interface_on_group_nodes called")
@@ -906,6 +933,7 @@ class Config(object):
                                         if valid_ip6 and ip_details[0]['ipaddress_ipv6'] not in dhcp_ips6:
                                             avail6 = ip_details[0]['ipaddress_ipv6']
                                             self.logger.info(f"---> reusing ipaddress {avail6}")
+
                                     # IPv4, ipv4 ------------------------------
                                     if network[0]['network'] and not avail:
                                         avail = Helper().get_available_ip(
@@ -926,6 +954,14 @@ class Config(object):
                                         message += f"{node['nodeid']} for group {group} interface "
                                         message += f"{interface}. {response}"
                                         self.logger.info(message)
+
+                                    if not network[0]['network']:
+                                        _, response = self.node_interface_clear_ipaddress(
+                                            node['nodeid'],
+                                            interface,
+                                            'ipv4'
+                                        )
+
                                     # IPv6, ipv6 ------------------------------
                                     if network[0]['network_ipv6'] and not avail6:
                                         avail6 = Helper().get_available_ip(
@@ -946,6 +982,13 @@ class Config(object):
                                         message += f"{node['nodeid']} for group {group} interface "
                                         message += f"{interface}. {response}"
                                         self.logger.info(message)
+
+                                    if not network[0]['network_ipv6']:
+                                        _, response = self.node_interface_clear_ipaddress(
+                                            node['nodeid'],
+                                            interface,
+                                            'ipv6'
+                                        )
 
                     # DELETING --------------------------------------------------------------
                     elif action == 'delete_interface_from_group_nodes' and interface:

@@ -680,6 +680,7 @@ class Node():
                     [
                         'nodeinterface.interface',
                         'ipaddress.ipaddress',
+                        'ipaddress.ipaddress_ipv6',
                         'nodeinterface.macaddress',
                         'network.name as network',
                         'nodeinterface.options'
@@ -715,18 +716,28 @@ class Node():
                         )
                         if result:
                             if networkname and not ipaddress:
-                                ips = Config().get_all_occupied_ips_from_network(networkname)
                                 where = f' WHERE `name` = "{networkname}"'
                                 network = Database().get_record(None, 'network', where)
-                                # IPv6 pending
                                 if network:
-                                    avail = Helper().get_available_ip(
-                                        network[0]['network'],
-                                        network[0]['subnet'],
-                                        ips, ping=True
-                                    )
-                                    if avail:
-                                        ipaddress = avail
+                                    if network[0]['network']:
+                                        ips = Config().get_all_occupied_ips_from_network(networkname)
+                                        avail = Helper().get_available_ip(
+                                            network[0]['network'],
+                                            network[0]['subnet'],
+                                            ips, ping=True
+                                        )
+                                        if avail:
+                                            ipaddress = avail
+                                    # IPv6 as alternative
+                                    if network[0]['network_ipv6']:
+                                        ips = Config().get_all_occupied_ips_from_network(networkname,'ipv6')
+                                        avail = Helper().get_available_ip(
+                                            network[0]['network_ipv6'],
+                                            network[0]['subnet_ipv6'],
+                                            ips, ping=True
+                                        )
+                                        if avail:
+                                            ipaddress = avail
 
                             if networkname and ipaddress:
                                 result, message = Config().node_interface_ipaddress_config(
@@ -757,28 +768,48 @@ class Node():
                     if result and 'ipaddress' in node_interface.keys():
                         if 'network' in node_interface.keys():
                             networkname = node_interface['network']
-                            # IPv6 pending
-                            ips = Config().get_all_occupied_ips_from_network(networkname)
                             where = f' WHERE `name` = "{networkname}"'
                             network = Database().get_record(None, 'network', where)
                             if network:
-                                avail = Helper().get_available_ip(
-                                    network[0]['network'],
-                                    network[0]['subnet'],
-                                    ips, ping=True
-                                )
-
-                                if avail:
-                                    result, message = Config().node_interface_ipaddress_config(
-                                        new_nodeid,
-                                        interface_name,
-                                        avail,
-                                        networkname
+                                if network[0]['network']:
+                                    ips = Config().get_all_occupied_ips_from_network(networkname)
+                                    avail = Helper().get_available_ip(
+                                        network[0]['network'],
+                                        network[0]['subnet'],
+                                        ips, ping=True
                                     )
-                                    if result is False:
-                                        self.delete_node(new_nodeid)
-                                        status=False
-                                        return status, f'{message}'
+
+                                    if avail:
+                                        result, message = Config().node_interface_ipaddress_config(
+                                            new_nodeid,
+                                            interface_name,
+                                            avail,
+                                            networkname
+                                        )
+                                        if result is False:
+                                            self.delete_node(new_nodeid)
+                                            status=False
+                                            return status, f'{message}'
+                                # IPv6
+                                if network[0]['network_ipv6']:
+                                    ips = Config().get_all_occupied_ips_from_network(networkname,'ipv6')
+                                    avail = Helper().get_available_ip(
+                                        network[0]['network_ipv6'],
+                                        network[0]['subnet_ipv6'],
+                                        ips, ping=True
+                                    )
+
+                                    if avail:
+                                        result, message = Config().node_interface_ipaddress_config(
+                                            new_nodeid,
+                                            interface_name,
+                                            avail,
+                                            networkname
+                                        )
+                                        if result is False:
+                                            self.delete_node(new_nodeid)
+                                            status=False
+                                            return status, f'{message}'
                     if result is False:
                         self.delete_node(new_nodeid)
                         status=False

@@ -233,7 +233,7 @@ class Config(object):
                     self.logger.info(f'No Nodes available for this network {network_name}  IPv4: {network_ip} or IPv6: {network_ipv6}')
                 for item in ['otherdevices', 'switch']:
                     devices = Database().get_record_join(
-                        [f'{item}.name','ipaddress.ipaddress',f'{item}.macaddress'],
+                        [f'{item}.name','ipaddress.ipaddress','ipaddress.ipaddress_ipv6',f'{item}.macaddress'],
                         [f'ipaddress.tablerefid={item}.id'],
                         [f'tableref="{item}"', f'ipaddress.networkid="{network_id}"']
                     )

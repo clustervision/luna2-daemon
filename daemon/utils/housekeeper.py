@@ -30,13 +30,13 @@ __maintainer__  = 'Antoine Schonewille'
 __email__       = 'antoine.schonewille@clustervision.com'
 __status__      = 'Development'
 
+import concurrent.futures
+from time import sleep
+import sys
 from utils.log import Log
 from utils.database import Database
 from common.constant import CONSTANT
 from utils.helper import Helper
-import concurrent.futures
-from time import sleep
-import sys
 # below are needed to accomodate for the housekeeper
 from utils.queue import Queue
 from utils.osimage import OsImage
@@ -119,7 +119,8 @@ class Housekeeper(object):
                 if event.is_set():
                     return
             except Exception as exp:
-                self.logger.error(f"tasks_mother up thread encountered problem: {exp}")
+                exc_type, exc_obj, exc_tb = sys.exc_info()
+                self.logger.error(f"tasks_mother up thread encountered problem: {exp}, {exc_type}, in {exc_tb.tb_lineno}")
             sleep(5)
 
 

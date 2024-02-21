@@ -61,28 +61,6 @@ class Helper(object):
         self.IPregex = re.compile(r"^((([0-9a-fA-F]{1,4}:){7,7}[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,7}:|([0-9a-fA-F]{1,4}:){1,6}:[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,5}(:[0-9a-fA-F]{1,4}){1,2}|([0-9a-fA-F]{1,4}:){1,4}(:[0-9a-fA-F]{1,4}){1,3}|([0-9a-fA-F]{1,4}:){1,3}(:[0-9a-fA-F]{1,4}){1,4}|([0-9a-fA-F]{1,4}:){1,2}(:[0-9a-fA-F]{1,4}){1,5}|[0-9a-fA-F]{1,4}:((:[0-9a-fA-F]{1,4}){1,6})|:((:[0-9a-fA-F]{1,4}){1,7}|:)|fe80:(:[0-9a-fA-F]{0,4}){0,4}%[0-9a-zA-Z]{1,}|::(ffff(:0{1,4}){0,1}:){0,1}((25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])\.){3,3}(25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])|([0-9a-fA-F]{1,4}:){1,4}:((25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])\.){3,3}(25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9]))|(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\.(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\.(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\.(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)|(([0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3})))\/?[0-9]*$")
 
 
-    def get_ip_network(self, table=None, record_id=None):
-        """
-        This method will return IP and Network for the given device.
-        """
-        response = None, None
-        ip_detail = Database().get_record_join(
-            ['network.name as network', 'ipaddress.ipaddress'],
-            [f'ipaddress.tablerefid={table}.id', 'network.id=ipaddress.networkid'],
-            [f'tableref="{table}"', f"tablerefid='{record_id}'"]
-        )
-        if ip_detail:
-            response = ip_detail[0]['ipaddress'], ip_detail[0]['network']
-        else:
-            ip_detail = Database().get_record_join(
-                ['ipaddress.ipaddress'],
-                [f'ipaddress.tablerefid={table}.id'],
-                [f'tableref="{table}"', f"tablerefid='{record_id}'"]
-            )
-            if ip_detail:
-                response = ip_detail[0]['ipaddress'], None
-        return response
-
 
 ################### ---> Experiment to compare the logic
 
@@ -294,7 +272,7 @@ class Helper(object):
         """
         Input - IP Address such as 10.141.0.0/16
         Output - Network and Subnet such as 10.141.0.0 and 16
-        (we settled for a cidr notation to be ipv6 compliant in the future)
+        (we settled for a cidr notation to be ipv6 compliant)
         """
         response = {}
         try:
@@ -464,11 +442,9 @@ class Helper(object):
                 last_int = int(last) + offset
                 if ipv6:
                     first = ipaddress.IPv6Address(first_int)
-                    # ip_address instead of IPv4Address might also work and is ipv6 complaint? pending
                     last = ipaddress.IPv6Address(last_int)
                 else:
                     first = ipaddress.IPv4Address(first_int)
-                    # ip_address instead of IPv4Address might also work and is ipv6 complaint? pending
                     last = ipaddress.IPv4Address(last_int)
             return str(first),str(last)
         except Exception as exp:

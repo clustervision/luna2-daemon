@@ -588,7 +588,11 @@ class Config(object):
         if not ipaddress:
             return False, "IP address not supplied"
         result_ip = False
-        my_ipaddress={'ipaddress': ipaddress, 'networkid': None}
+        my_ipaddress = {}
+        if Helper().check_if_ipv6(ipaddress):
+            my_ipaddress={'ipaddress_ipv6': ipaddress, 'networkid': None}
+        else:
+            my_ipaddress={'ipaddress': ipaddress, 'networkid': None}
         where = f'WHERE tablerefid = "{device_id}" AND tableref = "{device}"'
         check_ip = Database().get_record(None, 'ipaddress', where)
         if check_ip:
@@ -629,19 +633,28 @@ class Config(object):
         if ipaddress and device_id and network_id:
             my_ipaddress = {}
             my_ipaddress['networkid'] = network_id
-            result_ip = False
+            result_ip, valid_ip = False, None
             network_details = Database().get_record(None, 'network', f"WHERE id='{network_id}'")
-            valid_ip = Helper().check_ip_range(
-                ipaddress,
-                f"{network_details[0]['network']}/{network_details[0]['subnet']}"
-            )
+            if Helper().check_if_ipv6(ipaddress):
+                valid_ip = Helper().check_ip_range(
+                    ipaddress,
+                    f"{network_details[0]['network_ipv6']}/{network_details[0]['subnet_ipv6']}"
+                )
+            else:
+                valid_ip = Helper().check_ip_range(
+                    ipaddress,
+                    f"{network_details[0]['network']}/{network_details[0]['subnet']}"
+                )
             self.logger.info(f"Ipaddress {ipaddress} for {device} is [{valid_ip}]")
             if valid_ip is False:
                 message = f"invalid IP address for {device}. Network {network_details[0]['name']}: "
                 message += f"{network_details[0]['network']}/{network_details[0]['subnet']}"
                 return False, message
 
-            my_ipaddress['ipaddress']=ipaddress
+            if Helper().check_if_ipv6(ipaddress):
+                my_ipaddress['ipaddress_ipv6']=ipaddress
+            else:
+                my_ipaddress['ipaddress']=ipaddress
             where = f'WHERE tablerefid = "{device_id}" AND tableref = "{device}"'
             check_ip = Database().get_record(None, 'ipaddress', where)
             if check_ip:
@@ -663,8 +676,7 @@ class Config(object):
         return False,"not enough details"
 
 
-    def node_interface_config(self, nodeid=None, interface_name=None,
-                              macaddress=None, options=None):
+    def node_interface_config(self, nodeid=None, interface_name=None, macaddress=None, options=None):
         """
         This method will collect node interfaces and return configuration.
         """
@@ -674,7 +686,7 @@ class Config(object):
         where_interface = f'WHERE nodeid = "{nodeid}" AND interface = "{interface_name}"'
         check_interface = Database().get_record(None, 'nodeinterface', where_interface)
 
-        if not check_interface: # ----> easy. both the interface as ipaddress do not exist
+        if not check_interface: # ----> easy. both the interface and ipaddress do not exist
             my_interface['interface'] = interface_name
             my_interface['nodeid'] = nodeid
             if macaddress is not None:

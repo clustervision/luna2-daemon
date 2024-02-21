@@ -182,8 +182,8 @@ class Switch():
         """
         This method will clone a switch.
         """
-        data, response = {}, ""
         status=False
+        data, response = {}, ""
         create = False
         ipaddress, networkname = None, None
         if request_data:
@@ -234,9 +234,10 @@ class Switch():
                             network = Database().get_record_join(
                                 [
                                     'ipaddress.ipaddress',
+                                    'ipaddress.ipaddress_ipv6',
                                     'ipaddress.networkid as networkid',
-                                    'network.network',
-                                    'network.subnet'
+                                    'network.network', 'network.network_ipv6',
+                                    'network.subnet', 'network.subnet_ipv6'
                                 ],
                                 ['network.id=ipaddress.networkid'],
                                 [f"network.name='{networkname}'"]
@@ -245,10 +246,11 @@ class Switch():
                             network = Database().get_record_join(
                                 [
                                     'ipaddress.ipaddress',
+                                    'ipaddress.ipaddress_ipv6',
                                     'ipaddress.networkid as networkid',
                                     'network.name as networkname',
-                                    'network.network',
-                                    'network.subnet'
+                                    'network.network', 'network.network_ipv6',
+                                    'network.subnet', 'network.subnet_ipv6'
                                 ],
                                 [
                                     'network.id=ipaddress.networkid',
@@ -259,6 +261,7 @@ class Switch():
                             if network:
                                 data['network'] = network[0]['networkname']
                                 networkname=data['network']
+                        ipaddress6, result, result6 = None, False, True
                         if not ipaddress:
                             if not network:
                                 where = f' WHERE `name` = "{networkname}"'
@@ -266,24 +269,42 @@ class Switch():
                                 if network:
                                     networkname = network[0]['networkname']
                             if network:
-                                ips = Config().get_all_occupied_ips_from_network(networkname)
-                                avail = Helper().get_available_ip(
-                                    network[0]['network'],
-                                    network[0]['subnet'],
-                                    ips, ping=True
-                                )
-                                if avail:
-                                    ipaddress = avail
+                                if network[0]['network']:
+                                    ips = Config().get_all_occupied_ips_from_network(networkname)
+                                    avail = Helper().get_available_ip(
+                                        network[0]['network'],
+                                        network[0]['subnet'],
+                                        ips, ping=True
+                                    )
+                                    if avail:
+                                        ipaddress = avail
+                                if network[0]['network_ipv6']:
+                                    ips = Config().get_all_occupied_ips_from_network(networkname,'ipv6')
+                                    avail = Helper().get_available_ip(
+                                        network[0]['network_ipv6'],
+                                        network[0]['subnet_ipv6'],
+                                        ips, ping=True
+                                    )
+                                    if avail:
+                                        ipaddress6 = avail
                             else:
                                 status=False
                                 return status, 'Invalid request: Network and ipaddress not provided'
-                        result, message = Config().device_ipaddress_config(
-                            new_switchid,
-                            self.table,
-                            ipaddress,
-                            networkname
-                        )
-                        if result is False:
+                        if ipaddress:
+                            result, message = Config().device_ipaddress_config(
+                                device_id,
+                                self.table,
+                                ipaddress,
+                                networkname
+                            )
+                        if ipaddress6:
+                            result6, message = Config().device_ipaddress_config(
+                                device_id,
+                                self.table,
+                                ipaddress6,
+                                networkname
+                            )
+                        if result is False or result6 is False:
                             where = [{"column": "id", "value": new_switchid}]
                             Database().delete_row(self.table, where)
                             # roll back

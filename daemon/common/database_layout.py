@@ -177,7 +177,8 @@ DATABASE_LAYOUT_network = [
 DATABASE_LAYOUT_dns = [
 {"column": "id",                   "datatype": "INTEGER", "key": "PRIMARY", "keyadd": "AUTOINCREMENT"},
 {"column": "host",                 "datatype": "VARCHAR", "length": "100"},
-{"column": "ipaddress",            "datatype": "VARCHAR", "length": "60"},
+{"column": "ipaddress",            "datatype": "VARCHAR", "length": "20"},
+{"column": "ipaddress_ipv6",       "datatype": "VARCHAR", "length": "60"},
 {"column": "networkid",            "datatype": "INTEGER", "length": "10"}]
 
 DATABASE_LAYOUT_user = [

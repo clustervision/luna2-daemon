@@ -479,7 +479,7 @@ class Config(object):
             for item in ['otherdevices','switch']:
                 devices = Database().get_record_join(
                     [f'{item}.name as host', 'ipaddress.ipaddress',
-                     'network.name as networkname'],
+                     'ipaddress.ipaddress_ipv6', 'network.name as networkname'],
                     [f'ipaddress.tablerefid={item}.id', 'network.id=ipaddress.networkid'],
                     [f'tableref="{item}"', f'ipaddress.networkid="{network_id}"']
                 )
@@ -500,10 +500,12 @@ class Config(object):
                     if 'ipaddress_ipv6' in host and host['ipaddress_ipv6']:
                         dns_zone_records[networkname][host['host']]['type']='AAAA'
                         dns_zone_records[networkname][host['host']]['value']=host['ipaddress_ipv6']
+                        self.logger.debug(f"DNS -- IPv6: host {host['host']}, AAAA ip [{host['ipaddress_ipv6']}]")
                         if rev_ipv6:
                             ipv6_rev = ip_address(host['ipaddress_ipv6']).reverse_pointer
                             ipv6_list = ipv6_rev.split('.')
                             host_ptr = '.'.join(ipv6_list[0:16])
+                            self.logger.debug(f"DNS -- IPv6: host {host['host']}, rev ip [{host_ptr}]")
                             dns_zone_records[rev_ipv6][host['host']]={}
                             dns_zone_records[rev_ipv6][host['host']]['key']=host_ptr
                             dns_zone_records[rev_ipv6][host['host']]['type']='PTR'
@@ -511,9 +513,11 @@ class Config(object):
                     if host['ipaddress']:
                         dns_zone_records[networkname][host['host']]['type']='A'
                         dns_zone_records[networkname][host['host']]['value']=host['ipaddress']
+                        self.logger.debug(f"DNS -- IPv4: host {host['host']}, A ip [{host['ipaddress']}]")
                         if rev_ip:
                             sub_ip = host['ipaddress'].split('.')
                             host_ptr = sub_ip[3] + '.' + sub_ip[2]
+                            self.logger.debug(f"DNS -- IPv4: host {host['host']}, rev ip [{host_ptr}]")
                             dns_zone_records[rev_ip][host['host']]={}
                             dns_zone_records[rev_ip][host['host']]['key']=host_ptr
                             dns_zone_records[rev_ip][host['host']]['type']='PTR'

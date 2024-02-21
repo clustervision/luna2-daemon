@@ -168,7 +168,7 @@ class Network():
                     used_ips = Helper().get_quantity_occupied_ipaddress_in_network(name,ipversion='ipv4')
                     used6_ips = Helper().get_quantity_occupied_ipaddress_in_network(name,ipversion='ipv6')
                     if network: #database data
-                        if ((db_data['network'] != data['network'] or db_subnet['subnet'] != data['subnet']) and
+                        if ((db_data['network'] != data['network'] or db_data['subnet'] != data['subnet']) and
                                (db_data['network_ipv6'] != data['network']) or (db_data['subnet_ipv6'] != data['subnet'])):
                             redistribute_ipaddress = True
                             self.logger.info("We will redistribute ip addresses")

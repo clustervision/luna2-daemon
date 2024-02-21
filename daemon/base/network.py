@@ -333,14 +333,14 @@ class Network():
                         if network_ipv6 and 'dhcp_range_begin_ipv6' in data:
                             nwk6_size = Helper().get_network_size(network_ipv6, subnet_ipv6)
                             avail6 = nwk6_size - dhcp6_size
-                        if avail < used_ips:
+                        if network_ipv4 and avail < used_ips:
                             response = f'The proposed network config allows for {nwk_size} ip '
                             response += f'addresses. DHCP range will occupy {dhcp_size} ip '
                             response += 'addresses. The request will not accomodate for the '
                             response += f'currently {used_ips} in use ip addresses'
                             status=False
                             return status, response
-                        elif avail6 < used6_ips:
+                        elif network_ipv6 and avail6 < used6_ips:
                             response = f'The proposed IPv6 network config allows for {nwk6_size} ip '
                             response += f'addresses. DHCP range will occupy {dhcp6_size} ip '
                             response += 'addresses. The request will not accomodate for the '

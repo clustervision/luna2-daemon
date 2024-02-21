@@ -324,6 +324,12 @@ class Interface():
                                         if result:
                                             if if_dict and group_interface['interface'] in if_dict.keys():
                                                 del if_dict[group_interface['interface']]
+                                else:
+                                    result, message = Config().node_interface_clear_ipaddress(
+                                        nodeid,
+                                        group_interface['interface'],
+                                        'ipv4'
+                                    )
                                 if network[0]['network_ipv6']:
                                     ips = Config().get_all_occupied_ips_from_network(
                                         group_interface['network'], 'ipv6'
@@ -343,6 +349,12 @@ class Interface():
                                         if result:
                                             if if_dict and group_interface['interface'] in if_dict.keys():
                                                 del if_dict[group_interface['interface']]
+                                else:
+                                    result, message = Config().node_interface_clear_ipaddress(
+                                        nodeid,
+                                        group_interface['interface'],
+                                        'ipv6'
+                                    )
 
             if if_dict and if_old_group_dict:
                 for interface in if_dict.keys():

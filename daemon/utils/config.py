@@ -720,8 +720,9 @@ class Config(object):
             if ipversion == 'ipv6':
                 clear_ip['ipaddress_ipv6'] = None
             row = Helper().make_rows(clear_ip)
-            where = [{"column": "id", "value": check_interface[0]['id']}]
-            result_if = Database().update('nodeinterface', row, where)
+            where = [{"column": "tableref", "value": "nodeinterface"},
+                     {"column": "tablerefid", "value": check_interface[0]['id']}]
+            result_if = Database().update('ipaddress', row, where)
         if result_if:
             message = f"interface {interface_name} cleared of {ipversion} address with result {result_if}"
             self.logger.info(message)

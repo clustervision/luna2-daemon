@@ -81,9 +81,12 @@ def on_starting(server):
     if result is False:
         sys.exit(1)
     # we generate initial dhcpd and dns configs
-    Service().luna_service('dhcp', 'restart')
-    Service().luna_service('dhcp6', 'restart')
-    Service().luna_service('dns', 'restart')
+    try:
+        Service().luna_service('dhcp', 'restart')
+        Service().luna_service('dhcp6', 'restart')
+        Service().luna_service('dns', 'restart')
+    except:
+        pass
     # --------------- status message cleanup thread ----------------
     executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
     executor.submit(Housekeeper().cleanup_mother, event)

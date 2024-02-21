@@ -1089,7 +1089,7 @@ class Config(object):
                                 we_continue = False
                                 we_continue6 = False
                                 if ipaddress['network']:
-                                    if not ipaddress['ipaddress_ipv6']:
+                                    if not ipaddress['network_ipv6']: #ipaddress['ipaddress_ipv6']:
                                         avail6 = None
                                         we_continue6 = True
                                     valid_ip = Helper().check_ip_range(ipaddress['ipaddress'],
@@ -1100,7 +1100,7 @@ class Config(object):
                                         self.logger.info(f"For network {network} no change for IP {ipaddress['ipaddress']}")
                                         we_continue = True
                                 if ipaddress['network_ipv6']:
-                                    if not ipaddress['ipaddress']:
+                                    if not ipaddress['network']:
                                         avail = None
                                         we_continue = True
                                     valid_ip6 = Helper().check_ip_range(ipaddress['ipaddress_ipv6'],

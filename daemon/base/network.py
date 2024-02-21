@@ -126,11 +126,17 @@ class Network():
         data = {}
         db_data = None
         create, update = False, False
+
         if request_data:
+            used_ips, used6_ips = 0, 0
+            redistribute_ipaddress, default_gateway_metric, default_zone = None, "101", "internal"
+
             data = request_data['config']['network'][name]
             data['name'] = name
             network = Database().get_record(None, 'network', f' WHERE `name` = "{name}"')
             if network:
+                used_ips = Helper().get_quantity_occupied_ipaddress_in_network(name,ipversion='ipv4')
+                used6_ips = Helper().get_quantity_occupied_ipaddress_in_network(name,ipversion='ipv6')
                 db_data = network[0]
                 networkid = network[0]['id']
                 if 'newnetname' in request_data['config']['network'][name]:
@@ -146,10 +152,8 @@ class Network():
                 update = True
             else:
                 create = True
-
-            used_ips, used6_ips = 0, 0
-            redistribute_ipaddress, default_gateway_metric, default_zone = None, "101", "internal"
-
+ 
+            # ---------------------- parse incoming data -------------------
             if 'network' in data:
                 network_ip = Helper().check_ip(data['network'])
                 if network_ip:
@@ -324,6 +328,14 @@ class Network():
                         if network_ipv4:
                             nwk_size = Helper().get_network_size(network_ipv4, subnet_ipv4)
                             avail = nwk_size - dhcp_size
+                            self.logger.debug(f"NETWORK {name} UPDATE. used_ips = {used_ips}, avail: {avail} = nwk_size {nwk_size} - dhcp_size {dhcp_size}")
+                            if avail < used_ips:
+                                response = f'The proposed network config allows for {nwk_size} ip '
+                                response += f'addresses. DHCP range will occupy {dhcp_size} ip '
+                                response += 'addresses. The request will not accomodate for the '
+                                response += f'currently {used_ips} in use ip addresses'
+                                status=False
+                                return status, response
                         if 'network_ipv6' in data:
                             network_ipv6 = data['network_ipv6']
                             subnet_ipv6 = data['subnet_ipv6']
@@ -333,20 +345,15 @@ class Network():
                         if network_ipv6:
                             nwk6_size = Helper().get_network_size(network_ipv6, subnet_ipv6)
                             avail6 = nwk6_size - dhcp6_size
-                        if network_ipv4 and avail < used_ips:
-                            response = f'The proposed network config allows for {nwk_size} ip '
-                            response += f'addresses. DHCP range will occupy {dhcp_size} ip '
-                            response += 'addresses. The request will not accomodate for the '
-                            response += f'currently {used_ips} in use ip addresses'
-                            status=False
-                            return status, response
-                        elif network_ipv6 and avail6 < used6_ips:
-                            response = f'The proposed IPv6 network config allows for {nwk6_size} ip '
-                            response += f'addresses. DHCP range will occupy {dhcp6_size} ip '
-                            response += 'addresses. The request will not accomodate for the '
-                            response += f'currently {used6_ips} in use ip addresses'
-                            status=False
-                            return status, response
+                            self.logger.debug(f"NETWORK {name} UPDATE. used6_ips = {used6_ips}, avail6: {avail6} = nwk6_size {nwk6_size} - dhcp6_size {dhcp6_size}")
+                            if avail6 < used6_ips:
+                                response = f'The proposed IPv6 network config allows for {nwk6_size} ip '
+                                response += f'addresses. DHCP range will occupy {dhcp6_size} ip '
+                                response += 'addresses. The request will not accomodate for the '
+                                response += f'currently {used6_ips} in use ip addresses'
+                                status=False
+                                return status, response
+
                     where = [{"column": "id", "value": networkid}]
                     Database().update('network', row, where)
                     # TWANNIE

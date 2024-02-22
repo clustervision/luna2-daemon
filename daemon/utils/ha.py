@@ -77,13 +77,27 @@ class HA():
         self.dict_controllers=None
         self.me=me
         self.ip=None
-        self.all_controllers = Database().get_record_join(['controller.*','ipaddress.ipaddress','network.name as domain'],
+        self.all_controllers = Database().get_record_join(['controller.*','ipaddress.ipaddress','ipaddress.ipaddress_ipv6',
+                                                           'network.name as domain'],
                                                           ['ipaddress.tablerefid=controller.id','network.id=ipaddress.networkid'],
                                                           ["ipaddress.tableref='controller'"])
         if self.all_controllers:
             self.dict_controllers = Helper().convert_list_to_dict(self.all_controllers, 'hostname')
             if not self.me:
                 for interface in ni.interfaces():
+                    try:
+                        wip = ni.ifaddresses(interface)[ni.AF_INET6][0]['addr']
+                        ip, *_ = wip.split('%', 1)+[None]
+                        self.logger.debug(f"Interface {interface} has ip {ip}")
+                        for controller in self.all_controllers:
+                            if controller['hostname'] == "controller":
+                                continue
+                            if not self.me and controller['ipaddress_ipv6'] == ip:
+                                self.me=controller['hostname']
+                                self.ip=ip
+                                self.logger.debug(f"My ipaddress is {ip} and i am {self.me}")
+                    except:
+                        pass
                     try:
                         ip = ni.ifaddresses(interface)[ni.AF_INET][0]['addr']
                         self.logger.debug(f"Interface {interface} has ip {ip}")

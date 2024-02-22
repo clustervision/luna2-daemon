@@ -510,7 +510,7 @@ class Config(object):
                             dns_zone_records[rev_ipv6][host['host']]['key']=host_ptr
                             dns_zone_records[rev_ipv6][host['host']]['type']='PTR'
                             dns_zone_records[rev_ipv6][host['host']]['value']=f"{host['host'].rstrip('.')}.{host['networkname']}"
-                    if host['ipaddress']:
+                    elif host['ipaddress']:
                         dns_zone_records[networkname][host['host']]['type']='A'
                         dns_zone_records[networkname][host['host']]['value']=host['ipaddress']
                         self.logger.debug(f"DNS -- IPv4: host {host['host']}, A ip [{host['ipaddress']}]")

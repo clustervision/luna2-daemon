@@ -230,7 +230,7 @@ class Config(object):
                                 config_hosts[node]['ipaddress']=interface['ipaddress']
                                 config_hosts[node]['macaddress']=interface['macaddress']
                 else:
-                    self.logger.info(f'No Nodes available for this network {network_name}  IPv4: {network_ip} or IPv6: {network_ipv6}')
+                    self.logger.info(f'No Nodes available for this network {network_name} IPv4: {network_ip} or IPv6: {network_ipv6}')
                 for item in ['otherdevices', 'switch']:
                     devices = Database().get_record_join(
                         [f'{item}.name','ipaddress.ipaddress','ipaddress.ipaddress_ipv6',f'{item}.macaddress'],

@@ -157,13 +157,14 @@ class Network():
             if 'network' in data:
                 network_ip = Helper().check_ip(data['network'])
                 if network_ip:
-                    ipv6=Helper().check_if_ipv6(data['network'])
+                    #ipv6=Helper().check_if_ipv6(data['network'])
                     network_details = Helper().get_network_details(data['network'])
                     data['network'] = network_details['network']
                     data['subnet'] = network_details['subnet']
+                    self.logger.info(f"NETWORK {name} IP: {data['network']} / {data['subnet']}")
                     where = f" WHERE (`name`!='{name}' AND `name`!='{data['name']}')"
-                    where += f" AND (`network`='{data['network']}' AND `subnet`='{data['subnet']}')"
-                    where += f" OR (`network_ipv6`='{data['network']}' AND `subnet_ipv6`='{data['subnet']}')"
+                    where += f" AND ((`network`='{data['network']}' AND `subnet`='{data['subnet']}')"
+                    where += f" OR (`network_ipv6`='{data['network']}' AND `subnet_ipv6`='{data['subnet']}'))"
                     claship = Database().get_record(None, 'network', where)
                     if claship:
                         status=False
@@ -181,6 +182,10 @@ class Network():
                                 data['gateway_metric'] = None
                                 # we have to remove the gateway if we did not get a new one and an
                                 # existing is in place. should we warn the user? pending
+                            if 'dhcp' not in data:
+                                data['dhcp'] = 0
+                                #data['dhcp_range_begin'] = None
+                                #data['dhcp_range_end'] = None
                 else:
                     status=False
                     return status, f'Invalid request: Incorrect network IP: {data["network"]}'
@@ -290,6 +295,7 @@ class Network():
                 for item in ['dhcp_range_begin','dhcp_range_end','gateway','network','nameserver_ip']:
                     if item in data and Helper().check_if_ipv6(data[item]):
                         data[item+'_ipv6'] = data[item]
+                        self.logger.debug(f"** Converting {item} to {item}_ipv6")
                         del data[item]
                         if item == 'network':
                             data['subnet_ipv6'] = data['subnet']
@@ -328,7 +334,7 @@ class Network():
                         if network_ipv4:
                             nwk_size = Helper().get_network_size(network_ipv4, subnet_ipv4)
                             avail = nwk_size - dhcp_size
-                            self.logger.debug(f"NETWORK {name} UPDATE. used_ips = {used_ips}, avail: {avail} = nwk_size {nwk_size} - dhcp_size {dhcp_size}")
+                            self.logger.info(f"NETWORK {name} UPDATE. used_ips = {used_ips}, avail: {avail} = nwk_size {nwk_size} - dhcp_size {dhcp_size}")
                             if avail < used_ips:
                                 response = f'The proposed network config allows for {nwk_size} ip '
                                 response += f'addresses. DHCP range will occupy {dhcp_size} ip '
@@ -345,7 +351,7 @@ class Network():
                         if network_ipv6:
                             nwk6_size = Helper().get_network_size(network_ipv6, subnet_ipv6)
                             avail6 = nwk6_size - dhcp6_size
-                            self.logger.debug(f"NETWORK {name} UPDATE. used6_ips = {used6_ips}, avail6: {avail6} = nwk6_size {nwk6_size} - dhcp6_size {dhcp6_size}")
+                            self.logger.info(f"NETWORK {name} UPDATE. used6_ips = {used6_ips}, avail6: {avail6} = nwk6_size {nwk6_size} - dhcp6_size {dhcp6_size}")
                             if avail6 < used6_ips:
                                 response = f'The proposed IPv6 network config allows for {nwk6_size} ip '
                                 response += f'addresses. DHCP range will occupy {dhcp6_size} ip '

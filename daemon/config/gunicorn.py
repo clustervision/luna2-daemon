@@ -21,7 +21,8 @@ Start Luna 2 Daemon as a service luna2-daemon.service
 """
 import luna
 # The IP address (typically localhost) and port that the gunicorn WSGI process should listen on
-bind = '0.0.0.0:7050'
+bind = '[::]:7050'
+#bind = '0.0.0.0:7050'
 
 # Number of gunicorn workers to spawn. This should typically be 2n+1, where
 # n is the number of CPU cores present.

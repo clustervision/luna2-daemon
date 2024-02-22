@@ -228,7 +228,9 @@ class Helper(object):
         """
         just a simple check if the address is ipv6. defaults to ipv4
         """
-        IPv6regex = re.compile(r"[a-f:]+")
+        if ipaddr and ":" in ipaddr:
+            return True
+        IPv6regex = re.compile(r"[a-f]+")
         try:
             if IPv6regex.match(ipaddr):
                 return True
@@ -368,11 +370,13 @@ class Helper(object):
                 start_ip = ipaddress.IPv6Address(start)
                 end_ip = ipaddress.IPv6Address(end)
                 count=int(end_ip)-int(start_ip)
+                self.logger.debug(f"get_ip_range_size ipv6: {end_ip} - {start_ip} = {count}")
                 return count
             else:
                 start_ip = ipaddress.IPv4Address(start)
                 end_ip = ipaddress.IPv4Address(end)
                 count=int(end_ip)-int(start_ip)
+                self.logger.debug(f"get_ip_range_size ipv4: {end_ip} - {start_ip} = {count}")
                 return count
         except Exception as exp:
             return 0
@@ -407,6 +411,7 @@ class Helper(object):
         """
         try:
             if self.check_if_ipv6(network):
+                self.logger.debug(f"get_network_size ipv6: {network} / {subnet}")
                 if subnet:
                     nwk=ipaddress.IPv6Network(network+'/'+subnet)
                     return nwk.num_addresses-2
@@ -414,6 +419,7 @@ class Helper(object):
                     nwk=ipaddress.IPv6Network(network)
                     return nwk.num_addresses-2
             else:
+                self.logger.info(f"get_network_size ipv4: {network} / {subnet}")
                 if subnet:
                     nwk=ipaddress.IPv4Network(network+'/'+subnet)
                     return nwk.num_addresses-2

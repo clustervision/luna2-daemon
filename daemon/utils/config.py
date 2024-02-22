@@ -407,6 +407,7 @@ class Config(object):
             self.logger.error("Error building dns config. either controller or cluster does not exist")
             return False
         controller_ip = controller[0]['ipaddress']
+        controller_ip_ipv6 = controller[0]['ipaddress_ipv6']
         controller_network = controller[0]['networkname']
         if 'forwardserver_ip' in cluster[0] and cluster[0]['forwardserver_ip']:
             forwarder = cluster[0]['forwardserver_ip'].split(',')
@@ -445,8 +446,12 @@ class Config(object):
                 # we always add a zone record for controller even when we're actually in it. we can override.
                 dns_zone_records[networkname]['controller']={}
                 dns_zone_records[networkname]['controller']['key']='controller'
-                dns_zone_records[networkname]['controller']['type']='A'
-                dns_zone_records[networkname]['controller']['value']=controller_ip
+                if nwk['network_ipv6'] and controller_ip_ipv6:
+                    dns_zone_records[networkname]['controller']['type']='AAAA'
+                    dns_zone_records[networkname]['controller']['value']=controller_ip_ipv6
+                else:
+                    dns_zone_records[networkname]['controller']['type']='A'
+                    dns_zone_records[networkname]['controller']['value']=controller_ip
                 if rev_ip:
                     if rev_ip not in dns_zone_records.keys():
                         dns_zone_records[rev_ip]={}

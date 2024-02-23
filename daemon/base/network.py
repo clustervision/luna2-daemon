@@ -285,7 +285,6 @@ class Network():
                     data['gateway']=None
                     data['dhcp_range_begin']=None
                     data['dhcp_range_end']=None
-                    #data['dhcp']=0
                 else:
                     status=False
                     ret_msg = 'Invalid request: clearing ipv4 requires ipv6 to be configured first and vice versa'

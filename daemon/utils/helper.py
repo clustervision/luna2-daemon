@@ -263,10 +263,16 @@ class Helper(object):
         Input - IP Address + Subnet
         Output - Network such as 10.141.0.0/16
         """
-        if subnet:
-            net = ipaddress.ip_network(ipaddr+'/'+subnet, strict=False)
-        else:
-            net = ipaddress.ip_network(ipaddr, strict=False)
+        net = None
+        if not ipaddr:
+            return None
+        try:
+            if subnet:
+                net = ipaddress.ip_network(ipaddr+'/'+subnet, strict=False)
+            else:
+                net = ipaddress.ip_network(ipaddr, strict=False)
+        except (ValueError, TypeError) as exp:
+            self.logger.error(f'Invalid IP address: {ipaddr}/{subnet}, Exception is {exp}.')
         return str(net)
 
 

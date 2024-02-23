@@ -147,6 +147,7 @@ class OtherDev():
                     status=False
                 else:
                     Service().queue('dhcp','restart')
+                    Service().queue('dhcp6','restart')
                     Service().queue('dns','restart')
             return status, response
         else:
@@ -157,11 +158,10 @@ class OtherDev():
 
     def clone_otherdev(self, name=None, request_data=None):
         """
-        This method will clone a other device.
+        This method clones an other device.
         """
         status=False
         data, response = {}, ""
-        create = False
         ipaddress, networkname = None, None
         if request_data:
             data = request_data['config']['otherdev'][name]
@@ -177,8 +177,6 @@ class OtherDev():
             if device:
                 status=False
                 return status, f'{newotherdevname} already present in database'
-            else:
-                create = True
             ipaddress, network = None, None
             if 'ipaddress' in data:
                 ipaddress = data['ipaddress']
@@ -190,94 +188,107 @@ class OtherDev():
             column_check = Helper().compare_list(data, device_columns)
             if data:
                 if column_check:
-                    if create:
-                        where=f' WHERE `name` = "{name}"'
-                        device = Database().get_record(table=self.table, where=where)
-                        if not device:
-                            status = False
-                            return status, f"Source device {name} does not exist"
-                        del device[0]['id']
-                        for key in device[0]:
-                            if key not in data:
-                                data[key] = device[0][key]
+                    where=f' WHERE `name` = "{name}"'
+                    device = Database().get_record(table=self.table, where=where)
+                    if not device:
+                        status = False
+                        return status, f"Source device {name} does not exist"
+                    del device[0]['id']
+                    for key in device[0]:
+                        if key not in data:
+                            data[key] = device[0][key]
 
-                        row = Helper().make_rows(data)
-                        device_id = Database().insert(self.table, row)
-                        if not device_id:
-                            status=False
-                            return status, 'Device not cloned due to clashing config'
-                        status=True
-                        network = None
-                        if networkname:
-                            network = Database().get_record_join(
-                                [
-                                    'ipaddress.ipaddress',
-                                    'ipaddress.networkid as networkid',
-                                    'network.network',
-                                    'network.subnet'
-                                ],
-                                ['network.id=ipaddress.networkid'],
-                                [f"network.name='{networkname}'"]
-                            )
-                        else:
-                            network = Database().get_record_join(
-                                [
-                                    'ipaddress.ipaddress',
-                                    'ipaddress.networkid as networkid',
-                                    'network.name as networkname',
-                                    'network.network',
-                                    'network.subnet'
-                                ],
-                                [
-                                    'network.id=ipaddress.networkid',
-                                    'ipaddress.tablerefid=otherdevices.id'
-                                ],
-                                [f'otherdevices.name="{name}"', 'ipaddress.tableref="otherdevices"']
-                            )
+                    row = Helper().make_rows(data)
+                    device_id = Database().insert(self.table, row)
+                    if not device_id:
+                        status=False
+                        return status, 'Device not cloned due to clashing config'
+                    status=True
+                    network = None
+                    if networkname:
+                        network = Database().get_record_join(
+                            [
+                                'ipaddress.ipaddress',
+                                'ipaddress.ipaddress_ipv6',
+                                'ipaddress.networkid as networkid',
+                                'network.network',
+                                'network.subnet'
+                            ],
+                            ['network.id=ipaddress.networkid'],
+                            [f"network.name='{networkname}'"]
+                        )
+                    else:
+                        network = Database().get_record_join(
+                            [
+                                'ipaddress.ipaddress',
+                                'ipaddress.ipaddress_ipv6',
+                                'ipaddress.networkid as networkid',
+                                'network.name as networkname',
+                                'network.network', 'network.network_ipv6',
+                                'network.subnet', 'network.subnet_ipv6'
+                            ],
+                            [
+                                'network.id=ipaddress.networkid',
+                                'ipaddress.tablerefid=otherdevices.id'
+                            ],
+                            [f'otherdevices.name="{name}"', 'ipaddress.tableref="otherdevices"']
+                        )
+                        if network:
+                            networkname = network[0]['networkname']
+                    ipaddress6, result, result6 = None, False, True
+                    if not ipaddress:
+                        if not network:
+                            where = f' WHERE `name` = "{networkname}"'
+                            network = Database().get_record(None, 'network', where)
                             if network:
                                 networkname = network[0]['networkname']
-                        if not ipaddress:
-                            if not network:
-                                where = f' WHERE `name` = "{networkname}"'
-                                network = Database().get_record(None, 'network', where)
-                                if network:
-                                    networkname = network[0]['networkname']
-                            if network:
+                        if network:
+                            if network[0]['network']:
                                 ips = Config().get_all_occupied_ips_from_network(networkname)
-                                ret, avail = 0, None
-                                max_count = 10
-                                # we try to ping for 10 ips, if none of these are free, something
-                                # else is going on (read: rogue devices)....
-                                while(max_count > 0 and ret != 1):
-                                    avail = Helper().get_available_ip(
-                                        network[0]['network'],
-                                        network[0]['subnet'],
-                                        ips
-                                    )
-                                    ips.append(avail)
-                                    _, ret = Helper().runcommand(f"ping -w1 -c1 {avail}", True, 3)
-                                    max_count -= 1
+                                avail = Helper().get_available_ip(
+                                    network[0]['network'],
+                                    network[0]['subnet'],
+                                    ips, ping=True
+                                )
                                 if avail:
                                     ipaddress = avail
-                            else:
-                                status=False
-                                return status, 'Invalid request: Network and ipaddress not provided'
+                            if network[0]['network_ipv6']:
+                                ips = Config().get_all_occupied_ips_from_network(networkname,'ipv6')
+                                avail = Helper().get_available_ip(
+                                    network[0]['network_ipv6'],
+                                    network[0]['subnet_ipv6'],
+                                    ips, ping=True
+                                )
+                                if avail:
+                                    ipaddress6 = avail
+                        else:
+                            status=False
+                            return status, 'Invalid request: Network and ipaddress not provided'
+                    if ipaddress:
                         result, message = Config().device_ipaddress_config(
                             device_id,
                             self.table,
                             ipaddress,
                             networkname
                         )
-                        if result is False:
-                            where = [{"column": "id", "value": device_id}]
-                            Database().delete_row(self.table, where)
-                            # roll back
-                            status=False
-                            response = f'{message}'
-                        else:
-                            Service().queue('dhcp', 'restart')
-                            Service().queue('dns', 'restart')
-                            response = 'Device created'
+                    if ipaddress6:
+                        result6, message = Config().device_ipaddress_config(
+                            device_id,
+                            self.table,
+                            ipaddress6,
+                            networkname
+                        )
+                    if result is False or result6 is False:
+                        where = [{"column": "id", "value": device_id}]
+                        Database().delete_row(self.table, where)
+                        # roll back
+                        status=False
+                        response = f'{message}'
+                    else:
+                        Service().queue('dhcp', 'restart')
+                        Service().queue('dhcp6','restart')
+                        Service().queue('dns', 'restart')
+                        response = 'Device created'
                 else:
                     response = 'Invalid request: Columns are incorrect'
                     status=False

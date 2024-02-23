@@ -68,11 +68,12 @@ class Model():
                 del record['id']
                 response['config'][config_table][record['name']] = record
                 if ip_check:
-                    ipaddress, network = Helper().get_ip_network(table=table, record_id=record_id)
-                    if ipaddress:
+                    ipaddress, ipaddress_ipv6, network = self.get_ip_network(table=table, record_id=record_id)
+                    if ipaddress or ipaddress_ipv6:
                         response['config'][config_table][record['name']]['ipaddress'] = ipaddress
+                        response['config'][config_table][record['name']]['ipaddress_ipv6'] = ipaddress_ipv6
                         response['config'][config_table][record['name']]['network'] = network
-            self.logger.info(f'Available {table_cap} are {all_records}.')
+            self.logger.debug(f'Available {table_cap} are {all_records}.')
             status=True
         else:
             self.logger.error(f'No {table_cap} is available.')
@@ -137,7 +138,7 @@ class Model():
             response = f'{table_cap} removed from database.'
             status=True
         else:
-            self.logger.info(f'{name} is not present in the database.')
+            self.logger.debug(f'{name} is not present in the database.')
             response = f'{name} is not present in the database.'
             status=False
         return status, response
@@ -162,7 +163,7 @@ class Model():
             response = f'{table_cap} removed from database.'
             status=True
         else:
-            self.logger.info(f'{id} is not present in the database.')
+            self.logger.debug(f'{id} is not present in the database.')
             response = f'{id} is not present in the database.'
             status=False
         return status, response
@@ -203,7 +204,7 @@ class Model():
         data = request_data['config'][table][name]
         data['name'] = name
         if record:
-            self.logger.info(f'{table_cap} already has {name}')
+            self.logger.debug(f'{table_cap} already has {name}')
             response = f'{table_cap} already has {name}'
             status=False
         else:
@@ -216,7 +217,7 @@ class Model():
                 response = f'{name} successfully added in {table}'
                 status=True
             else:
-                self.logger.info('Incorrect column(s) provided.')
+                self.logger.debug('Incorrect column(s) provided.')
                 response = 'Invalid request: Incorrect column(s) provided.'
                 status=False
         return status, response
@@ -252,11 +253,11 @@ class Model():
                 response = f'{name} updated successfully'
                 status=True
             else:
-                self.logger.info('Incorrect column(s) provided.')
+                self.logger.debug('Incorrect column(s) provided.')
                 response = 'Invalid request: Incorrect column(s) provided.'
                 status=False
         else:
-            self.logger.info(f'{name} is not present in {table_cap}.')
+            self.logger.debug(f'{name} is not present in {table_cap}.')
             response = f'{name} is not present in {table_cap}.'
             status=False
         return status, response
@@ -296,11 +297,35 @@ class Model():
                 response = f'{name} cloned as {new_record} successfully'
                 status=True
             else:
-                self.logger.info('Incorrect column(s) provided.')
+                self.logger.debug('Incorrect column(s) provided.')
                 response = 'Invalid request: Incorrect column(s) provided.'
                 status=False
         else:
-            self.logger.info(f'{name} is not present in {table_cap}.')
+            self.logger.debug(f'{name} is not present in {table_cap}.')
             response = f'{name} is not present in {table_cap}.'
             status=False
         return status, response
+
+
+    def get_ip_network(self, table=None, record_id=None):
+        """
+        This method will return IP and Network for the given device.
+        """
+        response = None, None, None
+        ip_detail = Database().get_record_join(
+            ['network.name as network', 'ipaddress.ipaddress', 'ipaddress.ipaddress_ipv6'],
+            [f'ipaddress.tablerefid={table}.id', 'network.id=ipaddress.networkid'],
+            [f'tableref="{table}"', f"tablerefid='{record_id}'"]
+        )
+        if ip_detail:
+            response = ip_detail[0]['ipaddress'], ip_detail[0]['ipaddress_ipv6'], ip_detail[0]['network']
+        else:
+            ip_detail = Database().get_record_join(
+                ['ipaddress.ipaddress', 'ipaddress.ipaddress_ipv6'],
+                [f'ipaddress.tablerefid={table}.id'],
+                [f'tableref="{table}"', f"tablerefid='{record_id}'"]
+            )
+            if ip_detail:
+                response = ip_detail[0]['ipaddress'], ip_detail[0]['ipaddress_ipv6'], None
+        return response
+

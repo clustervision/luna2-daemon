@@ -113,6 +113,7 @@ DATABASE_LAYOUT_monitor = [
 DATABASE_LAYOUT_ipaddress = [
 {"column": "id",                   "datatype": "INTEGER", "key": "PRIMARY", "keyadd": "AUTOINCREMENT"},
 {"column": "ipaddress",            "datatype": "VARCHAR", "length": "60", "key": "UNIQUE"},
+{"column": "ipaddress_ipv6",       "datatype": "VARCHAR", "length": "60", "key": "UNIQUE"},
 {"column": "tableref",             "datatype": "VARCHAR", "length": "100", "key": "UNIQUE", "with": "tablerefid"},
 {"column": "tablerefid",           "datatype": "INTEGER", "length": "10"},
 {"column": "networkid",            "datatype": "INTEGER", "length": "10"}]
@@ -154,14 +155,20 @@ DATABASE_LAYOUT_network = [
 {"column": "id",                   "datatype": "INTEGER", "key": "PRIMARY", "keyadd": "AUTOINCREMENT"},
 {"column": "name",                 "datatype": "VARCHAR", "length": "60", "key": "UNIQUE"},
 {"column": "network",              "datatype": "VARCHAR", "length": "20"},
+{"column": "network_ipv6",         "datatype": "VARCHAR", "length": "60"},
 {"column": "subnet",               "datatype": "VARCHAR", "length": "20"},
-{"column": "gateway",              "datatype": "VARCHAR", "length": "60"},
+{"column": "subnet_ipv6",          "datatype": "VARCHAR", "length": "20"},
+{"column": "gateway",              "datatype": "VARCHAR", "length": "20"},
+{"column": "gateway_ipv6",         "datatype": "VARCHAR", "length": "60"},
 {"column": "gateway_metric",       "datatype": "INTEGER", "length": "10"},
 {"column": "nameserver_ip",        "datatype": "VARCHAR", "length": "20"},
+{"column": "nameserver_ip_ipv6",   "datatype": "VARCHAR", "length": "60"},
 {"column": "ntp_server",           "datatype": "VARCHAR", "length": "60"},
 {"column": "dhcp",                 "datatype": "INTEGER", "length": "10"},
 {"column": "dhcp_range_begin",     "datatype": "VARCHAR", "length": "20"},
-{"column": "dhcp_range_end",       "datatype": "VARCHAR", "length": "60"},
+{"column": "dhcp_range_begin_ipv6","datatype": "VARCHAR", "length": "60"},
+{"column": "dhcp_range_end",       "datatype": "VARCHAR", "length": "20"},
+{"column": "dhcp_range_end_ipv6",  "datatype": "VARCHAR", "length": "60"},
 {"column": "zone",                 "datatype": "VARCHAR", "length": "60"},
 {"column": "shared",               "datatype": "VARCHAR", "length": "60"},
 {"column": "type",                 "datatype": "VARCHAR", "length": "100"},
@@ -170,7 +177,8 @@ DATABASE_LAYOUT_network = [
 DATABASE_LAYOUT_dns = [
 {"column": "id",                   "datatype": "INTEGER", "key": "PRIMARY", "keyadd": "AUTOINCREMENT"},
 {"column": "host",                 "datatype": "VARCHAR", "length": "100"},
-{"column": "ipaddress",            "datatype": "VARCHAR", "length": "60"},
+{"column": "ipaddress",            "datatype": "VARCHAR", "length": "20"},
+{"column": "ipaddress_ipv6",       "datatype": "VARCHAR", "length": "60"},
 {"column": "networkid",            "datatype": "INTEGER", "length": "10"}]
 
 DATABASE_LAYOUT_user = [
@@ -251,6 +259,8 @@ DATABASE_LAYOUT_cluster = [
 {"column": "user",                 "datatype": "VARCHAR", "length": "20"},
 {"column": "nameserver_ip",        "datatype": "VARCHAR", "length": "200"},
 {"column": "forwardserver_ip",     "datatype": "VARCHAR", "length": "200"},
+{"column": "nameserver_ip_ipv6",   "datatype": "VARCHAR", "length": "500"},
+{"column": "forwardserver_ip_ipv6","datatype": "VARCHAR", "length": "500"},
 {"column": "ntp_server",           "datatype": "VARCHAR", "length": "200"},
 {"column": "technical_contacts",   "datatype": "VARCHAR", "length": "50"},
 {"column": "provision_method",     "datatype": "VARCHAR", "length": "20"},

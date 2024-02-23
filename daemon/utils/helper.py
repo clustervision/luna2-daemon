@@ -40,7 +40,7 @@ import json
 import ipaddress
 from configparser import RawConfigParser
 import hostlist
-from netaddr import IPNetwork
+from netaddr import IPNetwork, IPAddress
 from jinja2 import Environment, meta, FileSystemLoader
 from utils.log import Log
 from utils.database import Database
@@ -60,28 +60,6 @@ class Helper(object):
         self.packing = queue.Queue()
         self.IPregex = re.compile(r"^((([0-9a-fA-F]{1,4}:){7,7}[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,7}:|([0-9a-fA-F]{1,4}:){1,6}:[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,5}(:[0-9a-fA-F]{1,4}){1,2}|([0-9a-fA-F]{1,4}:){1,4}(:[0-9a-fA-F]{1,4}){1,3}|([0-9a-fA-F]{1,4}:){1,3}(:[0-9a-fA-F]{1,4}){1,4}|([0-9a-fA-F]{1,4}:){1,2}(:[0-9a-fA-F]{1,4}){1,5}|[0-9a-fA-F]{1,4}:((:[0-9a-fA-F]{1,4}){1,6})|:((:[0-9a-fA-F]{1,4}){1,7}|:)|fe80:(:[0-9a-fA-F]{0,4}){0,4}%[0-9a-zA-Z]{1,}|::(ffff(:0{1,4}){0,1}:){0,1}((25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])\.){3,3}(25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])|([0-9a-fA-F]{1,4}:){1,4}:((25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])\.){3,3}(25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9]))|(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\.(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\.(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\.(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)|(([0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3})))\/?[0-9]*$")
 
-
-    def get_ip_network(self, table=None, record_id=None):
-        """
-        This method will return IP and Network for the given device.
-        """
-        response = None, None
-        ip_detail = Database().get_record_join(
-            ['network.name as network', 'ipaddress.ipaddress'],
-            [f'ipaddress.tablerefid={table}.id', 'network.id=ipaddress.networkid'],
-            [f'tableref="{table}"', f"tablerefid='{record_id}'"]
-        )
-        if ip_detail:
-            response = ip_detail[0]['ipaddress'], ip_detail[0]['network']
-        else:
-            ip_detail = Database().get_record_join(
-                ['ipaddress.ipaddress'],
-                [f'ipaddress.tablerefid={table}.id'],
-                [f'tableref="{table}"', f"tablerefid='{record_id}'"]
-            )
-            if ip_detail:
-                response = ip_detail[0]['ipaddress'], None
-        return response
 
 
 ################### ---> Experiment to compare the logic
@@ -246,19 +224,38 @@ class Helper(object):
         return check
 
 
+    def check_if_ipv6(self, ipaddr=None):
+        """
+        just a simple check if the address is ipv6. defaults to ipv4
+        """
+        if ipaddr and ":" in ipaddr:
+            return True
+        IPv6regex = re.compile(r"[a-f]+")
+        try:
+            if IPv6regex.match(ipaddr):
+                return True
+        except:
+            pass
+        return False
+
+
     def check_ip(self, ipaddr=None):
         """
         Add blacklist filter;
         https://clustervision.atlassian.net/wiki/spaces/TRIX/pages/52461574/2022-11-11+Development+meeting
         """
-        response = ''
+        response = []
         try:
-            if self.IPregex.match(ipaddr):
-                ip_address = IPNetwork(ipaddr)
-                response = str(ip_address.ip)
+            ipaddr = ipaddr.replace(' ','')
+            ipaddr_list = ipaddr.split(',')
+            for ipaddr in ipaddr_list:
+                if self.IPregex.match(ipaddr):
+                    ip_address = IPNetwork(ipaddr)
+                    response.append(str(ip_address.ip))
         except Exception as exp:
             self.logger.error(f'Invalid IP address: {ipaddr}, Exception is {exp}.')
-        return response
+            return None
+        return ','.join(response)
 
 
     def get_network(self, ipaddr=None, subnet=None):
@@ -266,10 +263,16 @@ class Helper(object):
         Input - IP Address + Subnet
         Output - Network such as 10.141.0.0/16
         """
-        if subnet:
-            net = ipaddress.ip_network(ipaddr+'/'+subnet, strict=False)
-        else:
-            net = ipaddress.ip_network(ipaddr, strict=False)
+        net = None
+        if not ipaddr:
+            return None
+        try:
+            if subnet:
+                net = ipaddress.ip_network(ipaddr+'/'+subnet, strict=False)
+            else:
+                net = ipaddress.ip_network(ipaddr, strict=False)
+        except (ValueError, TypeError) as exp:
+            self.logger.error(f'Invalid IP address: {ipaddr}/{subnet}, Exception is {exp}.')
         return str(net)
 
 
@@ -277,7 +280,7 @@ class Helper(object):
         """
         Input - IP Address such as 10.141.0.0/16
         Output - Network and Subnet such as 10.141.0.0 and 16
-        (we settled for a cidr notation to be ipv6 compliant in the future)
+        (we settled for a cidr notation to be ipv6 compliant)
         """
         response = {}
         try:
@@ -307,15 +310,13 @@ class Helper(object):
         """
         Check If IP is in range or not
         """
-        response = False
         try:
             if self.check_ip(ipaddr):
-                if ipaddress.ip_address(ipaddr) in list(ipaddress.ip_network(network).hosts()):
-                    response = True
+                if IPAddress(ipaddr) in IPNetwork(network):
+                    return True
         except Exception as exp:
             self.logger.error(f'Invalid subnet: {ipaddr}, Exception is {exp}.')
-        return response
-
+        return False
 
     def check_ip_exist(self, data=None):
         """
@@ -339,31 +340,50 @@ class Helper(object):
                     data['ipaddress'] = subnet_record[0]['id']
         return data
 
-
-    def get_available_ip(self, network=None, subnet=None, takenips=None):
+    def get_available_ip(self, network=None, subnet=None, takenips=[], ping=False):
         """
         This method will provide the available IP address list.
+        Optionally we can ping it to just make sure...
         """
-        if not takenips:
-            takenips=[]
         if subnet:
             network+=str('/'+subnet)
         try:
+            avail = None
             net = ipaddress.ip_network(f"{network}")
-            avail = (str(ip) for ip in net.hosts() if str(ip) not in takenips)
+            if not ping:
+                avail = (str(ip) for ip in net.hosts() if str(ip) not in takenips)
+                return str(next(avail))
+            # we try to ping for X ips, if none of these are free,
+            # something else is going on (read: rogue devices)....
+            ret = 0
+            maximum = 5
+            while(maximum > 0 and ret != 1):
+                avail = (str(ip) for ip in net.hosts() if str(ip) not in takenips)
+                takenips.append(avail)
+                result, ret = self.runcommand(f"ping -w1 -c1 {avail}", True, 3)
+                maximum -= 1
             return str(next(avail))
         except Exception as exp:
             return exp
+
 
     def get_ip_range_size(self, start=None, end=None):
         """
         This method will provide the range size of IP.
         """
         try:
-            start_ip = ipaddress.IPv4Address(start)
-            end_ip = ipaddress.IPv4Address(end)
-            count=int(end_ip)-int(start_ip)
-            return count
+            if self.check_if_ipv6(start):
+                start_ip = ipaddress.IPv6Address(start)
+                end_ip = ipaddress.IPv6Address(end)
+                count=int(end_ip)-int(start_ip)
+                self.logger.debug(f"get_ip_range_size ipv6: {end_ip} - {start_ip} = {count}")
+                return count
+            else:
+                start_ip = ipaddress.IPv4Address(start)
+                end_ip = ipaddress.IPv4Address(end)
+                count=int(end_ip)-int(start_ip)
+                self.logger.debug(f"get_ip_range_size ipv4: {end_ip} - {start_ip} = {count}")
+                return count
         except Exception as exp:
             return 0
 
@@ -373,10 +393,20 @@ class Helper(object):
         """
         try:
             ip_list=[]
-            start_ip = ipaddress.IPv4Address(start)
-            end_ip = ipaddress.IPv4Address(end)
-            for ip in range(int(start_ip),(int(end_ip)+1)):
-                ip_list.append(str(ipaddress.IPv4Address(ip)))
+            if self.check_if_ipv6(start):
+                counter = 100000
+                start_ip = ipaddress.IPv6Address(start)
+                end_ip = ipaddress.IPv6Address(end)
+                for ip in range(int(start_ip),(int(end_ip)+1)):
+                    ip_list.append(str(ipaddress.IPv6Address(ip)))
+                    if counter < 0:
+                        break
+                    counter -= 1
+            else:
+                start_ip = ipaddress.IPv4Address(start)
+                end_ip = ipaddress.IPv4Address(end)
+                for ip in range(int(start_ip),(int(end_ip)+1)):
+                    ip_list.append(str(ipaddress.IPv4Address(ip)))
             return ip_list
         except Exception as exp:
             return []
@@ -386,12 +416,22 @@ class Helper(object):
         This method will provide the network size of IP.
         """
         try:
-            if subnet:
-                nwk=ipaddress.IPv4Network(network+'/'+subnet)
-                return nwk.num_addresses-2
+            if self.check_if_ipv6(network):
+                self.logger.debug(f"get_network_size ipv6: {network} / {subnet}")
+                if subnet:
+                    nwk=ipaddress.IPv6Network(network+'/'+subnet)
+                    return nwk.num_addresses-2
+                else:
+                    nwk=ipaddress.IPv6Network(network)
+                    return nwk.num_addresses-2
             else:
-                nwk=ipaddress.IPv4Network(network)
-                return nwk.num_addresses-2
+                self.logger.info(f"get_network_size ipv4: {network} / {subnet}")
+                if subnet:
+                    nwk=ipaddress.IPv4Network(network+'/'+subnet)
+                    return nwk.num_addresses-2
+                else:
+                    nwk=ipaddress.IPv4Network(network)
+                    return nwk.num_addresses-2
         except Exception as exp:
             return 0
 
@@ -400,27 +440,39 @@ class Helper(object):
         This method will provide the range of first and last IP.
         """
         try:
-            nwk = ipaddress.IPv4Network(network+'/'+subnet)
+            nwk=None
+            ipv6=False
+            if self.check_if_ipv6(network):
+                nwk = ipaddress.IPv6Network(network+'/'+subnet)
+                ipv6=True
+            else:
+                nwk = ipaddress.IPv4Network(network+'/'+subnet)
             first = nwk[1]
             last  = nwk[(size+1)]
             if offset:
                 first_int = int(first) + offset
                 last_int = int(last) + offset
-                first = ipaddress.IPv4Address(first_int)
-                # ip_address instead of IPv4Address might also work and is ipv6 complaint? pending
-                last = ipaddress.IPv4Address(last_int)
+                if ipv6:
+                    first = ipaddress.IPv6Address(first_int)
+                    last = ipaddress.IPv6Address(last_int)
+                else:
+                    first = ipaddress.IPv4Address(first_int)
+                    last = ipaddress.IPv4Address(last_int)
             return str(first),str(last)
         except Exception as exp:
             self.logger.error(f"something went wrong: {exp}")
             return None, None
 
-    def get_quantity_occupied_ipaddress_in_network(self, network=None):
+    def get_quantity_occupied_ipaddress_in_network(self, network=None, ipversion='ipv4'):
         """
         This method will provide the quantity occupied in a network by ipaddress.
         """
+        IPv6=""
+        if ipversion == 'ipv6':
+            IPv6="_ipv6"
         if network:
             ipaddress_list = Database().get_record_join(
-                ['ipaddress.ipaddress'],
+                ['ipaddress.ipaddress'+IPv6],
                 ['ipaddress.networkid=network.id'],
                 [f"network.name='{network}'"]
             )

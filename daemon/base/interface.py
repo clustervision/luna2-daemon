@@ -138,7 +138,10 @@ class Interface():
                 )
                 if result:
                     existing = Database().get_record_join(
-                        ['ipaddress.ipaddress','network.name as networkname'],
+                        [
+                            'ipaddress.ipaddress','ipaddress.ipaddress_ipv6',
+                            'network.name as networkname'
+                        ],
                         [
                             'nodeinterface.nodeid=node.id',  
                             'ipaddress.tablerefid=nodeinterface.id',
@@ -151,28 +154,46 @@ class Interface():
                         ]
                     )
                     if network or ipaddress:
+                        ipaddress_ipv6 = None
                         if not ipaddress:
+                            # ipv4
                             if existing:
                                 if network == existing[0]['networkname']:
                                     ipaddress = existing[0]['ipaddress']
+                                    if existing[0]['ipaddress_ipv6'] and not ipaddress:
+                                        ipaddress = existing[0]['ipaddress_ipv6']
                             if not ipaddress:
                                 if not network and existing:
                                     network = existing[0]['networkname']
                                 if network:
-                                    ips = Config().get_all_occupied_ips_from_network(network)
                                     where = f" WHERE `name` = '{network}'"
                                     network_details = Database().get_record(None, 'network', where)
                                     if network_details:
-                                        avail = Helper().get_available_ip(
-                                            network_details[0]['network'],
-                                            network_details[0]['subnet'],
-                                            ips
-                                        )
-                                        if avail:
-                                            ipaddress = avail
+                                        if network_details[0]['network']:
+                                            ips = Config().get_all_occupied_ips_from_network(network)
+                                            avail = Helper().get_available_ip(
+                                                network_details[0]['network'],
+                                                network_details[0]['subnet'],
+                                                ips
+                                            )
+                                            if avail:
+                                                ipaddress = avail
+                                        if network_details[0]['network_ipv6']:
+                                            ips = Config().get_all_occupied_ips_from_network(network,'ipv6')
+                                            avail = Helper().get_available_ip(
+                                                network_details[0]['network_ipv6'],
+                                                network_details[0]['subnet_ipv6'],
+                                                ips
+                                            )
+                                            if avail:
+                                                ipaddress_ipv6 = avail
                         elif not network:
                             if existing:
                                 network = existing[0]['networkname']
+
+                        if ipaddress_ipv6 and not ipaddress:
+                            ipaddress = ipaddress_ipv6
+                            ipaddress_ipv6 = None
 
                         result, message = Config().node_interface_ipaddress_config(
                             nodeid,
@@ -180,6 +201,13 @@ class Interface():
                             ipaddress,
                             network
                         )
+                        if result and ipaddress_ipv6:
+                            result, message = Config().node_interface_ipaddress_config(
+                                nodeid,
+                                interface_name,
+                                ipaddress_ipv6,
+                                network
+                            )
                     elif (macaddress is None) and (options is None):
                         # this means we just made an empty interface. a no no - Antoine
                         # beware that we _have_ to test for None as 
@@ -274,43 +302,59 @@ class Interface():
                             group_interface['options']
                         )
                         if result:
-                            ips = Config().get_all_occupied_ips_from_network(
-                                group_interface['network']
-                            )
                             where = f" WHERE `name` = \"{group_interface['network']}\""
                             network = Database().get_record(None, 'network', where)
                             if network:
-                                avail = Helper().get_available_ip(
-                                    network[0]['network'],
-                                    network[0]['subnet'],
-                                    ips
-                                )
-                                if avail:
-                                    result, message = Config().node_interface_ipaddress_config(
-                                        nodeid,
-                                        group_interface['interface'],
-                                        avail,
+                                if network[0]['network']:
+                                    ips = Config().get_all_occupied_ips_from_network(
                                         group_interface['network']
                                     )
-                                    if result:
-                                        if if_dict and group_interface['interface'] in if_dict.keys():
-                                            del if_dict[group_interface['interface']]
-                                # we do not ping nodes as it will take time if we add bulk
-                                # nodes, it'll take 1s per node. code block removal pending?
-                                # ret=0
-                                # max=5
-                                # we try to ping for X ips, if none of these are free,
-                                # something else is going on (read: rogue devices)....
-                                # while(max>0 and ret!=1):
-                                #     avail = Helper().get_available_ip(
-                                #       network[0]['network'],
-                                #       network[0]['subnet'],
-                                #       ips
-                                #     )
-                                #     ips.append(avail)
-                                #     command = f"ping -w1 -c1 {avail}"
-                                #     output, ret = Helper().runcommand(command, True, 3)
-                                #     max-= 1
+                                    avail = Helper().get_available_ip(
+                                        network[0]['network'],
+                                        network[0]['subnet'],
+                                        ips
+                                    )
+                                    if avail:
+                                        result, message = Config().node_interface_ipaddress_config(
+                                            nodeid,
+                                            group_interface['interface'],
+                                            avail,
+                                            group_interface['network']
+                                        )
+                                        if result:
+                                            if if_dict and group_interface['interface'] in if_dict.keys():
+                                                del if_dict[group_interface['interface']]
+                                else:
+                                    result, message = Config().node_interface_clear_ipaddress(
+                                        nodeid,
+                                        group_interface['interface'],
+                                        'ipv4'
+                                    )
+                                if network[0]['network_ipv6']:
+                                    ips = Config().get_all_occupied_ips_from_network(
+                                        group_interface['network'], 'ipv6'
+                                    )
+                                    avail = Helper().get_available_ip(
+                                        network[0]['network_ipv6'],
+                                        network[0]['subnet_ipv6'],
+                                        ips
+                                    )
+                                    if avail:
+                                        result, message = Config().node_interface_ipaddress_config(
+                                            nodeid,
+                                            group_interface['interface'],
+                                            avail,
+                                            group_interface['network']
+                                        )
+                                        if result:
+                                            if if_dict and group_interface['interface'] in if_dict.keys():
+                                                del if_dict[group_interface['interface']]
+                                else:
+                                    result, message = Config().node_interface_clear_ipaddress(
+                                        nodeid,
+                                        group_interface['interface'],
+                                        'ipv6'
+                                    )
 
             if if_dict and if_old_group_dict:
                 for interface in if_dict.keys():
@@ -411,11 +455,8 @@ class Interface():
                 # below might look as redundant but is added to prevent a possible race condition
                 # when many nodes are added in a loop.
                 # the below tasks ensures that even the last node will be included in dhcp/dns
-                Queue().add_task_to_queue(
-                    'dhcp:restart',
-                    'housekeeper',
-                    '__node_interface_delete__'
-                )
+                Queue().add_task_to_queue('dhcp:restart','housekeeper','__node_interface_delete__')
+                Queue().add_task_to_queue('dhcp6:restart','housekeeper','__node_interface_delete__')
                 Queue().add_task_to_queue('dns:restart', 'housekeeper', '__node_interface_delete__')
                 response = f'Interface {interface} removed successfully'
                 status=True

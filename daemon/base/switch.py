@@ -169,6 +169,7 @@ class Switch():
                     status=False
                 else:
                     Service().queue('dhcp','restart')
+                    Service().queue('dhcp6','restart')
                     Service().queue('dns','restart')
             return status, response
         else:
@@ -181,9 +182,8 @@ class Switch():
         """
         This method will clone a switch.
         """
-        data, response = {}, ""
         status=False
-        create = False
+        data, response = {}, ""
         ipaddress, networkname = None, None
         if request_data:
             data = request_data['config'][self.table][name]
@@ -199,8 +199,6 @@ class Switch():
             if check_switch:
                 status=False
                 return status, f'{newswitchname} already present in database'
-            else:
-                create = True
             ipaddress, network = None, None
             if 'ipaddress' in data:
                 ipaddress = data['ipaddress']
@@ -212,94 +210,107 @@ class Switch():
             column_check = Helper().compare_list(data, switch_columns)
             if data:
                 if column_check:
-                    if create:
-                        where = f' WHERE `name` = "{name}"'
-                        switch = Database().get_record(table=self.table, where=where)
-                        if not switch:
-                            status = False
-                            return status, f"Source switch {name} does not exist"
-                        del switch[0]['id']
-                        for key in switch[0]:
-                            if key not in data:
-                                data[key] = switch[0][key]
-                        row = Helper().make_rows(data)
-                        new_switchid = Database().insert(self.table, row)
-                        if not new_switchid:
-                            status=False
-                            return status, 'Switch not cloned due to clashing config'
-                        status=True
-                        network=None
-                        if networkname:
-                            network = Database().get_record_join(
-                                [
-                                    'ipaddress.ipaddress',
-                                    'ipaddress.networkid as networkid',
-                                    'network.network',
-                                    'network.subnet'
-                                ],
-                                ['network.id=ipaddress.networkid'],
-                                [f"network.name='{networkname}'"]
-                            )
-                        else:
-                            network = Database().get_record_join(
-                                [
-                                    'ipaddress.ipaddress',
-                                    'ipaddress.networkid as networkid',
-                                    'network.name as networkname',
-                                    'network.network',
-                                    'network.subnet'
-                                ],
-                                [
-                                    'network.id=ipaddress.networkid',
-                                    'ipaddress.tablerefid=switch.id'
-                                ],
-                                [f'switch.name="{name}"', 'ipaddress.tableref="switch"']
-                            )
+                    where = f' WHERE `name` = "{name}"'
+                    switch = Database().get_record(table=self.table, where=where)
+                    if not switch:
+                        status = False
+                        return status, f"Source switch {name} does not exist"
+                    del switch[0]['id']
+                    for key in switch[0]:
+                        if key not in data:
+                            data[key] = switch[0][key]
+                    row = Helper().make_rows(data)
+                    switch_id = Database().insert(self.table, row)
+                    if not switch_id:
+                        status=False
+                        return status, 'Switch not cloned due to clashing config'
+                    status=True
+                    network=None
+                    if networkname:
+                        network = Database().get_record_join(
+                            [
+                                'ipaddress.ipaddress',
+                                'ipaddress.ipaddress_ipv6',
+                                'ipaddress.networkid as networkid',
+                                'network.network', 'network.network_ipv6',
+                                'network.subnet', 'network.subnet_ipv6'
+                            ],
+                            ['network.id=ipaddress.networkid'],
+                            [f"network.name='{networkname}'"]
+                        )
+                    else:
+                        network = Database().get_record_join(
+                            [
+                                'ipaddress.ipaddress',
+                                'ipaddress.ipaddress_ipv6',
+                                'ipaddress.networkid as networkid',
+                                'network.name as networkname',
+                                'network.network', 'network.network_ipv6',
+                                'network.subnet', 'network.subnet_ipv6'
+                            ],
+                            [
+                                'network.id=ipaddress.networkid',
+                                'ipaddress.tablerefid=switch.id'
+                            ],
+                            [f'switch.name="{name}"', 'ipaddress.tableref="switch"']
+                        )
+                        if network:
+                            data['network'] = network[0]['networkname']
+                            networkname=data['network']
+                    ipaddress6, result, result6 = None, False, True
+                    if not ipaddress:
+                        if not network:
+                            where = f' WHERE `name` = "{networkname}"'
+                            network = Database().get_record(table='network', where=where)
                             if network:
-                                data['network'] = network[0]['networkname']
-                                networkname=data['network']
-                        if not ipaddress:
-                            if not network:
-                                where = f' WHERE `name` = "{networkname}"'
-                                network = Database().get_record(table='network', where=where)
-                                if network:
-                                    networkname = network[0]['networkname']
-                            if network:
+                                networkname = network[0]['networkname']
+                        if network:
+                            if network[0]['network']:
                                 ips = Config().get_all_occupied_ips_from_network(networkname)
-                                ret, avail = 0, None
-                                max_count = 10
-                                # we try to ping for 10 ips, if none of these are free, something
-                                # else is going on (read: rogue devices)....
-                                while(max_count > 0 and ret != 1):
-                                    avail = Helper().get_available_ip(
-                                        network[0]['network'],
-                                        network[0]['subnet'],
-                                        ips
-                                    )
-                                    ips.append(avail)
-                                    _, ret = Helper().runcommand(f"ping -w1 -c1 {avail}", True, 3)
-                                    max_count -= 1
+                                avail = Helper().get_available_ip(
+                                    network[0]['network'],
+                                    network[0]['subnet'],
+                                    ips, ping=True
+                                )
                                 if avail:
                                     ipaddress = avail
-                            else:
-                                status=False
-                                return status, 'Invalid request: Network and ipaddress not provided'
+                            if network[0]['network_ipv6']:
+                                ips = Config().get_all_occupied_ips_from_network(networkname,'ipv6')
+                                avail = Helper().get_available_ip(
+                                    network[0]['network_ipv6'],
+                                    network[0]['subnet_ipv6'],
+                                    ips, ping=True
+                                )
+                                if avail:
+                                    ipaddress6 = avail
+                        else:
+                            status=False
+                            return status, 'Invalid request: Network and ipaddress not provided'
+                    if ipaddress:
                         result, message = Config().device_ipaddress_config(
-                            new_switchid,
+                            switch_id,
                             self.table,
                             ipaddress,
                             networkname
                         )
-                        if result is False:
-                            where = [{"column": "id", "value": new_switchid}]
-                            Database().delete_row(self.table, where)
-                            # roll back
-                            status=False
-                            response = f'{message}'
-                        else:
-                            Service().queue('dhcp', 'restart')
-                            Service().queue('dns', 'restart')
-                            response = 'Switch created'
+                    if ipaddress6:
+                        result6, message = Config().device_ipaddress_config(
+                            switch_id,
+                            self.table,
+                            ipaddress6,
+                            networkname
+                        )
+                    if result is False or result6 is False:
+                        where = [{"column": "id", "value": switch_id}]
+                        Database().delete_row(self.table, where)
+                        # roll back
+                        status=False
+                        response = f'{message}'
+                    else:
+                        Service().queue('dhcp', 'restart')
+                        Service().queue('dhcp6', 'restart')
+                        Service().queue('dns', 'restart')
+                        response = 'Switch created'
                 else:
                     response = 'Invalid request: Columns are incorrect'
                     status=False

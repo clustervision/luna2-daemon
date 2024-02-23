@@ -86,12 +86,12 @@ class Boot():
         if not check_template:
             return False, 'Empty'
         controller = Database().get_record_join(
-            ['controller.*','ipaddress.ipaddress'],
+            ['controller.*','ipaddress.ipaddress','ipaddress.ipaddress_ipv6'],
             ['ipaddress.tablerefid=controller.id'],
             ['tableref="controller"',f'controller.hostname="{self.controller_name}"']
         )
         if controller:
-            ipaddress = controller[0]['ipaddress']
+            ipaddress = controller[0]['ipaddress_ipv6'] or controller[0]['ipaddress']
             serverport = controller[0]['serverport']
             protocol = CONSTANT['API']['PROTOCOL']
             verify_certificate = CONSTANT['API']['VERIFY_CERTIFICATE']
@@ -159,12 +159,12 @@ class Boot():
         if not check_template:
             return False, 'Empty'
         controller = Database().get_record_join(
-            ['controller.*', 'ipaddress.ipaddress'],
+            ['controller.*', 'ipaddress.ipaddress', 'ipaddress.ipaddress_ipv6'],
             ['ipaddress.tablerefid=controller.id'],
             ['tableref="controller"', f'controller.hostname="{self.controller_name}"']
         )
         if controller:
-            ipaddress = controller[0]['ipaddress']
+            ipaddress = controller[0]['ipaddress_ipv6'] or controller[0]['ipaddress']
             serverport = controller[0]['serverport']
             protocol = CONSTANT['API']['PROTOCOL']
             verify_certificate = CONSTANT['API']['VERIFY_CERTIFICATE']
@@ -206,12 +206,12 @@ class Boot():
         if not check_template:
             return False, 'Empty'
         controller = Database().get_record_join(
-            ['controller.*', 'ipaddress.ipaddress'],
+            ['controller.*', 'ipaddress.ipaddress', 'ipaddress.ipaddress_ipv6'],
             ['ipaddress.tablerefid=controller.id'],
             ['tableref="controller"', f'controller.hostname="{self.controller_name}"']
         )
         if controller:
-            ipaddress = controller[0]['ipaddress']
+            ipaddress = controller[0]['ipaddress_ipv6'] or controller[0]['ipaddress']
             serverport = controller[0]['serverport']
             status=True
         else:
@@ -257,12 +257,12 @@ class Boot():
         if mac:
             mac = mac.lower()
         controller = Database().get_record_join(
-            ['controller.*', 'ipaddress.ipaddress','network.name as network'],
+            ['controller.*', 'ipaddress.ipaddress','ipaddress.ipaddress_ipv6','network.name as network'],
             ['ipaddress.tablerefid=controller.id','network.id=ipaddress.networkid'],
             ['tableref="controller"', f'controller.hostname="{self.controller_name}"']
         )
         if controller:
-            data['ipaddress'] = controller[0]['ipaddress']
+            data['ipaddress'] = controller[0]['ipaddress_ipv6'] or controller[0]['ipaddress']
             data['network'] = controller[0]['network']
             data['serverport'] = controller[0]['serverport']
             data['webserver_port'] = data['serverport']
@@ -274,18 +274,25 @@ class Boot():
         else:
             self.logger.warning(f"possible configuration error: No controller available or missing network for controller")
         nodeinterface = Database().get_record_join(
-            ['nodeinterface.nodeid', 'nodeinterface.interface', 'ipaddress.ipaddress',
-            'network.name as network', 'network.network as networkip', 'network.subnet', 'network.gateway'],
+            ['nodeinterface.nodeid', 'nodeinterface.interface', 'ipaddress.ipaddress', 'ipaddress.ipaddress_ipv6',
+             'network.name as network', 'network.network as networkip', 'network.subnet', 'network.gateway',
+             'network.network_ipv6 as networkip_ipv6', 'network.subnet_ipv6', 'network.gateway_ipv6'],
             ['network.id=ipaddress.networkid', 'ipaddress.tablerefid=nodeinterface.id'],
             ['tableref="nodeinterface"', f"nodeinterface.macaddress='{mac}'"]
         )
         if nodeinterface:
             data['nodeid'] = nodeinterface[0]['nodeid']
-            data['nodeip'] = f'{nodeinterface[0]["ipaddress"]}/{nodeinterface[0]["subnet"]}'
+            if nodeinterface[0]["ipaddress_ipv6"]:
+                data['nodeip'] = f'{nodeinterface[0]["ipaddress_ipv6"]}/{nodeinterface[0]["subnet_ipv6"]}'
+            else:
+                data['nodeip'] = f'{nodeinterface[0]["ipaddress"]}/{nodeinterface[0]["subnet"]}'
             if nodeinterface[0]['network'] == data['network']: # node on default network
                 data['gateway'] = ''
             else:
-                data['gateway'] = nodeinterface[0]['gateway'] or ''
+                if nodeinterface[0]["ipaddress_ipv6"]:
+                    data['gateway'] = nodeinterface[0]['gateway_ipv6'] or ''
+                else:
+                    data['gateway'] = nodeinterface[0]['gateway'] or ''
         else:
           # --------------------- port detection ----------------------------------
             try:
@@ -309,21 +316,28 @@ class Boot():
                         nodeinterface = Database().get_record_join(
                             ['nodeinterface.nodeid', 'nodeinterface.interface',
                              'ipaddress.ipaddress', 'network.name as network', 'network.gateway',
+                             'ipaddress.ipaddress_ipv6', 'network.gateway_ipv6',
+                             'network.network_ipv6 as networkip_ipv6',
                              'network.network as networkip', 'network.subnet'],
-                            [
-                                'network.id=ipaddress.networkid',
-                                'ipaddress.tablerefid=nodeinterface.id'
-                            ],
+                            ['network.id=ipaddress.networkid',
+                             'ipaddress.tablerefid=nodeinterface.id'],
                             ['tableref="nodeinterface"', f"nodeinterface.macaddress='{mac}'"]
                         )
                         if nodeinterface:
                             data['nodeid'] = nodeinterface[0]['nodeid']
-                            data['nodeip'] = f'{nodeinterface[0]["ipaddress"]}/{nodeinterface[0]["subnet"]}'
+                            if nodeinterface[0]["ipaddress_ipv6"]:
+                                data['nodeip'] = f'{nodeinterface[0]["ipaddress_ipv6"]}/{nodeinterface[0]["subnet_ipv6"]}'
+                            else:
+                                data['nodeip'] = f'{nodeinterface[0]["ipaddress"]}/{nodeinterface[0]["subnet"]}'
                             if nodeinterface[0]['network'] == data['network']: # node on default network
                                 data['gateway'] = ''
                             else:
-                                data['gateway'] = nodeinterface[0]['gateway'] or ''
+                                if nodeinterface[0]["ipaddress_ipv6"]:
+                                    data['gateway'] = nodeinterface[0]['gateway_ipv6'] or ''
+                                else:
+                                    data['gateway'] = nodeinterface[0]['gateway'] or ''
                             Service().queue('dhcp', 'restart')
+                            Service().queue('dhcp6','restart')
             except Exception as exp:
                 self.logger.info(f"port detection call in boot returned: {exp}")
             # ------------- port detection was not successfull, lets try a last resort -----------------
@@ -366,21 +380,29 @@ class Boot():
                                     break
 
                         nodeinterface = Database().get_record_join(
-                            ['nodeinterface.nodeid', 'nodeinterface.interface',
+                            ['nodeinterface.nodeid', 'nodeinterface.interface', 'ipaddress.ipaddress_ipv6',
                              'ipaddress.ipaddress', 'network.name as network', 'network.gateway',
-                             'network.network as networkip', 'network.subnet'],
+                             'network.network as networkip', 'network.subnet', 'network.gateway_ipv6',
+                             'network.network_ipv6 as networkip_ipv6', 'network.subnet_ipv6'],
                             ['network.id=ipaddress.networkid',
                              'ipaddress.tablerefid=nodeinterface.id'],
                             ['tableref="nodeinterface"', f"nodeinterface.macaddress='{mac}'"]
                         )
                         if nodeinterface:
                             data['nodeid'] = nodeinterface[0]['nodeid']
-                            data['nodeip'] = f'{nodeinterface[0]["ipaddress"]}/{nodeinterface[0]["subnet"]}'
+                            if nodeinterface[0]["ipaddress_ipv6"]:
+                                data['nodeip'] = f'{nodeinterface[0]["ipaddress_ipv6"]}/{nodeinterface[0]["subnet_ipv6"]}'
+                            else:
+                                data['nodeip'] = f'{nodeinterface[0]["ipaddress"]}/{nodeinterface[0]["subnet"]}'
                             if nodeinterface[0]['network'] == data['network']: # node on default network
                                 data['gateway'] = ''
                             else:
-                                data['gateway'] = nodeinterface[0]['gateway'] or ''
+                                if nodeinterface[0]["ipaddress_ipv6"]:
+                                    data['gateway'] = nodeinterface[0]['gateway_ipv6'] or ''
+                                else:
+                                    data['gateway'] = nodeinterface[0]['gateway'] or ''
                             Service().queue('dhcp', 'restart')
+                            Service().queue('dhcp6','restart')
         # -----------------------------------------------------------------------
         if data['nodeid']:
             node = Database().get_record_join(
@@ -478,13 +500,13 @@ class Boot():
 
         # get controller and cluster info
         controller = Database().get_record_join(
-            ['controller.*', 'ipaddress.ipaddress', 'network.name as network'],
+            ['controller.*', 'ipaddress.ipaddress', 'ipaddress.ipaddress_ipv6', 'network.name as network'],
             ['ipaddress.tablerefid=controller.id', 'network.id=ipaddress.networkid'],
             ['tableref="controller"', f'controller.hostname="{self.controller_name}"']
         )
         if controller:
             data['network'] = controller[0]['network']
-            data['ipaddress'] = controller[0]['ipaddress']
+            data['ipaddress'] = controller[0]['ipaddress_ipv6'] or controller[0]['ipaddress']
             data['serverport'] = controller[0]['serverport']
             data['webserver_port'] = data['serverport']
             if 'WEBSERVER' in CONSTANT:
@@ -531,16 +553,20 @@ class Boot():
             provision_interface = str(group_details[0]['provision_interface'])
 
         # first we generate a list of taken ips. we might need it later
-        ips = []
+        ips, ips6 = [], []
         if data['network']:
             network = Database().get_record_join(
-                ['ipaddress.ipaddress', 'network.network', 'network.subnet'],
+                ['ipaddress.ipaddress', 'network.network', 'network.subnet',
+                 'ipaddress.ipaddress_ipv6', 'network.network_ipv6', 'network.subnet_ipv6'],
                 ['network.id=ipaddress.networkid'],
                 [f"network.name='{data['network']}'"]
             )
             if network:
                 for network_ip in network:
-                    ips.append(network_ip['ipaddress'])
+                    if network_ip['ipaddress']:
+                        ips.append(network_ip['ipaddress'])
+                    if network_ip['ipaddress_ipv6']:
+                        ips.append(network_ip['ipaddress_ipv6'])
 
         hostname = None # we use it further down below.
         checked = []
@@ -627,6 +653,7 @@ class Boot():
 #                    Below section commented out as it not really up to use to create interface
 #                    for nodes if they are not configured. We better just use what's valid and ok
 #                    We could also ditch list2 from above if we want - Antoine
+#                    note: below section not ipv6 ready
 #
 #                    elif not 'interface' in node and data['network']:
 #                        # node is there but no interface. we'll take it!
@@ -651,6 +678,7 @@ class Boot():
 #                                data['network']
 #                            )
 #                            Service().queue('dns','restart')
+#                            Service().queue('dhcp6','restart')
 #                        break
 
         if not hostname:
@@ -686,16 +714,17 @@ class Boot():
 
         if data['nodeid']:
             Service().queue('dhcp','restart')
+            Service().queue('dhcp6','restart')
             nodeinterface = Database().get_record_join(
                 [
                     'nodeinterface.nodeid',
                     'nodeinterface.interface',
                     'nodeinterface.macaddress',
-                    'ipaddress.ipaddress',
+                    'ipaddress.ipaddress', 'ipaddress.ipaddress_ipv6',
                     'network.name as network',
-                    'network.network as networkip',
-                    'network.subnet',
-                    'network.gateway'
+                    'network.network as networkip', 'network.network_ipv6 as networkip_ipv6',
+                    'network.subnet', 'network.subnet_ipv6',
+                    'network.gateway', 'network.gateway_ipv6'
                 ],
                 ['network.id=ipaddress.networkid', 'ipaddress.tablerefid=nodeinterface.id'],
                 [
@@ -705,11 +734,17 @@ class Boot():
                 ]
             )
             if nodeinterface:
-                data['nodeip'] = f'{nodeinterface[0]["ipaddress"]}/{nodeinterface[0]["subnet"]}'
+                if nodeinterface[0]["ipaddress_ipv6"]:
+                    data['nodeip'] = f'{nodeinterface[0]["ipaddress_ipv6"]}/{nodeinterface[0]["subnet_ipv6"]}'
+                else:
+                    data['nodeip'] = f'{nodeinterface[0]["ipaddress"]}/{nodeinterface[0]["subnet"]}'
                 if nodeinterface[0]['network'] == data['network']: # node on default network
                     data['gateway'] = ''
                 else:
-                    data['gateway'] = nodeinterface[0]['gateway'] or ''
+                    if nodeinterface[0]["ipaddress_ipv6"]:
+                        data['gateway'] = nodeinterface[0]['gateway_ipv6'] or ''
+                    else:
+                        data['gateway'] = nodeinterface[0]['gateway'] or ''
             else:
                 # uh oh... no bootif??
                 data['nodeip'] = None
@@ -789,13 +824,13 @@ class Boot():
             return False, 'Empty'
         # Antoine
         controller = Database().get_record_join(
-            ['controller.*', 'ipaddress.ipaddress', 'network.name as network'],
+            ['controller.*', 'ipaddress.ipaddress', 'ipaddress.ipaddress_ipv6', 'network.name as network'],
             ['ipaddress.tablerefid=controller.id','network.id=ipaddress.networkid'],
             ['tableref="controller"',f'controller.hostname="{self.controller_name}"']
         )
         if controller:
             data['network'] = controller[0]['network']
-            data['ipaddress'] = controller[0]['ipaddress']
+            data['ipaddress'] = controller[0]['ipaddress_ipv6'] or controller[0]['ipaddress']
             data['serverport'] = controller[0]['serverport']
             data['webserver_port'] = data['serverport']
             if 'WEBSERVER' in CONSTANT:
@@ -868,16 +903,17 @@ class Boot():
 
             if we_need_dhcpd_restart is True:
                 Service().queue('dhcp', 'restart')
+                Service().queue('dhcp6','restart')
             nodeinterface = Database().get_record_join(
                 [
                     'nodeinterface.nodeid',
                     'nodeinterface.interface',
                     'nodeinterface.macaddress',
-                    'ipaddress.ipaddress',
+                    'ipaddress.ipaddress', 'ipaddress.ipaddress_ipv6',
                     'network.name as network',
-                    'network.network as networkip',
-                    'network.subnet',
-                    'network.gateway'
+                    'network.network as networkip', 'network.network_ipv6 as networkip_ipv6',
+                    'network.subnet', 'network.subnet_ipv6',
+                    'network.gateway', 'network.gateway_ipv6'
                 ],
                 ['network.id=ipaddress.networkid', 'ipaddress.tablerefid=nodeinterface.id'],
                 [
@@ -887,11 +923,17 @@ class Boot():
                 ]
             )
             if nodeinterface:
-                data['nodeip'] = f'{nodeinterface[0]["ipaddress"]}/{nodeinterface[0]["subnet"]}'
+                if nodeinterface[0]["ipaddress_ipv6"]:
+                    data['nodeip'] = f'{nodeinterface[0]["ipaddress_ipv6"]}/{nodeinterface[0]["subnet_ipv6"]}'
+                else:
+                    data['nodeip'] = f'{nodeinterface[0]["ipaddress"]}/{nodeinterface[0]["subnet"]}'
                 if nodeinterface[0]['network'] == data['network']: # node on default network
                     data['gateway'] = ''
                 else:
-                    data['gateway'] = nodeinterface[0]['gateway'] or ''
+                    if nodeinterface[0]["ipaddress_ipv6"]:
+                        data['gateway'] = nodeinterface[0]['gateway_ipv6'] or ''
+                    else:
+                        data['gateway'] = nodeinterface[0]['gateway'] or ''
             else:
                 # uh oh... no bootif??
                 data['nodeip'] = None
@@ -983,12 +1025,12 @@ class Boot():
             data['name_server'] = cluster[0]['nameserver_ip']
         # Antoine
         controller = Database().get_record_join(
-            ['controller.*', 'ipaddress.ipaddress'],
+            ['controller.*', 'ipaddress.ipaddress', 'ipaddress.ipaddress_ipv6'],
             ['ipaddress.tablerefid=controller.id'],
             ['tableref="controller"', f'controller.hostname="{self.controller_name}"']
         )
         if controller:
-            data['ipaddress']   = controller[0]['ipaddress']
+            data['ipaddress']   = controller[0]['ipaddress_ipv6'] or controller[0]['ipaddress']
             data['serverport']  = controller[0]['serverport']
             data['webserver_port'] = data['serverport']
             if 'WEBSERVER' in CONSTANT:
@@ -1074,13 +1116,13 @@ class Boot():
                     'nodeinterface.interface',
                     'nodeinterface.macaddress',
                     'nodeinterface.options',
-                    'ipaddress.ipaddress',
+                    'ipaddress.ipaddress', 'ipaddress.ipaddress_ipv6',
                     'network.name as network',
-                    'network.network as networkip',
-                    'network.subnet',
-                    'network.gateway',
+                    'network.network as networkip', 'network.network_ipv6 as networkip_ipv6',
+                    'network.subnet', 'network.subnet_ipv6',
+                    'network.gateway', 'network.gateway_ipv6',
                     'network.gateway_metric',
-                    'network.nameserver_ip',
+                    'network.nameserver_ip', 'network.nameserver_ip_ipv6',
                     'network.id as networkid',
                     'network.zone as zone',
                     'network.type as type'
@@ -1092,17 +1134,24 @@ class Boot():
             domain_search = []
             if nodeinterface:
                 for interface in nodeinterface:
-                    node_nwk = f'{interface["ipaddress"]}/{interface["subnet"]}'
-                    netmask = Helper().get_netmask(node_nwk)
+                    node_nwk, node_nwk6, netmask, netmask6 = None, None, None, None
+                    if interface['ipaddress']:
+                        node_nwk = f'{interface["ipaddress"]}/{interface["subnet"]}'
+                        netmask = Helper().get_netmask(node_nwk)
+                    if interface['ipaddress_ipv6']:
+                        node_nwk6 = f'{interface["ipaddress_ipv6"]}/{interface["subnet_ipv6"]}'
+                        netmask6 = Helper().get_netmask(node_nwk6)
                     if interface['interface'] == 'BMC':
                         # we configure bmc stuff here and no longer in template. big advantage is
                         # that we can have different networks/interface-names for different h/w,
                         # drivers, subnets, networks, etc
                         if 'bmc' in data:
                             data['bmc']['ipaddress'] = interface['ipaddress']
+                            data['bmc']['ipaddress_ipv6'] = interface['ipaddress_ipv6']
                             data['bmc']['netmask'] = netmask
+                            data['bmc']['netmask_ipv6'] = netmask6
                             data['bmc']['gateway'] = interface['gateway'] or '0.0.0.0'
-                            # <---- not ipv6 compliant! pending
+                            data['bmc']['gateway_ipv6'] = interface['gateway_ipv6'] or '::/0'
                     else:
                         # regular nic
                         zone = 'trusted'
@@ -1111,13 +1160,19 @@ class Boot():
                         data['interfaces'][interface['interface']] = {
                             'interface': interface['interface'],
                             'ipaddress': interface['ipaddress'],
+                            'ipaddress_ipv6': interface['ipaddress_ipv6'],
                             'prefix': interface['subnet'],
+                            'prefix_ipv6': interface['subnet_ipv6'],
                             'network': node_nwk,
+                            'network_ipv6': node_nwk6,
                             'netmask': netmask,
+                            'netmask_ipv6': netmask6,
                             'networkname': interface['network'],
                             'gateway': interface['gateway'],
+                            'gateway_ipv6': interface['gateway_ipv6'],
                             'gateway_metric': interface['gateway_metric'] or "101",
                             'nameserver_ip': interface['nameserver_ip'] or "",
+                            'nameserver_ip_ipv6': interface['nameserver_ip_ipv6'] or "",
                             'options': interface['options'] or "",
                             'zone': zone,
                             'type': interface['type'] or "ethernet"
@@ -1151,14 +1206,30 @@ class Boot():
             data['distribution'],
             data['osrelease']
         )
-        segment = str(network_plugin().interface)
-        template_data = template_data.replace("## INTERFACE CODE SEGMENT", segment)
+        try:
+            segment = str(network_plugin().init)
+            template_data = template_data.replace("## NETWORK INIT CODE SEGMENT", segment)
+        except:
+            pass
         segment = str(network_plugin().hostname)
         template_data = template_data.replace("## HOSTNAME CODE SEGMENT", segment)
+        # --------- ipv4
+        segment = str(network_plugin().interface)
+        template_data = template_data.replace("## INTERFACE CODE SEGMENT", segment)
         segment = str(network_plugin().gateway)
         template_data = template_data.replace("## GATEWAY CODE SEGMENT", segment)
         segment = str(network_plugin().dns)
         template_data = template_data.replace("## DNS CODE SEGMENT", segment)
+        # --------- ipv6
+        try:
+            segment = str(network_plugin().interface_ipv6)
+            template_data = template_data.replace("## INTERFACE IPv6 CODE SEGMENT", segment)
+            segment = str(network_plugin().gateway_ipv6)
+            template_data = template_data.replace("## GATEWAY IPv6 CODE SEGMENT", segment)
+            segment = str(network_plugin().dns_ipv6)
+            template_data = template_data.replace("## DNS IPv6 CODE SEGMENT", segment)
+        except:
+            pass
 
         ## BMC CODE SEGMENT
         bmc_plugin = Helper().plugin_load(

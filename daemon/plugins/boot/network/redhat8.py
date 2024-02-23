@@ -40,7 +40,7 @@ class Plugin():
         config = segment that handles interface configuration in template
         """
 
-    interface = """
+    init = """
 cat << EOF > /sysroot/etc/NetworkManager/system-connections/Connection_${DEVICE}.nmconnection
 [connection]
 id=Connection_${DEVICE}
@@ -49,11 +49,11 @@ interface-name=${DEVICE}
 autoconnect=true
 zone=${ZONE}
 
-[$TYPE]
 EOF
 
 if [ "$TYPE" == "infiniband" ]; then
 cat << EOF >> /sysroot/etc/NetworkManager/system-connections/Connection_${DEVICE}.nmconnection
+[$TYPE]
 #mtu=65520
 #transport-mode=connected
 transport-mode=datagram
@@ -62,6 +62,19 @@ EOF
 fi
 
 cat << EOF >> /sysroot/etc/NetworkManager/system-connections/Connection_${DEVICE}.nmconnection
+[proxy]
+
+$OPTIONS
+
+EOF
+chown root:root /sysroot/etc/NetworkManager/system-connections/Connection_${DEVICE}.nmconnection
+chmod 600 /sysroot/etc/NetworkManager/system-connections/Connection_${DEVICE}.nmconnection
+    """
+
+    # ------------ ipv4 --------------
+
+    interface = """
+cat << EOF >> /sysroot/etc/NetworkManager/system-connections/Connection_${DEVICE}.nmconnection
 [ipv4]
 address1=$IPADDR/$PREFIX
 dns=
@@ -69,17 +82,11 @@ dns-search=
 method=manual
 #route1=
 
-[ipv6]
-addr-gen-mode=default
-method=auto
+#[ipv6]
+#addr-gen-mode=default
+#method=auto
 
-[proxy]
-
-$OPTIONS
 EOF
-chown root:root /sysroot/etc/NetworkManager/system-connections/Connection_${DEVICE}.nmconnection
-chmod 600 /sysroot/etc/NetworkManager/system-connections/Connection_${DEVICE}.nmconnection
-
     """
 
     hostname = """
@@ -95,7 +102,33 @@ chmod 600 /sysroot/etc/NetworkManager/system-connections/Connection_${DEVICE}.nm
 
     dns = """
         SEARCH=$(echo $SEARCH | sed -e 's/,/;/g')
-        sed -i 's/^dns=/dns='$NAMESERVER'/' /sysroot/etc/NetworkManager/system-connections/Connection_${DEVICE}.nmconnection
-        sed -i 's/^dns-search=/dns-search='$SEARCH'/' /sysroot/etc/NetworkManager/system-connections/Connection_${DEVICE}.nmconnection
+        sed -i 's/^dns=$/dns='$NAMESERVER'/' /sysroot/etc/NetworkManager/system-connections/Connection_${DEVICE}.nmconnection
+        sed -i 's/^dns-search=$/dns-search='$SEARCH'/' /sysroot/etc/NetworkManager/system-connections/Connection_${DEVICE}.nmconnection
+    """
+
+    # ------------ ipv6 --------------
+
+    interface_ipv6 = """
+cat << EOF >> /sysroot/etc/NetworkManager/system-connections/Connection_${DEVICE}.nmconnection
+[ipv6]
+address1=$IPADDR/$PREFIX
+dns=
+dns-search=
+method=manual
+#route1=
+
+EOF
+    """
+
+    gateway_ipv6 = """
+        if [ "$GATEWAY" ]; then
+            sed -i 's%^#route1=%route1=0.0.0.0/0,'$GATEWAY','$METRIC'%' /sysroot/etc/NetworkManager/system-connections/Connection_${DEVICE}.nmconnection
+        fi
+    """
+
+    dns_ipv6 = """
+        SEARCH=$(echo $SEARCH | sed -e 's/,/;/g')
+        sed -i 's/^dns=$/dns='$NAMESERVER'/' /sysroot/etc/NetworkManager/system-connections/Connection_${DEVICE}.nmconnection
+        sed -i 's/^dns-search=$/dns-search='$SEARCH'/' /sysroot/etc/NetworkManager/system-connections/Connection_${DEVICE}.nmconnection
     """
 

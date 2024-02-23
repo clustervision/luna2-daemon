@@ -86,7 +86,8 @@ class Journal():
             self.me=self.ha_object.get_me()
         
         self.dict_controllers=None
-        self.all_controllers = Database().get_record_join(['controller.*','ipaddress.ipaddress','network.name as domain'],
+        self.all_controllers = Database().get_record_join(['controller.*','ipaddress.ipaddress','ipaddress.ipaddress_ipv6',
+                                                           'network.name as domain'],
                                                           ['ipaddress.tablerefid=controller.id','network.id=ipaddress.networkid'],
                                                           ["ipaddress.tableref='controller'"])
         if self.all_controllers:

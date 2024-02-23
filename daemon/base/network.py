@@ -29,6 +29,7 @@ __maintainer__  = 'Sumit Sharma'
 __email__       = 'sumit.sharma@clustervision.com'
 __status__      = 'Development'
 
+import re
 from concurrent.futures import ThreadPoolExecutor
 from utils.queue import Queue
 from utils.database import Database
@@ -66,6 +67,8 @@ class Network():
                 if not network['dhcp']:
                     del network['dhcp_range_begin']
                     del network['dhcp_range_end']
+                    del network['dhcp_range_begin_ipv6']
+                    del network['dhcp_range_end_ipv6']
                     network['dhcp'] = False
                 else:
                     network['dhcp'] = True
@@ -88,13 +91,19 @@ class Network():
         if networks:
             response = {'config': {'network': {} }}
             for network in networks:
-                network['network'] = Helper().get_network(network['network'], network['subnet'])
+                if network['network']:
+                    network['network'] = Helper().get_network(network['network'], network['subnet'])
+                if network['network_ipv6']:
+                    network['network_ipv6'] = Helper().get_network(network['network_ipv6'], network['subnet_ipv6'])
                 del network['id']
                 del network['subnet']
+                del network['subnet_ipv6']
                 network['dhcp'] = Helper().make_bool(network['dhcp'])
                 if not network['dhcp']:
                     del network['dhcp_range_begin']
                     del network['dhcp_range_end']
+                    del network['dhcp_range_begin_ipv6']
+                    del network['dhcp_range_end_ipv6']
                     network['dhcp'] = False
                 else:
                     network['dhcp'] = True
@@ -115,12 +124,21 @@ class Network():
         status=True
         response="Internal error"
         data = {}
+        db_data = None
         create, update = False, False
+
         if request_data:
+            used_ips, used6_ips = 0, 0
+            redistribute_ipaddress, clear_ipv4, clear_ipv6 = False, False, False
+            default_gateway_metric, default_zone = "101", "internal"
+
             data = request_data['config']['network'][name]
             data['name'] = name
             network = Database().get_record(None, 'network', f' WHERE `name` = "{name}"')
             if network:
+                used_ips = Helper().get_quantity_occupied_ipaddress_in_network(name,ipversion='ipv4')
+                used6_ips = Helper().get_quantity_occupied_ipaddress_in_network(name,ipversion='ipv6')
+                db_data = network[0]
                 networkid = network[0]['id']
                 if 'newnetname' in request_data['config']['network'][name]:
                     newnetname = request_data['config']['network'][name]['newnetname']
@@ -135,17 +153,29 @@ class Network():
                 update = True
             else:
                 create = True
-
-            used_ips, dhcp_size, redistribute_ipaddress, default_gateway_metric, default_zone = 0, 0, None, "101", "internal"
+ 
+            # ---------------------- parse incoming data -------------------
             if 'network' in data:
                 network_ip = Helper().check_ip(data['network'])
                 if network_ip:
+                    #ipv6=Helper().check_if_ipv6(data['network'])
                     network_details = Helper().get_network_details(data['network'])
                     data['network'] = network_details['network']
                     data['subnet'] = network_details['subnet']
-                    used_ips = Helper().get_quantity_occupied_ipaddress_in_network(name)
-                    if network:
-                        if (network[0]['network'] != data['network']) or (network[0]['subnet'] != data['subnet']):
+                    self.logger.info(f"NETWORK {name} IP: {data['network']} / {data['subnet']}")
+                    where = f" WHERE (`name`!='{name}' AND `name`!='{data['name']}')"
+                    where += f" AND ((`network`='{data['network']}' AND `subnet`='{data['subnet']}')"
+                    where += f" OR (`network_ipv6`='{data['network']}' AND `subnet_ipv6`='{data['subnet']}'))"
+                    claship = Database().get_record(None, 'network', where)
+                    if claship:
+                        status=False
+                        ret_msg = f"Invalid request: Clashing network/subnet with existing network {claship[0]['name']}"
+                        return status, ret_msg
+                    used_ips = Helper().get_quantity_occupied_ipaddress_in_network(name,ipversion='ipv4')
+                    used6_ips = Helper().get_quantity_occupied_ipaddress_in_network(name,ipversion='ipv6')
+                    if network: #database data
+                        if ((db_data['network'] != data['network'] or db_data['subnet'] != data['subnet']) and
+                               (db_data['network_ipv6'] != data['network']) or (db_data['subnet_ipv6'] != data['subnet'])):
                             redistribute_ipaddress = True
                             self.logger.info("We will redistribute ip addresses")
                             if 'gateway' not in data:
@@ -153,26 +183,16 @@ class Network():
                                 data['gateway_metric'] = None
                                 # we have to remove the gateway if we did not get a new one and an
                                 # existing is in place. should we warn the user? pending
+                            if 'dhcp' not in data:
+                                data['dhcp'] = 0
+                                #data['dhcp_range_begin'] = None
+                                #data['dhcp_range_end'] = None
                 else:
                     status=False
                     return status, f'Invalid request: Incorrect network IP: {data["network"]}'
-            elif network:
-                # we fetch what we have from the DB
-                data['network'] = network[0]['network']
-                data['subnet'] = network[0]['subnet']
-                default_gateway_metric=network[0]['gateway_metric']
-                default_zone=network[0]['zone']
-            else:
+            elif not network:
                 status=False
                 ret_msg = 'Invalid request: Not enough details provided. network/subnet in CIDR notation expected'
-                return status, ret_msg
-
-            where = f" WHERE (`name`!='{name}' AND `name`!='{data['name']}')"
-            where += f" AND `network`='{data['network']}' AND `subnet`='{data['subnet']}'"
-            claship = Database().get_record(None, 'network', where)
-            if claship:
-                status=False
-                ret_msg = f"Invalid request: Clashing network/subnet with existing network {claship[0]['name']}"
                 return status, ret_msg
 
             if 'zone' in data:
@@ -187,10 +207,13 @@ class Network():
                 if data['gateway'] == "":
                     data['gateway'] = None
                 elif data['gateway'] is not None:
-                    gateway_details = Helper().check_ip_range(
-                        data['gateway'],
-                        data['network'] + '/' + data['subnet']
-                    )
+                    gateway_details=None
+                    if 'network' in data and 'subnet' in data:
+                        gateway_details = Helper().check_ip_range(data['gateway'],data['network'] + '/' + data['subnet'])
+                    elif Helper().check_if_ipv6(data['gateway']) and db_data['network_ipv6'] and db_data['subnet_ipv6']:
+                        gateway_details = Helper().check_ip_range(data['gateway'],db_data['network_ipv6'] + '/' + db_data['subnet_ipv6'])
+                    elif db_data['network'] and db_data['subnet']:
+                        gateway_details = Helper().check_ip_range(data['gateway'],db_data['network'] + '/' + db_data['subnet'])
                     if (not gateway_details) and data['gateway'] != '':
                         status=False
                         return status, f'Invalid request: Incorrect gateway IP: {data["gateway"]}'
@@ -205,16 +228,25 @@ class Network():
                     ret_msg = f'Invalid request: Incorrect Nameserver IP: {data["nameserver_ip"]}'
                     return status, ret_msg
             if 'ntp_server' in data:
+                if Helper().check_if_ipv6(data['ntp_server']):
+                    status=False
+                    return status, f'Invalid request: Incorrect NTP Server IP: {data["ntp_server"]}. Server name or IPv4 address expected'
                 ntp_details = Helper().check_ip(data['ntp_server'])
                 if (not ntp_details) and data['ntp_server'] != '':
-                    status=False
-                    return status, f'Invalid request: Incorrect NTP Server IP: {data["ntp_server"]}'
+                    regex = re.compile(r"^[a-z0-9\.\-]+$")
+                    if not regex.match(data['ntp_server']):
+                        status=False
+                        return status, f'Invalid request: Incorrect NTP Server IP: {data["ntp_server"]}'
             if 'dhcp' in data:
                 data['dhcp'] = Helper().bool_to_string(data['dhcp'])
-                self.logger.info(f"dhcp is set to {data['dhcp']}")
                 if 'dhcp_range_begin' in data:
-                    subnet = data['network']+'/'+data['subnet']
-                    dhcp_start_details = Helper().check_ip_range(data['dhcp_range_begin'], subnet)
+                    dhcp_start_details = None
+                    if 'network' in data and 'subnet' in data:
+                        dhcp_start_details = Helper().check_ip_range(data['dhcp_range_begin'], data['network'] + '/' + data['subnet'])
+                    elif Helper().check_if_ipv6(data['dhcp_range_begin']) and db_data['network_ipv6'] and db_data['subnet_ipv6']:
+                        dhcp_start_details = Helper().check_ip_range(data['dhcp_range_begin'], db_data['network_ipv6'] + '/' + db_data['subnet_ipv6'])
+                    elif db_data['network'] and db_data['subnet']:
+                        dhcp_start_details = Helper().check_ip_range(data['dhcp_range_begin'], db_data['network'] + '/' + db_data['subnet'])
                     if not dhcp_start_details:
                         status=False
                         ret_msg = f'Invalid request: Incorrect dhcp start: {data["dhcp_range_begin"]}'
@@ -223,8 +255,13 @@ class Network():
                     status=False
                     return status, 'Invalid request: DHCP start range is a required parameter'
                 if 'dhcp_range_end' in data:
-                    subnet = data['network']+'/'+data['subnet']
-                    dhcp_end_details = Helper().check_ip_range(data['dhcp_range_end'], subnet)
+                    dhcp_end_details = None
+                    if 'network' in data and 'subnet' in data:
+                        dhcp_end_details = Helper().check_ip_range(data['dhcp_range_end'], data['network'] + '/' + data['subnet'])
+                    elif Helper().check_if_ipv6(data['dhcp_range_end']) and db_data['network_ipv6'] and db_data['subnet_ipv6']:
+                        dhcp_end_details = Helper().check_ip_range(data['dhcp_range_end'], db_data['network_ipv6'] + '/' + db_data['subnet_ipv6'])
+                    elif db_data['network'] and db_data['subnet']:
+                        dhcp_end_details = Helper().check_ip_range(data['dhcp_range_end'], db_data['network'] + '/' + db_data['subnet'])
                     if not dhcp_end_details:
                         status=False
                         ret_msg = f'Invalid request: Incorrect dhcp end: {data["dhcp_range_end"]}'
@@ -233,25 +270,39 @@ class Network():
                     status=False
                     return status, 'Invalid request: DHCP end range is a required parameter'
                 if data['dhcp'] == "1":
-                    dhcp_size = Helper().get_ip_range_size(
-                        data['dhcp_range_begin'],
-                        data['dhcp_range_end']
-                    )
                     redistribute_ipaddress = True
                     # to make sure we do not overlap with existing node ip configs
-            else:
-                if network:
-                    data['dhcp'] = network[0]['dhcp']
-                    data['dhcp_range_begin'] = network[0]['dhcp_range_begin']
-                    data['dhcp_range_end'] = network[0]['dhcp_range_end']
-                    dhcp_size = Helper().get_ip_range_size(
-                        data['dhcp_range_begin'],
-                        data['dhcp_range_end']
-                    )
+
+            if 'clear' in data:
+                if data['clear'] == 'ipv6' and db_data['network']:
+                    data['network_ipv6']=None
+                    data['subnet_ipv6']=None
+                    data['gateway_ipv6']=None
+                    data['dhcp_range_begin_ipv6']=None
+                    data['dhcp_range_end_ipv6']=None
+                    clear_ipv6 = True
+                elif data['clear'] == 'ipv4' and db_data['network_ipv6']:
+                    data['network']=None
+                    data['subnet']=None
+                    data['gateway']=None
+                    data['dhcp_range_begin']=None
+                    data['dhcp_range_end']=None
+                    clear_ipv4 = True
                 else:
-                    data['dhcp'] = 0
-                    data['dhcp_range_begin'] = ""
-                    data['dhcp_range_end'] = ""
+                    status=False
+                    ret_msg = 'Invalid request: clearing ipv4 requires ipv6 to be configured first and vice versa'
+                    return status, ret_msg
+                del data['clear']
+            else:
+                #IPv6, ipv6. we basically allow both types to be send, but we figure out what we're dealing with. - Antoine
+                for item in ['dhcp_range_begin','dhcp_range_end','gateway','network','nameserver_ip']:
+                    if item in data and Helper().check_if_ipv6(data[item]):
+                        data[item+'_ipv6'] = data[item]
+                        self.logger.debug(f"** Converting {item} to {item}_ipv6")
+                        del data[item]
+                        if item == 'network':
+                            data['subnet_ipv6'] = data['subnet']
+                            del data['subnet']
 
             network_columns = Database().get_columns('network')
             column_check = Helper().compare_list(data, network_columns)
@@ -262,16 +313,56 @@ class Network():
                     response = f'Network {name} created successfully'
                     status=True
                 elif update:
+                    dhcp_size, dhcp6_size = 0, 0
                     if redistribute_ipaddress is True:
-                        nwk_size = Helper().get_network_size(data['network'], data['subnet'])
-                        avail = nwk_size - dhcp_size
-                        if avail < used_ips:
-                            response = f'The proposed network config allows for {nwk_size} ip '
-                            response += f'addresses. DHCP range will occupy {dhcp_size} ip '
-                            response += 'addresses. The request will not accomodate for the '
-                            response += f'currently {used_ips} in use ip addresses'
-                            status=False
-                            return status, response
+                        if 'dhcp_range_begin' in data:
+                            dhcp_size = Helper().get_ip_range_size(
+                                data['dhcp_range_begin'],
+                                data['dhcp_range_end']
+                            )
+                        if 'dhcp_range_begin_ipv6' in data:
+                            dhcp6_size = Helper().get_ip_range_size(
+                                data['dhcp_range_begin_ipv6'],
+                                data['dhcp_range_end_ipv6']
+                            )
+                        nwk_size, nwk6_size, avail, avail6 = 0, 0, 0, 0
+                        network_ipv6, subnet_ipv6 = None, None
+                        network_ipv4, subnet_ipv4 = None, None
+                        if 'network' in data:
+                            network_ipv4 = data['network']
+                            subnet_ipv4 = data['subnet']
+                        elif db_data['network']:
+                            network_ipv4 = db_data['network']
+                            subnet_ipv4 = db_data['subnet']
+                        if network_ipv4:
+                            nwk_size = Helper().get_network_size(network_ipv4, subnet_ipv4)
+                            avail = nwk_size - dhcp_size
+                            self.logger.info(f"NETWORK {name} UPDATE. used_ips = {used_ips}, avail: {avail} = nwk_size {nwk_size} - dhcp_size {dhcp_size}")
+                            if avail < used_ips:
+                                response = f'The proposed network config allows for {nwk_size} ip '
+                                response += f'addresses. DHCP range will occupy {dhcp_size} ip '
+                                response += 'addresses. The request will not accomodate for the '
+                                response += f'currently {used_ips} in use ip addresses'
+                                status=False
+                                return status, response
+                        if 'network_ipv6' in data:
+                            network_ipv6 = data['network_ipv6']
+                            subnet_ipv6 = data['subnet_ipv6']
+                        elif db_data['network_ipv6']:
+                            network_ipv6 = db_data['network_ipv6']
+                            subnet_ipv6 = db_data['subnet_ipv6']
+                        if network_ipv6:
+                            nwk6_size = Helper().get_network_size(network_ipv6, subnet_ipv6)
+                            avail6 = nwk6_size - dhcp6_size
+                            self.logger.info(f"NETWORK {name} UPDATE. used6_ips = {used6_ips}, avail6: {avail6} = nwk6_size {nwk6_size} - dhcp6_size {dhcp6_size}")
+                            if avail6 < used6_ips:
+                                response = f'The proposed IPv6 network config allows for {nwk6_size} ip '
+                                response += f'addresses. DHCP range will occupy {dhcp6_size} ip '
+                                response += 'addresses. The request will not accomodate for the '
+                                response += f'currently {used6_ips} in use ip addresses'
+                                status=False
+                                return status, response
+
                     where = [{"column": "id", "value": networkid}]
                     Database().update('network', row, where)
                     # TWANNIE
@@ -292,10 +383,31 @@ class Network():
                                 name
                             )
                             executor.shutdown(wait=False)
+                    if clear_ipv4 or clear_ipv6:
+                        entry_list = Database().get_record_join(
+                            [
+                                'ipaddress.id',
+                                'ipaddress.tableref',
+                                'ipaddress.tablerefid'
+                            ],
+                            ['ipaddress.networkid=network.id'],
+                            [f"network.name='{data['name']}'"]
+                        )
+                        if entry_list:
+                            clear_data = {}
+                            if clear_ipv4:
+                                clear_data['ipaddress'] = None
+                            if clear_ipv6:
+                                clear_data['ipaddress'] = None
+                            row = Helper().make_rows(clear_data)
+                            for entry in entry_list:
+                                where = [{"column": "id", "value": entry['id']}]
+                                Database().update('ipaddress', row, where)
                     response = f'Network {name} updated successfully'
                     status=True
                 Service().queue('dns','restart')
                 Service().queue('dhcp','restart')
+                Service().queue('dhcp6','restart')
                 # technically only needed when dhcp changes, but it doesn't hurt to just do it
             else:
                 status=False
@@ -327,6 +439,7 @@ class Network():
                 Database().update('network', row, where)
                 Service().queue('dns','restart')
                 Service().queue('dhcp','restart')
+                Service().queue('dhcp6','restart')
                 response = 'Network removed'
                 status=True
             else:
@@ -377,15 +490,7 @@ class Network():
         avail = None
         if network:
             response = f'Network {name} has no free addresses'
-            ret = 0
-            max_count = 10
-            # we try to ping for 10 ips, if none of these are free, something else is going on
-            # (read: rogue devices)....
-            while(max_count > 0 and ret != 1):
-                avail = Helper().get_available_ip(network[0]['network'], network[0]['subnet'], ips)
-                ips.append(avail)
-                _,ret = Helper().runcommand(f"ping -w1 -c1 {avail}", True, 3)
-                max_count-=1
+            avail = Helper().get_available_ip(network[0]['network'], network[0]['subnet'], ips, ping=True)
         if avail:
             response = {'config': {'network': {name: {'nextip': avail} } } }
             status=True

@@ -99,7 +99,8 @@ class Tables():
         if not me:
             me=HA().get_me()
         if me:
-            all_controllers = Database().get_record_join(['controller.*','ipaddress.ipaddress','network.name as domain'],
+            all_controllers = Database().get_record_join(['controller.*','ipaddress.ipaddress','ipaddress.ipaddress_ipv6',
+                                                          'network.name as domain'],
                                                           ['ipaddress.tablerefid=controller.id','network.id=ipaddress.networkid'],
                                                           ["ipaddress.tableref='controller'"])
             if all_controllers:

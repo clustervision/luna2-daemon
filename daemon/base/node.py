@@ -167,6 +167,7 @@ class Node():
                     [
                         'nodeinterface.interface',
                         'ipaddress.ipaddress',
+                        'ipaddress.ipaddress_ipv6',
                         'nodeinterface.macaddress',
                         'network.name as network',
                         'nodeinterface.options'
@@ -185,6 +186,10 @@ class Node():
                             node['hostname'] = node['name'] + '.' + interface['network']
                         if not interface['options']:
                             del interface['options']
+                        if not interface['ipaddress']:
+                            del interface['ipaddress']
+                        if not interface['ipaddress_ipv6']:
+                            del interface['ipaddress_ipv6']
                         node['interfaces'].append(interface)
                         if interface['interface'] in all_node_interfaces_by_name.keys():
                             del all_node_interfaces_by_name[interface['interface']]
@@ -369,6 +374,7 @@ class Node():
                 [
                     'nodeinterface.interface',
                     'ipaddress.ipaddress',
+                    'ipaddress.ipaddress_ipv6',
                     'nodeinterface.macaddress',
                     'network.name as network',
                     'nodeinterface.options'
@@ -386,6 +392,10 @@ class Node():
                         node['hostname'] = nodename + '.' + interface['network']
                     if not interface['options']:
                         del interface['options']
+                    if not interface['ipaddress']:
+                        del interface['ipaddress']
+                    if not interface['ipaddress_ipv6']:
+                        del interface['ipaddress_ipv6']
                     node['interfaces'].append(interface)
                     if interface['interface'] in all_node_interfaces_by_name.keys():
                         del all_node_interfaces_by_name[interface['interface']]
@@ -543,11 +553,13 @@ class Node():
 
                 # For now i have the below two disabled. it's testing. -Antoine aug 8 2023
                 #Service().queue('dhcp', 'restart')
+                #Service().queue('dhcp6', 'restart')
                 #Service().queue('dns', 'restart')
                 # below might look as redundant but is added to prevent a possible race condition
                 # when many nodes are added in a loop.
                 # the below tasks ensures that even the last node will be included in dhcp/dns
                 Queue().add_task_to_queue('dhcp:restart', 'housekeeper', '__node_update__')
+                Queue().add_task_to_queue('dhcp6:restart', 'housekeeper', '__node_update__')
                 Queue().add_task_to_queue('dns:restart', 'housekeeper', '__node_update__')
 
                 # ---- we call the node plugin - maybe someone wants to run something after create/update?
@@ -668,6 +680,7 @@ class Node():
                     [
                         'nodeinterface.interface',
                         'ipaddress.ipaddress',
+                        'ipaddress.ipaddress_ipv6',
                         'nodeinterface.macaddress',
                         'network.name as network',
                         'nodeinterface.options'
@@ -703,25 +716,28 @@ class Node():
                         )
                         if result:
                             if networkname and not ipaddress:
-                                ips = Config().get_all_occupied_ips_from_network(networkname)
                                 where = f' WHERE `name` = "{networkname}"'
                                 network = Database().get_record(None, 'network', where)
                                 if network:
-                                    ret, avail = 0, None
-                                    max_count = 5
-                                    # we try to ping for X ips, if none of these are free, something
-                                    # else is going on (read: rogue devices)....
-                                    while(max_count>0 and ret!=1):
+                                    if network[0]['network']:
+                                        ips = Config().get_all_occupied_ips_from_network(networkname)
                                         avail = Helper().get_available_ip(
                                             network[0]['network'],
                                             network[0]['subnet'],
-                                            ips
+                                            ips, ping=True
                                         )
-                                        ips.append(avail)
-                                        _, ret = Helper().runcommand(f"ping -w1 -c1 {avail}", True, 3)
-                                        max_count -= 1
-                                    if avail:
-                                        ipaddress = avail
+                                        if avail:
+                                            ipaddress = avail
+                                    # IPv6 as alternative
+                                    if network[0]['network_ipv6']:
+                                        ips = Config().get_all_occupied_ips_from_network(networkname,'ipv6')
+                                        avail = Helper().get_available_ip(
+                                            network[0]['network_ipv6'],
+                                            network[0]['subnet_ipv6'],
+                                            ips, ping=True
+                                        )
+                                        if avail:
+                                            ipaddress = avail
 
                             if networkname and ipaddress:
                                 result, message = Config().node_interface_ipaddress_config(
@@ -752,43 +768,58 @@ class Node():
                     if result and 'ipaddress' in node_interface.keys():
                         if 'network' in node_interface.keys():
                             networkname = node_interface['network']
-                            ips = Config().get_all_occupied_ips_from_network(networkname)
                             where = f' WHERE `name` = "{networkname}"'
                             network = Database().get_record(None, 'network', where)
                             if network:
-                                ret, avail = 0, None
-                                max_count = 5
-                                # we try to ping for X ips, if none of these are free, something
-                                # else is going on (read: rogue devices)....
-                                while(max_count>0 and ret!=1):
+                                if network[0]['network']:
+                                    ips = Config().get_all_occupied_ips_from_network(networkname)
                                     avail = Helper().get_available_ip(
                                         network[0]['network'],
                                         network[0]['subnet'],
-                                        ips
+                                        ips, ping=True
                                     )
-                                    ips.append(avail)
-                                    _, ret = Helper().runcommand(f"ping -w1 -c1 {avail}", True, 3)
-                                    max_count -= 1
 
-                                if avail:
-                                    result, message = Config().node_interface_ipaddress_config(
-                                        new_nodeid,
-                                        interface_name,
-                                        avail,
-                                        networkname
+                                    if avail:
+                                        result, message = Config().node_interface_ipaddress_config(
+                                            new_nodeid,
+                                            interface_name,
+                                            avail,
+                                            networkname
+                                        )
+                                        if result is False:
+                                            self.delete_node(new_nodeid)
+                                            status=False
+                                            return status, f'{message}'
+                                # IPv6
+                                if network[0]['network_ipv6']:
+                                    ips = Config().get_all_occupied_ips_from_network(networkname,'ipv6')
+                                    avail = Helper().get_available_ip(
+                                        network[0]['network_ipv6'],
+                                        network[0]['subnet_ipv6'],
+                                        ips, ping=True
                                     )
-                                    if result is False:
-                                        self.delete_node(new_nodeid)
-                                        status=False
-                                        return status, f'{message}'
+
+                                    if avail:
+                                        result, message = Config().node_interface_ipaddress_config(
+                                            new_nodeid,
+                                            interface_name,
+                                            avail,
+                                            networkname
+                                        )
+                                        if result is False:
+                                            self.delete_node(new_nodeid)
+                                            status=False
+                                            return status, f'{message}'
                     if result is False:
                         self.delete_node(new_nodeid)
                         status=False
                         return status, f'Interface {interface_name} creation failed'
                 # Service().queue('dhcp','restart')
+                # Service().queue('dhcp6','restart')
                 # do we need dhcp restart? MAC is wiped on new NIC so no real need i guess. pending
                 #Service().queue('dns','restart')
             	#Queue().add_task_to_queue('dhcp:restart', 'housekeeper', '__node_clone__')
+            	#Queue().add_task_to_queue('dhcp6:restart', 'housekeeper', '__node_clone__')
                 Queue().add_task_to_queue('dns:restart', 'housekeeper', '__node_clone__')
 
                 # ---- we call the node plugin - maybe someone wants to run something after clone?
@@ -848,10 +879,12 @@ class Node():
             # for now i have disabled the below two lines for testing purposes. Antoine Aug 8 2023
             #Service().queue('dns', 'restart')
             #Service().queue('dhcp', 'restart')
+            #Service().queue('dhcp6', 'restart')
             # below might look redundant but is added to prevent a possible race condition
             # when many nodes are added in a loop.
             # the below tasks ensures that even the last node will be included in dhcp/dns
             Queue().add_task_to_queue('dhcp:restart', 'housekeeper', '__node_delete__')
+            Queue().add_task_to_queue('dhcp6:restart', 'housekeeper', '__node_delete__')
             Queue().add_task_to_queue('dns:restart', 'housekeeper', '__node_delete__')
             response = f'Node {name} with all its interfaces removed'
             status=True

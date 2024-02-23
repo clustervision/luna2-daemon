@@ -49,11 +49,11 @@ interface-name=${DEVICE}
 autoconnect=true
 zone=${ZONE}
 
-[$TYPE]
 EOF
 
 if [ "$TYPE" == "infiniband" ]; then
 cat << EOF >> /sysroot/etc/NetworkManager/system-connections/Connection_${DEVICE}.nmconnection
+[$TYPE]
 #mtu=65520
 #transport-mode=connected
 transport-mode=datagram
@@ -65,6 +65,7 @@ cat << EOF >> /sysroot/etc/NetworkManager/system-connections/Connection_${DEVICE
 [proxy]
 
 $OPTIONS
+
 EOF
 chown root:root /sysroot/etc/NetworkManager/system-connections/Connection_${DEVICE}.nmconnection
 chmod 600 /sysroot/etc/NetworkManager/system-connections/Connection_${DEVICE}.nmconnection

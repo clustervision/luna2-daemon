@@ -101,8 +101,8 @@ EOF
 
     dns = """
         SEARCH=$(echo $SEARCH | sed -e 's/,/;/g')
-        sed -i 's/^dns=/dns='$NAMESERVER'/' /sysroot/etc/NetworkManager/system-connections/Connection_${DEVICE}.nmconnection
-        sed -i 's/^dns-search=/dns-search='$SEARCH'/' /sysroot/etc/NetworkManager/system-connections/Connection_${DEVICE}.nmconnection
+        sed -i 's/^dns=$/dns='$NAMESERVER'/' /sysroot/etc/NetworkManager/system-connections/Connection_${DEVICE}.nmconnection
+        sed -i 's/^dns-search=$/dns-search='$SEARCH'/' /sysroot/etc/NetworkManager/system-connections/Connection_${DEVICE}.nmconnection
     """
 
     # ------------ ipv6 --------------
@@ -119,11 +119,6 @@ method=manual
 EOF
     """
 
-    hostname_ipv6 = """
-        echo "$HOSTNAME" > /proc/sys/kernel/hostname
-        chroot /sysroot hostnamectl --static set-hostname $HOSTNAME 2> /dev/null
-    """
-
     gateway_ipv6 = """
         if [ "$GATEWAY" ]; then
             sed -i 's%^#route1=%route1=0.0.0.0/0,'$GATEWAY','$METRIC'%' /sysroot/etc/NetworkManager/system-connections/Connection_${DEVICE}.nmconnection
@@ -132,7 +127,7 @@ EOF
 
     dns_ipv6 = """
         SEARCH=$(echo $SEARCH | sed -e 's/,/;/g')
-        sed -i 's/^dns=/dns='$NAMESERVER'/' /sysroot/etc/NetworkManager/system-connections/Connection_${DEVICE}.nmconnection
-        sed -i 's/^dns-search=/dns-search='$SEARCH'/' /sysroot/etc/NetworkManager/system-connections/Connection_${DEVICE}.nmconnection
+        sed -i 's/^dns=$/dns='$NAMESERVER'/' /sysroot/etc/NetworkManager/system-connections/Connection_${DEVICE}.nmconnection
+        sed -i 's/^dns-search=$/dns-search='$SEARCH'/' /sysroot/etc/NetworkManager/system-connections/Connection_${DEVICE}.nmconnection
     """
 

@@ -40,6 +40,8 @@ class Plugin():
         config = segment that handles interface configuration in template
         """
 
+    init = ""
+
     interface = """
         cd /sysroot
         cd etc/sysconfig/network-scripts
@@ -84,4 +86,8 @@ class Plugin():
             echo "nameserver $server" >> etc/resolv.conf
         done
     """
+
+    interface_ipv6 = ""
+    gateway_ipv6 = ""
+    dns_ipv6 = ""
 

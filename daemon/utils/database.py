@@ -419,7 +419,7 @@ class Database():
                 if 'with' in column:
                     key_query.append(f"CREATE UNIQUE INDEX {column['column']}_{column['with']} ON `{table}`(`{column['column']}`,`{column['with']}`)")
                 else:
-                    key_query.append(f"CREATEUNIQUE INDEX {column['column']}_index ON `{table}`(`{column['column']}`)")
+                    key_query.append(f"CREATE UNIQUE INDEX {column['column']}_index ON `{table}`(`{column['column']}`)")
 
         query = f'ALTER TABLE `{table}` ADD {column_string}'
         self.logger.debug(f"Query executing => {query}")

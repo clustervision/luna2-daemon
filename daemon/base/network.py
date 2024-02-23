@@ -129,7 +129,8 @@ class Network():
 
         if request_data:
             used_ips, used6_ips = 0, 0
-            redistribute_ipaddress, default_gateway_metric, default_zone = None, "101", "internal"
+            redistribute_ipaddress, clear_ipv4, clear_ipv6 = False, False, False
+            default_gateway_metric, default_zone = "101", "internal"
 
             data = request_data['config']['network'][name]
             data['name'] = name
@@ -279,16 +280,19 @@ class Network():
                     data['gateway_ipv6']=None
                     data['dhcp_range_begin_ipv6']=None
                     data['dhcp_range_end_ipv6']=None
+                    clear_ipv6 = True
                 elif data['clear'] == 'ipv4' and db_data['network_ipv6']:
                     data['network']=None
                     data['subnet']=None
                     data['gateway']=None
                     data['dhcp_range_begin']=None
                     data['dhcp_range_end']=None
+                    clear_ipv4 = True
                 else:
                     status=False
                     ret_msg = 'Invalid request: clearing ipv4 requires ipv6 to be configured first and vice versa'
                     return status, ret_msg
+                del data['clear']
             else:
                 #IPv6, ipv6. we basically allow both types to be send, but we figure out what we're dealing with. - Antoine
                 for item in ['dhcp_range_begin','dhcp_range_end','gateway','network','nameserver_ip']:
@@ -379,6 +383,26 @@ class Network():
                                 name
                             )
                             executor.shutdown(wait=False)
+                    if clear_ipv4 or clear_ipv6:
+                        entry_list = Database().get_record_join(
+                            [
+                                'ipaddress.id',
+                                'ipaddress.tableref',
+                                'ipaddress.tablerefid'
+                            ],
+                            ['ipaddress.networkid=network.id'],
+                            [f"network.name='{data['name']}'"]
+                        )
+                        if entry_list:
+                            clear_data = {}
+                            if clear_ipv4:
+                                clear_data['ipaddress'] = None
+                            if clear_ipv6:
+                                clear_data['ipaddress'] = None
+                            row = Helper().make_rows(clear_data)
+                            for entry in entry_list:
+                                where = [{"column": "id", "value": entry['id']}]
+                                Database().update('ipaddress', row, where)
                     response = f'Network {name} updated successfully'
                     status=True
                 Service().queue('dns','restart')

@@ -124,8 +124,11 @@ class Plugin():
     fetch = """
     echo "Luna2: Downloading torrent" | tee -a /tmp/luna-installer.log
     cd /{{ LUNA_SYSTEMROOT }}
-    curl $INTERFACE -H "x-access-tokens: $LUNA_TOKEN" -s {{ WEBSERVER_PROTOCOL }}://[{{ LUNA_CONTROLLER }}]:{{ WEBSERVER_PORT }}/files/{{ LUNA_IMAGEFILE }}.torrent > {{ LUNA_IMAGEFILE }}.torrent
-    #aria2c --seed-time=0 --enable-dht=false --max-connection-per-server=2 --bt-stop-timeout=300 {{ WEBSERVER_PROTOCOL }}://{{ LUNA_CONTROLLER }}:{{ WEBSERVER_PORT }}/files/{{ LUNA_TORRENT }}
+    if [ "$(echo LUNA_API_PROTOCOL | grep ':')" ]; then
+        curl $INTERFACE -H "x-access-tokens: $LUNA_TOKEN" -s {{ WEBSERVER_PROTOCOL }}://[{{ LUNA_CONTROLLER }}]:{{ WEBSERVER_PORT }}/files/{{ LUNA_IMAGEFILE }}.torrent > {{ LUNA_IMAGEFILE }}.torrent
+    else
+        curl $INTERFACE -H "x-access-tokens: $LUNA_TOKEN" -s {{ WEBSERVER_PROTOCOL }}://{{ LUNA_CONTROLLER }}:{{ WEBSERVER_PORT }}/files/{{ LUNA_IMAGEFILE }}.torrent > {{ LUNA_IMAGEFILE }}.torrent
+    fi
     aria2c --seed-time=0 --enable-dht=false --max-connection-per-server=2 --bt-stop-timeout=120 --check-certificate=false {{ LUNA_IMAGEFILE }}.torrent
     ret=$?
     rm -f {{ LUNA_IMAGEFILE }}.torrent *.aria 2> /dev/null

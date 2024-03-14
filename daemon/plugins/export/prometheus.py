@@ -43,7 +43,11 @@ class Plugin():
         one defined method is mandatory:
         - export
         """
-        self.port = 9100
+        self.services = {
+            "node":  9100,
+            "ipmi":  9102,
+            "nvidia":  9103
+        }
 
     # ---------------------------------------------------------------------------
 
@@ -51,15 +55,27 @@ class Plugin():
         status, all_nodes = Node().get_all_nodes()
         if status:
             if 'config' in all_nodes and 'node' in all_nodes['config']:
-                structured, response = {}, []
+                targets = []
                 data = all_nodes['config']['node']
-                for node in data.keys():
-                    labels = { "exporter": "node" }
-                    if 'group' in data[node]:
-                        labels['luna_group'] = data[node]['group']
-                    #if 'roles' in data[node] and data[node]['roles']:
-                    #    labels['luna_role'] = data[node]['roles'].replace(' ','').split(',')[0]
-                    response.append({"targets": [f"{data[node]['hostname']}:{self.port}"], "labels": labels})
-                return True, response
+
+                for service_name, service_port in self.services.items():
+                    service_targets = [{
+                            "targets": [f"{node['hostname']}:{service_port}" ],
+                            "labels": {
+                                "exporter": f"{service_name}",
+
+                            },
+                        }
+                        for  node in data.values()
+                    ]   
+                    
+                    for target, node in zip(service_targets, data.values()):
+                        if 'group' in node and node['group']:
+                            target['labels']['luna_group'] = node['group']
+
+                        # if 'roles' in data[node] and data[node]['roles']:
+                        #     target['labels']['luna_roles'] = data[node]['roles'][0]
+                    targets.extend(service_targets)
+                return True, targets
         return False, "Failed to generate export data"
 

@@ -74,8 +74,9 @@ class OsImage(object):
             runtype='DRY RUN'
             if not nodry:
                 nodry=False
-                runtype='REAL/NODRY RUN'
             nodry = Helper().make_bool(nodry)
+            if nodry:
+                runtype='REAL/NODRY RUN'
 
             if action == "grab_osimage":
                 image_directory = CONSTANT['FILES']['IMAGE_DIRECTORY']
@@ -491,8 +492,9 @@ class OsImage(object):
             runtype='DRY RUN'
             if not nodry:
                 nodry=False
-                runtype='REAL/NODRY RUN'
             nodry = Helper().make_bool(nodry)
+            if nodry:
+                runtype='REAL/NODRY RUN'
 
             if action == "push_osimage_to_node" or action == "push_osimage_to_group":
                 Status().add_message(request_id,"luna",f"pushing osimage {osimage}->{object} {dst} [{runtype}]")
@@ -916,7 +918,7 @@ class OsImage(object):
                 elif action == "grab_n_pack_n_build_osimage":
                     Queue().update_task_status_in_queue(next_id,'in progress')
                     if first and second:
-                        queue_id,queue_response = Queue().add_task_to_queue(f"grab_osimage:{first}:{second}:noeof",'osimage',request_id)
+                        queue_id,queue_response = Queue().add_task_to_queue(f"grab_osimage:{first}:{second}:{third}:noeof",'osimage',request_id)
                         if queue_id:
                             queue_id,queue_response = Queue().add_task_to_queue(f"pack_n_build_osimage:{second}",'osimage',request_id)
                             if queue_id:

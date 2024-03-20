@@ -627,9 +627,9 @@ class Boot():
                                 self.insync = self.ha_object.get_insync()
                                 trial-=1
                                 sleep(2)
-                            ret, message = Journal().add_request(function="Node.update",object=example_node,payload=newnodedata)
+                            ret, message = Journal().add_request(function="Node.update_node",object=example_node,payload=newnodedata)
                         if ret is True:
-                            ret, message = Node().update(new_nodename,newnodedata)
+                            ret, message = Node().update_node(new_nodename,newnodedata)
                         self.logger.info(f"Group select boot: Creating {new_nodename}: ret = [{ret}], message = [{message}]")
                     if ret is True:
                         hostname = new_nodename

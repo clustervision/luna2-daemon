@@ -58,24 +58,23 @@ class Plugin():
                 targets = []
                 data = all_nodes['config']['node']
 
-                for service_name, service_port in self.services.items():
-                    service_targets = [{
-                            "targets": [f"{node['hostname']}:{service_port}" ],
+                for service_name, service_port in self.services.items():                    
+                    for node in data.values():
+                        
+                        node_provisioning_interface = node['provision_interface']
+                        node_provisioning_ip = next((iface['ipaddress'] for iface in node['interfaces'] if iface['interface'] == node_provisioning_interface), None)
+
+                        target = {
+                            "targets": [f"{node_provisioning_ip or node['hostname']}:{service_port}" ],
                             "labels": {
                                 "exporter": f"{service_name}",
-
+                                "hostname": f"{node['hostname']}",
                             },
                         }
-                        for  node in data.values()
-                    ]   
-                    
-                    for target, node in zip(service_targets, data.values()):
                         if 'group' in node and node['group']:
                             target['labels']['luna_group'] = node['group']
 
-                        # if 'roles' in data[node] and data[node]['roles']:
-                        #     target['labels']['luna_roles'] = data[node]['roles'][0]
-                    targets.extend(service_targets)
+                        targets.append(target)
                 return True, targets
         return False, "Failed to generate export data"
 

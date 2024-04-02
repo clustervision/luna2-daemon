@@ -859,25 +859,25 @@ class Helper(object):
         try:
             for levelone in levelones:
                 if leveltwo and levelone+leveltwo+'.py' in myplugin:
-                    self.logger.info(f"loading plugins.{root}.{levelone}{leveltwo}")
+                    self.logger.debug(f"loading plugins.{root}.{levelone}{leveltwo}")
                     module = __import__('plugins.'+root+'.'+levelone+leveltwo,fromlist=[class_name])
                     break
                 elif levelone in myplugin.keys():
                     if leveltwo and leveltwo in myplugin[levelone]:
                         plugin = leveltwo.rsplit('.',1)
-                        self.logger.info(f"loading plugins.{root}.{levelone}.{plugin[0]}")
+                        self.logger.debug(f"loading plugins.{root}.{levelone}.{plugin[0]}")
                         module = __import__('plugins.'+root+'.'+levelone+'.'+plugin[0],fromlist=[class_name])
                         break
                     elif 'default.py' in myplugin[levelone]:
-                        self.logger.info(f"loading plugins.{root}.{levelone}.default")
+                        self.logger.debug(f"loading plugins.{root}.{levelone}.default")
                         module = __import__('plugins.'+root+'.'+levelone+'.default',fromlist=[class_name])
                         break
                 elif levelone+'.py' in myplugin:
-                    self.logger.info(f"loading plugins.{root}.{levelone}")
+                    self.logger.debug(f"loading plugins.{root}.{levelone}")
                     module = __import__('plugins.'+root+'.'+levelone,fromlist=[class_name])
                     break
             if not module:
-                self.logger.info(f"loading plugins.{root}.default")
+                self.logger.debug(f"loading plugins.{root}.default")
                 module = __import__('plugins.'+root+'.default',fromlist=[class_name])
         except Exception as exp:
             exc_type, exc_obj, exc_tb = sys.exc_info()

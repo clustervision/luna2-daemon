@@ -1019,12 +1019,14 @@ class Boot():
         return status, data
 
 
-    def install(self, node=None):
+    def install(self, node=None, method=None):
         """
         This method will provide a install ipxe template for a node.
         """
         status=False
         template = 'templ_install.cfg'
+        if method:
+            template = f'templ_install_{method}.cfg'
         data = {
             'template'              : template,
             'nodeid'                : None,
@@ -1050,6 +1052,8 @@ class Boot():
         check_template = Helper().check_jinja(template_path)
         if not check_template:
             return False, 'Empty'
+        with open(template_path, 'r', encoding='utf-8') as file:
+            template_data = file.read()
 
         cluster = Database().get_record(None, 'cluster', None)
         if cluster:
@@ -1222,21 +1226,6 @@ class Boot():
         ## SYSTEMROOT
         osimage_plugin = Helper().plugin_load(self.osimage_plugins,'osimage/operations/image',data['distribution'],data['osrelease'])
         data['systemroot'] = str(osimage_plugin().systemroot or '/sysroot')
-
-        # ------------ support for alternative provisioning ----------------
-
-        if 'imagefile' in data and data['imagefile'] and data['imagefile'] == 'kickstart':
-            template = 'templ_install_kickstart.cfg'
-            data['template'] = template
-            template_path = f'{CONSTANT["TEMPLATES"]["TEMPLATE_FILES"]}/{template}'
-            check_template = Helper().check_jinja(template_path)
-            if not check_template:
-                return False, 'Empty'
-
-        with open(template_path, 'r', encoding='utf-8') as file:
-            template_data = file.read()
-
-        # ------------------------------------------------------------------
 
         ## FETCH CODE SEGMENT
         cluster_provision_methods = [data['provision_method'], data['provision_fallback']]

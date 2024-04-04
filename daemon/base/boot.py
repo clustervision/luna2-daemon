@@ -34,6 +34,7 @@ import datetime
 import jinja2
 import jwt
 import re
+from jinja2.filters import FILTERS
 from time import sleep
 #from flask import abort
 from base64 import b64decode, b64encode
@@ -47,6 +48,32 @@ from common.constant import CONSTANT
 from base.node import Node
 from utils.journal import Journal
 from utils.ha import HA
+
+
+# -------------------- custom Jinja filter to handle instream filtering -----------------------
+def jinja_b64decode(value):
+    """
+    quick and dirty b64decode filter for jinja
+    """
+    return b64decode(value)
+
+def jinja_decode(value):
+    """
+    quick and dirty decode filter for jinja
+    """
+    try:
+        return value.decode("ascii")
+    except:
+        try:
+            return value.decode("utf-8")
+        except:
+            return value
+    
+FILTERS["b64decode"] = jinja_b64decode
+FILTERS["decode"] = jinja_decode
+# ----------------------------------------------------------------------------------------------
+
+
 
 try:
     from plugins.boot.detection.switchport import Plugin as DetectionPlugin
@@ -280,6 +307,7 @@ class Boot():
             ['network.id=ipaddress.networkid', 'ipaddress.tablerefid=nodeinterface.id'],
             ['tableref="nodeinterface"', f"nodeinterface.macaddress='{mac}'"]
         )
+        self.logger.info(f"NIC: {nodeinterface}")
         if nodeinterface:
             data['nodeid'] = nodeinterface[0]['nodeid']
             if nodeinterface[0]["ipaddress_ipv6"]:
@@ -1129,6 +1157,8 @@ class Boot():
 #                data['unmanaged_bmc_users'] = bmcsetup[0]['unmanaged_bmc_users'] # supposedly covered by Node().get_node
             else:
                 data['setupbmc'] = False
+        else:
+            del data['bmcsetup']
 
         data['osrelease'] = 'default'
         data['distribution'] = 'redhat'
@@ -1231,11 +1261,15 @@ class Boot():
         cluster_provision_methods = [data['provision_method'], data['provision_fallback']]
 
         for method in cluster_provision_methods:
-            provision_plugin = Helper().plugin_load(self.boot_plugins, 'boot/provision', method)
-            segment = str(provision_plugin().fetch)
-            segment = f"function download_{method} {{\n{segment}\n}}\n## FETCH CODE SEGMENT"
-            # self.logger.info(f"SEGMENT {method}:\n{segment}")
-            template_data = template_data.replace("## FETCH CODE SEGMENT",segment)
+            if method:
+                provision_plugin = Helper().plugin_load(self.boot_plugins, 'boot/provision', method)
+                segment = str(provision_plugin().fetch)
+                segment = f"function download_{method} {{\n{segment}\n}}\n## FETCH CODE SEGMENT"
+                # self.logger.info(f"SEGMENT {method}:\n{segment}")
+                template_data = template_data.replace("## FETCH CODE SEGMENT",segment)
+
+        if not data['provision_fallback']:
+            data['provision_fallback'] = data['provision_method']
 
         ## INTERFACE CODE SEGMENT
         network_plugin = Helper().plugin_load(

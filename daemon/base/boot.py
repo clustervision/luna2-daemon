@@ -306,7 +306,6 @@ class Boot():
             ['network.id=ipaddress.networkid', 'ipaddress.tablerefid=nodeinterface.id'],
             ['tableref="nodeinterface"', f"nodeinterface.macaddress='{mac}'"]
         )
-        self.logger.info(f"NIC: {nodeinterface}")
         if nodeinterface:
             data['nodeid'] = nodeinterface[0]['nodeid']
             if nodeinterface[0]["ipaddress_ipv6"]:

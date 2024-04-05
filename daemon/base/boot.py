@@ -568,7 +568,9 @@ class Boot():
         )
         if nodeinterface_check:
             # this means there is already a node with this mac.
-            # though we shouldn't, we will remove the other node's MAC so we can proceed
+            # though we shouldn't, we will remove the other node's MAC so we can proceed.
+            # Since we enforce a new node or re-use one, we can safely clear all macs.
+            # Further down we configure the interface for the 'discovered' node and set the mac.
             self.logger.warning(f"node with id {nodeinterface_check[0]['nodeid']} will have its MAC cleared and this <to be declared>-node will use MAC {mac}")
             row = [{"column": "macaddress", "value": ""}]
             where = [{"column": "macaddress", "value": mac}]
@@ -909,35 +911,33 @@ class Boot():
             data['nodeid'] = node[0]['id']
         if data['nodeid']:
             we_need_dhcpd_restart = False
-            nodeinterface_check = Database().get_record_join(
-                ['nodeinterface.nodeid as nodeid', 'nodeinterface.interface'],
-                ['nodeinterface.nodeid=node.id'],
-                [f'nodeinterface.macaddress="{mac}"']
-            )
+            nodeinterface_check = Database().get_record(None, 'nodeinterface', 
+                f"WHERE macaddress='{mac}' AND nodeid!='{data['nodeid']}'")
             if nodeinterface_check:
                 # There is already a node with this mac. let's first check if it's our own.
-                if nodeinterface_check[0]['nodeid'] != data['nodeid']:
-                    # we are NOT !!! though we shouldn't, we will remove the other node's
-                    # MAC and assign this mac to us.
-                    # note to other developers: We hard assign a node's IP address
-                    # (hard config inside image/node) we must be careful - Antoine
-                    message = f"Node with id {nodeinterface_check[0]['nodeid']} "
-                    message += f"will have its MAC cleared and node {hostname} with "
-                    message += f"id {data['nodeid']} will use MAC {mac}"
-                    self.logger.warning(message)
-                    row = [{"column": "macaddress", "value": ""}]
-                    where = [
-                        {"column": "nodeid", "value": nodeinterface_check[0]['nodeid']},
-                        {"column": "interface", "value": nodeinterface_check[0]['interface']}
-                    ]
-                    Database().update('nodeinterface', row, where)
-                    row = [{"column": "macaddress", "value": mac}]
-                    where = [
-                        {"column": "nodeid", "value": data["nodeid"]},
-                        {"column": "interface", "value": "BOOTIF"}
-                    ]
-                    Database().update('nodeinterface', row, where)
-                    we_need_dhcpd_restart = True
+                for db_node in nodeinterface_check:
+                    if db_node['nodeid'] != data['nodeid']:
+                        # we are NOT !!! though we shouldn't, we will remove the other node's
+                        # MAC and assign this mac to us.
+                        # note to other developers: We hard assign a node's IP address
+                        # (hard config inside image/node) we must be careful - Antoine
+                        message = f"Node with id {db_node['nodeid']} "
+                        message += f"will have its MAC cleared and node {hostname} with "
+                        message += f"id {data['nodeid']} will use MAC {mac}"
+                        self.logger.warning(message)
+                        row = [{"column": "macaddress", "value": ""}]
+                        where = [
+                            {"column": "nodeid", "value": db_node['nodeid']},
+                            {"column": "interface", "value": db_node['interface']}
+                        ]
+                        Database().update('nodeinterface', row, where)
+                row = [{"column": "macaddress", "value": mac}]
+                where = [
+                    {"column": "nodeid", "value": data["nodeid"]},
+                    {"column": "interface", "value": "BOOTIF"}
+                ]
+                Database().update('nodeinterface', row, where)
+                we_need_dhcpd_restart = True
             else:
                 # we do not have anyone with this mac yet. we can safely move ahead.
                 # BIG NOTE!: This is being done without token! By itself not a threat

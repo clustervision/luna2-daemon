@@ -18,7 +18,7 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>
 
 """
-This Is the Http plugin, which takes care of the http based provisioning
+This Is the kickstart plugin, which takes care of kickstart based provisioning
 
 """
 
@@ -33,7 +33,9 @@ __status__      = 'Development'
 
 class Plugin():
     """
-    Class for operating with regular http provisioning
+    Class for operating with kickstart provisioning
+    Since kickstart in itself renders thing on the installing server,
+    the below will probably stay empty.
     """
     """
     This plugin class requires 2 mandatory methods:

@@ -34,6 +34,7 @@ import datetime
 import jinja2
 import jwt
 import re
+from jinja2.filters import FILTERS
 from time import sleep
 #from flask import abort
 from base64 import b64decode, b64encode
@@ -47,6 +48,31 @@ from common.constant import CONSTANT
 from base.node import Node
 from utils.journal import Journal
 from utils.ha import HA
+
+
+# -------------------- custom Jinja filter to handle instream filtering -----------------------
+def jinja_b64decode(value):
+    """
+    quick and dirty b64decode filter for jinja
+    """
+    b64decoded = None
+    try:
+        b64decoded = b64decode(value)
+    except:
+        b64decoded = value
+    # ---
+    try:
+        return b64decoded.decode("ascii")
+    except:
+        try:
+            return b64decoded.decode("utf-8")
+        except:
+            return b64decoded
+
+FILTERS["b64decode"] = jinja_b64decode
+# ----------------------------------------------------------------------------------------------
+
+
 
 try:
     from plugins.boot.detection.switchport import Plugin as DetectionPlugin
@@ -443,6 +469,18 @@ class Boot():
                             pass
                     data['kerneloptions']=data['kerneloptions'].replace('\n', ' ').replace('\r', '')
 
+                # ------------ support for alternative provisioning ----------------
+
+                if osimage[0]['imagefile'] and osimage[0]['imagefile'] == 'kickstart':
+                    template = 'templ_nodeboot_kickstart.cfg'
+                    data['template'] = template
+                    template_path = f'{CONSTANT["TEMPLATES"]["TEMPLATE_FILES"]}/{template}'
+                    check_template = Helper().check_jinja(template_path)
+                    if not check_template:
+                        return False, 'Empty'
+
+                # ------------------------------------------------------------------
+
         if None not in data.values():
             status=True
             Helper().update_node_state(data["nodeid"], "installer.discovery")
@@ -528,7 +566,9 @@ class Boot():
         )
         if nodeinterface_check:
             # this means there is already a node with this mac.
-            # though we shouldn't, we will remove the other node's MAC so we can proceed
+            # though we shouldn't, we will remove the other node's MAC so we can proceed.
+            # Since we enforce a new node or re-use one, we can safely clear all macs.
+            # Further down we configure the interface for the 'discovered' node and set the mac.
             self.logger.warning(f"node with id {nodeinterface_check[0]['nodeid']} will have its MAC cleared and this <to be declared>-node will use MAC {mac}")
             row = [{"column": "macaddress", "value": ""}]
             where = [{"column": "macaddress", "value": mac}]
@@ -775,6 +815,18 @@ class Boot():
                             pass
                     data['kerneloptions']=data['kerneloptions'].replace('\n', ' ').replace('\r', '')
 
+                # ------------ support for alternative provisioning ----------------
+
+                if osimage[0]['imagefile'] and osimage[0]['imagefile'] == 'kickstart':
+                    template = 'templ_nodeboot_kickstart.cfg'
+                    data['template'] = template
+                    template_path = f'{CONSTANT["TEMPLATES"]["TEMPLATE_FILES"]}/{template}'
+                    check_template = Helper().check_jinja(template_path)
+                    if not check_template:
+                        return False, 'Empty'
+
+                # ------------------------------------------------------------------
+
         if None not in data.values():
             status=True
             Helper().update_node_state(data["nodeid"], "installer.discovery")
@@ -857,35 +909,33 @@ class Boot():
             data['nodeid'] = node[0]['id']
         if data['nodeid']:
             we_need_dhcpd_restart = False
-            nodeinterface_check = Database().get_record_join(
-                ['nodeinterface.nodeid as nodeid', 'nodeinterface.interface'],
-                ['nodeinterface.nodeid=node.id'],
-                [f'nodeinterface.macaddress="{mac}"']
-            )
+            nodeinterface_check = Database().get_record(None, 'nodeinterface', 
+                f"WHERE macaddress='{mac}' AND nodeid!='{data['nodeid']}'")
             if nodeinterface_check:
                 # There is already a node with this mac. let's first check if it's our own.
-                if nodeinterface_check[0]['nodeid'] != data['nodeid']:
-                    # we are NOT !!! though we shouldn't, we will remove the other node's
-                    # MAC and assign this mac to us.
-                    # note to other developers: We hard assign a node's IP address
-                    # (hard config inside image/node) we must be careful - Antoine
-                    message = f"Node with id {nodeinterface_check[0]['nodeid']} "
-                    message += f"will have its MAC cleared and node {hostname} with "
-                    message += f"id {data['nodeid']} will use MAC {mac}"
-                    self.logger.warning(message)
-                    row = [{"column": "macaddress", "value": ""}]
-                    where = [
-                        {"column": "nodeid", "value": nodeinterface_check[0]['nodeid']},
-                        {"column": "interface", "value": nodeinterface_check[0]['interface']}
-                    ]
-                    Database().update('nodeinterface', row, where)
-                    row = [{"column": "macaddress", "value": mac}]
-                    where = [
-                        {"column": "nodeid", "value": data["nodeid"]},
-                        {"column": "interface", "value": "BOOTIF"}
-                    ]
-                    Database().update('nodeinterface', row, where)
-                    we_need_dhcpd_restart = True
+                for db_node in nodeinterface_check:
+                    if db_node['nodeid'] != data['nodeid']:
+                        # we are NOT !!! though we shouldn't, we will remove the other node's
+                        # MAC and assign this mac to us.
+                        # note to other developers: We hard assign a node's IP address
+                        # (hard config inside image/node) we must be careful - Antoine
+                        message = f"Node with id {db_node['nodeid']} "
+                        message += f"will have its MAC cleared and node {hostname} with "
+                        message += f"id {data['nodeid']} will use MAC {mac}"
+                        self.logger.warning(message)
+                        row = [{"column": "macaddress", "value": ""}]
+                        where = [
+                            {"column": "nodeid", "value": db_node['nodeid']},
+                            {"column": "interface", "value": db_node['interface']}
+                        ]
+                        Database().update('nodeinterface', row, where)
+                row = [{"column": "macaddress", "value": mac}]
+                where = [
+                    {"column": "nodeid", "value": data["nodeid"]},
+                    {"column": "interface", "value": "BOOTIF"}
+                ]
+                Database().update('nodeinterface', row, where)
+                we_need_dhcpd_restart = True
             else:
                 # we do not have anyone with this mac yet. we can safely move ahead.
                 # BIG NOTE!: This is being done without token! By itself not a threat
@@ -964,6 +1014,18 @@ class Boot():
                             pass
                     data['kerneloptions']=data['kerneloptions'].replace('\n', ' ').replace('\r', '')
 
+                # ------------ support for alternative provisioning ----------------
+
+                if osimage[0]['imagefile'] and osimage[0]['imagefile'] == 'kickstart':
+                    template = 'templ_nodeboot_kickstart.cfg'
+                    data['template'] = template
+                    template_path = f'{CONSTANT["TEMPLATES"]["TEMPLATE_FILES"]}/{template}'
+                    check_template = Helper().check_jinja(template_path)
+                    if not check_template:
+                        return False, 'Empty'
+
+                # ------------------------------------------------------------------
+
         if None not in data.values():
             status=True
             Helper().update_node_state(data["nodeid"], "installer.discovery")
@@ -983,12 +1045,14 @@ class Boot():
         return status, data
 
 
-    def install(self, node=None):
+    def install(self, node=None, method=None):
         """
         This method will provide a install ipxe template for a node.
         """
         status=False
         template = 'templ_install.cfg'
+        if method:
+            template = f'templ_install_{method}.cfg'
         data = {
             'template'              : template,
             'nodeid'                : None,
@@ -1009,11 +1073,11 @@ class Boot():
         data['protocol'] = CONSTANT['API']['PROTOCOL']
         data['verify_certificate'] = CONSTANT['API']['VERIFY_CERTIFICATE']
         data['webserver_protocol'] = data['protocol']
+
         template_path = f'{CONSTANT["TEMPLATES"]["TEMPLATE_FILES"]}/{template}'
         check_template = Helper().check_jinja(template_path)
         if not check_template:
             return False, 'Empty'
-
         with open(template_path, 'r', encoding='utf-8') as file:
             template_data = file.read()
 
@@ -1091,6 +1155,8 @@ class Boot():
 #                data['unmanaged_bmc_users'] = bmcsetup[0]['unmanaged_bmc_users'] # supposedly covered by Node().get_node
             else:
                 data['setupbmc'] = False
+        else:
+            del data['bmcsetup']
 
         data['osrelease'] = 'default'
         data['distribution'] = 'redhat'
@@ -1193,11 +1259,15 @@ class Boot():
         cluster_provision_methods = [data['provision_method'], data['provision_fallback']]
 
         for method in cluster_provision_methods:
-            provision_plugin = Helper().plugin_load(self.boot_plugins, 'boot/provision', method)
-            segment = str(provision_plugin().fetch)
-            segment = f"function download_{method} {{\n{segment}\n}}\n## FETCH CODE SEGMENT"
-            # self.logger.info(f"SEGMENT {method}:\n{segment}")
-            template_data = template_data.replace("## FETCH CODE SEGMENT",segment)
+            if method:
+                provision_plugin = Helper().plugin_load(self.boot_plugins, 'boot/provision', method)
+                segment = str(provision_plugin().fetch)
+                segment = f"function download_{method} {{\n{segment}\n}}\n## FETCH CODE SEGMENT"
+                # self.logger.info(f"SEGMENT {method}:\n{segment}")
+                template_data = template_data.replace("## FETCH CODE SEGMENT",segment)
+
+        if not data['provision_fallback']:
+            data['provision_fallback'] = data['provision_method']
 
         ## INTERFACE CODE SEGMENT
         network_plugin = Helper().plugin_load(

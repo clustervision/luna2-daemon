@@ -159,7 +159,17 @@ class Group():
             except Exception as exp:
                 self.logger.error(f"{exp}")
 
-            group['osimage'] = Database().name_by_id('osimage', group['osimageid'])
+            if group['osimageid']:
+                osimage = Database().get_record(None, 'osimage', f" WHERE id = '{group['osimageid']}'")
+                if osimage:
+                    group['osimage'] = osimage[0]['name']
+                    if osimage[0]['imagefile'] and osimage[0]['imagefile'] == 'kickstart':
+                        group['provision_method'] = 'kickstart'
+                        group['provision_method_source'] = 'osimage'
+                        group['provision_fallback'] = None
+                        group['provision_fallback_source'] = 'osimage'
+                else:    
+                    group['osimage'] = Database().name_by_id('osimage', group['osimageid'])
             del group['osimageid']
             group['bmcsetupname'] = None
             if group['bmcsetupid']:

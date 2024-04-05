@@ -966,6 +966,7 @@ class Config(object):
 
                                     if avail:
                                         ipaddress = avail
+                                        ips.append(ipaddress)
                                         _, response = self.node_interface_ipaddress_config(
                                             node['nodeid'],
                                             interface,
@@ -994,6 +995,7 @@ class Config(object):
 
                                     if avail6:
                                         ipaddress = avail6
+                                        ips6.append(ipaddress)
                                         _, response = self.node_interface_ipaddress_config(
                                             node['nodeid'],
                                             interface,

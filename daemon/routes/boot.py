@@ -272,3 +272,52 @@ def boot_install(node=None):
         LUNA_TOKEN              = data['jwt_token']
     ), access_code
 
+@boot_blueprint.route('/kickstart/install/<string:node>', methods=['GET'])
+#@token_required # we cannot use a token here!!
+@validate_name
+def kickstart_install(node=None):
+    """
+    Input - NodeID or node name
+    Process - Call the installation script for this node.
+    Output - Success or failure
+    """
+    access_code = 404
+    status, data = Boot().install(node,'kickstart')
+    if status is True:
+        access_code = 200
+    else:
+        access_code = 404
+        return data, access_code
+    return render_template_string(
+        data['template_data'],
+        LUNA_CONTROLLER         = data['ipaddress'],
+        LUNA_API_PORT           = data['serverport'],
+        LUNA_API_PROTOCOL       = data['protocol'],
+        VERIFY_CERTIFICATE      = data['verify_certificate'],
+        WEBSERVER_PORT          = data['webserver_port'],
+        WEBSERVER_PROTOCOL      = data['webserver_protocol'],
+        NODE_HOSTNAME           = data['nodehostname'],
+        NODE_NAME               = data['nodename'],
+        LUNA_OSIMAGE            = data['osimagename'],
+        LUNA_DISTRIBUTION       = data['distribution'],
+        LUNA_OSRELEASE          = data['osrelease'],
+        LUNA_SYSTEMROOT         = data['systemroot'],
+        LUNA_IMAGEFILE          = data['imagefile'],
+        LUNA_FILE               = data['imagefile'],
+        LUNA_SELINUX_ENABLED    = data['selinux'],
+        LUNA_SETUPBMC           = data['setupbmc'],
+        LUNA_BMC                = data['bmc'],
+        LUNA_BOOTLOADER         = data['localinstall'],
+        LUNA_LOCALINSTALL       = data['localinstall'],
+        LUNA_UNMANAGED_BMC_USERS= data['unmanaged_bmc_users'],
+        LUNA_INTERFACES         = data['interfaces'],
+        LUNA_PRESCRIPT          = data['prescript'],
+        LUNA_PARTSCRIPT         = data['partscript'],
+        LUNA_POSTSCRIPT         = data['postscript'],
+        PROVISION_METHOD        = data['provision_method'],
+        PROVISION_FALLBACK      = data['provision_fallback'],
+        NAME_SERVER             = data['name_server'],
+        DOMAIN_SEARCH           = data['domain_search'],
+        LUNA_TOKEN              = data['jwt_token']
+    ), access_code
+

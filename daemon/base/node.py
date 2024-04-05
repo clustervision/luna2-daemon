@@ -244,11 +244,31 @@ class Node():
             response = {'config': {'node': {} }}
             nodename = node['name']
             nodeid = node['id']
+            alt_source = {}
             if node['osimageid']:
-                node['osimage'] = Database().name_by_id('osimage',node['osimageid']) or '!!Invalid!!'
+                osimage = Database().get_record(None, 'osimage', f" WHERE id = '{node['osimageid']}'")
+                if osimage:
+                    node['osimage'] = osimage[0]['name']
+                    if osimage[0]['imagefile'] and osimage[0]['imagefile'] == 'kickstart':
+                        node['provision_method'] = 'kickstart'
+                        alt_source['provision_method'] = 'osimage'
+                        node['provision_fallback'] = None
+                        alt_source['provision_fallback'] = 'osimage'
+                else:
+                    node['osimage'] = '!!Invalid!!'
+                #node['osimage'] = Database().name_by_id('osimage',node['osimageid']) or '!!Invalid!!'
                 node['osimage_source'] = 'node'
             elif 'group_osimageid' in node and node['group_osimageid']:
-                node['osimage'] = Database().name_by_id('osimage', node['group_osimageid']) or '!!Invalid!!'
+                osimage = Database().get_record(None, 'osimage', f" WHERE id = '{node['group_osimageid']}'")
+                if osimage:
+                    node['osimage'] = osimage[0]['name']
+                    if osimage[0]['imagefile'] and osimage[0]['imagefile'] == 'kickstart':
+                        node['provision_method'] = 'kickstart'
+                        alt_source['provision_method'] = 'osimage'
+                        node['provision_fallback'] = None
+                        alt_source['provision_fallback'] = 'osimage'
+                else:
+                    node['osimage'] = '!!Invalid!!'
                 node['osimage_source'] = 'group'
             else:
                 node['osimage'] = None
@@ -310,7 +330,9 @@ class Node():
                     node['cluster_'+key] = str(Helper().make_bool(node['cluster_'+key]))
                 if 'group_'+key in node and isinstance(value, bool):
                     node['group_'+key] = str(Helper().make_bool(node['group_'+key]))
-                if 'cluster_'+key in node and node['cluster_'+key] and ((not 'group_'+key in node) or (not node['group_'+key])) and not node[key]:
+                if key in alt_source and alt_source[key] and key in node:
+                    node[key+'_source'] = alt_source[key]
+                elif 'cluster_'+key in node and node['cluster_'+key] and ((not 'group_'+key in node) or (not node['group_'+key])) and not node[key]:
                     node[key] = node['cluster_'+key] or str(value)
                     node[key+'_source'] = 'cluster'
                 elif 'group_'+key in node and node['group_'+key] and not node[key]:

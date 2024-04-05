@@ -55,22 +55,21 @@ def jinja_b64decode(value):
     """
     quick and dirty b64decode filter for jinja
     """
-    return b64decode(value)
-
-def jinja_decode(value):
-    """
-    quick and dirty decode filter for jinja
-    """
+    b64decoded = None
     try:
-        return value.decode("ascii")
+        b64decoded = b64decode(value)
+    except:
+        b64decoded = value
+    # ---
+    try:
+        return b64decoded.decode("ascii")
     except:
         try:
-            return value.decode("utf-8")
+            return b64decoded.decode("utf-8")
         except:
-            return value
-    
+            return b64decoded
+
 FILTERS["b64decode"] = jinja_b64decode
-FILTERS["decode"] = jinja_decode
 # ----------------------------------------------------------------------------------------------
 
 

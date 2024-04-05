@@ -269,7 +269,6 @@ class Node():
                         alt_source['provision_fallback'] = 'osimage'
                 else:
                     node['osimage'] = '!!Invalid!!'
-                #node['osimage'] = Database().name_by_id('osimage', node['group_osimageid']) or '!!Invalid!!'
                 node['osimage_source'] = 'group'
             else:
                 node['osimage'] = None

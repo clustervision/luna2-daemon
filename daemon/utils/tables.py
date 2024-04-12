@@ -54,6 +54,9 @@ class Tables():
               'ipaddress', 'groupinterface', 'roles', 'group', 'network', 'user', 'switch', 
               'otherdevices', 'groupsecrets', 'node', 'cluster', 'dns','controller']
 
+    def get_tables(self):
+        return self.tables
+
     def get_table_hashes(self):
         hashes={}
         for table in self.tables:
@@ -165,4 +168,21 @@ class Tables():
             return False
         self.import_table(table,data)
         return True
+
+
+    def export_table(self,table):
+        data=[]
+        dbcolumns = Database().get_columns(table)
+        if dbcolumns:
+            status=True
+            sequence=Database().get_sequence(table)
+            if sequence:
+                data.append({'SQLITE_SEQUENCE': sequence})
+            dbdata=Database().get_record(dbcolumns,table)
+            if data:
+                for record in dbdata:
+                    data.append(record)
+                    #group_data = b64encode(data.encode())
+                    #group_data = group_data.decode("ascii")
+        return data
 

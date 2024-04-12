@@ -35,6 +35,7 @@ from utils.log import Log
 from utils.database import Database
 from utils.service import Service
 from utils.helper import Helper
+from utils.tables import Tables
 
 
 class Cluster():
@@ -90,6 +91,21 @@ class Cluster():
             self.logger.error('No cluster is available.')
             response = 'No cluster is available'
             status=False
+        return status, response
+
+
+    def export_config(self):
+        """
+        This method will export all database data. Used for backups.
+        """
+        status=False
+        response="Internal error"
+        tables = Tables().get_tables()+['ha']
+        if tables:
+            status=True
+            response={}
+            for table in tables:
+                response[table]=Tables().export_table(table)
         return status, response
 
 

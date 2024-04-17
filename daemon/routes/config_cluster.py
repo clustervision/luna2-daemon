@@ -80,3 +80,22 @@ def config_cluster_post():
     access_code = Helper().get_access_code(status,response)
     response = {'message': response}
     return response, access_code
+
+
+@cluster_blueprint.route("/config/cluster/export", methods=['GET'])
+@token_required
+def config_cluster_export():
+    """
+    Input - None
+    Process - Get all database table data
+    Outout - All cluster config in importable json format.
+    """
+    access_code = 404
+    status, response = Cluster().export_config()
+    if status is True:
+        access_code = 200
+        response = dumps(response)
+    else:
+        response = {'message': response}
+    return response, access_code
+

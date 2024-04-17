@@ -1087,6 +1087,7 @@ class Boot():
             data['cluster_provision_method']   = cluster[0]['provision_method']
             data['cluster_provision_fallback'] = cluster[0]['provision_fallback']
             data['name_server'] = cluster[0]['nameserver_ip']
+            data['domain_search'] = cluster[0]['domain_search']
         # Antoine
         controller = Database().get_record_join(
             ['controller.*', 'ipaddress.ipaddress', 'ipaddress.ipaddress_ipv6'],
@@ -1196,7 +1197,6 @@ class Boot():
                 ['network.id=ipaddress.networkid', 'ipaddress.tablerefid=nodeinterface.id', 'nodeinterface.nodeid=node.id'],
                 ['tableref="nodeinterface"', f"node.name='{data['nodename']}'"]
             )
-            data['domain_search'] = ''
             domain_search = []
             if nodeinterface:
                 for interface in nodeinterface:
@@ -1248,8 +1248,13 @@ class Boot():
                             # if it is my prov interface then it will get that domain as a FQDN.
                             data['nodehostname'] = data['nodename'] + '.' + interface['network']
                             domain_search.insert(0, interface['network'])
-            if domain_search:
-                data['domain_search'] = ','.join(domain_search)
+
+            if not data['domain_search']:
+                if domain_search:
+                    data['domain_search'] = ','.join(domain_search)
+                else:
+                    # clearly, the user wants something that has no interface involvement. fallback to '', but not None
+                    data['domain_search'] = ''
 
         ## SYSTEMROOT
         osimage_plugin = Helper().plugin_load(self.osimage_plugins,'osimage/operations/image',data['distribution'],data['osrelease'])

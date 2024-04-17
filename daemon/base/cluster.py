@@ -35,6 +35,7 @@ from utils.log import Log
 from utils.database import Database
 from utils.service import Service
 from utils.helper import Helper
+from utils.tables import Tables
 
 
 class Cluster():
@@ -93,6 +94,21 @@ class Cluster():
         return status, response
 
 
+    def export_config(self):
+        """
+        This method will export all database data. Used for backups.
+        """
+        status=False
+        response="Internal error"
+        tables = Tables().get_tables()+['ha']
+        if tables:
+            status=True
+            response={}
+            for table in tables:
+                response[table]=Tables().export_table(table)
+        return status, response
+
+
     def update_cluster(self, request_data=None):
         """
         This method will update the cluster information.
@@ -134,6 +150,11 @@ class Cluster():
                                 status=False
                                 return status, f'{ipaddress} is an invalid forwarder IP'
                         data['forwardserver_ip'] = temp
+                    if 'domain_search' in data and data['domain_search']:
+                        temp = data['domain_search']
+                        temp = temp.replace(' ',',')
+                        temp = temp.replace(',,',',')
+                        data['domain_search'] = temp
 
                     for key, value in items.items():
                         if key in data:

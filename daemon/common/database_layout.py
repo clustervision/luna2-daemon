@@ -257,6 +257,7 @@ DATABASE_LAYOUT_cluster = [
 {"column": "id",                   "datatype": "INTEGER", "key": "PRIMARY", "keyadd": "AUTOINCREMENT"},
 {"column": "name",                 "datatype": "VARCHAR", "length": "20", "key": "UNIQUE"},
 {"column": "user",                 "datatype": "VARCHAR", "length": "20"},
+{"column": "domain_search",        "datatype": "VARCHAR", "length": "200"},
 {"column": "nameserver_ip",        "datatype": "VARCHAR", "length": "200"},
 {"column": "forwardserver_ip",     "datatype": "VARCHAR", "length": "200"},
 {"column": "nameserver_ip_ipv6",   "datatype": "VARCHAR", "length": "500"},

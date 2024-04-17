@@ -65,5 +65,6 @@ class Tables():
             status=True
             response={}
             response[table]=UTables().export_table(table)
+            response={'table': {'data': response}}
         return status, response
 

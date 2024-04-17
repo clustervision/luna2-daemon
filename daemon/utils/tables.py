@@ -147,6 +147,8 @@ class Tables():
 
     def import_table(self,table,data=[]):
         seq=None
+        if not data:
+            return False
         Database().clear(table)
         for record in data:
             if 'SQLITE_SEQUENCE' in record:

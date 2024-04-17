@@ -1,5 +1,9 @@
 ; use this file for Daemon bootstrap.
 
+[CLUSTER]
+; domain_search overrides domain search path. the default is auto-render based on networks.
+;DOMAIN_SEARCH = cluster,ib,ipmi
+
 [HOSTS]
 ; used in cluster, "clusterips" for templates
 ; Kindly add another Controller By Increasing the Number

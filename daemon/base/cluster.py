@@ -150,6 +150,11 @@ class Cluster():
                                 status=False
                                 return status, f'{ipaddress} is an invalid forwarder IP'
                         data['forwardserver_ip'] = temp
+                    if 'domain_search' in data and data['domain_search']:
+                        temp = data['domain_search']
+                        temp = temp.replace(' ',',')
+                        temp = temp.replace(',,',',')
+                        data['domain_search'] = temp
 
                     for key, value in items.items():
                         if key in data:

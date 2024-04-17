@@ -170,16 +170,17 @@ class Tables():
         return True
 
 
-    def export_table(self,table):
+    def export_table(self,table,sequence=True):
         data=[]
         dbcolumns = Database().get_columns(table)
         if dbcolumns:
             status=True
-            sequence=Database().get_sequence(table)
             if sequence:
-                data.append({'SQLITE_SEQUENCE': sequence})
+                dbsequence=Database().get_sequence(table)
+                if dbsequence:
+                    data.append({'SQLITE_SEQUENCE': dbsequence})
             dbdata=Database().get_record(dbcolumns,table)
-            if data:
+            if dbdata:
                 for record in dbdata:
                     data.append(record)
                     #group_data = b64encode(data.encode())

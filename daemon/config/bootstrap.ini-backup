@@ -3,6 +3,8 @@
 [CLUSTER]
 ; domain_search overrides domain search path. the default is auto-render based on networks.
 ;DOMAIN_SEARCH = cluster,ib,ipmi
+; dns forwarders
+;FORWARDSERVER_IP = 8.8.8.8,8.8.4.4
 
 [HOSTS]
 ; used in cluster, "clusterips" for templates

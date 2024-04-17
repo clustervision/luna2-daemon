@@ -366,11 +366,16 @@ def bootstrap(bootstrapfile=None):
     defaultserver_ip=None
     if 'CONTROLLER' in BOOTSTRAP['HOSTS'].keys():  # the virtual host+ip
         defaultserver_ip=BOOTSTRAP['HOSTS']['CONTROLLER']['IP']
-    domain_search=None
-    if 'CLUSTER' in BOOTSTRAP.keys() and 'DOMAIN_SEARCH' in BOOTSTRAP['CLUSTER']:
-        domain_search=BOOTSTRAP['CLUSTER']['DOMAIN_SEARCH']
-        domain_search=domain_search.replace(' ',',') 
-        domain_search=domain_search.replace(',,',',') 
+    domain_search, forwardserver_ip=None, None
+    if 'CLUSTER' in BOOTSTRAP.keys():
+        if 'DOMAIN_SEARCH' in BOOTSTRAP['CLUSTER']:
+            domain_search=BOOTSTRAP['CLUSTER']['DOMAIN_SEARCH']
+            domain_search=domain_search.replace(' ',',') 
+            domain_search=domain_search.replace(',,',',') 
+        if 'FORWARDSERVER_IP' in BOOTSTRAP['CLUSTER']:
+            forwardserver_ip=BOOTSTRAP['CLUSTER']['FORWARDSERVER_IP']
+            forwardserver_ip=forwardserver_ip.replace(' ',',') 
+            forwardserver_ip=forwardserver_ip.replace(',,',',') 
     default_cluster = [
             {'column': 'name', 'value': 'mycluster'},
             {'column': 'technical_contacts', 'value': 'root@localhost'},
@@ -381,6 +386,7 @@ def bootstrap(bootstrapfile=None):
             {'column': 'createnode_ondemand', 'value': '1'},
             {'column': 'nextnode_discover', 'value': '0'},
             {'column': 'nameserver_ip', 'value': defaultserver_ip},
+            {'column': 'forwardserver_ip', 'value': forwardserver_ip},
             {'column': 'domain_search', 'value': domain_search},
             {'column': 'ntp_server', 'value': defaultserver_ip}
         ]

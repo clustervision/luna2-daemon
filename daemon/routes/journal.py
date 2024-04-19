@@ -102,7 +102,7 @@ def journal_del_byname(name=None):
     access_code = 404
     status, response = Journal().delete_journal(name)
     if status is True:
-        access_code = 200
+        access_code = 204
         response = dumps(response)
     else:
         response = {'message': response}

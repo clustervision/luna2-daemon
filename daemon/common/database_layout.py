@@ -260,8 +260,6 @@ DATABASE_LAYOUT_cluster = [
 {"column": "domain_search",        "datatype": "VARCHAR", "length": "200"},
 {"column": "nameserver_ip",        "datatype": "VARCHAR", "length": "200"},
 {"column": "forwardserver_ip",     "datatype": "VARCHAR", "length": "200"},
-{"column": "nameserver_ip_ipv6",   "datatype": "VARCHAR", "length": "500"},
-{"column": "forwardserver_ip_ipv6","datatype": "VARCHAR", "length": "500"},
 {"column": "ntp_server",           "datatype": "VARCHAR", "length": "200"},
 {"column": "technical_contacts",   "datatype": "VARCHAR", "length": "50"},
 {"column": "provision_method",     "datatype": "VARCHAR", "length": "20"},

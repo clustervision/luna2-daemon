@@ -123,38 +123,50 @@ class Cluster():
             if cluster_check:
                 cluster = Database().get_record(None, 'cluster', None)
                 if cluster:
-                    if 'ntp_server' in data and data['ntp_server']:
-                        temp = data['ntp_server']
-                        temp = temp.replace(' ',',')
-                        temp = temp.replace(',,',',')
-                        for ipaddress in temp.split(','):
-                            if not Helper().check_ip(ipaddress):
-                                status=False
-                                return status, f'{ipaddress} is an invalid NTP server IP'
-                        data['ntp_server'] = temp
-                    if 'nameserver_ip' in data and data['nameserver_ip']:
-                        temp = data['nameserver_ip']
-                        temp = temp.replace(' ',',')
-                        temp = temp.replace(',,',',')
-                        for ipaddress in temp.split(','):
-                            if not Helper().check_ip(ipaddress):
-                                status=False
-                                return status, f'{ipaddress} is an invalid name server IP'
-                        data['nameserver_ip'] = temp
-                    if 'forwardserver_ip' in data and data['forwardserver_ip']:
-                        temp = data['forwardserver_ip']
-                        temp = temp.replace(' ',',')
-                        temp = temp.replace(',,',',')
-                        for ipaddress in temp.split(','):
-                            if not Helper().check_ip(ipaddress):
-                                status=False
-                                return status, f'{ipaddress} is an invalid forwarder IP'
-                        data['forwardserver_ip'] = temp
-                    if 'domain_search' in data and data['domain_search']:
-                        temp = data['domain_search']
-                        temp = temp.replace(' ',',')
-                        temp = temp.replace(',,',',')
-                        data['domain_search'] = temp
+                    if 'ntp_server' in data: 
+                        if data['ntp_server']:
+                            temp = data['ntp_server']
+                            temp = temp.replace(' ',',')
+                            temp = temp.replace(',,',',')
+                            for ipaddress in temp.split(','):
+                                if not Helper().check_ip(ipaddress):
+                                    status=False
+                                    return status, f'{ipaddress} is an invalid NTP server IP'
+                            data['ntp_server'] = temp
+                        else:
+                            data['ntp_server'] = None
+                    if 'nameserver_ip' in data:
+                        if data['nameserver_ip']:
+                            temp = data['nameserver_ip']
+                            temp = temp.replace(' ',',')
+                            temp = temp.replace(',,',',')
+                            for ipaddress in temp.split(','):
+                                if not Helper().check_ip(ipaddress):
+                                    status=False
+                                    return status, f'{ipaddress} is an invalid name server IP'
+                            data['nameserver_ip'] = temp
+                        else:
+                            data['nameserver_ip'] = None
+                    if 'forwardserver_ip' in data:
+                        if data['forwardserver_ip']:
+                            temp = data['forwardserver_ip']
+                            temp = temp.replace(' ',',')
+                            temp = temp.replace(',,',',')
+                            for ipaddress in temp.split(','):
+                                if not Helper().check_ip(ipaddress):
+                                    status=False
+                                    return status, f'{ipaddress} is an invalid forwarder IP'
+                            data['forwardserver_ip'] = temp
+                        else:
+                            data['forwardserver_ip'] = None
+                    if 'domain_search' in data:
+                        if data['domain_search']:
+                            temp = data['domain_search']
+                            temp = temp.replace(' ',',')
+                            temp = temp.replace(',,',',')
+                            data['domain_search'] = temp
+                        else:
+                            data['domain_search'] = None
 
                     for key, value in items.items():
                         if key in data:

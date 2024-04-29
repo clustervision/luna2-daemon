@@ -224,7 +224,6 @@ class Cluster():
                             if isinstance(value, bool):
                                 data[key] = str(Helper().bool_to_string(data[key]))
 
-                
                     where = [{"column": "id", "value": cluster[0]['id']}]
                     row = Helper().make_rows(data)
                     Database().update('cluster', row, where)

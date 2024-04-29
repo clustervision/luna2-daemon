@@ -1081,7 +1081,6 @@ class Boot():
         with open(template_path, 'r', encoding='utf-8') as file:
             template_data = file.read()
 
-        data['name_server'] = None
         cluster = Database().get_record(None, 'cluster', None)
         if cluster:
             data['selinux']      = Helper().bool_revert(cluster[0]['security'])

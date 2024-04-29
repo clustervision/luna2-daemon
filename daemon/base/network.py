@@ -190,15 +190,16 @@ class Network():
                                 for controller in controllers:
                                     controller_details=None
                                     if controller['hostname'] in data:
-                                        controller_details = Helper().check_ip_range(data[controller['hostname']], data['network'] + '/' + data['subnet'])
-                                        if not controller_details:
-                                            status=False
-                                            ret_msg = f"Invalid request: Controller address mismatch with network address/subnet. "
-                                            ret_msg += f"Please provide valid ip address for controller {controller['hostname']}"
-                                            return status, ret_msg
-                                        controller_ips.append({'ipaddress': data[controller['hostname']], 'id': controller['ipid'], 'hostname': controller['hostname']})
-                                        self.logger.info(f"Using new ip address {data[controller['hostname']]} for controller {controller['hostname']}")
-                                        del data[controller['hostname']]
+                                        if controller['ipaddress'] != data[controller['hostname']]:
+                                            controller_details = Helper().check_ip_range(data[controller['hostname']], data['network'] + '/' + data['subnet'])
+                                            if not controller_details:
+                                                status=False
+                                                ret_msg = f"Invalid request: Controller address mismatch with network address/subnet. "
+                                                ret_msg += f"Please provide valid ip address for controller {controller['hostname']}"
+                                                return status, ret_msg
+                                            controller_ips.append({'ipaddress': data[controller['hostname']], 'id': controller['ipid'], 'hostname': controller['hostname']})
+                                            self.logger.info(f"Using new ip address {data[controller['hostname']]} for controller {controller['hostname']}")
+                                            del data[controller['hostname']]
                                     else:
                                         if Helper().check_if_ipv6(data['network']):
                                             controller_details = Helper().check_ip_range(controller['ipaddress_ipv6'], data['network'] + '/' + data['subnet'])
@@ -337,6 +338,13 @@ class Network():
                         if item == 'network':
                             data['subnet_ipv6'] = data['subnet']
                             del data['subnet']
+
+            # to make sure we ignore presented controller ip config if it's not relevant
+            controllers = Database().get_record(None, "controller", None)
+            if controllers:
+                 for controller in controllers:
+                     if controller['hostname'] in data:
+                         del data[controller['hostname']]
 
             for controller in controller_ips:
                 where = f"WHERE ipaddress='{controller['ipaddress']}' OR ipaddress_ipv6='{controller['ipaddress']}'"

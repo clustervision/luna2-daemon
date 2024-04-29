@@ -118,6 +118,56 @@ class Cluster():
         items = {'debug': False, 'security': False, 'createnode_ondemand': True, 'nextnode_discover': False}
         if request_data:
             data = request_data['config']['cluster']
+
+            # renumbering controllers prepare. this could be tricky. - Antoine
+            # for H/A things should be taken in consideration.... 
+            controller_ips=[]
+            controllers = Database().get_record_join(
+                ['controller.hostname','ipaddress.ipaddress','ipaddress.ipaddress_ipv6',
+                 'ipaddress.id as ipid','network.name as networkname','network.id as networkid',
+                 'network.network','network.network_ipv6','network.subnet','network.subnet_ipv6'],
+                ['ipaddress.tablerefid=controller.id','ipaddress.networkid=network.id'],
+                ['tableref="controller"']
+            )
+            if controllers:
+                for controller in controllers:
+                    controller_details=None
+                    if controller['hostname'] in data:
+                        if controller['ipaddress'] == data[controller['hostname']] or controller['ipaddress_ipv6'] == data[controller['hostname']]:
+                            self.logger.info(f"Not using new ip address {data[controller['hostname']]} for controller {controller['hostname']}")
+                        else:
+                            if Helper().check_if_ipv6(data[controller['hostname']]):
+                                controller_details = Helper().check_ip_range(data[controller['hostname']], controller['network_ipv6'] + '/' + controller['subnet_ipv6'])
+                            else:
+                                controller_details = Helper().check_ip_range(data[controller['hostname']], controller['network'] + '/' + controller['subnet'])
+                            if not controller_details:
+                                status=False
+                                ret_msg = f"Invalid request: Controller address mismatch with network {controller['networkname']} address/subnet. "
+                                ret_msg += f"Please provide valid ip address for controller {controller['hostname']}"
+                                return status, ret_msg
+                            controller_ips.append({'ipaddress': data[controller['hostname']], 'id': controller['ipid'], 'hostname': controller['hostname']})
+                            self.logger.info(f"Using new ip address {data[controller['hostname']]} for controller {controller['hostname']}")
+                        del data[controller['hostname']]
+
+            for controller in controller_ips:
+                where = f"WHERE ipaddress='{controller['ipaddress']}' OR ipaddress_ipv6='{controller['ipaddress']}'"
+                claship = Database().get_record(None, 'ipaddress', where)
+                if claship:
+                    status=False
+                    ret_msg = f"Invalid request: Clashing ip address for controller {controller['hostname']} with existing ip address {controller['ipaddress']}"
+                    return status, ret_msg
+                row=None
+                if Helper().check_if_ipv6(controller['ipaddress']):
+                    row = Helper().make_rows({'ipaddress_ipv6': controller['ipaddress']})
+                else:
+                    row = Helper().make_rows({'ipaddress': controller['ipaddress']})
+                where = [{"column": "id", "value": controller['id']}]
+                status=Database().update('ipaddress', row, where)
+                if not status:
+                    status=False
+                    ret_msg = f"Error updating ip address for controller {controller['hostname']}"
+                    return status, ret_msg
+
             cluster_columns = Database().get_columns('cluster')
             cluster_check = Helper().compare_list(data, cluster_columns)
             if cluster_check:
@@ -174,6 +224,7 @@ class Cluster():
                             if isinstance(value, bool):
                                 data[key] = str(Helper().bool_to_string(data[key]))
 
+                
                     where = [{"column": "id", "value": cluster[0]['id']}]
                     row = Helper().make_rows(data)
                     Database().update('cluster', row, where)

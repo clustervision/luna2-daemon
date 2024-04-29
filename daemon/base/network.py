@@ -190,7 +190,9 @@ class Network():
                                 for controller in controllers:
                                     controller_details=None
                                     if controller['hostname'] in data:
-                                        if controller['ipaddress'] != data[controller['hostname']]:
+                                        if controller['ipaddress'] == data[controller['hostname']] or controller['ipaddress_ipv6'] == data[controller['hostname']]:
+                                            self.logger.info(f"Not using new ip address {data[controller['hostname']]} for controller {controller['hostname']}")
+                                        else:
                                             controller_details = Helper().check_ip_range(data[controller['hostname']], data['network'] + '/' + data['subnet'])
                                             if not controller_details:
                                                 status=False

@@ -131,6 +131,7 @@ class Network():
             used_ips, used6_ips = 0, 0
             redistribute_ipaddress, clear_ipv4, clear_ipv6 = False, False, False
             default_gateway_metric, default_zone = "101", "internal"
+            controller_ips=[]
 
             data = request_data['config']['network'][name]
             data['name'] = name
@@ -176,6 +177,42 @@ class Network():
                     if network: #database data
                         if ((db_data['network'] != data['network'] or db_data['subnet'] != data['subnet']) and
                                (db_data['network_ipv6'] != data['network']) or (db_data['subnet_ipv6'] != data['subnet'])):
+
+                            # renumbering controllers prepare. this could be tricky. - Antoine
+                            # for H/A things should be taken in consideration.... 
+                            controllers = Database().get_record_join(
+                                ['controller.hostname','ipaddress.ipaddress','ipaddress.ipaddress_ipv6','ipaddress.id as ipid'],
+                                ['ipaddress.tablerefid=controller.id','ipaddress.networkid=network.id'],
+                                ['tableref="controller"',f"network.name='{data['name']}'"]
+                            )
+                            if controllers:
+                                self.logger.info("Network change affects controllers...")
+                                for controller in controllers:
+                                    controller_details=None
+                                    if controller['hostname'] in data:
+                                        if controller['ipaddress'] == data[controller['hostname']] or controller['ipaddress_ipv6'] == data[controller['hostname']]:
+                                            self.logger.info(f"Not using new ip address {data[controller['hostname']]} for controller {controller['hostname']}")
+                                        else:
+                                            controller_details = Helper().check_ip_range(data[controller['hostname']], data['network'] + '/' + data['subnet'])
+                                            if not controller_details:
+                                                status=False
+                                                ret_msg = f"Invalid request: Controller address mismatch with network address/subnet. "
+                                                ret_msg += f"Please provide valid ip address for controller {controller['hostname']}"
+                                                return status, ret_msg
+                                            controller_ips.append({'ipaddress': data[controller['hostname']], 'id': controller['ipid'], 'hostname': controller['hostname']})
+                                            self.logger.info(f"Using new ip address {data[controller['hostname']]} for controller {controller['hostname']}")
+                                            del data[controller['hostname']]
+                                    else:
+                                        if Helper().check_if_ipv6(data['network']):
+                                            controller_details = Helper().check_ip_range(controller['ipaddress_ipv6'], data['network'] + '/' + data['subnet'])
+                                        else:
+                                            controller_details = Helper().check_ip_range(controller['ipaddress'], data['network'] + '/' + data['subnet'])
+                                        if not controller_details:
+                                            status=False
+                                            ret_msg = f"Invalid request: Controller(s) inside network that doesn't match address/subnet. "
+                                            ret_msg += f"Please provide ip address for controller {controller['hostname']}"
+                                            return status, ret_msg
+
                             redistribute_ipaddress = True
                             self.logger.info("We will redistribute ip addresses")
                             if 'gateway' not in data:
@@ -304,6 +341,32 @@ class Network():
                             data['subnet_ipv6'] = data['subnet']
                             del data['subnet']
 
+            # to make sure we ignore presented controller ip config if it's not relevant
+            controllers = Database().get_record(None, "controller", None)
+            if controllers:
+                 for controller in controllers:
+                     if controller['hostname'] in data:
+                         del data[controller['hostname']]
+
+            for controller in controller_ips:
+                where = f"WHERE ipaddress='{controller['ipaddress']}' OR ipaddress_ipv6='{controller['ipaddress']}'"
+                claship = Database().get_record(None, 'ipaddress', where)
+                if claship:
+                    status=False
+                    ret_msg = f"Invalid request: Clashing ip address for controller {controller['hostname']} with existing ip address {controller['ipaddress']}"
+                    return status, ret_msg
+                row=None
+                if Helper().check_if_ipv6(controller['ipaddress']):
+                    row = Helper().make_rows({'ipaddress_ipv6': controller['ipaddress']})
+                else:
+                    row = Helper().make_rows({'ipaddress': controller['ipaddress']})
+                where = [{"column": "id", "value": controller['id']}]
+                status=Database().update('ipaddress', row, where)
+                if not status:
+                    status=False
+                    ret_msg = f"Error updating ip address for controller {controller['hostname']}"
+                    return status, ret_msg
+                
             network_columns = Database().get_columns('network')
             column_check = Helper().compare_list(data, network_columns)
             if column_check:

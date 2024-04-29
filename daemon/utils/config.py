@@ -1103,7 +1103,7 @@ class Config(object):
                                 'ipaddress.tablerefid'
                             ],
                             ['ipaddress.networkid=network.id'],
-                            [f"network.name='{network}'", "ipaddress.tableref!='controller'"]
+                            [f"network.name='{network}'"]
                         )
                         if ipaddress_list:
                             for ipaddress in ipaddress_list:
@@ -1112,7 +1112,7 @@ class Config(object):
                                 we_continue = False
                                 we_continue6 = False
                                 if ipaddress['network']:
-                                    if not ipaddress['network_ipv6']: #ipaddress['ipaddress_ipv6']:
+                                    if not ipaddress['network_ipv6']:
                                         avail6 = None
                                         we_continue6 = True
                                     valid_ip = Helper().check_ip_range(ipaddress['ipaddress'],
@@ -1154,13 +1154,15 @@ class Config(object):
                                     # message = Database().update('ipaddress', row, where)
                                     Database().delete_row(
                                         'ipaddress',
-                                        [{"column": "ipaddress", "value": f"{avail}"}]
+                                        [{"column": "ipaddress", "value": avail}]
                                     )
+                                    ips.append(avail)
                                 if avail6:
                                     Database().delete_row(
                                         'ipaddress',
-                                        [{"column": "ipaddress_ipv6", "value": f"{avail6}"}]
+                                        [{"column": "ipaddress_ipv6", "value": avail6}]
                                     )
+                                    ips6.append(avail6)
                                 if avail or avail6:
                                     Database().delete_row(
                                         'ipaddress',
@@ -1170,8 +1172,8 @@ class Config(object):
                                         ]
                                     )
                                     row = [
-                                        {"column": "ipaddress", "value": f"{avail}"},
-                                        {"column": "ipaddress_ipv6", "value": f"{avail6}"},
+                                        {"column": "ipaddress", "value": avail},
+                                        {"column": "ipaddress_ipv6", "value": avail6},
                                         {"column": "networkid", "value": f"{ipaddress['networkid']}"},
                                         {"column": "tableref", "value": f"{ipaddress['tableref']}"},
                                         {"column": "tablerefid", "value": f"{ipaddress['tablerefid']}"}

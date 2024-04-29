@@ -1103,7 +1103,7 @@ class Config(object):
                                 'ipaddress.tablerefid'
                             ],
                             ['ipaddress.networkid=network.id'],
-                            [f"network.name='{network}'"] #, "ipaddress.tableref!='controller'"]
+                            [f"network.name='{network}'"]
                         )
                         if ipaddress_list:
                             for ipaddress in ipaddress_list:

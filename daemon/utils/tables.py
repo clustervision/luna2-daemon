@@ -148,12 +148,15 @@ class Tables():
     def import_table(self,table,data=[],emptyok=False):
         seq=None
         if not data:
+            if data is None:
+                self.logger.error(f"data for table {table} is 'None' which i cannot permit. bailing out.")
+                return False
             if not emptyok:
                 self.logger.error(f"data for table {table} is empty but clashes with emptyok {emptyok}")
                 return False
         Database().clear(table)
         if not data:
-            self.logger.warning(f"No data for table {table} found")
+            self.logger.warning(f"No data for table {table} found so we only cleared the table")
             return True
         for record in data:
             if 'SQLITE_SEQUENCE' in record:

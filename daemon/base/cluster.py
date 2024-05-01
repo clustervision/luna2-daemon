@@ -30,6 +30,7 @@ __email__       = 'sumit.sharma@clustervision.com'
 __status__      = 'Development'
 
 
+import json
 from common.constant import CONFIGFILE
 from utils.log import Log
 from utils.database import Database
@@ -105,7 +106,35 @@ class Cluster():
             status=True
             response={}
             for table in tables:
-                response[table]=Tables().export_table(table,sequence=False)
+                response[table]=Tables().export_table(table,sequence=True)
+        return status, response
+
+
+    def import_config(self,data=None):
+        """
+        This method will import exported database config. Used importing backups.
+        """
+        status=False
+        response="Invalid request. No suitable data provided"
+        if data:
+            try:
+                self.logger.debug(f"DATA: {data} ::: {type(data)}")
+                status, backup=self.export_config()
+                if status and backup:
+                    for table in data.keys():
+                        status=Tables().import_table(table,data[table],emptyok=True)
+                        if not status:
+                            response=f"Error importing table {table}. Rolling back config import"
+                            for table in backup:
+                                Tables().import_table(table,backup[table],emptyok=True)
+                            return status, response
+                    response="Successfully imported config"
+                else:
+                    response="Could not make config backup before importing. Rolling back config import"
+            except Exception as exp:
+                status=False
+                response="Unknown problem encountered importing config. Rolling back config import"
+                self.logger.error(f"Error during config import: {exp}")
         return status, response
 
 

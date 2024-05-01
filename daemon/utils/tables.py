@@ -134,7 +134,7 @@ class Tables():
 
     def fetch_table(self,table,host):
         response=None
-        status,data=Request().get_request(host,f'/table/data/{table}')
+        status, data=Request().get_request(host,f'/table/data/{table}')
         if status is True and data:
             if 'table' in data and 'data' in data['table'] and table in data['table']['data']:
                 response=data['table']['data'][table]
@@ -142,14 +142,19 @@ class Tables():
                 self.logger.warning(f"no valid table data supplied by {host}")
         else:
             self.logger.error(f"table data fetch from {host} failed")
-        return response
+        return status, response
 
 
-    def import_table(self,table,data=[]):
+    def import_table(self,table,data=[],emptyok=False):
         seq=None
         if not data:
-            return False
+            if not emptyok:
+                self.logger.error(f"data for table {table} is empty but clashes with emptyok {emptyok}")
+                return False
         Database().clear(table)
+        if not data:
+            self.logger.warning(f"No data for table {table} found")
+            return True
         for record in data:
             if 'SQLITE_SEQUENCE' in record:
                 seq=record['SQLITE_SEQUENCE']
@@ -165,10 +170,10 @@ class Tables():
 
 
     def import_table_from_host(self,table,host):
-        data=self.fetch_table(table,host)
-        if not data:
+        status, data=self.fetch_table(table,host)
+        if not status:
             return False
-        self.import_table(table,data)
+        self.import_table(table=table,data=data,emptyok=True)
         return True
 
 

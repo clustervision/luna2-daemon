@@ -99,3 +99,19 @@ def config_cluster_export():
         response = {'message': response}
     return response, access_code
 
+
+@cluster_blueprint.route("/config/cluster/import", methods=['POST'])
+@token_required
+@input_filter()
+def config_cluster_import():
+    """
+    Input - configuration in json format
+    Process - renders database/table config based on presented data.
+    Outout - None.
+    """
+    access_code = 404
+    status, response = Cluster().import_config(request.data)
+    access_code = Helper().get_access_code(status,response)
+    response = {'message': response}
+    return response, access_code
+

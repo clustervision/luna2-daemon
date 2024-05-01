@@ -265,8 +265,9 @@ class Housekeeper(object):
                                 mismatch_tables=tables_object.verify_tablehashes_controllers()
                                 if mismatch_tables:
                                     for mismatch in mismatch_tables:
-                                        data=tables_object.fetch_table(mismatch['table'],mismatch['host'])
-                                        tables_object.import_table(mismatch['table'],data)
+                                        status, data=tables_object.fetch_table(mismatch['table'],mismatch['host'])
+                                        if status:
+                                            tables_object.import_table(table=mismatch['table'],data=data,emptyok=True)
                                     Queue().add_task_to_queue('dhcp:restart', 'housekeeper', '__node_update__')
                                     Queue().add_task_to_queue('dns:restart', 'housekeeper', '__node_update__')
                             sum_tel=720

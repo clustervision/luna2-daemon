@@ -36,7 +36,6 @@ from sys import maxunicode
 from itertools import chain
 from functools import wraps
 from flask import request
-from inspect import getfullargspec
 from utils.log import Log
 from utils.helper import Helper
 
@@ -163,8 +162,6 @@ def validate_name(function):
     """
     This decorator method will validate the input data.
     """
-    #argspec = getfullargspec(function)
-    #argument_index = argspec.args.index(argument_name)
     @wraps(function)
     def decorator(*args, **kwargs):
         global STRICT_NAME

@@ -70,23 +70,22 @@ MATCH = {
     'name': 'name',
     'newnodename': 'strictname',
     'hostname': 'strictname',
+    'host': 'strictname',
     'newhostname': 'strictname',
     'newswitchname': 'strictname',
     'newotherdevicename': 'strictname',
     'newotherdevname': 'strictname',
+    'newnetname': 'strictname',
     'ipaddress':'ipaddress',
     'macaddress':'macaddress',
     'newosimage': 'name',
     'newgroupname': 'name',
     'newbmcname': 'name',
     'newsecretname': 'name',
-    'newswitchname': 'strictname',
-    'newnetname': 'strictname',
     'osimagetag': 'anything',
     'tag': 'anything',
     'interface': 'minimal',
-    'gateway_metric': 'integer',
-    'host': 'strictname'
+    'gateway_metric': 'integer'
 }
 MAXLENGTH = {
     'request_id': '256',

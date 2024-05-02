@@ -134,14 +134,9 @@ class Plugin():
             else:
                 self.logger.info(f"Tarring {osimage} successful.")
 
-
-        except:
-            exc_type, exc_value, exc_traceback = sys.exc_info()
-            if exc_type == exceptions.KeyboardInterrupt:
-                self.logger.error('Keyboard interrupt.')
-            else:
-                self.logger.error(exc_value)
-                self.logger.debug(exc_traceback.format_exc())
+        except Exception as exp:
+            exc_type, exc_obj, exc_tb = sys.exc_info()
+            self.logger.error(f"plugin: {exp}, {exc_type}, in {exc_tb.tb_lineno}")
 
             if os.path.isfile(tmp_dir + '/' + packed_image_file):
                 os.remove(tmp_dir + '/' + packed_image_file)

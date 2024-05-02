@@ -47,7 +47,8 @@ CONTROL_CHAR = ''.join(map(chr, chain(range(0x00, 0x20), range(0x7f, 0xa0))))
 control_char_re = re.compile(f'[{re.escape(CONTROL_CHAR)}]')
 
 REG_EXP = {
-    'name': { 'regexp': r'^[a-z0-9\-\.]+$', 'error': 'combination of small characters a-z, numbers 0-9, \'-\' and \'.\'' },
+    'name': { 'regexp': r'^[a-zA-Z0-9\-\.\_\ ]+$', 'error': 'combination of characters a-z A-Z, numbers 0-9, whitespace, \'-\', \'_\' and \'.\'' },
+    'strictname': { 'regexp': r'^[a-z0-9\-\.]+$', 'error': 'combination of small characters a-z, numbers 0-9, \'-\' and \'.\'' },
     'ipaddress': { 'regexp': r'^[0-9a-f:\.]+$', 'error': 'combination of characters small a-f, numbers 0-9, \':\' and \'.\'' },
     'macaddress': { 'regexp': r'^(([0-9A-Za-f]{2}((-|:)[0-9A-Za-f]{2}){5})|)$', 'error': '6 blocks of 2 characters a-f or numbers 0-9, separated by \':\' or \'-\'' },
     'minimal': { 'regexp': r'^\S.*$', 'error': 'minimal character requirement. at least one' },
@@ -56,41 +57,50 @@ REG_EXP = {
 }
 RESERVED = {
     'name': ['default','inventory'],
+    'strictname': ['default','inventory'],
     'anything': ['default']
 }
 CONVERT = {
     'macaddress': {'-':':'},
     'name': {r'\.+':'.'},
+    'strictname': {r'\.+':'.'},
 }
 MATCH = {
     'name': 'name',
-    'newnodename': 'name',
-    'hostname': 'name',
-    'newhostname': 'name',
-    'newswitchname': 'name',
-    'newotherdevicename': 'name',
-    'newotherdevname': 'name',
+    'newnodename': 'strictname',
+    'hostname': 'strictname',
+    'host': 'strictname',
+    'newhostname': 'strictname',
+    'newswitchname': 'strictname',
+    'newotherdevicename': 'strictname',
+    'newotherdevname': 'strictname',
+    'newnetname': 'strictname',
     'ipaddress':'ipaddress',
     'macaddress':'macaddress',
     'newosimage': 'name',
     'newgroupname': 'name',
     'newbmcname': 'name',
-    'newotherdevicename': 'name',
-    'newotherdevname': 'name',
     'newsecretname': 'name',
-    'newswitchname': 'name',
-    'newnetname': 'name',
     'osimagetag': 'anything',
     'tag': 'anything',
     'interface': 'minimal',
-    'gateway_metric': 'integer',
-    'host': 'name'
+    'gateway_metric': 'integer'
 }
 MAXLENGTH = {
     'request_id': '256',
     'newnodename': '63',
     'host': '63'
 }
+
+# Strict names is a bit of a hack where i use the name of the function to determine whether we have
+# a node name, switch name or any sort like names on our hand, or just a group name, image name, etc - Antoine
+STRICT_NAMES = ['config_node_get','config_node_post','config_node_clone','config_node_delete',
+                'config_node_osgrab','config_node_ospush','config_node_get_interfaces',
+                'config_node_post_interfaces','config_node_interface_get','config_node_delete_interface',
+                'config_switch_get','config_switch_post','config_switch_clone','config_switch_delete',
+                'config_otherdev','config_otherdev_get','config_otherdev_post','config_otherdev_clone','config_otherdev_delete',
+                'config_network_get','config_network_post','config_network_delete','config_network_ip',
+                'config_network_taken','config_network_nextip']
 
 ERROR = None
 SKIP_LIST = []
@@ -104,8 +114,12 @@ def input_filter(checks=None, skip=None, json=True):
         def filter_input(*args, **kwargs):
             global SKIP_LIST
             global ERROR
+            global STRICT_NAME
             data=None
             ERROR = None
+            STRICT_NAME = True
+            if function.__name__ not in STRICT_NAMES:
+                STRICT_NAME = False
             if json:
                 if not Helper().check_json(request.data):
                     response = {'message': "data is not valid json"}
@@ -150,6 +164,10 @@ def validate_name(function):
     """
     @wraps(function)
     def decorator(*args, **kwargs):
+        global STRICT_NAME
+        STRICT_NAME = True
+        if function.__name__ not in STRICT_NAMES:
+            STRICT_NAME = False
         for name_key, name_value in kwargs.items():
             global ERROR
             filter_data(name_value, name_key)
@@ -204,6 +222,9 @@ def filter_data(data=None, name=None):
     This method will filter the provided data.
     """
     global ERROR
+    if STRICT_NAME and name == 'name':
+        name='strictname'
+        LOGGER.debug("Applying strict name rules")
     if name in SKIP_LIST:
         LOGGER.debug(f"Skipping filter on {name}")
         return data

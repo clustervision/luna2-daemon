@@ -67,6 +67,7 @@ CONVERT = {
 }
 MATCH = {
     'name': 'name',
+    'strictname': 'strictname',
     'newnodename': 'strictname',
     'hostname': 'strictname',
     'host': 'strictname',

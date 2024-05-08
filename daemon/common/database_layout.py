@@ -118,6 +118,11 @@ DATABASE_LAYOUT_ipaddress = [
 {"column": "tablerefid",           "datatype": "INTEGER", "length": "10"},
 {"column": "networkid",            "datatype": "INTEGER", "length": "10"}]
 
+DATABASE_LAYOUT_reservedipaddress = [
+{"column": "version",              "datatype": "VARCHAR", "length": "10"},
+{"column": "ipaddress",            "datatype": "VARCHAR", "length": "60", "key": "UNIQUE", "with": "version"},
+{"column": "created",              "datatype": "numeric"}]
+
 DATABASE_LAYOUT_groupinterface = [
 {"column": "id",                   "datatype": "INTEGER", "key": "PRIMARY", "keyadd": "AUTOINCREMENT"},
 {"column": "groupid",              "datatype": "INTEGER", "length": "10"},

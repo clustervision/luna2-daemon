@@ -1308,5 +1308,9 @@ class Config(object):
             else:
                 for each in network_details:
                     ips.append(each['ipaddress'])
+        reserved_details = Database().get_record(None, "reservedipaddress", f"WHERE version='{ipversion}'")
+        if reserved_details:
+            for each in reserved_details:
+                ips.append(each['ipaddress'])
         return ips
 

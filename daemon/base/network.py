@@ -556,6 +556,8 @@ class Network():
             avail = Helper().get_available_ip(network[0]['network'], network[0]['subnet'], ips, ping=True)
         if avail:
             response = {'config': {'network': {name: {'nextip': avail} } } }
+            row = Helper().make_rows({'version': 'ipv4', 'ipaddress': avail, 'created': 'NOW'})
+            status=Database().insert('reservedipaddress', row)
             status=True
         else:
             response = f'network {name} does not provide for any free IP address'

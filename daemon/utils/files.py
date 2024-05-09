@@ -54,13 +54,12 @@ class Files(object):
         Output - filepath
         """
         filepath = f'{CONSTANT["FILES"]["IMAGE_FILES"]}/{filename}'
-        try:
-            if os.path.exists(filepath):
-                self.logger.debug(f'Filepath {filepath} is exists.')
-                response = filepath
-        except FileNotFoundError:
-            self.logger.debug(f'Filepath {filepath} is not exists.')
-            response = False
+        response = False
+        if os.path.exists(filepath):
+            self.logger.debug(f'Filepath {filepath} exists.')
+            response = filepath
+        else:
+            self.logger.debug(f'Filepath {filepath} does not exist.')
         return response
 
 

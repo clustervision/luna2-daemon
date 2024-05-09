@@ -122,11 +122,11 @@ class File():
             Database().update('node', row, where)
         filepath = Files().check_file(filename)
         if filepath:
-            self.logger.info(f'Tar File Path is {filepath}.')
+            self.logger.info(f'File Path is {filepath}.')
             status=True
             return status, send_file(filepath, as_attachment=True)
         else:
-            self.logger.error(f'{filename} is not present in {CONSTANT["FILES"]["IMAGE_FILES"]}')
+            self.logger.error(f'File {filename} is not present in {CONSTANT["FILES"]["IMAGE_FILES"]}')
             status=False
             return status, f'Service unavailable: {filename} is not present in {CONSTANT["FILES"]["IMAGE_FILES"]}'
         return status, response

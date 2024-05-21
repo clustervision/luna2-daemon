@@ -170,6 +170,7 @@ class Node():
                         'ipaddress.ipaddress_ipv6',
                         'nodeinterface.macaddress',
                         'network.name as network',
+                        'nodeinterface.vlanid',
                         'nodeinterface.options'
                     ],
                     ['network.id=ipaddress.networkid', 'ipaddress.tablerefid=nodeinterface.id'],
@@ -186,6 +187,8 @@ class Node():
                             node['hostname'] = node['name'] + '.' + interface['network']
                         if not interface['options']:
                             del interface['options']
+                        if not interface['vlanid']:
+                            del interface['vlanid']
                         if not interface['ipaddress']:
                             del interface['ipaddress']
                         if not interface['ipaddress_ipv6']:
@@ -399,6 +402,7 @@ class Node():
                     'ipaddress.ipaddress_ipv6',
                     'nodeinterface.macaddress',
                     'network.name as network',
+                    'nodeinterface.vlanid',
                     'nodeinterface.options'
                 ],
                 ['network.id=ipaddress.networkid', 'ipaddress.tablerefid=nodeinterface.id'],
@@ -414,6 +418,8 @@ class Node():
                         node['hostname'] = nodename + '.' + interface['network']
                     if not interface['options']:
                         del interface['options']
+                    if not interface['vlanid']:
+                        del interface['vlanid']
                     if not interface['ipaddress']:
                         del interface['ipaddress']
                     if not interface['ipaddress_ipv6']:
@@ -705,6 +711,7 @@ class Node():
                         'ipaddress.ipaddress_ipv6',
                         'nodeinterface.macaddress',
                         'network.name as network',
+                        'nodeinterface.vlanid',
                         'nodeinterface.options'
                     ],
                     ['network.id=ipaddress.networkid', 'ipaddress.tablerefid=nodeinterface.id'],
@@ -721,7 +728,7 @@ class Node():
                             if interface_name == node_interface['interface']:
                                 del node_interfaces[index]
                             index += 1
-                        macaddress, networkname, options, ipaddress = None, None, None, None
+                        macaddress, networkname, options, ipaddress, vlanid = None, None, None, None, None
                         if 'macaddress' in interface.keys():
                             macaddress = interface['macaddress']
                         if 'options' in interface.keys():
@@ -730,10 +737,13 @@ class Node():
                             networkname = interface['network']
                         if 'ipaddress' in interface.keys():
                             ipaddress = interface['ipaddress']
+                        if 'vlanid' in interface.keys():
+                            vlanid = interface['vlanid']
                         result, message = Config().node_interface_config(
                             new_nodeid,
                             interface_name,
                             macaddress,
+                            vlanid,
                             options
                         )
                         if result:
@@ -780,11 +790,13 @@ class Node():
                 # what we have in the database
                 for node_interface in node_interfaces:
                     interface_name = node_interface['interface']
+                    interface_vlanid = node_interface['vlanid']
                     interface_options = node_interface['options']
                     result, message = Config().node_interface_config(
                         new_nodeid,
                         interface_name,
                         None,
+                        interface_vlanid,
                         interface_options
                     )
                     if result and 'ipaddress' in node_interface.keys():

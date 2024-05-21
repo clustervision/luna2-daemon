@@ -430,9 +430,13 @@ class Boot():
                             Service().queue('dhcp', 'restart')
                             Service().queue('dhcp6','restart')
         # -----------------------------------------------------------------------
+        data['kerneloptions']=""
+        b64regex=re.compile(r"^([A-Za-z0-9+/]{4})*([A-Za-z0-9+/]{3}=|[A-Za-z0-9+/]{2}==)?$")
+
         if data['nodeid']:
             node = Database().get_record_join(
-                ['node.*','group.osimageid as grouposimageid','group.osimagetagid as grouposimagetagid'],
+                ['node.*','group.osimageid as grouposimageid','group.osimagetagid as grouposimagetagid',
+                 'group.kerneloptions as groupkerneloptions'],
                 ['group.id=node.groupid'],
                 [f'node.id={data["nodeid"]}']
             )
@@ -443,31 +447,40 @@ class Boot():
                 # data['nodehostname'] = node[0]['hostname']
                 data['nodehostname'] = node[0]['name'] # + fqdn - pending
                 data['nodeservice'] = node[0]['service']
+                if node[0]['kerneloptions']:
+                    data['kerneloptions']=node[0]['kerneloptions']
+                elif node[0]['groupkerneloptions']:
+                    data['kerneloptions']=node[0]['groupkerneloptions']
+                if b64regex.match(data['kerneloptions']):
+                    ko_data = b64decode(data['kerneloptions'])
+                    try:
+                        data['kerneloptions'] = ko_data.decode("ascii")
+                    except:
+                        # apparently we were not base64! it can happen when a string seems like base64 but is not.
+                        # is it safe to assume we can then just pass what's in the DB?
+                        pass
+
         if data['osimageid']:
             osimage = None
-            data['kerneloptions']=""
             if data['osimagetagid'] and data['osimagetagid'] != 'default':
                 osimage = Database().get_record_join(['osimagetag.*'],['osimage.id=osimagetag.osimageid'],
                                 [f'osimagetag.id={data["osimagetagid"]}',f'osimage.id={data["osimageid"]}'])
             else:
                 osimage = Database().get_record(None, 'osimage', f' WHERE id = {data["osimageid"]}')
             if osimage:
-                if ('kernelfile' in osimage[0]) and (osimage[0]['kernelfile']):
+                if osimage[0]['kernelfile']:
                     data['kernelfile'] = osimage[0]['kernelfile']
-                if ('initrdfile' in osimage[0]) and (osimage[0]['initrdfile']):
+                if osimage[0]['initrdfile']:
                     data['initrdfile'] = osimage[0]['initrdfile']
-                if ('kerneloptions' in osimage[0]) and (osimage[0]['kerneloptions']):
-                    data['kerneloptions'] = osimage[0]['kerneloptions']
-                    regex=re.compile(r"^([A-Za-z0-9+/]{4})*([A-Za-z0-9+/]{3}=|[A-Za-z0-9+/]{2}==)?$")
-                    if regex.match(data['kerneloptions']):
-                        ko_data = b64decode(data['kerneloptions'])
+                if osimage[0]['kerneloptions']:
+                    if b64regex.match(osimage[0]['kerneloptions']):
+                        ko_data = b64decode(osimage[0]['kerneloptions'])
                         try:
-                            data['kerneloptions'] = ko_data.decode("ascii")
+                            data['kerneloptions'] += ko_data.decode("ascii")
                         except:
                             # apparently we were not base64! it can happen when a string seems like base64 but is not.
                             # is it safe to assume we can then just pass what's in the DB?
-                            pass
-                    data['kerneloptions']=data['kerneloptions'].replace('\n', ' ').replace('\r', '')
+                            data['kerneloptions'] += osimage[0]['kerneloptions']
 
                 # ------------ support for alternative provisioning ----------------
 
@@ -480,6 +493,9 @@ class Boot():
                         return False, 'Empty'
 
                 # ------------------------------------------------------------------
+
+        if data['kerneloptions']:
+            data['kerneloptions']=data['kerneloptions'].replace('\n', ' ').replace('\r', '')
 
         if None not in data.values():
             status=True
@@ -737,9 +753,12 @@ class Boot():
             Database().update('node', row, where)
 
         # below here is almost identical to a manual node selection boot -----------------
+        data['kerneloptions']=""
+        b64regex=re.compile(r"^([A-Za-z0-9+/]{4})*([A-Za-z0-9+/]{3}=|[A-Za-z0-9+/]{2}==)?$")
 
         node = Database().get_record_join(
-            ['node.*', 'group.osimageid as grouposimageid','group.osimagetagid as grouposimagetagid'],
+            ['node.*', 'group.osimageid as grouposimageid','group.osimagetagid as grouposimagetagid',
+             'group.kerneloptions as groupkerneloptions'],
             ['group.id=node.groupid'],
             [f'node.name="{hostname}"']
         )
@@ -751,6 +770,18 @@ class Boot():
             data['nodehostname'] = node[0]['name'] # + fqdn ?
             data['nodeservice'] = node[0]['service']
             data['nodeid'] = node[0]['id']
+            if node[0]['kerneloptions']:
+                data['kerneloptions']=node[0]['kerneloptions']
+            elif node[0]['groupkerneloptions']:
+                data['kerneloptions']=node[0]['groupkerneloptions']
+            if b64regex.match(data['kerneloptions']):
+                ko_data = b64decode(data['kerneloptions'])
+                try:
+                    data['kerneloptions'] = ko_data.decode("ascii")
+                except:
+                    # apparently we were not base64! it can happen when a string seems like base64 but is not.
+                    # is it safe to assume we can then just pass what's in the DB?
+                    pass
 
         if data['nodeid']:
             Service().queue('dhcp','restart')
@@ -791,29 +822,25 @@ class Boot():
 
         if data['osimageid']:
             osimage = None
-            data['kerneloptions']=""
             if data['osimagetagid'] and data['osimagetagid'] != 'default':
                 osimage = Database().get_record_join(['osimagetag.*'],['osimage.id=osimagetag.osimageid'],
                                 [f'osimagetag.id={data["osimagetagid"]}',f'osimage.id={data["osimageid"]}'])
             else:
                 osimage = Database().get_record(None, 'osimage', f' WHERE id = {data["osimageid"]}')
             if osimage:
-                if ('kernelfile' in osimage[0]) and (osimage[0]['kernelfile']):
+                if osimage[0]['kernelfile']:
                     data['kernelfile'] = osimage[0]['kernelfile']
-                if ('initrdfile' in osimage[0]) and (osimage[0]['initrdfile']):
+                if osimage[0]['initrdfile']:
                     data['initrdfile'] = osimage[0]['initrdfile']
-                if ('kerneloptions' in osimage[0]) and (osimage[0]['kerneloptions']):
-                    data['kerneloptions'] = osimage[0]['kerneloptions']
-                    regex=re.compile(r"^([A-Za-z0-9+/]{4})*([A-Za-z0-9+/]{3}=|[A-Za-z0-9+/]{2}==)?$")
-                    if regex.match(data['kerneloptions']):
-                        ko_data = b64decode(data['kerneloptions'])
+                if osimage[0]['kerneloptions']:
+                    if b64regex.match(osimage[0]['kerneloptions']):
+                        ko_data = b64decode(osimage[0]['kerneloptions'])
                         try:
-                            data['kerneloptions'] = ko_data.decode("ascii")
+                            data['kerneloptions'] += ko_data.decode("ascii")
                         except:
                             # apparently we were not base64! it can happen when a string seems like base64 but is not.
                             # is it safe to assume we can then just pass what's in the DB?
-                            pass
-                    data['kerneloptions']=data['kerneloptions'].replace('\n', ' ').replace('\r', '')
+                            data['kerneloptions'] += osimage[0]['kerneloptions']
 
                 # ------------ support for alternative provisioning ----------------
 
@@ -826,6 +853,9 @@ class Boot():
                         return False, 'Empty'
 
                 # ------------------------------------------------------------------
+
+        if data['kerneloptions']:
+            data['kerneloptions']=data['kerneloptions'].replace('\n', ' ').replace('\r', '')
 
         if None not in data.values():
             status=True
@@ -893,9 +923,13 @@ class Boot():
         else:
             self.logger.warning(f"possible configuration error: No controller available or missing network for controller")
 
+        data['kerneloptions']=""
+        b64regex=re.compile(r"^([A-Za-z0-9+/]{4})*([A-Za-z0-9+/]{3}=|[A-Za-z0-9+/]{2}==)?$")
+
         # we probably have to cut the fqdn off of hostname?
         node = Database().get_record_join(
-            ['node.*', 'group.osimageid as grouposimageid','group.osimagetagid as grouposimagetagid'],
+            ['node.*', 'group.osimageid as grouposimageid','group.osimagetagid as grouposimagetagid',
+             'group.kerneloptions as groupkerneloptions'],
             ['group.id=node.groupid'],
             [f'node.name="{hostname}"']
         )
@@ -907,6 +941,19 @@ class Boot():
             data['nodehostname'] = node[0]['name'] # + fqdn ?
             data['nodeservice'] = node[0]['service']
             data['nodeid'] = node[0]['id']
+            if node[0]['kerneloptions']:
+                data['kerneloptions']=node[0]['kerneloptions']
+            elif node[0]['groupkerneloptions']:
+                data['kerneloptions']=node[0]['groupkerneloptions']
+            if b64regex.match(data['kerneloptions']):
+                ko_data = b64decode(data['kerneloptions'])
+                try:
+                    data['kerneloptions'] = ko_data.decode("ascii")
+                except:
+                    # apparently we were not base64! it can happen when a string seems like base64 but is not.
+                    # is it safe to assume we can then just pass what's in the DB?
+                    pass
+
         if data['nodeid']:
             we_need_dhcpd_restart = False
             nodeinterface_check = Database().get_record(None, 'nodeinterface', 
@@ -990,29 +1037,25 @@ class Boot():
 
         if data['osimageid']:
             osimage = None
-            data['kerneloptions']=""
             if data['osimagetagid'] and data['osimagetagid'] != 'default':
                 osimage = Database().get_record_join(['osimagetag.*'],['osimage.id=osimagetag.osimageid'],
                                 [f'osimagetag.id={data["osimagetagid"]}',f'osimage.id={data["osimageid"]}'])
             else:
                 osimage = Database().get_record(None, 'osimage', f' WHERE id = {data["osimageid"]}')
             if osimage:
-                if ('kernelfile' in osimage[0]) and (osimage[0]['kernelfile']):
+                if osimage[0]['kernelfile']:
                     data['kernelfile'] = osimage[0]['kernelfile']
-                if ('initrdfile' in osimage[0]) and (osimage[0]['initrdfile']):
+                if osimage[0]['initrdfile']:
                     data['initrdfile'] = osimage[0]['initrdfile']
-                if ('kerneloptions' in osimage[0]) and (osimage[0]['kerneloptions']):
-                    data['kerneloptions'] = osimage[0]['kerneloptions']
-                    regex=re.compile(r"^([A-Za-z0-9+/]{4})*([A-Za-z0-9+/]{3}=|[A-Za-z0-9+/]{2}==)?$")
-                    if regex.match(data['kerneloptions']):
-                        ko_data = b64decode(data['kerneloptions'])
+                if osimage[0]['kerneloptions']:
+                    if b64regex.match(osimage[0]['kerneloptions']):
+                        ko_data = b64decode(osimage[0]['kerneloptions'])
                         try:
-                            data['kerneloptions'] = ko_data.decode("ascii")
+                            data['kerneloptions'] += ko_data.decode("ascii")
                         except:
                             # apparently we were not base64! it can happen when a string seems like base64 but is not.
                             # is it safe to assume we can then just pass what's in the DB?
-                            pass
-                    data['kerneloptions']=data['kerneloptions'].replace('\n', ' ').replace('\r', '')
+                            data['kerneloptions'] += osimage[0]['kerneloptions']
 
                 # ------------ support for alternative provisioning ----------------
 
@@ -1025,6 +1068,9 @@ class Boot():
                         return False, 'Empty'
 
                 # ------------------------------------------------------------------
+
+        if data['kerneloptions']:
+            data['kerneloptions']=data['kerneloptions'].replace('\n', ' ').replace('\r', '')
 
         if None not in data.values():
             status=True

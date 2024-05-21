@@ -685,7 +685,7 @@ class Config(object):
         return False,"not enough details"
 
 
-    def node_interface_config(self, nodeid=None, interface_name=None, macaddress=None, options=None):
+    def node_interface_config(self, nodeid=None, interface_name=None, macaddress=None, vlanid=None, options=None):
         """
         This method will collect node interfaces and return configuration.
         """
@@ -695,22 +695,20 @@ class Config(object):
         where_interface = f'WHERE nodeid = "{nodeid}" AND interface = "{interface_name}"'
         check_interface = Database().get_record(None, 'nodeinterface', where_interface)
 
+        if macaddress is not None:
+            my_interface['macaddress'] = macaddress.lower()
+        if options is not None:
+            my_interface['options'] = options
+        if vlanid is not None:
+            my_interface['vlanid'] = vlanid
+
         if not check_interface: # ----> easy. both the interface and ipaddress do not exist
             my_interface['interface'] = interface_name
             my_interface['nodeid'] = nodeid
-            if macaddress is not None:
-                my_interface['macaddress'] = macaddress.lower()
-            if options is not None:
-                my_interface['options'] = options
             row = Helper().make_rows(my_interface)
             result_if = Database().insert('nodeinterface', row)
-
         else:
             # we have to update the interface
-            if macaddress is not None:
-                my_interface['macaddress'] = macaddress.lower()
-            if options is not None:
-                my_interface['options'] = options
             if my_interface:
                 row = Helper().make_rows(my_interface)
                 where = [{"column": "id", "value": check_interface[0]['id']}]

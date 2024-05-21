@@ -85,7 +85,8 @@ MATCH = {
     'osimagetag': 'anything',
     'tag': 'anything',
     'interface': 'minimal',
-    'gateway_metric': 'integer'
+    'gateway_metric': 'integer',
+    'vlanid': 'integer'
 }
 MAXLENGTH = {
     'request_id': '256',

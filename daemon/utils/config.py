@@ -907,7 +907,7 @@ class Config(object):
                         if network:
                             dhcp_ips = self.get_dhcp_range_ips_from_network(network[0]['networkname'])
                             dhcp6_ips = self.get_dhcp_range_ips_from_network(network[0]['networkname'],'ipv6')
-                            vlanid=network[0]['vlanid']
+                            vlanid = network[0]['vlanid']
                         ips = dhcp_ips.copy()
                         ips6 = dhcp6_ips.copy()
                         if network: 

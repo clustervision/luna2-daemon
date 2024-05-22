@@ -903,7 +903,7 @@ class Config(object):
                             )
                         dhcp_ips = []
                         dhcp6_ips = []
-                        vlanid=None
+                        vlanid = None
                         if network:
                             dhcp_ips = self.get_dhcp_range_ips_from_network(network[0]['networkname'])
                             dhcp6_ips = self.get_dhcp_range_ips_from_network(network[0]['networkname'],'ipv6')

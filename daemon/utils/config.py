@@ -873,7 +873,8 @@ class Config(object):
                                 'ipaddress.networkid as networkid',
                                 'network.network', 'network.network_ipv6',
                                 'network.subnet', 'network.subnet_ipv6',
-                                'network.name as networkname'
+                                'network.name as networkname',
+                                'groupinterface.vlanid'
                             ],
                             [
                                 'ipaddress.networkid=network.id',
@@ -888,7 +889,8 @@ class Config(object):
                                     'network.id as networkid',
                                     'network.network', 'network.network_ipv6',
                                     'network.subnet', 'network.subnet_ipv6',
-                                    'network.name as networkname'
+                                    'network.name as networkname',
+                                    'groupinterface.vlanid'
                                 ],
                                 [
                                     'network.id=groupinterface.networkid',
@@ -901,9 +903,11 @@ class Config(object):
                             )
                         dhcp_ips = []
                         dhcp6_ips = []
+                        vlanid=None
                         if network:
                             dhcp_ips = self.get_dhcp_range_ips_from_network(network[0]['networkname'])
                             dhcp6_ips = self.get_dhcp_range_ips_from_network(network[0]['networkname'],'ipv6')
+                            vlanid=network[0]['vlanid']
                         ips = dhcp_ips.copy()
                         ips6 = dhcp6_ips.copy()
                         if network: 
@@ -920,7 +924,7 @@ class Config(object):
                         )
                         if nodes:
                             for node in nodes:
-                                check, text = self.node_interface_config(node['nodeid'], interface)
+                                check, text = self.node_interface_config(nodeid=node['nodeid'], interface_name=interface, vlanid=vlanid)
                                 message = f"Adding/Updating interface {interface} to node id "
                                 message += f"{node['nodeid']} for group {group}. {text}"
                                 self.logger.info(message)

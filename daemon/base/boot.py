@@ -1237,6 +1237,7 @@ class Boot():
                     'nodeinterface.nodeid',
                     'nodeinterface.interface',
                     'nodeinterface.macaddress',
+                    'nodeinterface.vlanid',
                     'nodeinterface.options',
                     'ipaddress.ipaddress', 'ipaddress.ipaddress_ipv6',
                     'network.name as network',
@@ -1270,6 +1271,7 @@ class Boot():
                             data['bmc']['ipaddress'] = interface['ipaddress']
                             data['bmc']['ipaddress_ipv6'] = interface['ipaddress_ipv6']
                             data['bmc']['netmask'] = netmask
+                            data['bmc']['vlanid'] = interface['vlanid']
                             data['bmc']['netmask_ipv6'] = netmask6
                             data['bmc']['gateway'] = interface['gateway'] or '0.0.0.0'
                             data['bmc']['gateway_ipv6'] = interface['gateway_ipv6'] or '::/0'
@@ -1286,6 +1288,7 @@ class Boot():
                             'prefix_ipv6': interface['subnet_ipv6'],
                             'network': node_nwk,
                             'network_ipv6': node_nwk6,
+                            'vlanid' = interface['vlanid'],
                             'netmask': netmask,
                             'netmask_ipv6': netmask6,
                             'networkname': interface['network'],

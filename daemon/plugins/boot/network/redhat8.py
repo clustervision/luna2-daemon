@@ -40,12 +40,17 @@ class Plugin():
         config = segment that handles interface configuration in template
         """
 
+    # ------------ INIT --------------
+
     init = """
+if [ "$VLANID" ]; then
+    TYPE='vlan'
+fi
 cat << EOF > /sysroot/etc/NetworkManager/system-connections/Connection_${DEVICE}.nmconnection
 [connection]
 id=Connection_${DEVICE}
 type=${TYPE}
-interface-name=${DEVICE}
+interface-name=${DEVICE}${VLANID}
 autoconnect=true
 zone=${ZONE}
 
@@ -53,10 +58,20 @@ EOF
 
 if [ "$TYPE" == "infiniband" ]; then
 cat << EOF >> /sysroot/etc/NetworkManager/system-connections/Connection_${DEVICE}.nmconnection
-[$TYPE]
+[infiniband]
 #mtu=65520
 #transport-mode=connected
 transport-mode=datagram
+
+EOF
+fi
+
+if [ "$TYPE" == "vlan" ]; then
+cat << EOF >> /sysroot/etc/NetworkManager/system-connections/Connection_${DEVICE}.nmconnection
+[vlan]
+interface-name=${DEVICE}${VLANID}
+parent=${DEVICE}
+id=${VLANID}
 
 EOF
 fi

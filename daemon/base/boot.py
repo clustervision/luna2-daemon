@@ -1271,7 +1271,7 @@ class Boot():
                             data['bmc']['ipaddress'] = interface['ipaddress']
                             data['bmc']['ipaddress_ipv6'] = interface['ipaddress_ipv6']
                             data['bmc']['netmask'] = netmask
-                            data['bmc']['vlanid'] = interface['vlanid']
+                            data['bmc']['vlanid'] = interface['vlanid'] or ""
                             data['bmc']['netmask_ipv6'] = netmask6
                             data['bmc']['gateway'] = interface['gateway'] or '0.0.0.0'
                             data['bmc']['gateway_ipv6'] = interface['gateway_ipv6'] or '::/0'
@@ -1288,12 +1288,12 @@ class Boot():
                             'prefix_ipv6': interface['subnet_ipv6'],
                             'network': node_nwk,
                             'network_ipv6': node_nwk6,
-                            'vlanid' = interface['vlanid'],
+                            'vlanid': interface['vlanid'] or "",
                             'netmask': netmask,
                             'netmask_ipv6': netmask6,
                             'networkname': interface['network'],
-                            'gateway': interface['gateway'],
-                            'gateway_ipv6': interface['gateway_ipv6'],
+                            'gateway': interface['gateway'] or "",
+                            'gateway_ipv6': interface['gateway_ipv6'] or "",
                             'gateway_metric': interface['gateway_metric'] or "101",
                             'nameserver_ip': interface['nameserver_ip'] or "",
                             'nameserver_ip_ipv6': interface['nameserver_ip_ipv6'] or "",
@@ -1301,6 +1301,16 @@ class Boot():
                             'zone': zone,
                             'type': interface['type'] or "ethernet"
                         }
+                        if interface['interface'] == 'BOOTIF' and controller:
+                            # setting good defaults for BOOTIF if they do not exist. a must.
+                            if not data['interfaces']['BOOTIF']['gateway']:
+                                data['interfaces']['BOOTIF']['gateway'] = controller[0]['ipaddress'] or '0.0.0.0'
+                            if not data['interfaces']['BOOTIF']['gateway_ipv6']:
+                                data['interfaces']['BOOTIF']['gateway_ipv6'] = controller[0]['ipaddress_ipv6'] or '::/0'
+                            if not data['interfaces']['BOOTIF']['nameserver_ip']:
+                                data['interfaces']['BOOTIF']['nameserver_ip'] = controller[0]['ipaddress'] or '0.0.0.0'
+                            if not data['interfaces']['BOOTIF']['nameserver_ip_ipv6']:
+                                data['interfaces']['BOOTIF']['nameserver_ip_ipv6'] = controller[0]['ipaddress_ipv6'] or '::/0'
                         domain_search.append(interface['network'])
                         if interface['interface'] == data['provision_interface'] and interface['network']:
                             # if it is my prov interface then it will get that domain as a FQDN.

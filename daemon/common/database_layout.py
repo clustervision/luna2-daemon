@@ -74,7 +74,7 @@ DATABASE_LAYOUT_osimagetag = [
 {"column": "osimageid",            "datatype": "INTEGER", "length": "10"},
 {"column": "initrdfile",           "datatype": "VARCHAR", "length": "100"},
 {"column": "kernelfile",           "datatype": "VARCHAR", "length": "100"},
-{"column": "kerneloptions",        "datatype": "VARCHAR", "length": "100"},
+{"column": "kerneloptions",        "datatype": "VARCHAR", "length": "200"},
 {"column": "imagefile",            "datatype": "VARCHAR", "length": "100"}]
 
 DATABASE_LAYOUT_nodesecrets = [
@@ -88,6 +88,7 @@ DATABASE_LAYOUT_nodeinterface = [
 {"column": "id",                   "datatype": "INTEGER", "key": "PRIMARY", "keyadd": "AUTOINCREMENT"},
 {"column": "nodeid",               "datatype": "INTEGER", "length": "10", "key": "UNIQUE", "with": "interface"},
 {"column": "interface",            "datatype": "VARCHAR", "length": "50"},
+{"column": "vlanid",               "datatype": "VARCHAR", "length": "10"},
 {"column": "macaddress",           "datatype": "VARCHAR", "length": "200"},
 {"column": "options",              "datatype": "TEXT"}]
 
@@ -127,6 +128,7 @@ DATABASE_LAYOUT_groupinterface = [
 {"column": "id",                   "datatype": "INTEGER", "key": "PRIMARY", "keyadd": "AUTOINCREMENT"},
 {"column": "groupid",              "datatype": "INTEGER", "length": "10"},
 {"column": "interface",            "datatype": "VARCHAR", "length": "60"},
+{"column": "vlanid",               "datatype": "VARCHAR", "length": "10"},
 {"column": "networkid",            "datatype": "INTEGER", "length": "10"},
 {"column": "options",              "datatype": "TEXT"}]
 
@@ -143,6 +145,7 @@ DATABASE_LAYOUT_group = [
 {"column": "domain",               "datatype": "VARCHAR", "length": "20"},
 {"column": "osimageid",            "datatype": "INTEGER", "length": "10"},
 {"column": "osimagetagid",         "datatype": "INTEGER", "length": "10"},
+{"column": "kerneloptions",        "datatype": "VARCHAR", "length": "200"},
 {"column": "prescript",            "datatype": "TEXT"},
 {"column": "partscript",           "datatype": "TEXT"},
 {"column": "postscript",           "datatype": "TEXT"},
@@ -234,6 +237,7 @@ DATABASE_LAYOUT_node = [
 {"column": "groupid",              "datatype": "INTEGER", "length": "10"},
 {"column": "osimageid",            "datatype": "INTEGER", "length": "10"},
 {"column": "osimagetagid",         "datatype": "INTEGER", "length": "10"},
+{"column": "kerneloptions",        "datatype": "VARCHAR", "length": "200"},
 {"column": "switchport",           "datatype": "INTEGER", "length": "10"},
 {"column": "service",              "datatype": "INTEGER", "length": "10"},
 {"column": "bmcsetupid",           "datatype": "INTEGER", "length": "10"},

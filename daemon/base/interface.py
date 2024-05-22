@@ -121,7 +121,7 @@ class Interface():
             for interface in data:
                 # Antoine
                 interface_name = interface['interface']
-                ipaddress, macaddress, network, options = None, None, None, None
+                ipaddress, macaddress, network, options, vlanid = None, None, None, None, None
                 if 'macaddress' in interface.keys():
                     macaddress = interface['macaddress']
                 if 'options' in interface.keys():
@@ -134,6 +134,7 @@ class Interface():
                     nodeid,
                     interface_name,
                     macaddress,
+                    vlanid,
                     options
                 )
                 if result:
@@ -274,6 +275,7 @@ class Interface():
                     'groupinterface.interface',
                     'network.name as network',
                     'network.id as networkid',
+                    'groupinterface.vlanid',
                     'groupinterface.options'
                 ],
                 ['network.id=groupinterface.networkid'],
@@ -299,6 +301,7 @@ class Interface():
                             nodeid,
                             group_interface['interface'],
                             None,
+                            group_interface['vlanid'],
                             group_interface['options']
                         )
                         if result:

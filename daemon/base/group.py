@@ -63,14 +63,18 @@ class Group():
                 name = group['name']
                 group_id = group['id']
                 group_interface = Database().get_record_join(
-                    ['groupinterface.interface','network.name as network','groupinterface.options'],
+                    ['groupinterface.interface','network.name as network',
+                     'groupinterface.vlanid', 'groupinterface.options'],
                     ['network.id=groupinterface.networkid'],
                     [f"groupid = '{group_id}'"]
                 )
                 if group_interface:
                     group['interfaces'] = []
                     for interface in group_interface:
-                        interface['options'] = interface['options'] or ""
+                        if not interface['options']:
+                            del interface['options']
+                        if not interface['vlanid']:
+                            del interface['vlanid']
                         group['interfaces'].append(interface)
                 del group['id']
                 group['setupbmc'] = Helper().make_bool(group['setupbmc'])
@@ -119,6 +123,7 @@ class Group():
                 [
                     'groupinterface.interface',
                     'network.name as network',
+                    'groupinterface.vlanid',
                     'groupinterface.options'
                 ],
                 ['network.id=groupinterface.networkid'],
@@ -129,6 +134,8 @@ class Group():
                 for interface in group_interface:
                     if not interface['options']:
                         del interface['options']
+                    if not interface['vlanid']:
+                        del interface['vlanid']
                     group['interfaces'].append(interface)
             del group['id']
             for key, value in items.items():
@@ -280,7 +287,7 @@ class Group():
                         })
                 create = True
 
-            # we reset to make sure we don't assing something that won't work
+            # we reset to make sure we don't add something that won't work
             if 'osimage' in data:
                 data['osimagetagid'] = "default"
 

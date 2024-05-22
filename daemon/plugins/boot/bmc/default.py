@@ -53,6 +53,7 @@ class Plugin():
         CUR_IPADDR=`echo "${IPMITOOL}" | grep -e "^IP Address.*: [0-9]" | awk '{ print $4 }'`
         CUR_NETMASK=`echo "${IPMITOOL}" | grep -e "^Subnet Mask" | awk '{ print $4 }'`
         CUR_DEFGW=`echo "${IPMITOOL}" | grep -e "^Default Gateway IP" | awk '{ print $5 }'`
+        CUR_VLANID=`echo "${IPMITOOL}" | grep -e "^802.1q VLAN ID" | awk '{ print $5 }'`
         if [[ "${CUR_IPSRC}" != "Static" ]]
         then
             RESETIPMI=1
@@ -72,6 +73,19 @@ class Plugin():
         then
             RESETIPMI=1
             ipmitool lan set ${NETCHANNEL} defgw ipaddr ${GATEWAY}
+        fi
+        if [[ "$VLANID" == "" ]]
+        then
+            VLANID='Disabled'
+        fi
+        if [[ "${CUR_VLANID}" != "${VLANID}" ]]
+        then
+            RESETIPMI=1
+            if [ "$VLANID" == 'Disabled' ]; then
+                ipmitool lan set ${NETCHANNEL} vlan id off
+            else
+                ipmitool lan set ${NETCHANNEL} vlan id $VLANID
+            fi
         fi
         case $UNMANAGED in
             delete)

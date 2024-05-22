@@ -685,7 +685,7 @@ class Config(object):
         return False,"not enough details"
 
 
-    def node_interface_config(self, nodeid=None, interface_name=None, macaddress=None, options=None):
+    def node_interface_config(self, nodeid=None, interface_name=None, macaddress=None, vlanid=None, options=None):
         """
         This method will collect node interfaces and return configuration.
         """
@@ -695,22 +695,20 @@ class Config(object):
         where_interface = f'WHERE nodeid = "{nodeid}" AND interface = "{interface_name}"'
         check_interface = Database().get_record(None, 'nodeinterface', where_interface)
 
+        if macaddress is not None:
+            my_interface['macaddress'] = macaddress.lower()
+        if options is not None:
+            my_interface['options'] = options
+        if vlanid is not None:
+            my_interface['vlanid'] = vlanid
+
         if not check_interface: # ----> easy. both the interface and ipaddress do not exist
             my_interface['interface'] = interface_name
             my_interface['nodeid'] = nodeid
-            if macaddress is not None:
-                my_interface['macaddress'] = macaddress.lower()
-            if options is not None:
-                my_interface['options'] = options
             row = Helper().make_rows(my_interface)
             result_if = Database().insert('nodeinterface', row)
-
         else:
             # we have to update the interface
-            if macaddress is not None:
-                my_interface['macaddress'] = macaddress.lower()
-            if options is not None:
-                my_interface['options'] = options
             if my_interface:
                 row = Helper().make_rows(my_interface)
                 where = [{"column": "id", "value": check_interface[0]['id']}]
@@ -875,7 +873,8 @@ class Config(object):
                                 'ipaddress.networkid as networkid',
                                 'network.network', 'network.network_ipv6',
                                 'network.subnet', 'network.subnet_ipv6',
-                                'network.name as networkname'
+                                'network.name as networkname',
+                                'groupinterface.vlanid'
                             ],
                             [
                                 'ipaddress.networkid=network.id',
@@ -890,7 +889,8 @@ class Config(object):
                                     'network.id as networkid',
                                     'network.network', 'network.network_ipv6',
                                     'network.subnet', 'network.subnet_ipv6',
-                                    'network.name as networkname'
+                                    'network.name as networkname',
+                                    'groupinterface.vlanid'
                                 ],
                                 [
                                     'network.id=groupinterface.networkid',
@@ -903,9 +903,11 @@ class Config(object):
                             )
                         dhcp_ips = []
                         dhcp6_ips = []
+                        vlanid = None
                         if network:
                             dhcp_ips = self.get_dhcp_range_ips_from_network(network[0]['networkname'])
                             dhcp6_ips = self.get_dhcp_range_ips_from_network(network[0]['networkname'],'ipv6')
+                            vlanid = network[0]['vlanid']
                         ips = dhcp_ips.copy()
                         ips6 = dhcp6_ips.copy()
                         if network: 
@@ -922,7 +924,7 @@ class Config(object):
                         )
                         if nodes:
                             for node in nodes:
-                                check, text = self.node_interface_config(node['nodeid'], interface)
+                                check, text = self.node_interface_config(nodeid=node['nodeid'], interface_name=interface, vlanid=vlanid)
                                 message = f"Adding/Updating interface {interface} to node id "
                                 message += f"{node['nodeid']} for group {group}. {text}"
                                 self.logger.info(message)

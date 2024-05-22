@@ -40,12 +40,14 @@ class Plugin():
         config = segment that handles interface configuration in template
         """
 
+    # ---------------------------------------------------------------------------------------------
+
     init = """
 if [ ! -d $rootmnt/etc/netplan/ ]; then
     mkdir -p $rootmnt/etc/netplan/
 fi
-if [ ! -f $rootmnt/etc/netplan/99_config.yaml ]; then
-cat << EOF > $rootmnt/etc/netplan/99_config.yaml
+if [ ! -f $rootmnt/etc/netplan/98_config.yaml ]; then
+cat << EOF > $rootmnt/etc/netplan/98_config.yaml
 network:
   version: 2
   renderer: networkd
@@ -53,73 +55,126 @@ network:
 EOF
 fi
 
-if [ ! "$(grep $DEVICE $rootmnt/etc/netplan/99_config.yaml)" ]; then
-cat << EOF >> $rootmnt/etc/netplan/99_config.yaml
-    ${DEVICE}:
-      addresses:
+if [ ! "$(grep $DEVICE $rootmnt/etc/netplan/98_config.yaml)" ]; then
+cat << EOF >> $rootmnt/etc/netplan/98_config.yaml
+    ${DEVICE}: {}
+      # addresses_${DEVICE}:
         # ip_ipv4_${DEVICE}
         # ip_ipv6_${DEVICE}
-      routes:
+      # routes_${DEVICE}:
         # route_ipv4_${DEVICE}
         # route_ipv6_${DEVICE}
-      nameservers:
+      # nameservers_${DEVICE}:
         # ns_ipv4_${DEVICE}
         # ns_ipv6_${DEVICE}
 EOF
 fi
+
+if [ "$VLANID" ]; then
+    if [ ! -f $rootmnt/etc/netplan/99_config.yaml ]; then
+        cat << EOF > $rootmnt/etc/netplan/99_config.yaml
+network:
+  version: 2
+  renderer: networkd
+  vlans:
+EOF
+    fi
+    cat << EOF >> $rootmnt/etc/netplan/99_config.yaml
+    vlan_${DEVICE}_${VLANID}:
+      id: $VLANID
+      link: $DEVICE
+      addresses:
+        # ip_ipv4_${DEVICE}_${VLANID}
+        # ip_ipv6_${DEVICE}_${VLANID}
+EOF
+fi
     """
+
+    # ---------------------------------------------------------------------------------------------
 
     # ipv4
     interface = """
-        sed -i 's/# ip_ipv4_'$DEVICE'/- '$IPADDR'\/'$PREFIX'/' $rootmnt/etc/netplan/99_config.yaml
+        if [ "$VLANID" ]; then
+            sed -i 's/# ip_ipv4_'$DEVICE'_'$VLANID'/- '$IPADDR'\/'$PREFIX'/' $rootmnt/etc/netplan/99_config.yaml
+        else
+            sed -i 's/'$DEVICE': {}/'$DEVICE':/' $rootmnt/etc/netplan/98_config.yaml
+            sed -i 's/# addresses_'$DEVICE'/addresses/' $rootmnt/etc/netplan/98_config.yaml
+            sed -i 's/# ip_ipv4_'$DEVICE'/- '$IPADDR'\/'$PREFIX'/' $rootmnt/etc/netplan/98_config.yaml
+        fi
     """
 
+    # ---------------------------------------------------------------------------------------------
+
     gateway = """
-cat << EOF > /tmp/99_config.yaml
+        sed -i 's/# routes_'$DEVICE'/routes/' $rootmnt/etc/netplan/98_config.yaml
+cat << EOF > /tmp/98_config.yaml
         - to: default
           via: $GATEWAY
           metric: $METRIC
 EOF
-        sed -i '/# route_ipv4_'$DEVICE'/r /tmp/99_config.yaml' $rootmnt/etc/netplan/99_config.yaml
+        sed -i 's/'$DEVICE': {}/'$DEVICE':/' $rootmnt/etc/netplan/98_config.yaml
+        sed -i '/# route_ipv4_'$DEVICE'/r /tmp/98_config.yaml' $rootmnt/etc/netplan/98_config.yaml
         chroot $rootmnt netplan apply 2> /dev/null
     """
 
+    # ---------------------------------------------------------------------------------------------
+
     dns = """
-cat << EOF > /tmp/99_config.yaml
+        sed -i 's/# nameservers_'$DEVICE'/nameservers/' $rootmnt/etc/netplan/98_config.yaml
+cat << EOF > /tmp/98_config.yaml
           search: [$SEARCH]
           addresses: [$NAMESERVER]
 EOF
-        sed -i '/# ns_ipv4_'$DEVICE'/r /tmp/99_config.yaml' $rootmnt/etc/netplan/99_config.yaml
+        sed -i 's/'$DEVICE': {}/'$DEVICE':/' $rootmnt/etc/netplan/98_config.yaml
+        sed -i '/# ns_ipv4_'$DEVICE'/r /tmp/98_config.yaml' $rootmnt/etc/netplan/98_config.yaml
         echo "search $SEARCH" > $rootmnt/etc/resolv.conf
         echo "nameserver $NAMESERVER" >> $rootmnt/etc/resolv.conf
         chroot $rootmnt netplan apply 2> /dev/null
     """
+
+    # ---------------------------------------------------------------------------------------------
 
     # ipv6
     interface_ipv6 = """
-        sed -i 's/# ip_ipv6_'$DEVICE'/- '$IPADDR'\/'$PREFIX'/' $rootmnt/etc/netplan/99_config.yaml
+        if [ "$VLANID" ]; then
+            sed -i 's/# ip_ipv6_'$DEVICE'_'$VLANID'/- '$IPADDR'\/'$PREFIX'/' $rootmnt/etc/netplan/99_config.yaml
+        else
+            sed -i 's/'$DEVICE': {}/'$DEVICE':/' $rootmnt/etc/netplan/98_config.yaml
+            sed -i 's/# addresses_'$DEVICE'/addresses/' $rootmnt/etc/netplan/98_config.yaml
+            sed -i 's/# ip_ipv6_'$DEVICE'/- '$IPADDR'\/'$PREFIX'/' $rootmnt/etc/netplan/98_config.yaml
+        fi
     """
 
+    # ---------------------------------------------------------------------------------------------
+
     gateway_ipv6 = """
-cat << EOF > /tmp/99_config.yaml
+        sed -i 's/# routes_'$DEVICE'/routes/' $rootmnt/etc/netplan/98_config.yaml
+cat << EOF > /tmp/98_config.yaml
         - to: default
           via: $GATEWAY
           metric: $METRIC
 EOF
-        sed -i '/# route_ipv6_'$DEVICE'/r /tmp/99_config.yaml' $rootmnt/etc/netplan/99_config.yaml
+        sed -i 's/'$DEVICE': {}/'$DEVICE':/' $rootmnt/etc/netplan/98_config.yaml
+        sed -i '/# route_ipv6_'$DEVICE'/r /tmp/98_config.yaml' $rootmnt/etc/netplan/98_config.yaml
         chroot $rootmnt netplan apply 2> /dev/null
     """
 
+    # ---------------------------------------------------------------------------------------------
+
     dns_ipv6 = """
-cat << EOF > /tmp/99_config.yaml
+        sed -i 's/# nameservers_'$DEVICE'/nameservers/' $rootmnt/etc/netplan/98_config.yaml
+cat << EOF > /tmp/98_config.yaml
           search: [$SEARCH]
           addresses: [$NAMESERVER]
 EOF
-        sed -i '/# ns_ipv6_'$DEVICE'/r /tmp/99_config.yaml' $rootmnt/etc/netplan/99_config.yaml
+        sed -i 's/'$DEVICE': {}/'$DEVICE':/' $rootmnt/etc/netplan/98_config.yaml
+        sed -i '/# ns_ipv6_'$DEVICE'/r /tmp/98_config.yaml' $rootmnt/etc/netplan/98_config.yaml
         echo "search $SEARCH" > $rootmnt/etc/resolv.conf
         echo "nameserver $NAMESERVER" >> $rootmnt/etc/resolv.conf
         chroot $rootmnt netplan apply 2> /dev/null
     """
+
+    # ---------------------------------------------------------------------------------------------
 
     hostname = """
         echo "$HOSTNAME" > /proc/sys/kernel/hostname

@@ -430,9 +430,13 @@ class Boot():
                             Service().queue('dhcp', 'restart')
                             Service().queue('dhcp6','restart')
         # -----------------------------------------------------------------------
+        data['kerneloptions']=""
+        b64regex=re.compile(r"^([A-Za-z0-9+/]{4})*([A-Za-z0-9+/]{3}=|[A-Za-z0-9+/]{2}==)?$")
+
         if data['nodeid']:
             node = Database().get_record_join(
-                ['node.*','group.osimageid as grouposimageid','group.osimagetagid as grouposimagetagid'],
+                ['node.*','group.osimageid as grouposimageid','group.osimagetagid as grouposimagetagid',
+                 'group.kerneloptions as groupkerneloptions'],
                 ['group.id=node.groupid'],
                 [f'node.id={data["nodeid"]}']
             )
@@ -443,31 +447,40 @@ class Boot():
                 # data['nodehostname'] = node[0]['hostname']
                 data['nodehostname'] = node[0]['name'] # + fqdn - pending
                 data['nodeservice'] = node[0]['service']
+                if node[0]['kerneloptions']:
+                    data['kerneloptions']=node[0]['kerneloptions']
+                elif node[0]['groupkerneloptions']:
+                    data['kerneloptions']=node[0]['groupkerneloptions']
+                if b64regex.match(data['kerneloptions']):
+                    ko_data = b64decode(data['kerneloptions'])
+                    try:
+                        data['kerneloptions'] = ko_data.decode("ascii")
+                    except:
+                        # apparently we were not base64! it can happen when a string seems like base64 but is not.
+                        # is it safe to assume we can then just pass what's in the DB?
+                        pass
+
         if data['osimageid']:
             osimage = None
-            data['kerneloptions']=""
             if data['osimagetagid'] and data['osimagetagid'] != 'default':
                 osimage = Database().get_record_join(['osimagetag.*'],['osimage.id=osimagetag.osimageid'],
                                 [f'osimagetag.id={data["osimagetagid"]}',f'osimage.id={data["osimageid"]}'])
             else:
                 osimage = Database().get_record(None, 'osimage', f' WHERE id = {data["osimageid"]}')
             if osimage:
-                if ('kernelfile' in osimage[0]) and (osimage[0]['kernelfile']):
+                if osimage[0]['kernelfile']:
                     data['kernelfile'] = osimage[0]['kernelfile']
-                if ('initrdfile' in osimage[0]) and (osimage[0]['initrdfile']):
+                if osimage[0]['initrdfile']:
                     data['initrdfile'] = osimage[0]['initrdfile']
-                if ('kerneloptions' in osimage[0]) and (osimage[0]['kerneloptions']):
-                    data['kerneloptions'] = osimage[0]['kerneloptions']
-                    regex=re.compile(r"^([A-Za-z0-9+/]{4})*([A-Za-z0-9+/]{3}=|[A-Za-z0-9+/]{2}==)?$")
-                    if regex.match(data['kerneloptions']):
-                        ko_data = b64decode(data['kerneloptions'])
+                if osimage[0]['kerneloptions']:
+                    if b64regex.match(osimage[0]['kerneloptions']):
+                        ko_data = b64decode(osimage[0]['kerneloptions'])
                         try:
-                            data['kerneloptions'] = ko_data.decode("ascii")
+                            data['kerneloptions'] = ko_data.decode("ascii") + data['kerneloptions']
                         except:
                             # apparently we were not base64! it can happen when a string seems like base64 but is not.
                             # is it safe to assume we can then just pass what's in the DB?
-                            pass
-                    data['kerneloptions']=data['kerneloptions'].replace('\n', ' ').replace('\r', '')
+                            data['kerneloptions'] = osimage[0]['kerneloptions'] + data['kerneloptions']
 
                 # ------------ support for alternative provisioning ----------------
 
@@ -481,6 +494,9 @@ class Boot():
 
                 # ------------------------------------------------------------------
 
+        if data['kerneloptions']:
+            data['kerneloptions']=data['kerneloptions'].replace('\n', ' ').replace('\r', '')
+
         if None not in data.values():
             status=True
             Helper().update_node_state(data["nodeid"], "installer.discovery")
@@ -493,6 +509,9 @@ class Boot():
             for key, value in data.items():
                 if value is None:
                     self.logger.error(f"{key} has no value. Node {data['nodename']} cannot boot")
+                    more_info=Helper().get_more_info(key)
+                    if more_info:
+                        self.logger.error(more_info)
             environment = jinja2.Environment()
             template = environment.from_string('No Node is available for this mac address.')
             status=False
@@ -737,9 +756,12 @@ class Boot():
             Database().update('node', row, where)
 
         # below here is almost identical to a manual node selection boot -----------------
+        data['kerneloptions']=""
+        b64regex=re.compile(r"^([A-Za-z0-9+/]{4})*([A-Za-z0-9+/]{3}=|[A-Za-z0-9+/]{2}==)?$")
 
         node = Database().get_record_join(
-            ['node.*', 'group.osimageid as grouposimageid','group.osimagetagid as grouposimagetagid'],
+            ['node.*', 'group.osimageid as grouposimageid','group.osimagetagid as grouposimagetagid',
+             'group.kerneloptions as groupkerneloptions'],
             ['group.id=node.groupid'],
             [f'node.name="{hostname}"']
         )
@@ -751,6 +773,18 @@ class Boot():
             data['nodehostname'] = node[0]['name'] # + fqdn ?
             data['nodeservice'] = node[0]['service']
             data['nodeid'] = node[0]['id']
+            if node[0]['kerneloptions']:
+                data['kerneloptions']=node[0]['kerneloptions']
+            elif node[0]['groupkerneloptions']:
+                data['kerneloptions']=node[0]['groupkerneloptions']
+            if b64regex.match(data['kerneloptions']):
+                ko_data = b64decode(data['kerneloptions'])
+                try:
+                    data['kerneloptions'] = ko_data.decode("ascii")
+                except:
+                    # apparently we were not base64! it can happen when a string seems like base64 but is not.
+                    # is it safe to assume we can then just pass what's in the DB?
+                    pass
 
         if data['nodeid']:
             Service().queue('dhcp','restart')
@@ -791,29 +825,25 @@ class Boot():
 
         if data['osimageid']:
             osimage = None
-            data['kerneloptions']=""
             if data['osimagetagid'] and data['osimagetagid'] != 'default':
                 osimage = Database().get_record_join(['osimagetag.*'],['osimage.id=osimagetag.osimageid'],
                                 [f'osimagetag.id={data["osimagetagid"]}',f'osimage.id={data["osimageid"]}'])
             else:
                 osimage = Database().get_record(None, 'osimage', f' WHERE id = {data["osimageid"]}')
             if osimage:
-                if ('kernelfile' in osimage[0]) and (osimage[0]['kernelfile']):
+                if osimage[0]['kernelfile']:
                     data['kernelfile'] = osimage[0]['kernelfile']
-                if ('initrdfile' in osimage[0]) and (osimage[0]['initrdfile']):
+                if osimage[0]['initrdfile']:
                     data['initrdfile'] = osimage[0]['initrdfile']
-                if ('kerneloptions' in osimage[0]) and (osimage[0]['kerneloptions']):
-                    data['kerneloptions'] = osimage[0]['kerneloptions']
-                    regex=re.compile(r"^([A-Za-z0-9+/]{4})*([A-Za-z0-9+/]{3}=|[A-Za-z0-9+/]{2}==)?$")
-                    if regex.match(data['kerneloptions']):
-                        ko_data = b64decode(data['kerneloptions'])
+                if osimage[0]['kerneloptions']:
+                    if b64regex.match(osimage[0]['kerneloptions']):
+                        ko_data = b64decode(osimage[0]['kerneloptions'])
                         try:
-                            data['kerneloptions'] = ko_data.decode("ascii")
+                            data['kerneloptions'] = ko_data.decode("ascii") + data['kerneloptions']
                         except:
                             # apparently we were not base64! it can happen when a string seems like base64 but is not.
                             # is it safe to assume we can then just pass what's in the DB?
-                            pass
-                    data['kerneloptions']=data['kerneloptions'].replace('\n', ' ').replace('\r', '')
+                            data['kerneloptions'] = osimage[0]['kerneloptions'] + data['kerneloptions']
 
                 # ------------ support for alternative provisioning ----------------
 
@@ -827,6 +857,9 @@ class Boot():
 
                 # ------------------------------------------------------------------
 
+        if data['kerneloptions']:
+            data['kerneloptions']=data['kerneloptions'].replace('\n', ' ').replace('\r', '')
+
         if None not in data.values():
             status=True
             Helper().update_node_state(data["nodeid"], "installer.discovery")
@@ -838,6 +871,9 @@ class Boot():
             for key, value in data.items():
                 if value is None:
                     self.logger.error(f"{key} has no value. Node {data['nodename']} cannot boot")
+                    more_info=Helper().get_more_info(key)
+                    if more_info:
+                        self.logger.error(more_info)
             environment = jinja2.Environment()
             template = environment.from_string('No Node is available for this mac address.')
             status=False
@@ -893,9 +929,13 @@ class Boot():
         else:
             self.logger.warning(f"possible configuration error: No controller available or missing network for controller")
 
+        data['kerneloptions']=""
+        b64regex=re.compile(r"^([A-Za-z0-9+/]{4})*([A-Za-z0-9+/]{3}=|[A-Za-z0-9+/]{2}==)?$")
+
         # we probably have to cut the fqdn off of hostname?
         node = Database().get_record_join(
-            ['node.*', 'group.osimageid as grouposimageid','group.osimagetagid as grouposimagetagid'],
+            ['node.*', 'group.osimageid as grouposimageid','group.osimagetagid as grouposimagetagid',
+             'group.kerneloptions as groupkerneloptions'],
             ['group.id=node.groupid'],
             [f'node.name="{hostname}"']
         )
@@ -907,6 +947,19 @@ class Boot():
             data['nodehostname'] = node[0]['name'] # + fqdn ?
             data['nodeservice'] = node[0]['service']
             data['nodeid'] = node[0]['id']
+            if node[0]['kerneloptions']:
+                data['kerneloptions']=node[0]['kerneloptions']
+            elif node[0]['groupkerneloptions']:
+                data['kerneloptions']=node[0]['groupkerneloptions']
+            if b64regex.match(data['kerneloptions']):
+                ko_data = b64decode(data['kerneloptions'])
+                try:
+                    data['kerneloptions'] = ko_data.decode("ascii")
+                except:
+                    # apparently we were not base64! it can happen when a string seems like base64 but is not.
+                    # is it safe to assume we can then just pass what's in the DB?
+                    pass
+
         if data['nodeid']:
             we_need_dhcpd_restart = False
             nodeinterface_check = Database().get_record(None, 'nodeinterface', 
@@ -990,29 +1043,25 @@ class Boot():
 
         if data['osimageid']:
             osimage = None
-            data['kerneloptions']=""
             if data['osimagetagid'] and data['osimagetagid'] != 'default':
                 osimage = Database().get_record_join(['osimagetag.*'],['osimage.id=osimagetag.osimageid'],
                                 [f'osimagetag.id={data["osimagetagid"]}',f'osimage.id={data["osimageid"]}'])
             else:
                 osimage = Database().get_record(None, 'osimage', f' WHERE id = {data["osimageid"]}')
             if osimage:
-                if ('kernelfile' in osimage[0]) and (osimage[0]['kernelfile']):
+                if osimage[0]['kernelfile']:
                     data['kernelfile'] = osimage[0]['kernelfile']
-                if ('initrdfile' in osimage[0]) and (osimage[0]['initrdfile']):
+                if osimage[0]['initrdfile']:
                     data['initrdfile'] = osimage[0]['initrdfile']
-                if ('kerneloptions' in osimage[0]) and (osimage[0]['kerneloptions']):
-                    data['kerneloptions'] = osimage[0]['kerneloptions']
-                    regex=re.compile(r"^([A-Za-z0-9+/]{4})*([A-Za-z0-9+/]{3}=|[A-Za-z0-9+/]{2}==)?$")
-                    if regex.match(data['kerneloptions']):
-                        ko_data = b64decode(data['kerneloptions'])
+                if osimage[0]['kerneloptions']:
+                    if b64regex.match(osimage[0]['kerneloptions']):
+                        ko_data = b64decode(osimage[0]['kerneloptions'])
                         try:
-                            data['kerneloptions'] = ko_data.decode("ascii")
+                            data['kerneloptions'] = ko_data.decode("ascii") + data['kerneloptions']
                         except:
                             # apparently we were not base64! it can happen when a string seems like base64 but is not.
                             # is it safe to assume we can then just pass what's in the DB?
-                            pass
-                    data['kerneloptions']=data['kerneloptions'].replace('\n', ' ').replace('\r', '')
+                            data['kerneloptions'] = osimage[0]['kerneloptions'] + data['kerneloptions']
 
                 # ------------ support for alternative provisioning ----------------
 
@@ -1026,6 +1075,9 @@ class Boot():
 
                 # ------------------------------------------------------------------
 
+        if data['kerneloptions']:
+            data['kerneloptions']=data['kerneloptions'].replace('\n', ' ').replace('\r', '')
+
         if None not in data.values():
             status=True
             Helper().update_node_state(data["nodeid"], "installer.discovery")
@@ -1037,6 +1089,9 @@ class Boot():
             for key, value in data.items():
                 if value is None:
                     self.logger.error(f"{key} has no value. Node {data['nodename']} cannot boot")
+                    more_info=Helper().get_more_info(key)
+                    if more_info:
+                        self.logger.error(more_info)
             environment = jinja2.Environment()
             template = environment.from_string('No Node is available for this mac address.')
             status=False
@@ -1182,6 +1237,7 @@ class Boot():
                     'nodeinterface.nodeid',
                     'nodeinterface.interface',
                     'nodeinterface.macaddress',
+                    'nodeinterface.vlanid',
                     'nodeinterface.options',
                     'ipaddress.ipaddress', 'ipaddress.ipaddress_ipv6',
                     'network.name as network',
@@ -1215,6 +1271,7 @@ class Boot():
                             data['bmc']['ipaddress'] = interface['ipaddress']
                             data['bmc']['ipaddress_ipv6'] = interface['ipaddress_ipv6']
                             data['bmc']['netmask'] = netmask
+                            data['bmc']['vlanid'] = interface['vlanid'] or ""
                             data['bmc']['netmask_ipv6'] = netmask6
                             data['bmc']['gateway'] = interface['gateway'] or '0.0.0.0'
                             data['bmc']['gateway_ipv6'] = interface['gateway_ipv6'] or '::/0'
@@ -1231,11 +1288,12 @@ class Boot():
                             'prefix_ipv6': interface['subnet_ipv6'],
                             'network': node_nwk,
                             'network_ipv6': node_nwk6,
+                            'vlanid': interface['vlanid'] or "",
                             'netmask': netmask,
                             'netmask_ipv6': netmask6,
                             'networkname': interface['network'],
-                            'gateway': interface['gateway'],
-                            'gateway_ipv6': interface['gateway_ipv6'],
+                            'gateway': interface['gateway'] or "",
+                            'gateway_ipv6': interface['gateway_ipv6'] or "",
                             'gateway_metric': interface['gateway_metric'] or "101",
                             'nameserver_ip': interface['nameserver_ip'] or "",
                             'nameserver_ip_ipv6': interface['nameserver_ip_ipv6'] or "",
@@ -1243,6 +1301,16 @@ class Boot():
                             'zone': zone,
                             'type': interface['type'] or "ethernet"
                         }
+                        if interface['interface'] == 'BOOTIF' and controller:
+                            # setting good defaults for BOOTIF if they do not exist. a must.
+                            if not data['interfaces']['BOOTIF']['gateway']:
+                                data['interfaces']['BOOTIF']['gateway'] = controller[0]['ipaddress'] or '0.0.0.0'
+                            if not data['interfaces']['BOOTIF']['gateway_ipv6']:
+                                data['interfaces']['BOOTIF']['gateway_ipv6'] = controller[0]['ipaddress_ipv6'] or '::/0'
+                            if not data['interfaces']['BOOTIF']['nameserver_ip']:
+                                data['interfaces']['BOOTIF']['nameserver_ip'] = controller[0]['ipaddress'] or '0.0.0.0'
+                            if not data['interfaces']['BOOTIF']['nameserver_ip_ipv6']:
+                                data['interfaces']['BOOTIF']['nameserver_ip_ipv6'] = controller[0]['ipaddress_ipv6'] or '::/0'
                         domain_search.append(interface['network'])
                         if interface['interface'] == data['provision_interface'] and interface['network']:
                             # if it is my prov interface then it will get that domain as a FQDN.
@@ -1352,6 +1420,9 @@ class Boot():
             for key, value in data.items():
                 if value is None:
                     self.logger.error(f"{key} has no value. Node {data['nodename']} cannot boot")
+                    more_info=Helper().get_more_info(key)
+                    if more_info:
+                        self.logger.error(more_info)
             environment = jinja2.Environment()
             template = environment.from_string('No Node is available for this mac address.')
             status=False 

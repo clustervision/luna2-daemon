@@ -796,6 +796,14 @@ class Helper(object):
 
     # -----------------------------------------------------------------
 
+    def get_more_info(self, key=None):
+        if key:
+            if key in ['initrdfile','kernelfile']:
+                return f"{key}: Make sure to have a packed osimage and/or correct osimage (tag) set"
+        return None
+
+    # -----------------------------------------------------------------
+
     def plugin_finder(self, startpath=None):
         """
         This method will find the plugin.

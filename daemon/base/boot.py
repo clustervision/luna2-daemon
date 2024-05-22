@@ -476,11 +476,11 @@ class Boot():
                     if b64regex.match(osimage[0]['kerneloptions']):
                         ko_data = b64decode(osimage[0]['kerneloptions'])
                         try:
-                            data['kerneloptions'] += ko_data.decode("ascii")
+                            data['kerneloptions'] = ko_data.decode("ascii") + data['kerneloptions']
                         except:
                             # apparently we were not base64! it can happen when a string seems like base64 but is not.
                             # is it safe to assume we can then just pass what's in the DB?
-                            data['kerneloptions'] += osimage[0]['kerneloptions']
+                            data['kerneloptions'] = osimage[0]['kerneloptions'] + data['kerneloptions']
 
                 # ------------ support for alternative provisioning ----------------
 
@@ -509,6 +509,9 @@ class Boot():
             for key, value in data.items():
                 if value is None:
                     self.logger.error(f"{key} has no value. Node {data['nodename']} cannot boot")
+                    more_info=Helper().get_more_info(key)
+                    if more_info:
+                        self.logger.error(more_info)
             environment = jinja2.Environment()
             template = environment.from_string('No Node is available for this mac address.')
             status=False
@@ -836,11 +839,11 @@ class Boot():
                     if b64regex.match(osimage[0]['kerneloptions']):
                         ko_data = b64decode(osimage[0]['kerneloptions'])
                         try:
-                            data['kerneloptions'] += ko_data.decode("ascii")
+                            data['kerneloptions'] = ko_data.decode("ascii") + data['kerneloptions']
                         except:
                             # apparently we were not base64! it can happen when a string seems like base64 but is not.
                             # is it safe to assume we can then just pass what's in the DB?
-                            data['kerneloptions'] += osimage[0]['kerneloptions']
+                            data['kerneloptions'] = osimage[0]['kerneloptions'] + data['kerneloptions']
 
                 # ------------ support for alternative provisioning ----------------
 
@@ -868,6 +871,9 @@ class Boot():
             for key, value in data.items():
                 if value is None:
                     self.logger.error(f"{key} has no value. Node {data['nodename']} cannot boot")
+                    more_info=Helper().get_more_info(key)
+                    if more_info:
+                        self.logger.error(more_info)
             environment = jinja2.Environment()
             template = environment.from_string('No Node is available for this mac address.')
             status=False
@@ -1051,11 +1057,11 @@ class Boot():
                     if b64regex.match(osimage[0]['kerneloptions']):
                         ko_data = b64decode(osimage[0]['kerneloptions'])
                         try:
-                            data['kerneloptions'] += ko_data.decode("ascii")
+                            data['kerneloptions'] = ko_data.decode("ascii") + data['kerneloptions']
                         except:
                             # apparently we were not base64! it can happen when a string seems like base64 but is not.
                             # is it safe to assume we can then just pass what's in the DB?
-                            data['kerneloptions'] += osimage[0]['kerneloptions']
+                            data['kerneloptions'] = osimage[0]['kerneloptions'] + data['kerneloptions']
 
                 # ------------ support for alternative provisioning ----------------
 
@@ -1083,6 +1089,9 @@ class Boot():
             for key, value in data.items():
                 if value is None:
                     self.logger.error(f"{key} has no value. Node {data['nodename']} cannot boot")
+                    more_info=Helper().get_more_info(key)
+                    if more_info:
+                        self.logger.error(more_info)
             environment = jinja2.Environment()
             template = environment.from_string('No Node is available for this mac address.')
             status=False
@@ -1398,6 +1407,9 @@ class Boot():
             for key, value in data.items():
                 if value is None:
                     self.logger.error(f"{key} has no value. Node {data['nodename']} cannot boot")
+                    more_info=Helper().get_more_info(key)
+                    if more_info:
+                        self.logger.error(more_info)
             environment = jinja2.Environment()
             template = environment.from_string('No Node is available for this mac address.')
             status=False 

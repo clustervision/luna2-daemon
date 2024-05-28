@@ -503,7 +503,7 @@ class Database():
                             values.append('datetime('+str(each["value"])+',"unixepoch")')
                 else:
                     if each["value"] is not None:
-                        values.append('"'+str(each["value"])+'"')
+                        values.append("'"+str(each["value"])+"'")
                     else:
                         values.append('NULL')
             where_keys = keys
@@ -597,7 +597,7 @@ class Database():
                 column = column + cols['column']
             if 'value' in cols.keys():
                 if cols['value'] is not None:
-                    column = column + ' = "' +str(cols['value']) +'"'
+                    column = column + " = '" +str(cols['value']) +"'"
                 else:
                     column = column + ' = NULL'
             where_list.append(column)

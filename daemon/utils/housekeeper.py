@@ -191,24 +191,47 @@ class Housekeeper(object):
 
     def invalid_config_mother(self, event):
         tel=57
+        rtel=20
         self.logger.info("Starting invalid config thread")
         while True:
             try:
                 tel+=1
                 if tel > 60:
                     tel=0
+                    rtel+=1
                     all_nodes = Database().get_record(None, "node")
                     if all_nodes:
                         for node in all_nodes:
-                            status, response = Node().get_node(node['name'])
+                            status, node_response = Node().get_node(node['name'])
                             if status:
-                                for key, value in response['config']['node'][node['name']].items():
+                                OK=True
+                                for key, value in node_response['config']['node'][node['name']].items():
                                     if value == '!!Invalid!!':
-                                        self.logger.warning(f"Node {node['name']} has invalid config: {key} is {value}")
-                                        status = {'monitor': {'status': {node['name']: {'state': f'Node configuration for {key} is invalid'} } } }
-                                        Monitor().update_nodestatus(node['name'], status)
+                                        OK=False
+                                        if rtel > 20:
+                                            self.logger.warning(f"Node {node['name']} has invalid config: {key} is {value}")
+                                        new_state = f'Node configuration for {key} is invalid'
+                                        state = {'monitor': {'status': {node['name']: {'state': new_state, 'status': '501'} } } }
+                                        status, monitor_response = Monitor().get_nodestatus(node['name'])
+                                        if status:
+                                            current_state = monitor_response['monitor']['status'][node['name']]['state']
+                                            if current_state != new_state:
+                                                self.logger.info(f"current state: {current_state} transition to {new_state}")
+                                                Monitor().update_nodestatus(node['name'], state)
+                                        else:
+                                            Monitor().update_nodestatus(node['name'], state)
+                                if OK:
+                                    status, monitor_response = Monitor().get_nodestatus(node['name'])
+                                    if status:
+                                        current_status = monitor_response['monitor']['status'][node['name']]['status']
+                                        if current_status == '501':
+                                            self.logger.warning(f"Node {node['name']} had invalid config but has been corrected")
+                                            state = {'monitor': {'status': {node['name']: {'state': None, 'status': '200'} } } }
+                                            Monitor().update_nodestatus(node['name'], state)
                             else:
                                 self.logger.error(f"Node {node['name']} lookup returned {status}")
+                        if rtel > 20:
+                            rtel=0
             except Exception as exp:
                 exc_type, exc_obj, exc_tb = sys.exc_info()
                 self.logger.error(f"invalid config thread encountered problem: {exp}, {exc_type}, in {exc_tb.tb_lineno}")

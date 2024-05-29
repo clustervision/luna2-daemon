@@ -83,6 +83,7 @@ MATCH = {
     'newbmcname': 'name',
     'newsecretname': 'name',
     'osimagetag': 'anything',
+    'roles': 'strictname',
     'tag': 'anything',
     'interface': 'minimal',
     'gateway_metric': 'integer',

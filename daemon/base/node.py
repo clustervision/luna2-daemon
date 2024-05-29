@@ -552,6 +552,11 @@ class Node():
                         ret_msg = 'Unknown tag or osimage and tag not related'
                         return status, ret_msg
 
+            if 'roles' in data:
+                temp = data['roles']
+                temp = temp.replace(' ',',')
+                data['roles'] = temp.replace(',,',',')
+
             node_columns = Database().get_columns('node')
             columns_check = Helper().compare_list(data, node_columns)
             if columns_check:

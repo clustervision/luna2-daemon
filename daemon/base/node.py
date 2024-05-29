@@ -88,6 +88,7 @@ class Node():
                 'netboot': False,
                 'localinstall': False,
                 'bootmenu': False,
+                'roles': None,
                 'provision_method': 'torrent',
                 'provision_fallback': 'http',
                 'provision_interface': 'BOOTIF'
@@ -233,6 +234,7 @@ class Node():
                 'group.netboot AS group_netboot',
                 'group.localinstall AS group_localinstall',
                 'group.bootmenu AS group_bootmenu',
+                'group.roles AS group_roles',
                 'group.provision_method AS group_provision_method',
                 'group.provision_fallback AS group_provision_fallback',
                 'group.provision_interface AS group_provision_interface'
@@ -326,6 +328,7 @@ class Node():
                 'netboot': False,
                 'localinstall': False,
                 'bootmenu': False,
+                'roles': None,
                 'provision_method': 'torrent',
                 'provision_fallback': 'http',
                 'provision_interface': 'BOOTIF'

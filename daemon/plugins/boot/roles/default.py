@@ -43,6 +43,7 @@ class Plugin():
     target = "multi-user.target"
 
     script = """
-        echo "Default test role" | logger
+#!/bin/bash
+echo "Default test role" | logger
     """
 

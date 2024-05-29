@@ -30,6 +30,7 @@ __maintainer__  = 'Antoine Schonewille'
 __email__       = 'antoine.schonewille@clustervision.com'
 __status__      = 'Development'
 
+import re
 from base64 import b64decode, b64encode
 from common.constant import CONSTANT
 from utils.database import Database
@@ -59,9 +60,11 @@ class Roles():
             return status, "Role not supplied"
         try:
             status = True
-            role_plugin = Helper().plugin_load(self.roles_plugins, 'roles', name)
+            self.logger.info(f"Loading role plugin {name}")
+            role_plugin = Helper().plugin_load(self.roles_plugins, f'boot/roles', name)
             target = str(role_plugin().target)
             script = str(role_plugin().script)
+            self.logger.debug(f"data for role {name}: {target}, {script}")
 
             regex=re.compile(r"^([A-Za-z0-9+/]{4})*([A-Za-z0-9+/]{3}=|[A-Za-z0-9+/]{2}==)?$")
             try:

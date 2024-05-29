@@ -54,8 +54,7 @@ def get_role(role=None):
     Output - json payload with target and base64 encoded script data
     """
     access_code = 404
-    response = {}
-    status, data = Roles().get_role(role)
+    status, response = Roles().get_role(role)
     if status is True:
         access_code = 200
         response=dumps(response)

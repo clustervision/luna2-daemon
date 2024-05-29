@@ -309,6 +309,8 @@ class Node():
             #---
             if not node['groupid']:
                 node['group'] = '!!Invalid!!'
+            elif not 'group' in node:
+                node['group'] = '!!Invalid!!'
 
             cluster = Database().get_record(None, 'cluster', None)
             if cluster:

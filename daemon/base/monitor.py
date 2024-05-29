@@ -74,9 +74,10 @@ class Monitor():
         db_node = Database().get_record_join(['monitor.*'],['monitor.tablerefid=node.id'],
                                              ["monitor.tableref='node'",f"node.name='{node}'"])
         if db_node:
-            status,servicestatus=monitor().installer_state(db_node[0]['state'])
-            response['monitor']['status'][node]['state'] = servicestatus
-            response['monitor']['status'][node]['status'] = db_node[0]['status']
+            status=True
+            state,servicestatus=monitor().installer_state(db_node[0]['state'],db_node[0]['status'])
+            response['monitor']['status'][node]['status'] = servicestatus
+            response['monitor']['status'][node]['state'] = db_node[0]['state']
         else:
             response = None
             status=False
@@ -92,13 +93,18 @@ class Monitor():
         if request_data:
             try:
                 state = request_data['monitor']['status'][node]['state']
+                node_status = None
+                if 'status' in request_data['monitor']['status'][node].keys():
+                    node_status = request_data['monitor']['status'][node]['status']
                 where = f' WHERE id = "{node}" OR name = "{node}";'
                 node_db = Database().get_record(None, 'node', where)
                 if node_db:
-                    self.logger.info(f"node {node}: {state}")
+                    self.logger.info(f"node {node}: {state}, {node_status}")
                     row = [{"column": "tableref", "value": "node"},
                            {"column": "tablerefid", "value": node_db[0]['id']},
                            {"column": "state", "value": state}]
+                    if node_status:
+                        row.append({"column": "status", "value": node_status})
                     result = Database().insert('monitor',row,replace=True)
                     if result:
                         status=True

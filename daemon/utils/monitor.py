@@ -32,7 +32,7 @@ __status__      = "Development"
 class Monitor(object):
 
     def __init__(self):
-        self.node_status = {
+        self.node_state = {
             204: [
                 "install.discovery",
                 "install.downloaded",
@@ -51,13 +51,13 @@ class Monitor(object):
             ]
         }
 
-    def installer_state(self,status):
-        if status in self.node_status[204]:
-            status = status.replace("install.", '')
-            status = f'Luna installer: {status}'
-            return status,200
-        elif status in self.node_status[500]:
-            status = status.replace("install.", '')
-            status = f'Luna installer: {status}'
-            return status,500
-        return status,200
+    def installer_state(self,state,status=404):
+        if state in self.node_state[204]:
+            state = state.replace("install.", '')
+            state = f'Luna installer: {state}'
+            return state,200
+        elif state in self.node_state[500]:
+            state = state.replace("install.", '')
+            state = f'Luna installer: {state}'
+            return state,500
+        return state,status

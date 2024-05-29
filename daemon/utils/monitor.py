@@ -41,6 +41,7 @@ class Monitor(object):
                 "install.prescript",
                 "install.partscript",
                 "install.postscript",
+                "install.roles",
                 "install.image",
                 "install.finalizing",
                 "install.success"

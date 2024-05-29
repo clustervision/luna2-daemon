@@ -40,9 +40,9 @@ class Plugin():
     -- script   --> This code will be run after boot/pivot after <target>
     """
 
-    target = "multiuser.target"
+    target = "multi-user.target"
 
     script = """
-
+        echo "Default test role" | logger
     """
 

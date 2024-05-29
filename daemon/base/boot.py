@@ -1193,8 +1193,9 @@ class Boot():
             if data['unmanaged_bmc_users'] is None:
                 data['unmanaged_bmc_users'] = items['unmanaged_bmc_users']
             data['nodeid'] = Database().id_by_name('node', node)             # we need this for node status update
-            data['nodename']            = node_details['name']
-            data['nodehostname']        = node_details['hostname']
+            data['nodename']     = node_details['name']
+            data['nodehostname'] = node_details['hostname']
+            data['roles']        = node_details['roles'] or ""
         else:
             status = False
             return status, "This node does not seem to exist"

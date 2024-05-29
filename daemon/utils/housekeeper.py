@@ -41,6 +41,8 @@ from utils.helper import Helper
 from utils.queue import Queue
 from utils.osimage import OsImage
 from utils.service import Service
+from base.monitor import Monitor
+from base.node import Node
 # H/A and journal funcs
 from utils.ha import HA
 from utils.journal import Journal
@@ -185,6 +187,34 @@ class Housekeeper(object):
         except Exception as exp:
             exc_type, exc_obj, exc_tb = sys.exc_info()
             self.logger.error(f"switch port scan thread encountered problem: {exp}, {exc_type}, in {exc_tb.tb_lineno}")
+
+
+    def invalid_config_mother(self, event):
+        tel=57
+        self.logger.info("Starting invalid config thread")
+        while True:
+            try:
+                tel+=1
+                if tel > 60:
+                    tel=0
+                    all_nodes = Database().get_record(None, "node")
+                    if all_nodes:
+                        for node in all_nodes:
+                            status, response = Node().get_node(node['name'])
+                            if status:
+                                for key, value in response['config']['node'][node['name']].items():
+                                    if value == '!!Invalid!!':
+                                        self.logger.warning(f"Node {node['name']} has invalid config: {key} is {value}")
+                                        status = {'monitor': {'status': {node['name']: {'state': f'Node configuration for {key} is invalid'} } } }
+                                        Monitor().update_nodestatus(node['name'], status)
+                            else:
+                                self.logger.error(f"Node {node['name']} lookup returned {status}")
+            except Exception as exp:
+                exc_type, exc_obj, exc_tb = sys.exc_info()
+                self.logger.error(f"invalid config thread encountered problem: {exp}, {exc_type}, in {exc_tb.tb_lineno}")
+            if event.is_set():
+                return
+            sleep(5)
 
 
     def journal_mother(self,event):

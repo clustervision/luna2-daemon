@@ -88,6 +88,7 @@ class Node():
                 'netboot': False,
                 'localinstall': False,
                 'bootmenu': False,
+                'roles': None,
                 'provision_method': 'torrent',
                 'provision_fallback': 'http',
                 'provision_interface': 'BOOTIF'
@@ -233,6 +234,7 @@ class Node():
                 'group.netboot AS group_netboot',
                 'group.localinstall AS group_localinstall',
                 'group.bootmenu AS group_bootmenu',
+                'group.roles AS group_roles',
                 'group.provision_method AS group_provision_method',
                 'group.provision_fallback AS group_provision_fallback',
                 'group.provision_interface AS group_provision_interface'
@@ -326,6 +328,7 @@ class Node():
                 'netboot': False,
                 'localinstall': False,
                 'bootmenu': False,
+                'roles': None,
                 'provision_method': 'torrent',
                 'provision_fallback': 'http',
                 'provision_interface': 'BOOTIF'
@@ -548,6 +551,11 @@ class Node():
                         status = False
                         ret_msg = 'Unknown tag or osimage and tag not related'
                         return status, ret_msg
+
+            if 'roles' in data:
+                temp = data['roles']
+                temp = temp.replace(' ',',')
+                data['roles'] = temp.replace(',,',',')
 
             node_columns = Database().get_columns('node')
             columns_check = Helper().compare_list(data, node_columns)

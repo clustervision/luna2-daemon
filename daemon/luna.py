@@ -45,6 +45,7 @@ from utils.housekeeper import Housekeeper
 from utils.service import Service
 from routes.auth import auth_blueprint
 from routes.boot import boot_blueprint
+from routes.roles import roles_blueprint
 from routes.config_bmcsetup import bmcsetup_blueprint
 from routes.config_cluster import cluster_blueprint
 from routes.config_dns import dns_blueprint
@@ -149,6 +150,7 @@ def worker_abort(worker):
 daemon = Flask(__name__)
 daemon.register_blueprint(auth_blueprint)
 daemon.register_blueprint(boot_blueprint)
+daemon.register_blueprint(roles_blueprint)
 daemon.register_blueprint(bmcsetup_blueprint)
 daemon.register_blueprint(cluster_blueprint)
 daemon.register_blueprint(dns_blueprint)

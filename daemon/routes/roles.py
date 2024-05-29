@@ -47,7 +47,7 @@ roles_blueprint = Blueprint('roles', __name__)
 @roles_blueprint.route('/roles/<string:role>', methods=['GET'])
 @token_required
 @validate_name
-def get_role(node=None):
+def get_role(role=None):
     """
     Input - Role name
     Process - Calls the function that returns the target and role script for the role

@@ -80,8 +80,8 @@ class Plugin():
         if not obol_output:
             return False, "No users available"
 
-        users = { user['uid']: {'uid': user['uidNumber']} for user in obol_output}
-        return True, users
+        # users = { user['uid']: user for user in obol_output}
+        return True, obol_output
 
     # ----------------------------------------------
 
@@ -104,21 +104,7 @@ class Plugin():
         if not obol_output:
             return False, f"No user {username} available"
 
-        user = OSUserData(
-                      uid=obol_output.get('uidNumber'),
-                      gid=obol_output.get('gidNumber'),
-                      homedir=obol_output.get('homeDirectory'),
-                      shell=obol_output.get('loginShell'),
-                      surname=obol_output.get('sn'),
-                      givenname=obol_output.get('givenName'),
-                      phone=obol_output.get('telephoneNumber'),
-                      email=obol_output.get('mail'),
-                      expire=obol_output.get('shadowExpire'),
-                      last_change=obol_output.get('shadowLastChange'),
-                      password=obol_output.get('userPassword'),
-                      groups=obol_output.get('groups', [])
-                      )
-        return True, user.dict()
+        return True, obol_output
 
     # ----------------------------------------------
 
@@ -243,8 +229,8 @@ class Plugin():
         if not obol_output:
             return False, "No groups available"
 
-        groups = { group['cn']: {'gid':group['gidNumber']} for group in obol_output}
-        return True, groups
+        # groups = { group['cn']: group for group in obol_output}
+        return True, obol_output
 
     # ----------------------------------------------
 
@@ -267,11 +253,7 @@ class Plugin():
         if not obol_output:
             return False, f"No group {groupname} available"
 
-        group = OSGroupData(
-                        gid=obol_output['gidNumber'],
-                        users=obol_output.get('users', [])
-        )
-        return True, group.dict()
+        return True, obol_output
 
     # ----------------------------------------------
 
@@ -340,3 +322,13 @@ class Plugin():
             return False, f"[obol: {result}]"
 
         return True, f"[obol: group {groupname} deleted]"
+
+
+
+if __name__ == '__main__':
+    plugin = Plugin()
+    from pprint import pprint
+    # pprint(plugin.list_users())
+    # pprint(plugin.get_user('test'))
+    # pprint(plugin.list_groups())
+    pprint(plugin.get_group('test'))

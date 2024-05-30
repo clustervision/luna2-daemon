@@ -36,14 +36,25 @@ class Plugin():
     Class for a role.
     
     This plugin needs a mandatory variable set for template functionality
-    -- target   --> The systemd target after which <script> will be executed
-    -- script   --> This code will be run after boot/pivot after <target>
+    -- script   --> This code will be called through the unit/systemd
+                    The content will be written to /usr/local/roles/<role name>
+    -- unit     --> This part provides the systemd unit or service file
     """
-
-    target = "multi-user.target"
 
     script = """
 #!/bin/bash
-echo "Default test role" | logger
+echo "Default example role" | logger
     """
 
+    unit = """
+[Unit]
+Description=Luna Default example
+After=multi-user.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/roles/default
+
+[Install]
+WantedBy=multi-user.target
+    """

@@ -62,9 +62,9 @@ class Roles():
             status = True
             self.logger.info(f"Loading role plugin {name}")
             role_plugin = Helper().plugin_load(self.roles_plugins, f'boot/roles', name)
-            target = str(role_plugin().target)
+            unit = str(role_plugin().unit)
             script = str(role_plugin().script)
-            self.logger.debug(f"data for role {name}: {target}, {script}")
+            self.logger.debug(f"data for role {name}: {unit}, {script}")
 
             regex=re.compile(r"^([A-Za-z0-9+/]{4})*([A-Za-z0-9+/]{3}=|[A-Za-z0-9+/]{2}==)?$")
             try:
@@ -72,9 +72,15 @@ class Roles():
                     data = b64encode(script.encode())
                     script = data.decode("ascii")
             except Exception as exp:
-                self.logger.error(f"{exp}. Maybe it's already base64?")
+                self.logger.error(f"{exp}. Maybe script is already base64?")
+            try:
+                if not regex.match(unit):
+                    data = b64encode(unit.encode())
+                    unit = data.decode("ascii")
+            except Exception as exp:
+                self.logger.error(f"{exp}. Maybe unit is already base64?")
 
-            response = {'role': {name: {'target': target, 'script': script} } }
+            response = {'role': {name: {'unit': unit, 'script': script} } }
             return status, response
 
         except Exception as exp:

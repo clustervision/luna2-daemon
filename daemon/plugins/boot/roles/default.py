@@ -43,7 +43,7 @@ class Plugin():
 
     script = """
 #!/bin/bash
-echo "Default test role" | logger
+echo "Default example role" | logger
     """
 
     unit = """

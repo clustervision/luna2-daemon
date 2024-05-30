@@ -191,7 +191,7 @@ class Housekeeper(object):
 
     def invalid_config_mother(self, event):
         tel=57
-        rtel=20
+        rtel=30
         self.logger.info("Starting invalid config thread")
         while True:
             try:
@@ -208,7 +208,7 @@ class Housekeeper(object):
                                 for key, value in node_response['config']['node'][node['name']].items():
                                     if value == '!!Invalid!!':
                                         OK=False
-                                        if rtel > 20:
+                                        if rtel > 30:
                                             self.logger.warning(f"Node {node['name']} has invalid config: {key} is {value}")
                                         new_state = f'Node configuration for {key} is invalid'
                                         state = {'monitor': {'status': {node['name']: {'state': new_state, 'status': '501'} } } }

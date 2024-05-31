@@ -29,27 +29,26 @@ class OSUserData(BaseModel, extra='forbid'):
     This class will be used to represent OS users.
     """
     # username: str
-    uid: Optional[int] = None
-    gid: Optional[int] = None
-    groupname: Optional[str] = None
-    groups: Optional[List[str]] = None
-    password: Optional[str] = None
-    surname: Optional[str] = None
-    givenname: Optional[str] = None
-    email: Optional[str] = None
-    phone: Optional[str] = None
-    shell: Optional[str] = None
-    homedir: Optional[str] = None
-    expire: Optional[int] = None
-    last_change: Optional[int] = None
+    uidNumber: Optional[int] = None
+    gidNumber: Optional[int] = None
+    memberOf: Optional[List[str]] = None
+    userPassword: Optional[str] = None
+    cn: Optional[str] = None
+    sn: Optional[str] = None
+    givenName: Optional[str] = None
+    mail: Optional[str] = None
+    telephoneNumber: Optional[str] = None
+    loginShell: Optional[str] = None
+    homeDirectory: Optional[str] = None
+    shadowExpire: Optional[int] = None
 
 class OSGroupData(BaseModel, extra='forbid'):
     """
     This class will be used to represent OS groups.
     """
     # groupname: str
-    gid: Optional[int] = None
-    users: Optional[List[str]] = None
+    gidNumber: Optional[int] = None
+    member: Optional[List[str]] = None
 
 
 # ----------------------------------------------------------------------------------------
@@ -80,8 +79,8 @@ class Plugin():
         if not obol_output:
             return False, "No users available"
 
-        users = { user['uid']: {'uid': user['uidNumber']} for user in obol_output}
-        return True, users
+        # users = { user['uid']: user for user in obol_output}
+        return True, obol_output
 
     # ----------------------------------------------
 
@@ -104,77 +103,63 @@ class Plugin():
         if not obol_output:
             return False, f"No user {username} available"
 
-        user = OSUserData(
-                      uid=obol_output.get('uidNumber'),
-                      gid=obol_output.get('gidNumber'),
-                      homedir=obol_output.get('homeDirectory'),
-                      shell=obol_output.get('loginShell'),
-                      surname=obol_output.get('sn'),
-                      givenname=obol_output.get('givenName'),
-                      phone=obol_output.get('telephoneNumber'),
-                      email=obol_output.get('mail'),
-                      expire=obol_output.get('shadowExpire'),
-                      last_change=obol_output.get('shadowLastChange'),
-                      password=obol_output.get('userPassword'),
-                      groups=obol_output.get('groups', [])
-                      )
-        return True, user.dict()
+        return True, obol_output
 
     # ----------------------------------------------
 
     def update_user(self,
-                    username: str,
-                    password: str = None,
-                    surname: str = None,
-                    givenname: str = None,
+                    uid: str,
+                    userPassword: str = None,
+                    sn: str = None,
+                    cn: str = None,
+                    givenName: str = None,
                     groupname: str = None,
-                    uid: int = None,
-                    gid: int = None,
-                    email: str = None,
-                    phone: str = None,
-                    shell: str = None,
-                    groups: List[str] = None,
-                    expire: int = None,
-                    homedir: str = None,
+                    uidNumber: int = None,
+                    gidNumber: int = None,
+                    mail: str = None,
+                    telephoneNumber: str = None,
+                    loginShell: str = None,
+                    memberOf: List[str] = None,
+                    shadowExpire: int = None,
+                    homeDirectory: str = None,
                     ):
         """
         This method will update a OS users.
         """
-        user_exist, old_user = self.get_user(username)
+        user_exist, old_user = self.get_user(uid)
         new_user = OSUserData(
-            uid=uid,
-            gid=gid,
-            groups=groups,
-            password=password,
-            surname=surname,
-            givenname=givenname,
-            groupname=groupname,
-            email=email,
-            phone=phone,
-            shell=shell,
-            expire=expire,
-            homedir=homedir
+            uidNumber=uidNumber,
+            gidNumber=gidNumber,
+            memberOf=memberOf,
+            userPassword=userPassword,
+            sn=sn,
+            givenName=givenName,
+            mail=mail,
+            telephoneNumber=telephoneNumber,
+            loginShell=loginShell,
+            shadowExpire=shadowExpire,
+            homeDirectory=homeDirectory
         )
 
         flags_mapping = {
-            'password': '--password',
-            'surname': '--sn',
-            'givenname': '--givenName',
-            'groupname': '--group',
-            'uid': '--uid',
-            'gid': '--gid',
-            'email': '--mail',
-            'phone': '--phone',
-            'shell': '--shell',
-            'groups': '--groups',
-            'expire': '--expire',
-            'homedir': '--home'
+            'userPassword': '--password',
+            'sn': '--sn',
+            'cn': '--cn',
+            'givenName': '--givenName',
+            'uidNumber': '--uid',
+            'gidNumber': '--gid',
+            'mail': '--mail',
+            'telephoneNumber': '--phone',
+            'loginShell': '--shell',
+            'memberOf': '--groups',
+            'shadowExpire': '--expire',
+            'homeDirectory': '--home'
         }
         flags_formatting = {
-            'uid' : lambda uid: str(uid),
-            'gid' : lambda gid: str(gid),
-            'expire': lambda expire: str(expire),
-            'groups': lambda groups: ",".join(groups)
+            'uidNumber' : lambda uidNumber: str(uidNumber),
+            'gidNumber' : lambda gidNumber: str(gidNumber),
+            'shadowExpire': lambda shadowExpire: str(shadowExpire),
+            'memberOf': lambda memberOf: ",".join(memberOf)
         }
 
         obol_flags = []
@@ -185,9 +170,9 @@ class Plugin():
             obol_flags += [flag, flags_formatting.get(key, lambda x: x)(value)]
 
         if user_exist:
-            obol_cmd = ['obol', 'user', 'modify', username, *obol_flags]
+            obol_cmd = ['obol', 'user', 'modify', uid, *obol_flags]
         else:
-            obol_cmd = ['obol', 'user', 'add', username, *obol_flags]
+            obol_cmd = ['obol', 'user', 'add', uid, *obol_flags]
 
         result = subprocess.run(
             obol_cmd,
@@ -199,9 +184,9 @@ class Plugin():
             return False, f"[obol: {result}]"
 
         if user_exist:
-            return True, f"[obol: user {username} updated]"
+            return True, f"[obol: user {uid} updated]"
         else:
-            return True, f"[obol: user {username} created]"
+            return True, f"[obol: user {uid} created]"
 
     # ----------------------------------------------
 
@@ -243,8 +228,8 @@ class Plugin():
         if not obol_output:
             return False, "No groups available"
 
-        groups = { group['cn']: {'gid':group['gidNumber']} for group in obol_output}
-        return True, groups
+        # groups = { group['cn']: group for group in obol_output}
+        return True, obol_output
 
     # ----------------------------------------------
 
@@ -267,35 +252,31 @@ class Plugin():
         if not obol_output:
             return False, f"No group {groupname} available"
 
-        group = OSGroupData(
-                        gid=obol_output['gidNumber'],
-                        users=obol_output.get('users', [])
-        )
-        return True, group.dict()
+        return True, obol_output
 
     # ----------------------------------------------
 
     def update_group(self,
-                     groupname: str,
-                     gid: str = None,
-                     users: List[str] = None):
+                     cn: str,
+                     gidNumber: str = None,
+                     member: List[str] = None):
         """
         This method will update a OS groups.
         """
-        group_exist, old_group = self.get_group(groupname)
+        group_exist, old_group = self.get_group(cn)
         new_group = OSGroupData(
-            gid=gid,
-            users=users
+            gidNumber=gidNumber,
+            member=member
         )
 
         # Create group
         flags_mapping = {
-            'gid': '--gid',
-            'users': '--users'
+            'gidNumber': '--gid',
+            'member': '--users'
         }
         flags_formatting = {
-            'gid' : lambda gid: str(gid),
-            'users': lambda users: ','.join(users)
+            'gidNumber' : lambda gidNumber: str(gidNumber),
+            'member': lambda member: ','.join(member)
         }
         obol_flags = []
         for key, flag in flags_mapping.items():
@@ -304,9 +285,9 @@ class Plugin():
                 obol_flags += [flag, flags_formatting.get(key, lambda x: x)(value)]
 
         if group_exist:
-            obol_cmd = ['obol', 'group', 'modify', groupname, *obol_flags]
+            obol_cmd = ['obol', 'group', 'modify', cn, *obol_flags]
         else:
-            obol_cmd = ['obol', 'group', 'add', groupname, *obol_flags]
+            obol_cmd = ['obol', 'group', 'add', cn, *obol_flags]
 
         result = subprocess.run(
             obol_cmd,
@@ -318,9 +299,9 @@ class Plugin():
             return False, f"[obol: {result}]"
 
         if group_exist:
-            return True, f"[obol: group {groupname} updated]"
+            return True, f"[obol: group {cn} updated]"
         else:
-            return True, f"[obol: group {groupname} created]"
+            return True, f"[obol: group {cn} created]"
 
     # ----------------------------------------------
 
@@ -340,3 +321,13 @@ class Plugin():
             return False, f"[obol: {result}]"
 
         return True, f"[obol: group {groupname} deleted]"
+
+
+
+if __name__ == '__main__':
+    plugin = Plugin()
+    # from pprint import pprint
+    # pprint(plugin.list_users())
+    # pprint(plugin.get_user('test'))
+    # pprint(plugin.list_groups())
+    # pprint(plugin.get_group('test'))

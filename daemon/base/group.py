@@ -276,7 +276,7 @@ class Group():
                     controller = Database().get_record_join(
                         ['network.name as network'],
                         ['ipaddress.tablerefid=controller.id','network.id=ipaddress.networkid'],
-                        ['tableref="controller"', 'controller.hostname="controller"']
+                        ['tableref="controller"', 'controller.beacon=1']
                     )
                     data['interfaces']=[]
                     if controller:

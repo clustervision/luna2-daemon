@@ -491,7 +491,7 @@ class Network():
             controller = Database().get_record_join(
                 ['controller.*'],
                 ['ipaddress.tablerefid=controller.id','network.id=ipaddress.networkid'],
-                ['tableref="controller"','controller.hostname="controller"',f"network.name='{name}'"]
+                ['tableref="controller"','controller.beacon=1',f"network.name='{name}'"]
             )
             if not controller:
                 Database().delete_row('network', [{"column": "name", "value": name}])

@@ -86,7 +86,10 @@ class Cluster():
                 del controller['id']
                 del controller['clusterid']
                 controller['luna_config'] = CONFIGFILE
-                response['config']['cluster'][controller['hostname']] = controller
+                if controller['beacon']:
+                    response['config']['cluster']['controller'] = controller
+                else:
+                    response['config']['cluster'][controller['hostname']] = controller
                 status=True
         else:
             self.logger.error('No cluster available.')

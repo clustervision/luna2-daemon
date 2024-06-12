@@ -31,32 +31,19 @@ __email__       = 'antoine.schonewille@clustervision.com'
 __status__      = 'Development'
 
 
-class Cluster():
+class Controller():
     """
-    This class is responsible for 
+    This class is responsible for simple controller related help functions
     """
 
-    def get_me(self,cluster_id=None):
+    def get_me(self):
         """
         This method will return the primary controller name of the cluster
         """
         status=False
-        if not cluster_id:
-            cluster = Database().get_record(None, 'cluster', None)
-            if cluster:
-                cluster_id = cluster[0]['id']
-        if cluster_id:
-            response = {'config': {'cluster': cluster[0] }}
-            controller = Database().get_record_join(
-                ['controller.*', 'ipaddress.ipaddress'],
-                ['ipaddress.tablerefid=controller.id', 'cluster.id=controller.clusterid'],
-                ['tableref="controller"', f'cluster.id="{cluster_id}"', 'controller.beacon=1']
-            )
-            if controller:
-                return True, controller[0]['hostname']
-        else:
-            self.logger.error('No cluster available.')
-            response = 'No cluster available'
-            status=False
-        return status, response
+        controller = Database().get_record(None, 'controller', "WHERE controller.beacon=1")
+        if controller:
+            return controller[0]['hostname']
+        self.logger.error('No controller available, returning defaults.')
+        return 'controller'
 

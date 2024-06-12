@@ -109,7 +109,9 @@ class Tables():
             if all_controllers:
                 my_hashes=Tables().get_table_hashes()
                 for controller in all_controllers:
-                    if controller['hostname'] in ["controller",me]:
+                    if controller['hostname'] == me:
+                        continue
+                    elif controller['beacon']:
                         continue
                     host=controller['hostname']
                     status,data=Request().get_request(host,f'/table/hashes')

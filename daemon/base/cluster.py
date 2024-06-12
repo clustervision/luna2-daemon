@@ -37,6 +37,7 @@ from utils.database import Database
 from utils.service import Service
 from utils.helper import Helper
 from utils.tables import Tables
+from utils.controller import Controller
 
 
 class Cluster():
@@ -86,11 +87,14 @@ class Cluster():
                 del controller['id']
                 del controller['clusterid']
                 controller['luna_config'] = CONFIGFILE
-                response['config']['cluster'][controller['hostname']] = controller
+                if controller['beacon']:
+                    response['config']['cluster']['controller'] = controller
+                else:
+                    response['config']['cluster'][controller['hostname']] = controller
                 status=True
         else:
-            self.logger.error('No cluster is available.')
-            response = 'No cluster is available'
+            self.logger.error('No cluster available.')
+            response = 'No cluster available'
             status=False
         return status, response
 
@@ -149,7 +153,12 @@ class Cluster():
             data = request_data['config']['cluster']
 
             # renumbering controllers prepare. this could be tricky. - Antoine
-            # for H/A things should be taken in consideration.... 
+            # for H/A things should be taken in consideration....
+            if 'controller' in data:
+                controller_name = Controller().get_me()
+                if controller_name != 'controller':
+                    data[controller_name] = data['controller']
+                    del data['controller']
             controller_ips=[]
             controllers = Database().get_record_join(
                 ['controller.hostname','ipaddress.ipaddress','ipaddress.ipaddress_ipv6',

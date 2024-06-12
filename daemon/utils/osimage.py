@@ -673,7 +673,7 @@ class OsImage(object):
                         return False
            
                     server_ipaddress,server_port,server_protocol=None,None,None
-                    controller = Database().get_record_join(['controller.*','ipaddress.ipaddress'], ['ipaddress.tablerefid=controller.id'],['tableref="controller"','controller.hostname="controller"'])
+                    controller = Database().get_record_join(['controller.*','ipaddress.ipaddress'], ['ipaddress.tablerefid=controller.id'],['tableref="controller"','controller.beacon=1'])
                     if controller:
                         server_ipaddress = controller[0]['ipaddress']
                         server_port     = controller[0]['serverport']

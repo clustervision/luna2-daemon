@@ -48,6 +48,7 @@ from common.constant import CONSTANT
 from base.node import Node
 from utils.journal import Journal
 from utils.ha import HA
+from utils.controller import Controller
 
 
 # -------------------- custom Jinja filter to handle instream filtering -----------------------
@@ -93,8 +94,8 @@ class Boot():
         plugins_path=CONSTANT["PLUGINS"]["PLUGINS_DIRECTORY"]
         self.boot_plugins = Helper().plugin_finder(f'{plugins_path}/boot')
         self.osimage_plugins = Helper().plugin_finder(f'{plugins_path}/osimage')
-        self.controller_name = 'controller'
-        self.ha_object=HA()
+        self.controller_name = Controller().get_me()
+        self.ha_object = HA()
         self.insync = self.ha_object.get_insync()
         self.hastate = self.ha_object.get_hastate()
         if self.hastate is True and self.insync is True:

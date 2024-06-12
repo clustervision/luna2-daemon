@@ -45,6 +45,7 @@ from utils.database import Database
 from utils.helper import Helper
 from utils.queue import Queue
 from utils.ha import HA
+from utils.controller import Controller
 from common.constant import CONSTANT
 
 
@@ -93,7 +94,7 @@ class Config(object):
         controller = Database().get_record_join(
             ['ipaddress.ipaddress','ipaddress.ipaddress_ipv6','network.name as domain'],
             ['ipaddress.tablerefid=controller.id','network.id=ipaddress.networkid'],
-            ['tableref="controller"', 'controller.hostname="controller"']
+            ['tableref="controller"', 'controller.beacon=1']
         )
         if controller:
             domain=controller[0]['domain']
@@ -319,7 +320,7 @@ class Config(object):
         netmask = nwk['subnet_ipv6']
         if ipversion == 'ipv4':
             netmask = Helper().get_netmask(f"{nwk['network']}/{nwk['subnet']}")
-        controller_name = 'controller'
+        controller_name = Controller().get_me()
         # ---------------------------------------------------
         ha_object=HA()
         ha_enabled=ha_object.get_hastate()
@@ -401,11 +402,12 @@ class Config(object):
         controller = Database().get_record_join(
             ['ipaddress.ipaddress','ipaddress.ipaddress_ipv6','network.name as networkname'],
             ['ipaddress.tablerefid=controller.id','network.id=ipaddress.networkid'],
-            ['tableref="controller"', 'controller.hostname="controller"']
+            ['tableref="controller"', 'controller.beacon=1']
         )
         if (not controller) or (not cluster):
             self.logger.error("Error building dns config. either controller or cluster does not exist")
             return False
+        controller_name = Controller().get_me()
         controller_ip = controller[0]['ipaddress']
         controller_ip_ipv6 = controller[0]['ipaddress_ipv6']
         controller_network = controller[0]['networkname']
@@ -445,7 +447,7 @@ class Config(object):
                 dns_zone_records[networkname]={}
                 # we always add a zone record for controller even when we're actually in it. we can override.
                 dns_zone_records[networkname]['controller']={}
-                dns_zone_records[networkname]['controller']['key']='controller'
+                dns_zone_records[networkname]['controller']['key']=controller_name
                 if nwk['network_ipv6'] and controller_ip_ipv6:
                     dns_zone_records[networkname]['controller']['type']='AAAA'
                     dns_zone_records[networkname]['controller']['value']=controller_ip_ipv6
@@ -455,12 +457,12 @@ class Config(object):
                 if rev_ip:
                     if rev_ip not in dns_zone_records.keys():
                         dns_zone_records[rev_ip]={}
-                    dns_authoritative[rev_ip]='controller'
+                    dns_authoritative[rev_ip]=controller_name
                 if rev_ipv6:
                     if rev_ipv6 not in dns_zone_records.keys():
                         dns_zone_records[rev_ipv6]={}
-                    dns_authoritative[rev_ipv6]='controller'
-                dns_authoritative[networkname]='controller'
+                    dns_authoritative[rev_ipv6]=controller_name
+                dns_authoritative[networkname]=controller_name
 
             mergedlist = []
             controllers = Database().get_record_join(
@@ -542,7 +544,7 @@ class Config(object):
                 if zone in dns_rev_domain:
                     networkname=dns_rev_domain[zone]
                 dns_zone_config = dns_zone_template.render(RECORDS=dns_zone_records[zone],
-                                                           AUTHORITATIVE_SERVER=f"controller.{networkname}",
+                                                           AUTHORITATIVE_SERVER=f"{controller_name}.{networkname}",
                                                            SERIAL=unix_time)
                 with open(f'{tmpdir}/{zone}.luna.zone', 'w', encoding='utf-8') as filename:
                     filename.write(dns_zone_config)

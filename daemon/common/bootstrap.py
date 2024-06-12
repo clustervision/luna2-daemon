@@ -248,6 +248,26 @@ def get_database_tables_structure(table=None):
         return DATABASE_LAYOUT_reservedipaddress
 
 
+def verify_and_set_beacon():
+    """
+    We must be backwards compatible, where 'older' setups
+    have hardcoded 'controller' as controller hostname.
+    If we update the daemon, we do add the beacon column but
+    we do not automatically set beacon=1 where needed.
+    We do that here
+    """
+    beacon = Database().get_record(None, "controller", "WHERE beacon=1")
+    if not beacon:
+        controller_name="controller"
+        controllers = Database().get_record(None, "controller")
+        if controllers and len(controllers) == 1:
+            controller_name = controllers[0]['hostname']
+        LOGGER.info(f"Beacon controller not configured. Setting default controller {controller_name} as beacon")
+        row = [{'column': 'beacon', 'value': 1}]
+        where = [{'column': 'hostname', 'value': controller_name}]
+        Database().update('controller', row, where)
+    
+
 def cleanup_queue_and_status():
     """
     This method will clean the Queue
@@ -472,6 +492,7 @@ def bootstrap(bootstrapfile=None):
         taken_ips.append(ip)
         default_controller = [
             {'column': 'hostname', 'value': hostname},
+            {'column': 'beacon', 'value': 1},
             {'column': 'serverport', 'value': BOOTSTRAP['HOSTS']['SERVERPORT']},
             {'column': 'clusterid', 'value': clusterid}
         ]
@@ -491,6 +512,7 @@ def bootstrap(bootstrapfile=None):
             taken_ips.append(ip)
             other_controller = [
                 {'column': 'hostname', 'value': hostname},
+                {'column': 'beacon', 'value': 0},
                 {'column': 'serverport', 'value': BOOTSTRAP['HOSTS']['SERVERPORT']},
                 {'column': 'clusterid', 'value': clusterid}
             ]
@@ -513,7 +535,7 @@ def bootstrap(bootstrapfile=None):
     default_osimage = [
         {'column': 'name', 'value': str(BOOTSTRAP['OSIMAGE']['NAME'])},
         {'column': 'grab_filesystems', 'value': '/, /boot'},
-        {'column': 'grab_exclude', 'value': '/proc/*, /sys/*, /dev/*, /tmp/*, /var/log/*'},
+        {'column': 'grab_exclude', 'value': '/proc/*, /sys/*, /dev/*, /tmp/*, /run/*, /var/log/*'},
         {'column': 'kernelversion', 'value': f'{osimage_kernelversion}'},
         {'column': 'kerneloptions', 'value': 'net.ifnames=0 biosdevname=0'},
         {'column': 'path', 'value': f'{osimage_path}'},
@@ -527,7 +549,7 @@ def bootstrap(bootstrapfile=None):
 #    ubuntu_osimage = [
 #        {'column': 'name', 'value': 'ubuntu'},
 #        {'column': 'grab_filesystems', 'value': '/, /boot'},
-#        {'column': 'grab_exclude', 'value': '/proc/*, /sys/*, /dev/*, /tmp/*, /var/log/*'},
+#        {'column': 'grab_exclude', 'value': '/proc/*, /sys/*, /dev/*, /tmp/*, /run/*, /var/log/*'},
 #        {'column': 'kernelversion', 'value': ''},
 #        {'column': 'path', 'value': f'{ubuntu_path}'},
 #        {'column': 'kernelmodules', 'value': 'ipmi_devintf, ipmi_si, ipmi_msghandler'},
@@ -695,14 +717,15 @@ def validate_bootstrap():
         if db_tables_check is False:
             bootstrap(bootstrapfile)
         else:
-            LOGGER.warning(f'{bootstrapfile} is still present, Kindly remove the file.')
+            LOGGER.warning(f'{bootstrapfile} is still present. Please remove the file')
     elif db_check is False:
         LOGGER.error('Database is unavailable.')
         return False
     elif db_tables_check is False:
-        LOGGER.error('Database requires initialization but bootstrap.ini file is missing.')
+        LOGGER.error('Database requires initialization but bootstrap.ini file is missing')
         return False
 
+    verify_and_set_beacon()
     cleanup_queue_and_status()
     cleanup_and_init_ping()
     return True

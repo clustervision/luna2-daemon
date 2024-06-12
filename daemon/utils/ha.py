@@ -90,7 +90,7 @@ class HA():
                         ip, *_ = wip.split('%', 1)+[None]
                         self.logger.debug(f"Interface {interface} has ip {ip}")
                         for controller in self.all_controllers:
-                            if controller['hostname'] == "controller":
+                            if controller['beacon']:
                                 continue
                             if not self.me and controller['ipaddress_ipv6'] == ip:
                                 self.me=controller['hostname']
@@ -102,7 +102,7 @@ class HA():
                         ip = ni.ifaddresses(interface)[ni.AF_INET][0]['addr']
                         self.logger.debug(f"Interface {interface} has ip {ip}")
                         for controller in self.all_controllers:
-                            if controller['hostname'] == "controller":
+                            if controller['beacon']:
                                 continue
                             if not self.me and controller['ipaddress'] == ip:
                                 self.me=controller['hostname']
@@ -206,7 +206,9 @@ class HA():
         status=True
         if self.all_controllers:
             for controller in self.all_controllers:
-                if controller['hostname'] in ["controller",self.me]:
+                if controller['hostname'] == self.me:
+                    continue
+                elif controller['beacon']:
                     continue
                 status=self.ping_host(controller['hostname'])
                 if status is False:
@@ -237,7 +239,9 @@ class HA():
         status = False
         if self.all_controllers:
             for controller in self.all_controllers:
-                if controller['hostname'] in ["controller",self.me]:
+                if controller['hostname'] == self.me:
+                    continue
+                elif controller['beacon']:
                     continue
                 status=self.ping_host(controller['hostname'])
                 self.logger.debug(f"PING HOST: {controller['hostname']}, {status}")

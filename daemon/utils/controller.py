@@ -51,8 +51,8 @@ class Controller():
         """
         controller = Database().get_record(None, 'controller', "WHERE controller.beacon=1")
         if controller:
-            self.logger.debug("---------------> Returning {controller[0]['hostname']}")
+            self.logger.debug("Returning {controller[0]['hostname']}")
             return controller[0]['hostname']
-        self.logger.error('----------------> No controller available, returning defaults')
+        self.logger.error('No controller available, returning defaults')
         return 'controller'
 

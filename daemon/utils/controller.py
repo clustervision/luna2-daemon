@@ -31,19 +31,28 @@ __email__       = 'antoine.schonewille@clustervision.com'
 __status__      = 'Development'
 
 
+from utils.database import Database
+from utils.log import Log
+
 class Controller():
     """
     This class is responsible for simple controller related help functions
     """
 
+    def __init__(self):
+        """
+        room for comments/help
+        """
+        self.logger = Log.get_logger()
+
     def get_me(self):
         """
         This method will return the primary controller name of the cluster
         """
-        status=False
         controller = Database().get_record(None, 'controller', "WHERE controller.beacon=1")
         if controller:
+            self.logger.debug("---------------> Returning {controller[0]['hostname']}")
             return controller[0]['hostname']
-        self.logger.error('No controller available, returning defaults.')
+        self.logger.error('----------------> No controller available, returning defaults')
         return 'controller'
 

@@ -86,7 +86,8 @@ def on_starting(server):
         Service().luna_service('dhcp', 'restart')
         Service().luna_service('dhcp6', 'restart')
         Service().luna_service('dns', 'restart')
-    except:
+    except Exception as exp:
+        sys.stderr.write(f"[Luna Startup] Restarting services returned an exception: {exp}\n")
         pass
     # --------------- status message cleanup thread ----------------
     executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)

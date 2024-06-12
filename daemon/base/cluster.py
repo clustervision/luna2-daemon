@@ -89,8 +89,8 @@ class Cluster():
                 response['config']['cluster'][controller['hostname']] = controller
                 status=True
         else:
-            self.logger.error('No cluster is available.')
-            response = 'No cluster is available'
+            self.logger.error('No cluster available.')
+            response = 'No cluster available'
             status=False
         return status, response
 

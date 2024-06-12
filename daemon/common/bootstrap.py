@@ -472,6 +472,7 @@ def bootstrap(bootstrapfile=None):
         taken_ips.append(ip)
         default_controller = [
             {'column': 'hostname', 'value': hostname},
+            {'column': 'beacon', 'value': 1},
             {'column': 'serverport', 'value': BOOTSTRAP['HOSTS']['SERVERPORT']},
             {'column': 'clusterid', 'value': clusterid}
         ]
@@ -491,6 +492,7 @@ def bootstrap(bootstrapfile=None):
             taken_ips.append(ip)
             other_controller = [
                 {'column': 'hostname', 'value': hostname},
+                {'column': 'beacon', 'value': 0},
                 {'column': 'serverport', 'value': BOOTSTRAP['HOSTS']['SERVERPORT']},
                 {'column': 'clusterid', 'value': clusterid}
             ]

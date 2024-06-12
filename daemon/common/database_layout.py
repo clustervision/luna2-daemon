@@ -149,7 +149,7 @@ DATABASE_LAYOUT_group = [
 {"column": "prescript",            "datatype": "TEXT"},
 {"column": "partscript",           "datatype": "TEXT"},
 {"column": "postscript",           "datatype": "TEXT"},
-{"column": "netboot",              "datatype": "VARCHAR", "length": "20"},
+{"column": "netboot",              "datatype": "INTEGER", "length": "10"},
 {"column": "localinstall",         "datatype": "INTEGER", "length": "10"},
 {"column": "bootmenu",             "datatype": "INTEGER", "length": "10"},
 {"column": "comment",              "datatype": "VARCHAR", "length": "20"},
@@ -219,6 +219,7 @@ DATABASE_LAYOUT_otherdevices = [
 DATABASE_LAYOUT_controller = [
 {"column": "id",                   "datatype": "INTEGER", "key": "PRIMARY", "keyadd": "AUTOINCREMENT"},
 {"column": "hostname",             "datatype": "VARCHAR", "length": "100", "key": "UNIQUE"},
+{"column": "beacon",               "datatype": "INTEGER", "length": "10"},
 {"column": "clusterid",            "datatype": "INTEGER", "length": "10"},
 {"column": "status",               "datatype": "VARCHAR", "length": "20"},
 {"column": "vendor",               "datatype": "VARCHAR", "length": "60"},

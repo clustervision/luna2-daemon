@@ -248,6 +248,21 @@ def get_database_tables_structure(table=None):
         return DATABASE_LAYOUT_reservedipaddress
 
 
+def verify_and_set_beacon():
+    """
+    We must be backwards compatible, where 'older' setups
+    have hardcoded 'controller' as controller hostname.
+    If we update the daemon, we do add the beacon column but
+    we do not automatically set beacon=1 where needed.
+    We do that here
+    """
+    beacon = Database().get_record(None, "controller", "WHERE beacon=1")
+    if not beacon:
+        row = [{'column': 'beacon', 'value': 1}]
+        where = [{'column': 'hostname', 'value': 'controller'}]
+        Database().update('controller', row, where)
+    
+
 def cleanup_queue_and_status():
     """
     This method will clean the Queue
@@ -697,14 +712,15 @@ def validate_bootstrap():
         if db_tables_check is False:
             bootstrap(bootstrapfile)
         else:
-            LOGGER.warning(f'{bootstrapfile} is still present, Kindly remove the file.')
+            LOGGER.warning(f'{bootstrapfile} is still present. Please remove the file')
     elif db_check is False:
         LOGGER.error('Database is unavailable.')
         return False
     elif db_tables_check is False:
-        LOGGER.error('Database requires initialization but bootstrap.ini file is missing.')
+        LOGGER.error('Database requires initialization but bootstrap.ini file is missing')
         return False
 
+    verify_and_set_beacon()
     cleanup_queue_and_status()
     cleanup_and_init_ping()
     return True

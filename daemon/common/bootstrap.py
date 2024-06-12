@@ -530,7 +530,7 @@ def bootstrap(bootstrapfile=None):
     default_osimage = [
         {'column': 'name', 'value': str(BOOTSTRAP['OSIMAGE']['NAME'])},
         {'column': 'grab_filesystems', 'value': '/, /boot'},
-        {'column': 'grab_exclude', 'value': '/proc/*, /sys/*, /dev/*, /tmp/*, /var/log/*'},
+        {'column': 'grab_exclude', 'value': '/proc/*, /sys/*, /dev/*, /tmp/*, /run/*, /var/log/*'},
         {'column': 'kernelversion', 'value': f'{osimage_kernelversion}'},
         {'column': 'kerneloptions', 'value': 'net.ifnames=0 biosdevname=0'},
         {'column': 'path', 'value': f'{osimage_path}'},
@@ -544,7 +544,7 @@ def bootstrap(bootstrapfile=None):
 #    ubuntu_osimage = [
 #        {'column': 'name', 'value': 'ubuntu'},
 #        {'column': 'grab_filesystems', 'value': '/, /boot'},
-#        {'column': 'grab_exclude', 'value': '/proc/*, /sys/*, /dev/*, /tmp/*, /var/log/*'},
+#        {'column': 'grab_exclude', 'value': '/proc/*, /sys/*, /dev/*, /tmp/*, /run/*, /var/log/*'},
 #        {'column': 'kernelversion', 'value': ''},
 #        {'column': 'path', 'value': f'{ubuntu_path}'},
 #        {'column': 'kernelmodules', 'value': 'ipmi_devintf, ipmi_si, ipmi_msghandler'},

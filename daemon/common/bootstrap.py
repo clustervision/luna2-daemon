@@ -258,8 +258,13 @@ def verify_and_set_beacon():
     """
     beacon = Database().get_record(None, "controller", "WHERE beacon=1")
     if not beacon:
+        controller_name="controller"
+        controllers = Database().get_record(None, "controller")
+        if controllers and len(controllers) == 1:
+            controller_name = controllers[0]['hostname']
+        LOGGER.info(f"Beacon controller not configured. Setting default controller {controller_name} as beacon")
         row = [{'column': 'beacon', 'value': 1}]
-        where = [{'column': 'hostname', 'value': 'controller'}]
+        where = [{'column': 'hostname', 'value': controller_name}]
         Database().update('controller', row, where)
     
 

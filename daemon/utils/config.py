@@ -446,14 +446,14 @@ class Config(object):
                     dns_rev_domain[rev_ipv6]=networkname
                 dns_zone_records[networkname]={}
                 # we always add a zone record for controller even when we're actually in it. we can override.
-                dns_zone_records[networkname]['controller']={}
-                dns_zone_records[networkname]['controller']['key']=controller_name
+                dns_zone_records[networkname][controller_name]={}
+                dns_zone_records[networkname][controller_name]['key']=controller_name
                 if nwk['network_ipv6'] and controller_ip_ipv6:
-                    dns_zone_records[networkname]['controller']['type']='AAAA'
-                    dns_zone_records[networkname]['controller']['value']=controller_ip_ipv6
+                    dns_zone_records[networkname][controller_name]['type']='AAAA'
+                    dns_zone_records[networkname][controller_name]['value']=controller_ip_ipv6
                 else:
-                    dns_zone_records[networkname]['controller']['type']='A'
-                    dns_zone_records[networkname]['controller']['value']=controller_ip
+                    dns_zone_records[networkname][controller_name]['type']='A'
+                    dns_zone_records[networkname][controller_name]['value']=controller_ip
                 if rev_ip:
                     if rev_ip not in dns_zone_records.keys():
                         dns_zone_records[rev_ip]={}

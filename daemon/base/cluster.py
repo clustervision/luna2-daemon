@@ -91,6 +91,7 @@ class Cluster():
                     response['config']['cluster']['controller'] = controller
                 else:
                     response['config']['cluster'][controller['hostname']] = controller
+                del controller['beacon']
                 status=True
         else:
             self.logger.error('No cluster available.')

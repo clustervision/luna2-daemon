@@ -65,7 +65,8 @@ class Interface():
                     'nodeinterface.macaddress',
                     'nodeinterface.interface',
                     'ipaddress.ipaddress',
-                    'nodeinterface.options'
+                    'nodeinterface.options',
+                    'nodeinterface.vlanid'
                 ],
                 ['ipaddress.tablerefid=nodeinterface.id', 'network.id=ipaddress.networkid'],
                 ['tableref="nodeinterface"', f"nodeinterface.nodeid='{nodeid}'"]
@@ -73,7 +74,10 @@ class Interface():
             if node_interfaces:
                 my_interface = []
                 for interface in node_interfaces:
-                    interface['options'] = interface['options'] or ""
+                    if not interface['options']:
+                        del interface['options']
+                    if not interface['vlanid']:
+                        del interface['vlanid']
                     my_interface.append(interface)
                     response['config']['node'][name]['interfaces'] = my_interface
                 self.logger.info(f'Returned node interface {name} details.')
@@ -389,7 +393,8 @@ class Interface():
                     'nodeinterface.macaddress',
                     'nodeinterface.interface',
                     'ipaddress.ipaddress',
-                    'nodeinterface.options'
+                    'nodeinterface.options',
+                    'nodeinterface.vlanid'
                 ],
                 ['ipaddress.tablerefid=nodeinterface.id', 'network.id=ipaddress.networkid'],
                 [
@@ -401,7 +406,10 @@ class Interface():
             if node_interfaces:
                 my_interface = []
                 for interface in node_interfaces:
-                    interface['options'] = interface['options'] or ""
+                    if not interface['options']:
+                        del interface['options']
+                    if not interface['vlanid']:
+                        del interface['vlanid']
                     my_interface.append(interface)
                     response['config']['node'][name]['interfaces'] = my_interface
 

@@ -500,13 +500,18 @@ class Interface():
                 groupname = group['name']
                 groupid = group['id']
                 group_interface = Database().get_record_join(
-                    ['groupinterface.interface','groupinterface.options','network.name as network'],
+                    ['groupinterface.interface','groupinterface.options',
+                     'network.name as network','groupinterface.vlanid'],
                     ['network.id=groupinterface.networkid'],
                     [f"groupid = '{groupid}'"]
                 )
                 if group_interface:
                     group_interfaces = []
                     for interface in group_interface:
+                        if not interface['options']:
+                            del interface['options']
+                        if not interface['vlanid']:
+                            del interface['vlanid']
                         group_interfaces.append(interface)
                     response['config']['group'][groupname]['interfaces'] = group_interfaces
                 else:
@@ -593,14 +598,18 @@ class Interface():
             response = {'config': {'group': {name: {'interfaces': [] } } } }
             groupid = group[0]['id']
             grp_interfaces = Database().get_record_join(
-                ['groupinterface.interface', 'groupinterface.options', 'network.name as network'],
+                ['groupinterface.interface', 'groupinterface.options', 
+                 'network.name as network','groupinterface.vlanid'],
                 ['network.id=groupinterface.networkid'],
                 [f"groupid = '{groupid}'", f"groupinterface.interface='{interface}'"]
             )
             if grp_interfaces:
                 my_interface = []
                 for interface in grp_interfaces:
-                    interface['options']=interface['options'] or ""
+                    if not interface['options']:
+                        del interface['options']
+                    if not interface['vlanid']:
+                        del interface['vlanid']
                     my_interface.append(interface)
                     response['config']['group'][name]['interfaces'] = my_interface
 

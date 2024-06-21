@@ -50,9 +50,9 @@ class Cloud():
         self.table_cap = self.table.capitalize()
 
 
-    def get_all_cloudes(self):
+    def get_all_clouds(self):
         """
-        This method will return all the cloudes in detailed format.
+        This method will return all the clouds in detailed format.
         """
         status, response = Model().get_record(
             table = self.table,

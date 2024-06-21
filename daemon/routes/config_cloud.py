@@ -50,7 +50,7 @@ cloud_blueprint = Blueprint('config_cloud', __name__)
 @token_required
 def config_cloud():
     """
-    This route will provide all the Cloudes.
+    This route will provide all the Clouds.
     """
     access_code = 404
     status, response = Cloud().get_all_clouds()

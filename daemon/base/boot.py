@@ -76,7 +76,13 @@ FILTERS["b64decode"] = jinja_b64decode
 
 
 try:
-    from plugins.boot.detection.switchport import Plugin as DetectionPlugin
+    from plugins.boot.detection.switchport import Plugin as SwitchDetectionPlugin
+except ImportError as import_error:
+    LOGGER = Log.get_logger()
+    LOGGER.error(f"Problems encountered while loading detection plugin: {import_error}")
+
+try:
+    from plugins.boot.detection.cloud import Plugin as CloudDetectionPlugin
 except ImportError as import_error:
     LOGGER = Log.get_logger()
     LOGGER.error(f"Problems encountered while loading detection plugin: {import_error}")
@@ -323,7 +329,7 @@ class Boot():
         else:
           # --------------------- port detection ----------------------------------
             try:
-                result = DetectionPlugin().find(macaddress=mac)
+                result = SwitchDetectionPlugin().find(macaddress=mac)
                 if (isinstance(result, bool) and result is True) or (isinstance(result, tuple) and result[0] is True and len(result)>2):
                     switch = result[1]
                     port = result[2]
@@ -365,9 +371,45 @@ class Boot():
                                     data['gateway'] = nodeinterface[0]['gateway'] or ''
                             Service().queue('dhcp', 'restart')
                             Service().queue('dhcp6','restart')
+          # --------------------- cloud detection ----------------------------------
+                else:
+                    result = CloudDetectionPlugin().find(macaddress=mac)
+                    if (isinstance(result, bool) and result is True) or (isinstance(result, tuple) and result[0] is True and len(result)>2):
+                        cloud = result[1]
+                        self.logger.info(f"detected {mac} on: [{cloud}]")
+                        possible_nodes = Database().get_record_join(
+                            ['node.name', 'nodeinterface.nodeid', 'nodeinterface.interface',
+                             'ipaddress.ipaddress', 'network.name as network', 'network.gateway',
+                             'ipaddress.ipaddress_ipv6', 'network.gateway_ipv6',
+                             'network.network_ipv6 as networkip_ipv6',
+                             'network.network as networkip', 'network.subnet',
+                             'nodeinterface.macaddress'],
+                            ['node.id=nodeinterface.nodeid','network.id=ipaddress.networkid',
+                             'ipaddress.tablerefid=nodeinterface.id','cloud.id=node.cloudid'],
+                            ['tableref="nodeinterface"',f"cloud.name='{cloud}'",'nodeinterface.name="BOOTIF"']
+                        )
+                        if possible_nodes:
+                            for node in possible_nodes:
+                                if not node['macaddress']:  # first candidate
+                                    data['nodeid'] = nodeinterface[0]['nodeid']
+                                    if nodeinterface[0]["ipaddress_ipv6"]:
+                                        data['nodeip'] = f'{nodeinterface[0]["ipaddress_ipv6"]}/{nodeinterface[0]["subnet_ipv6"]}'
+                                    else:
+                                        data['nodeip'] = f'{nodeinterface[0]["ipaddress"]}/{nodeinterface[0]["subnet"]}'
+                                    if nodeinterface[0]['network'] == data['network']: # node on default network
+                                        data['gateway'] = ''
+                                    else:
+                                        if nodeinterface[0]["ipaddress_ipv6"]:
+                                            data['gateway'] = nodeinterface[0]['gateway_ipv6'] or ''
+                                        else:
+                                            data['gateway'] = nodeinterface[0]['gateway'] or ''
+                                    Service().queue('dhcp', 'restart')
+                                    Service().queue('dhcp6','restart')
+                                    break
+
             except Exception as exp:
-                self.logger.info(f"port detection call in boot returned: {exp}")
-            # ------------- port detection was not successfull, lets try a last resort -----------------
+                self.logger.info(f"port detection/cloud call in boot returned: {exp}")
+            # ----------- port/cloud detection was not successfull, lets try a last resort -------------
             # ------------------ "don't nag give me the next node" detection ---------------------------
             if not data['nodeid']:
                 createnode_ondemand, nextnode_discover = None, None

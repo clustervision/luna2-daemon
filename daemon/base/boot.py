@@ -340,12 +340,12 @@ class Boot():
                         [f'switch.name="{switch}"', f'node.switchport = "{port}"']
                     )
                     if detect_node:
-                        row = [{"column": "macaddress", "value": mac}]
-                        where = [
-                            {"column": "nodeid", "value": detect_node[0]["id"]},
-                            {"column": "interface", "value": "BOOTIF"}
-                            ]
-                        Database().update('nodeinterface', row, where)
+                        provision_interface = 'BOOTIF'
+                        result, _ = Config().node_interface_config(
+                            detect_node[0]["id"],
+                            provision_interface,
+                            mac
+                        )
                         nodeinterface = Database().get_record_join(
                             ['nodeinterface.nodeid', 'nodeinterface.interface',
                              'ipaddress.ipaddress', 'network.name as network', 'network.gateway',
@@ -392,6 +392,12 @@ class Boot():
                             for node in possible_nodes:
                                 if not node['macaddress']:  # first candidate
                                     self.logger.info(f"using {node['name']} with mac {mac} on [{cloud}]")
+                                    provision_interface = 'BOOTIF'
+                                    result, _ = Config().node_interface_config(
+                                        node['nodeid'],
+                                        provision_interface,
+                                        mac
+                                    )
                                     data['nodeid'] = node['nodeid']
                                     if node["ipaddress_ipv6"]:
                                         data['nodeip'] = f'{node["ipaddress_ipv6"]}/{node["subnet_ipv6"]}'

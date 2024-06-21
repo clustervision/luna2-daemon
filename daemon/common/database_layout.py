@@ -219,6 +219,7 @@ DATABASE_LAYOUT_otherdevices = [
 DATABASE_LAYOUT_cloud = [
 {"column": "id",                   "datatype": "INTEGER", "key": "PRIMARY", "keyadd": "AUTOINCREMENT"},
 {"column": "name",                 "datatype": "VARCHAR", "length": "60", "key": "UNIQUE"},
+{"column": "type",                 "datatype": "VARCHAR", "length": "60"},
 {"column": "comment",              "datatype": "VARCHAR", "length": "60"}]
 
 DATABASE_LAYOUT_controller = [

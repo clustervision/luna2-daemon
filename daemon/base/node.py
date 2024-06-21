@@ -525,7 +525,7 @@ class Node():
                     data['osimagetagid'] = "default"
 
             # True means: cannot be empty if supplied. False means: can only be empty or correct
-            checks = {'bmcsetup': False, 'group': True, 'osimage': False, 'switch': False}
+            checks = {'bmcsetup': False, 'group': True, 'osimage': False, 'switch': False, 'cloud': False}
             for key, value in checks.items():
                 if key in data:
                     check_name = data[key]

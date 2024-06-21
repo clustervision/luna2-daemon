@@ -42,7 +42,7 @@ from utils.helper import Helper
 configParser = RawConfigParser()
 
 TABLES = ['status', 'queue', 'osimage', 'osimagetag', 'nodesecrets', 'nodeinterface', 'bmcsetup','ha', 
-          'monitor', 'ipaddress', 'groupinterface', 'roles', 'group', 'network', 'user', 'switch', 
+          'monitor', 'ipaddress', 'groupinterface', 'roles', 'group', 'network', 'user', 'switch', 'cloud',
           'otherdevices', 'controller', 'groupsecrets', 'node', 'cluster', 'tracker', 'dns', 'journal',
           'rack', 'rackinventory', 'ping', 'reservedipaddress']
 
@@ -220,6 +220,8 @@ def get_database_tables_structure(table=None):
         return DATABASE_LAYOUT_user
     if table == "switch":
         return DATABASE_LAYOUT_switch
+    if table == "cloud":
+        return DATABASE_LAYOUT_cloud
     if table == "otherdevices":
         return DATABASE_LAYOUT_otherdevices
     if table == "controller":

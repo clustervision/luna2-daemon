@@ -374,7 +374,7 @@ class Boot():
           # --------------------- cloud detection ----------------------------------
                 else:
                     result = CloudDetectionPlugin().find(macaddress=mac)
-                    if (isinstance(result, bool) and result is True) or (isinstance(result, tuple) and result[0] is True and len(result)>2):
+                    if (isinstance(result, bool) and result is True) or (isinstance(result, tuple) and result[0] is True and len(result)>1):
                         cloud = result[1]
                         self.logger.info(f"detected {mac} on: [{cloud}]")
                         possible_nodes = Database().get_record_join(
@@ -386,23 +386,24 @@ class Boot():
                              'nodeinterface.macaddress'],
                             ['node.id=nodeinterface.nodeid','network.id=ipaddress.networkid',
                              'ipaddress.tablerefid=nodeinterface.id','cloud.id=node.cloudid'],
-                            ['tableref="nodeinterface"',f"cloud.name='{cloud}'",'nodeinterface.name="BOOTIF"']
+                            ['tableref="nodeinterface"',f"cloud.name='{cloud}'",'nodeinterface.interface="BOOTIF"']
                         )
                         if possible_nodes:
                             for node in possible_nodes:
                                 if not node['macaddress']:  # first candidate
-                                    data['nodeid'] = nodeinterface[0]['nodeid']
-                                    if nodeinterface[0]["ipaddress_ipv6"]:
-                                        data['nodeip'] = f'{nodeinterface[0]["ipaddress_ipv6"]}/{nodeinterface[0]["subnet_ipv6"]}'
+                                    self.logger.info(f"using {node['name']} with mac {mac} on [{cloud}]")
+                                    data['nodeid'] = node['nodeid']
+                                    if node["ipaddress_ipv6"]:
+                                        data['nodeip'] = f'{node["ipaddress_ipv6"]}/{node["subnet_ipv6"]}'
                                     else:
-                                        data['nodeip'] = f'{nodeinterface[0]["ipaddress"]}/{nodeinterface[0]["subnet"]}'
-                                    if nodeinterface[0]['network'] == data['network']: # node on default network
+                                        data['nodeip'] = f'{node["ipaddress"]}/{node["subnet"]}'
+                                    if node['network'] == data['network']: # node on default network
                                         data['gateway'] = ''
                                     else:
-                                        if nodeinterface[0]["ipaddress_ipv6"]:
-                                            data['gateway'] = nodeinterface[0]['gateway_ipv6'] or ''
+                                        if node["ipaddress_ipv6"]:
+                                            data['gateway'] = node['gateway_ipv6'] or ''
                                         else:
-                                            data['gateway'] = nodeinterface[0]['gateway'] or ''
+                                            data['gateway'] = node['gateway'] or ''
                                     Service().queue('dhcp', 'restart')
                                     Service().queue('dhcp6','restart')
                                     break

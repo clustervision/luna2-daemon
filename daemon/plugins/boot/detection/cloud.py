@@ -34,14 +34,8 @@ import os
 from utils.log import Log
 from utils.helper import Helper
 
-
-class Plugin():
-    """
-    This plugin class requires 1 mandatory method:
-    -- find    : receives a MAC and returns the cloud name
-    """
-
-    self.azure = [
+azure = [
+       '005056',
        '0003FF', '000D3A', '00125A', '00155D', '0017FA', '001DD8', '002248', '0025AE',
        '0C413E', '0CE725', '102F6B', '149A10', '206274', '20A99B', '281878', '2C2997',
        '300D43', '3059B7', '38256B', '38F23E', '3C8375', '444553', '485073', '4886E8',
@@ -49,15 +43,22 @@ class Plugin():
        '6C2779', '6C8FB5', '74E28C', '7C1E52', '7CED8D', '80C5E6', '8463D6', '949AA9',
        '985FD3', '9C6C15', 'A4516F', 'B4AE2B', 'B4E1C4', 'B84FD5', 'BC8385', 'C0335E',
        'C49DED', 'C83F26', 'D0929E', 'D48F33', 'DCB4C4', 'E498D1', 'EC59E7', 'F01DBC'
-    ]
-    self.aws = [
+]
+aws = [
        '0C47C9', '34D270', '40B4CD', '44650D', '50B363', '50F5DA', '6837E9', '6854FD',
        '747548', '74C246', '84D6D0', '8871E5', 'A002DC', 'AC63BE', 'B47C9C', 'F0272D', 'F0D2F1'
-    ]
-    self.gcp = [
+]
+gcp = [
        '001A11', '089E08', '3C5AB4', '546009', '703ACB', '9495A0', '94EB2C', '98D293',
        'A47733', 'F40304', 'F4F5D8', 'F4F5E8', 'F88FCA'
-    ]
+]
+
+
+class Plugin():
+    """
+    This plugin class requires 1 mandatory method:
+    -- find    : receives a MAC and returns the cloud name
+    """
 
     def __init__(self):
         self.logger = Log.get_logger()
@@ -75,14 +76,14 @@ class Plugin():
         response = None
         if macaddress:
             octets = macaddress.split(':')
-            vendor = octest[0]+octest[1]+octest[2]
-            if vendor.upper() in self.azure:
+            vendor = octets[0]+octets[1]+octets[2]
+            if vendor.upper() in azure:
                 status = True
                 response = 'azure'
-            elif vendor.upper() in self.aws:
+            elif vendor.upper() in aws:
                 status = True
                 response = 'aws'
-            elif vendor.upper() in self.gcp:
+            elif vendor.upper() in gcp:
                 status = True
                 response = 'gcp'
         self.logger.info(f"Cloud detection for {macaddress}: {response}")

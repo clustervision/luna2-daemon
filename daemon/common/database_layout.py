@@ -216,6 +216,12 @@ DATABASE_LAYOUT_otherdevices = [
 {"column": "vendor",               "datatype": "VARCHAR", "length": "60"},
 {"column": "comment",              "datatype": "VARCHAR", "length": "60"}]
 
+DATABASE_LAYOUT_cloud = [
+{"column": "id",                   "datatype": "INTEGER", "key": "PRIMARY", "keyadd": "AUTOINCREMENT"},
+{"column": "name",                 "datatype": "VARCHAR", "length": "60", "key": "UNIQUE"},
+{"column": "type",                 "datatype": "VARCHAR", "length": "60"},
+{"column": "comment",              "datatype": "VARCHAR", "length": "60"}]
+
 DATABASE_LAYOUT_controller = [
 {"column": "id",                   "datatype": "INTEGER", "key": "PRIMARY", "keyadd": "AUTOINCREMENT"},
 {"column": "hostname",             "datatype": "VARCHAR", "length": "100", "key": "UNIQUE"},
@@ -239,12 +245,13 @@ DATABASE_LAYOUT_node = [
 {"column": "osimageid",            "datatype": "INTEGER", "length": "10"},
 {"column": "osimagetagid",         "datatype": "INTEGER", "length": "10"},
 {"column": "kerneloptions",        "datatype": "VARCHAR", "length": "200"},
+{"column": "switchid",             "datatype": "INTEGER", "length": "10"},
 {"column": "switchport",           "datatype": "INTEGER", "length": "10"},
+{"column": "cloudid",              "datatype": "INTEGER", "length": "10"},
 {"column": "service",              "datatype": "INTEGER", "length": "10"},
 {"column": "bmcsetupid",           "datatype": "INTEGER", "length": "10"},
 {"column": "setupbmc",             "datatype": "INTEGER", "length": "10"},
 {"column": "status",               "datatype": "VARCHAR", "length": "20"},
-{"column": "switchid",             "datatype": "INTEGER", "length": "10"},
 {"column": "comment",              "datatype": "TEXT"},
 {"column": "roles",                "datatype": "VARCHAR", "length": "512"},
 {"column": "vendor",               "datatype": "VARCHAR", "length": "60"},

@@ -69,11 +69,13 @@ class Node():
         groups = Database().get_record(None, 'group', None)
         osimages = Database().get_record(None, 'osimage', None)
         switches = Database().get_record(None, 'switch', None)
+        clouds = Database().get_record(None, 'cloud', None)
         bmcsetups = Database().get_record(None, 'bmcsetup', None)
         monitorings = Database().get_record(None, 'monitor', "WHERE tableref='node'")
         group = Helper().convert_list_to_dict(groups, 'id')
         osimage = Helper().convert_list_to_dict(osimages, 'id')
         switch = Helper().convert_list_to_dict(switches, 'id')
+        cloud = Helper().convert_list_to_dict(clouds, 'id')
         bmcsetup = Helper().convert_list_to_dict(bmcsetups, 'id')
         monitoring = Helper().convert_list_to_dict(monitorings, 'tablerefid')
         cluster = Database().get_record(None, 'cluster', None)
@@ -139,6 +141,11 @@ class Node():
                     node['switch'] = '!!Invalid!!'
                     if node['switchid'] in switch:
                         node['switch'] = switch[node['switchid']]['name'] or None
+                node['cloud'] = None
+                if node['cloudid']:
+                    node['cloud'] = '!!Invalid!!'
+                    if node['cloudid'] in cloud:
+                        node['cloud'] = cloud[node['cloudid']]['name'] or None
                 node['tpm_present'] = False
                 if node['tpm_uuid'] or node['tpm_sha256'] or node['tpm_pubkey']:
                     node['tpm_present'] = True
@@ -152,6 +159,7 @@ class Node():
                 del node['groupid']
                 del node['osimageid']
                 del node['switchid']
+                del node['cloudid']
 
                 node['bootmenu'] = Helper().make_bool(node['bootmenu'])
                 node['localinstall'] = Helper().make_bool(node['localinstall'])
@@ -308,6 +316,9 @@ class Node():
             node['switch'] = None
             if node['switchid']:
                 node['switch'] = Database().name_by_id('switch', node['switchid'])
+            node['cloud'] = None
+            if node['cloudid']:
+                node['cloud'] = Database().name_by_id('cloud', node['cloudid'])
             #---
             if not node['groupid']:
                 node['group'] = '!!Invalid!!'
@@ -386,6 +397,7 @@ class Node():
             del node['groupid']
             del node['osimageid']
             del node['switchid']
+            del node['cloudid']
 
             node['status'] = None
             monitoring = Database().get_record(None, 'monitor', f"WHERE tableref='node' AND tablerefid='{nodeid}'")
@@ -513,7 +525,7 @@ class Node():
                     data['osimagetagid'] = "default"
 
             # True means: cannot be empty if supplied. False means: can only be empty or correct
-            checks = {'bmcsetup': False, 'group': True, 'osimage': False, 'switch': False}
+            checks = {'bmcsetup': False, 'group': True, 'osimage': False, 'switch': False, 'cloud': False}
             for key, value in checks.items():
                 if key in data:
                     check_name = data[key]

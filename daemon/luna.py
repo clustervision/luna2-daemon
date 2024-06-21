@@ -59,6 +59,7 @@ from routes.config_otherdev import otherdev_blueprint
 from routes.config_secrets import secrets_blueprint
 from routes.config_status import status_blueprint
 from routes.config_switch import switch_blueprint
+from routes.config_cloud import cloud_blueprint
 from routes.config_rack import rack_blueprint
 from routes.files import files_blueprint
 from routes.service import service_blueprint
@@ -164,6 +165,7 @@ daemon.register_blueprint(otherdev_blueprint)
 daemon.register_blueprint(secrets_blueprint)
 daemon.register_blueprint(status_blueprint)
 daemon.register_blueprint(switch_blueprint)
+daemon.register_blueprint(cloud_blueprint)
 daemon.register_blueprint(files_blueprint)
 daemon.register_blueprint(service_blueprint)
 daemon.register_blueprint(monitor_blueprint)

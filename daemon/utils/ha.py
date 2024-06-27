@@ -119,7 +119,7 @@ class HA():
         return self.ip
 
     def get_sharedip(self):
-        self.sharedip=self.get_property('sharedip')
+        self.sharedip=self.get_property('sharedip') or True
         return self.sharedip
 
     def set_sharedip(self,state):

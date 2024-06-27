@@ -35,3 +35,8 @@ NAME = compute
 USERNAME = admin
 PASSWORD = P@ssword!
 
+# Optional tunable. Nosharedip tells the daemon that the HA setup
+# will not utilize a shared or floating ip.
+#[HA]
+#NO_SHAREDIP = True
+

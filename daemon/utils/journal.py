@@ -81,6 +81,7 @@ class Journal():
     def __init__(self,me=None):
         self.logger = Log.get_logger()
         self.ha_object = HA()
+        self.sharedip = self.ha_object.get_sharedip()
         self.me=me
         if not self.me:
             self.me=self.ha_object.get_me()
@@ -124,7 +125,9 @@ class Journal():
                 data['created'] = "NOW"
                 data['tries'] = "0"
                 for controller in self.all_controllers:
-                    if controller['hostname'] in ["controller",self.me]:
+                    if controller['hostname'] == self.me:
+                        continue
+                    elif self.sharedip and controller['beacon']:
                         continue
                     data['sendfor'] = controller['hostname']
                     row = Helper().make_rows(data)
@@ -290,7 +293,9 @@ class Journal():
         if self.me:
             if self.all_controllers:
                 for controller in self.all_controllers:
-                    if controller['hostname'] in ["controller",self.me]:
+                    if controller['hostname']  == self.me:
+                        continue
+                    elif self.sharedip and controller['beacon']:
                         continue
                     self.logger.info(f"pulling journal from {controller['hostname']}")
                     status=self.pull_journal(controller['hostname'])

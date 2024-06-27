@@ -38,5 +38,5 @@ PASSWORD = P@ssword!
 # Optional tunable. Nosharedip tells the daemon that the HA setup
 # will not utilize a shared or floating ip.
 #[HA]
-#NOSHAREDIP = True
+#NO_SHAREDIP = True
 

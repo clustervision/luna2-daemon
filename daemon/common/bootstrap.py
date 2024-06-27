@@ -382,7 +382,7 @@ def bootstrap(bootstrapfile=None):
     if 'HA' in BOOTSTRAP.keys():
         if BOOTSTRAP['HA']['ENABLED'] in is_true:
             ha_enabled = 1
-        if 'NOSHAREDIP' in BOOTSTRAP['HA'].keys() and BOOTSTRAP['HA']['NOSHAREDIP'] in is_true:
+        if 'NO_SHAREDIP' in BOOTSTRAP['HA'].keys() and BOOTSTRAP['HA']['NO_SHAREDIP'] in is_true:
             sharedip = 0
     ha_state = [{'column': 'enabled', 'value': ha_enabled},
                 {'column': 'syncimages', 'value': '1'},

@@ -377,12 +377,17 @@ def bootstrap(bootstrapfile=None):
     node_plugins = Helper().plugin_finder(f'{plugins_path}/node')
     node_plugin=Helper().plugin_load(node_plugins,'node','default')
 
-    ha_enabled = 0
-    if 'HA' in BOOTSTRAP.keys() and BOOTSTRAP['HA']['ENABLED'] is True:
-        ha_enabled = 1
+    is_true = [True,'True','true','TRUE','1','yes']
+    ha_enabled, sharedip = 0, 1
+    if 'HA' in BOOTSTRAP.keys():
+        if BOOTSTRAP['HA']['ENABLED'] in is_true:
+            ha_enabled = 1
+        if 'NOSHAREDIP' in BOOTSTRAP['HA'].keys() and BOOTSTRAP['HA']['NOSHAREDIP'] in is_true:
+            sharedip = 0
     ha_state = [{'column': 'enabled', 'value': ha_enabled},
                 {'column': 'syncimages', 'value': '1'},
                 {'column': 'insync', 'value': '0'},
+                {'column': 'sharedip', 'value': sharedip},
                 {'column': 'overrule', 'value': '0'},
                 {'column': 'master', 'value': '0'}]
     Database().insert('ha', ha_state)
@@ -511,6 +516,9 @@ def bootstrap(bootstrapfile=None):
         if 'CONTROLLER'+str(num) in BOOTSTRAP['HOSTS'].keys():
             hostname=BOOTSTRAP['HOSTS']['CONTROLLER'+str(num)]['HOSTNAME']
             ip=BOOTSTRAP['HOSTS']['CONTROLLER'+str(num)]['IP']
+            if (not sharedip or sharedip == 0) and ip == defaultserver_ip:
+                # we skip as we already have that very same ip for the beacon controller
+                continue
             taken_ips.append(ip)
             other_controller = [
                 {'column': 'hostname', 'value': hostname},

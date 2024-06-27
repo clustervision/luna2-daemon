@@ -77,6 +77,7 @@ class HA():
         self.dict_controllers=None
         self.me=me
         self.ip=None
+        self.sharedip=self.get_sharedip()
         self.all_controllers = Database().get_record_join(['controller.*','ipaddress.ipaddress','ipaddress.ipaddress_ipv6',
                                                            'network.name as domain'],
                                                           ['ipaddress.tablerefid=controller.id','network.id=ipaddress.networkid'],
@@ -90,7 +91,7 @@ class HA():
                         ip, *_ = wip.split('%', 1)+[None]
                         self.logger.debug(f"Interface {interface} has ip {ip}")
                         for controller in self.all_controllers:
-                            if controller['beacon']:
+                            if self.sharedip and controller['beacon']:
                                 continue
                             if not self.me and controller['ipaddress_ipv6'] == ip:
                                 self.me=controller['hostname']
@@ -102,7 +103,7 @@ class HA():
                         ip = ni.ifaddresses(interface)[ni.AF_INET][0]['addr']
                         self.logger.debug(f"Interface {interface} has ip {ip}")
                         for controller in self.all_controllers:
-                            if controller['beacon']:
+                            if self.sharedip and controller['beacon']:
                                 continue
                             if not self.me and controller['ipaddress'] == ip:
                                 self.me=controller['hostname']
@@ -116,6 +117,16 @@ class HA():
 
     def get_my_ip(self):
         return self.ip
+
+    def get_sharedip(self):
+        self.sharedip=self.get_property('sharedip')
+        return self.sharedip
+
+    def set_sharedip(self,state):
+        oldstate=self.get_sharedip()
+        if state != oldstate:
+            self.logger.info(f"set_sharedip state to {state}")
+        return self.set_property('sharedip',state)
 
     def set_insync(self,state):
         oldstate=self.get_insync()
@@ -208,7 +219,7 @@ class HA():
             for controller in self.all_controllers:
                 if controller['hostname'] == self.me:
                     continue
-                elif controller['beacon']:
+                elif self.sharedip and controller['beacon']:
                     continue
                 status=self.ping_host(controller['hostname'])
                 if status is False:
@@ -241,7 +252,7 @@ class HA():
             for controller in self.all_controllers:
                 if controller['hostname'] == self.me:
                     continue
-                elif controller['beacon']:
+                elif self.sharedip and controller['beacon']:
                     continue
                 status=self.ping_host(controller['hostname'])
                 self.logger.debug(f"PING HOST: {controller['hostname']}, {status}")

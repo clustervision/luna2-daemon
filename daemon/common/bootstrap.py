@@ -282,6 +282,14 @@ def cleanup_and_init_ping():
     ping = [{'column': 'updated', 'value': 'NOW'}]
     Database().insert('ping', ping)
 
+def legacy_and_forward_fixes():
+    ha_data = Database().get_record(None, "ha")
+    if ha_data:
+      if ha_data[0]['sharedip'] is None:
+        fix = {'sharedip': 1}
+        row = Helper().make_rows(fix)
+        result=Database().update('ha', row)
+
 
 def get_config(filename=None):
     """
@@ -736,6 +744,7 @@ def validate_bootstrap():
         return False
 
     verify_and_set_beacon()
+    legacy_and_forward_fixes()
     cleanup_queue_and_status()
     cleanup_and_init_ping()
     return True

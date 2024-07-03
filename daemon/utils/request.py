@@ -66,7 +66,7 @@ class Request():
         self.bad_ret=['400','401','500','502','503']
         self.good_ret=['200','201','204']
         self.dict_controllers=None
-        self.all_controllers = Database().get_record_join(['controller.*','ipaddress.ipaddress','ipaddress.ipaddress_ipv6']
+        self.all_controllers = Database().get_record_join(['controller.*','ipaddress.ipaddress','ipaddress.ipaddress_ipv6'],
                                                           ['ipaddress.tablerefid=controller.id'],
                                                           ["ipaddress.tableref='controller'"])
         if self.all_controllers:

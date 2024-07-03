@@ -52,7 +52,8 @@ class Tables():
         self.logger = Log.get_logger()
         self.tables = ['osimage', 'osimagetag', 'nodesecrets', 'nodeinterface', 'bmcsetup', 
               'ipaddress', 'groupinterface', 'roles', 'group', 'network', 'user', 'switch', 
-              'otherdevices', 'groupsecrets', 'node', 'cluster', 'dns','controller']
+              'otherdevices', 'groupsecrets', 'node', 'cluster', 'dns','controller','cloud']
+        self.sharedip = False
 
     def get_tables(self):
         return self.tables
@@ -99,8 +100,10 @@ class Tables():
 
     def verify_tablehashes_controllers(self,me=None):
         mismatch_tables=[]
+        ha_object = HA()
+        self.sharedip = ha_object.get_sharedip()
         if not me:
-            me=HA().get_me()
+            me=ha_object.get_me()
         if me:
             all_controllers = Database().get_record_join(['controller.*','ipaddress.ipaddress','ipaddress.ipaddress_ipv6',
                                                           'network.name as domain'],
@@ -111,7 +114,7 @@ class Tables():
                 for controller in all_controllers:
                     if controller['hostname'] == me:
                         continue
-                    elif controller['beacon']:
+                    elif self.sharedip and controller['beacon']:
                         continue
                     host=controller['hostname']
                     status,data=Request().get_request(host,f'/table/hashes')

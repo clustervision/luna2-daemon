@@ -66,19 +66,16 @@ class Request():
         self.bad_ret=['400','401','500','502','503']
         self.good_ret=['200','201','204']
         self.dict_controllers=None
-        self.all_controllers = Database().get_record_join(['controller.*','ipaddress.ipaddress','ipaddress.ipaddress_ipv6',
-                                                           'network.name as domain'],
-                                                          ['ipaddress.tablerefid=controller.id','network.id=ipaddress.networkid'],
+        self.all_controllers = Database().get_record_join(['controller.*','ipaddress.ipaddress','ipaddress.ipaddress_ipv6'],
+                                                          ['ipaddress.tablerefid=controller.id'],
                                                           ["ipaddress.tableref='controller'"])
         if self.all_controllers:
             self.dict_controllers = Helper().convert_list_to_dict(self.all_controllers, 'hostname')
 
 
     def get_token(self,host):
-        serverport=self.dict_controllers[host]['serverport'] or self.alt_serverport
-        #domain=self.dict_controllers[host]['domain']
-        #endpoint=f"{host}.{domain}"
         endpoint=self.get_host_ip(host)
+        serverport=self.get_host_port(host)
         if Helper().check_if_ipv6(endpoint):
             endpoint='['+endpoint+']'
         token_credentials = {'username': CONSTANT['API']['USERNAME'], 'password': CONSTANT['API']['PASSWORD']}
@@ -97,8 +94,8 @@ class Request():
 
     def get_request(self,host,uri):
         uri = re.sub('^/', '', uri)
-        serverport=self.dict_controllers[host]['serverport'] or self.alt_serverport
         endpoint=self.get_host_ip(host)
+        serverport=self.get_host_port(host)
         if Helper().check_if_ipv6(endpoint):
             endpoint='['+endpoint+']'
         token=self.get_token(host)
@@ -124,8 +121,8 @@ class Request():
 
     def post_request(self,host,uri,json):
         uri = re.sub('^/', '', uri)
-        serverport=self.dict_controllers[host]['serverport'] or self.alt_serverport
         endpoint=self.get_host_ip(host)
+        serverport=self.get_host_port(host)
         if Helper().check_if_ipv6(endpoint):
             endpoint='['+endpoint+']'
         token=self.get_token(host)
@@ -152,8 +149,8 @@ class Request():
 
     def download_file(self,host,filename,location):
         filename = re.sub('^/', '', filename)
-        serverport=self.dict_controllers[host]['serverport'] or self.alt_serverport
         endpoint=self.get_host_ip(host)
+        serverport=self.get_host_port(host)
         if Helper().check_if_ipv6(endpoint):
             endpoint='['+endpoint+']'
         token=self.get_token(host)
@@ -179,6 +176,14 @@ class Request():
 
 
     def get_host_ip(self,host):
-        endpoint=self.dict_controllers[host]['ipaddress_ipv6'] or self.dict_controllers[host]['ipaddress']
+        endpoint=host
+        if host in self.dict_controllers.keys():
+            endpoint=self.dict_controllers[host]['ipaddress_ipv6'] or self.dict_controllers[host]['ipaddress']
         return endpoint
+
+    def get_host_port(self,host):
+        port=self.alt_serverport
+        if host in self.dict_controllers.keys():
+            port=self.dict_controllers[host]['serverport'] or self.alt_serverport
+        return port
 

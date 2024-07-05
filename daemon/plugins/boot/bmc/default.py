@@ -63,15 +63,21 @@ class Plugin():
         then
             RESETIPMI=1
             ipmitool lan set ${NETCHANNEL} ipaddr ${IPADDRESS}
+            # yup, twice. some devices need it
+            ipmitool lan set ${NETCHANNEL} ipaddr ${IPADDRESS}
         fi
         if [[ "${CUR_NETMASK}" != "${NETMASK}" ]]
         then
             RESETIPMI=1
             ipmitool lan set ${NETCHANNEL} netmask ${NETMASK}
+            # yup, twice. some devices need it
+            ipmitool lan set ${NETCHANNEL} netmask ${NETMASK}
         fi
         if [[ "${CUR_DEFGW}" != "${GATEWAY}" ]]
         then
             RESETIPMI=1
+            ipmitool lan set ${NETCHANNEL} defgw ipaddr ${GATEWAY}
+            # yup, twice. some devices need it
             ipmitool lan set ${NETCHANNEL} defgw ipaddr ${GATEWAY}
         fi
         if [[ "$VLANID" == "" ]]

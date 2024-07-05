@@ -89,6 +89,16 @@ chmod 600 /sysroot/etc/NetworkManager/system-connections/Connection_${DEVICE}.nm
     # ------------ ipv4 --------------
 
     interface = """
+    if [ "$IPADDR" == "dhcp" ]; then
+cat << EOF >> /sysroot/etc/NetworkManager/system-connections/Connection_${DEVICE}.nmconnection
+[ipv4]
+method=auto
+
+[ipv6]
+method=auto
+
+EOF
+    else
 cat << EOF >> /sysroot/etc/NetworkManager/system-connections/Connection_${DEVICE}.nmconnection
 [ipv4]
 address1=$IPADDR/$PREFIX
@@ -102,6 +112,7 @@ method=manual
 #method=auto
 
 EOF
+    fi
     """
 
     hostname = """

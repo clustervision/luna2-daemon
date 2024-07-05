@@ -357,12 +357,17 @@ class Node():
                 elif 'group_'+key in node and node['group_'+key] and not node[key]:
                     node[key] = node['group_'+key] or str(value)
                     node[key+'_source'] = 'group'
+                elif value is None and node[key] is None:
+                    node[key+'_source'] = 'default'
                 elif node[key]:
                     if isinstance(value, bool):
                         node[key] = str(Helper().make_bool(node[key]))
                     node[key+'_source'] = 'node'
                 else:
-                    node[key] = node[key] or str(value)
+                    if isinstance(value, bool):
+                        node[key] = str(Helper().make_bool(node[key]))
+                    else:
+                        node[key] = node[key] or str(value)
                     node[key+'_source'] = 'default'
                 if 'group_'+key in node:
                     del node['group_'+key]

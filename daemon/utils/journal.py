@@ -68,6 +68,7 @@ from base.dns import DNS
 from base.secret import Secret
 from base.osuser import OsUser
 from base.monitor import Monitor
+from base.cloud import Cloud
 
 lock = Lock()
 #sem = Semaphore()

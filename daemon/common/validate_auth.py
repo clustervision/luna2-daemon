@@ -54,20 +54,20 @@ def token_required(function):
         if 'x-access-tokens' in request.headers:
             token = request.headers['x-access-tokens']
         if not token:
-            LOGGER.error('A valid token is missing.')
-            response = {'message': 'A valid token is missing.'}
+            LOGGER.error('A valid token is missing. None supplied')
+            response = {'message': 'A valid token is missing'}
             code = 401
             return json.dumps(response), code
         try:
             jwt.decode(token, CONSTANT['API']['SECRET_KEY'], algorithms=['HS256']) ## Decoding Token
         except jwt.exceptions.DecodeError:
-            LOGGER.error('Token is invalid.')
-            response = {'message': 'Token is invalid.'}
+            LOGGER.error('Token is invalid. Cannot decode')
+            response = {'message': 'Token is invalid'}
             code = 401
             return json.dumps(response), code
         except Exception as exp:
             LOGGER.error(f'Token is invalid. {exp}')
-            response = {'message': 'Token is invalid.'}
+            response = {'message': 'Token is invalid'}
             code = 401
             return json.dumps(response), code
         return function(**kwargs)

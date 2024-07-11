@@ -39,17 +39,35 @@ class Plugin():
     -- script   --> This code will be called through the unit/systemd
                     The content will be written to /usr/local/roles/<role name>
     -- unit     --> This part provides the systemd unit or service file
+
+    Below fetches the IP address from the active/BOOTIF interface and makes a
+    bond out of it. This might not work out of the box in your case, so edit
+    the below before proceeding.
     """
 
     script = """
 #!/bin/bash
-echo "Default example role" | logger
+echo "Login node bond role" | logger
+IPADDR=$(ip a show dev enp1s0f0np0|grep -oE "inet [0-9\.\/]+"|grep -oE "[0-9\.\/]+")
+if [ "$IPADDR" ]; then
+  echo "Bond IP [$IPADDR]" | logger
+  nmcli con down enp1s0f0np0
+  nmcli con down enp1s0f1np1
+  nmcli con add type bond con-name nm-bond ifname nm-bond mode balance-rr ip4 $IPADDR
+  nmcli con add type bond-slave ifname enp1s0f0np0 master nm-bond
+  nmcli con add type bond-slave ifname enp1s0f1np1 master nm-bond
+  nmcli con up bond-slave-enp1s0f0np0
+  nmcli con up bond-slave-enp1s0f1np1
+  nmcli con up nm-bond
+else
+  echo "No IP for bond found" | logger
+fi
     """
 
     unit = """
 [Unit]
-Description=Luna Default example
-After=multi-user.target
+Description=Luna Bonding interfaces
+After=network.target
 
 [Service]
 Type=oneshot
@@ -58,3 +76,4 @@ ExecStart=/usr/local/roles/__LUNA_ROLE__
 [Install]
 WantedBy=multi-user.target
     """
+

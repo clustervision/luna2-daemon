@@ -93,23 +93,19 @@ chmod 600 /sysroot/etc/NetworkManager/system-connections/Connection_${DEVICE}.nm
 cat << EOF >> /sysroot/etc/NetworkManager/system-connections/Connection_${DEVICE}.nmconnection
 [ipv4]
 method=auto
-
-[ipv6]
-method=auto
+dns=
+dns-search=
+#route1=
 
 EOF
     else
 cat << EOF >> /sysroot/etc/NetworkManager/system-connections/Connection_${DEVICE}.nmconnection
 [ipv4]
+method=manual
 address1=$IPADDR/$PREFIX
 dns=
 dns-search=
-method=manual
 #route1=
-
-#[ipv6]
-#addr-gen-mode=default
-#method=auto
 
 EOF
     fi
@@ -135,6 +131,16 @@ EOF
     # ------------ ipv6 --------------
 
     interface_ipv6 = """
+    if [ "$IPADDR" == "dhcp" ]; then
+cat << EOF >> /sysroot/etc/NetworkManager/system-connections/Connection_${DEVICE}.nmconnection
+[ipv6]
+dns=
+dns-search=
+method=auto
+#route1=
+
+EOF
+    else
 cat << EOF >> /sysroot/etc/NetworkManager/system-connections/Connection_${DEVICE}.nmconnection
 [ipv6]
 address1=$IPADDR/$PREFIX
@@ -144,6 +150,7 @@ method=manual
 #route1=
 
 EOF
+    fi
     """
 
     gateway_ipv6 = """

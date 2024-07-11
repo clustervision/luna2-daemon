@@ -57,7 +57,7 @@ class Roles():
         """
         status = False
         if not name:
-            return status, "Role not supplied"
+            return status, "Role not supplied or is None"
         try:
             status = True
             self.logger.info(f"Loading role plugin {name}")
@@ -75,6 +75,7 @@ class Roles():
                 self.logger.error(f"{exp}. Maybe script is already base64?")
             try:
                 if not regex.match(unit):
+                    unit = re.sub(r"__LUNA_ROLE__", name, unit)
                     data = b64encode(unit.encode())
                     unit = data.decode("ascii")
             except Exception as exp:

@@ -1031,7 +1031,7 @@ class OsImage(object):
                 details=Queue().get_task_details(next_id)
                 request_id=details['request_id']
                 action=details['task']
-                first,second,third,*_=details['task'].split(':')+[None]+[None]+[None]
+                first,second,third,*_=details['param'].split(':')+[None]+[None]+[None]
                 self.logger.info(f"osimage_mother sees parked job {action} in queue as next: {next_id}")
 
                 # though we have this task, it's there to make sure all image related activities are done

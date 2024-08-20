@@ -47,7 +47,9 @@ DATABASE_LAYOUT_queue = [
 {"column": "username_initiator",   "datatype": "text"},
 {"column": "created",              "datatype": "numeric"},
 {"column": "subsystem",            "datatype": "varchar", "length": "128"},
-{"column": "task",                 "datatype": "text"},
+{"column": "task",                 "datatype": "varchar", "length": "128"},
+{"column": "param",                "datatype": "varchar", "length": "128"},
+{"column": "noeof",                "datatype": "integer", "length": "10"},
 {"column": "status",               "datatype": "varchar", "length": "64"}]
 
 DATABASE_LAYOUT_osimage = [

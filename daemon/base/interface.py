@@ -466,9 +466,12 @@ class Interface():
                 # below might look as redundant but is added to prevent a possible race condition
                 # when many nodes are added in a loop.
                 # the below tasks ensures that even the last node will be included in dhcp/dns
-                Queue().add_task_to_queue('dhcp:restart','housekeeper','__node_interface_delete__')
-                Queue().add_task_to_queue('dhcp6:restart','housekeeper','__node_interface_delete__')
-                Queue().add_task_to_queue('dns:restart', 'housekeeper', '__node_interface_delete__')
+                Queue().add_task_to_queue(task='restart', param='dhcp', 
+                                          subsystem='housekeeper', request_id='__node_interface_delete__')
+                Queue().add_task_to_queue(task='restart', param='dhcp6', 
+                                          subsystem='housekeeper', request_id='__node_interface_delete__')
+                Queue().add_task_to_queue(task='restart', param='dns', 
+                                          subsystem='housekeeper', request_id='__node_interface_delete__')
                 response = f'Interface {interface} removed successfully'
                 status=True
             else:
@@ -565,8 +568,9 @@ class Interface():
                         # for adding next free ip-s will be selected. time consuming
                         # therefor background
                         queue_id, _ = Queue().add_task_to_queue(
-                            f'add_interface_to_group_nodes:{name}:{interface}',
-                            'group_interface'
+                            task='add_interface_to_group_nodes',
+                            param=f'{name}:{interface}',
+                            subsystem='group_interface'
                         )
                         next_id = Queue().next_task_in_queue('group_interface')
                         if queue_id == next_id:
@@ -643,8 +647,9 @@ class Interface():
                 # below section takes care (in the background), adding/renaming/deleting.
                 # for adding next free ip-s will be selected. time consuming therefor background
                 queue_id, _ = Queue().add_task_to_queue(
-                    f'delete_interface_from_group_nodes:{name}:{interface}',
-                    'group_interface'
+                    task='delete_interface_from_group_nodes',
+                    param=f'{name}:{interface}',
+                    subsystem='group_interface'
                 )
                 next_id = Queue().next_task_in_queue('group_interface')
                 if queue_id == next_id:

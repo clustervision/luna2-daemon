@@ -863,7 +863,8 @@ class Config(object):
                 self.logger.info(message)
                 details=Queue().get_task_details(next_id)
                 # request_id = details['request_id']
-                action, group, interface, *_ = details['task'].split(':') + [None] + [None]
+                action = details['task']
+                group, interface, *_ = details['param'].split(':') + [None]
 
                 if group == name:
                     # ADDING/UPDATING --------------------------------------------------------
@@ -1060,11 +1061,9 @@ class Config(object):
                                     [{"column": "id", "value": node['ifid']}]
                                 )
                     Queue().remove_task_from_queue(next_id)
-                    Queue().add_task_to_queue(
-                        'dns:restart',
-                        'housekeeper',
-                        '__update_interface_on_group_nodes__'
-                    )
+                    Queue().add_task_to_queue(task='restart', param='dns',
+                                              subsystem='housekeeper',
+                                              request_id='__update_interface_on_group_nodes__')
                 else:
                     self.logger.info(f"{details['task']} is not for us.")
                     sleep(10)
@@ -1085,7 +1084,8 @@ class Config(object):
                 message += f"sees job in queue as next: {next_id}"
                 self.logger.info(message)
                 details = Queue().get_task_details(next_id)
-                action, network, *_ = details['task'].split(':') + [None] + [None]
+                action = details['task']
+                network, *_ = details['param'].split(':') + [None]
 
                 if (name and network==name) or network:
                     Queue().update_task_status_in_queue(next_id,'in progress')
@@ -1191,21 +1191,12 @@ class Config(object):
                                     message += "no free IP addresses available."
                                     self.logger.error(message)
                     Queue().remove_task_from_queue(next_id)
-                    Queue().add_task_to_queue(
-                        'dns:restart',
-                        'housekeeper',
-                        '__update_interface_ipaddress_on_network_change__'
-                    )
-                    Queue().add_task_to_queue(
-                        'dhcp:restart',
-                        'housekeeper',
-                        '__update_interface_ipaddress_on_network_change__'
-                    )
-                    Queue().add_task_to_queue(
-                        'dhcp6:restart',
-                        'housekeeper',
-                        '__update_interface_ipaddress_on_network_change__'
-                    )
+                    Queue().add_task_to_queue(task='restart', param='dns', subsystem='housekeeper',
+                                              request_id='__update_interface_ipaddress_on_network_change__')
+                    Queue().add_task_to_queue(task='restart', param='dhcp', subsystem='housekeeper',
+                                              request_id='__update_interface_ipaddress_on_network_change__')
+                    Queue().add_task_to_queue(task='restart', param='dhcp6', subsystem='housekeeper',
+                                              request_id='__update_interface_ipaddress_on_network_change__')
                 else:
                     self.logger.info(f"{details['task']} is not for us.")
                     sleep(10)
@@ -1256,11 +1247,8 @@ class Config(object):
                         ]
                         where = [{"column": "name", "value": f"{name}"}]
                         Database().update('network', row, where)
-                        Queue().add_task_to_queue(
-                            'dhcp:restart',
-                            'housekeeper',
-                            '__update_dhcp_range_on_network_change__'
-                        )
+                        Queue().add_task_to_queue(task='restart', param='dhcp', subsystem='housekeeper',
+                                                  request_id='__update_dhcp_range_on_network_change__')
 
 
     def get_dhcp_range_ips_from_network(self, network=None, ipversion='ipv4'):

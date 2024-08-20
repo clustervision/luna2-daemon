@@ -435,8 +435,9 @@ class Network():
                         # for adding next free ip-s will be selected.
                         # time consuming therefor background
                         queue_id, _ = Queue().add_task_to_queue(
-                            f'update_all_interface_ipaddress:{name}',
-                            'network_change'
+                            task='update_all_interface_ipaddress',
+                            param=name,
+                            subsystem='network_change'
                         )
                         next_id = Queue().next_task_in_queue('network_change')
                         if queue_id == next_id:

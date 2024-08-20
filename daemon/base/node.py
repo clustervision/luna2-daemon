@@ -613,9 +613,12 @@ class Node():
                 # below might look as redundant but is added to prevent a possible race condition
                 # when many nodes are added in a loop.
                 # the below tasks ensures that even the last node will be included in dhcp/dns
-                Queue().add_task_to_queue('dhcp:restart', 'housekeeper', '__node_update__')
-                Queue().add_task_to_queue('dhcp6:restart', 'housekeeper', '__node_update__')
-                Queue().add_task_to_queue('dns:restart', 'housekeeper', '__node_update__')
+                Queue().add_task_to_queue(task='restart', param='dhcp', 
+                                          subsystem='housekeeper', request_id='__node_update__')
+                Queue().add_task_to_queue(task='restart', param='dhcp6', 
+                                          subsystem='housekeeper', request_id='__node_update__')
+                Queue().add_task_to_queue(task='restart', param='dns', 
+                                          subsystem='housekeeper', request_id='__node_update__')
 
                 # ---- we call the node plugin - maybe someone wants to run something after create/update?
                 group_details = Database().get_record_join(['group.name'],
@@ -879,9 +882,12 @@ class Node():
                 # Service().queue('dhcp6','restart')
                 # do we need dhcp restart? MAC is wiped on new NIC so no real need i guess. pending
                 #Service().queue('dns','restart')
-            	#Queue().add_task_to_queue('dhcp:restart', 'housekeeper', '__node_clone__')
-            	#Queue().add_task_to_queue('dhcp6:restart', 'housekeeper', '__node_clone__')
-                Queue().add_task_to_queue('dns:restart', 'housekeeper', '__node_clone__')
+                #Queue().add_task_to_queue(task='restart', param='dhcp', 
+                #                          subsystem='housekeeper', request_id='__node_clone__')
+                #Queue().add_task_to_queue(task='restart', param='dhcp6', 
+                #                          subsystem='housekeeper', request_id='__node_clone__')
+                Queue().add_task_to_queue(task='restart', param='dns', 
+                                          subsystem='housekeeper', request_id='__node_clone__')
 
                 # ---- we call the node plugin - maybe someone wants to run something after clone?
                 group_details = Database().get_record_join(['group.name'],
@@ -944,9 +950,12 @@ class Node():
             # below might look redundant but is added to prevent a possible race condition
             # when many nodes are added in a loop.
             # the below tasks ensures that even the last node will be included in dhcp/dns
-            Queue().add_task_to_queue('dhcp:restart', 'housekeeper', '__node_delete__')
-            Queue().add_task_to_queue('dhcp6:restart', 'housekeeper', '__node_delete__')
-            Queue().add_task_to_queue('dns:restart', 'housekeeper', '__node_delete__')
+            Queue().add_task_to_queue(task='restart', param='dhcp', 
+                                      subsystem='housekeeper', request_id='__node_delete__')
+            Queue().add_task_to_queue(task='restart', param='dhcp6', 
+                                      subsystem='housekeeper', request_id='__node_delete__')
+            Queue().add_task_to_queue(task='restart', param='dns', 
+                                      subsystem='housekeeper', request_id='__node_delete__')
             response = f'Node {name} with all its interfaces removed'
             status=True
             # ---- we call the node plugin - maybe someone wants to run something after delete?

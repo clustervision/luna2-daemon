@@ -215,7 +215,7 @@ class Service(object):
         self.logger.info("service_mother called")
         try:
 #            # Below section is already done in config/pack GET call but kept here in case we want to move it back
-#            queue_id,response = Queue().add_task_to_queue(f'{service}:{action}','service',request_id)
+#            queue_id,response = Queue().add_task_to_queue_legacy(f'{service}:{action}','service',request_id)
 #            if not queue_id:
 #                self.logger.info(f"service_mother cannot get queue_id")
 #                Status().add_message(request_id,"luna",f"error queuing my task")
@@ -233,15 +233,14 @@ class Service(object):
                 self.logger.info(f"service_mother sees job in queue as next: {next_id}")
                 details=Queue().get_task_details(next_id)
                 request_id=details['request_id']
-                service,action=details['task'].split(':')
+                action=details['task']
+                service=details['param']
 
                 if action and service:
-
                     Queue().update_task_status_in_queue(next_id,'in progress')
                     Status().add_message(request_id,"luna",f"{action} service {service}")
 
                     status, response = self.luna_service(service, action)
-
                     if status is True:
                         self.logger.info(f'service {service} {action} successful.')
                         Status().add_message(request_id,"luna",f"finished {action} service {service}")
@@ -260,7 +259,8 @@ class Service(object):
 
 
     def queue(self,service,action):
-        queue_id,response = Queue().add_task_to_queue(f'{service}:{action}','service','__internal__')
+        queue_id,response = Queue().add_task_to_queue(task=action, param=service,
+                                                      subsystem='service', request_id='__internal__')
         if queue_id:
             next_id = Queue().next_task_in_queue('service')
             if queue_id == next_id:

@@ -130,16 +130,14 @@ class Monitor():
         queue = Database().get_record(None, 'queue', "ORDER BY created ASC")
         if queue:
             status=True
-            regex=re.compile(r"^.*:noeof$")
             for task in queue:
                 details={}
+                details['level']='maintask'
+                if task['noeof']:
+                    details['level']='subtask'
                 for item in ['request_id','username_initiator','created','subsystem','task','status']:
-                    if item == 'task':
-                        if regex.match(task['task']):
-                            details['level']='subtask'
-                        else:
-                            details['level']='maintask'
                     details[item]=task[item]
+                details['task']+=f" {task['param']}"
                 response.append(details)
         return status, response
 

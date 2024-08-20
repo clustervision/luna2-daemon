@@ -54,11 +54,11 @@ class Queue(object):
 
         if not force:
             # pending. these datatime calls might not be mysql compliant.
-            where=f" WHERE subsystem='{subsystem}' AND task='{task}' AND created>datetime('now','-15 minute') ORDER BY id ASC LIMIT 1"
+            where=f" WHERE subsystem='{subsystem}' AND task='{task}' AND param='{param}' AND created>datetime('now','-15 minute') ORDER BY id ASC LIMIT 1"
             check = Database().get_record(None , 'queue', where)
             if check:
                 # we already have the same task in the queue
-                self.logger.info(f"We already have similar job in the queue {check[0]['task']} ({check[0]['id']}) and i will return the matching request_id: {check[0]['request_id']}")
+                self.logger.info(f"We already have similar job in the queue {check[0]['task']} {check[0]['param']} ({check[0]['id']}) and i will return the matching request_id: {check[0]['request_id']}")
                 return check[0]['id'],check[0]['request_id']
 
 #        current_datetime=datetime.now().replace(microsecond=0)
@@ -143,7 +143,7 @@ class Queue(object):
 
     def tasks_in_queue(self,subsystem=None,task=None,subitem=None):
         where=""
-        task_query, subitem_query, subsystem_query = "", "", "1=1"
+        task_query, subitem_query, subsystem_query = "", "", ""
         if task:
             task_query=f"AND task='{task}'"
         if subitem:
@@ -152,7 +152,7 @@ class Queue(object):
             subsystem_query=f"AND subsystem='{subsystem}'"
 #            where=f" WHERE subsystem='{subsystem}' LIMIT 1"
         if task_query or subitem_query or subsystem_query:
-            where=f" WHERE {subsystem_query} {task_query} {subitem_query} LIMIT 1"
+            where=f" WHERE 1=1 {subsystem_query} {task_query} {subitem_query} LIMIT 1"
         tasks = Database().get_record(None , 'queue', where)
         if tasks:
             return True

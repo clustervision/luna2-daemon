@@ -69,28 +69,29 @@ class Housekeeper(object):
                         request_id=None
                         request_id=details['request_id']
                         task = details['task']
-                        param,param2,*_=details['param'].split(':')+[None]+[None]
-                        self.logger.info(f"tasks_mother will work on {task} {param}")
+                        first,second,*_=details['param'].split(':')+[None]+[None]
+                        self.logger.info(f"tasks_mother will work on {task} {first}")
 
                         match task:
                             case 'restart':
-                                if param in ['dhcp','dhcp6','dns']:
+                                service=first
+                                if service in ['dhcp','dhcp6','dns']:
                                     Queue().update_task_status_in_queue(next_id,'in progress')
-                                    response, code = Service().luna_service(param, task)
+                                    response, code = Service().luna_service(service, task)
                             case 'cleanup_old_file':
                                 Queue().update_task_status_in_queue(next_id,'in progress')
-                                returned=OsImage().cleanup_file(param)
+                                returned=OsImage().cleanup_file(first)
                                 status=returned[0]
                                 if status is False and len(returned)>1:
                                     self.logger.error(f"cleanup_file: {returned[1]}")
                             case 'cleanup_old_provisioning':
-                                returned=OsImage().cleanup_provisioning(param)
+                                returned=OsImage().cleanup_provisioning(first)
                                 status=returned[0]
                                 if status is False and len(returned)>1:
                                     self.logger.error(f"cleanup_provisioning: {returned[1]}")
                             case 'sync_osimage_with_master':
-                                osimage=param
-                                master=param2
+                                osimage=first
+                                master=second
                                 Queue().update_task_status_in_queue(next_id,'in progress')
                                 ret,mesg=Journal().add_request(function='OsImager.schedule_cleanup',object=osimage,keeptrying=60)
                                 if ret is True:

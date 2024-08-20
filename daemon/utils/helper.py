@@ -800,6 +800,8 @@ class Helper(object):
         if key:
             if key in ['initrdfile','kernelfile']:
                 return f"{key}: Make sure to have a packed osimage and/or correct osimage (tag) set"
+            elif key in ['cleartoboot']:
+                return f"{key}: Booting has been temporarily paused due to constaints"
         return None
 
     # -----------------------------------------------------------------

@@ -936,9 +936,8 @@ class OsImage(object):
                                 if queue_id:
                                     if (not second) or (second != "nocleanup"):
                                         self.schedule_cleanup(first,request_id)
-                                    if queue_id:
-                                        queue_id,queue_response = Queue().add_task_to_queue(task='close_task', param=next_id,
-                                                                                            subsystem='osimage', request_id=request_id)
+                                    queue_id,queue_response = Queue().add_task_to_queue(task='close_task', param=next_id,
+                                                                                        subsystem='osimage', request_id=request_id)
 
                 elif action == "grab_n_pack_n_build_osimage":
                     Queue().update_task_status_in_queue(next_id,'in progress')

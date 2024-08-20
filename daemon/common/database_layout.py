@@ -285,6 +285,7 @@ DATABASE_LAYOUT_cluster = [
 {"column": "provision_fallback",   "datatype": "VARCHAR", "length": "20"},
 {"column": "debug",                "datatype": "INTEGER", "length": "10"},
 {"column": "security",             "datatype": "INTEGER", "length": "10"},
+{"column": "packing_bootpause",    "datatype": "INTEGER", "length": "10"},
 {"column": "createnode_ondemand",  "datatype": "INTEGER", "length": "10"},
 {"column": "nextnode_discover",    "datatype": "INTEGER", "length": "10"}]
 

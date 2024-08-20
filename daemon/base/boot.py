@@ -49,6 +49,7 @@ from base.node import Node
 from utils.journal import Journal
 from utils.ha import HA
 from utils.controller import Controller
+from utils.boot import Boot as UBoot
 
 
 # -------------------- custom Jinja filter to handle instream filtering -----------------------
@@ -518,6 +519,9 @@ class Boot():
             else:
                 osimage = Database().get_record(None, 'osimage', f' WHERE id = {data["osimageid"]}')
             if osimage:
+                if UBoot().verify_bootpause(osimage[0]['name']):
+                    self.logger.info(f"osimage {osimage[0]['name']} is currently being packed. Node will wait before booting.")
+                    data['cleartoboot']=None
                 if osimage[0]['kernelfile']:
                     data['kernelfile'] = osimage[0]['kernelfile']
                 if osimage[0]['initrdfile']:
@@ -881,6 +885,9 @@ class Boot():
             else:
                 osimage = Database().get_record(None, 'osimage', f' WHERE id = {data["osimageid"]}')
             if osimage:
+                if UBoot().verify_bootpause(osimage[0]['name']):
+                    self.logger.info(f"osimage {osimage[0]['name']} is currently being packed. Node will wait before booting.")
+                    data['cleartoboot']=None
                 if osimage[0]['kernelfile']:
                     data['kernelfile'] = osimage[0]['kernelfile']
                 if osimage[0]['initrdfile']:
@@ -1099,6 +1106,9 @@ class Boot():
             else:
                 osimage = Database().get_record(None, 'osimage', f' WHERE id = {data["osimageid"]}')
             if osimage:
+                if UBoot().verify_bootpause(osimage[0]['name']):
+                    self.logger.info(f"osimage {osimage[0]['name']} is currently being packed. Node will wait before booting.")
+                    data['cleartoboot']=None
                 if osimage[0]['kernelfile']:
                     data['kernelfile'] = osimage[0]['kernelfile']
                 if osimage[0]['initrdfile']:

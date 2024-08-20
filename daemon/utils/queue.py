@@ -141,16 +141,18 @@ class Queue(object):
             return task[0]
         return False
 
-    def tasks_in_queue(self,subsystem=None,task=None,subitem=None):
+    def tasks_in_queue(self,subsystem=None,task=None,subitem=None,exactmatch=True):
         where=""
         task_query, subitem_query, subsystem_query = "", "", ""
         if task:
             task_query=f"AND task='{task}'"
         if subitem:
-            subitem_query=f"AND param LIKE '{subitem}%'"
+            if exactmatch:
+                subitem_query=f"AND param='{subitem}'"
+            else:
+                subitem_query=f"AND param LIKE '{subitem}%'"
         if subsystem:
             subsystem_query=f"AND subsystem='{subsystem}'"
-#            where=f" WHERE subsystem='{subsystem}' LIMIT 1"
         if task_query or subitem_query or subsystem_query:
             where=f" WHERE 1=1 {subsystem_query} {task_query} {subitem_query} LIMIT 1"
         tasks = Database().get_record(None , 'queue', where)

@@ -47,7 +47,9 @@ DATABASE_LAYOUT_queue = [
 {"column": "username_initiator",   "datatype": "text"},
 {"column": "created",              "datatype": "numeric"},
 {"column": "subsystem",            "datatype": "varchar", "length": "128"},
-{"column": "task",                 "datatype": "text"},
+{"column": "task",                 "datatype": "varchar", "length": "128"},
+{"column": "param",                "datatype": "varchar", "length": "128"},
+{"column": "noeof",                "datatype": "integer", "length": "10"},
 {"column": "status",               "datatype": "varchar", "length": "64"}]
 
 DATABASE_LAYOUT_osimage = [
@@ -283,6 +285,7 @@ DATABASE_LAYOUT_cluster = [
 {"column": "provision_fallback",   "datatype": "VARCHAR", "length": "20"},
 {"column": "debug",                "datatype": "INTEGER", "length": "10"},
 {"column": "security",             "datatype": "INTEGER", "length": "10"},
+{"column": "packing_bootpause",    "datatype": "INTEGER", "length": "10"},
 {"column": "createnode_ondemand",  "datatype": "INTEGER", "length": "10"},
 {"column": "nextnode_discover",    "datatype": "INTEGER", "length": "10"}]
 

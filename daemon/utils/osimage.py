@@ -70,7 +70,9 @@ class OsImage(object):
             result=False
             details=Queue().get_task_details(taskid)
             request_id=details['request_id']
-            action,node,osimage,nodry,noeof,*_=details['task'].split(':')+[None]+[None]+[None]+[None]
+            action = details['task']
+            noeof = details['noeof']
+            node,osimage,nodry,*_=details['param'].split(':')+[None]+[None]
             runtype='DRY RUN'
             if not nodry:
                 nodry=False
@@ -204,7 +206,9 @@ class OsImage(object):
             result=False
             details=Queue().get_task_details(taskid)
             request_id=details['request_id']
-            action,osimage,noeof,*_=details['task'].split(':')+[None]+[None]
+            action=details['task']
+            noeof=details['noeof']
+            osimage=details['param']
 
             if action == "pack_osimage":
                 image_directory = CONSTANT['FILES']['IMAGE_DIRECTORY']
@@ -308,7 +312,9 @@ class OsImage(object):
             result=False
             details=Queue().get_task_details(taskid)
             request_id=details['request_id']
-            action,osimage,noeof,*_=details['task'].split(':')+[None]+[None]
+            action=details['task']
+            noeof=details['noeof']
+            osimage=details['param']
 
             if action == "build_osimage":
                 image_directory = CONSTANT['FILES']['IMAGE_DIRECTORY']
@@ -398,7 +404,9 @@ class OsImage(object):
             result=False
             details=Queue().get_task_details(taskid)
             request_id=details['request_id']
-            action,src,tag,dst,noeof,*_=details['task'].split(':')+[None]+[None]+[None]
+            action=details['task']
+            noeof=details['noeof']
+            src,tag,dst,*_=details['param'].split(':')+[None]
 
             if tag and tag == "None":
                 tag = None
@@ -488,7 +496,9 @@ class OsImage(object):
             result=False
             details=Queue().get_task_details(taskid)
             request_id=details['request_id']
-            action,dst,osimage,nodry,noeof,*_=details['task'].split(':')+[None]+[None]+[None]
+            action=details['task']
+            noeof=details['noeof']
+            dst,osimage,nodry,*_=details['param'].split(':')+[None]
             runtype='DRY RUN'
             if not nodry:
                 nodry=False
@@ -648,7 +658,9 @@ class OsImage(object):
             result,mesg=False,None
             details=Queue().get_task_details(taskid)
             request_id=details['request_id']
-            action,osimage,noeof,*_=details['task'].split(':')+[None]+[None]
+            action=details['task']
+            noeof=details['noeof']
+            osimage=details['param']
 
             if action == "provision_osimage":
                 Status().add_message(request_id,"luna",f"creating provisioning for osimage {osimage}")
@@ -724,7 +736,9 @@ class OsImage(object):
             result=False
             details=Queue().get_task_details(taskid)
             request_id=details['request_id']
-            action,osimage,noeof,*_=details['task'].split(':')+[None]+[None]
+            action=details['task']
+            noeof=details['noeof']
+            osimage=details['param']
 
             if action == "unpack_osimage":
                 image_directory = CONSTANT['FILES']['IMAGE_DIRECTORY']
@@ -846,9 +860,11 @@ class OsImage(object):
                 if image[0][item]:
                     inusebytag = Database().get_record(None, 'osimagetag', f"WHERE osimageid='{image[0]['id']}' AND {item}='"+image[0][item]+"'")
                     if not inusebytag:
-                        queue_id,queue_response = Queue().add_task_to_queue(f'cleanup_old_file:'+image[0][item],'housekeeper',request_id,None,'1h')
+                        queue_id,queue_response = Queue().add_task_to_queue(task='cleanup_old_file', param=image[0][item], 
+                                                                            subsystem='housekeeper', request_id=request_id, when='1h')
                         if item == 'imagefile':
-                            queue_id,queue_response = Queue().add_task_to_queue(f'cleanup_old_provisioning:'+image[0][item],'housekeeper',request_id,None,'1h')
+                            queue_id,queue_response = Queue().add_task_to_queue(task='cleanup_old_provisioning', param=image[0][item],
+                                                                                subsystem='housekeeper', request_id=request_id, when='1h')
         return queue_id
 
     def schedule_provision(self,osimage,subsystem=None,request_id=None):
@@ -856,7 +872,7 @@ class OsImage(object):
             request_id='__internal__'
         if not subsystem:
             subsystem='osimage'
-        queue_id,queue_response = Queue().add_task_to_queue(f"provision_osimage:{osimage}",subsystem,request_id)
+        queue_id,queue_response = Queue().add_task_to_queue(task='provision_osimage', param=osimage, subsystem=subsystem, request_id=request_id)
         return queue_id
 
     # ------------------------------------------------------------------- 
@@ -868,7 +884,7 @@ class OsImage(object):
         try:
 
 #            # Below section is already done in config/pack GET call but kept here in case we want to move it back
-#            queue_id,response = Queue().add_task_to_queue(f'pack_n_build_osimage:{osimage}','osimage',request_id)
+#            queue_id,response = Queue().add_task_to_queue_legacy(f'pack_n_build_osimage:{osimage}','osimage',request_id)
 #            if not queue_id:
 #                self.logger.info(f"pack_n_build_mother cannot get queue_id")
 #                Status().add_message(request_id,"luna",f"error queuing my task")
@@ -889,40 +905,51 @@ class OsImage(object):
             while next_id := Queue().next_task_in_queue('osimage','queued',only_request_id):
                 details=Queue().get_task_details(next_id)
                 request_id=details['request_id']
-                action,first,second,third,*_=details['task'].split(':')+[None]+[None]+[None]
+                action=details['task']
+                noeof=details['noeof']
+                first,second,third,*_=details['param'].split(':')+[None]+[None]+[None]
                 self.logger.info(f"osimage_mother sees job {action} in queue as next: {next_id}")
 
                 if action == "clone_n_pack_osimage":
                     Queue().update_task_status_in_queue(next_id,'in progress')
                     if first and second:
-                        queue_id,queue_response = Queue().add_task_to_queue(f"copy_osimage:{first}:{second}:{third}:noeof",'osimage',request_id)
+                        queue_id,queue_response = Queue().add_task_to_queue(task='copy_osimage',param=f'{first}:{second}:{third}',
+                                                                            noeof=True, subsystem='osimage',request_id=request_id)
                         if queue_id:
-                            queue_id,queue_response = Queue().add_task_to_queue(f"pack_n_build_osimage:{third}:nocleanup",'osimage',request_id)
+                            queue_id,queue_response = Queue().add_task_to_queue(task='pack_n_build_osimage', param=f'{third}:nocleanup',
+                                                                                subsystem='osimage',request_id=request_id)
                             if queue_id:
-                                queue_id,queue_response = Queue().add_task_to_queue(f"close_task:{next_id}",'osimage',request_id)
+                                queue_id,queue_response = Queue().add_task_to_queue(task='close_task', param=next_id, 
+                                                                                    subsystem='osimage', request_id=request_id)
 
-                elif action == "pack_n_build_osimage" or action == "pack_n_tar_osimage":  # in future, pack_n_tar should go. only pack_n_build stays. it's just here for legacy reasons. pending
+                elif action == "pack_n_build_osimage":
                     Queue().update_task_status_in_queue(next_id,'in progress')
                     if first:
-                        queue_id,queue_response = Queue().add_task_to_queue(f"pack_osimage:{first}:noeof",'osimage',request_id)
+                        queue_id,queue_response = Queue().add_task_to_queue(task='pack_osimage', param=first, noeof=True, 
+                                                                            subsystem='osimage', request_id=request_id)
                         if queue_id:
-                            queue_id,queue_response = Queue().add_task_to_queue(f"build_osimage:{first}:noeof",'osimage',request_id)
+                            queue_id,queue_response = Queue().add_task_to_queue(task='build_osimage', param=first, noeof=True,
+                                                                                subsystem='osimage',request_id=request_id)
                             if queue_id:
-                                queue_id,queue_response = Queue().add_task_to_queue(f"provision_osimage:{first}",'osimage',request_id)
+                                queue_id,queue_response = Queue().add_task_to_queue(task='provision_osimage', param=first, 
+                                                                                    subsystem='osimage', request_id=request_id)
                                 if queue_id:
                                     if (not second) or (second != "nocleanup"):
                                         self.schedule_cleanup(first,request_id)
-                                    if queue_id:
-                                        queue_id,queue_response = Queue().add_task_to_queue(f"close_task:{next_id}",'osimage',request_id)
+                                    queue_id,queue_response = Queue().add_task_to_queue(task='close_task', param=next_id,
+                                                                                        subsystem='osimage', request_id=request_id)
 
                 elif action == "grab_n_pack_n_build_osimage":
                     Queue().update_task_status_in_queue(next_id,'in progress')
                     if first and second:
-                        queue_id,queue_response = Queue().add_task_to_queue(f"grab_osimage:{first}:{second}:{third}:noeof",'osimage',request_id)
+                        queue_id,queue_response = Queue().add_task_to_queue(task='grab_osimage', param=f'{first}:{second}:{third}', noeof=True,
+                                                                            subsystem='osimage', request_id=request_id)
                         if queue_id:
-                            queue_id,queue_response = Queue().add_task_to_queue(f"pack_n_build_osimage:{second}",'osimage',request_id)
+                            queue_id,queue_response = Queue().add_task_to_queue(task='pack_n_build_osimage', param=second,
+                                                                                subsystem='osimage', request_id=request_id)
                             if queue_id:
-                                queue_id,queue_response = Queue().add_task_to_queue(f"close_task:{next_id}",'osimage',request_id)
+                                queue_id,queue_response = Queue().add_task_to_queue(task='close_task', param=next_id,
+                                                                                    subsystem='osimage', request_id=request_id)
 
 
                 # below are internal calls.
@@ -1003,7 +1030,8 @@ class OsImage(object):
             while next_id := Queue().next_task_in_queue('osimage','parked',only_request_id):
                 details=Queue().get_task_details(next_id)
                 request_id=details['request_id']
-                action,first,second,third,*_=details['task'].split(':')+[None]+[None]+[None]
+                action=details['task']
+                first,second,third,*_=details['param'].split(':')+[None]+[None]+[None]
                 self.logger.info(f"osimage_mother sees parked job {action} in queue as next: {next_id}")
 
                 # though we have this task, it's there to make sure all image related activities are done

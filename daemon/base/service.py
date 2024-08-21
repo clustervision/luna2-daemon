@@ -68,11 +68,8 @@ class Service():
         response = f'Internal error: service {name} {action} failed. No sign of life of spawned thread'
         #Antoine
         request_id = str(time()) + str(randint(1001, 9999)) + str(getpid())
-        queue_id, queue_response = Queue().add_task_to_queue(
-            f'{name}:{action}',
-            'service',
-            request_id
-        )
+        queue_id, queue_response = Queue().add_task_to_queue(task=action, param=name, 
+                                                             subsystem='service', request_id=request_id)
         if not queue_id:
             self.logger.info("service GET cannot get queue_id")
             status=False

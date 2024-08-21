@@ -420,6 +420,7 @@ def bootstrap(bootstrapfile=None):
             {'column': 'provision_fallback', 'value': 'http'},
             {'column': 'security', 'value': '0'},
             {'column': 'debug', 'value': '0'},
+            {'column': 'packing_bootpause', 'value': '1'},
             {'column': 'createnode_ondemand', 'value': '1'},
             {'column': 'nextnode_discover', 'value': '0'},
             {'column': 'nameserver_ip', 'value': defaultserver_ip},

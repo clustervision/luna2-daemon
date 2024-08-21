@@ -67,31 +67,31 @@ class Housekeeper(object):
                         self.logger.info(f"tasks_mother sees job in queue as next: {next_id}")
                         details=Queue().get_task_details(next_id)
                         request_id=None
-                        if 'request_id' in details:
-                            request_id=details['request_id']
-                        first,second,third,*_=details['task'].split(':')+[None]+[None]+[None]
-                        self.logger.info(f"tasks_mother will work on {first} {second}")
+                        request_id=details['request_id']
+                        task = details['task']
+                        first,second,*_=details['param'].split(':')+[None]+[None]
+                        self.logger.info(f"tasks_mother will work on {task} {first}")
 
-                        match first:
-                            case 'dhcp' | 'dhcp6' | 'dns':
+                        match task:
+                            case 'restart':
                                 service=first
-                                action=second
-                                Queue().update_task_status_in_queue(next_id,'in progress')
-                                response, code = Service().luna_service(service, action)
+                                if service in ['dhcp','dhcp6','dns']:
+                                    Queue().update_task_status_in_queue(next_id,'in progress')
+                                    response, code = Service().luna_service(service, task)
                             case 'cleanup_old_file':
                                 Queue().update_task_status_in_queue(next_id,'in progress')
-                                returned=OsImage().cleanup_file(second)
+                                returned=OsImage().cleanup_file(first)
                                 status=returned[0]
                                 if status is False and len(returned)>1:
                                     self.logger.error(f"cleanup_file: {returned[1]}")
                             case 'cleanup_old_provisioning':
-                                returned=OsImage().cleanup_provisioning(second)
+                                returned=OsImage().cleanup_provisioning(first)
                                 status=returned[0]
                                 if status is False and len(returned)>1:
                                     self.logger.error(f"cleanup_provisioning: {returned[1]}")
                             case 'sync_osimage_with_master':
-                                osimage=second
-                                master=third
+                                osimage=first
+                                master=second
                                 Queue().update_task_status_in_queue(next_id,'in progress')
                                 ret,mesg=Journal().add_request(function='OsImager.schedule_cleanup',object=osimage,keeptrying=60)
                                 if ret is True:
@@ -104,7 +104,7 @@ class Housekeeper(object):
                                     Journal().add_request(function='Downloader.pull_image_files',object=osimage,param=master)
                                     Journal().add_request(function='OsImager.schedule_provision',object=osimage,param='housekeeper')
                                     if HA().get_syncimages() is True:
-                                        Journal().add_request(function='Queue.add_task_to_queue',object=f'unpack_osimage:{osimage}',param='housekeeper')
+                                        Journal().add_request(function='Queue.add_task_to_queue_legacy',object=f'unpack_osimage:{osimage}',param='housekeeper')
                                 else:
                                     Queue().update_task_status_in_queue(next_id,'stuck')
                                     remove_from_queue=False
@@ -326,8 +326,9 @@ class Housekeeper(object):
                                         status, data=tables_object.fetch_table(mismatch['table'],mismatch['host'])
                                         if status:
                                             tables_object.import_table(table=mismatch['table'],data=data,emptyok=True)
-                                    Queue().add_task_to_queue('dhcp:restart', 'housekeeper', '__node_update__')
-                                    Queue().add_task_to_queue('dns:restart', 'housekeeper', '__node_update__')
+                                    Queue().add_task_to_queue(task='restart', param='dhcp', subsystem='housekeeper', request_id='__table_fix__')
+                                    Queue().add_task_to_queue(task='restart', param='dhcp6', subsystem='housekeeper', request_id='__table_fix__')
+                                    Queue().add_task_to_queue(task='restart', param='dns', subsystem='housekeeper', request_id='__table_fix__')
                             sum_tel=720
                         sum_tel-=1
                     # --------------------------- end of magic

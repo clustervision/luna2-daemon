@@ -404,8 +404,9 @@ class Group():
                             result = Database().insert('groupinterface', row)
                             self.logger.info(f'Interface created => {result} .')
                             queue_id, _ = Queue().add_task_to_queue(
-                                f'add_interface_to_group_nodes:{name}:{interface_name}',
-                                'group_interface'
+                                task='add_interface_to_group_nodes',
+                                param=f'{name}:{interface_name}',
+                                subsystem='group_interface'
                             )
                         else: # we update only
                             row = Helper().make_rows(ifx)
@@ -416,8 +417,9 @@ class Group():
                             result = Database().update('groupinterface', row, where)
                             self.logger.info(f'Interface updated => {result} .')
                             queue_id, _ = Queue().add_task_to_queue(
-                                f'update_interface_for_group_nodes:{name}:{interface_name}',
-                                'group_interface'
+                                task='update_interface_for_group_nodes',
+                                param=f'{name}:{interface_name}',
+                                subsystem='group_interface'
                             )
                         # below section takes care(in the background) the adding/renaming/deleting.
                         # for adding next free ip-s will be selected. time consuming there for

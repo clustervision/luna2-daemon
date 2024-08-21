@@ -399,11 +399,13 @@ class OSImage():
                     return status, "OS Image cloned successfully"
                 request_id  = str(time()) + str(randint(1001, 9999)) + str(getpid())
                 if bare is not False:
-                    task = f"clone_osimage:{name}:{tag}:{data['name']}"
-                    task_id, text = Queue().add_task_to_queue(task, 'osimage', request_id)
+                    param = f"{name}:{tag}:{data['name']}"
+                    task_id, text = Queue().add_task_to_queue(task='clone_osimage', param=param, 
+                                                              subsystem='osimage', request_id=request_id)
                 else:
-                    task = f"clone_n_pack_osimage:{name}:{tag}:{data['name']}"
-                    task_id, text = Queue().add_task_to_queue(task, 'osimage', request_id)
+                    param = f"{name}:{tag}:{data['name']}"
+                    task_id, text = Queue().add_task_to_queue(task='clone_n_pack_osimage', param=param, 
+                                                              subsystem='osimage', request_id=request_id)
                 if not task_id:
                     self.logger.info("config_osimage_clone cannot get queue_id")
                     status=False
@@ -460,11 +462,11 @@ class OSImage():
         if image:
             for item in ['kernelfile','initrdfile','imagefile']:
                 if image[0][item]:
-                    queue_id,queue_response = Queue().add_task_to_queue(f'cleanup_old_file:'+image[0][item],
-                                                                         'housekeeper','__image_delete__',None,'1h')
+                    queue_id,queue_response = Queue().add_task_to_queue(task='cleanup_old_file', param=image[0][item],
+                                                                        subsystem='housekeeper', request_id='__image_delete__', when='1h')
             if image[0]['imagefile']:
-                queue_id,queue_response = Queue().add_task_to_queue(f'cleanup_old_provisioning:'+image[0]['imagefile'],
-                                                                     'housekeeper','__image_delete__',None,'1h')
+                queue_id,queue_response = Queue().add_task_to_queue(task='cleanup_old_provisioning', param=image[0]['imagefile'],
+                                                                    subsystem='housekeeper', request_id='__image_delete__', when='1h')
         tag_details = Database().get_record_join(
             ['osimagetag.id as tagid','osimagetag.*','osimage.id as osimageid'],
             ['osimagetag.osimageid=osimage.id'],
@@ -474,11 +476,11 @@ class OSImage():
             for tag_detail in tag_details:
                 for item in ['kernelfile','initrdfile','imagefile']:
                     if tag_detail[item]:
-                        queue_id,queue_response = Queue().add_task_to_queue(f'cleanup_old_file:'+tag_detail[item],
-                                                                             'housekeeper','__tag_delete__',None,'1h')
+                        queue_id,queue_response = Queue().add_task_to_queue(task='cleanup_old_file', param=tag_detail[item],
+                                                                            subsystem='housekeeper', request_id='__tag_delete__', when='1h')
                 if tag_detail['imagefile']:
-                    queue_id,queue_response = Queue().add_task_to_queue(f'cleanup_old_provisioning:'+tag_detail['imagefile'],
-                                                                         'housekeeper','__tag_delete__',None,'1h')
+                    queue_id,queue_response = Queue().add_task_to_queue(task='cleanup_old_provisioning', param=tag_detail['imagefile'],
+                                                                        subsystem='housekeeper', request_id='__tag_delete__', when='1h')
                 status, response = Model().delete_record_by_id(
                     id = tag_detail['tagid'],
                     table = 'osimagetag',
@@ -522,11 +524,11 @@ class OSImage():
                 if tag_details[0]['osimage'+item] == tag_details[0][item]:
                     # meaning: we are still using one for osimage itself! Antoine
                     continue
-                queue_id,queue_response = Queue().add_task_to_queue(f'cleanup_old_file:'+tag_details[0][item],
-                                                                    'housekeeper','__tag_delete__',None,'1h')
+                queue_id,queue_response = Queue().add_task_to_queue(task='cleanup_old_file', param=tag_details[0][item],
+                                                                    subsystem='housekeeper', request_id='__tag_delete__', when='1h')
                 if item == 'imagefile':
-                    queue_id,queue_response = Queue().add_task_to_queue(f'cleanup_old_provisioning:'+tag_details[0][item],
-                                                                    'housekeeper','__tag_delete__',None,'1h')
+                    queue_id,queue_response = Queue().add_task_to_queue(task='cleanup_old_provisioning', param=tag_details[0][item],
+                                                                        subsystem='housekeeper', request_id='__tag_delete__', when='1h')
         return status, response
 
 
@@ -572,11 +574,13 @@ class OSImage():
             request_id = str(time()) + str(randint(1001, 9999)) + str(getpid())
             task_id, text = None, None
             if (bare is not False) or (nodry is False):
-                task = f'grab_osimage:{node}:{osimage}:{nodry}'
-                task_id, text = Queue().add_task_to_queue(task, 'osimage', request_id)
+                param = f'{node}:{osimage}:{nodry}'
+                task_id, text = Queue().add_task_to_queue(task='grab_osimage', param=param, 
+                                                          subsystem='osimage', request_id=request_id)
             else:
-                task = f'grab_n_pack_n_build_osimage:{node}:{osimage}:{nodry}'
-                task_id, text = Queue().add_task_to_queue(task, 'osimage', request_id)
+                param = f'{node}:{osimage}:{nodry}'
+                task_id, text = Queue().add_task_to_queue(task='grab_n_pack_n_build_osimage', param=param,
+                                                          subsystem='osimage', request_id=request_id)
             if not task_id:
                 self.logger.info("config_osimage_grab cannot get queue_id")
                 status=False
@@ -674,11 +678,13 @@ class OSImage():
             request_id = str(time()) + str(randint(1001, 9999)) + str(getpid())
             task_id, text = None, None
             if to_group is True:
-                task = f'push_osimage_to_group:{entity_name}:{osimage}:{nodry}'
-                task_id, text = Queue().add_task_to_queue(task, 'osimage', request_id)
+                param = f'{entity_name}:{osimage}:{nodry}'
+                task_id, text = Queue().add_task_to_queue(task='push_osimage_to_group', param=param,
+                                                          subsystem='osimage', request_id=request_id)
             else:
-                task = f'push_osimage_to_node:{entity_name}:{osimage}:{nodry}'
-                task_id, text = Queue().add_task_to_queue(task, 'osimage', request_id)
+                param = f'{entity_name}:{osimage}:{nodry}'
+                task_id, text = Queue().add_task_to_queue(task='push_osimage_to_node', param=param,
+                                                          subsystem='osimage', request_id=request_id)
             if not task_id:
                 self.logger.info("config_osimage_push cannot get queue_id")
                 status=False
@@ -740,8 +746,8 @@ class OSImage():
             row = [{"column": "changed", "value": '0'}]
             Database().update('osimage', row, where)
         request_id = str(time()) + str(randint(1001, 9999)) + str(getpid())
-        task = f'pack_n_build_osimage:{name}'
-        queue_id, queue_response = Queue().add_task_to_queue(task, 'osimage', request_id, force)
+        queue_id, queue_response = Queue().add_task_to_queue(task='pack_n_build_osimage', param=name,
+                                                             subsystem='osimage', request_id=request_id, force=force)
         if not queue_id:
             self.logger.info("config_osimage_pack cannot get queue_id")
             status=False
@@ -818,9 +824,8 @@ class OSImage():
                         return status, f'OS Image {name} Kernel updated'
                     request_id = str(time()) + str(randint(1001, 9999)) + str(getpid())
                     task_id, text = None,None
-                    #task = f'pack_osimage:{name}'
-                    task = f'pack_n_build_osimage:{name}'
-                    task_id, text = Queue().add_task_to_queue(task, 'osimage', request_id)
+                    task_id, text = Queue().add_task_to_queue(task='pack_n_build_osimage', param=name,
+                                                              subsystem='osimage', request_id=request_id)
                     if not task_id:
                         self.logger.info("config_osimage_kernel cannot get queue_id")
                         status=False

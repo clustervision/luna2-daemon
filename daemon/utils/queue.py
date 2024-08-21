@@ -33,14 +33,20 @@ __status__      = 'Development'
 import re
 from utils.log import Log
 from utils.database import Database
-#from utils.helper import Helper
+from utils.helper import Helper
 
 class Queue(object):
 
     def __init__(self):
         self.logger = Log.get_logger()
 
-    def add_task_to_queue(self,task,subsystem=None,request_id=None,force=None,when=None):
+    # legacy. currently only here for a journal call from housekeeper. tbd. -Antoine
+    def add_task_to_queue_legacy(self,task,subsystem=None,request_id=None,force=None,when=None):
+        task, param=task.split(':',1)
+        return self.add_task_to_queue(task=task, param=param, subsystem=subsystem, request_id=request_id, force=force, when=when)
+
+    def add_task_to_queue(self,task,param=None,subsystem=None,noeof=False,request_id=None,force=None,when=None):
+        noeof=Helper().bool_to_string(noeof)
         if subsystem is None:
             subsystem="anonymous"
         if request_id is None:
@@ -48,11 +54,11 @@ class Queue(object):
 
         if not force:
             # pending. these datatime calls might not be mysql compliant.
-            where=f" WHERE subsystem='{subsystem}' AND task='{task}' AND created>datetime('now','-15 minute') ORDER BY id ASC LIMIT 1"
+            where=f" WHERE subsystem='{subsystem}' AND task='{task}' AND param='{param}' AND created>datetime('now','-15 minute') ORDER BY id ASC LIMIT 1"
             check = Database().get_record(None , 'queue', where)
             if check:
                 # we already have the same task in the queue
-                self.logger.info(f"We already have similar job in the queue {check[0]['task']} ({check[0]['id']}) and i will return the matching request_id: {check[0]['request_id']}")
+                self.logger.info(f"We already have similar job in the queue {check[0]['task']} {check[0]['param']} ({check[0]['id']}) and i will return the matching request_id: {check[0]['request_id']}")
                 return check[0]['id'],check[0]['request_id']
 
 #        current_datetime=datetime.now().replace(microsecond=0)
@@ -80,6 +86,8 @@ class Queue(object):
         row=[{"column": "created", "value": str(current_datetime)},
              {"column": "username_initiator", "value": "luna"},
              {"column": "task", "value": f"{task}"},
+             {"column": "param", "value": f"{param}"},
+             {"column": "noeof", "value": f"{noeof}"},
              {"column": "subsystem", "value": f"{subsystem}"},
              {"column": "request_id", "value": f"{request_id}"},
              {"column": "status", "value": "queued"}]
@@ -119,7 +127,7 @@ class Queue(object):
             status_query=f"status='{status}' AND"
         if request_id:
             request_id_query=f"request_id='{request_id}' AND"
-        where=f" WHERE subsystem='{subsystem}' AND {status_query} {request_id_query} task LIKE '%:{subitem}%' AND created>datetime('now','-60 minute') AND created<=datetime('now') ORDER BY id ASC LIMIT 1"
+        where=f" WHERE subsystem='{subsystem}' AND {status_query} {request_id_query} param LIKE '{subitem}%' AND created>datetime('now','-60 minute') AND created<=datetime('now') ORDER BY id ASC LIMIT 1"
         task = Database().get_record(None , 'queue', where)
         if task:
             return task[0]['id']
@@ -129,13 +137,24 @@ class Queue(object):
         where=f" WHERE id='{taskid}'"
         task = Database().get_record(None , 'queue', where)
         if task:
+            task[0]['noeof']=Helper().make_bool(task[0]['noeof'])
             return task[0]
         return False
 
-    def tasks_in_queue(self,subsystem=None):
-        where=''
+    def tasks_in_queue(self,subsystem=None,task=None,subitem=None,exactmatch=True):
+        where=""
+        task_query, subitem_query, subsystem_query = "", "", ""
+        if task:
+            task_query=f"AND task='{task}'"
+        if subitem:
+            if exactmatch:
+                subitem_query=f"AND param='{subitem}'"
+            else:
+                subitem_query=f"AND param LIKE '{subitem}%'"
         if subsystem:
-            where=f" WHERE subsystem='{subsystem}' LIMIT 1"
+            subsystem_query=f"AND subsystem='{subsystem}'"
+        if task_query or subitem_query or subsystem_query:
+            where=f" WHERE 1=1 {subsystem_query} {task_query} {subitem_query} LIMIT 1"
         tasks = Database().get_record(None , 'queue', where)
         if tasks:
             return True

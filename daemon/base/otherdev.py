@@ -235,7 +235,7 @@ class OtherDev():
                         )
                         if network:
                             networkname = network[0]['networkname']
-                    ipaddress6, result, result6 = None, False, True
+                    ipaddress6, result, result6, avail = None, False, True, None
                     if not ipaddress:
                         if not network:
                             where = f' WHERE `name` = "{networkname}"'
@@ -245,20 +245,27 @@ class OtherDev():
                         if network:
                             if network[0]['network']:
                                 ips = Config().get_all_occupied_ips_from_network(networkname)
-                                avail = Helper().get_available_ip(
-                                    network[0]['network'],
-                                    network[0]['subnet'],
-                                    ips, ping=True
-                                )
+                                if 'ipaddress' in network[0]:
+                                    avail = Helper().get_next_ip(network[0]['ipaddress'], ips, ping=True)
+                                if not avail:
+                                    avail = Helper().get_available_ip(
+                                        network[0]['network'],
+                                        network[0]['subnet'],
+                                        ips, ping=True
+                                    )
                                 if avail:
                                     ipaddress = avail
+                            avail = None
                             if network[0]['network_ipv6']:
                                 ips = Config().get_all_occupied_ips_from_network(networkname,'ipv6')
-                                avail = Helper().get_available_ip(
-                                    network[0]['network_ipv6'],
-                                    network[0]['subnet_ipv6'],
-                                    ips, ping=True
-                                )
+                                if 'ipaddress_ipv6' in network[0]:
+                                    avail = Helper().get_next_ip(network[0]['ipaddress_ipv6'], ips, ping=True)
+                                if not avail:
+                                    avail = Helper().get_available_ip(
+                                        network[0]['network_ipv6'],
+                                        network[0]['subnet_ipv6'],
+                                        ips, ping=True
+                                    )
                                 if avail:
                                     ipaddress6 = avail
                         else:

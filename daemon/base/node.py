@@ -837,11 +837,13 @@ class Node():
                             if network:
                                 if network[0]['network']:
                                     ips = Config().get_all_occupied_ips_from_network(networkname)
-                                    avail = Helper().get_available_ip(
-                                        network[0]['network'],
-                                        network[0]['subnet'],
-                                        ips, ping=True
-                                    )
+                                    avail = Helper().get_next_ip(node_interface['ipaddress'], ips, ping=True)
+                                    if not avail:
+                                        avail = Helper().get_available_ip(
+                                            network[0]['network'],
+                                            network[0]['subnet'],
+                                            ips, ping=True
+                                        )
 
                                     if avail:
                                         result, message = Config().node_interface_ipaddress_config(
@@ -857,11 +859,13 @@ class Node():
                                 # IPv6
                                 if network[0]['network_ipv6']:
                                     ips = Config().get_all_occupied_ips_from_network(networkname,'ipv6')
-                                    avail = Helper().get_available_ip(
-                                        network[0]['network_ipv6'],
-                                        network[0]['subnet_ipv6'],
-                                        ips, ping=True
-                                    )
+                                    avail = Helper().get_next_ip(node_interface['ipaddress_ipv6'], ips, ping=True)
+                                    if not avail:
+                                        avail = Helper().get_available_ip(
+                                            network[0]['network_ipv6'],
+                                            network[0]['subnet_ipv6'],
+                                            ips, ping=True
+                                        )
 
                                     if avail:
                                         result, message = Config().node_interface_ipaddress_config(

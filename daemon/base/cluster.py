@@ -61,22 +61,8 @@ class Cluster():
         if cluster:
             cluster_id = cluster[0]['id']
             del cluster[0]['id']
-            if cluster[0]['debug']:
-                cluster[0]['debug'] = True
-            else:
-                cluster[0]['debug'] = False
-            if cluster[0]['security']:
-                cluster[0]['security'] = True
-            else:
-                cluster[0]['security'] = False
-            if cluster[0]['createnode_ondemand']:
-                cluster[0]['createnode_ondemand'] = True
-            else:
-                cluster[0]['createnode_ondemand'] = False
-            if cluster[0]['nextnode_discover']:
-                cluster[0]['nextnode_discover'] = True
-            else:
-                cluster[0]['nextnode_discover'] = False
+            for item in ['debug','security','createnode_ondemand','nextnode_discover','packing_bootpause']:
+                cluster[0][item] = Helper().make_bool(cluster[0][item])
             response = {'config': {'cluster': cluster[0] }}
             controllers = Database().get_record_join(
                 ['controller.*', 'ipaddress.ipaddress'],

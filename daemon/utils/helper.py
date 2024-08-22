@@ -364,8 +364,33 @@ class Helper(object):
                 maximum -= 1
             return str(next(avail))
         except Exception as exp:
-            return exp
+            return None
 
+    def get_next_ip(self, ipaddr, takenips=[], ping=False):
+        """
+        This method will provide the next available IP address starting from offset ipaddr.
+        Optionally we can ping it to just make sure...
+        """
+        try:
+            avail = None
+            tel = 1
+            maximum = 10
+            while maximum > 0:
+                avail = str(ipaddress.ip_address(ipaddr) + tel)
+                if avail not in takenips:
+                    if ping:
+                        result, ret = self.runcommand(f"ping -w1 -c1 {avail}", True, 3)
+                        self.logger.debug(f"avail = {avail}, ret = {ret}, result = {result}")
+                        if ret != 1:
+                            takenips.append(avail)
+                            continue
+                    return avail
+                self.logger.debug(f"avail {avail} is in takenips")
+                tel += 1
+                maximum -= 1
+            return None
+        except Exception as exp:
+            return None
 
     def get_ip_range_size(self, start=None, end=None):
         """

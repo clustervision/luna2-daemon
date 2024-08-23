@@ -53,7 +53,9 @@ class Status(object):
 
     def add_message(self,request_id,username_initiator,message,remote_request_id=None,remote_host=None):
         mymessage=f"{message}"
-        mymessage=mymessage.replace('"',"'")
+        mymessage=mymessage.replace("b'", '')
+        mymessage=mymessage.replace("'",'')
+        mymessage=mymessage.replace('"','')
         #current_datetime=datetime.now().replace(microsecond=0)
         current_datetime="NOW"
         row=[{"column": "request_id", "value": f"{request_id}"},
@@ -69,7 +71,9 @@ class Status(object):
 
     def add_remote_message(self,request_id,username_initiator,message,remote_):
         mymessage=f"{message}"
-        mymessage=mymessage.replace('"',"'")
+        mymessage=mymessage.replace("b'", '')
+        mymessage=mymessage.replace("'", '"')
+        mymessage=mymessage.replace('"','')
         #current_datetime=datetime.now().replace(microsecond=0)
         current_datetime="NOW"
         row=[{"column": "request_id", "value": f"{request_id}"},

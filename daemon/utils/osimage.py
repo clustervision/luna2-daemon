@@ -622,7 +622,7 @@ class OsImage(object):
                     sleep(1) # needed to prevent immediate concurrent access to the database. Pooling,WAL,WIF,WAF,etc won't fix this. Only sleep
                     if result is True:
                         self.logger.info(f'OS image pushed successfully.')
-                        Status().add_message(request_id,"luna","finished pushing osimage: {mesg}")
+                        Status().add_message(request_id,"luna",f"finished pushing osimage: {mesg}")
 
                     else:
                         self.logger.info(f'Push osimage {osimage}->{dst} error: {mesg}.')

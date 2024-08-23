@@ -173,7 +173,7 @@ class OsImage(object):
                         row = [{"column": "kernelversion", "value": kernel_version}]
                         where = [{"column": "id", "value": f"{image[0]['id']}"}]
                         status = Database().update('osimage', row, where)
-                    Status().add_message(request_id,"luna",f"finished grabbing osimage {osimage}")
+                    Status().add_message(request_id,"luna",f"finished grabbing osimage {osimage}: {mesg}")
                     result=True
                 else:
                     self.logger.info(f'OS image {osimage} grab error: {mesg}.')
@@ -622,7 +622,7 @@ class OsImage(object):
                     sleep(1) # needed to prevent immediate concurrent access to the database. Pooling,WAL,WIF,WAF,etc won't fix this. Only sleep
                     if result is True:
                         self.logger.info(f'OS image pushed successfully.')
-                        Status().add_message(request_id,"luna","finished pushing osimage")
+                        Status().add_message(request_id,"luna","finished pushing osimage: {mesg}")
 
                     else:
                         self.logger.info(f'Push osimage {osimage}->{dst} error: {mesg}.')

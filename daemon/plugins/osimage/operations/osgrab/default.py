@@ -82,7 +82,7 @@ class Plugin():
         if exit_code != 0:
             if len(message) > 0:
                 message=message[1]
-            return False,f"{message}"
+            return False,f"{message}. See /tmp/osgrab.out for details"
 
         # not entirely accurate but good enough
         kernel_version, stderr = Helper().runcommand(f"ls -tr {image_path}/lib/modules/|tail -n1")
@@ -90,5 +90,5 @@ class Plugin():
         kernel_version=kernel_version.decode('utf-8')
         self.logger.debug(f"{kernel_version} {stderr}")
         if kernel_version:
-            return True, "Success", kernel_version
-        return True, "Success"
+            return True, "Success. See /tmp/osgrab.out for details", kernel_version
+        return True, "Success. See /tmp/osgrab.out for details"

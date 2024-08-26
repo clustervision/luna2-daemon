@@ -70,6 +70,37 @@ class Plugin():
 
     # ---------------------------------------------------------------------------
 
+    def verify_space(self, image_path, dest_path):
+        estimated_size, space_left = 0, 0
+        dest_paths=[]
+        try:
+            if isinstance(dest_path, str):
+                dest_paths=[dest_path]
+            elif isinstance(dest_path, list):
+                dest_paths=dest_path
+            if len(dest_paths) == 0:
+                return True, "destination paths not provided"
+            if isinstance(image_path, int):
+                estimated_size = image_path
+            else:
+                output = subprocess.run(['du', '-s', image_path], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                if output.returncode == 0:
+                    du = output.stdout.decode('ascii').split()
+                    estimated_size = int(int(du[0])*0.45)
+            if estimated_size > 0:
+                for check_path in dest_paths:
+                    output = subprocess.run(['df', check_path, '--output=avail'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                    if output.returncode == 0:
+                        df=output.stdout.decode('ascii').split("\n")
+                        space_left = int(df[1])
+                        if estimated_size > space_left:
+                            return False, f"No go as we might not have disk space: {estimated_size} > {space_left} for {check_path}"
+                        self.logger.debug(f"Go as we have disk space: {estimated_size} < {space_left} for {check_path}")
+        except Exception as exp:
+            exc_type, exc_obj, exc_tb = sys.exc_info()
+            self.logger.error(f"plugin: {exp}, {exc_type}, in {exc_tb.tb_lineno}")
+        return True, "ok"
+
     def build(self, osimage=None, image_path=None, files_path=None, tmp_directory=None):
         # osimage = just the name of the image
         # image_path = is the location where the image resides
@@ -101,6 +132,11 @@ class Plugin():
             os.makedirs(tmp_dir)
         if not os.path.exists(tmp_dir):
             return False, f"could not create or use temp directory f{tmp_dir}"
+
+        space_check = self.verify_space(image_path,[tmp_dir, files_path])
+        if not space_check[0]:
+            self.logger.error(f"Tarring {osimage} stopped: {space_check[1]}")
+            return False,f"Tarring {osimage} stopped: {space_check[1]}"
 
         try:
             self.logger.debug(f"/usr/bin/tar -C {image_path} --one-file-system --xattrs --selinux --acls --checkpoint=100000 --use-compress-program=/usr/bin/lbzip2 -c -f {tmp_dir}/{packed_image_file} .")
@@ -151,8 +187,8 @@ class Plugin():
         # will be inherited from parent folder
 
         try:
-            shutil.copy(tmp_dir + '/' + packed_image_file, files_path)
-            os.remove(tmp_dir + '/' + packed_image_file)
+            shutil.move(tmp_dir + '/' + packed_image_file, files_path)
+            #os.remove(tmp_dir + '/' + packed_image_file)
             os.chown(files_path + '/' + packed_image_file, user_id, grp_id)
             os.chmod(files_path + '/' + packed_image_file, 0o644)
         except Exception as error:
@@ -193,6 +229,11 @@ class Plugin():
 
         if not os.path.exists(image_path):
             return False,f"Image path {image_path} does not exist"
+
+        space_check = self.verify_space(120000,[image_path, files_path])
+        if not space_check[0]:
+            self.logger.error(f"Packing {osimage} stopped: {space_check[1]}")
+            return False,f"Packing {osimage} stopped: {space_check[1]}"
 
         epoch_time = int(time())
         kernel_file = f"{osimage}-{epoch_time}-vmlinuz-{kernel_version}"

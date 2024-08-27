@@ -45,7 +45,8 @@ azure = [
 ]
 aws = [
        '0C47C9', '34D270', '40B4CD', '44650D', '50B363', '50F5DA', '6837E9', '6854FD',
-       '747548', '74C246', '84D6D0', '8871E5', 'A002DC', 'AC63BE', 'B47C9C', 'F0272D', 'F0D2F1'
+       'F0272D', '747548', '74C246', '84D6D0', '8871E5', 'A002DC', 'AC63BE', 'B47C9C', 
+       'F0D2F1', '02'
 ]
 gcp = [
        '001A11', '089E08', '3C5AB4', '546009', '703ACB', '9495A0', '94EB2C', '98D293',
@@ -77,16 +78,26 @@ class Plugin():
         response = None
         if macaddress:
             octets = macaddress.split(':')
-            vendor = octets[0]+octets[1]+octets[2]
-            if vendor.upper() in azure:
-                status = True
-                response = 'azure'
-            elif vendor.upper() in aws:
-                status = True
-                response = 'aws'
-            elif vendor.upper() in gcp:
-                status = True
-                response = 'gcp'
+            for tel in range(3,0,-1):
+                vendor = ''
+                for oc in range(0,tel,1):
+                    vendor += octets[oc]
+                    if vendor.upper() in azure:
+                        status = True
+                        response = 'azure'
+                        break
+                    elif vendor.upper() in aws:
+                        status = True
+                        response = 'aws'
+                        break
+                    elif vendor.upper() in gcp:
+                        status = True
+                        response = 'gcp'
+                        break
+                else:
+                    continue
+                break
         self.logger.info(f"Cloud detection for {macaddress}: {response}")
         return status, response
+
 

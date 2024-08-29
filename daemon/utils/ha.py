@@ -227,6 +227,8 @@ class HA():
                     continue
                 elif self.sharedip and controller['beacon']:
                     continue
+                elif self.shadow and controller['shadow']:
+                    continue
                 status=self.ping_host(controller['hostname'])
                 if status is False:
                     return False
@@ -259,6 +261,8 @@ class HA():
                 if controller['hostname'] == self.me:
                     continue
                 elif self.sharedip and controller['beacon']:
+                    continue
+                elif self.shadow and controller['shadow']:
                     continue
                 status=self.ping_host(controller['hostname'])
                 self.logger.debug(f"PING HOST: {controller['hostname']}, {status}")

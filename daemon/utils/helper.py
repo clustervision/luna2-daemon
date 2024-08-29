@@ -543,9 +543,9 @@ class Helper(object):
         if isinstance(variable, bool):
             pass
         elif isinstance(variable, (str, int)):
-            if variable in ('True', '1', 1):
+            if variable in ('1', 1, 'true', 'True', 'TRUE', 'yes', 'Yes', 'YES', 'y'):
                 variable = True
-            elif variable in ('False', '0', 0):
+            elif variable in ('0', 0, 'false', 'False', 'FALSE', 'no', 'No', 'NO', 'n'):
                 variable = False
         else:
             variable = None
@@ -563,9 +563,9 @@ class Helper(object):
             else:
                 variable = '0'
         elif isinstance(variable, (str, int)):
-            if variable in ('1', 1, 'true', 'True', 'TRUE', 'yes', 'Yes', 'YES'):
+            if variable in ('1', 1, 'true', 'True', 'TRUE', 'yes', 'Yes', 'YES', 'y'):
                 variable = '1'
-            elif variable in ('0', 0, 'false', 'False', 'FALSE', 'no', 'No', 'NO'):
+            elif variable in ('0', 0, 'false', 'False', 'FALSE', 'no', 'No', 'NO', 'n'):
                 variable = '0'
         else:
             variable = None

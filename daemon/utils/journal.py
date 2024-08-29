@@ -53,6 +53,7 @@ from utils.request import Request
 from utils.ha import HA
 from utils.tables import Tables
 from utils.downloader import Downloader
+from utils.controller import Controller
 
 from base.node import Node
 from base.group import Group
@@ -79,13 +80,17 @@ class Journal():
     This class is responsible for all journal and replication operations
     """
 
-    def __init__(self,me=None):
+    def __init__(self,me=None,shadow=None):
         self.logger = Log.get_logger()
         self.ha_object = HA()
         self.sharedip = self.ha_object.get_sharedip()
+        self.beacon = Controller().get_beacon()
         self.me=me
+        self.shadow=shadow
         if not self.me:
             self.me=self.ha_object.get_me()
+        if self.shadow is None:
+            self.shadow=self.ha_object.get_shadow()
         
         self.dict_controllers=None
         self.all_controllers = Database().get_record_join(['controller.*','ipaddress.ipaddress','ipaddress.ipaddress_ipv6',
@@ -123,6 +128,7 @@ class Journal():
                 data['masteronly'] = Helper().bool_to_string(masteronly)
                 data['misc'] = misc
                 data['sendby'] = self.me
+                data['sendto'] = None
                 data['created'] = "NOW"
                 data['tries'] = "0"
                 for controller in self.all_controllers:
@@ -130,6 +136,8 @@ class Journal():
                         continue
                     elif self.sharedip and controller['beacon']:
                         continue
+                    if self.shadow and controller['shadow']:
+                        data['sendto'] = self.beacon
                     data['sendfor'] = controller['hostname']
                     row = Helper().make_rows(data)
                     request_id = Database().insert('journal', row)
@@ -258,7 +266,7 @@ class Journal():
             self.logger.error(f"{exp}")
 
 
-    def pushto_controllers(self):
+    def pushto_controllers(self,forward=None):
         if self.me and self.dict_controllers:
             lock.acquire()
             try:
@@ -266,16 +274,30 @@ class Journal():
                 try:
                     all_entries={}
                     del_ids={}
-                    all_records = Database().get_record(["*","strftime('%s',created) AS created"],"journal",f"WHERE sendby='{self.me}' ORDER BY sendfor,created,id ASC")
+                    host_key=None
+                    query=None
+                    # do we only push the forwarded ones or everything?
+                    if forward:
+                        query=f"sendto='{self.me}'"
+                    else:
+                        query=f"sendby='{self.me}' OR sendto='{self.me}'"
+                    # we fetch all journal coming from me (sendby) or from some other host that i need to forward as replicator (sendto)
+                    all_records = Database().get_record(["*","strftime('%s',created) AS created"],"journal",f"WHERE {query} ORDER BY sendfor,created,id ASC")
                     if all_records:
                         for record in all_records:
-                            if not record['sendfor'] in all_entries:
-                                all_entries[record['sendfor']]=[]
-                            if not record['sendfor'] in del_ids:
-                                del_ids[record['sendfor']]=[]
-                            del_ids[record['sendfor']].append(record['id'])
+                            # we have journal for a host but send it to a replicator
+                            if record['sendto'] and record['sendby'] == self.me:
+                                host_key = record['sendto']
+                            # we either have journal for a host coming from us, or it's replication
+                            else:
+                                host_key = record['sendfor']
+                            if not host_key in all_entries:
+                                all_entries[host_key]=[]
+                            if not host_key in del_ids:
+                                del_ids[host_key]=[]
+                            del_ids[host_key].append(record['id'])
                             del record['id']
-                            all_entries[record['sendfor']].append(record)
+                            all_entries[host_key].append(record)
                         for host in all_entries:
                             self.logger.debug(f"JOURNAL HOST {host}: {all_entries[host]}")
                             status,_=Request().post_request(host,'/journal',{'journal': all_entries[host]})
@@ -298,6 +320,9 @@ class Journal():
                     if controller['hostname']  == self.me:
                         continue
                     elif self.sharedip and controller['beacon']:
+                        continue
+                    if self.shadow and controller['shadow']:
+                        self.logger.info(f"cannot pull journal from {controller['hostname']} being marked shadow")
                         continue
                     self.logger.info(f"pulling journal from {controller['hostname']}")
                     status=self.pull_journal(controller['hostname'])

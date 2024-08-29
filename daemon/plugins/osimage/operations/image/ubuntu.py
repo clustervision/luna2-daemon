@@ -319,8 +319,7 @@ class Plugin():
             return False, f"Unable to find initrd in {initrd_path}"
 
         # copy initrd file to inherit perms from parent folder
-        shutil.copy(initrd_path, files_path + '/' + ramdisk_file)
-        os.remove(initrd_path)
+        shutil.move(initrd_path, files_path + '/' + ramdisk_file)
         shutil.copy(kernel_path, files_path + '/' + kernel_file)
         os.chown(files_path + '/' + ramdisk_file, user_id, grp_id)
         os.chmod(files_path + '/' + ramdisk_file, 0o644)

@@ -63,7 +63,7 @@ class HA():
     This class is responsible for all H/A related business
     """
 
-    def __init__(self,me=None):
+    def __init__(self,me=None,shadow=None):
         self.logger = Log.get_logger()
         self.insync=False
         self.hastate=None
@@ -76,6 +76,7 @@ class HA():
         self.good_ret=['200','201','204']
         self.dict_controllers=None
         self.me=me
+        self.shadow=shadow
         self.ip=None
         self.sharedip=self.get_sharedip()
         self.all_controllers = Database().get_record_join(['controller.*','ipaddress.ipaddress','ipaddress.ipaddress_ipv6',
@@ -111,6 +112,11 @@ class HA():
                                 self.logger.debug(f"My ipaddress is {ip} and i am {self.me}")
                     except:
                         pass
+            if self.shadow is None and self.me and self.me in self.dict_controllers.keys():
+                self.shadow = Helper().make_bool(self.dict_controllers[self.me]['shadow'])
+
+    def get_shadow(self):
+        return self.shadow
 
     def get_me(self):
         return self.me
@@ -221,6 +227,8 @@ class HA():
                     continue
                 elif self.sharedip and controller['beacon']:
                     continue
+                elif self.shadow and controller['shadow']:
+                    continue
                 status=self.ping_host(controller['hostname'])
                 if status is False:
                     return False
@@ -253,6 +261,8 @@ class HA():
                 if controller['hostname'] == self.me:
                     continue
                 elif self.sharedip and controller['beacon']:
+                    continue
+                elif self.shadow and controller['shadow']:
                     continue
                 status=self.ping_host(controller['hostname'])
                 self.logger.debug(f"PING HOST: {controller['hostname']}, {status}")

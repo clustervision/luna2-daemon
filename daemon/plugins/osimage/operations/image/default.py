@@ -344,7 +344,7 @@ class Plugin():
 
         # move initrd file to inherit perms from parent folder
         shutil.move(initrd_path, files_path + '/' + ramdisk_file)
-        shutil.move(kernel_path, files_path + '/' + kernel_file)
+        shutil.copy(kernel_path, files_path + '/' + kernel_file)
         os.chown(files_path + '/' + ramdisk_file, user_id, grp_id)
         os.chmod(files_path + '/' + ramdisk_file, 0o644)
         os.chown(files_path + '/' + kernel_file, user_id, grp_id)

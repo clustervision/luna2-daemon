@@ -228,6 +228,7 @@ DATABASE_LAYOUT_controller = [
 {"column": "id",                   "datatype": "INTEGER", "key": "PRIMARY", "keyadd": "AUTOINCREMENT"},
 {"column": "hostname",             "datatype": "VARCHAR", "length": "100", "key": "UNIQUE"},
 {"column": "beacon",               "datatype": "INTEGER", "length": "10"},
+{"column": "shadow",               "datatype": "INTEGER", "length": "10"},
 {"column": "clusterid",            "datatype": "INTEGER", "length": "10"},
 {"column": "status",               "datatype": "VARCHAR", "length": "20"},
 {"column": "vendor",               "datatype": "VARCHAR", "length": "60"},
@@ -310,6 +311,7 @@ DATABASE_LAYOUT_journal = [
 {"column": "masteronly",           "datatype": "INTEGER", "length": "10"},
 {"column": "misc",                 "datatype": "VARCHAR", "length": "1024"},
 {"column": "sendfor",              "datatype": "VARCHAR", "length": "80"},
+{"column": "sendto",               "datatype": "VARCHAR", "length": "80"},
 {"column": "sendby",               "datatype": "VARCHAR", "length": "80"},
 {"column": "tries",                "datatype": "INTEGER", "length": "10"},
 {"column": "created",              "datatype": "numeric"}]

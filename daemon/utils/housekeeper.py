@@ -256,7 +256,11 @@ class Housekeeper(object):
                 self.logger.info(f"Currently not configured to run in H/A mode. Exiting journal thread")
                 return
             me=ha_object.get_me()
-            self.logger.info(f"I am {me}")
+            shadow=ha_object.get_shadow()
+            if shadow:
+                self.logger.info(f"I am {me} and i am a shadow controller")
+            else:
+                self.logger.info(f"I am {me}")
             journal_object=Journal(me)
             tables_object=Tables()
             ha_object.set_insync(False)
@@ -284,6 +288,8 @@ class Housekeeper(object):
                     if sync_tel<1:
                         journal_object.pushto_controllers()
                         sync_tel=7
+                    else:
+                        journal_object.pushto_controllers(forward=True)
                     sync_tel-=1
                     # --------------------------- then we process what we have received
                     handled=journal_object.handle_requests()

@@ -73,6 +73,9 @@ class Cluster():
                 del controller['id']
                 del controller['clusterid']
                 controller['luna_config'] = CONFIGFILE
+                controller['shadow'] = Helper().make_bool(controller['shadow'])
+                if not controller['shadow']:
+                    del controller['shadow']
                 if controller['beacon']:
                     response['config']['cluster']['controller'] = controller
                 else:
@@ -142,7 +145,7 @@ class Cluster():
             # renumbering controllers prepare. this could be tricky. - Antoine
             # for H/A things should be taken in consideration....
             if 'controller' in data:
-                controller_name = Controller().get_me()
+                controller_name = Controller().get_beacon()
                 if controller_name != 'controller':
                     data[controller_name] = data['controller']
                     del data['controller']

@@ -80,7 +80,7 @@ class Journal():
 
     def update_journal(self, request_data=None):
         """
-        This method will return update requested node.
+        This method will add received journal entries to the journal
         """
         status = True
         response = "success"
@@ -95,7 +95,7 @@ class Journal():
                         row = Helper().make_rows(entry)
                         request_id = Database().insert('journal', row)
                         if request_id:
-                            self.logger.error(f"added {entry['function']}({entry['object']}) to the journal")
+                            self.logger.info(f"added {entry['function']}({entry['object']}) to the journal")
                             HA().set_insync(False)
                         else:
                             response = f"failed adding {entry['function']}({entry['object']}) to the journal"

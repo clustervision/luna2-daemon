@@ -73,6 +73,7 @@ class Cluster():
                 del controller['id']
                 del controller['clusterid']
                 controller['luna_config'] = CONFIGFILE
+                controller['shadow'] = Helper().make_bool(controller['shadow'])
                 if controller['beacon']:
                     response['config']['cluster']['controller'] = controller
                 else:

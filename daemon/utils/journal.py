@@ -137,7 +137,7 @@ class Journal():
                     elif self.sharedip and controller['beacon']:
                         continue
                     if self.shadow and controller['shadow']:
-                        data['sendto'] = beacon
+                        data['sendto'] = self.beacon
                     data['sendfor'] = controller['hostname']
                     row = Helper().make_rows(data)
                     request_id = Database().insert('journal', row)

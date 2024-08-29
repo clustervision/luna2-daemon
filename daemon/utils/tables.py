@@ -98,12 +98,14 @@ class Tables():
         return hashes
 
 
-    def verify_tablehashes_controllers(self,me=None):
+    def verify_tablehashes_controllers(self,me=None,shadow=None):
         mismatch_tables=[]
         ha_object = HA()
         self.sharedip = ha_object.get_sharedip()
         if not me:
             me=ha_object.get_me()
+        if shadow is None:
+            shadow=ha_object.get_shadow()
         if me:
             all_controllers = Database().get_record_join(['controller.*','ipaddress.ipaddress','ipaddress.ipaddress_ipv6',
                                                           'network.name as domain'],
@@ -115,6 +117,8 @@ class Tables():
                     if controller['hostname'] == me:
                         continue
                     elif self.sharedip and controller['beacon']:
+                        continue
+                    elif shadow and controller['shadow']:
                         continue
                     host=controller['hostname']
                     status,data=Request().get_request(host,f'/table/hashes')

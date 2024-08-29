@@ -529,7 +529,7 @@ def bootstrap(bootstrapfile=None):
             hostname=BOOTSTRAP['HOSTS']['CONTROLLER'+str(num)]['HOSTNAME']
             ip=BOOTSTRAP['HOSTS']['CONTROLLER'+str(num)]['IP']
             shadow=0
-            if 'SHADOW' in BOOTSTRAP['HOSTS']['CONTROLLER'+str(num)]:
+            if 'SHADOW' in BOOTSTRAP['HOSTS']['CONTROLLER'+str(num)].keys():
                 shadow=BOOTSTRAP['HOSTS']['CONTROLLER'+str(num)]['SHADOW']
             if (not sharedip or sharedip == 0) and ip == defaultserver_ip:
                 # we skip as we already have that very same ip for the beacon controller

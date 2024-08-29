@@ -287,7 +287,9 @@ class Housekeeper(object):
                     # --------------------------- first we sync with the others. we push what's still in the journal
                     if sync_tel<1:
                         journal_object.pushto_controllers()
-                        sync_tel=4
+                        sync_tel=7
+                    else:
+                        journal_object.pushto_controllers(forward=True)
                     sync_tel-=1
                     # --------------------------- then we process what we have received
                     handled=journal_object.handle_requests()

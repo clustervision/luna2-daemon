@@ -95,7 +95,7 @@ class Journal():
                         row = Helper().make_rows(entry)
                         request_id = Database().insert('journal', row)
                         if request_id:
-                            self.logger.error(f"added {entry['function']}({entry['object']}) to the journal")
+                            self.logger.info(f"added {entry['function']}({entry['object']}) to the journal")
                             HA().set_insync(False)
                         else:
                             response = f"failed adding {entry['function']}({entry['object']}) to the journal"

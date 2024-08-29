@@ -266,7 +266,7 @@ class Journal():
             self.logger.error(f"{exp}")
 
 
-    def pushto_controllers(self):
+    def pushto_controllers(self,forward=None):
         if self.me and self.dict_controllers:
             lock.acquire()
             try:
@@ -275,8 +275,14 @@ class Journal():
                     all_entries={}
                     del_ids={}
                     host_key=None
+                    query=None
+                    # do we only push the forwarded ones or everything?
+                    if forward:
+                        query=f"sendto='{self.me}'"
+                    else:
+                        query=f"sendby='{self.me}' OR sendto='{self.me}'"
                     # we fetch all journal coming from me (sendby) or from some other host that i need to forward as replicator (sendto)
-                    all_records = Database().get_record(["*","strftime('%s',created) AS created"],"journal",f"WHERE sendby='{self.me}' OR sendto='{self.me}' ORDER BY sendfor,created,id ASC")
+                    all_records = Database().get_record(["*","strftime('%s',created) AS created"],"journal",f"WHERE {query} ORDER BY sendfor,created,id ASC")
                     if all_records:
                         for record in all_records:
                             # we have journal for a host but send it to a replicator

@@ -256,7 +256,11 @@ class Housekeeper(object):
                 self.logger.info(f"Currently not configured to run in H/A mode. Exiting journal thread")
                 return
             me=ha_object.get_me()
-            self.logger.info(f"I am {me}")
+            shadow=ha_object.get_shadow()
+            if shadow:
+                self.logger.info(f"I am {me} and i am a shadow controller")
+            else:
+                self.logger.info(f"I am {me}")
             journal_object=Journal(me)
             tables_object=Tables()
             ha_object.set_insync(False)

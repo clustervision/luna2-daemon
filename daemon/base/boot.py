@@ -101,7 +101,7 @@ class Boot():
         plugins_path=CONSTANT["PLUGINS"]["PLUGINS_DIRECTORY"]
         self.boot_plugins = Helper().plugin_finder(f'{plugins_path}/boot')
         self.osimage_plugins = Helper().plugin_finder(f'{plugins_path}/osimage')
-        self.controller_name = Controller().get_me()
+        self.controller_name = Controller().get_beacon()
         self.ha_object = HA()
         self.insync = self.ha_object.get_insync()
         self.hastate = self.ha_object.get_hastate()

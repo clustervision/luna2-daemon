@@ -80,7 +80,7 @@ class Journal():
 
     def update_journal(self, request_data=None):
         """
-        This method will return update requested node.
+        This method will add received journal entries to the journal
         """
         status = True
         response = "success"

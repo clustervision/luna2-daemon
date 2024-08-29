@@ -320,7 +320,7 @@ class Config(object):
         netmask = nwk['subnet_ipv6']
         if ipversion == 'ipv4':
             netmask = Helper().get_netmask(f"{nwk['network']}/{nwk['subnet']}")
-        controller_name = Controller().get_me()
+        controller_name = Controller().get_beacon()
         # ---------------------------------------------------
         ha_object=HA()
         ha_enabled=ha_object.get_hastate()
@@ -407,7 +407,7 @@ class Config(object):
         if (not controller) or (not cluster):
             self.logger.error("Error building dns config. either controller or cluster does not exist")
             return False
-        controller_name = Controller().get_me()
+        controller_name = Controller().get_beacon()
         controller_ip = controller[0]['ipaddress']
         controller_ip_ipv6 = controller[0]['ipaddress_ipv6']
         controller_network = controller[0]['networkname']

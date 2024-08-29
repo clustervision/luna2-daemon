@@ -45,7 +45,7 @@ class Controller():
         """
         self.logger = Log.get_logger()
 
-    def get_me(self):
+    def get_beacon(self):
         """
         This method will return the primary controller name of the cluster
         """

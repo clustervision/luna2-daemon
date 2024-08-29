@@ -299,7 +299,8 @@ def get_config(filename=None):
     and values of options are item(10.141.255.254, node[001-004])
     CONTROLLER  = controller.cluster:10.141.255.251  <---- virtual IP
     CONTROLLER1 = controller1.cluster:10.141.255.254
-    CONTROLLER2 = None
+    CONTROLLER2 = controller1.cluster:10.141.255.253:shadow
+    CONTROLLER3 = None
     """
     configParser.read(filename)
     Helper().check_section(filename, BOOTSTRAP)
@@ -311,7 +312,7 @@ def get_config(filename=None):
                 #Helper().check_option(filename, section, option.upper(), BOOTSTRAP)
                 LOGGER.debug(f"SECTION: {section.upper()}, OPTION: {option.upper()}, ITEM: {item}")
                 if option.upper() == 'CONTROLLER':
-                    hostname,ip,*_=item.split(':')+[None]
+                    hostname,ip,role,*_=item.split(':')+[None]+[None]
                     hostname,*_=hostname.split('.')+[None]
                     if hostname and not ip and '.' in hostname:
                         # i guess we only have an IP and no hostname?
@@ -322,6 +323,8 @@ def get_config(filename=None):
                         BOOTSTRAP[section]['CONTROLLER']['IP'] = ip
                         BOOTSTRAP[section]['CONTROLLER']['HOSTNAME'] = hostname
                         LOGGER.info(f"CONTROLLER: {BOOTSTRAP[section]['CONTROLLER']}")
+                    if role and role == 'shadow':
+                        BOOTSTRAP[section]['CONTROLLER']['SHADOW'] = 1
                 elif option.upper() == 'NODELIST':
                     ### TODO Nodelist also check for the length
                     try:
@@ -525,6 +528,9 @@ def bootstrap(bootstrapfile=None):
         if 'CONTROLLER'+str(num) in BOOTSTRAP['HOSTS'].keys():
             hostname=BOOTSTRAP['HOSTS']['CONTROLLER'+str(num)]['HOSTNAME']
             ip=BOOTSTRAP['HOSTS']['CONTROLLER'+str(num)]['IP']
+            shadow=0
+            if 'SHADOW' in BOOTSTRAP['HOSTS']['CONTROLLER'+str(num)]:
+                shadow=BOOTSTRAP['HOSTS']['CONTROLLER'+str(num)]['SHADOW']
             if (not sharedip or sharedip == 0) and ip == defaultserver_ip:
                 # we skip as we already have that very same ip for the beacon controller
                 continue
@@ -532,6 +538,7 @@ def bootstrap(bootstrapfile=None):
             other_controller = [
                 {'column': 'hostname', 'value': hostname},
                 {'column': 'beacon', 'value': 0},
+                {'column': 'shadow', 'value': shadow},
                 {'column': 'serverport', 'value': BOOTSTRAP['HOSTS']['SERVERPORT']},
                 {'column': 'clusterid', 'value': clusterid}
             ]

@@ -88,28 +88,30 @@ class HA():
             if not self.me:
                 for interface in ni.interfaces():
                     try:
-                        wip = ni.ifaddresses(interface)[ni.AF_INET6][0]['addr']
-                        ip, *_ = wip.split('%', 1)+[None]
-                        self.logger.debug(f"Interface {interface} has ip {ip}")
-                        for controller in self.all_controllers:
-                            if self.sharedip and controller['beacon']:
-                                continue
-                            if not self.me and controller['ipaddress_ipv6'] == ip:
-                                self.me=controller['hostname']
-                                self.ip=ip
-                                self.logger.debug(f"My ipaddress is {ip} and i am {self.me}")
+                        for assingment in ni.ifaddresses(interface)[ni.AF_INET6]:
+                            wip = assingment['addr']
+                            ip, *_ = wip.split('%', 1)+[None]
+                            self.logger.debug(f"Interface {interface} has ip {ip}")
+                            for controller in self.all_controllers:
+                                if self.sharedip and controller['beacon']:
+                                    continue
+                                if not self.me and controller['ipaddress_ipv6'] == ip:
+                                    self.me=controller['hostname']
+                                    self.ip=ip
+                                    self.logger.debug(f"My ipaddress is {ip} and i am {self.me}")
                     except:
                         pass
                     try:
-                        ip = ni.ifaddresses(interface)[ni.AF_INET][0]['addr']
-                        self.logger.debug(f"Interface {interface} has ip {ip}")
-                        for controller in self.all_controllers:
-                            if self.sharedip and controller['beacon']:
-                                continue
-                            if not self.me and controller['ipaddress'] == ip:
-                                self.me=controller['hostname']
-                                self.ip=ip
-                                self.logger.debug(f"My ipaddress is {ip} and i am {self.me}")
+                        for assingment in ni.ifaddresses(interface)[ni.AF_INET]:
+                            ip = assingment['addr']
+                            self.logger.debug(f"Interface {interface} has ip {ip}")
+                            for controller in self.all_controllers:
+                                if self.sharedip and controller['beacon']:
+                                    continue
+                                if not self.me and controller['ipaddress'] == ip:
+                                    self.me=controller['hostname']
+                                    self.ip=ip
+                                    self.logger.debug(f"My ipaddress is {ip} and i am {self.me}")
                     except:
                         pass
             if self.shadow is None and self.me and self.me in self.dict_controllers.keys():

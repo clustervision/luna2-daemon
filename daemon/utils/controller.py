@@ -51,7 +51,7 @@ class Controller():
         """
         controller = Database().get_record(None, 'controller', "WHERE controller.beacon=1")
         if controller:
-            self.logger.debug("Returning {controller[0]['hostname']}")
+            self.logger.debug(f"Returning {controller[0]['hostname']}")
             return controller[0]['hostname']
         self.logger.error('No controller available, returning defaults')
         return 'controller'
@@ -69,7 +69,7 @@ class Controller():
             if controller[0]['ipaddress_ipv6']:
                 self.logger.debug("Returning {controller[0]['ipaddress_ipv6]}")
                 return controller[0]['ipaddress_ipv6']
-            self.logger.debug("Returning {controller[0]['ipaddress]}")
+            self.logger.debug(f"Returning {controller[0]['ipaddress']}")
             return controller[0]['ipaddress']
         self.logger.error('No controller available, returning defaults')
         return '10.141.255.254'

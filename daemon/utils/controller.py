@@ -56,3 +56,21 @@ class Controller():
         self.logger.error('No controller available, returning defaults')
         return 'controller'
 
+    def get_beaconip(self):
+        """
+        This method will return the primary controller ip of the cluster
+        """
+        controller = Database().get_record_join(
+            ['controller.*','ipaddress.ipaddress','ipaddress.ipaddress_ipv6'],
+            ['ipaddress.tablerefid=controller.id'],
+            ['tableref="controller"','controller.beacon=1']
+        )
+        if controller:
+            if controller[0]['ipaddress_ipv6']:
+                self.logger.debug("Returning {controller[0]['ipaddress_ipv6]}")
+                return controller[0]['ipaddress_ipv6']
+            self.logger.debug("Returning {controller[0]['ipaddress]}")
+            return controller[0]['ipaddress']
+        self.logger.error('No controller available, returning defaults')
+        return '10.141.255.254'
+

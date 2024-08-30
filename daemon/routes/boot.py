@@ -63,6 +63,7 @@ def boot():
         LUNA_API_PROTOCOL   = response['LUNA_API_PROTOCOL'],
         VERIFY_CERTIFICATE  = response['VERIFY_CERTIFICATE'],
         WEBSERVER_PROTOCOL  = response['WEBSERVER_PROTOCOL'],
+        LUNA_LOGHOST        = response['LUNA_LOGHOST'],
         NODES               = response['NODES'],
         AVAILABLE_NODES     = response['AVAILABLE_NODES'],
         GROUPS              = response['GROUPS']
@@ -90,7 +91,8 @@ def boot_short():
         WEBSERVER_PORT      = response['WEBSERVER_PORT'],
         LUNA_API_PROTOCOL   = response['LUNA_API_PROTOCOL'],
         VERIFY_CERTIFICATE  = response['VERIFY_CERTIFICATE'],
-        WEBSERVER_PROTOCOL  = response['WEBSERVER_PROTOCOL']
+        WEBSERVER_PROTOCOL  = response['WEBSERVER_PROTOCOL'],
+        LUNA_LOGHOST        = response['LUNA_LOGHOST']
     ), access_code
 
 
@@ -139,6 +141,7 @@ def boot_search_mac(macaddress=None):
             VERIFY_CERTIFICATE     = data['verify_certificate'],
             WEBSERVER_PORT         = data['webserver_port'],
             WEBSERVER_PROTOCOL     = data['webserver_protocol'],
+            LUNA_LOGHOST           = data['loghost'],
             NODE_MAC_ADDRESS       = data['mac'],
             OSIMAGE_INITRDFILE     = data['initrdfile'],
             OSIMAGE_KERNELFILE     = data['kernelfile'],
@@ -175,6 +178,7 @@ def boot_manual_group(groupname=None, macaddress=None):
         VERIFY_CERTIFICATE     = data['verify_certificate'],
         WEBSERVER_PORT         = data['webserver_port'],
         WEBSERVER_PROTOCOL     = data['webserver_protocol'],
+        LUNA_LOGHOST           = data['loghost'],
         NODE_MAC_ADDRESS       = data['mac'],
         OSIMAGE_INITRDFILE     = data['initrdfile'],
         OSIMAGE_KERNELFILE     = data['kernelfile'],
@@ -211,6 +215,7 @@ def boot_manual_hostname(hostname=None, macaddress=None):
         VERIFY_CERTIFICATE     = data['verify_certificate'],
         WEBSERVER_PORT         = data['webserver_port'],
         WEBSERVER_PROTOCOL     = data['webserver_protocol'],
+        LUNA_LOGHOST           = data['loghost'],
         NODE_MAC_ADDRESS       = data['mac'],
         OSIMAGE_INITRDFILE     = data['initrdfile'],
         OSIMAGE_KERNELFILE     = data['kernelfile'],
@@ -247,6 +252,7 @@ def boot_install(node=None):
         VERIFY_CERTIFICATE      = data['verify_certificate'],
         WEBSERVER_PORT          = data['webserver_port'],
         WEBSERVER_PROTOCOL      = data['webserver_protocol'],
+        LUNA_LOGHOST            = data['loghost'],
         NODE_HOSTNAME           = data['nodehostname'],
         NODE_NAME               = data['nodename'],
         LUNA_OSIMAGE            = data['osimagename'],
@@ -297,6 +303,7 @@ def kickstart_install(node=None):
         VERIFY_CERTIFICATE      = data['verify_certificate'],
         WEBSERVER_PORT          = data['webserver_port'],
         WEBSERVER_PROTOCOL      = data['webserver_protocol'],
+        LUNA_LOGHOST            = data['loghost'],
         NODE_HOSTNAME           = data['nodehostname'],
         NODE_NAME               = data['nodename'],
         LUNA_OSIMAGE            = data['osimagename'],

@@ -101,7 +101,9 @@ class Boot():
         plugins_path=CONSTANT["PLUGINS"]["PLUGINS_DIRECTORY"]
         self.boot_plugins = Helper().plugin_finder(f'{plugins_path}/boot')
         self.osimage_plugins = Helper().plugin_finder(f'{plugins_path}/osimage')
-        self.controller_name = Controller().get_beacon()
+        self.controller_object = Controller()
+        self.controller_name = self.controller_object.get_beacon()
+        self.controller_beaconip = self.controller_object.get_beaconip()
         self.ha_object = HA()
         self.insync = self.ha_object.get_insync()
         self.hastate = self.ha_object.get_hastate()
@@ -169,6 +171,7 @@ class Boot():
         self.logger.info(f'Boot API serving the {template}')
         response = {
             'template': template,
+            'LUNA_LOGHOST': self.controller_beaconip,
             'LUNA_CONTROLLER': ipaddress,
             'LUNA_API_PORT': serverport,
             'WEBSERVER_PORT': webserver_port,
@@ -219,6 +222,7 @@ class Boot():
         self.logger.info(f'Boot API serving the {template}')
         response = {
             'template': template,
+            'LUNA_LOGHOST': self.controller_beaconip,
             'LUNA_CONTROLLER': ipaddress,
             'LUNA_API_PORT': serverport,
             'WEBSERVER_PORT': webserver_port,
@@ -268,6 +272,10 @@ class Boot():
         data = {
             'template'      : template,
             'mac'           : mac,
+            'loghost'       : self.controller_beaconip,
+            'protocol'      : CONSTANT['API']['PROTOCOL'],
+            'verify_certificate': CONSTANT['API']['VERIFY_CERTIFICATE'],
+            'webserver_protocol': CONSTANT['API']['PROTOCOL'],
             'nodeid'        : None,
             'osimageid'     : None,
             'ipaddress'     : None,
@@ -281,9 +289,6 @@ class Boot():
             'nodeservice'   : None,
             'nodeip'        : None
         }
-        data['protocol'] = CONSTANT['API']['PROTOCOL']
-        data['verify_certificate'] = CONSTANT['API']['VERIFY_CERTIFICATE']
-        data['webserver_protocol'] = data['protocol']
         template_path = f'{CONSTANT["TEMPLATES"]["TEMPLATE_FILES"]}/{template}'
         check_template = Helper().check_jinja(template_path)
         if not check_template:
@@ -585,6 +590,10 @@ class Boot():
         data = {
             'template'      : template,
             'mac'           : mac,
+            'loghost'       : self.controller_beaconip,
+            'protocol'      : CONSTANT['API']['PROTOCOL'],
+            'verify_certificate': CONSTANT['API']['VERIFY_CERTIFICATE'],
+            'webserver_protocol': CONSTANT['API']['PROTOCOL'],
             'nodeid'        : None,
             'osimageid'     : None,
             'ipaddress'     : None,
@@ -598,9 +607,6 @@ class Boot():
             'nodeservice'   : None,
             'nodeip'        : None
         }
-        data['protocol'] = CONSTANT['API']['PROTOCOL']
-        data['verify_certificate'] = CONSTANT['API']['VERIFY_CERTIFICATE']
-        data['webserver_protocol'] = data['protocol']
         template_path = f'{CONSTANT["TEMPLATES"]["TEMPLATE_FILES"]}/{template}'
         check_template = Helper().check_jinja(template_path)
         if not check_template:
@@ -947,6 +953,10 @@ class Boot():
         data = {
             'template'      : template,
             'mac'           : mac,
+            'loghost'       : self.controller_beaconip,
+            'protocol'      : CONSTANT['API']['PROTOCOL'],
+            'verify_certificate': CONSTANT['API']['VERIFY_CERTIFICATE'],
+            'webserver_protocol': CONSTANT['API']['PROTOCOL'],
             'nodeid'        : None,
             'osimageid'     : None,
             'ipaddress'     : None,
@@ -960,9 +970,6 @@ class Boot():
             'nodeservice'   : None,
             'nodeip'        : None
         }
-        data['protocol'] = CONSTANT['API']['PROTOCOL']
-        data['verify_certificate'] = CONSTANT['API']['VERIFY_CERTIFICATE']
-        data['webserver_protocol'] = data['protocol']
         template_path = f'{CONSTANT["TEMPLATES"]["TEMPLATE_FILES"]}/{template}'
         check_template = Helper().check_jinja(template_path)
         if not check_template:
@@ -1170,6 +1177,10 @@ class Boot():
             template = f'templ_install_{method}.cfg'
         data = {
             'template'              : template,
+            'loghost'               : self.controller_beaconip,
+            'protocol'              : CONSTANT['API']['PROTOCOL'],
+            'verify_certificate'    : CONSTANT['API']['VERIFY_CERTIFICATE'],
+            'webserver_protocol'    : CONSTANT['API']['PROTOCOL'],
             'nodeid'                : None,
             'group'                 : None,
             'ipaddress'             : None,
@@ -1185,10 +1196,6 @@ class Boot():
             'interfaces'            : {},
             'bmc'                   : {}
         }
-        data['protocol'] = CONSTANT['API']['PROTOCOL']
-        data['verify_certificate'] = CONSTANT['API']['VERIFY_CERTIFICATE']
-        data['webserver_protocol'] = data['protocol']
-
         template_path = f'{CONSTANT["TEMPLATES"]["TEMPLATE_FILES"]}/{template}'
         check_template = Helper().check_jinja(template_path)
         if not check_template:

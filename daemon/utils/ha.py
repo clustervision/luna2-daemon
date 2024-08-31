@@ -86,36 +86,41 @@ class HA():
         if self.all_controllers:
             self.dict_controllers = Helper().convert_list_to_dict(self.all_controllers, 'hostname')
             if not self.me:
-                for interface in ni.interfaces():
-                    try:
-                        for assingment in ni.ifaddresses(interface)[ni.AF_INET6]:
-                            wip = assingment['addr']
-                            ip, *_ = wip.split('%', 1)+[None]
-                            self.logger.debug(f"Interface {interface} has ip {ip}")
-                            for controller in self.all_controllers:
-                                if self.sharedip and controller['beacon']:
-                                    continue
-                                if not self.me and controller['ipaddress_ipv6'] == ip:
-                                    self.me=controller['hostname']
-                                    self.ip=ip
-                                    self.logger.debug(f"My ipaddress is {ip} and i am {self.me}")
-                    except:
-                        pass
-                    try:
-                        for assingment in ni.ifaddresses(interface)[ni.AF_INET]:
-                            ip = assingment['addr']
-                            self.logger.debug(f"Interface {interface} has ip {ip}")
-                            for controller in self.all_controllers:
-                                if self.sharedip and controller['beacon']:
-                                    continue
-                                if not self.me and controller['ipaddress'] == ip:
-                                    self.me=controller['hostname']
-                                    self.ip=ip
-                                    self.logger.debug(f"My ipaddress is {ip} and i am {self.me}")
-                    except:
-                        pass
+                self.me, self.ip = self.find_me(self.all_controllers) 
             if self.shadow is None and self.me and self.me in self.dict_controllers.keys():
                 self.shadow = Helper().make_bool(self.dict_controllers[self.me]['shadow'])
+
+
+    def find_me(self,controllers=[]):
+        for interface in ni.interfaces():
+            try:
+                for assingment in ni.ifaddresses(interface)[ni.AF_INET6]:
+                    wip = assingment['addr']
+                    ip, *_ = wip.split('%', 1)+[None]
+                    self.logger.debug(f"Interface {interface} has ip {ip}")
+                    for controller in controllers:
+                        if self.sharedip and controller['beacon']:
+                            continue
+                        if controller['ipaddress_ipv6'] == ip:
+                            me=controller['hostname']
+                            self.logger.debug(f"My ipaddress is {ip} and i am {me}")
+                            return me, ip
+            except:
+                pass
+            try:
+                for assingment in ni.ifaddresses(interface)[ni.AF_INET]:
+                    ip = assingment['addr']
+                    self.logger.debug(f"Interface {interface} has ip {ip}")
+                    for controller in controllers:
+                        if self.sharedip and controller['beacon']:
+                            continue
+                        if controller['ipaddress'] == ip:
+                            me=controller['hostname']
+                            self.logger.debug(f"My ipaddress is {ip} and i am {me}")
+                            return me, ip
+            except:
+                pass
+
 
     def get_shadow(self):
         return self.shadow

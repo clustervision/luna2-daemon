@@ -237,9 +237,9 @@ class HA():
                     continue
                 elif self.shadow and controller['shadow']:
                     continue
-                status=self.ping_host(controller['hostname'])
-                if status is False:
-                    return False
+                result=self.ping_host(controller['hostname'])
+                if status:
+                    status=result
         return status
 
     def ping_host(self,host):

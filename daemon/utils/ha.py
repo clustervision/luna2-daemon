@@ -23,7 +23,7 @@ It also receives requests that need to be dealt with by the controller itself.
 """
 
 __author__      = 'Antoine Schonewille'
-__copyright__   = 'Copyright 2022, Luna2 Project'
+__copyright__   = 'Copyright 2024, Luna2 Project'
 __license__     = 'GPL'
 __version__     = '2.0'
 __maintainer__  = 'Antoine Schonewille'
@@ -86,12 +86,12 @@ class HA():
         if self.all_controllers:
             self.dict_controllers = Helper().convert_list_to_dict(self.all_controllers, 'hostname')
             if not self.me:
-                self.me, self.ip = self.find_me(self.all_controllers) 
+                self.me, self.ip = self.find_me(self.all_controllers,self.sharedip) 
             if self.shadow is None and self.me and self.me in self.dict_controllers.keys():
                 self.shadow = Helper().make_bool(self.dict_controllers[self.me]['shadow'])
 
 
-    def find_me(self,controllers=[]):
+    def find_me(self,controllers=[],sharedip=None):
         for interface in ni.interfaces():
             try:
                 for assingment in ni.ifaddresses(interface)[ni.AF_INET6]:
@@ -99,7 +99,7 @@ class HA():
                     ip, *_ = wip.split('%', 1)+[None]
                     self.logger.debug(f"Interface {interface} has ip {ip}")
                     for controller in controllers:
-                        if self.sharedip and controller['beacon']:
+                        if sharedip and controller['beacon']:
                             continue
                         if controller['ipaddress_ipv6'] == ip:
                             me=controller['hostname']
@@ -112,7 +112,7 @@ class HA():
                     ip = assingment['addr']
                     self.logger.debug(f"Interface {interface} has ip {ip}")
                     for controller in controllers:
-                        if self.sharedip and controller['beacon']:
+                        if sharedip and controller['beacon']:
                             continue
                         if controller['ipaddress'] == ip:
                             me=controller['hostname']
@@ -120,6 +120,7 @@ class HA():
                             return me, ip
             except:
                 pass
+        return None, None
 
 
     def get_shadow(self):

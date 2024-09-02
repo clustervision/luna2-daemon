@@ -322,7 +322,7 @@ class Journal():
                     elif self.sharedip and controller['beacon']:
                         continue
                     if self.shadow and controller['shadow']:
-                        self.logger.info(f"cannot pull journal from {controller['hostname']} being marked shadow")
+                        self.logger.info(f"skipping pull journal from {controller['hostname']} being marked shadow")
                         continue
                     self.logger.info(f"pulling journal from {controller['hostname']}")
                     status=self.pull_journal(controller['hostname'])

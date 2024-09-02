@@ -163,7 +163,7 @@ class Boot():
                     groups.append(group['name'])
             status=True
         else:
-            self.logger.error(f"configuration error: No controller available or missing network for controller")
+            self.logger.error(f"configuration error: No controller available or missing network for controller {self.controller_name}")
             environment = jinja2.Environment()
             template = environment.from_string('No Controller is available.')
             ipaddress, serverport = '', ''
@@ -214,7 +214,7 @@ class Boot():
                     webserver_protocol = CONSTANT['WEBSERVER']['PROTOCOL']
             status=True
         else:
-            self.logger.error(f"configuration error: No controller available or missing network for controller")
+            self.logger.error(f"configuration error: No controller available or missing network for controller {self.controller_name}")
             environment = jinja2.Environment()
             template = environment.from_string('No Controller is available.')
             ipaddress, serverport = '', ''
@@ -253,7 +253,7 @@ class Boot():
             serverport = controller[0]['serverport']
             status=True
         else:
-            self.logger.error(f"configuration error: No controller available or missing network for controller")
+            self.logger.error(f"configuration error: No controller available or missing network for controller {self.controller_name}")
             environment = jinja2.Environment()
             template = environment.from_string('No Controller is available.')
             ipaddress, serverport = '', ''
@@ -311,7 +311,7 @@ class Boot():
                 if 'PROTOCOL' in CONSTANT['WEBSERVER']:
                     data['webserver_protocol'] = CONSTANT['WEBSERVER']['PROTOCOL']
         else:
-            self.logger.warning(f"possible configuration error: No controller available or missing network for controller")
+            self.logger.warning(f"possible configuration error: No controller available or missing network for controller {self.controller_name}")
         nodeinterface = Database().get_record_join(
             ['nodeinterface.nodeid', 'nodeinterface.interface', 'ipaddress.ipaddress', 'ipaddress.ipaddress_ipv6',
              'network.name as network', 'network.network as networkip', 'network.subnet', 'network.gateway',
@@ -636,7 +636,7 @@ class Boot():
             if cluster and 'createnode_ondemand' in cluster[0]:
                 createnode_ondemand=Helper().bool_revert(cluster[0]['createnode_ondemand'])
         else:
-            self.logger.warning(f"possible configuration error: No controller available or missing network for controller")
+            self.logger.warning(f"possible configuration error: No controller available or missing network for controller {self.controller_name}")
         # clear mac if it already exists. let's check
         nodeinterface_check = Database().get_record_join(
             ['nodeinterface.nodeid as nodeid', 'nodeinterface.interface'],
@@ -991,7 +991,7 @@ class Boot():
                 if 'PROTOCOL' in CONSTANT['WEBSERVER']:
                     data['webserver_protocol'] = CONSTANT['WEBSERVER']['PROTOCOL']
         else:
-            self.logger.warning(f"possible configuration error: No controller available or missing network for controller")
+            self.logger.warning(f"possible configuration error: No controller available or missing network for controller {self.controller_name}")
 
         data['kerneloptions']=""
         b64regex=re.compile(r"^([A-Za-z0-9+/]{4})*([A-Za-z0-9+/]{3}=|[A-Za-z0-9+/]{2}==)?$")
@@ -1226,7 +1226,7 @@ class Boot():
                 if 'PROTOCOL' in CONSTANT['WEBSERVER']:
                     data['webserver_protocol'] = CONSTANT['WEBSERVER']['PROTOCOL']
         else:
-            self.logger.warning(f"possible configuration error: No controller available or missing network for controller")
+            self.logger.warning(f"possible configuration error: No controller available or missing network for controller {self.controller_name}")
         
         items = {
             'setupbmc': False,

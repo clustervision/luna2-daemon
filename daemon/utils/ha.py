@@ -23,7 +23,7 @@ It also receives requests that need to be dealt with by the controller itself.
 """
 
 __author__      = 'Antoine Schonewille'
-__copyright__   = 'Copyright 2022, Luna2 Project'
+__copyright__   = 'Copyright 2024, Luna2 Project'
 __license__     = 'GPL'
 __version__     = '2.0'
 __maintainer__  = 'Antoine Schonewille'
@@ -86,34 +86,42 @@ class HA():
         if self.all_controllers:
             self.dict_controllers = Helper().convert_list_to_dict(self.all_controllers, 'hostname')
             if not self.me:
-                for interface in ni.interfaces():
-                    try:
-                        wip = ni.ifaddresses(interface)[ni.AF_INET6][0]['addr']
-                        ip, *_ = wip.split('%', 1)+[None]
-                        self.logger.debug(f"Interface {interface} has ip {ip}")
-                        for controller in self.all_controllers:
-                            if self.sharedip and controller['beacon']:
-                                continue
-                            if not self.me and controller['ipaddress_ipv6'] == ip:
-                                self.me=controller['hostname']
-                                self.ip=ip
-                                self.logger.debug(f"My ipaddress is {ip} and i am {self.me}")
-                    except:
-                        pass
-                    try:
-                        ip = ni.ifaddresses(interface)[ni.AF_INET][0]['addr']
-                        self.logger.debug(f"Interface {interface} has ip {ip}")
-                        for controller in self.all_controllers:
-                            if self.sharedip and controller['beacon']:
-                                continue
-                            if not self.me and controller['ipaddress'] == ip:
-                                self.me=controller['hostname']
-                                self.ip=ip
-                                self.logger.debug(f"My ipaddress is {ip} and i am {self.me}")
-                    except:
-                        pass
+                self.me, self.ip = self.find_me(self.all_controllers,self.sharedip) 
             if self.shadow is None and self.me and self.me in self.dict_controllers.keys():
                 self.shadow = Helper().make_bool(self.dict_controllers[self.me]['shadow'])
+
+
+    def find_me(self,controllers=[],sharedip=None):
+        for interface in ni.interfaces():
+            try:
+                for assingment in ni.ifaddresses(interface)[ni.AF_INET6]:
+                    wip = assingment['addr']
+                    ip, *_ = wip.split('%', 1)+[None]
+                    self.logger.debug(f"Interface {interface} has ip {ip}")
+                    for controller in controllers:
+                        if sharedip and controller['beacon']:
+                            continue
+                        if controller['ipaddress_ipv6'] == ip:
+                            me=controller['hostname']
+                            self.logger.debug(f"My ipaddress is {ip} and i am {me}")
+                            return me, ip
+            except:
+                pass
+            try:
+                for assingment in ni.ifaddresses(interface)[ni.AF_INET]:
+                    ip = assingment['addr']
+                    self.logger.debug(f"Interface {interface} has ip {ip}")
+                    for controller in controllers:
+                        if sharedip and controller['beacon']:
+                            continue
+                        if controller['ipaddress'] == ip:
+                            me=controller['hostname']
+                            self.logger.debug(f"My ipaddress is {ip} and i am {me}")
+                            return me, ip
+            except:
+                pass
+        return None, None
+
 
     def get_shadow(self):
         return self.shadow
@@ -229,9 +237,9 @@ class HA():
                     continue
                 elif self.shadow and controller['shadow']:
                     continue
-                status=self.ping_host(controller['hostname'])
-                if status is False:
-                    return False
+                result=self.ping_host(controller['hostname'])
+                if status:
+                    status=result
         return status
 
     def ping_host(self,host):

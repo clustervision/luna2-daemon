@@ -19,6 +19,7 @@ include daemon/plugins/boot/scripts/*
 include daemon/plugins/boot/network/*
 include daemon/plugins/boot/provision/*
 include daemon/plugins/boot/localinstall/*
+include daemon/plugins/boot/roles/*
 include daemon/plugins/boot/*
 include daemon/plugins/osimage/operations/osclone/*
 include daemon/plugins/osimage/operations/osgrab/*

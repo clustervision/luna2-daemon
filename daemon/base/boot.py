@@ -1346,6 +1346,9 @@ class Boot():
                     else:
                         # regular nic
                         zone = 'trusted'
+                        default_metric = '101'
+                        if interface['gateway_metric'] is None:
+                            interface['gateway_metric'] = default_metric
                         if interface['zone'] == 'external' or interface['zone'] == 'public':
                             zone = 'public'
                         data['interfaces'][interface['interface']] = {
@@ -1362,7 +1365,7 @@ class Boot():
                             'networkname': interface['network'],
                             'gateway': interface['gateway'] or "",
                             'gateway_ipv6': interface['gateway_ipv6'] or "",
-                            'gateway_metric': interface['gateway_metric'] or "101",
+                            'gateway_metric': str(interface['gateway_metric']) or default_metric,
                             'nameserver_ip': interface['nameserver_ip'] or "",
                             'nameserver_ip_ipv6': interface['nameserver_ip_ipv6'] or "",
                             'options': interface['options'] or "",

@@ -1322,6 +1322,7 @@ class Boot():
                 ['tableref="nodeinterface"', f"node.name='{data['nodename']}'"]
             )
             domain_search = []
+            default_metric = '101'
             if nodeinterface:
                 for interface in nodeinterface:
                     node_nwk, node_nwk6, netmask, netmask6 = None, None, None, None
@@ -1346,7 +1347,6 @@ class Boot():
                     else:
                         # regular nic
                         zone = 'trusted'
-                        default_metric = '101'
                         if interface['gateway_metric'] is None:
                             interface['gateway_metric'] = default_metric
                         if interface['zone'] == 'external' or interface['zone'] == 'public':

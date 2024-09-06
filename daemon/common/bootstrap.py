@@ -364,7 +364,7 @@ def get_config(filename=None):
                                 BOOTSTRAP[section]['CONTROLLER'+str(num)]['IP'] = ip
                                 BOOTSTRAP[section]['CONTROLLER'+str(num)]['HOSTNAME'] = hostname
                                 LOGGER.info(f"CONTROLLER{num}: {BOOTSTRAP[section]['CONTROLLER'+str(num)]}")
-                            if role and role == 'shadow':
+                            if role and role.upper() == 'SHADOW':
                                 BOOTSTRAP[section]['CONTROLLER'+str(num)]['SHADOW'] = 1
                             if network:
                                 BOOTSTRAP[section]['CONTROLLER'+str(num)]['NETWORK'] = network

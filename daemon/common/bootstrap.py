@@ -352,7 +352,7 @@ def get_config(filename=None):
                                 BOOTSTRAP['HA']={}
                             BOOTSTRAP['HA']['ENABLED']=True
                             BOOTSTRAP[section]['CONTROLLER'+str(num)]={}
-                            hostname,ip,role,*_=item.split(':')+[None]+[None]
+                            hostname,ip,network,role,*_=item.split(':')+[None]+[None]+[None]
                             hostname,*_=hostname.split('.')+[None]
                             # we don't expect a fqdn anywhere in the code!
                             # we generally look for 'controller'. BEWARE!
@@ -366,6 +366,8 @@ def get_config(filename=None):
                                 LOGGER.info(f"CONTROLLER{num}: {BOOTSTRAP[section]['CONTROLLER'+str(num)]}")
                             if role and role == 'shadow':
                                 BOOTSTRAP[section]['CONTROLLER'+str(num)]['SHADOW'] = 1
+                            if network:
+                                BOOTSTRAP[section]['CONTROLLER'+str(num)]['NETWORK'] = network
                     if not skip:
                         BOOTSTRAP[section][option.upper()] = item
             else:
@@ -475,24 +477,20 @@ def bootstrap(bootstrapfile=None):
                 {'column': 'type', 'value': nwtype}
             ]
         Database().insert('network', default_network)
-    networkid, networkname, bmcnetworkid, bmcnetworkname = None, None, None, None
-    network = None
+
+    networkid, networkname, bmcnetworkid, bmcnetworkname = None, 'cluster', None, 'ipmi'
+    networks = Database().get_record(None,'network')
+    networks_byname = Helper().convert_list_to_dict(networks, 'name')
+
     if 'default' in network_functions:
-        network = Database().get_record(None,'network',f"WHERE name = '{network_functions['default']}'")
-    else:
-        #dangerous assumption as id[0] doesn't have to be the primary network but we need to fallback onto something.
-        network = Database().get_record(None, 'network', "WHERE name = 'cluster'")
-    if network:
-        networkid = network[0]['id']
-        networkname = network[0]['name']
+        networkname = network_functions['default']
+        networkid = networks_byname[networkname]['id']
+    if networkname in networks_byname:
+        networkid = networks_byname[networkname]['id']
     if 'bmc' in network_functions:
-        network = Database().get_record(None,'network',f"WHERE name = '{network_functions['bmc']}'")
-    else:
-        # also a bit dangerous but no choice
-        network = Database().get_record(None,'network',"WHERE name = 'ipmi'")
-    if network:
-        bmcnetworkid = network[0]['id']
-        bmcnetworkname = network[0]['name']
+        bmcnetworkname = network_functions['bmc']
+    if bmcnetworkname in networks_byname:
+        bmcnetworkid = networks_byname[bmcnetworkname]['id']
 
     # -------------------
     # section here to add the virtual controller named "controller"
@@ -528,12 +526,17 @@ def bootstrap(bootstrapfile=None):
         if 'CONTROLLER'+str(num) in BOOTSTRAP['HOSTS'].keys():
             hostname=BOOTSTRAP['HOSTS']['CONTROLLER'+str(num)]['HOSTNAME']
             ip=BOOTSTRAP['HOSTS']['CONTROLLER'+str(num)]['IP']
-            shadow=0
+            shadow, network, ctrl_networkid = 0, networkname, networkid
             if 'SHADOW' in BOOTSTRAP['HOSTS']['CONTROLLER'+str(num)].keys():
                 shadow=BOOTSTRAP['HOSTS']['CONTROLLER'+str(num)]['SHADOW']
             if (not sharedip or sharedip == 0) and ip == defaultserver_ip:
                 # we skip as we already have that very same ip for the beacon controller
                 continue
+            if 'NETWORK' in BOOTSTRAP['HOSTS']['CONTROLLER'+str(num)].keys():
+                network=BOOTSTRAP['HOSTS']['CONTROLLER'+str(num)]['NETWORK']
+                if network and network != networkname:
+                    if network in networks_byname.keys():
+                        ctrl_networkid=networks_byname[network]['id']
             taken_ips.append(ip)
             other_controller = [
                 {'column': 'hostname', 'value': hostname},
@@ -548,7 +551,7 @@ def bootstrap(bootstrapfile=None):
                     {'column': 'tableref', 'value': 'controller'},
                     {'column': 'tablerefid', 'value': controller_id},
                     {'column': 'ipaddress', 'value': ip},
-                    {'column': 'networkid', 'value': networkid}
+                    {'column': 'networkid', 'value': ctrl_networkid}
                 ]
                 Database().insert('ipaddress', controller_ip)
 

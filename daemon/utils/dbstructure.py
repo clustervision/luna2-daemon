@@ -63,7 +63,7 @@ class DBStructure():
             if dbcolumns:
                 pending=[]
                 num = num+1
-                layout = self.get_database_tables_structure(table=table)
+                layout = self.get_database_table_structure(table=table)
                 for column in layout:
                     if column['column'] not in dbcolumns:
                         if 'key' in column:
@@ -76,7 +76,7 @@ class DBStructure():
                     Database().add_column(table, column)
             else:
                 self.logger.error(f'Database table {table} does not seem to exist and will be created')
-                layout = self.get_database_tables_structure(table=table)
+                layout = self.get_database_table_structure(table=table)
                 Database().create(table, layout)
         if num == 0:
             # if we reach here this means nothing was there.
@@ -85,7 +85,7 @@ class DBStructure():
    
     def check_and_fix_table_layout(self,table,layout=None):
         if not layout:
-            layout = self.get_database_tables_structure(table=table)
+            layout = self.get_database_table_structure(table=table)
         if layout:
             dbcolumns = Database().get_columns(table)
             if dbcolumns:
@@ -102,7 +102,7 @@ class DBStructure():
                     Database().add_column(table, column)
             else:
                 self.logger.error(f'Database table {table} does not seem to exist and will be created')
-                layout = self.get_database_tables_structure(table=table)
+                layout = self.get_database_table_structure(table=table)
                 Database().create(table, layout)
         return True
    
@@ -111,11 +111,11 @@ class DBStructure():
         This method will create DB table
         """
         for table in self.tables:
-            layout = get_database_tables_structure(table=table)
+            layout = get_database_table_structure(table=table)
             Database().create(table, layout)
     
     
-    def get_database_tables_structure(self,table=None):
+    def get_database_table_structure(self,table=None):
         if not table:
             return
         if table == "status":
@@ -176,4 +176,20 @@ class DBStructure():
             return DATABASE_LAYOUT_rackinventory
         if table == "reservedipaddress":
             return DATABASE_LAYOUT_reservedipaddress
-    
+   
+    def get_appended_database_table_structure(self,table=None):
+        layout = self.get_database_table_structure(table)
+        dbcolumns = Database().get_columns(table)
+        if dbcolumns:
+            if not layout:
+                self.logger.warning(f"database structure not found in defined table layout. all columns will be added with defaults")
+                for column in dbcolumns:
+                    layout.append({"column": column['column'], "datatype": "VARCHAR", "length": "100"})
+            else:
+                for column in dbcolumns:
+                    if column['column'] not in layout:
+                        self.logger.warning(f"database structure: column {column['column']} not found in defined table layout and is added with defaults")
+                        layout.append({"column": column['column'], "datatype": "VARCHAR", "length": "100"})
+        return layout 
+
+

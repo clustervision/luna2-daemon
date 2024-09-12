@@ -211,7 +211,7 @@ class Tables():
                 if dbsequence:
                     data.append({'SQLITE_SEQUENCE': dbsequence})
             if structure:
-                tbstructure=DBStructure().get_database_tables_structure(table)
+                tbstructure=DBStructure().get_appended_database_table_structure(table)
                 if tbstructure:
                     data.append({'STRUCTURE': tbstructure})
             dbdata=Database().get_record(dbcolumns,table)

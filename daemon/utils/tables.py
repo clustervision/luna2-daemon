@@ -169,10 +169,8 @@ class Tables():
             for record in data:
                 if 'SQLITE_SEQUENCE' in record:
                     seq=record['SQLITE_SEQUENCE']
-                    del record['SQLITE_SEQUENCE']
                 if 'STRUCTURE' in record:
                     result=DBStructure().check_and_fix_table_layout(table,layout=record['STRUCTURE'])
-                    del record['STRUCTURE']
                     if not result:
                         self.logger.error(f"Error importing structure for table {table}")
                         return False
@@ -222,6 +220,5 @@ class Tables():
                     data.append(record)
                     #group_data = b64encode(data.encode())
                     #group_data = group_data.decode("ascii")
-            self.logger.info(f"########################## {data}")
         return data
 

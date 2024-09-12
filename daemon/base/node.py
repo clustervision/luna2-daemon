@@ -88,7 +88,6 @@ class Node():
                 'postscript': '<empty>',
                 'setupbmc': False,
                 'netboot': False,
-                'localinstall': False,
                 'bootmenu': False,
                 'roles': None,
                 'provision_method': 'torrent',
@@ -162,7 +161,6 @@ class Node():
                 del node['cloudid']
 
                 node['bootmenu'] = Helper().make_bool(node['bootmenu'])
-                node['localinstall'] = Helper().make_bool(node['localinstall'])
                 node['netboot'] = Helper().make_bool(node['netboot'])
                 node['service'] = Helper().make_bool(node['service'])
                 node['setupbmc'] = Helper().make_bool(node['setupbmc'])
@@ -240,7 +238,6 @@ class Node():
                 'group.partscript AS group_partscript',
                 'group.postscript AS group_postscript',
                 'group.netboot AS group_netboot',
-                'group.localinstall AS group_localinstall',
                 'group.bootmenu AS group_bootmenu',
                 'group.roles AS group_roles',
                 'group.provision_method AS group_provision_method',
@@ -337,7 +334,6 @@ class Node():
                 # 'postscript': '<empty>',
                 'setupbmc': False,
                 'netboot': False,
-                'localinstall': False,
                 'bootmenu': False,
                 'roles': None,
                 'provision_method': 'torrent',
@@ -475,7 +471,6 @@ class Node():
         items = {
             # 'setupbmc': False,
             # 'netboot': False,
-            # 'localinstall': False,
             # 'bootmenu': False,
             'service': False,
         }

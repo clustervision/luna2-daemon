@@ -60,7 +60,10 @@ class DBStructure():
         for table in self.tables:
             dbcolumns = Database().get_columns(table)
             if dbcolumns:
+                self.logger.info(f"---> Found table {table}")
                 num = num+1
+            else:
+                self.logger.info(f"---> DID NOT Found table {table}")
             layout = self.get_database_table_structure(table=table)
             self.check_and_fix_table_layout(table=table,layout=layout,dbcolumns=dbcolumns)
         if num == 0:
@@ -77,7 +80,9 @@ class DBStructure():
         if not dbcolumns:
             dbcolumns = Database().get_columns(table)
         if layout:
+            self.logger.info(f"===> found layout for table {table}")
             if dbcolumns:
+                self.logger.info(f"===> found dbcolumns for table {table}")
                 pending=[]
                 for column in layout:
                     if column['column'] not in dbcolumns:

@@ -58,14 +58,16 @@ class DBStructure():
         """
         num = 0
         for table in self.tables:
+            layout = self.get_database_table_structure(table=table)
             dbcolumns = Database().get_columns(table)
             if dbcolumns:
-                self.logger.info(f"---> Found table {table}")
                 num = num+1
+                self.check_and_fix_table_layout(table=table,layout=layout,dbcolumns=dbcolumns)
+            elif layout:
+                self.logger.error(f'Database table {table} does not seem to exist and will be created')
+                Database().create(table, layout)
             else:
-                self.logger.info(f"---> DID NOT Found table {table}")
-            layout = self.get_database_table_structure(table=table)
-            self.check_and_fix_table_layout(table=table,layout=layout,dbcolumns=dbcolumns)
+                self.logger.error(f'Database table {table} does not seem to exist but also no structure defined')
         if num == 0:
             # if we reach here this means nothing was there.
             return False
@@ -80,9 +82,7 @@ class DBStructure():
         if not dbcolumns:
             dbcolumns = Database().get_columns(table)
         if layout:
-            self.logger.info(f"===> found layout for table {table}")
             if dbcolumns:
-                self.logger.info(f"===> found dbcolumns for table {table}")
                 pending=[]
                 for column in layout:
                     if column['column'] not in dbcolumns:
@@ -96,7 +96,6 @@ class DBStructure():
                     Database().add_column(table, column)
             else:
                 self.logger.error(f'Database table {table} does not seem to exist and will be created')
-                layout = self.get_database_table_structure(table=table)
                 Database().create(table, layout)
         return True
    
@@ -113,7 +112,7 @@ class DBStructure():
         dbcolumns = Database().get_columns(table)
         if dbcolumns:
             if not layout:
-                self.logger.warning(f"database structure not found in defined table layout. all columns will be added with defaults")
+                self.logger.warning(f"database structure not found in defined table layout for {table}")
                 for column in dbcolumns:
                     layout.append({"column": column['column'], "datatype": "VARCHAR", "length": "100"})
             else:
@@ -121,7 +120,7 @@ class DBStructure():
                     if column['column'] in dbcolumns:
                         dbcolumns.remove(column['column'])
                 for column in dbcolumns:
-                    self.logger.warning(f"database structure: column {column} not found in defined table layout and is added with defaults")
+                    self.logger.warning(f"database structure: column {column} not found in defined table layout for {table}")
                     layout.append({"column": column, "datatype": "VARCHAR", "length": "100"})
         return layout
     

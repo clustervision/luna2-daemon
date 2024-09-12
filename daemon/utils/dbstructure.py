@@ -185,5 +185,5 @@ class DBStructure():
             return DATABASE_LAYOUT_rackinventory
         if table == "reservedipaddress":
             return DATABASE_LAYOUT_reservedipaddress
-        return None 
+        return
 

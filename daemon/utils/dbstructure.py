@@ -61,8 +61,8 @@ class DBStructure():
             dbcolumns = Database().get_columns(table)
             if dbcolumns:
                 num = num+1
-                layout = self.get_database_table_structure(table=table)
-                self.check_and_fix_table_layout(table=table,layout=layout,dbcolumns=dbcolumns)
+            layout = self.get_database_table_structure(table=table)
+            self.check_and_fix_table_layout(table=table,layout=layout,dbcolumns=dbcolumns)
         if num == 0:
             # if we reach here this means nothing was there.
             return False

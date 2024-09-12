@@ -58,36 +58,25 @@ class DBStructure():
         """
         num = 0
         for table in self.tables:
-            #result = Database().get_record(None, table, None)
             dbcolumns = Database().get_columns(table)
             if dbcolumns:
-                pending=[]
                 num = num+1
                 layout = self.get_database_table_structure(table=table)
-                for column in layout:
-                    if column['column'] not in dbcolumns:
-                        if 'key' in column:
-                            pending.append(column)
-                        else:
-                            self.logger.error(f"fix database: column {column['column']} not found in table {table} and will be added")
-                            Database().add_column(table, column)
-                for column in pending:
-                    self.logger.error(f"fix database: column {column['column']} not found in table {table} and will be added")
-                    Database().add_column(table, column)
-            else:
-                self.logger.error(f'Database table {table} does not seem to exist and will be created')
-                layout = self.get_database_table_structure(table=table)
-                Database().create(table, layout)
+                self.check_and_fix_table_layout(table=table,layout=layout,dbcolumns=dbcolumns)
         if num == 0:
             # if we reach here this means nothing was there.
             return False
         return True
    
-    def check_and_fix_table_layout(self,table,layout=None):
+    def check_and_fix_table_layout(self,table,layout=None,dbcolumns=None):
+        """
+        This method will check and fix the table structure.
+        """
         if not layout:
             layout = self.get_database_table_structure(table=table)
-        if layout:
+        if not dbcolumns:
             dbcolumns = Database().get_columns(table)
+        if layout:
             if dbcolumns:
                 pending=[]
                 for column in layout:
@@ -114,6 +103,22 @@ class DBStructure():
             layout = get_database_table_structure(table=table)
             Database().create(table, layout)
     
+    def get_appended_database_table_structure(self,table=None):
+        layout = self.get_database_table_structure(table)
+        dbcolumns = Database().get_columns(table)
+        if dbcolumns:
+            if not layout:
+                self.logger.warning(f"database structure not found in defined table layout. all columns will be added with defaults")
+                for column in dbcolumns:
+                    layout.append({"column": column['column'], "datatype": "VARCHAR", "length": "100"})
+            else:
+                for column in layout:
+                    if column['column'] in dbcolumns:
+                        dbcolumns.remove(column['column'])
+                for column in dbcolumns:
+                    self.logger.warning(f"database structure: column {column} not found in defined table layout and is added with defaults")
+                    layout.append({"column": column, "datatype": "VARCHAR", "length": "100"})
+        return layout
     
     def get_database_table_structure(self,table=None):
         if not table:
@@ -176,20 +181,5 @@ class DBStructure():
             return DATABASE_LAYOUT_rackinventory
         if table == "reservedipaddress":
             return DATABASE_LAYOUT_reservedipaddress
-   
-    def get_appended_database_table_structure(self,table=None):
-        layout = self.get_database_table_structure(table)
-        dbcolumns = Database().get_columns(table)
-        if dbcolumns:
-            if not layout:
-                self.logger.warning(f"database structure not found in defined table layout. all columns will be added with defaults")
-                for column in dbcolumns:
-                    layout.append({"column": column['column'], "datatype": "VARCHAR", "length": "100"})
-            else:
-                for column in dbcolumns:
-                    if column['column'] not in layout:
-                        self.logger.warning(f"database structure: column {column['column']} not found in defined table layout and is added with defaults")
-                        layout.append({"column": column['column'], "datatype": "VARCHAR", "length": "100"})
-        return layout 
-
+        return None 
 

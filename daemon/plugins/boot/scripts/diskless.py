@@ -103,7 +103,7 @@ mount -t sysfs sysfs /sysroot/sys
 
 if [ ! -d /tmp ]; then mkdir /tmp; fi
 grep -v ${MY_LOCAL_DISK_NAME} /sysroot/etc/fstab > /tmp/fstab
-cat /tmp/fstab > /sysroot/etc/fstab
+grep -v -w '/' /tmp/fstab > /sysroot/etc/fstab
 
 cat << EOF >> /sysroot/etc/fstab
 ${MY_LOCAL_DISK_NAME}${DP}4   /       ext4    defaults        1 1

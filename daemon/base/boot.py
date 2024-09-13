@@ -1190,7 +1190,6 @@ class Boot():
             'imagefile'             : None,
             'selinux'               : None,
             'setupbmc'              : None,
-            'localinstall'          : None,
             'unmanaged_bmc_users'   : None,
             'systemroot'            : None,
             'interfaces'            : {},
@@ -1231,7 +1230,6 @@ class Boot():
         items = {
             'setupbmc': False,
             'netboot': False,
-            'localinstall': False,
             'bootmenu': False,
             'unmanaged_bmc_users': 'skip',
         }
@@ -1247,7 +1245,7 @@ class Boot():
                 return status, "i received data back internally that i could not parse"
             self.logger.debug(f"DEBUG: {node_details}")
             for item in ['provision_method','provision_fallback','prescript','partscript','postscript',
-                         'netboot','localinstall','bootmenu','provision_interface','unmanaged_bmc_users',
+                         'netboot','bootmenu','provision_interface','unmanaged_bmc_users',
                          'name','setupbmc','bmcsetup','group','osimage','osimagetag']:
                 if item in items and isinstance(items[item], bool):
                     if node_details[item] is None or node_details[item] == 'None':
@@ -1469,17 +1467,6 @@ class Boot():
                     segment = str(script_plugin().postscript)
             template_data = template_data.replace(
                 f"## SCRIPT {script.upper()} CODE SEGMENT",
-                segment
-            )
-
-        if data['localinstall'] is True:
-            ## SCRIPT LOCALINSTALL CODE SEGMENT
-            localinstall_plugin = Helper().plugin_load(self.boot_plugins, 'boot/localinstall',
-                       [data['nodename'],data['group'],data['distribution']]
-            )
-            segment = str(localinstall_plugin().grub)
-            template_data = template_data.replace(
-                f"## SCRIPT LOCALINSTALL CODE SEGMENT",
                 segment
             )
 

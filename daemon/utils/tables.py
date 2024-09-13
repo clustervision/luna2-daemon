@@ -37,6 +37,7 @@ import hashlib
 from json import dumps,loads
 from common.constant import CONSTANT
 from utils.database import Database
+from utils.dbstructure import DBStructure
 from utils.log import Log
 from utils.helper import Helper
 from utils.request import Request
@@ -88,6 +89,7 @@ class Tables():
                     elif 'hostname' in dbcolumns:
                         order='hostname'
                 order=f"ORDER BY {order} ASC"
+                dbcolumns.sort()
                 data=Database().get_record(dbcolumns,table,order)
                 if data:
                     merged="#"
@@ -156,6 +158,7 @@ class Tables():
 
     def import_table(self,table,data=[],emptyok=False):
         seq=None
+        result=True
         if not data:
             if data is None:
                 self.logger.error(f"data for table {table} is 'None' which i cannot permit. bailing out.")
@@ -163,13 +166,23 @@ class Tables():
             if not emptyok:
                 self.logger.error(f"data for table {table} is empty but clashes with emptyok {emptyok}")
                 return False
+        if data:
+            for record in data:
+                if 'SQLITE_SEQUENCE' in record:
+                    seq=record['SQLITE_SEQUENCE']
+                if 'STRUCTURE' in record:
+                    result=DBStructure().check_and_fix_table_layout(table,layout=record['STRUCTURE'])
+                    if not result:
+                        self.logger.error(f"Error importing structure for table {table}")
+                        return False
         Database().clear(table)
         if not data:
             self.logger.warning(f"No data for table {table} found so we only cleared the table")
-            return True
+            return True        
         for record in data:
             if 'SQLITE_SEQUENCE' in record:
-                seq=record['SQLITE_SEQUENCE']
+                continue
+            if 'STRUCTURE' in record:
                 continue
             row = Helper().make_rows(record)
             result=Database().insert(table,row)
@@ -189,7 +202,7 @@ class Tables():
         return True
 
 
-    def export_table(self,table,sequence=True):
+    def export_table(self,table,sequence=True,structure=True):
         data=[]
         dbcolumns = Database().get_columns(table)
         if dbcolumns:
@@ -198,6 +211,10 @@ class Tables():
                 dbsequence=Database().get_sequence(table)
                 if dbsequence:
                     data.append({'SQLITE_SEQUENCE': dbsequence})
+            if structure:
+                tbstructure=DBStructure().get_appended_database_table_structure(table)
+                if tbstructure:
+                    data.append({'STRUCTURE': tbstructure})
             dbdata=Database().get_record(dbcolumns,table)
             if dbdata:
                 for record in dbdata:

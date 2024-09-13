@@ -100,7 +100,7 @@ class Cluster():
             status=True
             response={}
             for table in tables:
-                response[table]=Tables().export_table(table,sequence=True)
+                response[table]=Tables().export_table(table,sequence=True,structure=True)
         return status, response
 
 

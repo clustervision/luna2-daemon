@@ -41,11 +41,6 @@ from utils.helper import Helper
 
 configParser = RawConfigParser()
 
-TABLES = ['status', 'queue', 'osimage', 'osimagetag', 'nodesecrets', 'nodeinterface', 'bmcsetup','ha', 
-          'monitor', 'ipaddress', 'groupinterface', 'roles', 'group', 'network', 'user', 'switch', 'cloud',
-          'otherdevices', 'controller', 'groupsecrets', 'node', 'cluster', 'tracker', 'dns', 'journal',
-          'rack', 'rackinventory', 'ping', 'reservedipaddress']
-
 def db_status():
     """
     A validation method to check which db is configured.
@@ -134,7 +129,7 @@ def check_db():
 # Key call as we cannot import anything until we know for sure we have a database!
 # --------------------------------------------------------------------------------
 if check_db():
-    from common.database_layout import *
+    from utils.dbstructure import DBStructure
     from utils.helper import Helper
     from utils.database import Database
     from utils.log import Log
@@ -144,112 +139,7 @@ else:
     exit(127)
 
 
-def check_db_tables():
-    """
-    This method will check whether the database is empty or not.
-    """
-    num = 0
-    for table in TABLES:
-        #result = Database().get_record(None, table, None)
-        dbcolumns = Database().get_columns(table)
-        if dbcolumns:
-            pending=[]
-            num = num+1
-            layout = get_database_tables_structure(table=table)
-            for column in layout:
-                if column['column'] not in dbcolumns:
-                    if 'key' in column:
-                        pending.append(column)
-                    else:
-                        LOGGER.error(f"fix database: column {column['column']} not found in table {table} and will be added")
-                        Database().add_column(table, column)
-            for column in pending:
-                LOGGER.error(f"fix database: column {column['column']} not found in table {table} and will be added")
-                Database().add_column(table, column)
-        else:
-            LOGGER.error(f'Database table {table} does not seem to exist and will be created')
-            layout = get_database_tables_structure(table=table)
-            Database().create(table, layout)
-    if num == 0:
-        # if we reach here this means nothing was there.
-        return False
-    return True
-
-
-def create_database_tables(table=None):
-    """
-    This method will create DB table
-    """
-    for table in TABLES:
-        layout = get_database_tables_structure(table=table)
-        Database().create(table, layout)
-
-
-def get_database_tables_structure(table=None):
-    if not table:
-        return
-    if table == "status":
-        return DATABASE_LAYOUT_status
-    if table == "queue":
-        return DATABASE_LAYOUT_queue
-        #left in as an example what could be done - Antoine
-        #Database().create("queue", DATABASE_LAYOUT_queue)
-    if table == "osimage":
-        return DATABASE_LAYOUT_osimage
-    if table == "osimagetag":
-        return DATABASE_LAYOUT_osimagetag
-    if table == "nodesecrets":
-        return DATABASE_LAYOUT_nodesecrets
-    if table == "nodeinterface":
-        return DATABASE_LAYOUT_nodeinterface
-    if table == "bmcsetup":
-        return DATABASE_LAYOUT_bmcsetup
-    if table == "monitor":
-        return DATABASE_LAYOUT_monitor
-    if table == "ipaddress":
-        return DATABASE_LAYOUT_ipaddress
-    if table == "groupinterface":
-        return DATABASE_LAYOUT_groupinterface
-    if table == "roles":
-        return DATABASE_LAYOUT_roles
-    if table == "group":
-        return DATABASE_LAYOUT_group
-    if table == "network":
-        return DATABASE_LAYOUT_network
-    if table == "user":
-        return DATABASE_LAYOUT_user
-    if table == "switch":
-        return DATABASE_LAYOUT_switch
-    if table == "cloud":
-        return DATABASE_LAYOUT_cloud
-    if table == "otherdevices":
-        return DATABASE_LAYOUT_otherdevices
-    if table == "controller":
-        return DATABASE_LAYOUT_controller
-    if table == "groupsecrets":
-        return DATABASE_LAYOUT_groupsecrets
-    if table == "node":
-        return DATABASE_LAYOUT_node
-    if table == "cluster":
-        return DATABASE_LAYOUT_cluster
-    if table == "tracker":
-        return DATABASE_LAYOUT_tracker
-    if table == "dns":
-        return DATABASE_LAYOUT_dns
-    if table == "journal":
-        return DATABASE_LAYOUT_journal
-    if table == "ha":
-        return DATABASE_LAYOUT_ha
-    if table == "ping":
-        return DATABASE_LAYOUT_ping
-    if table == "rack":
-        return DATABASE_LAYOUT_rack
-    if table == "rackinventory":
-        return DATABASE_LAYOUT_rackinventory
-    if table == "reservedipaddress":
-        return DATABASE_LAYOUT_reservedipaddress
-
-
+# --------------------------------------------------------------------------------
 def verify_and_set_beacon():
     """
     We must be backwards compatible, where 'older' setups
@@ -381,8 +271,6 @@ def bootstrap(bootstrapfile=None):
     """
     get_config(bootstrapfile)
     LOGGER.info('###################### Bootstrap Start ######################')
-#   below no longer needed but kept for old-time sake
-#    create_database_tables()
 
     plugins_path=CONSTANT["PLUGINS"]["PLUGINS_DIRECTORY"]
     group_plugins = Helper().plugin_finder(f'{plugins_path}/group')
@@ -592,7 +480,6 @@ def bootstrap(bootstrapfile=None):
             {'column': 'bmcsetupid', 'value': '1'},
             {'column': 'domain', 'value': 'cluster'},
             {'column': 'netboot', 'value': '1'},
-            {'column': 'localinstall', 'value': '0'},
             {'column': 'bootmenu', 'value': '0'},
             {'column': 'osimageid', 'value': osimage},
             {'column': 'partscript', 'value': "bW91bnQgLXQgdG1wZnMgdG1wZnMgL3N5c3Jvb3QK"},
@@ -613,7 +500,6 @@ def bootstrap(bootstrapfile=None):
 #            {'column': 'bmcsetupid', 'value': '1'},
 #            {'column': 'domain', 'value': 'cluster'},
 #            {'column': 'netboot', 'value': '1'},
-#            {'column': 'localinstall', 'value': '0'},
 #            {'column': 'bootmenu', 'value': '0'},
 #            {'column': 'osimageid', 'value': ubuntu},
 #            {'column': 'partscript', 'value': "bW91bnQgLXQgdG1wZnMgdG1wZnMgIiRyb290bW50Igo="},
@@ -739,7 +625,7 @@ def validate_bootstrap():
     bootstrapfile_check = Helper().check_path_state(bootstrapfile)
     db_check=check_db()
     if db_check is True:
-        db_tables_check=check_db_tables()
+        db_tables_check=DBStructure().check_db_tables()
 
     LOGGER.info(f'db_check = [{db_check}], db_tables_check = [{db_tables_check}]')
     if bootstrapfile_check is True and db_check is True:

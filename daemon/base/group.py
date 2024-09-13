@@ -79,7 +79,6 @@ class Group():
                 del group['id']
                 group['setupbmc'] = Helper().make_bool(group['setupbmc'])
                 group['netboot'] = Helper().make_bool(group['netboot'])
-                group['localinstall'] = Helper().make_bool(group['localinstall'])
                 group['bootmenu'] = Helper().make_bool(group['bootmenu'])
                 group['osimage'] = Database().name_by_id('osimage', group['osimageid'])
                 del group['osimageid']
@@ -105,7 +104,6 @@ class Group():
             # 'postscript': '<empty>',
             'setupbmc':False,
             'netboot':False,
-            'localinstall':False,
             'bootmenu':False,
             'provision_interface':'BOOTIF',
             'provision_method': 'torrent',
@@ -245,7 +243,6 @@ class Group():
             'postscript': 'ZWNobyAndG1wZnMgLyB0bXBmcyBkZWZhdWx0cyAwIDAnID4+IC9zeXNyb290L2V0Yy9mc3RhYgo=',
             'setupbmc': False,
             'netboot': True,
-            'localinstall': False,
             'bootmenu': False,
             'provision_interface': 'BOOTIF'
         }
@@ -473,7 +470,6 @@ class Group():
             'postscript': '',
             'setupbmc': False,
             'netboot': True,
-            'localinstall': False,
             'bootmenu': False,
         }
         if request_data:

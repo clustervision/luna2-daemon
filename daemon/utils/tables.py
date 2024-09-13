@@ -89,6 +89,7 @@ class Tables():
                     elif 'hostname' in dbcolumns:
                         order='hostname'
                 order=f"ORDER BY {order} ASC"
+                dbcolumns.sort()
                 data=Database().get_record(dbcolumns,table,order)
                 if data:
                     merged="#"

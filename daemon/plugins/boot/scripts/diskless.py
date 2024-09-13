@@ -85,12 +85,13 @@ if [ "$FORMAT_MY_DISK" == "yes" ]; then
         mkfs.fat -F 16 ${MY_LOCAL_DISK_NAME}${DP}1
         mkfs.ext4 ${MY_LOCAL_DISK_NAME}${DP}2
         mkfs.ext4 ${MY_LOCAL_DISK_NAME}${DP}4
-        mount ${MY_LOCAL_DISK_NAME}${DP}4 /sysroot
-        mkdir /sysroot/boot
-        mount ${MY_LOCAL_DISK_NAME}${DP}2 /sysroot/boot
-        mkdir /sysroot/boot/efi
-        mount ${MY_LOCAL_DISK_NAME}${DP}1 /sysroot/boot/efi
 fi
+umount -l /sysroot &> /dev/null
+mount ${MY_LOCAL_DISK_NAME}${DP}4 /sysroot
+mkdir /sysroot/boot
+mount ${MY_LOCAL_DISK_NAME}${DP}2 /sysroot/boot
+mkdir /sysroot/boot/efi
+mount ${MY_LOCAL_DISK_NAME}${DP}1 /sysroot/boot/efi
     """
 
     postscript = """

@@ -106,13 +106,13 @@ if [ "$FORMAT_MY_DISK" == "yes" ]; then
         swaplabel -L swappart ${MY_LOCAL_DISK1_NAME}${DP1}3
         mkswap ${MY_LOCAL_DISK2_NAME}${DP2}3
         swaplabel -L swappart ${MY_LOCAL_DISK2_NAME}${DP2}3
-
-        mount /dev/md2 /sysroot
-        mkdir /sysroot/boot
-        mount /dev/md1 /sysroot/boot
-        mkdir /sysroot/boot/efi
-        mount /dev/md0 /sysroot/boot/efi
 fi
+umount -l /sysroot &> /dev/null
+mount /dev/md2 /sysroot
+mkdir /sysroot/boot
+mount /dev/md1 /sysroot/boot
+mkdir /sysroot/boot/efi
+mount /dev/md0 /sysroot/boot/efi
     """
 
     postscript = """

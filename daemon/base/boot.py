@@ -492,7 +492,7 @@ class Boot():
         if data['nodeid']:
             node = Database().get_record_join(
                 ['node.*','group.osimageid as grouposimageid','group.osimagetagid as grouposimagetagid',
-                 'group.kerneloptions as groupkerneloptions'],
+                 'group.kerneloptions as groupkerneloptions','group.netboot as groupnetboot'],
                 ['group.id=node.groupid'],
                 [f'node.id={data["nodeid"]}']
             )
@@ -507,6 +507,10 @@ class Boot():
                     data['kerneloptions']=node[0]['kerneloptions']
                 elif node[0]['groupkerneloptions']:
                     data['kerneloptions']=node[0]['groupkerneloptions']
+                if node[0]['netboot'] is not None:
+                    data['netboot']=Helper().make_bool(node[0]['netboot'])
+                elif node[0]['groupnetboot'] is not None:
+                    data['netboot']=Helper().make_bool(node[0]['groupnetboot'])
                 if b64regex.match(data['kerneloptions']):
                     ko_data = b64decode(data['kerneloptions'])
                     try:
@@ -555,6 +559,14 @@ class Boot():
 
         if data['kerneloptions']:
             data['kerneloptions']=data['kerneloptions'].replace('\n', ' ').replace('\r', '')
+
+        if 'netboot' in data and data['netboot'] is False:
+            template = 'templ_boot_disk.cfg'
+            template_path = f'{CONSTANT["TEMPLATES"]["TEMPLATE_FILES"]}/{template}'
+            check_template = Helper().check_jinja(template_path)
+            if not check_template:
+                return False, 'Empty'
+            data['template'] = template
 
         if None not in data.values():
             status=True
@@ -821,7 +833,7 @@ class Boot():
 
         node = Database().get_record_join(
             ['node.*', 'group.osimageid as grouposimageid','group.osimagetagid as grouposimagetagid',
-             'group.kerneloptions as groupkerneloptions'],
+             'group.kerneloptions as groupkerneloptions','group.netboot as groupnetboot'],
             ['group.id=node.groupid'],
             [f'node.name="{hostname}"']
         )
@@ -837,6 +849,10 @@ class Boot():
                 data['kerneloptions']=node[0]['kerneloptions']
             elif node[0]['groupkerneloptions']:
                 data['kerneloptions']=node[0]['groupkerneloptions']
+            if node[0]['netboot'] is not None:
+                data['netboot']=Helper().make_bool(node[0]['netboot'])
+            elif node[0]['groupnetboot'] is not None:
+                data['netboot']=Helper().make_bool(node[0]['groupnetboot'])
             if b64regex.match(data['kerneloptions']):
                 ko_data = b64decode(data['kerneloptions'])
                 try:
@@ -923,6 +939,14 @@ class Boot():
         if data['kerneloptions']:
             data['kerneloptions']=data['kerneloptions'].replace('\n', ' ').replace('\r', '')
 
+        if 'netboot' in data and data['netboot'] is False:
+            template = 'templ_boot_disk.cfg'
+            template_path = f'{CONSTANT["TEMPLATES"]["TEMPLATE_FILES"]}/{template}'
+            check_template = Helper().check_jinja(template_path)
+            if not check_template:
+                return False, 'Empty'
+            data['template'] = template
+
         if None not in data.values():
             status=True
             Helper().update_node_state(data["nodeid"], "installer.discovery")
@@ -999,7 +1023,7 @@ class Boot():
         # we probably have to cut the fqdn off of hostname?
         node = Database().get_record_join(
             ['node.*', 'group.osimageid as grouposimageid','group.osimagetagid as grouposimagetagid',
-             'group.kerneloptions as groupkerneloptions'],
+             'group.kerneloptions as groupkerneloptions','group.netboot as groupnetboot'],
             ['group.id=node.groupid'],
             [f'node.name="{hostname}"']
         )
@@ -1015,6 +1039,10 @@ class Boot():
                 data['kerneloptions']=node[0]['kerneloptions']
             elif node[0]['groupkerneloptions']:
                 data['kerneloptions']=node[0]['groupkerneloptions']
+            if node[0]['netboot'] is not None:
+                data['netboot']=Helper().make_bool(node[0]['netboot'])
+            elif node[0]['groupnetboot'] is not None:
+                data['netboot']=Helper().make_bool(node[0]['groupnetboot'])
             if b64regex.match(data['kerneloptions']):
                 ko_data = b64decode(data['kerneloptions'])
                 try:
@@ -1144,6 +1172,14 @@ class Boot():
 
         if data['kerneloptions']:
             data['kerneloptions']=data['kerneloptions'].replace('\n', ' ').replace('\r', '')
+
+        if 'netboot' in data and data['netboot'] is False:
+            template = 'templ_boot_disk.cfg'
+            template_path = f'{CONSTANT["TEMPLATES"]["TEMPLATE_FILES"]}/{template}'
+            check_template = Helper().check_jinja(template_path)
+            if not check_template:
+                return False, 'Empty'
+            data['template'] = template
 
         if None not in data.values():
             status=True

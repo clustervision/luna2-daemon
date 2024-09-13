@@ -1209,7 +1209,6 @@ class Boot():
             data['cluster_provision_fallback'] = cluster[0]['provision_fallback']
             data['name_server'] = cluster[0]['nameserver_ip']
             data['domain_search'] = cluster[0]['domain_search']
-        # Antoine
         controller = Database().get_record_join(
             ['controller.*', 'ipaddress.ipaddress', 'ipaddress.ipaddress_ipv6'],
             ['ipaddress.tablerefid=controller.id'],

@@ -64,16 +64,14 @@ if [ "$MY_LOCAL_DISK1_SECTORS" ]; then
         SECTORS=$(cat /sys/block/${MY_LOCAL_DISK1_NAME}/size)
         if [ "$SECTORS" != "$MY_LOCAL_DISK1_SECTORS" ]; then
                 echo "!!! Disk $MY_LOCAL_DISK1_NAME has $SECTORS sectors, but expected $MY_LOCAL_DISK1_SECTORS sectors - Have to STOP !!!"
-                echo "If you still want to proceed, press enter"
-                read
+                exit 1
         fi
 fi
 if [ "$MY_LOCAL_DISK2_SECTORS" ]; then
         SECTORS=$(cat /sys/block/${MY_LOCAL_DISK2_NAME}/size)
         if [ "$SECTORS" != "$MY_LOCAL_DISK2_SECTORS" ]; then
                 echo "!!! Disk $MY_LOCAL_DISK2_NAME has $SECTORS sectors, but expected $MY_LOCAL_DISK2_SECTORS sectors - Have to STOP !!!"
-                echo "If you still want to proceed, press enter"
-                read
+                exit 1
         fi
 fi
 if [ "$PARTITION_MY_DISK" == "yes" ]; then

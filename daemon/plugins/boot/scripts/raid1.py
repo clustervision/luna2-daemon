@@ -119,6 +119,8 @@ fi
 
     postscript = """
 . /tmp/my-local-disk.sh
+DP1=$(echo $MY_LOCAL_DISK1_NAME | grep -i nvme && echo p)
+DP2=$(echo $MY_LOCAL_DISK2_NAME | grep -i nvme && echo p)
 mkdir /sysroot/proc /sysroot/dev /sysroot/sys &> /dev/null
 mount -t proc proc /sysroot/proc 
 mount -t devtmpfs devtmpfs /sysroot/dev

@@ -55,6 +55,8 @@ class Log:
         message = '[%(filename)s:%(funcName)s@%(lineno)d] - %(message)s'
         log_format = f'{thread_level}{message}'
         logging.basicConfig(filename=logfile, format=log_format, filemode='a', level=log_level)
+        urllib3 = logging.getLogger('urllib3')
+        urllib3.setLevel(logging.CRITICAL)
         cls.__logger = logging.getLogger('luna2-daemon')
         cls.__logger.setLevel(log_level)
         formatter = logging.Formatter(log_format)

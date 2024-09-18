@@ -407,6 +407,9 @@ class OsImage(object):
                 image_directory = CONSTANT['FILES']['IMAGE_DIRECTORY']
                 orgsrcpath=srcimage[0]['path']
                 newdstpath=image_directory+'/'+dst
+                if orgsrcpath:
+                    self.logger.warning(f"path {orgsrcpath} is hard set for {src} and won't be renamed")
+                    return True, f"path {orgsrcpath} is hard set for {src} and won't be renamed"
                 if not orgsrcpath:
                     filesystem_plugin = 'default'
                     if 'IMAGE_FILESYSTEM' in CONSTANT['PLUGINS'] and CONSTANT['PLUGINS']['IMAGE_FILESYSTEM']:
@@ -416,9 +419,11 @@ class OsImage(object):
                     if ret:
                         orgsrcpath=data
                 if orgsrcpath:
-                    if not os.path.exists(orgsrcpath):
+                    if orgsrcpath == newdstpath:
+                        return True, f"{orgsrcpath} and {newdstpath} are the same. no change needed"
+                    elif not os.path.exists(orgsrcpath):
                         return False, f"{orgsrcpath} does not exist"
-                    if os.path.exists(newdstpath):
+                    elif os.path.exists(newdstpath):
                         return False, f"{newdstpath} already exists"
                     status = shutil.move(orgsrcpath,newdstpath)
                     if not status:

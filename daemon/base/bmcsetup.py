@@ -32,6 +32,7 @@ __status__      = 'Development'
 import uuid
 from utils.log import Log
 from utils.model import Model
+from utils.database import Database
 
 
 class BMCSetup():
@@ -146,6 +147,23 @@ class BMCSetup():
         """
         This method will delete a bmcsetup.
         """
+        inuse_node = Database().get_record_join(['node.*'], ['bmcsetup.id=node.bmcsetupid'],
+                                                f'bmcsetup.name="{name}"')
+        inuse_group = Database().get_record_join(['group.*'], ['bmcsetup.id=group.bmcsetupid'],
+                                                f'bmcsetup.name="{name}"')
+        inuse = []
+        if inuse_node:
+            inuse += inuse_node                                   
+        if inuse_group:
+            inuse += inuse_group                                   
+        if inuse:
+            inuseby=[]
+            while len(inuse) > 0 and len(inuseby) < 11:
+                node=inuse.pop(0)
+                inuseby.append(node['name'])
+            response = f"bmcsetup {name} currently in use by "+', '.join(inuseby)+" ..."
+            return False, response
+
         status, response = Model().delete_record(
             name = name,
             table = self.table,

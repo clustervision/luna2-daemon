@@ -464,6 +464,23 @@ class OSImage():
         """
         This method will delete a osimage.
         """
+        inuse_node = Database().get_record_join(['node.*'], ['osimage.id=node.osimageid'],
+                                                f'osimage.name="{name}"')
+        inuse_group = Database().get_record_join(['group.*'], ['osimage.id=group.osimageid'],
+                                                f'osimage.name="{name}"')
+        inuse = []
+        if inuse_node:
+            inuse += inuse_node                                   
+        if inuse_group:
+            inuse += inuse_group                                   
+        if inuse:
+            inuseby=[]
+            while len(inuse) > 0 and len(inuseby) < 11:
+                node=inuse.pop(0)
+                inuseby.append(node['name'])
+            response = f"osimage {name} currently in use by "+', '.join(inuseby)+" ..."
+            return False, response
+
         image = Database().get_record(None, 'osimage', f' WHERE name = "{name}"')
         if image:
             for item in ['kernelfile','initrdfile','imagefile']:

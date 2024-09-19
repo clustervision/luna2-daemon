@@ -49,6 +49,7 @@ export MY_LOCAL_DISK_NAME=/dev/sda
 export MY_LOCAL_DISK_SECTORS=   # nr of sectors, optional. if defined, then verified.
 export PARTITION_MY_DISK=yes
 export FORMAT_MY_DISK=yes
+export MAKE_BOOT=yes            # configures and installs grub/shim for standalone boots
 EOF
 chmod 755 /tmp/my-local-disk.sh
     """
@@ -102,7 +103,6 @@ mount -t proc proc /sysroot/proc
 mount -t devtmpfs devtmpfs /sysroot/dev
 mount -t sysfs sysfs /sysroot/sys
 
-if [ ! -d /tmp ]; then mkdir /tmp; fi
 grep -v ${MY_LOCAL_DISK_NAME} /sysroot/etc/fstab > /tmp/fstab
 grep -v -w '/' /tmp/fstab > /sysroot/etc/fstab
 
@@ -113,16 +113,18 @@ ${MY_LOCAL_DISK_NAME}${DP}1   /boot/efi   vfat    defaults        1 2
 ${MY_LOCAL_DISK_NAME}${DP}3   swap    swap    defaults        0 0
 EOF
 
-SH=`chroot /sysroot /bin/bash -c "efibootmgr -v|grep Shim1|grep -oE '^Boot[0-9]+'|grep -oE '[0-9]+'"`
-if [ "$SH" ]; then
-        echo 'Shim found on boot '$SH
+if [ "$MAKE_BOOT" ]; then
+    rm -rf /sysroot/lib/dracut/modules.d/95luna/
+
+    SH=$(chroot /sysroot /bin/bash -c "efibootmgr -v|grep Shim1|grep -oE '^Boot[0-9]+'|grep -oE '[0-9]+'")
+    if [ "$SH" ]; then
         chroot /sysroot /bin/bash -c "efibootmgr -B -b $SH"
-        echo Remove
-        chroot /sysroot /bin/bash -c "efibootmgr -v"
-        echo Clean
+    fi
+    DISTRO=$(ls /sysroot/boot/efi/EFI/ | grep -ie rocky -e redhat -e alma -e centos || echo rocky)
+    chroot /sysroot /bin/bash -c "efibootmgr --disk ${MY_LOCAL_DISK_NAME} --part 1 --create --label \"Shim1\" --loader /EFI/${DISTRO}/shimx64.efi"
+    chroot /sysroot /bin/bash -c "grub2-mkconfig -o /boot/efi/EFI/${DISTRO}/grub.cfg"
+    touch /sysroot/.autorelabel
 fi
-chroot /sysroot /bin/bash -c "efibootmgr --verbose --disk ${MY_LOCAL_DISK_NAME} --part 1 --create --label \"Shim1\" --loader /EFI/rocky/shimx64.efi"
-chroot /sysroot /bin/bash -c "grub2-mkconfig -o /boot/efi/EFI/rocky/grub.cfg"
 
 umount /sysroot/sys
 umount /sysroot/dev

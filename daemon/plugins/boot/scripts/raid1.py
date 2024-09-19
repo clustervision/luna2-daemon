@@ -51,6 +51,7 @@ export MY_LOCAL_DISK1_SECTORS=   # nr of sectors, optional. if defined, then ver
 export MY_LOCAL_DISK2_SECTORS=   # nr of sectors, optional. if defined, then verified.
 export PARTITION_MY_DISK=yes
 export FORMAT_MY_DISK=yes
+export MAKE_BOOT=yes             # configures and installs grub/shim for standalone boots
 EOF
 chmod 755 /tmp/my-local-disk.sh
     """
@@ -84,23 +85,20 @@ if [ "$PARTITION_MY_DISK" == "yes" ]; then
                 parted $RAID_DISK -s 'mkpart boot ext4 1g 2g'
                 parted $RAID_DISK -s 'mkpart swap linux-swap 2g 4g'
                 parted $RAID_DISK -s 'mkpart root ext4 4g 100%'
-                parted $RAID_DISK -s 'set 2 boot on'
-                parted $RAID_DISK -s 'name 1"EFI System Partition"'
+                parted $RAID_DISK -s 'set 1 boot on'
+                parted $RAID_DISK -s 'set 4 raid on'
+                parted $RAID_DISK -s 'name 1 "EFI System Partition"'
         done
 fi
 while [[ ! -b ${MY_LOCAL_DISK1_NAME}${DP1}1 ]] || [[ ! -b ${MY_LOCAL_DISK1_NAME}${DP1}2 ]] || [[ ! -b ${MY_LOCAL_DISK1_NAME}${DP1}3 ]] || [[ ! -b ${MY_LOCAL_DISK1_NAME}${DP1}4 ]]; do sleep 1; done
 while [[ ! -b ${MY_LOCAL_DISK2_NAME}${DP2}1 ]] || [[ ! -b ${MY_LOCAL_DISK2_NAME}${DP2}2 ]] || [[ ! -b ${MY_LOCAL_DISK2_NAME}${DP2}3 ]] || [[ ! -b ${MY_LOCAL_DISK2_NAME}${DP2}4 ]]; do sleep 1; done
 
 if [ "$FORMAT_MY_DISK" == "yes" ]; then
-        echo y | mdadm --create /dev/md0 --metadata 1.0 --force --assume-clean --level=mirror --raid-devices=2 ${MY_LOCAL_DISK1_NAME}${DP1}1 ${MY_LOCAL_DISK2_NAME}${DP2}1
+        mkfs.fat -F 16 ${MY_LOCAL_DISK1_NAME}${DP1}1
+        mkfs.ext4 ${MY_LOCAL_DISK1_NAME}${DP1}2
+        echo y | mdadm --create /dev/md0 --metadata 1.2 --force --assume-clean --level=mirror --raid-devices=2 ${MY_LOCAL_DISK1_NAME}${DP1}4 ${MY_LOCAL_DISK2_NAME}${DP2}4
         sleep 3
-        mkfs.fat -F 16 /dev/md0
-        echo y | mdadm --create /dev/md1 --metadata 1.0 --force --assume-clean --level=mirror --raid-devices=2 ${MY_LOCAL_DISK1_NAME}${DP1}2 ${MY_LOCAL_DISK2_NAME}${DP2}2
-        sleep 3
-        mkfs.ext4 /dev/md1
-        echo y | mdadm --create /dev/md2 --metadata 1.2 --force --assume-clean --level=mirror --raid-devices=2 ${MY_LOCAL_DISK1_NAME}${DP1}4 ${MY_LOCAL_DISK2_NAME}${DP2}4
-        sleep 3
-        mkfs.ext4 /dev/md2
+        mkfs.ext4 /dev/md0
 
         mkswap ${MY_LOCAL_DISK1_NAME}${DP1}3
         swaplabel -L swappart ${MY_LOCAL_DISK1_NAME}${DP1}3
@@ -108,11 +106,11 @@ if [ "$FORMAT_MY_DISK" == "yes" ]; then
         swaplabel -L swappart ${MY_LOCAL_DISK2_NAME}${DP2}3
 fi
 umount -l /sysroot &> /dev/null
-mount /dev/md2 /sysroot
+mount /dev/md0 /sysroot
 mkdir /sysroot/boot
-mount /dev/md1 /sysroot/boot
+mount ${MY_LOCAL_DISK1_NAME}${DP1}2 /sysroot/boot
 mkdir /sysroot/boot/efi
-mount /dev/md0 /sysroot/boot/efi
+mount ${MY_LOCAL_DISK1_NAME}${DP1}1 /sysroot/boot/efi
     """
 
     postscript = """
@@ -124,28 +122,41 @@ mount -t proc proc /sysroot/proc
 mount -t devtmpfs devtmpfs /sysroot/dev
 mount -t sysfs sysfs /sysroot/sys
 
-if [ ! -d /tmp ]; then mkdir /tmp; fi
-grep -v -e md0 -e md1 -e md2 /sysroot/etc/fstab > /tmp/fstab
+grep -v -e md0 -e ${MY_LOCAL_DISK1_NAME} -e ${MY_LOCAL_DISK2_NAME} /sysroot/etc/fstab > /tmp/fstab
 grep -v -w '/' /tmp/fstab > /sysroot/etc/fstab
 
 cat << EOF >> /sysroot/etc/fstab
-/dev/md2   /       ext4    defaults        1 1
-/dev/md1   /boot   ext4    defaults        1 2
-/dev/md0   /boot/efi   vfat    defaults        1 2
+/dev/md0   /       ext4    defaults        1 1
+${MY_LOCAL_DISK1_NAME}${DP1}2   /boot   ext4    defaults        1 2
+${MY_LOCAL_DISK1_NAME}${DP1}1   /boot/efi   vfat    defaults        1 2
 ${MY_LOCAL_DISK1_NAME}${DP1}3   swap    swap    defaults        0 0
 ${MY_LOCAL_DISK2_NAME}${DP2}3   swap    swap    defaults        0 0
 EOF
 
-SH=`chroot /sysroot /bin/bash -c "efibootmgr -v|grep Shim1|grep -oE '^Boot[0-9]+'|grep -oE '[0-9]+'"`
-if [ "$SH" ]; then
-        echo 'Shim found on boot '$SH
+if [ "$MAKE_BOOT" ]; then
+    echo "AUTO -all" > /sysroot/etc/mdadm.conf
+    chroot /sysroot /bin/bash -c "mdadm --detail --scan --verbose | grep ARRAY >> /etc/mdadm.conf"
+
+    rm -rf /sysroot/lib/dracut/modules.d/95luna/
+    chroot /sysroot /bin/bash -c "dracut -f --mdadmconf --add=mdraid --add-drivers='raid1'"
+
+    GRUB_CMDLINE_LINUX=$(grep GRUB_CMDLINE_LINUX /sysroot/etc/default/grub || echo 'GRUB_CMDLINE_LINUX=')
+    GRUB_CMDLINE_LINUX=$(echo $GRUB_CMDLINE_LINUX | tr -d '"')
+    GRUB_CMDLINE_LINUX="${GRUB_CMDLINE_LINUX} rd.md=1 rd.md.conf=1 rd.auto=1 net.ifnames=1 biosdevname=0"
+    GRUB_CMDLINE_LINUX=$(echo $GRUB_CMDLINE_LINUX | sed -e 's/GRUB_CMDLINE_LINUX=/GRUB_CMDLINE_LINUX="/' | sed -e 's/$/"/')
+    grep -v GRUB_CMDLINE_LINUX /sysroot/etc/default/grub > /tmp/grub-def
+    cat /tmp/grub-def > /sysroot/etc/default/grub
+    echo "$GRUB_CMDLINE_LINUX" >> /sysroot/etc/default/grub
+
+    SH=`chroot /sysroot /bin/bash -c "efibootmgr -v|grep Shim1|grep -oE '^Boot[0-9]+'|grep -oE '[0-9]+'"`
+    if [ "$SH" ]; then
         chroot /sysroot /bin/bash -c "efibootmgr -B -b $SH"
-        echo Remove
-        chroot /sysroot /bin/bash -c "efibootmgr -v"
-        echo Clean
+    fi
+    DISTRO=$(ls /sysroot/boot/efi/EFI/ | grep -ie rocky -e redhat -e alma -e centos || echo rocky)
+    chroot /sysroot /bin/bash -c "efibootmgr --disk ${MY_LOCAL_DISK1_NAME}${DP1} --part 1 --create --label \"Shim1\" --loader /EFI/${DISTRO}/shimx64.efi"
+    chroot /sysroot /bin/bash -c "grub2-mkconfig -o /boot/efi/EFI/${DISTRO}/grub.cfg"
+    touch /sysroot/.autorelabel
 fi
-chroot /sysroot /bin/bash -c "efibootmgr --verbose --disk /dev/md0 --part 1 --create --label \"Shim1\" --loader /EFI/rocky/shimx64.efi"
-chroot /sysroot /bin/bash -c "grub2-mkconfig -o /boot/efi/EFI/rocky/grub.cfg"
 
 umount /sysroot/sys
 umount /sysroot/dev

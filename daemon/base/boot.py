@@ -1296,6 +1296,7 @@ class Boot():
             data['nodename']     = node_details['name']
             data['nodehostname'] = node_details['hostname']
             data['roles']        = node_details['roles'] or ""
+            data['scripts']      = node_details['scripts'] or ""
         else:
             status = False
             return status, "This node does not seem to exist"

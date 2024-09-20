@@ -343,6 +343,10 @@ class Group():
                 temp = data['roles']
                 temp = temp.replace(' ',',')
                 data['roles'] = temp.replace(',,',',')
+            if 'scripts' in data:
+                temp = data['scripts']
+                temp = temp.replace(' ',',')
+                data['scripts'] = temp.replace(',,',',')
 
             group_columns = Database().get_columns('group')
             column_check = Helper().compare_list(data, group_columns)

@@ -111,15 +111,6 @@ class File():
             self.logger.info(f"Valid authentication for extension [{ext}] - Go!")
 
         self.logger.debug(f'Request for file: {filename} from IP Address: {request_ip}')
-        node_interface = Database().get_record_join(
-            ['nodeinterface.nodeid as id'],
-            ['ipaddress.tablerefid=nodeinterface.id'],
-            ['tableref="nodeinterface"',f"ipaddress.ipaddress='{request_ip}'"]
-        )
-        if node_interface:
-            row = [{"column": "status", "value": "installer.discovery"}]
-            where = [{"column": "id", "value": node_interface[0]["id"]}]
-            Database().update('node', row, where)
         filepath = Files().check_file(filename)
         if filepath:
             self.logger.info(f'File Path is {filepath}.')

@@ -41,6 +41,7 @@ from utils.database import Database
 from utils.helper import Helper
 from utils.control import Control as NodeControl
 from utils.status import Status
+from base.monitor import Monitor
 
 
 class Control():
@@ -108,6 +109,9 @@ class Control():
                 if 'power' in action:
                     action=action.replace('power ','') # wee ugly but we need to review the API response design - Antoine
                 response = {'control': {subsystem : message } }
+                if result and subsystem == "power" and action in ['on','off','reset','cycle']:
+                    state = {'monitor': {'status': {hostname: {'state': command} } } }
+                    Monitor().update_nodestatus(hostname, state)
                 status=True
             else:
                 response = f'{hostname} does not have any bmcsetup'
@@ -173,6 +177,10 @@ class Control():
                                 node, command, result, message, *_ = (record['message'].split(':', 3) + [None] + [None] + [None])
                                 # data is message is like 'node:result:message'
                                 self.logger.debug(f"control POST regexp match: [{node}], [{message}], [{result}]")
+
+                                if result == 'True' and subsystem == "power" and action in ['on','off','reset','cycle']:
+                                    state = {'monitor': {'status': {node: {'state': command} } } }
+                                    Monitor().update_nodestatus(node, state)
 
                                 if subsystem == 'power' and action == 'status':
                                     if result == 'True':

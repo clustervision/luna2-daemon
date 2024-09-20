@@ -90,6 +90,7 @@ class Node():
                 'netboot': False,
                 'bootmenu': False,
                 'roles': None,
+                'scripts': None,
                 'provision_method': 'torrent',
                 'provision_fallback': 'http',
                 'provision_interface': 'BOOTIF'
@@ -240,6 +241,7 @@ class Node():
                 'group.netboot AS group_netboot',
                 'group.bootmenu AS group_bootmenu',
                 'group.roles AS group_roles',
+                'group.scripts AS group_scripts',
                 'group.provision_method AS group_provision_method',
                 'group.provision_fallback AS group_provision_fallback',
                 'group.provision_interface AS group_provision_interface'
@@ -336,6 +338,7 @@ class Node():
                 'netboot': False,
                 'bootmenu': False,
                 'roles': None,
+                'scripts': None,
                 'provision_method': 'torrent',
                 'provision_fallback': 'http',
                 'provision_interface': 'BOOTIF'
@@ -568,6 +571,10 @@ class Node():
                 temp = data['roles']
                 temp = temp.replace(' ',',')
                 data['roles'] = temp.replace(',,',',')
+            if 'scripts' in data:
+                temp = data['scripts']
+                temp = temp.replace(' ',',')
+                data['scripts'] = temp.replace(',,',',')
 
             node_columns = Database().get_columns('node')
             columns_check = Helper().compare_list(data, node_columns)

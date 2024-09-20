@@ -154,6 +154,7 @@ class Plugin():
                         '--exclude=/proc/*',
                         '--exclude=/dev/*',
                         '--exclude=/sys/*',
+                        '--exclude=/tmp/*',
                         '--checkpoint=100000',
                         '--use-compress-program=/usr/bin/lbzip2',
                         '-c', '-f', tmp_dir + '/' + packed_image_file, '.'

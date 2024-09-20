@@ -143,7 +143,7 @@ class OSImage():
             regex=re.compile(r"^([A-Za-z0-9+/]{4})*([A-Za-z0-9+/]{3}=|[A-Za-z0-9+/]{2}==)?$")
             try:
                 for item in ['grab_filesystems','grab_exclude','kerneloptions']:
-                    if not regex.match(record[item]):
+                    if record[item] and not regex.match(record[item]):
                         data = record[item]
                         data = b64encode(data.encode())
                         record[item] = data.decode("ascii")
@@ -233,7 +233,7 @@ class OSImage():
         data = {}
         status=False
         response="Internal error"
-        create, update = False, False
+        create, update, move, oldosimage = False, False, False, None
         current_tag, tagname, new_tagid = None, None, None
         # things we have to set for a group
         items = {
@@ -257,9 +257,11 @@ class OSImage():
                         status=False
                         return status, f'{newosimage} Already present in database'
                     else:
+                        oldosimage=data['name']
                         data['name'] = data['newosimage']
                         del data['newosimage']
                         data['changed']=1
+                        move=True
                 update = True
             else:
                 if 'newosimage' in data:
@@ -286,6 +288,10 @@ class OSImage():
             column_check = Helper().compare_list(data, osimage_columns)
             if column_check:
                 if update:
+                    if move:
+                        status, mesg = OsImager().rename_osimage(oldosimage, data['name'])
+                        if not status:
+                            return status, mesg
                     if tagname == "": # to clear tag
                         data['tagid'] = ""
                     elif tagname != current_tag:
@@ -458,6 +464,23 @@ class OSImage():
         """
         This method will delete a osimage.
         """
+        inuse_node = Database().get_record_join(['node.*'], ['osimage.id=node.osimageid'],
+                                                f'osimage.name="{name}"')
+        inuse_group = Database().get_record_join(['group.*'], ['osimage.id=group.osimageid'],
+                                                f'osimage.name="{name}"')
+        inuse = []
+        if inuse_node:
+            inuse += inuse_node                                   
+        if inuse_group:
+            inuse += inuse_group                                   
+        if inuse:
+            inuseby=[]
+            while len(inuse) > 0 and len(inuseby) < 11:
+                node=inuse.pop(0)
+                inuseby.append(node['name'])
+            response = f"osimage {name} currently in use by "+', '.join(inuseby)+" ..."
+            return False, response
+
         image = Database().get_record(None, 'osimage', f' WHERE name = "{name}"')
         if image:
             for item in ['kernelfile','initrdfile','imagefile']:

@@ -33,6 +33,7 @@ __status__      = 'Development'
 import re
 import os
 import sys
+import shutil
 import threading
 from time import sleep
 import concurrent.futures
@@ -394,6 +395,47 @@ class OsImage(object):
                 self.logger.error(f"build_osimage has problems during exception handling: {nexp}")
             return False
             
+    # ---------------------------------------------------------------------------
+
+    def rename_osimage(self, src, dst):
+        """"
+        src and dst are osimage names. not full paths
+        """
+        try:
+            srcimage = Database().get_record(None, 'osimage', f"WHERE name='{src}'")
+            if srcimage:
+                image_directory = CONSTANT['FILES']['IMAGE_DIRECTORY']
+                orgsrcpath=srcimage[0]['path']
+                newdstpath=image_directory+'/'+dst
+                if orgsrcpath:
+                    self.logger.warning(f"path {orgsrcpath} is hard set for {src} and won't be renamed")
+                    return True, f"path {orgsrcpath} is hard set for {src} and won't be renamed"
+                if not orgsrcpath:
+                    filesystem_plugin = 'default'
+                    if 'IMAGE_FILESYSTEM' in CONSTANT['PLUGINS'] and CONSTANT['PLUGINS']['IMAGE_FILESYSTEM']:
+                        filesystem_plugin = CONSTANT['PLUGINS']['IMAGE_FILESYSTEM']
+                    os_move_plugin=Helper().plugin_load(self.osimage_plugins,'osimage/filesystem',filesystem_plugin)
+                    ret, data = os_move_plugin().getpath(image_directory=image_directory, osimage=srcimage[0]['name'], tag=None) # we feed no tag as tagged/versioned FS is normally R/O
+                    if ret:
+                        orgsrcpath=data
+                if orgsrcpath:
+                    if orgsrcpath == newdstpath:
+                        return True, f"{orgsrcpath} and {newdstpath} are the same. no change needed"
+                    elif not os.path.exists(orgsrcpath):
+                        return False, f"{orgsrcpath} does not exist"
+                    elif os.path.exists(newdstpath):
+                        return False, f"{newdstpath} already exists"
+                    status = shutil.move(orgsrcpath,newdstpath)
+                    if not status:
+                        return False, f"renaming {orgsrcpath} to {newdstpath} failed"
+                    return True, "Success"
+            self.logger.error(f"renaming {src} to {dst} failed due to no osimage existence or unsuccesful path detection")
+            return False, f"renaming {src} to {dst} failed due to no osimage existence or unsuccesful path detection"
+        except Exception as exp:
+            exc_type, exc_obj, exc_tb = sys.exc_info()
+            self.logger.error(f"rename_osimage has problems: {exp}, {exc_type}, in {exc_tb.tb_lineno}")
+            return False, f"renaming {src} to {dst} failed due to no osimage existence or unsuccesful path detection"
+
     # ---------------------------------------------------------------------------
 
     def copy_osimage(self,taskid,request_id):

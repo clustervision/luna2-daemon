@@ -640,10 +640,17 @@ class Group():
         This method will delete a group.
         """
         status=False
-        where = f' WHERE `id` = "{groupid}"'
-        group = Database().get_record(None, 'group', where)
+        group = Database().get_record(None, 'group', f'WHERE `id`="{groupid}"')
         if group:
             name=group[0]['name']
+            inuse = Database().get_record(None, 'node', f'WHERE `groupid`="{groupid}"')
+            if inuse:
+                inuseby=[]
+                while len(inuse) > 0 and len(inuseby) < 11:
+                    node=inuse.pop(0)
+                    inuseby.append(node['name'])
+                response = f"group {name} currently in use by "+', '.join(inuseby)+" ..."
+                return False, response
             where = [{"column": "id", "value": groupid}]
             Database().delete_row('group', where)
             where = [{"column": "groupid", "value": group[0]['id']}]

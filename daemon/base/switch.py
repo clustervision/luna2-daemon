@@ -337,7 +337,17 @@ class Switch():
         """
         switch = Database().get_record(table='switch', where=f' WHERE `name` = "{name}"')
         if switch:
-            Database().delete_row('rackinventory', [{"column": "tablerefid", "value": switch[0]['id']},
+            switchid=switch[0]['id']
+            inuse = Database().get_record(None, 'node', f'WHERE `switchid`="{switchid}"')
+            if inuse:
+                inuseby=[]
+                while len(inuse) > 0 and len(inuseby) < 11:
+                    node=inuse.pop(0)
+                    inuseby.append(node['name'])
+                response = f"switch {name} currently in use by "+', '.join(inuseby)+" ..."
+                return False, response
+
+            Database().delete_row('rackinventory', [{"column": "tablerefid", "value": switchid},
                                                     {"column": "tableref", "value": "switch"}])
         status, response = Model().delete_record(
             name = name,

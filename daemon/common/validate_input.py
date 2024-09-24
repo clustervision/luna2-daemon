@@ -49,6 +49,7 @@ control_char_re = re.compile(f'[{re.escape(CONTROL_CHAR)}]')
 REG_EXP = {
     'name': { 'regexp': r'^[a-zA-Z0-9\-\.\_\ ]+$', 'error': 'combination of characters a-z A-Z, numbers 0-9, whitespace, \'-\', \'_\' and \'.\'' },
     'strictname': { 'regexp': r'^[a-z0-9\-\.]+$', 'error': 'combination of small characters a-z, numbers 0-9, \'-\' and \'.\'' },
+    'strictcsv': { 'regexp': r'^[a-z0-9\-\,\ ]+$', 'error': 'combination of small characters a-z, numbers 0-9, whitespace, \'-\' and \',\'' },
     'ipaddress': { 'regexp': r'^[0-9a-f:\.]+$', 'error': 'combination of characters small a-f, numbers 0-9, \':\' and \'.\'' },
     'macaddress': { 'regexp': r'^(([0-9A-Za-f]{2}((-|:)[0-9A-Za-f]{2}){5})|)$', 'error': '6 blocks of 2 characters a-f or numbers 0-9, separated by \':\' or \'-\'' },
     'minimal': { 'regexp': r'^\S.*$', 'error': 'minimal character requirement. at least one' },
@@ -83,7 +84,8 @@ MATCH = {
     'newbmcname': 'name',
     'newsecretname': 'name',
     'osimagetag': 'anything',
-    'roles': 'strictname',
+    'roles': 'strictcsv',
+    'scripts': 'strictcsv',
     'tag': 'anything',
     'interface': 'minimal',
     'gateway_metric': 'integer',

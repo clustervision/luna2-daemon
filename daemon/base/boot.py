@@ -629,7 +629,7 @@ class Boot():
             status=True
             # reintroduced below section as if we serve files through
             # e.g. nginx, we won't update anything
-            state = {'monitor': {'status': {data['nodename']: {'state': "install.discovery"} } } }
+            state = {'monitor': {'status': {data['nodename']: {'state': "install.discovered"} } } }
             Monitor().update_nodestatus(data['nodename'], state)
         else:
             for key, value in data.items():
@@ -1001,7 +1001,7 @@ class Boot():
         if None not in data.values():
             status=True
             # reintroduced below section as if we serve files through e.g. nginx, we won't update
-            state = {'monitor': {'status': {data['nodename']: {'state': "install.discovery"} } } }
+            state = {'monitor': {'status': {data['nodename']: {'state': "install.discovered"} } } }
             Monitor().update_nodestatus(data['nodename'], state)
         else:
             for key, value in data.items():
@@ -1211,7 +1211,7 @@ class Boot():
         if None not in data.values():
             status=True
             # reintroduced below section as if we serve files through e.g. nginx, we won't update
-            state = {'monitor': {'status': {data['nodename']: {'state': "install.discovery"} } } }
+            state = {'monitor': {'status': {data['nodename']: {'state': "install.discovered"} } } }
             Monitor().update_nodestatus(data['nodename'], state)
         else:
             for key, value in data.items():

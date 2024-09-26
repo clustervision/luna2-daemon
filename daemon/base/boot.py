@@ -626,12 +626,9 @@ class Boot():
 
         if None not in data.values():
             status=True
-            Helper().update_node_state(data["nodeid"], "installer.discovery")
             # reintroduced below section as if we serve files through
             # e.g. nginx, we won't update anything
-            #row = [{"column": "status", "value": "installer.discovery"}]
-            #where = [{"column": "id", "value": data['nodeid']}]
-            #Database().update('node', row, where)
+            Helper().update_node_state(data['nodeid'], "installer.discovery")
         else:
             for key, value in data.items():
                 if value is None:
@@ -1001,11 +998,8 @@ class Boot():
 
         if None not in data.values():
             status=True
-            Helper().update_node_state(data["nodeid"], "installer.discovery")
             # reintroduced below section as if we serve files through e.g. nginx, we won't update
-            #row = [{"column": "status", "value": "installer.discovery"}]
-            #where = [{"column": "id", "value": data['nodeid']}]
-            #Database().update('node', row, where)
+            Helper().update_node_state(data["nodeid"], "installer.discovery")
         else:
             for key, value in data.items():
                 if value is None:
@@ -1213,11 +1207,8 @@ class Boot():
 
         if None not in data.values():
             status=True
-            Helper().update_node_state(data["nodeid"], "installer.discovery")
             # reintroduced below section as if we serve files through e.g. nginx, we won't update
-            #row = [{"column": "status", "value": "installer.discovery"}]
-            #where = [{"column": "id", "value": data['nodeid']}]
-            #Database().update('node', row, where)
+            Helper().update_node_state(data["nodeid"], "installer.discovery")
         else:
             for key, value in data.items():
                 if value is None:
@@ -1539,7 +1530,7 @@ class Boot():
         #self.logger.info(f"boot install data: [{data}]")
         if None not in data.values():
             status=True
-            Helper().update_node_state(data["nodeid"], "installer.downloaded")
+            Helper().update_node_state(data["nodeid"], "installer.rendered")
         else:
             for key, value in data.items():
                 if value is None:

@@ -35,6 +35,7 @@ class Monitor(object):
         self.node_state = {
             204: [
                 "install.discovery",
+                "install.rendered",
                 "install.downloaded",
                 "install.started",
                 "install.completed",

@@ -52,7 +52,7 @@ gcp = [
        '001A11', '089E08', '3C5AB4', '546009', '703ACB', '9495A0', '94EB2C', '98D293',
        'A47733', 'F40304', 'F4F5D8', 'F4F5E8', 'F88FCA'
 ]
-_vmware = [
+vsphere = [
        '005056'
 ]
 
@@ -93,6 +93,10 @@ class Plugin():
                     elif vendor.upper() in gcp:
                         status = True
                         response = 'gcp'
+                        break
+                    elif vendor.upper() in vsphere:
+                        status = True
+                        response = 'vsphere'
                         break
                 else:
                     continue

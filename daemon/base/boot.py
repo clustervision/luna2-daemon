@@ -50,6 +50,7 @@ from utils.journal import Journal
 from utils.ha import HA
 from utils.controller import Controller
 from utils.boot import Boot as UBoot
+from base.monitor import Monitor
 
 
 # -------------------- custom Jinja filter to handle instream filtering -----------------------
@@ -628,7 +629,8 @@ class Boot():
             status=True
             # reintroduced below section as if we serve files through
             # e.g. nginx, we won't update anything
-            Helper().update_node_state(data['nodeid'], "installer.discovery")
+            state = {'monitor': {'status': {data['nodename']: {'state': "install.discovery"} } } }
+            Monitor().update_nodestatus(data['nodename'], state)
         else:
             for key, value in data.items():
                 if value is None:
@@ -999,7 +1001,8 @@ class Boot():
         if None not in data.values():
             status=True
             # reintroduced below section as if we serve files through e.g. nginx, we won't update
-            Helper().update_node_state(data["nodeid"], "installer.discovery")
+            state = {'monitor': {'status': {data['nodename']: {'state': "install.discovery"} } } }
+            Monitor().update_nodestatus(data['nodename'], state)
         else:
             for key, value in data.items():
                 if value is None:
@@ -1208,7 +1211,8 @@ class Boot():
         if None not in data.values():
             status=True
             # reintroduced below section as if we serve files through e.g. nginx, we won't update
-            Helper().update_node_state(data["nodeid"], "installer.discovery")
+            state = {'monitor': {'status': {data['nodename']: {'state': "install.discovery"} } } }
+            Monitor().update_nodestatus(data['nodename'], state)
         else:
             for key, value in data.items():
                 if value is None:
@@ -1242,6 +1246,7 @@ class Boot():
             'group'                 : None,
             'ipaddress'             : None,
             'serverport'            : None,
+            'nodename'              : None,
             'nodehostname'          : None,
             'osimagename'           : None,
             'imagefile'             : None,
@@ -1527,10 +1532,10 @@ class Boot():
                 segment
             )
 
-        #self.logger.info(f"boot install data: [{data}]")
         if None not in data.values():
             status=True
-            Helper().update_node_state(data["nodeid"], "installer.rendered")
+            state = {'monitor': {'status': {data['nodename']: {'state': "install.rendered"} } } }
+            Monitor().update_nodestatus(data['nodename'], state)
         else:
             for key, value in data.items():
                 if value is None:

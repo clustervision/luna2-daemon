@@ -130,6 +130,8 @@ class Interface():
                     macaddress = interface['macaddress']
                 if 'options' in interface.keys():
                     options = interface['options']
+                if 'vlanid' in interface.keys():
+                    vlanid = interface['vlanid']
                 if 'network' in interface.keys():
                     network = interface['network']
                 if 'ipaddress' in interface.keys():

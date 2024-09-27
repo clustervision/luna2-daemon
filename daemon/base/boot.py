@@ -50,6 +50,7 @@ from utils.journal import Journal
 from utils.ha import HA
 from utils.controller import Controller
 from utils.boot import Boot as UBoot
+from base.monitor import Monitor
 
 
 # -------------------- custom Jinja filter to handle instream filtering -----------------------
@@ -104,12 +105,45 @@ class Boot():
         self.controller_object = Controller()
         self.controller_name = self.controller_object.get_beacon()
         self.controller_beaconip = self.controller_object.get_beaconip()
+        self.hatrial = 25
         self.ha_object = HA()
         self.insync = self.ha_object.get_insync()
         self.hastate = self.ha_object.get_hastate()
         if self.hastate is True and self.insync is True:
             self.controller_name=self.ha_object.get_me()
 
+    def wait_for_insync(self,trial=25):
+        while self.insync is False and trial>0:
+            self.insync = self.ha_object.get_insync()
+            trial-=1
+            sleep(2)
+
+    def clear_existing_mac(self,macaddress,exclude_nodeid=None):
+        # clear mac if it already exists.
+        where=[f'nodeinterface.macaddress="{macaddress}"']
+        if exclude_nodeid:
+            where.append(f"nodeinterface.nodeid!='{exclude_nodeid}'")
+        nodeinterface_check = Database().get_record_join(
+            ['nodeinterface.nodeid as nodeid', 'nodeinterface.interface'],
+            ['nodeinterface.nodeid=node.id'],
+            where
+        )
+        if nodeinterface_check:
+            result = True
+            for db_node in nodeinterface_check:
+                self.logger.warning(f"node with id {db_node['nodeid']} will have its MAC {macaddress} cleared")
+                if self.hastate is True:
+                    self.wait_for_insync(self.hatrial)
+                    payload = [{'interface': db_node['interface'], 'macaddress': ""}]
+                    result, _ = Journal().add_request(function="Interface.change_node_interface",object=db_node['nodeid'],payload=payload)
+                if result is True:
+                    result, _ = Config().node_interface_config(
+                        db_node['nodeid'],
+                        db_node['interface'],
+                        ""
+                    )
+            return result
+        return True
 
     def default(self):
         """
@@ -339,19 +373,27 @@ class Boot():
                 if (isinstance(result, bool) and result is True) or (isinstance(result, tuple) and result[0] is True and len(result)>2):
                     switch = result[1]
                     port = result[2]
-                    self.logger.info(f"detected {mac} on: [{switch}] : [{port}]")
+                    self.logger.info(f"detected {mac} on: [{switch}] + [{port}]")
                     detect_node = Database().get_record_join(
                         ['node.*'],
                         ['switch.id=node.switchid'],
                         [f'switch.name="{switch}"', f'node.switchport = "{port}"']
                     )
                     if detect_node:
+                        self.logger.warning(f"Node {detect_node[0]['name']} with id {detect_node[0]['id']} on switch {switch} will use MAC {mac}")
+                        result = True
                         provision_interface = 'BOOTIF'
-                        result, _ = Config().node_interface_config(
-                            detect_node[0]["id"],
-                            provision_interface,
-                            mac
-                        )
+                        if self.hastate is True:
+                            self.wait_for_insync(self.hatrial)
+                            payload = [{'interface': provision_interface, 'macaddress': mac}]
+                            result, _ = Journal().add_request(function="Interface.change_node_interface",object=detect_node[0]['id'],payload=payload)
+                        if result is True:
+                            result, _ = Config().node_interface_config(
+                                detect_node[0]['id'],
+                                provision_interface,
+                                mac
+                            )
+
                         nodeinterface = Database().get_record_join(
                             ['nodeinterface.nodeid', 'nodeinterface.interface',
                              'ipaddress.ipaddress', 'network.name as network', 'network.gateway',
@@ -395,15 +437,21 @@ class Boot():
                             ['tableref="nodeinterface"',f"cloud.name='{cloud}'",'nodeinterface.interface="BOOTIF"']
                         )
                         if possible_nodes:
+                            result = True
                             for node in possible_nodes:
                                 if not node['macaddress']:  # first candidate
-                                    self.logger.info(f"using {node['name']} with mac {mac} on [{cloud}]")
+                                    self.logger.warning(f"Node {node['name']} with id {node['nodeid']} in cloud {cloud} will use MAC {mac}")
                                     provision_interface = 'BOOTIF'
-                                    result, _ = Config().node_interface_config(
-                                        node['nodeid'],
-                                        provision_interface,
-                                        mac
-                                    )
+                                    if self.hastate is True:
+                                        self.wait_for_insync(self.hatrial)
+                                        payload = [{'interface': provision_interface, 'macaddress': mac}]
+                                        result, _ = Journal().add_request(function="Interface.change_node_interface",object=node['nodeid'],payload=payload)
+                                    if result is True:
+                                        result, _ = Config().node_interface_config(
+                                            node['nodeid'],
+                                            provision_interface,
+                                            mac
+                                        )
                                     data['nodeid'] = node['nodeid']
                                     if node["ipaddress_ipv6"]:
                                         data['nodeip'] = f'{node["ipaddress_ipv6"]}/{node["subnet_ipv6"]}'
@@ -433,6 +481,8 @@ class Boot():
                     if 'nextnode_discover' in cluster[0]:
                         nextnode_discover=Helper().bool_revert(cluster[0]['nextnode_discover'])
                 if nextnode_discover:
+                    self.logger.info(f"nextnode discover: we will try to see a good fit for {mac}")
+
                     # then we fetch a list of all nodes that we have, with or without interface config
                     list1 = Database().get_record_join(
                         ['node.*', 'group.name as groupname', 'group.provision_interface as group_provision_interface',
@@ -447,18 +497,25 @@ class Boot():
 
                     checked = []
                     if node_list:
+                        result = True
                         # we already have some nodes in the list. let's see if we can re-use
                         for node in node_list:
                             if node['name'] not in checked:
                                 checked.append(node['name'])
                                 if 'interface' in node and 'macaddress' in node and not node['macaddress']:
                                     # mac is empty. candidate!
+                                    self.clear_existing_mac(macaddress=mac)
                                     provision_interface = node['provision_interface'] or node['group_provision_interface'] or 'BOOTIF'
-                                    result, _ = Config().node_interface_config(
-                                        node['id'],
-                                        provision_interface,
-                                        mac
-                                    )
+                                    if self.hastate is True:
+                                        self.wait_for_insync(self.hatrial)
+                                        payload = [{'interface': provision_interface, 'macaddress': mac}]
+                                        result, _ = Journal().add_request(function="Interface.change_node_interface",object=node['id'],payload=payload)
+                                    if result is True:
+                                        result, _ = Config().node_interface_config(
+                                            node['id'],
+                                            provision_interface,
+                                            mac
+                                        )
                                     break
 
                         nodeinterface = Database().get_record_join(
@@ -570,12 +627,10 @@ class Boot():
 
         if None not in data.values():
             status=True
-            Helper().update_node_state(data["nodeid"], "installer.discovery")
             # reintroduced below section as if we serve files through
             # e.g. nginx, we won't update anything
-            row = [{"column": "status", "value": "installer.discovery"}]
-            where = [{"column": "id", "value": data['nodeid']}]
-            Database().update('node', row, where)
+            state = {'monitor': {'status': {data['nodename']: {'state': "install.discovered"} } } }
+            Monitor().update_nodestatus(data['nodename'], state)
         else:
             for key, value in data.items():
                 if value is None:
@@ -649,21 +704,13 @@ class Boot():
                 createnode_ondemand=Helper().bool_revert(cluster[0]['createnode_ondemand'])
         else:
             self.logger.warning(f"possible configuration error: No controller available or missing network for controller {self.controller_name}")
+
         # clear mac if it already exists. let's check
-        nodeinterface_check = Database().get_record_join(
-            ['nodeinterface.nodeid as nodeid', 'nodeinterface.interface'],
-            ['nodeinterface.nodeid=node.id'],
-            [f'nodeinterface.macaddress="{mac}"']
-        )
-        if nodeinterface_check:
-            # this means there is already a node with this mac.
-            # though we shouldn't, we will remove the other node's MAC so we can proceed.
-            # Since we enforce a new node or re-use one, we can safely clear all macs.
-            # Further down we configure the interface for the 'discovered' node and set the mac.
-            self.logger.warning(f"node with id {nodeinterface_check[0]['nodeid']} will have its MAC cleared and this <to be declared>-node will use MAC {mac}")
-            row = [{"column": "macaddress", "value": ""}]
-            where = [{"column": "macaddress", "value": mac}]
-            Database().update('nodeinterface', row, where)
+        # if there is a mac defined, this means there is already a node with this mac.
+        # though we shouldn't, we will remove the other node's MAC so we can proceed.
+        # Since we enforce a new node or re-use one, we can safely clear all macs.
+        # Further down we configure the interface for the 'discovered' node and set the mac.
+        self.clear_existing_mac(macaddress=mac)
 
         # then we fetch a list of all nodes that we have, with or without interface config
         list1 = Database().get_record_join(
@@ -733,58 +780,62 @@ class Boot():
                 # Antoine aug 15 2023
                 ret,message = None, None
                 if new_nodename:
-                    trial=25
-                    ret=True
+                    result=True
                     if example_node:
                         newnodedata = {'config': {'node': {example_node: {}}}}
                         newnodedata['config']['node'][example_node]['newnodename'] = new_nodename
                         newnodedata['config']['node'][example_node]['name'] = example_node
                         newnodedata['config']['node'][example_node]['group'] = groupname # groupname is given through API call
                         if self.hastate is True:
-                            while self.insync is False and trial>0:
-                                self.insync = self.ha_object.get_insync()
-                                trial-=1
-                                sleep(2)
-                            ret, message = Journal().add_request(function="Node.clone_node",object=example_node,payload=newnodedata)
-                        if ret is True:
-                            ret, message = Node().clone_node(example_node,newnodedata)
-                        self.logger.info(f"Group select boot: Cloning {example_node} to {new_nodename}: ret = [{ret}], message = [{message}]")
+                            self.wait_for_insync(self.hatrial)
+                            result, message = Journal().add_request(function="Node.clone_node",object=example_node,payload=newnodedata)
+                        if result is True:
+                            result, message = Node().clone_node(example_node,newnodedata)
+                        self.logger.info(f"Group select boot: Cloning {example_node} to {new_nodename}: result = [{result}], message = [{message}]")
                     else:
                         newnodedata = {'config': {'node': {new_nodename: {}}}}
                         newnodedata['config']['node'][new_nodename]['name'] = new_nodename
                         newnodedata['config']['node'][new_nodename]['group'] = groupname # groupname is given through API call
                         if self.hastate is True:
-                            while self.insync is False and trial>0:
-                                self.insync = self.ha_object.get_insync()
-                                trial-=1
-                                sleep(2)
-                            ret, message = Journal().add_request(function="Node.update_node",object=example_node,payload=newnodedata)
-                        if ret is True:
-                            ret, message = Node().update_node(new_nodename,newnodedata)
-                        self.logger.info(f"Group select boot: Creating {new_nodename}: ret = [{ret}], message = [{message}]")
-                    if ret is True:
+                            self.wait_for_insync(self.hatrial)
+                            result, message = Journal().add_request(function="Node.update_node",object=example_node,payload=newnodedata)
+                        if result is True:
+                            result, message = Node().update_node(new_nodename,newnodedata)
+                        self.logger.info(f"Group select boot: Creating {new_nodename}: result = [{result}], message = [{message}]")
+                    if result is True:
                         hostname = new_nodename
                         nodeid = Database().id_by_name('node', new_nodename)
-                        ret, _ = Config().node_interface_config(nodeid, provision_interface, mac)
+                        if self.hastate is True:
+                            self.wait_for_insync(self.hatrial)
+                            payload = [{'interface': provision_interface, 'macaddress': mac}]
+                            result, _ = Journal().add_request(function="Interface.change_node_interface",object=nodeid,payload=payload)
+                        if result is True:
+                            result, _ = Config().node_interface_config(nodeid, provision_interface, mac)
         else:
             # we already have some nodes in the list. let's see if we can re-use
             for node in node_list:
                 if node['name'] not in checked:
+                    result=True
                     checked.append(node['name'])
                     if 'interface' in node and 'macaddress' in node and not node['macaddress']:
                         # mac is empty. candidate!
                         hostname = node['name']
-                        result, _ = Config().node_interface_config(
-                            node['id'],
-                            provision_interface,
-                            mac
-                        )
+                        if self.hastate is True:
+                            self.wait_for_insync(self.hatrial)
+                            payload = [{'interface': provision_interface, 'macaddress': mac}]
+                            result, _ = Journal().add_request(function="Interface.change_node_interface",object=node['id'],payload=payload)
+                        if result is True:
+                            result, _ = Config().node_interface_config(
+                                node['id'],
+                                provision_interface,
+                                mac
+                            )
                         break
 
-#                    Below section commented out as it not really up to use to create interface
+#                    Below section commented out as it not really up to us to create interface
 #                    for nodes if they are not configured. We better just use what's valid and ok
 #                    We could also ditch list2 from above if we want - Antoine
-#                    note: below section not ipv6 ready
+#                    note: below section not ipv6 or HA ready
 #
 #                    elif not 'interface' in node and data['network']:
 #                        # node is there but no interface. we'll take it!
@@ -949,11 +1000,9 @@ class Boot():
 
         if None not in data.values():
             status=True
-            Helper().update_node_state(data["nodeid"], "installer.discovery")
             # reintroduced below section as if we serve files through e.g. nginx, we won't update
-            row = [{"column": "status", "value": "installer.discovery"}]
-            where = [{"column": "id", "value": data['nodeid']}]
-            Database().update('node', row, where)
+            state = {'monitor': {'status': {data['nodename']: {'state': "install.discovered"} } } }
+            Monitor().update_nodestatus(data['nodename'], state)
         else:
             for key, value in data.items():
                 if value is None:
@@ -1053,52 +1102,30 @@ class Boot():
                     pass
 
         if data['nodeid']:
-            we_need_dhcpd_restart = False
-            nodeinterface_check = Database().get_record(None, 'nodeinterface', 
-                f"WHERE macaddress='{mac}' AND nodeid!='{data['nodeid']}'")
-            if nodeinterface_check:
-                # There is already a node with this mac. let's first check if it's our own.
-                for db_node in nodeinterface_check:
-                    if db_node['nodeid'] != data['nodeid']:
-                        # we are NOT !!! though we shouldn't, we will remove the other node's
-                        # MAC and assign this mac to us.
-                        # note to other developers: We hard assign a node's IP address
-                        # (hard config inside image/node) we must be careful - Antoine
-                        message = f"Node with id {db_node['nodeid']} "
-                        message += f"will have its MAC cleared and node {hostname} with "
-                        message += f"id {data['nodeid']} will use MAC {mac}"
-                        self.logger.warning(message)
-                        row = [{"column": "macaddress", "value": ""}]
-                        where = [
-                            {"column": "nodeid", "value": db_node['nodeid']},
-                            {"column": "interface", "value": db_node['interface']}
-                        ]
-                        Database().update('nodeinterface', row, where)
-                row = [{"column": "macaddress", "value": mac}]
-                where = [
-                    {"column": "nodeid", "value": data["nodeid"]},
-                    {"column": "interface", "value": "BOOTIF"}
-                ]
-                Database().update('nodeinterface', row, where)
-                we_need_dhcpd_restart = True
-            else:
-                # we do not have anyone with this mac yet. we can safely move ahead.
-                # BIG NOTE!: This is being done without token! By itself not a threat
-                # but some someone could mess up node/interface configs.
-                # The alternative would be to use IP from dhcp pool and set MAC after
-                # the node has a token. This again will break things where a node is
-                # using dhcp as bootproto. e.g. a manual override inside an image. -Antoine
-                row = [{"column": "macaddress", "value": mac}]
-                where = [
-                    {"column": "nodeid", "value": data["nodeid"]},
-                    {"column": "interface", "value": "BOOTIF"}
-                ]
-                Database().update('nodeinterface', row, where)
-                we_need_dhcpd_restart = True
+            result = True
+            self.clear_existing_mac(macaddress=mac,exclude_nodeid=data['nodeid'])
+            self.logger.warning(f"Node {hostname} with id {data['nodeid']} will use MAC {mac}")
+            provision_interface = 'BOOTIF'
 
-            if we_need_dhcpd_restart is True:
-                Service().queue('dhcp', 'restart')
-                Service().queue('dhcp6','restart')
+            # we do not have anyone with this mac yet/anymore. we can safely move ahead.
+            # BIG NOTE!: This is being done without token! By itself not a threat
+            # but some someone could mess up node/interface configs.
+            # The alternative would be to use IP from dhcp pool and set MAC after
+            # the node has a token. This again will break things where a node is
+            # using dhcp as bootproto. e.g. a manual override inside an image. -Antoine
+            if self.hastate is True:
+                self.wait_for_insync(self.hatrial)
+                payload = [{'interface': provision_interface, 'macaddress': mac}]
+                result, _ = Journal().add_request(function="Interface.change_node_interface",object=data['nodeid'],payload=payload)
+            if result is True:
+                result, _ = Config().node_interface_config(
+                    data['nodeid'],
+                    provision_interface,
+                    mac
+                )
+
+            Service().queue('dhcp', 'restart')
+            Service().queue('dhcp6','restart')
             nodeinterface = Database().get_record_join(
                 [
                     'nodeinterface.nodeid',
@@ -1183,11 +1210,9 @@ class Boot():
 
         if None not in data.values():
             status=True
-            Helper().update_node_state(data["nodeid"], "installer.discovery")
             # reintroduced below section as if we serve files through e.g. nginx, we won't update
-            row = [{"column": "status", "value": "installer.discovery"}]
-            where = [{"column": "id", "value": data['nodeid']}]
-            Database().update('node', row, where)
+            state = {'monitor': {'status': {data['nodename']: {'state': "install.discovered"} } } }
+            Monitor().update_nodestatus(data['nodename'], state)
         else:
             for key, value in data.items():
                 if value is None:
@@ -1221,6 +1246,7 @@ class Boot():
             'group'                 : None,
             'ipaddress'             : None,
             'serverport'            : None,
+            'nodename'              : None,
             'nodehostname'          : None,
             'osimagename'           : None,
             'imagefile'             : None,
@@ -1506,10 +1532,10 @@ class Boot():
                 segment
             )
 
-        #self.logger.info(f"boot install data: [{data}]")
         if None not in data.values():
             status=True
-            Helper().update_node_state(data["nodeid"], "installer.downloaded")
+            state = {'monitor': {'status': {data['nodename']: {'state': "install.rendered"} } } }
+            Monitor().update_nodestatus(data['nodename'], state)
         else:
             for key, value in data.items():
                 if value is None:

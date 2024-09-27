@@ -34,7 +34,8 @@ class Monitor(object):
     def __init__(self):
         self.node_state = {
             204: [
-                "install.discovery",
+                "install.discovered",
+                "install.rendered",
                 "install.downloaded",
                 "install.started",
                 "install.completed",

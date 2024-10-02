@@ -765,7 +765,7 @@ class OSImage():
         force = False
         if image and 'changed' in image[0] and image[0]['changed']:
             force=True
-            where = [{"column": "name", "value": {name}}]
+            where = [{"column": "name", "value": name}]
             row = [{"column": "changed", "value": '0'}]
             Database().update('osimage', row, where)
         request_id = str(time()) + str(randint(1001, 9999)) + str(getpid())

@@ -120,7 +120,11 @@ class Group():
             group_id = group['id']
             if group['osimageid']:
                 osimage = Database().get_record(None, 'osimage', f" WHERE id = '{group['osimageid']}'")
-                group['osimage'] = osimage[0]['name']
+                if osimage:
+                    group['osimage'] = osimage[0]['name']
+                else:    
+                    group['osimage'] = Database().name_by_id('osimage', group['osimageid'])
+
             group_interface = Database().get_record_join(
                 [
                     'groupinterface.interface',
@@ -173,14 +177,11 @@ class Group():
             except Exception as exp:
                 self.logger.error(f"{exp}")
 
-            if osimage:
-                if osimage[0]['imagefile'] and osimage[0]['imagefile'] == 'kickstart':
-                    group['provision_method'] = 'kickstart'
-                    group['provision_method_source'] = 'osimage'
-                    group['provision_fallback'] = None
-                    group['provision_fallback_source'] = 'osimage'
-            else:    
-                group['osimage'] = Database().name_by_id('osimage', group['osimageid'])
+            if osimage and osimage[0]['imagefile'] and osimage[0]['imagefile'] == 'kickstart':
+                group['provision_method'] = 'kickstart'
+                group['provision_method_source'] = 'osimage'
+                group['provision_fallback'] = None
+                group['provision_fallback_source'] = 'osimage'
             del group['osimageid']
             group['bmcsetupname'] = None
             if group['bmcsetupid']:

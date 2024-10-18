@@ -107,7 +107,8 @@ class Group():
             'bootmenu':False,
             'provision_interface':'BOOTIF',
             'provision_method': 'torrent',
-            'provision_fallback': 'http'
+            'provision_fallback': 'http',
+            'kerneloptions': None
         }
         # same as above but now specifically base64
         b64items = {'prescript': '', 'partscript': '', 'postscript': ''}
@@ -117,6 +118,13 @@ class Group():
             response = {'config': {'group': {} }}
             group = groups[0]
             group_id = group['id']
+            if group['osimageid']:
+                osimage = Database().get_record(None, 'osimage', f" WHERE id = '{group['osimageid']}'")
+                if osimage:
+                    group['osimage'] = osimage[0]['name']
+                else:    
+                    group['osimage'] = Database().name_by_id('osimage', group['osimageid'])
+
             group_interface = Database().get_record_join(
                 [
                     'groupinterface.interface',
@@ -142,6 +150,11 @@ class Group():
                         cluster[0][key] = str(Helper().make_bool(cluster[0][key]))
                     group[key] = str(cluster[0][key])
                     group[key+'_source'] = 'cluster'
+                elif key in osimage[0] and ((not key in group) or (not group[key])):
+                    if isinstance(value, bool):
+                        osimage[0][key] = str(Helper().make_bool(osimage[0][key]))
+                    group[key] = str(osimage[0][key])
+                    group[key+'_source'] = 'osimage'
                 elif key in group and group[key]:
                     if isinstance(value, bool):
                         group[key] = str(Helper().make_bool(group[key]))
@@ -164,17 +177,11 @@ class Group():
             except Exception as exp:
                 self.logger.error(f"{exp}")
 
-            if group['osimageid']:
-                osimage = Database().get_record(None, 'osimage', f" WHERE id = '{group['osimageid']}'")
-                if osimage:
-                    group['osimage'] = osimage[0]['name']
-                    if osimage[0]['imagefile'] and osimage[0]['imagefile'] == 'kickstart':
-                        group['provision_method'] = 'kickstart'
-                        group['provision_method_source'] = 'osimage'
-                        group['provision_fallback'] = None
-                        group['provision_fallback_source'] = 'osimage'
-                else:    
-                    group['osimage'] = Database().name_by_id('osimage', group['osimageid'])
+            if osimage and osimage[0]['imagefile'] and osimage[0]['imagefile'] == 'kickstart':
+                group['provision_method'] = 'kickstart'
+                group['provision_method_source'] = 'osimage'
+                group['provision_fallback'] = None
+                group['provision_fallback_source'] = 'osimage'
             del group['osimageid']
             group['bmcsetupname'] = None
             if group['bmcsetupid']:

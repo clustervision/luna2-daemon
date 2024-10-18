@@ -93,12 +93,14 @@ class Node():
                 'scripts': None,
                 'provision_method': 'torrent',
                 'provision_fallback': 'http',
-                'provision_interface': 'BOOTIF'
+                'provision_interface': 'BOOTIF',
+                'kerneloptions': None
             }
             for node in nodes:
                 node_name = node['name']
                 nodeid = node['id']
-                groupid = {}
+                groupid = None
+                osimageid = None
                 if 'groupid' in node and node['groupid'] in group:
                     node['group'] = group[node['groupid']]['name']
                     groupid = node['groupid']
@@ -106,8 +108,10 @@ class Node():
                         node['osimage'] = '!!Invalid!!'
                         if node['osimageid'] in osimage:
                             node['osimage'] = osimage[node['osimageid']]['name'] or None
+                            osimageid = node['osimageid']
                     elif 'osimageid' in group[groupid] and group[groupid]['osimageid'] in osimage:
                         node['osimage'] = osimage[group[groupid]['osimageid']]['name'] or None
+                        osimageid = group[groupid]['osimageid']
                     else:
                         node['osimage'] = None
                     if node['bmcsetupid']:
@@ -124,12 +128,16 @@ class Node():
                 for key, value in items.items():
                     if cluster and key in cluster[0] and isinstance(value, bool):
                         cluster[0][key] = str(Helper().make_bool(cluster[0][key]))
+                    if osimageid and key in osimage[osimageid] and isinstance(value, bool):
+                        osimage[osimageid][key] = str(Helper().make_bool(osimage[osimageid][key]))
                     if groupid and key in group[groupid] and isinstance(value, bool):
                         group[groupid][key] = str(Helper().make_bool(group[groupid][key]))
                     if cluster and key in cluster[0] and ((not group) or (not groupid) or (not key in group[groupid]) or (not group[groupid][key])) and not node[key]:
                         node[key] = cluster[0][key] or value
                     else:
-                        if groupid and key in group[groupid] and not node[key]:
+                        if osimageid and key in osimage[osimageid] and not node[key]:
+                            node[key] = osimage[osimageid][key] or value
+                        elif groupid and key in group[groupid] and not node[key]:
                             node[key] = group[groupid][key] or value
                         else:
                             if isinstance(value, bool):
@@ -244,7 +252,8 @@ class Node():
                 'group.scripts AS group_scripts',
                 'group.provision_method AS group_provision_method',
                 'group.provision_fallback AS group_provision_fallback',
-                'group.provision_interface AS group_provision_interface'
+                'group.provision_interface AS group_provision_interface',
+                'group.kerneloptions AS group_kerneloptions'
             ],
             ['group.id=node.groupid'],
             f"node.name='{name}'"
@@ -261,6 +270,7 @@ class Node():
                 osimage = Database().get_record(None, 'osimage', f" WHERE id = '{node['osimageid']}'")
                 if osimage:
                     node['osimage'] = osimage[0]['name']
+                    node['osimage_kerneloptions'] = osimage[0]['kerneloptions']
                     if osimage[0]['imagefile'] and osimage[0]['imagefile'] == 'kickstart':
                         node['provision_method'] = 'kickstart'
                         alt_source['provision_method'] = 'osimage'
@@ -274,6 +284,7 @@ class Node():
                 osimage = Database().get_record(None, 'osimage', f" WHERE id = '{node['group_osimageid']}'")
                 if osimage:
                     node['osimage'] = osimage[0]['name']
+                    node['osimage_kerneloptions'] = osimage[0]['kerneloptions']
                     if osimage[0]['imagefile'] and osimage[0]['imagefile'] == 'kickstart':
                         node['provision_method'] = 'kickstart'
                         alt_source['provision_method'] = 'osimage'
@@ -341,11 +352,14 @@ class Node():
                 'scripts': None,
                 'provision_method': 'torrent',
                 'provision_fallback': 'http',
-                'provision_interface': 'BOOTIF'
+                'provision_interface': 'BOOTIF',
+                'kerneloptions': None
             }
             for key, value in items.items():
                 if 'cluster_'+key in node and isinstance(value, bool):
                     node['cluster_'+key] = str(Helper().make_bool(node['cluster_'+key]))
+                if 'osimage_'+key in node and isinstance(value, bool):
+                    node['osimage_'+key] = str(Helper().make_bool(node['osimage_'+key]))
                 if 'group_'+key in node and isinstance(value, bool):
                     node['group_'+key] = str(Helper().make_bool(node['group_'+key]))
                 if key in alt_source and alt_source[key] and key in node:
@@ -353,6 +367,9 @@ class Node():
                 elif 'cluster_'+key in node and node['cluster_'+key] and ((not 'group_'+key in node) or (not node['group_'+key])) and not node[key]:
                     node[key] = node['cluster_'+key] or str(value)
                     node[key+'_source'] = 'cluster'
+                elif 'osimage_'+key in node and node['osimage_'+key] and not node[key]:
+                    node[key] = node['osimage_'+key] or str(value)
+                    node[key+'_source'] = 'osimage'
                 elif 'group_'+key in node and node['group_'+key] and not node[key]:
                     node[key] = node['group_'+key] or str(value)
                     node[key+'_source'] = 'group'
@@ -368,6 +385,8 @@ class Node():
                     else:
                         node[key] = node[key] or str(value)
                     node[key+'_source'] = 'default'
+                if 'osimage_'+key in node:
+                    del node['osimage_'+key]
                 if 'group_'+key in node:
                     del node['group_'+key]
                 if 'cluster_'+key in node:

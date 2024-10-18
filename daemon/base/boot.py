@@ -592,15 +592,15 @@ class Boot():
                     data['kernelfile'] = osimage[0]['kernelfile']
                 if osimage[0]['initrdfile']:
                     data['initrdfile'] = osimage[0]['initrdfile']
-                if osimage[0]['kerneloptions']:
+                if osimage[0]['kerneloptions'] and not data['kerneloptions']:
                     if b64regex.match(osimage[0]['kerneloptions']):
                         ko_data = b64decode(osimage[0]['kerneloptions'])
                         try:
-                            data['kerneloptions'] = ko_data.decode("ascii") + data['kerneloptions']
+                            data['kerneloptions'] = ko_data.decode("ascii")
                         except:
                             # apparently we were not base64! it can happen when a string seems like base64 but is not.
                             # is it safe to assume we can then just pass what's in the DB?
-                            data['kerneloptions'] = osimage[0]['kerneloptions'] + data['kerneloptions']
+                            data['kerneloptions'] = osimage[0]['kerneloptions']
 
                 # ------------ support for alternative provisioning ----------------
 
@@ -965,15 +965,15 @@ class Boot():
                     data['kernelfile'] = osimage[0]['kernelfile']
                 if osimage[0]['initrdfile']:
                     data['initrdfile'] = osimage[0]['initrdfile']
-                if osimage[0]['kerneloptions']:
+                if osimage[0]['kerneloptions'] and not data['kerneloptions']:
                     if b64regex.match(osimage[0]['kerneloptions']):
                         ko_data = b64decode(osimage[0]['kerneloptions'])
                         try:
-                            data['kerneloptions'] = ko_data.decode("ascii") + data['kerneloptions']
+                            data['kerneloptions'] = ko_data.decode("ascii")
                         except:
                             # apparently we were not base64! it can happen when a string seems like base64 but is not.
                             # is it safe to assume we can then just pass what's in the DB?
-                            data['kerneloptions'] = osimage[0]['kerneloptions'] + data['kerneloptions']
+                            data['kerneloptions'] = osimage[0]['kerneloptions']
 
                 # ------------ support for alternative provisioning ----------------
 
@@ -1175,15 +1175,15 @@ class Boot():
                     data['kernelfile'] = osimage[0]['kernelfile']
                 if osimage[0]['initrdfile']:
                     data['initrdfile'] = osimage[0]['initrdfile']
-                if osimage[0]['kerneloptions']:
+                if osimage[0]['kerneloptions'] and not data['kerneloptions']:
                     if b64regex.match(osimage[0]['kerneloptions']):
                         ko_data = b64decode(osimage[0]['kerneloptions'])
                         try:
-                            data['kerneloptions'] = ko_data.decode("ascii") + data['kerneloptions']
+                            data['kerneloptions'] = ko_data.decode("ascii")
                         except:
                             # apparently we were not base64! it can happen when a string seems like base64 but is not.
                             # is it safe to assume we can then just pass what's in the DB?
-                            data['kerneloptions'] = osimage[0]['kerneloptions'] + data['kerneloptions']
+                            data['kerneloptions'] = osimage[0]['kerneloptions']
 
                 # ------------ support for alternative provisioning ----------------
 

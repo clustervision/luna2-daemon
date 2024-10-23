@@ -223,7 +223,7 @@ class HA():
         ha_data = Database().get_record(None, 'ha')
         if ha_data:
             data = ha_data[0]
-            for item in ['master','syncimages','enabled','insync']:
+            for item in ['master','syncimages','enabled','insync','overrule']:
                 data[item] = Helper().make_bool(data[item])
         return data
 
@@ -299,5 +299,11 @@ class HA():
                         data[controller['hostname']] = response
                     else:
                         data[controller['hostname']] = {'comment': 'controller did not return any data'}
+                data[controller['hostname']]['config']={}
+                for item in ['shadow','beacon']:
+                     if self.sharedip and item == 'beacon':
+                         continue
+                     if item in controller:
+                         data[controller['hostname']]['config'][item] = Helper().make_bool(controller[item]) or False
         return data
 

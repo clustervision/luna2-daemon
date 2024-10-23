@@ -227,8 +227,8 @@ class HA():
                 data[item] = Helper().make_bool(data[item])
         return data
 
-    def ping_all_controllers(self):
-        status=True
+    def ping_controllers(self):
+        status = True
         if self.all_controllers:
             for controller in self.all_controllers:
                 if controller['hostname'] == self.me:
@@ -281,4 +281,23 @@ class HA():
             if self.master is True:
                 return True
         return False
+
+    def get_full_controllers(self):
+        data = {}
+        if self.all_controllers:
+            for controller in self.all_controllers:
+                if controller['hostname'] == self.me:
+                    data[controller['hostname']] = {}
+                    data[controller['hostname']]['ha'] = self.get_full_state()
+                elif self.sharedip and controller['beacon']:
+                    continue
+                elif self.shadow and controller['shadow']:
+                    data[controller['hostname']] = {'comment': 'unreachable shadow host, me being shadow'}
+                else:
+                    result,response=Request().get_request(controller['hostname'],'/ha/state')
+                    if result is True and response:
+                        data[controller['hostname']] = response
+                    else:
+                        data[controller['hostname']] = {'comment': 'controller did not return any data'}
+        return data
 

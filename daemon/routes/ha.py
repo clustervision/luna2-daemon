@@ -81,11 +81,25 @@ def ha_set_master(cli=None, name=None):
     return response, access_code
 
 
+@ha_blueprint.route('/ha/controllers', methods=['GET'])
+@token_required
+def ha_who_master(cli=None, name=None):
+    """
+    This api will return the master/ha state for each controller.
+    """
+    access_code = 404
+    response = HA().get_full_controllers()
+    if response:
+        access_code = 200
+    response = {'message': response}
+    return response, access_code
+
+
 @ha_blueprint.route('/ha/master', methods=['GET'])
 @token_required
 def ha_get_master():
     """
-    This api will set the current host as master.
+    This api will get the current host as master.
     """
     access_code = 404
     response = HA().get_role()
@@ -99,7 +113,7 @@ def ha_get_master():
 @token_required
 def ha_get_state():
     """
-    This api will set the current host as master.
+    This api will get the current ha state.
     """
     access_code = 404
     response = HA().get_full_state()
@@ -116,7 +130,9 @@ def ha_get_state():
 @validate_name
 def ha_sync_image(name=None):
     """
-    This api will set the current host as master.
+    This api will force an image sync.
+    Deprecated as we use an inline method.
+    Code remains here for possible future use.
     """
     access_code = 404
     response = "sync not available for images"

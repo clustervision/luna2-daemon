@@ -302,7 +302,7 @@ class Housekeeper(object):
                         ha_object.set_insync(True)
                     # --------------------------- we ping the others. if someone is down, we become paranoid
                     if ping_tel<1:
-                        ping_status=ha_object.ping_all_controllers()
+                        ping_status=ha_object.ping_controllers()
                         if master is False: # i am not a master
                             status = ping_status and check_status
                             ha_object.set_insync(status)

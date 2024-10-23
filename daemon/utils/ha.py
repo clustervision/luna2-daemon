@@ -301,6 +301,8 @@ class HA():
                         data[controller['hostname']] = {'comment': 'controller did not return any data'}
                 data[controller['hostname']]['config']={}
                 for item in ['shadow','beacon']:
+                     if self.sharedip and item == 'beacon':
+                         continue
                      if item in controller:
                          data[controller['hostname']]['config'][item] = Helper().make_bool(controller[item]) or False
         return data

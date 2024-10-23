@@ -286,9 +286,9 @@ class HA():
         data = {}
         if self.all_controllers:
             for controller in self.all_controllers:
-                self.logger.info(f"Contacting {controller['hostname']} for HA state...")
                 if controller['hostname'] == self.me:
-                    data[controller['hostname']] = self.get_full_state()
+                    data[controller['hostname']] = {}
+                    data[controller['hostname']]['ha'] = self.get_full_state()
                 elif self.sharedip and controller['beacon']:
                     continue
                 elif self.shadow and controller['shadow']:

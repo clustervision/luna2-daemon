@@ -136,7 +136,7 @@ class Plugin():
         """
         status = False
         response = ''
-        bash_command = f'ipmitool -I lanplus -C3 -U {username} -P {password} -H {device} '
+        bash_command = f'ipmitool -I lanplus -C3 -U {username} -P "{password}" -H {device} '
         bash_command += f'{subsystem} {action}'
         output, exit_code = Helper().runcommand(bash_command,True,10)
         if output and exit_code == 0:

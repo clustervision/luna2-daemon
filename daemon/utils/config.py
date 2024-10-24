@@ -262,7 +262,7 @@ class Config(object):
                 dhcpd_template = env.get_template(template)
                 dhcpd_config = dhcpd_template.render(CLASSES=config_classes,SHARED=config_shared,SUBNETS=config_subnets,
                                                      HOSTS=config_hosts,POOLS=config_pools,DOMAINNAME=domain,
-                                                     NAMESERVERS=nameserver_ip,TIMESERVERS=ntp_server,OMAPIKEY=omapikey)
+                                                     NAMESERVERS=nameserver_ip,NTPSERVERS=ntp_server,OMAPIKEY=omapikey)
                 with open(dhcp_file, 'w', encoding='utf-8') as dhcp:
                     dhcp.write(dhcpd_config)
                 try:
@@ -282,7 +282,7 @@ class Config(object):
                 dhcpd_config = dhcpd_template.render(CLASSES=config_classes6,SHARED=config_shared6,SUBNETS=config_subnets6,
                                                      HOSTS=config_hosts6,POOLS=config_pools6,DOMAINNAME=domain,
                                                      NAMESERVERS=nameserver_ip,NAMESERVERS_IPV6=nameserver_ip_ipv6,
-                                                     TIMESERVERS=ntp_server,OMAPIKEY=omapikey)
+                                                     NTPSERVERS=ntp_server,OMAPIKEY=omapikey)
                 with open(dhcp6_file, 'w', encoding='utf-8') as dhcp:
                     dhcp.write(dhcpd_config)
                 try:

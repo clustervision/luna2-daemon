@@ -118,12 +118,12 @@ class Control():
                                 password
                             )
                             self.logger.debug(f"control: ret=[{ret}], status=[{status}]")
-                            ret, status = self.control_run(
+                            runret, runstatus = self.control_run(
                                 node[0]['nodename'],
                                 node[0]['groupname'],
                                 command,
                             )
-                            self.logger.debug(f"run: ret=[{ret}], status=[{status}]")
+                            self.logger.debug(f"run: ret=[{runret}], status=[{runstatus}]")
                         except Exception as exp:
                             status=f'command returned {exp}'
                             self.logger.error(f"uh oh... {exp}")
@@ -167,7 +167,9 @@ class Control():
             match command:
                 case 'power on':
                     return_code, message = control_plugin().power_on(
-                        device=device, username=username, password=password
+                        device=device, 
+                        username=username, 
+                        password=password
                     )
                 case 'power off':
                     return_code, message = control_plugin().power_off(
@@ -297,7 +299,7 @@ class Control():
                     return_code, message = False, "Instruction not implemented"
 
             if message != "success": # the default bogus message...
-                self.logger.info(f"return_code=[{return_code}], mesg=[{message}]")
+                self.logger.info(f"return_code={return_code}, mesg='{message}'")
 
         except TimeoutError:
             return_code = False

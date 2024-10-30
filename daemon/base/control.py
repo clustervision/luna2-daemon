@@ -112,7 +112,7 @@ class Control():
                 if result and subsystem == "power" and action in ['on','off','reset','cycle']:
                     state = {'monitor': {'status': {hostname: {'state': command} } } }
                     Monitor().update_nodestatus(hostname, state)
-                result, message = NodeControl().control_run(
+                runresult, runmessage = NodeControl().control_run(
                     node[0]['nodename'],
                     node[0]['groupname'],
                     command

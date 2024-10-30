@@ -452,8 +452,8 @@ class Group():
                 if group_details:
                     for group_detail in group_details:
                         nodes_in_group.append(group_detail['nodename'])
-                group_plugins = Helper().plugin_finder(f'{self.plugins_path}/group')
-                group_plugin=Helper().plugin_load(group_plugins,'group','default')
+                group_plugins = Helper().plugin_finder(f'{self.plugins_path}/run')
+                group_plugin=Helper().plugin_load(group_plugins,'run/group','default')
                 try:
                     if oldgroupname and newgroupname:
                         group_plugin().rename(name=oldgroupname, newname=newgroupname)
@@ -624,8 +624,8 @@ class Group():
                 if group_details:
                     for group_detail in group_details:
                         nodes_in_group.append(group_detail['nodename'])
-                group_plugins = Helper().plugin_finder(f'{self.plugins_path}/group')
-                group_plugin=Helper().plugin_load(group_plugins,'group','default')
+                group_plugins = Helper().plugin_finder(f'{self.plugins_path}/run')
+                group_plugin=Helper().plugin_load(group_plugins,'run/group','default')
                 try:
                     group_plugin().postcreate(name=newgroupname, nodes=nodes_in_group)
                 except Exception as exp:
@@ -676,8 +676,8 @@ class Group():
             response = f'Group {name} removed'
             status=True
             # ---- we call the group plugin - maybe someone wants to run something after delete?
-            group_plugins = Helper().plugin_finder(f'{self.plugins_path}/group')
-            group_plugin=Helper().plugin_load(group_plugins,'group','default')
+            group_plugins = Helper().plugin_finder(f'{self.plugins_path}/run')
+            group_plugin=Helper().plugin_load(group_plugins,'run/group','default')
             try:
                 group_plugin().delete(name=name)
             except Exception as exp:

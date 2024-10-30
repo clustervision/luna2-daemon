@@ -33,7 +33,7 @@ from utils.helper import Helper
 
 class Plugin():
     """
-    This is default class for power control plugin.
+    This is the default class for control runs plugin.
     """
 
     def __init__(self):

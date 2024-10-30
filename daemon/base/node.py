@@ -651,8 +651,8 @@ class Node():
                 group_details = Database().get_record_join(['group.name'],
                                                            ['group.id=node.groupid'],
                                                            [f"node.name='{name}'"])
-                node_plugins = Helper().plugin_finder(f'{self.plugins_path}/node')
-                node_plugin=Helper().plugin_load(node_plugins,'node','default')
+                node_plugins = Helper().plugin_finder(f'{self.plugins_path}/run')
+                node_plugin=Helper().plugin_load(node_plugins,'run/node','default')
                 try:
                     if oldnodename and nodename_new:
                         node_plugin().rename(name=oldnodename, newname=nodename_new)
@@ -925,8 +925,8 @@ class Node():
                                                            ['group.id=node.groupid'],
                                                            [f"node.name='{newnodename}'"])
                 if group_details:
-                    node_plugins = Helper().plugin_finder(f'{self.plugins_path}/node')
-                    node_plugin=Helper().plugin_load(node_plugins,'node','default')
+                    node_plugins = Helper().plugin_finder(f'{self.plugins_path}/run')
+                    node_plugin=Helper().plugin_load(node_plugins,'run/node','default')
                     try:
                         node_plugin().postcreate(name=newnodename, group=group_details[0]['name'])
                     except Exception as exp:
@@ -990,8 +990,8 @@ class Node():
             response = f'Node {name} with all its interfaces removed'
             status=True
             # ---- we call the node plugin - maybe someone wants to run something after delete?
-            node_plugins = Helper().plugin_finder(f'{self.plugins_path}/node')
-            node_plugin=Helper().plugin_load(node_plugins,'node','default')
+            node_plugins = Helper().plugin_finder(f'{self.plugins_path}/run')
+            node_plugin=Helper().plugin_load(node_plugins,'run/node','default')
             try:
                 node_plugin().delete(name=name)
             except Exception as exp:

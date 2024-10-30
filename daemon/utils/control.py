@@ -53,6 +53,7 @@ class Control():
         self.logger = Log.get_logger()
         plugins_path=CONSTANT["PLUGINS"]["PLUGINS_DIRECTORY"]
         self.control_plugins = Helper().plugin_finder(f'{plugins_path}/control')
+        self.run_plugins = Helper().plugin_finder(f'{plugins_path}/run')
         # needs to be with constants. pending
 
 
@@ -116,7 +117,13 @@ class Control():
                                 username,
                                 password
                             )
-                            self.logger.debug(f"ret=[{ret}], status=[{status}]")
+                            self.logger.debug(f"control: ret=[{ret}], status=[{status}]")
+                            ret, status = self.control_run(
+                                node[0]['nodename'],
+                                node[0]['groupname'],
+                                command,
+                            )
+                            self.logger.debug(f"run: ret=[{ret}], status=[{status}]")
                         except Exception as exp:
                             status=f'command returned {exp}'
                             self.logger.error(f"uh oh... {exp}")
@@ -222,6 +229,84 @@ class Control():
         except Exception as exp:
             return_code = False
             message = exp
+        # finally:
+        #     signal.alarm(0)
+        return return_code, message
+
+
+    def control_run(self, nodename=None, groupname=None, command=None):
+        """
+        This method will handle the optional run during a power control action.
+        """
+        self.logger.debug(nodename)
+        self.logger.debug(groupname)
+        return_code, message = False, ""
+        # class TimeoutError(Exception):
+        #     pass
+
+        # def handler(signum, frame):
+        #     raise TimeoutError()
+
+        # signal.signal(signal.SIGALRM, handler)
+        # signal.alarm(60)
+        try:
+            run_plugin = Helper().plugin_load(
+                self.run_plugins,
+                'run/control',
+                ['nodename,groupname']
+            )
+            match command:
+                case 'power on':
+                    return_code, message = run_plugin().power_on(
+                        nodename=nodename, groupname=groupname
+                    )
+                case 'power off':
+                    return_code, message = run_plugin().power_on(
+                        nodename=nodename, groupname=groupname
+                    )
+                case 'power status':
+                    return_code, message = run_plugin().power_on(
+                        nodename=nodename, groupname=groupname
+                    )
+                case 'power reset':
+                    return_code, message = run_plugin().power_on(
+                        nodename=nodename, groupname=groupname
+                    )
+                case 'power cycle':
+                    return_code, message = run_plugin().power_on(
+                        nodename=nodename, groupname=groupname
+                    )
+                case 'chassis identify':
+                    return_code, message = run_plugin().power_on(
+                        nodename=nodename, groupname=groupname
+                    )
+                case 'chassis noidentify':
+                    return_code, message = run_plugin().power_on(
+                        nodename=nodename, groupname=groupname
+                    )
+                case 'sel list':
+                    return_code, message = run_plugin().power_on(
+                        nodename=nodename, groupname=groupname
+                    )
+                    message = message.replace("\n",";;")
+                case 'sel clear':
+                    return_code, message = run_plugin().power_on(
+                        nodename=nodename, groupname=groupname
+                    )
+                case _:
+                    return_code, message = False, "Instruction not implemented"
+
+            if message != "success": # the default bogus message...
+                self.logger.info(f"return_code=[{return_code}], mesg=[{message}]")
+
+        except TimeoutError:
+            return_code = False
+            message = "Timeout"
+            self.logger.error(message)
+        except Exception as exp:
+            return_code = False
+            message = exp
+            self.logger.error(message)
         # finally:
         #     signal.alarm(0)
         return return_code, message

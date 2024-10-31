@@ -87,7 +87,7 @@ class Group():
                 del group['bmcsetupid']
                 response['config']['group'][name] = group
         else:
-            response = 'No group is available'
+            response = 'No groups available'
             return False, response
         return True,response
 
@@ -200,7 +200,7 @@ class Group():
             # ---
             response['config']['group'][name] = group
         else:
-            response = 'No group is available'
+            response = f'No group {name} available'
             return False,response
         return True,response
 

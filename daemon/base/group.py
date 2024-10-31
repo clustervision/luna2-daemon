@@ -87,7 +87,6 @@ class Group():
                 del group['bmcsetupid']
                 response['config']['group'][name] = group
         else:
-            self.logger.error('No group is available.')
             response = 'No group is available'
             return False, response
         return True,response
@@ -200,9 +199,7 @@ class Group():
                 group['osimagetag_source'] = 'default'
             # ---
             response['config']['group'][name] = group
-            self.logger.info(f'Returned Group {name} with Details.')
         else:
-            self.logger.error('No group is available.')
             response = 'No group is available'
             return False,response
         return True,response

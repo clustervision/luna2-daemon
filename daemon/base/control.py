@@ -82,7 +82,7 @@ class Control():
         )
         if node:
             bmcsetupid, group = None, None
-            if 'bmcsetupid' in node[0] and str(node[0]['bmcsetupid']) == 'None':
+            if 'bmcsetupid' in node[0] and not node[0]['bmcsetupid']:
                 groupid = node[0]['groupid']
                 group = Database().get_record(None, 'group', f' WHERE id = "{groupid}"')
                 if group:

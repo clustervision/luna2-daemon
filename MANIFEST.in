@@ -21,6 +21,10 @@ include daemon/plugins/boot/provision/*
 include daemon/plugins/boot/localinstall/*
 include daemon/plugins/boot/roles/*
 include daemon/plugins/boot/*
+include daemon/plugins/run/*
+include daemon/plugins/run/control/*
+include daemon/plugins/run/node/*
+include daemon/plugins/run/group/*
 include daemon/plugins/osimage/operations/osclone/*
 include daemon/plugins/osimage/operations/osgrab/*
 include daemon/plugins/osimage/operations/image/*
@@ -30,6 +34,4 @@ include daemon/plugins/osimage/operations/*
 include daemon/plugins/osimage/other/*
 include daemon/plugins/osimage/filesystem/*
 include daemon/plugins/osuser/*
-include daemon/plugins/node/*
-include daemon/plugins/group/*
 include daemon/plugins/export/*

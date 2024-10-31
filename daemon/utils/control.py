@@ -90,13 +90,13 @@ class Control():
                 )
                 if node:
                     bmcsetupid = None
-                    if 'bmcsetupid' in node[0] and str(node[0]['bmcsetupid']) == 'None':
+                    if 'bmcsetupid' in node[0] and not node[0]['bmcsetupid']:
                         groupid = node[0]['groupid']
                         group = Database().get_record(None, 'group', f' WHERE id = "{groupid}"')
                         if group:
                             bmcsetupid = group[0]['bmcsetupid']
                         else:
-                            self.logger.info(f'{nodename} not have any group.')
+                            self.logger.info(f'{nodename} not have any group')
                             pipeline.add_message({nodename: command+':None:does not have any group'})
                     else:
                         bmcsetupid = node[0]['bmcsetupid']

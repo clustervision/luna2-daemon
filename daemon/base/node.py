@@ -479,7 +479,6 @@ class Node():
             response['config']['node'][nodename] = node
             status = True
         else:
-            self.logger.error(f'Node {name} is not available.')
             response = f'Node {name} is not available'
         return status, response
 

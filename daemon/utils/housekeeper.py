@@ -100,12 +100,15 @@ class Housekeeper(object):
                                         payload={'config':{'osimage':{osimage: {}}}}
                                         for file in ['kernelfile','initrdfile','imagefile']:
                                             payload['config']['osimage'][osimage][file]=osimage_data[0][file]
-                                        Journal().add_request(function='OSImage.update_osimage',object=osimage,payload=payload)
-                                    Journal().add_request(function='Downloader.pull_image_files',object=osimage,param=master)
-                                    Journal().add_request(function='OsImager.schedule_provision',object=osimage,param='housekeeper')
-                                    if HA().get_syncimages() is True:
-                                        Journal().add_request(function='Queue.add_task_to_queue_legacy',object=f'unpack_osimage:{osimage}',param='housekeeper')
-                                else:
+                                        ret,mesg=Journal().add_request(function='OSImage.update_osimage',object=osimage,payload=payload)
+                                    if ret is True:
+                                        ret,mesg=Journal().add_request(function='Downloader.pull_image_files',object=osimage,param=master)
+                                    if ret is True:
+                                        ret,mesg=Journal().add_request(function='OsImager.schedule_provision',object=osimage,param='housekeeper')
+                                    if ret is True and HA().get_syncimages() is True:
+                                        ret,mesg=Journal().add_request(function='Queue.add_task_to_queue_legacy',object=f'unpack_osimage:{osimage}',param='housekeeper')
+                                if not ret and mesg:
+                                    self.logger.warning(f"While working on sync_osimage_with_master task {next_id}, adding to journal returned: {mesg}")
                                     Queue().update_task_status_in_queue(next_id,'stuck')
                                     remove_from_queue=False
                             case 'provision_osimage':
@@ -249,6 +252,8 @@ class Housekeeper(object):
         ping_tel=3
         ping_check=4
         sum_tel=0
+        insync_check=140
+        oosync_tel=0
         ping_status, check_status = True, True
         try:
             ha_object=HA()
@@ -322,6 +327,19 @@ class Housekeeper(object):
                         else:
                             ping_check=3
                     ping_check-=1
+                    # --------------------------- if we're the master but for some unknown reason we've been out of sync for too long...
+                    if insync_check<1:
+                        if master is True:
+                            if ping_status and check_status and not ha_object.get_insync():
+                                oosync_tel+=1
+                            if oosync_tel>2:
+                                self.logger.warning(f"I am a master but somehow i got stuck being out of sync? This should not happen....")
+                                ha_object.set_insync(True)
+                                oosync_tel=0
+                        else:
+                            oosync_tel=0
+                        insync_check=120
+                    insync_check-=1
                     # --------------------------- then on top of that, we verify checksums. if mismatch, we import from the master
                     if hardsync_enabled:
                         if sum_tel<1:

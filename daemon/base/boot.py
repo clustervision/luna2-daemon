@@ -295,7 +295,7 @@ class Boot():
             ipaddress, serverport = '', ''
             status=False
         self.logger.info(f'Boot API serving the {template}')
-        response = {'template': template, 'LUNA_CONTROLLER': ipaddress, 'LUNA_API_PORT': serverport}
+        response = {'template': template, 'LUNA_CONTROLLER': ipaddress, 'LUNA_API_PORT': serverport, 'LUNA_BEACON': self.controller_beaconip}
         return status, response
 
 

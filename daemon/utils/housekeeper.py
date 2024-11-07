@@ -330,10 +330,12 @@ class Housekeeper(object):
                     # --------------------------- if we're the master but for some unknown reason we've been out of sync for too long...
                     if insync_check<1:
                         if master is True:
-                            if ping_status and check_status and not ha_object.get_insync():
+                            if ha_object.get_insync() is True:
+                                oosync_tel=0
+                            else:
                                 oosync_tel+=1
                             if oosync_tel>2:
-                                self.logger.warning(f"I am a master but somehow i got stuck being out of sync? This should not happen....")
+                                self.logger.warning(f"I am a master but somehow got stuck being out of sync? This should not happen....")
                                 ha_object.set_insync(True)
                                 oosync_tel=0
                         else:

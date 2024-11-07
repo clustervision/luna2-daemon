@@ -58,6 +58,7 @@ def boot():
     return render_template(
         response['template'],
         LUNA_CONTROLLER     = response['LUNA_CONTROLLER'],
+        LUNA_BEACON         = response['LUNA_BEACON'],
         LUNA_API_PORT       = response['LUNA_API_PORT'],
         WEBSERVER_PORT      = response['WEBSERVER_PORT'],
         LUNA_API_PROTOCOL   = response['LUNA_API_PROTOCOL'],
@@ -87,6 +88,7 @@ def boot_short():
     return render_template(
         response['template'],
         LUNA_CONTROLLER     = response['LUNA_CONTROLLER'],
+        LUNA_BEACON         = response['LUNA_BEACON'],
         LUNA_API_PORT       = response['LUNA_API_PORT'],
         WEBSERVER_PORT      = response['WEBSERVER_PORT'],
         LUNA_API_PROTOCOL   = response['LUNA_API_PROTOCOL'],
@@ -136,6 +138,7 @@ def boot_search_mac(macaddress=None):
     return render_template(
             data['template'],
             LUNA_CONTROLLER        = data['ipaddress'],
+            LUNA_BEACON            = data['beacon'],
             LUNA_API_PORT          = data['serverport'],
             LUNA_API_PROTOCOL      = data['protocol'],
             VERIFY_CERTIFICATE     = data['verify_certificate'],
@@ -173,6 +176,7 @@ def boot_manual_group(groupname=None, macaddress=None):
     return render_template(
         data['template'],
         LUNA_CONTROLLER        = data['ipaddress'],
+        LUNA_BEACON            = data['beacon'],
         LUNA_API_PORT          = data['serverport'],
         LUNA_API_PROTOCOL      = data['protocol'],
         VERIFY_CERTIFICATE     = data['verify_certificate'],
@@ -210,6 +214,7 @@ def boot_manual_hostname(hostname=None, macaddress=None):
     return render_template(
         data['template'],
         LUNA_CONTROLLER        = data['ipaddress'],
+        LUNA_BEACON            = data['beacon'],
         LUNA_API_PORT          = data['serverport'],
         LUNA_API_PROTOCOL      = data['protocol'],
         VERIFY_CERTIFICATE     = data['verify_certificate'],
@@ -247,6 +252,7 @@ def boot_install(node=None):
     return render_template_string(
         data['template_data'],
         LUNA_CONTROLLER         = data['ipaddress'],
+        LUNA_BEACON             = data['beacon'],
         LUNA_API_PORT           = data['serverport'],
         LUNA_API_PROTOCOL       = data['protocol'],
         VERIFY_CERTIFICATE      = data['verify_certificate'],
@@ -298,6 +304,7 @@ def kickstart_install(node=None):
     return render_template_string(
         data['template_data'],
         LUNA_CONTROLLER         = data['ipaddress'],
+        LUNA_BEACON             = data['beacon'],
         LUNA_API_PORT           = data['serverport'],
         LUNA_API_PROTOCOL       = data['protocol'],
         VERIFY_CERTIFICATE      = data['verify_certificate'],

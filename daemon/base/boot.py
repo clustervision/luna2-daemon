@@ -206,6 +206,7 @@ class Boot():
         response = {
             'template': template,
             'LUNA_LOGHOST': self.controller_beaconip,
+            'LUNA_BEACON': self.controller_beaconip,
             'LUNA_CONTROLLER': ipaddress,
             'LUNA_API_PORT': serverport,
             'WEBSERVER_PORT': webserver_port,
@@ -257,6 +258,7 @@ class Boot():
         response = {
             'template': template,
             'LUNA_LOGHOST': self.controller_beaconip,
+            'LUNA_BEACON': self.controller_beaconip,
             'LUNA_CONTROLLER': ipaddress,
             'LUNA_API_PORT': serverport,
             'WEBSERVER_PORT': webserver_port,
@@ -307,6 +309,7 @@ class Boot():
             'template'      : template,
             'mac'           : mac,
             'loghost'       : self.controller_beaconip,
+            'beacon'        : self.controller_beaconip,
             'protocol'      : CONSTANT['API']['PROTOCOL'],
             'verify_certificate': CONSTANT['API']['VERIFY_CERTIFICATE'],
             'webserver_protocol': CONSTANT['API']['PROTOCOL'],
@@ -658,6 +661,7 @@ class Boot():
             'template'      : template,
             'mac'           : mac,
             'loghost'       : self.controller_beaconip,
+            'beacon'        : self.controller_beaconip,
             'protocol'      : CONSTANT['API']['PROTOCOL'],
             'verify_certificate': CONSTANT['API']['VERIFY_CERTIFICATE'],
             'webserver_protocol': CONSTANT['API']['PROTOCOL'],
@@ -1027,6 +1031,7 @@ class Boot():
             'template'      : template,
             'mac'           : mac,
             'loghost'       : self.controller_beaconip,
+            'beacon'        : self.controller_beaconip,
             'protocol'      : CONSTANT['API']['PROTOCOL'],
             'verify_certificate': CONSTANT['API']['VERIFY_CERTIFICATE'],
             'webserver_protocol': CONSTANT['API']['PROTOCOL'],
@@ -1239,6 +1244,7 @@ class Boot():
         data = {
             'template'              : template,
             'loghost'               : self.controller_beaconip,
+            'beacon'                : self.controller_beaconip,
             'protocol'              : CONSTANT['API']['PROTOCOL'],
             'verify_certificate'    : CONSTANT['API']['VERIFY_CERTIFICATE'],
             'webserver_protocol'    : CONSTANT['API']['PROTOCOL'],

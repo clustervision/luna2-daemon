@@ -297,7 +297,8 @@ class Config(object):
                 else:
                     shutil.copyfile(dhcp6_file, '/etc/dhcp/dhcpd6.conf')
         except Exception as exp:
-            self.logger.error(f"Uh oh... {exp}")
+            exc_type, exc_obj, exc_tb = sys.exc_info()
+            self.logger.error(f"building DHCP config encountered problems: {exp}, {exc_type}, in {exc_tb.tb_lineno}")
             validate = False
         return validate
 

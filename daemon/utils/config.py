@@ -440,7 +440,7 @@ class Config(object):
                         self.logger.info(f"Building DNS block for {rev_ipv6}")
                 except Exception as exp:
                     exc_type, exc_obj, exc_tb = sys.exc_info()
-                    self.logger.error(f"defining networks encountered problems: {exp}, {exc_type}, in {exc_tb.tb_lineno}")
+                    self.logger.error(f"defining DNS networks encountered problems: {exp}, {exc_type}, in {exc_tb.tb_lineno}")
                 #
                 dns_zones.append(networkname)
                 if rev_ip and rev_ip not in dns_zones:
@@ -540,7 +540,7 @@ class Config(object):
                                         dns_zone_records[rev_ip][host['host']]['value']=f"{host['host'].rstrip('.')}.{host['networkname']}"
                     except Exception as exp:
                         exc_type, exc_obj, exc_tb = sys.exc_info()
-                        self.logger.error(f"creating zone file encountered problems: {exp}, {exc_type}, in {exc_tb.tb_lineno}")
+                        self.logger.error(f"creating DNS zone encountered problems: {exp}, {exc_type}, in {exc_tb.tb_lineno}")
 
         # we create the zone files with zone info like addresses
         for zone in dns_zones:

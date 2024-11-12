@@ -424,18 +424,22 @@ class Config(object):
             if (nwk['network'] or nwk['network_ipv6']) and nwk['name']:
                 networkname = nwk['name']
                 self.logger.info(f"Building DNS block for {networkname}")
-                if nwk['network']:
-                    rev_ip = ip_address(nwk['network']).reverse_pointer
-                    rev_ip = rev_ip.split('.')
-                    rev_ip = '.'.join(rev_ip[2:])
-                    dns_allowed_query.append(nwk['network']+"/"+nwk['subnet']) # used for e.g. named. allow query
-                    self.logger.info(f"Building DNS block for {rev_ip}")
-                if nwk['network_ipv6']:
-                    rev_ipv6 = ip_address(nwk['network_ipv6']).reverse_pointer
-                    rev_ipv6 = rev_ipv6.split('.')
-                    rev_ipv6 = '.'.join(rev_ipv6[16:])
-                    dns_allowed_query.append(nwk['network_ipv6']+"/"+nwk['subnet_ipv6'])
-                    self.logger.info(f"Building DNS block for {rev_ipv6}")
+                try:
+                    if nwk['network']:
+                        rev_ip = ip_address(nwk['network']).reverse_pointer
+                        rev_ip = rev_ip.split('.')
+                        rev_ip = '.'.join(rev_ip[2:])
+                        dns_allowed_query.append(nwk['network']+"/"+nwk['subnet']) # used for e.g. named. allow query
+                        self.logger.info(f"Building DNS block for {rev_ip}")
+                    if nwk['network_ipv6']:
+                        rev_ipv6 = ip_address(nwk['network_ipv6']).reverse_pointer
+                        rev_ipv6 = rev_ipv6.split('.')
+                        rev_ipv6 = '.'.join(rev_ipv6[16:])
+                        dns_allowed_query.append(nwk['network_ipv6']+"/"+nwk['subnet_ipv6'])
+                        self.logger.info(f"Building DNS block for {rev_ipv6}")
+                except Exception as exp:
+                    exc_type, exc_obj, exc_tb = sys.exc_info()
+                    self.logger.error(f"defining networks encountered problems: {exp}, {exc_type}, in {exc_tb.tb_lineno}")
                 #
                 dns_zones.append(networkname)
                 if rev_ip and rev_ip not in dns_zones:
@@ -502,34 +506,40 @@ class Config(object):
 
             for hosts in mergedlist:
                 for host in hosts:
-                    dns_zone_records[networkname][host['host']]={}
-                    dns_zone_records[networkname][host['host']]['key']=host['host'].rstrip('.')
-                    if 'ipaddress_ipv6' in host and host['ipaddress_ipv6']:
-                        dns_zone_records[networkname][host['host']]['type']='AAAA'
-                        dns_zone_records[networkname][host['host']]['value']=host['ipaddress_ipv6']
-                        self.logger.debug(f"DNS -- IPv6: host {host['host']}, AAAA ip [{host['ipaddress_ipv6']}]")
-                        if rev_ipv6:
-                            ipv6_rev = ip_address(host['ipaddress_ipv6']).reverse_pointer
-                            ipv6_list = ipv6_rev.split('.')
-                            host_ptr = '.'.join(ipv6_list[0:16])
-                            self.logger.debug(f"DNS -- IPv6: host {host['host']}, rev ip [{host_ptr}]")
-                            dns_zone_records[rev_ipv6][host['host']]={}
-                            dns_zone_records[rev_ipv6][host['host']]['key']=host_ptr
-                            dns_zone_records[rev_ipv6][host['host']]['type']='PTR'
-                            dns_zone_records[rev_ipv6][host['host']]['value']=f"{host['host'].rstrip('.')}.{host['networkname']}"
-                    elif host['ipaddress']:
-                        dns_zone_records[networkname][host['host']]['type']='A'
-                        dns_zone_records[networkname][host['host']]['value']=host['ipaddress']
-                        self.logger.debug(f"DNS -- IPv4: host {host['host']}, A ip [{host['ipaddress']}]")
-                        if rev_ip:
-                            sub_ip = host['ipaddress'].split('.')
-                            host_ptr = sub_ip[3] + '.' + sub_ip[2]
-                            self.logger.debug(f"DNS -- IPv4: host {host['host']}, rev ip [{host_ptr}]")
-                            dns_zone_records[rev_ip][host['host']]={}
-                            dns_zone_records[rev_ip][host['host']]['key']=host_ptr
-                            dns_zone_records[rev_ip][host['host']]['type']='PTR'
-                            dns_zone_records[rev_ip][host['host']]['value']=f"{host['host'].rstrip('.')}.{host['networkname']}"
-
+                    try:
+                        dns_zone_records[networkname][host['host']]={}
+                        dns_zone_records[networkname][host['host']]['key']=host['host'].rstrip('.')
+                        if 'ipaddress_ipv6' in host and host['ipaddress_ipv6']:
+                            dns_zone_records[networkname][host['host']]['type']='AAAA'
+                            dns_zone_records[networkname][host['host']]['value']=host['ipaddress_ipv6']
+                            self.logger.debug(f"DNS -- IPv6: host {host['host']}, AAAA ip [{host['ipaddress_ipv6']}]")
+                            if rev_ipv6:
+                                ipv6_rev = ip_address(host['ipaddress_ipv6']).reverse_pointer
+                                ipv6_list = ipv6_rev.split('.')
+                                host_ptr = '.'.join(ipv6_list[0:16])
+                                self.logger.debug(f"DNS -- IPv6: host {host['host']}, rev ip [{host_ptr}]")
+                                if host['host'] not in dns_zone_records[rev_ipv6].keys():
+                                    dns_zone_records[rev_ipv6][host['host']]={}
+                                    dns_zone_records[rev_ipv6][host['host']]['key']=host_ptr
+                                    dns_zone_records[rev_ipv6][host['host']]['type']='PTR'
+                                    dns_zone_records[rev_ipv6][host['host']]['value']=f"{host['host'].rstrip('.')}.{host['networkname']}"
+                        elif host['ipaddress']:
+                            dns_zone_records[networkname][host['host']]['type']='A'
+                            dns_zone_records[networkname][host['host']]['value']=host['ipaddress']
+                            self.logger.debug(f"DNS -- IPv4: host {host['host']}, A ip [{host['ipaddress']}]")
+                            if rev_ip:
+                                sub_ip = host['ipaddress'].split('.')
+                                if len(sub_ip) == 4:
+                                    host_ptr = sub_ip[3] + '.' + sub_ip[2]
+                                    self.logger.debug(f"DNS -- IPv4: host {host['host']}, rev ip [{host_ptr}]")
+                                    if host['host'] not in dns_zone_records[rev_ip].keys():
+                                        dns_zone_records[rev_ip][host['host']]={}
+                                        dns_zone_records[rev_ip][host['host']]['key']=host_ptr
+                                        dns_zone_records[rev_ip][host['host']]['type']='PTR'
+                                        dns_zone_records[rev_ip][host['host']]['value']=f"{host['host'].rstrip('.')}.{host['networkname']}"
+                    except Exception as exp:
+                        exc_type, exc_obj, exc_tb = sys.exc_info()
+                        self.logger.error(f"creating zone file encountered problems: {exp}, {exc_type}, in {exc_tb.tb_lineno}")
 
         # we create the zone files with zone info like addresses
         for zone in dns_zones:

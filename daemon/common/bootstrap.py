@@ -273,9 +273,9 @@ def bootstrap(bootstrapfile=None):
     LOGGER.info('###################### Bootstrap Start ######################')
 
     plugins_path=CONSTANT["PLUGINS"]["PLUGINS_DIRECTORY"]
-    group_plugins = Helper().plugin_finder(f'{plugins_path}/group')
+    group_plugins = Helper().plugin_finder(f'{plugins_path}/run/group')
     group_plugin=Helper().plugin_load(group_plugins,'group','default')
-    node_plugins = Helper().plugin_finder(f'{plugins_path}/node')
+    node_plugins = Helper().plugin_finder(f'{plugins_path}/run/node')
     node_plugin=Helper().plugin_load(node_plugins,'node','default')
 
     is_true = [True,'True','true','TRUE','1','yes']

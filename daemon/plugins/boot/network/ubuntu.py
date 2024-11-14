@@ -58,6 +58,9 @@ fi
 if [ ! "$(grep $DEVICE $rootmnt/etc/netplan/98_config.yaml)" ]; then
 cat << EOF >> $rootmnt/etc/netplan/98_config.yaml
     ${DEVICE}: {}
+      # dhcp4_${DEVICE}
+      # dhcp6_${DEVICE}
+      # link-local_${DEVICE}
       # addresses_${DEVICE}:
         # ip_ipv4_${DEVICE}
         # ip_ipv6_${DEVICE}
@@ -83,6 +86,9 @@ EOF
     vlan_${DEVICE}_${VLANID}:
       id: $VLANID
       link: $DEVICE
+      # dhcp4_${DEVICE}_${VLANID}
+      # dhcp6_${DEVICE}_${VLANID}
+      # link-local_${DEVICE}_${VLANID}
       addresses:
         # ip_ipv4_${DEVICE}_${VLANID}
         # ip_ipv6_${DEVICE}_${VLANID}
@@ -94,12 +100,20 @@ fi
 
     # ipv4
     interface = """
-        if [ "$VLANID" ]; then
-            sed -i 's/# ip_ipv4_'$DEVICE'_'$VLANID'/- '$IPADDR'\/'$PREFIX'/' $rootmnt/etc/netplan/99_config.yaml
+        if [ "$IPADDR" == "dhcp" ]; then
+            if [ "$VLANID" ]; then
+                sed -i 's/# dhcp4_'$DEVICE'_'$VLANID'/dhcp4: true/' $rootmnt/etc/netplan/99_config.yaml
+            else
+                sed -i 's/# dhcp4_'$DEVICE'/dhcp4: true/' $rootmnt/etc/netplan/98_config.yaml
+            fi
         else
-            sed -i 's/'$DEVICE': {}/'$DEVICE':/' $rootmnt/etc/netplan/98_config.yaml
-            sed -i 's/# addresses_'$DEVICE'/addresses/' $rootmnt/etc/netplan/98_config.yaml
-            sed -i 's/# ip_ipv4_'$DEVICE'/- '$IPADDR'\/'$PREFIX'/' $rootmnt/etc/netplan/98_config.yaml
+            if [ "$VLANID" ]; then
+                sed -i 's/# ip_ipv4_'$DEVICE'_'$VLANID'/- '$IPADDR'\/'$PREFIX'/' $rootmnt/etc/netplan/99_config.yaml
+            else
+                sed -i 's/'$DEVICE': {}/'$DEVICE':/' $rootmnt/etc/netplan/98_config.yaml
+                sed -i 's/# addresses_'$DEVICE'/addresses/' $rootmnt/etc/netplan/98_config.yaml
+                sed -i 's/# ip_ipv4_'$DEVICE'/- '$IPADDR'\/'$PREFIX'/' $rootmnt/etc/netplan/98_config.yaml
+            fi
         fi
     """
 
@@ -136,12 +150,26 @@ EOF
 
     # ipv6
     interface_ipv6 = """
-        if [ "$VLANID" ]; then
-            sed -i 's/# ip_ipv6_'$DEVICE'_'$VLANID'/- '$IPADDR'\/'$PREFIX'/' $rootmnt/etc/netplan/99_config.yaml
+        if [ "$IPADDR" == "dhcp" ]; then
+            if [ "$VLANID" ]; then
+                sed -i 's/# dhcp6_'$DEVICE'_'$VLANID'/dhcp6: true/' $rootmnt/etc/netplan/99_config.yaml
+            else
+                sed -i 's/# dhcp6_'$DEVICE'/dhcp6: true/' $rootmnt/etc/netplan/98_config.yaml
+            fi
+        elif [ "$IPADDR" == "linklocal" ]; then
+            if [ "$VLANID" ]; then
+                sed -i 's/# link-local_'$DEVICE'_'$VLANID'/link-local: [ipv6]/' $rootmnt/etc/netplan/99_config.yaml
+            else
+                sed -i 's/# link-local_'$DEVICE'/link-local: [ipv6]/' $rootmnt/etc/netplan/98_config.yaml
+            fi
         else
-            sed -i 's/'$DEVICE': {}/'$DEVICE':/' $rootmnt/etc/netplan/98_config.yaml
-            sed -i 's/# addresses_'$DEVICE'/addresses/' $rootmnt/etc/netplan/98_config.yaml
-            sed -i 's/# ip_ipv6_'$DEVICE'/- '$IPADDR'\/'$PREFIX'/' $rootmnt/etc/netplan/98_config.yaml
+            if [ "$VLANID" ]; then
+                sed -i 's/# ip_ipv6_'$DEVICE'_'$VLANID'/- '$IPADDR'\/'$PREFIX'/' $rootmnt/etc/netplan/99_config.yaml
+            else
+                sed -i 's/'$DEVICE': {}/'$DEVICE':/' $rootmnt/etc/netplan/98_config.yaml
+                sed -i 's/# addresses_'$DEVICE'/addresses/' $rootmnt/etc/netplan/98_config.yaml
+                sed -i 's/# ip_ipv6_'$DEVICE'/- '$IPADDR'\/'$PREFIX'/' $rootmnt/etc/netplan/98_config.yaml
+            fi
         fi
     """
 

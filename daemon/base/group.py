@@ -117,6 +117,7 @@ class Group():
             response = {'config': {'group': {} }}
             group = groups[0]
             group_id = group['id']
+            osimage = None
             if group['osimageid']:
                 osimage = Database().get_record(None, 'osimage', f" WHERE id = '{group['osimageid']}'")
                 if osimage:
@@ -149,7 +150,7 @@ class Group():
                         cluster[0][key] = str(Helper().make_bool(cluster[0][key]))
                     group[key] = str(cluster[0][key])
                     group[key+'_source'] = 'cluster'
-                elif key in osimage[0] and ((not key in group) or (not group[key])):
+                elif osimage and key in osimage[0] and ((not key in group) or (not group[key])):
                     if isinstance(value, bool):
                         osimage[0][key] = str(Helper().make_bool(osimage[0][key]))
                     group[key] = str(osimage[0][key])

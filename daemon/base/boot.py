@@ -1461,6 +1461,14 @@ class Boot():
                     # clearly, the user wants something that has no interface involvement. fallback to '', but not None
                     data['domain_search'] = ''
 
+        # needed for generating network config templates on server side
+        if data['kerneloptions']:
+            kerneloptions=data['kerneloptions'].split(' ')
+            if 'luna.bootproto=dhcp' in kerneloptions:
+                if 'interfaces' in data and 'BOOTIF' in data['interfaces']:
+                    data['interfaces']['BOOTIF']['dhcp']=True
+ 
+
         ## SYSTEMROOT
         osimage_plugin = Helper().plugin_load(self.osimage_plugins,'osimage/operations/image',data['distribution'],data['osrelease'])
         data['systemroot'] = str(osimage_plugin().systemroot or '/sysroot')
@@ -1479,7 +1487,29 @@ class Boot():
         if not data['provision_fallback']:
             data['provision_fallback'] = data['provision_method']
 
+#-------------------------------------
+#        template_path = f'{CONSTANT["TEMPLATES"]["TEMPLATE_FILES"]}/{template}'
+#        check_template = Helper().check_jinja(template_path)
+#        if not check_template:
+#            return False, 'Empty'
+#        with open(template_path, 'r', encoding='utf-8') as file:
+#            template_data = file.read()
+#-------------------------------------
+
         ## INTERFACE CODE SEGMENT
+        network_template = Helper().template_find(
+            self.boot_plugins,
+            'boot/network',
+            data['distribution'],
+            data['osrelease']
+        )
+        if network_template:
+            for interface in data['interfaces']:
+                interface_data = render_template_string(data['interfaces'][interface])
+                interface_data += "\n## NETWORK TEMPLATE CODE SEGMENT"
+                template_data = template_data.replace("## NETWORK TEMPLATE CODE SEGMENT", interface_data)
+                del data['interfaces'][interface]
+
         network_plugin = Helper().plugin_load(
             self.boot_plugins,
             'boot/network',

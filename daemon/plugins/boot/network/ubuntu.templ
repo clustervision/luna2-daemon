@@ -1,0 +1,73 @@
+{% autoescape None %}
+
+
+network:
+  version: 2
+  renderer: networkd
+{% if vlanid %}
+  vlans:
+    vlan_{{ device }}_{{ vlanid }}:
+      id: {{ vlanid }}
+      link: {{ device }}
+{% else %}
+  ethernets:
+    {{ device }}:
+{% endif %}
+
+
+
+    init = """
+if [ ! -d $rootmnt/etc/netplan/ ]; then
+    mkdir -p $rootmnt/etc/netplan/
+fi
+if [ ! -f $rootmnt/etc/netplan/98_config.yaml ]; then
+cat << EOF > $rootmnt/etc/netplan/98_config.yaml
+network:
+  version: 2
+  renderer: networkd
+  ethernets:
+EOF
+fi
+
+if [ ! "$(grep $DEVICE $rootmnt/etc/netplan/98_config.yaml)" ]; then
+cat << EOF >> $rootmnt/etc/netplan/98_config.yaml
+    ${DEVICE}: {}
+      # dhcp4_${DEVICE}
+      # dhcp6_${DEVICE}
+      # link-local_${DEVICE}
+      # addresses_${DEVICE}:
+        # ip_ipv4_${DEVICE}
+        # ip_ipv6_${DEVICE}
+      # routes_${DEVICE}:
+        # route_ipv4_${DEVICE}
+        # route_ipv6_${DEVICE}
+      # nameservers_${DEVICE}:
+        # ns_ipv4_${DEVICE}
+        # ns_ipv6_${DEVICE}
+EOF
+fi
+
+if [ "$VLANID" ]; then
+    if [ ! -f $rootmnt/etc/netplan/99_config.yaml ]; then
+        cat << EOF > $rootmnt/etc/netplan/99_config.yaml
+network:
+  version: 2
+  renderer: networkd
+  vlans:
+EOF
+    fi
+    cat << EOF >> $rootmnt/etc/netplan/99_config.yaml
+    vlan_${DEVICE}_${VLANID}:
+      id: $VLANID
+      link: $DEVICE
+      # dhcp4_${DEVICE}_${VLANID}
+      # dhcp6_${DEVICE}_${VLANID}
+      # link-local_${DEVICE}_${VLANID}
+      addresses:
+        # ip_ipv4_${DEVICE}_${VLANID}
+        # ip_ipv6_${DEVICE}_${VLANID}
+EOF
+fi
+    """
+
+{% endautoescape  %}

@@ -54,6 +54,16 @@ class Plugin():
         #$OPTIONS
     """
 
+    interface_dhcp = """
+        cd /sysroot
+        cd etc/sysconfig/network-scripts
+        echo DEVICE=$DEVICE >> ifcfg-$DEVICE
+        echo NAME=$DEVICE >> ifcfg-$DEVICE
+        echo PROTO=dhcp >> ifcfg-$DEVICE
+        #$ZONE
+        #$OPTIONS
+    """
+
     hostname = """
         cd /sysroot
         echo "$HOSTNAME" > /proc/sys/kernel/hostname
@@ -88,6 +98,8 @@ class Plugin():
     """
 
     interface_ipv6 = ""
+    interface_ipv6_dhcp = ""
+    interface_ipv6_linklocal = ""
     gateway_ipv6 = ""
     dns_ipv6 = ""
 

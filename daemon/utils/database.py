@@ -583,7 +583,7 @@ class Database():
                             column = column + f" = datetime({cols['value']}, 'unixepoch')"
                 else:
                     if cols['value'] is not None:
-                        column = column + ' = "' +str(cols['value']) +'"'
+                        column = column + " = '" +str(cols['value']) +"'"
                     else:
                         column = column + ' = NULL'
             columns.append(column)
@@ -643,7 +643,7 @@ class Database():
             if 'column' in cols.keys():
                 column = column + cols['column']
             if 'value' in cols.keys():
-                column = column + ' = "' +str(cols['value']) +'"'
+                column = column + " = '" +str(cols['value']) +"'"
             where_list.append(column)
             join_where = ' AND '.join(map(str, where_list))
         attempt=1

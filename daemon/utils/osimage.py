@@ -722,7 +722,7 @@ class OsImage(object):
                         cluster_provision_methods.append('http')
 
                     image_id=image[0]['id']
-                    if (not 'imagefile' in image[0]) and (not image[0]['imagefile']):
+                    if (not 'imagefile' in image[0]) or (not image[0]['imagefile']):
                         mesg=f"Imagefile for {osimage} does not exist?"
                         return False
            
@@ -798,8 +798,14 @@ class OsImage(object):
                     if ret is True:
                         image[0]['path'] = data
                     else:
-                        Status().add_message(request_id,"luna",f"error assembling osimage {osimage}: Image path not defined")
+                        Status().add_message(request_id,"luna",f"error unpacking osimage {osimage}: Image path not defined")
+                        self.logger.error(f"cannot unpack image. image path for {osimage} not defined")
                         return False
+
+                # should be an error but since this is older code, i leave it as a warning for now. -Antoine
+                if not image[0]['path']:
+                    Status().add_message(request_id,"luna",f"warning unpacking osimage {osimage}: Image path may not be defined")
+                    self.logger.warning(f"image path for {osimage} not defined")
 
                 image_path = str(image[0]['path'])
                 if image_path[0] != '/': # means that we don't have an absolute path. good, let's prepend what's in luna.ini

@@ -89,6 +89,7 @@ chmod 600 /sysroot/etc/NetworkManager/system-connections/Connection_${DEVICE}.nm
     # ------------ ipv4 --------------
 
     interface = """
+    if [ "$IPADDR" == "dhcp" ]; then
 cat << EOF >> /sysroot/etc/NetworkManager/system-connections/Connection_${DEVICE}.nmconnection
 [ipv4]
 method=auto
@@ -97,9 +98,7 @@ dns-search=
 #route1=
 
 EOF
-    """
-
-    interface_dhcp = """
+    else
 cat << EOF >> /sysroot/etc/NetworkManager/system-connections/Connection_${DEVICE}.nmconnection
 [ipv4]
 method=manual
@@ -109,6 +108,7 @@ dns-search=
 #route1=
 
 EOF
+    fi
     """
 
     hostname = """
@@ -131,6 +131,22 @@ EOF
     # ------------ ipv6 --------------
 
     interface_ipv6 = """
+    if [ "$IPADDR" == "dhcp" ]; then
+cat << EOF >> /sysroot/etc/NetworkManager/system-connections/Connection_${DEVICE}.nmconnection
+[ipv6]
+dns=
+dns-search=
+method=auto
+#route1=
+
+EOF
+    elif [ "$IPADDR" == "linklocal" ]; then
+cat << EOF >> /sysroot/etc/NetworkManager/system-connections/Connection_${DEVICE}.nmconnection
+[ipv6]
+ipv6.method=ignore
+
+EOF
+    else
 cat << EOF >> /sysroot/etc/NetworkManager/system-connections/Connection_${DEVICE}.nmconnection
 [ipv6]
 address1=$IPADDR/$PREFIX
@@ -140,25 +156,7 @@ method=manual
 #route1=
 
 EOF
-    """
-
-    interface_ipv6_dhcp = """
-cat << EOF >> /sysroot/etc/NetworkManager/system-connections/Connection_${DEVICE}.nmconnection
-[ipv6]
-dns=
-dns-search=
-method=auto
-#route1=
-
-EOF
-    """
-
-    interface_ipv6_linklocal = """
-cat << EOF >> /sysroot/etc/NetworkManager/system-connections/Connection_${DEVICE}.nmconnection
-[ipv6]
-ipv6.method=ignore
-
-EOF
+    fi
     """
 
     gateway_ipv6 = """

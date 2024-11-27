@@ -1448,12 +1448,12 @@ class Boot():
                                 data['interfaces'][data['provision_interface']]['nameserver_ip'] = controller[0]['ipaddress'] or '0.0.0.0'
                             if not data['interfaces'][data['provision_interface']]['nameserver_ip_ipv6']:
                                 data['interfaces'][data['provision_interface']]['nameserver_ip_ipv6'] = controller[0]['ipaddress_ipv6'] or '::/0'
-                        if not interface['interface'][interface['interface']]['ipaddress']:
-                            del interface['interface'][interface['interface']]['gateway']
-                            del interface['interface'][interface['interface']]['nameserver_ip']
-                        if not interface['interface'][interface['interface']]['ipaddress_ipv6']:
-                            del interface['interface'][interface['interface']]['gateway_ipv6']
-                            del interface['interface'][interface['interface']]['nameserver_ip_ipv6']
+                        if not data['interfaces'][interface['interface']]['ipaddress']:
+                            del data['interfaces'][interface['interface']]['gateway']
+                            del data['interfaces'][interface['interface']]['nameserver_ip']
+                        if not data['interfaces'][interface['interface']]['ipaddress_ipv6']:
+                            del data['interfaces'][interface['interface']]['gateway_ipv6']
+                            del data['interfaces'][interface['interface']]['nameserver_ip_ipv6']
                         domain_search.append(interface['network'])
                         if interface['interface'] == data['provision_interface'] and interface['network']:
                             # if it is my prov interface then it will get that domain as a FQDN.

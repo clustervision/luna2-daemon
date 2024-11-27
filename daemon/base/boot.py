@@ -99,9 +99,9 @@ class Boot():
         This constructor will initialize all required variables here.
         """
         self.logger = Log.get_logger()
-        plugins_path=CONSTANT["PLUGINS"]["PLUGINS_DIRECTORY"]
-        self.boot_plugins = Helper().plugin_finder(f'{plugins_path}/boot')
-        self.osimage_plugins = Helper().plugin_finder(f'{plugins_path}/osimage')
+        self.plugins_path=CONSTANT["PLUGINS"]["PLUGINS_DIRECTORY"]
+        self.boot_plugins = Helper().plugin_finder(f'{self.plugins_path}/boot')
+        self.osimage_plugins = Helper().plugin_finder(f'{self.plugins_path}/osimage')
         self.controller_object = Controller()
         self.controller_name = self.controller_object.get_beacon()
         self.controller_beaconip = self.controller_object.get_beaconip()
@@ -1493,13 +1493,6 @@ class Boot():
         if not data['provision_fallback']:
             data['provision_fallback'] = data['provision_method']
 
-#-------------------------------------
-#        check_template = Helper().check_jinja(template_path)
-#        if not check_template:
-#            return False, 'Empty'
-#        with open(template_path, 'r', encoding='utf-8') as file:
-#            template_data = file.read()
-#-------------------------------------
 
         ## INTERFACE CODE SEGMENT
         network_template = Helper().template_find(
@@ -1509,10 +1502,9 @@ class Boot():
             data['osrelease']
         )
         if network_template:
-            plugins_path=CONSTANT["PLUGINS"]["PLUGINS_DIRECTORY"]
             try:
-                self.logger.info(f"TMPL: file == {plugins_path}/{network_template}")
-                with open(f"{plugins_path}/{network_template}") as template_file:
+                self.logger.info(f"{data['nodename']} is using {self.plugins_path}/{network_template} for network config")
+                with open(f"{self.plugins_path}/{network_template}") as template_file:
                     interface_template_data = template_file.read()
                 segment = str(interface_template_data)
                 template_data = template_data.replace("## INTERFACE TEMPLATE SEGMENT", segment)

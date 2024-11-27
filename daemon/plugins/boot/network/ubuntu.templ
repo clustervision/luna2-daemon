@@ -6,69 +6,54 @@ network:
   renderer: networkd
 {% if vlanid %}
   vlans:
-    vlan_{{ device }}_{{ vlanid }}:
-      id: {{ vlanid }}
-      link: {{ device }}
+    vlan_${interface_name}_{{ LUNA_INTERFACES[interface]['vlanid'] }}:
+      id: {{ LUNA_INTERFACES[interface]['vlanid'] }}
+      link: ${interface_name}
 {% else %}
   ethernets:
-    {{ device }}:
+    ${interface_name}:
+    {% if not LUNA_INTERFACES[interface]['ipaddress_ipv6'] %}
+      link-local: [ipv6]
+    {% endif %}
 {% endif %}
-{%
-
-
-
-    init = """
-if [ ! -d $rootmnt/etc/netplan/ ]; then
-    mkdir -p $rootmnt/etc/netplan/
-fi
-if [ ! -f $rootmnt/etc/netplan/98_config.yaml ]; then
-cat << EOF > $rootmnt/etc/netplan/98_config.yaml
-network:
-  version: 2
-  renderer: networkd
-  ethernets:
-EOF
-fi
-
-if [ ! "$(grep $DEVICE $rootmnt/etc/netplan/98_config.yaml)" ]; then
-cat << EOF >> $rootmnt/etc/netplan/98_config.yaml
-    ${DEVICE}: {}
-      # dhcp4_${DEVICE}
-      # dhcp6_${DEVICE}
-      # link-local_${DEVICE}
-      # addresses_${DEVICE}:
-        # ip_ipv4_${DEVICE}
-        # ip_ipv6_${DEVICE}
-      # routes_${DEVICE}:
-        # route_ipv4_${DEVICE}
-        # route_ipv6_${DEVICE}
-      # nameservers_${DEVICE}:
-        # ns_ipv4_${DEVICE}
-        # ns_ipv6_${DEVICE}
-EOF
-fi
-
-if [ "$VLANID" ]; then
-    if [ ! -f $rootmnt/etc/netplan/99_config.yaml ]; then
-        cat << EOF > $rootmnt/etc/netplan/99_config.yaml
-network:
-  version: 2
-  renderer: networkd
-  vlans:
-EOF
-    fi
-    cat << EOF >> $rootmnt/etc/netplan/99_config.yaml
-    vlan_${DEVICE}_${VLANID}:
-      id: $VLANID
-      link: $DEVICE
-      # dhcp4_${DEVICE}_${VLANID}
-      # dhcp6_${DEVICE}_${VLANID}
-      # link-local_${DEVICE}_${VLANID}
+{% if LUNA_BOOTPROTO == 'dhcp' %}
+    {% if LUNA_INTERFACES[interface]['ipaddress'] %}
+      dhcp4: True
+    {% endif %}
+    {% if LUNA_INTERFACES[interface]['ipaddress_ipv6'] %}
+      dhcp6: True
+    {% endif %}
+{% else %}
       addresses:
-        # ip_ipv4_${DEVICE}_${VLANID}
-        # ip_ipv6_${DEVICE}_${VLANID}
-EOF
-fi
-    """
+    {% if LUNA_INTERFACES[interface]['ipaddress'] %}
+        - {{ LUNA_INTERFACES[interface]['ipaddress'] }}/{{ LUNA_INTERFACES[interface]['prefix'] }}
+    {% endif %}
+    {% if LUNA_INTERFACES[interface]['ipaddress_ipv6'] %}
+        - {{ LUNA_INTERFACES[interface]['ipaddress_ipv6'] }}/{{ LUNA_INTERFACES[interface]['prefix_ipv6'] }}
+    {% endif %}
+    {% if LUNA_INTERFACES[interface]['gateway'] or LUNA_INTERFACES[interface]['gateway_ipv6'] %}
+      routes:
+      {% if LUNA_INTERFACES[interface]['gateway'] %}      
+        - to: default
+          via: {{ LUNA_INTERFACES[interface]['gateway'] }}
+          metric: {{ LUNA_INTERFACES[interface]['gateway_metric'] }}
+      {% endif %}
+      {% if LUNA_INTERFACES[interface]['gateway_ipv6'] %}
+        - to: default
+          via: {{ LUNA_INTERFACES[interface]['gateway_ipv6'] }}
+          metric: {{ LUNA_INTERFACES[interface]['gateway_metric'] }}
+      {% endif %}
+    {% endif %}
+    {% if LUNA_INTERFACES[interface]['nameserver_ip'] or LUNA_INTERFACES[interface]['nameserver_ip_ipv6'] %}
+      nameservers:
+      {% if LUNA_INTERFACES[interface]['nameserver_ip'] %}
+        search: {{ DOMAIN_SEARCH }}
+        addresses: [{{ LUNA_INTERFACES[interface]['nameserver_ip'] }}]
+      {% endif %}
+      {% if LUNA_INTERFACES[interface]['nameserver_ip_ipv6'] %}
+        search: {{ DOMAIN_SEARCH }}
+        addresses: [{{ LUNA_INTERFACES[interface]['nameserver_ip_ipv6'] }}]
+      {% endif %}
+    {% endif %}
+{% endif %}
 
-{% endautoescape  %}

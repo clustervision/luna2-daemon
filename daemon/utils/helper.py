@@ -973,9 +973,9 @@ class Helper(object):
                 elif levelone+'.templ' in myplugin:
                     self.logger.debug(f"found plugins.{root}.{levelone}")
                     return root+'/'+levelone+'.templ'
-            if not module:
-                self.logger.debug(f"loading plugins.{root}.default")
-                return root+'/default.templ'
+            #self.logger.debug(f"loading plugins.{root}.default")
+            #return root+'/default.templ'
+            return None
         except Exception as exp:
             exc_type, exc_obj, exc_tb = sys.exc_info()
             self.logger.error(f"Loading module caused a problem during selection: {exp}, {exc_type} in {exc_tb.tb_lineno}]")

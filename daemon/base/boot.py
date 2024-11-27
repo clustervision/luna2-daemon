@@ -1312,7 +1312,7 @@ class Boot():
                 return status, "i received data back internally that i could not parse"
             self.logger.debug(f"DEBUG: {node_details}")
             for item in ['provision_method','provision_fallback','prescript','partscript','postscript',
-                         'netboot','bootmenu','provision_interface','unmanaged_bmc_users',
+                         'netboot','bootmenu','provision_interface','unmanaged_bmc_users','kerneloptions',
                          'name','setupbmc','bmcsetup','group','osimage','osimagetag']:
                 if item in items and isinstance(items[item], bool):
                     if node_details[item] is None or node_details[item] == 'None':
@@ -1438,16 +1438,22 @@ class Boot():
                             'zone': zone,
                             'type': interface['type'] or "ethernet"
                         }
-                        if interface['interface'] == 'BOOTIF' and controller:
+                        if interface['interface'] == data['provision_interface'] and controller:
                             # setting good defaults for BOOTIF if they do not exist. a must.
-                            if not data['interfaces']['BOOTIF']['gateway']:
-                                data['interfaces']['BOOTIF']['gateway'] = controller[0]['ipaddress'] or '0.0.0.0'
-                            if not data['interfaces']['BOOTIF']['gateway_ipv6']:
-                                data['interfaces']['BOOTIF']['gateway_ipv6'] = controller[0]['ipaddress_ipv6'] or '::/0'
-                            if not data['interfaces']['BOOTIF']['nameserver_ip']:
-                                data['interfaces']['BOOTIF']['nameserver_ip'] = controller[0]['ipaddress'] or '0.0.0.0'
-                            if not data['interfaces']['BOOTIF']['nameserver_ip_ipv6']:
-                                data['interfaces']['BOOTIF']['nameserver_ip_ipv6'] = controller[0]['ipaddress_ipv6'] or '::/0'
+                            if not data['interfaces'][data['provision_interface']]['gateway']:
+                                data['interfaces'][data['provision_interface']]['gateway'] = controller[0]['ipaddress'] or '0.0.0.0'
+                            if not data['interfaces'][data['provision_interface']]['gateway_ipv6']:
+                                data['interfaces'][data['provision_interface']]['gateway_ipv6'] = controller[0]['ipaddress_ipv6'] or '::/0'
+                            if not data['interfaces'][data['provision_interface']]['nameserver_ip']:
+                                data['interfaces'][data['provision_interface']]['nameserver_ip'] = controller[0]['ipaddress'] or '0.0.0.0'
+                            if not data['interfaces'][data['provision_interface']]['nameserver_ip_ipv6']:
+                                data['interfaces'][data['provision_interface']]['nameserver_ip_ipv6'] = controller[0]['ipaddress_ipv6'] or '::/0'
+                        if not interface['interface'][interface['interface']]['ipaddress']:
+                            del interface['interface'][interface['interface']]['gateway']
+                            del interface['interface'][interface['interface']]['nameserver_ip']
+                        if not interface['interface'][interface['interface']]['ipaddress_ipv6']:
+                            del interface['interface'][interface['interface']]['gateway_ipv6']
+                            del interface['interface'][interface['interface']]['nameserver_ip_ipv6']
                         domain_search.append(interface['network'])
                         if interface['interface'] == data['provision_interface'] and interface['network']:
                             # if it is my prov interface then it will get that domain as a FQDN.
@@ -1465,8 +1471,8 @@ class Boot():
         if data['kerneloptions']:
             kerneloptions=data['kerneloptions'].split(' ')
             if 'luna.bootproto=dhcp' in kerneloptions:
-                if 'interfaces' in data and 'BOOTIF' in data['interfaces']:
-                    data['interfaces']['BOOTIF']['dhcp']=True
+                if 'interfaces' in data and data['provision_interface'] in data['interfaces']:
+                    data['interfaces'][data['provision_interface']]['dhcp']=True
  
 
         ## SYSTEMROOT
@@ -1488,7 +1494,6 @@ class Boot():
             data['provision_fallback'] = data['provision_method']
 
 #-------------------------------------
-        template_path = f'{CONSTANT["TEMPLATES"]["TEMPLATE_FILES"]}/{template}'
 #        check_template = Helper().check_jinja(template_path)
 #        if not check_template:
 #            return False, 'Empty'
@@ -1504,13 +1509,15 @@ class Boot():
             data['osrelease']
         )
         if network_template:
+            plugins_path=CONSTANT["PLUGINS"]["PLUGINS_DIRECTORY"]
             try:
-                with open(f"{template_path}/{network_template}") as template_file:
+                self.logger.info(f"TMPL: file == {plugins_path}/{network_template}")
+                with open(f"{plugins_path}/{network_template}") as template_file:
                     interface_template_data = template_file.read()
                 segment = str(interface_template_data)
                 template_data = template_data.replace("## INTERFACE TEMPLATE SEGMENT", segment)
-            except:
-                pass
+            except Exception as exp:
+                self.logger.error(f"{exp}")
 
         network_plugin = Helper().plugin_load(
             self.boot_plugins,

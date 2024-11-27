@@ -961,7 +961,7 @@ class Helper(object):
             for levelone in levelones:
                 if leveltwo and levelone+leveltwo+'.templ' in myplugin:
                     self.logger.debug(f"found plugins.{root}.{levelone}{leveltwo}")
-                    return root+'/'+levelone+'/'+leveltwo+'.templ'
+                    return root+'/'+levelone+leveltwo+'.templ'
                 elif levelone in myplugin.keys():
                     if leveltwo and leveltwo in myplugin[levelone]:
                         template = leveltwo.rsplit('.',1)

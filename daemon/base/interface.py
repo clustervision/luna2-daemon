@@ -36,8 +36,6 @@ from utils.config import Config
 from utils.service import Service
 from utils.queue import Queue
 from utils.helper import Helper
-from utils.ha import HA
-from utils.controller import Controller
 
 
 class Interface():
@@ -50,15 +48,6 @@ class Interface():
         This constructor will initialize all required variables here.
         """
         self.logger = Log.get_logger()
-        self.controller_object = Controller()
-        self.controller_name = self.controller_object.get_beacon()
-        self.controller_beaconip = self.controller_object.get_beaconip()
-        self.hatrial = 25
-        self.ha_object = HA()
-        self.insync = self.ha_object.get_insync()
-        self.hastate = self.ha_object.get_hastate()
-        if self.hastate is True and self.insync is True:
-            self.controller_name=self.ha_object.get_me()
 
 
     def get_all_node_interface(self, name=None):
@@ -76,7 +65,6 @@ class Interface():
                     'nodeinterface.macaddress',
                     'nodeinterface.interface',
                     'ipaddress.ipaddress',
-                    'ipaddress.ipaddress_ipv6',
                     'nodeinterface.options',
                     'nodeinterface.vlanid'
                 ],
@@ -102,128 +90,6 @@ class Interface():
             self.logger.error('No nodes available.')
             response = 'No nodes available'
             status=False
-        return status, response
-
-
-    def get_node_interface(self, name=None, interface=None):
-        """
-        This method will provide a node interface.
-        """
-        status=False
-        node = Database().get_record(None, 'node', f' WHERE name = "{name}"')
-        if node:
-            response = {'config': {'node': {name: {'interfaces': [] } } } }
-            nodeid = node[0]['id']
-            node_interfaces = Database().get_record_join(
-                [
-                    'network.name as network',
-                    'network.subnet as subnet',
-                    'network.subnet_ipv6 as subnet_ipv6',
-                    'network.gateway as gateway',
-                    'network.gateway_ipv6 as gateway_ipv6',
-                    'network.nameserver_ip as nameserver_ip',
-                    'network.nameserver_ip_ipv6 as nameserver_ip_ipv6',
-                    'network.ntp_server as ntp_server',
-                    'network.zone as zone',
-                    'network.type as type',
-                    'nodeinterface.macaddress',
-                    'nodeinterface.interface',
-                    'ipaddress.ipaddress',
-                    'ipaddress.ipaddress_ipv6',
-                    'nodeinterface.options',
-                    'nodeinterface.vlanid',
-                ],
-                ['ipaddress.tablerefid=nodeinterface.id', 'network.id=ipaddress.networkid'],
-                [
-                    'tableref="nodeinterface"',
-                    f"nodeinterface.nodeid='{nodeid}'",
-                    f"nodeinterface.interface='{interface}'"
-                ]
-            )
-            if node_interfaces:
-
-                cluster = Database().get_record(None, 'cluster', None)
-                controller = Database().get_record_join(
-                    ['controller.*', 'ipaddress.ipaddress', 'ipaddress.ipaddress_ipv6'],
-                    ['ipaddress.tablerefid=controller.id'],
-                    ['tableref="controller"', f'controller.hostname="{self.controller_name}"']
-                )
-
-                my_interface = []
-                for interface in node_interfaces:
-                    domain_search = []
-                    default_metric = '101'
-                    node_nwk, node_nwk6 = None, None
-                    if interface['ipaddress']:
-                        node_nwk = f'{interface["ipaddress"]}/{interface["subnet"]}'
-                        interface['netmask'] = Helper().get_netmask(node_nwk)
-                    if interface['ipaddress_ipv6']:
-                        node_nwk6 = f'{interface["ipaddress_ipv6"]}/{interface["subnet_ipv6"]}'
-                        interface['netmask_ipv6'] = Helper().get_netmask(node_nwk6)
-
-                    if cluster:
-                        interface['nameserver_ip'] = cluster[0]['nameserver_ip']
-                        interface['domain_search'] = cluster[0]['domain_search']
-                        interface['ntp_server'] = cluster[0]['ntp_server']
-
-#---
-                    if interface['interface'] == 'BMC':
-                        # we configure bmc stuff here and no longer in template. big advantage is
-                        # that we can have different networks/interface-names for different h/w,
-                        # drivers, subnets, networks, etc
-                        interface['gateway'] = interface['gateway'] or '0.0.0.0'
-                        interface['gateway_ipv6'] = interface['gateway_ipv6'] or '::/0'
-                    else:
-                        if interface['interface'] == 'BOOTIF' and controller:
-                            # setting good defaults for BOOTIF if they do not exist. a must.
-                            if not interface['gateway']:
-                                interface['gateway'] = controller[0]['ipaddress'] or '0.0.0.0'
-                            if not interface['gateway_ipv6']:
-                                interface['gateway_ipv6'] = controller[0]['ipaddress_ipv6'] or '::/0'
-                            if not interface['nameserver_ip']:
-                                interface['nameserver_ip'] = controller[0]['ipaddress'] or '0.0.0.0'
-                            if not interface['nameserver_ip_ipv6']:
-                                interface['nameserver_ip_ipv6'] = controller[0]['ipaddress_ipv6'] or '::/0'
-                        if interface['interface'] == 'BOOTIF':
-                            domain_search.insert(0, interface['network'])
-                        else:
-                            domain_search.append(interface['network'])
-#                        if interface['interface'] == data['provision_interface'] and interface['network']:
-#                            # if it is my prov interface then it will get that domain as a FQDN.
-#                            data['nodehostname'] = data['nodename'] + '.' + interface['network']
-#                            domain_search.insert(0, interface['network'])
-
-                    if (not 'domain_search' in interface) or (not interface['domain_search']):
-                        if domain_search:
-                            interface['domain_search'] = ','.join(domain_search)
-
-                    if not interface['ipaddress_ipv6']:
-                        del interface['ipaddress_ipv6']
-                        del interface['subnet_ipv6']
-                        del interface['gateway_ipv6']
-                        del interface['nameserver_ip_ipv6']
-                    if not interface['ipaddress']:
-                        del interface['ipaddress']
-                        del interface['subnet']
-                        del interface['gateway']
-                        del interface['nameserver_ip']
-#---
-
-                    if not interface['options']:
-                        del interface['options']
-                    if not interface['vlanid']:
-                        del interface['vlanid']
-                    my_interface.append(interface)
-                    response['config']['node'][name]['interfaces'] = my_interface
-
-                status=True
-            else:
-                self.logger.error(f'Node {name} does not have {interface} interface.')
-                response = f'Node {name} does not have {interface} interface'
-                status=False
-        else:
-            self.logger.error('Node is not available.')
-            response = 'Node is not available'
         return status, response
 
 
@@ -512,6 +378,53 @@ class Interface():
         else:
             return False, "nodeid and/or group not defined"
         return True, "success"
+
+
+    def get_node_interface(self, name=None, interface=None):
+        """
+        This method will provide a node interface.
+        """
+        status=False
+        node = Database().get_record(None, 'node', f' WHERE name = "{name}"')
+        if node:
+            response = {'config': {'node': {name: {'interfaces': [] } } } }
+            nodeid = node[0]['id']
+            node_interfaces = Database().get_record_join(
+                [
+                    'network.name as network',
+                    'nodeinterface.macaddress',
+                    'nodeinterface.interface',
+                    'ipaddress.ipaddress',
+                    'nodeinterface.options',
+                    'nodeinterface.vlanid'
+                ],
+                ['ipaddress.tablerefid=nodeinterface.id', 'network.id=ipaddress.networkid'],
+                [
+                    'tableref="nodeinterface"',
+                    f"nodeinterface.nodeid='{nodeid}'",
+                    f"nodeinterface.interface='{interface}'"
+                ]
+            )
+            if node_interfaces:
+                my_interface = []
+                for interface in node_interfaces:
+                    if not interface['options']:
+                        del interface['options']
+                    if not interface['vlanid']:
+                        del interface['vlanid']
+                    my_interface.append(interface)
+                    response['config']['node'][name]['interfaces'] = my_interface
+
+                self.logger.info(f'Returned node interface {name} details.')
+                status=True
+            else:
+                self.logger.error(f'Node {name} does not have {interface} interface.')
+                response = f'Node {name} does not have {interface} interface'
+                status=False
+        else:
+            self.logger.error('Node is not available.')
+            response = 'Node is not available'
+        return status, response
 
 
     def delete_node_interface_by_name(self, name=None, interface=None):

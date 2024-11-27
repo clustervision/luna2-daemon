@@ -1488,7 +1488,7 @@ class Boot():
             data['provision_fallback'] = data['provision_method']
 
 #-------------------------------------
-#        template_path = f'{CONSTANT["TEMPLATES"]["TEMPLATE_FILES"]}/{template}'
+        template_path = f'{CONSTANT["TEMPLATES"]["TEMPLATE_FILES"]}/{template}'
 #        check_template = Helper().check_jinja(template_path)
 #        if not check_template:
 #            return False, 'Empty'
@@ -1504,11 +1504,13 @@ class Boot():
             data['osrelease']
         )
         if network_template:
-            for interface in data['interfaces']:
-                interface_data = render_template_string(data['interfaces'][interface])
-                interface_data += "\n## NETWORK TEMPLATE CODE SEGMENT"
-                template_data = template_data.replace("## NETWORK TEMPLATE CODE SEGMENT", interface_data)
-                del data['interfaces'][interface]
+            try:
+                with open(f"{template_path}/{network_template}") as template_file:
+                    interface_template_data = template_file.read()
+                segment = str(interface_template_data)
+                template_data = template_data.replace("## INTERFACE TEMPLATE SEGMENT", segment)
+            except:
+                pass
 
         network_plugin = Helper().plugin_load(
             self.boot_plugins,

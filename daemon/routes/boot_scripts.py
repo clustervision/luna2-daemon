@@ -37,14 +37,14 @@ from flask import Blueprint, request
 from utils.log import Log
 from common.validate_auth import token_required, agent_check
 from common.validate_input import input_filter, validate_name
-from base.scripts import Scripts
+from base.boot_scripts import Scripts
 from utils.helper import Helper
 
 LOGGER = Log.get_logger()
 scripts_blueprint = Blueprint('scripts', __name__)
 
 
-@scripts_blueprint.route('/scripts/<string:script>', methods=['GET'])
+@scripts_blueprint.route('/boot/scripts/<string:script>', methods=['GET'])
 @token_required
 @validate_name
 def get_script(script=None):

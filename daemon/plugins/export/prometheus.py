@@ -1,4 +1,3 @@
-
 # This code is part of the TrinityX software suite
 # Copyright (C) 2023  ClusterVision Solutions b.v.
 #
@@ -47,7 +46,8 @@ class Plugin():
             "node":  14200,
             "ipmi":  14202,
             "nvidia":  14203,
-            "infiniband":  14206
+            "infiniband":  14206,
+            "slurm_job": 14207
         }
 
     # ---------------------------------------------------------------------------

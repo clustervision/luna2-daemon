@@ -74,7 +74,12 @@ class Downloader(object):
         if image:
             location=CONSTANT["FILES"]["IMAGE_FILES"]
             for file in ['kernelfile','initrdfile','imagefile']:
-                status,_=Request().download_file(host,image[0][file],location)
+                if image[0][file]:
+                    status,_=Request().download_file(host,image[0][file],location)
+                    if not status:
+                        self.logger.error(f"downloading {file} for osimage {osimage} returned an error")
+                else:
+                    self.logger.warning(f"could not download {file} for osimage {osimage}. it has no value")
         return True
 
 

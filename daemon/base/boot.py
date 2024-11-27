@@ -99,6 +99,7 @@ class Boot():
         This constructor will initialize all required variables here.
         """
         self.logger = Log.get_logger()
+        self.b64regex=re.compile(r"^([A-Za-z0-9+/]{4})*([A-Za-z0-9+/]{3}=|[A-Za-z0-9+/]{2}==)?$")
         self.plugins_path=CONSTANT["PLUGINS"]["PLUGINS_DIRECTORY"]
         self.boot_plugins = Helper().plugin_finder(f'{self.plugins_path}/boot')
         self.osimage_plugins = Helper().plugin_finder(f'{self.plugins_path}/osimage')
@@ -547,7 +548,6 @@ class Boot():
                             Service().queue('dhcp6','restart')
         # -----------------------------------------------------------------------
         data['kerneloptions']=""
-        b64regex=re.compile(r"^([A-Za-z0-9+/]{4})*([A-Za-z0-9+/]{3}=|[A-Za-z0-9+/]{2}==)?$")
 
         if data['nodeid']:
             node = Database().get_record_join(
@@ -571,7 +571,7 @@ class Boot():
                     data['netboot']=Helper().make_bool(node[0]['netboot'])
                 elif node[0]['groupnetboot'] is not None:
                     data['netboot']=Helper().make_bool(node[0]['groupnetboot'])
-                if b64regex.match(data['kerneloptions']):
+                if self.b64regex.match(data['kerneloptions']):
                     ko_data = b64decode(data['kerneloptions'])
                     try:
                         data['kerneloptions'] = ko_data.decode("ascii")
@@ -596,7 +596,7 @@ class Boot():
                 if osimage[0]['initrdfile']:
                     data['initrdfile'] = osimage[0]['initrdfile']
                 if osimage[0]['kerneloptions'] and not data['kerneloptions']:
-                    if b64regex.match(osimage[0]['kerneloptions']):
+                    if self.b64regex.match(osimage[0]['kerneloptions']):
                         ko_data = b64decode(osimage[0]['kerneloptions'])
                         try:
                             data['kerneloptions'] = ko_data.decode("ascii")
@@ -884,7 +884,6 @@ class Boot():
 
         # below here is almost identical to a manual node selection boot -----------------
         data['kerneloptions']=""
-        b64regex=re.compile(r"^([A-Za-z0-9+/]{4})*([A-Za-z0-9+/]{3}=|[A-Za-z0-9+/]{2}==)?$")
 
         node = Database().get_record_join(
             ['node.*', 'group.osimageid as grouposimageid','group.osimagetagid as grouposimagetagid',
@@ -908,7 +907,7 @@ class Boot():
                 data['netboot']=Helper().make_bool(node[0]['netboot'])
             elif node[0]['groupnetboot'] is not None:
                 data['netboot']=Helper().make_bool(node[0]['groupnetboot'])
-            if b64regex.match(data['kerneloptions']):
+            if self.b64regex.match(data['kerneloptions']):
                 ko_data = b64decode(data['kerneloptions'])
                 try:
                     data['kerneloptions'] = ko_data.decode("ascii")
@@ -970,7 +969,7 @@ class Boot():
                 if osimage[0]['initrdfile']:
                     data['initrdfile'] = osimage[0]['initrdfile']
                 if osimage[0]['kerneloptions'] and not data['kerneloptions']:
-                    if b64regex.match(osimage[0]['kerneloptions']):
+                    if self.b64regex.match(osimage[0]['kerneloptions']):
                         ko_data = b64decode(osimage[0]['kerneloptions'])
                         try:
                             data['kerneloptions'] = ko_data.decode("ascii")
@@ -1072,7 +1071,6 @@ class Boot():
             self.logger.warning(f"possible configuration error: No controller available or missing network for controller {self.controller_name}")
 
         data['kerneloptions']=""
-        b64regex=re.compile(r"^([A-Za-z0-9+/]{4})*([A-Za-z0-9+/]{3}=|[A-Za-z0-9+/]{2}==)?$")
 
         # we probably have to cut the fqdn off of hostname?
         node = Database().get_record_join(
@@ -1097,7 +1095,7 @@ class Boot():
                 data['netboot']=Helper().make_bool(node[0]['netboot'])
             elif node[0]['groupnetboot'] is not None:
                 data['netboot']=Helper().make_bool(node[0]['groupnetboot'])
-            if b64regex.match(data['kerneloptions']):
+            if self.b64regex.match(data['kerneloptions']):
                 ko_data = b64decode(data['kerneloptions'])
                 try:
                     data['kerneloptions'] = ko_data.decode("ascii")
@@ -1181,7 +1179,7 @@ class Boot():
                 if osimage[0]['initrdfile']:
                     data['initrdfile'] = osimage[0]['initrdfile']
                 if osimage[0]['kerneloptions'] and not data['kerneloptions']:
-                    if b64regex.match(osimage[0]['kerneloptions']):
+                    if self.b64regex.match(osimage[0]['kerneloptions']):
                         ko_data = b64decode(osimage[0]['kerneloptions'])
                         try:
                             data['kerneloptions'] = ko_data.decode("ascii")
@@ -1469,9 +1467,19 @@ class Boot():
 
         # needed for generating network config templates on server side
         if data['kerneloptions']:
+            if self.b64regex.match(data['kerneloptions']):
+                ko_data = b64decode(data['kerneloptions'])
+                try:
+                    data['kerneloptions'] = ko_data.decode("ascii")
+                except:
+                    pass
+            data['kerneloptions']=data['kerneloptions'].replace('\n', ' ').replace('\r', '')
             kerneloptions=data['kerneloptions'].split(' ')
+            self.logger.debug(f"*** {kerneloptions}")
             if 'luna.bootproto=dhcp' in kerneloptions:
+                self.logger.debug(f"*** found dhcp bootproto")
                 if 'interfaces' in data and data['provision_interface'] in data['interfaces']:
+                    self.logger.debug(f"*** set dhcp for {data['provision_interface']}")
                     data['interfaces'][data['provision_interface']]['dhcp']=True
  
 

@@ -38,7 +38,7 @@ from libtorrent import bencode
 #from flask import Response
 from utils.log import Log
 from utils.database import Database
-
+from utils.controller import Controller
 
 class Tracker():
     """
@@ -75,10 +75,11 @@ class Tracker():
         self.tracker_interval = 20
         self.tracker_min_interval = 10
         self.tracker_maxpeers = 100
-        # self.tracker_interval = params['luna_tracker_interval']
-        # self.tracker_min_interval = params['luna_tracker_min_interval']
-        # self.tracker_maxpeers = params['luna_tracker_maxpeers']
-        # self.mongo_db = params['mongo_db']
+
+        # shared IP info
+        self.controller_object = Controller()
+        self.controller_name = self.controller_object.get_beacon()
+        self.controller_beaconip = self.controller_object.get_beaconip()
 
 
     def get_error(self, myerror=None):
@@ -131,7 +132,7 @@ class Tracker():
         This method will collect the peers.
         """
         # time_age = datetime.utcnow() - datetime.timedelta(seconds=age)
-        peer_tuple_list = [('luna2controller','10.141.255.254','51413')]
+        peer_tuple_list = [('luna2controller',self.controller_beaconip,'51413')]
         n_leechers = 0
         n_seeders = 0
         if not age:

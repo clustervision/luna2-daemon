@@ -1,0 +1,57 @@
+#FILE ${rootmnt}/etc/netplan/${interface_name}_config.yaml
+
+network:
+  version: 2
+  renderer: networkd
+{%- if vlanid %}
+  vlans:
+    vlan_${interface_name}_{{ LUNA_INTERFACES[interface]['vlanid'] }}:
+      id: {{ LUNA_INTERFACES[interface]['vlanid'] }}
+      link: ${interface_name}
+{%- else %}
+  ethernets:
+    ${interface_name}:
+    {%- if not LUNA_INTERFACES[interface]['ipaddress_ipv6'] %}
+      link-local: [ipv6]
+    {%- endif %}
+{%- endif %}
+{%- if LUNA_INTERFACES[interface]['dhcp'] %}
+    {%- if LUNA_INTERFACES[interface]['ipaddress'] %}
+      dhcp4: True
+    {%- endif %}
+    {%- if LUNA_INTERFACES[interface]['ipaddress_ipv6'] %}
+      dhcp6: True
+    {%- endif %}
+{%- else %}
+      addresses:
+    {%- if LUNA_INTERFACES[interface]['ipaddress'] %}
+        - {{ LUNA_INTERFACES[interface]['ipaddress'] }}/{{ LUNA_INTERFACES[interface]['prefix'] }}
+    {%- endif %}
+    {%- if LUNA_INTERFACES[interface]['ipaddress_ipv6'] %}
+        - {{ LUNA_INTERFACES[interface]['ipaddress_ipv6'] }}/{{ LUNA_INTERFACES[interface]['prefix_ipv6'] }}
+    {%- endif %}
+    {%- if LUNA_INTERFACES[interface]['gateway'] or LUNA_INTERFACES[interface]['gateway_ipv6'] %}
+      routes:
+      {%- if LUNA_INTERFACES[interface]['gateway'] %}      
+        - to: default
+          via: {{ LUNA_INTERFACES[interface]['gateway'] }}
+          metric: {{ LUNA_INTERFACES[interface]['gateway_metric'] }}
+      {%- endif %}
+      {%- if LUNA_INTERFACES[interface]['gateway_ipv6'] %}
+        - to: default
+          via: {{ LUNA_INTERFACES[interface]['gateway_ipv6'] }}
+          metric: {{ LUNA_INTERFACES[interface]['gateway_metric'] }}
+      {%- endif %}
+    {%- endif %}
+    {%- if LUNA_INTERFACES[interface]['nameserver_ip'] or LUNA_INTERFACES[interface]['nameserver_ip_ipv6'] %}
+      nameservers:
+      {%- if LUNA_INTERFACES[interface]['nameserver_ip'] %}
+        search: [{{ DOMAIN_SEARCH }}]
+        addresses: [{{ LUNA_INTERFACES[interface]['nameserver_ip'] }}]
+      {%- endif %}
+      {%- if LUNA_INTERFACES[interface]['nameserver_ip_ipv6'] %}
+        search: [{{ DOMAIN_SEARCH }}]
+        addresses: [{{ LUNA_INTERFACES[interface]['nameserver_ip_ipv6'] }}]
+      {%- endif %}
+    {%- endif %}
+{%- endif %}

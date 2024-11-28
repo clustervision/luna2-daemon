@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 # This code is part of the TrinityX software suite
-# Copyright (C) 2023  ClusterVision Solutions b.v.
+# Copyright (C) 2024  ClusterVision Solutions b.v.
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -18,8 +18,9 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>
 
 """
-This file provides end points for exporting config.
-Plugins are responsible for handling the actual data
+This File is a A Entry Point of Every Script related requests
+@token_required is a Wrapper Method to Validate the POST API. It contains
+arguments and keyword arguments Of The API
 """
 
 __author__      = "Antoine Schonewille"
@@ -34,26 +35,30 @@ __status__      = "Development"
 from json import dumps
 from flask import Blueprint, request
 from utils.log import Log
+from common.validate_auth import token_required, agent_check
 from common.validate_input import input_filter, validate_name
+from base.boot_scripts import Scripts
 from utils.helper import Helper
-from base.export import Export
 
 LOGGER = Log.get_logger()
-export_blueprint = Blueprint('export', __name__)
+scripts_blueprint = Blueprint('scripts', __name__)
 
 
-@export_blueprint.route('/export/<string:name>', methods=['GET'])
+@scripts_blueprint.route('/boot/scripts/<string:script>', methods=['GET'])
+@token_required
 @validate_name
-def export_data(name=None):
+def get_script(script=None):
     """
-    This api receives the request to call a specific plugin (in base) and returns the data as is
+    Input - Script name
+    Process - Calls the function that returns the target and script script for the script
+    Output - json payload with target and base64 encoded script data
     """
-    access_code=200
-    
-    status, response = Export().plugin(name)
+    access_code = 404
+    status, response = Scripts().get_script(script)
     if status is True:
-        return response, access_code
-    access_code=404
-    response = {'message': response}
+        access_code = 200
+        response=dumps(response)
+    else:
+        response = {'message': response}
     return response, access_code
 

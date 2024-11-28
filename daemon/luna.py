@@ -45,8 +45,8 @@ from utils.housekeeper import Housekeeper
 from utils.service import Service
 from routes.auth import auth_blueprint
 from routes.boot import boot_blueprint
-from routes.roles import roles_blueprint
-from routes.scripts import scripts_blueprint
+from routes.boot_roles import roles_blueprint
+from routes.boot_scripts import scripts_blueprint
 from routes.config_bmcsetup import bmcsetup_blueprint
 from routes.config_cluster import cluster_blueprint
 from routes.config_dns import dns_blueprint
@@ -69,7 +69,8 @@ from routes.control import control_blueprint
 from routes.tracker import tracker_blueprint
 from routes.journal import journal_blueprint
 from routes.tables import tables_blueprint
-from routes.export import export_blueprint
+from routes.plugin_export import export_blueprint
+from routes.plugin_import import import_blueprint
 from routes.ha import ha_blueprint
 
 event = Event()

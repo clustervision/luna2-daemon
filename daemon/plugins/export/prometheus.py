@@ -52,7 +52,7 @@ class Plugin():
 
     # ---------------------------------------------------------------------------
 
-    def export(self):
+    def Export(self):
         status, all_nodes = Node().get_all_nodes()
         if status:
             if 'config' in all_nodes and 'node' in all_nodes['config']:

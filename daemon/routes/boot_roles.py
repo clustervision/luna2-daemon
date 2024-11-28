@@ -37,14 +37,14 @@ from flask import Blueprint, request
 from utils.log import Log
 from common.validate_auth import token_required, agent_check
 from common.validate_input import input_filter, validate_name
-from base.roles import Roles
+from base.boot_roles import Roles
 from utils.helper import Helper
 
 LOGGER = Log.get_logger()
 roles_blueprint = Blueprint('roles', __name__)
 
 
-@roles_blueprint.route('/roles/<string:role>', methods=['GET'])
+@roles_blueprint.route('/boot/roles/<string:role>', methods=['GET'])
 @token_required
 @validate_name
 def get_role(role=None):

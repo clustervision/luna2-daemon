@@ -99,9 +99,10 @@ class Boot():
         This constructor will initialize all required variables here.
         """
         self.logger = Log.get_logger()
-        plugins_path=CONSTANT["PLUGINS"]["PLUGINS_DIRECTORY"]
-        self.boot_plugins = Helper().plugin_finder(f'{plugins_path}/boot')
-        self.osimage_plugins = Helper().plugin_finder(f'{plugins_path}/osimage')
+        self.b64regex=re.compile(r"^([A-Za-z0-9+/]{4})*([A-Za-z0-9+/]{3}=|[A-Za-z0-9+/]{2}==)?$")
+        self.plugins_path=CONSTANT["PLUGINS"]["PLUGINS_DIRECTORY"]
+        self.boot_plugins = Helper().plugin_finder(f'{self.plugins_path}/boot')
+        self.osimage_plugins = Helper().plugin_finder(f'{self.plugins_path}/osimage')
         self.controller_object = Controller()
         self.controller_name = self.controller_object.get_beacon()
         self.controller_beaconip = self.controller_object.get_beaconip()
@@ -362,13 +363,10 @@ class Boot():
                 data['nodeip'] = f'{nodeinterface[0]["ipaddress_ipv6"]}/{nodeinterface[0]["subnet_ipv6"]}'
             else:
                 data['nodeip'] = f'{nodeinterface[0]["ipaddress"]}/{nodeinterface[0]["subnet"]}'
-            if nodeinterface[0]['network'] == data['network']: # node on default network
-                data['gateway'] = ''
+            if nodeinterface[0]["ipaddress_ipv6"]:
+                data['gateway'] = nodeinterface[0]['gateway_ipv6'] or ''
             else:
-                if nodeinterface[0]["ipaddress_ipv6"]:
-                    data['gateway'] = nodeinterface[0]['gateway_ipv6'] or ''
-                else:
-                    data['gateway'] = nodeinterface[0]['gateway'] or ''
+                data['gateway'] = nodeinterface[0]['gateway'] or ''
         else:
           # --------------------- port detection ----------------------------------
             try:
@@ -413,13 +411,10 @@ class Boot():
                                 data['nodeip'] = f'{nodeinterface[0]["ipaddress_ipv6"]}/{nodeinterface[0]["subnet_ipv6"]}'
                             else:
                                 data['nodeip'] = f'{nodeinterface[0]["ipaddress"]}/{nodeinterface[0]["subnet"]}'
-                            if nodeinterface[0]['network'] == data['network']: # node on default network
-                                data['gateway'] = ''
+                            if nodeinterface[0]["ipaddress_ipv6"]:
+                                data['gateway'] = nodeinterface[0]['gateway_ipv6'] or ''
                             else:
-                                if nodeinterface[0]["ipaddress_ipv6"]:
-                                    data['gateway'] = nodeinterface[0]['gateway_ipv6'] or ''
-                                else:
-                                    data['gateway'] = nodeinterface[0]['gateway'] or ''
+                                data['gateway'] = nodeinterface[0]['gateway'] or ''
                             Service().queue('dhcp', 'restart')
                             Service().queue('dhcp6','restart')
           # --------------------- cloud detection ----------------------------------
@@ -460,13 +455,10 @@ class Boot():
                                         data['nodeip'] = f'{node["ipaddress_ipv6"]}/{node["subnet_ipv6"]}'
                                     else:
                                         data['nodeip'] = f'{node["ipaddress"]}/{node["subnet"]}'
-                                    if node['network'] == data['network']: # node on default network
-                                        data['gateway'] = ''
+                                    if node["ipaddress_ipv6"]:
+                                        data['gateway'] = node['gateway_ipv6'] or ''
                                     else:
-                                        if node["ipaddress_ipv6"]:
-                                            data['gateway'] = node['gateway_ipv6'] or ''
-                                        else:
-                                            data['gateway'] = node['gateway'] or ''
+                                        data['gateway'] = node['gateway'] or ''
                                     Service().queue('dhcp', 'restart')
                                     Service().queue('dhcp6','restart')
                                     break
@@ -536,18 +528,14 @@ class Boot():
                                 data['nodeip'] = f'{nodeinterface[0]["ipaddress_ipv6"]}/{nodeinterface[0]["subnet_ipv6"]}'
                             else:
                                 data['nodeip'] = f'{nodeinterface[0]["ipaddress"]}/{nodeinterface[0]["subnet"]}'
-                            if nodeinterface[0]['network'] == data['network']: # node on default network
-                                data['gateway'] = ''
+                            if nodeinterface[0]["ipaddress_ipv6"]:
+                                data['gateway'] = nodeinterface[0]['gateway_ipv6'] or ''
                             else:
-                                if nodeinterface[0]["ipaddress_ipv6"]:
-                                    data['gateway'] = nodeinterface[0]['gateway_ipv6'] or ''
-                                else:
-                                    data['gateway'] = nodeinterface[0]['gateway'] or ''
+                                data['gateway'] = nodeinterface[0]['gateway'] or ''
                             Service().queue('dhcp', 'restart')
                             Service().queue('dhcp6','restart')
         # -----------------------------------------------------------------------
         data['kerneloptions']=""
-        b64regex=re.compile(r"^([A-Za-z0-9+/]{4})*([A-Za-z0-9+/]{3}=|[A-Za-z0-9+/]{2}==)?$")
 
         if data['nodeid']:
             node = Database().get_record_join(
@@ -571,7 +559,7 @@ class Boot():
                     data['netboot']=Helper().make_bool(node[0]['netboot'])
                 elif node[0]['groupnetboot'] is not None:
                     data['netboot']=Helper().make_bool(node[0]['groupnetboot'])
-                if b64regex.match(data['kerneloptions']):
+                if self.b64regex.match(data['kerneloptions']):
                     ko_data = b64decode(data['kerneloptions'])
                     try:
                         data['kerneloptions'] = ko_data.decode("ascii")
@@ -596,7 +584,7 @@ class Boot():
                 if osimage[0]['initrdfile']:
                     data['initrdfile'] = osimage[0]['initrdfile']
                 if osimage[0]['kerneloptions'] and not data['kerneloptions']:
-                    if b64regex.match(osimage[0]['kerneloptions']):
+                    if self.b64regex.match(osimage[0]['kerneloptions']):
                         ko_data = b64decode(osimage[0]['kerneloptions'])
                         try:
                             data['kerneloptions'] = ko_data.decode("ascii")
@@ -884,7 +872,6 @@ class Boot():
 
         # below here is almost identical to a manual node selection boot -----------------
         data['kerneloptions']=""
-        b64regex=re.compile(r"^([A-Za-z0-9+/]{4})*([A-Za-z0-9+/]{3}=|[A-Za-z0-9+/]{2}==)?$")
 
         node = Database().get_record_join(
             ['node.*', 'group.osimageid as grouposimageid','group.osimagetagid as grouposimagetagid',
@@ -908,7 +895,7 @@ class Boot():
                 data['netboot']=Helper().make_bool(node[0]['netboot'])
             elif node[0]['groupnetboot'] is not None:
                 data['netboot']=Helper().make_bool(node[0]['groupnetboot'])
-            if b64regex.match(data['kerneloptions']):
+            if self.b64regex.match(data['kerneloptions']):
                 ko_data = b64decode(data['kerneloptions'])
                 try:
                     data['kerneloptions'] = ko_data.decode("ascii")
@@ -943,13 +930,10 @@ class Boot():
                     data['nodeip'] = f'{nodeinterface[0]["ipaddress_ipv6"]}/{nodeinterface[0]["subnet_ipv6"]}'
                 else:
                     data['nodeip'] = f'{nodeinterface[0]["ipaddress"]}/{nodeinterface[0]["subnet"]}'
-                if nodeinterface[0]['network'] == data['network']: # node on default network
-                    data['gateway'] = ''
+                if nodeinterface[0]["ipaddress_ipv6"]:
+                    data['gateway'] = nodeinterface[0]['gateway_ipv6'] or ''
                 else:
-                    if nodeinterface[0]["ipaddress_ipv6"]:
-                        data['gateway'] = nodeinterface[0]['gateway_ipv6'] or ''
-                    else:
-                        data['gateway'] = nodeinterface[0]['gateway'] or ''
+                    data['gateway'] = nodeinterface[0]['gateway'] or ''
             else:
                 # uh oh... no bootif??
                 data['nodeip'] = None
@@ -970,7 +954,7 @@ class Boot():
                 if osimage[0]['initrdfile']:
                     data['initrdfile'] = osimage[0]['initrdfile']
                 if osimage[0]['kerneloptions'] and not data['kerneloptions']:
-                    if b64regex.match(osimage[0]['kerneloptions']):
+                    if self.b64regex.match(osimage[0]['kerneloptions']):
                         ko_data = b64decode(osimage[0]['kerneloptions'])
                         try:
                             data['kerneloptions'] = ko_data.decode("ascii")
@@ -1072,7 +1056,6 @@ class Boot():
             self.logger.warning(f"possible configuration error: No controller available or missing network for controller {self.controller_name}")
 
         data['kerneloptions']=""
-        b64regex=re.compile(r"^([A-Za-z0-9+/]{4})*([A-Za-z0-9+/]{3}=|[A-Za-z0-9+/]{2}==)?$")
 
         # we probably have to cut the fqdn off of hostname?
         node = Database().get_record_join(
@@ -1097,7 +1080,7 @@ class Boot():
                 data['netboot']=Helper().make_bool(node[0]['netboot'])
             elif node[0]['groupnetboot'] is not None:
                 data['netboot']=Helper().make_bool(node[0]['groupnetboot'])
-            if b64regex.match(data['kerneloptions']):
+            if self.b64regex.match(data['kerneloptions']):
                 ko_data = b64decode(data['kerneloptions'])
                 try:
                     data['kerneloptions'] = ko_data.decode("ascii")
@@ -1154,13 +1137,10 @@ class Boot():
                     data['nodeip'] = f'{nodeinterface[0]["ipaddress_ipv6"]}/{nodeinterface[0]["subnet_ipv6"]}'
                 else:
                     data['nodeip'] = f'{nodeinterface[0]["ipaddress"]}/{nodeinterface[0]["subnet"]}'
-                if nodeinterface[0]['network'] == data['network']: # node on default network
-                    data['gateway'] = ''
+                if nodeinterface[0]["ipaddress_ipv6"]:
+                    data['gateway'] = nodeinterface[0]['gateway_ipv6'] or ''
                 else:
-                    if nodeinterface[0]["ipaddress_ipv6"]:
-                        data['gateway'] = nodeinterface[0]['gateway_ipv6'] or ''
-                    else:
-                        data['gateway'] = nodeinterface[0]['gateway'] or ''
+                    data['gateway'] = nodeinterface[0]['gateway'] or ''
             else:
                 # uh oh... no bootif??
                 data['nodeip'] = None
@@ -1181,7 +1161,7 @@ class Boot():
                 if osimage[0]['initrdfile']:
                     data['initrdfile'] = osimage[0]['initrdfile']
                 if osimage[0]['kerneloptions'] and not data['kerneloptions']:
-                    if b64regex.match(osimage[0]['kerneloptions']):
+                    if self.b64regex.match(osimage[0]['kerneloptions']):
                         ko_data = b64decode(osimage[0]['kerneloptions'])
                         try:
                             data['kerneloptions'] = ko_data.decode("ascii")
@@ -1312,7 +1292,7 @@ class Boot():
                 return status, "i received data back internally that i could not parse"
             self.logger.debug(f"DEBUG: {node_details}")
             for item in ['provision_method','provision_fallback','prescript','partscript','postscript',
-                         'netboot','bootmenu','provision_interface','unmanaged_bmc_users',
+                         'netboot','bootmenu','provision_interface','unmanaged_bmc_users','kerneloptions',
                          'name','setupbmc','bmcsetup','group','osimage','osimagetag']:
                 if item in items and isinstance(items[item], bool):
                     if node_details[item] is None or node_details[item] == 'None':
@@ -1438,16 +1418,22 @@ class Boot():
                             'zone': zone,
                             'type': interface['type'] or "ethernet"
                         }
-                        if interface['interface'] == 'BOOTIF' and controller:
+                        if interface['interface'] == data['provision_interface'] and controller:
                             # setting good defaults for BOOTIF if they do not exist. a must.
-                            if not data['interfaces']['BOOTIF']['gateway']:
-                                data['interfaces']['BOOTIF']['gateway'] = controller[0]['ipaddress'] or '0.0.0.0'
-                            if not data['interfaces']['BOOTIF']['gateway_ipv6']:
-                                data['interfaces']['BOOTIF']['gateway_ipv6'] = controller[0]['ipaddress_ipv6'] or '::/0'
-                            if not data['interfaces']['BOOTIF']['nameserver_ip']:
-                                data['interfaces']['BOOTIF']['nameserver_ip'] = controller[0]['ipaddress'] or '0.0.0.0'
-                            if not data['interfaces']['BOOTIF']['nameserver_ip_ipv6']:
-                                data['interfaces']['BOOTIF']['nameserver_ip_ipv6'] = controller[0]['ipaddress_ipv6'] or '::/0'
+                            if not data['interfaces'][data['provision_interface']]['gateway']:
+                                data['interfaces'][data['provision_interface']]['gateway'] = controller[0]['ipaddress'] or '0.0.0.0'
+                            if not data['interfaces'][data['provision_interface']]['gateway_ipv6']:
+                                data['interfaces'][data['provision_interface']]['gateway_ipv6'] = controller[0]['ipaddress_ipv6'] or '::/0'
+                            if not data['interfaces'][data['provision_interface']]['nameserver_ip']:
+                                data['interfaces'][data['provision_interface']]['nameserver_ip'] = controller[0]['ipaddress'] or '0.0.0.0'
+                            if not data['interfaces'][data['provision_interface']]['nameserver_ip_ipv6']:
+                                data['interfaces'][data['provision_interface']]['nameserver_ip_ipv6'] = controller[0]['ipaddress_ipv6'] or '::/0'
+                        if not data['interfaces'][interface['interface']]['ipaddress']:
+                            del data['interfaces'][interface['interface']]['gateway']
+                            del data['interfaces'][interface['interface']]['nameserver_ip']
+                        if not data['interfaces'][interface['interface']]['ipaddress_ipv6']:
+                            del data['interfaces'][interface['interface']]['gateway_ipv6']
+                            del data['interfaces'][interface['interface']]['nameserver_ip_ipv6']
                         domain_search.append(interface['network'])
                         if interface['interface'] == data['provision_interface'] and interface['network']:
                             # if it is my prov interface then it will get that domain as a FQDN.
@@ -1460,6 +1446,26 @@ class Boot():
                 else:
                     # clearly, the user wants something that has no interface involvement. fallback to '', but not None
                     data['domain_search'] = ''
+
+        # needed for generating network config templates on server side
+        if data['kerneloptions']:
+            if self.b64regex.match(data['kerneloptions']):
+                ko_data = b64decode(data['kerneloptions'])
+                try:
+                    data['kerneloptions'] = ko_data.decode("ascii")
+                except:
+                    pass
+            data['kerneloptions']=data['kerneloptions'].replace('\n', ' ').replace('\r', '')
+            kerneloptions=data['kerneloptions'].split(' ')
+            self.logger.debug(f"*** {kerneloptions}")
+            if 'luna.bootproto=dhcp' in kerneloptions:
+                self.logger.debug(f"*** found dhcp bootproto")
+                if 'interfaces' in data and data['provision_interface'] in data['interfaces']:
+                    self.logger.debug(f"*** set dhcp for {data['provision_interface']}")
+                    data['interfaces'][data['provision_interface']]['dhcp']=True
+
+        # we clean up what we no longer need
+        del data['kerneloptions']
 
         ## SYSTEMROOT
         osimage_plugin = Helper().plugin_load(self.osimage_plugins,'osimage/operations/image',data['distribution'],data['osrelease'])
@@ -1479,7 +1485,24 @@ class Boot():
         if not data['provision_fallback']:
             data['provision_fallback'] = data['provision_method']
 
+
         ## INTERFACE CODE SEGMENT
+        network_template = Helper().template_find(
+            self.boot_plugins,
+            'boot/network',
+            data['distribution'],
+            data['osrelease']
+        )
+        if network_template:
+            try:
+                self.logger.info(f"{data['nodename']} is using {self.plugins_path}/{network_template} for network config")
+                with open(f"{self.plugins_path}/{network_template}") as template_file:
+                    interface_template_data = template_file.read()
+                segment = str(interface_template_data)
+                template_data = template_data.replace("## INTERFACE TEMPLATE SEGMENT", segment)
+            except Exception as exp:
+                self.logger.error(f"{exp}")
+
         network_plugin = Helper().plugin_load(
             self.boot_plugins,
             'boot/network',

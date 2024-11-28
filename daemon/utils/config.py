@@ -112,12 +112,30 @@ class Config(object):
         config_shared6 = {}
         config_subnets = {}
         config_subnets6 = {}
+        config_empty = {}
+        config_empty6 = {}
         config_hosts = {}
         config_hosts6 = {}
         config_pools = {}
         config_pools6 = {}
         #
         networksbyname = {}
+        emptybyname = {}
+        handled = []
+
+        empty = Database().get_record(None, 'network', ' WHERE `dhcp` is NULL or `dhcp` != 1')
+        if empty:
+            emptybyname = Helper().convert_list_to_dict(empty, 'name')
+
+        for network in emptybyname.keys():
+            nwk = emptybyname[network]
+            if nwk['name'] not in handled and nwk['network']:
+                config_empty[nwk['name']] = self.dhcp_empty_config(nwk,'ipv4')
+                handled.append(nwk['name'])
+            if nwk['name']+'_ipv6' not in handled and nwk['network_ipv6']:
+                config_empty6[nwk['name']] = self.dhcp_empty_config(nwk,'ipv6')
+                handled.append(nwk['name']+'_ipv6')
+
         networks = Database().get_record(None, 'network', ' WHERE `dhcp` = 1')
         if networks:
             networksbyname = Helper().convert_list_to_dict(networks, 'name')
@@ -140,7 +158,6 @@ class Config(object):
                         shared6[networksbyname[network]['shared']] = []
                     shared6[networksbyname[network]['shared']].append(network)
 
-        handled = []
         # IPv4
         for network in shared.keys():
             shared_name = f"{network}-" + "-".join(shared[network])
@@ -261,7 +278,7 @@ class Config(object):
             if len(config_subnets) > 0 or len(config_shared) > 0:
                 dhcpd_template = env.get_template(template)
                 dhcpd_config = dhcpd_template.render(CLASSES=config_classes,SHARED=config_shared,SUBNETS=config_subnets,
-                                                     HOSTS=config_hosts,POOLS=config_pools,DOMAINNAME=domain,
+                                                     EMPTY=config_empty,HOSTS=config_hosts,POOLS=config_pools,DOMAINNAME=domain,
                                                      NAMESERVERS=nameserver_ip,NTPSERVERS=ntp_server,OMAPIKEY=omapikey)
                 with open(dhcp_file, 'w', encoding='utf-8') as dhcp:
                     dhcp.write(dhcpd_config)
@@ -280,7 +297,7 @@ class Config(object):
             if len(config_subnets6) > 0 or len(config_shared6) > 0:
                 dhcpd_template = env.get_template(template6)
                 dhcpd_config = dhcpd_template.render(CLASSES=config_classes6,SHARED=config_shared6,SUBNETS=config_subnets6,
-                                                     HOSTS=config_hosts6,POOLS=config_pools6,DOMAINNAME=domain,
+                                                     EMPTY=config_empty6,HOSTS=config_hosts6,POOLS=config_pools6,DOMAINNAME=domain,
                                                      NAMESERVERS=nameserver_ip,NAMESERVERS_IPV6=nameserver_ip_ipv6,
                                                      NTPSERVERS=ntp_server,OMAPIKEY=omapikey)
                 with open(dhcp6_file, 'w', encoding='utf-8') as dhcp:
@@ -361,6 +378,21 @@ class Config(object):
                 subnet['nextserver']=controller[0]['ipaddress']
             subnet['nextport']=serverport
         self.logger.debug(f"SUBNET: {subnet}")
+        return subnet
+
+    def dhcp_empty_config (self,nwk=[],ipversion='ipv4'):
+        """
+        for empty, non dhcp zones, just as declaration
+        """
+        subnet={}
+        add_string=''
+        if ipversion == 'ipv6':
+            add_string='_ipv6'
+        netmask = nwk['subnet_ipv6']
+        if ipversion == 'ipv4':
+            netmask = Helper().get_netmask(f"{nwk['network']}/{nwk['subnet']}")
+        subnet['network']=nwk['network'+add_string]
+        subnet['netmask']=netmask
         return subnet
 
 

@@ -1463,7 +1463,9 @@ class Boot():
                 if 'interfaces' in data and data['provision_interface'] in data['interfaces']:
                     self.logger.debug(f"*** set dhcp for {data['provision_interface']}")
                     data['interfaces'][data['provision_interface']]['dhcp']=True
- 
+
+        # we clean up what we no longer need
+        del data['kerneloptions']
 
         ## SYSTEMROOT
         osimage_plugin = Helper().plugin_load(self.osimage_plugins,'osimage/operations/image',data['distribution'],data['osrelease'])

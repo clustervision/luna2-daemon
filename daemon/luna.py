@@ -47,7 +47,6 @@ from routes.auth import auth_blueprint
 from routes.boot import boot_blueprint
 from routes.boot_roles import roles_blueprint
 from routes.boot_scripts import scripts_blueprint
-from routes.boot_interface import interface_blueprint
 from routes.config_bmcsetup import bmcsetup_blueprint
 from routes.config_cluster import cluster_blueprint
 from routes.config_dns import dns_blueprint

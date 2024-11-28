@@ -363,13 +363,10 @@ class Boot():
                 data['nodeip'] = f'{nodeinterface[0]["ipaddress_ipv6"]}/{nodeinterface[0]["subnet_ipv6"]}'
             else:
                 data['nodeip'] = f'{nodeinterface[0]["ipaddress"]}/{nodeinterface[0]["subnet"]}'
-            if nodeinterface[0]['network'] == data['network']: # node on default network
-                data['gateway'] = ''
+            if nodeinterface[0]["ipaddress_ipv6"]:
+                data['gateway'] = nodeinterface[0]['gateway_ipv6'] or ''
             else:
-                if nodeinterface[0]["ipaddress_ipv6"]:
-                    data['gateway'] = nodeinterface[0]['gateway_ipv6'] or ''
-                else:
-                    data['gateway'] = nodeinterface[0]['gateway'] or ''
+                data['gateway'] = nodeinterface[0]['gateway'] or ''
         else:
           # --------------------- port detection ----------------------------------
             try:
@@ -414,13 +411,10 @@ class Boot():
                                 data['nodeip'] = f'{nodeinterface[0]["ipaddress_ipv6"]}/{nodeinterface[0]["subnet_ipv6"]}'
                             else:
                                 data['nodeip'] = f'{nodeinterface[0]["ipaddress"]}/{nodeinterface[0]["subnet"]}'
-                            if nodeinterface[0]['network'] == data['network']: # node on default network
-                                data['gateway'] = ''
+                            if nodeinterface[0]["ipaddress_ipv6"]:
+                                data['gateway'] = nodeinterface[0]['gateway_ipv6'] or ''
                             else:
-                                if nodeinterface[0]["ipaddress_ipv6"]:
-                                    data['gateway'] = nodeinterface[0]['gateway_ipv6'] or ''
-                                else:
-                                    data['gateway'] = nodeinterface[0]['gateway'] or ''
+                                data['gateway'] = nodeinterface[0]['gateway'] or ''
                             Service().queue('dhcp', 'restart')
                             Service().queue('dhcp6','restart')
           # --------------------- cloud detection ----------------------------------
@@ -461,13 +455,10 @@ class Boot():
                                         data['nodeip'] = f'{node["ipaddress_ipv6"]}/{node["subnet_ipv6"]}'
                                     else:
                                         data['nodeip'] = f'{node["ipaddress"]}/{node["subnet"]}'
-                                    if node['network'] == data['network']: # node on default network
-                                        data['gateway'] = ''
+                                    if node["ipaddress_ipv6"]:
+                                        data['gateway'] = node['gateway_ipv6'] or ''
                                     else:
-                                        if node["ipaddress_ipv6"]:
-                                            data['gateway'] = node['gateway_ipv6'] or ''
-                                        else:
-                                            data['gateway'] = node['gateway'] or ''
+                                        data['gateway'] = node['gateway'] or ''
                                     Service().queue('dhcp', 'restart')
                                     Service().queue('dhcp6','restart')
                                     break
@@ -537,13 +528,10 @@ class Boot():
                                 data['nodeip'] = f'{nodeinterface[0]["ipaddress_ipv6"]}/{nodeinterface[0]["subnet_ipv6"]}'
                             else:
                                 data['nodeip'] = f'{nodeinterface[0]["ipaddress"]}/{nodeinterface[0]["subnet"]}'
-                            if nodeinterface[0]['network'] == data['network']: # node on default network
-                                data['gateway'] = ''
+                            if nodeinterface[0]["ipaddress_ipv6"]:
+                                data['gateway'] = nodeinterface[0]['gateway_ipv6'] or ''
                             else:
-                                if nodeinterface[0]["ipaddress_ipv6"]:
-                                    data['gateway'] = nodeinterface[0]['gateway_ipv6'] or ''
-                                else:
-                                    data['gateway'] = nodeinterface[0]['gateway'] or ''
+                                data['gateway'] = nodeinterface[0]['gateway'] or ''
                             Service().queue('dhcp', 'restart')
                             Service().queue('dhcp6','restart')
         # -----------------------------------------------------------------------
@@ -942,13 +930,10 @@ class Boot():
                     data['nodeip'] = f'{nodeinterface[0]["ipaddress_ipv6"]}/{nodeinterface[0]["subnet_ipv6"]}'
                 else:
                     data['nodeip'] = f'{nodeinterface[0]["ipaddress"]}/{nodeinterface[0]["subnet"]}'
-                if nodeinterface[0]['network'] == data['network']: # node on default network
-                    data['gateway'] = ''
+                if nodeinterface[0]["ipaddress_ipv6"]:
+                    data['gateway'] = nodeinterface[0]['gateway_ipv6'] or ''
                 else:
-                    if nodeinterface[0]["ipaddress_ipv6"]:
-                        data['gateway'] = nodeinterface[0]['gateway_ipv6'] or ''
-                    else:
-                        data['gateway'] = nodeinterface[0]['gateway'] or ''
+                    data['gateway'] = nodeinterface[0]['gateway'] or ''
             else:
                 # uh oh... no bootif??
                 data['nodeip'] = None
@@ -1152,13 +1137,10 @@ class Boot():
                     data['nodeip'] = f'{nodeinterface[0]["ipaddress_ipv6"]}/{nodeinterface[0]["subnet_ipv6"]}'
                 else:
                     data['nodeip'] = f'{nodeinterface[0]["ipaddress"]}/{nodeinterface[0]["subnet"]}'
-                if nodeinterface[0]['network'] == data['network']: # node on default network
-                    data['gateway'] = ''
+                if nodeinterface[0]["ipaddress_ipv6"]:
+                    data['gateway'] = nodeinterface[0]['gateway_ipv6'] or ''
                 else:
-                    if nodeinterface[0]["ipaddress_ipv6"]:
-                        data['gateway'] = nodeinterface[0]['gateway_ipv6'] or ''
-                    else:
-                        data['gateway'] = nodeinterface[0]['gateway'] or ''
+                    data['gateway'] = nodeinterface[0]['gateway'] or ''
             else:
                 # uh oh... no bootif??
                 data['nodeip'] = None

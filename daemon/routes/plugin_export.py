@@ -36,7 +36,7 @@ from flask import Blueprint, request
 from utils.log import Log
 from common.validate_input import input_filter, validate_name
 from utils.helper import Helper
-from base.export import Export
+from base.plugin_export import Export
 
 LOGGER = Log.get_logger()
 export_blueprint = Blueprint('export', __name__)

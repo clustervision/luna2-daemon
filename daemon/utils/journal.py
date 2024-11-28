@@ -70,6 +70,7 @@ from base.secret import Secret
 from base.osuser import OsUser
 from base.monitor import Monitor
 from base.cloud import Cloud
+from base.plugin_import import Import
 
 lock = Lock()
 #sem = Semaphore()

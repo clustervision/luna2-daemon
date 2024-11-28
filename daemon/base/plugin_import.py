@@ -35,26 +35,26 @@ from utils.helper import Helper
 from utils.log import Log
 
 
-class Export():
+class Import():
     """
-    This class is responsible for journal data mangling.
+    This class is responsible for import plugin handling
     """
 
     def __init__(self):
         self.logger = Log.get_logger()
         plugins_path=CONSTANT["PLUGINS"]["PLUGINS_DIRECTORY"]
-        self.export_plugins = Helper().plugin_finder(f'{plugins_path}/export')
+        self.import_plugins = Helper().plugin_finder(f'{plugins_path}/import')
 
-    def plugin(self,name):
-        allowed_exporters = None
+    def plugin(self,name,request_data=None):
+        allowed_importers = None
         if 'ALLOWED_EXPORTERS' in CONSTANT["PLUGINS"]:
-            allowed_exporters = CONSTANT["PLUGINS"]["ALLOWED_EXPORTERS"].replace(' ','').split(',')
-        if allowed_exporters: 
-            if name in allowed_exporters:
-                export_plugin=Helper().plugin_load(self.export_plugins,'export',name)
-                if export_plugin:
-                    status, response = export_plugin().export()
+            allowed_importers = CONSTANT["PLUGINS"]["ALLOWED_EXPORTERS"].replace(' ','').split(',')
+        if allowed_importers: 
+            if name in allowed_importers:
+                import_plugin=Helper().plugin_load(self.import_plugins,'import',name)
+                if import_plugin:
+                    status, response = import_plugin().Import(request_data)
                     return status, response
                 return False, f"plugin {name} could not be loaded"
-        return False, f"allowed_exporters is undefined or using plugin {name} not permitted"
+        return False, f"allowed_importers is undefined or using plugin {name} not permitted"
 

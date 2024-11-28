@@ -35,3 +35,4 @@ include daemon/plugins/osimage/other/*
 include daemon/plugins/osimage/filesystem/*
 include daemon/plugins/osuser/*
 include daemon/plugins/export/*
+include daemon/plugins/import/*

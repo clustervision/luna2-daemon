@@ -155,7 +155,7 @@ if [ "$MAKE_BOOT" ]; then
     DISTRO=$(ls /sysroot/boot/efi/EFI/ | grep -ie rocky -e redhat -e alma -e centos || echo rocky)
     chroot /sysroot /bin/bash -c "efibootmgr --disk ${MY_LOCAL_DISK1_NAME}${DP1} --part 1 --create --label \"Shim1\" --loader /EFI/${DISTRO}/shimx64.efi"
     chroot /sysroot /bin/bash -c "grub2-mkconfig -o /boot/efi/EFI/${DISTRO}/grub.cfg"
-    touch /sysroot/.autorelabel
+    $null > /sysroot/.autorelabel
 fi
 
 umount /sysroot/sys

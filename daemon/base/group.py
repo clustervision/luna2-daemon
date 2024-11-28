@@ -124,6 +124,8 @@ class Group():
                     group['osimage'] = osimage[0]['name']
                 else:    
                     group['osimage'] = Database().name_by_id('osimage', group['osimageid'])
+            else: 
+                group['osimage'] = None
 
             group_interface = Database().get_record_join(
                 [

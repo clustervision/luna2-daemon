@@ -31,15 +31,14 @@ __email__       = "antoine.schonewille@clustervision.com"
 __status__      = "Development"
 
 
-from json import dumps
 from flask import Blueprint, request
 from utils.log import Log
-from common.validate_input import input_filter, validate_name
-from utils.helper import Helper
+from common.validate_input import validate_name
+from utils.journal import Journal
 from base.plugin_import import Import
 
 LOGGER = Log.get_logger()
-import_blueprint = Blueprint('export', __name__)
+import_blueprint = Blueprint('import', __name__)
 
 
 @import_blueprint.route('/import/<string:name>', methods=['POST'])
@@ -49,11 +48,9 @@ def import_data(name=None):
     This api receives the request to call a specific plugin (in base) and forwards data as is
     """
     access_code=200
-    
-    status, response = Journal().add_request(function="Import.plugin",object=name,payload=request.data)
+    status, response = Journal().add_request(function="Import.plugin", object=name, payload=request.data)
     if status is True:
         status, response = Import().plugin(name, request.data)
-    if status is True:
         return response, access_code
     access_code=404
     response = {'message': response}

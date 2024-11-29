@@ -179,6 +179,7 @@ daemon.register_blueprint(tables_blueprint)
 daemon.register_blueprint(ha_blueprint)
 daemon.register_blueprint(rack_blueprint)
 daemon.register_blueprint(export_blueprint)
+daemon.register_blueprint(import_blueprint)
 
 
 @daemon.route('/all-routes')

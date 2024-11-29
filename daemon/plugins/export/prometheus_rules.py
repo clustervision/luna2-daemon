@@ -65,7 +65,7 @@ class Plugin():
                     for rule in group_rules:
                         if details is True:
                             rule["labels"]["_trix_status"] = True
-                        rule["labels"]["nhc"] = "yes"
+                        rule["labels"]["nhc"] = "no"
         file = self.trix_config_details if details is True else self.trix_config
 
         self.logger.info(f'Updating File => {file}')

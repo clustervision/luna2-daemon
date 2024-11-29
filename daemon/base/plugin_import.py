@@ -47,8 +47,8 @@ class Import():
 
     def plugin(self,name,request_data=None):
         allowed_importers = None
-        if 'ALLOWED_EXPORTERS' in CONSTANT["PLUGINS"]:
-            allowed_importers = CONSTANT["PLUGINS"]["ALLOWED_EXPORTERS"].replace(' ','').split(',')
+        if 'ALLOWED_IMPORTERS' in CONSTANT["PLUGINS"]:
+            allowed_importers = CONSTANT["PLUGINS"]["ALLOWED_IMPORTERS"].replace(' ','').split(',')
         if allowed_importers: 
             if name in allowed_importers:
                 import_plugin=Helper().plugin_load(self.import_plugins,'import',name)

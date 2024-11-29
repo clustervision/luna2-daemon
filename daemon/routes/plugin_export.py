@@ -31,11 +31,9 @@ __email__       = "antoine.schonewille@clustervision.com"
 __status__      = "Development"
 
 
-from json import dumps
-from flask import Blueprint, request
+from flask import Blueprint
 from utils.log import Log
-from common.validate_input import input_filter, validate_name
-from utils.helper import Helper
+from common.validate_input import validate_name
 from base.plugin_export import Export
 
 LOGGER = Log.get_logger()

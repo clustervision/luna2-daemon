@@ -503,6 +503,8 @@ class Database():
                             values.append('datetime('+str(each["value"])+',"unixepoch")')
                 else:
                     if each["value"] is not None:
+                        if isinstance(each["value"], str):
+                            each["value"].replace("'",'"')
                         values.append("'"+str(each["value"])+"'")
                     else:
                         values.append('NULL')
@@ -583,6 +585,8 @@ class Database():
                             column = column + f" = datetime({cols['value']}, 'unixepoch')"
                 else:
                     if cols['value'] is not None:
+                        if isinstance(cols["value"], str):
+                            cols["value"].replace("'",'"')
                         column = column + " = '" +str(cols['value']) +"'"
                     else:
                         column = column + ' = NULL'

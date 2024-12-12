@@ -104,14 +104,44 @@ class Boot():
         self.boot_plugins = Helper().plugin_finder(f'{self.plugins_path}/boot')
         self.osimage_plugins = Helper().plugin_finder(f'{self.plugins_path}/osimage')
         self.controller_object = Controller()
-        self.controller_name = self.controller_object.get_beacon()
-        self.controller_beaconip = self.controller_object.get_beaconip()
+        #self.controller_name = self.controller_object.get_beacon()
+        #self.controller_beaconip = self.controller_object.get_beaconip()
+        self.all_controllers = self.controller_object.get_controllers()
+        self.controller_name = None
+        self.controller_ip = '10.141.255.254'
+        self.controller_ipv6 = None
+        self.controller_ipv4 = None
+        self.controller_beaconip = '10.141.255.254'
+        self.controller_serverport = '7050'
+        self.controller_network = 'cluster'
+        self.controller_clusterid = 1
         self.hatrial = 25
         self.ha_object = HA()
         self.insync = self.ha_object.get_insync()
         self.hastate = self.ha_object.get_hastate()
         if self.hastate is True and self.insync is True:
             self.controller_name=self.ha_object.get_me()
+        for host in self.all_controllers.keys():
+            controller = self.all_controllers[host]
+            if controller['beacon']:
+                if not self.controller_name:
+                    self.controller_name = host
+                    self.controller_ip = controller['ipaddress_ipv6'] or controller['ipaddress']
+                    self.controller_serverport = controller['serverport']
+                self.controller_beaconip = controller['ipaddress_ipv6'] or controller['ipaddress']
+            if host == self.controller_name:
+                self.controller_ip = controller['ipaddress_ipv6'] or controller['ipaddress']
+                self.controller_ipv4 = controller['ipaddress']
+                self.controller_ipv6 = controller['ipaddress_ipv6']
+                self.controller_serverport = controller['serverport']
+                self.controller_network = controller['network']
+                self.controller_clusterid = controller['clusterid']
+        self.logger.info(f"self.controller_name = {self.controller_name}, self.controller_ip = {self.controller_ip}, self.controller_beaconip = {self.controller_beaconip}")
+        # fallbacks
+        if not self.controller_name:
+            self.logger.warning("possible configuration error: No controller available or missing network for controller. using defaults.")
+            self.controller_name = 'controller'
+
 
     def wait_for_insync(self,trial=25):
         while self.insync is False and trial>0:
@@ -156,17 +186,16 @@ class Boot():
         check_template = Helper().check_jinja(template_path)
         if not check_template:
             return False, 'Empty'
-        controller = Database().get_record_join(
-            ['controller.*','ipaddress.ipaddress','ipaddress.ipaddress_ipv6'],
-            ['ipaddress.tablerefid=controller.id'],
-            ['tableref="controller"',f'controller.hostname="{self.controller_name}"']
-        )
-        if controller:
-            ipaddress = controller[0]['ipaddress_ipv6'] or controller[0]['ipaddress']
-            serverport = controller[0]['serverport']
+        controller_ips=[]
+        for controller in self.all_controllers.keys():
+            if self.all_controllers[controller]['ipaddress_ipv6']:
+                controller_ips.append(self.all_controllers[controller]['ipaddress_ipv6'])
+            if self.all_controllers[controller]['ipaddress']:
+                controller_ips.append(self.all_controllers[controller]['ipaddress'])
+        if self.controller_name:
             protocol = CONSTANT['API']['PROTOCOL']
             verify_certificate = CONSTANT['API']['VERIFY_CERTIFICATE']
-            webserver_port = serverport
+            webserver_port = self.controller_serverport
             webserver_protocol = protocol
             if 'WEBSERVER' in CONSTANT:
                 if 'PORT' in CONSTANT['WEBSERVER']:
@@ -201,15 +230,15 @@ class Boot():
             self.logger.error(f"configuration error: No controller available or missing network for controller {self.controller_name}")
             environment = jinja2.Environment()
             template = environment.from_string('No Controller is available.')
-            ipaddress, serverport = '', ''
             status=False
         self.logger.info(f'Boot API serving the {template}')
         response = {
             'template': template,
             'LUNA_LOGHOST': self.controller_beaconip,
             'LUNA_BEACON': self.controller_beaconip,
-            'LUNA_CONTROLLER': ipaddress,
-            'LUNA_API_PORT': serverport,
+            'LUNA_CONTROLLER': self.controller_ip,
+            'LUNA_CONTROLLERS': controller_ips,
+            'LUNA_API_PORT': self.controller_serverport,
             'WEBSERVER_PORT': webserver_port,
             'LUNA_API_PROTOCOL': protocol,
             'WEBSERVER_PROTOCOL': webserver_protocol,
@@ -231,18 +260,18 @@ class Boot():
         check_template = Helper().check_jinja(template_path)
         if not check_template:
             return False, 'Empty'
-        controller = Database().get_record_join(
-            ['controller.*', 'ipaddress.ipaddress', 'ipaddress.ipaddress_ipv6'],
-            ['ipaddress.tablerefid=controller.id'],
-            ['tableref="controller"', f'controller.hostname="{self.controller_name}"']
-        )
-        if controller:
-            ipaddress = controller[0]['ipaddress_ipv6'] or controller[0]['ipaddress']
-            serverport = controller[0]['serverport']
+            status=True
+        controller_ips=[]
+        for controller in self.all_controllers.keys():
+            if self.all_controllers[controller]['ipaddress_ipv6']:
+                controller_ips.append(self.all_controllers[controller]['ipaddress_ipv6'])
+            if self.all_controllers[controller]['ipaddress']:
+                controller_ips.append(self.all_controllers[controller]['ipaddress'])
+        if self.controller_name:
             protocol = CONSTANT['API']['PROTOCOL']
             verify_certificate = CONSTANT['API']['VERIFY_CERTIFICATE']
+            webserver_port = self.controller_serverport
             webserver_protocol = protocol
-            webserver_port = serverport
             if 'WEBSERVER' in CONSTANT:
                 if 'PORT' in CONSTANT['WEBSERVER']:
                     webserver_port = CONSTANT['WEBSERVER']['PORT']
@@ -253,15 +282,15 @@ class Boot():
             self.logger.error(f"configuration error: No controller available or missing network for controller {self.controller_name}")
             environment = jinja2.Environment()
             template = environment.from_string('No Controller is available.')
-            ipaddress, serverport = '', ''
             status=False
         self.logger.info(f'Boot API serving the {template}')
         response = {
             'template': template,
             'LUNA_LOGHOST': self.controller_beaconip,
             'LUNA_BEACON': self.controller_beaconip,
-            'LUNA_CONTROLLER': ipaddress,
-            'LUNA_API_PORT': serverport,
+            'LUNA_CONTROLLER': self.controller_ip,
+            'LUNA_CONTROLLERS': controller_ips,
+            'LUNA_API_PORT': self.controller_serverport,
             'WEBSERVER_PORT': webserver_port,
             'LUNA_API_PROTOCOL': protocol,
             'VERIFY_CERTIFICATE': verify_certificate,
@@ -280,23 +309,26 @@ class Boot():
         check_template = Helper().check_jinja(template_path)
         if not check_template:
             return False, 'Empty'
-        controller = Database().get_record_join(
-            ['controller.*', 'ipaddress.ipaddress', 'ipaddress.ipaddress_ipv6'],
-            ['ipaddress.tablerefid=controller.id'],
-            ['tableref="controller"', f'controller.hostname="{self.controller_name}"']
-        )
-        if controller:
-            ipaddress = controller[0]['ipaddress_ipv6'] or controller[0]['ipaddress']
-            serverport = controller[0]['serverport']
+        if self.controller_name:
+            protocol = CONSTANT['API']['PROTOCOL']
+            verify_certificate = CONSTANT['API']['VERIFY_CERTIFICATE']
+            webserver_port = self.controller_serverport
+            webserver_protocol = protocol
+            if 'WEBSERVER' in CONSTANT:
+                if 'PORT' in CONSTANT['WEBSERVER']:
+                    webserver_port = CONSTANT['WEBSERVER']['PORT']
+                if 'PROTOCOL' in CONSTANT['WEBSERVER']:
+                    webserver_protocol = CONSTANT['WEBSERVER']['PROTOCOL']
             status=True
         else:
             self.logger.error(f"configuration error: No controller available or missing network for controller {self.controller_name}")
             environment = jinja2.Environment()
             template = environment.from_string('No Controller is available.')
-            ipaddress, serverport = '', ''
             status=False
         self.logger.info(f'Boot API serving the {template}')
-        response = {'template': template, 'LUNA_CONTROLLER': ipaddress, 'LUNA_API_PORT': serverport, 'LUNA_BEACON': self.controller_beaconip}
+        response = {'template': template, 'LUNA_CONTROLLER': self.controller_ip, 
+                    'LUNA_API_PORT': self.controller_serverport,
+                    'LUNA_BEACON': self.controller_beaconip}
         return status, response
 
 
@@ -333,15 +365,10 @@ class Boot():
             return False, 'Empty'
         if mac:
             mac = mac.lower()
-        controller = Database().get_record_join(
-            ['controller.*', 'ipaddress.ipaddress','ipaddress.ipaddress_ipv6','network.name as network'],
-            ['ipaddress.tablerefid=controller.id','network.id=ipaddress.networkid'],
-            ['tableref="controller"', f'controller.hostname="{self.controller_name}"']
-        )
-        if controller:
-            data['ipaddress'] = controller[0]['ipaddress_ipv6'] or controller[0]['ipaddress']
-            data['network'] = controller[0]['network']
-            data['serverport'] = controller[0]['serverport']
+        if self.controller_name:
+            data['ipaddress'] = self.controller_ip
+            data['network'] = self.controller_network
+            data['serverport'] = self.controller_serverport
             data['webserver_port'] = data['serverport']
             if 'WEBSERVER' in CONSTANT:
                 if 'PORT' in CONSTANT['WEBSERVER']:
@@ -349,7 +376,7 @@ class Boot():
                 if 'PROTOCOL' in CONSTANT['WEBSERVER']:
                     data['webserver_protocol'] = CONSTANT['WEBSERVER']['PROTOCOL']
         else:
-            self.logger.warning(f"possible configuration error: No controller available or missing network for controller {self.controller_name}")
+            self.logger.warning("possible configuration error: No controller available or missing network for controller")
         nodeinterface = Database().get_record_join(
             ['nodeinterface.nodeid', 'nodeinterface.interface', 'ipaddress.ipaddress', 'ipaddress.ipaddress_ipv6',
              'network.name as network', 'network.network as networkip', 'network.subnet', 'network.gateway',
@@ -674,28 +701,22 @@ class Boot():
             mac = mac.lower()
         network, createnode_ondemand = None, None # used below
 
-        # get controller and cluster info
-        controller = Database().get_record_join(
-            ['controller.*', 'ipaddress.ipaddress', 'ipaddress.ipaddress_ipv6', 'network.name as network'],
-            ['ipaddress.tablerefid=controller.id', 'network.id=ipaddress.networkid'],
-            ['tableref="controller"', f'controller.hostname="{self.controller_name}"']
-        )
-        if controller:
-            data['network'] = controller[0]['network']
-            data['ipaddress'] = controller[0]['ipaddress_ipv6'] or controller[0]['ipaddress']
-            data['serverport'] = controller[0]['serverport']
+        if self.controller_name:
+            data['ipaddress'] = self.controller_ip
+            data['network'] = self.controller_network
+            data['serverport'] = self.controller_serverport
             data['webserver_port'] = data['serverport']
             if 'WEBSERVER' in CONSTANT:
                 if 'PORT' in CONSTANT['WEBSERVER']:
                     data['webserver_port'] = CONSTANT['WEBSERVER']['PORT']
                 if 'PROTOCOL' in CONSTANT['WEBSERVER']:
                     data['webserver_protocol'] = CONSTANT['WEBSERVER']['PROTOCOL']
-            where = f" WHERE id='{controller[0]['clusterid']}'"
+            where = f" WHERE id='{self.controller_clusterid}'"
             cluster = Database().get_record(None, 'cluster', where)
             if cluster and 'createnode_ondemand' in cluster[0]:
                 createnode_ondemand=Helper().bool_revert(cluster[0]['createnode_ondemand'])
         else:
-            self.logger.warning(f"possible configuration error: No controller available or missing network for controller {self.controller_name}")
+            self.logger.warning(f"possible configuration error: No controller available or missing network for controller")
 
         # clear mac if it already exists. let's check
         # if there is a mac defined, this means there is already a node with this mac.
@@ -1037,15 +1058,10 @@ class Boot():
         if not check_template:
             return False, 'Empty'
         # Antoine
-        controller = Database().get_record_join(
-            ['controller.*', 'ipaddress.ipaddress', 'ipaddress.ipaddress_ipv6', 'network.name as network'],
-            ['ipaddress.tablerefid=controller.id','network.id=ipaddress.networkid'],
-            ['tableref="controller"',f'controller.hostname="{self.controller_name}"']
-        )
-        if controller:
-            data['network'] = controller[0]['network']
-            data['ipaddress'] = controller[0]['ipaddress_ipv6'] or controller[0]['ipaddress']
-            data['serverport'] = controller[0]['serverport']
+        if self.controller_name:
+            data['ipaddress'] = self.controller_ip
+            data['network'] = self.controller_network
+            data['serverport'] = self.controller_serverport
             data['webserver_port'] = data['serverport']
             if 'WEBSERVER' in CONSTANT:
                 if 'PORT' in CONSTANT['WEBSERVER']:
@@ -1053,7 +1069,7 @@ class Boot():
                 if 'PROTOCOL' in CONSTANT['WEBSERVER']:
                     data['webserver_protocol'] = CONSTANT['WEBSERVER']['PROTOCOL']
         else:
-            self.logger.warning(f"possible configuration error: No controller available or missing network for controller {self.controller_name}")
+            self.logger.warning(f"possible configuration error: No controller available or missing network for controller")
 
         data['kerneloptions']=""
 
@@ -1257,14 +1273,10 @@ class Boot():
             data['cluster_provision_fallback'] = cluster[0]['provision_fallback']
             data['name_server'] = cluster[0]['nameserver_ip']
             data['domain_search'] = cluster[0]['domain_search']
-        controller = Database().get_record_join(
-            ['controller.*', 'ipaddress.ipaddress', 'ipaddress.ipaddress_ipv6'],
-            ['ipaddress.tablerefid=controller.id'],
-            ['tableref="controller"', f'controller.hostname="{self.controller_name}"']
-        )
-        if controller:
-            data['ipaddress']   = controller[0]['ipaddress_ipv6'] or controller[0]['ipaddress']
-            data['serverport']  = controller[0]['serverport']
+        if self.controller_name:
+            data['ipaddress'] = self.controller_ip
+            data['network'] = self.controller_network
+            data['serverport'] = self.controller_serverport
             data['webserver_port'] = data['serverport']
             if 'WEBSERVER' in CONSTANT:
                 if 'PORT' in CONSTANT['WEBSERVER']:
@@ -1272,7 +1284,7 @@ class Boot():
                 if 'PROTOCOL' in CONSTANT['WEBSERVER']:
                     data['webserver_protocol'] = CONSTANT['WEBSERVER']['PROTOCOL']
         else:
-            self.logger.warning(f"possible configuration error: No controller available or missing network for controller {self.controller_name}")
+            self.logger.warning(f"possible configuration error: No controller available or missing network for controller")
         
         items = {
             'setupbmc': False,
@@ -1418,16 +1430,16 @@ class Boot():
                             'zone': zone,
                             'type': interface['type'] or "ethernet"
                         }
-                        if interface['interface'] == data['provision_interface'] and controller:
+                        if interface['interface'] == data['provision_interface']:
                             # setting good defaults for BOOTIF if they do not exist. a must.
                             if not data['interfaces'][data['provision_interface']]['gateway']:
-                                data['interfaces'][data['provision_interface']]['gateway'] = controller[0]['ipaddress'] or '0.0.0.0'
+                                data['interfaces'][data['provision_interface']]['gateway'] = self.controller_ipv4 or '0.0.0.0'
                             if not data['interfaces'][data['provision_interface']]['gateway_ipv6']:
-                                data['interfaces'][data['provision_interface']]['gateway_ipv6'] = controller[0]['ipaddress_ipv6'] or '::/0'
+                                data['interfaces'][data['provision_interface']]['gateway_ipv6'] = self.controller_ipv6 or '::/0'
                             if not data['interfaces'][data['provision_interface']]['nameserver_ip']:
-                                data['interfaces'][data['provision_interface']]['nameserver_ip'] = controller[0]['ipaddress'] or '0.0.0.0'
+                                data['interfaces'][data['provision_interface']]['nameserver_ip'] = self.controller_ipv4 or '0.0.0.0'
                             if not data['interfaces'][data['provision_interface']]['nameserver_ip_ipv6']:
-                                data['interfaces'][data['provision_interface']]['nameserver_ip_ipv6'] = controller[0]['ipaddress_ipv6'] or '::/0'
+                                data['interfaces'][data['provision_interface']]['nameserver_ip_ipv6'] = self.controller_ipv6 or '::/0'
                         if not data['interfaces'][interface['interface']]['ipaddress']:
                             del data['interfaces'][interface['interface']]['gateway']
                             del data['interfaces'][interface['interface']]['nameserver_ip']

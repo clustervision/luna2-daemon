@@ -87,3 +87,45 @@ class Controller():
         self.logger.error('No controller available, returning defaults')
         return '10.141.255.254'
 
+    def get_controllers(self):
+        """
+        This method will return all controller details of the cluster
+        """
+        controllers = Database().get_record_join(
+            ['controller.*', 'ipaddress.ipaddress', 'ipaddress.ipaddress_ipv6', 'network.name as network'],
+            ['ipaddress.tablerefid=controller.id', 'network.id=ipaddress.networkid'],
+            ['tableref="controller"']
+        )
+        if not controllers:
+            controllers = Database().get_record_join(
+                ['controller.*','ipaddress.ipaddress','ipaddress.ipaddress_ipv6'],
+                ['ipaddress.tablerefid=controller.id'],
+                ['tableref="controller"']
+            )
+        all_controllers={}
+        if controllers:
+            for controller in controllers:
+                all_controllers[controller['hostname']]={
+                    'ipaddress': controller['ipaddress'],
+                    'ipaddress_ipv6': controller['ipaddress_ipv6'],
+                    'serverport': controller['serverport'],
+                    'network': None,
+                    'clusterid': controller['clusterid'],
+                    'beacon': controller['beacon'],
+                    'shadow': controller['shadow']
+                }
+                if 'network' in controller:
+                    all_controllers[controller['hostname']]['network'] = controller['network'],
+            return all_controllers
+        self.logger.error('No controller available, returning defaults')
+        all_controllers['controller']={
+            'ipaddress': '10.141.255.254',
+            'ipaddress_ipv6': None,
+            'serverport': 7050,
+            'network': 'cluster',
+            'clusterid': 1,
+            'beacon': True,
+            'shadow': False
+        }
+        return all_controllers
+

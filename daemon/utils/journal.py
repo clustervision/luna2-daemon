@@ -176,6 +176,7 @@ class Journal():
    
                     payload=None
                     if record['payload']:
+                        payload = None
                         decoded = b64decode(record['payload'])
                         string = decoded.decode("ascii")
                         try:

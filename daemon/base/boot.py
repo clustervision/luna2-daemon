@@ -136,7 +136,7 @@ class Boot():
                 self.controller_serverport = controller['serverport']
                 self.controller_network = controller['network']
                 self.controller_clusterid = controller['clusterid']
-        self.logger.info(f"self.controller_name = {self.controller_name}, self.controller_ip = {self.controller_ip}, self.controller_beaconip = {self.controller_beaconip}")
+        self.logger.debug(f"BOOT: self.controller_name = {self.controller_name}, self.controller_ip = {self.controller_ip}, self.controller_beaconip = {self.controller_beaconip}")
         # fallbacks
         if not self.controller_name:
             self.logger.warning("possible configuration error: No controller available or missing network for controller. using defaults.")

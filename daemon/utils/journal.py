@@ -116,13 +116,13 @@ class Journal():
             if not self.ha_object.get_insync():
                 return False, "Currently not able to handle request as i am not in sync yet"
         if payload:
+            encoded = None
             try:
                 string = dumps(payload)
                 encoded = b64encode(string.encode())
-                payload = encoded.decode("ascii")
             except:
                 encoded = b64encode(payload)
-                payload = encoded.decode("ascii")
+            payload = encoded.decode("ascii")
         if self.me:
             if self.all_controllers:
                 data={}
@@ -178,11 +178,14 @@ class Journal():
                     if record['payload']:
                         decoded = b64decode(record['payload'])
                         string = decoded.decode("ascii")
-                        payload = loads(string)
+                        try:
+                            payload = loads(string)
+                        except:
+                            payload = string
                         self.logger.debug(f"replication payload: {payload}")
                    
                     class_name,function_name=record['function'].split('.')
-                    self.logger.info(f"executing {class_name}().{function_name}({record['object']},{record['param']},payload)/{record['tries']} received by {record['sendby']} on {record['created']}")
+                    self.logger.info(f"executing {class_name}().{function_name}({record['object']},{record['param']},payload)/{record['tries']} send by {record['sendby']} on {record['created']}")
 
                     returned=[]
                     repl_class = globals()[class_name]                # -> base.node.Node

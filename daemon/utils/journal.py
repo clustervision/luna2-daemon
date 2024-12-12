@@ -116,9 +116,13 @@ class Journal():
             if not self.ha_object.get_insync():
                 return False, "Currently not able to handle request as i am not in sync yet"
         if payload:
-            string = dumps(payload)
-            encoded = b64encode(string.encode())
-            payload = encoded.decode("ascii")
+            try:
+                string = dumps(payload)
+                encoded = b64encode(string.encode())
+                payload = encoded.decode("ascii")
+            except:
+                encoded = b64encode(payload)
+                payload = encoded.decode("ascii")
         if self.me:
             if self.all_controllers:
                 data={}

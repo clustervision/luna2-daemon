@@ -125,7 +125,7 @@ class Interface():
             for interface in data:
                 # Antoine
                 interface_name = interface['interface']
-                ipaddress, macaddress, network, options, vlanid = None, None, None, None, None
+                ipaddress, macaddress, network, options, vlanid, force = None, None, None, None, None, False
                 if 'macaddress' in interface.keys():
                     macaddress = interface['macaddress']
                 if 'options' in interface.keys():
@@ -136,6 +136,8 @@ class Interface():
                     network = interface['network']
                 if 'ipaddress' in interface.keys():
                     ipaddress = interface['ipaddress']
+                if 'force' in interface.keys():
+                    force = interface['force']
                 result, message = Config().node_interface_config(
                     nodeid,
                     interface_name,
@@ -206,14 +208,16 @@ class Interface():
                             nodeid,
                             interface_name,
                             ipaddress,
-                            network
+                            network,
+                            force
                         )
                         if result and ipaddress_ipv6:
                             result, message = Config().node_interface_ipaddress_config(
                                 nodeid,
                                 interface_name,
                                 ipaddress_ipv6,
-                                network
+                                network,
+                                force
                             )
                     elif (macaddress is None) and (options is None):
                         # this means we just made an empty interface. a no no - Antoine

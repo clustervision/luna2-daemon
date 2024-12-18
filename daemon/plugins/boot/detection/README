@@ -12,6 +12,3 @@
 
 # cloud is a provided plugin to discover a cloud booing node
 # plugin/detection/cloud.py
-
-# custom is a plugin to allow for a customized node detection
-# plugin/detection/custom.py

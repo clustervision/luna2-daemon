@@ -184,6 +184,7 @@ class Node():
                         'nodeinterface.interface',
                         'ipaddress.ipaddress',
                         'ipaddress.ipaddress_ipv6',
+                        'ipaddress.dhcp',
                         'nodeinterface.macaddress',
                         'network.name as network',
                         'nodeinterface.vlanid',
@@ -201,10 +202,13 @@ class Node():
                         if interface['interface'] == interface_name and interface['network']:
                             # if it is my prov interface then it will get that domain as a FQDN.
                             node['hostname'] = node['name'] + '.' + interface['network']
+                        interface['dhcp'] = Helper().make_bool(interface['dhcp'])
                         if not interface['options']:
                             del interface['options']
                         if not interface['vlanid']:
                             del interface['vlanid']
+                        if not interface['dhcp']:
+                            del interface['dhcp']
                         if not interface['ipaddress']:
                             del interface['ipaddress']
                         if not interface['ipaddress_ipv6']:
@@ -440,6 +444,7 @@ class Node():
                     'nodeinterface.interface',
                     'ipaddress.ipaddress',
                     'ipaddress.ipaddress_ipv6',
+                    'ipaddress.dhcp',
                     'nodeinterface.macaddress',
                     'network.name as network',
                     'nodeinterface.vlanid',
@@ -456,10 +461,13 @@ class Node():
                     if interface['interface'] == interface_name and interface['network']:
                         # if it is my prov interface then it will get that domain as a FQDN.
                         node['hostname'] = nodename + '.' + interface['network']
+                    interface['dhcp'] = Helper().make_bool(interface['dhcp'])
                     if not interface['options']:
                         del interface['options']
                     if not interface['vlanid']:
                         del interface['vlanid']
+                    if not interface['dhcp']:
+                        del interface['dhcp']
                     if not interface['ipaddress']:
                         del interface['ipaddress']
                     if not interface['ipaddress_ipv6']:

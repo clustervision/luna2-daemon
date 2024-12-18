@@ -248,7 +248,7 @@ class Config(object):
                                 config_hosts[node]['ipaddress']=interface['ipaddress']
                                 config_hosts[node]['macaddress']=interface['macaddress']
                 else:
-                    self.logger.info(f'No Nodes available for this network {network_name} IPv4: {network_ip} or IPv6: {network_ipv6}')
+                    self.logger.info(f'No Nodes available for network {network_name} IPv4: {network_ip} or IPv6: {network_ipv6}')
                 for item in ['otherdevices', 'switch']:
                     devices = Database().get_record_join(
                         [f'{item}.name','ipaddress.ipaddress','ipaddress.ipaddress_ipv6',f'{item}.macaddress'],
@@ -512,7 +512,7 @@ class Config(object):
                 mergedlist.append(controllers)
             nodes = Database().get_record_join(
                 ['node.name as host', 'ipaddress.ipaddress', 'ipaddress.ipaddress_ipv6',
-                  'network.name as networkname'],
+                  'ipaddress.dhcp', 'network.name as networkname'],
                 ['ipaddress.tablerefid=nodeinterface.id', 'nodeinterface.nodeid=node.id',
                  'network.id=ipaddress.networkid'],
                 ['tableref="nodeinterface"', f'ipaddress.networkid="{network_id}"']
@@ -570,6 +570,10 @@ class Config(object):
                                         dns_zone_records[rev_ip][host['host']]['key']=host_ptr
                                         dns_zone_records[rev_ip][host['host']]['type']='PTR'
                                         dns_zone_records[rev_ip][host['host']]['value']=f"{host['host'].rstrip('.')}.{host['networkname']}"
+                        else: # we have nothing! are we doing pure dhcp?
+                            if not host['dhcp']:
+                                self.logger.warning(f"node {host['host']} does not appear to have any ip address configured")
+                            del dns_zone_records[networkname][host['host']]
                     except Exception as exp:
                         exc_type, exc_obj, exc_tb = sys.exc_info()
                         self.logger.error(f"creating DNS zone encountered problems: {exp}, {exc_type}, in {exc_tb.tb_lineno}")
@@ -835,7 +839,7 @@ class Config(object):
         self.logger.info(message)
 
 
-    def node_interface_ipaddress_config(self, nodeid, interface_name, ipaddress, network=None):
+    def node_interface_ipaddress_config(self, nodeid, interface_name, ipaddress, network=None, force=False):
         """
         This method configures ip addresses for interface of nodes.
         """
@@ -889,15 +893,26 @@ class Config(object):
             ipaddress_check = Database().get_record(None, 'ipaddress', f"WHERE ipaddress='{ipaddress}' or ipaddress_ipv6='{ipaddress}'")
             if ipaddress_check:
                 ipaddress_type='ipaddress'
+                ipversion='ipv4'
                 if Helper().check_if_ipv6(ipaddress):
                     ipaddress_type='ipaddress_ipv6'
+                    ipversion='ipv6'
                 ipaddress_check_own = Database().get_record_join(
-                    ['node.id as nodeid','nodeinterface.interface'],
+                    ['node.id as nodeid','node.name as nodename','nodeinterface.interface'],
                     ['ipaddress.tablerefid=nodeinterface.id','nodeinterface.nodeid=node.id'],
                     ['tableref="nodeinterface"',f"ipaddress.{ipaddress_type}='{ipaddress}'"]
                 )
                 if ipaddress_check_own and ((ipaddress_check_own[0]['nodeid'] != nodeid) or (interface_name != ipaddress_check_own[0]['interface'])):
-                    return False, f"ip address {ipaddress} is already in use"
+                    if not force:
+                        return False, f"ip address {ipaddress} is already in use"
+                    else:
+                        status, message = self.node_interface_clear_ipaddress(
+                            ipaddress_check_own[0]['nodeid'],
+                            ipaddress_check_own[0]['interface'],
+                            ipversion=ipversion
+                        )
+                        if not status:
+                            return False, f"ip address {ipaddress} could not be cleared and set"
 
         my_interface = Database().get_record_join(
             ['ipaddress.*'],

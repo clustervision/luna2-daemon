@@ -378,7 +378,8 @@ class Boot():
         else:
             self.logger.warning("possible configuration error: No controller available or missing network for controller")
         nodeinterface = Database().get_record_join(
-            ['nodeinterface.nodeid', 'nodeinterface.interface', 'ipaddress.ipaddress', 'ipaddress.ipaddress_ipv6',
+            ['nodeinterface.nodeid', 'nodeinterface.interface',
+             'ipaddress.ipaddress', 'ipaddress.ipaddress_ipv6', 'ipaddress.dhcp',
              'network.name as network', 'network.network as networkip', 'network.subnet', 'network.gateway',
              'network.network_ipv6 as networkip_ipv6', 'network.subnet_ipv6', 'network.gateway_ipv6'],
             ['network.id=ipaddress.networkid', 'ipaddress.tablerefid=nodeinterface.id'],
@@ -386,7 +387,9 @@ class Boot():
         )
         if nodeinterface:
             data['nodeid'] = nodeinterface[0]['nodeid']
-            if nodeinterface[0]["ipaddress_ipv6"]:
+            if nodeinterface[0]["dhcp"]:
+                data['nodeip'] = 'dhcp'
+            elif nodeinterface[0]["ipaddress_ipv6"]:
                 data['nodeip'] = f'{nodeinterface[0]["ipaddress_ipv6"]}/{nodeinterface[0]["subnet_ipv6"]}'
             else:
                 data['nodeip'] = f'{nodeinterface[0]["ipaddress"]}/{nodeinterface[0]["subnet"]}'
@@ -425,7 +428,7 @@ class Boot():
                         nodeinterface = Database().get_record_join(
                             ['nodeinterface.nodeid', 'nodeinterface.interface',
                              'ipaddress.ipaddress', 'network.name as network', 'network.gateway',
-                             'ipaddress.ipaddress_ipv6', 'network.gateway_ipv6',
+                             'ipaddress.ipaddress_ipv6', 'ipaddress.dhcp', 'network.gateway_ipv6',
                              'network.network_ipv6 as networkip_ipv6',
                              'network.network as networkip', 'network.subnet'],
                             ['network.id=ipaddress.networkid',
@@ -434,7 +437,9 @@ class Boot():
                         )
                         if nodeinterface:
                             data['nodeid'] = nodeinterface[0]['nodeid']
-                            if nodeinterface[0]["ipaddress_ipv6"]:
+                            if nodeinterface[0]["dhcp"]:
+                                data['nodeip'] = 'dhcp'
+                            elif nodeinterface[0]["ipaddress_ipv6"]:
                                 data['nodeip'] = f'{nodeinterface[0]["ipaddress_ipv6"]}/{nodeinterface[0]["subnet_ipv6"]}'
                             else:
                                 data['nodeip'] = f'{nodeinterface[0]["ipaddress"]}/{nodeinterface[0]["subnet"]}'
@@ -453,7 +458,7 @@ class Boot():
                         possible_nodes = Database().get_record_join(
                             ['node.name', 'nodeinterface.nodeid', 'nodeinterface.interface',
                              'ipaddress.ipaddress', 'network.name as network', 'network.gateway',
-                             'ipaddress.ipaddress_ipv6', 'network.gateway_ipv6',
+                             'ipaddress.ipaddress_ipv6', 'ipaddress.dhcp', 'network.gateway_ipv6',
                              'network.network_ipv6 as networkip_ipv6',
                              'network.network as networkip', 'network.subnet',
                              'nodeinterface.macaddress'],
@@ -478,7 +483,9 @@ class Boot():
                                             mac
                                         )
                                     data['nodeid'] = node['nodeid']
-                                    if node["ipaddress_ipv6"]:
+                                    if nodeinterface[0]["dhcp"]:
+                                        data['nodeip'] = 'dhcp'
+                                    elif node["ipaddress_ipv6"]:
                                         data['nodeip'] = f'{node["ipaddress_ipv6"]}/{node["subnet_ipv6"]}'
                                     else:
                                         data['nodeip'] = f'{node["ipaddress"]}/{node["subnet"]}'
@@ -499,9 +506,9 @@ class Boot():
                 cluster = Database().get_record(None, 'cluster')
                 if cluster:
                     if 'createnode_ondemand' in cluster[0]:
-                        createnode_ondemand=Helper().bool_revert(cluster[0]['createnode_ondemand'])
+                        createnode_ondemand=Helper().make_bool(cluster[0]['createnode_ondemand'])
                     if 'nextnode_discover' in cluster[0]:
-                        nextnode_discover=Helper().bool_revert(cluster[0]['nextnode_discover'])
+                        nextnode_discover=Helper().make_bool(cluster[0]['nextnode_discover'])
                 if nextnode_discover:
                     self.logger.info(f"nextnode discover: we will try to see a good fit for {mac}")
 
@@ -542,7 +549,7 @@ class Boot():
 
                         nodeinterface = Database().get_record_join(
                             ['nodeinterface.nodeid', 'nodeinterface.interface', 'ipaddress.ipaddress_ipv6',
-                             'ipaddress.ipaddress', 'network.name as network', 'network.gateway',
+                             'ipaddress.ipaddress', 'ipaddress.dhcp', 'network.name as network', 'network.gateway',
                              'network.network as networkip', 'network.subnet', 'network.gateway_ipv6',
                              'network.network_ipv6 as networkip_ipv6', 'network.subnet_ipv6'],
                             ['network.id=ipaddress.networkid',
@@ -551,7 +558,9 @@ class Boot():
                         )
                         if nodeinterface:
                             data['nodeid'] = nodeinterface[0]['nodeid']
-                            if nodeinterface[0]["ipaddress_ipv6"]:
+                            if nodeinterface[0]["dhcp"]:
+                                data['nodeip'] = dhcp
+                            elif nodeinterface[0]["ipaddress_ipv6"]:
                                 data['nodeip'] = f'{nodeinterface[0]["ipaddress_ipv6"]}/{nodeinterface[0]["subnet_ipv6"]}'
                             else:
                                 data['nodeip'] = f'{nodeinterface[0]["ipaddress"]}/{nodeinterface[0]["subnet"]}'
@@ -635,6 +644,9 @@ class Boot():
         if data['kerneloptions']:
             data['kerneloptions']=data['kerneloptions'].replace('\n', ' ').replace('\r', '')
 
+        if data['nodeip'] and data['nodeip'] == 'dhcp':
+            data['kerneloptions']+=' luna.bootproto=dhcp'
+
         if 'netboot' in data and data['netboot'] is False:
             template = 'templ_boot_disk.cfg'
             template_path = f'{CONSTANT["TEMPLATES"]["TEMPLATE_FILES"]}/{template}'
@@ -699,7 +711,7 @@ class Boot():
             return False, 'Empty'
         if mac:
             mac = mac.lower()
-        network, createnode_ondemand = None, None # used below
+        network, createnode_ondemand, createnode_macashost = None, None, None # used below
 
         if self.controller_name:
             data['ipaddress'] = self.controller_ip
@@ -713,8 +725,11 @@ class Boot():
                     data['webserver_protocol'] = CONSTANT['WEBSERVER']['PROTOCOL']
             where = f" WHERE id='{self.controller_clusterid}'"
             cluster = Database().get_record(None, 'cluster', where)
-            if cluster and 'createnode_ondemand' in cluster[0]:
-                createnode_ondemand=Helper().bool_revert(cluster[0]['createnode_ondemand'])
+            if cluster:
+                if 'createnode_ondemand' in cluster[0]:
+                    createnode_ondemand=Helper().bool_revert(cluster[0]['createnode_ondemand'])
+                if 'createnode_macashost' in cluster[0]:
+                    createnode_macashost=Helper().bool_revert(cluster[0]['createnode_macashost'])
         else:
             self.logger.warning(f"possible configuration error: No controller available or missing network for controller")
 
@@ -765,7 +780,9 @@ class Boot():
         new_nodename = None
         if (not node_list) or (createnode_ondemand is True):
             # we have no spare or free nodes in here -or- we create one on demand.
-            if list2:
+            if createnode_macashost and mac:
+                new_nodename = mac.replace(':-','')
+            elif list2:
                 # we fetch the node with highest 'number' - sort
                 names = []
                 for node in list2:
@@ -933,7 +950,7 @@ class Boot():
                     'nodeinterface.nodeid',
                     'nodeinterface.interface',
                     'nodeinterface.macaddress',
-                    'ipaddress.ipaddress', 'ipaddress.ipaddress_ipv6',
+                    'ipaddress.ipaddress', 'ipaddress.ipaddress_ipv6', 'ipaddress.dhcp',
                     'network.name as network',
                     'network.network as networkip', 'network.network_ipv6 as networkip_ipv6',
                     'network.subnet', 'network.subnet_ipv6',
@@ -947,7 +964,9 @@ class Boot():
                 ]
             )
             if nodeinterface:
-                if nodeinterface[0]["ipaddress_ipv6"]:
+                if nodeinterface[0]["dhcp"]:
+                    data['nodeip'] = 'dhcp'
+                elif nodeinterface[0]["ipaddress_ipv6"]:
                     data['nodeip'] = f'{nodeinterface[0]["ipaddress_ipv6"]}/{nodeinterface[0]["subnet_ipv6"]}'
                 else:
                     data['nodeip'] = f'{nodeinterface[0]["ipaddress"]}/{nodeinterface[0]["subnet"]}'
@@ -998,6 +1017,9 @@ class Boot():
 
         if data['kerneloptions']:
             data['kerneloptions']=data['kerneloptions'].replace('\n', ' ').replace('\r', '')
+
+        if data['nodeip'] and data['nodeip'] == 'dhcp':
+            data['kerneloptions']+=' luna.bootproto=dhcp'
 
         if 'netboot' in data and data['netboot'] is False:
             template = 'templ_boot_disk.cfg'
@@ -1135,7 +1157,7 @@ class Boot():
                     'nodeinterface.nodeid',
                     'nodeinterface.interface',
                     'nodeinterface.macaddress',
-                    'ipaddress.ipaddress', 'ipaddress.ipaddress_ipv6',
+                    'ipaddress.ipaddress', 'ipaddress.ipaddress_ipv6', 'ipaddress.dhcp',
                     'network.name as network',
                     'network.network as networkip', 'network.network_ipv6 as networkip_ipv6',
                     'network.subnet', 'network.subnet_ipv6',
@@ -1149,7 +1171,9 @@ class Boot():
                 ]
             )
             if nodeinterface:
-                if nodeinterface[0]["ipaddress_ipv6"]:
+                if nodeinterface[0]["dhcp"]:
+                    data['nodeip'] = 'dhcp'
+                elif nodeinterface[0]["ipaddress_ipv6"]:
                     data['nodeip'] = f'{nodeinterface[0]["ipaddress_ipv6"]}/{nodeinterface[0]["subnet_ipv6"]}'
                 else:
                     data['nodeip'] = f'{nodeinterface[0]["ipaddress"]}/{nodeinterface[0]["subnet"]}'
@@ -1200,6 +1224,9 @@ class Boot():
 
         if data['kerneloptions']:
             data['kerneloptions']=data['kerneloptions'].replace('\n', ' ').replace('\r', '')
+
+        if data['nodeip'] and data['nodeip'] == 'dhcp':
+            data['kerneloptions']+=' luna.bootproto=dhcp'
 
         if 'netboot' in data and data['netboot'] is False:
             template = 'templ_boot_disk.cfg'
@@ -1365,7 +1392,7 @@ class Boot():
                     'nodeinterface.macaddress',
                     'nodeinterface.vlanid',
                     'nodeinterface.options',
-                    'ipaddress.ipaddress', 'ipaddress.ipaddress_ipv6',
+                    'ipaddress.ipaddress', 'ipaddress.ipaddress_ipv6', 'ipaddress.dhcp',
                     'network.name as network',
                     'network.network as networkip', 'network.network_ipv6 as networkip_ipv6',
                     'network.subnet', 'network.subnet_ipv6',
@@ -1430,7 +1457,12 @@ class Boot():
                             'zone': zone,
                             'type': interface['type'] or "ethernet"
                         }
+                        domain_search.append(interface['network'])
                         if interface['interface'] == data['provision_interface']:
+                            if interface['network']:
+                                # if it is my prov interface then it will get that domain as a FQDN.
+                                data['nodehostname'] = data['nodename'] + '.' + interface['network']
+                                domain_search.insert(0, interface['network'])
                             # setting good defaults for BOOTIF if they do not exist. a must.
                             if not data['interfaces'][data['provision_interface']]['gateway']:
                                 data['interfaces'][data['provision_interface']]['gateway'] = self.controller_ipv4 or '0.0.0.0'
@@ -1440,17 +1472,15 @@ class Boot():
                                 data['interfaces'][data['provision_interface']]['nameserver_ip'] = self.controller_ipv4 or '0.0.0.0'
                             if not data['interfaces'][data['provision_interface']]['nameserver_ip_ipv6']:
                                 data['interfaces'][data['provision_interface']]['nameserver_ip_ipv6'] = self.controller_ipv6 or '::/0'
+                        if interface['dhcp']:
+                            data['interfaces'][interface['interface']]['dhcp']=True
+                            # here we do not have to set the kerneloption luna.bootproto=dhcp as we already do dhcp for the interface
                         if not data['interfaces'][interface['interface']]['ipaddress']:
                             del data['interfaces'][interface['interface']]['gateway']
                             del data['interfaces'][interface['interface']]['nameserver_ip']
                         if not data['interfaces'][interface['interface']]['ipaddress_ipv6']:
                             del data['interfaces'][interface['interface']]['gateway_ipv6']
                             del data['interfaces'][interface['interface']]['nameserver_ip_ipv6']
-                        domain_search.append(interface['network'])
-                        if interface['interface'] == data['provision_interface'] and interface['network']:
-                            # if it is my prov interface then it will get that domain as a FQDN.
-                            data['nodehostname'] = data['nodename'] + '.' + interface['network']
-                            domain_search.insert(0, interface['network'])
 
             if not data['domain_search']:
                 if domain_search:
@@ -1471,6 +1501,7 @@ class Boot():
             kerneloptions=data['kerneloptions'].split(' ')
             self.logger.debug(f"*** {kerneloptions}")
             if 'luna.bootproto=dhcp' in kerneloptions:
+                # most commonly used for cloud nodes
                 self.logger.debug(f"*** found dhcp bootproto")
                 if 'interfaces' in data and data['provision_interface'] in data['interfaces']:
                     self.logger.debug(f"*** set dhcp for {data['provision_interface']}")

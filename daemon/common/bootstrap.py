@@ -355,6 +355,7 @@ def bootstrap(bootstrapfile=None):
                 {'column': 'network', 'value': network_details['network']},
                 {'column': 'subnet', 'value': network_details['subnet']},
                 {'column': 'dhcp', 'value': dhcp},
+                {'column': 'dhcp_forward_updates', 'value': '0'},
                 {'column': 'dhcp_range_begin', 'value': dhcp_range_begin},
                 {'column': 'dhcp_range_end', 'value': dhcp_range_end},
                 {'column': 'gateway', 'value': defaultgw_ip},

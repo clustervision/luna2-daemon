@@ -221,34 +221,37 @@ class Config(object):
                 network_name = nwk['name']
                 network_ip = nwk['network']
                 network_ipv6 = nwk['network_ipv6']
-                node_interface = Database().get_record_join(
-                    ['node.name as nodename', 'ipaddress.ipaddress', 
-                     'ipaddress.ipaddress_ipv6', 'nodeinterface.macaddress'],
-                    ['ipaddress.tablerefid=nodeinterface.id', 'nodeinterface.nodeid=node.id'],
-                    ['tableref="nodeinterface"', f'ipaddress.networkid="{network_id}"']
-                )
-                nodedomain=nwk['name']
-                if node_interface:
-                    for interface in node_interface:
-                        if nodedomain == domain:
-                            node=interface['nodename']
-                        else:
-                            node=f"{interface['nodename']}.{nodedomain}"
-                        if interface['macaddress'] and node not in config_hosts:
-                            if interface['ipaddress_ipv6']:
-                                config_hosts6[node]={}
-                                config_hosts6[node]['name']=interface['nodename']
-                                config_hosts6[node]['domain']=nodedomain
-                                config_hosts6[node]['ipaddress']=interface['ipaddress_ipv6']
-                                config_hosts6[node]['macaddress']=interface['macaddress']
-                            elif interface['ipaddress']:
-                                config_hosts[node]={}
-                                config_hosts[node]['name']=interface['nodename']
-                                config_hosts[node]['domain']=nodedomain
-                                config_hosts[node]['ipaddress']=interface['ipaddress']
-                                config_hosts[node]['macaddress']=interface['macaddress']
+                if not nwk['dhcp_forward_updates']:
+                    node_interface = Database().get_record_join(
+                        ['node.name as nodename', 'ipaddress.ipaddress', 
+                         'ipaddress.ipaddress_ipv6', 'nodeinterface.macaddress'],
+                        ['ipaddress.tablerefid=nodeinterface.id', 'nodeinterface.nodeid=node.id'],
+                        ['tableref="nodeinterface"', f'ipaddress.networkid="{network_id}"']
+                    )
+                    nodedomain=nwk['name']
+                    if node_interface:
+                        for interface in node_interface:
+                            if nodedomain == domain:
+                                node=interface['nodename']
+                            else:
+                                node=f"{interface['nodename']}.{nodedomain}"
+                            if interface['macaddress'] and node not in config_hosts:
+                                if interface['ipaddress_ipv6']:
+                                    config_hosts6[node]={}
+                                    config_hosts6[node]['name']=interface['nodename']
+                                    config_hosts6[node]['domain']=nodedomain
+                                    config_hosts6[node]['ipaddress']=interface['ipaddress_ipv6']
+                                    config_hosts6[node]['macaddress']=interface['macaddress']
+                                elif interface['ipaddress']:
+                                    config_hosts[node]={}
+                                    config_hosts[node]['name']=interface['nodename']
+                                    config_hosts[node]['domain']=nodedomain
+                                    config_hosts[node]['ipaddress']=interface['ipaddress']
+                                    config_hosts[node]['macaddress']=interface['macaddress']
+                    else:
+                        self.logger.info(f'no nodes available for network {network_name} IPv4: {network_ip} or IPv6: {network_ipv6}')
                 else:
-                    self.logger.info(f'No Nodes available for network {network_name} IPv4: {network_ip} or IPv6: {network_ipv6}')
+                    self.logger.info(f'using forward updates for network {network_name} IPv4: {network_ip} or IPv6: {network_ipv6}')
                 for item in ['otherdevices', 'switch']:
                     devices = Database().get_record_join(
                         [f'{item}.name','ipaddress.ipaddress','ipaddress.ipaddress_ipv6',f'{item}.macaddress'],
@@ -377,6 +380,18 @@ class Config(object):
             else:
                 subnet['nextserver']=controller[0]['ipaddress']
             subnet['nextport']=serverport
+        if nwk['dhcp_forward_updates']:
+            rev = ''
+            subnet['forward_updates'] = nwk['dhcp_forward_updates'] or False
+            if ipversion == 'ipv4':
+                rev = ip_address(nwk['network']).reverse_pointer
+                rev = rev.split('.')
+                rev = '.'.join(rev[2:])
+            elif ipversion == 'ipv6':
+                rev = ip_address(nwk['network_ipv6']).reverse_pointer
+                rev = rev.split('.')
+                rev = '.'.join(rev[16:])
+            subnet['reverse'] = rev# + '.in-addr.arpa'
         self.logger.debug(f"SUBNET: {subnet}")
         return subnet
 
@@ -450,6 +465,7 @@ class Config(object):
         if networks:
             dns_allowed_query=['127.0.0.0/8']
  
+        controller_ips = []
         for nwk in networks:
             network_id = nwk['id']
             networkname = None
@@ -510,6 +526,11 @@ class Config(object):
             )
             if controllers:
                 mergedlist.append(controllers)
+                for controller in controllers:
+                    if controller['ipaddress']:
+                        controller_ips.append(controller['ipaddress'])
+                    if controller['ipaddress_ipv6']:
+                        controller_ips.append(controller['ipaddress_ipv6'])
             nodes = Database().get_record_join(
                 ['node.name as host', 'ipaddress.ipaddress', 'ipaddress.ipaddress_ipv6',
                   'ipaddress.dhcp', 'network.name as networkname'],
@@ -606,14 +627,20 @@ class Config(object):
             except Exception as exp:
                 self.logger.error(f"Uh oh... {exp}")
 
+        omapikey=None
+        if CONSTANT['DHCP']['OMAPIKEY']:
+            omapikey=CONSTANT['DHCP']['OMAPIKEY']
+
         # we create the actual /etc/named.conf and /etc/named.luna.zones
         managed_keys="/trinity/local/var/lib/named/dynamic"
         if not os.path.exists(managed_keys):
             managed_keys=None
         dns_conf_template = env.get_template(template_dns_conf)
-        dns_conf_config = dns_conf_template.render(ALLOWED_QUERY=dns_allowed_query,FORWARDERS=forwarder,MANAGED_KEYS=managed_keys)
+        dns_conf_config = dns_conf_template.render(ALLOWED_QUERY=dns_allowed_query,FORWARDERS=forwarder,
+                                                   MANAGED_KEYS=managed_keys,OMAPIKEY=omapikey)
         dns_zones_conf_template = env.get_template(template_dns_zones_conf)
-        dns_zones_conf_config = dns_zones_conf_template.render(ZONES=dns_zones)
+        dns_zones_conf_config = dns_zones_conf_template.render(ZONES=dns_zones,OMAPIKEY=omapikey,
+                                                               ALLOW_UPDATES=controller_ips)
 
         dns_file = {'source': f'{tmpdir}/named.conf', 'destination': '/etc/named.conf'}
         files.append(dns_file)

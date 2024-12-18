@@ -177,6 +177,7 @@ DATABASE_LAYOUT_network = [
 {"column": "nameserver_ip_ipv6",   "datatype": "VARCHAR", "length": "60"},
 {"column": "ntp_server",           "datatype": "VARCHAR", "length": "60"},
 {"column": "dhcp",                 "datatype": "INTEGER", "length": "10"},
+{"column": "dhcp_forward_updates", "datatype": "INTEGER", "length": "10"},
 {"column": "dhcp_range_begin",     "datatype": "VARCHAR", "length": "20"},
 {"column": "dhcp_range_begin_ipv6","datatype": "VARCHAR", "length": "60"},
 {"column": "dhcp_range_end",       "datatype": "VARCHAR", "length": "20"},

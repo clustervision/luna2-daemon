@@ -314,6 +314,7 @@ def bootstrap(bootstrapfile=None):
             {'column': 'debug', 'value': '0'},
             {'column': 'packing_bootpause', 'value': '1'},
             {'column': 'createnode_ondemand', 'value': '1'},
+            {'column': 'createnode_macashost', 'value': '0'},
             {'column': 'nextnode_discover', 'value': '0'},
             {'column': 'nameserver_ip', 'value': defaultserver_ip},
             {'column': 'forwardserver_ip', 'value': forwardserver_ip},

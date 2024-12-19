@@ -255,6 +255,7 @@ class Cluster():
                     where = [{"column": "id", "value": cluster[0]['id']}]
                     row = Helper().make_rows(data)
                     Database().update('cluster', row, where)
+                    Service().queue('dns','reload')
                     Service().queue('dns','restart')
                     response = 'Cluster updated'
                     status=True

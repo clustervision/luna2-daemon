@@ -112,6 +112,8 @@ class Config(object):
         config_shared6 = {}
         config_subnets = {}
         config_subnets6 = {}
+        config_zones = {}
+        config_zoness6 = {}
         config_empty = {}
         config_empty6 = {}
         config_hosts = {}
@@ -221,7 +223,13 @@ class Config(object):
                 network_name = nwk['name']
                 network_ip = nwk['network']
                 network_ipv6 = nwk['network_ipv6']
-                if not nwk['dhcp_forward_updates']:
+                if nwk['dhcp_forward_updates']:
+                    self.logger.info(f'using forward updates for network {network_name} IPv4: {network_ip} or IPv6: {network_ipv6}')
+                    if nwk['ipv4']:
+                        config_zones[nwk['name']] = self.dhcp_zone_config(nwk,'ipv4')
+                    if nwk['ipv6']:
+                        config_zones6[nwk['name']] = self.dhcp_zone_config(nwk,'ipv6')
+                else:
                     node_interface = Database().get_record_join(
                         ['node.name as nodename', 'ipaddress.ipaddress', 
                          'ipaddress.ipaddress_ipv6', 'nodeinterface.macaddress'],
@@ -250,8 +258,6 @@ class Config(object):
                                     config_hosts[node]['macaddress']=interface['macaddress']
                     else:
                         self.logger.info(f'no nodes available for network {network_name} IPv4: {network_ip} or IPv6: {network_ipv6}')
-                else:
-                    self.logger.info(f'using forward updates for network {network_name} IPv4: {network_ip} or IPv6: {network_ipv6}')
                 for item in ['otherdevices', 'switch']:
                     devices = Database().get_record_join(
                         [f'{item}.name','ipaddress.ipaddress','ipaddress.ipaddress_ipv6',f'{item}.macaddress'],
@@ -281,8 +287,9 @@ class Config(object):
             if len(config_subnets) > 0 or len(config_shared) > 0:
                 dhcpd_template = env.get_template(template)
                 dhcpd_config = dhcpd_template.render(CLASSES=config_classes,SHARED=config_shared,SUBNETS=config_subnets,
-                                                     EMPTY=config_empty,HOSTS=config_hosts,POOLS=config_pools,DOMAINNAME=domain,
-                                                     NAMESERVERS=nameserver_ip,NTPSERVERS=ntp_server,OMAPIKEY=omapikey)
+                                                     ZONES=config_zones,EMPTY=config_empty,HOSTS=config_hosts,POOLS=config_pools,
+                                                     DOMAINNAME=domain,NAMESERVERS=nameserver_ip,NTPSERVERS=ntp_server,
+                                                     OMAPIKEY=omapikey)
                 with open(dhcp_file, 'w', encoding='utf-8') as dhcp:
                     dhcp.write(dhcpd_config)
                 try:
@@ -300,9 +307,10 @@ class Config(object):
             if len(config_subnets6) > 0 or len(config_shared6) > 0:
                 dhcpd_template = env.get_template(template6)
                 dhcpd_config = dhcpd_template.render(CLASSES=config_classes6,SHARED=config_shared6,SUBNETS=config_subnets6,
-                                                     EMPTY=config_empty6,HOSTS=config_hosts6,POOLS=config_pools6,DOMAINNAME=domain,
-                                                     NAMESERVERS=nameserver_ip,NAMESERVERS_IPV6=nameserver_ip_ipv6,
-                                                     NTPSERVERS=ntp_server,OMAPIKEY=omapikey)
+                                                     ZONES=config_zones6,EMPTY=config_empty6,HOSTS=config_hosts6,
+                                                     POOLS=config_pools6,DOMAINNAME=domain,NAMESERVERS=nameserver_ip,
+                                                     NAMESERVERS_IPV6=nameserver_ip_ipv6,NTPSERVERS=ntp_server,
+                                                     OMAPIKEY=omapikey)
                 with open(dhcp6_file, 'w', encoding='utf-8') as dhcp:
                     dhcp.write(dhcpd_config)
                 try:
@@ -380,20 +388,30 @@ class Config(object):
             else:
                 subnet['nextserver']=controller[0]['ipaddress']
             subnet['nextport']=serverport
-        if nwk['dhcp_forward_updates']:
-            rev = ''
-            subnet['forward_updates'] = nwk['dhcp_forward_updates'] or False
-            if ipversion == 'ipv4':
-                rev = ip_address(nwk['network']).reverse_pointer
-                rev = rev.split('.')
-                rev = '.'.join(rev[2:])
-            elif ipversion == 'ipv6':
-                rev = ip_address(nwk['network_ipv6']).reverse_pointer
-                rev = rev.split('.')
-                rev = '.'.join(rev[16:])
-            subnet['reverse'] = rev# + '.in-addr.arpa'
         self.logger.debug(f"SUBNET: {subnet}")
         return subnet
+
+    def dhcp_zone_config (self,nwk=[],ipversion='ipv4'):
+        """ 
+        dhcp subnetblock with config
+        glue between the variouszone blocks: prepare for dhcp_subnet function
+        """
+        zone={}
+        rev = ''
+        zone['domain'] = nwk['name']
+        zone['primary'] = Controller().get_beaconip()
+        zone['forward'] = nwk['name']
+        if ipversion == 'ipv4':
+            rev = ip_address(nwk['network']).reverse_pointer
+            rev = rev.split('.')
+            rev = '.'.join(rev[2:])
+        elif ipversion == 'ipv6':
+            rev = ip_address(nwk['network_ipv6']).reverse_pointer
+            rev = rev.split('.')
+            rev = '.'.join(rev[16:])
+        zone['reverse'] = rev# + '.in-addr.arpa'
+        self.logger.debug(f"ZONE: {zone}")
+        return zone
 
     def dhcp_empty_config (self,nwk=[],ipversion='ipv4'):
         """
@@ -531,15 +549,16 @@ class Config(object):
                         controller_ips.append(controller['ipaddress'])
                     if controller['ipaddress_ipv6']:
                         controller_ips.append(controller['ipaddress_ipv6'])
-            nodes = Database().get_record_join(
-                ['node.name as host', 'ipaddress.ipaddress', 'ipaddress.ipaddress_ipv6',
-                  'ipaddress.dhcp', 'network.name as networkname'],
-                ['ipaddress.tablerefid=nodeinterface.id', 'nodeinterface.nodeid=node.id',
-                 'network.id=ipaddress.networkid'],
-                ['tableref="nodeinterface"', f'ipaddress.networkid="{network_id}"']
-            )
-            if nodes:
-                mergedlist.append(nodes)
+            if not nwk['dhcp_forward_updates']:
+                nodes = Database().get_record_join(
+                    ['node.name as host', 'ipaddress.ipaddress', 'ipaddress.ipaddress_ipv6',
+                      'ipaddress.dhcp', 'network.name as networkname'],
+                    ['ipaddress.tablerefid=nodeinterface.id', 'nodeinterface.nodeid=node.id',
+                     'network.id=ipaddress.networkid'],
+                    ['tableref="nodeinterface"', f'ipaddress.networkid="{network_id}"']
+                )
+                if nodes:
+                    mergedlist.append(nodes)
 
             for item in ['otherdevices','switch']:
                 devices = Database().get_record_join(
@@ -1200,7 +1219,7 @@ class Config(object):
                                     [{"column": "id", "value": node['ifid']}]
                                 )
                     Queue().remove_task_from_queue(next_id)
-                    Queue().add_task_to_queue(task='restart', param='dns',
+                    Queue().add_task_to_queue(task='reload', param='dns',
                                               subsystem='housekeeper',
                                               request_id='__update_interface_on_group_nodes__')
                 else:
@@ -1335,7 +1354,7 @@ class Config(object):
                                     message += "no free IP addresses available."
                                     self.logger.error(message)
                     Queue().remove_task_from_queue(next_id)
-                    Queue().add_task_to_queue(task='restart', param='dns', subsystem='housekeeper',
+                    Queue().add_task_to_queue(task='reload', param='dns', subsystem='housekeeper',
                                               request_id='__update_interface_ipaddress_on_network_change__')
                     Queue().add_task_to_queue(task='restart', param='dhcp', subsystem='housekeeper',
                                               request_id='__update_interface_ipaddress_on_network_change__')

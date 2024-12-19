@@ -88,7 +88,8 @@ def on_starting(server):
     try:
         Service().luna_service('dhcp', 'restart')
         Service().luna_service('dhcp6', 'restart')
-        Service().luna_service('dns', 'restart')
+        Service().luna_service('dns', 'reload')
+        Service().luna_service('dns', 'start')
     except Exception as exp:
         exc_type, exc_obj, exc_tb = sys.exc_info()
         sys.stderr.write(f"ERROR: Restarting services returned an exception: {exp}, {exc_type}, in {exc_tb.tb_lineno}\n")

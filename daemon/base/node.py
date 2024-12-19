@@ -643,7 +643,7 @@ class Node():
                 # For now i have the below two disabled. it's testing. -Antoine aug 8 2023
                 #Service().queue('dhcp', 'restart')
                 #Service().queue('dhcp6', 'restart')
-                #Service().queue('dns', 'restart')
+                #Service().queue('dns', 'reload')
                 # below might look as redundant but is added to prevent a possible race condition
                 # when many nodes are added in a loop.
                 # the below tasks ensures that even the last node will be included in dhcp/dns
@@ -651,7 +651,7 @@ class Node():
                                           subsystem='housekeeper', request_id='__node_update__')
                 Queue().add_task_to_queue(task='restart', param='dhcp6', 
                                           subsystem='housekeeper', request_id='__node_update__')
-                Queue().add_task_to_queue(task='restart', param='dns', 
+                Queue().add_task_to_queue(task='reload', param='dns', 
                                           subsystem='housekeeper', request_id='__node_update__')
 
                 # ---- we call the node plugin - maybe someone wants to run something after create/update?
@@ -919,12 +919,12 @@ class Node():
                 # Service().queue('dhcp','restart')
                 # Service().queue('dhcp6','restart')
                 # do we need dhcp restart? MAC is wiped on new NIC so no real need i guess. pending
-                #Service().queue('dns','restart')
+                #Service().queue('dns','reload')
                 #Queue().add_task_to_queue(task='restart', param='dhcp', 
                 #                          subsystem='housekeeper', request_id='__node_clone__')
                 #Queue().add_task_to_queue(task='restart', param='dhcp6', 
                 #                          subsystem='housekeeper', request_id='__node_clone__')
-                Queue().add_task_to_queue(task='restart', param='dns', 
+                Queue().add_task_to_queue(task='reload', param='dns', 
                                           subsystem='housekeeper', request_id='__node_clone__')
 
                 # ---- we call the node plugin - maybe someone wants to run something after clone?
@@ -982,7 +982,7 @@ class Node():
             Database().delete_row('rackinventory', [{"column": "tablerefid", "value": nodeid},
                                                     {"column": "tableref", "value": "node"}])
             # for now i have disabled the below two lines for testing purposes. Antoine Aug 8 2023
-            #Service().queue('dns', 'restart')
+            #Service().queue('dns', 'resload')
             #Service().queue('dhcp', 'restart')
             #Service().queue('dhcp6', 'restart')
             # below might look redundant but is added to prevent a possible race condition
@@ -992,7 +992,7 @@ class Node():
                                       subsystem='housekeeper', request_id='__node_delete__')
             Queue().add_task_to_queue(task='restart', param='dhcp6', 
                                       subsystem='housekeeper', request_id='__node_delete__')
-            Queue().add_task_to_queue(task='restart', param='dns', 
+            Queue().add_task_to_queue(task='reload', param='dns', 
                                       subsystem='housekeeper', request_id='__node_delete__')
             response = f'Node {name} with all its interfaces removed'
             status=True

@@ -889,7 +889,7 @@ class Boot():
 #                                avail_ip,
 #                                data['network']
 #                            )
-#                            Service().queue('dns','restart')
+#                            Service().queue('dns','reload')
 #                            Service().queue('dhcp6','restart')
 #                        break
 

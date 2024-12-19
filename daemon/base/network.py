@@ -476,7 +476,7 @@ class Network():
                                 Database().update('ipaddress', row, where)
                     response = f'Network {name} updated successfully'
                     status=True
-                Service().queue('dns','restart')
+                Service().queue('dns','reload')
                 Service().queue('dhcp','restart')
                 Service().queue('dhcp6','restart')
                 # technically only needed when dhcp changes, but it doesn't hurt to just do it
@@ -508,7 +508,7 @@ class Network():
                 row = Helper().make_rows(data)
                 where = [{"column": "shared", "value": name}]
                 Database().update('network', row, where)
-                Service().queue('dns','restart')
+                Service().queue('dns','reload')
                 Service().queue('dhcp','restart')
                 Service().queue('dhcp6','restart')
                 response = 'Network removed'

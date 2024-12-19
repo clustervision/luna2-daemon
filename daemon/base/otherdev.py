@@ -148,7 +148,7 @@ class OtherDev():
                 else:
                     Service().queue('dhcp','restart')
                     Service().queue('dhcp6','restart')
-                    Service().queue('dns','restart')
+                    Service().queue('dns','reload')
             return status, response
         else:
             response = 'Invalid request: Did not receive data'
@@ -294,7 +294,7 @@ class OtherDev():
                     else:
                         Service().queue('dhcp', 'restart')
                         Service().queue('dhcp6','restart')
-                        Service().queue('dns', 'restart')
+                        Service().queue('dns', 'reload')
                         response = 'Device created'
                 else:
                     response = 'Invalid request: Columns are incorrect'

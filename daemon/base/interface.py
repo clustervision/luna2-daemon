@@ -468,7 +468,7 @@ class Interface():
                 Database().delete_row('nodeinterface', where)
                 # disabled the next two for testing. Antoine aug 8 2023
                 #Service().queue('dhcp','restart')
-                #Service().queue('dns','restart')
+                #Service().queue('dns','reload')
                 # below might look as redundant but is added to prevent a possible race condition
                 # when many nodes are added in a loop.
                 # the below tasks ensures that even the last node will be included in dhcp/dns
@@ -476,7 +476,7 @@ class Interface():
                                           subsystem='housekeeper', request_id='__node_interface_delete__')
                 Queue().add_task_to_queue(task='restart', param='dhcp6', 
                                           subsystem='housekeeper', request_id='__node_interface_delete__')
-                Queue().add_task_to_queue(task='restart', param='dns', 
+                Queue().add_task_to_queue(task='reload', param='dns', 
                                           subsystem='housekeeper', request_id='__node_interface_delete__')
                 response = f'Interface {interface} removed successfully'
                 status=True

@@ -34,11 +34,12 @@ id={{ LUNA_INTERFACES[interface]['vlanid'] }}
 method=auto
 dns=
 dns-search=
+dhcp-hostname={{ NODE_NAME }}
 
 [ipv6]
+method=auto
 dns=
 dns-search=
-method=auto
 {%- else %}
   {%- if LUNA_INTERFACES[interface]['ipaddress'] %}
 [ipv4]

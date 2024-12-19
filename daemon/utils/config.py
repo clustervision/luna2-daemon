@@ -229,35 +229,36 @@ class Config(object):
                         config_zones[nwk['name']] = self.dhcp_zone_config(nwk,'ipv4')
                     if nwk['ipv6']:
                         config_zones6[nwk['name']] = self.dhcp_zone_config(nwk,'ipv6')
+                node_interface = Database().get_record_join(
+                    ['node.name as nodename', 'ipaddress.ipaddress', 
+                     'ipaddress.ipaddress_ipv6', 'nodeinterface.macaddress','ipaddress.dhcp'],
+                    ['ipaddress.tablerefid=nodeinterface.id', 'nodeinterface.nodeid=node.id'],
+                    ['tableref="nodeinterface"', f'ipaddress.networkid="{network_id}"']
+                )
+                nodedomain=nwk['name']
+                if node_interface:
+                    for interface in node_interface:
+                        if nwk['dhcp_forward_updates'] and interface['dhcp']:
+                            continue
+                        if nodedomain == domain:
+                            node=interface['nodename']
+                        else:
+                            node=f"{interface['nodename']}.{nodedomain}"
+                        if interface['macaddress'] and node not in config_hosts:
+                            if interface['ipaddress_ipv6']:
+                                config_hosts6[node]={}
+                                config_hosts6[node]['name']=interface['nodename']
+                                config_hosts6[node]['domain']=nodedomain
+                                config_hosts6[node]['ipaddress']=interface['ipaddress_ipv6']
+                                config_hosts6[node]['macaddress']=interface['macaddress']
+                            elif interface['ipaddress']:
+                                config_hosts[node]={}
+                                config_hosts[node]['name']=interface['nodename']
+                                config_hosts[node]['domain']=nodedomain
+                                config_hosts[node]['ipaddress']=interface['ipaddress']
+                                config_hosts[node]['macaddress']=interface['macaddress']
                 else:
-                    node_interface = Database().get_record_join(
-                        ['node.name as nodename', 'ipaddress.ipaddress', 
-                         'ipaddress.ipaddress_ipv6', 'nodeinterface.macaddress'],
-                        ['ipaddress.tablerefid=nodeinterface.id', 'nodeinterface.nodeid=node.id'],
-                        ['tableref="nodeinterface"', f'ipaddress.networkid="{network_id}"']
-                    )
-                    nodedomain=nwk['name']
-                    if node_interface:
-                        for interface in node_interface:
-                            if nodedomain == domain:
-                                node=interface['nodename']
-                            else:
-                                node=f"{interface['nodename']}.{nodedomain}"
-                            if interface['macaddress'] and node not in config_hosts:
-                                if interface['ipaddress_ipv6']:
-                                    config_hosts6[node]={}
-                                    config_hosts6[node]['name']=interface['nodename']
-                                    config_hosts6[node]['domain']=nodedomain
-                                    config_hosts6[node]['ipaddress']=interface['ipaddress_ipv6']
-                                    config_hosts6[node]['macaddress']=interface['macaddress']
-                                elif interface['ipaddress']:
-                                    config_hosts[node]={}
-                                    config_hosts[node]['name']=interface['nodename']
-                                    config_hosts[node]['domain']=nodedomain
-                                    config_hosts[node]['ipaddress']=interface['ipaddress']
-                                    config_hosts[node]['macaddress']=interface['macaddress']
-                    else:
-                        self.logger.info(f'no nodes available for network {network_name} IPv4: {network_ip} or IPv6: {network_ipv6}')
+                    self.logger.info(f'no nodes available for network {network_name} IPv4: {network_ip} or IPv6: {network_ipv6}')
                 for item in ['otherdevices', 'switch']:
                     devices = Database().get_record_join(
                         [f'{item}.name','ipaddress.ipaddress','ipaddress.ipaddress_ipv6',f'{item}.macaddress'],
@@ -549,16 +550,15 @@ class Config(object):
                         controller_ips.append(controller['ipaddress'])
                     if controller['ipaddress_ipv6']:
                         controller_ips.append(controller['ipaddress_ipv6'])
-            if not nwk['dhcp_forward_updates']:
-                nodes = Database().get_record_join(
-                    ['node.name as host', 'ipaddress.ipaddress', 'ipaddress.ipaddress_ipv6',
-                      'ipaddress.dhcp', 'network.name as networkname'],
-                    ['ipaddress.tablerefid=nodeinterface.id', 'nodeinterface.nodeid=node.id',
-                     'network.id=ipaddress.networkid'],
-                    ['tableref="nodeinterface"', f'ipaddress.networkid="{network_id}"']
-                )
-                if nodes:
-                    mergedlist.append(nodes)
+            nodes = Database().get_record_join(
+                ['node.name as host', 'ipaddress.ipaddress', 'ipaddress.ipaddress_ipv6',
+                  'ipaddress.dhcp', 'network.name as networkname'],
+                ['ipaddress.tablerefid=nodeinterface.id', 'nodeinterface.nodeid=node.id',
+                 'network.id=ipaddress.networkid'],
+                ['tableref="nodeinterface"', f'ipaddress.networkid="{network_id}"']
+            )
+            if nodes:
+                mergedlist.append(nodes)
 
             for item in ['otherdevices','switch']:
                 devices = Database().get_record_join(
@@ -579,6 +579,12 @@ class Config(object):
 
             for hosts in mergedlist:
                 for host in hosts:
+                    if nwk['dhcp_forward_updates']:
+                        if 'dhcp' in host and host['dhcp']:
+                            continue
+                            # bit tricky situation as bind has a journal for the pure dhcp nodes
+                            # but we create a zone with the non dhcp ones. this is known
+                            # to clash and we might have to resort to nspdate through a plugin
                     try:
                         dns_zone_records[networkname][host['host']]={}
                         dns_zone_records[networkname][host['host']]['key']=host['host'].rstrip('.')

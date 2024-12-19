@@ -188,7 +188,8 @@ class Node():
                         'nodeinterface.macaddress',
                         'network.name as network',
                         'nodeinterface.vlanid',
-                        'nodeinterface.options'
+                        'nodeinterface.options',
+                        'network.dhcp_forward_updates'
                     ],
                     ['network.id=ipaddress.networkid', 'ipaddress.tablerefid=nodeinterface.id'],
                     ['tableref="nodeinterface"', f"nodeinterface.nodeid='{nodeid}'"]
@@ -207,12 +208,18 @@ class Node():
                             del interface['options']
                         if not interface['vlanid']:
                             del interface['vlanid']
-                        if not interface['dhcp']:
-                            del interface['dhcp']
                         if not interface['ipaddress']:
                             del interface['ipaddress']
                         if not interface['ipaddress_ipv6']:
                             del interface['ipaddress_ipv6']
+                        if interface['dhcp_forward_updates'] and interface['dhcp']:
+                            if 'ipaddress_ipv6' in interface:
+                                del interface['ipaddress_ipv6']
+                            if 'ipaddress' in interface:
+                                del interface['ipaddress']
+                        if not interface['dhcp']:
+                            del interface['dhcp']
+                        del interface['dhcp_forward_updates']
                         node['interfaces'].append(interface)
                         if interface['interface'] in all_node_interfaces_by_name.keys():
                             del all_node_interfaces_by_name[interface['interface']]
@@ -448,7 +455,8 @@ class Node():
                     'nodeinterface.macaddress',
                     'network.name as network',
                     'nodeinterface.vlanid',
-                    'nodeinterface.options'
+                    'nodeinterface.options',
+                    'network.dhcp_forward_updates'
                 ],
                 ['network.id=ipaddress.networkid', 'ipaddress.tablerefid=nodeinterface.id'],
                 ['tableref="nodeinterface"', f"nodeinterface.nodeid='{nodeid}'"]
@@ -466,12 +474,18 @@ class Node():
                         del interface['options']
                     if not interface['vlanid']:
                         del interface['vlanid']
-                    if not interface['dhcp']:
-                        del interface['dhcp']
                     if not interface['ipaddress']:
                         del interface['ipaddress']
                     if not interface['ipaddress_ipv6']:
                         del interface['ipaddress_ipv6']
+                    if interface['dhcp_forward_updates'] and interface['dhcp']:
+                        if 'ipaddress_ipv6' in interface:
+                            del interface['ipaddress_ipv6']
+                        if 'ipaddress' in interface:
+                            del interface['ipaddress']
+                    if not interface['dhcp']:
+                        del interface['dhcp']
+                    del interface['dhcp_forward_updates']
                     node['interfaces'].append(interface)
                     if interface['interface'] in all_node_interfaces_by_name.keys():
                         del all_node_interfaces_by_name[interface['interface']]

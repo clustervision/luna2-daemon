@@ -223,7 +223,7 @@ class Config(object):
                 network_name = nwk['name']
                 network_ip = nwk['network']
                 network_ipv6 = nwk['network_ipv6']
-                if nwk['dhcp_forward_updates']:
+                if nwk['dhcp_nodes_in_pool']:
                     self.logger.info(f'using forward updates for network {network_name} IPv4: {network_ip} or IPv6: {network_ipv6}')
                     if nwk['ipv4']:
                         config_zones[nwk['name']] = self.dhcp_zone_config(nwk,'ipv4')
@@ -238,7 +238,7 @@ class Config(object):
                 nodedomain=nwk['name']
                 if node_interface:
                     for interface in node_interface:
-                        if nwk['dhcp_forward_updates'] and interface['dhcp']:
+                        if nwk['dhcp_nodes_in_pool'] and interface['dhcp']:
                             continue
                         if nodedomain == domain:
                             node=interface['nodename']
@@ -579,7 +579,7 @@ class Config(object):
 
             for hosts in mergedlist:
                 for host in hosts:
-                    if nwk['dhcp_forward_updates']:
+                    if nwk['dhcp_nodes_in_pool']:
                         if 'dhcp' in host and host['dhcp']:
                             continue
                             # bit tricky situation as bind has a journal for the pure dhcp nodes
@@ -852,12 +852,35 @@ class Config(object):
         return False, message
 
 
-    def node_interface_dhcp_config(self, nodeid, interface_name, dhcp):
+    def node_interface_dhcp_config(self, nodeid, interface_name, dhcp, network=None):
         """
         This method sets dhcp for interface of nodes.
         """
         result_ip = False
-        my_config = {'dhcp': dhcp}
+        my_dhcp = {}
+
+        if network is not None:
+            network_details = Database().get_record(None, 'network', f'WHERE name="{network}"')
+        else:
+            network_details = Database().get_record_join(
+                ['network.*'],
+                ['ipaddress.tablerefid=nodeinterface.id', 'network.id=ipaddress.networkid'],
+                [
+                    'tableref="nodeinterface"',
+                    f'nodeinterface.nodeid="{nodeid}"',
+                    f'nodeinterface.interface="{interface_name}"'
+                ]
+            )
+
+        if not network_details:
+            message = "not enough information provided. network name incorrect or need network name if there is no existing config for dhcp"
+            self.logger.info(message)
+            return False, message
+
+        my_dhcp['networkid'] = network_details[0]['id']
+        dhcp = Helper().bool_to_string(dhcp)
+        my_dhcp['dhcp'] = dhcp
+
         my_interface = Database().get_record_join(
             ['ipaddress.*'],
             ['ipaddress.tablerefid=nodeinterface.id'],
@@ -869,7 +892,7 @@ class Config(object):
             )
 
         if my_interface: # existing ip config we need to modify
-            row = Helper().make_rows(my_config)
+            row = Helper().make_rows(my_dhcp)
             where = [{"column": "id", "value": f"{my_interface[0]['id']}"}]
             result_ip = Database().update('ipaddress', row, where)
 
@@ -878,9 +901,9 @@ class Config(object):
             where = f'WHERE nodeid = "{nodeid}" AND interface = "{interface_name}"'
             my_interface = Database().get_record(None, 'nodeinterface', where)
             if my_interface:
-                my_ipaddress['tableref']='nodeinterface'
-                my_ipaddress['tablerefid']=my_interface[0]['id']
-                row = Helper().make_rows(my_ipaddress)
+                my_dhcp['tableref'] = 'nodeinterface'
+                my_dhcp['tablerefid'] = my_interface[0]['id']
+                row = Helper().make_rows(my_dhcp)
                 result_ip = Database().insert('ipaddress', row)
 
         if result_ip:

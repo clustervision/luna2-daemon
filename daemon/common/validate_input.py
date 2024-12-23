@@ -51,7 +51,7 @@ REG_EXP = {
     'strictname': { 'regexp': r'^[a-z0-9\-\.]+$', 'error': 'combination of small characters a-z, numbers 0-9, \'-\' and \'.\'' },
     'strictcsv': { 'regexp': r'^[a-z0-9\-\,\ ]+$', 'error': 'combination of small characters a-z, numbers 0-9, whitespace, \'-\' and \',\'' },
     'loosecsv': { 'regexp': r'^[a-z0-9\-\,\ ]*$', 'error': 'combination of small characters a-z, numbers 0-9, whitespace, \'-\' and \',\'' },
-    'ipaddress': { 'regexp': r'^[0-9a-f:\.]+$', 'error': 'combination of characters small a-f, numbers 0-9, \':\' and \'.\'' },
+    'ipaddress': { 'regexp': r'^[0-9a-f:\.]*$', 'error': 'combination of characters small a-f, numbers 0-9, \':\' and \'.\'' },
     'macaddress': { 'regexp': r'^(([0-9A-Za-f]{2}((-|:)[0-9A-Za-f]{2}){5})|)$', 'error': '6 blocks of 2 characters a-f or numbers 0-9, separated by \':\' or \'-\'' },
     'minimal': { 'regexp': r'^\S.*$', 'error': 'minimal character requirement. at least one' },
     'integer': { 'regexp': r'^[0-9]+$', 'error': 'integers only' },

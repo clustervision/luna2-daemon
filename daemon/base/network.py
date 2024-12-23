@@ -69,11 +69,11 @@ class Network():
                     del network['dhcp_range_end']
                     del network['dhcp_range_begin_ipv6']
                     del network['dhcp_range_end_ipv6']
-                    del network['dhcp_forward_updates']
+                    del network['dhcp_nodes_in_pool']
                     network['dhcp'] = False
                 else:
                     network['dhcp'] = True
-                    network['dhcp_forward_updates'] = Helper().make_bool(network['dhcp_forward_updates'])
+                    network['dhcp_nodes_in_pool'] = Helper().make_bool(network['dhcp_nodes_in_pool'])
                 network['type'] = network['type'] or 'ethernet'
                 response['config']['network'][network['name']] = network
             status=True
@@ -106,11 +106,11 @@ class Network():
                     del network['dhcp_range_end']
                     del network['dhcp_range_begin_ipv6']
                     del network['dhcp_range_end_ipv6']
-                    del network['dhcp_forward_updates']
+                    del network['dhcp_nodes_in_pool']
                     network['dhcp'] = False
                 else:
                     network['dhcp'] = True
-                    network['dhcp_forward_updates'] = Helper().make_bool(network['dhcp_forward_updates'])
+                    network['dhcp_nodes_in_pool'] = Helper().make_bool(network['dhcp_nodes_in_pool'])
                 network['type'] = network['type'] or 'ethernet'
                 response['config']['network'][name] = network
             status=True
@@ -244,7 +244,7 @@ class Network():
                 default_zone=data['zone']
             elif create is True:
                 data['zone']="internal"
-                data['dhcp_forward_updates']="0"
+                data['dhcp_nodes_in_pool']="0"
             if 'gateway' in data:
                 if data['gateway'] == "":
                     data['gateway'] = None
@@ -314,8 +314,8 @@ class Network():
                 if data['dhcp'] == "1":
                     redistribute_ipaddress = True
                     # to make sure we do not overlap with existing node ip configs
-                if 'dhcp_forward_updates' in data:
-                    data['dhcp_forward_updates'] = Helper().bool_to_string(data['dhcp_forward_updates'])
+                if 'dhcp_nodes_in_pool' in data:
+                    data['dhcp_nodes_in_pool'] = Helper().bool_to_string(data['dhcp_nodes_in_pool'])
 
             if 'clear' in data:
                 if data['clear'] == 'ipv6' and db_data['network']:

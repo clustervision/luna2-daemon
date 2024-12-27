@@ -54,7 +54,6 @@ class Control():
         plugins_path=CONSTANT["PLUGINS"]["PLUGINS_DIRECTORY"]
         self.control_plugins = Helper().plugin_finder(f'{plugins_path}/control')
         self.run_plugins = Helper().plugin_finder(f'{plugins_path}/run')
-        # needs to be with constants. pending
 
 
     def control_child(self, pipeline, t=0):

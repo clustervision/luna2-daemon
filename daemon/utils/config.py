@@ -59,6 +59,8 @@ class Config(object):
         Constructor - As of now, nothing has to initialize.
         """
         self.logger = Log.get_logger()
+        self.plugins_path=CONSTANT["PLUGINS"]["PLUGINS_DIRECTORY"]
+        self.run_plugins = None
 
 
     def dhcp_overwrite(self):
@@ -434,6 +436,8 @@ class Config(object):
         """
         This method will write /etc/named.conf and zone files for every network
         """
+        self.run_plugins = Helper().plugin_finder(f'{self.plugins_path}/run')
+        run_plugin = Helper().plugin_load(self.run_plugins, 'run/config', 'dns')
         validate = True
         template_dns_conf = 'templ_dns_conf.cfg' # i.e. /etc/named.conf
         template_dns_zones_conf = 'templ_dns_zones_conf.cfg' # i.e. /etc/named.luna.zones
@@ -455,6 +459,10 @@ class Config(object):
             return False
         file_loader = FileSystemLoader(CONSTANT["TEMPLATES"]["TEMPLATE_FILES"])
         env = Environment(loader=file_loader)
+
+        omapikey=None
+        if CONSTANT['DHCP']['OMAPIKEY']:
+            omapikey=CONSTANT['DHCP']['OMAPIKEY']
 
         tmpdir=f"{CONSTANT['TEMPLATES']['TMP_DIRECTORY']}"
         files, forwarder = [], []
@@ -588,9 +596,11 @@ class Config(object):
                     try:
                         dns_zone_records[networkname][host['host']]={}
                         dns_zone_records[networkname][host['host']]['key']=host['host'].rstrip('.')
+                        ipaddress = None
                         if 'ipaddress_ipv6' in host and host['ipaddress_ipv6']:
                             dns_zone_records[networkname][host['host']]['type']='AAAA'
                             dns_zone_records[networkname][host['host']]['value']=host['ipaddress_ipv6']
+                            ipaddress = host['ipaddress_ipv6']
                             self.logger.debug(f"DNS -- IPv6: host {host['host']}, AAAA ip [{host['ipaddress_ipv6']}]")
                             if rev_ipv6:
                                 ipv6_rev = ip_address(host['ipaddress_ipv6']).reverse_pointer
@@ -605,6 +615,7 @@ class Config(object):
                         elif host['ipaddress']:
                             dns_zone_records[networkname][host['host']]['type']='A'
                             dns_zone_records[networkname][host['host']]['value']=host['ipaddress']
+                            ipaddress = host['ipaddress']
                             self.logger.debug(f"DNS -- IPv4: host {host['host']}, A ip [{host['ipaddress']}]")
                             if rev_ip:
                                 sub_ip = host['ipaddress'].split('.')
@@ -620,6 +631,9 @@ class Config(object):
                             if not host['dhcp']:
                                 self.logger.warning(f"node {host['host']} does not appear to have any ip address configured")
                             del dns_zone_records[networkname][host['host']]
+                        if ipaddress and nwk['dhcp_nodes_in_pool']:
+                            return_code, message = run_plugin().nsupdate(host=f"{host['host']}.{networkname}", ipaddress=ipaddress, ttl=3600,
+                                                                         key_name='omapi_key', key_secret=omapikey)
                     except Exception as exp:
                         exc_type, exc_obj, exc_tb = sys.exc_info()
                         self.logger.error(f"creating DNS zone encountered problems: {exp}, {exc_type}, in {exc_tb.tb_lineno}")
@@ -651,10 +665,6 @@ class Config(object):
                     self.logger.error(f'DNS zone file: {tmpdir}/{zone}.luna.zone containing errors. {exp}')
             except Exception as exp:
                 self.logger.error(f"Uh oh... {exp}")
-
-        omapikey=None
-        if CONSTANT['DHCP']['OMAPIKEY']:
-            omapikey=CONSTANT['DHCP']['OMAPIKEY']
 
         # we create the actual /etc/named.conf and /etc/named.luna.zones
         managed_keys="/trinity/local/var/lib/named/dynamic"

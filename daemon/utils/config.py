@@ -731,8 +731,6 @@ class Config(object):
         if result_ip is False:
             return False,"IP address assignment failed"
         return True,"ip address changed"
-    
-    # ----------------------------------------------------------------------------------------------
 
     def device_ipaddress_config(self, device_id=None, device=None, ipaddress=None, network=None):
         """
@@ -795,6 +793,7 @@ class Config(object):
             return True,"ip address changed"
         return False,"not enough details"
 
+    # ----------------------------------------------------------------------------------------------
 
     def node_interface_config(self, nodeid=None, interface_name=None, macaddress=None, vlanid=None, options=None):
         """
@@ -836,6 +835,7 @@ class Config(object):
         self.logger.info(message)
         return False, message
 
+    # ----------------------------------------------------------------------------------------------
 
     def node_interface_clear_ipaddress(self, nodeid, interface_name, ipversion='ipv4'):
         """
@@ -1032,6 +1032,7 @@ class Config(object):
         self.logger.info(message)
         return False, message
 
+    # ----------------------------------------------------------------------------------------------
 
     def update_interface_on_group_nodes(self, name=None, request_id=None):
         """

@@ -6,11 +6,11 @@ luna network rename cluster ctrl-network
 ```
 - stop dhcp on the ctrl-network:
 ```
-luna network change -dhcp n ctrl-network
+luna network change --dhcp n ctrl-network
 ```
 - create a new network for the remote nodes:
 ```
-luna network add -N <network ip>/<cidr> -dhcp y -ds <dhcp range start> -de <dhcp range end> -g <gateway/ip of router> -gm 10 cluster
+luna network add -N <network ip>/<cidr> --dhcp y -ds <dhcp range start> -de <dhcp range end> -g <gateway/ip of router> -gm 10 cluster
 ```
 - configure the provision interface of e.g. compute group to be in the new network:
 ```
@@ -27,7 +27,7 @@ chown named.named /var/named/*
 ```
 - assuming that the cluster network has already enabled dhcp, set the dhcp_nodes_in_pool:
 ```
-luna network change -dnip y cluster
+luna network change --dnip y cluster
 ```
 - make sure there is only one group, e.g. compute, and have this group set the provisioning interface to dhcp
 ```

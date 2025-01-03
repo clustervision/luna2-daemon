@@ -10,11 +10,11 @@ luna network change --dhcp n ctrl-network
 ```
 - create a new network for the remote nodes:
 ```
-luna network add -N <network ip>/<cidr> --dhcp y -ds <dhcp range start> -de <dhcp range end> -g <gateway/ip of router> -gm 10 cluster
+luna network add -N <network ip>/<cidr> --dhcp y --ds <dhcp range start> --de <dhcp range end> --gw <gateway/ip of router> --gm 10 cluster
 ```
 - configure the provision interface of e.g. compute group to be in the new network:
 ```
-luna group change -if BOOTIF -N cluster compute
+luna group change --if BOOTIF -N cluster compute
 ```
 - boot the nodes
 
@@ -31,11 +31,11 @@ luna network change --dnip y cluster
 ```
 - make sure there is only one group, e.g. compute, and have this group set the provisioning interface to dhcp
 ```
-luna group change -if BOOTIF -dhcp y compute
+luna group change --if BOOTIF -dhcp y compute
 ```
 - enable the use of mac address as host name base while ensuring automatic node name detection:
 ```
-luna cluster change -m y -o y -nx y
+luna cluster change --cm y --co y --nx y
 ```
 - boot the nodes
 

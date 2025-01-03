@@ -127,7 +127,7 @@ class Config(object):
         emptybyname = {}
         handled = []
 
-        empty = Database().get_record(None, 'network', ' WHERE `dhcp` is NULL or `dhcp` != 1')
+        empty = Database().get_record(None, 'network', f' WHERE name="{domain}" AND (`dhcp` IS NULL OR `dhcp` != 1)')
         if empty:
             emptybyname = Helper().convert_list_to_dict(empty, 'name')
 
@@ -287,7 +287,8 @@ class Config(object):
             file_loader = FileSystemLoader(CONSTANT["TEMPLATES"]["TEMPLATE_FILES"])
             env = Environment(loader=file_loader)
             # IPv4 -----------------------------------
-            if len(config_subnets) > 0 or len(config_shared) > 0:
+            #if len(config_subnets) or len(config_shared) or len(config_empty):
+            if any([config_subnets, config_shared, config_empty]):
                 dhcpd_template = env.get_template(template)
                 dhcpd_config = dhcpd_template.render(CLASSES=config_classes,SHARED=config_shared,SUBNETS=config_subnets,
                                                      ZONES=config_zones,EMPTY=config_empty,HOSTS=config_hosts,POOLS=config_pools,
@@ -307,7 +308,8 @@ class Config(object):
                 else:
                     shutil.copyfile(dhcp_file, '/etc/dhcp/dhcpd.conf')
             # IPv6 -----------------------------------
-            if len(config_subnets6) > 0 or len(config_shared6) > 0:
+            #if len(config_subnets6) or len(config_shared6) or len(config_empty6):
+            if any([config_subnets6, config_shared6, config_empty6]):
                 dhcpd_template = env.get_template(template6)
                 dhcpd_config = dhcpd_template.render(CLASSES=config_classes6,SHARED=config_shared6,SUBNETS=config_subnets6,
                                                      ZONES=config_zones6,EMPTY=config_empty6,HOSTS=config_hosts6,

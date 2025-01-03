@@ -287,7 +287,6 @@ class Config(object):
             file_loader = FileSystemLoader(CONSTANT["TEMPLATES"]["TEMPLATE_FILES"])
             env = Environment(loader=file_loader)
             # IPv4 -----------------------------------
-            #if len(config_subnets) or len(config_shared) or len(config_empty):
             if any([config_subnets, config_shared, config_empty]):
                 dhcpd_template = env.get_template(template)
                 dhcpd_config = dhcpd_template.render(CLASSES=config_classes,SHARED=config_shared,SUBNETS=config_subnets,
@@ -308,7 +307,6 @@ class Config(object):
                 else:
                     shutil.copyfile(dhcp_file, '/etc/dhcp/dhcpd.conf')
             # IPv6 -----------------------------------
-            #if len(config_subnets6) or len(config_shared6) or len(config_empty6):
             if any([config_subnets6, config_shared6, config_empty6]):
                 dhcpd_template = env.get_template(template6)
                 dhcpd_config = dhcpd_template.render(CLASSES=config_classes6,SHARED=config_shared6,SUBNETS=config_subnets6,
@@ -1300,6 +1298,7 @@ class Config(object):
                                 'ipaddress.networkid as networkid',
                                 'network.network',
                                 'network.subnet',
+                                'network.dhcp as networkdhcp',
                                 'network.network_ipv6',
                                 'network.subnet_ipv6',
                                 'network.name as networkname',
@@ -1316,7 +1315,7 @@ class Config(object):
                                 ret, avail, avail6, maximum = 0, ipaddress['ipaddress'], ipaddress['ipaddress_ipv6'], 5
                                 we_continue = False
                                 we_continue6 = False
-                                we_dhcp = ipaddress['dhcp'] or False
+                                we_dhcp = ipaddress['networkdhcp'] and (ipaddress['dhcp'] or False)
                                 if ipaddress['network']:
                                     if not ipaddress['network_ipv6']:
                                         avail6 = None

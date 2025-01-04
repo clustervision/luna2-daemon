@@ -454,7 +454,7 @@ class Boot():
             self.logger.warning("possible configuration error: No controller available or missing network for controller")
         nodeinterface = Database().get_record_join(
             ['nodeinterface.nodeid', 'nodeinterface.interface',
-             'ipaddress.ipaddress', 'ipaddress.ipaddress_ipv6', 'ipaddress.dhcp',
+             'ipaddress.ipaddress', 'ipaddress.ipaddress_ipv6', 'ipaddress.dhcp', 'network.dhcp as networkdhcp',
              'network.name as network', 'network.network as networkip', 'network.subnet', 'network.gateway',
              'network.network_ipv6 as networkip_ipv6', 'network.subnet_ipv6', 'network.gateway_ipv6'],
             ['network.id=ipaddress.networkid', 'ipaddress.tablerefid=nodeinterface.id'],
@@ -462,7 +462,7 @@ class Boot():
         )
         if nodeinterface:
             data['nodeid'] = nodeinterface[0]['nodeid']
-            if nodeinterface[0]["dhcp"]:
+            if nodeinterface[0]["dhcp"] and nodeinterface[0]["networkdhcp"]:
                 data['nodeip'] = 'dhcp'
             elif nodeinterface[0]["ipaddress_ipv6"]:
                 data['nodeip'] = f'{nodeinterface[0]["ipaddress_ipv6"]}/{nodeinterface[0]["subnet_ipv6"]}'
@@ -504,7 +504,7 @@ class Boot():
                             ['nodeinterface.nodeid', 'nodeinterface.interface',
                              'ipaddress.ipaddress', 'network.name as network', 'network.gateway',
                              'ipaddress.ipaddress_ipv6', 'ipaddress.dhcp', 'network.gateway_ipv6',
-                             'network.network_ipv6 as networkip_ipv6',
+                             'network.network_ipv6 as networkip_ipv6', 'network.dhcp as networkdhcp',
                              'network.network as networkip', 'network.subnet'],
                             ['network.id=ipaddress.networkid',
                              'ipaddress.tablerefid=nodeinterface.id'],
@@ -512,7 +512,7 @@ class Boot():
                         )
                         if nodeinterface:
                             data['nodeid'] = nodeinterface[0]['nodeid']
-                            if nodeinterface[0]["dhcp"]:
+                            if nodeinterface[0]["dhcp"] and nodeinterface[0]["networkdhcp"]:
                                 data['nodeip'] = 'dhcp'
                             elif nodeinterface[0]["ipaddress_ipv6"]:
                                 data['nodeip'] = f'{nodeinterface[0]["ipaddress_ipv6"]}/{nodeinterface[0]["subnet_ipv6"]}'
@@ -534,7 +534,7 @@ class Boot():
                             ['node.name', 'nodeinterface.nodeid', 'nodeinterface.interface',
                              'ipaddress.ipaddress', 'network.name as network', 'network.gateway',
                              'ipaddress.ipaddress_ipv6', 'ipaddress.dhcp', 'network.gateway_ipv6',
-                             'network.network_ipv6 as networkip_ipv6',
+                             'network.network_ipv6 as networkip_ipv6', 'network.dhcp as networkdhcp',
                              'network.network as networkip', 'network.subnet',
                              'nodeinterface.macaddress'],
                             ['node.id=nodeinterface.nodeid','network.id=ipaddress.networkid',
@@ -558,7 +558,7 @@ class Boot():
                                             mac
                                         )
                                     data['nodeid'] = node['nodeid']
-                                    if nodeinterface[0]["dhcp"]:
+                                    if nodeinterface[0]["dhcp"] and nodeinterface[0]["networkdhcp"]:
                                         data['nodeip'] = 'dhcp'
                                     elif node["ipaddress_ipv6"]:
                                         data['nodeip'] = f'{node["ipaddress_ipv6"]}/{node["subnet_ipv6"]}'
@@ -642,14 +642,14 @@ class Boot():
                         ['nodeinterface.nodeid', 'nodeinterface.interface', 'ipaddress.ipaddress_ipv6',
                          'ipaddress.ipaddress', 'ipaddress.dhcp', 'network.name as network', 'network.gateway',
                          'network.network as networkip', 'network.subnet', 'network.gateway_ipv6',
-                         'network.network_ipv6 as networkip_ipv6', 'network.subnet_ipv6'],
+                         'network.network_ipv6 as networkip_ipv6', 'network.subnet_ipv6', 'network.dhcp as networkdhcp'],
                         ['network.id=ipaddress.networkid',
                          'ipaddress.tablerefid=nodeinterface.id'],
                         ['tableref="nodeinterface"', f"nodeinterface.macaddress='{mac}'"]
                     )
                     if nodeinterface:
                         data['nodeid'] = nodeinterface[0]['nodeid']
-                        if nodeinterface[0]["dhcp"]:
+                        if nodeinterface[0]["dhcp"] and nodeinterface[0]["networkdhcp"]:
                             data['nodeip'] = 'dhcp'
                         elif nodeinterface[0]["ipaddress_ipv6"]:
                             data['nodeip'] = f'{nodeinterface[0]["ipaddress_ipv6"]}/{nodeinterface[0]["subnet_ipv6"]}'
@@ -999,7 +999,7 @@ class Boot():
                     'nodeinterface.interface',
                     'nodeinterface.macaddress',
                     'ipaddress.ipaddress', 'ipaddress.ipaddress_ipv6', 'ipaddress.dhcp',
-                    'network.name as network',
+                    'network.name as network', 'network.dhcp as networkdhcp',
                     'network.network as networkip', 'network.network_ipv6 as networkip_ipv6',
                     'network.subnet', 'network.subnet_ipv6',
                     'network.gateway', 'network.gateway_ipv6'
@@ -1012,7 +1012,7 @@ class Boot():
                 ]
             )
             if nodeinterface:
-                if nodeinterface[0]["dhcp"]:
+                if nodeinterface[0]["dhcp"] and nodeinterface[0]["networkdhcp"]:
                     data['nodeip'] = 'dhcp'
                 elif nodeinterface[0]["ipaddress_ipv6"]:
                     data['nodeip'] = f'{nodeinterface[0]["ipaddress_ipv6"]}/{nodeinterface[0]["subnet_ipv6"]}'
@@ -1206,7 +1206,7 @@ class Boot():
                     'nodeinterface.interface',
                     'nodeinterface.macaddress',
                     'ipaddress.ipaddress', 'ipaddress.ipaddress_ipv6', 'ipaddress.dhcp',
-                    'network.name as network',
+                    'network.name as network', 'network.dhcp as networkdhcp',
                     'network.network as networkip', 'network.network_ipv6 as networkip_ipv6',
                     'network.subnet', 'network.subnet_ipv6',
                     'network.gateway', 'network.gateway_ipv6'
@@ -1219,7 +1219,7 @@ class Boot():
                 ]
             )
             if nodeinterface:
-                if nodeinterface[0]["dhcp"]:
+                if nodeinterface[0]["dhcp"] and nodeinterface[0]["networkdhcp"]:
                     data['nodeip'] = 'dhcp'
                 elif nodeinterface[0]["ipaddress_ipv6"]:
                     data['nodeip'] = f'{nodeinterface[0]["ipaddress_ipv6"]}/{nodeinterface[0]["subnet_ipv6"]}'
@@ -1441,7 +1441,7 @@ class Boot():
                     'nodeinterface.vlanid',
                     'nodeinterface.options',
                     'ipaddress.ipaddress', 'ipaddress.ipaddress_ipv6', 'ipaddress.dhcp',
-                    'network.name as network',
+                    'network.name as network', 'network.dhcp as networkdhcp',
                     'network.network as networkip', 'network.network_ipv6 as networkip_ipv6',
                     'network.subnet', 'network.subnet_ipv6',
                     'network.gateway', 'network.gateway_ipv6',
@@ -1520,7 +1520,7 @@ class Boot():
                                 data['interfaces'][data['provision_interface']]['nameserver_ip'] = self.controller_ipv4 or '0.0.0.0'
                             if not data['interfaces'][data['provision_interface']]['nameserver_ip_ipv6']:
                                 data['interfaces'][data['provision_interface']]['nameserver_ip_ipv6'] = self.controller_ipv6 or '::/0'
-                        if interface['dhcp']:
+                        if interface['dhcp'] and interface['networkdhcp']:
                             data['interfaces'][interface['interface']]['dhcp']=True
                             # here we do not have to set the kerneloption luna.bootproto=dhcp as we already do dhcp for the interface
                         if not data['interfaces'][interface['interface']]['ipaddress']:

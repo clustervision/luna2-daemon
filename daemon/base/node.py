@@ -189,6 +189,7 @@ class Node():
                         'network.name as network',
                         'nodeinterface.vlanid',
                         'nodeinterface.options',
+                        'network.dhcp as networkdhcp',
                         'network.dhcp_nodes_in_pool'
                     ],
                     ['network.id=ipaddress.networkid', 'ipaddress.tablerefid=nodeinterface.id'],
@@ -212,7 +213,7 @@ class Node():
                             del interface['ipaddress']
                         if not interface['ipaddress_ipv6']:
                             del interface['ipaddress_ipv6']
-                        if interface['dhcp_nodes_in_pool'] and interface['dhcp']:
+                        if interface['dhcp_nodes_in_pool'] and interface['networkdhcp'] and interface['dhcp']:
                             if 'ipaddress_ipv6' in interface:
                                 del interface['ipaddress_ipv6']
                                 #interface['comment'] = 'ipaddress configured but ignored using dhcp and dhcp_nodes_in_pool set'
@@ -222,6 +223,7 @@ class Node():
                         if not interface['dhcp']:
                             del interface['dhcp']
                         del interface['dhcp_nodes_in_pool']
+                        del interface['networkdhcp']
                         node['interfaces'].append(interface)
                         if interface['interface'] in all_node_interfaces_by_name.keys():
                             del all_node_interfaces_by_name[interface['interface']]
@@ -458,6 +460,7 @@ class Node():
                     'network.name as network',
                     'nodeinterface.vlanid',
                     'nodeinterface.options',
+                    'network.dhcp as networkdhcp',
                     'network.dhcp_nodes_in_pool'
                 ],
                 ['network.id=ipaddress.networkid', 'ipaddress.tablerefid=nodeinterface.id'],
@@ -480,7 +483,7 @@ class Node():
                         del interface['ipaddress']
                     if not interface['ipaddress_ipv6']:
                         del interface['ipaddress_ipv6']
-                    if interface['dhcp_nodes_in_pool'] and interface['dhcp']:
+                    if interface['dhcp_nodes_in_pool'] and interface['networkdhcp'] and interface['dhcp']:
                         if 'ipaddress_ipv6' in interface:
                             del interface['ipaddress_ipv6']
                             interface['comment'] = 'ipaddress configured but ignored using dhcp and dhcp_nodes_in_pool set'
@@ -490,6 +493,7 @@ class Node():
                     if not interface['dhcp']:
                         del interface['dhcp']
                     del interface['dhcp_nodes_in_pool']
+                    del interface['networkdhcp']
                     node['interfaces'].append(interface)
                     if interface['interface'] in all_node_interfaces_by_name.keys():
                         del all_node_interfaces_by_name[interface['interface']]
@@ -838,7 +842,7 @@ class Node():
                                 where = f' WHERE `name` = "{networkname}"'
                                 network = Database().get_record(None, 'network', where)
                                 if network:
-                                    if network[0]['dhcp_nodes_in_pool']:
+                                    if network[0]['dhcp'] and network[0]['dhcp_nodes_in_pool']:
                                         dhcp = 1 # forced!
                                         set_dhcp = True
                                     else:
@@ -906,7 +910,7 @@ class Node():
                             where = f' WHERE `name` = "{networkname}"'
                             network = Database().get_record(None, 'network', where)
                             if network:
-                                if network[0]['dhcp_nodes_in_pool']:
+                                if network[0]['dhcp'] and network[0]['dhcp_nodes_in_pool']:
                                     interface_dhcp = 1
                                 else:
                                     if network[0]['network']:

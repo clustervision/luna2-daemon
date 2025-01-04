@@ -1392,6 +1392,7 @@ class Config(object):
                                     row = [
                                         {"column": "ipaddress", "value": avail},
                                         {"column": "ipaddress_ipv6", "value": avail6},
+                                        {"column": "dhcp", "value": f"{ipaddress['dhcp']}"},
                                         {"column": "networkid", "value": f"{ipaddress['networkid']}"},
                                         {"column": "tableref", "value": f"{ipaddress['tableref']}"},
                                         {"column": "tablerefid", "value": f"{ipaddress['tablerefid']}"}

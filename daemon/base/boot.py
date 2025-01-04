@@ -1546,14 +1546,16 @@ class Boot():
                 except:
                     pass
             data['kerneloptions']=data['kerneloptions'].replace('\n', ' ').replace('\r', '')
-            kerneloptions=data['kerneloptions'].split(' ')
-            self.logger.debug(f"*** {kerneloptions}")
-            if 'luna.bootproto=dhcp' in kerneloptions:
-                # most commonly used for cloud nodes
-                self.logger.debug(f"*** found dhcp bootproto")
-                if 'interfaces' in data and data['provision_interface'] in data['interfaces']:
-                    self.logger.debug(f"*** set dhcp for {data['provision_interface']}")
-                    data['interfaces'][data['provision_interface']]['dhcp']=True
+            # --- below section still here but should no longer be needed. cloud nodes should always
+            # --- have dhcp configured for their interfaces - Antoine
+            #kerneloptions=data['kerneloptions'].split(' ')
+            #self.logger.debug(f"*** {kerneloptions}")
+            #if 'luna.bootproto=dhcp' in kerneloptions:
+            #    # most commonly used for cloud nodes
+            #    self.logger.debug(f"*** found dhcp bootproto")
+            #    if 'interfaces' in data and data['provision_interface'] in data['interfaces']:
+            #        self.logger.debug(f"*** set dhcp for {data['provision_interface']}")
+            #        data['interfaces'][data['provision_interface']]['dhcp']=True
 
         # we clean up what we no longer need
         del data['kerneloptions']

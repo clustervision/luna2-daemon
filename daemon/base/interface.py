@@ -155,7 +155,7 @@ class Interface():
                         [
                             'ipaddress.ipaddress','ipaddress.ipaddress_ipv6',
                             'ipaddress.dhcp', 'network.name as networkname',
-                            'network.dhcp_nodes_in_pool', 'network.dhcp as dhcp_network'
+                            'network.dhcp_nodes_in_pool', 'network.dhcp as networkdhcp'
                         ],
                         [
                             'nodeinterface.nodeid=node.id',  
@@ -185,11 +185,9 @@ class Interface():
                                     where = f" WHERE `name` = '{network}'"
                                     network_details = Database().get_record(None, 'network', where)
                                     if network_details:
-                                        if network_details[0]['dhcp_nodes_in_pool']:
+                                        if network_details[0]['dhcp'] and network_details[0]['dhcp_nodes_in_pool']:
                                             clear_ip = True
                                         else:
-                                            if not network_details[0]['dhcp']:
-                                                self.logger.warning(f"setting dhcp for {interface_name} for node with id {nodeid} in non-DHCP network {network} might not work")
                                             if network_details[0]['network']:
                                                 ips = Config().get_all_occupied_ips_from_network(network)
                                                 avail = Helper().get_available_ip(

@@ -63,7 +63,10 @@ class Plugin():
                     for node in data.values():
                         
                         node_provisioning_interface = node['provision_interface']
-                        node_provisioning_ip = next((iface['ipaddress'] for iface in node['interfaces'] if iface['interface'] == node_provisioning_interface), None)
+                        try:
+                            node_provisioning_ip = next((iface['ipaddress'] for iface in node['interfaces'] if iface['interface'] == node_provisioning_interface), None)
+                        except:
+                            node_provisioning_ip = None
 
                         target = {
                             "targets": [f"{node_provisioning_ip or node['hostname']}:{service_port}" ],

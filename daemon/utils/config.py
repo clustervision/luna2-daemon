@@ -60,7 +60,7 @@ class Config(object):
         """
         self.logger = Log.get_logger()
         self.plugins_path=CONSTANT["PLUGINS"]["PLUGINS_DIRECTORY"]
-        self.run_plugins = None
+        self.hooks_plugins = None
 
 
     def dhcp_overwrite(self):
@@ -446,8 +446,8 @@ class Config(object):
         """
         This method will write /etc/named.conf and zone files for every network
         """
-        self.run_plugins = Helper().plugin_finder(f'{self.plugins_path}/hooks')
-        run_plugin = Helper().plugin_load(self.run_plugins, 'hooks/config', 'dns')
+        self.hooks_plugins = Helper().plugin_finder(f'{self.plugins_path}/hooks')
+        dns_plugin = Helper().plugin_load(self.hooks_plugins, 'hooks/config', 'dns')
         validate = True
         template_dns_conf = 'templ_dns_conf.cfg' # i.e. /etc/named.conf
         template_dns_zones_conf = 'templ_dns_zones_conf.cfg' # i.e. /etc/named.luna.zones
@@ -642,7 +642,7 @@ class Config(object):
                                 self.logger.warning(f"node {host['host']} does not appear to have any ip address configured")
                             del dns_zone_records[networkname][host['host']]
                         if ipaddress and nwk['dhcp_nodes_in_pool']:
-                            return_code, message = run_plugin().nsupdate(host=f"{host['host']}.{networkname}", ipaddress=ipaddress, ttl=3600,
+                            return_code, message = dns_plugin().nsupdate(host=f"{host['host']}.{networkname}", ipaddress=ipaddress, ttl=3600,
                                                                          key_name='omapi_key', key_secret=omapikey)
                     except Exception as exp:
                         exc_type, exc_obj, exc_tb = sys.exc_info()

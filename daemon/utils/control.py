@@ -53,7 +53,7 @@ class Control():
         self.logger = Log.get_logger()
         plugins_path=CONSTANT["PLUGINS"]["PLUGINS_DIRECTORY"]
         self.control_plugins = Helper().plugin_finder(f'{plugins_path}/control')
-        self.run_plugins = Helper().plugin_finder(f'{plugins_path}/hooks')
+        self.hooks_plugins = Helper().plugin_finder(f'{plugins_path}/hooks')
 
 
     def control_child(self, pipeline, t=0):
@@ -117,7 +117,7 @@ class Control():
                                 password
                             )
                             self.logger.debug(f"control: ret=[{ret}], status=[{status}]")
-                            runret, runstatus = self.control_run(
+                            runret, runstatus = self.control_hook(
                                 node[0]['nodename'],
                                 node[0]['groupname'],
                                 command,
@@ -161,7 +161,7 @@ class Control():
             control_plugin = Helper().plugin_load(
                 self.control_plugins,
                 'control',
-                ['nodename,groupname']
+                [nodename,groupname]
             )
             match command:
                 case 'power on':
@@ -235,7 +235,7 @@ class Control():
         return return_code, message
 
 
-    def control_run(self, nodename=None, groupname=None, command=None):
+    def control_hook(self, nodename=None, groupname=None, command=None):
         """
         This method will handle the optional run during a power control action.
         """
@@ -251,47 +251,47 @@ class Control():
         # signal.signal(signal.SIGALRM, handler)
         # signal.alarm(60)
         try:
-            run_plugin = Helper().plugin_load(
-                self.run_plugins,
+            hook_plugin = Helper().plugin_load(
+                self.hooks_plugins,
                 'hooks/control',
-                ['nodename,groupname']
+                [nodename,groupname]
             )
             match command:
                 case 'power on':
-                    return_code, message = run_plugin().power_on(
+                    return_code, message = hook_plugin().power_on(
                         nodename=nodename, groupname=groupname
                     )
                 case 'power off':
-                    return_code, message = run_plugin().power_on(
+                    return_code, message = hook_plugin().power_on(
                         nodename=nodename, groupname=groupname
                     )
                 case 'power status':
-                    return_code, message = run_plugin().power_on(
+                    return_code, message = hook_plugin().power_on(
                         nodename=nodename, groupname=groupname
                     )
                 case 'power reset':
-                    return_code, message = run_plugin().power_on(
+                    return_code, message = hook_plugin().power_on(
                         nodename=nodename, groupname=groupname
                     )
                 case 'power cycle':
-                    return_code, message = run_plugin().power_on(
+                    return_code, message = hook_plugin().power_on(
                         nodename=nodename, groupname=groupname
                     )
                 case 'chassis identify':
-                    return_code, message = run_plugin().power_on(
+                    return_code, message = hook_plugin().power_on(
                         nodename=nodename, groupname=groupname
                     )
                 case 'chassis noidentify':
-                    return_code, message = run_plugin().power_on(
+                    return_code, message = hook_plugin().power_on(
                         nodename=nodename, groupname=groupname
                     )
                 case 'sel list':
-                    return_code, message = run_plugin().power_on(
+                    return_code, message = hook_plugin().power_on(
                         nodename=nodename, groupname=groupname
                     )
                     message = message.replace("\n",";;")
                 case 'sel clear':
-                    return_code, message = run_plugin().power_on(
+                    return_code, message = hook_plugin().power_on(
                         nodename=nodename, groupname=groupname
                     )
                 case _:

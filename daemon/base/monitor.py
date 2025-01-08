@@ -117,6 +117,7 @@ class Monitor():
                         status=True
                         response = f'Node {node} updated'
                         function_name = state.replace('.','_')
+                        function_name = function_name.replace(' ','_')
                         if function_name and function_name in vars(NodeMonitorPlugin):
                             try:
                                 plugin_function = getattr(NodeMonitorPlugin,function_name)
@@ -124,7 +125,7 @@ class Monitor():
                             except Exception as exp:
                                 self.logger.error(f"{exp}")
                         else:
-                            self.logger.error(f"function {function_name} not found in node monitor plugin")
+                            self.logger.debug(f"function {function_name} not found in node monitor plugin")
                     else:
                         status=False
                         response = f'Node {node} update not succesful'

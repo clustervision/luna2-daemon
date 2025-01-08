@@ -273,9 +273,9 @@ def bootstrap(bootstrapfile=None):
     LOGGER.info('###################### Bootstrap Start ######################')
 
     plugins_path=CONSTANT["PLUGINS"]["PLUGINS_DIRECTORY"]
-    run_plugins = Helper().plugin_finder(f'{plugins_path}/hooks')
-    group_plugin=Helper().plugin_load(run_plugins,'hooks/config','group')
-    node_plugin=Helper().plugin_load(run_plugins,'hooks/config','node')
+    hooks_plugins = Helper().plugin_finder(f'{plugins_path}/hooks')
+    group_plugin=Helper().plugin_load(hooks_plugins,'hooks/config','group')
+    node_plugin=Helper().plugin_load(hooks_plugins,'hooks/config','node')
 
     is_true = [True,'True','true','TRUE','1','yes']
     ha_enabled, sharedip = 0, 1

@@ -109,7 +109,7 @@ class Plugin():
         return self.response
 
 
-    def Export(self):
+    def Export(self,args=None):
         """
         This method will check the both files rules and detailed, and return the output from the
         detailed file with status.

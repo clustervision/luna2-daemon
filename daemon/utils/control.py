@@ -53,7 +53,7 @@ class Control():
         self.logger = Log.get_logger()
         plugins_path=CONSTANT["PLUGINS"]["PLUGINS_DIRECTORY"]
         self.control_plugins = Helper().plugin_finder(f'{plugins_path}/control')
-        self.run_plugins = Helper().plugin_finder(f'{plugins_path}/run')
+        self.run_plugins = Helper().plugin_finder(f'{plugins_path}/hooks')
 
 
     def control_child(self, pipeline, t=0):
@@ -253,7 +253,7 @@ class Control():
         try:
             run_plugin = Helper().plugin_load(
                 self.run_plugins,
-                'run/control',
+                'hooks/control',
                 ['nodename,groupname']
             )
             match command:

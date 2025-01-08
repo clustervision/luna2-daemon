@@ -446,8 +446,8 @@ class Config(object):
         """
         This method will write /etc/named.conf and zone files for every network
         """
-        self.run_plugins = Helper().plugin_finder(f'{self.plugins_path}/run')
-        run_plugin = Helper().plugin_load(self.run_plugins, 'run/config', 'dns')
+        self.run_plugins = Helper().plugin_finder(f'{self.plugins_path}/hooks')
+        run_plugin = Helper().plugin_load(self.run_plugins, 'hooks/config', 'dns')
         validate = True
         template_dns_conf = 'templ_dns_conf.cfg' # i.e. /etc/named.conf
         template_dns_zones_conf = 'templ_dns_zones_conf.cfg' # i.e. /etc/named.luna.zones

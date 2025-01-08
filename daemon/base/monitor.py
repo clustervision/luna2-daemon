@@ -38,6 +38,13 @@ from utils.monitor import Monitor as monitor
 from utils.status import Status
 
 
+try:
+    from plugins.hooks.monitor.node import Plugin as NodeMonitorPlugin
+except ImportError as import_error:
+    LOGGER = Log.get_logger()
+    LOGGER.error(f"Problems encountered while loading detection plugin: {import_error}")
+
+
 class Monitor():
     """
     This class is responsible to monitor all the services.
@@ -109,6 +116,15 @@ class Monitor():
                     if result:
                         status=True
                         response = f'Node {node} updated'
+                        function_name = state.replace('.','_')
+                        if function_name and function_name in vars(NodeMonitorPlugin):
+                            try:
+                                plugin_function = getattr(NodeMonitorPlugin,function_name)
+                                result, message = plugin_function(NodeMonitorPlugin,name=node)
+                            except Exception as exp:
+                                self.logger.error(f"{exp}")
+                        else:
+                            self.logger.error(f"function {function_name} not found in node monitor plugin")
                     else:
                         status=False
                         response = f'Node {node} update not succesful'

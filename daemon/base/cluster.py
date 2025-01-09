@@ -61,7 +61,8 @@ class Cluster():
         if cluster:
             cluster_id = cluster[0]['id']
             del cluster[0]['id']
-            for item in ['debug','security','createnode_ondemand','nextnode_discover','packing_bootpause']:
+            for item in ['debug','security','createnode_ondemand','createnode_macashost',
+                         'nextnode_discover','packing_bootpause']:
                 cluster[0][item] = Helper().make_bool(cluster[0][item])
             response = {'config': {'cluster': cluster[0] }}
             controllers = Database().get_record_join(
@@ -138,7 +139,8 @@ class Cluster():
         """
         status=False
         response="Internal error"
-        items = {'debug': False, 'security': False, 'createnode_ondemand': True, 'nextnode_discover': False}
+        items = {'debug': False, 'security': False, 'createnode_ondemand': True,
+                 'createnode_macashost': True, 'nextnode_discover': False}
         if request_data:
             data = request_data['config']['cluster']
 
@@ -255,6 +257,7 @@ class Cluster():
                     where = [{"column": "id", "value": cluster[0]['id']}]
                     row = Helper().make_rows(data)
                     Database().update('cluster', row, where)
+                    Service().queue('dns','reload')
                     Service().queue('dns','restart')
                     response = 'Cluster updated'
                     status=True

@@ -52,7 +52,7 @@ class Plugin():
 
     # ---------------------------------------------------------------------------
 
-    def Export(self):
+    def Export(self,args=None):
         status, all_nodes = Node().get_all_nodes()
         if status:
             if 'config' in all_nodes and 'node' in all_nodes['config']:
@@ -63,7 +63,10 @@ class Plugin():
                     for node in data.values():
                         
                         node_provisioning_interface = node['provision_interface']
-                        node_provisioning_ip = next((iface['ipaddress'] for iface in node['interfaces'] if iface['interface'] == node_provisioning_interface), None)
+                        try:
+                            node_provisioning_ip = next((iface['ipaddress'] for iface in node['interfaces'] if iface['interface'] == node_provisioning_interface), None)
+                        except:
+                            node_provisioning_ip = None
 
                         target = {
                             "targets": [f"{node_provisioning_ip or node['hostname']}:{service_port}" ],

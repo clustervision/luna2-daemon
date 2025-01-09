@@ -59,6 +59,8 @@ class Config(object):
         Constructor - As of now, nothing has to initialize.
         """
         self.logger = Log.get_logger()
+        self.plugins_path=CONSTANT["PLUGINS"]["PLUGINS_DIRECTORY"]
+        self.hooks_plugins = None
 
 
     def dhcp_overwrite(self):
@@ -112,6 +114,8 @@ class Config(object):
         config_shared6 = {}
         config_subnets = {}
         config_subnets6 = {}
+        config_zones = {}
+        config_zoness6 = {}
         config_empty = {}
         config_empty6 = {}
         config_hosts = {}
@@ -123,25 +127,19 @@ class Config(object):
         emptybyname = {}
         handled = []
 
-        empty = Database().get_record(None, 'network', ' WHERE `dhcp` is NULL or `dhcp` != 1')
+        empty = Database().get_record(None, 'network', f' WHERE name="{domain}" AND (`dhcp` IS NULL OR `dhcp` != 1)')
         if empty:
             emptybyname = Helper().convert_list_to_dict(empty, 'name')
-
-        for network in emptybyname.keys():
-            nwk = emptybyname[network]
-            if nwk['name'] not in handled and nwk['network']:
-                config_empty[nwk['name']] = self.dhcp_empty_config(nwk,'ipv4')
-                handled.append(nwk['name'])
-            if nwk['name']+'_ipv6' not in handled and nwk['network_ipv6']:
-                config_empty6[nwk['name']] = self.dhcp_empty_config(nwk,'ipv6')
-                handled.append(nwk['name']+'_ipv6')
 
         networks = Database().get_record(None, 'network', ' WHERE `dhcp` = 1')
         if networks:
             networksbyname = Helper().convert_list_to_dict(networks, 'name')
 
+        networksbyname = networksbyname | emptybyname
+
         shared = {}
         shared6 = {}
+        # prepare - we check if we are shared, are ipv4/v6, etc
         for network in networksbyname.keys():
             networksbyname[network]['ipv6'], networksbyname[network]['ipv4'] = False, False
             if networksbyname[network]['dhcp_range_begin'] and networksbyname[network]['dhcp_range_end'] and networksbyname[network]['network']:
@@ -158,78 +156,102 @@ class Config(object):
                         shared6[networksbyname[network]['shared']] = []
                     shared6[networksbyname[network]['shared']].append(network)
 
-        # IPv4
+        # IPv4 - shared networks
         for network in shared.keys():
             shared_name = f"{network}-" + "-".join(shared[network])
             #
-            config_pools[shared_name]={}
-            config_pools[shared_name]['policy']='deny'
-            config_pools[shared_name]['members']=shared[network]
-            config_pools[shared_name]['range_begin']=networksbyname[network]['dhcp_range_begin']
-            config_pools[shared_name]['range_end']=networksbyname[network]['dhcp_range_end']
+            # the main network/carrier
+            if networksbyname[network]['dhcp']:
+                config_pools[shared_name]={}
+                config_pools[shared_name]['policy']='deny'
+                config_pools[shared_name]['members']=shared[network]
+                config_pools[shared_name]['range_begin']=networksbyname[network]['dhcp_range_begin']
+                config_pools[shared_name]['range_end']=networksbyname[network]['dhcp_range_end']
             #
             config_shared[shared_name]={}
             config_shared[shared_name][network]=self.dhcp_subnet_config(networksbyname[network],'shared','ipv4')
             handled.append(network)
 
+            # the network that has shared config, or piggy backs on the carrier
             for piggyback in shared[network]:
+                config_shared[shared_name][piggyback]=self.dhcp_subnet_config(networksbyname[piggyback],'shared','ipv4')
                 config_pools[piggyback]={}
                 config_pools[piggyback]['policy']='allow'
                 config_pools[piggyback]['members']=[piggyback]
-                config_shared[shared_name][piggyback]=self.dhcp_subnet_config(networksbyname[piggyback],'shared','ipv4')
                 config_pools[piggyback]['range_begin']=networksbyname[piggyback]['dhcp_range_begin']
                 config_pools[piggyback]['range_end']=networksbyname[piggyback]['dhcp_range_end']
                 config_classes[piggyback]={}
                 config_classes[piggyback]['network']=piggyback
                 handled.append(piggyback)
 
-        # IPv6
+        # IPv6 - shared networks
         for network in shared6.keys():
             shared_name = f"{network}-" + "-".join(shared6[network])
             #
-            config_pools6[shared_name]={}
-            config_pools6[shared_name]['policy']='deny'
-            config_pools6[shared_name]['members']=shared6[network]
-            config_pools6[shared_name]['range_begin']=networksbyname[network]['dhcp_range_begin_ipv6']
-            config_pools6[shared_name]['range_end']=networksbyname[network]['dhcp_range_end_ipv6']
+            # the main network/carrier
+            if networksbyname[network]['dhcp']:
+                config_pools6[shared_name]={}
+                config_pools6[shared_name]['policy']='deny'
+                config_pools6[shared_name]['members']=shared6[network]
+                config_pools6[shared_name]['range_begin']=networksbyname[network]['dhcp_range_begin_ipv6']
+                config_pools6[shared_name]['range_end']=networksbyname[network]['dhcp_range_end_ipv6']
             #
             config_shared6[shared_name]={}
             config_shared6[shared_name][network]=self.dhcp_subnet_config(networksbyname[network],'shared','ipv6')
             handled.append(network+'_ipv6')
 
+            # the network that has shared config, or piggy backs on the carrier
             for piggyback in shared6[network]:
+                config_shared6[shared_name][piggyback]=self.dhcp_subnet_config(networksbyname[piggyback],'shared','ipv6')
                 config_pools6[piggyback]={}
                 config_pools6[piggyback]['policy']='allow'
                 config_pools6[piggyback]['members']=[piggyback]
-                config_shared6[shared_name][piggyback]=self.dhcp_subnet_config(networksbyname[piggyback],'shared','ipv6')
                 config_pools6[piggyback]['range_begin']=networksbyname[piggyback]['dhcp_range_begin_ipv6']
                 config_pools6[piggyback]['range_end']=networksbyname[piggyback]['dhcp_range_end_ipv6']
                 config_classes6[piggyback]={}
                 config_classes6[piggyback]['network']=piggyback
                 handled.append(piggyback+'_ipv6')
 
+        # we handle all (remaining) networks below
         if networksbyname:
             for network in networksbyname.keys():
                 nwk = networksbyname[network]
-                if nwk['name'] not in handled and nwk['ipv4']:
-                    config_subnets[nwk['name']] = self.dhcp_subnet_config(nwk,False,'ipv4')
-                    handled.append(nwk['name'])
-                if nwk['name']+'_ipv6' not in handled and nwk['ipv6']:
-                    config_subnets6[nwk['name']] = self.dhcp_subnet_config(nwk,False,'ipv6')
-                    handled.append(nwk['name']+'_ipv6')
+                if nwk['dhcp']:
+                    if nwk['name'] not in handled and nwk['ipv4']:
+                        config_subnets[nwk['name']] = self.dhcp_subnet_config(nwk,False,'ipv4')
+                        handled.append(nwk['name'])
+                    if nwk['name']+'_ipv6' not in handled and nwk['ipv6']:
+                        config_subnets6[nwk['name']] = self.dhcp_subnet_config(nwk,False,'ipv6')
+                        handled.append(nwk['name']+'_ipv6')
+                else:
+                    if nwk['name'] not in handled and nwk['network']:
+                        config_empty[nwk['name']] = self.dhcp_empty_config(nwk,'ipv4')
+                        handled.append(nwk['name'])
+                    if nwk['name']+'_ipv6' not in handled and nwk['network_ipv6']:
+                        config_empty6[nwk['name']] = self.dhcp_empty_config(nwk,'ipv6')
+                        handled.append(nwk['name']+'_ipv6')
+                    continue
                 network_id = nwk['id']
                 network_name = nwk['name']
                 network_ip = nwk['network']
                 network_ipv6 = nwk['network_ipv6']
+                if nwk['dhcp_nodes_in_pool']:
+                    self.logger.info(f'using forward updates for network {network_name} IPv4: {network_ip} or IPv6: {network_ipv6}')
+                    if nwk['ipv4']:
+                        config_zones[nwk['name']] = self.dhcp_zone_config(nwk,'ipv4')
+                    if nwk['ipv6']:
+                        config_zones6[nwk['name']] = self.dhcp_zone_config(nwk,'ipv6')
                 node_interface = Database().get_record_join(
                     ['node.name as nodename', 'ipaddress.ipaddress', 
-                     'ipaddress.ipaddress_ipv6', 'nodeinterface.macaddress'],
+                     'ipaddress.ipaddress_ipv6', 'nodeinterface.macaddress','ipaddress.dhcp'],
                     ['ipaddress.tablerefid=nodeinterface.id', 'nodeinterface.nodeid=node.id'],
                     ['tableref="nodeinterface"', f'ipaddress.networkid="{network_id}"']
                 )
                 nodedomain=nwk['name']
                 if node_interface:
                     for interface in node_interface:
+                        if nwk['dhcp_nodes_in_pool'] and interface['dhcp']:
+                            continue
                         if nodedomain == domain:
                             node=interface['nodename']
                         else:
@@ -241,14 +263,14 @@ class Config(object):
                                 config_hosts6[node]['domain']=nodedomain
                                 config_hosts6[node]['ipaddress']=interface['ipaddress_ipv6']
                                 config_hosts6[node]['macaddress']=interface['macaddress']
-                            else:
+                            elif interface['ipaddress']:
                                 config_hosts[node]={}
                                 config_hosts[node]['name']=interface['nodename']
                                 config_hosts[node]['domain']=nodedomain
                                 config_hosts[node]['ipaddress']=interface['ipaddress']
                                 config_hosts[node]['macaddress']=interface['macaddress']
                 else:
-                    self.logger.info(f'No Nodes available for this network {network_name} IPv4: {network_ip} or IPv6: {network_ipv6}')
+                    self.logger.info(f'no nodes available for network {network_name} IPv4: {network_ip} or IPv6: {network_ipv6}')
                 for item in ['otherdevices', 'switch']:
                     devices = Database().get_record_join(
                         [f'{item}.name','ipaddress.ipaddress','ipaddress.ipaddress_ipv6',f'{item}.macaddress'],
@@ -275,11 +297,12 @@ class Config(object):
             file_loader = FileSystemLoader(CONSTANT["TEMPLATES"]["TEMPLATE_FILES"])
             env = Environment(loader=file_loader)
             # IPv4 -----------------------------------
-            if len(config_subnets) > 0 or len(config_shared) > 0:
+            if any([config_subnets, config_shared, config_empty]):
                 dhcpd_template = env.get_template(template)
                 dhcpd_config = dhcpd_template.render(CLASSES=config_classes,SHARED=config_shared,SUBNETS=config_subnets,
-                                                     EMPTY=config_empty,HOSTS=config_hosts,POOLS=config_pools,DOMAINNAME=domain,
-                                                     NAMESERVERS=nameserver_ip,NTPSERVERS=ntp_server,OMAPIKEY=omapikey)
+                                                     ZONES=config_zones,EMPTY=config_empty,HOSTS=config_hosts,POOLS=config_pools,
+                                                     DOMAINNAME=domain,NAMESERVERS=nameserver_ip,NTPSERVERS=ntp_server,
+                                                     OMAPIKEY=omapikey)
                 with open(dhcp_file, 'w', encoding='utf-8') as dhcp:
                     dhcp.write(dhcpd_config)
                 try:
@@ -294,12 +317,13 @@ class Config(object):
                 else:
                     shutil.copyfile(dhcp_file, '/etc/dhcp/dhcpd.conf')
             # IPv6 -----------------------------------
-            if len(config_subnets6) > 0 or len(config_shared6) > 0:
+            if any([config_subnets6, config_shared6, config_empty6]):
                 dhcpd_template = env.get_template(template6)
                 dhcpd_config = dhcpd_template.render(CLASSES=config_classes6,SHARED=config_shared6,SUBNETS=config_subnets6,
-                                                     EMPTY=config_empty6,HOSTS=config_hosts6,POOLS=config_pools6,DOMAINNAME=domain,
-                                                     NAMESERVERS=nameserver_ip,NAMESERVERS_IPV6=nameserver_ip_ipv6,
-                                                     NTPSERVERS=ntp_server,OMAPIKEY=omapikey)
+                                                     ZONES=config_zones6,EMPTY=config_empty6,HOSTS=config_hosts6,
+                                                     POOLS=config_pools6,DOMAINNAME=domain,NAMESERVERS=nameserver_ip,
+                                                     NAMESERVERS_IPV6=nameserver_ip_ipv6,NTPSERVERS=ntp_server,
+                                                     OMAPIKEY=omapikey)
                 with open(dhcp6_file, 'w', encoding='utf-8') as dhcp:
                     dhcp.write(dhcpd_config)
                 try:
@@ -332,7 +356,7 @@ class Config(object):
         network_id = nwk['id']
         network_name = nwk['name']+add_string
         network_ip = nwk['network'+add_string]
-        if not shared:
+        if nwk['dhcp'] and not shared:
             subnet['range_begin']=nwk['dhcp_range_begin'+add_string]
             subnet['range_end']=nwk['dhcp_range_end'+add_string]
         netmask = nwk['subnet_ipv6']
@@ -380,6 +404,28 @@ class Config(object):
         self.logger.debug(f"SUBNET: {subnet}")
         return subnet
 
+    def dhcp_zone_config (self,nwk=[],ipversion='ipv4'):
+        """ 
+        dhcp subnetblock with config
+        glue between the variouszone blocks: prepare for dhcp_subnet function
+        """
+        zone={}
+        rev = ''
+        zone['domain'] = nwk['name']
+        zone['primary'] = Controller().get_beaconip()
+        zone['forward'] = nwk['name']
+        if ipversion == 'ipv4':
+            rev = ip_address(nwk['network']).reverse_pointer
+            rev = rev.split('.')
+            rev = '.'.join(rev[2:])
+        elif ipversion == 'ipv6':
+            rev = ip_address(nwk['network_ipv6']).reverse_pointer
+            rev = rev.split('.')
+            rev = '.'.join(rev[16:])
+        zone['reverse'] = rev# + '.in-addr.arpa'
+        self.logger.debug(f"ZONE: {zone}")
+        return zone
+
     def dhcp_empty_config (self,nwk=[],ipversion='ipv4'):
         """
         for empty, non dhcp zones, just as declaration
@@ -400,6 +446,8 @@ class Config(object):
         """
         This method will write /etc/named.conf and zone files for every network
         """
+        self.hooks_plugins = Helper().plugin_finder(f'{self.plugins_path}/hooks')
+        dns_plugin = Helper().plugin_load(self.hooks_plugins, 'hooks/config', 'dns')
         validate = True
         template_dns_conf = 'templ_dns_conf.cfg' # i.e. /etc/named.conf
         template_dns_zones_conf = 'templ_dns_zones_conf.cfg' # i.e. /etc/named.luna.zones
@@ -421,6 +469,10 @@ class Config(object):
             return False
         file_loader = FileSystemLoader(CONSTANT["TEMPLATES"]["TEMPLATE_FILES"])
         env = Environment(loader=file_loader)
+
+        omapikey=None
+        if CONSTANT['DHCP']['OMAPIKEY']:
+            omapikey=CONSTANT['DHCP']['OMAPIKEY']
 
         tmpdir=f"{CONSTANT['TEMPLATES']['TMP_DIRECTORY']}"
         files, forwarder = [], []
@@ -450,6 +502,7 @@ class Config(object):
         if networks:
             dns_allowed_query=['127.0.0.0/8']
  
+        controller_ips = []
         for nwk in networks:
             network_id = nwk['id']
             networkname = None
@@ -510,9 +563,14 @@ class Config(object):
             )
             if controllers:
                 mergedlist.append(controllers)
+                for controller in controllers:
+                    if controller['ipaddress']:
+                        controller_ips.append(controller['ipaddress'])
+                    if controller['ipaddress_ipv6']:
+                        controller_ips.append(controller['ipaddress_ipv6'])
             nodes = Database().get_record_join(
                 ['node.name as host', 'ipaddress.ipaddress', 'ipaddress.ipaddress_ipv6',
-                  'network.name as networkname'],
+                  'ipaddress.dhcp', 'network.name as networkname'],
                 ['ipaddress.tablerefid=nodeinterface.id', 'nodeinterface.nodeid=node.id',
                  'network.id=ipaddress.networkid'],
                 ['tableref="nodeinterface"', f'ipaddress.networkid="{network_id}"']
@@ -539,12 +597,20 @@ class Config(object):
 
             for hosts in mergedlist:
                 for host in hosts:
+                    if nwk['dhcp_nodes_in_pool']:
+                        if 'dhcp' in host and host['dhcp']:
+                            continue
+                            # bit tricky situation as bind has a journal for the pure dhcp nodes
+                            # but we create a zone with the non dhcp ones. this is known
+                            # to clash and we might have to resort to nspdate through a plugin
                     try:
                         dns_zone_records[networkname][host['host']]={}
                         dns_zone_records[networkname][host['host']]['key']=host['host'].rstrip('.')
+                        ipaddress = None
                         if 'ipaddress_ipv6' in host and host['ipaddress_ipv6']:
                             dns_zone_records[networkname][host['host']]['type']='AAAA'
                             dns_zone_records[networkname][host['host']]['value']=host['ipaddress_ipv6']
+                            ipaddress = host['ipaddress_ipv6']
                             self.logger.debug(f"DNS -- IPv6: host {host['host']}, AAAA ip [{host['ipaddress_ipv6']}]")
                             if rev_ipv6:
                                 ipv6_rev = ip_address(host['ipaddress_ipv6']).reverse_pointer
@@ -559,6 +625,7 @@ class Config(object):
                         elif host['ipaddress']:
                             dns_zone_records[networkname][host['host']]['type']='A'
                             dns_zone_records[networkname][host['host']]['value']=host['ipaddress']
+                            ipaddress = host['ipaddress']
                             self.logger.debug(f"DNS -- IPv4: host {host['host']}, A ip [{host['ipaddress']}]")
                             if rev_ip:
                                 sub_ip = host['ipaddress'].split('.')
@@ -570,6 +637,13 @@ class Config(object):
                                         dns_zone_records[rev_ip][host['host']]['key']=host_ptr
                                         dns_zone_records[rev_ip][host['host']]['type']='PTR'
                                         dns_zone_records[rev_ip][host['host']]['value']=f"{host['host'].rstrip('.')}.{host['networkname']}"
+                        else: # we have nothing! are we doing pure dhcp?
+                            if not host['dhcp']:
+                                self.logger.warning(f"node {host['host']} does not appear to have any ip address configured")
+                            del dns_zone_records[networkname][host['host']]
+                        if ipaddress and nwk['dhcp_nodes_in_pool']:
+                            return_code, message = dns_plugin().nsupdate(host=f"{host['host']}.{networkname}", ipaddress=ipaddress, ttl=3600,
+                                                                         key_name='omapi_key', key_secret=omapikey)
                     except Exception as exp:
                         exc_type, exc_obj, exc_tb = sys.exc_info()
                         self.logger.error(f"creating DNS zone encountered problems: {exp}, {exc_type}, in {exc_tb.tb_lineno}")
@@ -607,9 +681,11 @@ class Config(object):
         if not os.path.exists(managed_keys):
             managed_keys=None
         dns_conf_template = env.get_template(template_dns_conf)
-        dns_conf_config = dns_conf_template.render(ALLOWED_QUERY=dns_allowed_query,FORWARDERS=forwarder,MANAGED_KEYS=managed_keys)
+        dns_conf_config = dns_conf_template.render(ALLOWED_QUERY=dns_allowed_query,FORWARDERS=forwarder,
+                                                   MANAGED_KEYS=managed_keys,OMAPIKEY=omapikey)
         dns_zones_conf_template = env.get_template(template_dns_zones_conf)
-        dns_zones_conf_config = dns_zones_conf_template.render(ZONES=dns_zones)
+        dns_zones_conf_config = dns_zones_conf_template.render(ZONES=dns_zones,OMAPIKEY=omapikey,
+                                                               ALLOW_UPDATES=controller_ips)
 
         dns_file = {'source': f'{tmpdir}/named.conf', 'destination': '/etc/named.conf'}
         files.append(dns_file)
@@ -665,8 +741,6 @@ class Config(object):
         if result_ip is False:
             return False,"IP address assignment failed"
         return True,"ip address changed"
-    
-    # ----------------------------------------------------------------------------------------------
 
     def device_ipaddress_config(self, device_id=None, device=None, ipaddress=None, network=None):
         """
@@ -729,6 +803,7 @@ class Config(object):
             return True,"ip address changed"
         return False,"not enough details"
 
+    # ----------------------------------------------------------------------------------------------
 
     def node_interface_config(self, nodeid=None, interface_name=None, macaddress=None, vlanid=None, options=None):
         """
@@ -770,6 +845,7 @@ class Config(object):
         self.logger.info(message)
         return False, message
 
+    # ----------------------------------------------------------------------------------------------
 
     def node_interface_clear_ipaddress(self, nodeid, interface_name, ipversion='ipv4'):
         """
@@ -796,9 +872,71 @@ class Config(object):
         return False, message
 
 
-    def node_interface_ipaddress_config(self, nodeid, interface_name, ipaddress,network=None):
+    def node_interface_dhcp_config(self, nodeid, interface_name, dhcp, network=None):
         """
-        This method will collect ipaddress of node interfaces and return configuration.
+        This method sets dhcp for interface of nodes.
+        """
+        result_ip = False
+        my_dhcp = {}
+
+        if network is not None:
+            network_details = Database().get_record(None, 'network', f'WHERE name="{network}"')
+        else:
+            network_details = Database().get_record_join(
+                ['network.*'],
+                ['ipaddress.tablerefid=nodeinterface.id', 'network.id=ipaddress.networkid'],
+                [
+                    'tableref="nodeinterface"',
+                    f'nodeinterface.nodeid="{nodeid}"',
+                    f'nodeinterface.interface="{interface_name}"'
+                ]
+            )
+
+        if not network_details:
+            message = "not enough information provided. network name incorrect or need network name if there is no existing config for dhcp"
+            self.logger.info(message)
+            return False, message
+
+        my_dhcp['networkid'] = network_details[0]['id']
+        dhcp = Helper().bool_to_string(dhcp)
+        my_dhcp['dhcp'] = dhcp
+
+        my_interface = Database().get_record_join(
+            ['ipaddress.*'],
+            ['ipaddress.tablerefid=nodeinterface.id'],
+            [
+                'tableref="nodeinterface"',
+                f'nodeinterface.nodeid="{nodeid}"',
+                f'nodeinterface.interface="{interface_name}"'
+                ]
+            )
+
+        if my_interface: # existing ip config we need to modify
+            row = Helper().make_rows(my_dhcp)
+            where = [{"column": "id", "value": f"{my_interface[0]['id']}"}]
+            result_ip = Database().update('ipaddress', row, where)
+
+        else:
+            # no config set yet for the interface
+            where = f'WHERE nodeid = "{nodeid}" AND interface = "{interface_name}"'
+            my_interface = Database().get_record(None, 'nodeinterface', where)
+            if my_interface:
+                my_dhcp['tableref'] = 'nodeinterface'
+                my_dhcp['tablerefid'] = my_interface[0]['id']
+                row = Helper().make_rows(my_dhcp)
+                result_ip = Database().insert('ipaddress', row)
+
+        if result_ip:
+            message = f"dhcp configured for {interface_name} with result {result_ip}"
+            self.logger.info(message)
+            return True, message
+        message = f"dhcp config for {interface_name} failed with result {result_ip}"
+        self.logger.info(message)
+
+
+    def node_interface_ipaddress_config(self, nodeid, interface_name, ipaddress, network=None, force=False):
+        """
+        This method configures ip addresses for interface of nodes.
         """
         ipaddress_check, valid_ip, result_ip = False, False, False
         my_ipaddress = {}
@@ -846,20 +984,32 @@ class Config(object):
             self.logger.info(message)
             return False, message
 
-        ipaddress_check = Database().get_record(None, 'ipaddress', f"WHERE ipaddress='{ipaddress}' or ipaddress_ipv6='{ipaddress}'")
-        if ipaddress_check:
-            ipaddress_type='ipaddress'
-            if Helper().check_if_ipv6(ipaddress):
-                ipaddress_type='ipaddress_ipv6'
-            ipaddress_check_own = Database().get_record_join(
-                ['node.id as nodeid','nodeinterface.interface'],
-                ['ipaddress.tablerefid=nodeinterface.id','nodeinterface.nodeid=node.id'],
-                ['tableref="nodeinterface"',f"ipaddress.{ipaddress_type}='{ipaddress}'"]
-            )
-            if ipaddress_check_own and ((ipaddress_check_own[0]['nodeid'] != nodeid) or (interface_name != ipaddress_check_own[0]['interface'])):
-                return False, f"ip address {ipaddress} is already in use"
+        if ipaddress:
+            ipaddress_check = Database().get_record(None, 'ipaddress', f"WHERE ipaddress='{ipaddress}' or ipaddress_ipv6='{ipaddress}'")
+            if ipaddress_check:
+                ipaddress_type='ipaddress'
+                ipversion='ipv4'
+                if Helper().check_if_ipv6(ipaddress):
+                    ipaddress_type='ipaddress_ipv6'
+                    ipversion='ipv6'
+                ipaddress_check_own = Database().get_record_join(
+                    ['node.id as nodeid','node.name as nodename','nodeinterface.interface'],
+                    ['ipaddress.tablerefid=nodeinterface.id','nodeinterface.nodeid=node.id'],
+                    ['tableref="nodeinterface"',f"ipaddress.{ipaddress_type}='{ipaddress}'"]
+                )
+                if ipaddress_check_own and ((ipaddress_check_own[0]['nodeid'] != nodeid) or (interface_name != ipaddress_check_own[0]['interface'])):
+                    if not force:
+                        return False, f"ip address {ipaddress} is already in use"
+                    else:
+                        status, message = self.node_interface_clear_ipaddress(
+                            ipaddress_check_own[0]['nodeid'],
+                            ipaddress_check_own[0]['interface'],
+                            ipversion=ipversion
+                        )
+                        if not status:
+                            return False, f"ip address {ipaddress} could not be cleared and set"
 
-        ipaddress_check = Database().get_record_join(
+        my_interface = Database().get_record_join(
             ['ipaddress.*'],
             ['ipaddress.tablerefid=nodeinterface.id'],
             [
@@ -869,18 +1019,18 @@ class Config(object):
                 ]
             )
 
-        if ipaddress_check: # existing ip config we need to modify
+        if my_interface: # existing ip config we need to modify
             row = Helper().make_rows(my_ipaddress)
-            where = [{"column": "id", "value": f"{ipaddress_check[0]['id']}"}]
+            where = [{"column": "id", "value": f"{my_interface[0]['id']}"}]
             result_ip = Database().update('ipaddress', row, where)
 
         else:
             # no ip set yet for the interface
             where = f'WHERE nodeid = "{nodeid}" AND interface = "{interface_name}"'
-            check_interface = Database().get_record(None, 'nodeinterface', where)
-            if check_interface:
+            my_interface = Database().get_record(None, 'nodeinterface', where)
+            if my_interface:
                 my_ipaddress['tableref']='nodeinterface'
-                my_ipaddress['tablerefid']=check_interface[0]['id']
+                my_ipaddress['tablerefid']=my_interface[0]['id']
                 row = Helper().make_rows(my_ipaddress)
                 result_ip = Database().insert('ipaddress', row)
 
@@ -892,6 +1042,7 @@ class Config(object):
         self.logger.info(message)
         return False, message
 
+    # ----------------------------------------------------------------------------------------------
 
     def update_interface_on_group_nodes(self, name=None, request_id=None):
         """
@@ -920,7 +1071,8 @@ class Config(object):
                                 'network.network', 'network.network_ipv6',
                                 'network.subnet', 'network.subnet_ipv6',
                                 'network.name as networkname',
-                                'groupinterface.vlanid'
+                                'groupinterface.vlanid',
+                                'groupinterface.dhcp'
                             ],
                             [
                                 'ipaddress.networkid=network.id',
@@ -936,7 +1088,8 @@ class Config(object):
                                     'network.network', 'network.network_ipv6',
                                     'network.subnet', 'network.subnet_ipv6',
                                     'network.name as networkname',
-                                    'groupinterface.vlanid'
+                                    'groupinterface.vlanid',
+                                    'groupinterface.dhcp'
                                 ],
                                 [
                                     'network.id=groupinterface.networkid',
@@ -949,20 +1102,23 @@ class Config(object):
                             )
                         dhcp_ips = []
                         dhcp6_ips = []
-                        vlanid = None
+                        vlanid, dhcp = None, None
                         if network:
                             dhcp_ips = self.get_dhcp_range_ips_from_network(network[0]['networkname'])
                             dhcp6_ips = self.get_dhcp_range_ips_from_network(network[0]['networkname'],'ipv6')
                             vlanid = network[0]['vlanid']
+                            dhcp = network[0]['dhcp']
                         ips = dhcp_ips.copy()
                         ips6 = dhcp6_ips.copy()
                         if network: 
                             if 'ipaddress' in network[0]:
                                 for ip in network:
-                                    ips.append(ip['ipaddress'])
+                                    if ip['ipaddress']:
+                                        ips.append(ip['ipaddress'])
                             if 'ipaddress_ipv6' in network[0]:
                                 for ip in network:
-                                    ips6.append(ip['ipaddress_ipv6'])
+                                    if ip['ipaddress_ipv6']:
+                                        ips6.append(ip['ipaddress_ipv6'])
                         nodes = Database().get_record_join(
                             ['node.id as nodeid'],
                             ['node.groupid=group.id'],
@@ -975,10 +1131,10 @@ class Config(object):
                                 message += f"{node['nodeid']} for group {group}. {text}"
                                 self.logger.info(message)
                                 if check and network:
-                                    valid_ip, avail, valid_ip6, avail6 = None, None, None, None
+                                    valid_ip, avail, valid_ip6, avail6, avail_dhcp = None, None, None, None, None
                                     if action == 'update_interface_for_group_nodes':
                                         ip_details = Database().get_record_join(
-                                            ['ipaddress.ipaddress','ipaddress.ipaddress_ipv6'],
+                                            ['ipaddress.ipaddress','ipaddress.ipaddress_ipv6','ipaddress.dhcp'],
                                             ['ipaddress.tablerefid=nodeinterface.id'],
                                             [
                                                 "ipaddress.tableref='nodeinterface'",
@@ -987,25 +1143,26 @@ class Config(object):
                                             ]
                                         )
                                         if ip_details:
-                                            if network[0]['network']:
+                                            avail_dhcp = ip_details[0]['dhcp'] or False
+                                            if network[0]['network'] and ip_details[0]['ipaddress']:
                                                 valid_ip = Helper().check_ip_range(
                                                     ip_details[0]['ipaddress'],
                                                     f"{network[0]['network']}/{network[0]['subnet']}"
                                                 )
-                                            if network[0]['network_ipv6']:
+                                            if network[0]['network_ipv6'] and ip_details[0]['ipaddress_ipv6']:
                                                 valid_ip6 = Helper().check_ip_range(
                                                     ip_details[0]['ipaddress_ipv6'],
                                                     f"{network[0]['network_ipv6']}/{network[0]['subnet_ipv6']}"
                                                 )
-                                        if valid_ip and ip_details[0]['ipaddress'] not in dhcp_ips:
-                                            avail = ip_details[0]['ipaddress']
-                                            self.logger.info(f"---> reusing ipaddress {avail}")
-                                        if valid_ip6 and ip_details[0]['ipaddress_ipv6'] not in dhcp_ips6:
-                                            avail6 = ip_details[0]['ipaddress_ipv6']
-                                            self.logger.info(f"---> reusing ipaddress {avail6}")
+                                            if valid_ip and ip_details[0]['ipaddress'] and ip_details[0]['ipaddress'] not in dhcp_ips:
+                                                avail = ip_details[0]['ipaddress']
+                                                self.logger.info(f"---> reusing ipaddress {avail}")
+                                            if valid_ip6 and ip_details[0]['ipaddress_ipv6'] and ip_details[0]['ipaddress_ipv6'] not in dhcp_ips6:
+                                                avail6 = ip_details[0]['ipaddress_ipv6']
+                                                self.logger.info(f"---> reusing ipaddress {avail6}")
 
                                     # IPv4, ipv4 ------------------------------
-                                    if network[0]['network'] and not avail:
+                                    if network[0]['network'] and (not avail) and (not avail_dhcp):
                                         avail = Helper().get_available_ip(
                                             network[0]['network'],
                                             network[0]['subnet'],
@@ -1034,7 +1191,7 @@ class Config(object):
                                         )
 
                                     # IPv6, ipv6 ------------------------------
-                                    if network[0]['network_ipv6'] and not avail6:
+                                    if network[0]['network_ipv6'] and (not avail6) and (not avail_dhcp):
                                         avail6 = Helper().get_available_ip(
                                             network[0]['network_ipv6'],
                                             network[0]['subnet_ipv6'],
@@ -1060,6 +1217,14 @@ class Config(object):
                                             node['nodeid'],
                                             interface,
                                             'ipv6'
+                                        )
+
+                                    # DHCP ------------------------------------
+                                    if dhcp is not None:
+                                        _, response = self.node_interface_dhcp_config(
+                                            node['nodeid'],
+                                            interface,
+                                            dhcp
                                         )
 
                     # DELETING --------------------------------------------------------------
@@ -1104,7 +1269,7 @@ class Config(object):
                                     [{"column": "id", "value": node['ifid']}]
                                 )
                     Queue().remove_task_from_queue(next_id)
-                    Queue().add_task_to_queue(task='restart', param='dns',
+                    Queue().add_task_to_queue(task='reload', param='dns',
                                               subsystem='housekeeper',
                                               request_id='__update_interface_on_group_nodes__')
                 else:
@@ -1139,9 +1304,11 @@ class Config(object):
                             [
                                 'ipaddress.ipaddress',
                                 'ipaddress.ipaddress_ipv6',
+                                'ipaddress.dhcp',
                                 'ipaddress.networkid as networkid',
                                 'network.network',
                                 'network.subnet',
+                                'network.dhcp as networkdhcp',
                                 'network.network_ipv6',
                                 'network.subnet_ipv6',
                                 'network.name as networkname',
@@ -1158,42 +1325,46 @@ class Config(object):
                                 ret, avail, avail6, maximum = 0, ipaddress['ipaddress'], ipaddress['ipaddress_ipv6'], 5
                                 we_continue = False
                                 we_continue6 = False
+                                we_dhcp = ipaddress['networkdhcp'] and (ipaddress['dhcp'] or False)
                                 if ipaddress['network']:
                                     if not ipaddress['network_ipv6']:
                                         avail6 = None
                                         we_continue6 = True
-                                    valid_ip = Helper().check_ip_range(ipaddress['ipaddress'],
-                                        f"{ipaddress['network']}/{ipaddress['subnet']}"
-                                    )
-                                    if valid_ip and ipaddress['ipaddress'] not in ips:
-                                        ips.append(ipaddress['ipaddress'])
-                                        self.logger.info(f"For network {network} no change for IP {ipaddress['ipaddress']}")
-                                        we_continue = True
+                                    if ipaddress['ipaddress']:
+                                        valid_ip = Helper().check_ip_range(ipaddress['ipaddress'],
+                                            f"{ipaddress['network']}/{ipaddress['subnet']}"
+                                        )
+                                        if valid_ip and ipaddress['ipaddress'] not in ips:
+                                            ips.append(ipaddress['ipaddress'])
+                                            self.logger.info(f"For network {network} no change for IP {ipaddress['ipaddress']}")
+                                            we_continue = True
                                 if ipaddress['network_ipv6']:
                                     if not ipaddress['network']:
                                         avail = None
                                         we_continue = True
-                                    valid_ip6 = Helper().check_ip_range(ipaddress['ipaddress_ipv6'],
-                                        f"{ipaddress['network_ipv6']}/{ipaddress['subnet_ipv6']}"
-                                    )
-                                    if valid_ip6 and ipaddress['ipaddress_ipv6'] not in ips6:
-                                        ips6.append(ipaddress['ipaddress_ipv6'])
-                                        self.logger.info(f"For network {network} no change for IP {ipaddress['ipaddress_ipv6']}")
-                                        we_continue6 = True
+                                    if ipaddress['ipaddress_ipv6']:
+                                        valid_ip6 = Helper().check_ip_range(ipaddress['ipaddress_ipv6'],
+                                            f"{ipaddress['network_ipv6']}/{ipaddress['subnet_ipv6']}"
+                                        )
+                                        if valid_ip6 and ipaddress['ipaddress_ipv6'] not in ips6:
+                                            ips6.append(ipaddress['ipaddress_ipv6'])
+                                            self.logger.info(f"For network {network} no change for IP {ipaddress['ipaddress_ipv6']}")
+                                            we_continue6 = True
                                 if we_continue and we_continue6:
                                     continue
-                                if not we_continue:
-                                    avail = Helper().get_available_ip(
-                                        ipaddress['network'],
-                                        ipaddress['subnet'],
-                                        ips, ping=True
-                                    )
-                                if not we_continue6:
-                                    avail6 = Helper().get_available_ip(
-                                        ipaddress['network_ipv6'],
-                                        ipaddress['subnet_ipv6'],
-                                        ips6, ping=True
-                                    )
+                                if not we_dhcp:
+                                    if not we_continue:
+                                        avail = Helper().get_available_ip(
+                                            ipaddress['network'],
+                                            ipaddress['subnet'],
+                                            ips, ping=True
+                                        )
+                                    if not we_continue6:
+                                        avail6 = Helper().get_available_ip(
+                                            ipaddress['network_ipv6'],
+                                            ipaddress['subnet_ipv6'],
+                                            ips6, ping=True
+                                        )
                                 message = f"For network {network} changing IP "
                                 if avail:
                                     # row   = [{"column": "ipaddress", "value": f"{avail}"}]
@@ -1221,6 +1392,7 @@ class Config(object):
                                     row = [
                                         {"column": "ipaddress", "value": avail},
                                         {"column": "ipaddress_ipv6", "value": avail6},
+                                        {"column": "dhcp", "value": f"{ipaddress['dhcp']}"},
                                         {"column": "networkid", "value": f"{ipaddress['networkid']}"},
                                         {"column": "tableref", "value": f"{ipaddress['tableref']}"},
                                         {"column": "tablerefid", "value": f"{ipaddress['tablerefid']}"}
@@ -1229,12 +1401,12 @@ class Config(object):
 
                                     message += f"{ipaddress['ipaddress']} to {avail} and {ipaddress['ipaddress_ipv6']} to {avail6}. {result}"
                                     self.logger.info(message)
-                                else:
+                                elif not we_dhcp:
                                     message += f"{ipaddress['ipaddress']} or {ipaddress['ipaddress_ipv6']} not possible. "
                                     message += "no free IP addresses available."
                                     self.logger.error(message)
                     Queue().remove_task_from_queue(next_id)
-                    Queue().add_task_to_queue(task='restart', param='dns', subsystem='housekeeper',
+                    Queue().add_task_to_queue(task='reload', param='dns', subsystem='housekeeper',
                                               request_id='__update_interface_ipaddress_on_network_change__')
                     Queue().add_task_to_queue(task='restart', param='dhcp', subsystem='housekeeper',
                                               request_id='__update_interface_ipaddress_on_network_change__')
@@ -1271,7 +1443,7 @@ class Config(object):
                         network[0]['dhcp_range_end'+ipv]
                     )
                     nwk_size = Helper().get_network_size(network[0]['network'+ipv], network[0]['subnet'+ipv])
-                    if ((100 * dhcp_size) / nwk_size) > 50: # == 50%
+                    if ((100 * dhcp_size) / nwk_size) > 50 and not network[0]['dhcp_nodes_in_pool']: # 50 == 50%
                         dhcp_size = int(nwk_size / 10)
                         # we reduce this to 10%
                         # how many,  offset start

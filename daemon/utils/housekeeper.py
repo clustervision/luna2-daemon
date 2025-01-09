@@ -73,7 +73,7 @@ class Housekeeper(object):
                         self.logger.info(f"tasks_mother will work on {task} {first}")
 
                         match task:
-                            case 'restart':
+                            case 'restart'|'reload':
                                 service=first
                                 if service in ['dhcp','dhcp6','dns']:
                                     Queue().update_task_status_in_queue(next_id,'in progress')
@@ -354,7 +354,7 @@ class Housekeeper(object):
                                             tables_object.import_table(table=mismatch['table'],data=data,emptyok=True)
                                     Queue().add_task_to_queue(task='restart', param='dhcp', subsystem='housekeeper', request_id='__table_fix__')
                                     Queue().add_task_to_queue(task='restart', param='dhcp6', subsystem='housekeeper', request_id='__table_fix__')
-                                    Queue().add_task_to_queue(task='restart', param='dns', subsystem='housekeeper', request_id='__table_fix__')
+                                    Queue().add_task_to_queue(task='reload', param='dns', subsystem='housekeeper', request_id='__table_fix__')
                             sum_tel=720
                         sum_tel-=1
                     # --------------------------- end of magic

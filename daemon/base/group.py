@@ -64,7 +64,8 @@ class Group():
                 group_id = group['id']
                 group_interface = Database().get_record_join(
                     ['groupinterface.interface','network.name as network',
-                     'groupinterface.vlanid', 'groupinterface.options'],
+                     'groupinterface.vlanid', 'groupinterface.options',
+                     'groupinterface.dhcp'],
                     ['network.id=groupinterface.networkid'],
                     [f"groupid = '{group_id}'"]
                 )
@@ -75,6 +76,9 @@ class Group():
                             del interface['options']
                         if not interface['vlanid']:
                             del interface['vlanid']
+                        interface['dhcp'] = Helper().make_bool(interface['dhcp']) or False
+                        #if not interface['dhcp']:
+                        #    del interface['dhcp']
                         group['interfaces'].append(interface)
                 del group['id']
                 group['setupbmc'] = Helper().make_bool(group['setupbmc'])
@@ -132,7 +136,8 @@ class Group():
                     'groupinterface.interface',
                     'network.name as network',
                     'groupinterface.vlanid',
-                    'groupinterface.options'
+                    'groupinterface.options',
+                    'groupinterface.dhcp'
                 ],
                 ['network.id=groupinterface.networkid'],
                 [f"groupid = '{group_id}'"]
@@ -144,6 +149,9 @@ class Group():
                         del interface['options']
                     if not interface['vlanid']:
                         del interface['vlanid']
+                    #if not interface['dhcp']:
+                    #    del interface['dhcp']
+                    interface['dhcp'] = Helper().make_bool(interface['dhcp']) or False
                     group['interfaces'].append(interface)
             del group['id']
             for key, value in items.items():
@@ -404,6 +412,8 @@ class Group():
                             status=False
                             return status, 'Network not provided or does not exist'
                         else:
+                            if 'dhcp' in ifx:
+                                ifx['dhcp'] = Helper().bool_to_string(ifx['dhcp'])
                             ifx['networkid'] = network
                             ifx['groupid'] = group_id
                         group_clause = f'groupid = "{group_id}"'
@@ -452,8 +462,8 @@ class Group():
                 if group_details:
                     for group_detail in group_details:
                         nodes_in_group.append(group_detail['nodename'])
-                group_plugins = Helper().plugin_finder(f'{self.plugins_path}/run')
-                group_plugin=Helper().plugin_load(group_plugins,'run/group','default')
+                group_plugins = Helper().plugin_finder(f'{self.plugins_path}/hooks')
+                group_plugin=Helper().plugin_load(group_plugins,'hooks/config','group')
                 try:
                     if oldgroupname and newgroupname:
                         group_plugin().rename(name=oldgroupname, newname=newgroupname)
@@ -559,7 +569,8 @@ class Group():
                         'groupinterface.interface',
                         'network.name as network',
                         'network.id as networkid',
-                        'groupinterface.options'
+                        'groupinterface.options',
+                        'groupinterface.dhcp'
                     ],
                     ['network.id=groupinterface.networkid'],
                     [f"groupid = '{group_id}'"]
@@ -602,6 +613,8 @@ class Group():
                             ifx['networkid'] = network
                             if 'options' in ifx:
                                 ifx['options'] = ifx['options'] or ""
+                            if 'dhcp' in ifx:
+                                ifx['dhcp'] = Helper().bool_to_string(ifx['dhcp'])
                             ifx['groupid'] = new_group_id
                             del ifx['network']
                         row = Helper().make_rows(ifx)
@@ -624,8 +637,8 @@ class Group():
                 if group_details:
                     for group_detail in group_details:
                         nodes_in_group.append(group_detail['nodename'])
-                group_plugins = Helper().plugin_finder(f'{self.plugins_path}/run')
-                group_plugin=Helper().plugin_load(group_plugins,'run/group','default')
+                group_plugins = Helper().plugin_finder(f'{self.plugins_path}/hooks')
+                group_plugin=Helper().plugin_load(group_plugins,'hooks/config','group')
                 try:
                     group_plugin().postcreate(name=newgroupname, nodes=nodes_in_group)
                 except Exception as exp:
@@ -676,8 +689,8 @@ class Group():
             response = f'Group {name} removed'
             status=True
             # ---- we call the group plugin - maybe someone wants to run something after delete?
-            group_plugins = Helper().plugin_finder(f'{self.plugins_path}/run')
-            group_plugin=Helper().plugin_load(group_plugins,'run/group','default')
+            group_plugins = Helper().plugin_finder(f'{self.plugins_path}/hooks')
+            group_plugin=Helper().plugin_load(group_plugins,'hooks/config','group')
             try:
                 group_plugin().delete(name=name)
             except Exception as exp:

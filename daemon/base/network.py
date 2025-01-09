@@ -69,9 +69,11 @@ class Network():
                     del network['dhcp_range_end']
                     del network['dhcp_range_begin_ipv6']
                     del network['dhcp_range_end_ipv6']
+                    del network['dhcp_nodes_in_pool']
                     network['dhcp'] = False
                 else:
                     network['dhcp'] = True
+                    network['dhcp_nodes_in_pool'] = Helper().make_bool(network['dhcp_nodes_in_pool'])
                 network['type'] = network['type'] or 'ethernet'
                 response['config']['network'][network['name']] = network
             status=True
@@ -104,9 +106,11 @@ class Network():
                     del network['dhcp_range_end']
                     del network['dhcp_range_begin_ipv6']
                     del network['dhcp_range_end_ipv6']
+                    del network['dhcp_nodes_in_pool']
                     network['dhcp'] = False
                 else:
                     network['dhcp'] = True
+                    network['dhcp_nodes_in_pool'] = Helper().make_bool(network['dhcp_nodes_in_pool'])
                 network['type'] = network['type'] or 'ethernet'
                 response['config']['network'][name] = network
             status=True
@@ -129,7 +133,7 @@ class Network():
 
         if request_data:
             used_ips, used6_ips = 0, 0
-            redistribute_ipaddress, clear_ipv4, clear_ipv6 = False, False, False
+            redistribute_ipaddress, reconfigure_ipaddress, clear_ipv4, clear_ipv6 = False, False, False, False
             default_gateway_metric, default_zone = "101", "internal"
             controller_ips=[]
 
@@ -240,6 +244,7 @@ class Network():
                 default_zone=data['zone']
             elif create is True:
                 data['zone']="internal"
+                data['dhcp_nodes_in_pool']="0"
             if 'gateway' in data:
                 if data['gateway'] == "":
                     data['gateway'] = None
@@ -309,6 +314,11 @@ class Network():
                 if data['dhcp'] == "1":
                     redistribute_ipaddress = True
                     # to make sure we do not overlap with existing node ip configs
+            if 'dhcp_nodes_in_pool' in data:
+                data['dhcp_nodes_in_pool'] = Helper().bool_to_string(data['dhcp_nodes_in_pool'])
+                if data['dhcp_nodes_in_pool'] == "0":
+                    self.logger.info("We will (re)configure ip addresses")
+                    reconfigure_ipaddress = True
 
             if 'clear' in data:
                 if data['clear'] == 'ipv6' and db_data['network']:
@@ -430,7 +440,9 @@ class Network():
                     Database().update('network', row, where)
                     # TWANNIE
                     if redistribute_ipaddress is True:
+                        # basically when we have set dhcp on
                         Config().update_dhcp_range_on_network_change(name)
+                    if redistribute_ipaddress is True or reconfigure_ipaddress is True:
                         # below section takes care (in the background), adding/renaming/deleting.
                         # for adding next free ip-s will be selected.
                         # time consuming therefor background
@@ -469,7 +481,7 @@ class Network():
                                 Database().update('ipaddress', row, where)
                     response = f'Network {name} updated successfully'
                     status=True
-                Service().queue('dns','restart')
+                Service().queue('dns','reload')
                 Service().queue('dhcp','restart')
                 Service().queue('dhcp6','restart')
                 # technically only needed when dhcp changes, but it doesn't hurt to just do it
@@ -501,7 +513,7 @@ class Network():
                 row = Helper().make_rows(data)
                 where = [{"column": "shared", "value": name}]
                 Database().update('network', row, where)
-                Service().queue('dns','restart')
+                Service().queue('dns','reload')
                 Service().queue('dhcp','restart')
                 Service().queue('dhcp6','restart')
                 response = 'Network removed'

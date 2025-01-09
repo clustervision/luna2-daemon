@@ -80,7 +80,6 @@ class Interface():
                         del interface['vlanid']
                     my_interface.append(interface)
                     response['config']['node'][name]['interfaces'] = my_interface
-                self.logger.info(f'Returned node interface {name} details.')
                 status=True
             else:
                 self.logger.error(f'Node {name} dont have any interface.')
@@ -125,7 +124,8 @@ class Interface():
             for interface in data:
                 # Antoine
                 interface_name = interface['interface']
-                ipaddress, macaddress, network, options, vlanid = None, None, None, None, None
+                ipaddress, macaddress, network, clear_ip = None, None, None, False
+                options, vlanid, force, dhcp, set_dhcp = None, None, False, None, False
                 if 'macaddress' in interface.keys():
                     macaddress = interface['macaddress']
                 if 'options' in interface.keys():
@@ -136,6 +136,13 @@ class Interface():
                     network = interface['network']
                 if 'ipaddress' in interface.keys():
                     ipaddress = interface['ipaddress']
+                if 'force' in interface.keys():
+                    force = interface['force']
+                if 'dhcp' in interface.keys():
+                    dhcp = interface['dhcp']
+                    set_dhcp = True
+                if ipaddress == '': # clearing the config!
+                    clear_ip = True
                 result, message = Config().node_interface_config(
                     nodeid,
                     interface_name,
@@ -147,7 +154,8 @@ class Interface():
                     existing = Database().get_record_join(
                         [
                             'ipaddress.ipaddress','ipaddress.ipaddress_ipv6',
-                            'network.name as networkname'
+                            'ipaddress.dhcp', 'network.name as networkname',
+                            'network.dhcp_nodes_in_pool', 'network.dhcp as networkdhcp'
                         ],
                         [
                             'nodeinterface.nodeid=node.id',  
@@ -160,40 +168,44 @@ class Interface():
                             f"nodeinterface.interface='{interface_name}'"
                         ]
                     )
-                    if network or ipaddress:
+                    if network or ipaddress or set_dhcp or clear_ip:
                         ipaddress_ipv6 = None
                         if not ipaddress:
-                            # ipv4
                             if existing:
+                                if set_dhcp and dhcp and not network: # first set see if we just toggle
+                                    network = existing[0]['networkname']
                                 if network == existing[0]['networkname']:
                                     ipaddress = existing[0]['ipaddress']
                                     if existing[0]['ipaddress_ipv6'] and not ipaddress:
                                         ipaddress = existing[0]['ipaddress_ipv6']
-                            if not ipaddress:
+                            if (not clear_ip) and (not ipaddress):
                                 if not network and existing:
                                     network = existing[0]['networkname']
                                 if network:
                                     where = f" WHERE `name` = '{network}'"
                                     network_details = Database().get_record(None, 'network', where)
                                     if network_details:
-                                        if network_details[0]['network']:
-                                            ips = Config().get_all_occupied_ips_from_network(network)
-                                            avail = Helper().get_available_ip(
-                                                network_details[0]['network'],
-                                                network_details[0]['subnet'],
-                                                ips
-                                            )
-                                            if avail:
-                                                ipaddress = avail
-                                        if network_details[0]['network_ipv6']:
-                                            ips = Config().get_all_occupied_ips_from_network(network,'ipv6')
-                                            avail = Helper().get_available_ip(
-                                                network_details[0]['network_ipv6'],
-                                                network_details[0]['subnet_ipv6'],
-                                                ips
-                                            )
-                                            if avail:
-                                                ipaddress_ipv6 = avail
+                                        if network_details[0]['dhcp'] and network_details[0]['dhcp_nodes_in_pool']:
+                                            clear_ip = True
+                                        else:
+                                            if network_details[0]['network']:
+                                                ips = Config().get_all_occupied_ips_from_network(network)
+                                                avail = Helper().get_available_ip(
+                                                    network_details[0]['network'],
+                                                    network_details[0]['subnet'],
+                                                    ips
+                                                )
+                                                if avail:
+                                                    ipaddress = avail
+                                            if network_details[0]['network_ipv6']:
+                                                ips = Config().get_all_occupied_ips_from_network(network,'ipv6')
+                                                avail = Helper().get_available_ip(
+                                                    network_details[0]['network_ipv6'],
+                                                    network_details[0]['subnet_ipv6'],
+                                                    ips
+                                                )
+                                                if avail:
+                                                    ipaddress_ipv6 = avail
                         elif not network:
                             if existing:
                                 network = existing[0]['networkname']
@@ -202,19 +214,56 @@ class Interface():
                             ipaddress = ipaddress_ipv6
                             ipaddress_ipv6 = None
 
-                        result, message = Config().node_interface_ipaddress_config(
-                            nodeid,
-                            interface_name,
-                            ipaddress,
-                            network
-                        )
-                        if result and ipaddress_ipv6:
-                            result, message = Config().node_interface_ipaddress_config(
+                        result = True
+                        # ------------------ prevent having an unconfigured interface ---------------------
+                        if set_dhcp and not dhcp:
+                            if existing:
+                                if clear_ip and not existing[0]['dhcp']:
+                                    result=False
+                                    message="Invalid request: dhcp not set while clearing ip addresses"
+                                elif (not existing[0]['ipaddress']) or (not existing[0]['ipaddress_ipv6']):
+                                    if (not ipaddress) and (not ipaddress_ipv6):
+                                        result=False
+                                        message="Invalid request: dhcp unset while not having configured ip addresses"
+                            else:
+                                if (not ipaddress) and (not ipaddress_ipv6):
+                                    result=False
+                                    message="Invalid request: dhcp unset while not having configured ip addresses"
+                        # ---------------------------------------------------------------------------------
+
+                        if result and clear_ip:
+                            for ipversion in ['ipv4','ipv6']:
+                                result, message = Config().node_interface_clear_ipaddress(
+                                    nodeid,
+                                    interface_name,
+                                    ipversion=ipversion
+                                )
+
+                        if result and set_dhcp:
+                            result, message = Config().node_interface_dhcp_config(
                                 nodeid,
                                 interface_name,
-                                ipaddress_ipv6,
+                                dhcp,
                                 network
                             )
+
+                        if ipaddress or ipaddress_ipv6:
+                            if result and ipaddress:
+                                result, message = Config().node_interface_ipaddress_config(
+                                    nodeid,
+                                    interface_name,
+                                    ipaddress,
+                                    network,
+                                    force
+                                )
+                            if result and ipaddress_ipv6:
+                                result, message = Config().node_interface_ipaddress_config(
+                                    nodeid,
+                                    interface_name,
+                                    ipaddress_ipv6,
+                                    network,
+                                    force
+                                )
                     elif (macaddress is None) and (options is None):
                         # this means we just made an empty interface. a no no - Antoine
                         # beware that we _have_ to test for None as 
@@ -269,7 +318,8 @@ class Interface():
                         'groupinterface.interface',
                         'network.name as network',
                         'network.id as networkid',
-                        'groupinterface.options'
+                        'groupinterface.options',
+                        'groupinterface.dhcp'
                     ],
                     ['network.id=groupinterface.networkid'],
                     [f"groupinterface.groupid={oldgroupid}"]
@@ -282,7 +332,8 @@ class Interface():
                     'network.name as network',
                     'network.id as networkid',
                     'groupinterface.vlanid',
-                    'groupinterface.options'
+                    'groupinterface.options',
+                    'groupinterface.dhcp'
                 ],
                 ['network.id=groupinterface.networkid'],
                 [f"groupinterface.groupid={groupid}"]
@@ -302,6 +353,7 @@ class Interface():
                                         # we already have such interface with matching config. we do nothing
                                         add_interface = False
                                         del if_dict[group_interface['interface']]
+                                        self.logger.info(f"not changing existing interface {group_interface['interface']} for node with id {nodeid}")
                     if add_interface is True:
                         result, message = Config().node_interface_config(
                             nodeid,
@@ -314,7 +366,7 @@ class Interface():
                             where = f" WHERE `name` = \"{group_interface['network']}\""
                             network = Database().get_record(None, 'network', where)
                             if network:
-                                if network[0]['network']:
+                                if network[0]['network'] and not network[0]['dhcp_nodes_in_pool']:
                                     ips = Config().get_all_occupied_ips_from_network(
                                         group_interface['network']
                                     )
@@ -339,7 +391,7 @@ class Interface():
                                         group_interface['interface'],
                                         'ipv4'
                                     )
-                                if network[0]['network_ipv6']:
+                                if network[0]['network_ipv6'] and not network[0]['dhcp_nodes_in_pool']:
                                     ips = Config().get_all_occupied_ips_from_network(
                                         group_interface['network'], 'ipv6'
                                     )
@@ -364,6 +416,16 @@ class Interface():
                                         group_interface['interface'],
                                         'ipv6'
                                     )
+                            if 'dhcp' in group_interface:
+                                result, message = Config().node_interface_dhcp_config(
+                                    nodeid,
+                                    group_interface['interface'],
+                                    group_interface['dhcp'],
+                                    group_interface['network']
+                                )
+                                if result:
+                                    if if_dict and group_interface['interface'] in if_dict.keys():
+                                        del if_dict[group_interface['interface']]
 
             if if_dict and if_old_group_dict:
                 for interface in if_dict.keys():
@@ -414,8 +476,6 @@ class Interface():
                         del interface['vlanid']
                     my_interface.append(interface)
                     response['config']['node'][name]['interfaces'] = my_interface
-
-                self.logger.info(f'Returned node interface {name} details.')
                 status=True
             else:
                 self.logger.error(f'Node {name} does not have {interface} interface.')
@@ -464,7 +524,7 @@ class Interface():
                 Database().delete_row('nodeinterface', where)
                 # disabled the next two for testing. Antoine aug 8 2023
                 #Service().queue('dhcp','restart')
-                #Service().queue('dns','restart')
+                #Service().queue('dns','reload')
                 # below might look as redundant but is added to prevent a possible race condition
                 # when many nodes are added in a loop.
                 # the below tasks ensures that even the last node will be included in dhcp/dns
@@ -472,7 +532,7 @@ class Interface():
                                           subsystem='housekeeper', request_id='__node_interface_delete__')
                 Queue().add_task_to_queue(task='restart', param='dhcp6', 
                                           subsystem='housekeeper', request_id='__node_interface_delete__')
-                Queue().add_task_to_queue(task='restart', param='dns', 
+                Queue().add_task_to_queue(task='reload', param='dns', 
                                           subsystem='housekeeper', request_id='__node_interface_delete__')
                 response = f'Interface {interface} removed successfully'
                 status=True
@@ -523,7 +583,6 @@ class Interface():
                     self.logger.error(f'Group {name} does not have any interface.')
                     response = f'Group {name} does not have any interface'
                     status=False
-            self.logger.info(f'Returned group {name} with details.')
             status=True
         else:
             self.logger.error('No group is available.')
@@ -618,8 +677,6 @@ class Interface():
                         del interface['vlanid']
                     my_interface.append(interface)
                     response['config']['group'][name]['interfaces'] = my_interface
-
-                self.logger.info(f'Returned group {name} with details.')
                 status=True
             else:
                 self.logger.error(f'Group {name} does not have {interface} interface.')

@@ -102,7 +102,7 @@ class DNS():
                                 Database().update('dns', row, where)
                             else:
                                 Database().insert('dns', row)
-                Service().queue('dns','restart')
+                Service().queue('dns','reload')
             else:
                 status=False
                 response=f'Network {name} not present in database'
@@ -123,6 +123,6 @@ class DNS():
             Database().delete_row('dns', [{"column": "id", "value": exist[0]['id']}])
             status=True
             response="Entry removed"
-            Service().queue('dns','restart')
+            Service().queue('dns','reload')
         return status, response
 

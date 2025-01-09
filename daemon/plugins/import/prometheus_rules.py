@@ -56,9 +56,6 @@ class Plugin():
         This method will save the both files rules and detailed, depending on the users validation.
         """
         try:
-            json_string = json_data.decode("utf-8")
-            self.logger.debug(f'json_string => {json_string}')
-            json_data = json.loads(json_string)
             self.logger.debug(f'json_data => {json_data}')
             trix_rules = copy.deepcopy(json_data)
             if trix_rules:

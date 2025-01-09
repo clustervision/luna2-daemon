@@ -7,3 +7,8 @@
 #
 # switchport is the default plugin for node detection
 # plugin/detection/switchport.py
+
+# ---- other plugins:
+
+# cloud is a provided plugin to discover a cloud booing node
+# plugin/detection/cloud.py

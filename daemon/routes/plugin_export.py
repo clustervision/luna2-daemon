@@ -31,7 +31,7 @@ __email__       = "antoine.schonewille@clustervision.com"
 __status__      = "Development"
 
 
-from flask import Blueprint
+from flask import Blueprint, request
 from utils.log import Log
 from common.validate_input import validate_name
 from base.plugin_export import Export
@@ -48,7 +48,7 @@ def export_data(name=None):
     """
     access_code=200
     
-    status, response = Export().plugin(name)
+    status, response = Export().plugin(name,request.args)
     if status is True:
         return response, access_code
     access_code=404

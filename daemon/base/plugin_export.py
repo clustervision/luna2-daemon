@@ -45,7 +45,7 @@ class Export():
         plugins_path=CONSTANT["PLUGINS"]["PLUGINS_DIRECTORY"]
         self.export_plugins = Helper().plugin_finder(f'{plugins_path}/export')
 
-    def plugin(self,name):
+    def plugin(self,name,args=None):
         allowed_exporters = None
         if 'ALLOWED_EXPORTERS' in CONSTANT["PLUGINS"]:
             allowed_exporters = CONSTANT["PLUGINS"]["ALLOWED_EXPORTERS"].replace(' ','').split(',')
@@ -53,7 +53,10 @@ class Export():
             if name in allowed_exporters:
                 export_plugin=Helper().plugin_load(self.export_plugins,'export',name)
                 if export_plugin:
-                    status, response = export_plugin().Export()
+                    if args:
+                        status, response = export_plugin().Export(args)
+                    else:
+                        status, response = export_plugin().Export()
                     return status, response
                 return False, f"plugin {name} could not be loaded"
         return False, f"allowed_exporters is undefined or using plugin {name} not permitted"

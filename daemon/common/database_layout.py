@@ -32,24 +32,24 @@ __status__      = 'Development'
 
 
 DATABASE_LAYOUT_status = [
-{"column": "id",                   "datatype": "integer", "length": "10", "key": "PRIMARY", "keyadd": "autoincrement"},
-{"column": "request_id",           "datatype": "text"},
-{"column": "remote_request_id",    "datatype": "text"},
+{"column": "id",                   "datatype": "INTEGER", "length": "10", "key": "PRIMARY", "keyadd": "autoincrement"},
+{"column": "request_id",           "datatype": "TEXT"},
+{"column": "remote_request_id",    "datatype": "TEXT"},
 {"column": "remote_host",          "datatype": "VARCHAR", "length": "250"},
 {"column": "username_initiator",   "datatype": "VARCHAR", "length": "250"},
-{"column": "created",              "datatype": "numeric"},
-{"column": "read",                 "datatype": "integer"},
-{"column": "message",              "datatype": "text"}]
+{"column": "created",              "datatype": "NUMERIC"},
+{"column": "read",                 "datatype": "INTEGER"},
+{"column": "message",              "datatype": "TEXT"}]
 
 DATABASE_LAYOUT_queue = [
-{"column": "id",                   "datatype": "integer", "length": "10", "key": "PRIMARY", "keyadd": "autoincrement"},
-{"column": "request_id",           "datatype": "text"},
-{"column": "username_initiator",   "datatype": "text"},
-{"column": "created",              "datatype": "numeric"},
+{"column": "id",                   "datatype": "INTEGER", "length": "10", "key": "PRIMARY", "keyadd": "autoincrement"},
+{"column": "request_id",           "datatype": "TEXT"},
+{"column": "username_initiator",   "datatype": "TEXT"},
+{"column": "created",              "datatype": "NUMERIC"},
 {"column": "subsystem",            "datatype": "varchar", "length": "128"},
 {"column": "task",                 "datatype": "varchar", "length": "128"},
 {"column": "param",                "datatype": "varchar", "length": "128"},
-{"column": "noeof",                "datatype": "integer", "length": "10"},
+{"column": "noeof",                "datatype": "INTEGER", "length": "10"},
 {"column": "status",               "datatype": "varchar", "length": "64"}]
 
 DATABASE_LAYOUT_osimage = [
@@ -111,12 +111,13 @@ DATABASE_LAYOUT_monitor = [
 {"column": "tablerefid",           "datatype": "INTEGER", "length": "10"},
 {"column": "status",               "datatype": "VARCHAR", "length": "2048"},
 {"column": "state",                "datatype": "VARCHAR", "length": "50"},
-{"column": "updated",              "datatype": "numeric"}]
+{"column": "updated",              "datatype": "NUMERIC"}]
 
 DATABASE_LAYOUT_ipaddress = [
 {"column": "id",                   "datatype": "INTEGER", "key": "PRIMARY", "keyadd": "AUTOINCREMENT"},
 {"column": "ipaddress",            "datatype": "VARCHAR", "length": "60", "key": "UNIQUE"},
 {"column": "ipaddress_ipv6",       "datatype": "VARCHAR", "length": "60", "key": "UNIQUE"},
+{"column": "dhcp",                 "datatype": "INTEGER", "length": "10"},
 {"column": "tableref",             "datatype": "VARCHAR", "length": "100", "key": "UNIQUE", "with": "tablerefid"},
 {"column": "tablerefid",           "datatype": "INTEGER", "length": "10"},
 {"column": "networkid",            "datatype": "INTEGER", "length": "10"}]
@@ -124,13 +125,14 @@ DATABASE_LAYOUT_ipaddress = [
 DATABASE_LAYOUT_reservedipaddress = [
 {"column": "version",              "datatype": "VARCHAR", "length": "10"},
 {"column": "ipaddress",            "datatype": "VARCHAR", "length": "60", "key": "UNIQUE", "with": "version"},
-{"column": "created",              "datatype": "numeric"}]
+{"column": "created",              "datatype": "NUMERIC"}]
 
 DATABASE_LAYOUT_groupinterface = [
 {"column": "id",                   "datatype": "INTEGER", "key": "PRIMARY", "keyadd": "AUTOINCREMENT"},
 {"column": "groupid",              "datatype": "INTEGER", "length": "10"},
 {"column": "interface",            "datatype": "VARCHAR", "length": "60"},
 {"column": "vlanid",               "datatype": "VARCHAR", "length": "10"},
+{"column": "dhcp",                 "datatype": "INTEGER", "length": "10"},
 {"column": "networkid",            "datatype": "INTEGER", "length": "10"},
 {"column": "options",              "datatype": "TEXT"}]
 
@@ -175,6 +177,7 @@ DATABASE_LAYOUT_network = [
 {"column": "nameserver_ip_ipv6",   "datatype": "VARCHAR", "length": "60"},
 {"column": "ntp_server",           "datatype": "VARCHAR", "length": "60"},
 {"column": "dhcp",                 "datatype": "INTEGER", "length": "10"},
+{"column": "dhcp_nodes_in_pool",   "datatype": "INTEGER", "length": "10"},
 {"column": "dhcp_range_begin",     "datatype": "VARCHAR", "length": "20"},
 {"column": "dhcp_range_begin_ipv6","datatype": "VARCHAR", "length": "60"},
 {"column": "dhcp_range_end",       "datatype": "VARCHAR", "length": "20"},
@@ -198,7 +201,7 @@ DATABASE_LAYOUT_user = [
 {"column": "roleid",               "datatype": "INTEGER", "length": "10"},
 {"column": "createdby",            "datatype": "INTEGER", "length": "10"},
 {"column": "lastlogin",            "datatype": "VARCHAR", "length": "50"},
-{"column": "created",              "datatype": "numeric"}]
+{"column": "created",              "datatype": "NUMERIC"}]
 
 DATABASE_LAYOUT_switch = [
 {"column": "id",                   "datatype": "INTEGER", "key": "PRIMARY", "keyadd": "AUTOINCREMENT"},
@@ -288,6 +291,7 @@ DATABASE_LAYOUT_cluster = [
 {"column": "security",             "datatype": "INTEGER", "length": "10"},
 {"column": "packing_bootpause",    "datatype": "INTEGER", "length": "10"},
 {"column": "createnode_ondemand",  "datatype": "INTEGER", "length": "10"},
+{"column": "createnode_macashost", "datatype": "INTEGER", "length": "10"},
 {"column": "nextnode_discover",    "datatype": "INTEGER", "length": "10"}]
 
 DATABASE_LAYOUT_tracker = [
@@ -299,7 +303,7 @@ DATABASE_LAYOUT_tracker = [
 {"column": "download",             "datatype": "INTEGER", "length": "10"},
 {"column": "upload",               "datatype": "INTEGER", "length": "10"},
 {"column": "left",                 "datatype": "INTEGER", "length": "10"},
-{"column": "updated",              "datatype": "numeric"},
+{"column": "updated",              "datatype": "NUMERIC"},
 {"column": "status",               "datatype": "VARCHAR", "length": "20"}]
 
 DATABASE_LAYOUT_journal = [
@@ -314,7 +318,7 @@ DATABASE_LAYOUT_journal = [
 {"column": "sendto",               "datatype": "VARCHAR", "length": "80"},
 {"column": "sendby",               "datatype": "VARCHAR", "length": "80"},
 {"column": "tries",                "datatype": "INTEGER", "length": "10"},
-{"column": "created",              "datatype": "numeric"}]
+{"column": "created",              "datatype": "NUMERIC"}]
 
 DATABASE_LAYOUT_ha = [
 {"column": "enabled",              "datatype": "INTEGER", "length": "10"},
@@ -323,10 +327,10 @@ DATABASE_LAYOUT_ha = [
 {"column": "sharedip",             "datatype": "INTEGER", "length": "10"},
 {"column": "overrule",             "datatype": "INTEGER", "length": "10"},
 {"column": "master",               "datatype": "INTEGER", "length": "10"},
-{"column": "updated",              "datatype": "numeric"}]
+{"column": "updated",              "datatype": "NUMERIC"}]
 
 DATABASE_LAYOUT_ping = [
-{"column": "updated",              "datatype": "numeric"}]
+{"column": "updated",              "datatype": "NUMERIC"}]
 
 DATABASE_LAYOUT_rack = [
 {"column": "id",                   "datatype": "INTEGER", "key": "PRIMARY", "keyadd": "AUTOINCREMENT"},

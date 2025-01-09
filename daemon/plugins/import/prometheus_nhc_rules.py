@@ -156,6 +156,8 @@ class Plugin():
         for hostname, options in json_data.items():
             if type(hostname) is not str:
                 return False, f"Hostname has type ({type(hostname)}) and should be a string."
+            if not re.match(r'^[a-zA-Z0-9-_]+$', hostname):
+                return False, f"Hostname ({hostname}) is invalid"
             if type(options) is not dict:
                 return False, f"Options have type ({type(options)}) and should be a dictionary."
         response = "Prometheus rules imported successfully."

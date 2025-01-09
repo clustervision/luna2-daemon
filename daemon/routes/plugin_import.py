@@ -50,8 +50,9 @@ def import_data(name=None):
     access_code=200
     status, response = Journal().add_request(function="Import.plugin", object=name, payload=request.data)
     if status is True:
-        status, response = Import().plugin(name, request.data)
-        return response, access_code
+        status, response = Import().plugin(name, request.json)
+        if status is True:
+            return response, access_code
     access_code=404
     response = {'message': response}
     return response, access_code

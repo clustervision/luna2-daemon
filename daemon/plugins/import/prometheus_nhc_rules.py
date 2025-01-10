@@ -85,32 +85,39 @@ class Plugin():
                 "hostname", "path", "class", "description", "product", "vendor", "serial", "size", "capacity", "clock"
             ]
 
-    def _prometheus_get_components(self, nodename):
+    def _prometheus_get_components_with_count(self, nodename):
         """
-        This method will source a list of components using data from the Prometheus.
+        Fetch components and their count in one query.
         """
-        query = f'lshw_device{{class=~"processor|memory|disk|network|display", hostname="{nodename}"}}'
-        response = requests.get(f"{self.prometheus_url}/api/v1/query", 
-                                params={"query": query}, 
-                                verify=False).json()
-        
+        # Aggregate count by all relevant fields
+        label_fields = ",".join(self.prometheus_rules_component_fields)
+        query = (
+            f'count(lshw_device{{class=~"processor|memory|disk|network|display", hostname="{nodename}"}})'
+            f' by ({label_fields})'
+        )
+        response = requests.get(
+            f"{self.prometheus_url}/api/v1/query", 
+            params={"query": query}, 
+            verify=False
+        ).json()
         _prometheus_check_response(query, response)
-        
+
         components = []
         for item in response.get("data").get("result"):
-            fields = item.get("metric")
-            component = {field: fields[field] for field in self.prometheus_rules_component_fields if field in fields}
+            # The aggregated count is returned as "value" and labels in "metric"
+            metric = item.get("metric")
+            # Extract count value from the result vector
+            count_value = float(item.get("value")[1])
+            component = {
+                field: metric[field] 
+                for field in self.prometheus_rules_component_fields 
+                if field in metric
+            }
+            # Store the initial count with the component data
+            component["initial_count"] = count_value
             components.append(component)
-        
-        return components
 
-    def _prometheus_get_query_value(self, query):
-        response = requests.get(f"{self.prometheus_url}/api/v1/query", 
-                                params={"query": query}, 
-                                verify=False).json()
-        _prometheus_check_response(query, response)
-        
-        return response.get("data").get("result")[0].get("value")[1]
+        return components
       
     def _prometheus_reload(self):
         response = requests.post(f"{self.prometheus_url}/-/reload", verify=False)
@@ -118,14 +125,19 @@ class Plugin():
             raise Exception(f"Failed to reload Prometheus server")
   
     def _generate_rules_dict(self, nodename):
-        data = self._prometheus_get_components(nodename)
+        # Use the updated method to get components with their counts in one call.
+        data = self._prometheus_get_components_with_count(nodename)
         alerts = []
+
         for component in data:
-            label_selector = ",".join([f'{key}="{value}"' for key, value in component.items()])
-            alert_name = f"{component.get('class').capitalize()} changed"
-            alert_expr = f"count (lshw_device{{{label_selector}}})"
-            alert_expr_value = self._prometheus_get_query_value(alert_expr)
+            # Build label selector as before
+            label_selector = ",".join([f'{key}="{value}"' for key, value in component.items() if key in self.prometheus_rules_component_fields])
             
+            # Use the pre-fetched count for alert_expr_value
+            alert_expr_value = component.get("initial_count")
+            alert_name = f"{component.get('class').capitalize()} changed"
+            alert_expr = f"count(lshw_device{{{label_selector}}})"
+
             alert = {
                 "alert": alert_name,
                 "expr": f"{alert_expr} != {alert_expr_value}",
@@ -134,11 +146,11 @@ class Plugin():
                     "severity": "warning"
                 },
                 "annotations": {
-                    "summary": f"{component.get('class').capitalize()} device @ {component['hostname']}{component.get('path')} changed",
+                    "summary": f"{component.get('class').capitalize()} device @ {component.get('hostname')}{component.get('path', '')} changed",
                 }
             }
             alerts.append(alert)
-            
+
         rules = {
             "groups": [
                 {

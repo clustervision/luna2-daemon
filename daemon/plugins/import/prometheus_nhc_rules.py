@@ -38,7 +38,7 @@ import yaml
 from utils.log import Log
 
 
-def _check_response(response):
+def _check_response(query, response):
     if response.get("status") != "success":
         raise Exception(f"Failed to get data")
     if response.get("data") is None:
@@ -49,12 +49,12 @@ def _check_response(response):
         raise Exception(f"No data found")
 
 def _example_json_data():
-    return {
-        "hostname": {
-            "option1": "value1",
-            "option2": "value2"
-        }
-    }
+    return [
+        { "hostname": "node001" },
+        { "hostname": "node002" },
+        { "hostname": "node003", "force": True },
+    ]
+        
 
 class Plugin():
     """
@@ -81,7 +81,7 @@ class Plugin():
                                 params={"query": query}, 
                                 verify=False).json()
         
-        _check_response(response)
+        _check_response(query, response)
         
         components = []
         for item in response.get("data").get("result"):
@@ -95,7 +95,7 @@ class Plugin():
         response = requests.get(f"{self.prometheus_url}/api/v1/query", 
                                 params={"query": query}, 
                                 verify=False).json()
-        _check_response(response)
+        _check_response(query, response)
         
         return response.get("data").get("result")[0].get("value")[1]
       
@@ -150,34 +150,46 @@ class Plugin():
         This method will generate and save the Prometheus Hardware Rules for a specific node.
         """
         self.logger.debug(f'json_data => {json_data}')
-        if type(json_data) is not dict:
-            return False,f"Json data has type ({type(json_data)}) and should be a dictionary."
+        if type(json_data) is not list:
+            return False, f"Json data has type ({type(json_data)}) and should be a list, expected format: {json.dumps(_example_json_data(), indent=2)}"
         if len(json_data) == 0:
-            return False, f"Json data is empty."
-        for hostname, options in json_data.items():
-            if type(hostname) is not str:
-                return False, f"Hostname has type ({type(hostname)}) and should be a string."
-            if not re.match(r'^[a-zA-Z0-9-_]+$', hostname):
-                return False, f"Hostname ({hostname}) is invalid"
-            if type(options) is not dict:
-                return False, f"Options have type ({type(options)}) and should be a dictionary."
-        response = "Prometheus rules imported successfully."
-        status = True
-        errors = {}
-        for hostname, options in json_data.items():
+            return False, f"Json data is an empty list, expected format: {json.dumps(_example_json_data(), indent=2)}"
+
+                
+        status, response = True, []
+        
+        for host in json_data:
             try:
+                hostname = host.get("hostname")
+                force = host.get("force", False)
+                
+                if hostname is None:
+                   raise Exception (f"Hostname is missing in the host dict, expected format: {json.dumps(_example_json_data(), indent=2)}")
+                if not re.match(r'^([a-zA-Z0-9-_][.]?)+$', hostname):
+                   raise Exception (f"Hostname ({hostname}) is invalid")
+                if type(force) is not bool:
+                   raise Exception (f"Force option ({force}) is invalid, expected boolean")
+                
                 rules = self._generate_rules_yaml(hostname)
                 hostname_rules_name = f"trix.hw.{hostname}.rules"
                 hostname_rules_path = os.path.join(self.prometheus_rules_folder, hostname_rules_name)
-                with open(hostname_rules_path, 'w') as file:
-                    file.write(rules)
-                self._prometheus_reload()
+                
+                if os.path.exists(hostname_rules_path) and not force:
+                    raise Exception(f"File {hostname_rules_path} already exists, use force option to overwrite")
+                else:
+                    with open(hostname_rules_path, 'w') as file:
+                        file.write(rules)
+                    self._prometheus_reload()
+                
+                response.append({"hostname": hostname, "status": True})
+
             except Exception as exception:
                 error = f"Error encountered while generating the  Prometheus Server Rules for {hostname}: {exception}."
-                errors.update({hostname: error})
-        if len(errors) > 0:
+                response.append({"hostname": hostname, "status": False, "error": error})
+
+        if len(response) > 0:
             status = False
-            response = errors
+            response = response
             
         return status, response
 

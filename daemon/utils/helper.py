@@ -978,7 +978,7 @@ class Helper(object):
             return None
         except Exception as exp:
             exc_type, exc_obj, exc_tb = sys.exc_info()
-            self.logger.error(f"Loading module caused a problem during selection: {exp}, {exc_type} in {exc_tb.tb_lineno}]")
+            self.logger.error(f"Loading template caused a problem during selection: {exp}, {exc_type} in {exc_tb.tb_lineno}]")
             return None
 
 

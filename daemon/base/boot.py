@@ -44,7 +44,6 @@ from utils.database import Database
 from utils.helper import Helper
 from utils.service import Service
 from utils.config import Config
-from common.constant import CONSTANT
 from base.node import Node
 from utils.journal import Journal
 from utils.ha import HA
@@ -76,18 +75,14 @@ FILTERS["b64decode"] = jinja_b64decode
 # ----------------------------------------------------------------------------------------------
 
 
-
 try:
-    from plugins.boot.detection.switchport import Plugin as SwitchDetectionPlugin
-except ImportError as import_error:
+    PLUGIN_PATH = CONSTANT["PLUGINS"]["PLUGINS_DIRECTORY"]
+    DETECTION_PLUGINS = Helper().plugin_finder(f'{PLUGIN_PATH}/boot/detection')
+    SwitchDetectionPlugin = Helper().plugin_load(DETECTION_PLUGINS,'boot/detection','switchport')
+    CloudDetectionPlugin = Helper().plugin_load(DETECTION_PLUGINS,'boot/detection','cloud')
+except Exception as exp:
     LOGGER = Log.get_logger()
-    LOGGER.error(f"Problems encountered while loading detection plugin: {import_error}")
-
-try:
-    from plugins.boot.detection.cloud import Plugin as CloudDetectionPlugin
-except ImportError as import_error:
-    LOGGER = Log.get_logger()
-    LOGGER.error(f"Problems encountered while loading detection plugin: {import_error}")
+    LOGGER.error(f"Problems encountered while pre-loading detection plugins: {exp}")
 
 class Boot():
     """

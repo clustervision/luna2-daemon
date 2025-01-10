@@ -30,6 +30,7 @@ __status__      = "Development"
 
 
 import re
+from common.constant import CONSTANT
 from utils.log import Log
 from utils.service import Service
 from utils.helper import Helper
@@ -39,10 +40,12 @@ from utils.status import Status
 
 
 try:
-    from plugins.hooks.monitor.node import Plugin as NodeMonitorPlugin
-except ImportError as import_error:
+    PLUGIN_PATH = CONSTANT["PLUGINS"]["PLUGINS_DIRECTORY"]
+    HOOKS_PLUGINS = Helper().plugin_finder(f'{PLUGIN_PATH}/hooks/monitor')
+    NodeMonitorPlugin = Helper().plugin_load(HOOKS_PLUGINS,'hooks/monitor','node')
+except Exception as exp:
     LOGGER = Log.get_logger()
-    LOGGER.error(f"Problems encountered while loading detection plugin: {import_error}")
+    LOGGER.error(f"Problems encountered while pre-loading detection plugin: {exp}")
 
 
 class Monitor():
@@ -116,16 +119,16 @@ class Monitor():
                     if result:
                         status=True
                         response = f'Node {node} updated'
-                        function_name = state.replace('.','_')
-                        function_name = function_name.replace(' ','_')
-                        if function_name and function_name in vars(NodeMonitorPlugin):
-                            try:
+                        try:
+                            function_name = state.replace('.','_')
+                            function_name = function_name.replace(' ','_')
+                            if function_name and function_name in vars(NodeMonitorPlugin):
                                 plugin_function = getattr(NodeMonitorPlugin,function_name)
                                 result, message = plugin_function(NodeMonitorPlugin,name=node)
-                            except Exception as exp:
-                                self.logger.error(f"{exp}")
-                        else:
-                            self.logger.debug(f"function {function_name} not found in node monitor plugin")
+                            else:
+                                self.logger.debug(f"function {function_name} not found in node monitor plugin")
+                        except Exception as exp:
+                            self.logger.error(f"{exp}")
                     else:
                         status=False
                         response = f'Node {node} update not succesful'

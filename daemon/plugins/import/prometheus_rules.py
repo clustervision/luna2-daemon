@@ -46,10 +46,15 @@ class Plugin():
         This constructor will initialize all required variables here.
         """
         self.logger = Log.get_logger()
-        self.trix_config = '/trinity/local/etc/prometheus_server/rules/trix.rules'
-        self.trix_config_details = '/trinity/local/etc/prometheus_server/rules/trix.rules.details'
-        self.response = None
+        self.prometheus_url = "https://localhost:9090"
+        self.prometheus_rules_path = '/trinity/local/etc/prometheus_server/rules/trix.rules'
+        self.prometheus_rules_details_path = '/trinity/local/etc/prometheus_server/rules/trix.rules.details'
 
+
+    def _prometheus_reload(self):
+        response = requests.post(f"{self.prometheus_url}/-/reload", verify=False)
+        if response.status_code != 200:
+            raise Exception(f"Failed to reload Prometheus server")
 
     def Import(self, json_data=None):
         """
@@ -68,19 +73,24 @@ class Plugin():
                             else:
                                 del rule["labels"]["_trix_status"]
 
-            self.logger.info(f'Saving Detailed File => {self.trix_config_details}')
-            with open(self.trix_config_details, 'w') as file:
+            self.logger.info(f'Saving Detailed File => {self.prometheus_rules_details_path}')
+            with open(self.prometheus_rules_details_path, 'w') as file:
                 yaml.dump(json_data, file, default_flow_style=False)
             
-            self.logger.info(f'Saving Rules File => {self.trix_config}')
-            with open(self.trix_config, 'w') as file:
+            self.logger.info(f'Saving Rules File => {self.prometheus_rules_path}')
+            with open(self.prometheus_rules_path, 'w') as file:
                 yaml.dump(trix_rules, file, default_flow_style=False)
-            status = f"TrinityX Prometheus Server Rules is updated under {self.trix_config}."
-            self.response = True
-        except Exception as expetion:
-            status = f"Encounter a error While saving the TrinityX Prometheus Server Rules {expetion}."
-            self.response = False        
-        return self.response, status
+
+            self._prometheus_reload()
+
+            status = True
+            response = f"TrinityX Prometheus Server Rules is updated under {self.trix_config}."
+
+        except Exception as exception:
+            status = False
+            response = f"Encounter a error While saving the TrinityX Prometheus Server Rules {exception}."
+
+        return status, response
 
 
 

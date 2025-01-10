@@ -33,6 +33,7 @@ __status__      = "Development"
 
 from flask import Blueprint, request
 from utils.log import Log
+from common.validate_auth import token_required
 from common.validate_input import validate_name
 from utils.journal import Journal
 from base.plugin_import import Import
@@ -42,6 +43,7 @@ import_blueprint = Blueprint('import', __name__)
 
 
 @import_blueprint.route('/import/<string:name>', methods=['POST'])
+@token_required
 @validate_name
 def import_data(name=None):
     """

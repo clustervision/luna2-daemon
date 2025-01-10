@@ -30,6 +30,7 @@ __email__       = "dieg.sonaglia@clustervision.com"
 __status__      = "Development"
 
 import os
+import re
 import argparse
 import requests
 import json

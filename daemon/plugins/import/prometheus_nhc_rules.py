@@ -151,7 +151,7 @@ class Plugin():
         self.logger.debug(f'json_data => {json_data}')
         if type(json_data) is not list:
             return False, f"Json data has type ({type(json_data)}) and should be a list, expected format: {json.dumps(_example_json_data(), indent=2)}"
-        if len(json_data) == 0:
+        if not json_data:
             return False, f"Json data is an empty list, expected format: {json.dumps(_example_json_data(), indent=2)}"
 
                 
@@ -185,10 +185,6 @@ class Plugin():
             except Exception as exception:
                 error = f"Error encountered while generating the  Prometheus Server Rules for {hostname}: {exception}."
                 response.append({"hostname": hostname, "status": False, "error": error})
-
-        if len(response) > 0:
-            status = False
-            response = response
             
         return status, response
 

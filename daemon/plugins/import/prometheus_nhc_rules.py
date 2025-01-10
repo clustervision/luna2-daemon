@@ -18,7 +18,7 @@
 # -*- coding: utf-8 -*-
 
 """
-Plugin Class ::  Prometheus Import class to import prometheus server rules.
+Plugin Class ::  Prometheus Import class to import Prometheus nhc rules.
 """
 
 __author__      = "Diego Sonaglia"
@@ -37,7 +37,7 @@ import yaml
 from utils.log import Log
 
 
-def _check_response(query, response):
+def _prometheus_check_response(query, response):
     if response.get("status") != "success":
         raise Exception(f"Failed to get data")
     if response.get("data") is None:
@@ -46,6 +46,20 @@ def _check_response(query, response):
         raise Exception(f"Unexpected data type")
     if len(response.get("data").get("result")) == 0:
         raise Exception(f"No data found")
+
+def _check_hostname(hostname, force):
+    if hostname is None:
+        raise Exception (f"Hostname is missing in the host dict, expected format: {json.dumps(_example_json_data(), indent=2)}")
+    if not re.match(r'^([a-zA-Z0-9-_][.]?)+$', hostname):
+        raise Exception (f"Hostname ({hostname}) is invalid")
+    if type(force) is not bool:
+        raise Exception (f"Force option ({force}) is invalid, expected boolean")
+    
+def _check_path(path, force):
+    if os.path.exists(path) and not force:
+        raise Exception (f"Path ({path}) already exists, use force option to overwrite")
+    if not os.path.exists(os.path.dirname(path)):
+        raise Exception (f"Path ({os.path.dirname(path)}) does not exist")
 
 def _example_json_data():
     return [
@@ -57,7 +71,7 @@ def _example_json_data():
 
 class Plugin():
     """
-    Class for importing prometheus server rules
+    Class for importing Prometheus rules
     """
 
     def __init__(self):
@@ -73,14 +87,14 @@ class Plugin():
 
     def _prometheus_get_components(self, nodename):
         """
-        This method will source a list of components using data from the Prometheus server.
+        This method will source a list of components using data from the Prometheus.
         """
         query = f'lshw_device{{class=~"processor|memory|disk|network|display", hostname="{nodename}"}}'
         response = requests.get(f"{self.prometheus_url}/api/v1/query", 
                                 params={"query": query}, 
                                 verify=False).json()
         
-        _check_response(query, response)
+        _prometheus_check_response(query, response)
         
         components = []
         for item in response.get("data").get("result"):
@@ -94,7 +108,7 @@ class Plugin():
         response = requests.get(f"{self.prometheus_url}/api/v1/query", 
                                 params={"query": query}, 
                                 verify=False).json()
-        _check_response(query, response)
+        _prometheus_check_response(query, response)
         
         return response.get("data").get("result")[0].get("value")[1]
       
@@ -134,11 +148,10 @@ class Plugin():
             ]
         }
         return rules
-    
 
     def _generate_rules_yaml(self, nodename):
         rules = self._generate_rules_dict(nodename)
-        return yaml.dump(rules)        
+        return yaml.dump(rules, default_flow_style=False)
 
     def _generate_rules_json(self, nodename):
         rules = self._generate_rules_dict(nodename)
@@ -162,29 +175,24 @@ class Plugin():
                 hostname = host.get("hostname")
                 force = host.get("force", False)
                 
-                if hostname is None:
-                   raise Exception (f"Hostname is missing in the host dict, expected format: {json.dumps(_example_json_data(), indent=2)}")
-                if not re.match(r'^([a-zA-Z0-9-_][.]?)+$', hostname):
-                   raise Exception (f"Hostname ({hostname}) is invalid")
-                if type(force) is not bool:
-                   raise Exception (f"Force option ({force}) is invalid, expected boolean")
+                _check_hostname(hostname, force)
                 
                 rules = self._generate_rules_yaml(hostname)
                 hostname_rules_name = f"trix.hw.{hostname}.rules"
                 hostname_rules_path = os.path.join(self.prometheus_rules_folder, hostname_rules_name)
                 
-                if os.path.exists(hostname_rules_path) and not force:
-                    raise Exception(f"File {hostname_rules_path} already exists, use force option to overwrite")
-                else:
-                    with open(hostname_rules_path, 'w') as file:
-                        file.write(rules)
-                    self._prometheus_reload()
-                
+                _check_path(hostname_rules_path, force)
+
+                with open(hostname_rules_path, 'w') as file:
+                    file.write(rules)
+
+                self._prometheus_reload()
+            
                 response.append({"hostname": hostname, "status": True})
 
             except Exception as exception:
                 error = f"Error encountered while generating the  Prometheus Server Rules for {hostname}: {exception}."
-                response.append({"hostname": hostname, "status": False, "error": error})
+                response.append({"hostname": hostname, "status": False, "message": error})
             
         return status, response
 

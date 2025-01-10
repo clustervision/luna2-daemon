@@ -31,7 +31,6 @@ __status__      = "Development"
 
 import os
 import re
-import argparse
 import requests
 import json
 import yaml

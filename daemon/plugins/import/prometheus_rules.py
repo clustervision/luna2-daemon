@@ -30,7 +30,7 @@ __email__       = "sumit.sharma@clustervision.com"
 __status__      = "Development"
 
 
-import json
+import requests
 import yaml
 import copy
 from utils.log import Log
@@ -84,7 +84,7 @@ class Plugin():
             self._prometheus_reload()
 
             status = True
-            response = f"TrinityX Prometheus Server Rules is updated under {self.trix_config}."
+            response = f"TrinityX Prometheus Server Rules is updated under {self.prometheus_rules_path}."
 
         except Exception as exception:
             status = False

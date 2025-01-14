@@ -801,6 +801,17 @@ class Helper(object):
                         mydict[myname][item]=element[item]
         return mydict
 
+    def dedupe_adjacent(self, mylist=[]):
+        iter = 1
+        listn = len(mylist)
+        while iter < listn:
+            if mylist[iter] == mylist[iter-1]:
+                del mylist[iter]
+                listn -= 1
+            else:
+                listn += 1
+        return mylist
+
     # -----------------------------------------------------------------
 
     def add_padding(self, inp=None):

@@ -1339,8 +1339,17 @@ class Boot():
             data['selinux']      = Helper().bool_revert(cluster[0]['security'])
             data['cluster_provision_method']   = cluster[0]['provision_method']
             data['cluster_provision_fallback'] = cluster[0]['provision_fallback']
-            data['name_server'] = cluster[0]['nameserver_ip']
+            data['nameserver_ip'] = cluster[0]['nameserver_ip']
             data['domain_search'] = cluster[0]['domain_search']
+        nameserver_ips_ipv4, nameserver_ips_ipv6 = [self.controller_beaconip], [self.controller_beaconip]
+        if self.controller_ipv4:
+            nameserver_ips_ipv4.insert(0, self.controller_ipv4)
+            nameserver_ips_ipv4 = Helper().dedupe_adjacent(nameserver_ips_ipv4)
+        if self.controller_ipv6:
+            nameserver_ips_ipv6.insert(0, self.controller_ipv6)
+            nameserver_ips_ipv6 = Helper().dedupe_adjacent(nameserver_ips_ipv6)
+        nameserver_ips_ipv4 = ';'.join(nameserver_ips_ipv4)
+        nameserver_ips_ipv6 = ';'.join(nameserver_ips_ipv6)
         if self.controller_name:
             data['ipaddress'] = self.controller_ip
             data['network'] = self.controller_network
@@ -1510,9 +1519,9 @@ class Boot():
                             if not data['interfaces'][data['provision_interface']]['gateway_ipv6']:
                                 data['interfaces'][data['provision_interface']]['gateway_ipv6'] = self.controller_ipv6 or '::/0'
                             if not data['interfaces'][data['provision_interface']]['nameserver_ip']:
-                                data['interfaces'][data['provision_interface']]['nameserver_ip'] = self.controller_ipv4 or '0.0.0.0'
+                                data['interfaces'][data['provision_interface']]['nameserver_ip'] = nameserver_ips_ipv4 or '0.0.0.0'
                             if not data['interfaces'][data['provision_interface']]['nameserver_ip_ipv6']:
-                                data['interfaces'][data['provision_interface']]['nameserver_ip_ipv6'] = self.controller_ipv6 or '::/0'
+                                data['interfaces'][data['provision_interface']]['nameserver_ip_ipv6'] = nameserver_ips_ipv6 or '::/0'
                         if interface['dhcp'] and interface['networkdhcp']:
                             data['interfaces'][interface['interface']]['dhcp']=True
                             # here we do not have to set the kerneloption luna.bootproto=dhcp as we already do dhcp for the interface
@@ -1525,12 +1534,11 @@ class Boot():
 
             if data['domain_search']:
                 data['domain_search'] = data['domain_search'].replace(',',';')
+            elif domain_search:
+                data['domain_search'] = ';'.join(domain_search)
             else:
-                if domain_search:
-                    data['domain_search'] = ';'.join(domain_search)
-                else:
-                    # clearly, the user wants something that has no interface involvement. fallback to '', but not None
-                    data['domain_search'] = ''
+                # clearly, the user wants something that has no interface involvement. fallback to '', but not None
+                data['domain_search'] = ''
 
         # needed for generating network config templates on server side
         if data['kerneloptions']:

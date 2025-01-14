@@ -82,7 +82,7 @@ class Plugin():
             echo "search $search" >> etc/resolv.conf
             > tmp/resolv.clear
         fi
-        for server in $(echo $NAMESERVER|tr ',' ' '); do
+        for server in $(echo $NAMESERVER|tr ',;' ' '); do
             echo "nameserver $server" >> etc/resolv.conf
         done
     """

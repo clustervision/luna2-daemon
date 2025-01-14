@@ -78,11 +78,11 @@ class Plugin():
         cd /sysroot
         if [ ! -e tmp/resolv.clear ]; then
             echo -n '' > etc/resolv.conf
-            search=$(echo $SEARCH | awk '{gsub(/,/, " "); print}')
+            search=$(echo $SEARCH | awk '{gsub(/,|;/, " "); print}')
             echo "search $search" >> etc/resolv.conf
             > tmp/resolv.clear
         fi
-        for server in $(echo $NAMESERVER|tr ',' ' '); do
+        for server in $(echo $NAMESERVER|tr ',;' ' '); do
             echo "nameserver $server" >> etc/resolv.conf
         done
     """

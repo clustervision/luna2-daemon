@@ -206,6 +206,9 @@ class Interface():
                                                 )
                                                 if avail:
                                                     ipaddress_ipv6 = avail
+                                    else:
+                                        message=f"Invalid request: network {network} does not exist"
+                                        return False, message
                         elif not network:
                             if existing:
                                 network = existing[0]['networkname']

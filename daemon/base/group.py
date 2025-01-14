@@ -149,8 +149,6 @@ class Group():
                         del interface['options']
                     if not interface['vlanid']:
                         del interface['vlanid']
-                    #if not interface['dhcp']:
-                    #    del interface['dhcp']
                     interface['dhcp'] = Helper().make_bool(interface['dhcp']) or False
                     group['interfaces'].append(interface)
             del group['id']

@@ -44,7 +44,6 @@ from utils.database import Database
 from utils.helper import Helper
 from utils.service import Service
 from utils.config import Config
-from common.constant import CONSTANT
 from base.node import Node
 from utils.journal import Journal
 from utils.ha import HA
@@ -76,18 +75,14 @@ FILTERS["b64decode"] = jinja_b64decode
 # ----------------------------------------------------------------------------------------------
 
 
-
 try:
-    from plugins.boot.detection.switchport import Plugin as SwitchDetectionPlugin
-except ImportError as import_error:
+    PLUGIN_PATH = CONSTANT["PLUGINS"]["PLUGINS_DIRECTORY"]
+    DETECTION_PLUGINS = Helper().plugin_finder(f'{PLUGIN_PATH}/boot/detection')
+    SwitchDetectionPlugin = Helper().plugin_load(DETECTION_PLUGINS,'boot/detection','switchport')
+    CloudDetectionPlugin = Helper().plugin_load(DETECTION_PLUGINS,'boot/detection','cloud')
+except Exception as exp:
     LOGGER = Log.get_logger()
-    LOGGER.error(f"Problems encountered while loading detection plugin: {import_error}")
-
-try:
-    from plugins.boot.detection.cloud import Plugin as CloudDetectionPlugin
-except ImportError as import_error:
-    LOGGER = Log.get_logger()
-    LOGGER.error(f"Problems encountered while loading detection plugin: {import_error}")
+    LOGGER.error(f"Problems encountered while pre-loading detection plugins: {exp}")
 
 class Boot():
     """
@@ -104,17 +99,15 @@ class Boot():
         self.boot_plugins = Helper().plugin_finder(f'{self.plugins_path}/boot')
         self.osimage_plugins = Helper().plugin_finder(f'{self.plugins_path}/osimage')
         self.controller_object = Controller()
-        #self.controller_name = self.controller_object.get_beacon()
-        #self.controller_beaconip = self.controller_object.get_beaconip()
         self.all_controllers = self.controller_object.get_controllers()
         self.controller_name = None
-        self.controller_ip = '10.141.255.254'
+        self.controller_ip = None
         self.controller_ipv6 = None
         self.controller_ipv4 = None
-        self.controller_beaconip = '10.141.255.254'
-        self.controller_serverport = '7050'
-        self.controller_network = 'cluster'
-        self.controller_clusterid = 1
+        self.controller_beaconip = None
+        self.controller_serverport = None
+        self.controller_network = None
+        self.controller_clusterid = None
         self.hatrial = 25
         self.ha_object = HA()
         self.insync = self.ha_object.get_insync()
@@ -1346,8 +1339,17 @@ class Boot():
             data['selinux']      = Helper().bool_revert(cluster[0]['security'])
             data['cluster_provision_method']   = cluster[0]['provision_method']
             data['cluster_provision_fallback'] = cluster[0]['provision_fallback']
-            data['name_server'] = cluster[0]['nameserver_ip']
+            data['nameserver_ip'] = cluster[0]['nameserver_ip']
             data['domain_search'] = cluster[0]['domain_search']
+        nameserver_ips_ipv4, nameserver_ips_ipv6 = [self.controller_beaconip], [self.controller_beaconip]
+        if self.controller_ipv4:
+            nameserver_ips_ipv4.insert(0, self.controller_ipv4)
+            nameserver_ips_ipv4 = Helper().dedupe_adjacent(nameserver_ips_ipv4)
+        if self.controller_ipv6:
+            nameserver_ips_ipv6.insert(0, self.controller_ipv6)
+            nameserver_ips_ipv6 = Helper().dedupe_adjacent(nameserver_ips_ipv6)
+        nameserver_ips_ipv4 = ';'.join(nameserver_ips_ipv4)
+        nameserver_ips_ipv6 = ';'.join(nameserver_ips_ipv6)
         if self.controller_name:
             data['ipaddress'] = self.controller_ip
             data['network'] = self.controller_network
@@ -1517,9 +1519,9 @@ class Boot():
                             if not data['interfaces'][data['provision_interface']]['gateway_ipv6']:
                                 data['interfaces'][data['provision_interface']]['gateway_ipv6'] = self.controller_ipv6 or '::/0'
                             if not data['interfaces'][data['provision_interface']]['nameserver_ip']:
-                                data['interfaces'][data['provision_interface']]['nameserver_ip'] = self.controller_ipv4 or '0.0.0.0'
+                                data['interfaces'][data['provision_interface']]['nameserver_ip'] = nameserver_ips_ipv4 or '0.0.0.0'
                             if not data['interfaces'][data['provision_interface']]['nameserver_ip_ipv6']:
-                                data['interfaces'][data['provision_interface']]['nameserver_ip_ipv6'] = self.controller_ipv6 or '::/0'
+                                data['interfaces'][data['provision_interface']]['nameserver_ip_ipv6'] = nameserver_ips_ipv6 or '::/0'
                         if interface['dhcp'] and interface['networkdhcp']:
                             data['interfaces'][interface['interface']]['dhcp']=True
                             # here we do not have to set the kerneloption luna.bootproto=dhcp as we already do dhcp for the interface
@@ -1530,12 +1532,13 @@ class Boot():
                             del data['interfaces'][interface['interface']]['gateway_ipv6']
                             del data['interfaces'][interface['interface']]['nameserver_ip_ipv6']
 
-            if not data['domain_search']:
-                if domain_search:
-                    data['domain_search'] = ','.join(domain_search)
-                else:
-                    # clearly, the user wants something that has no interface involvement. fallback to '', but not None
-                    data['domain_search'] = ''
+            if data['domain_search']:
+                data['domain_search'] = data['domain_search'].replace(',',';')
+            elif domain_search:
+                data['domain_search'] = ';'.join(domain_search)
+            else:
+                # clearly, the user wants something that has no interface involvement. fallback to '', but not None
+                data['domain_search'] = ''
 
         # needed for generating network config templates on server side
         if data['kerneloptions']:

@@ -801,6 +801,17 @@ class Helper(object):
                         mydict[myname][item]=element[item]
         return mydict
 
+    def dedupe_adjacent(self, mylist=[]):
+        iter = 1
+        listn = len(mylist)
+        while iter < listn:
+            if mylist[iter] == mylist[iter-1]:
+                del mylist[iter]
+                listn -= 1
+            else:
+                listn += 1
+        return mylist
+
     # -----------------------------------------------------------------
 
     def add_padding(self, inp=None):
@@ -978,7 +989,7 @@ class Helper(object):
             return None
         except Exception as exp:
             exc_type, exc_obj, exc_tb = sys.exc_info()
-            self.logger.error(f"Loading module caused a problem during selection: {exp}, {exc_type} in {exc_tb.tb_lineno}]")
+            self.logger.error(f"Loading template caused a problem during selection: {exp}, {exc_type} in {exc_tb.tb_lineno}]")
             return None
 
 

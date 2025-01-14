@@ -36,7 +36,7 @@ from utils.log import Log
 
 def _check_hostname(hostname):
     if hostname is None:
-        raise Exception (f"Hostname is missing in the host dict, expected format: {json.dumps(_example_json_data(), indent=2)}")
+        raise Exception ("Hostname is None.")
     if not re.match(r'^([a-zA-Z0-9-_][.]?)+$', hostname):
         raise Exception (f"Hostname ({hostname}) is invalid")
     
@@ -63,8 +63,6 @@ class Plugin():
         """
         This method will check the both files rules and detailed, and return the output from the
         detailed file with status.
-        """
-        """
         This method will generate and save the Prometheus Hardware Rules for a specific node.
         """
         

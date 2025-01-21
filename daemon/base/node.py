@@ -101,6 +101,7 @@ class Node():
                 nodeid = node['id']
                 groupid = None
                 osimageid = None
+                node['_override'] = False
                 if 'groupid' in node and node['groupid'] in group:
                     node['group'] = group[node['groupid']]['name']
                     groupid = node['groupid']
@@ -143,6 +144,7 @@ class Node():
                             if isinstance(value, bool):
                                 node[key] = str(Helper().make_bool(node[key]))
                             node[key] = node[key] or value
+                            node['_override'] = True
                 # -------------
                 node['switch'] = None
                 if node['switchid']:
@@ -282,6 +284,7 @@ class Node():
             response = {'config': {'node': {} }}
             nodename = node['name']
             nodeid = node['id']
+            node['_override'] = False
             alt_source = {}
             if node['osimageid']:
                 osimage = Database().get_record(None, 'osimage', f" WHERE id = '{node['osimageid']}'")
@@ -396,6 +399,7 @@ class Node():
                     if isinstance(value, bool):
                         node[key] = str(Helper().make_bool(node[key]))
                     node[key+'_source'] = 'node'
+                    node['_override'] = True
                 else:
                     if isinstance(value, bool):
                         node[key] = str(Helper().make_bool(node[key]))
@@ -417,6 +421,7 @@ class Node():
                         node[key+'_source'] = 'group'
                     elif node[key]:
                         node[key+'_source'] = 'node'
+                        node['_override'] = True
                     else:
                         default_str = str(value)
                         default_data = b64encode(default_str.encode())

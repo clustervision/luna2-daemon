@@ -56,12 +56,17 @@ class Group():
         """
         This method will return all the groups in detailed format.
         """
+        overrides = ['provision_interface','provision_method','provision_fallback','kerneloptions']
         groups = Database().get_record(None, 'group', None)
         if groups:
             response = {'config': {'group': {} }}
             for group in groups:
                 name = group['name']
                 group_id = group['id']
+                group['_override'] = False
+                for key in overrides:
+                    if key in group and group[key]:
+                        group['_override'] = True
                 group_interface = Database().get_record_join(
                     ['groupinterface.interface','network.name as network',
                      'groupinterface.vlanid', 'groupinterface.options',
@@ -113,6 +118,7 @@ class Group():
             'provision_fallback': 'http',
             'kerneloptions': None
         }
+        overrides = ['provision_interface','provision_method','provision_fallback','kerneloptions']
         # same as above but now specifically base64
         b64items = {'prescript': '', 'partscript': '', 'postscript': ''}
         cluster = Database().get_record(None, 'cluster', None)
@@ -122,6 +128,7 @@ class Group():
             group = groups[0]
             group_id = group['id']
             osimage = None
+            group['_override'] = False
             if group['osimageid']:
                 osimage = Database().get_record(None, 'osimage', f" WHERE id = '{group['osimageid']}'")
                 if osimage:
@@ -168,6 +175,8 @@ class Group():
                         group[key] = str(Helper().make_bool(group[key]))
                     group[key+'_source'] = 'group'
                     group[key] = group[key] or str(value)
+                    if key in overrides:
+                        group['_override'] = True
                 else:
                     group[key] = str(value)
                     group[key+'_source'] = 'default'

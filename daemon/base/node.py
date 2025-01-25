@@ -110,6 +110,7 @@ class Node():
                         if node['osimageid'] in osimage:
                             node['osimage'] = osimage[node['osimageid']]['name'] or None
                             osimageid = node['osimageid']
+                            node['_override'] = True
                     elif 'osimageid' in group[groupid] and group[groupid]['osimageid'] in osimage:
                         node['osimage'] = osimage[group[groupid]['osimageid']]['name'] or None
                         osimageid = group[groupid]['osimageid']
@@ -119,6 +120,7 @@ class Node():
                         node['bmcsetup'] = '!!Invalid!!'
                         if node['bmcsetupid'] in bmcsetup:
                             node['bmcsetup'] = bmcsetup[node['bmcsetupid']]['name'] or None
+                            node['_override'] = True
                     elif 'bmcsetupid' in group[groupid] and group[groupid]['bmcsetupid'] in bmcsetup:
                         node['bmcsetup'] = bmcsetup[group[groupid]['bmcsetupid']]['name'] or None
                     else:
@@ -300,6 +302,7 @@ class Node():
                     node['osimage'] = '!!Invalid!!'
                 #node['osimage'] = Database().name_by_id('osimage',node['osimageid']) or '!!Invalid!!'
                 node['osimage_source'] = 'node'
+                node['_override'] = True
             elif 'group_osimageid' in node and node['group_osimageid']:
                 osimage = Database().get_record(None, 'osimage', f" WHERE id = '{node['group_osimageid']}'")
                 if osimage:
@@ -321,6 +324,7 @@ class Node():
             if node['bmcsetupid']:
                 node['bmcsetup'] = Database().name_by_id('bmcsetup',node['bmcsetupid']) or '!!Invalid!!'
                 node['bmcsetup_source'] = 'node'
+                node['_override'] = True
             elif 'group_bmcsetupid' in node and node['group_bmcsetupid']:
                 node['bmcsetup'] = Database().name_by_id('bmcsetup', node['group_bmcsetupid']) or '!!Invalid!!'
                 node['bmcsetup_source'] = 'group'
@@ -332,6 +336,7 @@ class Node():
             if node['osimagetagid']:
                 node['osimagetag'] = Database().name_by_id('osimagetag', node['osimagetagid']) or 'default'
                 node['osimagetag_source'] = 'node'
+                node['_override'] = True
             elif 'group_osimagetagid' in node and node['group_osimagetagid']:
                 node['osimagetag'] = Database().name_by_id('osimagetag', node['group_osimagetagid']) or 'default'
                 node['osimagetag_source'] = 'group'

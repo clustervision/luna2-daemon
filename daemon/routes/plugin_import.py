@@ -32,6 +32,7 @@ __status__      = "Development"
 
 
 from flask import Blueprint, request
+from json import dumps,loads
 from utils.log import Log
 from common.validate_auth import token_required
 from common.validate_input import validate_name
@@ -50,9 +51,13 @@ def import_data(name=None):
     This api receives the request to call a specific plugin (in base) and forwards data as is
     """
     access_code=200
-    status, response = Journal().add_request(function="Import.plugin", object=name, payload=request.data)
+    try:
+       payload = loads(request.data)
+    except:
+       payload = request.data
+    status, response = Journal().add_request(function="Import.plugin", object=name, payload=payload)
     if status is True:
-        status, response = Import().plugin(name, request.json)
+        status, response = Import().plugin(name, payload)
         if status is True:
             return response, access_code
     access_code=404

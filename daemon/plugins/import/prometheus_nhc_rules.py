@@ -39,13 +39,13 @@ from utils.log import Log
 
 def _prometheus_check_response(query, response):
     if response.get("status") != "success":
-        raise Exception(f"Failed to get data")
+        raise Exception(f"Failed to get prometheus data for query {query}")
     if response.get("data") is None:
-        raise Exception(f"No data found")
+        raise Exception(f"No data found for query {query}")
     if response.get("data").get("resultType") != "vector":
-        raise Exception(f"Unexpected data type")
+        raise Exception(f"Unexpected data type for query {query}")
     if len(response.get("data").get("result")) == 0:
-        raise Exception(f"No data found")
+        raise Exception(f"No data found for query {query}")
 
 def _check_hostname(hostname, force):
     if hostname is None:
@@ -56,16 +56,14 @@ def _check_hostname(hostname, force):
         raise Exception (f"Force option ({force}) is invalid, expected boolean")
     
 def _check_path(path, force):
-    if os.path.exists(path) and not force:
-        raise Exception (f"Path ({path}) already exists, use force option to overwrite")
     if not os.path.exists(os.path.dirname(path)):
         raise Exception (f"Path ({os.path.dirname(path)}) does not exist")
 
 def _example_json_data():
     return [
-        { "hostname": "node001" },
-        { "hostname": "node002" },
-        { "hostname": "node003", "force": True },
+        { "hostname": "node001.cluster" },
+        { "hostname": "node002.cluster" },
+        { "hostname": "node003.cluster", "force": True },
     ]
         
 
@@ -140,7 +138,7 @@ class Plugin():
 
             alert = {
                 "alert": alert_name,
-                "expr": f"{alert_expr} != {alert_expr_value}",
+                "expr": f"{alert_expr} or vector(0) != {alert_expr_value}",
                 "for": "1m",
                 "labels": {
                     "severity": "warning"
@@ -186,27 +184,27 @@ class Plugin():
             try:
                 hostname = host.get("hostname")
                 force = host.get("force", False)
-                
-                _check_hostname(hostname, force)
-                
-                rules = self._generate_rules_yaml(hostname)
                 hostname_rules_name = f"trix.hw.{hostname}.rules"
                 hostname_rules_path = os.path.join(self.prometheus_rules_folder, hostname_rules_name)
-                
                 _check_path(hostname_rules_path, force)
+                _check_hostname(hostname, force)
+                
+                if ( not force ) and ( os.path.exists(hostname_rules_path) ):
+                    with open(hostname_rules_path, 'r') as file:
+                        rules = file.read()
+                    response.append({"hostname": hostname, "status": True, "rules": rules})
+                    
+                else:
+                    rules = self._generate_rules_yaml(hostname)
+                    with open(hostname_rules_path, 'w') as file:
+                        file.write(rules)
 
-                with open(hostname_rules_path, 'w') as file:
-                    file.write(rules)
-
-                self._prometheus_reload()
-            
-                response.append({"hostname": hostname, "status": True})
+                    self._prometheus_reload()
+                
+                    response.append({"hostname": hostname, "status": True, "rules": rules})
 
             except Exception as exception:
                 error = f"Error encountered while generating the  Prometheus Server Rules for {hostname}: {exception}."
                 response.append({"hostname": hostname, "status": False, "message": error})
             
         return status, response
-
-
-

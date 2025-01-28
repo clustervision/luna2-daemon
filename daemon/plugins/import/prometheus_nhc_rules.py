@@ -80,7 +80,7 @@ class Plugin():
         self.prometheus_url = "https://localhost:9090"
         self.prometheus_rules_folder = '/trinity/local/etc/prometheus_server/rules/'
         self.prometheus_rules_component_fields =  [
-                "hostname", "path", "class", "description", "product", "vendor", "serial", "size", "capacity", "clock"
+                "hostname", "luna_group", "path", "class", "description", "product", "vendor", "serial", "size", "capacity", "clock"
             ]
 
     def _prometheus_get_components_with_count(self, nodename):
@@ -134,12 +134,11 @@ class Plugin():
             # Use the pre-fetched count for alert_expr_value
             alert_expr_value = component.get("initial_count")
             alert_name = f"{component.get('class').capitalize()} changed"
-            alert_expr = f"count(lshw_device{{{label_selector}}})"
+            alert_expr = f"lshw_device{{{label_selector}}}"
 
             alert = {
                 "alert": alert_name,
-                "expr": f"{alert_expr} or vector(0) != {alert_expr_value}",
-                "for": "1m",
+                "expr": f"absent({alert_expr})",
                 "labels": {
                     "severity": "warning"
                 },

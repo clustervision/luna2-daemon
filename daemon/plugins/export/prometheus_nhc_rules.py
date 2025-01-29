@@ -32,17 +32,11 @@ __status__      = "Development"
 
 import re
 import os
+import json
+import yaml
 from utils.log import Log
 
-def _check_hostname(hostname):
-    if hostname is None:
-        raise Exception ("Hostname is None.")
-    if not re.match(r'^([a-zA-Z0-9-_][.]?)+$', hostname):
-        raise Exception (f"Hostname ({hostname}) is invalid")
-    
-def _check_path(path):
-    if not os.path.exists((path)):
-        raise Exception (f"Path ({path}) does not exist")
+
 
 
 class Plugin():
@@ -57,7 +51,17 @@ class Plugin():
         self.logger = Log.get_logger()
         self.prometheus_rules_folder = '/trinity/local/etc/prometheus_server/rules/'
 
-        
+    def _generate_hostname_path(self, hostname):
+        if not re.match(r'^([a-zA-Z0-9-_][.]?)+$', hostname):
+            raise ValueError(f"Hostname ({hostname}) is invalid, should satidy ^([a-zA-Z0-9-_][.]?)+$")
+        path = f"/trinity/local/etc/prometheus_server/rules/trix.hw.{hostname}.rules"
+        if not os.path.exists(os.path.dirname(path)):
+            raise FileNotFoundError (f"Path ({os.path.dirname(path)}) does not exist")
+        return path
+
+    def _read_rules_yaml(self, path):
+        with open(path, 'r') as file:
+            return yaml.safe_load(file)    
 
     def Export(self,args=None):
         """
@@ -69,28 +73,26 @@ class Plugin():
         self.logger.debug(f'args => {args}')
         if not isinstance(args, dict):
             return False, f"args have type ({type(args)}) and should be a dict"
-        if not "hostnames" in args:
-            return False, "args should contain a hostnames key"
-        if not isinstance(args["hostnames"], str):
+        if ("hostnames" in args) and (not isinstance(args["hostnames"], str)):
             return False, f"hostnames should be a str, got {type(args['hostnames'])}"
         
-        hostnames = args["hostnames"].split(",")
+        if "hostnames" in args:
+            hostnames = args["hostnames"].split(",")
+        else:
+            files = os.listdir(self.prometheus_rules_folder)
+            hw_files = [f for f in files if re.match(r'^trix[.]hw[.].+[.]rules$', f)]
+            hostnames = [re.search(r'^trix[.]hw[.]([^.]+)[.]rules$', f).group(1) for f in hw_files]
+            
         status, response = True, []
         
         for hostname in hostnames:
             
             try:
-                _check_hostname(hostname)
-                
-                hostname_rules_name = f"trix.hw.{hostname}.rules"
-                hostname_rules_path = os.path.join(self.prometheus_rules_folder, hostname_rules_name)
-                
-                _check_path(self.prometheus_rules_folder)
-                
-                with open(hostname_rules_path, 'r') as file:
-                    rules = file.read()
+                hostname_rules_path = self._generate_hostname_path(hostname)
+
+                rules = self._read_rules_yaml(hostname_rules_path)
                     
-                response.append({"hostname": hostname, "status": True, "rules": rules})
+                response.append({"hostname": hostname, "status": True, "data": rules})
 
             except Exception as exception:
                 error = f"Error encountered while reading the Prometheus Rules for {hostname}: {exception}."

@@ -29,6 +29,7 @@ __maintainer__  = "Diego Sonaglia"
 __email__       = "dieg.sonaglia@clustervision.com"
 __status__      = "Development"
 
+
 import os
 import re
 import requests
@@ -37,35 +38,6 @@ import yaml
 from utils.log import Log
 
 
-def _prometheus_check_response(query, response):
-    if response.get("status") != "success":
-        raise Exception(f"Failed to get prometheus data for query {query}")
-    if response.get("data") is None:
-        raise Exception(f"No data found for query {query}")
-    if response.get("data").get("resultType") != "vector":
-        raise Exception(f"Unexpected data type for query {query}")
-    if len(response.get("data").get("result")) == 0:
-        raise Exception(f"No data found for query {query}")
-
-def _check_hostname(hostname, force):
-    if hostname is None:
-        raise Exception (f"Hostname is missing in the host dict, expected format: {json.dumps(_example_json_data(), indent=2)}")
-    if not re.match(r'^([a-zA-Z0-9-_][.]?)+$', hostname):
-        raise Exception (f"Hostname ({hostname}) is invalid")
-    if type(force) is not bool:
-        raise Exception (f"Force option ({force}) is invalid, expected boolean")
-    
-def _check_path(path, force):
-    if not os.path.exists(os.path.dirname(path)):
-        raise Exception (f"Path ({os.path.dirname(path)}) does not exist")
-
-def _example_json_data():
-    return [
-        { "hostname": "node001.cluster" },
-        { "hostname": "node002.cluster" },
-        { "hostname": "node003.cluster", "force": True },
-    ]
-        
 
 class Plugin():
     """
@@ -83,6 +55,28 @@ class Plugin():
                 "hostname", "luna_group", "path", "class", "description", "product", "vendor", "serial", "size", "capacity", "clock"
             ]
 
+    @staticmethod
+    def _prometheus_check_response(query, response):
+        if response.get("status") != "success":
+            raise Exception(f"Failed to get prometheus data for query {query}")
+        if response.get("data") is None:
+            raise Exception(f"No data found for query {query}")
+        if response.get("data").get("resultType") != "vector":
+            raise Exception(f"Unexpected data type for query {query}")
+        if len(response.get("data").get("result")) == 0:
+            raise Exception(f"No data found for query {query}")
+    
+    @staticmethod
+    def _example_json_data():
+        return [
+            { "hostname": "node001.cluster" },
+            { "hostname": "node002.cluster" },
+            { "hostname": "node003.cluster", "force": True },
+            { "hostname": "node004.cluster", "nhc": False },
+            { "hostname": "node005.cluster", "disabled": True },
+            { "hostname": "node005.cluster", "force": False, "nhc": False, "disabled": False }
+        ]
+    
     def _prometheus_get_components_with_count(self, nodename):
         """
         Fetch components and their count in one query.
@@ -96,9 +90,10 @@ class Plugin():
         response = requests.get(
             f"{self.prometheus_url}/api/v1/query", 
             params={"query": query}, 
-            verify=False
+            verify=False,
+            timeout=5
         ).json()
-        _prometheus_check_response(query, response)
+        self._prometheus_check_response(query, response)
 
         components = []
         for item in response.get("data").get("result"):
@@ -118,11 +113,21 @@ class Plugin():
         return components
       
     def _prometheus_reload(self):
-        response = requests.post(f"{self.prometheus_url}/-/reload", verify=False)
+        response = requests.post(f"{self.prometheus_url}/-/reload", verify=False, timeout=5)
         if response.status_code != 200:
-            raise Exception(f"Failed to reload Prometheus server")
+            raise RuntimeError(f"Failed to reload Prometheus server")
   
-    def _generate_rules_dict(self, nodename):
+    def _generate_hostname_path(self, hostname):
+        if hostname is None:
+            raise KeyError(f"Hostname is missing in the host dict, expected format: {json.dumps(self._example_json_data(), indent=2)}")
+        if not re.match(r'^([a-zA-Z0-9-_][.]?)+$', hostname):
+            raise ValueError(f"Hostname ({hostname}) is invalid, should satidy ^([a-zA-Z0-9-_][.]?)+$")
+        path = f"/trinity/local/etc/prometheus_server/rules/trix.hw.{hostname}.rules"
+        if not os.path.exists(os.path.dirname(path)):
+            raise FileNotFoundError (f"Path ({os.path.dirname(path)}) does not exist")
+        return path
+  
+    def _generate_rules(self, nodename):
         # Use the updated method to get components with their counts in one call.
         data = self._prometheus_get_components_with_count(nodename)
         alerts = []
@@ -132,7 +137,7 @@ class Plugin():
             label_selector = ",".join([f'{key}="{value}"' for key, value in component.items() if key in self.prometheus_rules_component_fields])
             
             # Use the pre-fetched count for alert_expr_value
-            alert_expr_value = component.get("initial_count")
+            # alert_expr_value = component.get("initial_count")
             alert_name = f"{component.get('class').capitalize()} changed"
             alert_expr = f"lshw_device{{{label_selector}}}"
 
@@ -143,7 +148,7 @@ class Plugin():
                     "severity": "warning"
                 },
                 "annotations": {
-                    "summary": f"{component.get('class').capitalize()} device @ {component.get('hostname')}{component.get('path', '')} changed",
+                    "description": f"{component.get('class').capitalize()} device @ {component.get('hostname')}{component.get('path', '')} changed",
                 }
             }
             alerts.append(alert)
@@ -157,53 +162,71 @@ class Plugin():
             ]
         }
         return rules
-
-    def _generate_rules_yaml(self, nodename):
-        rules = self._generate_rules_dict(nodename)
-        return yaml.dump(rules, default_flow_style=False)
-
-    def _generate_rules_json(self, nodename):
-        rules = self._generate_rules_dict(nodename)
-        return json.dumps(rules, indent=2)
     
+    def _write_rules_yaml(self, rules, path):
+        with open(path, 'w') as file:
+            yaml.dump(rules, file, default_flow_style=False)
+
+    def _read_rules_yaml(self, path):
+        with open(path, 'r') as file:
+            return yaml.safe_load(file)
+
+
+        
+        
     def Import(self, json_data=None):
         """
         This method will generate and save the Prometheus Hardware Rules for a specific node.
         """
         self.logger.debug(f'json_data => {json_data}')
-        if type(json_data) is not list:
-            return False, f"Json data has type ({type(json_data)}) and should be a list, expected format: {json.dumps(_example_json_data(), indent=2)}"
+        if not isinstance(json_data, list):
+            return False, f"Json data has type ({type(json_data)}) and should be a list, expected format: {json.dumps(self._example_json_data(), indent=2)}"
         if not json_data:
-            return False, f"Json data is an empty list, expected format: {json.dumps(_example_json_data(), indent=2)}"
-
-                
+            return False, f"Json data is an empty list, expected format: {json.dumps(self._example_json_data(), indent=2)}"
+        
+        
         status, response = True, []
         
         for host in json_data:
             try:
                 hostname = host.get("hostname")
                 force = host.get("force", False)
-                hostname_rules_name = f"trix.hw.{hostname}.rules"
-                hostname_rules_path = os.path.join(self.prometheus_rules_folder, hostname_rules_name)
-                _check_path(hostname_rules_path, force)
-                _check_hostname(hostname, force)
+                if not(isinstance(force, bool)):
+                    raise ValueError(f"Force should be a boolean value, got {type(force)}")
+                nhc = host.get("nhc", None)
+                if (nhc is not None) and not(isinstance(nhc, bool)):
+                    raise ValueError(f"NHC should be a boolean value, got {type(nhc)}")
+                disabled = host.get("disabled", None)
+                if (disabled is not None) and not(isinstance(disabled, bool)):
+                    raise ValueError(f"Disabled should be a boolean value, got {type(disabled)}")
                 
-                if ( not force ) and ( os.path.exists(hostname_rules_path) ):
-                    with open(hostname_rules_path, 'r') as file:
-                        rules = file.read()
-                    response.append({"hostname": hostname, "status": True, "rules": rules})
-                    
+                hostname_rules_path = self._generate_hostname_path(hostname)
+                
+                if (not force) and os.path.exists(hostname_rules_path):
+                    rules = self._read_rules_yaml(hostname_rules_path)
                 else:
-                    rules = self._generate_rules_yaml(hostname)
-                    with open(hostname_rules_path, 'w') as file:
-                        file.write(rules)
+                    rules =self._generate_rules(hostname)
 
-                    self._prometheus_reload()
+                if (nhc is not None):
+                    for group in rules['groups']:
+                        for rule in group['rules']:
+                            rule["labels"]["nhc"] = str(nhc).lower()
+                if (disabled is not None):
+                    for group in rules['groups']:
+                        for rule in group['rules']:
+                            rule["labels"]["disabled"] = str(disabled).lower()
+
+
                 
-                    response.append({"hostname": hostname, "status": True, "rules": rules})
+                response.append({"hostname": hostname, "status": True, "data": rules})
 
-            except Exception as exception:
+            except Exception as exception: 
                 error = f"Error encountered while generating the  Prometheus Server Rules for {hostname}: {exception}."
                 response.append({"hostname": hostname, "status": False, "message": error})
-            
+            finally:
+                pass
+        
+        self._write_rules_yaml(rules, hostname_rules_path)
+        self._prometheus_reload()
+        
         return status, response

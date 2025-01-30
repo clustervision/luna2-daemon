@@ -18,7 +18,7 @@
 # -*- coding: utf-8 -*-
 
 """
-Plugin Class ::  Prometheus export class to export prometheus server rules.
+Plugin Class ::  Prometheus Import class to import prometheus server rules.
 """
 
 __author__      = "Sumit Sharma"
@@ -32,12 +32,31 @@ __status__      = "Development"
 
 import os
 import yaml
+import requests
 from utils.log import Log
+from typing import Optional, Dict, List
+from pydantic import BaseModel, Field
 
+class Annotations(BaseModel):
+    description: str
+
+class Rule(BaseModel):
+    alert: str
+    expr: str
+    for_: Optional[str] = Field(alias="for", default=None)
+    labels: Dict[str, str]
+
+class Group(BaseModel):
+    name: str
+    rules: List[Rule]
+
+class PrometheusRules(BaseModel):
+    groups: List[Group]
+    
 
 class Plugin():
     """
-    Class for exporting prometheus server rules
+    Class for importing prometheus server rules
     """
 
     def __init__(self):
@@ -45,83 +64,57 @@ class Plugin():
         This constructor will initialize all required variables here.
         """
         self.logger = Log.get_logger()
-        self.trix_config = '/trinity/local/etc/prometheus_server/rules/trix.rules'
-        self.trix_config_details = '/trinity/local/etc/prometheus_server/rules/trix.rules.details'
-        self.response = None
+        self.prometheus_url = "https://localhost:9090"
+        self.prometheus_rules_path = '/trinity/local/etc/prometheus_server/rules/trix.rules'
 
+    def _prometheus_reload(self):
+        response = requests.post(f"{self.prometheus_url}/-/reload", verify=False, timeout=5)
+        if response.status_code != 200:
+            raise RuntimeError(f"Failed to reload Prometheus server")
 
-    def generate_details(self, details=None):
+    def _read_rules(self) -> PrometheusRules:
+        if not os.path.exists(self.prometheus_rules_path):
+            return PrometheusRules(groups=[])
+        with open(self.prometheus_rules_path, 'r', encoding="utf-8") as rules_file:
+            return PrometheusRules.model_validate(yaml.safe_load(rules_file))
+    
+    def _write_rules(self, rules: PrometheusRules):
+        with open(self.prometheus_rules_path, 'w', encoding="utf-8") as rules_file:
+            yaml.dump(rules.model_dump(by_alias=True), rules_file)
+
+    def Import(self, json_data=None):
         """
-        This method will generate the fresh new detailed file depending on the main file.
+        This method will save the both files rules and detailed, depending on the users validation.
         """
-        trix_data = ""
-        with open(self.trix_config, 'r') as trix_file:
-            trix_data = yaml.safe_load(trix_file)
-        
-        if trix_data:
-            if "groups" in trix_data:
-                for groups in trix_data["groups"]:
-                    group_rules = groups["rules"]
-                    for rule in group_rules:
-                        if details is True:
-                            rule["labels"]["_trix_status"] = True
-                        rule["labels"]["nhc"] = "no"
-        file = self.trix_config_details if details is True else self.trix_config
+        self.logger.info(f"Importing Prometheus Rules to {self.prometheus_rules_path}, with json_data: {json_data}")
+        try:
+            rules = PrometheusRules.model_validate(json_data)
+            
+            self._write_rules(rules)
+            self._prometheus_reload()
 
-        self.logger.info(f'Updating File => {file}')
-        with open(file, "w") as detail_file:
-            yaml.dump(trix_data, detail_file, default_flow_style=False)
-        return True
+            response = f"TrinityX Prometheus Server Rules is updated under {self.prometheus_rules_path}."
 
+        except Exception as exception:
+            error_message = f"Error encountered while saving the Prometheus Rules at {self.prometheus_rules_path}: {exception}."
+            self.logger.error(error_message)
+            return False, error_message
 
-    def check_files(self):
-        """
-        This method will check both files with read & write permissions, and returns a list of
-        errors.
-        """
-        self.response = []
-        for file in [self.trix_config, self.trix_config_details]:
-            if os.path.exists(file):
-                self.logger.warning(f"The file '{file}' exists.")
-                if os.access(file, os.R_OK):
-                    self.logger.warning(f"The file '{file}' is readable.")
-                else:
-                    self.logger.info(f"The file '{file}' is not readable.")
-                    self.response.append(f"The file '{file}' is not readable.")
-                if os.access(file, os.W_OK):
-                    self.logger.warning(f"The file '{file}' is writable.")
-                else:
-                    self.logger.info(f"The file '{file}' is not writable.")
-                    self.response.append(f"The file '{file}' is not writable.")
-                if file == self.trix_config_details and os.stat(file).st_size == 0:
-                    self.logger.warning(f"The file '{file}' is empty.")
-                    self.generate_details(details=True)
-                    self.generate_details(details=False)
-                else:
-                    self.logger.info(f"The file '{file}' is not empty.")
-            else:
-                self.logger.warning(f"The file '{file}' does not exist.")
-                if file == self.trix_config_details:
-                    self.logger.info(f"Creating file '{file}' is empty.")
-                    self.generate_details(details=True)
-                else:
-                    self.response.append(f"The file '{file}' does not exist.")
-        return self.response
+        return True, response
 
-
-    def Export(self,args=None):
+    def Export(self, args=None):
         """
         This method will check the both files rules and detailed, and return the output from the
         detailed file with status.
         """
-        self.response = self.check_files()
-        if self.response:
-            check = False
-        else:
-            self.logger.info(f'Loading Detailed File => {self.trix_config_details}')
-            check = True
-            with open(self.trix_config_details, 'r') as file:
-                self.response = yaml.safe_load(file)
-        return check, self.response
+        self.logger.info(f"Exporting Prometheus Rules from {self.prometheus_rules_path}, with args: {args}")
+        try:
+            rules = self._read_rules()
+            response = rules.model_dump(by_alias=True)
 
+        except Exception as exception:
+            error_message = f"Error encountered while reading the Prometheus Rules at {self.prometheus_rules_path}: {exception}."
+            self.logger.error(error_message)
+            return False, error_message
 
+        return True, response

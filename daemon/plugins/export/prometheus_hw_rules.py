@@ -35,8 +35,27 @@ import os
 import json
 import yaml
 from utils.log import Log
+from typing import Optional, Dict, List
+from pydantic import BaseModel, Field
 
 
+
+
+class Annotations(BaseModel):
+    description: str
+
+class Rule(BaseModel):
+    alert: str
+    expr: str
+    for_: Optional[str] = Field(alias="for", default=None)
+    labels: Dict[str, str]
+
+class Group(BaseModel):
+    name: str
+    rules: List[Rule]
+
+class PrometheusRules(BaseModel):
+    groups: List[Group]
 
 
 class Plugin():
@@ -60,9 +79,16 @@ class Plugin():
             raise FileNotFoundError (f"Path ({os.path.dirname(path)}) does not exist")
         return path
 
-    def _read_rules_yaml(self, path):
-        with open(path, 'r') as file:
-            return yaml.safe_load(file)    
+    def _read_rules(self, path) -> PrometheusRules:
+        with open(path, 'r', encoding="utf-8") as file:
+            return PrometheusRules.model_validate(yaml.safe_load(file))
+
+    def _list_rules_hostnames(self):
+        files = os.listdir(self.prometheus_rules_folder)
+        hostnames_matches = [re.search(r'^trix[.]hw[.](.*)[.]rules$', f) for f in files]
+        hostnames_matches = [m for m in hostnames_matches if ( m is not None) ]
+        return [m.group(1) for m in hostnames_matches]
+    
 
     def Export(self,args=None):
         """
@@ -76,10 +102,7 @@ class Plugin():
         if (args is not None) and ("hostnames" in args):
             hostnames = args["hostnames"].split(",")
         else:
-            files = os.listdir(self.prometheus_rules_folder)
-            hostnames_matches = [re.search(r'^trix[.]hw[.](.*)[.]rules$', f) for f in files]
-            hostnames_matches = [m for m in hostnames_matches if ( m is not None) ]
-            hostnames = [m.group(1) for m in hostnames_matches]
+            hostnames = self._list_rules_hostnames()
             
         status, response = True, []
         
@@ -88,14 +111,13 @@ class Plugin():
             try:
                 hostname_rules_path = self._generate_hostname_path(hostname)
 
-                rules = self._read_rules_yaml(hostname_rules_path)
+                rules = self._read_rules(hostname_rules_path)
                     
-                response.append({"hostname": hostname, "status": True, "data": rules})
+                response.append({"hostname": hostname, "status": True, "data": rules.model_dump(by_alias=True)})
 
             except Exception as exception:
-                error = f"Error encountered while reading the Prometheus Rules for {hostname}: {exception}."
-                response.append({"hostname": hostname, "status": False, "message": error})
+                error_message = f"Error encountered while reading the Prometheus Rules for {hostname}: {exception}."
+                self.logger.error(error_message)
+                response.append({"hostname": hostname, "status": False, "message": error_message})
             
         return status, response
-       
-

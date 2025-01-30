@@ -37,6 +37,40 @@ import json
 import yaml
 from utils.log import Log
 
+from typing import Dict, List, Optional
+from pydantic import BaseModel, RootModel, Field
+
+class Annotations(BaseModel):
+    description: str
+
+class Rule(BaseModel):
+    alert: str
+    expr: str
+    for_: Optional[str] = Field(alias="for", default=None)
+    labels: Dict[str, str]
+
+class Group(BaseModel):
+    name: str
+    rules: List[Rule]
+
+class PrometheusRules(BaseModel):
+    groups: List[Group]
+   
+class ImportDataEntry(BaseModel):
+    hostname: str
+    force: Optional[bool] = False
+    nhc: Optional[bool] = None
+    disabled: Optional[bool] = None
+
+class HWSettings(BaseModel):
+    nhc: Optional[bool] = True
+    disabled: Optional[bool] = False
+
+class Settings(BaseModel):
+    hw: HWSettings
+
+class ImportData(RootModel):
+    root: List[ImportDataEntry]
 
 
 class Plugin():
@@ -51,6 +85,7 @@ class Plugin():
         self.logger = Log.get_logger()
         self.prometheus_url = "https://localhost:9090"
         self.prometheus_rules_folder = '/trinity/local/etc/prometheus_server/rules/'
+        self.rules_settings_file = '/trinity/local/etc/prometheus_server/rules_settings.yaml'
         self.prometheus_rules_component_fields =  [
                 "hostname", "luna_group", "path", "class", "description", "product", "vendor", "serial", "size", "capacity", "clock"
             ]
@@ -58,24 +93,13 @@ class Plugin():
     @staticmethod
     def _prometheus_check_response(query, response):
         if response.get("status") != "success":
-            raise Exception(f"Failed to get prometheus data for query {query}")
+            raise RuntimeError(f"Failed to get prometheus data for query {query}")
         if response.get("data") is None:
-            raise Exception(f"No data found for query {query}")
+            raise RuntimeError(f"No data found for query {query}")
         if response.get("data").get("resultType") != "vector":
-            raise Exception(f"Unexpected data type for query {query}")
+            raise RuntimeError(f"Unexpected data type for query {query}")
         if len(response.get("data").get("result")) == 0:
-            raise Exception(f"No data found for query {query}")
-    
-    @staticmethod
-    def _example_json_data():
-        return [
-            { "hostname": "node001.cluster" },
-            { "hostname": "node002.cluster" },
-            { "hostname": "node003.cluster", "force": True },
-            { "hostname": "node004.cluster", "nhc": False },
-            { "hostname": "node005.cluster", "disabled": True },
-            { "hostname": "node005.cluster", "force": False, "nhc": False, "disabled": False }
-        ]
+            raise RuntimeError(f"No data found for query {query}")
     
     def _prometheus_get_components_with_count(self, nodename):
         """
@@ -89,7 +113,7 @@ class Plugin():
         )
         response = requests.get(
             f"{self.prometheus_url}/api/v1/query", 
-            params={"query": query}, 
+            params={"query": query},
             verify=False,
             timeout=5
         ).json()
@@ -126,7 +150,7 @@ class Plugin():
             raise FileNotFoundError (f"Path ({os.path.dirname(path)}) does not exist")
         return path
   
-    def _generate_rules(self, nodename):
+    def _generate_rules(self, nodename, settings: Settings) -> PrometheusRules:
         # Use the updated method to get components with their counts in one call.
         data = self._prometheus_get_components_with_count(nodename)
         alerts = []
@@ -144,7 +168,10 @@ class Plugin():
                 "alert": alert_name,
                 "expr": f"absent({alert_expr})",
                 "labels": {
-                    "severity": "warning"
+                    "severity": "warning",
+                    "nhc": settings.hw.nhc,
+                    "disabled": settings.hw.disabled,
+                    
                 },
                 "annotations": {
                     "description": f"{component.get('class').capitalize()} device @ {component.get('hostname')}{component.get('path', '')} changed",
@@ -160,71 +187,75 @@ class Plugin():
                 }
             ]
         }
-        return rules
+        
+        return PrometheusRules(groups=[Group(**group) for group in rules["groups"]])
     
-    def _write_rules_yaml(self, rules, path):
-        with open(path, 'w') as file:
-            yaml.dump(rules, file, default_flow_style=False)
+    def _write_rules(self, rules: PrometheusRules, path):
+        with open(path, 'w', encoding='utf-8') as file:
+            yaml.dump(rules.model_dump(by_alias=True, exclude_defaults=True), file)
 
-    def _read_rules_yaml(self, path):
-        with open(path, 'r') as file:
-            return yaml.safe_load(file)
+    def _read_rules(self, path) -> PrometheusRules:
+        with open(path, 'r', encoding='utf-8') as file:
+            return PrometheusRules.model_validate(yaml.safe_load(file))
 
-
+    def _read_rules_settings(self) -> Settings:
+        """
+        Read the rules settings from the rules settings file
+        """
+        with open(self.rules_settings_file, 'r', encoding="utf-8") as file:
+            return Settings.model_validate(yaml.safe_load(file))
         
         
     def Import(self, json_data=None):
         """
         This method will generate and save the Prometheus Hardware Rules for a specific node.
         """
-        self.logger.debug(f'json_data => {json_data}')
-        if not isinstance(json_data, list):
-            return False, f"Json data has type ({type(json_data)}) and should be a list, expected format: {json.dumps(self._example_json_data(), indent=2)}"
-        if not json_data:
-            return False, f"Json data is an empty list, expected format: {json.dumps(self._example_json_data(), indent=2)}"
         
+        try:
+            data = ImportData.model_validate(json_data)
+        except Exception as exception:
+            error_message = f"Error encountered while validating the input data: {exception}."
+            self.logger.error(error_message)
+            return False, [{"status": False, "message": error_message}]
         
-        status, response = True, []
+        try:
+            rules_settings = self._read_rules_settings()
+        except Exception as exception:
+            error_message = f"Error encountered while reading the rules settings: {exception}."
+            self.logger.error(error_message)
+            return False, [{"status": False, "message": error_message}]
+
+        response = []
         
-        for host in json_data:
-            try:
-                hostname = host.get("hostname")
-                force = host.get("force", False)
-                if not(isinstance(force, bool)):
-                    raise ValueError(f"Force should be a boolean value, got {type(force)}")
-                nhc = host.get("nhc", None)
-                if (nhc is not None) and not(isinstance(nhc, bool)):
-                    raise ValueError(f"NHC should be a boolean value, got {type(nhc)}")
-                disabled = host.get("disabled", None)
-                if (disabled is not None) and not(isinstance(disabled, bool)):
-                    raise ValueError(f"Disabled should be a boolean value, got {type(disabled)}")
+        for host in data.root:
+            try:        
+                hostname_rules_path = self._generate_hostname_path(host.hostname)
                 
-                hostname_rules_path = self._generate_hostname_path(hostname)
-                
-                if (not force) and os.path.exists(hostname_rules_path):
-                    rules = self._read_rules_yaml(hostname_rules_path)
+                if (not host.force) and os.path.exists(hostname_rules_path):
+                    rules = self._read_rules(hostname_rules_path)
                 else:
-                    rules =self._generate_rules(hostname)
+                    rules =self._generate_rules(host.hostname, rules_settings)
 
-                if (nhc is not None):
-                    for group in rules['groups']:
-                        for rule in group['rules']:
-                            rule["labels"]["nhc"] = str(nhc).lower()
-                if (disabled is not None):
-                    for group in rules['groups']:
-                        for rule in group['rules']:
-                            rule["labels"]["disabled"] = str(disabled).lower()
+                if (host.nhc is not None):
+                    for group in rules.groups:
+                        for rule in group.rules:
+                            rule.labels["nhc"] = str(host.nhc).lower()
+                if (host.disabled is not None):
+                    for group in rules.groups:
+                        for rule in group.rules:
+                            rule.labels["disabled"] = str(host.disabled).lower()
 
 
-                self._write_rules_yaml(rules, hostname_rules_path)
-                response.append({"hostname": hostname, "status": True, "data": rules})
+                self._write_rules(rules, hostname_rules_path)
+                response.append({"hostname": host.hostname, "status": True})
             except Exception as exception: 
-                error = f"Error encountered while generating the  Prometheus Server Rules for {hostname}: {exception}."
-                response.append({"hostname": hostname, "status": False, "message": error})
+                error_message = f"Error encountered while generating the  Prometheus Server Rules for {host.hostname}: {exception}."
+                self.logger.error(error_message)
+                response.append({"hostname": host.hostname, "status": False, "message": error_message})
             finally:
                 pass
         
         
         self._prometheus_reload()
         
-        return status, response
+        return True, response

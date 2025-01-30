@@ -1,6 +1,8 @@
 stages:
   - production
   - development
+  - production-2.0
+  - development-2.0
 
 production:
   stage: production
@@ -23,4 +25,26 @@ development:
     - apk add openssh-client
     - apk add sshpass
     - sshpass -p $SSH_PASSWORD scp -r -oStrictHostKeyChecking=no dist/* $SSH_USER@$IPADDRESS:$DEV_LOCATION
+
+production-2.0:
+  stage: production-2.0
+  image: python:3.10.0-alpine
+  only:
+    - main-2.0
+  script:
+    - python setup.py sdist bdist_wheel
+    - apk add openssh-client
+    - apk add sshpass
+    - sshpass -p $SSH_PASSWORD scp -r -oStrictHostKeyChecking=no dist/* $SSH_USER@$IPADDRESS:$LOCATION_20
+
+development-2.0:
+  stage: development-2.0
+  image: python:3.10.0-alpine
+  only:
+    - development-2.0
+  script:
+    - python setup.py sdist bdist_wheel
+    - apk add openssh-client
+    - apk add sshpass
+    - sshpass -p $SSH_PASSWORD scp -r -oStrictHostKeyChecking=no dist/* $SSH_USER@$IPADDRESS:$DEV_LOCATION_20
 

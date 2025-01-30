@@ -44,7 +44,6 @@ from utils.database import Database
 from utils.helper import Helper
 from utils.service import Service
 from utils.config import Config
-from common.constant import CONSTANT
 from base.node import Node
 from utils.journal import Journal
 from utils.ha import HA
@@ -76,18 +75,14 @@ FILTERS["b64decode"] = jinja_b64decode
 # ----------------------------------------------------------------------------------------------
 
 
-
 try:
-    from plugins.boot.detection.switchport import Plugin as SwitchDetectionPlugin
-except ImportError as import_error:
+    PLUGIN_PATH = CONSTANT["PLUGINS"]["PLUGINS_DIRECTORY"]
+    DETECTION_PLUGINS = Helper().plugin_finder(f'{PLUGIN_PATH}/boot/detection')
+    SwitchDetectionPlugin = Helper().plugin_load(DETECTION_PLUGINS,'boot/detection','switchport')
+    CloudDetectionPlugin = Helper().plugin_load(DETECTION_PLUGINS,'boot/detection','cloud')
+except Exception as exp:
     LOGGER = Log.get_logger()
-    LOGGER.error(f"Problems encountered while loading detection plugin: {import_error}")
-
-try:
-    from plugins.boot.detection.cloud import Plugin as CloudDetectionPlugin
-except ImportError as import_error:
-    LOGGER = Log.get_logger()
-    LOGGER.error(f"Problems encountered while loading detection plugin: {import_error}")
+    LOGGER.error(f"Problems encountered while pre-loading detection plugins: {exp}")
 
 class Boot():
     """
@@ -104,14 +99,42 @@ class Boot():
         self.boot_plugins = Helper().plugin_finder(f'{self.plugins_path}/boot')
         self.osimage_plugins = Helper().plugin_finder(f'{self.plugins_path}/osimage')
         self.controller_object = Controller()
-        self.controller_name = self.controller_object.get_beacon()
-        self.controller_beaconip = self.controller_object.get_beaconip()
+        self.all_controllers = self.controller_object.get_controllers()
+        self.controller_name = None
+        self.controller_ip = None
+        self.controller_ipv6 = None
+        self.controller_ipv4 = None
+        self.controller_beaconip = None
+        self.controller_serverport = None
+        self.controller_network = None
+        self.controller_clusterid = None
         self.hatrial = 25
         self.ha_object = HA()
         self.insync = self.ha_object.get_insync()
         self.hastate = self.ha_object.get_hastate()
         if self.hastate is True and self.insync is True:
             self.controller_name=self.ha_object.get_me()
+        for host in self.all_controllers.keys():
+            controller = self.all_controllers[host]
+            if controller['beacon']:
+                if not self.controller_name:
+                    self.controller_name = host
+                    self.controller_ip = controller['ipaddress_ipv6'] or controller['ipaddress']
+                    self.controller_serverport = controller['serverport']
+                self.controller_beaconip = controller['ipaddress_ipv6'] or controller['ipaddress']
+            if host == self.controller_name:
+                self.controller_ip = controller['ipaddress_ipv6'] or controller['ipaddress']
+                self.controller_ipv4 = controller['ipaddress']
+                self.controller_ipv6 = controller['ipaddress_ipv6']
+                self.controller_serverport = controller['serverport']
+                self.controller_network = controller['network']
+                self.controller_clusterid = controller['clusterid']
+        self.logger.debug(f"BOOT: self.controller_name = {self.controller_name}, self.controller_ip = {self.controller_ip}, self.controller_beaconip = {self.controller_beaconip}")
+        # fallbacks
+        if not self.controller_name:
+            self.logger.warning("possible configuration error: No controller available or missing network for controller. using defaults")
+            self.controller_name = 'controller'
+
 
     def wait_for_insync(self,trial=25):
         while self.insync is False and trial>0:
@@ -119,7 +142,7 @@ class Boot():
             trial-=1
             sleep(2)
 
-    def clear_existing_mac(self,macaddress,exclude_nodeid=None):
+    def clear_existing_mac(self, macaddress, exclude_nodeid=None):
         # clear mac if it already exists.
         where=[f'nodeinterface.macaddress="{macaddress}"']
         if exclude_nodeid:
@@ -146,6 +169,81 @@ class Boot():
             return result
         return True
 
+    def find_next_suitable_node(self, groupname=None, nextnode=False, makeupname=False, macashost=False, mac=None):
+        # then we fetch a list of all nodes that we have, with or without interface config
+        example_node = None
+        new_nodename = None
+        example_node = None
+        provision_interface = 'BOOTIF'
+
+        # old/default behavior is to not be creative when we not do nextnode,
+        # though some may say, i want to be creative while not looking up unused nodes,
+        # but this would break legacy where createnode_ondemand is set to True by default
+        if not nextnode:
+            self.logger.info(f"suitable node: Bailing out as nextnode is False")
+            return None, None, None
+
+        if makeupname and macashost and mac:
+            new_nodename = mac.replace('-','')
+            new_nodename = new_nodename.replace(':','')
+            return new_nodename, example_node, provision_interface
+
+        where = None
+        if groupname:
+            where = [f"groupname = '{groupname}'"]
+
+        list1 = Database().get_record_join(
+            ['node.*', 'group.name as groupname', 'group.provision_interface as group_provision_interface',
+             'nodeinterface.interface', 'nodeinterface.macaddress'],
+            ['nodeinterface.nodeid=node.id','group.id=node.groupid'],
+            where
+        )
+        list2 = Database().get_record_join(
+            ['node.*', 'group.name as groupname', 'group.provision_interface as group_provision_interface'],
+            ['group.id=node.groupid'],
+            where
+        )
+        node_list = list1 + list2
+
+        if nextnode and node_list:
+            # we already have some nodes in the list. let's see if we can re-use
+            checked = []
+            for node in node_list:
+                if node['name'] not in checked:
+                    checked.append(node['name'])
+                    if 'interface' in node and 'macaddress' in node and not node['macaddress']:
+                        # mac is empty. candidate!
+                        new_nodename = node['name']
+                        provision_interface = node['provision_interface'] or node['group_provision_interface'] or 'BOOTIF'
+                        break
+        if makeupname and not new_nodename:
+            # we have no spare or free nodes in here -or- we create one on demand.
+            if list2:
+                # we fetch the node with highest 'number' - sort
+                names = []
+                for node in list2:
+                    names.append(node['name'])
+                names.sort(reverse=True)
+                example_node = names[0]
+                ename = example_node.rstrip('0123456789')
+                # this assumes a convention like <name><number> as node name
+                enumber = example_node[len(ename):]
+                if ename and enumber:
+                    new_enumber = str(int(enumber) + 1)
+                    new_enumber = new_enumber.zfill(len(enumber))
+                    new_nodename = f"{ename}{new_enumber}"
+                elif ename:
+                    new_enumber = '001'
+                    new_nodename = f"{ename}{new_enumber}"
+                elif groupname:
+                    # we have to create a name ourselves
+                    new_nodename = f"{groupname}001"
+            elif groupname:
+                # we have to create a name ourselves
+                new_nodename = f"{groupname}001"
+        return new_nodename, example_node, provision_interface
+
+
     def default(self):
         """
         This method will provide a default ipxe template.
@@ -156,17 +254,16 @@ class Boot():
         check_template = Helper().check_jinja(template_path)
         if not check_template:
             return False, 'Empty'
-        controller = Database().get_record_join(
-            ['controller.*','ipaddress.ipaddress','ipaddress.ipaddress_ipv6'],
-            ['ipaddress.tablerefid=controller.id'],
-            ['tableref="controller"',f'controller.hostname="{self.controller_name}"']
-        )
-        if controller:
-            ipaddress = controller[0]['ipaddress_ipv6'] or controller[0]['ipaddress']
-            serverport = controller[0]['serverport']
+        controller_ips=[]
+        for controller in self.all_controllers.keys():
+            if self.all_controllers[controller]['ipaddress_ipv6']:
+                controller_ips.append(self.all_controllers[controller]['ipaddress_ipv6'])
+            if self.all_controllers[controller]['ipaddress']:
+                controller_ips.append(self.all_controllers[controller]['ipaddress'])
+        if self.controller_name:
             protocol = CONSTANT['API']['PROTOCOL']
             verify_certificate = CONSTANT['API']['VERIFY_CERTIFICATE']
-            webserver_port = serverport
+            webserver_port = self.controller_serverport
             webserver_protocol = protocol
             if 'WEBSERVER' in CONSTANT:
                 if 'PORT' in CONSTANT['WEBSERVER']:
@@ -201,15 +298,15 @@ class Boot():
             self.logger.error(f"configuration error: No controller available or missing network for controller {self.controller_name}")
             environment = jinja2.Environment()
             template = environment.from_string('No Controller is available.')
-            ipaddress, serverport = '', ''
             status=False
         self.logger.info(f'Boot API serving the {template}')
         response = {
             'template': template,
             'LUNA_LOGHOST': self.controller_beaconip,
             'LUNA_BEACON': self.controller_beaconip,
-            'LUNA_CONTROLLER': ipaddress,
-            'LUNA_API_PORT': serverport,
+            'LUNA_CONTROLLER': self.controller_ip,
+            'LUNA_CONTROLLERS': controller_ips,
+            'LUNA_API_PORT': self.controller_serverport,
             'WEBSERVER_PORT': webserver_port,
             'LUNA_API_PROTOCOL': protocol,
             'WEBSERVER_PROTOCOL': webserver_protocol,
@@ -231,18 +328,18 @@ class Boot():
         check_template = Helper().check_jinja(template_path)
         if not check_template:
             return False, 'Empty'
-        controller = Database().get_record_join(
-            ['controller.*', 'ipaddress.ipaddress', 'ipaddress.ipaddress_ipv6'],
-            ['ipaddress.tablerefid=controller.id'],
-            ['tableref="controller"', f'controller.hostname="{self.controller_name}"']
-        )
-        if controller:
-            ipaddress = controller[0]['ipaddress_ipv6'] or controller[0]['ipaddress']
-            serverport = controller[0]['serverport']
+            status=True
+        controller_ips=[]
+        for controller in self.all_controllers.keys():
+            if self.all_controllers[controller]['ipaddress_ipv6']:
+                controller_ips.append(self.all_controllers[controller]['ipaddress_ipv6'])
+            if self.all_controllers[controller]['ipaddress']:
+                controller_ips.append(self.all_controllers[controller]['ipaddress'])
+        if self.controller_name:
             protocol = CONSTANT['API']['PROTOCOL']
             verify_certificate = CONSTANT['API']['VERIFY_CERTIFICATE']
+            webserver_port = self.controller_serverport
             webserver_protocol = protocol
-            webserver_port = serverport
             if 'WEBSERVER' in CONSTANT:
                 if 'PORT' in CONSTANT['WEBSERVER']:
                     webserver_port = CONSTANT['WEBSERVER']['PORT']
@@ -253,15 +350,15 @@ class Boot():
             self.logger.error(f"configuration error: No controller available or missing network for controller {self.controller_name}")
             environment = jinja2.Environment()
             template = environment.from_string('No Controller is available.')
-            ipaddress, serverport = '', ''
             status=False
         self.logger.info(f'Boot API serving the {template}')
         response = {
             'template': template,
             'LUNA_LOGHOST': self.controller_beaconip,
             'LUNA_BEACON': self.controller_beaconip,
-            'LUNA_CONTROLLER': ipaddress,
-            'LUNA_API_PORT': serverport,
+            'LUNA_CONTROLLER': self.controller_ip,
+            'LUNA_CONTROLLERS': controller_ips,
+            'LUNA_API_PORT': self.controller_serverport,
             'WEBSERVER_PORT': webserver_port,
             'LUNA_API_PROTOCOL': protocol,
             'VERIFY_CERTIFICATE': verify_certificate,
@@ -280,23 +377,33 @@ class Boot():
         check_template = Helper().check_jinja(template_path)
         if not check_template:
             return False, 'Empty'
-        controller = Database().get_record_join(
-            ['controller.*', 'ipaddress.ipaddress', 'ipaddress.ipaddress_ipv6'],
-            ['ipaddress.tablerefid=controller.id'],
-            ['tableref="controller"', f'controller.hostname="{self.controller_name}"']
-        )
-        if controller:
-            ipaddress = controller[0]['ipaddress_ipv6'] or controller[0]['ipaddress']
-            serverport = controller[0]['serverport']
+        controller_ips=[]
+        for controller in self.all_controllers.keys():
+            if self.all_controllers[controller]['ipaddress_ipv6']:
+                controller_ips.append(self.all_controllers[controller]['ipaddress_ipv6'])
+            if self.all_controllers[controller]['ipaddress']:
+                controller_ips.append(self.all_controllers[controller]['ipaddress'])
+        if self.controller_name:
+            protocol = CONSTANT['API']['PROTOCOL']
+            verify_certificate = CONSTANT['API']['VERIFY_CERTIFICATE']
+            webserver_port = self.controller_serverport
+            webserver_protocol = protocol
+            if 'WEBSERVER' in CONSTANT:
+                if 'PORT' in CONSTANT['WEBSERVER']:
+                    webserver_port = CONSTANT['WEBSERVER']['PORT']
+                if 'PROTOCOL' in CONSTANT['WEBSERVER']:
+                    webserver_protocol = CONSTANT['WEBSERVER']['PROTOCOL']
             status=True
         else:
             self.logger.error(f"configuration error: No controller available or missing network for controller {self.controller_name}")
             environment = jinja2.Environment()
             template = environment.from_string('No Controller is available.')
-            ipaddress, serverport = '', ''
             status=False
         self.logger.info(f'Boot API serving the {template}')
-        response = {'template': template, 'LUNA_CONTROLLER': ipaddress, 'LUNA_API_PORT': serverport, 'LUNA_BEACON': self.controller_beaconip}
+        response = {'template': template, 'LUNA_CONTROLLER': self.controller_ip, 
+                    'LUNA_API_PORT': self.controller_serverport,
+                    'LUNA_BEACON': self.controller_beaconip,
+                    'LUNA_CONTROLLERS': controller_ips}
         return status, response
 
 
@@ -333,15 +440,10 @@ class Boot():
             return False, 'Empty'
         if mac:
             mac = mac.lower()
-        controller = Database().get_record_join(
-            ['controller.*', 'ipaddress.ipaddress','ipaddress.ipaddress_ipv6','network.name as network'],
-            ['ipaddress.tablerefid=controller.id','network.id=ipaddress.networkid'],
-            ['tableref="controller"', f'controller.hostname="{self.controller_name}"']
-        )
-        if controller:
-            data['ipaddress'] = controller[0]['ipaddress_ipv6'] or controller[0]['ipaddress']
-            data['network'] = controller[0]['network']
-            data['serverport'] = controller[0]['serverport']
+        if self.controller_name:
+            data['ipaddress'] = self.controller_ip
+            data['network'] = self.controller_network
+            data['serverport'] = self.controller_serverport
             data['webserver_port'] = data['serverport']
             if 'WEBSERVER' in CONSTANT:
                 if 'PORT' in CONSTANT['WEBSERVER']:
@@ -349,9 +451,10 @@ class Boot():
                 if 'PROTOCOL' in CONSTANT['WEBSERVER']:
                     data['webserver_protocol'] = CONSTANT['WEBSERVER']['PROTOCOL']
         else:
-            self.logger.warning(f"possible configuration error: No controller available or missing network for controller {self.controller_name}")
+            self.logger.warning("possible configuration error: No controller available or missing network for controller")
         nodeinterface = Database().get_record_join(
-            ['nodeinterface.nodeid', 'nodeinterface.interface', 'ipaddress.ipaddress', 'ipaddress.ipaddress_ipv6',
+            ['nodeinterface.nodeid', 'nodeinterface.interface',
+             'ipaddress.ipaddress', 'ipaddress.ipaddress_ipv6',
              'network.name as network', 'network.network as networkip', 'network.subnet', 'network.gateway',
              'network.network_ipv6 as networkip_ipv6', 'network.subnet_ipv6', 'network.gateway_ipv6'],
             ['network.id=ipaddress.networkid', 'ipaddress.tablerefid=nodeinterface.id'],
@@ -422,7 +525,7 @@ class Boot():
                     result = CloudDetectionPlugin().find(macaddress=mac)
                     if (isinstance(result, bool) and result is True) or (isinstance(result, tuple) and result[0] is True and len(result)>1):
                         cloud = result[1]
-                        self.logger.info(f"detected {mac} on: [{cloud}]")
+                        self.logger.debug(f"detected {mac} is seen in [{cloud}]")
                         possible_nodes = Database().get_record_join(
                             ['node.name', 'nodeinterface.nodeid', 'nodeinterface.interface',
                              'ipaddress.ipaddress', 'network.name as network', 'network.gateway',
@@ -438,7 +541,7 @@ class Boot():
                             result = True
                             for node in possible_nodes:
                                 if not node['macaddress']:  # first candidate
-                                    self.logger.warning(f"Node {node['name']} with id {node['nodeid']} in cloud {cloud} will use MAC {mac}")
+                                    self.logger.info(f"Node {node['name']} with id {node['nodeid']} in cloud {cloud} will use MAC {mac}")
                                     provision_interface = 'BOOTIF'
                                     if self.hastate is True:
                                         self.wait_for_insync(self.hatrial)
@@ -468,73 +571,96 @@ class Boot():
             # ----------- port/cloud detection was not successfull, lets try a last resort -------------
             # ------------------ "don't nag give me the next node" detection ---------------------------
             if not data['nodeid']:
-                createnode_ondemand, nextnode_discover = None, None
+                createnode_ondemand, nextnode_discover, createnode_macashost = None, None, None
                 cluster = Database().get_record(None, 'cluster')
                 if cluster:
-                    if 'createnode_ondemand' in cluster[0]:
-                        createnode_ondemand=Helper().bool_revert(cluster[0]['createnode_ondemand'])
                     if 'nextnode_discover' in cluster[0]:
-                        nextnode_discover=Helper().bool_revert(cluster[0]['nextnode_discover'])
+                        nextnode_discover=Helper().make_bool(cluster[0]['nextnode_discover'])
+                    if 'createnode_ondemand' in cluster[0]:
+                        createnode_ondemand=Helper().make_bool(cluster[0]['createnode_ondemand'])
+                    if 'createnode_macashost' in cluster[0]:
+                        createnode_macashost=Helper().make_bool(cluster[0]['createnode_macashost'])
                 if nextnode_discover:
                     self.logger.info(f"nextnode discover: we will try to see a good fit for {mac}")
 
-                    # then we fetch a list of all nodes that we have, with or without interface config
-                    list1 = Database().get_record_join(
-                        ['node.*', 'group.name as groupname', 'group.provision_interface as group_provision_interface',
-                        'nodeinterface.interface', 'nodeinterface.macaddress'],
-                        ['nodeinterface.nodeid=node.id','group.id=node.groupid']
-                    )
-                    list2 = Database().get_record_join(
-                        ['node.*', 'group.name as groupname'],
-                        ['group.id=node.groupid']
-                    )
-                    node_list = list1 + list2
+                groupname, new_nodename = None, None
+                group_details = Database().get_record(None,'group')
+                if group_details and len(group_details) == 1:
+                    groupname = group_details[0]['name']
+                elif createnode_ondemand:
+                    self.logger.warning(f"nextnode discover might fail as we have multiple groups and i don't know which is default")
 
-                    checked = []
-                    if node_list:
-                        result = True
-                        # we already have some nodes in the list. let's see if we can re-use
-                        for node in node_list:
-                            if node['name'] not in checked:
-                                checked.append(node['name'])
-                                if 'interface' in node and 'macaddress' in node and not node['macaddress']:
-                                    # mac is empty. candidate!
-                                    self.clear_existing_mac(macaddress=mac)
-                                    provision_interface = node['provision_interface'] or node['group_provision_interface'] or 'BOOTIF'
-                                    if self.hastate is True:
-                                        self.wait_for_insync(self.hatrial)
-                                        payload = [{'interface': provision_interface, 'macaddress': mac}]
-                                        result, _ = Journal().add_request(function="Interface.change_node_interface",object=node['id'],payload=payload)
-                                    if result is True:
-                                        result, _ = Config().node_interface_config(
-                                            node['id'],
-                                            provision_interface,
-                                            mac
-                                        )
-                                    break
+                new_nodename, example_node, provision_interface = self.find_next_suitable_node(groupname=groupname, nextnode=nextnode_discover,
+                                                                  makeupname=createnode_ondemand, macashost=createnode_macashost,
+                                                                  mac=mac)
 
-                        nodeinterface = Database().get_record_join(
-                            ['nodeinterface.nodeid', 'nodeinterface.interface', 'ipaddress.ipaddress_ipv6',
-                             'ipaddress.ipaddress', 'network.name as network', 'network.gateway',
-                             'network.network as networkip', 'network.subnet', 'network.gateway_ipv6',
-                             'network.network_ipv6 as networkip_ipv6', 'network.subnet_ipv6'],
-                            ['network.id=ipaddress.networkid',
-                             'ipaddress.tablerefid=nodeinterface.id'],
-                            ['tableref="nodeinterface"', f"nodeinterface.macaddress='{mac}'"]
-                        )
-                        if nodeinterface:
-                            data['nodeid'] = nodeinterface[0]['nodeid']
-                            if nodeinterface[0]["ipaddress_ipv6"]:
-                                data['nodeip'] = f'{nodeinterface[0]["ipaddress_ipv6"]}/{nodeinterface[0]["subnet_ipv6"]}'
-                            else:
-                                data['nodeip'] = f'{nodeinterface[0]["ipaddress"]}/{nodeinterface[0]["subnet"]}'
-                            if nodeinterface[0]["ipaddress_ipv6"]:
-                                data['gateway'] = nodeinterface[0]['gateway_ipv6'] or ''
-                            else:
-                                data['gateway'] = nodeinterface[0]['gateway'] or ''
-                            Service().queue('dhcp', 'restart')
-                            Service().queue('dhcp6','restart')
+                if new_nodename:
+                    self.logger.info(f"Node boot intelligence: we came up with the following node name: [{new_nodename}]")
+                    # below is just in place to prevent double mac causing issues.
+                    self.clear_existing_mac(macaddress=mac)
+
+                    result, message = True, None
+                    if example_node:
+                        newnodedata = {'config': {'node': {example_node: {}}}}
+                        newnodedata['config']['node'][example_node]['newnodename'] = new_nodename
+                        newnodedata['config']['node'][example_node]['name'] = example_node
+                        if groupname:
+                            newnodedata['config']['node'][example_node]['group'] = groupname
+                        if self.hastate is True:
+                            self.wait_for_insync(self.hatrial)
+                            result, message = Journal().add_request(function="Node.clone_node",object=example_node,payload=newnodedata)
+                        if result is True:
+                            result, message = Node().clone_node(example_node,newnodedata)
+                        self.logger.info(f"Node select boot: Cloning {example_node} to {new_nodename}: result = [{result}], message = [{message}]")
+                    else:
+                        newnodedata = {'config': {'node': {new_nodename: {}}}}
+                        newnodedata['config']['node'][new_nodename]['name'] = new_nodename
+                        if groupname:
+                            newnodedata['config']['node'][new_nodename]['group'] = groupname
+                        if self.hastate is True:
+                            self.wait_for_insync(self.hatrial)
+                            result, message = Journal().add_request(function="Node.update_node",object=example_node,payload=newnodedata)
+                        if result is True:
+                            result, message = Node().update_node(new_nodename,newnodedata)
+                        self.logger.info(f"Node select boot: Creating {new_nodename}: result = [{result}], message = [{message}]")
+                    if result is True:
+                        nodeid = Database().id_by_name('node', new_nodename)
+                        if self.hastate is True:
+                            self.wait_for_insync(self.hatrial)
+                            payload = [{'interface': provision_interface, 'macaddress': mac}]
+                            result, _ = Journal().add_request(function="Interface.change_node_interface",object=nodeid,payload=payload)
+                        if result is True:
+                            result, _ = Config().node_interface_config(nodeid, provision_interface, mac)
+
+                    nodeinterface = Database().get_record_join(
+                        ['nodeinterface.nodeid', 'nodeinterface.interface', 'ipaddress.ipaddress_ipv6',
+                         'ipaddress.ipaddress', 'network.name as network', 'network.gateway',
+                         'network.network as networkip', 'network.subnet', 'network.gateway_ipv6',
+                         'network.network_ipv6 as networkip_ipv6', 'network.subnet_ipv6'],
+                        ['network.id=ipaddress.networkid',
+                         'ipaddress.tablerefid=nodeinterface.id'],
+                        ['tableref="nodeinterface"', f"nodeinterface.macaddress='{mac}'"]
+                    )
+                    if nodeinterface:
+                        data['nodeid'] = nodeinterface[0]['nodeid']
+                        if nodeinterface[0]["ipaddress_ipv6"]:
+                            data['nodeip'] = f'{nodeinterface[0]["ipaddress_ipv6"]}/{nodeinterface[0]["subnet_ipv6"]}'
+                        else:
+                            data['nodeip'] = f'{nodeinterface[0]["ipaddress"]}/{nodeinterface[0]["subnet"]}'
+                        if nodeinterface[0]["ipaddress_ipv6"]:
+                            data['gateway'] = nodeinterface[0]['gateway_ipv6'] or ''
+                        else:
+                            data['gateway'] = nodeinterface[0]['gateway'] or ''
+                        Service().queue('dhcp', 'restart')
+                        Service().queue('dhcp6','restart')
+                elif nextnode_discover:
+                    self.logger.info("Node boot intelligence couldn't find any suitable node")
         # -----------------------------------------------------------------------
+        if not data['nodeid']:
+            self.logger.info(f"node with macaddress {mac} wants to boot but we do not have any config")
+            status=False
+            return status, "No config available"
+
         data['kerneloptions']=""
 
         if data['nodeid']:
@@ -577,7 +703,7 @@ class Boot():
                 osimage = Database().get_record(None, 'osimage', f' WHERE id = {data["osimageid"]}')
             if osimage:
                 if UBoot().verify_bootpause(osimage[0]['name']):
-                    self.logger.info(f"osimage {osimage[0]['name']} is currently being packed. Node will wait before booting.")
+                    self.logger.info(f"osimage {osimage[0]['name']} is currently being packed. Node will wait before booting")
                     data['cleartoboot']=None
                 if osimage[0]['kernelfile']:
                     data['kernelfile'] = osimage[0]['kernelfile']
@@ -672,30 +798,25 @@ class Boot():
             return False, 'Empty'
         if mac:
             mac = mac.lower()
-        network, createnode_ondemand = None, None # used below
+        network, createnode_ondemand, createnode_macashost, nextnode_discover = None, None, None, None # used below
 
-        # get controller and cluster info
-        controller = Database().get_record_join(
-            ['controller.*', 'ipaddress.ipaddress', 'ipaddress.ipaddress_ipv6', 'network.name as network'],
-            ['ipaddress.tablerefid=controller.id', 'network.id=ipaddress.networkid'],
-            ['tableref="controller"', f'controller.hostname="{self.controller_name}"']
-        )
-        if controller:
-            data['network'] = controller[0]['network']
-            data['ipaddress'] = controller[0]['ipaddress_ipv6'] or controller[0]['ipaddress']
-            data['serverport'] = controller[0]['serverport']
+        if self.controller_name:
+            data['ipaddress'] = self.controller_ip
+            data['network'] = self.controller_network
+            data['serverport'] = self.controller_serverport
             data['webserver_port'] = data['serverport']
             if 'WEBSERVER' in CONSTANT:
                 if 'PORT' in CONSTANT['WEBSERVER']:
                     data['webserver_port'] = CONSTANT['WEBSERVER']['PORT']
                 if 'PROTOCOL' in CONSTANT['WEBSERVER']:
                     data['webserver_protocol'] = CONSTANT['WEBSERVER']['PROTOCOL']
-            where = f" WHERE id='{controller[0]['clusterid']}'"
+            where = f" WHERE id='{self.controller_clusterid}'"
             cluster = Database().get_record(None, 'cluster', where)
-            if cluster and 'createnode_ondemand' in cluster[0]:
-                createnode_ondemand=Helper().bool_revert(cluster[0]['createnode_ondemand'])
+            if cluster:
+                if 'createnode_macashost' in cluster[0]:
+                    createnode_macashost=Helper().make_bool(cluster[0]['createnode_macashost'])
         else:
-            self.logger.warning(f"possible configuration error: No controller available or missing network for controller {self.controller_name}")
+            self.logger.warning(f"possible configuration error: No controller available or missing network for controller")
 
         # clear mac if it already exists. let's check
         # if there is a mac defined, this means there is already a node with this mac.
@@ -704,17 +825,17 @@ class Boot():
         # Further down we configure the interface for the 'discovered' node and set the mac.
         self.clear_existing_mac(macaddress=mac)
 
-        # then we fetch a list of all nodes that we have, with or without interface config
-        list1 = Database().get_record_join(
-            ['node.*', 'group.name as groupname', 'group.provision_interface',
-            'nodeinterface.interface', 'nodeinterface.macaddress'],
-            ['nodeinterface.nodeid=node.id','group.id=node.groupid']
-        )
-        list2 = Database().get_record_join(
-            ['node.*', 'group.name as groupname'],
-            ['group.id=node.groupid']
-        )
-        node_list = list1 + list2
+#        # then we fetch a list of all nodes that we have, with or without interface config
+#        list1 = Database().get_record_join(
+#            ['node.*', 'group.name as groupname', 'group.provision_interface',
+#            'nodeinterface.interface', 'nodeinterface.macaddress'],
+#            ['nodeinterface.nodeid=node.id','group.id=node.groupid']
+#        )
+#        list2 = Database().get_record_join(
+#            ['node.*', 'group.name as groupname'],
+#            ['group.id=node.groupid']
+#        )
+#        node_list = list1 + list2
 
         # general group info and details. needed below
         group_details = Database().get_record(None,'group',f" WHERE name='{groupname}'")
@@ -723,106 +844,60 @@ class Boot():
             provision_interface = str(group_details[0]['provision_interface'])
 
         # first we generate a list of taken ips. we might need it later
-        ips, ips6 = [], []
-        if data['network']:
-            network = Database().get_record_join(
-                ['ipaddress.ipaddress', 'network.network', 'network.subnet',
-                 'ipaddress.ipaddress_ipv6', 'network.network_ipv6', 'network.subnet_ipv6'],
-                ['network.id=ipaddress.networkid'],
-                [f"network.name='{data['network']}'"]
-            )
-            if network:
-                for network_ip in network:
-                    if network_ip['ipaddress']:
-                        ips.append(network_ip['ipaddress'])
-                    if network_ip['ipaddress_ipv6']:
-                        ips.append(network_ip['ipaddress_ipv6'])
+#        ips, ips6 = [], []
+#        if data['network']:
+#            network = Database().get_record_join(
+#                ['ipaddress.ipaddress', 'network.network', 'network.subnet',
+#                 'ipaddress.ipaddress_ipv6', 'network.network_ipv6', 'network.subnet_ipv6'],
+#                ['network.id=ipaddress.networkid'],
+#                [f"network.name='{data['network']}'"]
+#            )
+#            if network:
+#                for network_ip in network:
+#                    if network_ip['ipaddress']:
+#                        ips.append(network_ip['ipaddress'])
+#                    if network_ip['ipaddress_ipv6']:
+#                        ips.append(network_ip['ipaddress_ipv6'])
 
-        hostname = None # we use it further down below.
-        checked = []
-        example_node = None
-        new_nodename = None
-        if (not node_list) or (createnode_ondemand is True):
-            # we have no spare or free nodes in here -or- we create one on demand.
-            if list2:
-                # we fetch the node with highest 'number' - sort
-                names = []
-                for node in list2:
-                    names.append(node['name'])
-                names.sort(reverse=True)
-                example_node = names[0]
-                ename = example_node.rstrip('0123456789')
-                # this assumes a convention like <name><number> as node name
-                enumber = example_node[len(ename):]
-                if ename and enumber:
-                    new_enumber = str(int(enumber) + 1)
-                    new_enumber = new_enumber.zfill(len(enumber))
-                    new_nodename = f"{ename}{new_enumber}"
-                elif ename:
-                    new_enumber = '001'
-                    new_nodename = f"{ename}{new_enumber}"
-                else:
-                    # we have to create a name ourselves
-                    new_nodename = f"{groupname}001"
+        new_nodename, example_node, _ = self.find_next_suitable_node(groupname=groupname, nextnode=True,
+                                                       makeupname=True, macashost=createnode_macashost,
+                                                       mac=mac)
+
+        self.logger.info(f"Group boot intelligence: we came up with the following node name: [{new_nodename}]")
+
+        if new_nodename:
+            # Antoine aug 15 2023
+            result, message = True, None
+            if example_node:
+                newnodedata = {'config': {'node': {example_node: {}}}}
+                newnodedata['config']['node'][example_node]['newnodename'] = new_nodename
+                newnodedata['config']['node'][example_node]['name'] = example_node
+                newnodedata['config']['node'][example_node]['group'] = groupname # groupname is given through API call
+                if self.hastate is True:
+                    self.wait_for_insync(self.hatrial)
+                    result, message = Journal().add_request(function="Node.clone_node",object=example_node,payload=newnodedata)
+                if result is True:
+                    result, message = Node().clone_node(example_node,newnodedata)
+                self.logger.info(f"Group select boot: Cloning {example_node} to {new_nodename}: result = [{result}], message = [{message}]")
             else:
-                # we have to create a name ourselves
-                new_nodename = f"{groupname}001"
-            self.logger.info(f"Group boot intelligence: we came up with the following node name: [{new_nodename}]")
-            if group_details:
-                # Antoine aug 15 2023
-                ret,message = None, None
-                if new_nodename:
-                    result=True
-                    if example_node:
-                        newnodedata = {'config': {'node': {example_node: {}}}}
-                        newnodedata['config']['node'][example_node]['newnodename'] = new_nodename
-                        newnodedata['config']['node'][example_node]['name'] = example_node
-                        newnodedata['config']['node'][example_node]['group'] = groupname # groupname is given through API call
-                        if self.hastate is True:
-                            self.wait_for_insync(self.hatrial)
-                            result, message = Journal().add_request(function="Node.clone_node",object=example_node,payload=newnodedata)
-                        if result is True:
-                            result, message = Node().clone_node(example_node,newnodedata)
-                        self.logger.info(f"Group select boot: Cloning {example_node} to {new_nodename}: result = [{result}], message = [{message}]")
-                    else:
-                        newnodedata = {'config': {'node': {new_nodename: {}}}}
-                        newnodedata['config']['node'][new_nodename]['name'] = new_nodename
-                        newnodedata['config']['node'][new_nodename]['group'] = groupname # groupname is given through API call
-                        if self.hastate is True:
-                            self.wait_for_insync(self.hatrial)
-                            result, message = Journal().add_request(function="Node.update_node",object=example_node,payload=newnodedata)
-                        if result is True:
-                            result, message = Node().update_node(new_nodename,newnodedata)
-                        self.logger.info(f"Group select boot: Creating {new_nodename}: result = [{result}], message = [{message}]")
-                    if result is True:
-                        hostname = new_nodename
-                        nodeid = Database().id_by_name('node', new_nodename)
-                        if self.hastate is True:
-                            self.wait_for_insync(self.hatrial)
-                            payload = [{'interface': provision_interface, 'macaddress': mac}]
-                            result, _ = Journal().add_request(function="Interface.change_node_interface",object=nodeid,payload=payload)
-                        if result is True:
-                            result, _ = Config().node_interface_config(nodeid, provision_interface, mac)
-        else:
-            # we already have some nodes in the list. let's see if we can re-use
-            for node in node_list:
-                if node['name'] not in checked:
-                    result=True
-                    checked.append(node['name'])
-                    if 'interface' in node and 'macaddress' in node and not node['macaddress']:
-                        # mac is empty. candidate!
-                        hostname = node['name']
-                        if self.hastate is True:
-                            self.wait_for_insync(self.hatrial)
-                            payload = [{'interface': provision_interface, 'macaddress': mac}]
-                            result, _ = Journal().add_request(function="Interface.change_node_interface",object=node['id'],payload=payload)
-                        if result is True:
-                            result, _ = Config().node_interface_config(
-                                node['id'],
-                                provision_interface,
-                                mac
-                            )
-                        break
+                newnodedata = {'config': {'node': {new_nodename: {}}}}
+                newnodedata['config']['node'][new_nodename]['name'] = new_nodename
+                newnodedata['config']['node'][new_nodename]['group'] = groupname # groupname is given through API call
+                if self.hastate is True:
+                    self.wait_for_insync(self.hatrial)
+                    result, message = Journal().add_request(function="Node.update_node",object=example_node,payload=newnodedata)
+                if result is True:
+                    result, message = Node().update_node(new_nodename,newnodedata)
+                self.logger.info(f"Group select boot: Creating {new_nodename}: result = [{result}], message = [{message}]")
+            if result is True:
+                hostname = new_nodename
+                nodeid = Database().id_by_name('node', new_nodename)
+                if self.hastate is True:
+                    self.wait_for_insync(self.hatrial)
+                    payload = [{'interface': provision_interface, 'macaddress': mac}]
+                    result, _ = Journal().add_request(function="Interface.change_node_interface",object=nodeid,payload=payload)
+                if result is True:
+                    result, _ = Config().node_interface_config(nodeid, provision_interface, mac)
 
 #                    Below section commented out as it not really up to us to create interface
 #                    for nodes if they are not configured. We better just use what's valid and ok
@@ -851,11 +926,11 @@ class Boot():
 #                                avail_ip,
 #                                data['network']
 #                            )
-#                            Service().queue('dns','restart')
+#                            Service().queue('dns','reload')
 #                            Service().queue('dhcp6','restart')
 #                        break
 
-        if not hostname:
+        if not new_nodename:
             # we bail out because we could not re-use a node or create one.
             # something above did not work out.
             environment = jinja2.Environment()
@@ -867,7 +942,7 @@ class Boot():
         # needed if we re-use a node (unassigned)
         if group_details:
             row = [{"column": "groupid", "value": group_details[0]['id']}]
-            where = [{"column": "name", "value": hostname}]
+            where = [{"column": "name", "value": new_nodename}]
             Database().update('node', row, where)
 
         # below here is almost identical to a manual node selection boot -----------------
@@ -877,7 +952,7 @@ class Boot():
             ['node.*', 'group.osimageid as grouposimageid','group.osimagetagid as grouposimagetagid',
              'group.kerneloptions as groupkerneloptions','group.netboot as groupnetboot'],
             ['group.id=node.groupid'],
-            [f'node.name="{hostname}"']
+            [f'node.name="{new_nodename}"']
         )
         if node:
             data['osimagetagid'] = node[0]['osimagetagid'] or node[0]['grouposimagetagid'] or 'default'
@@ -947,7 +1022,7 @@ class Boot():
                 osimage = Database().get_record(None, 'osimage', f' WHERE id = {data["osimageid"]}')
             if osimage:
                 if UBoot().verify_bootpause(osimage[0]['name']):
-                    self.logger.info(f"osimage {osimage[0]['name']} is currently being packed. Node will wait before booting.")
+                    self.logger.info(f"osimage {osimage[0]['name']} is currently being packed. Node will wait before booting")
                     data['cleartoboot']=None
                 if osimage[0]['kernelfile']:
                     data['kernelfile'] = osimage[0]['kernelfile']
@@ -1037,15 +1112,10 @@ class Boot():
         if not check_template:
             return False, 'Empty'
         # Antoine
-        controller = Database().get_record_join(
-            ['controller.*', 'ipaddress.ipaddress', 'ipaddress.ipaddress_ipv6', 'network.name as network'],
-            ['ipaddress.tablerefid=controller.id','network.id=ipaddress.networkid'],
-            ['tableref="controller"',f'controller.hostname="{self.controller_name}"']
-        )
-        if controller:
-            data['network'] = controller[0]['network']
-            data['ipaddress'] = controller[0]['ipaddress_ipv6'] or controller[0]['ipaddress']
-            data['serverport'] = controller[0]['serverport']
+        if self.controller_name:
+            data['ipaddress'] = self.controller_ip
+            data['network'] = self.controller_network
+            data['serverport'] = self.controller_serverport
             data['webserver_port'] = data['serverport']
             if 'WEBSERVER' in CONSTANT:
                 if 'PORT' in CONSTANT['WEBSERVER']:
@@ -1053,7 +1123,7 @@ class Boot():
                 if 'PROTOCOL' in CONSTANT['WEBSERVER']:
                     data['webserver_protocol'] = CONSTANT['WEBSERVER']['PROTOCOL']
         else:
-            self.logger.warning(f"possible configuration error: No controller available or missing network for controller {self.controller_name}")
+            self.logger.warning(f"possible configuration error: No controller available or missing network for controller")
 
         data['kerneloptions']=""
 
@@ -1154,7 +1224,7 @@ class Boot():
                 osimage = Database().get_record(None, 'osimage', f' WHERE id = {data["osimageid"]}')
             if osimage:
                 if UBoot().verify_bootpause(osimage[0]['name']):
-                    self.logger.info(f"osimage {osimage[0]['name']} is currently being packed. Node will wait before booting.")
+                    self.logger.info(f"osimage {osimage[0]['name']} is currently being packed. Node will wait before booting")
                     data['cleartoboot']=None
                 if osimage[0]['kernelfile']:
                     data['kernelfile'] = osimage[0]['kernelfile']
@@ -1255,16 +1325,21 @@ class Boot():
             data['selinux']      = Helper().bool_revert(cluster[0]['security'])
             data['cluster_provision_method']   = cluster[0]['provision_method']
             data['cluster_provision_fallback'] = cluster[0]['provision_fallback']
-            data['name_server'] = cluster[0]['nameserver_ip']
+            data['nameserver_ip'] = cluster[0]['nameserver_ip']
             data['domain_search'] = cluster[0]['domain_search']
-        controller = Database().get_record_join(
-            ['controller.*', 'ipaddress.ipaddress', 'ipaddress.ipaddress_ipv6'],
-            ['ipaddress.tablerefid=controller.id'],
-            ['tableref="controller"', f'controller.hostname="{self.controller_name}"']
-        )
-        if controller:
-            data['ipaddress']   = controller[0]['ipaddress_ipv6'] or controller[0]['ipaddress']
-            data['serverport']  = controller[0]['serverport']
+        nameserver_ips_ipv4, nameserver_ips_ipv6 = [self.controller_beaconip], [self.controller_beaconip]
+        if self.controller_ipv4:
+            nameserver_ips_ipv4.insert(0, self.controller_ipv4)
+            nameserver_ips_ipv4 = Helper().dedupe_adjacent(nameserver_ips_ipv4)
+        if self.controller_ipv6:
+            nameserver_ips_ipv6.insert(0, self.controller_ipv6)
+            nameserver_ips_ipv6 = Helper().dedupe_adjacent(nameserver_ips_ipv6)
+        nameserver_ips_ipv4 = ';'.join(nameserver_ips_ipv4)
+        nameserver_ips_ipv6 = ';'.join(nameserver_ips_ipv6)
+        if self.controller_name:
+            data['ipaddress'] = self.controller_ip
+            data['network'] = self.controller_network
+            data['serverport'] = self.controller_serverport
             data['webserver_port'] = data['serverport']
             if 'WEBSERVER' in CONSTANT:
                 if 'PORT' in CONSTANT['WEBSERVER']:
@@ -1272,7 +1347,7 @@ class Boot():
                 if 'PROTOCOL' in CONSTANT['WEBSERVER']:
                     data['webserver_protocol'] = CONSTANT['WEBSERVER']['PROTOCOL']
         else:
-            self.logger.warning(f"possible configuration error: No controller available or missing network for controller {self.controller_name}")
+            self.logger.warning(f"possible configuration error: No controller available or missing network for controller")
         
         items = {
             'setupbmc': False,
@@ -1418,34 +1493,35 @@ class Boot():
                             'zone': zone,
                             'type': interface['type'] or "ethernet"
                         }
-                        if interface['interface'] == data['provision_interface'] and controller:
+                        domain_search.append(interface['network'])
+                        if interface['interface'] == data['provision_interface']:
+                            if interface['network']:
+                                # if it is my prov interface then it will get that domain as a FQDN.
+                                data['nodehostname'] = data['nodename'] + '.' + interface['network']
+                                domain_search.insert(0, interface['network'])
                             # setting good defaults for BOOTIF if they do not exist. a must.
                             if not data['interfaces'][data['provision_interface']]['gateway']:
-                                data['interfaces'][data['provision_interface']]['gateway'] = controller[0]['ipaddress'] or '0.0.0.0'
+                                data['interfaces'][data['provision_interface']]['gateway'] = self.controller_ipv4 or '0.0.0.0'
                             if not data['interfaces'][data['provision_interface']]['gateway_ipv6']:
-                                data['interfaces'][data['provision_interface']]['gateway_ipv6'] = controller[0]['ipaddress_ipv6'] or '::/0'
+                                data['interfaces'][data['provision_interface']]['gateway_ipv6'] = self.controller_ipv6 or '::/0'
                             if not data['interfaces'][data['provision_interface']]['nameserver_ip']:
-                                data['interfaces'][data['provision_interface']]['nameserver_ip'] = controller[0]['ipaddress'] or '0.0.0.0'
+                                data['interfaces'][data['provision_interface']]['nameserver_ip'] = nameserver_ips_ipv4 or '0.0.0.0'
                             if not data['interfaces'][data['provision_interface']]['nameserver_ip_ipv6']:
-                                data['interfaces'][data['provision_interface']]['nameserver_ip_ipv6'] = controller[0]['ipaddress_ipv6'] or '::/0'
+                                data['interfaces'][data['provision_interface']]['nameserver_ip_ipv6'] = nameserver_ips_ipv6 or '::/0'
                         if not data['interfaces'][interface['interface']]['ipaddress']:
                             del data['interfaces'][interface['interface']]['gateway']
                             del data['interfaces'][interface['interface']]['nameserver_ip']
                         if not data['interfaces'][interface['interface']]['ipaddress_ipv6']:
                             del data['interfaces'][interface['interface']]['gateway_ipv6']
                             del data['interfaces'][interface['interface']]['nameserver_ip_ipv6']
-                        domain_search.append(interface['network'])
-                        if interface['interface'] == data['provision_interface'] and interface['network']:
-                            # if it is my prov interface then it will get that domain as a FQDN.
-                            data['nodehostname'] = data['nodename'] + '.' + interface['network']
-                            domain_search.insert(0, interface['network'])
 
-            if not data['domain_search']:
-                if domain_search:
-                    data['domain_search'] = ','.join(domain_search)
-                else:
-                    # clearly, the user wants something that has no interface involvement. fallback to '', but not None
-                    data['domain_search'] = ''
+            if data['domain_search']:
+                data['domain_search'] = data['domain_search'].replace(',',';')
+            elif domain_search:
+                data['domain_search'] = ';'.join(domain_search)
+            else:
+                # clearly, the user wants something that has no interface involvement. fallback to '', but not None
+                data['domain_search'] = ''
 
         # needed for generating network config templates on server side
         if data['kerneloptions']:
@@ -1459,6 +1535,7 @@ class Boot():
             kerneloptions=data['kerneloptions'].split(' ')
             self.logger.debug(f"*** {kerneloptions}")
             if 'luna.bootproto=dhcp' in kerneloptions:
+                # most commonly used for cloud nodes
                 self.logger.debug(f"*** found dhcp bootproto")
                 if 'interfaces' in data and data['provision_interface'] in data['interfaces']:
                     self.logger.debug(f"*** set dhcp for {data['provision_interface']}")
@@ -1588,3 +1665,4 @@ class Boot():
             self.logger.info(f"Token creation error: {exp}")
         data['jwt_token'] = jwt_token
         return status, data
+

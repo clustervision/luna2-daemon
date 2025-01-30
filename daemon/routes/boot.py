@@ -58,6 +58,7 @@ def boot():
     return render_template(
         response['template'],
         LUNA_CONTROLLER     = response['LUNA_CONTROLLER'],
+        LUNA_CONTROLLERS    = response['LUNA_CONTROLLERS'],
         LUNA_BEACON         = response['LUNA_BEACON'],
         LUNA_API_PORT       = response['LUNA_API_PORT'],
         WEBSERVER_PORT      = response['WEBSERVER_PORT'],
@@ -88,6 +89,7 @@ def boot_short():
     return render_template(
         response['template'],
         LUNA_CONTROLLER     = response['LUNA_CONTROLLER'],
+        LUNA_CONTROLLERS    = response['LUNA_CONTROLLERS'],
         LUNA_BEACON         = response['LUNA_BEACON'],
         LUNA_API_PORT       = response['LUNA_API_PORT'],
         WEBSERVER_PORT      = response['WEBSERVER_PORT'],
@@ -115,6 +117,7 @@ def boot_disk():
     return render_template(
         response['template'],
         LUNA_CONTROLLER     = response['LUNA_CONTROLLER'],
+        LUNA_CONTROLLERS    = response['LUNA_CONTROLLERS'],
         LUNA_BEACON         = response['LUNA_BEACON'],
         LUNA_API_PORT       = response['LUNA_API_PORT']
     ), access_code
@@ -282,7 +285,7 @@ def boot_install(node=None):
         PROVISION_METHOD        = data['provision_method'],
         PROVISION_FALLBACK      = data['provision_fallback'],
         PROVISION_INTERFACE     = data['provision_interface'],
-        NAME_SERVER             = data['name_server'],
+        NAME_SERVER             = data['nameserver_ip'],
         DOMAIN_SEARCH           = data['domain_search'],
         LUNA_TOKEN              = data['jwt_token']
     ), access_code
@@ -335,7 +338,7 @@ def kickstart_install(node=None):
         PROVISION_METHOD        = data['provision_method'],
         PROVISION_FALLBACK      = data['provision_fallback'],
         PROVISION_INTERFACE     = data['provision_interface'],
-        NAME_SERVER             = data['name_server'],
+        NAME_SERVER             = data['nameserver_ip'],
         DOMAIN_SEARCH           = data['domain_search'],
         LUNA_TOKEN              = data['jwt_token']
     ), access_code

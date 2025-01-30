@@ -117,6 +117,7 @@ def boot_disk():
     return render_template(
         response['template'],
         LUNA_CONTROLLER     = response['LUNA_CONTROLLER'],
+        LUNA_CONTROLLERS    = response['LUNA_CONTROLLERS'],
         LUNA_BEACON         = response['LUNA_BEACON'],
         LUNA_API_PORT       = response['LUNA_API_PORT']
     ), access_code

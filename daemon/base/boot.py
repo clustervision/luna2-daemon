@@ -377,6 +377,12 @@ class Boot():
         check_template = Helper().check_jinja(template_path)
         if not check_template:
             return False, 'Empty'
+        controller_ips=[]
+        for controller in self.all_controllers.keys():
+            if self.all_controllers[controller]['ipaddress_ipv6']:
+                controller_ips.append(self.all_controllers[controller]['ipaddress_ipv6'])
+            if self.all_controllers[controller]['ipaddress']:
+                controller_ips.append(self.all_controllers[controller]['ipaddress'])
         if self.controller_name:
             protocol = CONSTANT['API']['PROTOCOL']
             verify_certificate = CONSTANT['API']['VERIFY_CERTIFICATE']
@@ -394,7 +400,8 @@ class Boot():
             template = environment.from_string('No Controller is available.')
             status=False
         self.logger.info(f'Boot API serving the {template}')
-        response = {'template': template, 'LUNA_CONTROLLER': self.controller_ip, 
+        response = {'template': template, 'LUNA_CONTROLLER': self.controller_ip,
+                    'LUNA_CONTROLLERS': controller_ips,
                     'LUNA_API_PORT': self.controller_serverport,
                     'LUNA_BEACON': self.controller_beaconip}
         return status, response
@@ -570,7 +577,7 @@ class Boot():
             # ----------- port/cloud detection was not successfull, lets try a last resort -------------
             # ------------------ "don't nag give me the next node" detection ---------------------------
             if not data['nodeid']:
-                createnode_ondemand, nextnode_discover = None, None
+                createnode_ondemand, nextnode_discover, createnode_macashost = None, None, None
                 cluster = Database().get_record(None, 'cluster')
                 if cluster:
                     if 'nextnode_discover' in cluster[0]:

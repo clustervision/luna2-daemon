@@ -118,10 +118,9 @@ class Plugin():
             raise RuntimeError(f"Failed to reload Prometheus server")
   
     def _generate_hostname_path(self, hostname):
-        if hostname is None:
-            raise KeyError(f"Hostname is missing in the host dict, expected format: {json.dumps(self._example_json_data(), indent=2)}")
-        if not re.match(r'^([a-zA-Z0-9-_][.]?)+$', hostname):
-            raise ValueError(f"Hostname ({hostname}) is invalid, should satidy ^([a-zA-Z0-9-_][.]?)+$")
+        hostname_regex = r'^([a-zA-Z0-9-_.])+$'
+        if not re.match(hostname_regex, hostname):
+            raise ValueError(f"Hostname ({hostname}) is invalid, should satisfy {hostname_regex}")
         path = f"/trinity/local/etc/prometheus_server/rules/trix.hw.{hostname}.rules"
         if not os.path.exists(os.path.dirname(path)):
             raise FileNotFoundError (f"Path ({os.path.dirname(path)}) does not exist")
@@ -217,16 +216,15 @@ class Plugin():
                             rule["labels"]["disabled"] = str(disabled).lower()
 
 
-                
+                self._write_rules_yaml(rules, hostname_rules_path)
                 response.append({"hostname": hostname, "status": True, "data": rules})
-
             except Exception as exception: 
                 error = f"Error encountered while generating the  Prometheus Server Rules for {hostname}: {exception}."
                 response.append({"hostname": hostname, "status": False, "message": error})
             finally:
                 pass
         
-        self._write_rules_yaml(rules, hostname_rules_path)
+        
         self._prometheus_reload()
         
         return status, response

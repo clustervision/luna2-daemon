@@ -52,8 +52,9 @@ class Plugin():
         self.prometheus_rules_folder = '/trinity/local/etc/prometheus_server/rules/'
 
     def _generate_hostname_path(self, hostname):
-        if not re.match(r'^([a-zA-Z0-9-_][.]?)+$', hostname):
-            raise ValueError(f"Hostname ({hostname}) is invalid, should satidy ^([a-zA-Z0-9-_][.]?)+$")
+        hostname_regex = r'^([a-zA-Z0-9-_.])+$'
+        if not re.match(hostname_regex, hostname):
+            raise ValueError(f"Hostname ({hostname}) is invalid, should satisfy {hostname_regex}")
         path = f"/trinity/local/etc/prometheus_server/rules/trix.hw.{hostname}.rules"
         if not os.path.exists(os.path.dirname(path)):
             raise FileNotFoundError (f"Path ({os.path.dirname(path)}) does not exist")
@@ -70,18 +71,15 @@ class Plugin():
         This method will generate and save the Prometheus Hardware Rules for a specific node.
         """
         
-        self.logger.debug(f'args => {args}')
-        if not isinstance(args, dict):
-            return False, f"args have type ({type(args)}) and should be a dict"
-        if ("hostnames" in args) and (not isinstance(args["hostnames"], str)):
-            return False, f"hostnames should be a str, got {type(args['hostnames'])}"
+        self.logger.warning(f'args => {args}')
         
-        if "hostnames" in args:
+        if (args is not None) and ("hostnames" in args):
             hostnames = args["hostnames"].split(",")
         else:
             files = os.listdir(self.prometheus_rules_folder)
-            hw_files = [f for f in files if re.match(r'^trix[.]hw[.].+[.]rules$', f)]
-            hostnames = [re.search(r'^trix[.]hw[.]([^.]+)[.]rules$', f).group(1) for f in hw_files]
+            hostnames_matches = [re.search(r'^trix[.]hw[.](.*)[.]rules$', f) for f in files]
+            hostnames_matches = [m for m in hostnames_matches if ( m is not None) ]
+            hostnames = [m.group(1) for m in hostnames_matches]
             
         status, response = True, []
         

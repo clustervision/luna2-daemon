@@ -687,7 +687,6 @@ class Config(object):
             self.logger.error(f"Uh oh... {exp}")
         return validate
 
-
     # ----------------------------------------------------------------------------------------------
 
     def device_raw_ipaddress_config(self, device_id=None, device=None, ipaddress=None):
@@ -1403,3 +1402,4 @@ class Config(object):
             for each in reserved_details:
                 ips.append(each['ipaddress'])
         return ips
+

@@ -377,6 +377,12 @@ class Boot():
         check_template = Helper().check_jinja(template_path)
         if not check_template:
             return False, 'Empty'
+        controller_ips=[]
+        for controller in self.all_controllers.keys():
+            if self.all_controllers[controller]['ipaddress_ipv6']:
+                controller_ips.append(self.all_controllers[controller]['ipaddress_ipv6'])
+            if self.all_controllers[controller]['ipaddress']:
+                controller_ips.append(self.all_controllers[controller]['ipaddress'])
         if self.controller_name:
             protocol = CONSTANT['API']['PROTOCOL']
             verify_certificate = CONSTANT['API']['VERIFY_CERTIFICATE']
@@ -396,7 +402,8 @@ class Boot():
         self.logger.info(f'Boot API serving the {template}')
         response = {'template': template, 'LUNA_CONTROLLER': self.controller_ip, 
                     'LUNA_API_PORT': self.controller_serverport,
-                    'LUNA_BEACON': self.controller_beaconip}
+                    'LUNA_BEACON': self.controller_beaconip,
+                    'LUNA_CONTROLLERS': controller_ips}
         return status, response
 
 

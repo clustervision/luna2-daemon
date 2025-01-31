@@ -104,6 +104,8 @@ class Plugin():
         """
         Read the rules settings from the rules settings file
         """
+        if not os.path.exists(self.rules_settings_file):
+            return Settings(hw=HWSettings())
         with open(self.rules_settings_file, 'r', encoding="utf-8") as file:
             return Settings.model_validate(yaml.safe_load(file))
 

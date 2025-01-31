@@ -89,7 +89,7 @@ class Plugin():
         hostnames_matches = [re.search(r'^trix[.]hw[.](.*)[.]rules$', f) for f in files]
         hostnames_matches = [m for m in hostnames_matches if ( m is not None) ]
         return [m.group(1) for m in hostnames_matches]
-    
+
 
     def Export(self,args=None):
         """

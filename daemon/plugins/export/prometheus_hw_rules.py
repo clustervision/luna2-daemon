@@ -49,6 +49,7 @@ class Rule(BaseModel):
     expr: str
     for_: Optional[str] = Field(alias="for", default=None)
     labels: Dict[str, str]
+    annotations: Optional[Annotations] = None
 
 class Group(BaseModel):
     name: str

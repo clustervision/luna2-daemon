@@ -88,7 +88,7 @@ class Plugin():
         self.prometheus_rules_folder = '/trinity/local/etc/prometheus_server/rules/'
         self.rules_settings_file = '/trinity/local/etc/prometheus_server/rules_settings.yaml'
         self.prometheus_rules_component_fields =  [
-                "hostname", "luna_group", "path", "class", "description", "product", "vendor", "serial", "size", "capacity", "clock"
+                "hostname", "luna_group", "path", "class", "description", "product", "vendor", "serial"
             ]
 
     @staticmethod
@@ -162,20 +162,19 @@ class Plugin():
             
             # Use the pre-fetched count for alert_expr_value
             # alert_expr_value = component.get("initial_count")
-            alert_name = f"{component.get('class').capitalize()} changed"
+            # alert_name = f"{component.get('class').capitalize()} changed"
             alert_expr = f"lshw_device{{{label_selector}}}"
 
             alert = {
-                "alert": alert_name,
+                "alert": "MissingHardwareComponent",
                 "expr": f"absent({alert_expr})",
                 "labels": {
                     "severity": "warning",
                     "nhc": settings.hw.nhc,
                     "disabled": settings.hw.disabled,
-                    
                 },
                 "annotations": {
-                    "description": f"{component.get('class').capitalize()} device @ {component.get('hostname')}{component.get('path', '')} changed",
+                    "description": "Hardware component {{ $labels.class }} with {{ $labels.product }} {{ $labels.vendor }} {{ $labels.serial }} is missing."
                 }
             }
             alerts.append(alert)

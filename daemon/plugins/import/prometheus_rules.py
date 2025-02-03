@@ -101,21 +101,3 @@ class Plugin():
             self.logger.error(error_message)
             return False, error_message
 
-        return True, response
-
-    def Export(self, args=None):
-        """
-        This method will check the both files rules and detailed, and return the output from the
-        detailed file with status.
-        """
-        self.logger.info(f"Exporting Prometheus Rules from {self.prometheus_rules_path}, with args: {args}")
-        try:
-            rules = self._read_rules()
-            response = rules.model_dump(by_alias=True)
-
-        except Exception as exception:
-            error_message = f"Error encountered while reading the Prometheus Rules at {self.prometheus_rules_path}: {exception}."
-            self.logger.error(error_message)
-            return False, error_message
-
-        return True, response

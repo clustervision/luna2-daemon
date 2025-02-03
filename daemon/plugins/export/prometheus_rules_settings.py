@@ -117,47 +117,6 @@ class Plugin():
         with open(path, 'r', encoding='utf-8') as file:
             return PrometheusRules.model_validate(yaml.safe_load(file))
     
-    
-    def Import(self, json_data=None):
-        """
-        This method will save the both files rules and detailed, depending on the users validation.
-        """
-        self.logger.info(f"Importing Prometheus Rules from {self.rules_settings_file}, with json_data: {json_data}")
-        try:
-            data = ImportData.model_validate(json_data)
-            rules_settings = data.root
-            self._write_rules_settings(rules_settings)
-        except Exception as e:
-            error_message = f'Error while importing rules settings: {e}'
-            self.logger.error(error_message)
-            return False, error_message
-
-        response = []
-        hostnames = self._list_rules_hostnames()
-        for hostname in hostnames:
-            try:
-                hostname_path = self._generate_hostname_path(hostname)
-                
-                rules = self._read_rules(hostname_path)
-
-                for group in rules.groups:
-                    for rule in group.rules:
-                        if (rules_settings.hw.nhc is not None):
-                            rule.labels["nhc"] = str(rules_settings.hw.nhc).lower()
-                        if (rules_settings.hw.disabled is not None):
-                            rule.labels["disabled"] = str(rules_settings.hw.disabled).lower()
-                
-                self._write_rules(rules, hostname_path)
-                response.append({"hostname": hostname, "status": True })
-                
-            except Exception as e:
-                error_message = f'Error while importing rules for {hostname}: {e}'
-                self.logger.error(error_message)
-                response.append({"hostname": hostname, "status": False, "message": error_message })
-
-
-        return True, response
-    
     def Export(self, args=None):
         """
         This method will check the both files rules and detailed, and return the output from the

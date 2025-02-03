@@ -158,18 +158,3 @@ class Plugin():
 
         return True, response
     
-    def Export(self, args=None):
-        """
-        This method will check the both files rules and detailed, and return the output from the
-        detailed file with status.
-        """
-        self.logger.info(f"Exporting Prometheus Rules from {self.rules_settings_file}, with args: {args}")
-        try:
-            rules_settings = self._read_rules_settings()
-            response = rules_settings.model_dump()
-        except Exception as e:
-            error_message = f'Error while exporting rules settings: {e}'
-            self.logger.error(error_message)
-            return False, error_message
-
-        return True, response

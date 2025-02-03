@@ -83,26 +83,6 @@ class Plugin():
         with open(self.prometheus_rules_path, 'w', encoding="utf-8") as rules_file:
             yaml.dump(rules.model_dump(by_alias=True), rules_file)
 
-    def Import(self, json_data=None):
-        """
-        This method will save the both files rules and detailed, depending on the users validation.
-        """
-        self.logger.info(f"Importing Prometheus Rules to {self.prometheus_rules_path}, with json_data: {json_data}")
-        try:
-            rules = PrometheusRules.model_validate(json_data)
-            
-            self._write_rules(rules)
-            self._prometheus_reload()
-
-            response = f"TrinityX Prometheus Server Rules is updated under {self.prometheus_rules_path}."
-
-        except Exception as exception:
-            error_message = f"Error encountered while saving the Prometheus Rules at {self.prometheus_rules_path}: {exception}."
-            self.logger.error(error_message)
-            return False, error_message
-
-        return True, response
-
     def Export(self, args=None):
         """
         This method will check the both files rules and detailed, and return the output from the

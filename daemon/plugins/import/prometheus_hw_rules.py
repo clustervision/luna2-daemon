@@ -170,6 +170,7 @@ class Plugin():
                 "expr": f"absent({alert_expr})",
                 "labels": {
                     "severity": "warning",
+                    "hw": "true",
                     "nhc": settings.hw.nhc,
                     "disabled": settings.hw.disabled,
                 },

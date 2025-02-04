@@ -30,11 +30,30 @@ __email__       = "sumit.sharma@clustervision.com"
 __status__      = "Development"
 
 
-import requests
+import os
 import yaml
-import copy
+import requests
 from utils.log import Log
+from typing import Optional, Dict, List
+from pydantic import BaseModel, Field
 
+class Annotations(BaseModel):
+    description: str
+
+class Rule(BaseModel):
+    alert: str
+    expr: str
+    for_: Optional[str] = Field(alias="for", default=None)
+    labels: Dict[str, str]
+    annotations: Optional[Annotations] = None
+
+class Group(BaseModel):
+    name: str
+    rules: List[Rule]
+
+class PrometheusRules(BaseModel):
+    groups: List[Group]
+    
 
 class Plugin():
     """
@@ -48,49 +67,37 @@ class Plugin():
         self.logger = Log.get_logger()
         self.prometheus_url = "https://localhost:9090"
         self.prometheus_rules_path = '/trinity/local/etc/prometheus_server/rules/trix.rules'
-        self.prometheus_rules_details_path = '/trinity/local/etc/prometheus_server/rules/trix.rules.details'
-
 
     def _prometheus_reload(self):
-        response = requests.post(f"{self.prometheus_url}/-/reload", verify=False)
+        response = requests.post(f"{self.prometheus_url}/-/reload", verify=False, timeout=5)
         if response.status_code != 200:
-            raise Exception(f"Failed to reload Prometheus server")
+            raise RuntimeError(f"Failed to reload Prometheus server")
+
+    def _read_rules(self) -> PrometheusRules:
+        if not os.path.exists(self.prometheus_rules_path):
+            return PrometheusRules(groups=[])
+        with open(self.prometheus_rules_path, 'r', encoding="utf-8") as rules_file:
+            return PrometheusRules.model_validate(yaml.safe_load(rules_file))
+    
+    def _write_rules(self, rules: PrometheusRules):
+        with open(self.prometheus_rules_path, 'w', encoding="utf-8") as rules_file:
+            yaml.dump(rules.model_dump(by_alias=True), rules_file)
 
     def Import(self, json_data=None):
         """
         This method will save the both files rules and detailed, depending on the users validation.
         """
+        self.logger.info(f"Importing Prometheus Rules to {self.prometheus_rules_path}, with json_data: {json_data}")
         try:
-            self.logger.debug(f'json_data => {json_data}')
-            trix_rules = copy.deepcopy(json_data)
-            if trix_rules:
-                if "groups" in trix_rules:
-                    for groups in trix_rules["groups"]:
-                        group_rules = groups["rules"]
-                        for rule in group_rules:
-                            if rule["labels"]["_trix_status"] is False:
-                                group_rules.remove(rule)
-                            else:
-                                del rule["labels"]["_trix_status"]
-
-            self.logger.info(f'Saving Detailed File => {self.prometheus_rules_details_path}')
-            with open(self.prometheus_rules_details_path, 'w') as file:
-                yaml.dump(json_data, file, default_flow_style=False)
+            rules = PrometheusRules.model_validate(json_data)
             
-            self.logger.info(f'Saving Rules File => {self.prometheus_rules_path}')
-            with open(self.prometheus_rules_path, 'w') as file:
-                yaml.dump(trix_rules, file, default_flow_style=False)
-
+            self._write_rules(rules)
             self._prometheus_reload()
 
-            status = True
             response = f"TrinityX Prometheus Server Rules is updated under {self.prometheus_rules_path}."
 
         except Exception as exception:
-            status = False
-            response = f"Encounter a error While saving the TrinityX Prometheus Server Rules {exception}."
-
-        return status, response
-
-
+            error_message = f"Error encountered while saving the Prometheus Rules at {self.prometheus_rules_path}: {exception}."
+            self.logger.error(error_message)
+            return False, error_message
 

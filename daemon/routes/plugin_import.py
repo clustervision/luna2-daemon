@@ -44,7 +44,7 @@ import_blueprint = Blueprint('import', __name__)
 
 
 @import_blueprint.route('/import/<string:name>', methods=['POST'])
-# @token_required
+@token_required
 @validate_name
 def import_data(name=None):
     """

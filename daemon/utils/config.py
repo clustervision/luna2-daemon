@@ -237,7 +237,7 @@ class Config(object):
                 network_ipv6 = nwk['network_ipv6']
                 node_interface = Database().get_record_join(
                     ['node.name as nodename', 'ipaddress.ipaddress', 
-                     'ipaddress.ipaddress_ipv6', 'nodeinterface.macaddress','ipaddress.dhcp'],
+                     'ipaddress.ipaddress_ipv6', 'nodeinterface.macaddress'],
                     ['ipaddress.tablerefid=nodeinterface.id', 'nodeinterface.nodeid=node.id'],
                     ['tableref="nodeinterface"', f'ipaddress.networkid="{network_id}"']
                 )

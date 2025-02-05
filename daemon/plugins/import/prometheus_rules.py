@@ -95,7 +95,7 @@ class Plugin():
             self._prometheus_reload()
 
             response = f"TrinityX Prometheus Server Rules is updated under {self.prometheus_rules_path}."
-
+            return True, response
         except Exception as exception:
             error_message = f"Error encountered while saving the Prometheus Rules at {self.prometheus_rules_path}: {exception}."
             self.logger.error(error_message)

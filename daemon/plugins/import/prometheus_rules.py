@@ -81,7 +81,7 @@ class Plugin():
     
     def _write_rules(self, rules: PrometheusRules):
         with open(self.prometheus_rules_path, 'w', encoding="utf-8") as rules_file:
-            yaml.dump(rules.model_dump(by_alias=True), rules_file)
+            yaml.dump(rules.model_dump(by_alias=True, exclude_defaults=True), rules_file)
 
     def Import(self, json_data=None):
         """

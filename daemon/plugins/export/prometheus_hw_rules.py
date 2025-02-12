@@ -59,14 +59,6 @@ class Rule(BaseModel):
                 raise ValueError(f'for value must be a string with a number followed by "s", "m" or "h", but got {value}')
         return value
     
-    @field_validator("for_")
-    @classmethod
-    def validate_for_(cls, value):
-        if value is not None:
-            if not re.match(r'^[0-9]+[s|m|h]$', value):
-                raise ValueError(f'for value must be a string with a number followed by "s", "m" or "h", but got {value}')
-        return value
-    
     @field_validator("labels")
     @classmethod
     def validate_labels(cls, value):

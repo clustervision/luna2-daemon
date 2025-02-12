@@ -119,7 +119,7 @@ class Plugin():
             return False, f"{exp}"
         return True, "success"
 
-    def sel_list(self, device=None, username=None, password=None):
+    def sel_list(self, device=None, username=None, password=None, newlines=True):
         """
         This method will be used to get sel logs from device.
         """
@@ -130,7 +130,7 @@ class Plugin():
         return True, "success"
 
 
-    def execute(self, device=None, subsystem=None, action=None, username=None, password=None):
+    def execute(self, device=None, subsystem=None, action=None, username=None, password=None, newlines=False):
         """
         This is an private method.
         """
@@ -143,7 +143,8 @@ class Plugin():
             response = str(output[0].decode())
             response = response.replace('Chassis Power is ', '')
             response = response.replace('Chassis Power Control: ', '')
-            response = response.replace('\n', '')
+            if not newlines:
+                response = response.replace('\n', '')
             response = response.lower()
             if not response:
                 response = action

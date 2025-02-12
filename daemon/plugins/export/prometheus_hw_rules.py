@@ -36,7 +36,7 @@ import json
 import yaml
 from utils.log import Log
 from typing import Optional, Dict, List
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 
 
@@ -50,7 +50,27 @@ class Rule(BaseModel):
     for_: Optional[str] = Field(alias="for", default=None)
     labels: Dict[str, str]
     annotations: Optional[Annotations] = None
-
+    
+    @field_validator("for_")
+    @classmethod
+    def validate_for_(cls, value):
+        if value is not None:
+            if not re.match(r'^[0-9]+[s|m|h]$', value):
+                raise ValueError(f'for value must be a string with a number followed by "s", "m" or "h", but got {value}')
+        return value
+    
+    @field_validator("labels")
+    @classmethod
+    def validate_labels(cls, value):
+        # check that nhc, hw, disabled labels are in ['true', 'false'] and that severity is in ['critical', 'danger', 'warning', 'info']
+        for key, val in value.items():
+            if key in ['nhc', 'hw', 'disabled']:
+                if val not in ['true', 'false']:
+                    raise ValueError(f'{key} label must be either "true" or "false", but got {val}')
+            if key == 'severity':
+                if val not in ['critical', 'danger', 'warning', 'info']:
+                    raise ValueError(f'{key} label must be either "critical", "danger", "warning" or "info", but got {val}')
+        return value
 class Group(BaseModel):
     name: str
     rules: List[Rule]

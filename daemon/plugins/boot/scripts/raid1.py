@@ -44,6 +44,7 @@ class Plugin():
 
     prescript = """
 if [ ! -d /tmp ]; then mkdir /tmp; fi
+if [ ! -f /tmp/my-local-disk.sh ]; then
 cat << EOF >> /tmp/my-local-disk.sh
 export MY_LOCAL_DISK1_NAME=/dev/sda
 export MY_LOCAL_DISK2_NAME=/dev/sdb
@@ -54,6 +55,7 @@ export FORMAT_MY_DISK=yes
 export MAKE_BOOT=yes             # configures and installs grub/shim for standalone boots
 EOF
 chmod 755 /tmp/my-local-disk.sh
+fi
     """
 
     partscript = """

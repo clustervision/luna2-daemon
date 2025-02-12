@@ -23,9 +23,9 @@ Roles class. handles role related activities.
 """
 
 __author__      = 'Antoine Schonewille'
-__copyright__   = 'Copyright 2024, Luna2 Project'
+__copyright__   = 'Copyright 2025, Luna2 Project'
 __license__     = 'GPL'
-__version__     = '2.0'
+__version__     = '2.1'
 __maintainer__  = 'Antoine Schonewille'
 __email__       = 'antoine.schonewille@clustervision.com'
 __status__      = 'Development'

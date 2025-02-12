@@ -22,9 +22,9 @@ Plugin Class ::  Default Install for pre, part, and post plugin while node insta
 """
 
 __author__      = 'Antoine Schonewille'
-__copyright__   = 'Copyright 2024, Luna2 Project'
+__copyright__   = 'Copyright 2025, Luna2 Project'
 __license__     = 'GPL'
-__version__     = '2.0'
+__version__     = '2.1'
 __maintainer__  = 'Antoine Schonewille'
 __email__       = 'antoine.schonewille@clustervision.com'
 __status__      = 'Development'
@@ -44,6 +44,7 @@ class Plugin():
 
     prescript = """
 if [ ! -d /tmp ]; then mkdir /tmp; fi
+if [ ! -f /tmp/my-local-disk.sh ]; then
 cat << EOF >> /tmp/my-local-disk.sh
 export MY_LOCAL_DISK_NAME=/dev/sda
 export MY_LOCAL_DISK_SECTORS=   # nr of sectors, optional. if defined, then verified.
@@ -52,6 +53,7 @@ export FORMAT_MY_DISK=yes
 export MAKE_BOOT=yes            # configures and installs grub/shim for standalone boots
 EOF
 chmod 755 /tmp/my-local-disk.sh
+fi
     """
 
     partscript = """

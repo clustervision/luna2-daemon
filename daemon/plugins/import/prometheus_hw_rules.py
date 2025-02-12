@@ -38,7 +38,7 @@ import yaml
 from utils.log import Log
 
 from typing import Dict, List, Optional
-from pydantic import BaseModel, RootModel, Field
+from pydantic import BaseModel, RootModel, Field, field_validator
 
 class Annotations(BaseModel):
     description: str
@@ -49,6 +49,28 @@ class Rule(BaseModel):
     for_: Optional[str] = Field(alias="for", default=None)
     labels: Dict[str, str]
     annotations: Optional[Annotations] = None
+    
+    @field_validator("for_")
+    @classmethod
+    def validate_for_(cls, value):
+        if value is not None:
+            if not re.match(r'^[0-9]+[s|m|h]$', value):
+                raise ValueError(f'for value must be a string with a number followed by "s", "m" or "h", but got {value}')
+        return value
+    
+    @field_validator("labels")
+    @classmethod
+    def validate_labels(cls, value):
+        # check that nhc, hw, disabled labels are in ['true', 'false'] and that severity is in ['critical', 'danger', 'warning', 'info']
+        for key, val in value.items():
+            if key in ['nhc', 'hw', 'disabled']:
+                if val not in ['true', 'false']:
+                    raise ValueError(f'{key} label must be either "true" or "false", but got {val}')
+            if key == 'severity':
+                if val not in ['critical', 'danger', 'warning', 'info']:
+                    raise ValueError(f'{key} label must be either "critical", "danger", "warning" or "info", but got {val}')
+        
+        return value
 
 class Group(BaseModel):
     name: str
@@ -171,8 +193,8 @@ class Plugin():
                 "labels": {
                     "severity": "warning",
                     "hw": "true",
-                    "nhc": settings.hw.nhc,
-                    "disabled": settings.hw.disabled,
+                    "nhc": str(settings.hw.nhc).lower(),
+                    "disabled":str(settings.hw.disabled).lower(),
                 },
                 "annotations": {
                     "description": "Hardware component {{ $labels.class }} with {{ $labels.product }} {{ $labels.vendor }} {{ $labels.serial }} is missing."
@@ -193,7 +215,7 @@ class Plugin():
     
     def _write_rules(self, rules: PrometheusRules, path):
         with open(path, 'w', encoding='utf-8') as file:
-            yaml.dump(rules.model_dump(by_alias=True, exclude_defaults=True), file)
+            yaml.safe_dump(rules.model_dump(by_alias=True, exclude_none=True), file, explicit_start=True, explicit_end=True)
 
     def _read_rules(self, path) -> PrometheusRules:
         with open(path, 'r', encoding='utf-8') as file:
@@ -219,14 +241,14 @@ class Plugin():
         except Exception as exception:
             error_message = f"Error encountered while validating the input data: {exception}."
             self.logger.error(error_message)
-            return False, [{"status": False, "message": error_message}]
+            return False, error_message
         
         try:
             rules_settings = self._read_rules_settings()
         except Exception as exception:
             error_message = f"Error encountered while reading the rules settings: {exception}."
             self.logger.error(error_message)
-            return False, [{"status": False, "message": error_message}]
+            return False, error_message
 
         response = []
         
@@ -258,7 +280,11 @@ class Plugin():
             finally:
                 pass
         
-        
-        self._prometheus_reload()
-        
+        try:
+            self._prometheus_reload()
+        except Exception as exception:
+            error_message = f"Error encountered while reloading the Prometheus Server: {exception}."
+            self.logger.error(error_message)
+            return False, error_message
+                    
         return True, response

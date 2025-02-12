@@ -55,7 +55,10 @@ export FORMAT_MY_DISK=yes
 export MAKE_BOOT=yes             # configures and installs grub/shim for standalone boots
 EOF
 chmod 755 /tmp/my-local-disk.sh
+else
+  echo "RAID1 script: my-local-disk override found"
 fi
+cat /tmp/my-local-disk.sh
     """
 
     partscript = """
@@ -135,7 +138,7 @@ ${MY_LOCAL_DISK1_NAME}${DP1}3   swap    swap    defaults        0 0
 ${MY_LOCAL_DISK2_NAME}${DP2}3   swap    swap    defaults        0 0
 EOF
 
-if [ "$MAKE_BOOT" ]; then
+if [ "$MAKE_BOOT" == "yes" ]; then
     echo "AUTO -all" > /sysroot/etc/mdadm.conf
     chroot /sysroot /bin/bash -c "mdadm --detail --scan --verbose | grep ARRAY >> /etc/mdadm.conf"
 

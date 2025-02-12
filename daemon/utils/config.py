@@ -24,7 +24,7 @@ to DHN and DHCP methods.
 """
 
 __author__      = 'Sumit Sharma/Antoine Schonewille'
-__copyright__   = 'Copyright 2023, Luna2 Project'
+__copyright__   = 'Copyright 2025, Luna2 Project'
 __license__     = 'GPL'
 __version__     = '2.1'
 __maintainer__  = 'Sumit Sharma/Antoine Schonewille'

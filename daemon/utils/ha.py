@@ -23,7 +23,7 @@ It also receives requests that need to be dealt with by the controller itself.
 """
 
 __author__      = 'Antoine Schonewille'
-__copyright__   = 'Copyright 2024, Luna2 Project'
+__copyright__   = 'Copyright 2025, Luna2 Project'
 __license__     = 'GPL'
 __version__     = '2.1'
 __maintainer__  = 'Antoine Schonewille'

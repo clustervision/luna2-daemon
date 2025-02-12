@@ -23,7 +23,7 @@ This Is the Torrent plugin, which takes care of nay torrent related things
 """
 
 __author__      = 'Antoine Schonewille'
-__copyright__   = 'Copyright 2023, Luna2 Project'
+__copyright__   = 'Copyright 2025, Luna2 Project'
 __license__     = 'GPL'
 __version__     = '2.1'
 __maintainer__  = 'Antoine Schonewille'

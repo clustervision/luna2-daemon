@@ -35,7 +35,7 @@ import yaml
 import requests
 from utils.log import Log
 from typing import Optional, Dict, List
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 class Annotations(BaseModel):
     description: str
@@ -46,6 +46,32 @@ class Rule(BaseModel):
     for_: Optional[str] = Field(alias="for", default=None)
     labels: Dict[str, str]
     annotations: Optional[Annotations] = None
+    
+    @field_validator("for_")
+    @classmethod
+    def validate_for_(cls, value):
+        if value is not None:
+            if not re.match(r'^[0-9]+[s|m|h]$', value):
+                raise ValueError(f'for value must be a string with a number followed by "s", "m" or "h", but got {value}')
+        return value
+    
+    @field_validator("labels")
+    @classmethod
+    def validate_labels(cls, value):
+        # check that nhc, hw, disabled labels are in ['true', 'false'] and that severity is in ['critical', 'danger', 'warning', 'info']
+        for key, val in value.items():
+            if key in ['nhc', 'hw', 'disabled']:
+                if val == 'yes':
+                    val = 'true'
+                if val == 'no':
+                    val = 'false'
+                value[key] = val
+                if val not in ['true', 'false']:
+                    raise ValueError(f'{key} label must be either "true" or "false", but got {val}')
+            if key == 'severity':
+                if val not in ['critical', 'danger', 'warning', 'info']:
+                    raise ValueError(f'{key} label must be either "critical", "danger", "warning" or "info", but got {val}')
+        return value
 
 class Group(BaseModel):
     name: str
@@ -76,12 +102,12 @@ class Plugin():
     def _read_rules(self) -> PrometheusRules:
         if not os.path.exists(self.prometheus_rules_path):
             return PrometheusRules(groups=[])
-        with open(self.prometheus_rules_path, 'r', encoding="utf-8") as rules_file:
-            return PrometheusRules.model_validate(yaml.safe_load(rules_file))
+        with open(self.prometheus_rules_path, 'r', encoding="utf-8") as file:
+            return PrometheusRules.model_validate(yaml.safe_load(file))
     
     def _write_rules(self, rules: PrometheusRules):
-        with open(self.prometheus_rules_path, 'w', encoding="utf-8") as rules_file:
-            yaml.dump(rules.model_dump(by_alias=True, exclude_defaults=True), rules_file)
+        with open(self.prometheus_rules_path, 'w', encoding="utf-8") as file:
+            yaml.safe_dump(rules.model_dump(by_alias=True, exclude_none=True), file)
 
     def Import(self, json_data=None):
         """

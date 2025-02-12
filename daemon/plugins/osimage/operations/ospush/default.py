@@ -25,7 +25,7 @@ This Is the default OS Push plugin, which takes care of pushing an image to a no
 __author__      = 'Antoine Schonewille'
 __copyright__   = 'Copyright 2023, Luna2 Project'
 __license__     = 'GPL'
-__version__     = '2.0'
+__version__     = '2.1'
 __maintainer__  = 'Antoine Schonewille'
 __email__       = 'antoine.schonewille@clustervision.com'
 __status__      = 'Development'

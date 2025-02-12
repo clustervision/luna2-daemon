@@ -8,7 +8,7 @@ Setup file, will build the pip package for the project.
 __author__      = 'Sumit Sharma'
 __copyright__   = 'Copyright 2022, Luna2 Project'
 __license__     = 'GPL'
-__version__     = '2.0'
+__version__     = '2.1'
 __maintainer__  = 'Sumit Sharma'
 __email__       = 'sumit.sharma@clustervision.com'
 __status__      = 'Development'
@@ -50,7 +50,7 @@ def new_version():
     This Method will create a New version and update the Version file.
     """
     time_now = int(time())
-    version = f'2.0.{time_now}'
+    version = f'2.1.{time_now}'
     with open('daemon/VERSION.txt', 'w', encoding='utf-8') as ver:
         ver.write(version)
     return version

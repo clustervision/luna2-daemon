@@ -170,6 +170,7 @@ class Interface():
                     )
                     if network or ipaddress or set_dhcp or clear_ip:
                         ipaddress_ipv6 = None
+                        nodes_in_pool = False # only used as confirmation variable
                         if not ipaddress:
                             if existing:
                                 if set_dhcp and dhcp and not network: # first set see if we just toggle
@@ -179,13 +180,14 @@ class Interface():
                                     if existing[0]['ipaddress_ipv6'] and not ipaddress:
                                         ipaddress = existing[0]['ipaddress_ipv6']
                             if (not clear_ip) and (not ipaddress):
-                                if not network and existing:
+                                if (not network) and existing:
                                     network = existing[0]['networkname']
                                 if network:
                                     where = f" WHERE `name` = '{network}'"
                                     network_details = Database().get_record(None, 'network', where)
                                     if network_details:
                                         if network_details[0]['dhcp'] and network_details[0]['dhcp_nodes_in_pool']:
+                                            nodes_in_pool = True
                                             clear_ip = True
                                         else:
                                             if network_details[0]['network']:
@@ -228,10 +230,20 @@ class Interface():
                                     if (not ipaddress) and (not ipaddress_ipv6):
                                         result=False
                                         message="Invalid request: dhcp unset while not having configured ip addresses"
+                                        if nodes_in_pool:
+                                            message+=". "
+                                            message+=f"network {existing[0]['networkname']} has dhcp_nodes_in_pool configured"
+                                            message+=". "
+                                            message+="automatic ip address assignment not available"
                             else:
                                 if (not ipaddress) and (not ipaddress_ipv6):
                                     result=False
                                     message="Invalid request: dhcp unset while not having configured ip addresses"
+                                    if nodes_in_pool:
+                                        message+=". "
+                                        message+="the network has dhcp_nodes_in_pool configured"
+                                        message+=". "
+                                        message+="automatic ip address assignment not available"
                         # ---------------------------------------------------------------------------------
 
                         if result and clear_ip:

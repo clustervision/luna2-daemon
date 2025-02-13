@@ -56,6 +56,7 @@ chmod 755 /tmp/my-local-disk.sh
 else
   echo "DISKFULL script: my-local-disk override found"
 fi
+cat /tmp/my-local-disk.sh
     """
 
     partscript = """

@@ -44,6 +44,7 @@ class Plugin():
 
     prescript = """
 if [ ! -d /tmp ]; then mkdir /tmp; fi
+if [ ! -f /tmp/my-local-disk.sh ]; then
 cat << EOF >> /tmp/my-local-disk.sh
 export MY_LOCAL_DISK_NAME=/dev/sda
 export MY_LOCAL_DISK_SECTORS=   # nr of sectors, optional. if defined, then verified.
@@ -52,6 +53,9 @@ export FORMAT_MY_DISK=yes
 export MAKE_BOOT=yes            # configures and installs grub/shim for standalone boots
 EOF
 chmod 755 /tmp/my-local-disk.sh
+else
+  echo "DISKFULL script: my-local-disk override found"
+fi
     """
 
     partscript = """
@@ -113,7 +117,7 @@ ${MY_LOCAL_DISK_NAME}${DP}1   /boot/efi   vfat    defaults        1 2
 ${MY_LOCAL_DISK_NAME}${DP}3   swap    swap    defaults        0 0
 EOF
 
-if [ "$MAKE_BOOT" ]; then
+if [ "$MAKE_BOOT" == "yes" ]; then
     rm -rf /sysroot/lib/dracut/modules.d/95luna/
 
     SH=$(chroot /sysroot /bin/bash -c "efibootmgr -v|grep Shim1|grep -oE '^Boot[0-9]+'|grep -oE '[0-9]+'")

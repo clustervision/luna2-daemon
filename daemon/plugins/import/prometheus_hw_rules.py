@@ -63,12 +63,17 @@ class Rule(BaseModel):
     def validate_labels(cls, value):
         # check that nhc, hw, disabled labels are in ['true', 'false'] and that severity is in ['critical', 'danger', 'warning', 'info']
         for key, val in value.items():
-            if key in ['nhc', 'hw', 'disabled']:
+            if key in ['nhc', 'disabled']:
                 if not isinstance(val, bool):
                     raise ValueError(f'{key} label must be a boolean, but got {val}')
             if key == 'severity':
                 if val not in ['critical', 'danger', 'warning', 'info']:
                     raise ValueError(f'{key} label must be either "critical", "danger", "warning" or "info", but got {val}')
+            if key == 'category':
+                if val not in ['hardware', 'service', 'generic']:
+                    raise ValueError(f'{key} label must be either "hardware", "software" or "generic", but got {val}')
+        if 'category' not in value:
+            value['category'] = 'generic'
         return value
 
 class Group(BaseModel):
@@ -191,7 +196,7 @@ class Plugin():
                 "expr": f"absent({alert_expr})",
                 "labels": {
                     "severity": "warning",
-                    "hw": True,
+                    "category": "hardware",
                     "nhc": settings.hw.nhc,
                     "disabled": settings.hw.disabled,
                 },

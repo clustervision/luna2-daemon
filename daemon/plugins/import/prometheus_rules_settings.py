@@ -44,7 +44,7 @@ class Rule(BaseModel):
     alert: str
     expr: str
     for_: Optional[str] = Field(alias="for", default=None)
-    labels: Dict[str, str]
+    labels: Dict[str, str|bool]
     annotations: Optional[Annotations] = None
     
     @field_validator("for_")
@@ -61,8 +61,8 @@ class Rule(BaseModel):
         # check that nhc, hw, disabled labels are in ['true', 'false'] and that severity is in ['critical', 'danger', 'warning', 'info']
         for key, val in value.items():
             if key in ['nhc', 'hw', 'disabled']:
-                if val not in ['true', 'false']:
-                    raise ValueError(f'{key} label must be either "true" or "false", but got {val}')
+                if not isinstance(val, bool):
+                    raise ValueError(f'{key} label must be a boolean, but got {val}')
             if key == 'severity':
                 if val not in ['critical', 'danger', 'warning', 'info']:
                     raise ValueError(f'{key} label must be either "critical", "danger", "warning" or "info", but got {val}')

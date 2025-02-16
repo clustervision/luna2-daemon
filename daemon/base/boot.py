@@ -619,7 +619,7 @@ class Boot():
                             newnodedata['config']['node'][new_nodename]['group'] = groupname
                         if self.hastate is True:
                             self.wait_for_insync(self.hatrial)
-                            result, message = Journal().add_request(function="Node.update_node",object=example_node,payload=newnodedata)
+                            result, message = Journal().add_request(function="Node.update_node",object=new_nodename,payload=newnodedata)
                         if result is True:
                             result, message = Node().update_node(new_nodename,newnodedata)
                         self.logger.info(f"Node select boot: Creating {new_nodename}: result = [{result}], message = [{message}]")
@@ -885,7 +885,7 @@ class Boot():
                 newnodedata['config']['node'][new_nodename]['group'] = groupname # groupname is given through API call
                 if self.hastate is True:
                     self.wait_for_insync(self.hatrial)
-                    result, message = Journal().add_request(function="Node.update_node",object=example_node,payload=newnodedata)
+                    result, message = Journal().add_request(function="Node.update_node",object=new_nodename,payload=newnodedata)
                 if result is True:
                     result, message = Node().update_node(new_nodename,newnodedata)
                 self.logger.info(f"Group select boot: Creating {new_nodename}: result = [{result}], message = [{message}]")

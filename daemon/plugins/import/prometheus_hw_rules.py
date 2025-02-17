@@ -268,11 +268,11 @@ class Plugin():
                 if (host.nhc is not None):
                     for group in rules.groups:
                         for rule in group.rules:
-                            rule.labels["nhc"] = str(host.nhc).lower()
+                            rule.labels["nhc"] = host.nhc
                 if (host.disabled is not None):
                     for group in rules.groups:
                         for rule in group.rules:
-                            rule.labels["disabled"] = str(host.disabled).lower()
+                            rule.labels["disabled"] = host.disabled
 
 
                 self._write_rules(rules, hostname_rules_path)

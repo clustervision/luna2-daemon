@@ -169,9 +169,9 @@ class Plugin():
                 for group in rules.groups:
                     for rule in group.rules:
                         if (rules_settings.hw.nhc is not None):
-                            rule.labels["nhc"] = str(rules_settings.hw.nhc).lower()
+                            rule.labels["nhc"] = rules_settings.hw.nhc
                         if (rules_settings.hw.disabled is not None):
-                            rule.labels["disabled"] = str(rules_settings.hw.disabled).lower()
+                            rule.labels["disabled"] = rules_settings.hw.disabled
                 
                 self._write_rules(rules, hostname_path)
                 response.append({"hostname": hostname, "status": True })

@@ -92,35 +92,65 @@ class Plugin():
         """
         self.logger = Log.get_logger()
         self.prometheus_url = "https://localhost:9090"
-        self.prometheus_rules_path = '/trinity/local/etc/prometheus_server/rules/trix.rules'
+        self.prometheus_generic_rules_path = '/trinity/local/etc/prometheus_server/rules/trix.generic.rules'
+        self.prometheus_service_rules_path = '/trinity/local/etc/prometheus_server/rules/trix.service.rules'
 
     def _prometheus_reload(self):
         response = requests.post(f"{self.prometheus_url}/-/reload", verify=False, timeout=5)
         if response.status_code != 200:
-            raise RuntimeError(f"Failed to reload Prometheus server")
+            raise RuntimeError("Failed to reload Prometheus server")
 
     def _read_rules(self) -> PrometheusRules:
-        if not os.path.exists(self.prometheus_rules_path):
-            return PrometheusRules(groups=[])
-        with open(self.prometheus_rules_path, 'r', encoding="utf-8") as file:
-            return PrometheusRules.model_validate(yaml.safe_load(file))
+        rules = []
+        
+        if os.path.exists(self.prometheus_generic_rules_path):
+            with open(self.prometheus_generic_rules_path, 'r', encoding="utf-8") as file:
+                generic_rules = PrometheusRules.model_validate(yaml.safe_load(file))
+                for group in generic_rules.groups:
+                    for rule in group.rules:
+                        rules.append(rule)
+        
+        if os.path.exists(self.prometheus_service_rules_path):
+            with open(self.prometheus_service_rules_path, 'r', encoding="utf-8") as file:
+                service_rules = PrometheusRules.model_validate(yaml.safe_load(file))
+                for group in service_rules.groups:
+                    for rule in group.rules:
+                        rules.append(rule)
+
+        rules = PrometheusRules(groups=[Group(name='trinityx', rules=rules)])
+        return rules
     
     def _write_rules(self, rules: PrometheusRules):
-        with open(self.prometheus_rules_path, 'w', encoding="utf-8") as file:
-            yaml.safe_dump(rules.model_dump(by_alias=True, exclude_none=True), file)
+        _generic_rules = []
+        _service_rules = []
+        
+        for group in rules.groups:
+            for rule in group.rules:
+                if rule.labels['category'] == 'generic':
+                    _generic_rules.append(rule)
+                elif rule.labels['category'] == 'service':
+                    _service_rules.append(rule)
+        
+        with open(self.prometheus_generic_rules_path, 'w', encoding="utf-8") as file:
+            generic_rules = PrometheusRules(groups=[Group(name='trinityx', rules=_generic_rules)])
+            yaml.safe_dump(generic_rules.model_dump(by_alias=True, exclude_none=True), file, explicit_start=True, explicit_end=True)
+        
+        with open(self.prometheus_service_rules_path, 'w', encoding="utf-8") as file:
+            service_rules = PrometheusRules(groups=[Group(name='trinityx', rules=_service_rules)])
+            yaml.safe_dump(service_rules.model_dump(by_alias=True, exclude_none=True), file, explicit_start=True, explicit_end=True)
 
     def Export(self, args=None):
         """
         This method will check the both files rules and detailed, and return the output from the
         detailed file with status.
         """
-        self.logger.info(f"Exporting Prometheus Rules from {self.prometheus_rules_path}, with args: {args}")
+        self.logger.info(f"Exporting Prometheus Rules from {self.prometheus_generic_rules_path} and {self.prometheus_service_rules_path}, with args: {args}")
         try:
             rules = self._read_rules()
             response = rules.model_dump(by_alias=True)
 
         except Exception as exception:
-            error_message = f"Error encountered while reading the Prometheus Rules at {self.prometheus_rules_path}: {exception}."
+            error_message = f"Error encountered while reading Prometheus Rules at  {self.prometheus_generic_rules_path} or {self.prometheus_service_rules_path}: {exception}."
             self.logger.error(error_message)
             return False, error_message
 

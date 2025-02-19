@@ -32,8 +32,10 @@ __status__      = "Development"
 
 import os
 import re
+import time
 import requests
 import json
+import shutil
 import yaml
 from utils.log import Log
 
@@ -218,6 +220,12 @@ class Plugin():
         return PrometheusRules(groups=[Group(**group) for group in rules["groups"]])
     
     def _write_rules(self, rules: PrometheusRules, path):
+        if os.path.exists(path):
+            dirname, basename = os.path.split(path)
+            backup_path = os.path.join(dirname, "backup", f"{basename}.{int(time.time())}")
+            os.makedirs(os.path.dirname(backup_path), exist_ok=True)
+            shutil.copy(path, backup_path)
+        
         with open(path, 'w', encoding='utf-8') as file:
             yaml.safe_dump(rules.model_dump(by_alias=True, exclude_none=True), file, explicit_start=True, explicit_end=True)
 

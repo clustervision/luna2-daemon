@@ -33,6 +33,8 @@ import re
 import os
 import yaml
 import requests
+import time
+import shutil
 from utils.log import Log
 from typing import Optional, Dict, List
 from pydantic import BaseModel, Field, field_validator
@@ -130,6 +132,18 @@ class Plugin():
                     _generic_rules.append(rule)
                 elif rule.labels['category'] == 'service':
                     _service_rules.append(rule)
+        
+        if os.path.exists(self.prometheus_generic_rules_path):
+            dirname, basename = os.path.split(self.prometheus_generic_rules_path)
+            backup_path = os.path.join(dirname, "backup", f"{basename}.{int(time.time())}")
+            os.makedirs(os.path.dirname(backup_path), exist_ok=True)
+            shutil.copy(self.prometheus_generic_rules_path, backup_path)
+        
+        if os.path.exists(self.prometheus_service_rules_path):
+            dirname, basename = os.path.split(self.prometheus_service_rules_path)
+            backup_path = os.path.join(dirname, "backup", f"{basename}.{int(time.time())}")
+            os.makedirs(os.path.dirname(backup_path), exist_ok=True)
+            shutil.copy(self.prometheus_service_rules_path, backup_path)
         
         with open(self.prometheus_generic_rules_path, 'w', encoding="utf-8") as file:
             generic_rules = PrometheusRules(groups=[Group(name='trinityx', rules=_generic_rules)])

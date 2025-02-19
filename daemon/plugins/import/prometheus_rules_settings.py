@@ -32,7 +32,9 @@ __status__      = "Development"
 
 import os
 import re
+import time
 import yaml
+import shutil
 from typing import List, Dict, Optional
 from utils.log import Log
 from pydantic import BaseModel, RootModel, Field, field_validator
@@ -122,7 +124,7 @@ class Plugin():
     def _write_rules_settings(self, rules_settings: Settings):
         """
         Write the rules settings to the rules settings file
-        """
+        """        
         with open(self.rules_settings_file, 'w', encoding="utf-8") as file:
             yaml.safe_dump(rules_settings.model_dump(), file)
     
@@ -136,6 +138,12 @@ class Plugin():
             return Settings.model_validate(yaml.safe_load(file))
 
     def _write_rules(self, rules: PrometheusRules, path):
+        if os.path.exists(path):
+            dirname, basename = os.path.split(path)
+            backup_path = os.path.join(dirname, "backup", f"{basename}.{int(time.time())}")
+            os.makedirs(os.path.dirname(backup_path), exist_ok=True)
+            shutil.move(path, backup_path)
+        
         with open(path, 'w', encoding='utf-8') as file:
             yaml.safe_dump(rules.model_dump(by_alias=True, exclude_none=True), file)
 

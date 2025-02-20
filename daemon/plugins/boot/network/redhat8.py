@@ -143,7 +143,7 @@ EOF
     elif [ "$IPADDR" == "linklocal" ]; then
 cat << EOF >> /sysroot/etc/NetworkManager/system-connections/Connection_${DEVICE}.nmconnection
 [ipv6]
-ipv6.method=ignore
+method=ignore
 
 EOF
     else

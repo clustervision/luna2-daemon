@@ -32,6 +32,7 @@ __status__      = 'Development'
 
 import concurrent.futures
 from time import sleep
+import os
 import sys
 from utils.log import Log
 from utils.database import Database
@@ -195,7 +196,9 @@ class Housekeeper(object):
     def invalid_config_mother(self, event):
         tel=57
         rtel=30
+        itel=30
         self.logger.info("Starting invalid config thread")
+        files_path = CONSTANT['FILES']['IMAGE_FILES']
         while True:
             try:
                 tel+=1
@@ -235,6 +238,43 @@ class Housekeeper(object):
                                 self.logger.error(f"Node {node['name']} lookup returned {status}")
                         if rtel > 20:
                             rtel=0
+
+                    all_images = Database().get_record(table='osimage')
+                    if all_images:
+                        for image in all_images:
+                            current_status, current_state, new_state, OK = None, None, None, True
+                            status, monitor_response = Monitor().get_itemstatus(item='osimage', name=image['name'])
+                            if status:
+                                current_status = monitor_response['monitor']['status'][image['name']]['status']
+                                current_state = monitor_response['monitor']['status'][image['name']]['state']
+                            for item in ['imagefile','kernelfile','initrdfile']:
+                                if image[item] is None:
+                                    if new_state is None:
+                                        new_state=''
+                                    new_state+=f'{item} defined as {image[item]};'
+                                    OK=False
+                                elif not os.path.isfile(files_path+'/'+image[item]):
+                                    if new_state is None:
+                                        new_state=''
+                                    new_state+=f'non existent {item} {image[item]};'
+                                    OK=False
+                                if not OK:
+                                    if itel > 30:
+                                        self.logger.warning(f"OsImage {image['name']} has non existing {item} {image[item]}")
+                            if OK:
+                                if current_status == '501':
+                                    self.logger.warning(f"OsImage {image['name']} had invalid config but has been corrected")
+                                    Monitor().update_itemstatus(item='osimage', name=image['name'], state=new_state, status=OK)
+                            else:
+                                if current_status == '200':
+                                    if current_state is None or current_state != new_state:
+                                        self.logger.info(f"current state: {current_state} transition to {new_state}")
+                                    Monitor().update_itemstatus(item='osimage', name=image['name'], state=new_state, status=OK)
+                            if current_status is None:
+                                Monitor().update_itemstatus(item='osimage', name=image['name'], state=new_state, status=OK)
+                        if itel > 20:
+                            itel=0
+
             except Exception as exp:
                 exc_type, exc_obj, exc_tb = sys.exc_info()
                 self.logger.error(f"invalid config thread encountered problem: {exp}, {exc_type}, in {exc_tb.tb_lineno}")

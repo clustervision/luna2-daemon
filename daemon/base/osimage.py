@@ -98,10 +98,8 @@ class OSImage():
                         self.logger.error(f"Plugin exception in getpath: {exp}")
 
                 for item in ['imagefile','kernelfile','initrdfile']:
-                    if not os.path.isfile(self.files_path+'/'+record['imagefile']):
-                        if (not 'comment' in record) or record['comment'] is None:
-                            record['comment']=''
-                        record['comment']+=f"file {record['imagefile']} does not exist. "
+                    if (record[item] is not None) and (not os.path.isfile(self.files_path+'/'+record[item])):
+                        record[item]='!!'+record[item]
 
                 record['tag'] = tagname or 'default'
                 response['config'][self.table][record['name']] = record
@@ -142,10 +140,8 @@ class OSImage():
                     self.logger.error(f"Plugin exception in getpath: {exp}")
 
             for item in ['imagefile','kernelfile','initrdfile']:
-                if not os.path.isfile(self.files_path+'/'+record['imagefile']):
-                    if (not 'comment' in record) or record['comment'] is None:
-                        record['comment']=''
-                    record['comment']+=f"file {record['imagefile']} does not exist. "
+                if (record[item] is not None) and (not os.path.isfile(self.files_path+'/'+record[item])):
+                    record[item]='!!'+record[item]
 
             record['tag'] = tagname or 'default'
             image_tags = []
@@ -230,10 +226,8 @@ class OSImage():
                         self.logger.error(f"Plugin exception in getpath: {exp}")
 
                 for item in ['imagefile','kernelfile','initrdfile']:
-                    if not os.path.isfile(self.files_path+'/'+data['imagefile']):
-                        if (not 'comment' in data) or data['comment'] is None:
-                            data['comment']=''
-                        data['comment']+=f"file {data['imagefile']} does not exist. "
+                    if (data[item] is not None) and (not os.path.isfile(self.files_path+'/'+data[item])):
+                        data[item]='!!'+data[item]
 
                 for node in nodes.keys():
                     if str(nodes[node]['osimagetagid']) == str(image['tagid']):

@@ -84,13 +84,42 @@ class Monitor():
         db_node = Database().get_record_join(['monitor.*'],['monitor.tablerefid=node.id'],
                                              ["monitor.tableref='node'",f"node.name='{node}'"])
         if db_node:
-            status=True
+            status = True
             state,servicestatus=monitor().installer_state(db_node[0]['state'],db_node[0]['status'])
             response['monitor']['status'][node]['status'] = servicestatus
             response['monitor']['status'][node]['state'] = db_node[0]['state']
         else:
             response = None
-            status=False
+            status = False
+        return status, response
+
+
+    def get_itemstatus(self, item=None, name=None):
+        """
+        This method will check the status of an item by the supplied name
+        """
+        status=False
+        if not name:
+            return status, "Invalid request: name not provided"
+        response = {"monitor": {"status": { name: { } } } }
+        tablerefid = 0
+        if item:
+            where = f'WHERE id="{name}" OR name="{name}";'
+            db_item = Database().get_record(None, item, where)
+            if db_item:
+                tablerefid = db_item[0]['id']
+        elif name:
+            item = name
+
+        where = f'WHERE tableref="{item}" and tablerefid="{tablerefid}"'
+        db_item = Database().get_record(None, 'monitor', where)
+        if db_item:
+            status = True
+            response['monitor']['status'][name]['status'] = db_item[0]['status']
+            response['monitor']['status'][name]['state'] = db_item[0]['state']
+        else:
+            response = None
+            status = False
         return status, response
 
 
@@ -138,6 +167,47 @@ class Monitor():
             except KeyError:
                 response = 'Invalid request: URL Node is not matching with requested node'
                 status=False
+        return status, response
+
+
+    def update_itemstatus(self, item=None, name=None, state=None, status=False):
+        """
+        This method will update the status of a an item. internal function.
+        """
+        item_status=status # rename because of clash
+        status=False
+        response = 'Bad Request'
+        try:
+            if isinstance(item_status, bool):
+                state,item_status=monitor().item_state(state,item_status)
+            self.logger.info(f"item {item}/{name}: {state}, {item_status}")
+            tablerefid = 0
+            if item:
+                where = f'WHERE id = "{name}" OR name = "{name}";'
+                item_db = Database().get_record(None, item, where)
+                if item_db:
+                    tablerefid = item_db[0]['id']
+            elif name:
+                item = name
+            else:
+                status = False
+                return status, "Invalid request: Neither item or name provided"
+            row = [{"column": "tableref", "value": item},
+                   {"column": "tablerefid", "value": tablerefid},
+                   {"column": "state", "value": state}]
+            if item_status:
+                row.append({"column": "status", "value": item_status})
+            result = Database().insert('monitor',row,replace=True)
+            if result:
+                status=True
+                response = f'Item {item} updated'
+            else:
+                status=False
+                response = f'Item {item} update not succesful'
+        except Exception as exp:
+            self.logger.info(f"EXP: {exp}")
+            response = 'Invalid request: {exp}'
+            status=False
         return status, response
 
 

@@ -63,3 +63,9 @@ class Monitor(object):
             state = f'Luna installer: {state}'
             return state,500
         return state,status
+
+
+    def item_state(self,state=None,status=True):
+        if status:
+            return state,200
+        return state,501

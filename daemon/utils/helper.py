@@ -976,7 +976,7 @@ class Helper(object):
                         template = leveltwo.rsplit('.',1)
                         self.logger.debug(f"found plugins.{root}.{levelone}.{template[0]}")
                         return root+'/'+levelone+'/'+template[0]+'.templ'
-                    elif 'default.py' in myplugin[levelone]:
+                    elif 'default.templ' in myplugin[levelone]:
                         self.logger.debug(f"found plugins.{root}.{levelone}.default")
                         return root+'/'+levelone+'/default.templ'
                 elif levelone+'.templ' in myplugin:

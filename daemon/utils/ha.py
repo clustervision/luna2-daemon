@@ -41,6 +41,7 @@ from utils.log import Log
 from utils.helper import Helper
 from utils.request import Request
 from utils.ping import Ping
+from utils.queue import Queue
 
 import requests
 from requests import Session
@@ -174,6 +175,10 @@ class HA():
                     self.logger.warning(f"set_role (master) to {state} kept current master state of {self.master}")
                     return False
         self.logger.info(f"set_role (master) to {state}")
+        Queue().add_task_to_queue(task='restart', param='dhcp', subsystem='housekeeper',
+                                  request_id='__becoming_master__')
+        Queue().add_task_to_queue(task='restart', param='dhcp6', subsystem='housekeeper',
+                                  request_id='__becoming_master__')
         return self.set_property('master',state,True)
 
     def get_syncimages(self):

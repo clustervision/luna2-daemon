@@ -29,6 +29,7 @@ __maintainer__  = 'Sumit Sharma'
 __email__       = 'sumit.sharma@clustervision.com'
 __status__      = 'Development'
 
+import os
 import re
 from time import sleep, time
 from os import getpid, path
@@ -58,6 +59,7 @@ class OSImage():
         self.table = 'osimage'
         self.table_cap = 'OS Image'
         self.image_directory = CONSTANT['FILES']['IMAGE_DIRECTORY']
+        self.files_path = CONSTANT['FILES']['IMAGE_FILES']
         plugins_path=CONSTANT["PLUGINS"]["PLUGINS_DIRECTORY"]
         self.osimage_plugins = Helper().plugin_finder(f'{plugins_path}/osimage')
 
@@ -94,6 +96,11 @@ class OSImage():
                             record['path'] = data
                     except Exception as exp:
                         self.logger.error(f"Plugin exception in getpath: {exp}")
+
+                for item in ['imagefile','kernelfile','initrdfile']:
+                    if (record[item] is not None) and (not os.path.isfile(self.files_path+'/'+record[item])):
+                        record[item]='!!'+record[item]+'!!'
+
                 record['tag'] = tagname or 'default'
                 response['config'][self.table][record['name']] = record
         return status, response
@@ -131,6 +138,11 @@ class OSImage():
                         record['path'] = data
                 except Exception as exp:
                     self.logger.error(f"Plugin exception in getpath: {exp}")
+
+            for item in ['imagefile','kernelfile','initrdfile']:
+                if (record[item] is not None) and (not os.path.isfile(self.files_path+'/'+record[item])):
+                    record[item]='!!'+record[item]+'!!'
+
             record['tag'] = tagname or 'default'
             image_tags = []
             all_tags = Database().get_record(table='osimagetag',
@@ -212,6 +224,11 @@ class OSImage():
                             data['path'] = path
                     except Exception as exp:
                         self.logger.error(f"Plugin exception in getpath: {exp}")
+
+                for item in ['imagefile','kernelfile','initrdfile']:
+                    if (data[item] is not None) and (not os.path.isfile(self.files_path+'/'+data[item])):
+                        data[item]='!!'+data[item]+'!!'
+
                 for node in nodes.keys():
                     if str(nodes[node]['osimagetagid']) == str(image['tagid']):
                         nodes_using.append(nodes[node]['name'])

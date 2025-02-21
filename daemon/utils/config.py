@@ -401,6 +401,10 @@ class Config(object):
             else:
                 subnet['nextserver']=controller[0]['ipaddress']
             subnet['nextport']=serverport
+        if not controller:
+            self.logger.warning(f"no controller details found using {controller_name}")
+        if not 'nextserver' in subnet:
+            self.logger.info(f"no next server defined for network {nwk['name']} using {controller_name}")
         self.logger.debug(f"SUBNET: {subnet}")
         return subnet
 

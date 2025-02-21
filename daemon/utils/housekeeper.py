@@ -194,18 +194,17 @@ class Housekeeper(object):
 
 
     def invalid_config_mother(self, event):
-        tel=57
-        rtel=30
-        itel=30
+        loop_counter=57
+        node_log_counter=30
+        osimage_log_counter=30
         self.logger.info("Starting invalid config thread")
         files_path = CONSTANT['FILES']['IMAGE_FILES']
         while True:
             try:
-                tel+=1
-                if tel > 60:
-                    tel=0
-                    rtel+=1
-                    itel+=1
+                loop_counter+=1
+                if loop_counter > 60:
+                    loop_counter=0
+                    node_log_counter+=1
                     all_nodes = Database().get_record(None, "node")
                     if all_nodes:
                         for node in all_nodes:
@@ -215,7 +214,7 @@ class Housekeeper(object):
                                 for key, value in node_response['config']['node'][node['name']].items():
                                     if value == '!!Invalid!!':
                                         OK=False
-                                        if rtel > 30:
+                                        if node_log_counter > 30:
                                             self.logger.warning(f"Node {node['name']} has invalid config: {key} is {value}")
                                         new_state = f'Node configuration for {key} is invalid'
                                         state = {'monitor': {'status': {node['name']: {'state': new_state, 'status': '501'} } } }
@@ -237,9 +236,10 @@ class Housekeeper(object):
                                             Monitor().update_nodestatus(node['name'], state)
                             else:
                                 self.logger.error(f"Node {node['name']} lookup returned {status}")
-                        if rtel > 30:
-                            rtel=0
+                        if node_log_counter > 30:
+                            node_log_counter=0
 
+                    osimage_log_counter+=1
                     all_images = Database().get_record(table='osimage')
                     if all_images:
                         for image in all_images:
@@ -260,7 +260,7 @@ class Housekeeper(object):
                                     new_state+=f'non existent {item} {image[item]};'
                                     OK=False
                                 if not OK:
-                                    if itel > 30:
+                                    if osimage_log_counter > 30:
                                         self.logger.warning(f"OsImage {image['name']} has non existing {item} {image[item]}")
                             if OK:
                                 if current_status == '501':
@@ -276,8 +276,8 @@ class Housekeeper(object):
                             if current_status is None:
                                 state = {'monitor': {'status': {image['name']: {'state': new_state, 'status': OK} } } }
                                 Monitor().update_itemstatus(item='osimage', name=image['name'], request_data=state)
-                        if itel > 30:
-                            itel=0
+                        if osimage_log_counter > 30:
+                            osimage_log_counter=0
 
             except Exception as exp:
                 exc_type, exc_obj, exc_tb = sys.exc_info()
@@ -292,12 +292,12 @@ class Housekeeper(object):
         hardsync_enabled=True # experimental hard table sync based on checksums. handle with care!
         startup_controller=True
         syncpull_status=False
-        sync_tel=0
-        ping_tel=3
+        sync_counter=0
+        ping_counter=3
         ping_check=4
-        sum_tel=0
+        sum_counter=0
         insync_check=140
-        oosync_tel=0
+        oosync_counter=0
         ping_status, check_status = True, True
         try:
             ha_object=HA()
@@ -316,10 +316,10 @@ class Housekeeper(object):
             # ---------------------------- we keep asking the journal from others until successful
             while syncpull_status is False:
                 try:
-                    if sync_tel<1:
+                    if sync_counter<1:
                         syncpull_status=journal_object.pullfrom_controllers()
-                        sync_tel=2
-                    sync_tel-=1
+                        sync_counter=2
+                    sync_counter-=1
                 except Exception as exp:
                     exc_type, exc_obj, exc_tb = sys.exc_info()
                     self.logger.error(f"journal_mother thread encountered problem in initial sync: {exp}, {exc_type}, in {exc_tb.tb_lineno}")
@@ -327,36 +327,36 @@ class Housekeeper(object):
                 if event.is_set():
                     return
             # ---------------------------- good. now we can proceed with the main loop
-            sync_tel=0
+            sync_counter=0
             ha_object.set_overrule(False)
             while True:
                 try:
                     # --------------------------- am i a master or not?
                     master=ha_object.get_role()
                     # --------------------------- first we sync with the others. we push what's still in the journal
-                    if sync_tel<1:
+                    if sync_counter<1:
                         journal_object.pushto_controllers()
-                        sync_tel=7
+                        sync_counter=7
                     else:
                         journal_object.pushto_controllers(forward=True)
-                    sync_tel-=1
+                    sync_counter-=1
                     # --------------------------- then we process what we have received
                     handled=journal_object.handle_requests()
                     if handled is True:
                         if ping_status and check_status:
                             ha_object.set_insync(True)
-                        sum_tel=18
+                        sum_counter=18
                     elif startup_controller is True:
                         startup_controller=False
                         ha_object.set_insync(True)
                     # --------------------------- we ping the others. if someone is down, we become paranoid
-                    if ping_tel<1:
+                    if ping_counter<1:
                         ping_status=ha_object.ping_controllers()
                         if master is False: # i am not a master
                             status = ping_status and check_status
                             ha_object.set_insync(status)
-                        ping_tel=3
-                    ping_tel-=1
+                        ping_counter=3
+                    ping_counter-=1
                     # --------------------------- we check if we have received pings. if things are weird we use fallback mechanisms
                     if ping_check<1:
                         check_status=ha_object.verify_pings()
@@ -375,20 +375,20 @@ class Housekeeper(object):
                     if insync_check<1:
                         if master is True:
                             if ha_object.get_insync() is True:
-                                oosync_tel=0
+                                oosync_counter=0
                             else:
-                                oosync_tel+=1
-                            if oosync_tel>2:
+                                oosync_counter+=1
+                            if oosync_counter>2:
                                 self.logger.warning(f"I am a master but somehow got stuck being out of sync? This should not happen....")
                                 ha_object.set_insync(True)
-                                oosync_tel=0
+                                oosync_counter=0
                         else:
-                            oosync_tel=0
+                            oosync_counter=0
                         insync_check=120
                     insync_check-=1
                     # --------------------------- then on top of that, we verify checksums. if mismatch, we import from the master
                     if hardsync_enabled:
-                        if sum_tel<1:
+                        if sum_counter<1:
                             if master is False: # i am not a master
                                 mismatch_tables=tables_object.verify_tablehashes_controllers()
                                 if mismatch_tables:
@@ -399,8 +399,8 @@ class Housekeeper(object):
                                     Queue().add_task_to_queue(task='restart', param='dhcp', subsystem='housekeeper', request_id='__table_fix__')
                                     Queue().add_task_to_queue(task='restart', param='dhcp6', subsystem='housekeeper', request_id='__table_fix__')
                                     Queue().add_task_to_queue(task='reload', param='dns', subsystem='housekeeper', request_id='__table_fix__')
-                            sum_tel=720
-                        sum_tel-=1
+                            sum_counter=720
+                        sum_counter-=1
                     # --------------------------- end of magic
                 except Exception as exp:
                     exc_type, exc_obj, exc_tb = sys.exc_info()

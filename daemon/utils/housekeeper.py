@@ -205,6 +205,7 @@ class Housekeeper(object):
                 if tel > 60:
                     tel=0
                     rtel+=1
+                    itel+=1
                     all_nodes = Database().get_record(None, "node")
                     if all_nodes:
                         for node in all_nodes:
@@ -236,7 +237,7 @@ class Housekeeper(object):
                                             Monitor().update_nodestatus(node['name'], state)
                             else:
                                 self.logger.error(f"Node {node['name']} lookup returned {status}")
-                        if rtel > 20:
+                        if rtel > 30:
                             rtel=0
 
                     all_images = Database().get_record(table='osimage')
@@ -275,7 +276,7 @@ class Housekeeper(object):
                             if current_status is None:
                                 state = {'monitor': {'status': {image['name']: {'state': new_state, 'status': OK} } } }
                                 Monitor().update_itemstatus(item='osimage', name=image['name'], request_data=state)
-                        if itel > 20:
+                        if itel > 30:
                             itel=0
 
             except Exception as exp:

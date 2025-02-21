@@ -56,13 +56,13 @@ class Housekeeper(object):
         self.logger = Log.get_logger()
 
     def tasks_mother(self,event):
-        tel=0
+        counter=0
         self.logger.info("Starting tasks thread")
         while True:
             try:
-                tel+=1
-                if tel > 3:
-                    tel=0
+                counter+=1
+                if counter > 3:
+                    counter=0
                     while next_id := Queue().next_task_in_queue('housekeeper'):
                         remove_from_queue=True
                         self.logger.info(f"tasks_mother sees job in queue as next: {next_id}")
@@ -131,13 +131,13 @@ class Housekeeper(object):
 
 
     def cleanup_mother(self,event):
-        tel=0
+        counter=0
         self.logger.info("Starting cleanup thread")
         while True:
             try:
-                tel+=1
-                if tel > 120:
-                    tel=0
+                counter+=1
+                if counter > 120:
+                    counter=0
                     records=Database().get_record_query("select id,message from status where created<datetime('now','-1 hour')") # only sqlite compliant. rest pending
                     for record in records:
                         self.logger.info(f"cleaning up status id {record['id']} : {record['message']}")
@@ -161,15 +161,15 @@ class Housekeeper(object):
 
 
     def switchport_scan(self,event):
-        tel=118
+        counter=118
         self.logger.info("Starting switch port scan thread")
         try:
             from plugins.boot.detection.switchport import Plugin as DetectionPlugin
             while True:
                 try:
-                    tel+=1
-                    if tel > 120:
-                        tel=0
+                    counter+=1
+                    if counter > 120:
+                        counter=0
                         switches = Database().get_record_join(['switch.*','ipaddress.ipaddress'], ['ipaddress.tablerefid=switch.id'], ['ipaddress.tableref="switch"'])
                         self.logger.debug(f"switches {switches}")
                         if switches:

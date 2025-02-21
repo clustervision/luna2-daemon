@@ -264,14 +264,17 @@ class Housekeeper(object):
                             if OK:
                                 if current_status == '501':
                                     self.logger.warning(f"OsImage {image['name']} had invalid config but has been corrected")
-                                    Monitor().update_itemstatus(item='osimage', name=image['name'], state=new_state, status=OK)
+                                    state = {'monitor': {'status': {image['name']: {'state': new_state, 'status': '200'} } } }
+                                    Monitor().update_itemstatus(item='osimage', name=image['name'], request_data=state)
                             else:
                                 if current_status == '200':
                                     if current_state is None or current_state != new_state:
                                         self.logger.info(f"{image['name']} current state: {current_state} transition to {new_state}")
-                                    Monitor().update_itemstatus(item='osimage', name=image['name'], state=new_state, status=OK)
+                                    state = {'monitor': {'status': {image['name']: {'state': new_state, 'status': '501'} } } }
+                                    Monitor().update_itemstatus(item='osimage', name=image['name'], request_data=state)
                             if current_status is None:
-                                Monitor().update_itemstatus(item='osimage', name=image['name'], state=new_state, status=OK)
+                                state = {'monitor': {'status': {image['name']: {'state': new_state, 'status': OK} } } }
+                                Monitor().update_itemstatus(item='osimage', name=image['name'], request_data=state)
                         if itel > 20:
                             itel=0
 

@@ -99,7 +99,7 @@ class OSImage():
 
                 for item in ['imagefile','kernelfile','initrdfile']:
                     if (record[item] is not None) and (not os.path.isfile(self.files_path+'/'+record[item])):
-                        record[item]='!!'+record[item]
+                        record[item]='!!'+record[item]+'!!'
 
                 record['tag'] = tagname or 'default'
                 response['config'][self.table][record['name']] = record
@@ -141,7 +141,7 @@ class OSImage():
 
             for item in ['imagefile','kernelfile','initrdfile']:
                 if (record[item] is not None) and (not os.path.isfile(self.files_path+'/'+record[item])):
-                    record[item]='!!'+record[item]
+                    record[item]='!!'+record[item]+'!!'
 
             record['tag'] = tagname or 'default'
             image_tags = []
@@ -227,7 +227,7 @@ class OSImage():
 
                 for item in ['imagefile','kernelfile','initrdfile']:
                     if (data[item] is not None) and (not os.path.isfile(self.files_path+'/'+data[item])):
-                        data[item]='!!'+data[item]
+                        data[item]='!!'+data[item]+'!!'
 
                 for node in nodes.keys():
                     if str(nodes[node]['osimagetagid']) == str(image['tagid']):

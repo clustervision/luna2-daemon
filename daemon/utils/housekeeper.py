@@ -222,7 +222,7 @@ class Housekeeper(object):
                                         if status:
                                             current_state = monitor_response['monitor']['status'][node['name']]['state']
                                             if current_state != new_state:
-                                                self.logger.info(f"current state: {current_state} transition to {new_state}")
+                                                self.logger.info(f"{node['name']} current state: {current_state} transition to {new_state}")
                                                 Monitor().update_nodestatus(node['name'], state)
                                         else:
                                             Monitor().update_nodestatus(node['name'], state)
@@ -268,7 +268,7 @@ class Housekeeper(object):
                             else:
                                 if current_status == '200':
                                     if current_state is None or current_state != new_state:
-                                        self.logger.info(f"current state: {current_state} transition to {new_state}")
+                                        self.logger.info(f"{image['name']} current state: {current_state} transition to {new_state}")
                                     Monitor().update_itemstatus(item='osimage', name=image['name'], state=new_state, status=OK)
                             if current_status is None:
                                 Monitor().update_itemstatus(item='osimage', name=image['name'], state=new_state, status=OK)

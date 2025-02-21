@@ -68,7 +68,7 @@ class Plugin():
 
     def getpath(self, image_directory=None, osimage=None, tag=None):
         if tag:
-            self.logger.info(f"Filesystem tag {tag} requested for {osimage}")
+            self.logger.info(f"default plugin: Filesystem tag {tag} requested for {osimage} returning {image_directory}/{osimage}")
             #return True,image_directory+'/'+osimage+'@'+tag
         return True,image_directory+'/'+osimage
 

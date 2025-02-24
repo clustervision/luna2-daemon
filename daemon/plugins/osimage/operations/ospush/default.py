@@ -71,7 +71,7 @@ class Plugin():
             for grab in grab_filesystems:
                 if exit_code == 0:
                     if nodry is True: # nodry is True means it's for real
-                        command=f"rsync -aH --one-file-system {exclude_string} {image_path}/{grab} {node}:/"
+                        command=f"rsync -aH --one-file-system {exclude_string} {image_path}/{grab} {node}:/ >> /tmp/ospush.out"
                     else:
                         command=f"rsync -aHvn --one-file-system {exclude_string} {image_path}/{grab} {node}:/ >> /tmp/ospush.out"
                     self.logger.info(command)
@@ -79,9 +79,9 @@ class Plugin():
                     self.logger.debug(f"exit_code = {exit_code}")
         else:
             if nodry is True: # nodry is True means it's for real
-                command=f"rsync -aH --delete-after {exclude_string} {image_path}/* {node}:/"
+                command=f"rsync -aH --delete-after {exclude_string} {image_path}/* {node}:/ > /tmp/ospush.out"
             else:
-                command=f"rsync -aHnv --delete-after {exclude_string} {image_path}/* {node}:/ &> /tmp/ospush.out"
+                command=f"rsync -aHnv --delete-after {exclude_string} {image_path}/* {node}:/ > /tmp/ospush.out"
             self.logger.info(command)
             message,exit_code = Helper().runcommand(command,True,3600)
 

@@ -65,7 +65,7 @@ class Plugin():
                 if exit_code == 0:
                     command=None
                     if nodry is True: # nodry is True means it's for real
-                        command=f"mkdir -p {image_path}/{grab} 2> /dev/null; rsync -aH --one-file-system --delete-after {exclude_string} {node}:{grab}/* {image_path}/{grab}/"
+                        command=f"mkdir -p {image_path}/{grab} 2> /dev/null; rsync -aH --one-file-system --delete-after {exclude_string} {node}:{grab}/* {image_path}/{grab}/ >> /tmp/osgrab.out"
                     else:
                         command=f"mkdir -p {image_path}/{grab} 2> /dev/null; rsync -aHvn --one-file-system --delete-after {exclude_string} {node}:{grab}/* {image_path}/{grab}/ >> /tmp/osgrab.out"
                     self.logger.info(command)
@@ -73,9 +73,9 @@ class Plugin():
                     self.logger.debug(f"exit_code = {exit_code}")
         else:
             if nodry is True: # nodry is True means it's for real
-                command=f"mkdir -p {image_path}/ 2> /dev/null; rsync -aH --delete-after {exclude_string} {node}:/* {image_path}/"
+                command=f"mkdir -p {image_path}/ 2> /dev/null; rsync -aH --delete-after {exclude_string} {node}:/* {image_path}/ > /tmp/osgrab.out"
             else:
-                command=f"mkdir -p {image_path}/ 2> /dev/null; rsync -aHvn --delete-after {exclude_string} {node}:/* {image_path}/ &> /tmp/osgrab.out"
+                command=f"mkdir -p {image_path}/ 2> /dev/null; rsync -aHvn --delete-after {exclude_string} {node}:/* {image_path}/ > /tmp/osgrab.out"
             self.logger.info(command)
             message,exit_code = Helper().runcommand(command,True,3600)
 

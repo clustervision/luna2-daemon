@@ -115,24 +115,37 @@ class Plugin():
         script = """
 #!/bin/bash
 
+# Basic switch -> .1.3.6.1.2.1.17.7.1.2.2.1.2
+# HP switch    -> .1.3.6.1.2.1.17.4.3.1.2
+
 HOST=$1
 OID=$2
 
-for string in `snmpwalk -v 2c -c public $HOST $OID -O qn|sed -e "s/^\.//g" -e "s/ /./g"`; do
-    decmac=$(echo $string|awk -F "." '{print $15";"$16";"$17";"$18";"$19";"$20}')
-    vlan=$(echo $string|awk -F "." '{print $14 }')
-    mac=""
-    for hex in `echo "obase=16; $decmac"|bc`; do
-    if [ ${#hex} == "1" ]; then
-        hex="0"$hex
-    fi
-    if [ -z $mac ]; then
-        mac=$hex
+for string in `snmpwalk -v 2c -c public $HOST $OID -O qn|sed -e "s/ /./g"`; do
+    pstring=$(echo $string | sed -e 's/^'$OID'\.//')
+    if [ "$OID" == ".1.3.6.1.2.1.17.4.3.1.2" ]; then
+        decmac=$(echo $pstring|awk -F "." '{print $1";"$2";"$3";"$4";"$5";"$6}')
     else
-        mac=$mac":"$hex
+        decmac=$(echo $pstring|awk -F "." '{print $2";"$3";"$4";"$5";"$6";"$7}')
+        vlan=$(echo $pstring|awk -F "." '{print $1}')
     fi
+    mac=""
+    hex=""
+    for hex in `echo "obase=16; $decmac"|bc`; do
+        if [ ${#hex} == "1" ]; then
+            hex="0"$hex
+        fi
+        if [ -z $mac ]; then
+            mac=$hex
+        else
+            mac=$mac":"$hex
+        fi
     done
-    port=$(echo $string|awk -F "." '{print $21}')
+    if [ "$OID" == ".1.3.6.1.2.1.17.4.3.1.2" ]; then
+        port=$(echo $pstring|awk -F "." '{print $7}')
+    else
+        port=$(echo $pstring|awk -F "." '{print $8}')
+    fi
     echo "${port}=${mac}"
 done
 """

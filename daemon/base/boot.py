@@ -1531,19 +1531,23 @@ class Boot():
 
                         interface_parent = interface['interface']
                         if interface['vlanid'] and interface['vlan_parent'] and interface['vlan_parent'] != interface['interface']:
-                            interface_parent = interface['vlan_parent']
-                            if interface_parent not in data['interfaces']:
-                                data['interfaces'][interface_parent] = {}
-                            if 'vlans' not in data['interfaces'][interface_parent]:
-                                data['interfaces'][interface_parent]['vlans'] = []
-                            vlan_data = {}
-                            vlan_data[interface['interface']] = interface_data
-                            vlan_data[interface['interface']]['vlan_parent'] = interface_parent
-                            data['interfaces'][interface_parent]['vlans'].append(vlan_data)
-                        else:
-                            if interface_parent not in data['interfaces']:
-                                data['interfaces'][interface_parent] = {}
-                            data['interfaces'][interface_parent] = interface_data
+                            interface_data['vlan_parent'] = interface['vlan_parent']
+                        #    interface_parent = interface['vlan_parent']
+                        #    if interface_parent not in data['interfaces']:
+                        #        data['interfaces'][interface_parent] = {}
+                        #    if 'vlans' not in data['interfaces'][interface_parent]:
+                        #        data['interfaces'][interface_parent]['vlans'] = []
+                        #    vlan_data = {}
+                        #    vlan_data[interface['interface']] = interface_data
+                        #    vlan_data[interface['interface']]['vlan_parent'] = interface_parent
+                        #    data['interfaces'][interface_parent]['vlans'].append(vlan_data)
+                        #else:
+                        #    if interface_parent not in data['interfaces']:
+                        #        data['interfaces'][interface_parent] = {}
+                        #    data['interfaces'][interface_parent] = interface_data
+                        if interface_parent not in data['interfaces']:
+                             data['interfaces'][interface_parent] = {}
+                        data['interfaces'][interface_parent] = interface_data
 
                         if interface['bond_mode'] and interface['bond_slaves']:
                             master = 'bond'+str(bond_count)

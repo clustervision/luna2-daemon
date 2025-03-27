@@ -67,15 +67,15 @@ EOF
 fi
 
 if [ "$TYPE" == "vlan" ]; then
-PARENT=$DEVICE
-if [ "$VLANPARENT" ]; then
-    PARENT=$VLANPARENT
-fi
+    PARENT=$DEVICE
+    if [ "$VLANPARENT" ]; then
+        PARENT=$VLANPARENT
+    fi
 cat << EOF >> /sysroot/etc/NetworkManager/system-connections/Connection_${DEVICE}.nmconnection
 [vlan]
 interface-name=${DEVICE}
-parent=${PARENT}
 id=${VLANID}
+parent=${PARENT}
 
 EOF
 fi

@@ -78,15 +78,15 @@ if [ "$VLANID" ]; then
     if [ "$VLANPARENT" ]; then
         PARENT=$VLANPARENT
     fi
-    if [ ! -f $rootmnt/etc/netplan/99_config.yaml ]; then
-        cat << EOF > $rootmnt/etc/netplan/99_config.yaml
+    if [ ! -f $rootmnt/etc/netplan/99_config_${DEVICE}_${VLANID}.yaml ]; then
+        cat << EOF > $rootmnt/etc/netplan/99_config_${DEVICE}_${VLANID}.yaml
 network:
   version: 2
   renderer: networkd
   vlans:
 EOF
     fi
-    cat << EOF >> $rootmnt/etc/netplan/99_config.yaml
+    cat << EOF >> $rootmnt/etc/netplan/99_config_${DEVICE}_${VLANID}.yaml
     vlan_${DEVICE}_${VLANID}:
       id: $VLANID
       link: $PARENT

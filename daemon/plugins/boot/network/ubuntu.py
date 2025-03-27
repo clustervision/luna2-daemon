@@ -74,6 +74,10 @@ EOF
 fi
 
 if [ "$VLANID" ]; then
+    PARENT=$DEVICE
+    if [ "$VLANPARENT" ]; then
+        PARENT=$VLANPARENT
+    fi
     if [ ! -f $rootmnt/etc/netplan/99_config.yaml ]; then
         cat << EOF > $rootmnt/etc/netplan/99_config.yaml
 network:
@@ -85,7 +89,7 @@ EOF
     cat << EOF >> $rootmnt/etc/netplan/99_config.yaml
     vlan_${DEVICE}_${VLANID}:
       id: $VLANID
-      link: $DEVICE
+      link: $PARENT
       # dhcp4_${DEVICE}_${VLANID}
       # dhcp6_${DEVICE}_${VLANID}
       # link-local_${DEVICE}_${VLANID}

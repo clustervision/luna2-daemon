@@ -7,7 +7,7 @@ type=vlan
 {%- else %}
 type={{ LUNA_INTERFACES[interface]['type'] }}
 {%- endif %}
-interface-name=${interface_name}{{ LUNA_INTERFACES[interface]['vlanid'] }}
+interface-name=${interface_name}
 autoconnect=true
 zone={{ LUNA_INTERFACES[interface]['zone'] }}
 
@@ -20,8 +20,12 @@ transport-mode=datagram
 
 {% if LUNA_INTERFACES[interface]['vlanid'] %}
 [vlan]
-interface-name=${interface_name}{{ LUNA_INTERFACES[interface]['vlanid'] }}
+interface-name=${interface_name}
+{%- if LUNA_INTERFACES[interface]['vlan_parent'] %}
+parent={{ LUNA_INTERFACES[interface]['vlan_parent'] }}
+{%- else %}
 parent=${interface_name}
+{%- endif %}
 id={{ LUNA_INTERFACES[interface]['vlanid'] }}
 {%- endif %}
 

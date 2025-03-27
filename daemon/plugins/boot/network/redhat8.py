@@ -50,7 +50,7 @@ cat << EOF > /sysroot/etc/NetworkManager/system-connections/Connection_${DEVICE}
 [connection]
 id=Connection_${DEVICE}
 type=${TYPE}
-interface-name=${DEVICE}${VLANID}
+interface-name=${DEVICE}
 autoconnect=true
 zone=${ZONE}
 
@@ -67,10 +67,14 @@ EOF
 fi
 
 if [ "$TYPE" == "vlan" ]; then
+PARENT=$DEVICE
+if [ "$VLANPARENT" ]; then
+    PARENT=$VLANPARENT
+fi
 cat << EOF >> /sysroot/etc/NetworkManager/system-connections/Connection_${DEVICE}.nmconnection
 [vlan]
-interface-name=${DEVICE}${VLANID}
-parent=${DEVICE}
+interface-name=${DEVICE}
+parent=${PARENT}
 id=${VLANID}
 
 EOF

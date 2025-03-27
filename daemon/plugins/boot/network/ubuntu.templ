@@ -5,9 +5,13 @@ network:
   renderer: networkd
 {%- if vlanid %}
   vlans:
-    vlan_${interface_name}_{{ LUNA_INTERFACES[interface]['vlanid'] }}:
+    vlan_${interface_name} }}:
       id: {{ LUNA_INTERFACES[interface]['vlanid'] }}
+{%- if LUNA_INTERFACES[interface]['vlan_parent'] %}
+      link: {{ LUNA_INTERFACES[interface]['vlan_parent'] }}
+{%- else %}
       link: ${interface_name}
+{%- endif %}
 {%- else %}
   ethernets:
     ${interface_name}:

@@ -91,6 +91,9 @@ DATABASE_LAYOUT_nodeinterface = [
 {"column": "nodeid",               "datatype": "INTEGER", "length": "10", "key": "UNIQUE", "with": "interface"},
 {"column": "interface",            "datatype": "VARCHAR", "length": "50"},
 {"column": "vlanid",               "datatype": "VARCHAR", "length": "10"},
+{"column": "vlan_parent",          "datatype": "VARCHAR", "length": "50"},
+{"column": "bond_mode",            "datatype": "VARCHAR", "length": "50"},
+{"column": "bond_slaves",          "datatype": "VARCHAR", "length": "200"},
 {"column": "macaddress",           "datatype": "VARCHAR", "length": "200"},
 {"column": "options",              "datatype": "TEXT"}]
 

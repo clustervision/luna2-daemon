@@ -126,12 +126,32 @@ class Interface():
                 interface_name = interface['interface']
                 ipaddress, macaddress, network, clear_ip = None, None, None, False
                 options, vlanid, force, dhcp, set_dhcp = None, None, False, None, False
+                vlan_parent, bond_mode, bond_slaves = None, None, None
                 if 'macaddress' in interface.keys():
                     macaddress = interface['macaddress']
                 if 'options' in interface.keys():
                     options = interface['options']
                 if 'vlanid' in interface.keys():
                     vlanid = interface['vlanid']
+                    if (not vlanid.isnumeric()) or vlanid > 4096:
+                        message = "invalid request: vlanid has to be a value between 0 en 4096"
+                        return False, message
+                if 'vlan_parent' in interface.keys():
+                    vlan_parent = interface['vlan_parent']
+                if 'bond_mode' in interface.keys():
+                    bond_mode = interface['bond_mode']
+                    if bond_mode not in ['balance-rr','active-backup','balance-xor',
+                                         'broadcast','802.3ad','balance-tlb','balance-alb',
+                                         '0','1','2','3','4','5','6']:
+                        message = f"Invalid request: bonding mode {bond_mode} not supported"
+                        return False, message
+                if 'bond_slaves' in interface.keys():
+                    bond_slaves = interface['bond_slaves']
+                    bond_slaves = bond_slaves.replace(' ',',')
+                    bond_slaves = bond_slaves.replace(',,',',')
+                    if (bond_slaves.count(',') < 2):
+                        message = f"Invalid request: bond_slaves should contain at least two interfaces"
+                        return False, message
                 if 'network' in interface.keys():
                     network = interface['network']
                 if 'ipaddress' in interface.keys():
@@ -143,11 +163,15 @@ class Interface():
                     set_dhcp = True
                 if ipaddress == '': # clearing the config!
                     clear_ip = True
+
                 result, message = Config().node_interface_config(
                     nodeid,
                     interface_name,
                     macaddress,
                     vlanid,
+                    vlan_parent,
+                    bond_mode,
+                    bond_slaves,
                     options
                 )
                 if result:
@@ -244,6 +268,11 @@ class Interface():
                                         message+="the network has dhcp_nodes_in_pool configured"
                                         message+=". "
                                         message+="automatic ip address assignment not available"
+                        elif nodes_in_pool and (not existing):
+                            # the interface itself exists, but there is not ipaddress config. A new interface.
+                            # can we safely create the interface? We inherit?                            
+                            set_dhcp = True
+                            dhcp = True
                         # ---------------------------------------------------------------------------------
 
                         if result and clear_ip:
@@ -347,6 +376,9 @@ class Interface():
                     'network.name as network',
                     'network.id as networkid',
                     'groupinterface.vlanid',
+                    'groupinterface.vlan_parent',
+                    'groupinterface.bond_mode',
+                    'groupinterface.bond_slaves',
                     'groupinterface.options',
                     'groupinterface.dhcp'
                 ],
@@ -375,6 +407,9 @@ class Interface():
                             group_interface['interface'],
                             None,
                             group_interface['vlanid'],
+                            group_interface['vlan_parent'],
+                            group_interface['bond_mode'],
+                            group_interface['bond_slaves'],
                             group_interface['options']
                         )
                         if result:

@@ -69,21 +69,19 @@ class Group():
                         group['_override'] = True
                 group_interface = Database().get_record_join(
                     ['groupinterface.interface','network.name as network',
-                     'groupinterface.vlanid', 'groupinterface.options',
-                     'groupinterface.dhcp'],
+                     'groupinterface.vlanid', 'groupinterface.vlan_parent',
+                     'groupinterface.bond_mode', 'groupinterface.bond_slaves',
+                     'groupinterface.options', 'groupinterface.dhcp'],
                     ['network.id=groupinterface.networkid'],
                     [f"groupid = '{group_id}'"]
                 )
                 if group_interface:
                     group['interfaces'] = []
                     for interface in group_interface:
-                        if not interface['options']:
-                            del interface['options']
-                        if not interface['vlanid']:
-                            del interface['vlanid']
+                        for item in ['options','vlanid','vlan_parent','bond_mode','bond_slaves']:
+                            if not interface[item]:
+                                del interface[item]
                         interface['dhcp'] = Helper().make_bool(interface['dhcp']) or False
-                        #if not interface['dhcp']:
-                        #    del interface['dhcp']
                         group['interfaces'].append(interface)
                 del group['id']
                 group['setupbmc'] = Helper().make_bool(group['setupbmc'])
@@ -143,6 +141,9 @@ class Group():
                     'groupinterface.interface',
                     'network.name as network',
                     'groupinterface.vlanid',
+                    'groupinterface.vlan_parent',
+                    'groupinterface.bond_mode',
+                    'groupinterface.bond_slaves',
                     'groupinterface.options',
                     'groupinterface.dhcp'
                 ],
@@ -152,10 +153,9 @@ class Group():
             if group_interface:
                 group['interfaces'] = []
                 for interface in group_interface:
-                    if not interface['options']:
-                        del interface['options']
-                    if not interface['vlanid']:
-                        del interface['vlanid']
+                    for item in ['options','vlanid','vlan_parent','bond_mode','bond_slaves']:
+                        if not interface[item]:
+                            del interface[item]
                     interface['dhcp'] = Helper().make_bool(interface['dhcp']) or False
                     group['interfaces'].append(interface)
             del group['id']
@@ -395,8 +395,29 @@ class Group():
                     for ifx in new_interface:
                         if not 'interface' in ifx:
                             status=False
-                            return status, 'Interface name is required for this operation'
+                            return status, 'Invalid request: interface name is required for this operation'
                         interface_name = ifx['interface']
+
+                        if 'vlanid' in ifx:
+                            vlanid = interface['vlanid']
+                            if (not ifx['vlanid'].isnumeric()) or ifx['vlanid'] > 4096:
+                                message = "invalid request: vlanid has to be a value between 0 en 4096"
+                                return False, message
+                        if 'bond_mode' in ifx:
+                            if ifx['bond_mode'] not in ['balance-rr','active-backup','balance-xor',
+                                                 'broadcast','802.3ad','balance-tlb','balance-alb',
+                                                 '0','1','2','3','4','5','6']:
+                                message = f"Invalid request: bonding mode {bond_mode} not supported"
+                                return False, message
+                        if 'bond_slaves' in ifx:
+                            bond_slaves = ifx['bond_slaves']
+                            bond_slaves = bond_slaves.replace(' ',',')
+                            bond_slaves = bond_slaves.replace(',,',',')
+                            if (bond_slaves.count(',') < 2):
+                                message = f"Invalid request: bond_slaves should contain at least two interfaces"
+                                return False, message
+                            ifx['bond_slaves'] = bond_slaves
+
                         network = None
                         if not 'network' in ifx:
                             nwk=Database().get_record_join(

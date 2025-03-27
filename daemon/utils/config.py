@@ -809,7 +809,7 @@ class Config(object):
 
     # ----------------------------------------------------------------------------------------------
 
-    def node_interface_config(self, nodeid=None, interface_name=None, macaddress=None, vlanid=None, options=None):
+    def node_interface_config(self, nodeid=None, interface_name=None, macaddress=None, vlanid=None, vlan_parent=None, bond_mode=None, bond_slaves=None, options=None):
         """
         This method will collect node interfaces and return configuration.
         """
@@ -825,6 +825,14 @@ class Config(object):
             my_interface['options'] = options
         if vlanid is not None:
             my_interface['vlanid'] = vlanid
+        if vlan_parent is not None:
+            my_interface['vlan_parent'] = vlan_parent
+        if bond_mode is not None:
+            my_interface['bond_mode'] = bond_mode
+        if bond_slaves is not None:
+            bond_slaves = bond_slaves.replace(' ',',')
+            bond_slaves = bond_slaves.replace(',,',',')
+            my_interface['bond_slaves'] = bond_slaves
 
         if not check_interface: # ----> easy. both the interface and ipaddress do not exist
             my_interface['interface'] = interface_name
@@ -857,20 +865,29 @@ class Config(object):
         """
         where_interface = f'WHERE nodeid = "{nodeid}" AND interface = "{interface_name}"'
         check_interface = Database().get_record(None, 'nodeinterface', where_interface)
+        result_if = "not able to clear ip address config. interface not configured"
         if check_interface:
-            clear_ip={}
-            if ipversion == 'ipv4':
-                clear_ip['ipaddress'] = None
-            if ipversion == 'ipv6':
-                clear_ip['ipaddress_ipv6'] = None
-            row = Helper().make_rows(clear_ip)
-            where = [{"column": "tableref", "value": "nodeinterface"},
-                     {"column": "tablerefid", "value": check_interface[0]['id']}]
-            result_if = Database().update('ipaddress', row, where)
-        if result_if:
-            message = f"interface {interface_name} cleared of {ipversion} address with result {result_if}"
-            self.logger.info(message)
-            return True, message
+            tablerefid = check_interface[0]['id']
+            where_ipaddress = f'WHERE tableref="nodeinterface" AND tablerefid={tablerefid}'
+            check_ipaddress = Database().get_record(None, 'ipaddress', where_ipaddress)
+            if check_ipaddress:
+                clear_ip={}
+                if ipversion == 'ipv4':
+                    clear_ip['ipaddress'] = None
+                if ipversion == 'ipv6':
+                    clear_ip['ipaddress_ipv6'] = None
+                row = Helper().make_rows(clear_ip)
+                where = [{"column": "tableref", "value": "nodeinterface"},
+                         {"column": "tablerefid", "value": tablerefid}]
+                result_if = Database().update('ipaddress', row, where)
+            else:
+                message = f"interface {interface_name} had no address configuration and did not to be cleared"
+                self.logger.info(message)
+                return True, message
+            if result_if:
+                message = f"interface {interface_name} cleared of {ipversion} address with result {result_if}"
+                self.logger.info(message)
+                return True, message
         message = f"interface {interface_name} config failed with result {result_if}"
         self.logger.info(message)
         return False, message
@@ -1076,6 +1093,9 @@ class Config(object):
                                 'network.subnet', 'network.subnet_ipv6',
                                 'network.name as networkname',
                                 'groupinterface.vlanid',
+                                'groupinterface.vlan_parent',
+                                'groupinterface.bond_mode',
+                                'groupinterface.bond_slaves',
                                 'groupinterface.dhcp'
                             ],
                             [
@@ -1093,6 +1113,9 @@ class Config(object):
                                     'network.subnet', 'network.subnet_ipv6',
                                     'network.name as networkname',
                                     'groupinterface.vlanid',
+                                    'groupinterface.vlan_parent',
+                                    'groupinterface.bond_mode',
+                                    'groupinterface.bond_slaves',
                                     'groupinterface.dhcp'
                                 ],
                                 [
@@ -1106,11 +1129,14 @@ class Config(object):
                             )
                         dhcp_ips = []
                         dhcp6_ips = []
-                        vlanid, dhcp = None, None
+                        vlanid, vlan_parent, bond_mode, bond_slaves, dhcp = None, None, None, None, None
                         if network:
                             dhcp_ips = self.get_dhcp_range_ips_from_network(network[0]['networkname'])
                             dhcp6_ips = self.get_dhcp_range_ips_from_network(network[0]['networkname'],'ipv6')
                             vlanid = network[0]['vlanid']
+                            vlan_parent = network[0]['vlan_parent']
+                            bond_mode = network[0]['bond_mode']
+                            bond_slaves = network[0]['bond_slaves']
                             dhcp = network[0]['dhcp']
                         ips = dhcp_ips.copy()
                         ips6 = dhcp6_ips.copy()
@@ -1130,7 +1156,8 @@ class Config(object):
                         )
                         if nodes:
                             for node in nodes:
-                                check, text = self.node_interface_config(nodeid=node['nodeid'], interface_name=interface, vlanid=vlanid)
+                                check, text = self.node_interface_config(nodeid=node['nodeid'], interface_name=interface, vlanid=vlanid,
+                                                                         vlan_parent=vlan_parent, bond_mode=bond_mode, bond_slaves=bond_slaves)
                                 message = f"Adding/Updating interface {interface} to node id "
                                 message += f"{node['nodeid']} for group {group}. {text}"
                                 self.logger.info(message)

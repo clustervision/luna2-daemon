@@ -2,14 +2,16 @@
 
 [connection]
 id=Connection_${interface_name}
-type={{ LUNA_INTERFACES[interface]['type'] }}
-interface-name=${interface_name}
-autoconnect=true
-zone={{ LUNA_INTERFACES[interface]['zone'] }}
-{%- if LUNA_INTERFACES[interface]['master'] %}
+{%- if LUNA_INTERFACES[interface]['type'] == 'slave' %}
+type=ethernet
 master={{ LUNA_INTERFACES[interface]['master'] }}
 slave-type=bond
+{%- else %}
+type={{ LUNA_INTERFACES[interface]['type'] }}
+zone={{ LUNA_INTERFACES[interface]['zone'] }}
 {%- endif %}
+interface-name=${interface_name}
+autoconnect=true
 
 {% if LUNA_INTERFACES[interface]['type'] == 'infiniband' %}
 [infiniband]
@@ -23,11 +25,11 @@ mode={{ LUNA_INTERFACES[interface]['bond_mode'] }}
 [ethernet]
 {%- endif %}
 
-{% if LUNA_INTERFACES[interface]['master'] %}
+{% if LUNA_INTERFACES[interface]['type'] == 'slave' %}
 [bond-port]
 {%- else %}
 
-  {% if LUNA_INTERFACES[interface]['vlanid'] %}
+  {% if LUNA_INTERFACES[interface]['type'] == 'vlan' %}
 [vlan]
   {%- if LUNA_INTERFACES[interface]['vlan_parent'] %}
 parent={{ LUNA_INTERFACES[interface]['vlan_parent'] }}

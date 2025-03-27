@@ -1530,21 +1530,10 @@ class Boot():
                             del interface_data['nameserver_ip_ipv6']
 
                         interface_parent = interface['interface']
-                        if interface['vlanid'] and interface['vlan_parent'] and interface['vlan_parent'] != interface['interface']:
-                            interface_data['vlan_parent'] = interface['vlan_parent']
-                        #    interface_parent = interface['vlan_parent']
-                        #    if interface_parent not in data['interfaces']:
-                        #        data['interfaces'][interface_parent] = {}
-                        #    if 'vlans' not in data['interfaces'][interface_parent]:
-                        #        data['interfaces'][interface_parent]['vlans'] = []
-                        #    vlan_data = {}
-                        #    vlan_data[interface['interface']] = interface_data
-                        #    vlan_data[interface['interface']]['vlan_parent'] = interface_parent
-                        #    data['interfaces'][interface_parent]['vlans'].append(vlan_data)
-                        #else:
-                        #    if interface_parent not in data['interfaces']:
-                        #        data['interfaces'][interface_parent] = {}
-                        #    data['interfaces'][interface_parent] = interface_data
+                        if interface['vlanid']:
+                            interface_data['type'] = 'vlan'
+                            if interface['vlan_parent'] and interface['vlan_parent'] != interface['interface']:
+                                interface_data['vlan_parent'] = interface['vlan_parent']
                         if interface_parent not in data['interfaces']:
                              data['interfaces'][interface_parent] = {}
                         data['interfaces'][interface_parent] = interface_data
@@ -1560,14 +1549,13 @@ class Boot():
                             for slave in slaves:
                                 data['interfaces'][slave] = {
                                     'master': master,
-                                    'type': interface['type'] or "ethernet"
+                                    #'type': interface['type'] or "ethernet"
+                                    'type': "slave"
                                 }
                             data['interfaces'][interface_parent] = interface_data
                             data['interfaces'][interface_parent]['bond_mode']  = interface['bond_mode']
                             data['interfaces'][interface_parent]['bond_slaves']= interface['bond_slaves'] or "",
                             data['interfaces'][interface_parent]['type'] = 'bond'
-                        else:
-                            self.logger.info(f"NO BOND FOUND for {interface_parent}");
 
                         domain_search.append(interface['network'])
                         if interface['interface'] == data['provision_interface']:
@@ -1589,9 +1577,6 @@ class Boot():
                                             data['interfaces'][data['provision_interface']]['nameserver_ip'] = nameserver_ips_ipv4 or '0.0.0.0'
                                         elif item == 'nameserver_ip_ipv6':
                                             data['interfaces'][data['provision_interface']]['nameserver_ip_ipv6'] = nameserver_ips_ipv6 or '::/0'
-
-            if data['interfaces']:
-                self.logger.info(f"INTERFACES: {data['interfaces']}")
 
             if data['domain_search']:
                 data['domain_search'] = data['domain_search'].replace(',',';')

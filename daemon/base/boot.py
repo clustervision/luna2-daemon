@@ -1544,17 +1544,15 @@ class Boot():
                                 master = interface['interface']
                             else:
                                 bond_count+=1
-                            bond_data = {}
                             slaves = interface['bond_slaves'].split(',');
                             for slave in slaves:
                                 data['interfaces'][slave] = {
                                     'master': master,
-                                    #'type': interface['type'] or "ethernet"
                                     'type': "slave"
                                 }
                             data['interfaces'][interface_parent] = interface_data
                             data['interfaces'][interface_parent]['bond_mode']  = interface['bond_mode']
-                            data['interfaces'][interface_parent]['bond_slaves']= interface['bond_slaves'] or "",
+                            data['interfaces'][interface_parent]['bond_slaves']= interface['bond_slaves'].split(',')
                             data['interfaces'][interface_parent]['type'] = 'bond'
 
                         domain_search.append(interface['network'])

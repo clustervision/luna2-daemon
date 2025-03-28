@@ -3,21 +3,34 @@
 network:
   version: 2
   renderer: networkd
-{%- if vlanid %}
+{%- if LUNA_INTERFACES[interface]['vlanid'] %}
   vlans:
     vlan_${interface_name} }}:
       id: {{ LUNA_INTERFACES[interface]['vlanid'] }}
-{%- if LUNA_INTERFACES[interface]['vlan_parent'] %}
-      link: {{ LUNA_INTERFACES[interface]['vlan_parent'] }}
-{%- else %}
+  {%- if LUNA_INTERFACES[interface]['vlan_parent'] %}
+      link: ${parent_name}
+  {%- else %}
       link: ${interface_name}
-{%- endif %}
-{%- else %}
+  {%- endif %}
+{%- elif not 'bond_mode' in LUNA_INTERFACES[interface] %}
   ethernets:
     ${interface_name}:
     {%- if not LUNA_INTERFACES[interface]['ipaddress_ipv6'] %}
       link-local: [ipv6]
     {%- endif %}
+{%- endif %}
+{%- if 'bond_mode' in LUNA_INTERFACES[interface] and 'bond_slaves' in LUNA_INTERFACES[interface] %}
+  ethernets:
+  {%- for bond_slave in LUNA_INTERFACES[interface]['bond_slaves'] %}
+    {{ bond_slave }}:
+      dhcp4: no
+  {%- endfor %}
+  bonds:
+    ${interface_name}:
+      interfaces:
+  {%- for bond_slave in LUNA_INTERFACES[interface]['bond_slaves'] %}
+        - {{ bond_slave }}
+  {%- endfor %}
 {%- endif %}
 {%- if LUNA_INTERFACES[interface]['dhcp'] %}
     {%- if LUNA_INTERFACES[interface]['ipaddress'] %}

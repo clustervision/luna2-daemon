@@ -135,6 +135,9 @@ DATABASE_LAYOUT_groupinterface = [
 {"column": "groupid",              "datatype": "INTEGER", "length": "10"},
 {"column": "interface",            "datatype": "VARCHAR", "length": "60"},
 {"column": "vlanid",               "datatype": "VARCHAR", "length": "10"},
+{"column": "vlan_parent",          "datatype": "VARCHAR", "length": "50"},
+{"column": "bond_mode",            "datatype": "VARCHAR", "length": "50"},
+{"column": "bond_slaves",          "datatype": "VARCHAR", "length": "200"},
 {"column": "dhcp",                 "datatype": "INTEGER", "length": "10"},
 {"column": "networkid",            "datatype": "INTEGER", "length": "10"},
 {"column": "options",              "datatype": "TEXT"}]

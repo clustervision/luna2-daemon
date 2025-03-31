@@ -1,11 +1,12 @@
 #FILE ${rootmnt}/etc/netplan/${interface_name}_config.yaml
 
+{%- if 'slave' not in LUNA_INTERFACES[interface] %}
 network:
   version: 2
   renderer: networkd
 {%- if LUNA_INTERFACES[interface]['vlanid'] %}
   vlans:
-    vlan_${interface_name} }}:
+    vlan_${interface_name}:
       id: {{ LUNA_INTERFACES[interface]['vlanid'] }}
   {%- if LUNA_INTERFACES[interface]['vlan_parent'] %}
       link: ${parent_name}
@@ -71,4 +72,5 @@ network:
         addresses: [{{ LUNA_INTERFACES[interface]['nameserver_ip_ipv6'] }}]
       {%- endif %}
     {%- endif %}
+{%- endif %}
 {%- endif %}

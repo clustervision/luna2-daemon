@@ -1,6 +1,6 @@
 #FILE ${rootmnt}/etc/netplan/${interface_name}_config.yaml
 
-{%- if 'slave' not in LUNA_INTERFACES[interface] %}
+{%- if LUNA_INTERFACES[interface]['type'] != 'slave' %}
 network:
   version: 2
   renderer: networkd

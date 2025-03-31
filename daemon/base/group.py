@@ -400,8 +400,8 @@ class Group():
 
                         if 'vlanid' in ifx:
                             vlanid = interface['vlanid']
-                            if (not ifx['vlanid'].isnumeric()) or ifx['vlanid'] > 4096:
-                                message = "invalid request: vlanid has to be a value between 0 en 4096"
+                            if (not ifx['vlanid'].isnumeric()) or int(ifx['vlanid']) > 4096:
+                                message = "invalid request: vlanid has to be a value between 0 and 4096"
                                 return False, message
                         if 'bond_mode' in ifx:
                             if ifx['bond_mode'] not in ['balance-rr','active-backup','balance-xor',
@@ -413,7 +413,7 @@ class Group():
                             bond_slaves = ifx['bond_slaves']
                             bond_slaves = bond_slaves.replace(' ',',')
                             bond_slaves = bond_slaves.replace(',,',',')
-                            if (bond_slaves.count(',') < 2):
+                            if (bond_slaves.count(',') < 1):
                                 message = f"Invalid request: bond_slaves should contain at least two interfaces"
                                 return False, message
                             ifx['bond_slaves'] = bond_slaves
@@ -461,6 +461,14 @@ class Group():
                                 subsystem='group_interface'
                             )
                         else: # we update only
+                            if ifx['bond_slaves'] or ifx['bond_mode'] or ifx['vlan_parent']:
+                                if (ifx['bond_mode'] or ifx['bond_slaves']) and check_interface[0]['vlan_parent']:
+                                    message = f"Invalid request: bonding interface using a vlan_parent not supported"
+                                    return False, message
+                                elif ifx['vlan_parent'] and (check_interface[0]['bond_mode'] or check_interface[0]['bond_slaves']):
+                                    message = f"Invalid request: bonding interface using a vlan_parent not supported"
+                                    return False, message
+
                             row = Helper().make_rows(ifx)
                             where = [
                                 {"column": "groupid", "value": group_id},

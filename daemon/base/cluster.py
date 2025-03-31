@@ -143,6 +143,9 @@ class Cluster():
                  'createnode_macashost': True, 'nextnode_discover': False}
         if request_data:
             data = request_data['config']['cluster']
+            if (len(data.keys()) < 1):
+                response = 'Invalid request: Did not receive data'
+                return False, response
 
             # renumbering controllers prepare. this could be tricky. - Antoine
             # for H/A things should be taken in consideration....

@@ -851,6 +851,8 @@ class Node():
                             bond_mode = interface['bond_mode']
                         if 'bond_slaves' in interface.keys():
                             bond_slaves = interface['bond_slaves']
+                            bond_slaves = bond_slaves.replace(' ',',')
+                            bond_slaves = bond_slaves.replace(',,',',')
                         if 'dhcp' in interface.keys():
                             dhcp = Helper().bool_to_string(interface['dhcp'])
                             set_dhcp = True

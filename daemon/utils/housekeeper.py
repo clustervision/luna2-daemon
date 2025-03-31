@@ -196,7 +196,7 @@ class Housekeeper(object):
     def invalid_config_mother(self, event):
         loop_counter=57
         node_log_counter=30
-        osimage_log_counter=30
+        osimage_log_counter=50
         self.logger.info("Starting invalid config thread")
         files_path = CONSTANT['FILES']['IMAGE_FILES']
         while True:
@@ -260,7 +260,7 @@ class Housekeeper(object):
                                     new_state+=f'non existent {item} {image[item]};'
                                     OK=False
                                 if not OK:
-                                    if osimage_log_counter > 30:
+                                    if osimage_log_counter > 50:
                                         self.logger.warning(f"OsImage {image['name']} has non existing {item} {image[item]}")
                             if OK:
                                 if current_status == '501':
@@ -276,7 +276,7 @@ class Housekeeper(object):
                             if current_status is None:
                                 state = {'monitor': {'status': {image['name']: {'state': new_state, 'status': OK} } } }
                                 Monitor().update_itemstatus(item='osimage', name=image['name'], request_data=state)
-                        if osimage_log_counter > 30:
+                        if osimage_log_counter > 50:
                             osimage_log_counter=0
 
             except Exception as exp:

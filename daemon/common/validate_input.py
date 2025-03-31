@@ -51,8 +51,10 @@ REG_EXP = {
     'strictname': { 'regexp': r'^[a-z0-9\-\.]+$', 'error': 'combination of small characters a-z, numbers 0-9, \'-\' and \'.\'' },
     'strictcsv': { 'regexp': r'^[a-z0-9\-\,\ ]+$', 'error': 'combination of small characters a-z, numbers 0-9, whitespace, \'-\' and \',\'' },
     'loosecsv': { 'regexp': r'^[a-z0-9\-\,\ ]*$', 'error': 'combination of small characters a-z, numbers 0-9, whitespace, \'-\' and \',\'' },
+    'interfacecsv': { 'regexp': r'^[a-zA-Z0-9\.\-\,\ \:]{3,}$', 'error': 'combination of minimal 3 small characters a-z A-Z, numbers 0-9, whitespace, \'.\', \':\', \'-\' and \',\'' },
+    'interface': { 'regexp': r'^[a-zA-Z0-9\.\-\:]{3,}$', 'error': 'combination of minimal 3 small characters a-z A-Z, numbers 0-9, \'.\', \':\', \'-\' and \',\'' },
     'ipaddress': { 'regexp': r'^[0-9a-f:\.]+$', 'error': 'combination of characters small a-f, numbers 0-9, \':\' and \'.\'' },
-    'macaddress': { 'regexp': r'^(([0-9A-Za-f]{2}((-|:)[0-9A-Za-f]{2}){5})|)$', 'error': '6 blocks of 2 characters a-f or numbers 0-9, separated by \':\' or \'-\'' },
+    'macaddress': { 'regexp': r'^(([0-9A-Fa-f]{2}((-|:)[0-9A-Za-f]{2}){5})|)$', 'error': '6 blocks of 2 characters a-f or numbers 0-9, separated by \':\' or \'-\'' },
     'minimal': { 'regexp': r'^\S.*$', 'error': 'minimal character requirement. at least one' },
     'integer': { 'regexp': r'^[0-9]+$', 'error': 'integers only' },
     'anything': { 'regexp': r'', 'error': 'anything' },
@@ -64,6 +66,8 @@ RESERVED = {
 }
 CONVERT = {
     'macaddress': {'-':':'},
+    'bond_slaves': {'-':':'},
+    'vlan_parent': {'-':':'},
     'name': {r'\.+':'.'},
     'strictname': {r'\.+':'.'},
 }
@@ -90,7 +94,10 @@ MATCH = {
     'tag': 'anything',
     'interface': 'minimal',
     'gateway_metric': 'integer',
-    'vlanid': 'integer'
+    'vlanid': 'integer',
+    'vlan_parent': 'interface',
+    'bond_mode': 'name',
+    'bond_slaves': 'interfacecsv'
 }
 MAXLENGTH = {
     'request_id': '256',

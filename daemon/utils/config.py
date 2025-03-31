@@ -816,9 +816,46 @@ class Config(object):
         result_if = False
         my_interface = {}
 
+        if bond_mode and bond_mode not in ['balance-rr','active-backup','balance-xor',
+                                           'broadcast','802.3ad','balance-tlb','balance-alb',
+                                           '0','1','2','3','4','5','6']:
+            message = f"bonding mode {bond_mode} not supported." 
+            message += "choose from balance-rr, active-backup, balance-xor, broadcast, 802.3ad, balance-tlb or balance-alb"
+            return False, message
+        elif vlanid and ((not vlanid.isnumeric()) or int(vlanid) > 4096):
+            message = "vlanid has to be a value between 0 and 4096"
+            return False, message
+        elif (bond_mode or bond_slaves) and vlan_parent:
+            message = f"bonded interface can not have a vlan_parent"
+            return False, message
+
         where_interface = f'WHERE nodeid = "{nodeid}" AND interface = "{interface_name}"'
         check_interface = Database().get_record(None, 'nodeinterface', where_interface)
 
+        if bond_slaves or bond_mode or vlan_parent:
+            if check_interface:
+                if (bond_mode or bond_slaves) and check_interface[0]['vlan_parent']:
+                    message = f"bonding interface using a vlan_parent not supported"
+                    return False, message
+                elif vlan_parent and (check_interface[0]['bond_mode'] or check_interface[0]['bond_slaves']):
+                    message = f"bonding interface using a vlan_parent not supported"
+                    return False, message
+                elif vlan_parent and (not vlanid) and not check_interface[0]['vlanid']:
+                    message = f"vlan_parent requires a vlanid"
+                    return False, message
+                elif bond_slaves and (not bond_mode) and not check_interface[0]['bond_mode']:
+                    message = f"bonding requires a bond_mode and bond_slaves"
+                    return False, message
+                elif bond_mode and (not bond_slaves) and not check_interface[0]['bond_slaves']:
+                    message = f"bonding requires a bond_mode and bond_slaves"
+                    return False, message
+            elif bond_mode and not bond_slaves:
+                message = f"bonding requires a bond_mode and bond_slaves"
+                return False, message
+            elif bond_slaves and not bond_mode:
+                message = f"bonding requires a bond_mode and bond_slaves"
+                return False, message
+                   
         if macaddress is not None:
             my_interface['macaddress'] = macaddress.lower()
         if options is not None:
@@ -833,6 +870,9 @@ class Config(object):
             bond_slaves = bond_slaves.replace(' ',',')
             bond_slaves = bond_slaves.replace(',,',',')
             my_interface['bond_slaves'] = bond_slaves
+            if (bond_slaves.count(',') < 1):
+                message = f"bond_slaves should contain at least two interfaces"
+                return False, message
 
         if not check_interface: # ----> easy. both the interface and ipaddress do not exist
             my_interface['interface'] = interface_name

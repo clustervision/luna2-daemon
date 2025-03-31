@@ -133,25 +133,12 @@ class Interface():
                     options = interface['options']
                 if 'vlanid' in interface.keys():
                     vlanid = interface['vlanid']
-                    if (not vlanid.isnumeric()) or vlanid > 4096:
-                        message = "invalid request: vlanid has to be a value between 0 en 4096"
-                        return False, message
                 if 'vlan_parent' in interface.keys():
                     vlan_parent = interface['vlan_parent']
                 if 'bond_mode' in interface.keys():
                     bond_mode = interface['bond_mode']
-                    if bond_mode not in ['balance-rr','active-backup','balance-xor',
-                                         'broadcast','802.3ad','balance-tlb','balance-alb',
-                                         '0','1','2','3','4','5','6']:
-                        message = f"Invalid request: bonding mode {bond_mode} not supported"
-                        return False, message
                 if 'bond_slaves' in interface.keys():
                     bond_slaves = interface['bond_slaves']
-                    bond_slaves = bond_slaves.replace(' ',',')
-                    bond_slaves = bond_slaves.replace(',,',',')
-                    if (bond_slaves.count(',') < 2):
-                        message = f"Invalid request: bond_slaves should contain at least two interfaces"
-                        return False, message
                 if 'network' in interface.keys():
                     network = interface['network']
                 if 'ipaddress' in interface.keys():
@@ -163,7 +150,7 @@ class Interface():
                     set_dhcp = True
                 if ipaddress == '': # clearing the config!
                     clear_ip = True
-
+                   
                 result, message = Config().node_interface_config(
                     nodeid,
                     interface_name,
@@ -308,7 +295,7 @@ class Interface():
                                     network,
                                     force
                                 )
-                    elif (macaddress is None) and (options is None):
+                    elif (macaddress is None) and (options is None) and (vlan_parent is None) and (vlanid is None) and (bond_mode is None) and (bond_slaves is None):
                         # this means we just made an empty interface. a no no - Antoine
                         # beware that we _have_ to test for None as 
                         #    clearing parameters by "" is caught by 'not maccaddress'
@@ -362,6 +349,10 @@ class Interface():
                         'groupinterface.interface',
                         'network.name as network',
                         'network.id as networkid',
+                        'groupinterface.vlanid',
+                        'groupinterface.vlan_parent',
+                        'groupinterface.bond_mode',
+                        'groupinterface.bond_slaves',
                         'groupinterface.options',
                         'groupinterface.dhcp'
                     ],

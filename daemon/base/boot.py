@@ -299,7 +299,7 @@ class Boot():
             environment = jinja2.Environment()
             template = environment.from_string('No Controller is available.')
             status=False
-        self.logger.info(f'Boot API serving the {template}')
+        self.logger.info(f'Boot API serving {template}')
         response = {
             'template': template,
             'LUNA_LOGHOST': self.controller_beaconip,
@@ -351,7 +351,7 @@ class Boot():
             environment = jinja2.Environment()
             template = environment.from_string('No Controller is available.')
             status=False
-        self.logger.info(f'Boot API serving the {template}')
+        self.logger.info(f'Boot API serving {template}')
         response = {
             'template': template,
             'LUNA_LOGHOST': self.controller_beaconip,
@@ -399,7 +399,7 @@ class Boot():
             environment = jinja2.Environment()
             template = environment.from_string('No Controller is available.')
             status=False
-        self.logger.info(f'Boot API serving the {template}')
+        self.logger.info(f'Boot API serving {template}')
         response = {'template': template, 'LUNA_CONTROLLER': self.controller_ip,
                     'LUNA_CONTROLLERS': controller_ips,
                     'LUNA_API_PORT': self.controller_serverport,
@@ -771,7 +771,7 @@ class Boot():
             status=False
             return status, "No config available"
             #self.logger.info(f'template mac search data: {data}')
-        self.logger.info(f'Boot API serving the {template}')
+        self.logger.info(f'Boot API serving {template}')
         return status, data
 
 
@@ -1092,7 +1092,7 @@ class Boot():
             environment = jinja2.Environment()
             template = environment.from_string('No Node is available for this mac address.')
             status=False
-        self.logger.info(f'Boot API serving the {template}')
+        self.logger.info(f'Boot API serving {template}')
         return status, data
 
 
@@ -1300,7 +1300,7 @@ class Boot():
             template = environment.from_string('No Node is available for this mac address.')
             status=False
             return status, "No config available"
-        self.logger.info(f'Boot API serving the {template}')
+        self.logger.info(f'Boot API serving {template}')
         return status, data
 
 

@@ -19,6 +19,7 @@ network:
   {%- for bond_slave in LUNA_INTERFACES[interface]['bond_slaves'] %}
     {{ bond_slave }}:
       dhcp4: no
+      dhcp6: no
   {%- endfor %}
   bonds:
     ${interface_name}:

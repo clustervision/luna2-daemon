@@ -849,6 +849,9 @@ class Config(object):
                 elif bond_mode and (not bond_slaves) and not check_interface[0]['bond_slaves']:
                     message = f"bonding requires a bond_mode and bond_slaves"
                     return False, message
+            elif vlan_parent and not vlanid:
+                message = f"vlan_parent requires a vlanid"
+                return False, message
             elif bond_mode and not bond_slaves:
                 message = f"bonding requires a bond_mode and bond_slaves"
                 return False, message
@@ -1146,6 +1149,9 @@ class Config(object):
                 elif bond_mode and (not bond_slaves) and not check_interface[0]['bond_slaves']:
                     message = f"bonding requires a bond_mode and bond_slaves"
                     return False, message
+            elif vlan_parent and not vlanid:
+                message = f"vlan_parent requires a vlanid"
+                return False, message
             elif bond_mode and not bond_slaves:
                 message = f"bonding requires a bond_mode and bond_slaves"
                 return False, message

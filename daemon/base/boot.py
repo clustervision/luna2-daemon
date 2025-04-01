@@ -1537,7 +1537,7 @@ class Boot():
 
                         if interface['bond_mode'] and interface['bond_slaves']:
                             master = 'bond'+str(bond_count)
-                            if interface['interface'] != 'BOOTIF':
+                            if interface['interface'] != data['provision_interface']:
                                 master = interface['interface']
                             else:
                                 interface_parent = master

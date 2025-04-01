@@ -1534,15 +1534,13 @@ class Boot():
                             interface_data['type'] = 'vlan'
                             if interface['vlan_parent'] and interface['vlan_parent'] != interface['interface']:
                                 interface_data['vlan_parent'] = interface['vlan_parent']
-                        if interface_parent not in data['interfaces']:
-                             data['interfaces'][interface_parent] = {}
-                        data['interfaces'][interface_parent] = interface_data
 
                         if interface['bond_mode'] and interface['bond_slaves']:
                             master = 'bond'+str(bond_count)
                             if interface['interface'] != 'BOOTIF':
                                 master = interface['interface']
                             else:
+                                interface_parent = master
                                 bond_count+=1
                             slaves = interface['bond_slaves'].split(',');
                             for slave in slaves:
@@ -1550,10 +1548,13 @@ class Boot():
                                     'master': master,
                                     'type': "slave"
                                 }
-                            data['interfaces'][interface_parent] = interface_data
-                            data['interfaces'][interface_parent]['bond_mode']  = interface['bond_mode']
-                            data['interfaces'][interface_parent]['bond_slaves']= interface['bond_slaves'].split(',')
-                            data['interfaces'][interface_parent]['type'] = 'bond'
+                            interface_data['bond_mode']  = interface['bond_mode']
+                            interface_data['bond_slaves']= interface['bond_slaves'].split(',')
+                            interface_data['type'] = 'bond'
+                 
+                        if interface_parent not in data['interfaces']:
+                            data['interfaces'][interface_parent] = {}
+                        data['interfaces'][interface_parent] = interface_data
 
                         domain_search.append(interface['network'])
                         if interface['interface'] == data['provision_interface']:

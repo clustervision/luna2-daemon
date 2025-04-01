@@ -71,7 +71,8 @@ class Group():
                     ['groupinterface.interface','network.name as network',
                      'groupinterface.vlanid', 'groupinterface.vlan_parent',
                      'groupinterface.bond_mode', 'groupinterface.bond_slaves',
-                     'groupinterface.options', 'groupinterface.dhcp'],
+                     'groupinterface.options', 'groupinterface.dhcp',
+                     'network.dhcp as networkdhcp'],
                     ['network.id=groupinterface.networkid'],
                     [f"groupid = '{group_id}'"]
                 )
@@ -82,6 +83,11 @@ class Group():
                             if not interface[item]:
                                 del interface[item]
                         interface['dhcp'] = Helper().make_bool(interface['dhcp']) or False
+                        if not interface['dhcp']:
+                            del interface['dhcp']
+                        elif not interface['networkdhcp']:
+                            interface['comment'] = 'dhcp configured but ignored with network having dhcp disabled'
+                        del interface['networkdhcp']
                         group['interfaces'].append(interface)
                 del group['id']
                 group['setupbmc'] = Helper().make_bool(group['setupbmc'])
@@ -145,7 +151,8 @@ class Group():
                     'groupinterface.bond_mode',
                     'groupinterface.bond_slaves',
                     'groupinterface.options',
-                    'groupinterface.dhcp'
+                    'groupinterface.dhcp',
+                    'network.dhcp as networkdhcp'
                 ],
                 ['network.id=groupinterface.networkid'],
                 [f"groupid = '{group_id}'"]
@@ -157,6 +164,11 @@ class Group():
                         if not interface[item]:
                             del interface[item]
                     interface['dhcp'] = Helper().make_bool(interface['dhcp']) or False
+                    if not interface['dhcp']:
+                        del interface['dhcp']
+                    elif not interface['networkdhcp']:
+                        interface['comment'] = 'dhcp configured but ignored with network having dhcp disabled'
+                    del interface['networkdhcp']
                     group['interfaces'].append(interface)
             del group['id']
             for key, value in items.items():

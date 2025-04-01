@@ -492,7 +492,7 @@ class Node():
                     interface['dhcp'] = Helper().make_bool(interface['dhcp'])
                     for item in ['options','vlanid','vlan_parent','bond_mode','bond_slaves','ipaddress','ipaddress_ipv6']:
                         if not interface[item]:
-                            del  interface[item]
+                            del interface[item]
                     if 'vlan_parent' in interface and 'vlanid' not in interface:
                         del interface['vlan_parent']
                     if interface['dhcp_nodes_in_pool'] and interface['networkdhcp'] and interface['dhcp']:

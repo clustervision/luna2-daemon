@@ -1535,13 +1535,26 @@ class Boot():
                             if interface['vlan_parent'] and interface['vlan_parent'] != interface['interface']:
                                 interface_data['vlan_parent'] = interface['vlan_parent']
 
+                        provision_interface = data['provision_interface']
                         if interface['bond_mode'] and interface['bond_slaves']:
                             master = 'bond'+str(bond_count)
-                            if interface['interface'] != data['provision_interface']:
-                                master = interface['interface']
-                            else:
+                            if interface['interface'] == data['provision_interface']:
+                                self.logger.info(f"for interface {interface_parent} trying to use {master}")
+                                bond_name_ok = False
+                                while not bond_name_ok:
+                                    for check_interface in nodeinterface:
+                                        if 'interface' in check_interface and master == check_interface['interface']:
+                                            bond_count+=1
+                                            prev_master = master
+                                            master = 'bond'+str(bond_count)
+                                            self.logger.info(f"for interface {interface_parent} {prev_master} already exists, trying to use {master}")
+                                            break
+                                    bond_name_ok = True
                                 interface_parent = master
+                                provision_interface = interface_parent
                                 bond_count+=1
+                            else:
+                                master = interface['interface']
                             slaves = interface['bond_slaves'].split(',');
                             for slave in slaves:
                                 data['interfaces'][slave] = {
@@ -1563,19 +1576,19 @@ class Boot():
                                 data['nodehostname'] = data['nodename'] + '.' + interface['network']
                                 domain_search.insert(0, interface['network'])
                             # setting good defaults for BOOTIF if they do not exist. a must.
-                            if data['provision_interface'] in data['interfaces']:
+                            if provision_interface in data['interfaces']:
                                 for item in ['gateway','gateway_ipv6','nameserver_ip','nameserver_ip_ipv6']:
-                                    if not item in data['interfaces'][data['provision_interface']]:
+                                    if not item in data['interfaces'][provision_interface]:
                                         continue
-                                    elif not data['interfaces'][data['provision_interface']][item]:
+                                    elif not data['interfaces'][provision_interface][item]:
                                         if item == 'gateway':
-                                            data['interfaces'][data['provision_interface']]['gateway'] = self.controller_ipv4 or '0.0.0.0'
+                                            data['interfaces'][provision_interface]['gateway'] = self.controller_ipv4 or '0.0.0.0'
                                         elif item == 'gateway_ipv6':
-                                            data['interfaces'][data['provision_interface']]['gateway_ipv6'] = self.controller_ipv6 or '::/0'
+                                            data['interfaces'][provision_interface]['gateway_ipv6'] = self.controller_ipv6 or '::/0'
                                         elif item == 'nameserver_ip':
-                                            data['interfaces'][data['provision_interface']]['nameserver_ip'] = nameserver_ips_ipv4 or '0.0.0.0'
+                                            data['interfaces'][provision_interface]['nameserver_ip'] = nameserver_ips_ipv4 or '0.0.0.0'
                                         elif item == 'nameserver_ip_ipv6':
-                                            data['interfaces'][data['provision_interface']]['nameserver_ip_ipv6'] = nameserver_ips_ipv6 or '::/0'
+                                            data['interfaces'][provision_interface]['nameserver_ip_ipv6'] = nameserver_ips_ipv6 or '::/0'
 
             if data['domain_search']:
                 data['domain_search'] = data['domain_search'].replace(',',';')

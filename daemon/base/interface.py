@@ -82,7 +82,6 @@ class Interface():
                     response['config']['node'][name]['interfaces'] = my_interface
                 status=True
             else:
-                self.logger.error(f'Node {name} dont have any interface.')
                 response = f'Node {name} dont have any interface'
                 status=False
         else:

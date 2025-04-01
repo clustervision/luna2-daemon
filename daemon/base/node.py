@@ -1004,8 +1004,10 @@ class Node():
                                         status=False
                                         return status, f'{message}'
                     if result is False:
-                        self.delete_node(new_nodeid)
                         status=False
+                        self.delete_node(new_nodeid)
+                        if isinstance(message, str):
+                            return status, f'Interface {interface_name} creation failed: {message}'
                         return status, f'Interface {interface_name} creation failed'
                 # Service().queue('dhcp','restart')
                 # Service().queue('dhcp6','restart')

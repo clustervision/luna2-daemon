@@ -809,22 +809,73 @@ class Config(object):
 
     # ----------------------------------------------------------------------------------------------
 
-    def node_interface_config(self, nodeid=None, interface_name=None, macaddress=None, vlanid=None, options=None):
+    def node_interface_config(self, nodeid=None, interface_name=None, macaddress=None, vlanid=None, vlan_parent=None, bond_mode=None, bond_slaves=None, options=None):
         """
         This method will collect node interfaces and return configuration.
         """
         result_if = False
         my_interface = {}
 
+        if bond_mode and bond_mode not in ['balance-rr','active-backup','balance-xor',
+                                           'broadcast','802.3ad','balance-tlb','balance-alb',
+                                           '0','1','2','3','4','5','6']:
+            message = f"bonding mode {bond_mode} not supported." 
+            message += "choose from balance-rr, active-backup, balance-xor, broadcast, 802.3ad, balance-tlb or balance-alb"
+            return False, message
+        elif vlanid and ((not vlanid.isnumeric()) or int(vlanid) > 4096):
+            message = "vlanid has to be a value between 0 and 4096"
+            return False, message
+        elif (bond_mode or bond_slaves) and vlan_parent:
+            message = f"bonded interface can not have a vlan_parent"
+            return False, message
+
         where_interface = f'WHERE nodeid = "{nodeid}" AND interface = "{interface_name}"'
         check_interface = Database().get_record(None, 'nodeinterface', where_interface)
 
+        if bond_slaves or bond_mode or vlan_parent:
+            if check_interface:
+                if (bond_mode or bond_slaves) and check_interface[0]['vlan_parent']:
+                    message = f"bonding interface using a vlan_parent not supported"
+                    return False, message
+                elif vlan_parent and (check_interface[0]['bond_mode'] or check_interface[0]['bond_slaves']):
+                    message = f"bonding interface using a vlan_parent not supported"
+                    return False, message
+                elif vlan_parent and (not vlanid) and not check_interface[0]['vlanid']:
+                    message = f"vlan_parent requires a vlanid"
+                    return False, message
+                elif bond_slaves and (not bond_mode) and not check_interface[0]['bond_mode']:
+                    message = f"bonding requires a bond_mode and bond_slaves"
+                    return False, message
+                elif bond_mode and (not bond_slaves) and not check_interface[0]['bond_slaves']:
+                    message = f"bonding requires a bond_mode and bond_slaves"
+                    return False, message
+            elif vlan_parent and not vlanid:
+                message = f"vlan_parent requires a vlanid"
+                return False, message
+            elif bond_mode and not bond_slaves:
+                message = f"bonding requires a bond_mode and bond_slaves"
+                return False, message
+            elif bond_slaves and not bond_mode:
+                message = f"bonding requires a bond_mode and bond_slaves"
+                return False, message
+                   
         if macaddress is not None:
             my_interface['macaddress'] = macaddress.lower()
         if options is not None:
             my_interface['options'] = options
         if vlanid is not None:
             my_interface['vlanid'] = vlanid
+        if vlan_parent is not None:
+            my_interface['vlan_parent'] = vlan_parent
+        if bond_mode is not None:
+            my_interface['bond_mode'] = bond_mode
+        if bond_slaves is not None:
+            bond_slaves = bond_slaves.replace(' ',',')
+            bond_slaves = bond_slaves.replace(',,',',')
+            my_interface['bond_slaves'] = bond_slaves
+            if (bond_slaves.count(',') < 1):
+                message = f"bond_slaves should contain at least two interfaces"
+                return False, message
 
         if not check_interface: # ----> easy. both the interface and ipaddress do not exist
             my_interface['interface'] = interface_name
@@ -857,20 +908,29 @@ class Config(object):
         """
         where_interface = f'WHERE nodeid = "{nodeid}" AND interface = "{interface_name}"'
         check_interface = Database().get_record(None, 'nodeinterface', where_interface)
+        result_if = "not able to clear ip address config. interface not configured"
         if check_interface:
-            clear_ip={}
-            if ipversion == 'ipv4':
-                clear_ip['ipaddress'] = None
-            if ipversion == 'ipv6':
-                clear_ip['ipaddress_ipv6'] = None
-            row = Helper().make_rows(clear_ip)
-            where = [{"column": "tableref", "value": "nodeinterface"},
-                     {"column": "tablerefid", "value": check_interface[0]['id']}]
-            result_if = Database().update('ipaddress', row, where)
-        if result_if:
-            message = f"interface {interface_name} cleared of {ipversion} address with result {result_if}"
-            self.logger.info(message)
-            return True, message
+            tablerefid = check_interface[0]['id']
+            where_ipaddress = f'WHERE tableref="nodeinterface" AND tablerefid={tablerefid}'
+            check_ipaddress = Database().get_record(None, 'ipaddress', where_ipaddress)
+            if check_ipaddress:
+                clear_ip={}
+                if ipversion == 'ipv4':
+                    clear_ip['ipaddress'] = None
+                if ipversion == 'ipv6':
+                    clear_ip['ipaddress_ipv6'] = None
+                row = Helper().make_rows(clear_ip)
+                where = [{"column": "tableref", "value": "nodeinterface"},
+                         {"column": "tablerefid", "value": tablerefid}]
+                result_if = Database().update('ipaddress', row, where)
+            else:
+                message = f"interface {interface_name} had no address configuration and did not to be cleared"
+                self.logger.info(message)
+                return True, message
+            if result_if:
+                message = f"interface {interface_name} cleared of {ipversion} address with result {result_if}"
+                self.logger.info(message)
+                return True, message
         message = f"interface {interface_name} config failed with result {result_if}"
         self.logger.info(message)
         return False, message
@@ -1048,6 +1108,121 @@ class Config(object):
 
     # ----------------------------------------------------------------------------------------------
 
+
+    def group_interface_config(self, groupid=None, interface_name=None, network=None, vlanid=None, vlan_parent=None, bond_mode=None, bond_slaves=None, dhcp=None, options=None):
+        """
+        This method configures/set interface config for a group.
+        """
+        result_if = False
+        my_interface = {}
+
+        if bond_mode and bond_mode not in ['balance-rr','active-backup','balance-xor',
+                                           'broadcast','802.3ad','balance-tlb','balance-alb',
+                                           '0','1','2','3','4','5','6']:
+            message = f"bonding mode {bond_mode} not supported." 
+            message += "choose from balance-rr, active-backup, balance-xor, broadcast, 802.3ad, balance-tlb or balance-alb"
+            return False, message
+        elif vlanid and ((not vlanid.isnumeric()) or int(vlanid) > 4096):
+            message = "vlanid has to be a value between 0 and 4096"
+            return False, message
+        elif (bond_mode or bond_slaves) and vlan_parent:
+            message = f"bonded interface can not have a vlan_parent"
+            return False, message
+
+        where_interface = f'WHERE groupid = "{groupid}" AND interface = "{interface_name}"'
+        check_interface = Database().get_record(None, 'groupinterface', where_interface)
+
+        if bond_slaves or bond_mode or vlan_parent:
+            if check_interface:
+                if (bond_mode or bond_slaves) and check_interface[0]['vlan_parent']:
+                    message = f"bonding interface using a vlan_parent not supported"
+                    return False, message
+                elif vlan_parent and (check_interface[0]['bond_mode'] or check_interface[0]['bond_slaves']):
+                    message = f"bonding interface using a vlan_parent not supported"
+                    return False, message
+                elif vlan_parent and (not vlanid) and not check_interface[0]['vlanid']:
+                    message = f"vlan_parent requires a vlanid"
+                    return False, message
+                elif bond_slaves and (not bond_mode) and not check_interface[0]['bond_mode']:
+                    message = f"bonding requires a bond_mode and bond_slaves"
+                    return False, message
+                elif bond_mode and (not bond_slaves) and not check_interface[0]['bond_slaves']:
+                    message = f"bonding requires a bond_mode and bond_slaves"
+                    return False, message
+            elif vlan_parent and not vlanid:
+                message = f"vlan_parent requires a vlanid"
+                return False, message
+            elif bond_mode and not bond_slaves:
+                message = f"bonding requires a bond_mode and bond_slaves"
+                return False, message
+            elif bond_slaves and not bond_mode:
+                message = f"bonding requires a bond_mode and bond_slaves"
+                return False, message
+                   
+        if options is not None:
+            my_interface['options'] = options
+        if vlanid is not None:
+            my_interface['vlanid'] = vlanid
+        if vlan_parent is not None:
+            my_interface['vlan_parent'] = vlan_parent
+        if bond_mode is not None:
+            my_interface['bond_mode'] = bond_mode
+        if bond_slaves is not None:
+            bond_slaves = bond_slaves.replace(' ',',')
+            bond_slaves = bond_slaves.replace(',,',',')
+            my_interface['bond_slaves'] = bond_slaves
+            if (bond_slaves.count(',') < 1):
+                message = f"bond_slaves should contain at least two interfaces"
+                return False, message
+        if dhcp is not None:
+            my_interface['dhcp'] = Helper().bool_to_string(dhcp)
+
+        networkid = None
+        if network:
+            networkid = Database().id_by_name('network', network)
+        else:
+            nwk=Database().get_record_join(
+                ['network.name as network', 'network.id as networkid'],
+                [
+                    'network.id=groupinterface.networkid',
+                    'groupinterface.groupid=group.id'
+                ],
+                [
+                    f"`group`.id='{groupid}'",
+                    f"groupinterface.interface='{interface_name}'"
+                ]
+            )
+            if nwk and 'networkid' in nwk[0]:
+                networkid=nwk[0]['networkid']
+        if networkid is None:
+            message = "Network not provided or does not exist"
+            return False, message 
+        my_interface['networkid'] = networkid
+
+        if not check_interface: # ----> easy. both the interface and ipaddress do not exist
+            my_interface['interface'] = interface_name
+            my_interface['groupid'] = groupid
+            row = Helper().make_rows(my_interface)
+            result_if = Database().insert('groupinterface', row)
+        else:
+            # we have to update the interface
+            if my_interface:
+                row = Helper().make_rows(my_interface)
+                where = [{"column": "id", "value": check_interface[0]['id']}]
+                result_if = Database().update('groupinterface', row, where)
+            else:
+                # no change here, we bail
+                result_if=True
+
+        if result_if:
+            message = f"interface {interface_name} created or changed with result {result_if}"
+            self.logger.info(message)
+            return True, message
+        message = f"interface {interface_name} config failed with result {result_if}"
+        self.logger.info(message)
+        return False, message
+
+
     def update_interface_on_group_nodes(self, name=None, request_id=None):
         """
         This method will update node/group interfaces.
@@ -1076,6 +1251,9 @@ class Config(object):
                                 'network.subnet', 'network.subnet_ipv6',
                                 'network.name as networkname',
                                 'groupinterface.vlanid',
+                                'groupinterface.vlan_parent',
+                                'groupinterface.bond_mode',
+                                'groupinterface.bond_slaves',
                                 'groupinterface.dhcp'
                             ],
                             [
@@ -1093,6 +1271,9 @@ class Config(object):
                                     'network.subnet', 'network.subnet_ipv6',
                                     'network.name as networkname',
                                     'groupinterface.vlanid',
+                                    'groupinterface.vlan_parent',
+                                    'groupinterface.bond_mode',
+                                    'groupinterface.bond_slaves',
                                     'groupinterface.dhcp'
                                 ],
                                 [
@@ -1106,11 +1287,14 @@ class Config(object):
                             )
                         dhcp_ips = []
                         dhcp6_ips = []
-                        vlanid, dhcp = None, None
+                        vlanid, vlan_parent, bond_mode, bond_slaves, dhcp = None, None, None, None, None
                         if network:
                             dhcp_ips = self.get_dhcp_range_ips_from_network(network[0]['networkname'])
                             dhcp6_ips = self.get_dhcp_range_ips_from_network(network[0]['networkname'],'ipv6')
                             vlanid = network[0]['vlanid']
+                            vlan_parent = network[0]['vlan_parent']
+                            bond_mode = network[0]['bond_mode']
+                            bond_slaves = network[0]['bond_slaves']
                             dhcp = network[0]['dhcp']
                         ips = dhcp_ips.copy()
                         ips6 = dhcp6_ips.copy()
@@ -1130,7 +1314,8 @@ class Config(object):
                         )
                         if nodes:
                             for node in nodes:
-                                check, text = self.node_interface_config(nodeid=node['nodeid'], interface_name=interface, vlanid=vlanid)
+                                check, text = self.node_interface_config(nodeid=node['nodeid'], interface_name=interface, vlanid=vlanid,
+                                                                         vlan_parent=vlan_parent, bond_mode=bond_mode, bond_slaves=bond_slaves)
                                 message = f"Adding/Updating interface {interface} to node id "
                                 message += f"{node['nodeid']} for group {group}. {text}"
                                 self.logger.info(message)

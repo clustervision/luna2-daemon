@@ -69,21 +69,19 @@ class Group():
                         group['_override'] = True
                 group_interface = Database().get_record_join(
                     ['groupinterface.interface','network.name as network',
-                     'groupinterface.vlanid', 'groupinterface.options',
-                     'groupinterface.dhcp'],
+                     'groupinterface.vlanid', 'groupinterface.vlan_parent',
+                     'groupinterface.bond_mode', 'groupinterface.bond_slaves',
+                     'groupinterface.options', 'groupinterface.dhcp'],
                     ['network.id=groupinterface.networkid'],
                     [f"groupid = '{group_id}'"]
                 )
                 if group_interface:
                     group['interfaces'] = []
                     for interface in group_interface:
-                        if not interface['options']:
-                            del interface['options']
-                        if not interface['vlanid']:
-                            del interface['vlanid']
+                        for item in ['options','vlanid','vlan_parent','bond_mode','bond_slaves']:
+                            if not interface[item]:
+                                del interface[item]
                         interface['dhcp'] = Helper().make_bool(interface['dhcp']) or False
-                        #if not interface['dhcp']:
-                        #    del interface['dhcp']
                         group['interfaces'].append(interface)
                 del group['id']
                 group['setupbmc'] = Helper().make_bool(group['setupbmc'])
@@ -143,6 +141,9 @@ class Group():
                     'groupinterface.interface',
                     'network.name as network',
                     'groupinterface.vlanid',
+                    'groupinterface.vlan_parent',
+                    'groupinterface.bond_mode',
+                    'groupinterface.bond_slaves',
                     'groupinterface.options',
                     'groupinterface.dhcp'
                 ],
@@ -152,10 +153,9 @@ class Group():
             if group_interface:
                 group['interfaces'] = []
                 for interface in group_interface:
-                    if not interface['options']:
-                        del interface['options']
-                    if not interface['vlanid']:
-                        del interface['vlanid']
+                    for item in ['options','vlanid','vlan_parent','bond_mode','bond_slaves']:
+                        if not interface[item]:
+                            del interface[item]
                     interface['dhcp'] = Helper().make_bool(interface['dhcp']) or False
                     group['interfaces'].append(interface)
             del group['id']
@@ -395,73 +395,65 @@ class Group():
                     for ifx in new_interface:
                         if not 'interface' in ifx:
                             status=False
-                            return status, 'Interface name is required for this operation'
+                            return status, 'Invalid request: interface name is required for this operation'
                         interface_name = ifx['interface']
-                        network = None
-                        if not 'network' in ifx:
-                            nwk=Database().get_record_join(
-                                ['network.name as network', 'network.id as networkid'],
-                                [
-                                    'network.id=groupinterface.networkid',
-                                    'groupinterface.groupid=group.id'
-                                ],
-                                [
-                                    f"`group`.name='{name}'",
-                                    f"groupinterface.interface='{interface_name}'"
-                                ]
-                            )
-                            if nwk and 'networkid' in nwk[0]:
-                                network=nwk[0]['networkid']
-                        else:
-                            network = Database().id_by_name('network', ifx['network'])
-                            del ifx['network']
-                        if network is None:
-                            status=False
-                            return status, 'Network not provided or does not exist'
-                        else:
-                            if 'dhcp' in ifx:
-                                ifx['dhcp'] = Helper().bool_to_string(ifx['dhcp'])
-                            ifx['networkid'] = network
-                            ifx['groupid'] = group_id
-                        group_clause = f'groupid = "{group_id}"'
-                        # network_clause = f'networkid = "{network}"'
-                        interface_clause = f'interface = "{interface_name}"'
-                        where = f' WHERE {group_clause} AND {interface_clause}'
-                        # where += f' AND {interface_clause}'
-                        check_interface = Database().get_record(None, 'groupinterface', where)
-                        result, queue_id = None, None
-                        if not check_interface:
-                            row = Helper().make_rows(ifx)
-                            result = Database().insert('groupinterface', row)
-                            self.logger.info(f'Interface created => {result} .')
-                            queue_id, _ = Queue().add_task_to_queue(
-                                task='add_interface_to_group_nodes',
-                                param=f'{name}:{interface_name}',
-                                subsystem='group_interface'
-                            )
-                        else: # we update only
-                            row = Helper().make_rows(ifx)
-                            where = [
-                                {"column": "groupid", "value": group_id},
-                                {"column": "interface", "value": interface_name}
-                            ]
-                            result = Database().update('groupinterface', row, where)
-                            self.logger.info(f'Interface updated => {result} .')
-                            queue_id, _ = Queue().add_task_to_queue(
-                                task='update_interface_for_group_nodes',
-                                param=f'{name}:{interface_name}',
-                                subsystem='group_interface'
-                            )
+
+                        where_interface = f'WHERE groupid = "{group_id}" AND interface = "{interface_name}"'
+                        check_interface = Database().get_record(None, 'groupinterface', where_interface)
+
+                        network, bond_mode, bond_slaves = None, None, None
+                        vlanid, vlan_parent, dhcp, options = None, None, None, None
+                        if 'network' in ifx:
+                            network = ifx['network']
+                        if 'bond_mode' in ifx:
+                            bond_mode = ifx['bond_mode']
+                        if 'bond_slaves' in ifx:
+                            bond_slaves  = ifx['bond_slaves']
+                        if 'vlanid' in ifx:
+                            vlanid = ifx['vlanid']
+                        if 'vlan_parent' in ifx:
+                            vlan_parent = ifx['vlan_parent']
+                        if 'dhcp' in ifx:
+                            dhcp = ifx['dhcp']
+                        if 'options' in ifx:
+                            options = ifx['options']
+                        
+                        result, response = Config().group_interface_config(groupid=group_id,
+                                                                interface_name=interface_name,
+                                                                network=network, vlanid=vlanid,
+                                                                vlan_parent=vlan_parent, bond_mode=bond_mode,
+                                                                bond_slaves=bond_slaves, dhcp=dhcp,
+                                                                options=options)
+
                         # below section takes care(in the background) the adding/renaming/deleting.
                         # for adding next free ip-s will be selected. time consuming there for
                         # background
                         if result:
+                            queue_id = None
+                            if check_interface:
+                                response = 'Interface created'
+                                queue_id, _ = Queue().add_task_to_queue(
+                                    task='update_interface_for_group_nodes',
+                                    param=f'{name}:{interface_name}',
+                                    subsystem='group_interface'
+                                )
+                            else:
+                                response = 'Interface updated'
+                                queue_id, _ = Queue().add_task_to_queue(
+                                    task='add_interface_to_group_nodes',
+                                    param=f'{name}:{interface_name}',
+                                    subsystem='group_interface'
+                                )
+
                             next_id = Queue().next_task_in_queue('group_interface')
                             if queue_id == next_id:
                                 executor = ThreadPoolExecutor(max_workers=1)
                                 executor.submit(Config().update_interface_on_group_nodes,name)
                                 executor.shutdown(wait=False)
                                 # Config().update_interface_on_group_nodes(name)
+                        else:
+                            status = False
+                            return False, response
 
                 # ---- we call the group plugin - maybe someone wants to run something after create/update?
                 nodes_in_group = []
@@ -571,17 +563,24 @@ class Group():
                 # response = f'Group {name} created successfully'
                 response = f'Group {name} cloned as {newgroupname} successfully'
                 status=True
+                group_interfaces_byname = None
                 group_interfaces = Database().get_record_join(
                     [
                         'groupinterface.interface',
                         'network.name as network',
                         'network.id as networkid',
+                        'groupinterface.vlanid',
+                        'groupinterface.vlan_parent',
+                        'groupinterface.bond_mode',
+                        'groupinterface.bond_slaves',
                         'groupinterface.options',
                         'groupinterface.dhcp'
                     ],
                     ['network.id=groupinterface.networkid'],
                     [f"groupid = '{group_id}'"]
                 )
+                if group_interfaces:
+                    group_interfaces_byname = Helper().convert_list_to_dict(group_interfaces, 'interface')
 
                 # ------ secrets ------
                 secrets = Database().get_record(None, 'groupsecrets', f' WHERE groupid = "{group_id}"')
@@ -596,47 +595,67 @@ class Group():
                         return status, f'Secrets copy for {newgroupname} failed'
 
                 # ------ interfaces -------
+                skip_interface = []
                 if new_interface:
                     for ifx in new_interface:
-                        interface_name = ifx['interface']
-                        index = 0
-                        for grp_ifx in group_interfaces:
-                            # delete interfaces we already have
-                            if interface_name == grp_ifx['interface']:
-                                del group_interfaces[index]
-                            index += 1
-                    for ifx in new_interface:
-                        interface_name = ifx['interface']
-                        if 'network' not in ifx:
+                        if not 'interface' in ifx:
                             status=False
-                            response=f'Network not specified for interface {interface_name}'
+                            response='Invalid request: interface name is required for this operation'
                             break
-                        network = Database().id_by_name('network', ifx['network'])
-                        if network is None:
-                            status=False
-                            response=f'Network {network} does not exist'
+                        interface_name = ifx['interface']
+
+                        network, networkid, bond_mode, bond_slaves = None, None, None, None
+                        vlanid, vlan_parent, dhcp, options = None, None, None, None
+                        if group_interfaces_byname and interface_name in group_interfaces_byname.keys():
+                            networkid = group_interfaces_byname[interface_name]['networkid']
+                            network = group_interfaces_byname[interface_name]['network']
+                            bond_mode = group_interfaces_byname[interface_name]['bond_mode']
+                            bond_slaves = group_interfaces_byname[interface_name]['bond_slaves']
+                            vlanid = group_interfaces_byname[interface_name]['vlanid']
+                            vlan_parent = group_interfaces_byname[interface_name]['vlan_parent']
+                            dhcp = group_interfaces_byname[interface_name]['dhcp']
+                            options = group_interfaces_byname[interface_name]['options']
+                            skip_interface.append(interface_name)
+
+                        if 'network' in ifx:
+                            network = ifx['network']
+                            networkid = None
+                        if 'bond_mode' in ifx:
+                            bond_mode = ifx['bond_mode']
+                        if 'bond_slaves' in ifx:
+                            bond_slaves  = ifx['bond_slaves']
+                        if 'vlanid' in ifx:
+                            vlanid = ifx['vlanid']
+                        if 'vlan_parent' in ifx:
+                            vlan_parent = ifx['vlan_parent']
+                        if 'dhcp' in ifx:
+                            dhcp = ifx['dhcp']
+                        if 'options' in ifx:
+                            options = ifx['options']
+                        
+                        result, response = Config().group_interface_config(groupid=new_group_id,
+                                                                interface_name=interface_name,
+                                                                network=network, vlanid=vlanid,
+                                                                vlan_parent=vlan_parent, bond_mode=bond_mode,
+                                                                bond_slaves=bond_slaves, dhcp=dhcp,
+                                                                options=options)
+                        if not result:
+                            status = False
                             break
-                        else:
-                            ifx['networkid'] = network
-                            if 'options' in ifx:
-                                ifx['options'] = ifx['options'] or ""
-                            if 'dhcp' in ifx:
-                                ifx['dhcp'] = Helper().bool_to_string(ifx['dhcp'])
-                            ifx['groupid'] = new_group_id
-                            del ifx['network']
-                        row = Helper().make_rows(ifx)
-                        Database().insert('groupinterface', row)
 
                 if status is False:
                     # rollback
                     self.delete_group(new_group_id)
                     return status, response
 
-                for ifx in group_interfaces:
-                    ifx['groupid'] = new_group_id
-                    del ifx['network']
-                    row = Helper().make_rows(ifx)
-                    Database().insert('groupinterface', row)
+                if group_interfaces:
+                    for ifx in group_interfaces:
+                        if ifx['interface'] in skip_interface:
+                            next
+                        ifx['groupid'] = new_group_id
+                        del ifx['network']
+                        row = Helper().make_rows(ifx)
+                        Database().insert('groupinterface', row)
 
                 # ---- we call the group plugin - maybe someone wants to run something after clone?
                 nodes_in_group = []

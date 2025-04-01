@@ -1,13 +1,32 @@
 #FILE ${rootmnt}/etc/netplan/${interface_name}_config.yaml
 
+{%- if LUNA_INTERFACES[interface]['type'] != 'slave' %}
 network:
   version: 2
   renderer: networkd
-{%- if vlanid %}
+{%- if LUNA_INTERFACES[interface]['vlanid'] %}
   vlans:
-    vlan_${interface_name}_{{ LUNA_INTERFACES[interface]['vlanid'] }}:
+    vlan_${interface_name}:
       id: {{ LUNA_INTERFACES[interface]['vlanid'] }}
+  {%- if LUNA_INTERFACES[interface]['vlan_parent'] %}
+      link: ${parent_name}
+  {%- else %}
       link: ${interface_name}
+  {%- endif %}
+{%- endif %}
+{%- if 'bond_mode' in LUNA_INTERFACES[interface] and 'bond_slaves' in LUNA_INTERFACES[interface] %}
+  ethernets:
+  {%- for bond_slave in LUNA_INTERFACES[interface]['bond_slaves'] %}
+    {{ bond_slave }}:
+      dhcp4: no
+      dhcp6: no
+  {%- endfor %}
+  bonds:
+    ${interface_name}:
+      interfaces:
+  {%- for bond_slave in LUNA_INTERFACES[interface]['bond_slaves'] %}
+        - {{ bond_slave }}
+  {%- endfor %}
 {%- else %}
   ethernets:
     ${interface_name}:
@@ -54,4 +73,5 @@ network:
         addresses: [{{ LUNA_INTERFACES[interface]['nameserver_ip_ipv6'] }}]
       {%- endif %}
     {%- endif %}
+{%- endif %}
 {%- endif %}

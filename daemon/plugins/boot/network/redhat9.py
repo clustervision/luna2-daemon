@@ -43,14 +43,11 @@ class Plugin():
     # ------------ INIT --------------
 
     init = """
-if [ "$VLANID" ]; then
-    TYPE='vlan'
-fi
 cat << EOF > /sysroot/etc/NetworkManager/system-connections/Connection_${DEVICE}.nmconnection
 [connection]
 id=Connection_${DEVICE}
 type=${TYPE}
-interface-name=${DEVICE}${VLANID}
+interface-name=${DEVICE}
 autoconnect=true
 zone=${ZONE}
 
@@ -67,11 +64,15 @@ EOF
 fi
 
 if [ "$TYPE" == "vlan" ]; then
+    PARENT=$DEVICE
+    if [ "$VLANPARENT" ]; then
+        PARENT=$VLANPARENT
+    fi
 cat << EOF >> /sysroot/etc/NetworkManager/system-connections/Connection_${DEVICE}.nmconnection
 [vlan]
-interface-name=${DEVICE}${VLANID}
-parent=${DEVICE}
+interface-name=${DEVICE}
 id=${VLANID}
+parent=${PARENT}
 
 EOF
 fi
@@ -89,7 +90,8 @@ chmod 600 /sysroot/etc/NetworkManager/system-connections/Connection_${DEVICE}.nm
     # ------------ ipv4 --------------
 
     interface = """
-    if [ "$IPADDR" == "dhcp" ]; then
+    if [ "$TYPE" != "slave" ]; then
+        if [ "$IPADDR" == "dhcp" ]; then
 cat << EOF >> /sysroot/etc/NetworkManager/system-connections/Connection_${DEVICE}.nmconnection
 [ipv4]
 method=auto
@@ -108,6 +110,7 @@ dns-search=
 #route1=
 
 EOF
+        fi
     fi
     """
 
@@ -131,7 +134,8 @@ EOF
     # ------------ ipv6 --------------
 
     interface_ipv6 = """
-    if [ "$IPADDR" == "dhcp" ]; then
+    if [ "$TYPE" != "slave" ]; then
+        if [ "$IPADDR" == "dhcp" ]; then
 cat << EOF >> /sysroot/etc/NetworkManager/system-connections/Connection_${DEVICE}.nmconnection
 [ipv6]
 dns=
@@ -156,6 +160,7 @@ method=manual
 #route1=
 
 EOF
+        fi
     fi
     """
 

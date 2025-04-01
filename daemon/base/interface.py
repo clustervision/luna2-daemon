@@ -82,7 +82,6 @@ class Interface():
                     response['config']['node'][name]['interfaces'] = my_interface
                 status=True
             else:
-                self.logger.error(f'Node {name} dont have any interface.')
                 response = f'Node {name} dont have any interface'
                 status=False
         else:
@@ -126,12 +125,19 @@ class Interface():
                 interface_name = interface['interface']
                 ipaddress, macaddress, network, clear_ip = None, None, None, False
                 options, vlanid, force, dhcp, set_dhcp = None, None, False, None, False
+                vlan_parent, bond_mode, bond_slaves = None, None, None
                 if 'macaddress' in interface.keys():
                     macaddress = interface['macaddress']
                 if 'options' in interface.keys():
                     options = interface['options']
                 if 'vlanid' in interface.keys():
                     vlanid = interface['vlanid']
+                if 'vlan_parent' in interface.keys():
+                    vlan_parent = interface['vlan_parent']
+                if 'bond_mode' in interface.keys():
+                    bond_mode = interface['bond_mode']
+                if 'bond_slaves' in interface.keys():
+                    bond_slaves = interface['bond_slaves']
                 if 'network' in interface.keys():
                     network = interface['network']
                 if 'ipaddress' in interface.keys():
@@ -143,11 +149,15 @@ class Interface():
                     set_dhcp = True
                 if ipaddress == '': # clearing the config!
                     clear_ip = True
+                   
                 result, message = Config().node_interface_config(
                     nodeid,
                     interface_name,
                     macaddress,
                     vlanid,
+                    vlan_parent,
+                    bond_mode,
+                    bond_slaves,
                     options
                 )
                 if result:
@@ -244,6 +254,11 @@ class Interface():
                                         message+="the network has dhcp_nodes_in_pool configured"
                                         message+=". "
                                         message+="automatic ip address assignment not available"
+                        elif nodes_in_pool and (not existing):
+                            # the interface itself exists, but there is not ipaddress config. A new interface.
+                            # can we safely create the interface? We inherit?                            
+                            set_dhcp = True
+                            dhcp = True
                         # ---------------------------------------------------------------------------------
 
                         if result and clear_ip:
@@ -279,7 +294,7 @@ class Interface():
                                     network,
                                     force
                                 )
-                    elif (macaddress is None) and (options is None):
+                    elif (macaddress is None) and (options is None) and (vlan_parent is None) and (vlanid is None) and (bond_mode is None) and (bond_slaves is None):
                         # this means we just made an empty interface. a no no - Antoine
                         # beware that we _have_ to test for None as 
                         #    clearing parameters by "" is caught by 'not maccaddress'
@@ -333,6 +348,10 @@ class Interface():
                         'groupinterface.interface',
                         'network.name as network',
                         'network.id as networkid',
+                        'groupinterface.vlanid',
+                        'groupinterface.vlan_parent',
+                        'groupinterface.bond_mode',
+                        'groupinterface.bond_slaves',
                         'groupinterface.options',
                         'groupinterface.dhcp'
                     ],
@@ -347,6 +366,9 @@ class Interface():
                     'network.name as network',
                     'network.id as networkid',
                     'groupinterface.vlanid',
+                    'groupinterface.vlan_parent',
+                    'groupinterface.bond_mode',
+                    'groupinterface.bond_slaves',
                     'groupinterface.options',
                     'groupinterface.dhcp'
                 ],
@@ -375,6 +397,9 @@ class Interface():
                             group_interface['interface'],
                             None,
                             group_interface['vlanid'],
+                            group_interface['vlan_parent'],
+                            group_interface['bond_mode'],
+                            group_interface['bond_slaves'],
                             group_interface['options']
                         )
                         if result:

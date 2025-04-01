@@ -299,7 +299,7 @@ class Boot():
             environment = jinja2.Environment()
             template = environment.from_string('No Controller is available.')
             status=False
-        self.logger.info(f'Boot API serving the {template}')
+        self.logger.info(f'Boot API serving {template}')
         response = {
             'template': template,
             'LUNA_LOGHOST': self.controller_beaconip,
@@ -351,7 +351,7 @@ class Boot():
             environment = jinja2.Environment()
             template = environment.from_string('No Controller is available.')
             status=False
-        self.logger.info(f'Boot API serving the {template}')
+        self.logger.info(f'Boot API serving {template}')
         response = {
             'template': template,
             'LUNA_LOGHOST': self.controller_beaconip,
@@ -399,7 +399,7 @@ class Boot():
             environment = jinja2.Environment()
             template = environment.from_string('No Controller is available.')
             status=False
-        self.logger.info(f'Boot API serving the {template}')
+        self.logger.info(f'Boot API serving {template}')
         response = {'template': template, 'LUNA_CONTROLLER': self.controller_ip,
                     'LUNA_CONTROLLERS': controller_ips,
                     'LUNA_API_PORT': self.controller_serverport,
@@ -771,7 +771,7 @@ class Boot():
             status=False
             return status, "No config available"
             #self.logger.info(f'template mac search data: {data}')
-        self.logger.info(f'Boot API serving the {template}')
+        self.logger.info(f'Boot API serving {template}')
         return status, data
 
 
@@ -1092,7 +1092,7 @@ class Boot():
             environment = jinja2.Environment()
             template = environment.from_string('No Node is available for this mac address.')
             status=False
-        self.logger.info(f'Boot API serving the {template}')
+        self.logger.info(f'Boot API serving {template}')
         return status, data
 
 
@@ -1300,7 +1300,7 @@ class Boot():
             template = environment.from_string('No Node is available for this mac address.')
             status=False
             return status, "No config available"
-        self.logger.info(f'Boot API serving the {template}')
+        self.logger.info(f'Boot API serving {template}')
         return status, data
 
 
@@ -1448,6 +1448,9 @@ class Boot():
                     'nodeinterface.interface',
                     'nodeinterface.macaddress',
                     'nodeinterface.vlanid',
+                    'nodeinterface.vlan_parent',
+                    'nodeinterface.bond_mode',
+                    'nodeinterface.bond_slaves',
                     'nodeinterface.options',
                     'ipaddress.ipaddress', 'ipaddress.ipaddress_ipv6', 'ipaddress.dhcp',
                     'network.name as network', 'network.dhcp as networkdhcp',
@@ -1466,6 +1469,7 @@ class Boot():
             domain_search = []
             default_metric = '101'
             if nodeinterface:
+                bond_count=0
                 for interface in nodeinterface:
                     node_nwk, node_nwk6, netmask, netmask6 = None, None, None, None
                     if interface['ipaddress']:
@@ -1493,27 +1497,78 @@ class Boot():
                             interface['gateway_metric'] = default_metric
                         if interface['zone'] == 'external' or interface['zone'] == 'public':
                             zone = 'public'
-                        data['interfaces'][interface['interface']] = {
-                            'interface': interface['interface'],
-                            'ipaddress': interface['ipaddress'],
-                            'ipaddress_ipv6': interface['ipaddress_ipv6'],
-                            'prefix': interface['subnet'],
-                            'prefix_ipv6': interface['subnet_ipv6'],
-                            'network': node_nwk,
-                            'network_ipv6': node_nwk6,
-                            'vlanid': interface['vlanid'] or "",
-                            'netmask': netmask,
-                            'netmask_ipv6': netmask6,
-                            'networkname': interface['network'],
-                            'gateway': interface['gateway'] or "",
-                            'gateway_ipv6': interface['gateway_ipv6'] or "",
-                            'gateway_metric': str(interface['gateway_metric']) or default_metric,
-                            'nameserver_ip': interface['nameserver_ip'] or "",
-                            'nameserver_ip_ipv6': interface['nameserver_ip_ipv6'] or "",
-                            'options': interface['options'] or "",
-                            'zone': zone,
-                            'type': interface['type'] or "ethernet"
-                        }
+
+                        interface_data = {
+                                'interface': interface['interface'],
+                                'macaddress': interface['macaddress'],
+                                'ipaddress': interface['ipaddress'],
+                                'ipaddress_ipv6': interface['ipaddress_ipv6'],
+                                'prefix': interface['subnet'],
+                                'prefix_ipv6': interface['subnet_ipv6'],
+                                'network': node_nwk,
+                                'network_ipv6': node_nwk6,
+                                'vlanid': interface['vlanid'] or "",
+                                'netmask': netmask,
+                                'netmask_ipv6': netmask6,
+                                'networkname': interface['network'],
+                                'gateway': interface['gateway'] or "",
+                                'gateway_ipv6': interface['gateway_ipv6'] or "",
+                                'gateway_metric': str(interface['gateway_metric']) or default_metric,
+                                'nameserver_ip': interface['nameserver_ip'] or "",
+                                'nameserver_ip_ipv6': interface['nameserver_ip_ipv6'] or "",
+                                'options': interface['options'] or "",
+                                'zone': zone,
+                                'type': interface['type'] or "ethernet"
+                            }
+                        if interface['dhcp'] and interface['networkdhcp']:
+                            interface_data['dhcp']=True
+                        if not interface_data['ipaddress']:
+                            del interface_data['gateway']
+                            del interface_data['nameserver_ip']
+                        if not interface_data['ipaddress_ipv6']:
+                            del interface_data['gateway_ipv6']
+                            del interface_data['nameserver_ip_ipv6']
+
+                        interface_parent = interface['interface']
+                        if interface['vlanid']:
+                            interface_data['type'] = 'vlan'
+                            if interface['vlan_parent'] and interface['vlan_parent'] != interface['interface']:
+                                interface_data['vlan_parent'] = interface['vlan_parent']
+
+                        provision_interface = data['provision_interface']
+                        if interface['bond_mode'] and interface['bond_slaves']:
+                            master = 'bond'+str(bond_count)
+                            if interface['interface'] == data['provision_interface']:
+                                self.logger.info(f"for interface {interface_parent} trying to use {master}")
+                                bond_name_ok = False
+                                while not bond_name_ok:
+                                    for check_interface in nodeinterface:
+                                        if 'interface' in check_interface and master == check_interface['interface']:
+                                            bond_count+=1
+                                            prev_master = master
+                                            master = 'bond'+str(bond_count)
+                                            self.logger.info(f"for interface {interface_parent} {prev_master} already exists, trying to use {master}")
+                                            break
+                                    bond_name_ok = True
+                                interface_parent = master
+                                provision_interface = interface_parent
+                                bond_count+=1
+                            else:
+                                master = interface['interface']
+                            slaves = interface['bond_slaves'].split(',');
+                            for slave in slaves:
+                                data['interfaces'][slave] = {
+                                    'master': master,
+                                    'type': "slave"
+                                }
+                            interface_data['bond_mode']  = interface['bond_mode']
+                            interface_data['bond_slaves']= interface['bond_slaves'].split(',')
+                            interface_data['type'] = 'bond'
+                 
+                        if interface_parent not in data['interfaces']:
+                            data['interfaces'][interface_parent] = {}
+                        data['interfaces'][interface_parent] = interface_data
+
                         domain_search.append(interface['network'])
                         if interface['interface'] == data['provision_interface']:
                             if interface['network']:
@@ -1521,23 +1576,19 @@ class Boot():
                                 data['nodehostname'] = data['nodename'] + '.' + interface['network']
                                 domain_search.insert(0, interface['network'])
                             # setting good defaults for BOOTIF if they do not exist. a must.
-                            if not data['interfaces'][data['provision_interface']]['gateway']:
-                                data['interfaces'][data['provision_interface']]['gateway'] = self.controller_ipv4 or '0.0.0.0'
-                            if not data['interfaces'][data['provision_interface']]['gateway_ipv6']:
-                                data['interfaces'][data['provision_interface']]['gateway_ipv6'] = self.controller_ipv6 or '::/0'
-                            if not data['interfaces'][data['provision_interface']]['nameserver_ip']:
-                                data['interfaces'][data['provision_interface']]['nameserver_ip'] = nameserver_ips_ipv4 or '0.0.0.0'
-                            if not data['interfaces'][data['provision_interface']]['nameserver_ip_ipv6']:
-                                data['interfaces'][data['provision_interface']]['nameserver_ip_ipv6'] = nameserver_ips_ipv6 or '::/0'
-                        if interface['dhcp'] and interface['networkdhcp']:
-                            data['interfaces'][interface['interface']]['dhcp']=True
-                            # here we do not have to set the kerneloption luna.bootproto=dhcp as we already do dhcp for the interface
-                        if not data['interfaces'][interface['interface']]['ipaddress']:
-                            del data['interfaces'][interface['interface']]['gateway']
-                            del data['interfaces'][interface['interface']]['nameserver_ip']
-                        if not data['interfaces'][interface['interface']]['ipaddress_ipv6']:
-                            del data['interfaces'][interface['interface']]['gateway_ipv6']
-                            del data['interfaces'][interface['interface']]['nameserver_ip_ipv6']
+                            if provision_interface in data['interfaces']:
+                                for item in ['gateway','gateway_ipv6','nameserver_ip','nameserver_ip_ipv6']:
+                                    if not item in data['interfaces'][provision_interface]:
+                                        continue
+                                    elif not data['interfaces'][provision_interface][item]:
+                                        if item == 'gateway':
+                                            data['interfaces'][provision_interface]['gateway'] = self.controller_ipv4 or '0.0.0.0'
+                                        elif item == 'gateway_ipv6':
+                                            data['interfaces'][provision_interface]['gateway_ipv6'] = self.controller_ipv6 or '::/0'
+                                        elif item == 'nameserver_ip':
+                                            data['interfaces'][provision_interface]['nameserver_ip'] = nameserver_ips_ipv4 or '0.0.0.0'
+                                        elif item == 'nameserver_ip_ipv6':
+                                            data['interfaces'][provision_interface]['nameserver_ip_ipv6'] = nameserver_ips_ipv6 or '::/0'
 
             if data['domain_search']:
                 data['domain_search'] = data['domain_search'].replace(',',';')

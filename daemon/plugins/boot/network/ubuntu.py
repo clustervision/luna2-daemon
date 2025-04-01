@@ -56,6 +56,7 @@ EOF
 fi
 
 if [ ! "$(grep $DEVICE $rootmnt/etc/netplan/98_config.yaml)" ]; then
+    if [ "$TYPE" != "slave" ]; then
 cat << EOF >> $rootmnt/etc/netplan/98_config.yaml
     ${DEVICE}: {}
       # dhcp4_${DEVICE}
@@ -71,21 +72,26 @@ cat << EOF >> $rootmnt/etc/netplan/98_config.yaml
         # ns_ipv4_${DEVICE}
         # ns_ipv6_${DEVICE}
 EOF
+    fi
 fi
 
-if [ "$VLANID" ]; then
-    if [ ! -f $rootmnt/etc/netplan/99_config.yaml ]; then
-        cat << EOF > $rootmnt/etc/netplan/99_config.yaml
+if [ type == "vlan" ]; then
+    PARENT=$DEVICE
+    if [ "$VLANPARENT" ]; then
+        PARENT=$VLANPARENT
+    fi
+    if [ ! -f $rootmnt/etc/netplan/99_config_${DEVICE}_${VLANID}.yaml ]; then
+        cat << EOF > $rootmnt/etc/netplan/99_config_${DEVICE}_${VLANID}.yaml
 network:
   version: 2
   renderer: networkd
   vlans:
 EOF
     fi
-    cat << EOF >> $rootmnt/etc/netplan/99_config.yaml
+    cat << EOF >> $rootmnt/etc/netplan/99_config_${DEVICE}_${VLANID}.yaml
     vlan_${DEVICE}_${VLANID}:
       id: $VLANID
-      link: $DEVICE
+      link: $PARENT
       # dhcp4_${DEVICE}_${VLANID}
       # dhcp6_${DEVICE}_${VLANID}
       # link-local_${DEVICE}_${VLANID}

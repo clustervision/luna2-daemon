@@ -443,14 +443,14 @@ class Group():
                         if result:
                             queue_id = None
                             if check_interface:
-                                response = 'Interface created'
+                                response = 'Interface updated'
                                 queue_id, _ = Queue().add_task_to_queue(
                                     task='update_interface_for_group_nodes',
                                     param=f'{name}:{interface_name}',
                                     subsystem='group_interface'
                                 )
                             else:
-                                response = 'Interface updated'
+                                response = 'Interface created'
                                 queue_id, _ = Queue().add_task_to_queue(
                                     task='add_interface_to_group_nodes',
                                     param=f'{name}:{interface_name}',

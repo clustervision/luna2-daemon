@@ -486,6 +486,7 @@ class Config(object):
         dns_zone_records={}
         dns_authoritative={}
         dns_rev_domain={}
+        dns_dynamic_updates={}
  
         cluster = Database().get_record(None, 'cluster', None)
         controller = Database().get_record_join(
@@ -513,6 +514,7 @@ class Config(object):
             rev_ip, rev_ipv6 = None, None
             if (nwk['network'] or nwk['network_ipv6']) and nwk['name']:
                 networkname = nwk['name']
+                dns_dynamic_updates[networkname] = nwk['dhcp_nodes_in_pool'] or False
                 self.logger.info(f"Building DNS block for {networkname}")
                 try:
                     if nwk['network']:
@@ -535,9 +537,11 @@ class Config(object):
                 if rev_ip and rev_ip not in dns_zones:
                     dns_zones.append(rev_ip)
                     dns_rev_domain[rev_ip]=networkname
+                    dns_dynamic_updates[rev_ip] = nwk['dhcp_nodes_in_pool'] or False
                 if rev_ipv6 and rev_ipv6 not in dns_zones:
                     dns_zones.append(rev_ipv6)
                     dns_rev_domain[rev_ipv6]=networkname
+                    dns_dynamic_updates[rev_ipv6] = nwk['dhcp_nodes_in_pool'] or False
                 dns_zone_records[networkname]={}
                 # we always add a zone record for controller even when we're actually in it. we can override.
                 dns_zone_records[networkname][controller_name]={}
@@ -689,7 +693,8 @@ class Config(object):
                                                    MANAGED_KEYS=managed_keys,OMAPIKEY=omapikey)
         dns_zones_conf_template = env.get_template(template_dns_zones_conf)
         dns_zones_conf_config = dns_zones_conf_template.render(ZONES=dns_zones,OMAPIKEY=omapikey,
-                                                               ALLOW_UPDATES=controller_ips)
+                                                               ALLOW_UPDATES=controller_ips,
+                                                               DYNAMIC_UPDATES=dns_dynamic_updates)
 
         dns_file = {'source': f'{tmpdir}/named.conf', 'destination': '/etc/named.conf'}
         files.append(dns_file)

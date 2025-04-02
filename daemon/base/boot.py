@@ -1561,7 +1561,8 @@ class Boot():
                             for slave in slaves:
                                 data['interfaces'][slave] = {
                                     'master': master,
-                                    'type': "slave"
+                                    'type': "slave",
+                                    'networktype': interface['networktype'] or "ethernet"
                                 }
                             interface_data['bond_mode']  = interface['bond_mode']
                             interface_data['bond_slaves']= interface['bond_slaves'].split(',')

@@ -1461,7 +1461,8 @@ class Boot():
                     'network.nameserver_ip', 'network.nameserver_ip_ipv6',
                     'network.id as networkid',
                     'network.zone as zone',
-                    'network.type as type'
+                    'network.type as type',
+                    'network.type as networktype'
                 ],
                 ['network.id=ipaddress.networkid', 'ipaddress.tablerefid=nodeinterface.id', 'nodeinterface.nodeid=node.id'],
                 ['tableref="nodeinterface"', f"node.name='{data['nodename']}'"]
@@ -1518,7 +1519,8 @@ class Boot():
                                 'nameserver_ip_ipv6': interface['nameserver_ip_ipv6'] or "",
                                 'options': interface['options'] or "",
                                 'zone': zone,
-                                'type': interface['type'] or "ethernet"
+                                'type': interface['type'] or "ethernet",
+                                'networktype': interface['networktype'] or "ethernet"
                             }
                         if interface['dhcp'] and interface['networkdhcp']:
                             interface_data['dhcp']=True

@@ -53,28 +53,33 @@ zone=${ZONE}
 
 EOF
 
-if [ "$TYPE" == "infiniband" ]; then
-cat << EOF >> /sysroot/etc/NetworkManager/system-connections/Connection_${DEVICE}.nmconnection
-[infiniband]
-#mtu=65520
-#transport-mode=connected
-transport-mode=datagram
-
-EOF
-fi
-
 if [ "$TYPE" == "vlan" ]; then
     PARENT=$DEVICE
     if [ "$VLANPARENT" ]; then
         PARENT=$VLANPARENT
     fi
-cat << EOF >> /sysroot/etc/NetworkManager/system-connections/Connection_${DEVICE}.nmconnection
+    cat << EOF >> /sysroot/etc/NetworkManager/system-connections/Connection_${DEVICE}.nmconnection
 [vlan]
 interface-name=${DEVICE}
 id=${VLANID}
 parent=${PARENT}
 
 EOF
+else
+    if [ "$NETWORKTYPE" == "infiniband" ]; then
+        cat << EOF >> /sysroot/etc/NetworkManager/system-connections/Connection_${DEVICE}.nmconnection
+[infiniband]
+#mtu=65520
+#transport-mode=connected
+transport-mode=datagram
+
+EOF
+    else
+        cat << EOF >> /sysroot/etc/NetworkManager/system-connections/Connection_${DEVICE}.nmconnection
+[ethernet]
+
+EOF
+    fi
 fi
 
 cat << EOF >> /sysroot/etc/NetworkManager/system-connections/Connection_${DEVICE}.nmconnection

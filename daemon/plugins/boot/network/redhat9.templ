@@ -13,16 +13,18 @@ zone={{ LUNA_INTERFACES[interface]['zone'] }}
 interface-name=${interface_name}
 autoconnect=true
 
-{% if LUNA_INTERFACES[interface]['type'] == 'infiniband' %}
+{% if LUNA_INTERFACES[interface]['networktype'] == 'infiniband' %}
 [infiniband]
 #mtu=65520
 #transport-mode=connected
 transport-mode=datagram
-{%- elif LUNA_INTERFACES[interface]['type'] == 'bond' %}
-[bond]
-mode={{ LUNA_INTERFACES[interface]['bond_mode'] }}
 {%- else %}
 [ethernet]
+{%- endif %}
+
+{%- if LUNA_INTERFACES[interface]['type'] == 'bond' %}
+[bond]
+mode={{ LUNA_INTERFACES[interface]['bond_mode'] }}
 {%- endif %}
 
 {% if LUNA_INTERFACES[interface]['type'] == 'slave' %}

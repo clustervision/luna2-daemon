@@ -3,7 +3,7 @@
 [connection]
 id=Connection_${interface_name}
 {%- if LUNA_INTERFACES[interface]['type'] == 'slave' %}
-type=ethernet
+type={{ LUNA_INTERFACES[interface]['networktype'] }}
 master={{ LUNA_INTERFACES[interface]['master'] }}
 slave-type=bond
 {%- else %}

@@ -33,6 +33,11 @@ __status__      = 'Development'
 
 class Plugin():
     """
+    --- DEPRECATED ---
+    Luna supports bonding natively, please refer to 'luna group' or 'luna node'
+    to see the options for adding/changing interfaces and configuring bonding.
+    ------------------
+
     Class for a role.
     
     This plugin needs a mandatory variable set for template functionality
@@ -47,6 +52,12 @@ class Plugin():
 
     script = """
 #!/bin/bash
+
+echo "=======================" | logger
+echo "BONDING ROLE DEPRECATED" | logger
+echo "=======================" | logger
+exit 0
+
 echo "Login node bond role" | logger
 IPADDR=$(ip a show dev enp1s0f0np0|grep -oE "inet [0-9\.\/]+"|grep -oE "[0-9\.\/]+")
 if [ "$IPADDR" ]; then

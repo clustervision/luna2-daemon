@@ -253,7 +253,10 @@ class Boot():
         template_path = f'{CONSTANT["TEMPLATES"]["TEMPLATE_FILES"]}/{template}'
         check_template = Helper().check_jinja(template_path)
         if not check_template:
-            return False, 'Empty'
+            environment = jinja2.Environment()
+            template = environment.from_string("#!ipxe\necho {{MESSAGE}}\nsleep 10")
+            faildata = { template_data: template, message: "default boot template does not exist" }
+            return False, faildata
         controller_ips=[]
         for controller in self.all_controllers.keys():
             if self.all_controllers[controller]['ipaddress_ipv6']:
@@ -327,8 +330,10 @@ class Boot():
         template_path = f'{CONSTANT["TEMPLATES"]["TEMPLATE_FILES"]}/{template}'
         check_template = Helper().check_jinja(template_path)
         if not check_template:
-            return False, 'Empty'
-            status=True
+            environment = jinja2.Environment()
+            template = environment.from_string("#!ipxe\necho {{MESSAGE}}\nsleep 10")
+            faildata = { template_data: template, message: "short boot template does not exist" }
+            return False, faildata
         controller_ips=[]
         for controller in self.all_controllers.keys():
             if self.all_controllers[controller]['ipaddress_ipv6']:
@@ -376,7 +381,10 @@ class Boot():
         template_path = f'{CONSTANT["TEMPLATES"]["TEMPLATE_FILES"]}/{template}'
         check_template = Helper().check_jinja(template_path)
         if not check_template:
-            return False, 'Empty'
+            environment = jinja2.Environment()
+            template = environment.from_string("#!ipxe\necho {{MESSAGE}}\nsleep 10")
+            faildata = { template_data: template, message: "disk boot template does not exist" }
+            return False, faildata
         controller_ips=[]
         for controller in self.all_controllers.keys():
             if self.all_controllers[controller]['ipaddress_ipv6']:
@@ -437,7 +445,10 @@ class Boot():
         template_path = f'{CONSTANT["TEMPLATES"]["TEMPLATE_FILES"]}/{template}'
         check_template = Helper().check_jinja(template_path)
         if not check_template:
-            return False, 'Empty'
+            environment = jinja2.Environment()
+            template = environment.from_string("#!ipxe\necho {{MESSAGE}}\nsleep 10")
+            faildata = { template_data: template, message: "node boot template does not exist" }
+            return False, faildata
         if mac:
             mac = mac.lower()
         if self.controller_name:
@@ -735,7 +746,10 @@ class Boot():
                     template_path = f'{CONSTANT["TEMPLATES"]["TEMPLATE_FILES"]}/{template}'
                     check_template = Helper().check_jinja(template_path)
                     if not check_template:
-                        return False, 'Empty'
+                        environment = jinja2.Environment()
+                        template = environment.from_string("#!ipxe\necho {{MESSAGE}}\nsleep 10")
+                        faildata = { template_data: template, message: "template for kickstart not defined or not existing" }
+                        return False, faildata
 
                 # ------------------------------------------------------------------
 
@@ -750,7 +764,10 @@ class Boot():
             template_path = f'{CONSTANT["TEMPLATES"]["TEMPLATE_FILES"]}/{template}'
             check_template = Helper().check_jinja(template_path)
             if not check_template:
-                return False, 'Empty'
+                environment = jinja2.Environment()
+                template = environment.from_string("#!ipxe\necho {{MESSAGE}}\nsleep 10")
+                faildata = { template_data: template, message: "disk boot template does not exist" }
+                return False, faildata
             data['template'] = template
 
         if None not in data.values():
@@ -760,16 +777,30 @@ class Boot():
             state = {'monitor': {'status': {data['nodename']: {'state': "install.discovered"} } } }
             Monitor().update_nodestatus(data['nodename'], state)
         else:
+            more_info = "No config available"
             for key, value in data.items():
                 if value is None:
+                    more_info = f"{key} has no value. Node {data['nodename']} cannot boot"
                     self.logger.error(f"{key} has no value. Node {data['nodename']} cannot boot")
                     more_info=Helper().get_more_info(key)
                     if more_info:
                         self.logger.error(more_info)
-            environment = jinja2.Environment()
-            template = environment.from_string('No Node is available for this mac address.')
+                        break
+            template = 'templ_boot_failed.cfg'
+            template_path = f'{CONSTANT["TEMPLATES"]["TEMPLATE_FILES"]}/{template}'
+            check_template = Helper().check_jinja(template_path)
+            if not check_template:
+                environment = jinja2.Environment()
+                template = environment.from_string("#!ipxe\necho {{MESSAGE}}\nsleep 10")
             status=False
-            return status, "No config available"
+            faildata = {
+                'template'           : template,
+                'message'            : more_info,
+                'ipaddress'          : self.controller_ip,
+                'webserver_protocol' : data['webserver_protocol'],
+                'webserver_port'     : data['webserver_port']
+            }
+            return status, faildata
             #self.logger.info(f'template mac search data: {data}')
         self.logger.info(f'Boot API serving {template}')
         return status, data
@@ -806,7 +837,10 @@ class Boot():
         template_path = f'{CONSTANT["TEMPLATES"]["TEMPLATE_FILES"]}/{template}'
         check_template = Helper().check_jinja(template_path)
         if not check_template:
-            return False, 'Empty'
+            environment = jinja2.Environment()
+            template = environment.from_string("#!ipxe\necho {{MESSAGE}}\nsleep 10")
+            faildata = { template_data: template, message: "node boot template does not exist" }
+            return False, faildata
         if mac:
             mac = mac.lower()
         network, createnode_ondemand, createnode_macashost, nextnode_discover = None, None, None, None # used below
@@ -1059,7 +1093,10 @@ class Boot():
                     template_path = f'{CONSTANT["TEMPLATES"]["TEMPLATE_FILES"]}/{template}'
                     check_template = Helper().check_jinja(template_path)
                     if not check_template:
-                        return False, 'Empty'
+                        environment = jinja2.Environment()
+                        template = environment.from_string("#!ipxe\necho {{MESSAGE}}\nsleep 10")
+                        faildata = { template_data: template, message: "template for kickstart not defined or not existing" }
+                        return False, faildata
 
                 # ------------------------------------------------------------------
 
@@ -1074,7 +1111,10 @@ class Boot():
             template_path = f'{CONSTANT["TEMPLATES"]["TEMPLATE_FILES"]}/{template}'
             check_template = Helper().check_jinja(template_path)
             if not check_template:
-                return False, 'Empty'
+                environment = jinja2.Environment()
+                template = environment.from_string("#!ipxe\necho {{MESSAGE}}\nsleep 10")
+                faildata = { template_data: template, message: "disk boot template does not exist" }
+                return False, faildata
             data['template'] = template
 
         if None not in data.values():
@@ -1083,15 +1123,30 @@ class Boot():
             state = {'monitor': {'status': {data['nodename']: {'state': "install.discovered"} } } }
             Monitor().update_nodestatus(data['nodename'], state)
         else:
+            more_info = "No Node is available for this mac address"
             for key, value in data.items():
                 if value is None:
+                    more_info = f"{key} has no value. Node {data['nodename']} cannot boot"
                     self.logger.error(f"{key} has no value. Node {data['nodename']} cannot boot")
                     more_info=Helper().get_more_info(key)
                     if more_info:
                         self.logger.error(more_info)
-            environment = jinja2.Environment()
-            template = environment.from_string('No Node is available for this mac address.')
-            status=False
+                        break
+            template = 'templ_boot_failed.cfg'
+            template_path = f'{CONSTANT["TEMPLATES"]["TEMPLATE_FILES"]}/{template}'
+            check_template = Helper().check_jinja(template_path)
+            if not check_template:
+                environment = jinja2.Environment()
+                template = environment.from_string("#!ipxe\necho {{MESSAGE}}\nsleep 10")
+            faildata = {
+                'template'           : template,
+                'message'            : more_info,
+                'ipaddress'          : self.controller_ip,
+                'webserver_protocol' : data['webserver_protocol'],
+                'webserver_port'     : data['webserver_port']
+            }
+            status = False
+            return status, faildata
         self.logger.info(f'Boot API serving {template}')
         return status, data
 
@@ -1126,7 +1181,10 @@ class Boot():
         template_path = f'{CONSTANT["TEMPLATES"]["TEMPLATE_FILES"]}/{template}'
         check_template = Helper().check_jinja(template_path)
         if not check_template:
-            return False, 'Empty'
+            environment = jinja2.Environment()
+            template = environment.from_string("#!ipxe\necho {{MESSAGE}}\nsleep 10")
+            faildata = { template_data: template, message: "node boot template does not exist" }
+            return False, faildata
         # Antoine
         if self.controller_name:
             data['ipaddress'] = self.controller_ip
@@ -1266,7 +1324,10 @@ class Boot():
                     template_path = f'{CONSTANT["TEMPLATES"]["TEMPLATE_FILES"]}/{template}'
                     check_template = Helper().check_jinja(template_path)
                     if not check_template:
-                        return False, 'Empty'
+                        environment = jinja2.Environment()
+                        template = environment.from_string("#!ipxe\necho {{MESSAGE}}\nsleep 10")
+                        faildata = { template_data: template, message: "template for kickstart not defined or not existing" }
+                        return False, faildata
 
                 # ------------------------------------------------------------------
 
@@ -1281,7 +1342,10 @@ class Boot():
             template_path = f'{CONSTANT["TEMPLATES"]["TEMPLATE_FILES"]}/{template}'
             check_template = Helper().check_jinja(template_path)
             if not check_template:
-                return False, 'Empty'
+                environment = jinja2.Environment()
+                template = environment.from_string("#!ipxe\necho {{MESSAGE}}\nsleep 10")
+                faildata = { template_data: template, message: "disk boot template does not exist" }
+                return False, faildata
             data['template'] = template
 
         if None not in data.values():
@@ -1290,16 +1354,30 @@ class Boot():
             state = {'monitor': {'status': {data['nodename']: {'state': "install.discovered"} } } }
             Monitor().update_nodestatus(data['nodename'], state)
         else:
+            more_info = "No config available"
             for key, value in data.items():
                 if value is None:
+                    more_info = f"{key} has no value. Node {data['nodename']} cannot boot"
                     self.logger.error(f"{key} has no value. Node {data['nodename']} cannot boot")
                     more_info=Helper().get_more_info(key)
                     if more_info:
                         self.logger.error(more_info)
-            environment = jinja2.Environment()
-            template = environment.from_string('No Node is available for this mac address.')
-            status=False
-            return status, "No config available"
+                        break
+            template = 'templ_boot_failed.cfg'
+            template_path = f'{CONSTANT["TEMPLATES"]["TEMPLATE_FILES"]}/{template}'
+            check_template = Helper().check_jinja(template_path)
+            if not check_template:
+                environment = jinja2.Environment()
+                template = environment.from_string("#!ipxe\necho {{MESSAGE}}\nsleep 10")
+            status = False
+            faildata = {
+                'template'           : template,
+                'message'            : more_info,
+                'ipaddress'          : self.controller_ip,
+                'webserver_protocol' : data['webserver_protocol'],
+                'webserver_port'     : data['webserver_port']
+            }
+            return status, faildata
         self.logger.info(f'Boot API serving {template}')
         return status, data
 
@@ -1337,7 +1415,10 @@ class Boot():
         template_path = f'{CONSTANT["TEMPLATES"]["TEMPLATE_FILES"]}/{template}'
         check_template = Helper().check_jinja(template_path)
         if not check_template:
-            return False, 'Empty'
+            environment = jinja2.Environment()
+            template = environment.from_string("#!ipxe\necho {{MESSAGE}}\nsleep 10")
+            faildata = { template_data: template, message: "install template does not exist" }
+            return False, faildata
         with open(template_path, 'r', encoding='utf-8') as file:
             template_data = file.read()
 
@@ -1385,7 +1466,7 @@ class Boot():
                         node_details=enclosed_node_details['config']['node'][node]
             if not node_details:
                 status = False
-                return status, "i received data back internally that i could not parse"
+                return False, "i received data back internally that i could not parse"
             self.logger.debug(f"DEBUG: {node_details}")
             for item in ['provision_method','provision_fallback','prescript','partscript','postscript',
                          'netboot','bootmenu','provision_interface','unmanaged_bmc_users','kerneloptions',

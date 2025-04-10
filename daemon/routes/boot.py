@@ -38,7 +38,7 @@ from base.boot import Boot
 
 LOGGER = Log.get_logger()
 boot_blueprint = Blueprint('boot', __name__, template_folder='../templates')
-
+human_friendly_errors = True
 
 @boot_blueprint.route('/boot', methods=['GET'])
 def boot():
@@ -53,8 +53,13 @@ def boot():
     if status is True:
         access_code = 200
     else:
-        access_code = 404
-        return response, access_code
+        if human_friendly_errors:
+            access_code = 200
+            return render_template_string(data['template_data'],
+                                          MESSAGE = data['message']), access_code
+        else:
+            access_code = 404
+            return response, access_code
     return render_template(
         response['template'],
         LUNA_CONTROLLER     = response['LUNA_CONTROLLER'],
@@ -84,8 +89,13 @@ def boot_short():
     if status is True:
         access_code = 200
     else:
-        access_code = 404
-        return response, access_code
+        if human_friendly_errors:
+            access_code = 200
+            return render_template_string(data['template_data'],
+                                          MESSAGE = data['message']), access_code
+        else:
+            access_code = 404
+            return response, access_code
     return render_template(
         response['template'],
         LUNA_CONTROLLER     = response['LUNA_CONTROLLER'],
@@ -112,8 +122,13 @@ def boot_disk():
     if status is True:
         access_code = 200
     else:
-        access_code = 404
-        return response, access_code
+        if human_friendly_errors:
+            access_code = 200
+            return render_template_string(data['template_data'],
+                                          MESSAGE = data['message']), access_code
+        else:
+            access_code = 404
+            return response, access_code
     return render_template(
         response['template'],
         LUNA_CONTROLLER     = response['LUNA_CONTROLLER'],
@@ -137,8 +152,23 @@ def boot_search_mac(macaddress=None):
     if status is True:
         access_code = 200
     else:
+        if human_friendly_errors:
+            access_code = 200
+            if isinstance(data, dict): 
+                if 'template' in data:
+                    return render_template(
+                        data['template'],
+                        LUNA_CONTROLLER        = data['ipaddress'],
+                        WEBSERVER_PORT         = data['webserver_port'],
+                        WEBSERVER_PROTOCOL     = data['webserver_protocol'],
+                        MESSAGE = data['message']), access_code
+                elif 'template_data' in data:
+                    return render_template_string(
+                        data['template_data'],
+                        MESSAGE = data['message']), access_code
         access_code = 404
         return data, access_code
+
     return render_template(
             data['template'],
             LUNA_CONTROLLER        = data['ipaddress'],
@@ -175,8 +205,23 @@ def boot_manual_group(groupname=None, macaddress=None):
     if status is True:
         access_code = 200
     else:
+        if human_friendly_errors:
+            access_code = 200
+            if isinstance(data, dict): 
+                if 'template' in data:
+                    return render_template(
+                        data['template'],
+                        LUNA_CONTROLLER        = data['ipaddress'],
+                        WEBSERVER_PORT         = data['webserver_port'],
+                        WEBSERVER_PROTOCOL     = data['webserver_protocol'],
+                        MESSAGE = data['message']), access_code
+                elif 'template_data' in data:
+                    return render_template_string(
+                        data['template_data'],
+                        MESSAGE = data['message']), access_code
         access_code = 404
         return data, access_code
+
     return render_template(
         data['template'],
         LUNA_CONTROLLER        = data['ipaddress'],
@@ -213,8 +258,23 @@ def boot_manual_hostname(hostname=None, macaddress=None):
     if status is True:
         access_code = 200
     else:
+        if human_friendly_errors:
+            access_code = 200
+            if isinstance(data, dict): 
+                if 'template' in data:
+                    return render_template(
+                        data['template'],
+                        LUNA_CONTROLLER        = data['ipaddress'],
+                        WEBSERVER_PORT         = data['webserver_port'],
+                        WEBSERVER_PROTOCOL     = data['webserver_protocol'],
+                        MESSAGE = data['message']), access_code
+                elif 'template_data' in data:
+                    return render_template_string(
+                        data['template_data'],
+                        MESSAGE = data['message']), access_code
         access_code = 404
         return data, access_code
+
     return render_template(
         data['template'],
         LUNA_CONTROLLER        = data['ipaddress'],
@@ -252,7 +312,12 @@ def boot_install(node=None):
         access_code = 200
     else:
         access_code = 404
+        if human_friendly_errors:
+            if isinstance(data, dict):
+                return render_template_string(data['template_data'],
+                                          MESSAGE = data['message']), access_code
         return data, access_code
+
     return render_template_string(
         data['template_data'],
         LUNA_CONTROLLER         = data['ipaddress'],
@@ -305,7 +370,12 @@ def kickstart_install(node=None):
         access_code = 200
     else:
         access_code = 404
+        if human_friendly_errors:
+            if isinstance(data, dict):
+                return render_template_string(data['template_data'],
+                                          MESSAGE = data['message']), access_code
         return data, access_code
+
     return render_template_string(
         data['template_data'],
         LUNA_CONTROLLER         = data['ipaddress'],

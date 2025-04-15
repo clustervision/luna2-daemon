@@ -119,10 +119,10 @@ class Control():
                 )
                 status=True
             else:
-                response = f'{hostname} does not have any bmcsetup'
+                response = f'{hostname} does not have a suitable bmcsetup'
                 status=False
         else:
-            response = f'{hostname} does not have BMC configured (properly)'
+            response = f'bmcsetup for {hostname} does not exist or does not have BMC configured'
             status=False
         return status, response
 

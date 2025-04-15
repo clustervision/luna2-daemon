@@ -128,10 +128,10 @@ class Control():
                             self.logger.error(f"uh oh... {exp}")
                         pipeline.add_message({nodename: command+':'+str(ret)+':'+status})
                     else:
-                        self.logger.info(f'{nodename} not have any bmcsetup')
-                        pipeline.add_message({nodename: command+':None:does not have any bmcsetup'})
+                        self.logger.info(f'{nodename} does not have a suitable bmcsetup. Device or IP address not configured')
+                        pipeline.add_message({nodename: command+':None:does not have a suitable bmcsetup'})
                 else:
-                    self.logger.info(f'{nodename} does not have any suitable config.')
+                    self.logger.info(f'{nodename} does not have any suitable config or BMC interface not found.')
                     pipeline.add_message({nodename: command+':None:does not exist or does not have BMC configured'})
                 run = 0
                 # setting this to 0 means we only do one iteration.

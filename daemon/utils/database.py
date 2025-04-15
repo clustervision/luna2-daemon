@@ -499,6 +499,8 @@ class Database():
                                 # only sqlite complaint! pending
                             else:
                                 values.append('datetime('+str(each["value"])+',"unixepoch")')
+                        elif each["value"] is None:
+                            values.append('datetime(0,"unixepoch")')
                         else:
                             values.append('datetime('+str(each["value"])+',"unixepoch")')
                 else:
@@ -581,6 +583,8 @@ class Database():
                                 # only sqlite compliant! pending
                             else:
                                 column = column + f" = datetime({cols['value']}, 'unixepoch')"
+                        elif cols["value"] is None:
+                            column = column + f" = datetime(0, 'unixepoch')"
                         else:
                             column = column + f" = datetime({cols['value']}, 'unixepoch')"
                 else:

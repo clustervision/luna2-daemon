@@ -116,7 +116,7 @@ class Plugin():
         self.prometheus_rules_folder = '/trinity/local/etc/prometheus_server/rules/'
         self.rules_settings_file = '/trinity/local/etc/prometheus_server/rules_settings.yaml'
         self.prometheus_rules_component_fields =  [
-                "hostname", "luna_group", "path", "class", "description", "product", "vendor", "serial"
+                "hostname", "luna_group", "class", "description", "product", "vendor", "serial"
             ]
 
     @staticmethod

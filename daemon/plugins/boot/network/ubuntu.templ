@@ -35,12 +35,8 @@ network:
     {%- endif %}
 {%- endif %}
 {%- if LUNA_INTERFACES[interface]['dhcp'] %}
-    {%- if LUNA_INTERFACES[interface]['ipaddress'] %}
       dhcp4: True
-    {%- endif %}
-    {%- if LUNA_INTERFACES[interface]['ipaddress_ipv6'] %}
       dhcp6: True
-    {%- endif %}
 {%- else %}
       addresses:
     {%- if LUNA_INTERFACES[interface]['ipaddress'] %}

@@ -48,7 +48,7 @@ class Plugin():
     if ls /dev/ipmi* 1> /dev/null 2>&1
     then
         RESETIPMI=0
-        IPMITOOL="`ipmitool lan print`"
+        IPMITOOL="`ipmitool lan print $NETCHANNEL`"
         CUR_IPSRC=`echo "${IPMITOOL}" | grep -e "^IP Address Source" | awk '{ print $5 }'`
         CUR_IPADDR=`echo "${IPMITOOL}" | grep -e "^IP Address.*: [0-9]" | awk '{ print $4 }'`
         CUR_NETMASK=`echo "${IPMITOOL}" | grep -e "^Subnet Mask" | awk '{ print $4 }'`

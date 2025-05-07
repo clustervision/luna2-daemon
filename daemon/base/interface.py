@@ -61,12 +61,19 @@ class Interface():
             nodeid = node[0]['id']
             node_interfaces = Database().get_record_join(
                 [
-                    'network.name as network',
-                    'nodeinterface.macaddress',
                     'nodeinterface.interface',
                     'ipaddress.ipaddress',
+                    'ipaddress.ipaddress_ipv6',
+                    'ipaddress.dhcp',
+                    'nodeinterface.macaddress',
+                    'network.name as network',
+                    'nodeinterface.vlanid',
+                    'nodeinterface.vlan_parent',
+                    'nodeinterface.bond_mode',
+                    'nodeinterface.bond_slaves',
                     'nodeinterface.options',
-                    'nodeinterface.vlanid'
+                    'network.dhcp as networkdhcp',
+                    'network.dhcp_nodes_in_pool'
                 ],
                 ['ipaddress.tablerefid=nodeinterface.id', 'network.id=ipaddress.networkid'],
                 ['tableref="nodeinterface"', f"nodeinterface.nodeid='{nodeid}'"]
@@ -74,10 +81,25 @@ class Interface():
             if node_interfaces:
                 my_interface = []
                 for interface in node_interfaces:
-                    if not interface['options']:
-                        del interface['options']
-                    if not interface['vlanid']:
-                        del interface['vlanid']
+                    interface['dhcp'] = Helper().make_bool(interface['dhcp'])
+                    for item in ['options','vlanid','vlan_parent','bond_mode','bond_slaves','ipaddress','ipaddress_ipv6']:
+                        if not interface[item]:
+                            del interface[item]
+                    if 'vlan_parent' in interface and 'vlanid' not in interface:
+                        del interface['vlan_parent']
+                    if interface['dhcp_nodes_in_pool'] and interface['networkdhcp'] and interface['dhcp']:
+                        if 'ipaddress_ipv6' in interface:
+                            del interface['ipaddress_ipv6']
+                            interface['comment'] = 'ipaddress configured but ignored using dhcp and dhcp_nodes_in_pool set'
+                        if 'ipaddress' in interface:
+                            del interface['ipaddress']
+                            interface['comment'] = 'ipaddress configured but ignored using dhcp and dhcp_nodes_in_pool set'
+                    if not interface['dhcp']:
+                        del interface['dhcp']
+                    elif not interface['networkdhcp']:
+                        interface['comment'] = 'dhcp configured but ignored with network having dhcp disabled'
+                    del interface['dhcp_nodes_in_pool']
+                    del interface['networkdhcp']
                     my_interface.append(interface)
                     response['config']['node'][name]['interfaces'] = my_interface
                 status=True
@@ -493,12 +515,19 @@ class Interface():
             nodeid = node[0]['id']
             node_interfaces = Database().get_record_join(
                 [
-                    'network.name as network',
-                    'nodeinterface.macaddress',
                     'nodeinterface.interface',
                     'ipaddress.ipaddress',
+                    'ipaddress.ipaddress_ipv6',
+                    'ipaddress.dhcp',
+                    'nodeinterface.macaddress',
+                    'network.name as network',
+                    'nodeinterface.vlanid',
+                    'nodeinterface.vlan_parent',
+                    'nodeinterface.bond_mode',
+                    'nodeinterface.bond_slaves',
                     'nodeinterface.options',
-                    'nodeinterface.vlanid'
+                    'network.dhcp as networkdhcp',
+                    'network.dhcp_nodes_in_pool'
                 ],
                 ['ipaddress.tablerefid=nodeinterface.id', 'network.id=ipaddress.networkid'],
                 [
@@ -510,10 +539,25 @@ class Interface():
             if node_interfaces:
                 my_interface = []
                 for interface in node_interfaces:
-                    if not interface['options']:
-                        del interface['options']
-                    if not interface['vlanid']:
-                        del interface['vlanid']
+                    interface['dhcp'] = Helper().make_bool(interface['dhcp'])
+                    for item in ['options','vlanid','vlan_parent','bond_mode','bond_slaves','ipaddress','ipaddress_ipv6']:
+                        if not interface[item]:
+                            del interface[item]
+                    if 'vlan_parent' in interface and 'vlanid' not in interface:
+                        del interface['vlan_parent']
+                    if interface['dhcp_nodes_in_pool'] and interface['networkdhcp'] and interface['dhcp']:
+                        if 'ipaddress_ipv6' in interface:
+                            del interface['ipaddress_ipv6']
+                            interface['comment'] = 'ipaddress configured but ignored using dhcp and dhcp_nodes_in_pool set'
+                        if 'ipaddress' in interface:
+                            del interface['ipaddress']
+                            interface['comment'] = 'ipaddress configured but ignored using dhcp and dhcp_nodes_in_pool set'
+                    if not interface['dhcp']:
+                        del interface['dhcp']
+                    elif not interface['networkdhcp']:
+                        interface['comment'] = 'dhcp configured but ignored with network having dhcp disabled'
+                    del interface['dhcp_nodes_in_pool']
+                    del interface['networkdhcp']
                     my_interface.append(interface)
                     response['config']['node'][name]['interfaces'] = my_interface
                 status=True
@@ -605,18 +649,32 @@ class Interface():
                 groupname = group['name']
                 groupid = group['id']
                 group_interface = Database().get_record_join(
-                    ['groupinterface.interface','groupinterface.options',
-                     'network.name as network','groupinterface.vlanid'],
+                    [
+                        'groupinterface.interface',
+                        'network.name as network',
+                        'groupinterface.vlanid',
+                        'groupinterface.vlan_parent',
+                        'groupinterface.bond_mode',
+                        'groupinterface.bond_slaves',
+                        'groupinterface.options',
+                        'groupinterface.dhcp',
+                        'network.dhcp as networkdhcp'
+                    ],
                     ['network.id=groupinterface.networkid'],
                     [f"groupid = '{groupid}'"]
                 )
                 if group_interface:
                     group_interfaces = []
                     for interface in group_interface:
-                        if not interface['options']:
-                            del interface['options']
-                        if not interface['vlanid']:
-                            del interface['vlanid']
+                        for item in ['options','vlanid','vlan_parent','bond_mode','bond_slaves']:
+                            if not interface[item]:
+                                del interface[item]
+                        interface['dhcp'] = Helper().make_bool(interface['dhcp']) or False
+                        if not interface['dhcp']:
+                            del interface['dhcp']
+                        elif not interface['networkdhcp']:
+                            interface['comment'] = 'dhcp configured but ignored with network having dhcp disabled'
+                        del interface['networkdhcp']
                         group_interfaces.append(interface)
                     response['config']['group'][groupname]['interfaces'] = group_interfaces
                 else:
@@ -643,49 +701,74 @@ class Interface():
                 group_id = group[0]['id']
                 if 'interfaces' in request_data['config']['group'][name]:
                     for ifx in request_data['config']['group'][name]['interfaces']:
-                        if (not 'network' in ifx) or (not 'interface' in ifx):
+                        if not 'interface' in ifx:
                             status=False
-                            return status, 'Invalid request: Interface and/or network not specified'
-                        network = Database().id_by_name('network', ifx['network'])
-                        if network is None:
-                            status=False
-                            return status, f'Invalid request: Network {network} does not exist'
+                            return status, 'Invalid request: interface name is required for this operation'
+                        interface_name = ifx['interface']
+
+                        where_interface = f'WHERE groupid = "{group_id}" AND interface = "{interface_name}"'
+                        check_interface = Database().get_record(None, 'groupinterface', where_interface)
+
+                        network, bond_mode, bond_slaves = None, None, None
+                        vlanid, vlan_parent, dhcp, options = None, None, None, None
+                        if 'network' in ifx:
+                            network = ifx['network']
+                        if 'bond_mode' in ifx:
+                            bond_mode = ifx['bond_mode']
+                        if 'bond_slaves' in ifx:
+                            bond_slaves  = ifx['bond_slaves']
+                        if 'vlanid' in ifx:
+                            vlanid = ifx['vlanid']
+                        if 'vlan_parent' in ifx:
+                            vlan_parent = ifx['vlan_parent']
+                        if 'dhcp' in ifx:
+                            dhcp = ifx['dhcp']
+                        if 'options' in ifx:
+                            options = ifx['options']
+
+                        result, response = Config().group_interface_config(groupid=group_id,
+                                                                interface_name=interface_name,
+                                                                network=network, vlanid=vlanid,
+                                                                vlan_parent=vlan_parent, bond_mode=bond_mode,
+                                                                bond_slaves=bond_slaves, dhcp=dhcp,
+                                                                options=options)
+
+                        # below section takes care(in the background) the adding/renaming/deleting.
+                        # for adding next free ip-s will be selected. time consuming there for
+                        # background
+                        if result:
+                            status = True
+                            queue_id = None
+                            if check_interface:
+                                response = 'Interface updated'
+                                queue_id, _ = Queue().add_task_to_queue(
+                                    task='update_interface_for_group_nodes',
+                                    param=f'{name}:{interface_name}',
+                                    subsystem='group_interface'
+                                )
+                            else:
+                                response = 'Interface created'
+                                queue_id, _ = Queue().add_task_to_queue(
+                                    task='add_interface_to_group_nodes',
+                                    param=f'{name}:{interface_name}',
+                                    subsystem='group_interface'
+                                )
+
+                            next_id = Queue().next_task_in_queue('group_interface')
+                            if queue_id == next_id:
+                                executor = ThreadPoolExecutor(max_workers=1)
+                                executor.submit(Config().update_interface_on_group_nodes,name)
+                                executor.shutdown(wait=False)
+                                # Config().update_interface_on_group_nodes(name)
                         else:
-                            ifx['networkid'] = network
-                            ifx['groupid'] = group_id
-                            del ifx['network']
-                        interface = ifx['interface']
-                        grp_clause = f'groupid = "{group_id}"'
-                        network_clause = f'networkid = "{network}"'
-                        interface_clause = f'interface = "{interface}"'
-                        where = f' WHERE {grp_clause} AND {network_clause} AND {interface_clause}'
-                        interface_check = Database().get_record(None, 'groupinterface', where)
-                        if not interface_check:
-                            row = Helper().make_rows(ifx)
-                            Database().insert('groupinterface', row)
-                        response = 'Interface updated'
-                        status=True
-                        # below section takes care(in the background), adding/renaming/deleting.
-                        # for adding next free ip-s will be selected. time consuming
-                        # therefor background
-                        queue_id, _ = Queue().add_task_to_queue(
-                            task='add_interface_to_group_nodes',
-                            param=f'{name}:{interface}',
-                            subsystem='group_interface'
-                        )
-                        next_id = Queue().next_task_in_queue('group_interface')
-                        if queue_id == next_id:
-                            executor = ThreadPoolExecutor(max_workers=1)
-                            executor.submit(Config().update_interface_on_group_nodes,name)
-                            executor.shutdown(wait=False)
-                            # Config().update_interface_on_group_nodes(name)
+                            status = False
+                            return False, response
                 else:
                     self.logger.error('interface not provided.')
                     response = 'Invalid request: interface not provided'
                     status=False
             else:
-                self.logger.error('No group is available.')
-                response = 'No group is available'
+                response = f'group {name} not available'
                 status=False
         else:
             response = 'Invalid request: Did not receive data'
@@ -695,7 +778,7 @@ class Interface():
 
     def get_group_interface(self, name=None, interface=None):
         """
-        This method will provide a group interface.
+        This method will provide detailed interface info for a group.
         """
         status=False
         group = Database().get_record(None, 'group', f' WHERE name = "{name}"')
@@ -703,18 +786,32 @@ class Interface():
             response = {'config': {'group': {name: {'interfaces': [] } } } }
             groupid = group[0]['id']
             grp_interfaces = Database().get_record_join(
-                ['groupinterface.interface', 'groupinterface.options', 
-                 'network.name as network','groupinterface.vlanid'],
+                [
+                    'groupinterface.interface',
+                    'network.name as network',
+                    'groupinterface.vlanid',
+                    'groupinterface.vlan_parent',
+                    'groupinterface.bond_mode',
+                    'groupinterface.bond_slaves',
+                    'groupinterface.options',
+                    'groupinterface.dhcp',
+                    'network.dhcp as networkdhcp'
+                ],
                 ['network.id=groupinterface.networkid'],
                 [f"groupid = '{groupid}'", f"groupinterface.interface='{interface}'"]
             )
             if grp_interfaces:
                 my_interface = []
                 for interface in grp_interfaces:
-                    if not interface['options']:
-                        del interface['options']
-                    if not interface['vlanid']:
-                        del interface['vlanid']
+                    for item in ['options','vlanid','vlan_parent','bond_mode','bond_slaves']:
+                        if not interface[item]:
+                            del interface[item]
+                    interface['dhcp'] = Helper().make_bool(interface['dhcp']) or False
+                    if not interface['dhcp']:
+                        del interface['dhcp']
+                    elif not interface['networkdhcp']:
+                        interface['comment'] = 'dhcp configured but ignored with network having dhcp disabled'
+                    del interface['networkdhcp']
                     my_interface.append(interface)
                     response['config']['group'][name]['interfaces'] = my_interface
                 status=True

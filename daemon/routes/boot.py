@@ -350,7 +350,7 @@ def boot_install(node=None):
         PROVISION_METHOD        = data['provision_method'],
         PROVISION_FALLBACK      = data['provision_fallback'],
         PROVISION_INTERFACE     = data['provision_interface'],
-        NAME_SERVER             = data['nameserver_ip'][0],
+        NAME_SERVER             = data['nameserver_ip'],
         DOMAIN_SEARCH           = data['domain_search'],
         LUNA_TOKEN              = data['jwt_token']
     ), access_code
@@ -408,7 +408,7 @@ def kickstart_install(node=None):
         PROVISION_METHOD        = data['provision_method'],
         PROVISION_FALLBACK      = data['provision_fallback'],
         PROVISION_INTERFACE     = data['provision_interface'],
-        NAME_SERVER             = data['nameserver_ip'][0],
+        NAME_SERVER             = data['nameserver_ip'],
         DOMAIN_SEARCH           = data['domain_search'],
         LUNA_TOKEN              = data['jwt_token']
     ), access_code

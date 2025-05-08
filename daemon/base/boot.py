@@ -1409,6 +1409,8 @@ class Boot():
             'setupbmc'              : None,
             'unmanaged_bmc_users'   : None,
             'systemroot'            : None,
+            'nameserver_ip'         : self.controller_beaconip,
+            'domain_search'         : [],
             'interfaces'            : {},
             'bmc'                   : {}
         }
@@ -1427,10 +1429,8 @@ class Boot():
             data['selinux']      = Helper().bool_revert(cluster[0]['security'])
             data['cluster_provision_method']   = cluster[0]['provision_method']
             data['cluster_provision_fallback'] = cluster[0]['provision_fallback']
-            data['nameserver_ip'] = []
-            data['domain_search'] = []
             if cluster[0]['nameserver_ip']:
-                data['nameserver_ip'] = cluster[0]['nameserver_ip'].split(',')
+                data['nameserver_ip'] = cluster[0]['nameserver_ip'].split(',')[0]
             if cluster[0]['domain_search']:
                 data['domain_search'] = cluster[0]['domain_search'].split(',')
         nameserver_ips_ipv4, nameserver_ips_ipv6 = [self.controller_beaconip], [self.controller_beaconip]
@@ -1440,8 +1440,6 @@ class Boot():
         if self.controller_ipv6:
             nameserver_ips_ipv6.insert(0, self.controller_ipv6)
             nameserver_ips_ipv6 = Helper().dedupe_adjacent(nameserver_ips_ipv6)
-        #nameserver_ips_ipv4 = ';'.join(nameserver_ips_ipv4)
-        #nameserver_ips_ipv6 = ';'.join(nameserver_ips_ipv6)
         if self.controller_name:
             data['ipaddress'] = self.controller_ip
             data['network'] = self.controller_network
@@ -1583,10 +1581,8 @@ class Boot():
                             interface['gateway_metric'] = default_metric
                         if interface['zone'] == 'external' or interface['zone'] == 'public':
                             zone = 'public'
-                        if interface['nameserver_ip'] is None:
-                            interface['nameserver_ip'] = ''
-                        if interface['nameserver_ip_ipv6'] is None:
-                            interface['nameserver_ip_ipv6'] = ''
+
+                        # -----------------------------------------------------
 
                         interface_data = {
                                 'interface': interface['interface'],
@@ -1604,23 +1600,31 @@ class Boot():
                                 'gateway': interface['gateway'] or "",
                                 'gateway_ipv6': interface['gateway_ipv6'] or "",
                                 'gateway_metric': str(interface['gateway_metric']) or default_metric,
-                                'nameserver_ip': interface['nameserver_ip'].split(','),
-                                'nameserver_ip_ipv6': interface['nameserver_ip_ipv6'].split(','),
                                 'options': interface['options'] or "",
                                 'zone': zone,
                                 'type': interface['type'] or "ethernet",
                                 'networktype': interface['networktype'] or "ethernet"
                             }
+
+                        if interface['nameserver_ip']:
+                            interface_data['nameserver_ip'] = interface['nameserver_ip'].split(',')
+                        else:
+                            interface_data['nameserver_ip'] = []
+                        if interface['nameserver_ip_ipv6']:
+                            interface_data['nameserver_ip_ipv6'] = interface['nameserver_ip_ipv6'].split(',')
+                        else:
+                            interface_data['nameserver_ip_ipv6'] = []
+
                         if interface['dhcp'] and interface['networkdhcp']:
                             interface_data['dhcp']=True
                         if not interface_data['ipaddress']:
                             del interface_data['gateway']
                             del interface_data['nameserver_ip']
-                            #interface_data['nameserver_ip'] = []
                         if not interface_data['ipaddress_ipv6']:
                             del interface_data['gateway_ipv6']
                             del interface_data['nameserver_ip_ipv6']
-                            #interface_data['nameserver_ip_ipv6'] = []
+
+                        # -----------------------------------------------------
 
                         interface_parent = interface['interface']
                         if interface['vlanid']:

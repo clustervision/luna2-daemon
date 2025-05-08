@@ -58,15 +58,15 @@ network:
           metric: {{ LUNA_INTERFACES[interface]['gateway_metric'] }}
       {%- endif %}
     {%- endif %}
-    {%- if LUNA_INTERFACES[interface]['nameserver_ip'] or LUNA_INTERFACES[interface]['nameserver_ip_ipv6'] %}
+    {%- if LUNA_INTERFACES[interface]['nameserver_ip'][0] or LUNA_INTERFACES[interface]['nameserver_ip_ipv6'][0] %}
       nameservers:
-      {%- if LUNA_INTERFACES[interface]['nameserver_ip'] %}
-        search: [{{ DOMAIN_SEARCH }}]
-        addresses: [{{ LUNA_INTERFACES[interface]['nameserver_ip'] }}]
+      {%- if LUNA_INTERFACES[interface]['nameserver_ip'][0] %}
+        search: [{{ DOMAIN_SEARCH|join(',') }}]
+        addresses: [{{ LUNA_INTERFACES[interface]['nameserver_ip']|join(',') }}]
       {%- endif %}
-      {%- if LUNA_INTERFACES[interface]['nameserver_ip_ipv6'] %}
-        search: [{{ DOMAIN_SEARCH }}]
-        addresses: [{{ LUNA_INTERFACES[interface]['nameserver_ip_ipv6'] }}]
+      {%- if LUNA_INTERFACES[interface]['nameserver_ip_ipv6'][0] %}
+        search: [{{ DOMAIN_SEARCH|join(',') }}]
+        addresses: [{{ LUNA_INTERFACES[interface]['nameserver_ip_ipv6']|join(',') }}]
       {%- endif %}
     {%- endif %}
 {%- endif %}

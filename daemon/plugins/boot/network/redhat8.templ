@@ -61,9 +61,9 @@ dns-search=
 [ipv4]
 method=manual
 address1={{ LUNA_INTERFACES[interface]['ipaddress'] }}/{{ LUNA_INTERFACES[interface]['prefix'] }}
-      {%- if LUNA_INTERFACES[interface]['nameserver_ip'] %}
-dns={{ LUNA_INTERFACES[interface]['nameserver_ip'] }}
-dns-search={{ DOMAIN_SEARCH }}
+      {%- if LUNA_INTERFACES[interface]['nameserver_ip'][0] %}
+dns={{ LUNA_INTERFACES[interface]['nameserver_ip']|join(';') }}
+dns-search={{ DOMAIN_SEARCH|join(';') }}
       {%- endif %}
       {%- if LUNA_INTERFACES[interface]['gateway'] %}
 route1=0.0.0.0/0,{{ LUNA_INTERFACES[interface]['gateway'] }},{{ LUNA_INTERFACES[interface]['gateway_metric'] }}
@@ -73,9 +73,9 @@ route1=0.0.0.0/0,{{ LUNA_INTERFACES[interface]['gateway'] }},{{ LUNA_INTERFACES[
 [ipv6]
 method=manual
 address1={{ LUNA_INTERFACES[interface]['ipaddress_ipv6'] }}/{{ LUNA_INTERFACES[interface]['prefix_ipv6'] }}
-      {%- if LUNA_INTERFACES[interface]['nameserver_ip_ipv6'] %}
-dns={{ LUNA_INTERFACES[interface]['nameserver_ip_ipv6'] }}
-dns-search={{ DOMAIN_SEARCH }}
+      {%- if LUNA_INTERFACES[interface]['nameserver_ip_ipv6'][0] %}
+dns={{ LUNA_INTERFACES[interface]['nameserver_ip_ipv6']|join(';') }}
+dns-search={{ DOMAIN_SEARCH|join(';') }}
       {%- endif %}
       {%- if LUNA_INTERFACES[interface]['gateway_ipv6'] %}
 route1=0.0.0.0/0,{{ LUNA_INTERFACES[interface]['gateway_ipv6'] }},{{ LUNA_INTERFACES[interface]['gateway_metric'] }}

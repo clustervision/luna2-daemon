@@ -140,6 +140,8 @@ EOF
     # ---------------------------------------------------------------------------------------------
 
     dns = """
+        SEARCH=$(echo $SEARCH|tr ';' ',')
+        NAMESERVER=$(echo $NAMESERVER|tr ';' ',')
         sed -i 's/# nameservers_'$DEVICE'/nameservers/' $rootmnt/etc/netplan/98_config.yaml
 cat << EOF > /tmp/98_config.yaml
           search: [$SEARCH]
@@ -147,8 +149,11 @@ cat << EOF > /tmp/98_config.yaml
 EOF
         sed -i 's/'$DEVICE': {}/'$DEVICE':/' $rootmnt/etc/netplan/98_config.yaml
         sed -i '/# ns_ipv4_'$DEVICE'/r /tmp/98_config.yaml' $rootmnt/etc/netplan/98_config.yaml
+        SEARCH=$(echo $SEARCH|tr ',' ' ')
         echo "search $SEARCH" > $rootmnt/etc/resolv.conf
-        echo "nameserver $NAMESERVER" >> $rootmnt/etc/resolv.conf
+        for SERVER in $(echo $NAMESERVER|tr ',' '\n'); do
+            echo "nameserver $SERVER" >> $rootmnt/etc/resolv.conf
+        done
         chroot $rootmnt netplan apply 2> /dev/null
     """
 
@@ -196,6 +201,8 @@ EOF
     # ---------------------------------------------------------------------------------------------
 
     dns_ipv6 = """
+        SEARCH=$(echo $SEARCH|tr ';' ',')
+        NAMESERVER=$(echo $NAMESERVER|tr ';' ',')
         sed -i 's/# nameservers_'$DEVICE'/nameservers/' $rootmnt/etc/netplan/98_config.yaml
 cat << EOF > /tmp/98_config.yaml
           search: [$SEARCH]
@@ -203,8 +210,11 @@ cat << EOF > /tmp/98_config.yaml
 EOF
         sed -i 's/'$DEVICE': {}/'$DEVICE':/' $rootmnt/etc/netplan/98_config.yaml
         sed -i '/# ns_ipv6_'$DEVICE'/r /tmp/98_config.yaml' $rootmnt/etc/netplan/98_config.yaml
+        SEARCH=$(echo $SEARCH|tr ',' ' ')
         echo "search $SEARCH" > $rootmnt/etc/resolv.conf
-        echo "nameserver $NAMESERVER" >> $rootmnt/etc/resolv.conf
+        for SERVER in $(echo $NAMESERVER|tr ',' '\n'); do
+            echo "nameserver $SERVER" >> $rootmnt/etc/resolv.conf
+        done
         chroot $rootmnt netplan apply 2> /dev/null
     """
 

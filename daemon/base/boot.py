@@ -1695,10 +1695,7 @@ class Boot():
                                                 data['interfaces'][provision_interface]['nameserver_ip_ipv6'] = ['::/0']
 
             if len(data['domain_search']) == 0:
-                #data['domain_search'] = data['domain_search'].replace(',',';')
-                #data['domain_search'] = data['domain_search'].split(',')
                 if domain_search:
-                    #data['domain_search'] = ';'.join(domain_search)
                     data['domain_search'] = domain_search
                 else:
                     # clearly, the user wants something that has no interface involvement. fallback to '', but not None

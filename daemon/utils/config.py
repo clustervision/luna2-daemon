@@ -1561,9 +1561,6 @@ class Config(object):
                                         )
                                 message = f"For network {network} changing IP "
                                 if avail:
-                                    # row   = [{"column": "ipaddress", "value": f"{avail}"}]
-                                    # where = [{"column": "id", "value": f"{ipaddress['ipaddressid']}"}]
-                                    # message = Database().update('ipaddress', row, where)
                                     Database().delete_row(
                                         'ipaddress',
                                         [{"column": "ipaddress", "value": avail}]
@@ -1579,17 +1576,17 @@ class Config(object):
                                     Database().delete_row(
                                         'ipaddress',
                                         [
-                                            {"column": "tableref", "value": f"{ipaddress['tableref']}"},
-                                            {"column": "tablerefid", "value": f"{ipaddress['tablerefid']}"}
+                                            {"column": "tableref", "value": ipaddress['tableref']},
+                                            {"column": "tablerefid", "value": ipaddress['tablerefid']}
                                         ]
                                     )
                                     row = [
                                         {"column": "ipaddress", "value": avail},
                                         {"column": "ipaddress_ipv6", "value": avail6},
-                                        {"column": "dhcp", "value": f"{ipaddress['dhcp']}"},
-                                        {"column": "networkid", "value": f"{ipaddress['networkid']}"},
-                                        {"column": "tableref", "value": f"{ipaddress['tableref']}"},
-                                        {"column": "tablerefid", "value": f"{ipaddress['tablerefid']}"}
+                                        {"column": "dhcp", "value": ipaddress['dhcp']},
+                                        {"column": "networkid", "value": ipaddress['networkid']},
+                                        {"column": "tableref", "value": ipaddress['tableref']},
+                                        {"column": "tablerefid", "value": ipaddress['tablerefid']}
                                     ]
                                     result = Database().insert('ipaddress', row)
 

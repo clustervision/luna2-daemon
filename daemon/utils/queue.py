@@ -45,21 +45,27 @@ class Queue(object):
         task, param=task.split(':',1)
         return self.add_task_to_queue(task=task, param=param, subsystem=subsystem, request_id=request_id, force=force, when=when)
 
-    def add_task_to_queue(self,task,param=None,subsystem=None,noeof=False,request_id=None,force=None,when=None):
+    def add_task_to_queue(self,task,param=None,subsystem=None,noeof=False,request_id=None,force=None,replace=None,when=None):
         noeof=Helper().bool_to_string(noeof)
         if subsystem is None:
             subsystem="anonymous"
         if request_id is None:
             request_id="n/a"
 
+        if force and replace:
+            self.logger.warning(f"force and replace are mutually exclusive. ignoring replace")
+
         if not force:
             # pending. these datatime calls might not be mysql compliant.
             where=f" WHERE subsystem='{subsystem}' AND task='{task}' AND param='{param}' AND created>datetime('now','-15 minute') ORDER BY id ASC LIMIT 1"
             check = Database().get_record(None , 'queue', where)
             if check:
-                # we already have the same task in the queue
-                self.logger.info(f"We already have similar job in the queue {check[0]['task']} {check[0]['param']} ({check[0]['id']}) and i will return the matching request_id: {check[0]['request_id']}")
-                return check[0]['id'],check[0]['request_id']
+                if replace:
+                    self.remove_task_from_queue(check[0]['id'])
+                else:
+                    # we already have the same task in the queue
+                    self.logger.info(f"We already have similar job in the queue {check[0]['task']} {check[0]['param']} ({check[0]['id']}) and i will return the matching request_id: {check[0]['request_id']}")
+                    return check[0]['id'],check[0]['request_id']
 
 #        current_datetime=datetime.now().replace(microsecond=0)
         current_datetime="NOW"

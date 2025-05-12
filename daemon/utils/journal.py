@@ -252,7 +252,7 @@ class Journal():
     def queue_source_sync(self,source,request_id=None):
         try:
             queue_id,queue_response = Queue().add_task_to_queue(task='sync_osimage_with_master', param=f'{source}:{self.me}',
-                                                                subsystem='osimage', request_id=request_id)
+                                                                subsystem='osimage', request_id=request_id, replace=True)
             if queue_id:
                 Queue().update_task_status_in_queue(queue_id,'parked')
         except Exception as exp:

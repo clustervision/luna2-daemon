@@ -982,7 +982,7 @@ class Config(object):
 
         if my_interface: # existing ip config we need to modify
             row = Helper().make_rows(my_dhcp)
-            where = [{"column": "id", "value": f"{my_interface[0]['id']}"}]
+            where = [{"column": "id", "value": my_interface[0]['id']}]
             result_ip = Database().update('ipaddress', row, where)
 
         else:
@@ -1090,7 +1090,7 @@ class Config(object):
 
         if my_interface: # existing ip config we need to modify
             row = Helper().make_rows(my_ipaddress)
-            where = [{"column": "id", "value": f"{my_interface[0]['id']}"}]
+            where = [{"column": "id", "value": my_interface[0]['id']}]
             result_ip = Database().update('ipaddress', row, where)
 
         else:
@@ -1561,9 +1561,6 @@ class Config(object):
                                         )
                                 message = f"For network {network} changing IP "
                                 if avail:
-                                    # row   = [{"column": "ipaddress", "value": f"{avail}"}]
-                                    # where = [{"column": "id", "value": f"{ipaddress['ipaddressid']}"}]
-                                    # message = Database().update('ipaddress', row, where)
                                     Database().delete_row(
                                         'ipaddress',
                                         [{"column": "ipaddress", "value": avail}]
@@ -1579,17 +1576,17 @@ class Config(object):
                                     Database().delete_row(
                                         'ipaddress',
                                         [
-                                            {"column": "tableref", "value": f"{ipaddress['tableref']}"},
-                                            {"column": "tablerefid", "value": f"{ipaddress['tablerefid']}"}
+                                            {"column": "tableref", "value": ipaddress['tableref']},
+                                            {"column": "tablerefid", "value": ipaddress['tablerefid']}
                                         ]
                                     )
                                     row = [
                                         {"column": "ipaddress", "value": avail},
                                         {"column": "ipaddress_ipv6", "value": avail6},
-                                        {"column": "dhcp", "value": f"{ipaddress['dhcp']}"},
-                                        {"column": "networkid", "value": f"{ipaddress['networkid']}"},
-                                        {"column": "tableref", "value": f"{ipaddress['tableref']}"},
-                                        {"column": "tablerefid", "value": f"{ipaddress['tablerefid']}"}
+                                        {"column": "dhcp", "value": ipaddress['dhcp']},
+                                        {"column": "networkid", "value": ipaddress['networkid']},
+                                        {"column": "tableref", "value": ipaddress['tableref']},
+                                        {"column": "tablerefid", "value": ipaddress['tablerefid']}
                                     ]
                                     result = Database().insert('ipaddress', row)
 
@@ -1651,10 +1648,10 @@ class Config(object):
                     self.logger.info(message)
                     if dhcp_begin and dhcp_end:
                         row = [
-                            {"column": f"dhcp_range_begin{ipv}", "value": f"{dhcp_begin}"},
-                            {"column": f"dhcp_range_end{ipv}", "value": f"{dhcp_end}"}
+                            {"column": f"dhcp_range_begin{ipv}", "value": dhcp_begin},
+                            {"column": f"dhcp_range_end{ipv}", "value": dhcp_end}
                         ]
-                        where = [{"column": "name", "value": f"{name}"}]
+                        where = [{"column": "name", "value": name}]
                         Database().update('network', row, where)
                         Queue().add_task_to_queue(task='restart', param='dhcp', subsystem='housekeeper',
                                                   request_id='__update_dhcp_range_on_network_change__')

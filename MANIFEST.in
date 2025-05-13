@@ -14,3 +14,4 @@ include daemon/templates/*
 include daemon/utils/*
 recursive-include daemon/plugins *.py
 recursive-include daemon/plugins *.templ
+recursive-include daemon/plugins README

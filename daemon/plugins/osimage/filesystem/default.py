@@ -83,7 +83,7 @@ class Plugin():
         if remote_host and remote_image_directory and osimage and local_image_directory:
             command=f"mkdir -p {local_image_directory}"
             message,exit_code = Helper().runcommand(command,True,60)
-            command=f"rsync -aHv --one-file-system --delete-after {remote_host}:{remote_image_directory}/* {local_image_directory}/ > /tmp/syncimage.out"
+            command=f"rsync -aHv --numeric-ids --one-file-system --delete-after {remote_host}:{remote_image_directory}/* {local_image_directory}/ > /tmp/syncimage.out"
             self.logger.info(command)
             message,exit_code = Helper().runcommand(command,True,3600)
             self.logger.debug(f"exit_code = {exit_code}")
@@ -118,7 +118,7 @@ class Plugin():
                 self.logger.info(unpack)
                 message,exit_code = Helper().runcommand(unpack,True,60)
                 if exit_code == 0:
-                    sync=f"rsync -aHv --delete-after {tmp_dir}/{image_file}.dir/* {image_path}/ > /tmp/extract.out"
+                    sync=f"rsync -aHv --numeric-ids --delete-after {tmp_dir}/{image_file}.dir/* {image_path}/ > /tmp/extract.out"
                     self.logger.info(sync)
                     message,exit_code = Helper().runcommand(sync,True,3600)
                     self.logger.debug(f"exit_code = {exit_code}")

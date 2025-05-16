@@ -471,12 +471,8 @@ class Group():
                 all_nodes_data = Helper().nodes_and_groups()
                 nodes_in_group = []
                 for row in all_nodes_data:
-                    if row['groupname'] == name:
+                    if row['group'] == name:
                         nodes_in_group.append(row['name'])
-                #group_details=Database().get_record_join(['node.name AS nodename'],['node.groupid=group.id'],[f"`group`.name='{name}'"])
-                #if group_details:
-                #    for group_detail in group_details:
-                #        nodes_in_group.append(group_detail['nodename'])
                 group_plugins = Helper().plugin_finder(f'{self.plugins_path}/hooks')
                 group_plugin=Helper().plugin_load(group_plugins,'hooks/config','group')
                 try:
@@ -677,12 +673,8 @@ class Group():
                 all_nodes_data = Helper().nodes_and_groups()
                 nodes_in_group = []
                 for row in all_nodes_data:
-                    if row['groupname'] == name:
+                    if row['group'] == name:
                         nodes_in_group.append(row['name'])
-                #group_details=Database().get_record_join(['node.name AS nodename'],['node.groupid=group.id'],[f"`group`.name='{newgroupname}'"])
-                #if group_details:
-                #    for group_detail in group_details:
-                #        nodes_in_group.append(group_detail['nodename'])
                 group_plugins = Helper().plugin_finder(f'{self.plugins_path}/hooks')
                 group_plugin=Helper().plugin_load(group_plugins,'hooks/config','group')
                 try:

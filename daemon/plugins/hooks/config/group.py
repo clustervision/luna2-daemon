@@ -53,7 +53,7 @@ class Plugin():
 
     # ---------------------------------------------------------------------------
 
-    def postcreate(self, name=None, nodes=[]):
+    def postcreate(self, name=None, nodes=[], all=[]):
         processes = []
         return_code = 0
         if not nodes: return
@@ -75,7 +75,7 @@ class Plugin():
 
     # ---------------------------------------------------------------------------
 
-    def postupdate(self, name=None, nodes=[]):
+    def postupdate(self, name=None, nodes=[], all=[]):
         processes = []
         return_code = 0
         if not nodes: return
@@ -98,7 +98,7 @@ class Plugin():
 
     # ---------------------------------------------------------------------------
 
-    def rename(self, name=None, newname=None):
+    def rename(self, name=None, newname=None, all=[]):
         processes = []
         return_code = 0
         processes.append(subprocess.run([self.SCRIPTS_PATH + "/trix-config-manager", "pdsh-genders", "group", "rename", name, newname], check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE))
@@ -120,7 +120,7 @@ class Plugin():
 
     # ---------------------------------------------------------------------------
 
-    def delete(self, name=None):
+    def delete(self, name=None, all=[]):
         processes = []
         return_code = 0
         processes.append(subprocess.run([self.SCRIPTS_PATH + "/trix-config-manager", "pdsh-genders", "group", "delete", name], check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE))

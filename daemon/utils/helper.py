@@ -622,6 +622,22 @@ class Helper(object):
         return check
 
 
+    def nodes_and_groups(self):
+        """
+        function that generates node/group key/value pairs
+        """
+        response=[]
+        records = Database().get_record_join(
+                ['node.name','group.name as groupname'],
+                ['group.id=node.groupid'],
+                [])
+        if records:
+            for node in records:
+                row = {'name': node['name'], 'group': node['groupname']}
+                response.append(row)
+        return response
+
+
     def ipmi_action(self, hostname=None, action=None, username=None, password=None):
         """
         This method will perform below operations on node:

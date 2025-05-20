@@ -66,7 +66,7 @@ class Plugin():
             if process_return_code == 0:
                 self.logger.info(f"Script {process.args} executed successfully")
             else:
-                self.logger.error(f"Script {process.args} failed with return code {process_return_code}")
+                self.logger.error(f"Script {process.args} failed with return code {process_return_code}: {process.stderr.decode()}")
                 return_code = max(return_code, process_return_code)
         if return_code == 0:
             return True, "Config files written"
@@ -88,7 +88,7 @@ class Plugin():
             if process_return_code == 0:
                 self.logger.info(f"Script {process.args} executed successfully")
             else:
-                self.logger.error(f"Script {process.args} failed with return code {process_return_code}")
+                self.logger.error(f"Script {process.args} failed with return code {process_return_code}: {process.stderr.decode()}")
                 return_code = max(return_code, process_return_code)
         if return_code == 0:
             return True, "Config files written"
@@ -100,6 +100,7 @@ class Plugin():
     def rename(self, name=None, newname=None, all=[]):
         processes = []
         return_code = 0
+        processes.append(subprocess.run(["/usr/bin/rename ." + name + ". ." + newname + ". /trinity/local/etc/prometheus_server/rules/*"], check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True))
         processes.append(subprocess.run([self.SCRIPTS_PATH + "/trix-config-manager", "pdsh-genders", "node", "rename", name, newname], check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE))
         processes.append(subprocess.run([self.SCRIPTS_PATH + "/trix-config-manager", "slurm-nodes", "node", "rename", name, newname], check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE))
         processes.append(subprocess.run([self.SCRIPTS_PATH + "/trix-config-manager", "slurm-partitions", "node", "rename", name, newname], check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE))
@@ -109,7 +110,7 @@ class Plugin():
             if process_return_code == 0:
                 self.logger.info(f"Script {process.args} executed successfully")
             else:
-                self.logger.error(f"Script {process.args} failed with return code {process_return_code}")
+                self.logger.error(f"Script {process.args} failed with return code {process_return_code}: {process.stderr.decode()}")
                 return_code = max(return_code, process_return_code)
         if return_code == 0:
             return True, "Config files written"
@@ -121,6 +122,7 @@ class Plugin():
     def delete(self, name=None, all=[]):
         processes = []
         return_code = 0
+        processes.append(subprocess.run(["/bin/rm -f /trinity/local/etc/prometheus_server/rules/trix.hw." + name + ".*"], check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True))
         processes.append(subprocess.run([self.SCRIPTS_PATH + "/trix-config-manager", "pdsh-genders", "node", "delete", name], check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE))
         processes.append(subprocess.run([self.SCRIPTS_PATH + "/trix-config-manager", "slurm-nodes", "node", "delete", name], check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE))
         processes.append(subprocess.run([self.SCRIPTS_PATH + "/trix-config-manager", "slurm-partitions", "node", "delete", name], check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE))
@@ -130,7 +132,7 @@ class Plugin():
             if process_return_code == 0:
                 self.logger.info(f"Script {process.args} executed successfully")
             else:
-                self.logger.error(f"Script {process.args} failed with return code {process_return_code}")
+                self.logger.error(f"Script {process.args} failed with return code {process_return_code}: {process.stderr.decode()}")
                 return_code = max(return_code, process_return_code)
         if return_code == 0:
             return True, "Config files written"

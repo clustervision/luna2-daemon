@@ -66,7 +66,7 @@ class Plugin():
             if process_return_code == 0:
                 self.logger.info(f"Script {process.args} executed successfully")
             else:
-                self.logger.error(f"Script {process.args} failed with return code {process_return_code}")
+                self.logger.error(f"Script {process.args} failed with return code {process_return_code}: {process.stderr.decode()}")
                 return_code = max(return_code, process_return_code)
         if return_code == 0:
             return True, "Config files written"
@@ -88,7 +88,7 @@ class Plugin():
             if process_return_code == 0:
                 self.logger.info(f"Script {process.args} executed successfully")
             else:
-                self.logger.error(f"Script {process.args} failed with return code {process_return_code}")
+                self.logger.error(f"Script {process.args} failed with return code {process_return_code}: {process.stderr.decode()}")
                 return_code = max(return_code, process_return_code)
         if return_code == 0:
             return True, "Config files written"
@@ -110,7 +110,7 @@ class Plugin():
             if process_return_code == 0:
                 self.logger.info(f"Script {process.args} executed successfully")
             else:
-                self.logger.error(f"Script {process.args} failed with return code {process_return_code}")
+                self.logger.error(f"Script {process.args} failed with return code {process_return_code}: {process.stderr.decode()}")
                 return_code = max(return_code, process_return_code)
         if return_code == 0:
             return True, "Config files written"
@@ -132,7 +132,7 @@ class Plugin():
             if process_return_code == 0:
                 self.logger.info(f"Script {process.args} executed successfully")
             else:
-                self.logger.error(f"Script {process.args} failed with return code {process_return_code}")
+                self.logger.error(f"Script {process.args} failed with return code {process_return_code}: {process.stderr.decode()}")
                 return_code = max(return_code, process_return_code)
         if return_code == 0:
             return True, "Config files written"

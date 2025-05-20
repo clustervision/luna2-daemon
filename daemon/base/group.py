@@ -468,20 +468,20 @@ class Group():
                             return False, response
 
                 # ---- we call the group plugin - maybe someone wants to run something after create/update?
+                all_nodes_data = Helper().nodes_and_groups()
                 nodes_in_group = []
-                group_details=Database().get_record_join(['node.name AS nodename'],['node.groupid=group.id'],[f"`group`.name='{name}'"])
-                if group_details:
-                    for group_detail in group_details:
-                        nodes_in_group.append(group_detail['nodename'])
+                for row in all_nodes_data:
+                    if row['group'] == name:
+                        nodes_in_group.append(row['name'])
                 group_plugins = Helper().plugin_finder(f'{self.plugins_path}/hooks')
                 group_plugin=Helper().plugin_load(group_plugins,'hooks/config','group')
                 try:
                     if oldgroupname and newgroupname:
-                        group_plugin().rename(name=oldgroupname, newname=newgroupname)
+                        group_plugin().rename(name=oldgroupname, newname=newgroupname, all=all_nodes_data)
                     elif create:
-                        group_plugin().postcreate(name=name, nodes=nodes_in_group)
+                        group_plugin().postcreate(name=name, nodes=nodes_in_group, all=all_nodes_data)
                     elif update:
-                        group_plugin().postupdate(name=name, nodes=nodes_in_group)
+                        group_plugin().postupdate(name=name, nodes=nodes_in_group, all=all_nodes_data)
                 except Exception as exp:
                     self.logger.error(f"{exp}")
 
@@ -670,15 +670,15 @@ class Group():
                         Database().insert('groupinterface', row)
 
                 # ---- we call the group plugin - maybe someone wants to run something after clone?
+                all_nodes_data = Helper().nodes_and_groups()
                 nodes_in_group = []
-                group_details=Database().get_record_join(['node.name AS nodename'],['node.groupid=group.id'],[f"`group`.name='{newgroupname}'"])
-                if group_details:
-                    for group_detail in group_details:
-                        nodes_in_group.append(group_detail['nodename'])
+                for row in all_nodes_data:
+                    if row['group'] == name:
+                        nodes_in_group.append(row['name'])
                 group_plugins = Helper().plugin_finder(f'{self.plugins_path}/hooks')
                 group_plugin=Helper().plugin_load(group_plugins,'hooks/config','group')
                 try:
-                    group_plugin().postcreate(name=newgroupname, nodes=nodes_in_group)
+                    group_plugin().postcreate(name=newgroupname, nodes=nodes_in_group, all=all_nodes_data)
                 except Exception as exp:
                     self.logger.error(f"{exp}")
             else:
@@ -727,10 +727,11 @@ class Group():
             response = f'Group {name} removed'
             status=True
             # ---- we call the group plugin - maybe someone wants to run something after delete?
+            all_nodes_data = Helper().nodes_and_groups()
             group_plugins = Helper().plugin_finder(f'{self.plugins_path}/hooks')
             group_plugin=Helper().plugin_load(group_plugins,'hooks/config','group')
             try:
-                group_plugin().delete(name=name)
+                group_plugin().delete(name=name, all=all_nodes_data)
             except Exception as exp:
                 self.logger.error(f"{exp}")
         else:

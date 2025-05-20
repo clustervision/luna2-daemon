@@ -694,16 +694,17 @@ class Node():
                 group_details = Database().get_record_join(['group.name'],
                                                            ['group.id=node.groupid'],
                                                            [f"node.name='{name}'"])
+                all_nodes_data = Helper().nodes_and_groups()
                 node_plugins = Helper().plugin_finder(f'{self.plugins_path}/hooks')
                 node_plugin=Helper().plugin_load(node_plugins,'hooks/config','node')
                 try:
                     if oldnodename and nodename_new:
-                        node_plugin().rename(name=oldnodename, newname=nodename_new)
+                        node_plugin().rename(name=oldnodename, newname=nodename_new, all=all_nodes_data)
                     elif group_details:
                         if create:
-                            node_plugin().postcreate(name=name, group=group_details[0]['name'])
+                            node_plugin().postcreate(name=name, group=group_details[0]['name'], all=all_nodes_data)
                         elif update:
-                            node_plugin().postupdate(name=name, group=group_details[0]['name'])
+                            node_plugin().postupdate(name=name, group=group_details[0]['name'], all=all_nodes_data)
                 except Exception as exp:
                     self.logger.error(f"{exp}")
             else:
@@ -1025,10 +1026,11 @@ class Node():
                                                            ['group.id=node.groupid'],
                                                            [f"node.name='{newnodename}'"])
                 if group_details:
+                    all_nodes_data = Helper().nodes_and_groups()
                     node_plugins = Helper().plugin_finder(f'{self.plugins_path}/hooks')
                     node_plugin=Helper().plugin_load(node_plugins,'hooks/config','node')
                     try:
-                        node_plugin().postcreate(name=newnodename, group=group_details[0]['name'])
+                        node_plugin().postcreate(name=newnodename, group=group_details[0]['name'], all=all_nodes_data)
                     except Exception as exp:
                         self.logger.error(f"{exp}")
             else:
@@ -1090,10 +1092,11 @@ class Node():
             response = f'Node {name} with all its interfaces removed'
             status=True
             # ---- we call the node plugin - maybe someone wants to run something after delete?
+            all_nodes_data = Helper().nodes_and_groups()
             node_plugins = Helper().plugin_finder(f'{self.plugins_path}/hooks')
             node_plugin=Helper().plugin_load(node_plugins,'hooks/config','node')
             try:
-                node_plugin().delete(name=name)
+                node_plugin().delete(name=name, all=all_nodes_data)
             except Exception as exp:
                 self.logger.error(f"{exp}")
         else:

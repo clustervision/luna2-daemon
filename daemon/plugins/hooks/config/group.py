@@ -53,7 +53,7 @@ class Plugin():
 
     # ---------------------------------------------------------------------------
 
-    def postcreate(self, name=None, nodes=[]):
+    def postcreate(self, name=None, nodes=[], all=[]):
         processes = []
         return_code = 0
         if not nodes: return
@@ -66,7 +66,7 @@ class Plugin():
             if process_return_code == 0:
                 self.logger.info(f"Script {process.args} executed successfully")
             else:
-                self.logger.error(f"Script {process.args} failed with return code {process_return_code}")
+                self.logger.error(f"Script {process.args} failed with return code {process_return_code}: {process.stderr.decode()}")
                 return_code = max(return_code, process_return_code)
         if return_code == 0:
             return True, "Config files written"
@@ -75,7 +75,7 @@ class Plugin():
 
     # ---------------------------------------------------------------------------
 
-    def postupdate(self, name=None, nodes=[]):
+    def postupdate(self, name=None, nodes=[], all=[]):
         processes = []
         return_code = 0
         if not nodes: return
@@ -88,7 +88,7 @@ class Plugin():
             if process_return_code == 0:
                 self.logger.info(f"Script {process.args} executed successfully")
             else:
-                self.logger.error(f"Script {process.args} failed with return code {process_return_code}")
+                self.logger.error(f"Script {process.args} failed with return code {process_return_code}: {process.stderr.decode()}")
                 return_code = max(return_code, process_return_code)
         if return_code == 0:
             return True, "Config files written"
@@ -98,7 +98,7 @@ class Plugin():
 
     # ---------------------------------------------------------------------------
 
-    def rename(self, name=None, newname=None):
+    def rename(self, name=None, newname=None, all=[]):
         processes = []
         return_code = 0
         processes.append(subprocess.run([self.SCRIPTS_PATH + "/trix-config-manager", "pdsh-genders", "group", "rename", name, newname], check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE))
@@ -110,7 +110,7 @@ class Plugin():
             if process_return_code == 0:
                 self.logger.info(f"Script {process.args} executed successfully")
             else:
-                self.logger.error(f"Script {process.args} failed with return code {process_return_code}")
+                self.logger.error(f"Script {process.args} failed with return code {process_return_code}: {process.stderr.decode()}")
                 return_code = max(return_code, process_return_code)
         if return_code == 0:
             return True, "Config files written"
@@ -120,7 +120,7 @@ class Plugin():
 
     # ---------------------------------------------------------------------------
 
-    def delete(self, name=None):
+    def delete(self, name=None, all=[]):
         processes = []
         return_code = 0
         processes.append(subprocess.run([self.SCRIPTS_PATH + "/trix-config-manager", "pdsh-genders", "group", "delete", name], check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE))
@@ -132,7 +132,7 @@ class Plugin():
             if process_return_code == 0:
                 self.logger.info(f"Script {process.args} executed successfully")
             else:
-                self.logger.error(f"Script {process.args} failed with return code {process_return_code}")
+                self.logger.error(f"Script {process.args} failed with return code {process_return_code}: {process.stderr.decode()}")
                 return_code = max(return_code, process_return_code)
         if return_code == 0:
             return True, "Config files written"

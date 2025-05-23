@@ -38,9 +38,10 @@ import subprocess
 
 try:
     from trinityx_config_blocks import ConfigFile
-    USECFGBLK = True
+    from trinityx_config_slurm import Templating
+    use_new_config_method = True
 except Exception as exp:
-    USECFGBLK = False
+    use_new_config_method = False
 
 class Plugin():
     """
@@ -53,95 +54,126 @@ class Plugin():
         two defined methods are mandatory:
         - postcreate
         - postupdate
+        - rename
+        - delete
         """
         self.logger = Log.get_logger()
 
     # ---------------------------------------------------------------------------
 
-    def postcreate(self, name=None, group=None, all=[]):
+    def _new_config_method(self, fullset=[]):
+        """
+        This function is not part of the standard called plugin functions
+        and is merely here to prevent repetitive code
+        """
+        config_nodes = Templating().SlurmNodes(fullset)
+        config_partitions = Templating().SlurmPartitions(fullset)
+        config_gres = Templating().SlurmGres(fullset)
+        #self.logger.info(f"SLURM NODES: [{config_nodes}]")
+        #self.logger.info(f"SLURM PART : [{config_partitions}]")
+
+    # ---------------------------------------------------------------------------
+
+    def postcreate(self, name=None, group=None, fullset=[]):
         processes = []
         return_code = 0
         if not group: return
-        processes.append(subprocess.run([self.SCRIPTS_PATH + "/trix-config-manager", "pdsh-genders", "node", "create", name, group], check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE))
-        processes.append(subprocess.run([self.SCRIPTS_PATH + "/trix-config-manager", "slurm-nodes", "node", "create", name, group], check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE))
-        processes.append(subprocess.run([self.SCRIPTS_PATH + "/trix-config-manager", "slurm-partitions", "node", "create", name, group], check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE))
-
-        for process in processes:
-            process_return_code = process.returncode
-            if process_return_code == 0:
-                self.logger.info(f"Script {process.args} executed successfully")
-            else:
-                self.logger.error(f"Script {process.args} failed with return code {process_return_code}: {process.stderr.decode()}")
-                return_code = max(return_code, process_return_code)
-        if return_code == 0:
+        if use_new_config_method:
+            self._new_config_method(fullset)
             return True, "Config files written"
         else:
-            return False, "Error writing config files"
+            processes.append(subprocess.run([self.SCRIPTS_PATH + "/trix-config-manager", "pdsh-genders", "node", "create", name, group], check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE))
+            processes.append(subprocess.run([self.SCRIPTS_PATH + "/trix-config-manager", "slurm-nodes", "node", "create", name, group], check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE))
+            processes.append(subprocess.run([self.SCRIPTS_PATH + "/trix-config-manager", "slurm-partitions", "node", "create", name, group], check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE))
+
+            for process in processes:
+                process_return_code = process.returncode
+                if process_return_code == 0:
+                    self.logger.info(f"Script {process.args} executed successfully")
+                else:
+                    self.logger.error(f"Script {process.args} failed with return code {process_return_code}: {process.stderr.decode()}")
+                    return_code = max(return_code, process_return_code)
+            if return_code == 0:
+                return True, "Config files written"
+            else:
+                return False, "Error writing config files"
 
     # ---------------------------------------------------------------------------
 
-    def postupdate(self, name=None, group=None, all=[]):
+    def postupdate(self, name=None, group=None, fullset=[]):
         processes = []
         return_code = 0
         if not group: return
-        processes.append(subprocess.run([self.SCRIPTS_PATH + "/trix-config-manager", "pdsh-genders", "node", "update", name, group], check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE))
-        processes.append(subprocess.run([self.SCRIPTS_PATH + "/trix-config-manager", "slurm-nodes", "node", "update", name, group], check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE))
-        processes.append(subprocess.run([self.SCRIPTS_PATH + "/trix-config-manager", "slurm-partitions", "node", "update", name, group], check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE))
-
-        for process in processes:
-            process_return_code = process.returncode
-            if process_return_code == 0:
-                self.logger.info(f"Script {process.args} executed successfully")
-            else:
-                self.logger.error(f"Script {process.args} failed with return code {process_return_code}: {process.stderr.decode()}")
-                return_code = max(return_code, process_return_code)
-        if return_code == 0:
+        if use_new_config_method:
+            self._new_config_method(fullset)
             return True, "Config files written"
         else:
-            return False, "Error writing config files"
+            processes.append(subprocess.run([self.SCRIPTS_PATH + "/trix-config-manager", "pdsh-genders", "node", "update", name, group], check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE))
+            processes.append(subprocess.run([self.SCRIPTS_PATH + "/trix-config-manager", "slurm-nodes", "node", "update", name, group], check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE))
+            processes.append(subprocess.run([self.SCRIPTS_PATH + "/trix-config-manager", "slurm-partitions", "node", "update", name, group], check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE))
+
+            for process in processes:
+                process_return_code = process.returncode
+                if process_return_code == 0:
+                    self.logger.info(f"Script {process.args} executed successfully")
+                else:
+                    self.logger.error(f"Script {process.args} failed with return code {process_return_code}: {process.stderr.decode()}")
+                    return_code = max(return_code, process_return_code)
+            if return_code == 0:
+                return True, "Config files written"
+            else:
+                return False, "Error writing config files"
 
     # ---------------------------------------------------------------------------
 
-    def rename(self, name=None, newname=None, all=[]):
+    def rename(self, name=None, newname=None, fullset=[]):
         processes = []
         return_code = 0
-        processes.append(subprocess.run(["/usr/bin/rename ." + name + ". ." + newname + ". /trinity/local/etc/prometheus_server/rules/*"], check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True))
-        processes.append(subprocess.run([self.SCRIPTS_PATH + "/trix-config-manager", "pdsh-genders", "node", "rename", name, newname], check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE))
-        processes.append(subprocess.run([self.SCRIPTS_PATH + "/trix-config-manager", "slurm-nodes", "node", "rename", name, newname], check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE))
-        processes.append(subprocess.run([self.SCRIPTS_PATH + "/trix-config-manager", "slurm-partitions", "node", "rename", name, newname], check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE))
-
-        for process in processes:
-            process_return_code = process.returncode
-            if process_return_code == 0:
-                self.logger.info(f"Script {process.args} executed successfully")
-            else:
-                self.logger.error(f"Script {process.args} failed with return code {process_return_code}: {process.stderr.decode()}")
-                return_code = max(return_code, process_return_code)
-        if return_code == 0:
+        if use_new_config_method:
+            self._new_config_method(fullset)
             return True, "Config files written"
         else:
-            return False, "Error writing config files"
+            processes.append(subprocess.run(["/usr/bin/rename ." + name + ". ." + newname + ". /trinity/local/etc/prometheus_server/rules/*"], check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True))
+            processes.append(subprocess.run([self.SCRIPTS_PATH + "/trix-config-manager", "pdsh-genders", "node", "rename", name, newname], check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE))
+            processes.append(subprocess.run([self.SCRIPTS_PATH + "/trix-config-manager", "slurm-nodes", "node", "rename", name, newname], check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE))
+            processes.append(subprocess.run([self.SCRIPTS_PATH + "/trix-config-manager", "slurm-partitions", "node", "rename", name, newname], check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE))
+
+            for process in processes:
+                process_return_code = process.returncode
+                if process_return_code == 0:
+                    self.logger.info(f"Script {process.args} executed successfully")
+                else:
+                    self.logger.error(f"Script {process.args} failed with return code {process_return_code}: {process.stderr.decode()}")
+                    return_code = max(return_code, process_return_code)
+            if return_code == 0:
+                return True, "Config files written"
+            else:
+                return False, "Error writing config files"
 
     # ---------------------------------------------------------------------------
 
-    def delete(self, name=None, all=[]):
+    def delete(self, name=None, fullset=[]):
         processes = []
         return_code = 0
-        processes.append(subprocess.run(["/bin/rm -f /trinity/local/etc/prometheus_server/rules/trix.hw." + name + ".*"], check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True))
-        processes.append(subprocess.run([self.SCRIPTS_PATH + "/trix-config-manager", "pdsh-genders", "node", "delete", name], check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE))
-        processes.append(subprocess.run([self.SCRIPTS_PATH + "/trix-config-manager", "slurm-nodes", "node", "delete", name], check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE))
-        processes.append(subprocess.run([self.SCRIPTS_PATH + "/trix-config-manager", "slurm-partitions", "node", "delete", name], check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE))
-
-        for process in processes:
-            process_return_code = process.returncode
-            if process_return_code == 0:
-                self.logger.info(f"Script {process.args} executed successfully")
-            else:
-                self.logger.error(f"Script {process.args} failed with return code {process_return_code}: {process.stderr.decode()}")
-                return_code = max(return_code, process_return_code)
-        if return_code == 0:
+        if use_new_config_method:
+            self._new_config_method(fullset)
             return True, "Config files written"
         else:
-            return False, "Error writing config files"
+            processes.append(subprocess.run(["/bin/rm -f /trinity/local/etc/prometheus_server/rules/trix.hw." + name + ".*"], check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True))
+            processes.append(subprocess.run([self.SCRIPTS_PATH + "/trix-config-manager", "pdsh-genders", "node", "delete", name], check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE))
+            processes.append(subprocess.run([self.SCRIPTS_PATH + "/trix-config-manager", "slurm-nodes", "node", "delete", name], check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE))
+            processes.append(subprocess.run([self.SCRIPTS_PATH + "/trix-config-manager", "slurm-partitions", "node", "delete", name], check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE))
+
+            for process in processes:
+                process_return_code = process.returncode
+                if process_return_code == 0:
+                    self.logger.info(f"Script {process.args} executed successfully")
+                else:
+                    self.logger.error(f"Script {process.args} failed with return code {process_return_code}: {process.stderr.decode()}")
+                    return_code = max(return_code, process_return_code)
+            if return_code == 0:
+                return True, "Config files written"
+            else:
+                return False, "Error writing config files"
 
     # ---------------------------------------------------------------------------

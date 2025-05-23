@@ -699,12 +699,12 @@ class Node():
                 node_plugin=Helper().plugin_load(node_plugins,'hooks/config','node')
                 try:
                     if oldnodename and nodename_new:
-                        node_plugin().rename(name=oldnodename, newname=nodename_new, all=all_nodes_data)
+                        node_plugin().rename(name=oldnodename, newname=nodename_new, fullset=all_nodes_data)
                     elif group_details:
                         if create:
-                            node_plugin().postcreate(name=name, group=group_details[0]['name'], all=all_nodes_data)
+                            node_plugin().postcreate(name=name, group=group_details[0]['name'], fullset=all_nodes_data)
                         elif update:
-                            node_plugin().postupdate(name=name, group=group_details[0]['name'], all=all_nodes_data)
+                            node_plugin().postupdate(name=name, group=group_details[0]['name'], fullset=all_nodes_data)
                 except Exception as exp:
                     self.logger.error(f"{exp}")
             else:
@@ -1030,7 +1030,7 @@ class Node():
                     node_plugins = Helper().plugin_finder(f'{self.plugins_path}/hooks')
                     node_plugin=Helper().plugin_load(node_plugins,'hooks/config','node')
                     try:
-                        node_plugin().postcreate(name=newnodename, group=group_details[0]['name'], all=all_nodes_data)
+                        node_plugin().postcreate(name=newnodename, group=group_details[0]['name'], fullset=all_nodes_data)
                     except Exception as exp:
                         self.logger.error(f"{exp}")
             else:
@@ -1096,7 +1096,7 @@ class Node():
             node_plugins = Helper().plugin_finder(f'{self.plugins_path}/hooks')
             node_plugin=Helper().plugin_load(node_plugins,'hooks/config','node')
             try:
-                node_plugin().delete(name=name, all=all_nodes_data)
+                node_plugin().delete(name=name, fullset=all_nodes_data)
             except Exception as exp:
                 self.logger.error(f"{exp}")
         else:

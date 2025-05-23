@@ -36,6 +36,11 @@ from utils.log import Log
 import subprocess
 #from utils.helper import Helper
 
+try:
+    from trinityx_config_blocks import ConfigFile
+    USECFGBLK = True
+except Exception as exp:
+    USECFGBLK = False
 
 class Plugin():
     """

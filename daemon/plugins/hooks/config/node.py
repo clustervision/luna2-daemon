@@ -66,11 +66,24 @@ class Plugin():
         This function is not part of the standard called plugin functions
         and is merely here to prevent repetitive code
         """
-        config_nodes = Templating().SlurmNodes(fullset)
-        config_partitions = Templating().SlurmPartitions(fullset)
-        config_gres = Templating().SlurmGres(fullset)
-        #self.logger.info(f"SLURM NODES: [{config_nodes}]")
-        #self.logger.info(f"SLURM PART : [{config_partitions}]")
+        try:
+            config_nodes = Templating().SlurmNodes(fullset)
+            #self.logger.info(f"SLURM NODES: [{config_nodes}]")
+            config_partitions = Templating().SlurmPartitions(fullset)
+            config_gres = Templating().SlurmGres(fullset)
+            #self.logger.info(f"SLURM PART : [{config_partitions}]")
+            nodes_file = ConfigFile.read("/etc/slurm/slurm-nodes.conf")
+            block_content = nodes_file.get_managed_block("TrinityX")
+            if block_content:
+                nodes_file.set_managed_block("TrinityX", config_nodes)
+                nodes_file.write("/etc/slurm/slurm-nodes.conf")
+            partition_file = ConfigFile.read("/etc/slurm/slurm-partitions.conf")
+            block_content = partition_file.get_managed_block("TrinityX")
+            if block_content:
+                partition_file.set_managed_block("TrinityX", config_partitions)
+                partition_file.write("/etc/slurm/slurm-partitions.conf")
+        except Exception as exp:
+            self.logger.error(f"{exp}")
 
     # ---------------------------------------------------------------------------
 

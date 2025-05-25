@@ -37,8 +37,7 @@ import subprocess
 #from utils.helper import Helper
 
 try:
-    from trinityx_config_blocks import ConfigFile
-    from trinityx_config_slurm import Templating
+    from trinityx_config_slurm import Templating, Generate
     use_new_config_method = True
 except Exception as exp:
     use_new_config_method = False
@@ -61,39 +60,15 @@ class Plugin():
 
     # ---------------------------------------------------------------------------
 
-    def _new_config_method(self, fullset=[]):
-        """
-        This function is not part of the standard called plugin functions
-        and is merely here to prevent repetitive code
-        """
-        try:
-            config_nodes = Templating().SlurmNodes(fullset)
-            #self.logger.info(f"SLURM NODES: [{config_nodes}]")
-            config_partitions = Templating().SlurmPartitions(fullset)
-            config_gres = Templating().SlurmGres(fullset)
-            #self.logger.info(f"SLURM PART : [{config_partitions}]")
-            nodes_file = ConfigFile.read("/etc/slurm/slurm-nodes.conf")
-            block_content = nodes_file.get_managed_block("TrinityX")
-            if block_content:
-                nodes_file.set_managed_block("TrinityX", config_nodes)
-                nodes_file.write("/etc/slurm/slurm-nodes.conf")
-            partition_file = ConfigFile.read("/etc/slurm/slurm-partitions.conf")
-            block_content = partition_file.get_managed_block("TrinityX")
-            if block_content:
-                partition_file.set_managed_block("TrinityX", config_partitions)
-                partition_file.write("/etc/slurm/slurm-partitions.conf")
-        except Exception as exp:
-            self.logger.error(f"{exp}")
-
-    # ---------------------------------------------------------------------------
-
     def postcreate(self, name=None, group=None, fullset=[]):
         processes = []
         return_code = 0
         if not group: return
         if use_new_config_method:
-            self._new_config_method(fullset)
-            return True, "Config files written"
+            if Generate().all_configs(fullset):
+                return True, "Config files written"
+            else:
+                return False, "Error writing config files"
         else:
             processes.append(subprocess.run([self.SCRIPTS_PATH + "/trix-config-manager", "pdsh-genders", "node", "create", name, group], check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE))
             processes.append(subprocess.run([self.SCRIPTS_PATH + "/trix-config-manager", "slurm-nodes", "node", "create", name, group], check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE))
@@ -118,8 +93,10 @@ class Plugin():
         return_code = 0
         if not group: return
         if use_new_config_method:
-            self._new_config_method(fullset)
-            return True, "Config files written"
+            if Generate().all_configs(fullset):
+                return True, "Config files written"
+            else:
+                return False, "Error writing config files"
         else:
             processes.append(subprocess.run([self.SCRIPTS_PATH + "/trix-config-manager", "pdsh-genders", "node", "update", name, group], check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE))
             processes.append(subprocess.run([self.SCRIPTS_PATH + "/trix-config-manager", "slurm-nodes", "node", "update", name, group], check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE))
@@ -143,8 +120,10 @@ class Plugin():
         processes = []
         return_code = 0
         if use_new_config_method:
-            self._new_config_method(fullset)
-            return True, "Config files written"
+            if Generate().all_configs(fullset):
+                return True, "Config files written"
+            else:
+                return False, "Error writing config files"
         else:
             processes.append(subprocess.run(["/usr/bin/rename ." + name + ". ." + newname + ". /trinity/local/etc/prometheus_server/rules/*"], check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True))
             processes.append(subprocess.run([self.SCRIPTS_PATH + "/trix-config-manager", "pdsh-genders", "node", "rename", name, newname], check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE))
@@ -169,8 +148,10 @@ class Plugin():
         processes = []
         return_code = 0
         if use_new_config_method:
-            self._new_config_method(fullset)
-            return True, "Config files written"
+            if Generate().all_configs(fullset):
+                return True, "Config files written"
+            else:
+                return False, "Error writing config files"
         else:
             processes.append(subprocess.run(["/bin/rm -f /trinity/local/etc/prometheus_server/rules/trix.hw." + name + ".*"], check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True))
             processes.append(subprocess.run([self.SCRIPTS_PATH + "/trix-config-manager", "pdsh-genders", "node", "delete", name], check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE))

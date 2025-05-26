@@ -477,11 +477,11 @@ class Group():
                 group_plugin=Helper().plugin_load(group_plugins,'hooks/config','group')
                 try:
                     if oldgroupname and newgroupname:
-                        group_plugin().rename(name=oldgroupname, newname=newgroupname, all=all_nodes_data)
+                        group_plugin().rename(name=oldgroupname, newname=newgroupname, fullset=all_nodes_data)
                     elif create:
-                        group_plugin().postcreate(name=name, nodes=nodes_in_group, all=all_nodes_data)
+                        group_plugin().postcreate(name=name, nodes=nodes_in_group, fullset=all_nodes_data)
                     elif update:
-                        group_plugin().postupdate(name=name, nodes=nodes_in_group, all=all_nodes_data)
+                        group_plugin().postupdate(name=name, nodes=nodes_in_group, fullset=all_nodes_data)
                 except Exception as exp:
                     self.logger.error(f"{exp}")
 
@@ -678,7 +678,7 @@ class Group():
                 group_plugins = Helper().plugin_finder(f'{self.plugins_path}/hooks')
                 group_plugin=Helper().plugin_load(group_plugins,'hooks/config','group')
                 try:
-                    group_plugin().postcreate(name=newgroupname, nodes=nodes_in_group, all=all_nodes_data)
+                    group_plugin().postcreate(name=newgroupname, nodes=nodes_in_group, fullset=all_nodes_data)
                 except Exception as exp:
                     self.logger.error(f"{exp}")
             else:
@@ -731,7 +731,7 @@ class Group():
             group_plugins = Helper().plugin_finder(f'{self.plugins_path}/hooks')
             group_plugin=Helper().plugin_load(group_plugins,'hooks/config','group')
             try:
-                group_plugin().delete(name=name, all=all_nodes_data)
+                group_plugin().delete(name=name, fullset=all_nodes_data)
             except Exception as exp:
                 self.logger.error(f"{exp}")
         else:

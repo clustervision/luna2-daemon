@@ -119,13 +119,17 @@ class Plugin():
     def rename(self, name=None, newname=None, fullset=[]):
         processes = []
         return_code = 0
+        processes.append(subprocess.run(["/usr/bin/rename ." + name + ". ." + newname + ". /trinity/local/etc/prometheus_server/rules/*"], check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True))
         if use_new_config_method:
+            if processes[0].returncode == 0:
+                self.logger.info(f"Script {processes[0].args} executed successfully")
+            else:
+                self.logger.error(f"Script {processes[0].args} failed with return code {processes[0].returncode}: {processes[0].stderr.decode()}")
             if Generate().all_configs(fullset):
                 return True, "Config files written"
             else:
                 return False, "Error writing config files"
         else:
-            processes.append(subprocess.run(["/usr/bin/rename ." + name + ". ." + newname + ". /trinity/local/etc/prometheus_server/rules/*"], check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True))
             processes.append(subprocess.run([self.SCRIPTS_PATH + "/trix-config-manager", "pdsh-genders", "node", "rename", name, newname], check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE))
             processes.append(subprocess.run([self.SCRIPTS_PATH + "/trix-config-manager", "slurm-nodes", "node", "rename", name, newname], check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE))
             processes.append(subprocess.run([self.SCRIPTS_PATH + "/trix-config-manager", "slurm-partitions", "node", "rename", name, newname], check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE))
@@ -147,13 +151,17 @@ class Plugin():
     def delete(self, name=None, fullset=[]):
         processes = []
         return_code = 0
+        processes.append(subprocess.run(["/bin/rm -f /trinity/local/etc/prometheus_server/rules/trix.hw." + name + ".*"], check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True))
         if use_new_config_method:
+            if processes[0].returncode == 0:
+                self.logger.info(f"Script {processes[0].args} executed successfully")
+            else:
+                self.logger.error(f"Script {processes[0].args} failed with return code {processes[0].returncode}: {processes[0].stderr.decode()}")
             if Generate().all_configs(fullset):
                 return True, "Config files written"
             else:
                 return False, "Error writing config files"
         else:
-            processes.append(subprocess.run(["/bin/rm -f /trinity/local/etc/prometheus_server/rules/trix.hw." + name + ".*"], check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True))
             processes.append(subprocess.run([self.SCRIPTS_PATH + "/trix-config-manager", "pdsh-genders", "node", "delete", name], check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE))
             processes.append(subprocess.run([self.SCRIPTS_PATH + "/trix-config-manager", "slurm-nodes", "node", "delete", name], check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE))
             processes.append(subprocess.run([self.SCRIPTS_PATH + "/trix-config-manager", "slurm-partitions", "node", "delete", name], check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE))

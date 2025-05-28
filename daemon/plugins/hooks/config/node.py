@@ -62,11 +62,13 @@ class Plugin():
     # ---------------------------------------------------------------------------
 
     def postcreate(self, name=None, group=None, fullset=[]):
-        processes = []
+        processes, returns = [], []
         return_code = 0
         if not group: return
         if use_new_config_method:
-            if Slurm().all_configs(fullset) and Generate().Genders(fullset):
+            returns.append(Slurm().all_configs(fullset))
+            returns.append(Generate().Genders(fullset))
+            if (min(returns)):
                 return True, "Config files written"
             else:
                 return False, "Error writing config files"
@@ -90,11 +92,13 @@ class Plugin():
     # ---------------------------------------------------------------------------
 
     def postupdate(self, name=None, group=None, fullset=[]):
-        processes = []
+        processes, returns = [], []
         return_code = 0
         if not group: return
         if use_new_config_method:
-            if Slurm().all_configs(fullset) and Generate().Genders(fullset):
+            returns.append(Slurm().all_configs(fullset))
+            returns.append(Generate().Genders(fullset))
+            if (min(returns)):
                 return True, "Config files written"
             else:
                 return False, "Error writing config files"
@@ -118,7 +122,7 @@ class Plugin():
     # ---------------------------------------------------------------------------
 
     def rename(self, name=None, newname=None, fullset=[]):
-        processes = []
+        processes, returns = [], []
         return_code = 0
         processes.append(subprocess.run(["/usr/bin/rename ." + name + ". ." + newname + ". /trinity/local/etc/prometheus_server/rules/*"], check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True))
         if use_new_config_method:
@@ -126,7 +130,9 @@ class Plugin():
                 self.logger.info(f"Script {processes[0].args} executed successfully")
             else:
                 self.logger.error(f"Script {processes[0].args} failed with return code {processes[0].returncode}: {processes[0].stderr.decode()}")
-            if Slurm().all_configs(fullset) and Generate().Genders(fullset):
+            returns.append(Slurm().all_configs(fullset))
+            returns.append(Generate().Genders(fullset))
+            if (min(returns)):
                 return True, "Config files written"
             else:
                 return False, "Error writing config files"
@@ -150,7 +156,7 @@ class Plugin():
     # ---------------------------------------------------------------------------
 
     def delete(self, name=None, fullset=[]):
-        processes = []
+        processes, returns = [], []
         return_code = 0
         processes.append(subprocess.run(["/bin/rm -f /trinity/local/etc/prometheus_server/rules/trix.hw." + name + ".*"], check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True))
         if use_new_config_method:
@@ -158,7 +164,9 @@ class Plugin():
                 self.logger.info(f"Script {processes[0].args} executed successfully")
             else:
                 self.logger.error(f"Script {processes[0].args} failed with return code {processes[0].returncode}: {processes[0].stderr.decode()}")
-            if Slurm().all_configs(fullset) and Generate().Genders(fullset):
+            returns.append(Slurm().all_configs(fullset))
+            returns.append(Generate().Genders(fullset))
+            if (min(returns)):
                 return True, "Config files written"
             else:
                 return False, "Error writing config files"

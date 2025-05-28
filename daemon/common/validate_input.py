@@ -57,6 +57,7 @@ REG_EXP = {
     'macaddress': { 'regexp': r'^(([0-9A-Fa-f]{2}((-|:)[0-9A-Za-f]{2}){5})|)$', 'error': '6 blocks of 2 characters a-f or numbers 0-9, separated by \':\' or \'-\'' },
     'minimal': { 'regexp': r'^\S.*$', 'error': 'minimal character requirement. at least one' },
     'integer': { 'regexp': r'^[0-9]+$', 'error': 'integers only' },
+    'intandnone': { 'regexp': r'^[0-9]*$', 'error': 'integers or empty only' },
     'anything': { 'regexp': r'', 'error': 'anything' },
 }
 RESERVED = {
@@ -94,7 +95,7 @@ MATCH = {
     'tag': 'anything',
     'interface': 'minimal',
     'gateway_metric': 'integer',
-    'vlanid': 'integer',
+    'vlanid': 'intandnone',
     'vlan_parent': 'interface',
     'bond_mode': 'name',
     'bond_slaves': 'interfacecsv'

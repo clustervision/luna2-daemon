@@ -39,10 +39,11 @@ from threading import Event
 import traceback
 from io import StringIO
 from flask import Flask, abort, json, Response, request
-from common.constant import LOGGER
+from common.constant import LOGGER, CONSTANT
 from common.bootstrap import validate_bootstrap
 from utils.housekeeper import Housekeeper
 from utils.service import Service
+from utils.helper import Helper
 from routes.auth import auth_blueprint
 from routes.boot import boot_blueprint
 from routes.boot_roles import roles_blueprint
@@ -93,6 +94,21 @@ def on_starting(server):
     except Exception as exp:
         exc_type, exc_obj, exc_tb = sys.exc_info()
         sys.stderr.write(f"ERROR: Restarting services returned an exception: {exp}, {exc_type}, in {exc_tb.tb_lineno}\n")
+    # we call the startup hook plugin
+    try:
+        plugins_path=CONSTANT["PLUGINS"]["PLUGINS_DIRECTORY"]
+        hooks_plugins = Helper().plugin_finder(f'{plugins_path}/hooks')
+        hook_plugin = Helper().plugin_load(
+            hooks_plugins,
+            'hooks/luna',
+            'default'
+        )
+        status, message = hook_plugin().startup(Helper().nodes_and_groups())
+        if not status:
+            sys.stderr.write(f"ERROR: Startup hook plugin returned: {status}, {message}\n")
+    except Exception as exp:
+        exc_type, exc_obj, exc_tb = sys.exc_info()
+        sys.stderr.write(f"ERROR: Startup hook plugin returned an exception: {exp}, {exc_type}, in {exc_tb.tb_lineno}\n")
     # --------------- status message cleanup thread ----------------
     executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
     executor.submit(Housekeeper().cleanup_mother, event)
@@ -135,6 +151,21 @@ def on_exit(server):
     event.set()  # stops the threads like cleanup
     LOGGER.info(vars(server))
     LOGGER.info('Gunicorn server hook on exit')
+    # we call the shutdown hook plugin
+    try:
+        plugins_path=CONSTANT["PLUGINS"]["PLUGINS_DIRECTORY"]
+        hooks_plugins = Helper().plugin_finder(f'{plugins_path}/hooks')
+        hook_plugin = Helper().plugin_load(
+            hooks_plugins,
+            'hooks/luna',
+            'default'
+        )
+        status, message = hook_plugin().shutdown(Helper().nodes_and_groups())
+        if not status:
+            sys.stderr.write(f"ERROR: Shutdown hook plugin returned: {status}, {message}\n")
+    except Exception as exp:
+        exc_type, exc_obj, exc_tb = sys.exc_info()
+        sys.stderr.write(f"ERROR: Shutdown hook plugin returned an exception: {exp}, {exc_type}, in {exc_tb.tb_lineno}\n")
     return True
 
 ############# debug traces ######################

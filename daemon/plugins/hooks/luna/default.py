@@ -29,21 +29,11 @@ __maintainer__  = 'Antoine Schonewille'
 __email__       = 'antoine.schonewille@clustervision.com'
 __status__      = 'Development'
 
-from utils.log import Log
-#from utils.helper import Helper
-
-try:
-    from trinityx_config_slurm import Generate as Slurm
-    from trinityx_config_genders import Generate
-    use_new_config_method = True
-except Exception as exp:
-    use_new_config_method = False
 
 class Plugin():
     """
-    Class for running custom scripts during node create/update actions
+    Class for running custom scripts during luna daemon start up and shutdown
     """
-    SCRIPTS_PATH = "/trinity/local/sbin"
 
     def __init__(self):
         """
@@ -51,7 +41,6 @@ class Plugin():
         - startup
         - shutdown
         """
-        self.logger = Log.get_logger()
 
     # ---------------------------------------------------------------------------
 
@@ -60,22 +49,15 @@ class Plugin():
         This method will be called when luna starts up
         fullset contains node/group key/value pairs in a list
         """
-        returns = []
-        if use_new_config_method:
-            returns.append(Slurm().all_configs(fullset))
-            returns.append(Generate().Genders(fullset))
-            if (min(returns)):
-                return True, "Config files written"
-            else:
-                return False, "Error writing config files"
-        return True, "no config change needed"
+        return True, "success"
 
     # ---------------------------------------------------------------------------
 
     def shutdown(self, fullset=[]):
         """
         This method will be called when luna shutsdown
+        fullset contains node/group key/value pairs in a list
         """
-        return True, "no config change needed"
+        return True, "success"
     
     # ---------------------------------------------------------------------------

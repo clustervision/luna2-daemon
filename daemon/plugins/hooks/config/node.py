@@ -37,7 +37,8 @@ import subprocess
 #from utils.helper import Helper
 
 try:
-    from trinityx_config_slurm import Templating, Generate
+    from trinityx_config_slurm import Generate as Slurm
+    from trinityx_config_genders import Generate
     use_new_config_method = True
 except Exception as exp:
     use_new_config_method = False
@@ -65,7 +66,7 @@ class Plugin():
         return_code = 0
         if not group: return
         if use_new_config_method:
-            if Generate().all_configs(fullset):
+            if Slurm().all_configs(fullset) and Generate().Genders(fullset):
                 return True, "Config files written"
             else:
                 return False, "Error writing config files"
@@ -93,7 +94,7 @@ class Plugin():
         return_code = 0
         if not group: return
         if use_new_config_method:
-            if Generate().all_configs(fullset):
+            if Slurm().all_configs(fullset) and Generate().Genders(fullset):
                 return True, "Config files written"
             else:
                 return False, "Error writing config files"
@@ -125,7 +126,7 @@ class Plugin():
                 self.logger.info(f"Script {processes[0].args} executed successfully")
             else:
                 self.logger.error(f"Script {processes[0].args} failed with return code {processes[0].returncode}: {processes[0].stderr.decode()}")
-            if Generate().all_configs(fullset):
+            if Slurm().all_configs(fullset) and Generate().Genders(fullset):
                 return True, "Config files written"
             else:
                 return False, "Error writing config files"
@@ -157,7 +158,7 @@ class Plugin():
                 self.logger.info(f"Script {processes[0].args} executed successfully")
             else:
                 self.logger.error(f"Script {processes[0].args} failed with return code {processes[0].returncode}: {processes[0].stderr.decode()}")
-            if Generate().all_configs(fullset):
+            if Slurm().all_configs(fullset) and Generate().Genders(fullset):
                 return True, "Config files written"
             else:
                 return False, "Error writing config files"

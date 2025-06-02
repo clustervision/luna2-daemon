@@ -281,6 +281,10 @@ class Network():
                         return status, f'Invalid request: Incorrect NTP Server IP: {data["ntp_server"]}'
             if 'dhcp' in data:
                 data['dhcp'] = Helper().bool_to_string(data['dhcp'])
+                if data['dhcp'] not in ['0','1']:
+                    status=False
+                    ret_msg = f"Invalid request: dhcp should be y, yes, n or no"
+                    return status, ret_msg
                 if 'dhcp_range_begin' in data:
                     dhcp_start_details = None
                     if 'network' in data and 'subnet' in data:
@@ -316,6 +320,10 @@ class Network():
                     # to make sure we do not overlap with existing node ip configs
             if 'dhcp_nodes_in_pool' in data:
                 data['dhcp_nodes_in_pool'] = Helper().bool_to_string(data['dhcp_nodes_in_pool'])
+                if data['dhcp_nodes_in_pool'] not in ['0','1']:
+                    status=False
+                    ret_msg = f"Invalid request: dhcp_nodes_in_pool should be y, yes, n or no"
+                    return status, ret_msg
                 if data['dhcp_nodes_in_pool'] == "0":
                     self.logger.info("We will (re)configure ip addresses")
                     reconfigure_ipaddress = True

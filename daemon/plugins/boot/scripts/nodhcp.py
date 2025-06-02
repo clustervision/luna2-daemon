@@ -147,8 +147,10 @@ if [ "$SH" ]; then
         chroot /sysroot /bin/bash -c "efibootmgr -v"
         echo Clean
 fi
-chroot /sysroot /bin/bash -c "efibootmgr --verbose --disk /dev/sda --part 1 --create --label \"Shim1\" --loader /EFI/rocky/shimx64.efi"
-chroot /sysroot /bin/bash -c "grub2-mkconfig -o /boot/efi/EFI/rocky/grub.cfg"
+DISTRO=$(ls /sysroot/boot/efi/EFI/ | grep -ie rocky -e redhat -e alma -e centos || echo rocky)
+chroot /sysroot /bin/bash -c "efibootmgr --verbose --disk /dev/sda --part 1 --create --label \"Shim1\" --loader /EFI/${DISTRO}/shimx64.efi"
+chroot /sysroot /bin/bash -c "grub2-mkconfig -o /boot/efi/EFI/${DISTRO}/grub.cfg"
+chroot /sysroot /bin/bash -c "cd /boot && ln -s /boot boot"
 
 umount /sysroot/sys
 umount /sysroot/dev

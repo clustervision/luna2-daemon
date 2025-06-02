@@ -969,6 +969,9 @@ class Config(object):
         my_dhcp['networkid'] = network_details[0]['id']
         dhcp = Helper().bool_to_string(dhcp)
         my_dhcp['dhcp'] = dhcp
+        if my_dhcp['dhcp'] not in ['0','1']:
+            message = f"dhcp should be y, yes, n or no"
+            return False, message
 
         my_interface = Database().get_record_join(
             ['ipaddress.*'],
@@ -1181,6 +1184,9 @@ class Config(object):
                 return False, message
         if dhcp is not None:
             my_interface['dhcp'] = Helper().bool_to_string(dhcp)
+            if my_interface['dhcp'] not in ['0','1']:
+                message = f"dhcp should be y, yes, n or no"
+                return False, message
 
         networkid = None
         if network:

@@ -131,6 +131,8 @@ if [ "$MAKE_BOOT" == "yes" ]; then
     $null > /sysroot/.autorelabel
 fi
 
+chroot /sysroot /bin/bash -c "cd /boot && ln -s /boot boot"
+
 umount /sysroot/sys
 umount /sysroot/dev
 umount /sysroot/proc

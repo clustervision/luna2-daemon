@@ -158,12 +158,15 @@ if [ "$MAKE_BOOT" == "yes" ]; then
         chroot /sysroot /bin/bash -c "efibootmgr -B -b $SH"
     fi
     DISTRO=$(ls /sysroot/boot/efi/EFI/ | grep -ie rocky -e redhat -e alma -e centos || echo rocky)
-    chroot /sysroot /bin/bash -c "efibootmgr --disk ${MY_LOCAL_DISK1_NAME}${DP1} --part 1 --create --label \"Shim1\" --loader /EFI/${DISTRO}/shimx64.efi"
-    chroot /sysroot /bin/bash -c "grub2-mkconfig -o /boot/efi/EFI/${DISTRO}/grub.cfg"
-    $null > /sysroot/.autorelabel
+    chroot /sysroot /bin/bash -c "efibootmgr --disk ${MY_LOCAL_DISK1_NAME}${DP1} --part 1 --create --label \"Shim1\" --loader /EFI/${DISTRO}/shimx64.efi; \
+                                  grub2-mkconfig -o /boot/efi/EFI/${DISTRO}/grub.cfg"
+    # commented out next command as it imposes reboots. When netboot is set to no and with correct bios settings,
+    # this would impose desired behavior. To cover all bases, we now relabel before the pivot. See below.
+    #$null > /sysroot/.autorelabel
 fi
 
-chroot /sysroot /bin/bash -c "cd /boot && ln -s /boot boot"
+chroot /sysroot /bin/bash -c "cd /boot && ln -s /boot boot; \
+                              restorecon -r -p / 2> /dev/null"
 
 umount /sysroot/sys
 umount /sysroot/dev

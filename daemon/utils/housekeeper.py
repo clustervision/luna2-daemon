@@ -117,7 +117,11 @@ class Housekeeper(object):
                                 OsImage().provision_osimage(next_id,request_id)
                             case 'unpack_osimage':
                                 Queue().update_task_status_in_queue(next_id,'in progress')
-                                OsImage().unpack_osimage(next_id,request_id)
+                                status = OsImage().unpack_osimage(next_id,request_id)
+                                if not status:
+                                    sleep(5)
+                                    self.logger.warning("First attempt to unpack osimage failed. Retrying one more time")
+                                    status = OsImage().unpack_osimage(next_id,request_id)
 
                         if remove_from_queue:
                             Queue().remove_task_from_queue(next_id)

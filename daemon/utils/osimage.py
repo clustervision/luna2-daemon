@@ -838,7 +838,7 @@ class OsImage(object):
                     result=True
                 else:
                     self.logger.info(f'OS image {osimage} unpack error: {mesg}.')
-                    Status().add_message(request_id,"luna",f"error assembling osimage {osimage}: {mesg}")
+                    Status().add_message(request_id,"luna",f"error unpacking osimage {osimage}: {mesg}")
                 
                 if not noeof:
                     Status().add_message(request_id,"luna","EOF")

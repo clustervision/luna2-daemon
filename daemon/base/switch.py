@@ -147,6 +147,7 @@ class Switch():
                 else:
                     response = 'Invalid request: Columns are incorrect'
                     status=False
+                    return status, response
             # Antoine --->>> ----------- interface(s) update/create -------------
             if nonetwork:
                 result, message = Config().device_raw_ipaddress_config(

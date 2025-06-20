@@ -93,6 +93,8 @@ class Housekeeper(object):
                             case 'sync_osimage_with_master':
                                 osimage=first
                                 master=second
+                                new_state = f'Image sync success for {osimage}'
+                                state = {'monitor': {'status': {osimage: {'state': new_state, 'status': '200'} } } }
                                 Queue().update_task_status_in_queue(next_id,'in progress')
                                 ret,mesg=Journal().add_request(function='OsImager.schedule_cleanup',object=osimage,keeptrying=60)
                                 if ret is True:
@@ -110,18 +112,29 @@ class Housekeeper(object):
                                         ret,mesg=Journal().add_request(function='Queue.add_task_to_queue_legacy',object=f'unpack_osimage:{osimage}',param='housekeeper')
                                 if not ret and mesg:
                                     self.logger.warning(f"While working on sync_osimage_with_master task {next_id}, adding to journal returned: {mesg}")
+                                    new_state = f'Image sync failed for {osimage}: {mesg}'
+                                    state = {'monitor': {'status': {osimage: {'state': new_state, 'status': '501'} } } }
                                     Queue().update_task_status_in_queue(next_id,'stuck')
                                     remove_from_queue=False
+                                Monitor().update_itemstatus(item='osimage_sync', name=osimage, request_data=state)
                             case 'provision_osimage':
                                 Queue().update_task_status_in_queue(next_id,'in progress')
                                 OsImage().provision_osimage(next_id,request_id)
                             case 'unpack_osimage':
+                                new_state = f'Image unpack success for {osimage}'
+                                state = {'monitor': {'status': {osimage: {'state': new_state, 'status': '200'} } } }
+                                details=Queue().get_task_details(next_id)
+                                osimage=details['param']
                                 Queue().update_task_status_in_queue(next_id,'in progress')
                                 status = OsImage().unpack_osimage(next_id,request_id)
                                 if not status:
                                     sleep(5)
                                     self.logger.warning("First attempt to unpack osimage failed. Retrying one more time")
                                     status = OsImage().unpack_osimage(next_id,request_id)
+                                    if not status:
+                                        new_state = f'Image unpack failed for {osimage}'
+                                        state = {'monitor': {'status': {osimage: {'state': new_state, 'status': '501'} } } }
+                                Monitor().update_itemstatus(item='osimage_sync', name=osimage, request_data=state)
 
                         if remove_from_queue:
                             Queue().remove_task_from_queue(next_id)
@@ -317,6 +330,8 @@ class Housekeeper(object):
             journal_object=Journal(me)
             tables_object=Tables()
             ha_object.set_insync(False)
+            state = {'monitor': {'status': {'state': 'HA controller not in sync', 'status': '501'}}}
+            Monitor().update_itemstatus(item='ha', name='sync', request_data=state)
             # ---------------------------- we keep asking the journal from others until successful
             while syncpull_status is False:
                 try:
@@ -335,6 +350,7 @@ class Housekeeper(object):
             ha_object.set_overrule(False)
             while True:
                 try:
+                    ha_state = {}
                     # --------------------------- am i a master or not?
                     master=ha_object.get_role()
                     # --------------------------- first we sync with the others. we push what's still in the journal
@@ -353,6 +369,7 @@ class Housekeeper(object):
                     elif startup_controller is True:
                         startup_controller=False
                         ha_object.set_insync(True)
+                        ha_state['sync'] = {'state': 'HA controller in sync', 'status': '200'}
                     # --------------------------- we ping the others. if someone is down, we become paranoid
                     if ping_counter<1:
                         ping_status=ha_object.ping_controllers()
@@ -369,11 +386,13 @@ class Housekeeper(object):
                             ha_object.set_insync(status)
                         if check_status is False:
                             if ping_status is True:
+                                ha_state['ping'] = {'state': 'HA controller not receiving pings', 'status': '501'}
                                 self.logger.warning("Reverting to pulling journal updates on interval as an emergency measure...")
                                 syncpull_status=journal_object.pullfrom_controllers()
                             ping_check=21
                         else:
                             ping_check=3
+                            ha_state['ping'] = {'state': 'HA controller pings ok', 'status': '200'}
                     ping_check-=1
                     # --------------------------- if we're the master but for some unknown reason we've been out of sync for too long...
                     if insync_check<1:
@@ -382,8 +401,10 @@ class Housekeeper(object):
                                 oosync_counter=0
                             else:
                                 oosync_counter+=1
+                                ha_state['sync'] = {'state': 'HA master out of sync', 'status': '501'}
                             if oosync_counter>2:
                                 self.logger.warning(f"I am a master but somehow got stuck being out of sync? This should not happen....")
+                                ha_state['sync'] = {'state': 'HA master in sync', 'status': '200'}
                                 ha_object.set_insync(True)
                                 oosync_counter=0
                         else:
@@ -406,6 +427,11 @@ class Housekeeper(object):
                             sum_counter=720
                         sum_counter-=1
                     # --------------------------- end of magic
+                    for item in ['ping','sync']:
+                        if ha_component in ha_state:
+                            state = {'monitor': {'status': {ha_state[ha_component]} }}
+                            Monitor().update_itemstatus(item='ha', name=ha_component, request_data=state)
+                            #status, monitor_response = Monitor().get_itemstatus(item='ha', name='sync')
                 except Exception as exp:
                     exc_type, exc_obj, exc_tb = sys.exc_info()
                     self.logger.error(f"journal_mother thread encountered problem in main loop: {exp}, {exc_type}, in {exc_tb.tb_lineno}")

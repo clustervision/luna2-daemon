@@ -116,7 +116,7 @@ class Housekeeper(object):
                                     state = {'monitor': {'status': {osimage: {'state': new_state, 'status': '501'} } } }
                                     Queue().update_task_status_in_queue(next_id,'stuck')
                                     remove_from_queue=False
-                                Monitor().update_itemstatus(item='osimage_sync', name=osimage, request_data=state)
+                                Monitor().update_itemstatus(item='sync', name=osimage, request_data=state)
                             case 'provision_osimage':
                                 Queue().update_task_status_in_queue(next_id,'in progress')
                                 OsImage().provision_osimage(next_id,request_id)
@@ -134,7 +134,7 @@ class Housekeeper(object):
                                     if not status:
                                         new_state = f'Image unpack failed for {osimage}'
                                         state = {'monitor': {'status': {osimage: {'state': new_state, 'status': '501'} } } }
-                                Monitor().update_itemstatus(item='osimage_sync', name=osimage, request_data=state)
+                                Monitor().update_itemstatus(item='sync', name=osimage, request_data=state)
 
                         if remove_from_queue:
                             Queue().remove_task_from_queue(next_id)
@@ -331,7 +331,7 @@ class Housekeeper(object):
             tables_object=Tables()
             ha_object.set_insync(False)
             state = {'monitor': {'status': {'state': 'HA controller not in sync', 'status': '501'}}}
-            Monitor().update_itemstatus(item='ha', name='sync', request_data=state)
+            Monitor().update_itemstatus(item='ha', name='insync', request_data=state)
             # ---------------------------- we keep asking the journal from others until successful
             while syncpull_status is False:
                 try:
@@ -369,7 +369,7 @@ class Housekeeper(object):
                     elif startup_controller is True:
                         startup_controller=False
                         ha_object.set_insync(True)
-                        ha_state['sync'] = {'state': 'HA controller in sync', 'status': '200'}
+                        ha_state['insync'] = {'state': 'HA controller in sync', 'status': '200'}
                     # --------------------------- we ping the others. if someone is down, we become paranoid
                     if ping_counter<1:
                         ping_status=ha_object.ping_controllers()
@@ -401,10 +401,10 @@ class Housekeeper(object):
                                 oosync_counter=0
                             else:
                                 oosync_counter+=1
-                                ha_state['sync'] = {'state': 'HA master out of sync', 'status': '501'}
+                                ha_state['insync'] = {'state': 'HA master out of sync', 'status': '501'}
                             if oosync_counter>2:
                                 self.logger.warning(f"I am a master but somehow got stuck being out of sync? This should not happen....")
-                                ha_state['sync'] = {'state': 'HA master in sync', 'status': '200'}
+                                ha_state['insync'] = {'state': 'HA master in sync', 'status': '200'}
                                 ha_object.set_insync(True)
                                 oosync_counter=0
                         else:
@@ -427,11 +427,11 @@ class Housekeeper(object):
                             sum_counter=720
                         sum_counter-=1
                     # --------------------------- end of magic
-                    for item in ['ping','sync']:
+                    for item in ['ping','insync']:
                         if ha_component in ha_state:
                             state = {'monitor': {'status': {ha_state[ha_component]} }}
                             Monitor().update_itemstatus(item='ha', name=ha_component, request_data=state)
-                            #status, monitor_response = Monitor().get_itemstatus(item='ha', name='sync')
+                            #status, monitor_response = Monitor().get_itemstatus(item='ha', name='insync')
                 except Exception as exp:
                     exc_type, exc_obj, exc_tb = sys.exc_info()
                     self.logger.error(f"journal_mother thread encountered problem in main loop: {exp}, {exc_type}, in {exc_tb.tb_lineno}")

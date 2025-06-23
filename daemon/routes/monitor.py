@@ -96,6 +96,22 @@ def monitor_status_post(node=None):
     return response, access_code
 
 
+@monitor_blueprint.route('/monitor/ha/<string:name>', methods=['GET'])
+@validate_name
+def monitor_ha_get(name=None):
+    """
+    Input - nothing
+    Process - generates a list for states of HA
+    Output - the generated list in json format
+    """
+    access_code = 503
+    status, response = Monitor().get_itemstatus(item='ha',name=name)
+    if status is True:
+        access_code = 200
+    #response = {'monitor': {'ha': response } }
+    return response, access_code
+
+
 @monitor_blueprint.route('/monitor/queue', methods=['GET'])
 @token_required
 def monitor_queue():

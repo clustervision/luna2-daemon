@@ -121,10 +121,10 @@ class Housekeeper(object):
                                 Queue().update_task_status_in_queue(next_id,'in progress')
                                 OsImage().provision_osimage(next_id,request_id)
                             case 'unpack_osimage':
-                                new_state = f'Image unpack success for {osimage}'
-                                state = {'monitor': {'status': {osimage: {'state': new_state, 'status': '200'} } } }
                                 details=Queue().get_task_details(next_id)
                                 osimage=details['param']
+                                new_state = f'Image unpack success for {osimage}'
+                                state = {'monitor': {'status': {osimage: {'state': new_state, 'status': '200'} } } }
                                 Queue().update_task_status_in_queue(next_id,'in progress')
                                 status = OsImage().unpack_osimage(next_id,request_id)
                                 if not status:
@@ -427,7 +427,7 @@ class Housekeeper(object):
                             sum_counter=720
                         sum_counter-=1
                     # --------------------------- end of magic
-                    for item in ['ping','insync']:
+                    for ha_component in ['ping','insync']:
                         if ha_component in ha_state:
                             state = {'monitor': {'status': {ha_state[ha_component]} }}
                             Monitor().update_itemstatus(item='ha', name=ha_component, request_data=state)

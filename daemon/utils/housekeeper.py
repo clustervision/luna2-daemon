@@ -429,7 +429,7 @@ class Housekeeper(object):
                     # --------------------------- end of magic
                     for ha_component in ['ping','insync']:
                         if ha_component in ha_state:
-                            state = {'monitor': {'status': {ha_state[ha_component]} }}
+                            state = {'monitor': {'status': ha_state[ha_component] }}
                             Monitor().update_itemstatus(item='ha', name=ha_component, request_data=state)
                             #status, monitor_response = Monitor().get_itemstatus(item='ha', name='insync')
                 except Exception as exp:

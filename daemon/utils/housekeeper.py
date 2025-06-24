@@ -372,27 +372,41 @@ class Housekeeper(object):
                         ha_state['insync'] = {'state': 'HA controller in sync', 'status': '200'}
                     # --------------------------- we ping the others. if someone is down, we become paranoid
                     if ping_counter<1:
+                        prev_ping_status = ping_status
                         ping_status=ha_object.ping_controllers()
                         if master is False: # i am not a master
                             status = ping_status and check_status
                             ha_object.set_insync(status)
+                            if prev_ping_status != ping_status:
+                                if status:
+                                    ha_state['insync'] = {'state': 'HA controller in sync', 'status': '200'}
+                                else:
+                                    ha_state['insync'] = {'state': 'HA controller out of sync', 'status': '501'}
                         ping_counter=3
                     ping_counter-=1
                     # --------------------------- we check if we have received pings. if things are weird we use fallback mechanisms
                     if ping_check<1:
-                        check_status=ha_object.verify_pings()
+                        prev_check_status = check_status
+                        check_status = ha_object.verify_pings()
                         if master is False: # i am not a master
                             status = ping_status and check_status
                             ha_object.set_insync(status)
+                            if prev_check_status != check_status:
+                                if status:
+                                    ha_state['insync'] = {'state': 'HA controller in sync', 'status': '200'}
+                                else:
+                                    ha_state['insync'] = {'state': 'HA controller out of sync', 'status': '501'}
                         if check_status is False:
                             if ping_status is True:
-                                ha_state['ping'] = {'state': 'HA controller not receiving pings', 'status': '501'}
                                 self.logger.warning("Reverting to pulling journal updates on interval as an emergency measure...")
                                 syncpull_status=journal_object.pullfrom_controllers()
+                                if prev_check_status != check_status:
+                                    ha_state['ping'] = {'state': 'HA controller not receiving pings', 'status': '501'}
                             ping_check=21
                         else:
                             ping_check=3
-                            ha_state['ping'] = {'state': 'HA controller pings ok', 'status': '200'}
+                            if prev_check_status != check_status:
+                                ha_state['ping'] = {'state': 'HA controller pings ok', 'status': '200'}
                     ping_check-=1
                     # --------------------------- if we're the master but for some unknown reason we've been out of sync for too long...
                     if insync_check<1:
@@ -401,10 +415,10 @@ class Housekeeper(object):
                                 oosync_counter=0
                             else:
                                 oosync_counter+=1
-                                ha_state['insync'] = {'state': 'HA master out of sync', 'status': '501'}
+                                ha_state['insync'] = {'state': 'HA controller out of sync', 'status': '501'}
                             if oosync_counter>2:
                                 self.logger.warning(f"I am a master but somehow got stuck being out of sync? This should not happen....")
-                                ha_state['insync'] = {'state': 'HA master in sync', 'status': '200'}
+                                ha_state['insync'] = {'state': 'HA controller in sync', 'status': '200'}
                                 ha_object.set_insync(True)
                                 oosync_counter=0
                         else:

@@ -330,7 +330,7 @@ class Housekeeper(object):
             journal_object=Journal(me)
             tables_object=Tables()
             ha_object.set_insync(False)
-            state = {'monitor': {'status': {'state': 'HA controller not in sync', 'status': '501'}}}
+            state = {'monitor': {'status': {'insync': {'state': 'HA controller not in sync', 'status': '501'}}}}
             Monitor().update_itemstatus(item='ha', name='insync', request_data=state)
             # ---------------------------- we keep asking the journal from others until successful
             while syncpull_status is False:
@@ -429,7 +429,7 @@ class Housekeeper(object):
                     # --------------------------- end of magic
                     for ha_component in ['ping','insync']:
                         if ha_component in ha_state:
-                            state = {'monitor': {'status': ha_state[ha_component] }}
+                            state = {'monitor': {'status': {ha_component: ha_state[ha_component] }}}
                             Monitor().update_itemstatus(item='ha', name=ha_component, request_data=state)
                             #status, monitor_response = Monitor().get_itemstatus(item='ha', name='insync')
                 except Exception as exp:

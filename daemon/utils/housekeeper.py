@@ -141,18 +141,20 @@ class Housekeeper(object):
                             Queue().remove_task_from_queue(next_id)
                         tasks_check = True
 
-                if event.is_set():
-                    return
             except Exception as exp:
                 exc_type, exc_obj, exc_tb = sys.exc_info()
                 self.logger.error(f"tasks_mother up thread encountered problem: {exp}, {exc_type}, in {exc_tb.tb_lineno}")
                 tasks_check = False
                 tasks_state = {'monitor': {'status': {'tasks': {'state': f'tasks_mother execution problems detected: {exp}', 'status': '501'} }}}
+
             if prev_tasks_check is None or prev_tasks_check != tasks_check:
                 if tasks_check:
                     tasks_state = {'monitor': {'status': {'tasks': {'state': 'tasks_mother ok', 'status': '200'} }}}
                 Monitor().update_itemstatus(item='mother', name='tasks', request_data=tasks_state)
             prev_tasks_check = tasks_check
+
+            if event.is_set():
+                return
             sleep(5)
 
 
@@ -181,17 +183,20 @@ class Housekeeper(object):
                         where = [{"column": "ipaddress", "value": record['ipaddress']}]
                         Database().delete_row('reservedipaddress', where)
                 cleanup_check = True
-                if event.is_set():
-                    return
+
             except Exception as exp:
                 self.logger.error(f"clean up thread encountered problem: {exp}")
                 cleanup_check = False
                 cleanup_state = {'monitor': {'status': {'cleanup': {'state': f'cleanup_mother execution problems detected: {exp}', 'status': '501'} }}}
+
             if prev_cleanup_check is None or prev_cleanup_check != cleanup_check:
                 if cleanup_check:
                     cleanup_state = {'monitor': {'status': {'cleanup': {'state': 'cleanup_mother ok', 'status': '200'} }}}
                 Monitor().update_itemstatus(item='mother', name='cleanup', request_data=cleanup_state)
             prev_cleanup_check = cleanup_check
+
+            if event.is_set():
+                return
             sleep(5)
 
 
@@ -217,11 +222,11 @@ class Housekeeper(object):
                                 DetectionPlugin().scan(name=switch['name'], ipaddress=switch['ipaddress'],
                                                        oid=switch['oid'], read=switch['read'], rw=switch['rw'],
                                                        uplinkports=uplinkports)
-                    if event.is_set():
-                        return
                 except Exception as exp:
                     exc_type, exc_obj, exc_tb = sys.exc_info()
                     self.logger.error(f"switch port scan thread encountered problem: {exp}, {exc_type}, in {exc_tb.tb_lineno}")
+                if event.is_set():
+                    return
                 sleep(5)
         except Exception as exp:
             exc_type, exc_obj, exc_tb = sys.exc_info()
@@ -321,11 +326,13 @@ class Housekeeper(object):
                 self.logger.error(f"invalid config thread encountered problem: {exp}, {exc_type}, in {exc_tb.tb_lineno}")
                 invalid_check = False
                 invalid_state = {'monitor': {'status': {'invalid': {'state': f'invalid_mother execution problems detected: {exp}', 'status': '501'} }}}
+
             if prev_invalid_check is None or prev_invalid_check != invalid_check:
                 if invalid_check:
                     invalid_state = {'monitor': {'status': {'invalid': {'state': 'journal_mother ok', 'status': '200'} }}}
                 Monitor().update_itemstatus(item='mother', name='invalid', request_data=invalid_state)
             prev_invalid_check = invalid_check
+
             if event.is_set():
                 return
             sleep(5)
@@ -370,9 +377,9 @@ class Housekeeper(object):
                 except Exception as exp:
                     exc_type, exc_obj, exc_tb = sys.exc_info()
                     self.logger.error(f"journal_mother thread encountered problem in initial sync: {exp}, {exc_type}, in {exc_tb.tb_lineno}")
-                sleep(5)
                 if event.is_set():
                     return
+                sleep(5)
             # ---------------------------- good. now we can proceed with the main loop
             sync_counter=0
             ha_object.set_overrule(False)
@@ -475,19 +482,21 @@ class Housekeeper(object):
                             Monitor().update_itemstatus(item='ha', name=ha_component, request_data=state)
                             #status, monitor_response = Monitor().get_itemstatus(item='ha', name='insync')
                     journal_check = True
+
                 except Exception as exp:
                     exc_type, exc_obj, exc_tb = sys.exc_info()
                     self.logger.error(f"journal_mother thread encountered problem in main loop: {exp}, {exc_type}, in {exc_tb.tb_lineno}")
                     journal_check = False
                     journal_state = {'monitor': {'status': {'journal': {'state': f'journal_mother execution problems detected: {exp}', 'status': '501'} }}}
+
                 if prev_journal_check is None or prev_journal_check != journal_check:
                     if journal_check:
                         journal_state = {'monitor': {'status': {'journal': {'state': 'journal_mother ok', 'status': '200'} }}}
                     Monitor().update_itemstatus(item='mother', name='journal', request_data=journal_state)
                 prev_journal_check = journal_check
-                sleep(5)
                 if event.is_set():
                     return
+                sleep(5)
         except Exception as exp:
             exc_type, exc_obj, exc_tb = sys.exc_info()
             self.logger.error(f"journal_mother thread encountered problem: {exp}, {exc_type}, in {exc_tb.tb_lineno}")

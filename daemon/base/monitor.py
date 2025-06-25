@@ -106,7 +106,7 @@ class Monitor():
         if item:
             tablename = item
             where = f'WHERE id="{name}" OR name="{name}";'
-            if item == 'ha':
+            if item in ['ha', 'mother']:
                 tablename = 'reference'
                 where = f'WHERE tableref="{item}" and tablerefname="{name}"'
             elif item == 'sync':
@@ -197,7 +197,7 @@ class Monitor():
                 if item:
                     tablename = item
                     where = f'WHERE id = "{name}" OR name = "{name}";'
-                    if item == 'ha':
+                    if item in ['ha', 'mother']:
                         tablename = 'reference'
                         where = f'WHERE tableref="{item}" and tablerefname="{name}"'
                     elif item == 'sync':
@@ -205,7 +205,7 @@ class Monitor():
                     item_db = Database().get_record(None, tablename, where)
                     if item_db:
                         tablerefid = item_db[0]['id']
-                    elif item == 'ha':
+                    elif item in ['ha', 'mother']:
                         row = [{"column": "tableref", "value": item},
                                {"column": "tablerefname", "value": name}]
                         result = Database().insert('reference',row)

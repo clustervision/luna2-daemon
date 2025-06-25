@@ -356,6 +356,7 @@ class Housekeeper(object):
         monitor_insync_check=0
         prev_mother_status=None
         prev_insync_status=None
+        prev_ping_status=None
         try:
             ha_object=HA()
             if not ha_object.get_hastate():
@@ -409,19 +410,12 @@ class Housekeeper(object):
                     elif startup_controller is True:
                         startup_controller=False
                         ha_object.set_insync(True)
-                        ha_state['ping'] = {'state': 'HA controller pings ok', 'status': '200'}
                     # --------------------------- we ping the others. if someone is down, we become paranoid
                     if ping_counter<1:
-                        prev_ping_status = ping_status
                         ping_status=ha_object.ping_controllers()
                         if master is False: # i am not a master
                             status = ping_status and check_status
                             ha_object.set_insync(status)
-                        if prev_ping_status != ping_status:
-                            if ping_status:
-                                ha_state['ping'] = {'state': 'HA controller pings ok', 'status': '200'}
-                            else:
-                                ha_state['ping'] = {'state': 'HA controller cannot ping all controllers', 'status': '501'}
                         ping_counter=3
                     ping_counter-=1
                     # --------------------------- we check if we have received pings. if things are weird we use fallback mechanisms
@@ -473,7 +467,7 @@ class Housekeeper(object):
                                     Queue().add_task_to_queue(task='reload', param='dns', subsystem='housekeeper', request_id='__table_fix__')
                             sum_counter=720
                         sum_counter-=1
-                    # --------------------------- end of magic
+                    # --------------------------- end of magic, only some monitoring stuff below
                     if monitor_insync_check<1:
                         insync_status = ha_object.get_insync()
                         if prev_insync_status is None or prev_insync_status != insync_status:
@@ -484,12 +478,18 @@ class Housekeeper(object):
                         prev_insync_status = insync_status
                         monitor_insync_check=4
                     monitor_insync_check-=1
+
+                    if prev_ping_status is None or prev_ping_status != ping_status:
+                        if ping_status:
+                            ha_state['ping'] = {'state': 'HA controller pings ok', 'status': '200'}
+                        else:
+                            ha_state['ping'] = {'state': 'HA controller cannot ping all controllers', 'status': '501'}
+                    prev_ping_status = ping_status
                 
                     for ha_component in ['ping','insync']:
                         if ha_component in ha_state:
                             state = {'monitor': {'status': {ha_component: ha_state[ha_component] }}}
                             Monitor().update_itemstatus(item='ha', name=ha_component, request_data=state)
-                            #status, monitor_response = Monitor().get_itemstatus(item='ha', name='insync')
                     mother_status = True
 
                 except Exception as exp:

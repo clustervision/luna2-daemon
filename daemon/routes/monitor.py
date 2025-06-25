@@ -137,7 +137,7 @@ def monitor_sync_get(name=None):
 
 @monitor_blueprint.route('/monitor/mother/<string:name>', methods=['GET'])
 @validate_name
-def monitor_sync_get(name=None):
+def monitor_mother_get(name=None):
     """
     Input - nothing
     Process - generates a list for states of mothers / core

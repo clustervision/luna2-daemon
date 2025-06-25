@@ -357,6 +357,7 @@ class Housekeeper(object):
         prev_mother_status=None
         prev_insync_status=None
         prev_ping_status=None
+        prev_check_status=None
         try:
             ha_object=HA()
             if not ha_object.get_hastate():
@@ -420,7 +421,6 @@ class Housekeeper(object):
                     ping_counter-=1
                     # --------------------------- we check if we have received pings. if things are weird we use fallback mechanisms
                     if ping_check<1:
-                        prev_check_status = check_status
                         check_status = ha_object.verify_pings()
                         if master is False: # i am not a master
                             status = ping_status and check_status
@@ -429,13 +429,9 @@ class Housekeeper(object):
                             if ping_status is True:
                                 self.logger.warning("Reverting to pulling journal updates on interval as an emergency measure...")
                                 syncpull_status=journal_object.pullfrom_controllers()
-                                if prev_check_status != check_status:
-                                    ha_state['ping'] = {'state': 'HA controller not receiving pings', 'status': '501'}
                             ping_check=21
                         else:
                             ping_check=3
-                            if prev_check_status != check_status:
-                                ha_state['ping'] = {'state': 'HA controller pings ok', 'status': '200'}
                     ping_check-=1
                     # --------------------------- if we're the master but for some unknown reason we've been out of sync for too long...
                     if insync_check<1:
@@ -485,6 +481,11 @@ class Housekeeper(object):
                         else:
                             ha_state['ping'] = {'state': 'HA controller cannot ping all controllers', 'status': '501'}
                     prev_ping_status = ping_status
+
+                    if prev_check_status is None or prev_check_status != check_status:
+                        if ping_status and not check_status: 
+                            ha_state['ping'] = {'state': 'HA controller not receiving pings', 'status': '501'}
+                    prev_check_status = check_status
                 
                     for ha_component in ['ping','insync']:
                         if ha_component in ha_state:

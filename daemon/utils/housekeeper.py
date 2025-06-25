@@ -352,8 +352,8 @@ class Housekeeper(object):
         sum_counter=0
         insync_check=140
         oosync_counter=0
-        prev_journal_check=None
-        prev_insync_check=None
+        prev_journal_status=None
+        prev_insync_status=None
         ping_status, check_status = True, True
         try:
             ha_object=HA()
@@ -408,7 +408,7 @@ class Housekeeper(object):
                     elif startup_controller is True:
                         startup_controller=False
                         ha_object.set_insync(True)
-                        ha_state['insync'] = {'state': 'HA controller in sync', 'status': '200'}
+                        insync_status = True
                         ha_state['ping'] = {'state': 'HA controller pings ok', 'status': '200'}
                     # --------------------------- we ping the others. if someone is down, we become paranoid
                     if ping_counter<1:
@@ -417,11 +417,7 @@ class Housekeeper(object):
                         if master is False: # i am not a master
                             status = ping_status and check_status
                             ha_object.set_insync(status)
-#                            if prev_ping_status != ping_status:
-#                                if status:
-#                                    ha_state['insync'] = {'state': 'HA controller in sync', 'status': '200'}
-#                                else:
-#                                    ha_state['insync'] = {'state': 'HA controller out of sync', 'status': '501'}
+                            insync_status = status
                         if prev_ping_status != ping_status:
                             if ping_status:
                                 ha_state['ping'] = {'state': 'HA controller pings ok', 'status': '200'}
@@ -436,11 +432,7 @@ class Housekeeper(object):
                         if master is False: # i am not a master
                             status = ping_status and check_status
                             ha_object.set_insync(status)
-                            if prev_check_status != check_status:
-                                if status:
-                                    ha_state['insync'] = {'state': 'HA controller in sync', 'status': '200'}
-                                else:
-                                    ha_state['insync'] = {'state': 'HA controller out of sync', 'status': '501'}
+                            insync_status = status
                         if check_status is False:
                             if ping_status is True:
                                 self.logger.warning("Reverting to pulling journal updates on interval as an emergency measure...")
@@ -466,6 +458,7 @@ class Housekeeper(object):
                                 self.logger.warning(f"I am a master but somehow got stuck being out of sync? This should not happen....")
                                 ha_state['insync'] = {'state': 'HA controller in sync', 'status': '200'}
                                 ha_object.set_insync(True)
+                                insync_status = True
                         else:
                             oosync_counter=0
                         insync_check=120
@@ -486,6 +479,14 @@ class Housekeeper(object):
                             sum_counter=720
                         sum_counter-=1
                     # --------------------------- end of magic
+                    #insync_status = ha_object.get_insync()
+                    if prev_insync_status is None or prev_insync_status != insync_status:
+                        if insync_status:
+                            ha_state['insync'] = {'state': 'HA controller in sync', 'status': '200'}
+                        else:
+                            ha_state['insync'] = {'state': 'HA controller out of sync', 'status': '501'}
+                    prev_insync_status = insync_status
+                
                     for ha_component in ['ping','insync']:
                         if ha_component in ha_state:
                             state = {'monitor': {'status': {ha_component: ha_state[ha_component] }}}
@@ -500,16 +501,6 @@ class Housekeeper(object):
                     journal_check = False
                     journal_state = {'monitor': {'status': {'journal': {'state': f"journal_mother execution problems detected: {exp}", 'status': '501'} }}}
 
-                insync_check = ha_object.get_insync()
-                self.logger.error(f"INSYNC: {insync_check} == {prev_insync_check}")
-                if prev_insync_check is None or prev_insync_check != insync_check:
-                    self.logger.error(f"INSYNC HERE: {insync_check} == {prev_insync_check}")
-                    if insync_check:
-                        ha_state['insync'] = {'state': 'HA controller in sync', 'status': '200'}
-                    else:
-                        ha_state['insync'] = {'state': 'HA controller out of sync', 'status': '501'}
-                prev_insync_check = insync_check
-                
                 if prev_journal_check is None or prev_journal_check != journal_check:
                     if journal_check:
                         journal_state = {'monitor': {'status': {'journal': {'state': 'journal_mother ok', 'status': '200'} }}}

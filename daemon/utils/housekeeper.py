@@ -501,7 +501,7 @@ class Housekeeper(object):
                     journal_state = {'monitor': {'status': {'journal': {'state': f"journal_mother execution problems detected: {exp}", 'status': '501'} }}}
 
                 insync_check = ha_object.get_property('insync')
-                if prev_insync_check is none or prev_insync_check != insync_check:
+                if prev_insync_check is None or prev_insync_check != insync_check:
                     if insync_check:
                         ha_state['insync'] = {'state': 'HA controller in sync', 'status': '200'}
                     else:

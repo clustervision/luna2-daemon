@@ -503,6 +503,7 @@ class Housekeeper(object):
                 insync_check = ha_object.get_insync()
                 self.logger.error(f"INSYNC: {insync_check} == {prev_insync_check}")
                 if prev_insync_check is None or prev_insync_check != insync_check:
+                    self.logger.error(f"INSYNC HERE: {insync_check} == {prev_insync_check}")
                     if insync_check:
                         ha_state['insync'] = {'state': 'HA controller in sync', 'status': '200'}
                     else:

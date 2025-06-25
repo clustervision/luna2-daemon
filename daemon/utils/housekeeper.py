@@ -144,6 +144,7 @@ class Housekeeper(object):
             except Exception as exp:
                 exc_type, exc_obj, exc_tb = sys.exc_info()
                 self.logger.error(f"tasks_mother up thread encountered problem: {exp}, {exc_type}, in {exc_tb.tb_lineno}")
+                exp.replace("'",'').replace.replace("'",'')
                 tasks_check = False
                 tasks_state = {'monitor': {'status': {'tasks': {'state': f"tasks_mother execution problems detected: {exp}", 'status': '501'} }}}
 
@@ -186,6 +187,7 @@ class Housekeeper(object):
 
             except Exception as exp:
                 self.logger.error(f"clean up thread encountered problem: {exp}")
+                exp.replace("'",'').replace.replace("'",'')
                 cleanup_check = False
                 cleanup_state = {'monitor': {'status': {'cleanup': {'state': f"cleanup_mother execution problems detected: {exp}", 'status': '501'} }}}
 
@@ -324,6 +326,7 @@ class Housekeeper(object):
             except Exception as exp:
                 exc_type, exc_obj, exc_tb = sys.exc_info()
                 self.logger.error(f"invalid config thread encountered problem: {exp}, {exc_type}, in {exc_tb.tb_lineno}")
+                exp.replace("'",'').replace.replace("'",'')
                 invalid_check = False
                 invalid_state = {'monitor': {'status': {'invalid': {'state': f"invalid_mother execution problems detected: {exp}", 'status': '501'} }}}
 
@@ -486,6 +489,7 @@ class Housekeeper(object):
                 except Exception as exp:
                     exc_type, exc_obj, exc_tb = sys.exc_info()
                     self.logger.error(f"journal_mother thread encountered problem in main loop: {exp}, {exc_type}, in {exc_tb.tb_lineno}")
+                    exp.replace("'",'').replace.replace("'",'')
                     journal_check = False
                     journal_state = {'monitor': {'status': {'journal': {'state': f"journal_mother execution problems detected: {exp}", 'status': '501'} }}}
 

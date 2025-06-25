@@ -455,9 +455,9 @@ class Housekeeper(object):
                 if prev_journal_check != journal_check:
                     journal_state = None
                     if journal_check:
-                        journal_state = {'monitor': {'status': {'journal: {'state': f'journal_mother ok', 'status': '200'} }}}
+                        journal_state = {'monitor': {'status': {'journal': {'state': 'journal_mother ok', 'status': '200'} }}}
                     else:
-                        journal_state = {'monitor': {'status': {'journal: {'state': f'journal_mother execution problems detected: {exp}', 'status': '501'} }}}
+                        journal_state = {'monitor': {'status': {'journal': {'state': f'journal_mother execution problems detected: {exp}', 'status': '501'} }}}
                     Monitor().update_itemstatus(item='mother', name='journal', request_data=journal_state)
                 prev_journal_check = journal_check
                 sleep(5)

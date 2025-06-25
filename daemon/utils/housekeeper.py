@@ -418,8 +418,10 @@ class Housekeeper(object):
                             if prev_ping_status != ping_status:
                                 if status:
                                     ha_state['insync'] = {'state': 'HA controller in sync', 'status': '200'}
+                                    ha_state['ping'] = {'state': 'HA controller in sync', 'status': '200'}
                                 else:
                                     ha_state['insync'] = {'state': 'HA controller out of sync', 'status': '501'}
+                                    ha_state['ping'] = {'state': 'HA controller cannot send pings', 'status': '501'}
                         ping_counter=3
                     ping_counter-=1
                     # --------------------------- we check if we have received pings. if things are weird we use fallback mechanisms

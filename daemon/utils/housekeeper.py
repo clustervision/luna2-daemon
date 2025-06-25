@@ -434,6 +434,8 @@ class Housekeeper(object):
                             status = ping_status and check_status
                             ha_object.set_insync(status)
                             insync_status = status
+                        else:
+                            insync_status = ha_object.get_insync()
                         if check_status is False:
                             if ping_status is True:
                                 self.logger.warning("Reverting to pulling journal updates on interval as an emergency measure...")

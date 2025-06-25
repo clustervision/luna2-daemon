@@ -353,6 +353,7 @@ class Housekeeper(object):
         insync_check=140
         oosync_counter=0
         ping_status, check_status = True, True
+        monitor_insync_check=0
         prev_mother_status=None
         prev_insync_status=None
         try:
@@ -473,13 +474,16 @@ class Housekeeper(object):
                             sum_counter=720
                         sum_counter-=1
                     # --------------------------- end of magic
-                    insync_status = ha_object.get_insync()
-                    if prev_insync_status is None or prev_insync_status != insync_status:
-                        if insync_status:
-                            ha_state['insync'] = {'state': 'HA controller in sync', 'status': '200'}
-                        else:
-                            ha_state['insync'] = {'state': 'HA controller out of sync', 'status': '501'}
-                    prev_insync_status = insync_status
+                    if monitor_insync_check<1:
+                        insync_status = ha_object.get_insync()
+                        if prev_insync_status is None or prev_insync_status != insync_status:
+                            if insync_status:
+                                ha_state['insync'] = {'state': 'HA controller in sync', 'status': '200'}
+                            else:
+                                ha_state['insync'] = {'state': 'HA controller out of sync', 'status': '501'}
+                        prev_insync_status = insync_status
+                        monitor_insync_check=4
+                    monitor_insync_check-=1
                 
                     for ha_component in ['ping','insync']:
                         if ha_component in ha_state:

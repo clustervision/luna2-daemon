@@ -315,6 +315,7 @@ class Housekeeper(object):
         sum_counter=0
         insync_check=140
         oosync_counter=0
+        prev_journal_check=False
         ping_status, check_status = True, True
         try:
             ha_object=HA()
@@ -417,10 +418,10 @@ class Housekeeper(object):
                                 oosync_counter+=1
                                 ha_state['insync'] = {'state': 'HA controller out of sync', 'status': '501'}
                             if oosync_counter>2:
+                                oosync_counter=0
                                 self.logger.warning(f"I am a master but somehow got stuck being out of sync? This should not happen....")
                                 ha_state['insync'] = {'state': 'HA controller in sync', 'status': '200'}
                                 ha_object.set_insync(True)
-                                oosync_counter=0
                         else:
                             oosync_counter=0
                         insync_check=120
@@ -446,9 +447,19 @@ class Housekeeper(object):
                             state = {'monitor': {'status': {ha_component: ha_state[ha_component] }}}
                             Monitor().update_itemstatus(item='ha', name=ha_component, request_data=state)
                             #status, monitor_response = Monitor().get_itemstatus(item='ha', name='insync')
+                    journal_check = True
                 except Exception as exp:
                     exc_type, exc_obj, exc_tb = sys.exc_info()
                     self.logger.error(f"journal_mother thread encountered problem in main loop: {exp}, {exc_type}, in {exc_tb.tb_lineno}")
+                    journal_check = False
+                if prev_journal_check != journal_check:
+                    journal_state = None
+                    if journal_check:
+                        journal_state = {'monitor': {'status': {'journal: {'state': f'journal_mother ok', 'status': '200'} }}}
+                    else:
+                        journal_state = {'monitor': {'status': {'journal: {'state': f'journal_mother execution problems detected: {exp}', 'status': '501'} }}}
+                    Monitor().update_itemstatus(item='mother', name='journal', request_data=journal_state)
+                prev_journal_check = journal_check
                 sleep(5)
                 if event.is_set():
                     return

@@ -58,7 +58,7 @@ class Housekeeper(object):
     def tasks_mother(self,event):
         counter=0
         self.logger.info("Starting tasks thread")
-        prev_tasks_check=False
+        prev_tasks_check=None
         while True:
             try:
                 counter+=1
@@ -148,7 +148,7 @@ class Housekeeper(object):
                 self.logger.error(f"tasks_mother up thread encountered problem: {exp}, {exc_type}, in {exc_tb.tb_lineno}")
                 tasks_check = False
                 tasks_state = {'monitor': {'status': {'tasks': {'state': f'tasks_mother execution problems detected: {exp}', 'status': '501'} }}}
-            if prev_tasks_check != tasks_check:
+            if prev_tasks_check is None or prev_tasks_check != tasks_check:
                 if tasks_check:
                     tasks_state = {'monitor': {'status': {'tasks': {'state': 'tasks_mother ok', 'status': '200'} }}}
                 Monitor().update_itemstatus(item='mother', name='tasks', request_data=tasks_state)
@@ -159,7 +159,7 @@ class Housekeeper(object):
     def cleanup_mother(self,event):
         counter=0
         self.logger.info("Starting cleanup thread")
-        prev_cleanup_check=False
+        prev_cleanup_check=None
         while True:
             try:
                 counter+=1
@@ -187,9 +187,9 @@ class Housekeeper(object):
                 self.logger.error(f"clean up thread encountered problem: {exp}")
                 cleanup_check = False
                 cleanup_state = {'monitor': {'status': {'cleanup': {'state': f'cleanup_mother execution problems detected: {exp}', 'status': '501'} }}}
-            if prev_cleanup_check != cleanup_check:
+            if prev_cleanup_check is None or prev_cleanup_check != cleanup_check:
                 if cleanup_check:
-                    cleanup_state = {'monitor': {'status': {'cleanup': {'state': 'journal_mother ok', 'status': '200'} }}}
+                    cleanup_state = {'monitor': {'status': {'cleanup': {'state': 'cleanup_mother ok', 'status': '200'} }}}
                 Monitor().update_itemstatus(item='mother', name='cleanup', request_data=cleanup_state)
             prev_cleanup_check = cleanup_check
             sleep(5)
@@ -234,7 +234,7 @@ class Housekeeper(object):
         osimage_log_counter=50
         self.logger.info("Starting invalid config thread")
         files_path = CONSTANT['FILES']['IMAGE_FILES']
-        prev_invalid_check=False
+        prev_invalid_check=None
         while True:
             try:
                 loop_counter+=1
@@ -321,7 +321,7 @@ class Housekeeper(object):
                 self.logger.error(f"invalid config thread encountered problem: {exp}, {exc_type}, in {exc_tb.tb_lineno}")
                 invalid_check = False
                 invalid_state = {'monitor': {'status': {'invalid': {'state': f'invalid_mother execution problems detected: {exp}', 'status': '501'} }}}
-            if prev_invalid_check != invalid_check:
+            if prev_invalid_check is None or prev_invalid_check != invalid_check:
                 if invalid_check:
                     invalid_state = {'monitor': {'status': {'invalid': {'state': 'journal_mother ok', 'status': '200'} }}}
                 Monitor().update_itemstatus(item='mother', name='invalid', request_data=invalid_state)
@@ -342,7 +342,7 @@ class Housekeeper(object):
         sum_counter=0
         insync_check=140
         oosync_counter=0
-        prev_journal_check=False
+        prev_journal_check=None
         ping_status, check_status = True, True
         try:
             ha_object=HA()
@@ -480,7 +480,7 @@ class Housekeeper(object):
                     self.logger.error(f"journal_mother thread encountered problem in main loop: {exp}, {exc_type}, in {exc_tb.tb_lineno}")
                     journal_check = False
                     journal_state = {'monitor': {'status': {'journal': {'state': f'journal_mother execution problems detected: {exp}', 'status': '501'} }}}
-                if prev_journal_check != journal_check:
+                if prev_journal_check is None or prev_journal_check != journal_check:
                     if journal_check:
                         journal_state = {'monitor': {'status': {'journal': {'state': 'journal_mother ok', 'status': '200'} }}}
                     Monitor().update_itemstatus(item='mother', name='journal', request_data=journal_state)

@@ -139,7 +139,7 @@ class Housekeeper(object):
 
                         if remove_from_queue:
                             Queue().remove_task_from_queue(next_id)
-                        tasks_check = True
+                tasks_check = True
 
             except Exception as exp:
                 exc_type, exc_obj, exc_tb = sys.exc_info()

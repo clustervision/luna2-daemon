@@ -146,7 +146,7 @@ class Housekeeper(object):
                 self.logger.error(f"tasks_mother up thread encountered problem: {exp}, {exc_type}, in {exc_tb.tb_lineno}")
                 exp = str(exp).replace("'",'').replace("'",'')
                 mother_status = False
-                tasks_state = {'monitor': {'status': {'tasks': {'state': f"tasks_mother execution problems detected: {exp}", 'status': '501'} }}}
+                mother_state = {'monitor': {'status': {'tasks': {'state': f"tasks_mother execution problems detected: {exp}", 'status': '500'} }}}
 
             if prev_mother_status is None or prev_mother_status != mother_status:
                 if mother_status:
@@ -189,7 +189,7 @@ class Housekeeper(object):
                 self.logger.error(f"clean up thread encountered problem: {exp}")
                 exp = str(exp).replace("'",'').replace("'",'')
                 mother_status = False
-                cleanup_state = {'monitor': {'status': {'cleanup': {'state': f"cleanup_mother execution problems detected: {exp}", 'status': '501'} }}}
+                mother_state = {'monitor': {'status': {'cleanup': {'state': f"cleanup_mother execution problems detected: {exp}", 'status': '500'} }}}
 
             if prev_mother_status is None or prev_mother_status != mother_status:
                 if mother_status:
@@ -328,7 +328,7 @@ class Housekeeper(object):
                 self.logger.error(f"invalid config thread encountered problem: {exp}, {exc_type}, in {exc_tb.tb_lineno}")
                 exp = str(exp).replace("'",'').replace("'",'')
                 mother_status = False
-                invalid_state = {'monitor': {'status': {'invalid': {'state': f"invalid_mother execution problems detected: {exp}", 'status': '501'} }}}
+                mother_state = {'monitor': {'status': {'invalid': {'state': f"invalid_mother execution problems detected: {exp}", 'status': '500'} }}}
 
             if prev_mother_status is None or prev_mother_status != mother_status:
                 if mother_status:
@@ -392,7 +392,6 @@ class Housekeeper(object):
             ha_object.set_overrule(False)
             while True:
                 try:
-                    ha_state = {}
                     # --------------------------- am i a master or not?
                     master=ha_object.get_role()
                     # --------------------------- first we sync with the others. we push what's still in the journal
@@ -464,6 +463,7 @@ class Housekeeper(object):
                             sum_counter=720
                         sum_counter-=1
                     # --------------------------- end of magic, only some monitoring stuff below
+                    ha_state = {}
                     if monitor_insync_check<1:
                         insync_status = ha_object.get_insync()
                         if prev_insync_status is None or prev_insync_status != insync_status:
@@ -498,7 +498,7 @@ class Housekeeper(object):
                     self.logger.error(f"journal_mother thread encountered problem in main loop: {exp}, {exc_type}, in {exc_tb.tb_lineno}")
                     exp = str(exp).replace("'",'').replace("'",'')
                     mother_status = False
-                    journal_state = {'monitor': {'status': {'journal': {'state': f"journal_mother execution problems detected: {exp}", 'status': '501'} }}}
+                    mother_state = {'monitor': {'status': {'journal': {'state': f"journal_mother execution problems detected: {exp}", 'status': '500'} }}}
 
                 if prev_mother_status is None or prev_mother_status != mother_status:
                     if mother_status:

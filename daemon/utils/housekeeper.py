@@ -145,7 +145,7 @@ class Housekeeper(object):
                 exc_type, exc_obj, exc_tb = sys.exc_info()
                 self.logger.error(f"tasks_mother up thread encountered problem: {exp}, {exc_type}, in {exc_tb.tb_lineno}")
                 tasks_check = False
-                tasks_state = {'monitor': {'status': {'tasks': {'state': f'tasks_mother execution problems detected: {exp}', 'status': '501'} }}}
+                tasks_state = {'monitor': {'status': {'tasks': {'state': f"tasks_mother execution problems detected: {exp}", 'status': '501'} }}}
 
             if prev_tasks_check is None or prev_tasks_check != tasks_check:
                 if tasks_check:
@@ -187,7 +187,7 @@ class Housekeeper(object):
             except Exception as exp:
                 self.logger.error(f"clean up thread encountered problem: {exp}")
                 cleanup_check = False
-                cleanup_state = {'monitor': {'status': {'cleanup': {'state': f'cleanup_mother execution problems detected: {exp}', 'status': '501'} }}}
+                cleanup_state = {'monitor': {'status': {'cleanup': {'state': f"cleanup_mother execution problems detected: {exp}", 'status': '501'} }}}
 
             if prev_cleanup_check is None or prev_cleanup_check != cleanup_check:
                 if cleanup_check:
@@ -325,7 +325,7 @@ class Housekeeper(object):
                 exc_type, exc_obj, exc_tb = sys.exc_info()
                 self.logger.error(f"invalid config thread encountered problem: {exp}, {exc_type}, in {exc_tb.tb_lineno}")
                 invalid_check = False
-                invalid_state = {'monitor': {'status': {'invalid': {'state': f'invalid_mother execution problems detected: {exp}', 'status': '501'} }}}
+                invalid_state = {'monitor': {'status': {'invalid': {'state': f"invalid_mother execution problems detected: {exp}", 'status': '501'} }}}
 
             if prev_invalid_check is None or prev_invalid_check != invalid_check:
                 if invalid_check:
@@ -487,7 +487,7 @@ class Housekeeper(object):
                     exc_type, exc_obj, exc_tb = sys.exc_info()
                     self.logger.error(f"journal_mother thread encountered problem in main loop: {exp}, {exc_type}, in {exc_tb.tb_lineno}")
                     journal_check = False
-                    journal_state = {'monitor': {'status': {'journal': {'state': f'journal_mother execution problems detected: {exp}', 'status': '501'} }}}
+                    journal_state = {'monitor': {'status': {'journal': {'state': f"journal_mother execution problems detected: {exp}", 'status': '501'} }}}
 
                 if prev_journal_check is None or prev_journal_check != journal_check:
                     if journal_check:

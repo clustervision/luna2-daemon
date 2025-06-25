@@ -332,7 +332,7 @@ class Housekeeper(object):
 
             if prev_invalid_check is None or prev_invalid_check != invalid_check:
                 if invalid_check:
-                    invalid_state = {'monitor': {'status': {'invalid': {'state': 'journal_mother ok', 'status': '200'} }}}
+                    invalid_state = {'monitor': {'status': {'invalid': {'state': 'invalid_mother ok', 'status': '200'} }}}
                 Monitor().update_itemstatus(item='mother', name='invalid', request_data=invalid_state)
             prev_invalid_check = invalid_check
 

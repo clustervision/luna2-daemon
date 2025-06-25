@@ -353,7 +353,7 @@ class Housekeeper(object):
         insync_check=140
         oosync_counter=0
         prev_journal_check=None
-        prev_insync_status=None
+        prev_insync_check=None
         ping_status, check_status = True, True
         try:
             ha_object=HA()

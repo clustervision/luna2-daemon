@@ -352,9 +352,9 @@ class Housekeeper(object):
         sum_counter=0
         insync_check=140
         oosync_counter=0
-        prev_journal_status=None
-        prev_insync_status=None
         ping_status, check_status = True, True
+        prev_journal_check=None
+        prev_insync_status=None
         try:
             ha_object=HA()
             if not ha_object.get_hastate():
@@ -369,8 +369,9 @@ class Housekeeper(object):
             journal_object=Journal(me)
             tables_object=Tables()
             ha_object.set_insync(False)
-            state = {'monitor': {'status': {'insync': {'state': 'HA controller not in sync', 'status': '501'}}}}
-            Monitor().update_itemstatus(item='ha', name='insync', request_data=state)
+            insync_status = False
+            #state = {'monitor': {'status': {'insync': {'state': 'HA controller not in sync', 'status': '501'}}}}
+            #Monitor().update_itemstatus(item='ha', name='insync', request_data=state)
             # ---------------------------- we keep asking the journal from others until successful
             while syncpull_status is False:
                 try:
@@ -501,7 +502,7 @@ class Housekeeper(object):
                     journal_check = False
                     journal_state = {'monitor': {'status': {'journal': {'state': f"journal_mother execution problems detected: {exp}", 'status': '501'} }}}
 
-                if prev_journal_check is None or prev_journal_check != journal_check:
+                if prev_journal_check is None or prev_journal_status != journal_check:
                     if journal_check:
                         journal_state = {'monitor': {'status': {'journal': {'state': 'journal_mother ok', 'status': '200'} }}}
                     Monitor().update_itemstatus(item='mother', name='journal', request_data=journal_state)

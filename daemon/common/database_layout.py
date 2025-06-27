@@ -116,6 +116,11 @@ DATABASE_LAYOUT_monitor = [
 {"column": "state",                "datatype": "VARCHAR", "length": "50"},
 {"column": "updated",              "datatype": "NUMERIC"}]
 
+DATABASE_LAYOUT_reference = [
+{"column": "id",                   "datatype": "INTEGER", "key": "PRIMARY", "keyadd": "AUTOINCREMENT"},
+{"column": "tableref",             "datatype": "VARCHAR", "length": "100", "key": "UNIQUE", "with": "tablerefname"},
+{"column": "tablerefname",         "datatype": "VARCHAR", "length": "100"}]
+
 DATABASE_LAYOUT_ipaddress = [
 {"column": "id",                   "datatype": "INTEGER", "key": "PRIMARY", "keyadd": "AUTOINCREMENT"},
 {"column": "ipaddress",            "datatype": "VARCHAR", "length": "60", "key": "UNIQUE"},

@@ -49,7 +49,7 @@ class DBStructure():
                        'groupinterface', 'roles', 'group', 'network', 'user', 'switch',
                        'cloud', 'otherdevices', 'controller', 'groupsecrets', 'node',
                        'cluster', 'tracker', 'dns', 'journal', 'rack', 'rackinventory',
-                       'ping', 'reservedipaddress']
+                       'ping', 'reservedipaddress', 'reference']
    
  
     def check_db_tables(self):
@@ -185,5 +185,7 @@ class DBStructure():
             return DATABASE_LAYOUT_rackinventory
         if table == "reservedipaddress":
             return DATABASE_LAYOUT_reservedipaddress
+        if table == "reference":
+            return DATABASE_LAYOUT_reference
         return
 

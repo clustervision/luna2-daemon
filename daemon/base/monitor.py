@@ -104,14 +104,20 @@ class Monitor():
         response = {"monitor": {"status": { name: { } } } }
         tablerefid = 0
         if item:
+            tablename = item
             where = f'WHERE id="{name}" OR name="{name}";'
-            db_item = Database().get_record(None, item, where)
+            if item in ['ha', 'mother']:
+                tablename = 'reference'
+                where = f'WHERE tableref="{item}" and tablerefname="{name}"'
+            elif item == 'sync':
+                tablename = 'osimage'
+            db_item = Database().get_record(None, tablename, where)
             if db_item:
                 tablerefid = db_item[0]['id']
         elif name:
             item = name
 
-        where = f'WHERE tableref="{item}" and tablerefid="{tablerefid}"'
+        where = f'WHERE tableref="{item}" AND tablerefid="{tablerefid}"'
         db_item = Database().get_record(None, 'monitor', where)
         if db_item:
             status = True
@@ -189,10 +195,23 @@ class Monitor():
                 self.logger.info(f"item {item}/{name}: {state}, {item_status}")
                 tablerefid = 0
                 if item:
+                    tablename = item
                     where = f'WHERE id = "{name}" OR name = "{name}";'
-                    item_db = Database().get_record(None, item, where)
+                    if item in ['ha', 'mother']:
+                        tablename = 'reference'
+                        where = f'WHERE tableref="{item}" and tablerefname="{name}"'
+                    elif item == 'sync':
+                        tablename = 'osimage'
+                    item_db = Database().get_record(None, tablename, where)
                     if item_db:
                         tablerefid = item_db[0]['id']
+                    elif item in ['ha', 'mother']:
+                        row = [{"column": "tableref", "value": item},
+                               {"column": "tablerefname", "value": name}]
+                        result = Database().insert('reference',row)
+                        if result:
+                            tablerefid = result
+                   
                 elif name:
                     item = name
                 else:

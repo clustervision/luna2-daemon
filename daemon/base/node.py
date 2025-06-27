@@ -301,7 +301,7 @@ class Node():
                 else:
                     node['osimage'] = '!!Invalid!!'
                 #node['osimage'] = Database().name_by_id('osimage',node['osimageid']) or '!!Invalid!!'
-                node['osimage_source'] = 'node'
+                node['_osimage_source'] = 'node'
                 node['_override'] = True
             elif 'group_osimageid' in node and node['group_osimageid']:
                 osimage = Database().get_record(None, 'osimage', f" WHERE id = '{node['group_osimageid']}'")
@@ -315,7 +315,7 @@ class Node():
                         alt_source['provision_fallback'] = 'osimage'
                 else:
                     node['osimage'] = '!!Invalid!!'
-                node['osimage_source'] = 'group'
+                node['_osimage_source'] = 'group'
             else:
                 node['osimage'] = None
             if 'group_osimageid' in node:
@@ -323,11 +323,11 @@ class Node():
             #---
             if node['bmcsetupid']:
                 node['bmcsetup'] = Database().name_by_id('bmcsetup',node['bmcsetupid']) or '!!Invalid!!'
-                node['bmcsetup_source'] = 'node'
+                node['_bmcsetup_source'] = 'node'
                 node['_override'] = True
             elif 'group_bmcsetupid' in node and node['group_bmcsetupid']:
                 node['bmcsetup'] = Database().name_by_id('bmcsetup', node['group_bmcsetupid']) or '!!Invalid!!'
-                node['bmcsetup_source'] = 'group'
+                node['_bmcsetup_source'] = 'group'
             else:
                 node['bmcsetup'] = None
             if 'group_bmcsetupid' in node:
@@ -335,14 +335,14 @@ class Node():
             #---
             if node['osimagetagid']:
                 node['osimagetag'] = Database().name_by_id('osimagetag', node['osimagetagid']) or 'default'
-                node['osimagetag_source'] = 'node'
+                node['_osimagetag_source'] = 'node'
                 node['_override'] = True
             elif 'group_osimagetagid' in node and node['group_osimagetagid']:
                 node['osimagetag'] = Database().name_by_id('osimagetag', node['group_osimagetagid']) or 'default'
-                node['osimagetag_source'] = 'group'
+                node['_osimagetag_source'] = 'group'
             else:
                 node['osimagetag'] = 'default'
-                node['osimagetag_source'] = 'default'
+                node['_osimagetag_source'] = 'default'
             if 'osimagetagid' in node:
                 del node['osimagetagid']
             if 'group_osimagetagid' in node:
@@ -388,29 +388,29 @@ class Node():
                 if 'group_'+key in node and isinstance(value, bool):
                     node['group_'+key] = str(Helper().make_bool(node['group_'+key]))
                 if key in alt_source and alt_source[key] and key in node:
-                    node[key+'_source'] = alt_source[key]
+                    node['_'+key+'_source'] = alt_source[key]
                 elif 'cluster_'+key in node and node['cluster_'+key] and ((not 'group_'+key in node) or (not node['group_'+key])) and not node[key]:
                     node[key] = node['cluster_'+key] or str(value)
-                    node[key+'_source'] = 'cluster'
+                    node['_'+key+'_source'] = 'cluster'
                 elif 'osimage_'+key in node and node['osimage_'+key] and not node[key]:
                     node[key] = node['osimage_'+key] or str(value)
-                    node[key+'_source'] = 'osimage'
+                    node['_'+key+'_source'] = 'osimage'
                 elif 'group_'+key in node and node['group_'+key] and not node[key]:
                     node[key] = node['group_'+key] or str(value)
-                    node[key+'_source'] = 'group'
+                    node['_'+key+'_source'] = 'group'
                 elif value is None and node[key] is None:
-                    node[key+'_source'] = 'default'
+                    node['_'+key+'_source'] = 'default'
                 elif node[key]:
                     if isinstance(value, bool):
                         node[key] = str(Helper().make_bool(node[key]))
-                    node[key+'_source'] = 'node'
+                    node['_'+key+'_source'] = 'node'
                     node['_override'] = True
                 else:
                     if isinstance(value, bool):
                         node[key] = str(Helper().make_bool(node[key]))
                     else:
                         node[key] = node[key] or str(value)
-                    node[key+'_source'] = 'default'
+                    node['_'+key+'_source'] = 'default'
                 if 'osimage_'+key in node:
                     del node['osimage_'+key]
                 if 'group_'+key in node:
@@ -423,16 +423,16 @@ class Node():
                 for key, value in b64items.items():
                     if 'group_'+key in node and node['group_'+key] and not node[key]:
                         node[key] = node['group_'+key]
-                        node[key+'_source'] = 'group'
+                        node['_'+key+'_source'] = 'group'
                     elif node[key]:
-                        node[key+'_source'] = 'node'
+                        node['_'+key+'_source'] = 'node'
                         node['_override'] = True
                     else:
                         default_str = str(value)
                         default_data = b64encode(default_str.encode())
                         default_data = default_data.decode("ascii")
                         node[key] = default_data
-                        node[key+'_source'] = 'default'
+                        node['_'+key+'_source'] = 'default'
                     if 'group_'+key in node:
                         del node['group_'+key]
             except Exception as exp:

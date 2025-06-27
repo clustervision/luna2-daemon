@@ -176,22 +176,22 @@ class Group():
                     if isinstance(value, bool):
                         cluster[0][key] = str(Helper().make_bool(cluster[0][key]))
                     group[key] = str(cluster[0][key])
-                    group[key+'_source'] = 'cluster'
+                    group['_'+key+'_source'] = 'cluster'
                 elif osimage and key in osimage[0] and ((not key in group) or (not group[key])):
                     if isinstance(value, bool):
                         osimage[0][key] = str(Helper().make_bool(osimage[0][key]))
                     group[key] = str(osimage[0][key])
-                    group[key+'_source'] = 'osimage'
+                    group['_'+key+'_source'] = 'osimage'
                 elif key in group and group[key]:
                     if isinstance(value, bool):
                         group[key] = str(Helper().make_bool(group[key]))
-                    group[key+'_source'] = 'group'
+                    group['_'+key+'_source'] = 'group'
                     group[key] = group[key] or str(value)
                     if key in overrides:
                         group['_override'] = True
                 else:
                     group[key] = str(value)
-                    group[key+'_source'] = 'default'
+                    group['_'+key+'_source'] = 'default'
             try:
                 for key, value in b64items.items():
                     default_str = str(value)
@@ -199,18 +199,18 @@ class Group():
                     default_data = default_data.decode("ascii")
                     if key in group and group[key]:
                         group[key] = group[key] or default_data
-                        group[key+'_source'] = 'group'
+                        group['_'+key+'_source'] = 'group'
                     else:
                         group[key] = default_data
-                        group[key+'_source'] = 'default'
+                        group['_'+key+'_source'] = 'default'
             except Exception as exp:
                 self.logger.error(f"{exp}")
 
             if osimage and osimage[0]['imagefile'] and osimage[0]['imagefile'] == 'kickstart':
                 group['provision_method'] = 'kickstart'
-                group['provision_method_source'] = 'osimage'
+                group['_provision_method_source'] = 'osimage'
                 group['provision_fallback'] = None
-                group['provision_fallback_source'] = 'osimage'
+                group['_provision_fallback_source'] = 'osimage'
             del group['osimageid']
             group['bmcsetupname'] = None
             if group['bmcsetupid']:
@@ -222,11 +222,11 @@ class Group():
             else:
                 group['osimagetag'] = 'default'
             del group['osimagetagid']
-            group['osimage_source'] = 'group'
-            group['bmcsetupname_source'] = 'group'
-            group['osimagetag_source'] = 'group'
+            group['_osimage_source'] = 'group'
+            group['_bmcsetupname_source'] = 'group'
+            group['_osimagetag_source'] = 'group'
             if group['osimagetag'] == 'default':
-                group['osimagetag_source'] = 'default'
+                group['_osimagetag_source'] = 'default'
             # ---
             response['config']['group'][name] = group
         else:

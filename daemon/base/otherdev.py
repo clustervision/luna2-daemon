@@ -123,8 +123,9 @@ class OtherDev():
                         response = f'Device {name} updated successfully'
                         status=True
                 else:
+                    response = 'Invalid request: Columns are incorrect'
                     status=False
-                    return status, 'Invalid request: Columns are incorrect'
+                    return status, response
             # Antoine --->> interface(s) update/create -------------
             if nonetwork:
                 result, message = Config().device_raw_ipaddress_config(

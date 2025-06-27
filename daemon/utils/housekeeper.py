@@ -58,6 +58,7 @@ class Housekeeper(object):
     def tasks_mother(self,event):
         counter=0
         self.logger.info("Starting tasks thread")
+        prev_mother_status=None
         while True:
             try:
                 counter+=1
@@ -93,6 +94,8 @@ class Housekeeper(object):
                             case 'sync_osimage_with_master':
                                 osimage=first
                                 master=second
+                                new_state = f'Image sync success for {osimage}'
+                                state = {'monitor': {'status': {osimage: {'state': new_state, 'status': '200'} } } }
                                 Queue().update_task_status_in_queue(next_id,'in progress')
                                 ret,mesg=Journal().add_request(function='OsImager.schedule_cleanup',object=osimage,keeptrying=60)
                                 if ret is True:
@@ -110,33 +113,56 @@ class Housekeeper(object):
                                         ret,mesg=Journal().add_request(function='Queue.add_task_to_queue_legacy',object=f'unpack_osimage:{osimage}',param='housekeeper')
                                 if not ret and mesg:
                                     self.logger.warning(f"While working on sync_osimage_with_master task {next_id}, adding to journal returned: {mesg}")
+                                    new_state = f'Image sync failed for {osimage}: {mesg}'
+                                    state = {'monitor': {'status': {osimage: {'state': new_state, 'status': '501'} } } }
                                     Queue().update_task_status_in_queue(next_id,'stuck')
                                     remove_from_queue=False
+                                Monitor().update_itemstatus(item='sync', name=osimage, request_data=state)
                             case 'provision_osimage':
                                 Queue().update_task_status_in_queue(next_id,'in progress')
                                 OsImage().provision_osimage(next_id,request_id)
                             case 'unpack_osimage':
+                                details=Queue().get_task_details(next_id)
+                                osimage=details['param']
+                                new_state = f'Image unpack success for {osimage}'
+                                state = {'monitor': {'status': {osimage: {'state': new_state, 'status': '200'} } } }
                                 Queue().update_task_status_in_queue(next_id,'in progress')
                                 status = OsImage().unpack_osimage(next_id,request_id)
                                 if not status:
                                     sleep(5)
                                     self.logger.warning("First attempt to unpack osimage failed. Retrying one more time")
                                     status = OsImage().unpack_osimage(next_id,request_id)
+                                    if not status:
+                                        new_state = f'Image unpack failed for {osimage}'
+                                        state = {'monitor': {'status': {osimage: {'state': new_state, 'status': '501'} } } }
+                                Monitor().update_itemstatus(item='sync', name=osimage, request_data=state)
 
                         if remove_from_queue:
                             Queue().remove_task_from_queue(next_id)
+                mother_status = True
 
-                if event.is_set():
-                    return
             except Exception as exp:
                 exc_type, exc_obj, exc_tb = sys.exc_info()
                 self.logger.error(f"tasks_mother up thread encountered problem: {exp}, {exc_type}, in {exc_tb.tb_lineno}")
+                exp = str(exp).replace("'",'').replace("'",'')
+                mother_status = False
+                mother_state = {'monitor': {'status': {'tasks': {'state': f"tasks_mother execution problems detected: {exp}", 'status': '500'} }}}
+
+            if prev_mother_status is None or prev_mother_status != mother_status:
+                if mother_status:
+                    mother_state = {'monitor': {'status': {'tasks': {'state': 'tasks_mother ok', 'status': '200'} }}}
+                Monitor().update_itemstatus(item='mother', name='tasks', request_data=mother_state)
+            prev_mother_status = mother_status
+
+            if event.is_set():
+                return
             sleep(5)
 
 
     def cleanup_mother(self,event):
         counter=0
         self.logger.info("Starting cleanup thread")
+        prev_mother_status=None
         while True:
             try:
                 counter+=1
@@ -157,10 +183,22 @@ class Housekeeper(object):
                         self.logger.info(f"cleaning up reserved ipaddress {record['ipaddress']}")
                         where = [{"column": "ipaddress", "value": record['ipaddress']}]
                         Database().delete_row('reservedipaddress', where)
-                if event.is_set():
-                    return
+                mother_status = True
+
             except Exception as exp:
                 self.logger.error(f"clean up thread encountered problem: {exp}")
+                exp = str(exp).replace("'",'').replace("'",'')
+                mother_status = False
+                mother_state = {'monitor': {'status': {'cleanup': {'state': f"cleanup_mother execution problems detected: {exp}", 'status': '500'} }}}
+
+            if prev_mother_status is None or prev_mother_status != mother_status:
+                if mother_status:
+                    mother_state = {'monitor': {'status': {'cleanup': {'state': 'cleanup_mother ok', 'status': '200'} }}}
+                Monitor().update_itemstatus(item='mother', name='cleanup', request_data=mother_state)
+            prev_mother_status = mother_status
+
+            if event.is_set():
+                return
             sleep(5)
 
 
@@ -186,11 +224,11 @@ class Housekeeper(object):
                                 DetectionPlugin().scan(name=switch['name'], ipaddress=switch['ipaddress'],
                                                        oid=switch['oid'], read=switch['read'], rw=switch['rw'],
                                                        uplinkports=uplinkports)
-                    if event.is_set():
-                        return
                 except Exception as exp:
                     exc_type, exc_obj, exc_tb = sys.exc_info()
                     self.logger.error(f"switch port scan thread encountered problem: {exp}, {exc_type}, in {exc_tb.tb_lineno}")
+                if event.is_set():
+                    return
                 sleep(5)
         except Exception as exp:
             exc_type, exc_obj, exc_tb = sys.exc_info()
@@ -203,6 +241,7 @@ class Housekeeper(object):
         osimage_log_counter=50
         self.logger.info("Starting invalid config thread")
         files_path = CONSTANT['FILES']['IMAGE_FILES']
+        prev_mother_status=None
         while True:
             try:
                 loop_counter+=1
@@ -282,10 +321,21 @@ class Housekeeper(object):
                                 Monitor().update_itemstatus(item='osimage', name=image['name'], request_data=state)
                         if osimage_log_counter > 50:
                             osimage_log_counter=0
+                mother_status = True
 
             except Exception as exp:
                 exc_type, exc_obj, exc_tb = sys.exc_info()
                 self.logger.error(f"invalid config thread encountered problem: {exp}, {exc_type}, in {exc_tb.tb_lineno}")
+                exp = str(exp).replace("'",'').replace("'",'')
+                mother_status = False
+                mother_state = {'monitor': {'status': {'invalid': {'state': f"invalid_mother execution problems detected: {exp}", 'status': '500'} }}}
+
+            if prev_mother_status is None or prev_mother_status != mother_status:
+                if mother_status:
+                    mother_state = {'monitor': {'status': {'invalid': {'state': 'invalid_mother ok', 'status': '200'} }}}
+                Monitor().update_itemstatus(item='mother', name='invalid', request_data=mother_state)
+            prev_mother_status = mother_status
+
             if event.is_set():
                 return
             sleep(5)
@@ -303,6 +353,11 @@ class Housekeeper(object):
         insync_check=140
         oosync_counter=0
         ping_status, check_status = True, True
+        monitor_insync_check=0
+        prev_mother_status=None
+        prev_insync_status=None
+        prev_ping_status=None
+        prev_check_status=None
         try:
             ha_object=HA()
             if not ha_object.get_hastate():
@@ -317,6 +372,8 @@ class Housekeeper(object):
             journal_object=Journal(me)
             tables_object=Tables()
             ha_object.set_insync(False)
+            insync_state = {'monitor': {'status': {'insync': {'state': 'HA controller not in sync', 'status': '501'}}}}
+            Monitor().update_itemstatus(item='ha', name='insync', request_data=insync_state)
             # ---------------------------- we keep asking the journal from others until successful
             while syncpull_status is False:
                 try:
@@ -327,9 +384,9 @@ class Housekeeper(object):
                 except Exception as exp:
                     exc_type, exc_obj, exc_tb = sys.exc_info()
                     self.logger.error(f"journal_mother thread encountered problem in initial sync: {exp}, {exc_type}, in {exc_tb.tb_lineno}")
-                sleep(5)
                 if event.is_set():
                     return
+                sleep(5)
             # ---------------------------- good. now we can proceed with the main loop
             sync_counter=0
             ha_object.set_overrule(False)
@@ -363,7 +420,7 @@ class Housekeeper(object):
                     ping_counter-=1
                     # --------------------------- we check if we have received pings. if things are weird we use fallback mechanisms
                     if ping_check<1:
-                        check_status=ha_object.verify_pings()
+                        check_status = ha_object.verify_pings()
                         if master is False: # i am not a master
                             status = ping_status and check_status
                             ha_object.set_insync(status)
@@ -383,9 +440,9 @@ class Housekeeper(object):
                             else:
                                 oosync_counter+=1
                             if oosync_counter>2:
+                                oosync_counter=0
                                 self.logger.warning(f"I am a master but somehow got stuck being out of sync? This should not happen....")
                                 ha_object.set_insync(True)
-                                oosync_counter=0
                         else:
                             oosync_counter=0
                         insync_check=120
@@ -405,13 +462,52 @@ class Housekeeper(object):
                                     Queue().add_task_to_queue(task='reload', param='dns', subsystem='housekeeper', request_id='__table_fix__')
                             sum_counter=720
                         sum_counter-=1
-                    # --------------------------- end of magic
+                    # --------------------------- end of magic, only some monitoring stuff below
+                    ha_state = {}
+                    if monitor_insync_check<1:
+                        insync_status = ha_object.get_insync()
+                        if prev_insync_status is None or prev_insync_status != insync_status:
+                            if insync_status:
+                                ha_state['insync'] = {'state': 'HA controller in sync', 'status': '200'}
+                            else:
+                                ha_state['insync'] = {'state': 'HA controller out of sync', 'status': '501'}
+                        prev_insync_status = insync_status
+                        monitor_insync_check=4
+                    monitor_insync_check-=1
+
+                    if prev_ping_status is None or prev_ping_status != ping_status:
+                        if ping_status:
+                            ha_state['ping'] = {'state': 'HA controller pings ok', 'status': '200'}
+                        else:
+                            ha_state['ping'] = {'state': 'HA controller cannot ping all controllers', 'status': '501'}
+                    prev_ping_status = ping_status
+
+                    if prev_check_status is None or prev_check_status != check_status:
+                        if ping_status and not check_status: 
+                            ha_state['ping'] = {'state': 'HA controller not receiving pings', 'status': '501'}
+                    prev_check_status = check_status
+                
+                    for ha_component in ['ping','insync']:
+                        if ha_component in ha_state:
+                            state = {'monitor': {'status': {ha_component: ha_state[ha_component] }}}
+                            Monitor().update_itemstatus(item='ha', name=ha_component, request_data=state)
+                    mother_status = True
+
                 except Exception as exp:
                     exc_type, exc_obj, exc_tb = sys.exc_info()
                     self.logger.error(f"journal_mother thread encountered problem in main loop: {exp}, {exc_type}, in {exc_tb.tb_lineno}")
-                sleep(5)
+                    exp = str(exp).replace("'",'').replace("'",'')
+                    mother_status = False
+                    mother_state = {'monitor': {'status': {'journal': {'state': f"journal_mother execution problems detected: {exp}", 'status': '500'} }}}
+
+                if prev_mother_status is None or prev_mother_status != mother_status:
+                    if mother_status:
+                        mother_state = {'monitor': {'status': {'journal': {'state': 'journal_mother ok', 'status': '200'} }}}
+                    Monitor().update_itemstatus(item='mother', name='journal', request_data=mother_state)
+                prev_mother_status = mother_status
                 if event.is_set():
                     return
+                sleep(5)
         except Exception as exp:
             exc_type, exc_obj, exc_tb = sys.exc_info()
             self.logger.error(f"journal_mother thread encountered problem: {exp}, {exc_type}, in {exc_tb.tb_lineno}")

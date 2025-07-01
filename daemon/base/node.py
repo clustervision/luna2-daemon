@@ -691,20 +691,21 @@ class Node():
                                           subsystem='housekeeper', request_id='__node_update__')
 
                 # ---- we call the node plugin - maybe someone wants to run something after create/update?
+                Queue().add_task_to_queue(task='run_bulk', param='node:master', 
+                                          subsystem='housekeeper', request_id='__node_update__')
                 group_details = Database().get_record_join(['group.name'],
                                                            ['group.id=node.groupid'],
                                                            [f"node.name='{name}'"])
-                all_nodes_data = Helper().nodes_and_groups()
                 node_plugins = Helper().plugin_finder(f'{self.plugins_path}/hooks')
                 node_plugin=Helper().plugin_load(node_plugins,'hooks/config','node')
                 try:
                     if oldnodename and nodename_new:
-                        node_plugin().rename(name=oldnodename, newname=nodename_new, fullset=all_nodes_data)
+                        node_plugin().rename(name=oldnodename, newname=nodename_new)
                     elif group_details:
                         if create:
-                            node_plugin().postcreate(name=name, group=group_details[0]['name'], fullset=all_nodes_data)
+                            node_plugin().postcreate(name=name, group=group_details[0]['name'])
                         elif update:
-                            node_plugin().postupdate(name=name, group=group_details[0]['name'], fullset=all_nodes_data)
+                            node_plugin().postupdate(name=name, group=group_details[0]['name'])
                 except Exception as exp:
                     self.logger.error(f"{exp}")
             else:
@@ -1022,15 +1023,16 @@ class Node():
                                           subsystem='housekeeper', request_id='__node_clone__')
 
                 # ---- we call the node plugin - maybe someone wants to run something after clone?
+                Queue().add_task_to_queue(task='run_bulk', param='node:master', 
+                                          subsystem='housekeeper', request_id='__node_clone__')
                 group_details = Database().get_record_join(['group.name'],
                                                            ['group.id=node.groupid'],
                                                            [f"node.name='{newnodename}'"])
                 if group_details:
-                    all_nodes_data = Helper().nodes_and_groups()
                     node_plugins = Helper().plugin_finder(f'{self.plugins_path}/hooks')
                     node_plugin=Helper().plugin_load(node_plugins,'hooks/config','node')
                     try:
-                        node_plugin().postcreate(name=newnodename, group=group_details[0]['name'], fullset=all_nodes_data)
+                        node_plugin().postcreate(name=newnodename, group=group_details[0]['name'])
                     except Exception as exp:
                         self.logger.error(f"{exp}")
             else:
@@ -1092,11 +1094,12 @@ class Node():
             response = f'Node {name} with all its interfaces removed'
             status=True
             # ---- we call the node plugin - maybe someone wants to run something after delete?
-            all_nodes_data = Helper().nodes_and_groups()
+            Queue().add_task_to_queue(task='run_bulk', param='node:master', 
+                                      subsystem='housekeeper', request_id='__node_delete__')
             node_plugins = Helper().plugin_finder(f'{self.plugins_path}/hooks')
             node_plugin=Helper().plugin_load(node_plugins,'hooks/config','node')
             try:
-                node_plugin().delete(name=name, fullset=all_nodes_data)
+                node_plugin().delete(name=name)
             except Exception as exp:
                 self.logger.error(f"{exp}")
         else:

@@ -49,6 +49,17 @@ from utils.ha import HA
 from utils.journal import Journal
 from utils.tables import Tables
 
+try:
+    PLUGIN_PATH = CONSTANT["PLUGINS"]["PLUGINS_DIRECTORY"]
+    CONFIG_PLUGINS = Helper().plugin_finder(f'{PLUGIN_PATH}/hooks/config')
+    NodeConfigPlugin = Helper().plugin_load(CONFIG_PLUGINS,'hooks/config','node')
+    GroupConfigPlugin = Helper().plugin_load(CONFIG_PLUGINS,'hooks/config','group')
+    DETECTION_PLUGINS = Helper().plugin_finder(f'{PLUGIN_PATH}/boot/detection')
+    DetectionPlugin = Helper().plugin_load(DETECTION_PLUGINS,'boot/detection','switchport')
+except Exception as exp:
+    LOGGER = Log.get_logger()
+    LOGGER.error(f"Problems encountered while pre-loading detection plugin: {exp}")
+
 
 class Housekeeper(object):
 
@@ -59,6 +70,7 @@ class Housekeeper(object):
         counter=0
         self.logger.info("Starting tasks thread")
         prev_mother_status=None
+        ha_object=HA()
         while True:
             try:
                 counter+=1
@@ -80,6 +92,21 @@ class Housekeeper(object):
                                 if service in ['dhcp','dhcp6','dns']:
                                     Queue().update_task_status_in_queue(next_id,'in progress')
                                     response, code = Service().luna_service(service, task)
+                            case 'run_bulk':
+                                run_bulk = True
+                                if second and second == 'master':
+                                    if ha_object.get_hastate():
+                                        if not ha_object.get_role():
+                                            run_bulk = False
+                                if run_bulk:
+                                    ret,mesg = False, "invalid or non-existing method called"
+                                    all_nodes_data = Helper().nodes_and_groups()
+                                    if first == 'node':
+                                        ret,mesg=NodeConfigPlugin().bulk(fullset=all_nodes_data)
+                                    elif first == 'group':
+                                        ret,mesg=GroupConfigPlugin().bulk(fullset=all_nodes_data)
+                                    if not ret:
+                                        self.logger.error(f"bulk {first} operation: {mesg}")
                             case 'cleanup_old_file':
                                 Queue().update_task_status_in_queue(next_id,'in progress')
                                 returned=OsImage().cleanup_file(first)
@@ -205,34 +232,29 @@ class Housekeeper(object):
     def switchport_scan(self,event):
         counter=118
         self.logger.info("Starting switch port scan thread")
-        try:
-            from plugins.boot.detection.switchport import Plugin as DetectionPlugin
-            while True:
-                try:
-                    counter+=1
-                    if counter > 120:
-                        counter=0
-                        switches = Database().get_record_join(['switch.*','ipaddress.ipaddress'], ['ipaddress.tablerefid=switch.id'], ['ipaddress.tableref="switch"'])
-                        self.logger.debug(f"switches {switches}")
-                        if switches:
-                            DetectionPlugin().clear()
-                            for switch in switches:
-                                uplinkports = []
-                                if switch['uplinkports']:
-                                    uplinkportsstring = switch['uplinkports'].replace(' ','')
-                                    uplinkports = uplinkportsstring.split(',')
-                                DetectionPlugin().scan(name=switch['name'], ipaddress=switch['ipaddress'],
-                                                       oid=switch['oid'], read=switch['read'], rw=switch['rw'],
-                                                       uplinkports=uplinkports)
-                except Exception as exp:
-                    exc_type, exc_obj, exc_tb = sys.exc_info()
-                    self.logger.error(f"switch port scan thread encountered problem: {exp}, {exc_type}, in {exc_tb.tb_lineno}")
-                if event.is_set():
-                    return
-                sleep(5)
-        except Exception as exp:
-            exc_type, exc_obj, exc_tb = sys.exc_info()
-            self.logger.error(f"switch port scan thread encountered problem: {exp}, {exc_type}, in {exc_tb.tb_lineno}")
+        while True:
+            try:
+                counter+=1
+                if counter > 120:
+                    counter=0
+                    switches = Database().get_record_join(['switch.*','ipaddress.ipaddress'], ['ipaddress.tablerefid=switch.id'], ['ipaddress.tableref="switch"'])
+                    self.logger.debug(f"switches {switches}")
+                    if switches:
+                        DetectionPlugin().clear()
+                        for switch in switches:
+                            uplinkports = []
+                            if switch['uplinkports']:
+                                uplinkportsstring = switch['uplinkports'].replace(' ','')
+                                uplinkports = uplinkportsstring.split(',')
+                            DetectionPlugin().scan(name=switch['name'], ipaddress=switch['ipaddress'],
+                                                   oid=switch['oid'], read=switch['read'], rw=switch['rw'],
+                                                   uplinkports=uplinkports)
+            except Exception as exp:
+                exc_type, exc_obj, exc_tb = sys.exc_info()
+                self.logger.error(f"switch port scan thread encountered problem: {exp}, {exc_type}, in {exc_tb.tb_lineno}")
+            if event.is_set():
+                return
+            sleep(5)
 
 
     def invalid_config_mother(self, event):

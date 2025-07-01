@@ -468,6 +468,8 @@ class Group():
                             return False, response
 
                 # ---- we call the group plugin - maybe someone wants to run something after create/update?
+                Queue().add_task_to_queue(task='run_bulk', param='group:master', 
+                                          subsystem='housekeeper', request_id='__group_update__')
                 all_nodes_data = Helper().nodes_and_groups()
                 nodes_in_group = []
                 for row in all_nodes_data:
@@ -477,11 +479,11 @@ class Group():
                 group_plugin=Helper().plugin_load(group_plugins,'hooks/config','group')
                 try:
                     if oldgroupname and newgroupname:
-                        group_plugin().rename(name=oldgroupname, newname=newgroupname, fullset=all_nodes_data)
+                        group_plugin().rename(name=oldgroupname, newname=newgroupname)
                     elif create:
-                        group_plugin().postcreate(name=name, nodes=nodes_in_group, fullset=all_nodes_data)
+                        group_plugin().postcreate(name=name, nodes=nodes_in_group)
                     elif update:
-                        group_plugin().postupdate(name=name, nodes=nodes_in_group, fullset=all_nodes_data)
+                        group_plugin().postupdate(name=name, nodes=nodes_in_group)
                 except Exception as exp:
                     self.logger.error(f"{exp}")
 
@@ -670,6 +672,8 @@ class Group():
                         Database().insert('groupinterface', row)
 
                 # ---- we call the group plugin - maybe someone wants to run something after clone?
+                Queue().add_task_to_queue(task='run_bulk', param='group:master', 
+                                          subsystem='housekeeper', request_id='__group_clone__')
                 all_nodes_data = Helper().nodes_and_groups()
                 nodes_in_group = []
                 for row in all_nodes_data:
@@ -678,7 +682,7 @@ class Group():
                 group_plugins = Helper().plugin_finder(f'{self.plugins_path}/hooks')
                 group_plugin=Helper().plugin_load(group_plugins,'hooks/config','group')
                 try:
-                    group_plugin().postcreate(name=newgroupname, nodes=nodes_in_group, fullset=all_nodes_data)
+                    group_plugin().postcreate(name=newgroupname, nodes=nodes_in_group)
                 except Exception as exp:
                     self.logger.error(f"{exp}")
             else:
@@ -727,11 +731,12 @@ class Group():
             response = f'Group {name} removed'
             status=True
             # ---- we call the group plugin - maybe someone wants to run something after delete?
-            all_nodes_data = Helper().nodes_and_groups()
+            Queue().add_task_to_queue(task='run_bulk', param='group:master', 
+                                      subsystem='housekeeper', request_id='__group_delete__')
             group_plugins = Helper().plugin_finder(f'{self.plugins_path}/hooks')
             group_plugin=Helper().plugin_load(group_plugins,'hooks/config','group')
             try:
-                group_plugin().delete(name=name, fullset=all_nodes_data)
+                group_plugin().delete(name=name)
             except Exception as exp:
                 self.logger.error(f"{exp}")
         else:

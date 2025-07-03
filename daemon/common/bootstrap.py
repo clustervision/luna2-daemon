@@ -491,7 +491,8 @@ def bootstrap(bootstrapfile=None):
     # we call create plugin after group creation
     try:
         all_nodes_data = Helper().nodes_and_groups()
-        group_plugin().postcreate(name=str(BOOTSTRAP['GROUPS']['NAME']), nodes=[], fullset=all_nodes_data)
+        group_plugin().postcreate(name=str(BOOTSTRAP['GROUPS']['NAME']), nodes=[])
+        group_plugin().bulk(fullset=all_nodes_data)
     except Exception as exp:
         LOGGER.error(f"{exp}")
     # ------------------------------------------
@@ -511,7 +512,9 @@ def bootstrap(bootstrapfile=None):
 #
 #    # we call create plugin after group creation
 #    try:
+#        all_nodes_data = Helper().nodes_and_groups()
 #        group_plugin().postcreate(name='ubuntu', nodes=[])
+#        group_plugin().bulk(fullset=all_nodes_data)
 #    except Exception as exp:
 #        LOGGER.error(f"{exp}")
 #    # ------------------------------------------
@@ -530,7 +533,8 @@ def bootstrap(bootstrapfile=None):
         # we call create plugin after node creation
         try:
             all_nodes_data = Helper().nodes_and_groups()
-            node_plugin().postcreate(name=str(nodex), group=groupname, fullset=all_nodes_data)
+            node_plugin().postcreate(name=str(nodex), group=groupname)
+            node_plugin().bulk(fullset=all_nodes_data)
         except Exception as exp:
             LOGGER.error(f"{exp}")
         # ------------------------------------------

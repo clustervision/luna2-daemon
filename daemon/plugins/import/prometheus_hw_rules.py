@@ -118,6 +118,9 @@ class Plugin():
         self.prometheus_rules_component_fields =  [
                 "hostname", "luna_group", "class", "description", "product", "vendor", "serial"
             ]
+        self.prometheus_rules_infiniband_fields =  [
+                "hostname", "luna_group", "class", "description", "product", "vendor"
+            ]
 
     @staticmethod
     def _prometheus_check_response(query, response):
@@ -186,7 +189,11 @@ class Plugin():
 
         for component in data:
             # Build label selector as before
-            label_selector = ",".join([f'{key}="{value}"' for key, value in component.items() if key in self.prometheus_rules_component_fields])
+            component_rules = self.prometheus_rules_component_fields
+            if 'class' in component and 'description' in component:
+                if component['class'] == "network" and component['description'] == "interface": # this is apparently how IB hardware is labeled
+                    component_rules = self.prometheus_rules_infiniband_fields
+            label_selector = ",".join([f'{key}="{value}"' for key, value in component.items() if key in component_rules])
             
             # Use the pre-fetched count for alert_expr_value
             # alert_expr_value = component.get("initial_count")

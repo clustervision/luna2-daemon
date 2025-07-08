@@ -464,6 +464,7 @@ class Group():
                                 executor.shutdown(wait=False)
                                 # Config().update_interface_on_group_nodes(name)
                         else:
+                            response = f"{response} for {interface_name}"
                             status = False
                             return False, response
 

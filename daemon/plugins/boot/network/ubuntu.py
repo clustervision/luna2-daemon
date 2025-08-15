@@ -59,6 +59,7 @@ if [ ! "$(grep $DEVICE $rootmnt/etc/netplan/98_config.yaml)" ]; then
     if [ "$TYPE" != "slave" ]; then
 cat << EOF >> $rootmnt/etc/netplan/98_config.yaml
     ${DEVICE}: {}
+      # mtu_${DEVICE}
       # dhcp4_${DEVICE}
       # dhcp6_${DEVICE}
       # link-local_${DEVICE}
@@ -72,6 +73,9 @@ cat << EOF >> $rootmnt/etc/netplan/98_config.yaml
         # ns_ipv4_${DEVICE}
         # ns_ipv6_${DEVICE}
 EOF
+    fi
+    if [ "$MTU" ]; then
+        sed -i 's/# mtu_'$DEVICE'/mtu: '$MTU'/' $rootmnt/etc/netplan/98_config.yaml
     fi
 fi
 

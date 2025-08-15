@@ -814,14 +814,17 @@ class Config(object):
 
     # ----------------------------------------------------------------------------------------------
 
-    def node_interface_config(self, nodeid=None, interface_name=None, macaddress=None, vlanid=None, vlan_parent=None, bond_mode=None, bond_slaves=None, options=None):
+    def node_interface_config(self, nodeid=None, interface_name=None, macaddress=None, mtu=None, vlanid=None, vlan_parent=None, bond_mode=None, bond_slaves=None, options=None):
         """
         This method will collect node interfaces and return configuration.
         """
         result_if = False
         my_interface = {}
 
-        if bond_mode and bond_mode not in ['balance-rr','active-backup','balance-xor',
+        if mtu and ((not mtu.isnumeric()) or int(mtu) > 65535 or int(mtu) < 500):
+            message = f"mtu size out of range"
+            return False, message
+        elif bond_mode and bond_mode not in ['balance-rr','active-backup','balance-xor',
                                            'broadcast','802.3ad','balance-tlb','balance-alb',
                                            '0','1','2','3','4','5','6']:
             message = f"bonding mode {bond_mode} not supported." 
@@ -837,35 +840,45 @@ class Config(object):
         where_interface = f'WHERE nodeid = "{nodeid}" AND interface = "{interface_name}"'
         check_interface = Database().get_record(None, 'nodeinterface', where_interface)
 
-        if bond_slaves or bond_mode or vlan_parent:
+        if bond_slaves or bond_mode or vlan_parent or mtu:
             if check_interface:
                 if (bond_mode or bond_slaves) and check_interface[0]['vlan_parent']:
-                    message = f"bonding interface using a vlan_parent not supported"
+                    message = "bonding interface using a vlan_parent not supported"
                     return False, message
                 elif vlan_parent and (check_interface[0]['bond_mode'] or check_interface[0]['bond_slaves']):
-                    message = f"bonding interface using a vlan_parent not supported"
+                    message = "bonding interface using a vlan_parent not supported"
                     return False, message
                 elif vlan_parent and (not vlanid) and not check_interface[0]['vlanid']:
-                    message = f"vlan_parent requires a vlanid"
+                    message = "vlan_parent requires a vlanid"
                     return False, message
                 elif bond_slaves and (not bond_mode) and not check_interface[0]['bond_mode']:
-                    message = f"bonding requires a bond_mode and bond_slaves"
+                    message = "bonding requires a bond_mode and bond_slaves"
                     return False, message
                 elif bond_mode and (not bond_slaves) and not check_interface[0]['bond_slaves']:
-                    message = f"bonding requires a bond_mode and bond_slaves"
+                    message = "bonding requires a bond_mode and bond_slaves"
                     return False, message
+                elif check_interface[0]['vlan_parent'] and mtu:
+                    message = "MTU cannot be set on an interface with a vlan_parent"
+                    return False, message
+                elif vlan_parent and check_interface[0]['mtu']:
+                    my_interface['mtu'] = None # we clear the MTU as it's the parent who sets it
+            elif vlan_parent and mtu:
+                message = "MTU cannot be set on an interface with a vlan_parent"
+                return False, message
             elif vlan_parent and not vlanid:
-                message = f"vlan_parent requires a vlanid"
+                message = "vlan_parent requires a vlanid"
                 return False, message
             elif bond_mode and not bond_slaves:
-                message = f"bonding requires a bond_mode and bond_slaves"
+                message = "bonding requires a bond_mode and bond_slaves"
                 return False, message
             elif bond_slaves and not bond_mode:
-                message = f"bonding requires a bond_mode and bond_slaves"
+                message = "bonding requires a bond_mode and bond_slaves"
                 return False, message
                    
         if macaddress is not None:
             my_interface['macaddress'] = macaddress.lower()
+        if mtu is not None:
+            my_interface['mtu'] = mtu
         if options is not None:
             my_interface['options'] = options
         if vlanid is not None:
@@ -1117,14 +1130,17 @@ class Config(object):
     # ----------------------------------------------------------------------------------------------
 
 
-    def group_interface_config(self, groupid=None, interface_name=None, network=None, vlanid=None, vlan_parent=None, bond_mode=None, bond_slaves=None, dhcp=None, options=None):
+    def group_interface_config(self, groupid=None, interface_name=None, network=None, mtu=None, vlanid=None, vlan_parent=None, bond_mode=None, bond_slaves=None, dhcp=None, options=None):
         """
         This method configures/set interface config for a group.
         """
         result_if = False
         my_interface = {}
 
-        if bond_mode and bond_mode not in ['balance-rr','active-backup','balance-xor',
+        if mtu and ((not mtu.isnumeric()) or int(mtu) > 65535 or int(mtu) < 500):
+            message = f"mtu size out of range"
+            return False, message
+        elif bond_mode and bond_mode not in ['balance-rr','active-backup','balance-xor',
                                            'broadcast','802.3ad','balance-tlb','balance-alb',
                                            '0','1','2','3','4','5','6']:
             message = f"bonding mode {bond_mode} not supported." 
@@ -1140,33 +1156,43 @@ class Config(object):
         where_interface = f'WHERE groupid = "{groupid}" AND interface = "{interface_name}"'
         check_interface = Database().get_record(None, 'groupinterface', where_interface)
 
-        if bond_slaves or bond_mode or vlan_parent:
+        if bond_slaves or bond_mode or vlan_parent or mtu:
             if check_interface:
                 if (bond_mode or bond_slaves) and check_interface[0]['vlan_parent']:
-                    message = f"bonding interface using a vlan_parent not supported"
+                    message = "bonding interface using a vlan_parent not supported"
                     return False, message
                 elif vlan_parent and (check_interface[0]['bond_mode'] or check_interface[0]['bond_slaves']):
-                    message = f"bonding interface using a vlan_parent not supported"
+                    message = "bonding interface using a vlan_parent not supported"
                     return False, message
                 elif vlan_parent and (not vlanid) and not check_interface[0]['vlanid']:
-                    message = f"vlan_parent requires a vlanid"
+                    message = "vlan_parent requires a vlanid"
                     return False, message
                 elif bond_slaves and (not bond_mode) and not check_interface[0]['bond_mode']:
-                    message = f"bonding requires a bond_mode and bond_slaves"
+                    message = "bonding requires a bond_mode and bond_slaves"
                     return False, message
                 elif bond_mode and (not bond_slaves) and not check_interface[0]['bond_slaves']:
-                    message = f"bonding requires a bond_mode and bond_slaves"
+                    message = "bonding requires a bond_mode and bond_slaves"
                     return False, message
+                elif check_interface[0]['vlan_parent'] and mtu:
+                    message = "MTU cannot be set on an interface with a vlan_parent"
+                    return False, message
+                elif vlan_parent and check_interface[0]['mtu']:
+                    my_interface['mtu'] = None # we clear the MTU as it's the parent who sets it
+            elif vlan_parent and mtu:
+                message = "MTU cannot be set on an interface with a vlan_parent"
+                return False, message
             elif vlan_parent and not vlanid:
-                message = f"vlan_parent requires a vlanid"
+                message = "vlan_parent requires a vlanid"
                 return False, message
             elif bond_mode and not bond_slaves:
-                message = f"bonding requires a bond_mode and bond_slaves"
+                message = "bonding requires a bond_mode and bond_slaves"
                 return False, message
             elif bond_slaves and not bond_mode:
-                message = f"bonding requires a bond_mode and bond_slaves"
+                message = "bonding requires a bond_mode and bond_slaves"
                 return False, message
                    
+        if mtu is not None:
+            my_interface['mtu'] = mtu
         if options is not None:
             my_interface['options'] = options
         if vlanid is not None:
@@ -1261,6 +1287,7 @@ class Config(object):
                                 'network.network', 'network.network_ipv6',
                                 'network.subnet', 'network.subnet_ipv6',
                                 'network.name as networkname',
+                                'groupinterface.mtu',
                                 'groupinterface.vlanid',
                                 'groupinterface.vlan_parent',
                                 'groupinterface.bond_mode',
@@ -1298,7 +1325,7 @@ class Config(object):
                             )
                         dhcp_ips = []
                         dhcp6_ips = []
-                        vlanid, vlan_parent, bond_mode, bond_slaves, dhcp = None, None, None, None, None
+                        vlanid, vlan_parent, bond_mode, bond_slaves, dhcp, mtu = None, None, None, None, None, None
                         if network:
                             dhcp_ips = self.get_dhcp_range_ips_from_network(network[0]['networkname'])
                             dhcp6_ips = self.get_dhcp_range_ips_from_network(network[0]['networkname'],'ipv6')
@@ -1307,6 +1334,7 @@ class Config(object):
                             bond_mode = network[0]['bond_mode']
                             bond_slaves = network[0]['bond_slaves']
                             dhcp = network[0]['dhcp']
+                            mtu = network[0]['mtu']
                         ips = dhcp_ips.copy()
                         ips6 = dhcp6_ips.copy()
                         if network: 
@@ -1325,7 +1353,7 @@ class Config(object):
                         )
                         if nodes:
                             for node in nodes:
-                                check, text = self.node_interface_config(nodeid=node['nodeid'], interface_name=interface, vlanid=vlanid,
+                                check, text = self.node_interface_config(nodeid=node['nodeid'], interface_name=interface, mtu=mtu, vlanid=vlanid,
                                                                          vlan_parent=vlan_parent, bond_mode=bond_mode, bond_slaves=bond_slaves)
                                 message = f"Adding/Updating interface {interface} to node id "
                                 message += f"{node['nodeid']} for group {group}. {text}"

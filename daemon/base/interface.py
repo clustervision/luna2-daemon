@@ -67,6 +67,7 @@ class Interface():
                     'ipaddress.dhcp',
                     'nodeinterface.macaddress',
                     'network.name as network',
+                    'nodeinterface.mtu',
                     'nodeinterface.vlanid',
                     'nodeinterface.vlan_parent',
                     'nodeinterface.bond_mode',
@@ -82,7 +83,7 @@ class Interface():
                 my_interface = []
                 for interface in node_interfaces:
                     interface['dhcp'] = Helper().make_bool(interface['dhcp'])
-                    for item in ['options','vlanid','vlan_parent','bond_mode','bond_slaves','ipaddress','ipaddress_ipv6']:
+                    for item in ['mtu','options','vlanid','vlan_parent','bond_mode','bond_slaves','ipaddress','ipaddress_ipv6']:
                         if not interface[item]:
                             del interface[item]
                     if 'vlan_parent' in interface and 'vlanid' not in interface:
@@ -147,9 +148,11 @@ class Interface():
                 interface_name = interface['interface']
                 ipaddress, macaddress, network, clear_ip = None, None, None, False
                 options, vlanid, force, dhcp, set_dhcp = None, None, False, None, False
-                vlan_parent, bond_mode, bond_slaves = None, None, None
+                vlan_parent, bond_mode, bond_slaves, mtu = None, None, None, None
                 if 'macaddress' in interface.keys():
                     macaddress = interface['macaddress']
+                if 'mtu' in interface.keys():
+                    mtu = interface['mtu']
                 if 'options' in interface.keys():
                     options = interface['options']
                 if 'vlanid' in interface.keys():
@@ -173,14 +176,11 @@ class Interface():
                     clear_ip = True
                    
                 result, message = Config().node_interface_config(
-                    nodeid,
-                    interface_name,
-                    macaddress,
-                    vlanid,
-                    vlan_parent,
-                    bond_mode,
-                    bond_slaves,
-                    options
+                    nodeid=nodeid, interface_name=interface_name,
+                    macaddress=macaddress, mtu=mtu,
+                    vlanid=vlanid, vlan_parent=vlan_parent,
+                    bond_mode=bond_mode, bond_slaves=bond_slaves,
+                    options=options
                 )
                 if result:
                     existing = Database().get_record_join(
@@ -316,15 +316,16 @@ class Interface():
                                     network,
                                     force
                                 )
-                    elif (macaddress is None) and (options is None) and (vlan_parent is None) and (vlanid is None) and (bond_mode is None) and (bond_slaves is None):
-                        # this means we just made an empty interface. a no no - Antoine
-                        # beware that we _have_ to test for None as 
-                        #    clearing parameters by "" is caught by 'not maccaddress'
+                    elif ((macaddress is None) and (options is None) and (vlan_parent is None) and (vlanid is None) and
+                        (bond_mode is None) and (bond_slaves is None) and (mtu is None)):
+                            # this means we just made an empty interface. a no no - Antoine
+                            # beware that we _have_ to test for None as 
+                            #    clearing parameters by "" is caught by 'not maccaddress'
                         result=False
                         message="Invalid request: missing minimal parameters"
                     elif not existing:
                         result=False
-                        message="Invalid request: missing minimal parameters"
+                        message="Invalid request: missing minimal parameters creating new interface"
                     if result is False and not existing:
                         # roll back
                         self.delete_node_interface(nodeid=nodeid, interface=interface_name)
@@ -370,6 +371,7 @@ class Interface():
                         'groupinterface.interface',
                         'network.name as network',
                         'network.id as networkid',
+                        'groupinterface.mtu',
                         'groupinterface.vlanid',
                         'groupinterface.vlan_parent',
                         'groupinterface.bond_mode',
@@ -387,6 +389,7 @@ class Interface():
                     'groupinterface.interface',
                     'network.name as network',
                     'network.id as networkid',
+                    'groupinterface.mtu',
                     'groupinterface.vlanid',
                     'groupinterface.vlan_parent',
                     'groupinterface.bond_mode',
@@ -415,14 +418,15 @@ class Interface():
                                         self.logger.info(f"not changing existing interface {group_interface['interface']} for node with id {nodeid}")
                     if add_interface is True:
                         result, message = Config().node_interface_config(
-                            nodeid,
-                            group_interface['interface'],
-                            None,
-                            group_interface['vlanid'],
-                            group_interface['vlan_parent'],
-                            group_interface['bond_mode'],
-                            group_interface['bond_slaves'],
-                            group_interface['options']
+                            nodeid=nodeid,
+                            interface_name=group_interface['interface'],
+                            macaddress=None,
+                            mtu=group_interface['mtu'],
+                            vlanid=group_interface['vlanid'],
+                            vlan_parent=group_interface['vlan_parent'],
+                            bond_mode=group_interface['bond_mode'],
+                            bond_slaves=group_interface['bond_slaves'],
+                            options=group_interface['options']
                         )
                         if result:
                             where = f" WHERE `name` = \"{group_interface['network']}\""
@@ -709,10 +713,12 @@ class Interface():
                         where_interface = f'WHERE groupid = "{group_id}" AND interface = "{interface_name}"'
                         check_interface = Database().get_record(None, 'groupinterface', where_interface)
 
-                        network, bond_mode, bond_slaves = None, None, None
+                        network, bond_mode, bond_slaves, mtu = None, None, None, None
                         vlanid, vlan_parent, dhcp, options = None, None, None, None
                         if 'network' in ifx:
                             network = ifx['network']
+                        if 'mtu' in ifx:
+                            mtu = ifx['mtu']
                         if 'bond_mode' in ifx:
                             bond_mode = ifx['bond_mode']
                         if 'bond_slaves' in ifx:
@@ -728,7 +734,7 @@ class Interface():
 
                         result, response = Config().group_interface_config(groupid=group_id,
                                                                 interface_name=interface_name,
-                                                                network=network, vlanid=vlanid,
+                                                                network=network, mtu=mtu, vlanid=vlanid,
                                                                 vlan_parent=vlan_parent, bond_mode=bond_mode,
                                                                 bond_slaves=bond_slaves, dhcp=dhcp,
                                                                 options=options)

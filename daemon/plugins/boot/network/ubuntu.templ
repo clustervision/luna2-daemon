@@ -20,9 +20,15 @@ network:
     {{ bond_slave }}:
       dhcp4: no
       dhcp6: no
+    {%- if LUNA_INTERFACES[interface]['mtu'] %}
+      mtu: {{ LUNA_INTERFACES[interface]['mtu'] }}
+    {%- endif %}
   {%- endfor %}
   bonds:
     ${interface_name}:
+    {%- if LUNA_INTERFACES[interface]['mtu'] %}
+      mtu: {{ LUNA_INTERFACES[interface]['mtu'] }}
+    {%- endif %}
       interfaces:
   {%- for bond_slave in LUNA_INTERFACES[interface]['bond_slaves'] %}
         - {{ bond_slave }}
@@ -32,6 +38,9 @@ network:
     ${interface_name}:
     {%- if not LUNA_INTERFACES[interface]['ipaddress_ipv6'] %}
       link-local: [ipv6]
+    {%- endif %}
+    {%- if LUNA_INTERFACES[interface]['mtu'] %}
+      mtu: {{ LUNA_INTERFACES[interface]['mtu'] }}
     {%- endif %}
 {%- endif %}
 {%- if LUNA_INTERFACES[interface]['dhcp'] %}

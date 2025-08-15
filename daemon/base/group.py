@@ -72,14 +72,14 @@ class Group():
                      'groupinterface.vlanid', 'groupinterface.vlan_parent',
                      'groupinterface.bond_mode', 'groupinterface.bond_slaves',
                      'groupinterface.options', 'groupinterface.dhcp',
-                     'network.dhcp as networkdhcp'],
+                     'groupinterface.mtu', 'network.dhcp as networkdhcp'],
                     ['network.id=groupinterface.networkid'],
                     [f"groupid = '{group_id}'"]
                 )
                 if group_interface:
                     group['interfaces'] = []
                     for interface in group_interface:
-                        for item in ['options','vlanid','vlan_parent','bond_mode','bond_slaves']:
+                        for item in ['options','mtu','vlanid','vlan_parent','bond_mode','bond_slaves']:
                             if not interface[item]:
                                 del interface[item]
                         interface['dhcp'] = Helper().make_bool(interface['dhcp']) or False
@@ -146,6 +146,7 @@ class Group():
                 [
                     'groupinterface.interface',
                     'network.name as network',
+                    'groupinterface.mtu',
                     'groupinterface.vlanid',
                     'groupinterface.vlan_parent',
                     'groupinterface.bond_mode',
@@ -160,7 +161,7 @@ class Group():
             if group_interface:
                 group['interfaces'] = []
                 for interface in group_interface:
-                    for item in ['options','vlanid','vlan_parent','bond_mode','bond_slaves']:
+                    for item in ['options','mtu','vlanid','vlan_parent','bond_mode','bond_slaves']:
                         if not interface[item]:
                             del interface[item]
                     interface['dhcp'] = Helper().make_bool(interface['dhcp']) or False
@@ -414,7 +415,7 @@ class Group():
                         check_interface = Database().get_record(None, 'groupinterface', where_interface)
 
                         network, bond_mode, bond_slaves = None, None, None
-                        vlanid, vlan_parent, dhcp, options = None, None, None, None
+                        vlanid, vlan_parent, dhcp, options, mtu = None, None, None, None, None
                         if 'network' in ifx:
                             network = ifx['network']
                         if 'bond_mode' in ifx:
@@ -427,12 +428,14 @@ class Group():
                             vlan_parent = ifx['vlan_parent']
                         if 'dhcp' in ifx:
                             dhcp = ifx['dhcp']
+                        if 'mtu' in ifx:
+                            mtu = ifx['mtu']
                         if 'options' in ifx:
                             options = ifx['options']
                         
                         result, response = Config().group_interface_config(groupid=group_id,
                                                                 interface_name=interface_name,
-                                                                network=network, vlanid=vlanid,
+                                                                network=network, vlanid=vlanid, mtu=mtu,
                                                                 vlan_parent=vlan_parent, bond_mode=bond_mode,
                                                                 bond_slaves=bond_slaves, dhcp=dhcp,
                                                                 options=options)
@@ -464,6 +467,7 @@ class Group():
                                 executor.shutdown(wait=False)
                                 # Config().update_interface_on_group_nodes(name)
                         else:
+                            response = f"{response} for {interface_name}"
                             status = False
                             return False, response
 
@@ -583,6 +587,7 @@ class Group():
                         'groupinterface.interface',
                         'network.name as network',
                         'network.id as networkid',
+                        'groupinterface.mtu',
                         'groupinterface.vlanid',
                         'groupinterface.vlan_parent',
                         'groupinterface.bond_mode',
@@ -619,7 +624,7 @@ class Group():
                         interface_name = ifx['interface']
 
                         network, networkid, bond_mode, bond_slaves = None, None, None, None
-                        vlanid, vlan_parent, dhcp, options = None, None, None, None
+                        vlanid, vlan_parent, dhcp, options, mtu = None, None, None, None, None
                         if group_interfaces_byname and interface_name in group_interfaces_byname.keys():
                             networkid = group_interfaces_byname[interface_name]['networkid']
                             network = group_interfaces_byname[interface_name]['network']
@@ -628,6 +633,7 @@ class Group():
                             vlanid = group_interfaces_byname[interface_name]['vlanid']
                             vlan_parent = group_interfaces_byname[interface_name]['vlan_parent']
                             dhcp = group_interfaces_byname[interface_name]['dhcp']
+                            mtu = group_interfaces_byname[interface_name]['mtu']
                             options = group_interfaces_byname[interface_name]['options']
                             skip_interface.append(interface_name)
 
@@ -644,12 +650,14 @@ class Group():
                             vlan_parent = ifx['vlan_parent']
                         if 'dhcp' in ifx:
                             dhcp = ifx['dhcp']
+                        if 'mtu' in ifx:
+                            mtu = ifx['mtu']
                         if 'options' in ifx:
                             options = ifx['options']
                         
                         result, response = Config().group_interface_config(groupid=new_group_id,
                                                                 interface_name=interface_name,
-                                                                network=network, vlanid=vlanid,
+                                                                network=network, vlanid=vlanid, mtu=mtu,
                                                                 vlan_parent=vlan_parent, bond_mode=bond_mode,
                                                                 bond_slaves=bond_slaves, dhcp=dhcp,
                                                                 options=options)

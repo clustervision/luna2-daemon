@@ -190,6 +190,7 @@ class Node():
                         'ipaddress.ipaddress_ipv6',
                         'ipaddress.dhcp',
                         'nodeinterface.macaddress',
+                        'nodeinterface.mtu',
                         'network.name as network',
                         'nodeinterface.vlanid',
                         'nodeinterface.vlan_parent',
@@ -212,7 +213,7 @@ class Node():
                             # if it is my prov interface then it will get that domain as a FQDN.
                             node['hostname'] = node['name'] + '.' + interface['network']
                         interface['dhcp'] = Helper().make_bool(interface['dhcp'])
-                        for item in ['options','vlanid','vlan_parent','bond_mode','bond_slaves','ipaddress','ipaddress_ipv6']:
+                        for item in ['options','mtu','vlanid','vlan_parent','bond_mode','bond_slaves','ipaddress','ipaddress_ipv6']:
                             if not interface[item]:
                                 del  interface[item]
                         if 'vlan_parent' in interface and 'vlanid' not in interface:
@@ -469,6 +470,7 @@ class Node():
                     'ipaddress.ipaddress_ipv6',
                     'ipaddress.dhcp',
                     'nodeinterface.macaddress',
+                    'nodeinterface.mtu',
                     'network.name as network',
                     'nodeinterface.vlanid',
                     'nodeinterface.vlan_parent',
@@ -490,7 +492,7 @@ class Node():
                         # if it is my prov interface then it will get that domain as a FQDN.
                         node['hostname'] = nodename + '.' + interface['network']
                     interface['dhcp'] = Helper().make_bool(interface['dhcp'])
-                    for item in ['options','vlanid','vlan_parent','bond_mode','bond_slaves','ipaddress','ipaddress_ipv6']:
+                    for item in ['options','mtu','vlanid','vlan_parent','bond_mode','bond_slaves','ipaddress','ipaddress_ipv6']:
                         if not interface[item]:
                             del interface[item]
                     if 'vlan_parent' in interface and 'vlanid' not in interface:
@@ -813,6 +815,7 @@ class Node():
                         'ipaddress.ipaddress_ipv6',
                         'ipaddress.dhcp',
                         'nodeinterface.macaddress',
+                        'nodeinterface.mtu',
                         'network.name as network',
                         'nodeinterface.vlanid',
                         'nodeinterface.vlan_parent',
@@ -834,11 +837,13 @@ class Node():
                             if interface_name == node_interface['interface']:
                                 del node_interfaces[index]
                             index += 1
-                        macaddress, networkname, options = None, None, None 
+                        macaddress, networkname, options, mtu = None, None, None, None
                         ipaddress, dhcp, set_dhcp, vlanid = None, None, False, None
                         vlan_parent, bond_mode, bond_slaves = None, None, None
                         if 'macaddress' in interface.keys():
                             macaddress = interface['macaddress']
+                        if 'mtu' in interface.keys():
+                            mtu = interface['mtu']
                         if 'options' in interface.keys():
                             options = interface['options']
                         if 'network' in interface.keys():
@@ -859,14 +864,15 @@ class Node():
                             dhcp = Helper().bool_to_string(interface['dhcp'])
                             set_dhcp = True
                         result, message = Config().node_interface_config(
-                            new_nodeid,
-                            interface_name,
-                            macaddress,
-                            vlanid,
-                            vlan_parent,
-                            bond_mode,
-                            bond_slaves,
-                            options
+                            nodeid=new_nodeid,
+                            interface_name=interface_name,
+                            macaddress=macaddress,
+                            mtu=mtu,
+                            vlanid=vlanid,
+                            vlan_parent=vlan_parent,
+                            bond_mode=bond_mode,
+                            bond_slaves=bond_slaves,
+                            options=options
                         )
                         if result:
                             if networkname and not ipaddress:
@@ -925,6 +931,7 @@ class Node():
                 # what we have in the database
                 for node_interface in node_interfaces:
                     interface_name = node_interface['interface']
+                    interface_mtu = node_interface['mtu']
                     interface_vlanid = node_interface['vlanid']
                     interface_vlan_parent = node_interface['vlan_parent']
                     interface_bond_mode = node_interface['bond_mode']
@@ -932,14 +939,15 @@ class Node():
                     interface_options = node_interface['options']
                     interface_dhcp = node_interface['dhcp']
                     result, message = Config().node_interface_config(
-                        new_nodeid,
-                        interface_name,
-                        None,
-                        interface_vlanid,
-                        interface_vlan_parent,
-                        interface_bond_mode,
-                        interface_bond_slaves,
-                        interface_options
+                        nodeid=new_nodeid,
+                        interface_name=interface_name,
+                        macaddress=None,
+                        mtu=interface_mtu,
+                        vlanid=interface_vlanid,
+                        vlan_parent=interface_vlan_parent,
+                        bond_mode=interface_bond_mode,
+                        bond_slaves=interface_bond_slaves,
+                        options=interface_options
                     )
                     if result and 'ipaddress' in node_interface.keys():
                         if 'network' in node_interface.keys():

@@ -162,9 +162,9 @@ class Boot():
                     result, _ = Journal().add_request(function="Interface.change_node_interface",object=db_node['nodeid'],payload=payload)
                 if result is True:
                     result, _ = Config().node_interface_config(
-                        db_node['nodeid'],
-                        db_node['interface'],
-                        ""
+                        nodeid=db_node['nodeid'],
+                        interface_name=db_node['interface'],
+                        macaddress=""
                     )
             return result
         return True
@@ -506,9 +506,9 @@ class Boot():
                             result, _ = Journal().add_request(function="Interface.change_node_interface",object=detect_node[0]['id'],payload=payload)
                         if result is True:
                             result, _ = Config().node_interface_config(
-                                detect_node[0]['id'],
-                                provision_interface,
-                                mac
+                                nodeid=detect_node[0]['id'],
+                                interface_name=provision_interface,
+                                macaddress=mac
                             )
 
                         nodeinterface = Database().get_record_join(
@@ -564,9 +564,9 @@ class Boot():
                                         result, _ = Journal().add_request(function="Interface.change_node_interface",object=node['nodeid'],payload=payload)
                                     if result is True:
                                         result, _ = Config().node_interface_config(
-                                            node['nodeid'],
-                                            provision_interface,
-                                            mac
+                                            nodeid=node['nodeid'],
+                                            interface_name=provision_interface,
+                                            macaddress=mac
                                         )
                                     data['nodeid'] = node['nodeid']
                                     if nodeinterface[0]["dhcp"] and nodeinterface[0]["networkdhcp"]:
@@ -647,7 +647,7 @@ class Boot():
                             payload = [{'interface': provision_interface, 'macaddress': mac}]
                             result, _ = Journal().add_request(function="Interface.change_node_interface",object=nodeid,payload=payload)
                         if result is True:
-                            result, _ = Config().node_interface_config(nodeid, provision_interface, mac)
+                            result, _ = Config().node_interface_config(nodeid=nodeid, interface_name=provision_interface, macaddress=mac)
 
                     nodeinterface = Database().get_record_join(
                         ['nodeinterface.nodeid', 'nodeinterface.interface', 'ipaddress.ipaddress_ipv6',
@@ -942,7 +942,7 @@ class Boot():
                     payload = [{'interface': provision_interface, 'macaddress': mac}]
                     result, _ = Journal().add_request(function="Interface.change_node_interface",object=nodeid,payload=payload)
                 if result is True:
-                    result, _ = Config().node_interface_config(nodeid, provision_interface, mac)
+                    result, _ = Config().node_interface_config(nodeid=nodeid, interface_name=provision_interface, macaddress=mac)
 
 #                    Below section commented out as it not really up to us to create interface
 #                    for nodes if they are not configured. We better just use what's valid and ok
@@ -960,9 +960,9 @@ class Boot():
 #                            ips
 #                        )
 #                        result, _ = Config().node_interface_config(
-#                            node['id'],
-#                            provision_interface,
-#                            mac
+#                            nodeid=node['id'],
+#                            interface_name=provision_interface,
+#                            macaddress=mac
 #                        )
 #                        if result:
 #                            result, _ = Config().node_interface_ipaddress_config(
@@ -1251,9 +1251,9 @@ class Boot():
                 result, _ = Journal().add_request(function="Interface.change_node_interface",object=data['nodeid'],payload=payload)
             if result is True:
                 result, _ = Config().node_interface_config(
-                    data['nodeid'],
-                    provision_interface,
-                    mac
+                    nodeid=data['nodeid'],
+                    interface_name=provision_interface,
+                    macaddress=mac
                 )
 
             Service().queue('dhcp', 'restart')
@@ -1530,6 +1530,7 @@ class Boot():
                     'nodeinterface.nodeid',
                     'nodeinterface.interface',
                     'nodeinterface.macaddress',
+                    'nodeinterface.mtu',
                     'nodeinterface.vlanid',
                     'nodeinterface.vlan_parent',
                     'nodeinterface.bond_mode',
@@ -1587,6 +1588,7 @@ class Boot():
                         interface_data = {
                                 'interface': interface['interface'],
                                 'macaddress': interface['macaddress'],
+                                'mtu': interface['mtu'],
                                 'ipaddress': interface['ipaddress'],
                                 'ipaddress_ipv6': interface['ipaddress_ipv6'],
                                 'prefix': interface['subnet'],
@@ -1657,7 +1659,8 @@ class Boot():
                                 data['interfaces'][slave] = {
                                     'master': master,
                                     'type': "slave",
-                                    'networktype': interface['networktype'] or "ethernet"
+                                    'networktype': interface['networktype'] or "ethernet",
+                                    'mtu': interface['mtu']
                                 }
                             interface_data['bond_mode']  = interface['bond_mode']
                             interface_data['bond_slaves']= interface['bond_slaves'].split(',')

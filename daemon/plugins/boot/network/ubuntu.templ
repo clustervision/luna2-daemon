@@ -26,6 +26,9 @@ network:
   {%- endfor %}
   bonds:
     ${interface_name}:
+    {%- if LUNA_INTERFACES[interface]['mtu'] %}
+      mtu: {{ LUNA_INTERFACES[interface]['mtu'] }}
+    {%- endif %}
       interfaces:
   {%- for bond_slave in LUNA_INTERFACES[interface]['bond_slaves'] %}
         - {{ bond_slave }}

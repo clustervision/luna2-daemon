@@ -840,31 +840,39 @@ class Config(object):
         where_interface = f'WHERE nodeid = "{nodeid}" AND interface = "{interface_name}"'
         check_interface = Database().get_record(None, 'nodeinterface', where_interface)
 
-        if bond_slaves or bond_mode or vlan_parent:
+        if bond_slaves or bond_mode or vlan_parent or mtu:
             if check_interface:
                 if (bond_mode or bond_slaves) and check_interface[0]['vlan_parent']:
-                    message = f"bonding interface using a vlan_parent not supported"
+                    message = "bonding interface using a vlan_parent not supported"
                     return False, message
                 elif vlan_parent and (check_interface[0]['bond_mode'] or check_interface[0]['bond_slaves']):
-                    message = f"bonding interface using a vlan_parent not supported"
+                    message = "bonding interface using a vlan_parent not supported"
                     return False, message
                 elif vlan_parent and (not vlanid) and not check_interface[0]['vlanid']:
-                    message = f"vlan_parent requires a vlanid"
+                    message = "vlan_parent requires a vlanid"
                     return False, message
                 elif bond_slaves and (not bond_mode) and not check_interface[0]['bond_mode']:
-                    message = f"bonding requires a bond_mode and bond_slaves"
+                    message = "bonding requires a bond_mode and bond_slaves"
                     return False, message
                 elif bond_mode and (not bond_slaves) and not check_interface[0]['bond_slaves']:
-                    message = f"bonding requires a bond_mode and bond_slaves"
+                    message = "bonding requires a bond_mode and bond_slaves"
                     return False, message
+                elif check_interface[0]['vlan_parent'] and mtu:
+                    message = "MTU cannot be set on an interface with a vlan_parent"
+                    return False, message
+                elif vlan_parent and check_interface[0]['mtu']:
+                    my_interface['mtu'] = None # we clear the MTU as it's the parent who sets it
+            elif vlan_parent and mtu:
+                message = "MTU cannot be set on an interface with a vlan_parent"
+                return False, message
             elif vlan_parent and not vlanid:
-                message = f"vlan_parent requires a vlanid"
+                message = "vlan_parent requires a vlanid"
                 return False, message
             elif bond_mode and not bond_slaves:
-                message = f"bonding requires a bond_mode and bond_slaves"
+                message = "bonding requires a bond_mode and bond_slaves"
                 return False, message
             elif bond_slaves and not bond_mode:
-                message = f"bonding requires a bond_mode and bond_slaves"
+                message = "bonding requires a bond_mode and bond_slaves"
                 return False, message
                    
         if macaddress is not None:
@@ -1148,31 +1156,39 @@ class Config(object):
         where_interface = f'WHERE groupid = "{groupid}" AND interface = "{interface_name}"'
         check_interface = Database().get_record(None, 'groupinterface', where_interface)
 
-        if bond_slaves or bond_mode or vlan_parent:
+        if bond_slaves or bond_mode or vlan_parent or mtu:
             if check_interface:
                 if (bond_mode or bond_slaves) and check_interface[0]['vlan_parent']:
-                    message = f"bonding interface using a vlan_parent not supported"
+                    message = "bonding interface using a vlan_parent not supported"
                     return False, message
                 elif vlan_parent and (check_interface[0]['bond_mode'] or check_interface[0]['bond_slaves']):
-                    message = f"bonding interface using a vlan_parent not supported"
+                    message = "bonding interface using a vlan_parent not supported"
                     return False, message
                 elif vlan_parent and (not vlanid) and not check_interface[0]['vlanid']:
-                    message = f"vlan_parent requires a vlanid"
+                    message = "vlan_parent requires a vlanid"
                     return False, message
                 elif bond_slaves and (not bond_mode) and not check_interface[0]['bond_mode']:
-                    message = f"bonding requires a bond_mode and bond_slaves"
+                    message = "bonding requires a bond_mode and bond_slaves"
                     return False, message
                 elif bond_mode and (not bond_slaves) and not check_interface[0]['bond_slaves']:
-                    message = f"bonding requires a bond_mode and bond_slaves"
+                    message = "bonding requires a bond_mode and bond_slaves"
                     return False, message
+                elif check_interface[0]['vlan_parent'] and mtu:
+                    message = "MTU cannot be set on an interface with a vlan_parent"
+                    return False, message
+                elif vlan_parent and check_interface[0]['mtu']:
+                    my_interface['mtu'] = None # we clear the MTU as it's the parent who sets it
+            elif vlan_parent and mtu:
+                message = "MTU cannot be set on an interface with a vlan_parent"
+                return False, message
             elif vlan_parent and not vlanid:
-                message = f"vlan_parent requires a vlanid"
+                message = "vlan_parent requires a vlanid"
                 return False, message
             elif bond_mode and not bond_slaves:
-                message = f"bonding requires a bond_mode and bond_slaves"
+                message = "bonding requires a bond_mode and bond_slaves"
                 return False, message
             elif bond_slaves and not bond_mode:
-                message = f"bonding requires a bond_mode and bond_slaves"
+                message = "bonding requires a bond_mode and bond_slaves"
                 return False, message
                    
         if mtu is not None:

@@ -16,6 +16,10 @@ autoconnect=true
 {% if LUNA_INTERFACES[interface]['type'] == 'bond' %}
 [bond]
 mode={{ LUNA_INTERFACES[interface]['bond_mode'] }}
+    {%- if LUNA_INTERFACES[interface]['mtu'] %}
+[ethernet]
+mtu={{ LUNA_INTERFACES[interface]['mtu'] }}
+    {% endif %}
 {% else %}
     {% if LUNA_INTERFACES[interface]['networktype'] == 'infiniband' %}
 [infiniband]

@@ -72,14 +72,18 @@ else
 #mtu=65520
 #transport-mode=connected
 transport-mode=datagram
-
 EOF
     else
         cat << EOF >> /sysroot/etc/NetworkManager/system-connections/Connection_${DEVICE}.nmconnection
 [ethernet]
-
 EOF
     fi
+fi
+if [ "$MTU" ]; then
+    cat << EOF >> /sysroot/etc/NetworkManager/system-connections/Connection_${DEVICE}.nmconnection
+mtu=$MTU
+
+EOF
 fi
 
 cat << EOF >> /sysroot/etc/NetworkManager/system-connections/Connection_${DEVICE}.nmconnection

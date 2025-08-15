@@ -16,7 +16,7 @@ autoconnect=true
 {% if LUNA_INTERFACES[interface]['type'] == 'bond' %}
 [bond]
 mode={{ LUNA_INTERFACES[interface]['bond_mode'] }}
-    {%- if LUNA_INTERFACES[interface]['mtu'] %}
+    {% if LUNA_INTERFACES[interface]['mtu'] %}
 [ethernet]
 mtu={{ LUNA_INTERFACES[interface]['mtu'] }}
     {% endif %}
@@ -40,11 +40,11 @@ mtu={{ LUNA_INTERFACES[interface]['mtu'] }}
 
   {% if LUNA_INTERFACES[interface]['type'] == 'vlan' %}
 [vlan]
-  {%- if LUNA_INTERFACES[interface]['vlan_parent'] %}
+    {%- if LUNA_INTERFACES[interface]['vlan_parent'] %}
 parent=${parent_name}
-  {%- else %}
+    {%- else %}
 parent=${interface_name}
-  {%- endif %}
+    {%- endif %}
 id={{ LUNA_INTERFACES[interface]['vlanid'] }}
   {%- endif %}
 

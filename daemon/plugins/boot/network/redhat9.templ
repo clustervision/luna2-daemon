@@ -25,7 +25,7 @@ transport-mode=datagram
     {%- else %}
 [ethernet]
     {%- endif %}
-    {% if LUNA_INTERFACES[interface]['mtu'] %}
+    {%- if LUNA_INTERFACES[interface]['mtu'] %}
 mtu={{ LUNA_INTERFACES[interface]['mtu'] }}
     {%- endif %}
 {%- endif %}

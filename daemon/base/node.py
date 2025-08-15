@@ -190,6 +190,7 @@ class Node():
                         'ipaddress.ipaddress_ipv6',
                         'ipaddress.dhcp',
                         'nodeinterface.macaddress',
+                        'nodeinterface.mtu',
                         'network.name as network',
                         'nodeinterface.vlanid',
                         'nodeinterface.vlan_parent',
@@ -212,7 +213,7 @@ class Node():
                             # if it is my prov interface then it will get that domain as a FQDN.
                             node['hostname'] = node['name'] + '.' + interface['network']
                         interface['dhcp'] = Helper().make_bool(interface['dhcp'])
-                        for item in ['options','vlanid','vlan_parent','bond_mode','bond_slaves','ipaddress','ipaddress_ipv6']:
+                        for item in ['options','mtu','vlanid','vlan_parent','bond_mode','bond_slaves','ipaddress','ipaddress_ipv6']:
                             if not interface[item]:
                                 del  interface[item]
                         if 'vlan_parent' in interface and 'vlanid' not in interface:
@@ -469,6 +470,7 @@ class Node():
                     'ipaddress.ipaddress_ipv6',
                     'ipaddress.dhcp',
                     'nodeinterface.macaddress',
+                    'nodeinterface.mtu',
                     'network.name as network',
                     'nodeinterface.vlanid',
                     'nodeinterface.vlan_parent',
@@ -490,7 +492,7 @@ class Node():
                         # if it is my prov interface then it will get that domain as a FQDN.
                         node['hostname'] = nodename + '.' + interface['network']
                     interface['dhcp'] = Helper().make_bool(interface['dhcp'])
-                    for item in ['options','vlanid','vlan_parent','bond_mode','bond_slaves','ipaddress','ipaddress_ipv6']:
+                    for item in ['options','mtu','vlanid','vlan_parent','bond_mode','bond_slaves','ipaddress','ipaddress_ipv6']:
                         if not interface[item]:
                             del interface[item]
                     if 'vlan_parent' in interface and 'vlanid' not in interface:
@@ -813,6 +815,7 @@ class Node():
                         'ipaddress.ipaddress_ipv6',
                         'ipaddress.dhcp',
                         'nodeinterface.macaddress',
+                        'nodeinterface.mtu',
                         'network.name as network',
                         'nodeinterface.vlanid',
                         'nodeinterface.vlan_parent',
@@ -928,6 +931,7 @@ class Node():
                 # what we have in the database
                 for node_interface in node_interfaces:
                     interface_name = node_interface['interface']
+                    interface_mtu = node_interface['mtu']
                     interface_vlanid = node_interface['vlanid']
                     interface_vlan_parent = node_interface['vlan_parent']
                     interface_bond_mode = node_interface['bond_mode']
@@ -938,7 +942,7 @@ class Node():
                         nodeid=new_nodeid,
                         interface_name=interface_name,
                         macaddress=None,
-                        mtu=mtu,
+                        mtu=interface_mtu,
                         vlanid=interface_vlanid,
                         vlan_parent=interface_vlan_parent,
                         bond_mode=interface_bond_mode,

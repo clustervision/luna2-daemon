@@ -821,7 +821,7 @@ class Config(object):
         result_if = False
         my_interface = {}
 
-        if mtu and ((not mtu.isnumeric()) or int(mtu) > 9300 or int(mtu) < 500):
+        if mtu and ((not mtu.isnumeric()) or int(mtu) > 65535 or int(mtu) < 500):
             message = f"mtu size out of range"
             return False, message
         elif bond_mode and bond_mode not in ['balance-rr','active-backup','balance-xor',
@@ -1129,7 +1129,7 @@ class Config(object):
         result_if = False
         my_interface = {}
 
-        if mtu and ((not mtu.isnumeric()) or int(mtu) > 9300 or int(mtu) < 500):
+        if mtu and ((not mtu.isnumeric()) or int(mtu) > 65535 or int(mtu) < 500):
             message = f"mtu size out of range"
             return False, message
         elif bond_mode and bond_mode not in ['balance-rr','active-backup','balance-xor',

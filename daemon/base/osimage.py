@@ -675,17 +675,15 @@ class OSImage():
         response="Internal error"
         if request_data:
             data, to_group = None, False
-            nodry = False
-            # means default dry=True
-            self.logger.info(f"REQ: {request_data}")
             if 'group' in request_data['config']:
                 data = request_data['config']['group'][entity_name]
                 to_group = True
             else:
                 data = request_data['config']['node'][entity_name]
+            nodry = False
+            # means default dry=True
             if 'nodry' in data:
                 nodry = Helper().make_bool(data['nodry'])
-                self.logger.info(f"NODRY: {nodry}")
             osimage=None
             if 'osimage' in data:
                 osimage=data['osimage']

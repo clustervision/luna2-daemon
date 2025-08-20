@@ -274,8 +274,8 @@ class Group():
         # things we have to set for a group
         items = {
             'prescript': '',
-            'partscript': 'bW91bnQgLXQgdG1wZnMgdG1wZnMgL3N5c3Jvb3QK',
-            'postscript': 'ZWNobyAndG1wZnMgLyB0bXBmcyBkZWZhdWx0cyAwIDAnID4+IC9zeXNyb290L2V0Yy9mc3RhYgo=',
+            'partscript': 'bW91bnQgLW8gbXBvbD1pbnRlcmxlYXZlIC10IHRtcGZzIHRtcGZzIC9zeXNyb290Cg==',
+            'postscript': 'ZWNobyAndG1wZnMgLyB0bXBmcyBtcG9sPWludGVybGVhdmUgMCAwJyA+PiAvc3lzcm9vdC9ldGMvZnN0YWIK',
             'setupbmc': False,
             'netboot': True,
             'bootmenu': False,

@@ -34,6 +34,7 @@ import concurrent.futures
 from time import sleep
 import os
 import sys
+import shutil
 from utils.log import Log
 from utils.database import Database
 from common.constant import CONSTANT
@@ -114,10 +115,21 @@ class Housekeeper(object):
                                 if status is False and len(returned)>1:
                                     self.logger.error(f"cleanup_file: {returned[1]}")
                             case 'cleanup_old_provisioning':
+                                Queue().update_task_status_in_queue(next_id,'in progress')
                                 returned=OsImage().cleanup_provisioning(first)
                                 status=returned[0]
                                 if status is False and len(returned)>1:
                                     self.logger.error(f"cleanup_provisioning: {returned[1]}")
+                            case 'remove_osimage_path':
+                                Queue().update_task_status_in_queue(next_id,'in progress')
+                                if first and len(first) > 2 and first.startswith('/'):
+                                    if os.path.exists(first):
+                                        self.logger.info(f"Removing path {first}")
+                                        shutil.rmtree(first)
+                                    else:
+                                        self.logger.error(f"Path {first} does not exist. Cannot remove")
+                                else:
+                                    self.logger.error(f"Path {first} is not safe. Cannot remove")
                             case 'sync_osimage_with_master':
                                 osimage=first
                                 master=second

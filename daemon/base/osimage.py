@@ -477,10 +477,14 @@ class OSImage():
         return status, response
 
 
-    def delete_osimage(self, name=None):
+    def delete_osimage(self, name=None, keep_path=False):
         """
         This method will delete a osimage.
         """
+        filesystem_plugin = 'default'
+        if 'IMAGE_FILESYSTEM' in CONSTANT['PLUGINS'] and CONSTANT['PLUGINS']['IMAGE_FILESYSTEM']:
+            filesystem_plugin = CONSTANT['PLUGINS']['IMAGE_FILESYSTEM']
+
         inuse_node = Database().get_record_join(['node.*'], ['osimage.id=node.osimageid'],
                                                 f'osimage.name="{name}"')
         inuse_group = Database().get_record_join(['group.*'], ['osimage.id=group.osimageid'],
@@ -507,6 +511,20 @@ class OSImage():
             if image[0]['imagefile']:
                 queue_id,queue_response = Queue().add_task_to_queue(task='cleanup_old_provisioning', param=image[0]['imagefile'],
                                                                     subsystem='housekeeper', request_id='__image_delete__', when='1h')
+            if not keep_path:
+                osimage_path = image[0]['path']
+                if (not image[0]['path']):
+                    os_image_plugin=Helper().plugin_load(self.osimage_plugins,
+                                           'osimage/filesystem',filesystem_plugin)
+                    try:
+                        ret, data = os_image_plugin().getpath(image_directory=self.image_directory, osimage=name)
+                        if ret is True:
+                            osimage_path = data
+                    except Exception as exp:
+                        self.logger.error(f"Plugin exception in getpath: {exp}")
+                if osimage_path:
+                    queue_id,queue_response = Queue().add_task_to_queue(task='remove_osimage_path', param=osimage_path,
+                                                                        subsystem='housekeeper', request_id='__image_delete__')
         tag_details = Database().get_record_join(
             ['osimagetag.id as tagid','osimagetag.*','osimage.id as osimageid'],
             ['osimagetag.osimageid=osimage.id'],

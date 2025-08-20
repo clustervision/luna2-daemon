@@ -483,8 +483,8 @@ def bootstrap(bootstrapfile=None):
             {'column': 'netboot', 'value': '1'},
             {'column': 'bootmenu', 'value': '0'},
             {'column': 'osimageid', 'value': osimage},
-            {'column': 'partscript', 'value': "bW91bnQgLXQgdG1wZnMgdG1wZnMgL3N5c3Jvb3QK"},
-            {'column': 'postscript', 'value': "ZWNobyAndG1wZnMgLyB0bXBmcyBkZWZhdWx0cyAwIDAnID4+IC9zeXNyb290L2V0Yy9mc3RhYgo="}
+            {'column': 'partscript', 'value': "bW91bnQgLW8gbXBvbD1pbnRlcmxlYXZlIC10IHRtcGZzIHRtcGZzIC9zeXNyb290Cg=="},
+            {'column': 'postscript', 'value': "ZWNobyAndG1wZnMgLyB0bXBmcyBtcG9sPWludGVybGVhdmUgMCAwJyA+PiAvc3lzcm9vdC9ldGMvZnN0YWIK"}
         ]
     Database().insert('group', default_group)
 

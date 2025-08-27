@@ -737,6 +737,8 @@ class Boot():
                             # apparently we were not base64! it can happen when a string seems like base64 but is not.
                             # is it safe to assume we can then just pass what's in the DB?
                             data['kerneloptions'] = osimage[0]['kerneloptions']
+                    else:
+                        data['kerneloptions'] = osimage[0]['kerneloptions']
 
                 # ------------ support for alternative provisioning ----------------
 
@@ -1084,6 +1086,8 @@ class Boot():
                             # apparently we were not base64! it can happen when a string seems like base64 but is not.
                             # is it safe to assume we can then just pass what's in the DB?
                             data['kerneloptions'] = osimage[0]['kerneloptions']
+                    else:
+                        data['kerneloptions'] = osimage[0]['kerneloptions']
 
                 # ------------ support for alternative provisioning ----------------
 
@@ -1315,6 +1319,8 @@ class Boot():
                             # apparently we were not base64! it can happen when a string seems like base64 but is not.
                             # is it safe to assume we can then just pass what's in the DB?
                             data['kerneloptions'] = osimage[0]['kerneloptions']
+                    else:
+                        data['kerneloptions'] = osimage[0]['kerneloptions']
 
                 # ------------ support for alternative provisioning ----------------
 

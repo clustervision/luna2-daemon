@@ -198,6 +198,7 @@ DATABASE_LAYOUT_network = [
 {"column": "zone",                 "datatype": "VARCHAR", "length": "60"},
 {"column": "shared",               "datatype": "VARCHAR", "length": "60"},
 {"column": "type",                 "datatype": "VARCHAR", "length": "100"},
+{"column": "non_authoritative",    "datatype": "INTEGER", "length": "10"},
 {"column": "comment",              "datatype": "VARCHAR", "length": "200"}]
 
 DATABASE_LAYOUT_dns = [

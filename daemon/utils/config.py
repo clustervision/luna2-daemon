@@ -484,6 +484,7 @@ class Config(object):
         dns_allowed_query=['any']
         dns_zones=[]
         dns_zone_records={}
+        dns_zone_forwarders={}
         dns_authoritative={}
         dns_rev_domain={}
         dns_dynamic_updates={}
@@ -552,15 +553,28 @@ class Config(object):
                 else:
                     dns_zone_records[networkname][controller_name]['type']='A'
                     dns_zone_records[networkname][controller_name]['value']=controller_ip
+
+                authoritative_server=None
+                dns_zone_forwarders[networkname]=[]
+                if not nwk['non_authoritative']:
+                    authoritative_server=f"{controller_name}.{networkname}"
+                dns_authoritative[networkname]=authoritative_server
+                if nwk['nameserver_ip']:
+                    dns_zone_forwarders[networkname] += nwk['nameserver_ip'].split(',')
+                if nwk['nameserver_ip_ipv6']:
+                    dns_zone_forwarders[networkname] += nwk['nameserver_ip_ipv6'].split(',')
+                if len(dns_zone_forwarders[networkname]) == 0:
+                    dns_zone_forwarders[networkname]=forwarder
                 if rev_ip:
                     if rev_ip not in dns_zone_records.keys():
                         dns_zone_records[rev_ip]={}
-                    dns_authoritative[rev_ip]=controller_name
+                    dns_authoritative[rev_ip]=authoritative_server
+                    dns_zone_forwarders[rev_ip] = dns_zone_forwarders[networkname]
                 if rev_ipv6:
                     if rev_ipv6 not in dns_zone_records.keys():
                         dns_zone_records[rev_ipv6]={}
-                    dns_authoritative[rev_ipv6]=controller_name
-                dns_authoritative[networkname]=controller_name
+                    dns_authoritative[rev_ipv6]=authoritative_server
+                    dns_zone_forwarders[rev_ipv6] = dns_zone_forwarders[networkname]
 
             mergedlist = []
             controllers = Database().get_record_join(
@@ -658,6 +672,8 @@ class Config(object):
 
         # we create the zone files with zone info like addresses
         for zone in dns_zones:
+            if not dns_authoritative[zone]:
+                continue
             zone_file = {
                 'source': f'{tmpdir}/{zone}.luna.zone',
                 'destination': f'/var/named/{zone}.luna.zone'
@@ -665,11 +681,8 @@ class Config(object):
             files.append(zone_file)
             try:
                 dns_zone_template = env.get_template(template_dns_zone)
-                networkname=zone
-                if zone in dns_rev_domain:
-                    networkname=dns_rev_domain[zone]
                 dns_zone_config = dns_zone_template.render(RECORDS=dns_zone_records[zone],
-                                                           AUTHORITATIVE_SERVER=f"{controller_name}.{networkname}",
+                                                           AUTHORITATIVE_SERVER=dns_authoritative[zone],
                                                            SERIAL=unix_time)
                 with open(f'{tmpdir}/{zone}.luna.zone', 'w', encoding='utf-8') as filename:
                     filename.write(dns_zone_config)
@@ -693,6 +706,8 @@ class Config(object):
                                                    MANAGED_KEYS=managed_keys,OMAPIKEY=omapikey)
         dns_zones_conf_template = env.get_template(template_dns_zones_conf)
         dns_zones_conf_config = dns_zones_conf_template.render(ZONES=dns_zones,OMAPIKEY=omapikey,
+                                                               AUTHORITATIVE=dns_authoritative,
+                                                               FORWARDERS=dns_zone_forwarders,
                                                                ALLOW_UPDATES=controller_ips,
                                                                DYNAMIC_UPDATES=dns_dynamic_updates)
 
@@ -821,7 +836,7 @@ class Config(object):
         result_if = False
         my_interface = {}
 
-        if mtu and ((not mtu.isnumeric()) or int(mtu) > 65535 or int(mtu) < 500):
+        if mtu and ((not mtu.isnumeric()) or int(mtu) > 65535 or int(mtu) < 68):
             message = f"mtu size out of range"
             return False, message
         elif bond_mode and bond_mode not in ['balance-rr','active-backup','balance-xor',
@@ -1137,7 +1152,7 @@ class Config(object):
         result_if = False
         my_interface = {}
 
-        if mtu and ((not mtu.isnumeric()) or int(mtu) > 65535 or int(mtu) < 500):
+        if mtu and ((not mtu.isnumeric()) or int(mtu) > 65535 or int(mtu) < 68):
             message = f"mtu size out of range"
             return False, message
         elif bond_mode and bond_mode not in ['balance-rr','active-backup','balance-xor',

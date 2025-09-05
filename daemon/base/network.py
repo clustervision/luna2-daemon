@@ -64,6 +64,7 @@ class Network():
                 del network['id']
                 del network['subnet']
                 network['dhcp'] = Helper().make_bool(network['dhcp'])
+                network['non_authoritative'] = Helper().make_bool(network['non_authoritative'])
                 if not network['dhcp']:
                     del network['dhcp_range_begin']
                     del network['dhcp_range_end']
@@ -101,6 +102,9 @@ class Network():
                 del network['subnet']
                 del network['subnet_ipv6']
                 network['dhcp'] = Helper().make_bool(network['dhcp'])
+                network['non_authoritative'] = Helper().make_bool(network['non_authoritative'])
+                if not network['non_authoritative']:
+                    del network['non_authoritative']
                 if not network['dhcp']:
                     del network['dhcp_range_begin']
                     del network['dhcp_range_end']
@@ -327,6 +331,12 @@ class Network():
                 if data['dhcp_nodes_in_pool'] == "0":
                     self.logger.info("We will (re)configure ip addresses")
                     reconfigure_ipaddress = True
+            if 'non_authoritative' in data:
+                data['non_authoritative'] = Helper().bool_to_string(data['non_authoritative'])
+                if data['non_authoritative'] not in ['0','1']:
+                    status=False
+                    ret_msg = f"Invalid request: non_authoritative should be y, yes, n or no"
+                    return status, ret_msg
 
             if 'clear' in data:
                 if data['clear'] == 'ipv6' and db_data['network']:

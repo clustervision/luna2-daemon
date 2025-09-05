@@ -49,12 +49,6 @@ class Plugin():
         self.logger = Log.get_logger()
 
     def push(self,osimage,image_path,node,grab_filesystems=[],grab_exclude=[],nodry=False):
-
-#        sleep(10)
-#        if random.randrange(1,10) > 5:
-#            return False,f"test for [{node}] with [{image_path}] - [{grab_filesystems}], [{grab_exclude}] [{nodry}]"
-#        return True,"Success"
-
         # let's build the rsync command line parameters
         excludes=[]
         exclude_string=""

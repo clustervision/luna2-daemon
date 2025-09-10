@@ -71,6 +71,13 @@ class DBStructure():
         if num == 0:
             # if we reach here this means nothing was there.
             return False
+        rows = 0
+        for table in self.tables:
+            records = Database().get_record(table=table)
+            rows += len(records)
+        if rows == 0:
+            # if we reach here this means no data was there.
+            return False
         return True
    
     def check_and_fix_table_layout(self,table,layout=None,dbcolumns=None):

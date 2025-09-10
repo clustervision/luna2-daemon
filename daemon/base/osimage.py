@@ -75,7 +75,7 @@ class OSImage():
             filesystem_plugin = CONSTANT['PLUGINS']['IMAGE_FILESYSTEM']
         os_image_plugin=Helper().plugin_load(self.osimage_plugins,
                                            'osimage/filesystem',filesystem_plugin)
-        all_records = Database().get_record(table='osimage')
+        all_records = Database().get_record(table='osimage', orderby='name')
         if all_records:
             status = True
             response = {'config': {self.table: {} }}

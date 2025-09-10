@@ -155,7 +155,7 @@ class Database():
         return self.update('SQLITE_SEQUENCE', row, where)
 
 
-    def get_record(self, select=None, table=None, where=None):
+    def get_record(self, select=None, table=None, where=None, orderby=None):
         """
         Input - select fields, tablename, where clause
         Process - It is SELECT operation on the DB.
@@ -168,11 +168,16 @@ class Database():
             column_string = ','.join(map(str, select))
         else:
             column_string = "*"
+        if orderby:
+            orderquery = f'ORDER BY "{orderby}" ASC'
+        else:
+            orderquery = ""
         if where:
             where = re.sub(';$', '', where)
-            query = f'SELECT {column_string} FROM "{table}" {where};'
+            where = re.sub('^\s*WHERE\s', '', where, flags=re.I)
+            query = f'SELECT {column_string} FROM "{table}" WHERE {where} {orderquery};'
         else:
-            query = f'SELECT {column_string} FROM "{table}";'
+            query = f'SELECT {column_string} FROM "{table}" {orderquery};'
         self.logger.debug(f'Query executing => {query}.')
         try:
             local_thread.cursor.execute(query)
@@ -205,7 +210,7 @@ class Database():
         return response
 
 
-    def get_record_join(self, select=None, join_on=None, where=None):
+    def get_record_join(self, select=None, join_on=None, where=None, orderby=None):
         """
         Input - Complete SQL query with Joins
         Process - It is SELECT operation on the DB.
@@ -260,14 +265,18 @@ class Database():
             # no join? we give up. this function is called _join so you better specify one
             response = None
             return response
+        if orderby:
+            orderquery = f'ORDER BY "{orderby}" ASC'
+        else:
+            orderquery = ""
         if where:
             where=self.convert_string_to_list(where)
             join_where = ' AND '.join(map(str, where))
         if where and join_on:
             query = f'SELECT {column_string} FROM `{table_string}` WHERE {join_string}'
-            query += f' AND {join_where};'
+            query += f' AND {join_where} {orderquery};'
         elif join_on:
-            query = f'SELECT {column_string} FROM `{table_string}` WHERE {join_string};'
+            query = f'SELECT {column_string} FROM `{table_string}` WHERE {join_string} {orderquery};'
         else:
             response = None
             return response

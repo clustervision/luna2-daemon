@@ -52,7 +52,7 @@ class Downloader(object):
     def pull_image_data(self,osimage,host):
         # host is the remote server from where we want to pull/sync from
         status=False
-        image = Database().get_record(None, 'osimage', f"WHERE name='{osimage}'")
+        image = Database().get_record(table='osimage', where=f"name='{osimage}'")
         if image:
             image_directory = CONSTANT['FILES']['IMAGE_DIRECTORY']
             filesystem_plugin = 'default'
@@ -70,7 +70,7 @@ class Downloader(object):
 
     def pull_image_files(self,osimage,host):
         # host is the remote server from where we want to pull/sync from
-        image = Database().get_record(None, 'osimage', f"WHERE name='{osimage}'")
+        image = Database().get_record(table='osimage', where=f"name='{osimage}'")
         if image:
             location=CONSTANT["FILES"]["IMAGE_FILES"]
             for file in ['kernelfile','initrdfile','imagefile']:

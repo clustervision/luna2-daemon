@@ -105,20 +105,20 @@ class Monitor():
         tablerefid = 0
         if item:
             tablename = item
-            where = f'WHERE id="{name}" OR name="{name}";'
+            where = f'id="{name}" OR name="{name}";'
             if item in ['ha', 'mother']:
                 tablename = 'reference'
-                where = f'WHERE tableref="{item}" and tablerefname="{name}"'
+                where = f'tableref="{item}" and tablerefname="{name}"'
             elif item == 'sync':
                 tablename = 'osimage'
-            db_item = Database().get_record(None, tablename, where)
+            db_item = Database().get_record(table=tablename, where=where)
             if db_item:
                 tablerefid = db_item[0]['id']
         elif name:
             item = name
 
-        where = f'WHERE tableref="{item}" AND tablerefid="{tablerefid}"'
-        db_item = Database().get_record(None, 'monitor', where)
+        where = f'tableref="{item}" AND tablerefid="{tablerefid}"'
+        db_item = Database().get_record(table='monitor', where=where)
         if db_item:
             status = True
             response['monitor']['status'][name]['status'] = db_item[0]['status']
@@ -141,8 +141,8 @@ class Monitor():
                 node_status = None
                 if 'status' in request_data['monitor']['status'][node].keys():
                     node_status = request_data['monitor']['status'][node]['status']
-                where = f' WHERE id = "{node}" OR name = "{node}";'
-                node_db = Database().get_record(None, 'node', where)
+                where = f'id = "{node}" OR name = "{node}";'
+                node_db = Database().get_record(table='node', where=where)
                 if node_db:
                     self.logger.info(f"node {node}: {state}, {node_status}")
                     row = [{"column": "tableref", "value": "node"},
@@ -196,13 +196,13 @@ class Monitor():
                 tablerefid = 0
                 if item:
                     tablename = item
-                    where = f'WHERE id = "{name}" OR name = "{name}";'
+                    where = f'id = "{name}" OR name = "{name}";'
                     if item in ['ha', 'mother']:
                         tablename = 'reference'
-                        where = f'WHERE tableref="{item}" and tablerefname="{name}"'
+                        where = f'tableref="{item}" and tablerefname="{name}"'
                     elif item == 'sync':
                         tablename = 'osimage'
-                    item_db = Database().get_record(None, tablename, where)
+                    item_db = Database().get_record(table=tablename, where=where)
                     if item_db:
                         tablerefid = item_db[0]['id']
                     elif item in ['ha', 'mother']:
@@ -245,7 +245,7 @@ class Monitor():
         """
         status=True
         response = []
-        queue = Database().get_record(None, 'queue', "ORDER BY created ASC")
+        queue = Database().get_record(table='queue', orderby='created')
         if queue:
             status=True
             for task in queue:
@@ -266,7 +266,7 @@ class Monitor():
         """
         status=True
         response = []
-        statuslist = Database().get_record(None, 'status', "ORDER BY created ASC")
+        statuslist = Database().get_record(table='status', orderby='created')
         if statuslist:
             status=True
             for line in statuslist:

@@ -132,8 +132,8 @@ class Database():
         """
         where = None
         if name:
-            where = f" WHERE `name`='{name}';"
-        data=self.get_record(None,'SQLITE_SEQUENCE', where)
+            where = f"name='{name}';"
+        data=self.get_record(table='SQLITE_SEQUENCE', where=where)
         if data:
             if name:
                 return data[0]['seq']
@@ -482,7 +482,7 @@ class Database():
         """
         keys, values = [], []
         where_keys, where_values = [], []
-        where = ' WHERE '
+        where = ''
         insert='INSERT'
         if replace is True:
             insert='REPLACE'
@@ -538,7 +538,7 @@ class Database():
                     where_list.append(f'{key} = {value}')
                 if len(where_list) > 0:
                     new_where = new_where + ' AND '.join(where_list)
-                result = self.get_record(None, table, new_where)
+                result = self.get_record(table=table, where=new_where)
                 if result:
                     response = True
                     if 'id' in result[0]:

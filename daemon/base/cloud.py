@@ -88,7 +88,7 @@ class Cloud():
         if request_data:
             data = request_data['config'][self.table][name]
             data['name'] = name
-            where = f' WHERE `name` = "{name}"'
+            where = f'name = "{name}"'
             check_cloud = Database().get_record(table=self.table, where=where)
             if check_cloud:
                 cloudid = check_cloud[0]['id']

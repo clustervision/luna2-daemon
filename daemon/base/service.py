@@ -95,7 +95,7 @@ class Service():
         # we should check after a few seconds if there is a status update for us.
         # if so, that means mother is taking care of things
         sleep(1)
-        status = Database().get_record(None , 'status', f' WHERE request_id = "{request_id}"')
+        status = Database().get_record(table='status', where=f'request_id = "{request_id}"')
         if status:
             status=True
             response = f"service for {name} {action} queued"
@@ -109,7 +109,7 @@ class Service():
         """
         This method will get the exact status of the service, depends on the request ID.
         """
-        status = Database().get_record(None , 'status', f' WHERE request_id = "{request_id}"')
+        status = Database().get_record(table='status', where=f'request_id = "{request_id}"')
         if status:
             message = []
             for record in status:

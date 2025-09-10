@@ -84,7 +84,7 @@ class Control():
             bmcsetupid, group = None, None
             if 'bmcsetupid' in node[0] and not node[0]['bmcsetupid']:
                 groupid = node[0]['groupid']
-                group = Database().get_record(None, 'group', f' WHERE id = "{groupid}"')
+                group = Database().get_record(table='group', where=f'id = "{groupid}"')
                 if group:
                     bmcsetupid = group[0]['bmcsetupid']
                 else:
@@ -93,7 +93,7 @@ class Control():
                     return status, f'{hostname} does not have any group'
             else:
                 bmcsetupid = node[0]['bmcsetupid']
-            bmcsetup = Database().get_record(None, 'bmcsetup', f' WHERE id = "{bmcsetupid}"')
+            bmcsetup = Database().get_record(table='bmcsetup', where=f'id = "{bmcsetupid}"')
             if bmcsetup and 'device' in node[0] and node[0]['device']:
                 username = bmcsetup[0]['username']
                 password = bmcsetup[0]['password']
@@ -170,7 +170,7 @@ class Control():
                 while(pipeline.has_nodes() and wait_count > 0):
                     sleep(1)
                     wait_count -= 1
-                status = Database().get_record(None , 'status', f' WHERE request_id = "{request_id}"')
+                status = Database().get_record(table='status', where=f'request_id = "{request_id}"')
                 if status:
                     on_nodes = {}
                     off_nodes = {}
@@ -230,7 +230,7 @@ class Control():
         """
         This method will get the exact status of the nodes, depends on the request ID.
         """
-        status = Database().get_record(None , 'status', f' WHERE request_id = "{request_id}"')
+        status = Database().get_record(table='status', where=f'request_id = "{request_id}"')
         if status:
             subsystem='unknown'
             on_nodes = {}

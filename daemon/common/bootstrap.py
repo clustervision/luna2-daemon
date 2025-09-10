@@ -148,10 +148,10 @@ def verify_and_set_beacon():
     we do not automatically set beacon=1 where needed.
     We do that here
     """
-    beacon = Database().get_record(None, "controller", "WHERE beacon=1")
+    beacon = Database().get_record(table="controller", where="beacon=1")
     if not beacon:
         controller_name="controller"
-        controllers = Database().get_record(None, "controller")
+        controllers = Database().get_record(table="controller")
         if controllers and len(controllers) == 1:
             controller_name = controllers[0]['hostname']
         LOGGER.info(f"Beacon controller not configured. Setting default controller {controller_name} as beacon")
@@ -173,7 +173,7 @@ def cleanup_and_init_ping():
     Database().insert('ping', ping)
 
 def legacy_and_forward_fixes():
-    ha_data = Database().get_record(None, "ha")
+    ha_data = Database().get_record(table="ha")
     if ha_data:
       if ha_data[0]['sharedip'] is None:
         fix = {'sharedip': 1}
@@ -349,7 +349,7 @@ def bootstrap(bootstrapfile=None):
             {'column': 'ntp_server', 'value': defaultserver_ip}
         ]
     Database().insert('cluster', default_cluster)
-    cluster = Database().get_record(None, 'cluster', None)
+    cluster = Database().get_record(table='cluster')
     clusterid = cluster[0]['id']
     network_functions={}
     for nwkx in BOOTSTRAP['NETWORKS'].keys():
@@ -395,7 +395,7 @@ def bootstrap(bootstrapfile=None):
         Database().insert('network', default_network)
 
     networkid, networkname, bmcnetworkid, bmcnetworkname = None, 'cluster', None, 'ipmi'
-    networks = Database().get_record(None,'network')
+    networks = Database().get_record(table='network')
     networks_byname = Helper().convert_list_to_dict(networks, 'name')
 
     if 'default' in network_functions:
@@ -546,7 +546,7 @@ def bootstrap(bootstrapfile=None):
 #        LOGGER.error(f"{exp}")
 #    # ------------------------------------------
 
-    group = Database().get_record(None, 'group', None)
+    group = Database().get_record(table='group')
     groupid = group[0]['id']
     groupname = group[0]['name']
     for nodex in BOOTSTRAP['HOSTS']['NODELIST']:

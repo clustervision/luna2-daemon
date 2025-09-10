@@ -117,7 +117,7 @@ class Tracker():
             row.append({"column": "download", "value": f"{downloaded}"})
         if left:
             row.append({"column": "left", "value": f"{left}"})
-        peer_check = Database().get_record(None, 'tracker', f"WHERE peer='{peer_id}'")
+        peer_check = Database().get_record(table='tracker', where=f"peer='{peer_id}'")
         if peer_check:
             where = [{"column": "peer", "value": f"{peer_id}"}]
             result = Database().update('tracker', row, where)
@@ -137,7 +137,7 @@ class Tracker():
         n_seeders = 0
         if not age:
             age=21600
-        peers = Database().get_record(None, 'tracker', f"WHERE infohash='{info_hash}' AND updated>datetime('now','-{age} second') GROUP BY ipaddress ORDER BY updated DESC")
+        peers = Database().get_record(table='tracker', where=f"infohash='{info_hash}' AND updated>datetime('now','-{age} second') GROUP BY ipaddress ORDER BY updated DESC")
         # data = base64.b64decode(node['group_'+item])
         # data = data.decode("ascii")
 
@@ -330,7 +330,7 @@ class Tracker():
         filter = True
         if not hashes:
             self.logger.debug("Inside scrape base class. no hashes!")
-            peers = Database().get_record(None, 'tracker', "WHERE updated>datetime('now','-3600 second') ORDER BY updated DESC")
+            peers = Database().get_record(table='tracker', where="updated>datetime('now','-3600 second') ORDER BY updated DESC")
             if peers:
                 filter=False
                 for peer in peers:

@@ -55,7 +55,7 @@ class Interface():
         This method will return all the node interfaces in detailed format.
         """
         status=False
-        node = Database().get_record(None, 'node', f' WHERE name = "{name}"')
+        node = Database().get_record(table='node', where=f'name = "{name}"')
         if node:
             response = {'config': {'node': {name: {'interfaces': [] } } } }
             nodeid = node[0]['id']
@@ -122,7 +122,7 @@ class Interface():
         if request_data:
             if name in request_data['config']['node'] and 'interfaces' in request_data['config']['node'][name]:
                 new_data = request_data['config']['node'][name]['interfaces']
-                node = Database().get_record(None, 'node', f' WHERE name = "{name}"')
+                node = Database().get_record(table='node', where=f'name = "{name}"')
                 if node:
                     status, response = self.change_node_interface(node[0]['id'], new_data)
                 else:
@@ -215,8 +215,8 @@ class Interface():
                                 if (not network) and existing:
                                     network = existing[0]['networkname']
                                 if network:
-                                    where = f" WHERE `name` = '{network}'"
-                                    network_details = Database().get_record(None, 'network', where)
+                                    where = f"name = '{network}'"
+                                    network_details = Database().get_record(table='network', where=where)
                                     if network_details:
                                         if network_details[0]['dhcp'] and network_details[0]['dhcp_nodes_in_pool']:
                                             nodes_in_pool = True
@@ -353,7 +353,7 @@ class Interface():
         if nodeid and groupid:
             # ----> GROUP interface. WIP. pending. should work but i keep it WIP
             # we fetch interfaces and ip-s separate as interfaces might not have IPs set in weird cases
-            existing_if = Database().get_record(None, 'nodeinterface', f"WHERE nodeid={nodeid}")
+            existing_if = Database().get_record(table='nodeinterface', where=f"nodeid={nodeid}")
             existing_ip = Database().get_record_join(
                 ['nodeinterface.interface','ipaddress.*'],
                 ['ipaddress.tablerefid=nodeinterface.id'],
@@ -429,8 +429,8 @@ class Interface():
                             options=group_interface['options']
                         )
                         if result:
-                            where = f" WHERE `name` = \"{group_interface['network']}\""
-                            network = Database().get_record(None, 'network', where)
+                            where = f"name = \"{group_interface['network']}\""
+                            network = Database().get_record(table='network', where=where)
                             if network:
                                 if network[0]['network'] and not network[0]['dhcp_nodes_in_pool']:
                                     ips = Config().get_all_occupied_ips_from_network(
@@ -513,7 +513,7 @@ class Interface():
         This method will provide a node interface.
         """
         status=False
-        node = Database().get_record(None, 'node', f' WHERE name = "{name}"')
+        node = Database().get_record(table='node', where=f'name = "{name}"')
         if node:
             response = {'config': {'node': {name: {'interfaces': [] } } } }
             nodeid = node[0]['id']
@@ -581,7 +581,7 @@ class Interface():
         same as function below but this one can be called by node name
         """
         status=False
-        node = Database().get_record(None, 'node', f' WHERE `name` = "{name}"')
+        node = Database().get_record(table='node', where=f'name = "{name}"')
         if node:
             status, response = self.delete_node_interface(node[0]['id'], interface)
         else:
@@ -625,8 +625,8 @@ class Interface():
                 response = f'Interface {interface} removed successfully'
                 status=True
             else:
-                where = f' WHERE `interface` = "{interface}" AND `nodeid` = "{nodeid}"'
-                node_interface = Database().get_record(None, 'nodeinterface', where)
+                where = f'interface = "{interface}" AND `nodeid` = "{nodeid}"'
+                node_interface = Database().get_record(table='nodeinterface', where=where)
                 if node_interface:
                     where = [{"column": "id", "value": node_interface[0]['id']}]
                     Database().delete_row('nodeinterface', where)
@@ -646,7 +646,7 @@ class Interface():
         This method will return all the group interfaces in detailed format for a desired group.
         """
         status=False
-        groups = Database().get_record(None, 'group', f' WHERE name = "{name}"')
+        groups = Database().get_record(table='group', where=f'name = "{name}"')
         if groups:
             response = {'config': {'group': {name: {'interfaces': [] } } } }
             for group in groups:
@@ -700,7 +700,7 @@ class Interface():
         status=False
         response="Internal error"
         if request_data:
-            group = Database().get_record(None, 'group', f' WHERE name = "{name}"')
+            group = Database().get_record(table='group', where=f'name = "{name}"')
             if group:
                 group_id = group[0]['id']
                 if 'interfaces' in request_data['config']['group'][name]:
@@ -710,8 +710,8 @@ class Interface():
                             return status, 'Invalid request: interface name is required for this operation'
                         interface_name = ifx['interface']
 
-                        where_interface = f'WHERE groupid = "{group_id}" AND interface = "{interface_name}"'
-                        check_interface = Database().get_record(None, 'groupinterface', where_interface)
+                        where_interface = f'groupid = "{group_id}" AND interface = "{interface_name}"'
+                        check_interface = Database().get_record(table='groupinterface', where=where_interface)
 
                         network, bond_mode, bond_slaves, mtu = None, None, None, None
                         vlanid, vlan_parent, dhcp, options = None, None, None, None
@@ -787,7 +787,7 @@ class Interface():
         This method will provide detailed interface info for a group.
         """
         status=False
-        group = Database().get_record(None, 'group', f' WHERE name = "{name}"')
+        group = Database().get_record(table='group', where=f'name = "{name}"')
         if group:
             response = {'config': {'group': {name: {'interfaces': [] } } } }
             groupid = group[0]['id']
@@ -838,11 +838,11 @@ class Interface():
         """
         response="Internal error"
         status=False
-        group = Database().get_record(None, 'group', f' WHERE `name` = "{name}"')
+        group = Database().get_record(table='group', where=f'name = "{name}"')
         if group:
             groupid = group[0]['id']
-            where = f' WHERE `interface` = "{interface}" AND `groupid` = "{groupid}"'
-            group_interface = Database().get_record(None, 'groupinterface', where)
+            where = f'interface = "{interface}" AND `groupid` = "{groupid}"'
+            group_interface = Database().get_record(table='groupinterface', where=where)
             if group_interface:
                 where = [{"column": "id", "value": group_interface[0]['id']}]
                 Database().delete_row('groupinterface', where)

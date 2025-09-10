@@ -83,7 +83,7 @@ class OsImage(object):
 
             if action == "grab_osimage":
                 image_directory = CONSTANT['FILES']['IMAGE_DIRECTORY']
-                image = Database().get_record(None, 'osimage', f"WHERE name='{osimage}'")
+                image = Database().get_record(table='osimage', where=f"name='{osimage}'")
                 if not image:
                     Status().add_message(request_id,"luna",f"error grabbing osimage {osimage}: Image {osimage} does not exist?")
                     return False
@@ -213,7 +213,7 @@ class OsImage(object):
 
             if action == "pack_osimage":
                 image_directory = CONSTANT['FILES']['IMAGE_DIRECTORY']
-                image = Database().get_record(None, 'osimage', f"WHERE name='{osimage}'")
+                image = Database().get_record(table='osimage', where=f"name='{osimage}'")
                 if not image:
                     Status().add_message(request_id,"luna",f"error assembling osimage {osimage}: Image {osimage} does not exist?")
                     return False
@@ -319,7 +319,7 @@ class OsImage(object):
 
             if action == "build_osimage":
                 image_directory = CONSTANT['FILES']['IMAGE_DIRECTORY']
-                image = Database().get_record(None, 'osimage', f"WHERE name='{osimage}'")
+                image = Database().get_record(table='osimage', where=f"name='{osimage}'")
                 if not image:
                     Status().add_message(request_id,"luna",f"error packing osimage {osimage}: Image {osimage} does not exist?")
                     return False
@@ -402,7 +402,7 @@ class OsImage(object):
         src and dst are osimage names. not full paths
         """
         try:
-            srcimage = Database().get_record(None, 'osimage', f"WHERE name='{src}'")
+            srcimage = Database().get_record(table='osimage', where=f"name='{src}'")
             if srcimage:
                 image_directory = CONSTANT['FILES']['IMAGE_DIRECTORY']
                 orgsrcpath=srcimage[0]['path']
@@ -461,8 +461,8 @@ class OsImage(object):
                 srcimage,dstimage,mesg=None,None,None
                 if src and dst:
                     image_directory = CONSTANT['FILES']['IMAGE_DIRECTORY']
-                    srcimage = Database().get_record(None, 'osimage', f"WHERE name='{src}'")
-                    dstimage = Database().get_record(None, 'osimage', f"WHERE name='{dst}'")
+                    srcimage = Database().get_record(table='osimage', where=f"name='{src}'")
+                    dstimage = Database().get_record(table='osimage', where=f"name='{dst}'")
                     distribution = str(dstimage[0]['distribution']) or 'redhat'
                     distribution=distribution.lower()
                     osrelease = str(dstimage[0]['osrelease']) or 'default.py'
@@ -555,7 +555,7 @@ class OsImage(object):
 
                 image,mesg=None,None
                 if osimage and dst:
-                    image = Database().get_record(None, 'osimage', f"WHERE name='{osimage}'")
+                    image = Database().get_record(table='osimage', where=f"name='{osimage}'")
                     if image:
                         distribution = str(image[0]['distribution']) or 'redhat'
                         distribution=distribution.lower()
@@ -707,14 +707,14 @@ class OsImage(object):
             if action == "provision_osimage":
                 Status().add_message(request_id,"luna",f"creating provisioning for osimage {osimage}")
    
-                image = Database().get_record(None, 'osimage', f"WHERE name='{osimage}'")
+                image = Database().get_record(table='osimage', where=f"name='{osimage}'")
                 if not image:
                     result=False
                     mesg=f"Image {osimage} does not exist?"
                     
                 else:
                     cluster_provision_methods=[]
-                    cluster = Database().get_record(None, 'cluster', None)
+                    cluster = Database().get_record(table='cluster')
                     if cluster:
                         cluster_provision_methods.append(cluster[0]['provision_method'])
                         cluster_provision_methods.append(cluster[0]['provision_fallback'])
@@ -784,7 +784,7 @@ class OsImage(object):
 
             if action == "unpack_osimage":
                 image_directory = CONSTANT['FILES']['IMAGE_DIRECTORY']
-                image = Database().get_record(None, 'osimage', f"WHERE name='{osimage}'")
+                image = Database().get_record(table='osimage', where=f"name='{osimage}'")
                 if not image:
                     Status().add_message(request_id,"luna",f"error unpacking osimage {osimage}: Image {osimage} does not exist?")
                     return False
@@ -860,11 +860,11 @@ class OsImage(object):
   
     def cleanup_file(self,file_to_remove):
         self.logger.info(f"I was called to cleanup old file: {file_to_remove}")
-        inuse = Database().get_record(None, 'osimage', f"WHERE kernelfile='{file_to_remove}' or initrdfile='{file_to_remove}' or imagefile='{file_to_remove}'")
+        inuse = Database().get_record(table='osimage', where=f"kernelfile='{file_to_remove}' or initrdfile='{file_to_remove}' or imagefile='{file_to_remove}'")
         if inuse:
             return False, f"will not remove {file_to_remove} as it is still in use by {inuse[0]['name']}"
         else:
-            inusebytag = Database().get_record(None, 'osimagetag', f"WHERE kernelfile='{file_to_remove}' or initrdfile='{file_to_remove}' or imagefile='{file_to_remove}'")
+            inusebytag = Database().get_record(table='osimagetag', where=f"kernelfile='{file_to_remove}' or initrdfile='{file_to_remove}' or imagefile='{file_to_remove}'")
             if inusebytag:
                 return False, f"will not remove {file_to_remove} as it is still in use by tag {inusebytag[0]['name']}"
         files_path = CONSTANT['FILES']['IMAGE_FILES']
@@ -876,15 +876,15 @@ class OsImage(object):
 
     def cleanup_provisioning(self,image_file):
         self.logger.info(f"I was called to cleanup old provisioning: {image_file}")
-        inuse = Database().get_record(None, 'osimage', f"WHERE imagefile='{image_file}'")
+        inuse = Database().get_record(table='osimage', where=f"imagefile='{image_file}'")
         if inuse:
             return False, f"will not remove {image_file} as it is still in use by {inuse[0]['name']}"
         else:
-            inusebytag = Database().get_record(None, 'osimagetag', f"WHERE imagefile='{image_file}'")
+            inusebytag = Database().get_record(table='osimagetag', where=f"imagefile='{image_file}'")
             if inusebytag:
                 return False, f"will not remove {image_file} as it is still in use by tag {inusebytag[0]['name']}"
         cluster_provision_methods=[]
-        cluster = Database().get_record(None, 'cluster', None)
+        cluster = Database().get_record(table='cluster')
         if cluster:
             cluster_provision_methods.append(cluster[0]['provision_method'])
             cluster_provision_methods.append(cluster[0]['provision_fallback'])
@@ -902,11 +902,11 @@ class OsImage(object):
         if not request_id:
             request_id='__internal__'
         queue_id=None
-        image = Database().get_record(None, 'osimage', f"WHERE name='{osimage}'")
+        image = Database().get_record(table='osimage', where=f"name='{osimage}'")
         if image:
             for item in ['kernelfile','initrdfile','imagefile']:
                 if image[0][item]:
-                    inusebytag = Database().get_record(None, 'osimagetag', f"WHERE osimageid='{image[0]['id']}' AND {item}='"+image[0][item]+"'")
+                    inusebytag = Database().get_record(table='osimagetag', where=f"osimageid='{image[0]['id']}' AND {item}='"+image[0][item]+"'")
                     if not inusebytag:
                         queue_id,queue_response = Queue().add_task_to_queue(task='cleanup_old_file', param=image[0][item], 
                                                                             subsystem='housekeeper', request_id=request_id, when='1h')

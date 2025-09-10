@@ -37,6 +37,7 @@ import sys
 import concurrent.futures
 from threading import Event
 import traceback
+from time import sleep
 from io import StringIO
 from flask import Flask, abort, json, Response, request
 from common.constant import LOGGER, CONSTANT
@@ -44,6 +45,7 @@ from common.bootstrap import validate_bootstrap
 from utils.housekeeper import Housekeeper
 from utils.service import Service
 from utils.helper import Helper
+from utils.queue import Queue
 from routes.auth import auth_blueprint
 from routes.boot import boot_blueprint
 from routes.boot_roles import roles_blueprint
@@ -148,6 +150,11 @@ def on_exit(server):
     """
     A Testing Method for Gunicorn on_reload.
     """
+#TWAN
+    for pending_task in ['pack_n_build_osimage','clone_n_pack_osimage','grab_n_pack_n_build_osimage']:
+        while Queue().tasks_in_queue(subsystem='osimage',task=pending_task):
+            LOGGER.info("Delaying shutdown. Tasks scheduled in queue or running...")
+            sleep(10)
     event.set()  # stops the threads like cleanup
     LOGGER.info(vars(server))
     LOGGER.info('Gunicorn server hook on exit')

@@ -45,7 +45,7 @@ class Boot(object):
         returns True when the daemon is busy with a osimage related and the node should wait
         """
         if osimage:
-            cluster = Database().get_record(None, 'cluster')
+            cluster = Database().get_record(table='cluster')
             if cluster and cluster[0]['packing_bootpause']:
                 packing_bootpause = Helper().make_bool(cluster[0]['packing_bootpause'])
                 if packing_bootpause:

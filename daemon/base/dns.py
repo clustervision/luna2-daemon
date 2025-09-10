@@ -64,7 +64,7 @@ class DNS():
             for host in dns:
                 response['config']['dns'][name].append({ "host": host['host'], "ipaddress": host['ipaddress'] })
         else:
-            network = Database().get_record(None, "network", f"WHERE `name`='{name}'")
+            network = Database().get_record(table="network", where=f"name='{name}'")
             if not network:
                 status=False
                 response=f"Network {name} does not exist"
@@ -80,7 +80,7 @@ class DNS():
         data = {}
         if request_data:
             data = request_data['config']['dns'][name]
-            network = Database().get_record(None, "network", f"WHERE `name`='{name}'")
+            network = Database().get_record(table="network", where=f"name='{name}'")
             if network:
                 status=True
                 response='DNS entries added or changed'
@@ -96,7 +96,7 @@ class DNS():
                             ndata['ipaddress']=ipaddress
                             ndata['networkid']=networkid
                             row = Helper().make_rows(ndata)
-                            exist = Database().get_record(None, "dns", f"WHERE `host`='{host}' AND `networkid`='{networkid}'")
+                            exist = Database().get_record(table="dns", where=f"host='{host}' AND networkid='{networkid}'")
                             if exist:
                                 where = [{"column": "id", "value": exist[0]['id']}]
                                 Database().update('dns', row, where)

@@ -102,7 +102,7 @@ class Status(object):
         """
         This method will get the exact status from queue, depends on the request ID.
         """
-        status = Database().get_record(None , 'status', f' WHERE request_id = "{request_id}"')
+        status = Database().get_record(table='status', where=f'request_id = "{request_id}"')
         if status:
             message = []
             for record in status:
@@ -133,7 +133,7 @@ class Status(object):
         self.logger.info(f"forwarding messages for {local_request_id} to {remote_host}:{remote_request_id}")
         loop=True
         while loop is True:
-            status = Database().get_record(None , 'status', f' WHERE request_id = "{local_request_id}"')
+            status = Database().get_record(table='status', where=f'request_id = "{local_request_id}"')
             if status:
                 messages = []
                 for record in status:

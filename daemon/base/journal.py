@@ -62,9 +62,10 @@ class Journal():
                 elif host in dict_controllers_byipaddress:
                     controller=dict_controllers_byipaddress[host]['hostname']
                 if controller:
-                    where=f"WHERE sendfor='{controller}' ORDER BY created,id ASC"
+                    where=f"sendfor='{controller}'"
                     self.logger.debug(f"where: {where}")
-        entries=Database().get_record(["*","strftime('%s',created) AS created"],"journal",where)
+        entries=Database().get_record(select=["*","strftime('%s',created) AS created"],
+                                      table='journal', where=where, orderby='created,id')
         if entries:
             for entry in entries:
                 del_ids.append(entry['id'])
@@ -128,9 +129,9 @@ class Journal():
                 elif host in dict_controllers_byipaddress:
                     controller=dict_controllers_byipaddress[host]['hostname']
                 if controller:
-                    where=f"WHERE sendfor='{controller}'"
+                    where=f"sendfor='{controller}'"
                     self.logger.debug(f"where: {where}")
-                    entries=Database().get_record(["id"],"journal",where)
+                    entries=Database().get_record(select=["id"],table='journal',where=where)
                     if entries:
                         for entry in entries:
                             self.logger.debug(f"journal entry deleting {entry['id']}, {where}")

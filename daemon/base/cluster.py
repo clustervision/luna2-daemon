@@ -57,7 +57,7 @@ class Cluster():
         This method will return all the cluster info in detailed format.
         """
         status=False
-        cluster = Database().get_record(None, 'cluster', None)
+        cluster = Database().get_record(table='cluster')
         if cluster:
             cluster_id = cluster[0]['id']
             del cluster[0]['id']
@@ -183,8 +183,8 @@ class Cluster():
                         del data[controller['hostname']]
 
             for controller in controller_ips:
-                where = f"WHERE ipaddress='{controller['ipaddress']}' OR ipaddress_ipv6='{controller['ipaddress']}'"
-                claship = Database().get_record(None, 'ipaddress', where)
+                where = f"ipaddress='{controller['ipaddress']}' OR ipaddress_ipv6='{controller['ipaddress']}'"
+                claship = Database().get_record(table='ipaddress', where=where)
                 if claship:
                     status=False
                     ret_msg = f"Invalid request: Clashing ip address for controller {controller['hostname']} with existing ip address {controller['ipaddress']}"
@@ -204,7 +204,7 @@ class Cluster():
             cluster_columns = Database().get_columns('cluster')
             cluster_check = Helper().compare_list(data, cluster_columns)
             if cluster_check:
-                cluster = Database().get_record(None, 'cluster', None)
+                cluster = Database().get_record(table='cluster')
                 if cluster:
                     if 'ntp_server' in data: 
                         if data['ntp_server']:

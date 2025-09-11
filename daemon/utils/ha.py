@@ -169,7 +169,8 @@ class HA():
         if sec:
             self.master = self.get_role()
             if self.master is True and state is False:
-                newer = Database().get_record(["master","strftime('%s', updated) AS updated"],'ha',f"WHERE CAST(strftime('%s', updated) AS integer) > {sec}")
+                newer = Database().get_record(select=["master","strftime('%s', updated) AS updated"],
+                                              table='ha',where=f"CAST(strftime('%s', updated) AS integer) > {sec}")
                 if newer:
                     self.logger.warning(f"set_role (master) to {state} denied as request ({sec}) is older than my state ({newer[0]['updated']})")
                     self.logger.warning(f"set_role (master) to {state} kept current master state of {self.master}")
@@ -214,7 +215,7 @@ class HA():
 
     def get_property(self,name):
         value=False
-        ha_data = Database().get_record(None, 'ha')
+        ha_data = Database().get_record(table='ha')
         if ha_data:
             value=ha_data[0][name] or False
         value=Helper().make_bool(value)
@@ -225,7 +226,7 @@ class HA():
 
     def get_full_state(self):
         data = {}
-        ha_data = Database().get_record(None, 'ha')
+        ha_data = Database().get_record(table='ha')
         if ha_data:
             data = ha_data[0]
             for item in ['master','syncimages','enabled','insync','overrule']:

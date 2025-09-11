@@ -57,7 +57,7 @@ class Cluster():
         This method will return all the cluster info in detailed format.
         """
         status=False
-        cluster = Database().get_record(None, 'cluster', None)
+        cluster = Database().get_record(table='cluster')
         if cluster:
             cluster_id = cluster[0]['id']
             del cluster[0]['id']
@@ -155,6 +155,8 @@ class Cluster():
                     data[controller_name] = data['controller']
                     del data['controller']
             controller_ips=[]
+            networks = Database().get_record(table='network')
+            networks_dict = Helper().convert_list_to_dict(networks, 'name')
             controllers = Database().get_record_join(
                 ['controller.hostname','ipaddress.ipaddress','ipaddress.ipaddress_ipv6',
                  'ipaddress.id as ipid','network.name as networkname','network.id as networkid',
@@ -164,47 +166,78 @@ class Cluster():
             )
             if controllers:
                 for controller in controllers:
-                    controller_details=None
-                    if controller['hostname'] in data:
-                        if controller['ipaddress'] == data[controller['hostname']] or controller['ipaddress_ipv6'] == data[controller['hostname']]:
-                            self.logger.info(f"Not using new ip address {data[controller['hostname']]} for controller {controller['hostname']}")
+                    self.logger.info(f"CTRL: {controller}")
+                    controller_details = None
+                    # aargh! python arg_parser replaces - to _ "to be complaint".... :( -Antoine
+                    controller_hostname = controller['hostname'].replace('-','_')
+                    if controller_hostname in data:
+                        if controller['ipaddress'] == data[controller_hostname] or controller['ipaddress_ipv6'] == data[controller_hostname]:
+                            self.logger.info(f"Not using new ip address {data[controller_hostname]} for controller {controller['hostname']}")
                         else:
-                            if Helper().check_if_ipv6(data[controller['hostname']]):
-                                controller_details = Helper().check_ip_range(data[controller['hostname']], controller['network_ipv6'] + '/' + controller['subnet_ipv6'])
+                            controller_network = controller['networkname']
+                            if 'controller_network' in data:
+                                if data['controller_network'] in networks_dict:
+                                    if Helper().check_if_ipv6(data[controller_hostname]):
+                                        controller_details = Helper().check_ip_range(data[controller_hostname],
+                                            networks_dict[data['controller_network']]['network_ipv6'] + '/' + networks_dict[data['controller_network']]['subnet_ipv6'])
+                                    else:
+                                        controller_details = Helper().check_ip_range(data[controller_hostname],
+                                            networks_dict[data['controller_network']]['network'] + '/' + networks_dict[data['controller_network']]['subnet'])
+                                    if controller_details:
+                                        controller_network = data['controller_network']
+                                else:
+                                    status=False
+                                    ret_msg = f"Invalid request: Network {data['controller_network']} does not exist"
+                                    return status, ret_msg
                             else:
-                                controller_details = Helper().check_ip_range(data[controller['hostname']], controller['network'] + '/' + controller['subnet'])
+                                if Helper().check_if_ipv6(data[controller_hostname]):
+                                    controller_details = Helper().check_ip_range(data[controller_hostname], controller['network_ipv6'] + '/' + controller['subnet_ipv6'])
+                                else:
+                                    controller_details = Helper().check_ip_range(data[controller_hostname], controller['network'] + '/' + controller['subnet'])
                             if not controller_details:
                                 status=False
                                 ret_msg = f"Invalid request: Controller address mismatch with network {controller['networkname']} address/subnet. "
                                 ret_msg += f"Please provide valid ip address for controller {controller['hostname']}"
                                 return status, ret_msg
-                            controller_ips.append({'ipaddress': data[controller['hostname']], 'id': controller['ipid'], 'hostname': controller['hostname']})
-                            self.logger.info(f"Using new ip address {data[controller['hostname']]} for controller {controller['hostname']}")
-                        del data[controller['hostname']]
+                            controller_ips.append({'ipaddress': data[controller_hostname],
+                                                   'networkname': controller_network,
+                                                   'id': controller['ipid'],
+                                                   'hostname': controller['hostname']})
+                            self.logger.info(f"Using new ip address {data[controller_hostname]} for controller {controller['hostname']}")
+                        del data[controller_hostname]
+                    else:
+                        self.logger.info(f"CTRL: {controller} NOT THERE")
+            if 'controller_network' in data:
+                del data['controller_network']
 
             for controller in controller_ips:
-                where = f"WHERE ipaddress='{controller['ipaddress']}' OR ipaddress_ipv6='{controller['ipaddress']}'"
-                claship = Database().get_record(None, 'ipaddress', where)
+                where = f"ipaddress='{controller['ipaddress']}' OR ipaddress_ipv6='{controller['ipaddress']}'"
+                claship = Database().get_record(table='ipaddress', where=where)
                 if claship:
                     status=False
                     ret_msg = f"Invalid request: Clashing ip address for controller {controller['hostname']} with existing ip address {controller['ipaddress']}"
                     return status, ret_msg
-                row=None
+                row={}
+                row['networkid'] = networks_dict[controller['networkname']]['id']
                 if Helper().check_if_ipv6(controller['ipaddress']):
-                    row = Helper().make_rows({'ipaddress_ipv6': controller['ipaddress']})
+                    row['ipaddress_ipv6'] = controller['ipaddress']
                 else:
-                    row = Helper().make_rows({'ipaddress': controller['ipaddress']})
+                    row['ipaddress'] = controller['ipaddress']
+                rows = Helper().make_rows(row)
+                self.logger.debug(f"rows for changing controller ips: {rows}")
                 where = [{"column": "id", "value": controller['id']}]
-                status=Database().update('ipaddress', row, where)
+                status=Database().update('ipaddress', rows, where)
                 if not status:
                     status=False
                     ret_msg = f"Error updating ip address for controller {controller['hostname']}"
                     return status, ret_msg
+                Service().queue('dns','reload')
+                Service().queue('dns','restart')
 
             cluster_columns = Database().get_columns('cluster')
             cluster_check = Helper().compare_list(data, cluster_columns)
             if cluster_check:
-                cluster = Database().get_record(None, 'cluster', None)
+                cluster = Database().get_record(table='cluster')
                 if cluster:
                     if 'ntp_server' in data: 
                         if data['ntp_server']:
@@ -258,11 +291,16 @@ class Cluster():
                                 data[key] = str(Helper().bool_to_string(data[key]))
 
                     where = [{"column": "id", "value": cluster[0]['id']}]
-                    row = Helper().make_rows(data)
-                    Database().update('cluster', row, where)
-                    Service().queue('dns','reload')
-                    Service().queue('dns','restart')
-                    response = 'Cluster updated'
+                    if len(data.keys()) > 0:
+                        row = Helper().make_rows(data)
+                        Database().update('cluster', row, where)
+                        Service().queue('dns','reload')
+                        Service().queue('dns','restart')
+                        response = 'Cluster updated'
+                    elif len(controller_ips) > 0:
+                        response = 'Controllers updated'
+                    else:
+                        response = 'No changes made'
                     status=True
                 else:
                     response = 'No cluster is available to update'

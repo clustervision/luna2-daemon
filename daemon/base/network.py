@@ -56,7 +56,7 @@ class Network():
         This method will return all the network in detailed format.
         """
         status=False
-        networks = Database().get_record(None, 'network', None)
+        networks = Database().get_record(table='network')
         if networks:
             response = {'config': {'network': {} }}
             for network in networks:
@@ -90,7 +90,7 @@ class Network():
         This method will return requested network in detailed format.
         """
         status=False
-        networks = Database().get_record(None, 'network', f' WHERE `name` = "{name}"')
+        networks = Database().get_record(table='network', where=f'name = "{name}"')
         if networks:
             response = {'config': {'network': {} }}
             for network in networks:
@@ -143,7 +143,7 @@ class Network():
 
             data = request_data['config']['network'][name]
             data['name'] = name
-            network = Database().get_record(None, 'network', f' WHERE `name` = "{name}"')
+            network = Database().get_record(table='network', where=f'name = "{name}"')
             if network:
                 used_ips = Helper().get_quantity_occupied_ipaddress_in_network(name,ipversion='ipv4')
                 used6_ips = Helper().get_quantity_occupied_ipaddress_in_network(name,ipversion='ipv6')
@@ -151,8 +151,8 @@ class Network():
                 networkid = network[0]['id']
                 if 'newnetname' in request_data['config']['network'][name]:
                     newnetname = request_data['config']['network'][name]['newnetname']
-                    where = f' WHERE `name` = "{newnetname}"'
-                    check_network = Database().get_record(None, 'network', where)
+                    where = f'name = "{newnetname}"'
+                    check_network = Database().get_record(table='network', where=where)
                     if check_network:
                         status=False
                         return status, f'{newnetname} already present in database'
@@ -172,10 +172,10 @@ class Network():
                     data['network'] = network_details['network']
                     data['subnet'] = network_details['subnet']
                     self.logger.info(f"NETWORK {name} IP: {data['network']} / {data['subnet']}")
-                    where = f" WHERE (`name`!='{name}' AND `name`!='{data['name']}')"
+                    where = f"(`name`!='{name}' AND `name`!='{data['name']}')"
                     where += f" AND ((`network`='{data['network']}' AND `subnet`='{data['subnet']}')"
                     where += f" OR (`network_ipv6`='{data['network']}' AND `subnet_ipv6`='{data['subnet']}'))"
-                    claship = Database().get_record(None, 'network', where)
+                    claship = Database().get_record(table='network', where=where)
                     if claship:
                         status=False
                         ret_msg = f"Invalid request: Clashing network/subnet with existing network {claship[0]['name']}"
@@ -370,15 +370,15 @@ class Network():
                             del data['subnet']
 
             # to make sure we ignore presented controller ip config if it's not relevant
-            controllers = Database().get_record(None, "controller", None)
+            controllers = Database().get_record(table="controller")
             if controllers:
                  for controller in controllers:
                      if controller['hostname'] in data:
                          del data[controller['hostname']]
 
             for controller in controller_ips:
-                where = f"WHERE ipaddress='{controller['ipaddress']}' OR ipaddress_ipv6='{controller['ipaddress']}'"
-                claship = Database().get_record(None, 'ipaddress', where)
+                where = f"ipaddress='{controller['ipaddress']}' OR ipaddress_ipv6='{controller['ipaddress']}'"
+                claship = Database().get_record(table='ipaddress', where=where)
                 if claship:
                     status=False
                     ret_msg = f"Invalid request: Clashing ip address for controller {controller['hostname']} with existing ip address {controller['ipaddress']}"
@@ -517,7 +517,7 @@ class Network():
         This method will delete a network.
         """
         status=False
-        network = Database().get_record(None, 'network', f' WHERE `name` = "{name}"')
+        network = Database().get_record(table='network', where=f'name = "{name}"')
         if network:
             controller = Database().get_record_join(
                 ['controller.*'],
@@ -550,13 +550,13 @@ class Network():
         This method will identifies the requested ipaddress is available or not.
         """
         status=False
-        network = Database().get_record(None, 'network', f' WHERE `name` = "{name}"')
+        network = Database().get_record(table='network', where=f'name = "{name}"')
         if network:
             ip_with_subnet = network[0]['network'] + '/' + network[0]['subnet']
             ip_detail = Helper().check_ip_range(ipaddress, ip_with_subnet)
             if ip_detail:
-                where = f' WHERE ipaddress = "{ipaddress}"'
-                check_ip = Database().get_record(None, 'ipaddress', where)
+                where = f'ipaddress = "{ipaddress}"'
+                check_ip = Database().get_record(table='ipaddress', where=where)
                 if check_ip:
                     response = {'config': {'network': {ipaddress: {'status': 'taken'} } } }
                     status=True
@@ -580,7 +580,7 @@ class Network():
         status=False
         #Antoine
         ips = Config().get_all_occupied_ips_from_network(name)
-        network = Database().get_record(None, 'network', f' WHERE `name` = "{name}"')
+        network = Database().get_record(table='network', where=f'name = "{name}"')
         avail = None
         if network:
             response = f'Network {name} has no free addresses'
@@ -607,20 +607,20 @@ class Network():
         taken = []
         network_id = Database().id_by_name('network', name)
         if network_id:
-            where = f' WHERE `networkid` = "{network_id}"'
-            ip_list = Database().get_record("*", 'ipaddress', where=where)
+            where = f'networkid = "{network_id}"'
+            ip_list = Database().get_record(table='ipaddress', where=where)
             if ip_list:
                 for each in ip_list:
                     if 'interface' in each['tableref']:
                         tablerefid = each['tablerefid']
-                        where = f' WHERE `id` = "{tablerefid}"'
-                        nodeid = Database().get_record("*",'nodeinterface', where)
+                        where = f'id = "{tablerefid}"'
+                        nodeid = Database().get_record(table='nodeinterface', where=where)
                         nodeid = nodeid[0]['nodeid']
                         device_name = Database().name_by_id('node', nodeid)
                     elif 'controller' in each['tableref']:
                         tablerefid = each['tablerefid']
-                        where = f' WHERE `id` = "{tablerefid}"'
-                        hostname = Database().get_record("*",'controller', where)
+                        where = f'id = "{tablerefid}"'
+                        hostname = Database().get_record(table='controller', where=where)
                         self.logger.info(hostname)
                         if hostname:
                             device_name = hostname[0]['hostname']

@@ -148,10 +148,10 @@ def verify_and_set_beacon():
     we do not automatically set beacon=1 where needed.
     We do that here
     """
-    beacon = Database().get_record(None, "controller", "WHERE beacon=1")
+    beacon = Database().get_record(table="controller", where="beacon=1")
     if not beacon:
         controller_name="controller"
-        controllers = Database().get_record(None, "controller")
+        controllers = Database().get_record(table="controller")
         if controllers and len(controllers) == 1:
             controller_name = controllers[0]['hostname']
         LOGGER.info(f"Beacon controller not configured. Setting default controller {controller_name} as beacon")
@@ -173,7 +173,7 @@ def cleanup_and_init_ping():
     Database().insert('ping', ping)
 
 def legacy_and_forward_fixes():
-    ha_data = Database().get_record(None, "ha")
+    ha_data = Database().get_record(table="ha")
     if ha_data:
       if ha_data[0]['sharedip'] is None:
         fix = {'sharedip': 1}
@@ -192,6 +192,9 @@ def get_config(filename=None):
     CONTROLLER2 = controller1.cluster:10.141.255.253:shadow
     CONTROLLER3 = None
     """
+    status=True
+    messages=[]
+    default_network=None
     configParser.read(filename)
     Helper().check_section(filename, BOOTSTRAP)
     for section in configParser.sections():
@@ -228,11 +231,19 @@ def get_config(filename=None):
                     BOOTSTRAP[section][option.lower()]['TYPE'] = nwtype
                     BOOTSTRAP[section][option.lower()]['FUNCTION'] = function
                     if dhcp:
+                        dhcp_start,dhcp_end,*_ = dhcprange.split('-')+[None]
+                        # ------ verification
+                        if ((not Helper().check_ip_range(dhcp_start, network)) 
+                                or (not Helper().check_ip_range(dhcp_end, network))):
+                            status=False
+                            messages.append(f"Network {option} with {network} has invalid DHCP config {dhcprange}")
                         BOOTSTRAP[section][option.lower()]['DHCP'] = 1
                         if dhcprange:
                             BOOTSTRAP[section][option.lower()]['RANGE'] = dhcprange
                     if shared:
                         BOOTSTRAP[section][option.lower()]['SHARED'] = shared
+                    if function == "default":
+                        default_network = network
                 else:
                     skip=False
                     for num in range(1, 10):
@@ -263,14 +274,30 @@ def get_config(filename=None):
             else:
                 BOOTSTRAP[section] = {}
                 BOOTSTRAP[section][option.upper()] = item
+    # ------ verification
+    if 'CONTROLLER' in BOOTSTRAP['HOSTS'].keys():  # the virtual host+ip
+        defaultserver_ip=BOOTSTRAP['HOSTS']['CONTROLLER']['IP']
+        if not Helper().check_ip_range(defaultserver_ip, default_network):
+            messages.append(f"Controller IP {defaultserver_ip} not within default network {default_network} range")
+        for num in range(1, 10):
+            if 'CONTROLLER'+str(num) in BOOTSTRAP['HOSTS'].keys():
+                server_ip=BOOTSTRAP['HOSTS']['CONTROLLER'+str(num)]['IP']
+                if not Helper().check_ip_range(server_ip, default_network):
+                    messages.append(f"Controller{num} IP {server_ip} not within default network {default_network} range")
+    if not status:
+        for message in messages:
+            LOGGER.error(f"{message}")
+        return False
+    elif len(messages) > 0:
+        for message in messages:
+            LOGGER.warning(f"{message}")
+    return status
 
 
 def bootstrap(bootstrapfile=None):
     """
     Insert default data into the database.
     """
-    get_config(bootstrapfile)
-    LOGGER.info('###################### Bootstrap Start ######################')
 
     plugins_path=CONSTANT["PLUGINS"]["PLUGINS_DIRECTORY"]
     hooks_plugins = Helper().plugin_finder(f'{plugins_path}/hooks')
@@ -322,7 +349,7 @@ def bootstrap(bootstrapfile=None):
             {'column': 'ntp_server', 'value': defaultserver_ip}
         ]
     Database().insert('cluster', default_cluster)
-    cluster = Database().get_record(None, 'cluster', None)
+    cluster = Database().get_record(table='cluster')
     clusterid = cluster[0]['id']
     network_functions={}
     for nwkx in BOOTSTRAP['NETWORKS'].keys():
@@ -368,7 +395,7 @@ def bootstrap(bootstrapfile=None):
         Database().insert('network', default_network)
 
     networkid, networkname, bmcnetworkid, bmcnetworkname = None, 'cluster', None, 'ipmi'
-    networks = Database().get_record(None,'network')
+    networks = Database().get_record(table='network')
     networks_byname = Helper().convert_list_to_dict(networks, 'name')
 
     if 'default' in network_functions:
@@ -519,7 +546,7 @@ def bootstrap(bootstrapfile=None):
 #        LOGGER.error(f"{exp}")
 #    # ------------------------------------------
 
-    group = Database().get_record(None, 'group', None)
+    group = Database().get_record(table='group')
     groupid = group[0]['id']
     groupname = group[0]['name']
     for nodex in BOOTSTRAP['HOSTS']['NODELIST']:
@@ -611,7 +638,6 @@ def bootstrap(bootstrapfile=None):
     current_time = str(time.time()).replace('.', '')
     new_bootstrapfile = f'/trinity/local/luna/daemon/config/bootstrap-{current_time}.ini'
     os.rename(bootstrapfile, new_bootstrapfile)
-    LOGGER.info('###################### Bootstrap Finish ######################')
     return True
 
 
@@ -620,6 +646,7 @@ def validate_bootstrap():
     The main method should be called from outside.
     To perform and check the bootstrap.
     """
+    LOGGER.info('########################## Main startup init ##########################')
     bootstrapfile = '/trinity/local/luna/daemon/config/bootstrap.ini'
     global BOOTSTRAP
     BOOTSTRAP = {
@@ -630,14 +657,26 @@ def validate_bootstrap():
         'BMCSETUP': {'USERNAME': None, 'PASSWORD': None}
     }
     bootstrapfile_check = Helper().check_path_state(bootstrapfile)
+    LOGGER.info('########################### DB/TABLE check ############################')
     db_check=check_db()
     if db_check is True:
         db_tables_check=DBStructure().check_db_tables()
-
     LOGGER.info(f'db_check = [{db_check}], db_tables_check = [{db_tables_check}]')
+
+    LOGGER.info('########################## Bootstrap checks ###########################')
     if bootstrapfile_check is True and db_check is True:
         if db_tables_check is False:
-            bootstrap(bootstrapfile)
+            LOGGER.warning('Initial config not present in database. Proceeding with bootstrapping')
+            LOGGER.info('########################### Bootstrap Start ###########################')
+            LOGGER.info('---------------> Parsing Config')
+            if not get_config(bootstrapfile):
+                LOGGER.info('---------------> STOP !!!')
+                return False
+            LOGGER.info('---------------> Setting up shop')
+            if not bootstrap(bootstrapfile):
+                LOGGER.info('---------------> STOP !!!')
+                return False
+            LOGGER.info('########################## Bootstrap Finish ###########################')
         else:
             LOGGER.warning(f'{bootstrapfile} is still present. Please remove the file')
     elif db_check is False:
@@ -647,8 +686,10 @@ def validate_bootstrap():
         LOGGER.error('Database requires initialization but bootstrap.ini file is missing')
         return False
 
+    LOGGER.info('######################### Other startup checks ########################')
     verify_and_set_beacon()
     legacy_and_forward_fixes()
     cleanup_queue_and_status()
     cleanup_and_init_ping()
+    LOGGER.info('################################ Done #################################')
     return True

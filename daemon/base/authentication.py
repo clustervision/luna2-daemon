@@ -69,8 +69,8 @@ class Authentication():
                         if CONSTANT['API']['USERNAME'] != username:
                             message = f'Username {username} does not belong to INI.'
                             self.logger.info(message)
-                            where = f" WHERE username = '{username}' AND roleid = '1';"
-                            user = Database().get_record(None, 'user', where)
+                            where = f"username = '{username}' AND roleid = '1';"
+                            user = Database().get_record(table='user', where=where)
                             if user:
                                 user_id = user[0]["id"]
                                 user_password = user[0]["password"]
@@ -136,11 +136,11 @@ class Authentication():
         response = 'no result'
         create_token = False
 
-        cluster = Database().get_record(None, 'cluster', None)
+        cluster = Database().get_record(table='cluster')
         if cluster and 'security' in cluster[0] and cluster[0]['security']:
             self.logger.info(f"cluster security = {cluster[0]['security']}")
             if 'tpm_sha256' in request_data:
-                node = Database().get_record(None, 'node', f' WHERE name = "{nodename}"')
+                node = Database().get_record(table='node', where=f'name = "{nodename}"')
                 if node:
                     if 'tpm_sha256' in node[0]:
                         if request_data['tpm_sha256'] == node[0]['tpm_sha256']:

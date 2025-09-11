@@ -76,7 +76,7 @@ class Helper(object):
         for varn in variables:
             if varn in CONSTANT["TEMPLATES"]["VARS"]:
                 varsplit = CONSTANT["TEMPLATES"]["VARS"][varn].split('.')
-                dbrecord = Database().get_record(None, varsplit[0], None)
+                dbrecord = Database().get_record(table=varsplit[0])
                 if dbrecord:
                     dbcol[varn] = dbrecord[0][varsplit[1]]
         return dbcol
@@ -326,8 +326,8 @@ class Helper(object):
         if 'ipaddress' in data:
             if self.check_ip(data['ipaddress']):
                 ipaddr = data["ipaddress"]
-                where = f' WHERE `ipaddress` = "{ipaddr}";'
-                record = Database().get_record(None, 'ipaddress', where)
+                where = f'ipaddress = "{ipaddr}";'
+                record = Database().get_record(table='ipaddress', where=where)
                 if not record:
                     subnet = self.get_netmask(data['ipaddress'])
                     row = [
@@ -336,7 +336,7 @@ class Helper(object):
                             {"column": 'subnet', "value": subnet}
                             ]
                     Database().insert('ipaddress', row)
-                    subnet_record = Database().get_record(None, 'ipaddress', where)
+                    subnet_record = Database().get_record(table='ipaddress', where=where)
                     data['ipaddress'] = subnet_record[0]['id']
         return data
 

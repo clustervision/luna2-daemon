@@ -98,7 +98,7 @@ class Switch():
             if 'nonetwork' in data:
                 nonetwork = Helper().make_bool(data['nonetwork'])
                 del data['nonetwork']
-            where = f' WHERE `name` = "{name}"'
+            where = f'name = "{name}"'
             check_switch = Database().get_record(table=self.table, where=where)
             if check_switch:
                 switchid = check_switch[0]['id']
@@ -195,7 +195,7 @@ class Switch():
             else:
                 status=False
                 return status, 'Invalid request: New switch name not provided'
-            where = f' WHERE `name` = "{newswitchname}"'
+            where = f'name = "{newswitchname}"'
             check_switch = Database().get_record(table=self.table, where=where)
             if check_switch:
                 status=False
@@ -211,7 +211,7 @@ class Switch():
             column_check = Helper().compare_list(data, switch_columns)
             if data:
                 if column_check:
-                    where = f' WHERE `name` = "{name}"'
+                    where = f'name = "{name}"'
                     switch = Database().get_record(table=self.table, where=where)
                     if not switch:
                         status = False
@@ -261,7 +261,7 @@ class Switch():
                     ipaddress6, result, result6, avail = None, False, True, None
                     if not ipaddress:
                         if not network:
-                            where = f' WHERE `name` = "{networkname}"'
+                            where = f'name = "{networkname}"'
                             network = Database().get_record(table='network', where=where)
                             if network:
                                 networkname = network[0]['networkname']
@@ -336,10 +336,10 @@ class Switch():
         """
         This method will delete a switch.
         """
-        switch = Database().get_record(table='switch', where=f' WHERE `name` = "{name}"')
+        switch = Database().get_record(table='switch', where=f'name = "{name}"')
         if switch:
             switchid=switch[0]['id']
-            inuse = Database().get_record(None, 'node', f'WHERE `switchid`="{switchid}"')
+            inuse = Database().get_record(table='node', where=f'switchid="{switchid}"')
             if inuse:
                 inuseby=[]
                 while len(inuse) > 0 and len(inuseby) < 11:

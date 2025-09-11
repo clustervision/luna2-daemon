@@ -162,7 +162,8 @@ class Journal():
     def handle_requests(self):
         status=False
         if self.me:
-            all_records = Database().get_record(["*","strftime('%s',created) AS createdsec"],'journal',f"WHERE sendfor='{self.me}' ORDER BY created,id ASC")
+            all_records = Database().get_record(select=["*","strftime('%s',created) AS createdsec"],
+                                                table='journal', where=f"sendfor='{self.me}' ORDER BY created,id ASC")
             if all_records:
                 master=HA().get_role()
                 status=True
@@ -291,7 +292,8 @@ class Journal():
                     else:
                         query=f"sendby='{self.me}' OR sendto='{self.me}'"
                     # we fetch all journal coming from me (sendby) or from some other host that i need to forward as replicator (sendto)
-                    all_records = Database().get_record(["*","strftime('%s',created) AS created"],"journal",f"WHERE {query} ORDER BY sendfor,created,id ASC")
+                    all_records = Database().get_record(select=["*","strftime('%s',created) AS created"],
+                                                        table='journal', where=f"{query} ORDER BY sendfor,created,id ASC")
                     if all_records:
                         for record in all_records:
                             # we have journal for a host but send it to a replicator

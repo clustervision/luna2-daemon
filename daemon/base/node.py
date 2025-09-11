@@ -65,20 +65,20 @@ class Node():
         # we collect all needed info from all tables at once and use dicts to collect data/info
         # A join is not really suitable as there are too many permutations in where the below
         # is way more efficient. -Antoine
-        nodes = Database().get_record(None, 'node', None)
-        groups = Database().get_record(None, 'group', None)
-        osimages = Database().get_record(None, 'osimage', None)
-        switches = Database().get_record(None, 'switch', None)
-        clouds = Database().get_record(None, 'cloud', None)
-        bmcsetups = Database().get_record(None, 'bmcsetup', None)
-        monitorings = Database().get_record(None, 'monitor', "WHERE tableref='node'")
+        nodes = Database().get_record(table='node', orderby='name')
+        groups = Database().get_record(table='group')
+        osimages = Database().get_record(table='osimage')
+        switches = Database().get_record(table='switch')
+        clouds = Database().get_record(table='cloud')
+        bmcsetups = Database().get_record(table='bmcsetup')
+        monitorings = Database().get_record(table='monitor', where="tableref='node'")
         group = Helper().convert_list_to_dict(groups, 'id')
         osimage = Helper().convert_list_to_dict(osimages, 'id')
         switch = Helper().convert_list_to_dict(switches, 'id')
         cloud = Helper().convert_list_to_dict(clouds, 'id')
         bmcsetup = Helper().convert_list_to_dict(bmcsetups, 'id')
         monitoring = Helper().convert_list_to_dict(monitorings, 'tablerefid')
-        cluster = Database().get_record(None, 'cluster', None)
+        cluster = Database().get_record(table='cluster')
         if nodes:
             response['config'] = {}
             response['config']['node'] = {}
@@ -180,7 +180,7 @@ class Node():
                 node['hostname'] = node['name']
                 node['interfaces']=[]
                 all_node_interfaces_by_name = {}
-                all_node_interfaces = Database().get_record(None, 'nodeinterface', f"WHERE nodeinterface.nodeid='{nodeid}'")
+                all_node_interfaces = Database().get_record(table='nodeinterface', where=f"nodeinterface.nodeid='{nodeid}'")
                 if all_node_interfaces:
                     all_node_interfaces_by_name = Helper().convert_list_to_dict(all_node_interfaces, 'interface')
                 node_interface = Database().get_record_join(
@@ -256,7 +256,7 @@ class Node():
         This method will return requested node in detailed format.
         """
         status = False
-        nodes = Database().get_record(None, 'node', f' WHERE name = "{name}"')
+        nodes = Database().get_record(table='node', where=f'name = "{name}"')
         all_nodes = Database().get_record_join(
             [
                 'node.*',
@@ -290,7 +290,7 @@ class Node():
             node['_override'] = False
             alt_source = {}
             if node['osimageid']:
-                osimage = Database().get_record(None, 'osimage', f" WHERE id = '{node['osimageid']}'")
+                osimage = Database().get_record(table='osimage', where=f"id = '{node['osimageid']}'")
                 if osimage:
                     node['osimage'] = osimage[0]['name']
                     node['osimage_kerneloptions'] = osimage[0]['kerneloptions']
@@ -305,7 +305,7 @@ class Node():
                 node['_osimage_source'] = 'node'
                 node['_override'] = True
             elif 'group_osimageid' in node and node['group_osimageid']:
-                osimage = Database().get_record(None, 'osimage', f" WHERE id = '{node['group_osimageid']}'")
+                osimage = Database().get_record(table='osimage', where=f"id = '{node['group_osimageid']}'")
                 if osimage:
                     node['osimage'] = osimage[0]['name']
                     node['osimage_kerneloptions'] = osimage[0]['kerneloptions']
@@ -361,7 +361,7 @@ class Node():
             elif not 'group' in node:
                 node['group'] = '!!Invalid!!'
 
-            cluster = Database().get_record(None, 'cluster', None)
+            cluster = Database().get_record(table='cluster')
             if cluster:
                 node['cluster_provision_method'] = cluster[0]['provision_method']
                 node['cluster_provision_fallback'] = cluster[0]['provision_fallback']
@@ -451,7 +451,7 @@ class Node():
             del node['cloudid']
 
             node['status'] = None
-            monitoring = Database().get_record(None, 'monitor', f"WHERE tableref='node' AND tablerefid='{nodeid}'")
+            monitoring = Database().get_record(table='monitor', where=f"tableref='node' AND tablerefid='{nodeid}'")
             if monitoring:
                 node['status'], *_ = Monitor().installer_state(monitoring[0]['state'])
             node['service'] = Helper().make_bool(node['service'])
@@ -460,7 +460,7 @@ class Node():
 
             node['interfaces'] = []
             all_node_interfaces_by_name = {}
-            all_node_interfaces = Database().get_record(None, 'nodeinterface', f"WHERE nodeinterface.nodeid='{nodeid}'")
+            all_node_interfaces = Database().get_record(table='nodeinterface', where=f"nodeinterface.nodeid='{nodeid}'")
             if all_node_interfaces:
                 all_node_interfaces_by_name = Helper().convert_list_to_dict(all_node_interfaces, 'interface')
             node_interface = Database().get_record_join(
@@ -548,15 +548,15 @@ class Node():
         response = "Internal error"
         if request_data:
             data = request_data['config']['node'][name]
-            node = Database().get_record(None, 'node', f' WHERE name = "{name}"')
+            node = Database().get_record(table='node', where=f'name = "{name}"')
             oldnodename = None
             if node:
                 nodeid = node[0]['id']
                 if 'newnodename' in data: # is mentioned as newhostname in design documents!
                     nodename_new = data['newnodename']
                     oldnodename = name
-                    where = f' WHERE `name` = "{nodename_new}"'
-                    node_check = Database().get_record(None, 'node', where)
+                    where = f'name = "{nodename_new}"'
+                    node_check = Database().get_record(table='node', where=where)
                     if node_check:
                         status = False
                         return status, f'{nodename_new} already present in database'
@@ -618,9 +618,9 @@ class Node():
                 else:
                     osimagetagids = None
                     if 'osimageid' in data:
-                        osimagetagids = Database().get_record(None, 'osimagetag', f" WHERE osimageid = '{data['osimageid']}' AND name = '{osimagetag}'")
+                        osimagetagids = Database().get_record(table='osimagetag', where=f"osimageid = '{data['osimageid']}' AND name = '{osimagetag}'")
                     elif node and 'osimageid' in node[0]:
-                        osimagetagids = Database().get_record(None, 'osimagetag', f" WHERE osimageid = '{node[0]['osimageid']}' AND name = '{osimagetag}'")
+                        osimagetagids = Database().get_record(table='osimagetag', where=f"osimageid = '{node[0]['osimageid']}' AND name = '{osimagetag}'")
                     else:
                         # there is a race condition where someone changes the group AND sets a tag at the same time. ... who will do such a thing?? - Antoine
                         osimagetagids = Database().get_record_join(['osimagetag.id'],['osimagetag.osimageid=group.osimageid','group.id=node.groupid'],[f"node.name='{name}'",f"osimagetag.name='{osimagetag}'"])
@@ -732,13 +732,13 @@ class Node():
 
             newnodename=None
             data = request_data['config']['node'][name]
-            node = Database().get_record(None, 'node', f' WHERE name = "{name}"')
+            node = Database().get_record(table='node', where=f'name = "{name}"')
             if node:
                 nodeid = node[0]['id']
                 if 'newnodename' in data:
                     newnodename = data['newnodename']
-                    where = f' WHERE `name` = "{newnodename}"'
-                    node_check = Database().get_record(None, 'node', where)
+                    where = f'name = "{newnodename}"'
+                    node_check = Database().get_record(table='node', where=where)
                     if node_check:
                         status=False
                         return status, f'{newnodename} already present in database'
@@ -796,7 +796,7 @@ class Node():
                 status=True
 
                 # ------ secrets ------
-                secrets = Database().get_record(None, 'nodesecrets', f' WHERE nodeid = "{nodeid}"')
+                secrets = Database().get_record(table='nodesecrets', where=f'nodeid = "{nodeid}"')
                 for secret in secrets:
                     del secret['id']
                     secret['nodeid'] = new_nodeid
@@ -876,8 +876,8 @@ class Node():
                         )
                         if result:
                             if networkname and not ipaddress:
-                                where = f' WHERE `name` = "{networkname}"'
-                                network = Database().get_record(None, 'network', where)
+                                where = f'name = "{networkname}"'
+                                network = Database().get_record(table='network', where=where)
                                 if network:
                                     if network[0]['dhcp'] and network[0]['dhcp_nodes_in_pool']:
                                         dhcp = 1 # forced!
@@ -952,8 +952,8 @@ class Node():
                     if result and 'ipaddress' in node_interface.keys():
                         if 'network' in node_interface.keys():
                             networkname = node_interface['network']
-                            where = f' WHERE `name` = "{networkname}"'
-                            network = Database().get_record(None, 'network', where)
+                            where = f'name = "{networkname}"'
+                            network = Database().get_record(table='network', where=where)
                             if network:
                                 if network[0]['dhcp'] and network[0]['dhcp_nodes_in_pool']:
                                     interface_dhcp = 1
@@ -1058,7 +1058,7 @@ class Node():
         """
         status=False
         response = f'Node {name} not present in database'
-        node = Database().get_record(None, 'node', f' WHERE `name` = "{name}"')
+        node = Database().get_record(table='node', where=f'name = "{name}"')
         if node:
             status, response=self.delete_node(node[0]['id'])
         return status, response
@@ -1070,7 +1070,7 @@ class Node():
         """
         status=False
         response="Internal error"
-        node = Database().get_record(None, 'node', f' WHERE `id` = "{nodeid}"')
+        node = Database().get_record(table='node', where=f'id = "{nodeid}"')
         if node:
             name = node[0]['name']
             Database().delete_row('node', [{"column": "id", "value": nodeid}])

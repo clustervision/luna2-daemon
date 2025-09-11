@@ -57,8 +57,8 @@ class Queue(object):
 
         if not force:
             # pending. these datatime calls might not be mysql compliant.
-            where=f" WHERE subsystem='{subsystem}' AND task='{task}' AND param='{param}' AND created>datetime('now','-15 minute') ORDER BY id ASC LIMIT 1"
-            check = Database().get_record(None , 'queue', where)
+            where=f"subsystem='{subsystem}' AND task='{task}' AND param='{param}' AND created>datetime('now','-15 minute') ORDER BY id ASC LIMIT 1"
+            check = Database().get_record(table='queue', where=where)
             if check:
                 if replace:
                     self.remove_task_from_queue(check[0]['id'])
@@ -119,8 +119,8 @@ class Queue(object):
             status_query=f"status='{status}' AND"
         if request_id:
             request_id_query=f"request_id='{request_id}' AND"
-        where=f" WHERE subsystem='{subsystem}' AND {status_query} {request_id_query} created>datetime('now','-60 minute') AND created<=datetime('now') ORDER BY id ASC LIMIT 1"
-        task = Database().get_record(None , 'queue', where)
+        where=f"subsystem='{subsystem}' AND {status_query} {request_id_query} created>datetime('now','-60 minute') AND created<=datetime('now') ORDER BY id ASC LIMIT 1"
+        task = Database().get_record(table='queue', where=where)
         if task:
             return task[0]['id']
         return False
@@ -133,15 +133,14 @@ class Queue(object):
             status_query=f"status='{status}' AND"
         if request_id:
             request_id_query=f"request_id='{request_id}' AND"
-        where=f" WHERE subsystem='{subsystem}' AND {status_query} {request_id_query} param LIKE '{subitem}%' AND created>datetime('now','-60 minute') AND created<=datetime('now') ORDER BY id ASC LIMIT 1"
-        task = Database().get_record(None , 'queue', where)
+        where=f"subsystem='{subsystem}' AND {status_query} {request_id_query} param LIKE '{subitem}%' AND created>datetime('now','-60 minute') AND created<=datetime('now') ORDER BY id ASC LIMIT 1"
+        task = Database().get_record(table='queue', where=where)
         if task:
             return task[0]['id']
         return False
 
     def get_task_details(self,taskid):
-        where=f" WHERE id='{taskid}'"
-        task = Database().get_record(None , 'queue', where)
+        task = Database().get_record(table='queue', where=f"id='{taskid}'")
         if task:
             task[0]['noeof']=Helper().make_bool(task[0]['noeof'])
             return task[0]
@@ -160,8 +159,8 @@ class Queue(object):
         if subsystem:
             subsystem_query=f"AND subsystem='{subsystem}'"
         if task_query or subitem_query or subsystem_query:
-            where=f" WHERE 1=1 {subsystem_query} {task_query} {subitem_query} LIMIT 1"
-        tasks = Database().get_record(None , 'queue', where)
+            where=f"1=1 {subsystem_query} {task_query} {subitem_query} LIMIT 1"
+        tasks = Database().get_record(table='queue', where=where)
         if tasks:
             return True
         return False

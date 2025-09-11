@@ -275,7 +275,7 @@ class Boot():
                     webserver_protocol = CONSTANT['WEBSERVER']['PROTOCOL']
 
             nodes, available_nodes = [], []
-            all_nodes = Database().get_record(None, 'node')
+            all_nodes = Database().get_record(table='node')
             most_nodes = Database().get_record_join(
                 ['node.name', 'nodeinterface.macaddress'],
                 ['nodeinterface.nodeid=node.id'],
@@ -589,7 +589,7 @@ class Boot():
             # ------------------ "don't nag give me the next node" detection ---------------------------
             if not data['nodeid']:
                 createnode_ondemand, nextnode_discover, createnode_macashost = None, None, None
-                cluster = Database().get_record(None, 'cluster')
+                cluster = Database().get_record(table='cluster')
                 if cluster:
                     if 'nextnode_discover' in cluster[0]:
                         nextnode_discover=Helper().make_bool(cluster[0]['nextnode_discover'])
@@ -601,7 +601,7 @@ class Boot():
                     self.logger.info(f"nextnode discover: we will try to see a good fit for {mac}")
 
                 groupname, new_nodename = None, None
-                group_details = Database().get_record(None,'group')
+                group_details = Database().get_record(table='group')
                 if group_details and len(group_details) == 1:
                     groupname = group_details[0]['name']
                 elif createnode_ondemand:
@@ -719,7 +719,7 @@ class Boot():
                 osimage = Database().get_record_join(['osimagetag.*'],['osimage.id=osimagetag.osimageid'],
                                 [f'osimagetag.id={data["osimagetagid"]}',f'osimage.id={data["osimageid"]}'])
             else:
-                osimage = Database().get_record(None, 'osimage', f' WHERE id = {data["osimageid"]}')
+                osimage = Database().get_record(table='osimage', where=f'id = {data["osimageid"]}')
             if osimage:
                 if UBoot().verify_bootpause(osimage[0]['name']):
                     self.logger.info(f"osimage {osimage[0]['name']} is currently being packed. Node will wait before booting")
@@ -857,8 +857,8 @@ class Boot():
                     data['webserver_port'] = CONSTANT['WEBSERVER']['PORT']
                 if 'PROTOCOL' in CONSTANT['WEBSERVER']:
                     data['webserver_protocol'] = CONSTANT['WEBSERVER']['PROTOCOL']
-            where = f" WHERE id='{self.controller_clusterid}'"
-            cluster = Database().get_record(None, 'cluster', where)
+            where = f"id='{self.controller_clusterid}'"
+            cluster = Database().get_record(table='cluster', where=where)
             if cluster:
                 if 'createnode_macashost' in cluster[0]:
                     createnode_macashost=Helper().make_bool(cluster[0]['createnode_macashost'])
@@ -885,7 +885,7 @@ class Boot():
 #        node_list = list1 + list2
 
         # general group info and details. needed below
-        group_details = Database().get_record(None,'group',f" WHERE name='{groupname}'")
+        group_details = Database().get_record(table='group', where=f"name='{groupname}'")
         provision_interface = 'BOOTIF'
         if group_details and 'provision_interface' in group_details[0] and group_details[0]['provision_interface']:
             provision_interface = str(group_details[0]['provision_interface'])
@@ -1068,7 +1068,7 @@ class Boot():
                 osimage = Database().get_record_join(['osimagetag.*'],['osimage.id=osimagetag.osimageid'],
                                 [f'osimagetag.id={data["osimagetagid"]}',f'osimage.id={data["osimageid"]}'])
             else:
-                osimage = Database().get_record(None, 'osimage', f' WHERE id = {data["osimageid"]}')
+                osimage = Database().get_record(table='osimage', where=f'id = {data["osimageid"]}')
             if osimage:
                 if UBoot().verify_bootpause(osimage[0]['name']):
                     self.logger.info(f"osimage {osimage[0]['name']} is currently being packed. Node will wait before booting")
@@ -1301,7 +1301,7 @@ class Boot():
                 osimage = Database().get_record_join(['osimagetag.*'],['osimage.id=osimagetag.osimageid'],
                                 [f'osimagetag.id={data["osimagetagid"]}',f'osimage.id={data["osimageid"]}'])
             else:
-                osimage = Database().get_record(None, 'osimage', f' WHERE id = {data["osimageid"]}')
+                osimage = Database().get_record(table='osimage', where=f'id = {data["osimageid"]}')
             if osimage:
                 if UBoot().verify_bootpause(osimage[0]['name']):
                     self.logger.info(f"osimage {osimage[0]['name']} is currently being packed. Node will wait before booting")
@@ -1430,7 +1430,7 @@ class Boot():
         with open(template_path, 'r', encoding='utf-8') as file:
             template_data = file.read()
 
-        cluster = Database().get_record(None, 'cluster', None)
+        cluster = Database().get_record(table='cluster')
         if cluster:
             data['selinux']      = Helper().bool_revert(cluster[0]['security'])
             data['cluster_provision_method']   = cluster[0]['provision_method']
@@ -1499,7 +1499,7 @@ class Boot():
             return status, "This node does not seem to exist"
 
         if data['setupbmc'] is True and data['bmcsetup']:
-            bmcsetup = Database().get_record(None, 'bmcsetup', " WHERE name = '"+data['bmcsetup']+"'")
+            bmcsetup = Database().get_record(table='bmcsetup', where="name = '"+data['bmcsetup']+"'")
             if bmcsetup:
                 data['bmc'] = {}
                 data['bmc']['userid'] = bmcsetup[0]['userid']
@@ -1521,7 +1521,7 @@ class Boot():
                 osimage = Database().get_record_join(['osimage.*','osimagetag.imagefile'],['osimage.id=osimagetag.osimageid'],
                                 [f'osimagetag.name="{data["osimagetag"]}"',f'osimage.name="{data["osimage"]}"'])
             else:
-                osimage = Database().get_record(None, 'osimage', f" WHERE name = '{data['osimage']}'")
+                osimage = Database().get_record(table='osimage', where=f"name = '{data['osimage']}'")
             if osimage:
                 data['osimageid'] = osimage[0]['id']
                 data['osimagename'] = osimage[0]['name']

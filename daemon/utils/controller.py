@@ -49,12 +49,12 @@ class Controller():
         """
         This method will return the primary controller name of the cluster
         """
-        controller = Database().get_record(None, 'controller', "WHERE controller.beacon=1")
+        controller = Database().get_record(table='controller', where="controller.beacon=1")
         if controller:
             self.logger.debug(f"Returning {controller[0]['hostname']}")
             return controller[0]['hostname']
         self.logger.error('No controller available, going to return first found entry')
-        controller = Database().get_record(None, 'controller', "ORDER BY id LIMIT 1")
+        controller = Database().get_record(table='controller', orderby='id')
         if controller:
             self.logger.warning(f"Returning {controller[0]['hostname']}")
             return controller[0]['hostname']
@@ -77,7 +77,7 @@ class Controller():
             self.logger.debug(f"Returning {controller[0]['ipaddress']}")
             return controller[0]['ipaddress']
         self.logger.error('No controller IP available, going to return first found entry')
-        controller = Database().get_record(None, 'ipaddress', "WHERE tableref='controller' ORDER BY id LIMIT 1")
+        controller = Database().get_record(table='ipaddress', where="tableref='controller'", orderby='id')
         if controller:
             if controller[0]['ipaddress_ipv6']:
                 self.logger.warning("Returning {controller[0]['ipaddress_ipv6]}")

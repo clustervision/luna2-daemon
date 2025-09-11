@@ -52,9 +52,9 @@ class Ping():
     def received(self,last=False):
         ping=None
         if last:
-            ping = Database().get_record(["strftime('%s', updated) AS updated"],'ping')
+            ping = Database().get_record(select=["strftime('%s', updated) AS updated"],table='ping')
         else:
-            ping = Database().get_record(["strftime('%s', updated) AS updated"],'ping',f"WHERE updated>datetime('now','-60 second')")
+            ping = Database().get_record(select=["strftime('%s', updated) AS updated"],table='ping',where=f"updated>datetime('now','-60 second')")
         self.logger.debug(f"last ping: {ping}")
         if ping:
             if last:

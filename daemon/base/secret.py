@@ -51,8 +51,8 @@ class Secret():
         This method will return all secrets in detailed format.
         """
         status=False
-        nodesecrets = Database().get_record(None, 'nodesecrets', None)
-        groupsecrets = Database().get_record(None, 'groupsecrets', None)
+        nodesecrets = Database().get_record(table='nodesecrets')
+        groupsecrets = Database().get_record(table='groupsecrets')
         if nodesecrets or groupsecrets:
             response = {'config': {'secrets': {} }}
             status=True
@@ -87,14 +87,14 @@ class Secret():
         This method will return all secrets of a requested node in detailed format.
         """
         status=False
-        node = Database().get_record(None, 'node', f' WHERE name = "{name}"')
+        node = Database().get_record(table='node', where=f'name = "{name}"')
         if node:
             nodeid  = node[0]['id']
             groupid  = node[0]['groupid']
-            where =  f' WHERE nodeid = "{nodeid}"'
-            nodesecrets = Database().get_record(None, 'nodesecrets', where)
-            where =  f' WHERE groupid = "{groupid}"'
-            groupsecrets = Database().get_record(None, 'groupsecrets', where)
+            where =  f'nodeid = "{nodeid}"'
+            nodesecrets = Database().get_record(table='nodesecrets', where=where)
+            where =  f'groupid = "{groupid}"'
+            groupsecrets = Database().get_record(table='groupsecrets', where=where)
             if nodesecrets or groupsecrets:
                 response = {'config': {'secrets': {} }}
                 status=True
@@ -139,7 +139,7 @@ class Secret():
         create, update = False, False
         if request_data:
             data = request_data['config']['secrets']['node'][name]
-            node = Database().get_record(None, 'node', f' WHERE name = "{name}"')
+            node = Database().get_record(table='node', where=f'name = "{name}"')
             if node:
                 nodeid = node[0]['id']
                 if data:
@@ -148,8 +148,8 @@ class Secret():
                             status=False
                             return status, 'Invalid request: secret information not complete'
                         secret_name = secret['name']
-                        where = f' WHERE nodeid = "{nodeid}" AND name = "{secret_name}"'
-                        secret_data = Database().get_record(None, 'nodesecrets', where)
+                        where = f'nodeid = "{nodeid}" AND name = "{secret_name}"'
+                        secret_data = Database().get_record(table='nodesecrets', where=where)
                         if secret_data:
                             node_secret_columns = Database().get_columns('nodesecrets')
                             column_check = Helper().compare_list(
@@ -200,11 +200,11 @@ class Secret():
         This method will return a requested secret of a node in detailed format.
         """
         status=False
-        node = Database().get_record(None, 'node', f' WHERE name = "{name}"')
+        node = Database().get_record(table='node', where=f'name = "{name}"')
         if node:
             nodeid  = node[0]['id']
-            where = f' WHERE nodeid = "{nodeid}" AND name = "{secret}"'
-            secret_data = Database().get_record(None, 'nodesecrets', where)
+            where = f'nodeid = "{nodeid}" AND name = "{secret}"'
+            secret_data = Database().get_record(table='nodesecrets', where=where)
             if secret_data:
                 response = {'config': {'secrets': {'node': {name: [] } } } }
                 status=True
@@ -231,15 +231,15 @@ class Secret():
         result=False
         if request_data:
             data = request_data['config']['secrets']['node'][name]
-            node = Database().get_record(None, 'node', f' WHERE name = "{name}"')
+            node = Database().get_record(table='node', where=f'name = "{name}"')
             if node:
                 nodeid = node[0]['id']
                 if data:
                     node_secret_columns = Database().get_columns('nodesecrets')
                     column_check = Helper().compare_list(data[0], node_secret_columns)
                     secret_name = data[0]['name']
-                    where = f' WHERE nodeid = "{nodeid}" AND name = "{secret_name}"'
-                    secret_data = Database().get_record(None, 'nodesecrets', where)
+                    where = f'nodeid = "{nodeid}" AND name = "{secret_name}"'
+                    secret_data = Database().get_record(table='nodesecrets', where=where)
                     if column_check:
                         if secret_data:
                             secret_id = secret_data[0]['id']
@@ -288,21 +288,21 @@ class Secret():
         data = {}
         if request_data:
             data = request_data['config']['secrets']['node'][name]
-            node = Database().get_record(None, 'node', f' WHERE name = "{name}"')
+            node = Database().get_record(table='node', where=f'name = "{name}"')
             if node:
                 nodeid = node[0]['id']
                 if data:
                     secret_name = data[0]['name']
-                    where = f' WHERE nodeid = "{nodeid}" AND name = "{secret_name}"'
-                    secret_data = Database().get_record(None, 'nodesecrets', where)
+                    where = f'nodeid = "{nodeid}" AND name = "{secret_name}"'
+                    secret_data = Database().get_record(table='nodesecrets', where=where)
                     if secret_data:
                         if 'newsecretname' in data[0]:
                             newsecretname = data[0]['newsecretname']
                             del data[0]['newsecretname']
                             data[0]['nodeid'] = nodeid
                             data[0]['name'] = newsecretname
-                            where = f' WHERE nodeid = "{nodeid}" AND name = "{newsecretname}"'
-                            new_secret_data = Database().get_record(None, 'nodesecrets', where)
+                            where = f'nodeid = "{nodeid}" AND name = "{newsecretname}"'
+                            new_secret_data = Database().get_record(table='nodesecrets', where=where)
                             if new_secret_data:
                                 response = f'Secret {newsecretname} already present'
                                 status=False
@@ -340,11 +340,11 @@ class Secret():
         """
         status=False
         response="Internal error"
-        node = Database().get_record(None, 'node', f' WHERE name = "{name}"')
+        node = Database().get_record(table='node', where=f'name = "{name}"')
         if node:
             nodeid  = node[0]['id']
-            where = f' WHERE nodeid = "{nodeid}" AND name = "{secret}"'
-            secret_data = Database().get_record(None, 'nodesecrets', where)
+            where = f'nodeid = "{nodeid}" AND name = "{secret}"'
+            secret_data = Database().get_record(table='nodesecrets', where=where)
             if secret_data:
                 where = [{"column": "nodeid", "value": nodeid}, {"column": "name", "value": secret}]
                 Database().delete_row('nodesecrets', where)
@@ -364,11 +364,11 @@ class Secret():
         This method will return all secrets of a requested group in detailed format.
         """
         status=False
-        group = Database().get_record(None, 'group', f' WHERE name = "{name}"')
+        group = Database().get_record(table='group', where=f'name = "{name}"')
         if group:
             groupid  = group[0]['id']
-            where = f' WHERE groupid = "{groupid}"'
-            groupsecrets = Database().get_record(None, 'groupsecrets', where)
+            where = f'groupid = "{groupid}"'
+            groupsecrets = Database().get_record(table='groupsecrets', where=where)
             if groupsecrets:
                 response = {'config': {'secrets': {'group': {name: [] } } } }
                 for grp in groupsecrets:
@@ -396,7 +396,7 @@ class Secret():
         result=False
         if request_data:
             data = request_data['config']['secrets']['group'][name]
-            group = Database().get_record(None, 'group', f' WHERE name = "{name}"')
+            group = Database().get_record(table='group', where=f'name = "{name}"')
             if group:
                 groupid = group[0]['id']
                 if data:
@@ -405,8 +405,8 @@ class Secret():
                             status=False
                             return status, 'Invalid request: secret information not complete'
                         secret_name = secret['name']
-                        where = f' WHERE groupid = "{groupid}" AND name = "{secret_name}"'
-                        secret_data = Database().get_record(None, 'groupsecrets', where)
+                        where = f'groupid = "{groupid}" AND name = "{secret_name}"'
+                        secret_data = Database().get_record(table='groupsecrets', where=where)
                         if secret_data:
                             group_secret_columns = Database().get_columns('groupsecrets')
                             column_check = Helper().compare_list(
@@ -453,11 +453,11 @@ class Secret():
         This method will return a requested secret of a group in detailed format.
         """
         status=False
-        group = Database().get_record(None, 'group', f' WHERE name = "{name}"')
+        group = Database().get_record(table='group', where=f'name = "{name}"')
         if group:
             groupid  = group[0]['id']
-            where = f' WHERE groupid = "{groupid}" AND name = "{secret}"'
-            secret_data = Database().get_record(None, 'groupsecrets', where)
+            where = f'groupid = "{groupid}" AND name = "{secret}"'
+            secret_data = Database().get_record(table='groupsecrets', where=where)
             if secret_data:
                 response = {'config': {'secrets': {'group': {name: [] } } } }
                 status=True
@@ -483,15 +483,15 @@ class Secret():
         data = {}
         if request_data:
             data = request_data['config']['secrets']['group'][name]
-            group = Database().get_record(None, 'group', f' WHERE name = "{name}"')
+            group = Database().get_record(table='group', where=f'name = "{name}"')
             if group:
                 groupid = group[0]['id']
                 if data:
                     group_secret_columns = Database().get_columns('groupsecrets')
                     column_check = Helper().compare_list(data[0], group_secret_columns)
                     secret_name = data[0]['name']
-                    where = f' WHERE groupid = "{groupid}" AND name = "{secret_name}"'
-                    secret_data = Database().get_record(None, 'groupsecrets', where)
+                    where = f'groupid = "{groupid}" AND name = "{secret_name}"'
+                    secret_data = Database().get_record(table='groupsecrets', where=where)
                     if column_check:
                         if secret_data:
                             secret_id = secret_data[0]['id']
@@ -542,21 +542,21 @@ class Secret():
         data = {}
         if request_data:
             data = request_data['config']['secrets']['group'][name]
-            group = Database().get_record(None, 'group', f' WHERE name = "{name}"')
+            group = Database().get_record(table='group', where=f'name = "{name}"')
             if group:
                 groupid = group[0]['id']
                 if data:
                     secret_name = data[0]['name']
-                    where = f' WHERE groupid = "{groupid}" AND name = "{secret_name}"'
-                    secret_data = Database().get_record(None, 'groupsecrets', where)
+                    where = f'groupid = "{groupid}" AND name = "{secret_name}"'
+                    secret_data = Database().get_record(table='groupsecrets', where=where)
                     if secret_data:
                         if 'newsecretname' in data[0]:
                             newsecretname = data[0]['newsecretname']
                             del data[0]['newsecretname']
                             data[0]['groupid'] = groupid
                             data[0]['name'] = newsecretname
-                            where = f' WHERE groupid = "{groupid}" AND name = "{newsecretname}"'
-                            new_secret_data = Database().get_record(None, 'groupsecrets', where)
+                            where = f'groupid = "{groupid}" AND name = "{newsecretname}"'
+                            new_secret_data = Database().get_record(table='groupsecrets', where=where)
                             if new_secret_data:
                                 self.logger.error(f'Secret {newsecretname} already present.')
                                 response = f'Secret {newsecretname} already present'
@@ -595,11 +595,11 @@ class Secret():
         """
         status=False
         response="Internal error"
-        group = Database().get_record(None, 'group', f' WHERE name = "{name}"')
+        group = Database().get_record(table='group', where=f'name = "{name}"')
         if group:
             groupid  = group[0]['id']
-            where = f' WHERE groupid = "{groupid}" AND name = "{secret}"'
-            db_secret = Database().get_record(None, 'groupsecrets', where)
+            where = f'groupid = "{groupid}" AND name = "{secret}"'
+            db_secret = Database().get_record(table='groupsecrets', where=where)
             if db_secret:
                 where = [
                     {"column": "groupid", "value": groupid},

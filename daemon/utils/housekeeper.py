@@ -138,7 +138,7 @@ class Housekeeper(object):
                                 Queue().update_task_status_in_queue(next_id,'in progress')
                                 ret,mesg=Journal().add_request(function='OsImager.schedule_cleanup',object=osimage,keeptrying=60)
                                 if ret is True:
-                                    osimage_data=Database().get_record(None, 'osimage', f"WHERE name='{osimage}'")
+                                    osimage_data=Database().get_record(table='osimage', where=f"name='{osimage}'")
                                     if osimage_data:
                                         payload={'config':{'osimage':{osimage: {}}}}
                                         for file in ['kernelfile','initrdfile','imagefile']:
@@ -282,7 +282,7 @@ class Housekeeper(object):
                 if loop_counter > 60:
                     loop_counter=0
                     node_log_counter+=1
-                    all_nodes = Database().get_record(None, "node")
+                    all_nodes = Database().get_record(table='node')
                     if all_nodes:
                         for node in all_nodes:
                             status, node_response = Node().get_node(node['name'])

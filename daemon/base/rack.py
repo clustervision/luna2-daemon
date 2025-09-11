@@ -82,9 +82,9 @@ class Rack():
             if not rack_data:
                 empty_rack=True
                 if name:
-                    rack_data = Database().get_record(None,'rack',f"WHERE name='{name}'")
+                    rack_data = Database().get_record(table='rack',where=f"name='{name}'")
             if not name:
-                all_rack_data = Database().get_record(None,'rack')
+                all_rack_data = Database().get_record(table='rack')
                 if all_rack_data:
                     rack_data += all_rack_data
             if rack_data:
@@ -129,7 +129,7 @@ class Rack():
                                                        [f"rackinventory.tableref='{device_type}'"])
                 if devices_in_db:
                     devices_dict[device_type] = Helper().convert_list_to_dict(devices_in_db, dbname)
-                all_devices_in_db = Database().get_record(None, device_type)
+                all_devices_in_db = Database().get_record(table=device_type)
                 if all_devices_in_db:
                     all_devices_dict[device_type] = Helper().convert_list_to_dict(all_devices_in_db, dbname)
 
@@ -140,7 +140,7 @@ class Rack():
                 devices = data['devices']
                 del data['devices']
             rackid = None
-            check_rack = Database().get_record(table='rack', where=f' WHERE `name` = "{name}"')
+            check_rack = Database().get_record(table='rack', where=f'name = "{name}"')
             if check_rack:
                 rackid = check_rack[0]['id']
                 if 'newrackname' in request_data['config']['rack'][name]:
@@ -238,7 +238,7 @@ class Rack():
         """
         status = False
         response = f"Rack {name} not in inventory"
-        check_rack = Database().get_record(table='rack', where=f' WHERE `name` = "{name}"')
+        check_rack = Database().get_record(table='rack', where=f'name = "{name}"')
         if check_rack:
             device_data = { 'rackid': None, 'position': None }
             where = [{"column": "rackid", "value": check_rack[0]['id']}]
@@ -271,7 +271,7 @@ class Rack():
                                                        [f"rackinventory.tableref='{device_type}'"])
             if devices_in_db:
                 devices_dict[device_type] = Helper().convert_list_to_dict(devices_in_db, dbname)
-            all_devices_in_db = Database().get_record(None, device_type)
+            all_devices_in_db = Database().get_record(table=device_type)
             if all_devices_in_db:
                 all_devices_dict[device_type] = Helper().convert_list_to_dict(all_devices_in_db, dbname)
 
@@ -328,7 +328,7 @@ class Rack():
                                                        [f"rackinventory.tableref='{device_type}'"])
                 if devices_in_db:
                     devices_dict[device_type] = Helper().convert_list_to_dict(devices_in_db, dbname)
-                all_devices_in_db = Database().get_record(None, device_type)
+                all_devices_in_db = Database().get_record(table=device_type)
                 if all_devices_in_db:
                     all_devices_dict[device_type] = Helper().convert_list_to_dict(all_devices_in_db, dbname)
 

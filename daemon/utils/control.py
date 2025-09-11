@@ -66,7 +66,7 @@ class Control():
             if nodename:
                 message = f"control_child thread {t} called for: {nodename} {command}"
                 self.logger.info(message)
-                # node = Database().get_record(None, 'node', f' WHERE name = "{nodename}"')
+                # node = Database().get_record(table='node', where=f'name = "{nodename}"')
                 node = Database().get_record_join(
                     [
                         'node.id as nodeid',
@@ -91,7 +91,7 @@ class Control():
                     bmcsetupid = None
                     if 'bmcsetupid' in node[0] and not node[0]['bmcsetupid']:
                         groupid = node[0]['groupid']
-                        group = Database().get_record(None, 'group', f' WHERE id = "{groupid}"')
+                        group = Database().get_record(table='group', where=f'id = "{groupid}"')
                         if group:
                             bmcsetupid = group[0]['bmcsetupid']
                         else:
@@ -99,8 +99,7 @@ class Control():
                             pipeline.add_message({nodename: command+':None:does not have any group'})
                     else:
                         bmcsetupid = node[0]['bmcsetupid']
-                    where = f' WHERE id = "{bmcsetupid}"'
-                    bmcsetup = Database().get_record(None, 'bmcsetup', where)
+                    bmcsetup = Database().get_record(table='bmcsetup', where=f'id = "{bmcsetupid}"')
                     if bmcsetup and 'device' in node[0] and node[0]['device']:
                         self.logger.debug(f"control_child thread {t}: bmcsetup: {bmcsetup}")
                         try:

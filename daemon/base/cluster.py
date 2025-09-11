@@ -224,7 +224,7 @@ class Cluster():
                 else:
                     row['ipaddress'] = controller['ipaddress']
                 rows = Helper().make_rows(row)
-                self.logger.info(f"ROWS: {rows}")
+                self.logger.debug(f"rows for changing controller ips: {rows}")
                 where = [{"column": "id", "value": controller['id']}]
                 status=Database().update('ipaddress', rows, where)
                 if not status:

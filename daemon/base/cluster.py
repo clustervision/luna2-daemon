@@ -206,8 +206,6 @@ class Cluster():
                                                    'hostname': controller['hostname']})
                             self.logger.info(f"Using new ip address {data[controller_hostname]} for controller {controller['hostname']}")
                         del data[controller_hostname]
-                    else:
-                        self.logger.info(f"CTRL: {controller} NOT THERE")
             if 'controller_network' in data:
                 del data['controller_network']
 

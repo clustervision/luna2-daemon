@@ -129,6 +129,37 @@ class Monitor():
         return status, response
 
 
+    def get_osimages_status(self,item=None):
+        """
+        This method return a generic state of all called for item. item could be osimage or sync
+        """
+        status=False
+        if not item:
+            return status, "Invalid request: item not provided"
+        response = {"monitor": {"status": { item: { } } } }
+        tablerefid = 0
+        db_items = Database().get_record_join(['osimage.name','monitor.state','monitor.status'],
+                                              ['monitor.tablerefid=osimage.id'],
+                                              [f"monitor.tableref='{item}'"])
+        if db_items:
+            overall_status = 200
+            failed_images = []
+            status = True
+            for osimage in db_items:
+                if osimage['status'] != "200":
+                    overall_status = 501
+                    failed_images.append(osimage['name'])
+            response['monitor']['status'][item]['status'] = overall_status
+            if overall_status == 200:
+                response['monitor']['status'][item]['state'] = "all osimages ok"
+            else:
+                response['monitor']['status'][item]['state'] = "failed osimages: "+', '.join(failed_images)
+        else:
+            response = None
+            status = False
+        return status, response
+
+
     def update_nodestatus(self, node=None, request_data=None):
         """
         This method will update the status of a node

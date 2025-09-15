@@ -116,6 +116,42 @@ def monitor_ha_get(name=None):
     return response, access_code
 
 
+@monitor_blueprint.route('/monitor/sync', methods=['GET'])
+def monitor_syncs_get():
+    """
+    Input - nothing
+    Process - generate an ok or fail state for all image sync states
+    Output - the generated list in json format
+    """
+    access_code = 503
+    status, response = Monitor().get_osimages_status(item='sync')
+    if status is True:
+        access_code = 200
+        response = dumps(response)
+    else:
+        access_code = 404
+        response = {'message': 'no entries found'}
+    return response, access_code
+
+
+@monitor_blueprint.route('/monitor/osimage', methods=['GET'])
+def monitor_osimages_get():
+    """
+    Input - nothing
+    Process - generate an ok or fail state for all image sync states
+    Output - the generated list in json format
+    """
+    access_code = 503
+    status, response = Monitor().get_osimages_status(item='osimage')
+    if status is True:
+        access_code = 200
+        response = dumps(response)
+    else:
+        access_code = 404
+        response = {'message': 'no entries found'}
+    return response, access_code
+
+
 @monitor_blueprint.route('/monitor/sync/<string:name>', methods=['GET'])
 @validate_name
 def monitor_sync_get(name=None):
@@ -126,6 +162,25 @@ def monitor_sync_get(name=None):
     """
     access_code = 503
     status, response = Monitor().get_itemstatus(item='sync',name=name)
+    if status is True:
+        access_code = 200
+        response = dumps(response)
+    else:
+        access_code = 404
+        response = {'message': f'{name} not found'}
+    return response, access_code
+
+
+@monitor_blueprint.route('/monitor/osimage/<string:name>', methods=['GET'])
+@validate_name
+def monitor_osimage_get(name=None):
+    """
+    Input - nothing
+    Process - generates a list for states of osimage state
+    Output - the generated list in json format
+    """
+    access_code = 503
+    status, response = Monitor().get_itemstatus(item='osimage',name=name)
     if status is True:
         access_code = 200
         response = dumps(response)

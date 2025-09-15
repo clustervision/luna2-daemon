@@ -176,7 +176,7 @@ def monitor_sync_get(name=None):
 def monitor_osimage_get(name=None):
     """
     Input - nothing
-    Process - generates a list for states of osimage state
+    Process - generates a response on osimage state and the why
     Output - the generated list in json format
     """
     access_code = 503

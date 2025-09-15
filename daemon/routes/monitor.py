@@ -138,7 +138,7 @@ def monitor_syncs_get():
 def monitor_osimages_get():
     """
     Input - nothing
-    Process - generate an ok or fail state for all image sync states
+    Process - generate an ok or fail state for all image overall states
     Output - the generated list in json format
     """
     access_code = 503

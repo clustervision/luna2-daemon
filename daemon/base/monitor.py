@@ -122,7 +122,7 @@ class Monitor():
         if db_item:
             status = True
             response['monitor']['status'][name]['status'] = db_item[0]['status']
-            response['monitor']['status'][name]['state'] = db_item[0]['state']
+            response['monitor']['status'][name]['state'] = db_item[0]['state'] or name+" ok"
         else:
             response = None
             status = False

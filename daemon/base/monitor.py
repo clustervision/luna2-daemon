@@ -142,15 +142,15 @@ class Monitor():
                                               ['monitor.tablerefid=osimage.id'],
                                               [f"monitor.tableref='{item}'"])
         if db_items:
-            overall_status = 200
+            overall_status = "200"
             failed_images = []
             status = True
             for osimage in db_items:
                 if osimage['status'] != "200":
-                    overall_status = 501
+                    overall_status = "501"
                     failed_images.append(osimage['name'])
             response['monitor']['status'][item]['status'] = overall_status
-            if overall_status == 200:
+            if overall_status == "200":
                 response['monitor']['status'][item]['state'] = "all osimages ok"
             else:
                 response['monitor']['status'][item]['state'] = "failed osimages: "+', '.join(failed_images)

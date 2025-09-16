@@ -116,6 +116,63 @@ def monitor_ha_get(name=None):
     return response, access_code
 
 
+@monitor_blueprint.route('/monitor/sync/<string:name>', methods=['GET'])
+@validate_name
+def monitor_sync_get(name=None):
+    """
+    Input - nothing
+    Process - generates a list for states of osimage sync
+    Output - the generated list in json format
+    """
+    access_code = 503
+    status, response = Monitor().get_itemstatus(item='sync',name=name)
+    if status is True:
+        access_code = 200
+        response = dumps(response)
+    else:
+        access_code = 404
+        response = {'message': f'{name} not found'}
+    return response, access_code
+
+
+@monitor_blueprint.route('/monitor/osimage/<string:name>', methods=['GET'])
+@validate_name
+def monitor_osimage_get(name=None):
+    """
+    Input - nothing
+    Process - generates a response on osimage state and the why
+    Output - the generated list in json format
+    """
+    access_code = 503
+    status, response = Monitor().get_itemstatus(item='osimage',name=name)
+    if status is True:
+        access_code = 200
+        response = dumps(response)
+    else:
+        access_code = 404
+        response = {'message': f'{name} not found'}
+    return response, access_code
+
+
+@monitor_blueprint.route('/monitor/mother/<string:name>', methods=['GET'])
+@validate_name
+def monitor_mother_get(name=None):
+    """
+    Input - nothing
+    Process - generates a list for states of mothers / core
+    Output - the generated list in json format
+    """
+    access_code = 503
+    status, response = Monitor().get_itemstatus(item='mother',name=name)
+    if status is True:
+        access_code = 200
+        response = dumps(response)
+    else:
+        access_code = 404
+        response = {'message': f'{name} not found'}
+    return response, access_code
+
+
 @monitor_blueprint.route('/monitor/sync', methods=['GET'])
 def monitor_syncs_get():
     """
@@ -203,63 +260,6 @@ def monitor_nodes_get():
     else:
         access_code = 404
         response = {'message': 'no entries found'}
-    return response, access_code
-
-
-@monitor_blueprint.route('/monitor/sync/<string:name>', methods=['GET'])
-@validate_name
-def monitor_sync_get(name=None):
-    """
-    Input - nothing
-    Process - generates a list for states of osimage sync
-    Output - the generated list in json format
-    """
-    access_code = 503
-    status, response = Monitor().get_itemstatus(item='sync',name=name)
-    if status is True:
-        access_code = 200
-        response = dumps(response)
-    else:
-        access_code = 404
-        response = {'message': f'{name} not found'}
-    return response, access_code
-
-
-@monitor_blueprint.route('/monitor/osimage/<string:name>', methods=['GET'])
-@validate_name
-def monitor_osimage_get(name=None):
-    """
-    Input - nothing
-    Process - generates a response on osimage state and the why
-    Output - the generated list in json format
-    """
-    access_code = 503
-    status, response = Monitor().get_itemstatus(item='osimage',name=name)
-    if status is True:
-        access_code = 200
-        response = dumps(response)
-    else:
-        access_code = 404
-        response = {'message': f'{name} not found'}
-    return response, access_code
-
-
-@monitor_blueprint.route('/monitor/mother/<string:name>', methods=['GET'])
-@validate_name
-def monitor_mother_get(name=None):
-    """
-    Input - nothing
-    Process - generates a list for states of mothers / core
-    Output - the generated list in json format
-    """
-    access_code = 503
-    status, response = Monitor().get_itemstatus(item='mother',name=name)
-    if status is True:
-        access_code = 200
-        response = dumps(response)
-    else:
-        access_code = 404
-        response = {'message': f'{name} not found'}
     return response, access_code
 
 

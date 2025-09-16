@@ -41,138 +41,6 @@ from utils.journal import Journal
 LOGGER = Log.get_logger()
 monitor_blueprint = Blueprint('monitor', __name__)
 
-@monitor_blueprint.route('/monitor/service/<string:name>', methods=['GET'])
-@validate_name
-def monitor_service(name=None):
-    """
-    Input - name of service
-    Process - With the help of service class, the status of the service can be obtained.
-    Currently supported services are DHCP, DNS and luna2 itself.
-    Output - Status
-    """
-    access_code = 503
-    status, response = Monitor().service_monitor(name)
-    if status is True:
-        access_code = 200
-    response = {'monitor': {'Service': { name: response} } }
-    return response, access_code
-
-
-@monitor_blueprint.route("/monitor/node/<string:node>", methods=['GET'])
-@validate_name
-def monitor_status_get(node=None):
-    """
-    Input - NodeID or node name
-    Process - Validate if the node exists and what the state is
-    Output - Status.
-    """
-    access_code = 404
-    status, response = Monitor().get_nodestatus(node)
-    if status is True:
-        access_code = 200
-        response = dumps(response)
-    else:
-        access_code = 404
-        response = {'message': f'{node} not found'}
-    return response, access_code
-
-
-@monitor_blueprint.route("/monitor/node/<string:node>", methods=['POST'])
-@validate_name
-@token_required
-@input_filter(checks=['monitor:status'], skip=None)
-def monitor_status_post(node=None):
-    """
-    Input - NodeID or Node Name
-    Process - Update the Node Status
-    Output - Status.
-    """
-    access_code = 404
-    Journal().add_request(function="Monitor.update_nodestatus",object=node,payload=request.data,sendnow=False)
-    status, response = Monitor().update_nodestatus(node, request.data)
-    if status is True:
-        access_code = 204
-    response = {'message': response}
-    return response, access_code
-
-
-@monitor_blueprint.route('/monitor/ha/<string:name>', methods=['GET'])
-@validate_name
-def monitor_ha_get(name=None):
-    """
-    Input - nothing
-    Process - generates a list for states of HA
-    Output - the generated list in json format
-    """
-    access_code = 503
-    status, response = Monitor().get_itemstatus(item='ha',name=name)
-    if status is True:
-        access_code = 200
-        response = dumps(response)
-    else:
-        access_code = 404
-        response = {'message': f'{name} not found'}
-    #response = {'monitor': {'ha': response } }
-    return response, access_code
-
-
-@monitor_blueprint.route('/monitor/sync/<string:name>', methods=['GET'])
-@validate_name
-def monitor_sync_get(name=None):
-    """
-    Input - nothing
-    Process - generates a list for states of osimage sync
-    Output - the generated list in json format
-    """
-    access_code = 503
-    status, response = Monitor().get_itemstatus(item='sync',name=name)
-    if status is True:
-        access_code = 200
-        response = dumps(response)
-    else:
-        access_code = 404
-        response = {'message': f'{name} not found'}
-    return response, access_code
-
-
-@monitor_blueprint.route('/monitor/osimage/<string:name>', methods=['GET'])
-@validate_name
-def monitor_osimage_get(name=None):
-    """
-    Input - nothing
-    Process - generates a response on osimage state and the why
-    Output - the generated list in json format
-    """
-    access_code = 503
-    status, response = Monitor().get_itemstatus(item='osimage',name=name)
-    if status is True:
-        access_code = 200
-        response = dumps(response)
-    else:
-        access_code = 404
-        response = {'message': f'{name} not found'}
-    return response, access_code
-
-
-@monitor_blueprint.route('/monitor/mother/<string:name>', methods=['GET'])
-@validate_name
-def monitor_mother_get(name=None):
-    """
-    Input - nothing
-    Process - generates a list for states of mothers / core
-    Output - the generated list in json format
-    """
-    access_code = 503
-    status, response = Monitor().get_itemstatus(item='mother',name=name)
-    if status is True:
-        access_code = 200
-        response = dumps(response)
-    else:
-        access_code = 404
-        response = {'message': f'{name} not found'}
-    return response, access_code
-
-
 @monitor_blueprint.route('/monitor/sync', methods=['GET'])
 def monitor_syncs_get():
     """
@@ -312,4 +180,135 @@ def messages_status_post():
     response = {'message': response}
     return response, access_code
 
+
+@monitor_blueprint.route('/monitor/service/<string:name>', methods=['GET'])
+@validate_name
+def monitor_service(name=None):
+    """
+    Input - name of service
+    Process - With the help of service class, the status of the service can be obtained.
+    Currently supported services are DHCP, DNS and luna2 itself.
+    Output - Status
+    """
+    access_code = 503
+    status, response = Monitor().service_monitor(name)
+    if status is True:
+        access_code = 200
+    response = {'monitor': {'Service': { name: response} } }
+    return response, access_code
+
+
+@monitor_blueprint.route("/monitor/node/<string:node>", methods=['GET'])
+@validate_name
+def monitor_status_get(node=None):
+    """
+    Input - NodeID or node name
+    Process - Validate if the node exists and what the state is
+    Output - Status.
+    """
+    access_code = 404
+    status, response = Monitor().get_nodestatus(node)
+    if status is True:
+        access_code = 200
+        response = dumps(response)
+    else:
+        access_code = 404
+        response = {'message': f'{node} not found'}
+    return response, access_code
+
+
+@monitor_blueprint.route("/monitor/node/<string:node>", methods=['POST'])
+@validate_name
+@token_required
+@input_filter(checks=['monitor:status'], skip=None)
+def monitor_status_post(node=None):
+    """
+    Input - NodeID or Node Name
+    Process - Update the Node Status
+    Output - Status.
+    """
+    access_code = 404
+    Journal().add_request(function="Monitor.update_nodestatus",object=node,payload=request.data,sendnow=False)
+    status, response = Monitor().update_nodestatus(node, request.data)
+    if status is True:
+        access_code = 204
+    response = {'message': response}
+    return response, access_code
+
+
+@monitor_blueprint.route('/monitor/ha/<string:name>', methods=['GET'])
+@validate_name
+def monitor_ha_get(name=None):
+    """
+    Input - nothing
+    Process - generates a list for states of HA
+    Output - the generated list in json format
+    """
+    access_code = 503
+    status, response = Monitor().get_itemstatus(item='ha',name=name)
+    if status is True:
+        access_code = 200
+        response = dumps(response)
+    else:
+        access_code = 404
+        response = {'message': f'{name} not found'}
+    #response = {'monitor': {'ha': response } }
+    return response, access_code
+
+
+@monitor_blueprint.route('/monitor/sync/<string:name>', methods=['GET'])
+@validate_name
+def monitor_sync_get(name=None):
+    """
+    Input - nothing
+    Process - generates a list for states of osimage sync
+    Output - the generated list in json format
+    """
+    access_code = 503
+    status, response = Monitor().get_itemstatus(item='sync',name=name)
+    if status is True:
+        access_code = 200
+        response = dumps(response)
+    else:
+        access_code = 404
+        response = {'message': f'{name} not found'}
+    return response, access_code
+
+
+@monitor_blueprint.route('/monitor/osimage/<string:name>', methods=['GET'])
+@validate_name
+def monitor_osimage_get(name=None):
+    """
+    Input - nothing
+    Process - generates a response on osimage state and the why
+    Output - the generated list in json format
+    """
+    access_code = 503
+    status, response = Monitor().get_itemstatus(item='osimage',name=name)
+    if status is True:
+        access_code = 200
+        response = dumps(response)
+    else:
+        access_code = 404
+        response = {'message': f'{name} not found'}
+    return response, access_code
+
+
+@monitor_blueprint.route('/monitor/mother/<string:name>', methods=['GET'])
+@validate_name
+def monitor_mother_get(name=None):
+    """
+    Input - nothing
+    Process - generates a list for states of mothers / core
+    Output - the generated list in json format
+    """
+    access_code = 503
+    status, response = Monitor().get_itemstatus(item='mother',name=name)
+    if status is True:
+        access_code = 200
+        response = dumps(response)
+    else:
+        access_code = 404
+        response = {'message': f'{name} not found'}
+    return response, access_code
 

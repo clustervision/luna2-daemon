@@ -129,7 +129,7 @@ class Monitor():
         return status, response
 
 
-    def get_osimages_status(self,item=None):
+    def get_itemsstatus(self,item=None):
         """
         This method return a generic state of all called for item. item could be osimage or sync
         """
@@ -138,22 +138,25 @@ class Monitor():
             return status, "Invalid request: item not provided"
         response = {"monitor": {"status": { item: { } } } }
         tablerefid = 0
-        db_items = Database().get_record_join(['osimage.name','monitor.state','monitor.status'],
-                                              ['monitor.tablerefid=osimage.id'],
+        tablename = item
+        tableref = ''
+        if item in ['ha', 'mother']:
+            tablename = 'reference'
+            tableref = 'tableref'
+        elif item == 'sync':
+            tablename = 'osimage'
+        db_items = Database().get_record_join([f'{tablename}.{tableref}name','monitor.state','monitor.status'],
+                                              [f'monitor.tablerefid={tablename}.id'],
                                               [f"monitor.tableref='{item}'"])
         if db_items:
-            overall_status = "200"
-            failed_images = []
             status = True
-            for osimage in db_items:
-                if osimage['status'] != "200":
-                    overall_status = "501"
-                    failed_images.append(osimage['name'])
-            response['monitor']['status'][item]['status'] = overall_status
-            if overall_status == "200":
-                response['monitor']['status'][item]['state'] = "all osimages ok"
-            else:
-                response['monitor']['status'][item]['state'] = "failed osimages: "+', '.join(failed_images)
+            for db_item in db_items:
+                servicestatus = db_item['status']
+                if item == "node":
+                    _,servicestatus=monitor().installer_state(db_item['state'],db_item['status'])
+                response['monitor']['status'][item][db_item[tableref+'name']] = {
+                    "state": db_item['state'] or db_item[tableref+'name']+" ok",
+                    "status": f"{servicestatus}"}
         else:
             response = None
             status = False

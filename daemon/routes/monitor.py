@@ -124,7 +124,7 @@ def monitor_syncs_get():
     Output - the generated list in json format
     """
     access_code = 503
-    status, response = Monitor().get_osimages_status(item='sync')
+    status, response = Monitor().get_itemsstatus(item='sync')
     if status is True:
         access_code = 200
         response = dumps(response)
@@ -142,7 +142,61 @@ def monitor_osimages_get():
     Output - the generated list in json format
     """
     access_code = 503
-    status, response = Monitor().get_osimages_status(item='osimage')
+    status, response = Monitor().get_itemsstatus(item='osimage')
+    if status is True:
+        access_code = 200
+        response = dumps(response)
+    else:
+        access_code = 404
+        response = {'message': 'no entries found'}
+    return response, access_code
+
+
+@monitor_blueprint.route('/monitor/ha', methods=['GET'])
+def monitor_has_get():
+    """
+    Input - nothing
+    Process - generate an ok or fail state for all image overall states
+    Output - the generated list in json format
+    """
+    access_code = 503
+    status, response = Monitor().get_itemsstatus(item='ha')
+    if status is True:
+        access_code = 200
+        response = dumps(response)
+    else:
+        access_code = 404
+        response = {'message': 'no entries found'}
+    return response, access_code
+
+
+@monitor_blueprint.route('/monitor/mother', methods=['GET'])
+def monitor_mothers_get():
+    """
+    Input - nothing
+    Process - generate an ok or fail state for all image overall states
+    Output - the generated list in json format
+    """
+    access_code = 503
+    status, response = Monitor().get_itemsstatus(item='mother')
+    if status is True:
+        access_code = 200
+        response = dumps(response)
+    else:
+        access_code = 404
+        response = {'message': 'no entries found'}
+    return response, access_code
+
+
+@monitor_blueprint.route('/monitor/node', methods=['GET'])
+def monitor_nodes_get():
+    """
+    Input - nothing
+    Process - generate an ok or fail state for all image overall states
+    Output - the generated list in json format
+    """
+    access_code = 503
+    status, response = Monitor().get_itemsstatus(item='node')
     if status is True:
         access_code = 200
         response = dumps(response)

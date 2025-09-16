@@ -41,6 +41,146 @@ from utils.journal import Journal
 LOGGER = Log.get_logger()
 monitor_blueprint = Blueprint('monitor', __name__)
 
+@monitor_blueprint.route('/monitor/sync', methods=['GET'])
+def monitor_syncs_get():
+    """
+    Input - nothing
+    Process - generate an ok or fail state for all image sync states
+    Output - the generated list in json format
+    """
+    access_code = 503
+    status, response = Monitor().get_itemsstatus(item='sync')
+    if status is True:
+        access_code = 200
+        response = dumps(response)
+    else:
+        access_code = 404
+        response = {'message': 'no entries found'}
+    return response, access_code
+
+
+@monitor_blueprint.route('/monitor/osimage', methods=['GET'])
+def monitor_osimages_get():
+    """
+    Input - nothing
+    Process - generate an ok or fail state for all image overall states
+    Output - the generated list in json format
+    """
+    access_code = 503
+    status, response = Monitor().get_itemsstatus(item='osimage')
+    if status is True:
+        access_code = 200
+        response = dumps(response)
+    else:
+        access_code = 404
+        response = {'message': 'no entries found'}
+    return response, access_code
+
+
+@monitor_blueprint.route('/monitor/ha', methods=['GET'])
+def monitor_has_get():
+    """
+    Input - nothing
+    Process - generate an ok or fail state for all image overall states
+    Output - the generated list in json format
+    """
+    access_code = 503
+    status, response = Monitor().get_itemsstatus(item='ha')
+    if status is True:
+        access_code = 200
+        response = dumps(response)
+    else:
+        access_code = 404
+        response = {'message': 'no entries found'}
+    return response, access_code
+
+
+@monitor_blueprint.route('/monitor/mother', methods=['GET'])
+def monitor_mothers_get():
+    """
+    Input - nothing
+    Process - generate an ok or fail state for all image overall states
+    Output - the generated list in json format
+    """
+    access_code = 503
+    status, response = Monitor().get_itemsstatus(item='mother')
+    if status is True:
+        access_code = 200
+        response = dumps(response)
+    else:
+        access_code = 404
+        response = {'message': 'no entries found'}
+    return response, access_code
+
+
+@monitor_blueprint.route('/monitor/node', methods=['GET'])
+def monitor_nodes_get():
+    """
+    Input - nothing
+    Process - generate an ok or fail state for all image overall states
+    Output - the generated list in json format
+    """
+    access_code = 503
+    status, response = Monitor().get_itemsstatus(item='node')
+    if status is True:
+        access_code = 200
+        response = dumps(response)
+    else:
+        access_code = 404
+        response = {'message': 'no entries found'}
+    return response, access_code
+
+
+@monitor_blueprint.route('/monitor/queue', methods=['GET'])
+@token_required
+def monitor_queue():
+    """
+    Input - nothing
+    Process - generates a list of items or tasks in mother's queue
+    Output - the generated list in json format
+    """
+    access_code = 503
+    status, response = Monitor().get_queue()
+    if status is True:
+        access_code = 200
+    response = {'monitor': {'queue': response } }
+    return response, access_code
+
+
+@monitor_blueprint.route('/monitor/status', methods=['GET'])
+@token_required
+def monitor_status():
+    """
+    Input - nothing
+    Process - generates a list of messages still in status table
+    Output - the generated list in json format
+    """
+    access_code = 503
+    status, response = Monitor().get_status()
+    if status is True:
+        access_code = 200
+    response = {'monitor': {'status': response } }
+    return response, access_code
+
+
+@monitor_blueprint.route('/monitor/status', methods=['POST'])
+@token_required
+@input_filter(checks=['monitor:status'], skip=None)
+def messages_status_post():
+    """
+    input - messages to be added into local status table
+    process - inserts individual messages into status table
+              This method/route has nothing to do with nodes. 
+              this is a receiver of remote status messages.
+    output - status
+    """
+    #remote_ip = request.environ['REMOTE_ADDR']
+    status, response = Monitor().insert_status_messages(request.data)
+    access_code=Helper().get_access_code(status,response)
+    response = {'message': response}
+    return response, access_code
+
+
 @monitor_blueprint.route('/monitor/service/<string:name>', methods=['GET'])
 @validate_name
 def monitor_service(name=None):
@@ -135,6 +275,25 @@ def monitor_sync_get(name=None):
     return response, access_code
 
 
+@monitor_blueprint.route('/monitor/osimage/<string:name>', methods=['GET'])
+@validate_name
+def monitor_osimage_get(name=None):
+    """
+    Input - nothing
+    Process - generates a response on osimage state and the why
+    Output - the generated list in json format
+    """
+    access_code = 503
+    status, response = Monitor().get_itemstatus(item='osimage',name=name)
+    if status is True:
+        access_code = 200
+        response = dumps(response)
+    else:
+        access_code = 404
+        response = {'message': f'{name} not found'}
+    return response, access_code
+
+
 @monitor_blueprint.route('/monitor/mother/<string:name>', methods=['GET'])
 @validate_name
 def monitor_mother_get(name=None):
@@ -152,55 +311,4 @@ def monitor_mother_get(name=None):
         access_code = 404
         response = {'message': f'{name} not found'}
     return response, access_code
-
-
-@monitor_blueprint.route('/monitor/queue', methods=['GET'])
-@token_required
-def monitor_queue():
-    """
-    Input - nothing
-    Process - generates a list of items or tasks in mother's queue
-    Output - the generated list in json format
-    """
-    access_code = 503
-    status, response = Monitor().get_queue()
-    if status is True:
-        access_code = 200
-    response = {'monitor': {'queue': response } }
-    return response, access_code
-
-
-@monitor_blueprint.route('/monitor/status', methods=['GET'])
-@token_required
-def monitor_status():
-    """
-    Input - nothing
-    Process - generates a list of messages still in status table
-    Output - the generated list in json format
-    """
-    access_code = 503
-    status, response = Monitor().get_status()
-    if status is True:
-        access_code = 200
-    response = {'monitor': {'status': response } }
-    return response, access_code
-
-
-@monitor_blueprint.route('/monitor/status', methods=['POST'])
-@token_required
-@input_filter(checks=['monitor:status'], skip=None)
-def messages_status_post():
-    """
-    input - messages to be added into local status table
-    process - inserts individual messages into status table
-              This method/route has nothing to do with nodes. 
-              this is a receiver of remote status messages.
-    output - status
-    """
-    #remote_ip = request.environ['REMOTE_ADDR']
-    status, response = Monitor().insert_status_messages(request.data)
-    access_code=Helper().get_access_code(status,response)
-    response = {'message': response}
-    return response, access_code
-
 

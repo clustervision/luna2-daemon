@@ -122,7 +122,41 @@ class Monitor():
         if db_item:
             status = True
             response['monitor']['status'][name]['status'] = db_item[0]['status']
-            response['monitor']['status'][name]['state'] = db_item[0]['state']
+            response['monitor']['status'][name]['state'] = db_item[0]['state'] or name+" ok"
+        else:
+            response = None
+            status = False
+        return status, response
+
+
+    def get_itemsstatus(self,item=None):
+        """
+        This method return a generic state of all called for item. item could be osimage or sync
+        """
+        status=False
+        if not item:
+            return status, "Invalid request: item not provided"
+        response = {"monitor": {"status": { item: { } } } }
+        tablerefid = 0
+        tablename = item
+        tableref = ''
+        if item in ['ha', 'mother']:
+            tablename = 'reference'
+            tableref = 'tableref'
+        elif item == 'sync':
+            tablename = 'osimage'
+        db_items = Database().get_record_join([f'{tablename}.{tableref}name','monitor.state','monitor.status'],
+                                              [f'monitor.tablerefid={tablename}.id'],
+                                              [f"monitor.tableref='{item}'"])
+        if db_items:
+            status = True
+            for db_item in db_items:
+                servicestatus = db_item['status']
+                if item == "node":
+                    _,servicestatus=monitor().installer_state(db_item['state'],db_item['status'])
+                response['monitor']['status'][item][db_item[tableref+'name']] = {
+                    "state": db_item['state'] or db_item[tableref+'name']+" ok",
+                    "status": f"{servicestatus}"}
         else:
             response = None
             status = False

@@ -163,16 +163,16 @@ class Housekeeper(object):
                             case 'unpack_osimage':
                                 details=Queue().get_task_details(next_id)
                                 osimage=details['param']
-                                new_state = f'Image unpack success for {osimage}'
+                                new_state = 'image unpack success'
                                 state = {'monitor': {'status': {osimage: {'state': new_state, 'status': '200'} } } }
                                 Queue().update_task_status_in_queue(next_id,'in progress')
                                 status = OsImage().unpack_osimage(next_id,request_id)
                                 if not status:
                                     sleep(5)
-                                    self.logger.warning("First attempt to unpack osimage failed. Retrying one more time")
+                                    self.logger.warning("first attempt to unpack osimage failed. Retrying one more time")
                                     status = OsImage().unpack_osimage(next_id,request_id)
                                     if not status:
-                                        new_state = f'Image unpack failed for {osimage}'
+                                        new_state = f'image unpack failed'
                                         state = {'monitor': {'status': {osimage: {'state': new_state, 'status': '501'} } } }
                                 Monitor().update_itemstatus(item='sync', name=osimage, request_data=state)
 

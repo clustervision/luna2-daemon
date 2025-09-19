@@ -140,14 +140,11 @@ class Monitor():
         tablerefid = 0
         tablename = item
         tableref = ''
-        prepend = True
         if item in ['ha', 'mother']:
             tablename = 'reference'
             tableref = 'tableref'
-            prepend = False
         elif item == 'sync':
             tablename = 'osimage'
-            prepend = False
         db_items = Database().get_record_join([f'{tablename}.{tableref}name','monitor.state','monitor.status'],
                                               [f'monitor.tablerefid={tablename}.id'],
                                               [f"monitor.tableref='{item}'"])
@@ -158,12 +155,8 @@ class Monitor():
                 if item == "node":
                     _,servicestatus=monitor().installer_state(db_item['state'],db_item['status'])
                 state = db_item['state'] or "ok"
-                if prepend:
-                    object_name = db_item[tableref+'name']+" "
-                else:
-                    object_name = ""
                 response['monitor']['status'][item][db_item[tableref+'name']] = {
-                    "state": object_name+state,
+                    "state": db_item[tableref+'name']+" "+state,
                     "status": f"{servicestatus}"}
         else:
             response = None

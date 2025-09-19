@@ -154,8 +154,9 @@ class Monitor():
                 servicestatus = db_item['status']
                 if item == "node":
                     _,servicestatus=monitor().installer_state(db_item['state'],db_item['status'])
+                state = db_item['state'] or "ok"
                 response['monitor']['status'][item][db_item[tableref+'name']] = {
-                    "state": db_item['state'] or db_item[tableref+'name']+" ok",
+                    "state": db_item[tableref+'name']+" "+state,
                     "status": f"{servicestatus}"}
         else:
             response = None

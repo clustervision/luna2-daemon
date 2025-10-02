@@ -63,6 +63,11 @@ cat /tmp/my-local-disk.sh
 . /tmp/my-local-disk.sh
 echo "=== Using disk [$MY_LOCAL_DISK_NAME] ==="
 DP=$(echo $MY_LOCAL_DISK_NAME | grep -i nvme && echo p)
+BYID=$(echo $MY_LOCAL_DISK_NAME | grep 'by-id' &> /dev/null && echo yes)
+if [ "$BYID" ]; then
+    DP="-part"
+fi
+
 if [ "$MY_LOCAL_DISK_SECTORS" ]; then
         SECTORS=$(cat /sys/block/${MY_LOCAL_DISK_NAME}/size)
         if [ "$SECTORS" != "$MY_LOCAL_DISK_SECTORS" ]; then
@@ -72,7 +77,7 @@ if [ "$MY_LOCAL_DISK_SECTORS" ]; then
 fi
 if [ "$PARTITION_MY_DISK" == "yes" ]; then
         for t in 1 2 3 4 5 6; do
-                parted $MY_LOCAL_DISK_NAME -s rm $t
+                parted $MY_LOCAL_DISK_NAME -s rm $t 2> /dev/null
         done
         parted $MY_LOCAL_DISK_NAME -s 'mklabel gpt'
         parted $MY_LOCAL_DISK_NAME -s 'mkpart efi fat32 1 1g'
@@ -103,6 +108,11 @@ mount ${MY_LOCAL_DISK_NAME}${DP}1 /sysroot/boot/efi
     postscript = """
 . /tmp/my-local-disk.sh
 DP=$(echo $MY_LOCAL_DISK_NAME | grep -i nvme && echo p)
+BYID=$(echo $MY_LOCAL_DISK_NAME | grep 'by-id' &> /dev/null && echo yes)
+if [ "$BYID" ]; then
+    DP="-part"
+fi
+
 mkdir /sysroot/proc /sysroot/dev /sysroot/sys &> /dev/null
 mount -t proc proc /sysroot/proc 
 mount -t devtmpfs devtmpfs /sysroot/dev

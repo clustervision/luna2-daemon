@@ -66,6 +66,15 @@ cat /tmp/my-local-disk.sh
 echo "=== Using disk [$MY_LOCAL_DISK1_NAME] + [$MY_LOCAL_DISK2_NAME] for RAID1 ==="
 DP1=$(echo $MY_LOCAL_DISK1_NAME | grep -i nvme && echo p)
 DP2=$(echo $MY_LOCAL_DISK2_NAME | grep -i nvme && echo p)
+BYID1=$(echo $MY_LOCAL_DISK1_NAME | grep 'by-id' &> /dev/null && echo yes)
+if [ "$BYID1" ]; then
+    DP1="-part"
+fi
+BYID2=$(echo $MY_LOCAL_DISK2_NAME | grep 'by-id' &> /dev/null && echo yes)
+if [ "$BYID2" ]; then
+    DP2="-part"
+fi
+
 if [ "$MY_LOCAL_DISK1_SECTORS" ]; then
         SECTORS=$(cat /sys/block/${MY_LOCAL_DISK1_NAME}/size)
         if [ "$SECTORS" != "$MY_LOCAL_DISK1_SECTORS" ]; then
@@ -83,7 +92,7 @@ fi
 if [ "$PARTITION_MY_DISK" == "yes" ]; then
         for RAID_DISK in $MY_LOCAL_DISK1_NAME $MY_LOCAL_DISK2_NAME; do
                 for t in 1 2 3 4 5 6; do
-                        parted $RAID_DISK -s rm $t
+                        parted $RAID_DISK -s rm $t 2> /dev/null
                 done
                 parted $RAID_DISK -s 'mklabel gpt'
                 parted $RAID_DISK -s 'mkpart efi fat32 1 1g'
@@ -95,8 +104,8 @@ if [ "$PARTITION_MY_DISK" == "yes" ]; then
                 parted $RAID_DISK -s 'name 1 "EFI System Partition"'
         done
 fi
-while [[ ! -b ${MY_LOCAL_DISK1_NAME}${DP1}1 ]] || [[ ! -b ${MY_LOCAL_DISK1_NAME}${DP1}2 ]] || [[ ! -b ${MY_LOCAL_DISK1_NAME}${DP1}3 ]] || [[ ! -b ${MY_LOCAL_DISK1_NAME}${DP1}4 ]]; do sleep 1; done
-while [[ ! -b ${MY_LOCAL_DISK2_NAME}${DP2}1 ]] || [[ ! -b ${MY_LOCAL_DISK2_NAME}${DP2}2 ]] || [[ ! -b ${MY_LOCAL_DISK2_NAME}${DP2}3 ]] || [[ ! -b ${MY_LOCAL_DISK2_NAME}${DP2}4 ]]; do sleep 1; done
+while [[ ! -b ${MY_LOCAL_DISK1_NAME}${DP1}1 ]] || [[ ! -b ${MY_LOCAL_DISK1_NAME}${DP1}2 ]] || [[ ! -b ${MY_LOCAL_DISK1_NAME}${DP1}3 ]] || [[ ! -b ${MY_LOCAL_DISK1_NAME}${DP1}4 ]]; do echo -n .; sleep 1; done
+while [[ ! -b ${MY_LOCAL_DISK2_NAME}${DP2}1 ]] || [[ ! -b ${MY_LOCAL_DISK2_NAME}${DP2}2 ]] || [[ ! -b ${MY_LOCAL_DISK2_NAME}${DP2}3 ]] || [[ ! -b ${MY_LOCAL_DISK2_NAME}${DP2}4 ]]; do echo -n .; sleep 1; done; echo
 
 if [ "$FORMAT_MY_DISK" == "yes" ]; then
         mkfs.fat -F 16 ${MY_LOCAL_DISK1_NAME}${DP1}1
@@ -122,6 +131,14 @@ mount ${MY_LOCAL_DISK1_NAME}${DP1}1 /sysroot/boot/efi
 . /tmp/my-local-disk.sh
 DP1=$(echo $MY_LOCAL_DISK1_NAME | grep -i nvme && echo p)
 DP2=$(echo $MY_LOCAL_DISK2_NAME | grep -i nvme && echo p)
+BYID1=$(echo $MY_LOCAL_DISK1_NAME | grep 'by-id' &> /dev/null && echo yes)
+if [ "$BYID1" ]; then
+    DP1="-part"
+fi
+BYID2=$(echo $MY_LOCAL_DISK2_NAME | grep 'by-id' &> /dev/null && echo yes)
+if [ "$BYID2" ]; then
+    DP2="-part"
+fi
 mkdir /sysroot/proc /sysroot/dev /sysroot/sys &> /dev/null
 mount -t proc proc /sysroot/proc 
 mount -t devtmpfs devtmpfs /sysroot/dev

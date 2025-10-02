@@ -64,14 +64,16 @@ cat /tmp/my-local-disk.sh
     partscript = """
 . /tmp/my-local-disk.sh
 echo "=== Using disk [$MY_LOCAL_DISK1_NAME] + [$MY_LOCAL_DISK2_NAME] for RAID1 ==="
-DP1=$(echo $MY_LOCAL_DISK1_NAME | grep -i nvme && echo p)
-DP2=$(echo $MY_LOCAL_DISK2_NAME | grep -i nvme && echo p)
+DP1=$(echo $MY_LOCAL_DISK1_NAME | grep -i nvme &> /dev/null && echo p)
+DP2=$(echo $MY_LOCAL_DISK2_NAME | grep -i nvme &> /dev/null && echo p)
 BYID1=$(echo $MY_LOCAL_DISK1_NAME | grep 'by-id' &> /dev/null && echo yes)
-if [ "$BYID1" ]; then
+BYPATH1=$(echo $MY_LOCAL_DISK1_NAME | grep 'by-path' &> /dev/null && echo yes)
+if [ "$BYID1" ] || [ "$BYPATH1" ]; then
     DP1="-part"
 fi
 BYID2=$(echo $MY_LOCAL_DISK2_NAME | grep 'by-id' &> /dev/null && echo yes)
-if [ "$BYID2" ]; then
+BYPATH2=$(echo $MY_LOCAL_DISK2_NAME | grep 'by-path' &> /dev/null && echo yes)
+if [ "$BYID2" ] || [ "$BYPATH2" ]; then
     DP2="-part"
 fi
 
@@ -129,30 +131,46 @@ mount ${MY_LOCAL_DISK1_NAME}${DP1}1 /sysroot/boot/efi
 
     postscript = """
 . /tmp/my-local-disk.sh
-DP1=$(echo $MY_LOCAL_DISK1_NAME | grep -i nvme && echo p)
-DP2=$(echo $MY_LOCAL_DISK2_NAME | grep -i nvme && echo p)
+DP1=$(echo $MY_LOCAL_DISK1_NAME | grep -i nvme &> /dev/null && echo p)
+DP2=$(echo $MY_LOCAL_DISK2_NAME | grep -i nvme &> /dev/null && echo p)
 BYID1=$(echo $MY_LOCAL_DISK1_NAME | grep 'by-id' &> /dev/null && echo yes)
-if [ "$BYID1" ]; then
+BYPATH1=$(echo $MY_LOCAL_DISK1_NAME | grep 'by-path' &> /dev/null && echo yes)
+if [ "$BYID1" ] || [ "$BYPATH1" ]; then
     DP1="-part"
 fi
 BYID2=$(echo $MY_LOCAL_DISK2_NAME | grep 'by-id' &> /dev/null && echo yes)
-if [ "$BYID2" ]; then
+BYPATH2=$(echo $MY_LOCAL_DISK2_NAME | grep 'by-path' &> /dev/null && echo yes)
+if [ "$BYID2" ] || [ "$BYPATH2" ]; then
     DP2="-part"
 fi
+
 mkdir /sysroot/proc /sysroot/dev /sysroot/sys &> /dev/null
 mount -t proc proc /sysroot/proc 
 mount -t devtmpfs devtmpfs /sysroot/dev
 mount -t sysfs sysfs /sysroot/sys
 
-grep -v -e md0 -e ${MY_LOCAL_DISK1_NAME} -e ${MY_LOCAL_DISK2_NAME} /sysroot/etc/fstab > /tmp/fstab
+FSTAB_DISK1=${MY_LOCAL_DISK1_NAME}
+FSTAB_DP1=${DP1}
+if [ "$BYPATH1" ]; then
+    FSTAB_DISK1=$(readlink -f ${MY_LOCAL_DISK1_NAME})
+    FSTAB_DP1=$(echo $FSTAB_DISK1 | grep -i nvme &> /dev/null && echo p)
+fi
+FSTAB_DISK2=${MY_LOCAL_DISK2_NAME}
+FSTAB_DP2=${DP2}
+if [ "$BYPATH2" ]; then
+    FSTAB_DISK2=$(readlink -f ${MY_LOCAL_DISK2_NAME})
+    FSTAB_DP2=$(echo $FSTAB_DISK2 | grep -i nvme &> /dev/null && echo p)
+fi
+
+grep -v -e md0 -e ${FSTAB_DISK1} -e ${FSTAB_DISK2} /sysroot/etc/fstab > /tmp/fstab
 grep -v -w '/' /tmp/fstab > /sysroot/etc/fstab
 
 cat << EOF >> /sysroot/etc/fstab
 /dev/md0   /       ext4    defaults        1 1
-${MY_LOCAL_DISK1_NAME}${DP1}2   /boot   ext4    defaults        1 2
-${MY_LOCAL_DISK1_NAME}${DP1}1   /boot/efi   vfat    defaults        1 2
-${MY_LOCAL_DISK1_NAME}${DP1}3   swap    swap    defaults        0 0
-${MY_LOCAL_DISK2_NAME}${DP2}3   swap    swap    defaults        0 0
+${FSTAB_DISK1}${FSTAB_DP1}2   /boot   ext4    defaults        1 2
+${FSTAB_DISK1}${FSTAB_DP1}1   /boot/efi   vfat    defaults        1 2
+${FSTAB_DISK1}${FSTAB_DP1}3   swap    swap    defaults        0 0
+${FSTAB_DISK2}${FSTAB_DP2}3   swap    swap    defaults        0 0
 EOF
 
 if [ "$MAKE_BOOT" == "yes" ]; then

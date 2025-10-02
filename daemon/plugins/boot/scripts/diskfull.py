@@ -62,9 +62,10 @@ cat /tmp/my-local-disk.sh
     partscript = """
 . /tmp/my-local-disk.sh
 echo "=== Using disk [$MY_LOCAL_DISK_NAME] ==="
-DP=$(echo $MY_LOCAL_DISK_NAME | grep -i nvme && echo p)
+DP=$(echo $MY_LOCAL_DISK_NAME | grep -i nvme &> /dev/null && echo p)
 BYID=$(echo $MY_LOCAL_DISK_NAME | grep 'by-id' &> /dev/null && echo yes)
-if [ "$BYID" ]; then
+BYPATH=$(echo $MY_LOCAL_DISK_NAME | grep 'by-path' &> /dev/null && echo yes)
+if [ "$BYID" ] || [ "$BYPATH" ]; then
     DP="-part"
 fi
 
@@ -107,9 +108,10 @@ mount ${MY_LOCAL_DISK_NAME}${DP}1 /sysroot/boot/efi
 
     postscript = """
 . /tmp/my-local-disk.sh
-DP=$(echo $MY_LOCAL_DISK_NAME | grep -i nvme && echo p)
+DP=$(echo $MY_LOCAL_DISK_NAME | grep -i nvme &> /dev/null && echo p)
 BYID=$(echo $MY_LOCAL_DISK_NAME | grep 'by-id' &> /dev/null && echo yes)
-if [ "$BYID" ]; then
+BYPATH=$(echo $MY_LOCAL_DISK_NAME | grep 'by-path' &> /dev/null && echo yes)
+if [ "$BYID" ] || [ "$BYPATH" ]; then
     DP="-part"
 fi
 
@@ -118,14 +120,21 @@ mount -t proc proc /sysroot/proc
 mount -t devtmpfs devtmpfs /sysroot/dev
 mount -t sysfs sysfs /sysroot/sys
 
-grep -v ${MY_LOCAL_DISK_NAME} /sysroot/etc/fstab > /tmp/fstab
+FSTAB_DISK=${MY_LOCAL_DISK_NAME}
+FSTAB_DP=${DP}
+if [ "$BYPATH" ]; then
+    FSTAB_DISK=$(readlink -f ${MY_LOCAL_DISK_NAME})
+    FSTAB_DP=$(echo $FSTAB_DISK | grep -i nvme &> /dev/null && echo p)
+fi
+
+grep -v ${FSTAB_DISK} /sysroot/etc/fstab > /tmp/fstab
 grep -v -w '/' /tmp/fstab > /sysroot/etc/fstab
 
 cat << EOF >> /sysroot/etc/fstab
-${MY_LOCAL_DISK_NAME}${DP}4   /       ext4    defaults        1 1
-${MY_LOCAL_DISK_NAME}${DP}2   /boot   ext4    defaults        1 2
-${MY_LOCAL_DISK_NAME}${DP}1   /boot/efi   vfat    defaults        1 2
-${MY_LOCAL_DISK_NAME}${DP}3   swap    swap    defaults        0 0
+${FSTAB_DISK}${FSTAB_DP}4   /       ext4    defaults        1 1
+${FSTAB_DISK}${FSTAB_DP}2   /boot   ext4    defaults        1 2
+${FSTAB_DISK}${FSTAB_DP}1   /boot/efi   vfat    defaults        1 2
+${FSTAB_DISK}${FSTAB_DP}3   swap    swap    defaults        0 0
 EOF
 
 if [ "$MAKE_BOOT" == "yes" ]; then

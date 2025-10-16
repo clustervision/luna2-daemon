@@ -255,7 +255,7 @@ class OSImage():
         # things we have to set for a group
         items = {
             'grab_filesystems': '/, /boot',
-            'grab_exclude': '/proc/*, /sys/*, /dev/*, /tmp/*, /run/*, /var/log/*, /opt/*',
+            'grab_exclude': '/proc/*, /sys/*, /dev/*, /tmp/*, /run/*, /opt/*, /var/log/*, /trinity/shared/*',
             'kernelmodules': 'ipmi_devintf, ipmi_si, ipmi_msghandler'
         }
         if request_data:

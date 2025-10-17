@@ -521,7 +521,7 @@ class Config(object):
                     if nwk['network']:
                         rev_ip = ip_address(nwk['network']).reverse_pointer
                         rev_ip = rev_ip.split('.')
-                        rev_ip = '.'.join(rev_ip[2:])
+                        rev_ip = '.'.join(rev_ip[1:])
                         dns_allowed_query.append(nwk['network']+"/"+nwk['subnet']) # used for e.g. named. allow query
                         self.logger.info(f"Building DNS block for {rev_ip}")
                     if nwk['network_ipv6']:
@@ -652,7 +652,7 @@ class Config(object):
                             if rev_ip:
                                 sub_ip = host['ipaddress'].split('.')
                                 if len(sub_ip) == 4:
-                                    host_ptr = sub_ip[3] + '.' + sub_ip[2]
+                                    host_ptr = sub_ip[3]
                                     self.logger.debug(f"DNS -- IPv4: host {host['host']}, rev ip [{host_ptr}]")
                                     if host['host'] not in dns_zone_records[rev_ip].keys():
                                         dns_zone_records[rev_ip][host['host']]={}

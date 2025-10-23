@@ -176,8 +176,6 @@ class HA():
                     self.logger.warning(f"set_role (master) to {state} kept current master state of {self.master}")
                     return False
         self.logger.info(f"set_role (master) to {state}")
-        Queue().add_task_to_queue(task='reload', param='dns', subsystem='housekeeper',
-                                  request_id='__becoming_master__')
         Queue().add_task_to_queue(task='restart', param='dhcp', subsystem='housekeeper',
                                   request_id='__becoming_master__')
         Queue().add_task_to_queue(task='restart', param='dhcp6', subsystem='housekeeper',

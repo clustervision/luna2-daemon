@@ -521,7 +521,7 @@ class Config(object):
                     if nwk['network']:
                         rev_ip = ip_address(nwk['network']).reverse_pointer
                         rev_ip = rev_ip.split('.')
-                        rev_ip = '.'.join(rev_ip[1:])
+                        rev_ip = '.'.join(rev_ip[2:])
                         dns_allowed_query.append(nwk['network']+"/"+nwk['subnet']) # used for e.g. named. allow query
                         self.logger.info(f"Building DNS block for {rev_ip}")
                     if nwk['network_ipv6']:
@@ -535,15 +535,8 @@ class Config(object):
                     self.logger.error(f"defining DNS networks encountered problems: {exp}, {exc_type}, in {exc_tb.tb_lineno}")
                 #
                 dns_zones.append(networkname)
-                if rev_ip and rev_ip not in dns_zones:
-                    dns_zones.append(rev_ip)
-                    dns_rev_domain[rev_ip]=networkname
-                    dns_dynamic_updates[rev_ip] = nwk['dhcp_nodes_in_pool'] or False
-                if rev_ipv6 and rev_ipv6 not in dns_zones:
-                    dns_zones.append(rev_ipv6)
-                    dns_rev_domain[rev_ipv6]=networkname
-                    dns_dynamic_updates[rev_ipv6] = nwk['dhcp_nodes_in_pool'] or False
                 dns_zone_records[networkname]={}
+
                 # we always add a zone record for controller even when we're actually in it. we can override.
                 dns_zone_records[networkname][controller_name]={}
                 dns_zone_records[networkname][controller_name]['key']=controller_name
@@ -565,16 +558,6 @@ class Config(object):
                     dns_zone_forwarders[networkname] += nwk['nameserver_ip_ipv6'].split(',')
                 if len(dns_zone_forwarders[networkname]) == 0:
                     dns_zone_forwarders[networkname]=forwarder
-                if rev_ip:
-                    if rev_ip not in dns_zone_records.keys():
-                        dns_zone_records[rev_ip]={}
-                    dns_authoritative[rev_ip]=authoritative_server
-                    dns_zone_forwarders[rev_ip] = dns_zone_forwarders[networkname]
-                if rev_ipv6:
-                    if rev_ipv6 not in dns_zone_records.keys():
-                        dns_zone_records[rev_ipv6]={}
-                    dns_authoritative[rev_ipv6]=authoritative_server
-                    dns_zone_forwarders[rev_ipv6] = dns_zone_forwarders[networkname]
 
             mergedlist = []
             controllers = Database().get_record_join(
@@ -617,6 +600,10 @@ class Config(object):
             if additional:
                 mergedlist.append(additional)
 
+            # --------------------------------------------------------------------------------------------------
+            # The big part where we go through each and every node, switch and controller in the mergedlist
+            # and sort them out for forward and reverse ptr dns zones
+            # --------------------------------------------------------------------------------------------------
             for hosts in mergedlist:
                 for host in hosts:
                     if nwk['dhcp_nodes_in_pool']:
@@ -629,36 +616,71 @@ class Config(object):
                         dns_zone_records[networkname][host['host']]={}
                         dns_zone_records[networkname][host['host']]['key']=host['host'].rstrip('.')
                         ipaddress = None
+                        # --------------------------------------------------------------------------------------
+                        # IPv6 ---------------------------------------------------------------------------------
+                        # --------------------------------------------------------------------------------------
                         if 'ipaddress_ipv6' in host and host['ipaddress_ipv6']:
+                            # ----- forward
                             dns_zone_records[networkname][host['host']]['type']='AAAA'
                             dns_zone_records[networkname][host['host']]['value']=host['ipaddress_ipv6']
                             ipaddress = host['ipaddress_ipv6']
                             self.logger.debug(f"DNS -- IPv6: host {host['host']}, AAAA ip [{host['ipaddress_ipv6']}]")
+                            # ----- all reverse pointer PTR below
+                            rev_ipv6 = ip_address(nwk['network_ipv6']).reverse_pointer
+                            rev_ipv6 = rev_ipv6.split('.')
+                            rev_ipv6 = '.'.join(rev_ipv6[16:])
                             if rev_ipv6:
                                 ipv6_rev = ip_address(host['ipaddress_ipv6']).reverse_pointer
                                 ipv6_list = ipv6_rev.split('.')
                                 host_ptr = '.'.join(ipv6_list[0:16])
-                                self.logger.debug(f"DNS -- IPv6: host {host['host']}, rev ip [{host_ptr}]")
+                                self.logger.debug(f"DNS -- IPv6: host {host['host']}, rev net [{rev_ipv6}], rev ip [{host_ptr}]")
+                                if rev_ipv6 and rev_ipv6 not in dns_zones:
+                                    dns_zones.append(rev_ipv6)
+                                    dns_rev_domain[rev_ipv6]=networkname
+                                    dns_dynamic_updates[rev_ipv6] = nwk['dhcp_nodes_in_pool'] or False
+                                if rev_ipv6 not in dns_zone_records.keys():
+                                    dns_zone_records[rev_ipv6]={}
+                                    dns_authoritative[rev_ipv6]=authoritative_server
+                                    dns_zone_forwarders[rev_ipv6]=dns_zone_forwarders[networkname]
                                 if host['host'] not in dns_zone_records[rev_ipv6].keys():
                                     dns_zone_records[rev_ipv6][host['host']]={}
                                     dns_zone_records[rev_ipv6][host['host']]['key']=host_ptr
                                     dns_zone_records[rev_ipv6][host['host']]['type']='PTR'
                                     dns_zone_records[rev_ipv6][host['host']]['value']=f"{host['host'].rstrip('.')}.{host['networkname']}"
+                        # --------------------------------------------------------------------------------------
+                        # IPv4 ---------------------------------------------------------------------------------
+                        # --------------------------------------------------------------------------------------
                         elif host['ipaddress']:
+                            # ----- forward
                             dns_zone_records[networkname][host['host']]['type']='A'
                             dns_zone_records[networkname][host['host']]['value']=host['ipaddress']
                             ipaddress = host['ipaddress']
                             self.logger.debug(f"DNS -- IPv4: host {host['host']}, A ip [{host['ipaddress']}]")
+                            # ----- all reverse pointer PTR below
+                            rev_ip = ip_address(host['ipaddress']).reverse_pointer
+                            rev_ip = rev_ip.split('.')
+                            rev_ip = '.'.join(rev_ip[1:])
                             if rev_ip:
                                 sub_ip = host['ipaddress'].split('.')
                                 if len(sub_ip) == 4:
                                     host_ptr = sub_ip[3]
-                                    self.logger.debug(f"DNS -- IPv4: host {host['host']}, rev ip [{host_ptr}]")
+                                    self.logger.debug(f"DNS -- IPv4: host {host['host']}, rev net [{rev_ip}], rev ip [{host_ptr}]")
+                                    if rev_ip not in dns_zones:
+                                        dns_zones.append(rev_ip)
+                                        dns_rev_domain[rev_ip]=networkname
+                                        dns_dynamic_updates[rev_ip] = nwk['dhcp_nodes_in_pool'] or False
+                                    if rev_ip not in dns_zone_records.keys():
+                                        dns_zone_records[rev_ip]={}
+                                        dns_authoritative[rev_ip]=authoritative_server
+                                        dns_zone_forwarders[rev_ip]=dns_zone_forwarders[networkname]
                                     if host['host'] not in dns_zone_records[rev_ip].keys():
                                         dns_zone_records[rev_ip][host['host']]={}
                                         dns_zone_records[rev_ip][host['host']]['key']=host_ptr
                                         dns_zone_records[rev_ip][host['host']]['type']='PTR'
                                         dns_zone_records[rev_ip][host['host']]['value']=f"{host['host'].rstrip('.')}.{host['networkname']}"
+                        # --------------------------------------------------------------------------------------
+                        # DHCP ---------------------------------------------------------------------------------
+                        # --------------------------------------------------------------------------------------
                         else: # we have nothing! are we doing pure dhcp?
                             if not host['dhcp']:
                                 self.logger.warning(f"node {host['host']} does not appear to have any ip address configured")

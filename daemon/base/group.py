@@ -673,7 +673,7 @@ class Group():
                 if group_interfaces:
                     for ifx in group_interfaces:
                         if ifx['interface'] in skip_interface:
-                            next
+                            continue
                         ifx['groupid'] = new_group_id
                         del ifx['network']
                         row = Helper().make_rows(ifx)

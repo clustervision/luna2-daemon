@@ -167,7 +167,7 @@ class Plugin():
             returns.append(Slurm().all_configs(fullset))
             returns.append(Generate().Genders(fullset))
             if (min(returns)):
-                reconf = subprocess.run(["/usr/bin/scontrol", "reconfigure"]. check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE);
+                reconf = subprocess.run(["/usr/bin/scontrol", "reconfigure"], check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE);
                 if reconf.returncode != 0:
                     self.logger.error(f"Could not reconfigure slurm: {reconf.stderr.decode()}")
                     return False, f"Could not reconfigure slurm: {reconf.stderr.decode()}"

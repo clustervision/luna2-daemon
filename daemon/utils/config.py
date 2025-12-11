@@ -528,8 +528,14 @@ class Config(object):
         env = Environment(loader=file_loader)
 
         omapikey=None
-        if CONSTANT['DHCP']['OMAPIKEY']:
+        tsigkey=None
+        tsigalgo=None
+        if 'OMAPIKEY' in CONSTANT['DHCP'] and CONSTANT['DHCP']['OMAPIKEY']:
             omapikey=CONSTANT['DHCP']['OMAPIKEY']
+        if 'TSIGKEY' in CONSTANT['DHCP'] and 'TSIGALGO' in CONSTANT['DHCP']:
+            if CONSTANT['DHCP']['TSIGKEY'] and CONSTANT['DHCP']['TSIGALGO']:
+                tsigkey=CONSTANT['DHCP']['TSIGKEY']
+                tsigalgo=CONSTANT['DHCP']['TSIGALGO']
 
         tmpdir=f"{CONSTANT['TEMPLATES']['TMP_DIRECTORY']}"
         files, forwarder = [], []
@@ -778,9 +784,11 @@ class Config(object):
             managed_keys=None
         dns_conf_template = env.get_template(template_dns_conf)
         dns_conf_config = dns_conf_template.render(ALLOWED_QUERY=dns_allowed_query,FORWARDERS=forwarder,
-                                                   MANAGED_KEYS=managed_keys,OMAPIKEY=omapikey)
+                                                   MANAGED_KEYS=managed_keys,OMAPIKEY=omapikey,
+                                                   TSIGKEY=tsigkey,TSIGALGO=tsigalgo)
         dns_zones_conf_template = env.get_template(template_dns_zones_conf)
         dns_zones_conf_config = dns_zones_conf_template.render(ZONES=dns_zones,OMAPIKEY=omapikey,
+                                                               TSIGKEY=tsigkey,TSIGALGO=tsigalgo,
                                                                AUTHORITATIVE=dns_authoritative,
                                                                FORWARDERS=dns_zone_forwarders,
                                                                ALLOW_UPDATES=controller_ips,

@@ -131,8 +131,14 @@ class Config(object):
             nameserver_ip_ipv6 = nameserver_ip_ipv6 or controller[0]['ipaddress_ipv6']
         #
         omapikey=None
-        if CONSTANT['DHCP']['OMAPIKEY']:
+        tsigkey=None
+        tsigalgo=None
+        if 'OMAPIKEY' in CONSTANT['DHCP'] and CONSTANT['DHCP']['OMAPIKEY']:
             omapikey=CONSTANT['DHCP']['OMAPIKEY']
+        if 'TSIGKEY' in CONSTANT['DHCP'] and 'TSIGALGO' in CONSTANT['DHCP']:
+            if CONSTANT['DHCP']['TSIGKEY'] and CONSTANT['DHCP']['TSIGALGO']:
+                tsigkey=CONSTANT['DHCP']['TSIGKEY']
+                tsigalgo=CONSTANT['DHCP']['TSIGALGO']
         #
         config_classes = {}
         config_classes6 = {}
@@ -345,7 +351,8 @@ class Config(object):
                 dhcpd_config = dhcpd_template.render(CLASSES=config_classes,SHARED=config_shared,SUBNETS=config_subnets,
                                                      ZONES=config_zones,EMPTY=config_empty,HOSTS=config_hosts,POOLS=config_pools,
                                                      DOMAINNAME=domain,NAMESERVERS=nameserver_ip,NTPSERVERS=ntp_server,
-                                                     RESERVATIONS=config_reservations,OMAPIKEY=omapikey)
+                                                     RESERVATIONS=config_reservations,OMAPIKEY=omapikey,
+                                                     TSIGKEY=tsigkey,TSIGALGO=tsigalgo)
                 with open(dhcp_file, 'w', encoding='utf-8') as dhcp:
                     dhcp.write(dhcpd_config)
                 try:
@@ -366,7 +373,8 @@ class Config(object):
                                                      ZONES=config_zones6,EMPTY=config_empty6,HOSTS=config_hosts6,
                                                      POOLS=config_pools6,DOMAINNAME=domain,NAMESERVERS=nameserver_ip,
                                                      NAMESERVERS_IPV6=nameserver_ip_ipv6,NTPSERVERS=ntp_server,
-                                                     RESERVATIONS=config_reservations6,OMAPIKEY=omapikey)
+                                                     RESERVATIONS=config_reservations6,OMAPIKEY=omapikey,
+                                                     TSIGKEY=tsigkey,TSIGALGO=tsigalgo)
                 with open(dhcp6_file, 'w', encoding='utf-8') as dhcp:
                     dhcp.write(dhcpd_config)
                 try:

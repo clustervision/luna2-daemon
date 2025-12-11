@@ -85,7 +85,7 @@ class Config(object):
             if 'TEMPLATE6' in CONSTANT["DHCP"]:
                 template6 = CONSTANT["DHCP"]["TEMPLATE6"]
             if 'TEST6' in CONSTANT["DHCP"]:
-                dhcp_test6 = CONSTANT["DHCP"]["TEST6"]
+                dhcp6_test = CONSTANT["DHCP"]["TEST6"]
             if 'CONFIG6_PATH' in CONSTANT["DHCP"]:
                 dhcp6_config_path = CONSTANT["DHCP"]["CONFIG6_PATH"]
 

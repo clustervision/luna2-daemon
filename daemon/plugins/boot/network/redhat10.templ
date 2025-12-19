@@ -1,0 +1,95 @@
+#FILE /sysroot/etc/NetworkManager/system-connections/Connection_${interface_name}.nmconnection
+
+[connection]
+id=Connection_${interface_name}
+{%- if LUNA_INTERFACES[interface]['type'] == 'slave' %}
+type={{ LUNA_INTERFACES[interface]['networktype'] }}
+master={{ LUNA_INTERFACES[interface]['master'] }}
+slave-type=bond
+{%- else %}
+type={{ LUNA_INTERFACES[interface]['type'] }}
+zone={{ LUNA_INTERFACES[interface]['zone'] }}
+{%- endif %}
+interface-name=${interface_name}
+autoconnect=true
+
+{% if LUNA_INTERFACES[interface]['type'] == 'bond' %}
+[bond]
+mode={{ LUNA_INTERFACES[interface]['bond_mode'] }}
+    {% if LUNA_INTERFACES[interface]['mtu'] %}
+[ethernet]
+mtu={{ LUNA_INTERFACES[interface]['mtu'] }}
+    {% endif %}
+{% else %}
+    {% if LUNA_INTERFACES[interface]['networktype'] == 'infiniband' %}
+[infiniband]
+#mtu=65520
+#transport-mode=connected
+transport-mode=datagram
+    {%- else %}
+[ethernet]
+    {%- endif %}
+    {%- if LUNA_INTERFACES[interface]['mtu'] %}
+mtu={{ LUNA_INTERFACES[interface]['mtu'] }}
+    {%- endif %}
+{%- endif %}
+
+{% if LUNA_INTERFACES[interface]['type'] == 'slave' %}
+[bond-port]
+{%- else %}
+
+  {% if LUNA_INTERFACES[interface]['type'] == 'vlan' %}
+[vlan]
+    {%- if LUNA_INTERFACES[interface]['vlan_parent'] %}
+parent=${parent_name}
+    {%- else %}
+parent=${interface_name}
+    {%- endif %}
+id={{ LUNA_INTERFACES[interface]['vlanid'] }}
+  {%- endif %}
+
+[proxy]
+
+{{ LUNA_INTERFACES[interface]['options'] | b64decode }}
+
+  {%- if LUNA_INTERFACES[interface]['dhcp'] %}
+[ipv4]
+method=auto
+dns=
+dns-search=
+dhcp-hostname={{ NODE_NAME }}
+
+[ipv6]
+method=auto
+dns=
+dns-search=
+  {%- else %}
+    {%- if LUNA_INTERFACES[interface]['ipaddress'] %}
+[ipv4]
+method=manual
+address1={{ LUNA_INTERFACES[interface]['ipaddress'] }}/{{ LUNA_INTERFACES[interface]['prefix'] }}
+      {%- if LUNA_INTERFACES[interface]['nameserver_ip'][0] %}
+dns={{ LUNA_INTERFACES[interface]['nameserver_ip']|join(';') }}
+dns-search={{ DOMAIN_SEARCH|join(';') }}
+      {%- endif %}
+      {%- if LUNA_INTERFACES[interface]['gateway'] %}
+route1=0.0.0.0/0,{{ LUNA_INTERFACES[interface]['gateway'] }},{{ LUNA_INTERFACES[interface]['gateway_metric'] }}
+      {%- endif %}
+    {%- endif %}
+    {% if LUNA_INTERFACES[interface]['ipaddress_ipv6'] %}
+[ipv6]
+method=manual
+address1={{ LUNA_INTERFACES[interface]['ipaddress_ipv6'] }}/{{ LUNA_INTERFACES[interface]['prefix_ipv6'] }}
+      {%- if LUNA_INTERFACES[interface]['nameserver_ip_ipv6'][0] %}
+dns={{ LUNA_INTERFACES[interface]['nameserver_ip_ipv6']|join(';') }}
+dns-search={{ DOMAIN_SEARCH|join(';') }}
+      {%- endif %}
+      {%- if LUNA_INTERFACES[interface]['gateway_ipv6'] %}
+route1=0.0.0.0/0,{{ LUNA_INTERFACES[interface]['gateway_ipv6'] }},{{ LUNA_INTERFACES[interface]['gateway_metric'] }}
+      {%- endif %}
+    {%- else %}
+[ipv6]
+method=ignore
+    {%- endif %}
+  {%- endif %}
+{%- endif %}

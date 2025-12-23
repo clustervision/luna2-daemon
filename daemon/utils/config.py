@@ -989,6 +989,15 @@ class Config(object):
                 message = f"bond_slaves should contain at least two interfaces"
                 return False, message
 
+        # we force a NULL in the database - clean
+        for item in ['macaddress','mtu','options','vlanid','vlan_parent','bond_mode','bond_slaves']:
+            if item in my_interface and not my_interface[item]:
+                my_interface[item] = None
+                if item == 'vlanid':
+                   my_interface['vlan_parent'] = None
+                elif item == 'bond_mode':
+                   my_interface['bond_slaves'] = None
+
         if not check_interface: # ----> easy. both the interface and ipaddress do not exist
             my_interface['interface'] = interface_name
             my_interface['nodeid'] = nodeid
@@ -1307,6 +1316,15 @@ class Config(object):
             if my_interface['dhcp'] not in ['0','1']:
                 message = f"dhcp should be y, yes, n or no"
                 return False, message
+
+        # we force a NULL in the database - clean
+        for item in ['macaddress','mtu','options','vlanid','vlan_parent','bond_mode','bond_slaves','dhcp']:
+            if item in my_interface and not my_interface[item]:
+                my_interface[item] = None
+                if item == 'vlanid':
+                   my_interface['vlan_parent'] = None
+                elif item == 'bond_mode':
+                   my_interface['bond_slaves'] = None
 
         networkid = None
         if network:

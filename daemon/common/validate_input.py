@@ -48,11 +48,13 @@ control_char_re = re.compile(f'[{re.escape(CONTROL_CHAR)}]')
 
 REG_EXP = {
     'name': { 'regexp': r'^[a-zA-Z0-9\-\.\_\ ]+$', 'error': 'combination of characters a-z A-Z, numbers 0-9, whitespace, \'-\', \'_\' and \'.\'' },
+    'nameandclear': { 'regexp': r'^[a-zA-Z0-9\-\.\_\ ]+|$', 'error': 'combination of characters a-z A-Z, numbers 0-9, whitespace, \'-\', \'_\' and \'.\'' },
     'strictname': { 'regexp': r'^[a-z0-9\-\.]+$', 'error': 'combination of small characters a-z, numbers 0-9, \'-\' and \'.\'' },
     'strictcsv': { 'regexp': r'^[a-z0-9\-\,\ ]+$', 'error': 'combination of small characters a-z, numbers 0-9, whitespace, \'-\' and \',\'' },
     'loosecsv': { 'regexp': r'^[a-z0-9\-\,\ ]*$', 'error': 'combination of small characters a-z, numbers 0-9, whitespace, \'-\' and \',\'' },
     'interfacecsv': { 'regexp': r'^[a-zA-Z0-9\.\-\,\ \:]{3,}$', 'error': 'combination of minimal 3 small characters a-z A-Z, numbers 0-9, whitespace, \'.\', \':\', \'-\' and \',\'' },
     'interface': { 'regexp': r'^[a-zA-Z0-9\.\-\:]{3,}$', 'error': 'combination of minimal 3 small characters a-z A-Z, numbers 0-9, \'.\', \':\', \'-\' and \',\'' },
+    'intfandclear': { 'regexp': r'^[a-zA-Z0-9\.\-\:]{3,}|$', 'error': 'combination of minimal 3 small characters a-z A-Z, numbers 0-9, \'.\', \':\', \'-\' and \',\'' },
     'ipaddress': { 'regexp': r'^[0-9a-f:\.]+$', 'error': 'combination of characters small a-f, numbers 0-9, \':\' and \'.\'' },
     'macaddress': { 'regexp': r'^(([0-9A-Fa-f]{2}((-|:)[0-9A-Za-f]{2}){5})|)$', 'error': '6 blocks of 2 characters a-f or numbers 0-9, separated by \':\' or \'-\'' },
     'minimal': { 'regexp': r'^\S.*$', 'error': 'minimal character requirement. at least one' },
@@ -96,8 +98,8 @@ MATCH = {
     'interface': 'minimal',
     'gateway_metric': 'integer',
     'vlanid': 'intandnone',
-    'vlan_parent': 'interface',
-    'bond_mode': 'name',
+    'vlan_parent': 'intfandclear',
+    'bond_mode': 'nameandclear',
     'bond_slaves': 'interfacecsv'
 }
 MAXLENGTH = {

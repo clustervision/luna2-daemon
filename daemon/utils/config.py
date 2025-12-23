@@ -150,8 +150,6 @@ class Config(object):
         config_zones6 = {}
         config_empty = {}
         config_empty6 = {}
-        config_hosts = {}
-        config_hosts6 = {}
         config_pools = {}
         config_pools6 = {}
         config_reservations = {}
@@ -288,32 +286,28 @@ class Config(object):
                     ['ipaddress.tablerefid=nodeinterface.id', 'nodeinterface.nodeid=node.id'],
                     ['tableref="nodeinterface"', f'ipaddress.networkid="{network_id}"']
                 )
-                nodedomain=nwk['name']
+                nwkdomain=nwk['name']
                 if node_interface:
                     for interface in node_interface:
                         if nwk['dhcp_nodes_in_pool'] and interface['dhcp']:
                             continue
-                        if nodedomain == domain:
-                            node=interface['nodename']
-                        else:
-                            node=f"{interface['nodename']}.{nodedomain}"
-                        if interface['macaddress'] and node not in config_hosts:
+                        elif interface['macaddress']:
                             if interface['ipaddress_ipv6']:
-                                config_hosts6[node]={}
-                                config_hosts6[node]['name']=interface['nodename']
-                                config_hosts6[node]['domain']=nodedomain
-                                config_hosts6[node]['ipaddress']=interface['ipaddress_ipv6']
-                                config_hosts6[node]['macaddress']=interface['macaddress']
+                                config_host6={}
+                                config_host6['name']=interface['nodename']
+                                config_host6['domain']=nwkdomain
+                                config_host6['ipaddress']=interface['ipaddress_ipv6']
+                                config_host6['macaddress']=interface['macaddress']
                                 if nwk['name'] in config_reservations6:
-                                    config_reservations6[nwk['name']].append(config_hosts6[node])
+                                    config_reservations6[nwk['name']].append(config_host6)
                             elif interface['ipaddress']:
-                                config_hosts[node]={}
-                                config_hosts[node]['name']=interface['nodename']
-                                config_hosts[node]['domain']=nodedomain
-                                config_hosts[node]['ipaddress']=interface['ipaddress']
-                                config_hosts[node]['macaddress']=interface['macaddress']
+                                config_host={}
+                                config_host['name']=interface['nodename']
+                                config_host['domain']=nwkdomain
+                                config_host['ipaddress']=interface['ipaddress']
+                                config_host['macaddress']=interface['macaddress']
                                 if nwk['name'] in config_reservations:
-                                    config_reservations[nwk['name']].append(config_hosts[node])
+                                    config_reservations[nwk['name']].append(config_host)
                 else:
                     self.logger.info(f'no nodes available for network {network_name} IPv4: {network_ip} or IPv6: {network_ipv6}')
                 for item in ['otherdevices', 'switch']:
@@ -326,19 +320,21 @@ class Config(object):
                         for device in devices:
                             if device['macaddress']:
                                 if device['ipaddress_ipv6']:
-                                    config_hosts6[device['name']]={}
-                                    config_hosts6[device['name']]['name']=device['name']
-                                    config_hosts6[device['name']]['ipaddress']=device['ipaddress_ipv6']
-                                    config_hosts6[device['name']]['maccaddress']=device['macaddress']
+                                    config_host6={}
+                                    config_host6['name']=device['name']
+                                    config_host6['domain']=nwkdomain
+                                    config_host6['ipaddress']=device['ipaddress_ipv6']
+                                    config_host6['maccaddress']=device['macaddress']
                                     if nwk['name'] in config_reservations6:
-                                        config_reservations6[nwk['name']].append(config_hosts6[device['name']])
+                                        config_reservations6[nwk['name']].append(config_host6)
                                 else:
-                                    config_hosts[device['name']]={}
-                                    config_hosts[device['name']]['name']=device['name']
-                                    config_hosts[device['name']]['ipaddress']=device['ipaddress']
-                                    config_hosts[device['name']]['maccaddress']=device['macaddress']
+                                    config_host={}
+                                    config_host['name']=device['name']
+                                    config_host['domain']=nwkdomain
+                                    config_host['ipaddress']=device['ipaddress']
+                                    config_host['maccaddress']=device['macaddress']
                                     if nwk['name'] in config_reservations:
-                                        config_reservations[nwk['name']].append(config_hosts[device['name']])
+                                        config_reservations[nwk['name']].append(config_host)
                     else:
                         self.logger.debug(f'{item} not available for {network_name}  IPv4: {network_ip} or IPv6: {network_ipv6}')
         
@@ -349,7 +345,7 @@ class Config(object):
             if any([config_subnets, config_shared, config_empty]):
                 dhcpd_template = env.get_template(template)
                 dhcpd_config = dhcpd_template.render(CLASSES=config_classes,SHARED=config_shared,SUBNETS=config_subnets,
-                                                     ZONES=config_zones,EMPTY=config_empty,HOSTS=config_hosts,POOLS=config_pools,
+                                                     ZONES=config_zones,EMPTY=config_empty,POOLS=config_pools,
                                                      DOMAINNAME=domain,NAMESERVERS=nameserver_ip,NTPSERVERS=ntp_server,
                                                      RESERVATIONS=config_reservations,OMAPIKEY=omapikey,
                                                      TSIGKEY=tsigkey,TSIGALGO=tsigalgo)
@@ -370,8 +366,8 @@ class Config(object):
             if any([config_subnets6, config_shared6, config_empty6]):
                 dhcpd_template = env.get_template(template6)
                 dhcpd_config = dhcpd_template.render(CLASSES=config_classes6,SHARED=config_shared6,SUBNETS=config_subnets6,
-                                                     ZONES=config_zones6,EMPTY=config_empty6,HOSTS=config_hosts6,
-                                                     POOLS=config_pools6,DOMAINNAME=domain,NAMESERVERS=nameserver_ip,
+                                                     ZONES=config_zones6,EMPTY=config_empty6,POOLS=config_pools6,
+                                                     DOMAINNAME=domain,NAMESERVERS=nameserver_ip,
                                                      NAMESERVERS_IPV6=nameserver_ip_ipv6,NTPSERVERS=ntp_server,
                                                      RESERVATIONS=config_reservations6,OMAPIKEY=omapikey,
                                                      TSIGKEY=tsigkey,TSIGALGO=tsigalgo)

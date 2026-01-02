@@ -46,7 +46,6 @@ class Plugin():
             "node":  14200,
             "ipmi":  14202,
             "nvidia":  14203,
-            "infiniband":  14206,
             "slurm_job": 14207,
             "lshw": 14208,
         }

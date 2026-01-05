@@ -35,7 +35,6 @@ import os
 import sys
 import subprocess
 import shutil
-import netifaces as ni
 from time import time, sleep
 import re
 from jinja2 import Environment, FileSystemLoader
@@ -365,7 +364,7 @@ class Config(object):
                     shutil.copyfile(dhcp_file, dhcp_config_path)
             # IPv6 -----------------------------------
             if any([config_subnets6, config_shared6, config_empty6]):
-                interfaces = self.get_controller_interfaces_for_networks()
+                interfaces = Helper().get_controller_interfaces_for_networks()
                 dhcpd_template = env.get_template(template6)
                 dhcpd_config = dhcpd_template.render(CLASSES=config_classes6,SHARED=config_shared6,SUBNETS=config_subnets6,
                                                      ZONES=config_zones6,EMPTY=config_empty6,POOLS=config_pools6,
@@ -1859,45 +1858,4 @@ class Config(object):
             for each in reserved_details:
                 ips.append(each['ipaddress'])
         return ips
-
-
-    def get_controller_interfaces_for_networks(self):
-        interfaces={
-            'ipv4': {},
-            'ipv6': {}
-        }
-        networks = Database().get_record(table='network')
-        if networks:
-            for interface in ni.interfaces():
-                try:
-                    for assingment in ni.ifaddresses(interface)[ni.AF_INET6]:
-                        wip = assingment['addr']
-                        ip, *_ = wip.split('%', 1)+[None]
-                        self.logger.debug(f"Interface {interface} has ip {ip}")
-                        for network in networks:
-                            if not network['network_ipv6']:
-                                continue
-                            if Helper().check_ip_range(ip, network['network_ipv6'] + '/' + network['subnet_ipv6']):
-                                self.logger.info(f"Controller IPv6 {ip} on interface {interface} belongs to network {network['name']}")
-                                interfaces['ipv6'][network['name']] = interface
-                                break
-                        self.logger.warning(f"Network {network['name']} has no matching interface on controller")
-                except:
-                    pass
-                try:
-                    for assingment in ni.ifaddresses(interface)[ni.AF_INET]:
-                        ip = assingment['addr']
-                        self.logger.debug(f"Interface {interface} has ip {ip}")
-                        for network in networks:
-                            if not network['network']:
-                                continue
-                            if Helper().check_ip_range(ip, network['network'] + '/' + network['subnet']):
-                                self.logger.info(f"Controller IP {ip} on interface {interface} belongs to network {network['name']}")
-                                interfaces['ipv4'][network['name']] = interface
-                                break
-                        self.logger.warning(f"Network {network['name']} has no matching interface on controller")
-                except:
-                    pass
-        return interfaces
-
 

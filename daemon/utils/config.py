@@ -364,13 +364,14 @@ class Config(object):
                     shutil.copyfile(dhcp_file, dhcp_config_path)
             # IPv6 -----------------------------------
             if any([config_subnets6, config_shared6, config_empty6]):
+                interfaces = Helper().get_controller_interfaces_for_networks()
                 dhcpd_template = env.get_template(template6)
                 dhcpd_config = dhcpd_template.render(CLASSES=config_classes6,SHARED=config_shared6,SUBNETS=config_subnets6,
                                                      ZONES=config_zones6,EMPTY=config_empty6,POOLS=config_pools6,
                                                      DOMAINNAME=domain,NAMESERVERS=nameserver_ip,
                                                      NAMESERVERS_IPV6=nameserver_ip_ipv6,NTPSERVERS=ntp_server,
                                                      RESERVATIONS=config_reservations6,OMAPIKEY=omapikey,
-                                                     TSIGKEY=tsigkey,TSIGALGO=tsigalgo)
+                                                     TSIGKEY=tsigkey,TSIGALGO=tsigalgo,INTERFACES=interfaces['ipv6'])
                 with open(dhcp6_file, 'w', encoding='utf-8') as dhcp:
                     dhcp.write(dhcpd_config)
                 try:

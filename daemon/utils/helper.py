@@ -520,11 +520,12 @@ class Helper(object):
                         for network in networks:
                             if not network['network_ipv6']:
                                 continue
+                            elif network['name'] in interfaces['ipv6']:
+                                continue
                             if Helper().check_ip_range(ip, network['network_ipv6'] + '/' + network['subnet_ipv6']):
                                 self.logger.info(f"Controller IPv6 {ip} on interface {interface} belongs to network {network['name']}")
                                 interfaces['ipv6'][network['name']] = interface
                                 break
-                        self.logger.warning(f"Network {network['name']} has no matching interface on controller")
                 except:
                     pass
                 try:
@@ -534,13 +535,17 @@ class Helper(object):
                         for network in networks:
                             if not network['network']:
                                 continue
+                            elif network['name'] in interfaces['ipv4']:
+                                continue
                             if Helper().check_ip_range(ip, network['network'] + '/' + network['subnet']):
                                 self.logger.info(f"Controller IP {ip} on interface {interface} belongs to network {network['name']}")
                                 interfaces['ipv4'][network['name']] = interface
                                 break
-                        self.logger.warning(f"Network {network['name']} has no matching interface on controller")
                 except:
                     pass
+            for network in networks:
+                if (network['name'] not in interfaces['ipv6']) and (network['name'] not in interfaces['ipv4']):
+                    self.logger.warning(f"Network {network['name']} has no matching interface on controller")
         return interfaces
 
 

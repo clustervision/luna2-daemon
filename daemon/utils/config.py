@@ -1875,9 +1875,13 @@ class Config(object):
                         ip, *_ = wip.split('%', 1)+[None]
                         self.logger.debug(f"Interface {interface} has ip {ip}")
                         for network in networks:
-                            if Helper().check_ip_range(ip, network['network'] + '/' + network['subnet']):
+                            if not network['network_ipv6']:
+                                continue
+                            if Helper().check_ip_range(ip, network['network_ipv6'] + '/' + network['subnet_ipv6']):
                                 self.logger.info(f"Controller IPv6 {ip} on interface {interface} belongs to network {network['name']}")
                                 interfaces['ipv6'][network['name']] = interface
+                                break
+                        self.logger.warning(f"Network {network['name']} has no matching interface on controller")
                 except:
                     pass
                 try:
@@ -1885,9 +1889,13 @@ class Config(object):
                         ip = assingment['addr']
                         self.logger.debug(f"Interface {interface} has ip {ip}")
                         for network in networks:
+                            if not network['network']:
+                                continue
                             if Helper().check_ip_range(ip, network['network'] + '/' + network['subnet']):
                                 self.logger.info(f"Controller IP {ip} on interface {interface} belongs to network {network['name']}")
                                 interfaces['ipv4'][network['name']] = interface
+                                break
+                        self.logger.warning(f"Network {network['name']} has no matching interface on controller")
                 except:
                     pass
         return interfaces

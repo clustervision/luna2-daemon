@@ -61,6 +61,8 @@ class Network():
             response = {'config': {'network': {} }}
             for network in networks:
                 network['network'] = Helper().get_network(network['network'], network['subnet'])
+                if network['network_ipv6']:
+                    network['network_ipv6'] = Helper().get_network(network['network_ipv6'], network['subnet_ipv6'])
                 del network['id']
                 del network['subnet']
                 network['dhcp'] = Helper().make_bool(network['dhcp'])

@@ -62,6 +62,15 @@ cat /tmp/my-local-disk.sh
     partscript = """
 . /tmp/my-local-disk.sh
 echo "=== Using disk [$MY_LOCAL_DISK_NAME] ==="
+BYUUID=$(echo $MY_LOCAL_DISK_NAME | grep 'by-uuid' &> /dev/null && echo yes)
+if [ "$BYUUID" ]; then
+    MY_LOCAL_DISK_NAME=$(readlink -f $MY_LOCAL_DISK_NAME)
+    echo "DISKFULL script: UUID translates to $MY_LOCAL_DISK_NAME"
+fi
+if [ ! -e $MY_LOCAL_DISK_NAME ]; then
+    echo "RAID1 script: \$MY_LOCAL_DISK_NAME [$MY_LOCAL_DISK_NAME] does not exist!"
+    exit 1
+fi
 DP=$(echo $MY_LOCAL_DISK_NAME | grep -i nvme &> /dev/null && echo p)
 BYID=$(echo $MY_LOCAL_DISK_NAME | grep 'by-id' &> /dev/null && echo yes)
 BYPATH=$(echo $MY_LOCAL_DISK_NAME | grep 'by-path' &> /dev/null && echo yes)
@@ -108,6 +117,11 @@ mount ${MY_LOCAL_DISK_NAME}${DP}1 /sysroot/boot/efi
 
     postscript = """
 . /tmp/my-local-disk.sh
+BYUUID=$(echo $MY_LOCAL_DISK_NAME | grep 'by-uuid' &> /dev/null && echo yes)
+if [ "$BYUUID" ]; then
+    MY_LOCAL_DISK_NAME=$(readlink -f $MY_LOCAL_DISK_NAME)
+fi
+if [ ! -e $MY_LOCAL_DISK_NAME ]; then exit 1; fi
 DP=$(echo $MY_LOCAL_DISK_NAME | grep -i nvme &> /dev/null && echo p)
 BYID=$(echo $MY_LOCAL_DISK_NAME | grep 'by-id' &> /dev/null && echo yes)
 BYPATH=$(echo $MY_LOCAL_DISK_NAME | grep 'by-path' &> /dev/null && echo yes)

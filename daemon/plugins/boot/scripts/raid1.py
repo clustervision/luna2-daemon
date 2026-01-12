@@ -64,6 +64,24 @@ cat /tmp/my-local-disk.sh
     partscript = """
 . /tmp/my-local-disk.sh
 echo "=== Using disk [$MY_LOCAL_DISK1_NAME] + [$MY_LOCAL_DISK2_NAME] for RAID1 ==="
+if [ ! -e $MY_LOCAL_DISK1_NAME ]; then
+    echo "RAID1 script: \$MY_LOCAL_DISK1_NAME [$MY_LOCAL_DISK1_NAME] does not exist!"
+    exit 1
+fi
+if [ ! -e $MY_LOCAL_DISK2_NAME ]; then
+    echo "RAID1 script: \$MY_LOCAL_DISK2_NAME [$MY_LOCAL_DISK2_NAME] does not exist!"
+    exit 1
+fi
+BYUUID1=$(echo $MY_LOCAL_DISK1_NAME | grep 'by-uuid' &> /dev/null && echo yes)
+BYUUID2=$(echo $MY_LOCAL_DISK2_NAME | grep 'by-uuid' &> /dev/null && echo yes)
+if [ "$BYUUID1" ]; then
+    MY_LOCAL_DISK1_NAME=$(readlink -f $MY_LOCAL_DISK1_NAME)
+    echo "RAID1 script: UUID1 translates to $MY_LOCAL_DISK1_NAME"
+fi
+if [ "$BYUUID2" ]; then
+    MY_LOCAL_DISK2_NAME=$(readlink -f $MY_LOCAL_DISK2_NAME)
+    echo "RAID1 script: UUID2 translates to $MY_LOCAL_DISK2_NAME"
+fi
 DP1=$(echo $MY_LOCAL_DISK1_NAME | grep -i nvme &> /dev/null && echo p)
 DP2=$(echo $MY_LOCAL_DISK2_NAME | grep -i nvme &> /dev/null && echo p)
 BYID1=$(echo $MY_LOCAL_DISK1_NAME | grep 'by-id' &> /dev/null && echo yes)
@@ -131,6 +149,16 @@ mount ${MY_LOCAL_DISK1_NAME}${DP1}1 /sysroot/boot/efi
 
     postscript = """
 . /tmp/my-local-disk.sh
+BYUUID1=$(echo $MY_LOCAL_DISK1_NAME | grep 'by-uuid' &> /dev/null && echo yes)
+BYUUID2=$(echo $MY_LOCAL_DISK2_NAME | grep 'by-uuid' &> /dev/null && echo yes)
+if [ "$BYUUID1" ]; then
+    MY_LOCAL_DISK1_NAME=$(readlink -f $MY_LOCAL_DISK1_NAME)
+fi
+if [ "$BYUUID2" ]; then
+    MY_LOCAL_DISK2_NAME=$(readlink -f $MY_LOCAL_DISK2_NAME)
+fi
+if [ ! -e $MY_LOCAL_DISK1_NAME ]; then exit 1; fi
+if [ ! -e $MY_LOCAL_DISK2_NAME ]; then exit 1; fi
 DP1=$(echo $MY_LOCAL_DISK1_NAME | grep -i nvme &> /dev/null && echo p)
 DP2=$(echo $MY_LOCAL_DISK2_NAME | grep -i nvme &> /dev/null && echo p)
 BYID1=$(echo $MY_LOCAL_DISK1_NAME | grep 'by-id' &> /dev/null && echo yes)

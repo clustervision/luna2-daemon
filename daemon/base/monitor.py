@@ -179,7 +179,7 @@ class Monitor():
                 where = f'id = "{node}" OR name = "{node}";'
                 node_db = Database().get_record(table='node', where=where)
                 if node_db:
-                    self.logger.info(f"node {node}: {state}, {node_status}")
+                    self.logger.info(f"node {node}: {state}, {node_status or 'ok'}")
                     row = [{"column": "tableref", "value": "node"},
                            {"column": "tablerefid", "value": node_db[0]['id']},
                            {"column": "state", "value": state}]

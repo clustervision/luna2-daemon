@@ -319,6 +319,24 @@ class Group():
                         })
                 create = True
 
+            for item in ['scripts','roles','provision_method','provision_fallback']:
+                if item in data:
+                    boot_plugins = Helper().plugin_finder(f'{self.plugins_path}/boot')
+            for item in ['scripts','roles']:
+                if item in data:
+                    item_datas = data[item].replace(',,',',')
+                    item_datas = item_datas.strip()
+                    if item_datas:
+                        for item_data in item_datas.split(','):
+                            if item_data+'.py' not in boot_plugins['boot'][item]:
+                                status = False
+                                return status, f'plugin {item_data} does not exist'
+            for item in ['provision_method','provision_fallback']:
+                if item in data and data[item]:
+                    if data['provision_method']+'.py' not in boot_plugins['boot']['provision']:
+                        status = False
+                        return status, f'provisioning plugin {data[item]} does not exist'
+
             # we reset to make sure we don't add something that won't work
             if 'osimage' in data:
                 data['osimagetagid'] = "default"

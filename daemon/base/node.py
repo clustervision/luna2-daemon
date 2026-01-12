@@ -572,6 +572,24 @@ class Node():
                     return status, ret_msg
                 create = True
 
+            for item in ['scripts','roles','provision_method','provision_fallback']:
+                if item in data:
+                    boot_plugins = Helper().plugin_finder(f'{self.plugins_path}/boot')
+            for item in ['scripts','roles']:
+                if item in data:
+                    item_datas = data[item].replace(',,',',')
+                    item_datas = item_datas.strip()
+                    if item_datas:
+                        for item_data in item_datas.split(','):
+                            if item_data+'.py' not in boot_plugins['boot'][item]:
+                                status = False
+                                return status, f'plugin {item_data} does not exist'
+            for item in ['provision_method','provision_fallback']:
+                if item in data and data[item]:
+                    if data['provision_method']+'.py' not in boot_plugins['boot']['provision']:
+                        status = False
+                        return status, f'provisioning plugin {data[item]} does not exist'
+
             for key, value in items.items():
                 if key in data:
                     data[key] = data[key] or value

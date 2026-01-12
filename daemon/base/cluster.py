@@ -38,6 +38,7 @@ from utils.service import Service
 from utils.helper import Helper
 from utils.tables import Tables
 from utils.controller import Controller
+from common.constant import CONSTANT
 
 
 class Cluster():
@@ -50,6 +51,7 @@ class Cluster():
         This constructor will initialize all required variables here.
         """
         self.logger = Log.get_logger()
+        self.plugins_path=CONSTANT["PLUGINS"]["PLUGINS_DIRECTORY"]
 
 
     def information(self):
@@ -232,6 +234,15 @@ class Cluster():
                     return status, ret_msg
                 Service().queue('dns','reload')
                 Service().queue('dns','restart')
+
+            for item in ['provision_method','provision_fallback']:
+                if item in data:
+                    boot_plugins = Helper().plugin_finder(f'{self.plugins_path}/boot')
+            for item in ['provision_method','provision_fallback']:
+                if item in data and data[item]:
+                    if data['provision_method']+'.py' not in boot_plugins['boot']['provision']:
+                        status = False
+                        return status, f'provisioning plugin {data[item]} does not exist'
 
             cluster_columns = Database().get_columns('cluster')
             cluster_check = Helper().compare_list(data, cluster_columns)

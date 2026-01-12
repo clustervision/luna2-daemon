@@ -325,9 +325,9 @@ class Group():
             for item in ['scripts','roles']:
                 if item in data:
                     item_datas = data[item].replace(',,',',')
-                    item_datas = item_datas.strip()
                     if item_datas:
                         for item_data in item_datas.split(','):
+                            item_data = item_data.strip()
                             if item_data+'.py' not in boot_plugins['boot'][item]:
                                 status = False
                                 return status, f'plugin {item_data} does not exist'

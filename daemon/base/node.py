@@ -533,7 +533,6 @@ class Node():
         """
         This method will return update requested node.
         """
-        # status = False
         data = {}
         items = {
             # 'setupbmc': False,
@@ -545,6 +544,7 @@ class Node():
         # real time and not here
         create, update = False, False
         status = False
+        needs_rewrite = False
         response = "Internal error"
         if request_data:
             data = request_data['config']['node'][name]
@@ -608,6 +608,7 @@ class Node():
             interfaces = None
             if 'interfaces' in data:
                 interfaces = data['interfaces']
+                needs_rewrite = True
                 del data['interfaces']
 
             if 'osimagetag' in data:
@@ -685,11 +686,12 @@ class Node():
                 # below might look as redundant but is added to prevent a possible race condition
                 # when many nodes are added in a loop.
                 # the below tasks ensures that even the last node will be included in dhcp/dns
-                Queue().add_task_to_queue(task='restart', param='dhcp', 
+                if needs_rewrite:
+                    Queue().add_task_to_queue(task='restart', param='dhcp', 
                                           subsystem='housekeeper', request_id='__node_update__')
-                Queue().add_task_to_queue(task='restart', param='dhcp6', 
+                    Queue().add_task_to_queue(task='restart', param='dhcp6', 
                                           subsystem='housekeeper', request_id='__node_update__')
-                Queue().add_task_to_queue(task='reload', param='dns', 
+                    Queue().add_task_to_queue(task='reload', param='dns', 
                                           subsystem='housekeeper', request_id='__node_update__')
 
                 # ---- we call the node plugin - maybe someone wants to run something after create/update?

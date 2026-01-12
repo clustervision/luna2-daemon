@@ -45,7 +45,6 @@ from common.bootstrap import validate_bootstrap
 from utils.housekeeper import Housekeeper
 from utils.service import Service
 from utils.helper import Helper
-#from utils.queue import Queue
 from routes.auth import auth_blueprint
 from routes.boot import boot_blueprint
 from routes.boot_roles import roles_blueprint

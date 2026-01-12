@@ -1753,6 +1753,7 @@ class Boot():
 
 
         ## INTERFACE CODE SEGMENT
+        skip_old_interface_plugin = False
         network_template = Helper().template_find(
             self.boot_plugins,
             'boot/network',
@@ -1766,39 +1767,42 @@ class Boot():
                     interface_template_data = template_file.read()
                 segment = str(interface_template_data)
                 template_data = template_data.replace("## INTERFACE TEMPLATE SEGMENT", segment)
+                skip_old_interface_plugin = True
             except Exception as exp:
                 self.logger.error(f"{exp}")
 
-        network_plugin = Helper().plugin_load(
-            self.boot_plugins,
-            'boot/network',
-            data['distribution'],
-            data['osrelease']
-        )
-        try:
-            segment = str(network_plugin().init)
-            template_data = template_data.replace("## NETWORK INIT CODE SEGMENT", segment)
-        except:
-            pass
-        segment = str(network_plugin().hostname)
-        template_data = template_data.replace("## HOSTNAME CODE SEGMENT", segment)
-        # --------- ipv4
-        segment = str(network_plugin().interface)
-        template_data = template_data.replace("## INTERFACE CODE SEGMENT", segment)
-        segment = str(network_plugin().gateway)
-        template_data = template_data.replace("## GATEWAY CODE SEGMENT", segment)
-        segment = str(network_plugin().dns)
-        template_data = template_data.replace("## DNS CODE SEGMENT", segment)
-        # --------- ipv6
-        try:
-            segment = str(network_plugin().interface_ipv6)
-            template_data = template_data.replace("## INTERFACE IPv6 CODE SEGMENT", segment)
-            segment = str(network_plugin().gateway_ipv6)
-            template_data = template_data.replace("## GATEWAY IPv6 CODE SEGMENT", segment)
-            segment = str(network_plugin().dns_ipv6)
-            template_data = template_data.replace("## DNS IPv6 CODE SEGMENT", segment)
-        except:
-            pass
+        if not skip_old_interface_plugin:
+            network_plugin = Helper().plugin_load(
+                self.boot_plugins,
+                'boot/network',
+                data['distribution'],
+                data['osrelease']
+            )
+            try:
+                segment = str(network_plugin().init)
+                template_data = template_data.replace("## NETWORK INIT CODE SEGMENT", segment)
+            except:
+                self.logger.warning(f"{exp}")
+            # --------- ipv4
+            try:
+                segment = str(network_plugin().interface)
+                template_data = template_data.replace("## INTERFACE CODE SEGMENT", segment)
+                segment = str(network_plugin().gateway)
+                template_data = template_data.replace("## GATEWAY CODE SEGMENT", segment)
+                segment = str(network_plugin().dns)
+                template_data = template_data.replace("## DNS CODE SEGMENT", segment)
+            except:
+                self.logger.warning(f"{exp}")
+            # --------- ipv6
+            try:
+                segment = str(network_plugin().interface_ipv6)
+                template_data = template_data.replace("## INTERFACE IPv6 CODE SEGMENT", segment)
+                segment = str(network_plugin().gateway_ipv6)
+                template_data = template_data.replace("## GATEWAY IPv6 CODE SEGMENT", segment)
+                segment = str(network_plugin().dns_ipv6)
+                template_data = template_data.replace("## DNS IPv6 CODE SEGMENT", segment)
+            except:
+                self.logger.warning(f"{exp}")
 
         ## BMC CODE SEGMENT
         bmc_plugin = Helper().plugin_load(

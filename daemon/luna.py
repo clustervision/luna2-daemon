@@ -45,6 +45,7 @@ from common.bootstrap import validate_bootstrap
 from utils.housekeeper import Housekeeper
 from utils.service import Service
 from utils.helper import Helper
+from utils.queue import Queue
 from routes.auth import auth_blueprint
 from routes.boot import boot_blueprint
 from routes.boot_roles import roles_blueprint
@@ -88,10 +89,20 @@ def on_starting(server):
         sys.exit(1)
     # we generate initial dhcpd and dns configs
     try:
-        Service().luna_service('dhcp', 'restart')
-        Service().luna_service('dhcp6', 'restart')
-        Service().luna_service('dns', 'reload')
-        Service().luna_service('dns', 'start')
+        Queue().add_task_to_queue(task='restart', param='dhcp', 
+                                  subsystem='housekeeper', request_id='__luna start__')
+        Queue().add_task_to_queue(task='restart', param='dhcp6', 
+                                  subsystem='housekeeper', request_id='__luna start__')
+        Queue().add_task_to_queue(task='reload', param='dns', 
+                                  subsystem='housekeeper', request_id='__luna start__')
+        Queue().add_task_to_queue(task='start', param='dns', 
+                                  subsystem='housekeeper', request_id='__luna start__')
+
+        # we no longer do this here as to allow syncs first. also quicker startup
+        #Service().luna_service('dhcp', 'restart')
+        #Service().luna_service('dhcp6', 'restart')
+        #Service().luna_service('dns', 'reload')
+        #Service().luna_service('dns', 'start')
     except Exception as exp:
         exc_type, exc_obj, exc_tb = sys.exc_info()
         sys.stderr.write(f"ERROR: Restarting services returned an exception: {exp}, {exc_type}, in {exc_tb.tb_lineno}\n")

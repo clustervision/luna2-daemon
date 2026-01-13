@@ -705,15 +705,15 @@ class Node():
                 # when many nodes are added in a loop.
                 # the below tasks ensures that even the last node will be included in dhcp/dns
                 if needs_rewrite:
-                    Queue().add_task_to_queue(task='restart', param='dhcp', 
+                    Queue().add_task_to_queue(task='restart', param='dhcp',
                                           subsystem='housekeeper', request_id='__node_update__')
-                    Queue().add_task_to_queue(task='restart', param='dhcp6', 
+                    Queue().add_task_to_queue(task='restart', param='dhcp6',
                                           subsystem='housekeeper', request_id='__node_update__')
-                    Queue().add_task_to_queue(task='reload', param='dns', 
+                    Queue().add_task_to_queue(task='reload', param='dns',
                                           subsystem='housekeeper', request_id='__node_update__')
 
                 # ---- we call the node plugin - maybe someone wants to run something after create/update?
-                Queue().add_task_to_queue(task='run_bulk', param='node:master', 
+                Queue().add_task_to_queue(task='run_bulk', param='node:master',
                                           subsystem='housekeeper', request_id='__node_update__')
                 group_details = Database().get_record_join(['group.name'],
                                                            ['group.id=node.groupid'],
@@ -1043,15 +1043,15 @@ class Node():
                 # Service().queue('dhcp6','restart')
                 # do we need dhcp restart? MAC is wiped on new NIC so no real need i guess. pending
                 #Service().queue('dns','reload')
-                #Queue().add_task_to_queue(task='restart', param='dhcp', 
+                #Queue().add_task_to_queue(task='restart', param='dhcp',
                 #                          subsystem='housekeeper', request_id='__node_clone__')
-                #Queue().add_task_to_queue(task='restart', param='dhcp6', 
+                #Queue().add_task_to_queue(task='restart', param='dhcp6',
                 #                          subsystem='housekeeper', request_id='__node_clone__')
-                Queue().add_task_to_queue(task='reload', param='dns', 
+                Queue().add_task_to_queue(task='reload', param='dns',
                                           subsystem='housekeeper', request_id='__node_clone__')
 
                 # ---- we call the node plugin - maybe someone wants to run something after clone?
-                Queue().add_task_to_queue(task='run_bulk', param='node:master', 
+                Queue().add_task_to_queue(task='run_bulk', param='node:master',
                                           subsystem='housekeeper', request_id='__node_clone__')
                 group_details = Database().get_record_join(['group.name'],
                                                            ['group.id=node.groupid'],
@@ -1113,16 +1113,16 @@ class Node():
             # below might look redundant but is added to prevent a possible race condition
             # when many nodes are added in a loop.
             # the below tasks ensures that even the last node will be included in dhcp/dns
-            Queue().add_task_to_queue(task='restart', param='dhcp', 
+            Queue().add_task_to_queue(task='restart', param='dhcp',
                                       subsystem='housekeeper', request_id='__node_delete__')
-            Queue().add_task_to_queue(task='restart', param='dhcp6', 
+            Queue().add_task_to_queue(task='restart', param='dhcp6',
                                       subsystem='housekeeper', request_id='__node_delete__')
-            Queue().add_task_to_queue(task='reload', param='dns', 
+            Queue().add_task_to_queue(task='reload', param='dns',
                                       subsystem='housekeeper', request_id='__node_delete__')
             response = f'Node {name} with all its interfaces removed'
             status=True
             # ---- we call the node plugin - maybe someone wants to run something after delete?
-            Queue().add_task_to_queue(task='run_bulk', param='node:master', 
+            Queue().add_task_to_queue(task='run_bulk', param='node:master',
                                       subsystem='housekeeper', request_id='__node_delete__')
             node_plugins = Helper().plugin_finder(f'{self.plugins_path}/hooks')
             node_plugin=Helper().plugin_load(node_plugins,'hooks/config','node')

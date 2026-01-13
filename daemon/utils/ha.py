@@ -35,6 +35,7 @@ import netifaces as ni
 from time import sleep, time
 from random import randint
 from json import dumps,loads
+from socket import gethostname
 from common.constant import CONSTANT
 from utils.database import Database
 from utils.log import Log
@@ -87,9 +88,12 @@ class HA():
         if self.all_controllers:
             self.dict_controllers = Helper().convert_list_to_dict(self.all_controllers, 'hostname')
             if not self.me:
-                self.me, self.ip = self.find_me(self.all_controllers,self.sharedip) 
+                self.me, self.ip = self.find_me(self.all_controllers,self.sharedip)
             if self.shadow is None and self.me and self.me in self.dict_controllers.keys():
                 self.shadow = Helper().make_bool(self.dict_controllers[self.me]['shadow'])
+            real_me = gethostname().split('.')[0]
+            if real_me != self.me:
+                self.logger.info(f"Real me is {real_me}")
 
 
     def find_me(self,controllers=[],sharedip=None):

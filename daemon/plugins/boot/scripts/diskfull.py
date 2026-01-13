@@ -45,7 +45,7 @@ class Plugin():
     prescript = """
 if [ ! -d /tmp ]; then mkdir /tmp; fi
 if [ ! -f /tmp/my-local-disk.sh ]; then
-cat << EOF >> /tmp/my-local-disk.sh
+cat << EOF > /tmp/my-local-disk.sh
 export MY_LOCAL_DISK_NAME=/dev/sda
 export MY_LOCAL_DISK_SECTORS=   # nr of sectors, optional. if defined, then verified.
 export PARTITION_MY_DISK=yes
@@ -54,20 +54,32 @@ export MAKE_BOOT=yes            # configures and installs grub/shim for standalo
 EOF
 chmod 755 /tmp/my-local-disk.sh
 else
-  echo "DISKFULL script: my-local-disk override found"
+  echo "** DISKFULL script: my-local-disk override found"
 fi
 cat /tmp/my-local-disk.sh
     """
 
     partscript = """
 . /tmp/my-local-disk.sh
-echo "=== Using disk [$MY_LOCAL_DISK_NAME] ==="
-DP=$(echo $MY_LOCAL_DISK_NAME | grep -i nvme &> /dev/null && echo p)
-BYID=$(echo $MY_LOCAL_DISK_NAME | grep 'by-id' &> /dev/null && echo yes)
-BYPATH=$(echo $MY_LOCAL_DISK_NAME | grep 'by-path' &> /dev/null && echo yes)
-if [ "$BYID" ] || [ "$BYPATH" ]; then
-    DP="-part"
+echo "*** DISKFULL script: === Using disk [$MY_LOCAL_DISK_NAME] ==="
+cat << 'DISKEOF' > /tmp/my-fetch-disk.sh
+export BYUUID=$(echo $MY_LOCAL_DISK_NAME | grep 'by-uuid' &> /dev/null && echo yes)
+if [ "$BYUUID" ]; then
+    export MY_LOCAL_DISK_NAME=$(readlink -f $MY_LOCAL_DISK_NAME)
+    echo "*** DISKFULL script: UUID translates to $MY_LOCAL_DISK_NAME"
 fi
+if [ ! -e $MY_LOCAL_DISK_NAME ]; then
+    echo "!!! DISKFULL script: \$MY_LOCAL_DISK_NAME [$MY_LOCAL_DISK_NAME] does not exist - Have to STOP !!!"
+    exit 1
+fi
+export DP=$(echo $MY_LOCAL_DISK_NAME | grep -i nvme &> /dev/null && echo p)
+export BYID=$(echo $MY_LOCAL_DISK_NAME | grep 'by-id' &> /dev/null && echo yes)
+export BYPATH=$(echo $MY_LOCAL_DISK_NAME | grep 'by-path' &> /dev/null && echo yes)
+if [ "$BYID" ] || [ "$BYPATH" ]; then
+    export DP="-part"
+fi
+DISKEOF
+. /tmp/my-fetch-disk.sh
 
 if [ "$MY_LOCAL_DISK_SECTORS" ]; then
         SECTORS=$(cat /sys/block/${MY_LOCAL_DISK_NAME}/size)
@@ -77,6 +89,7 @@ if [ "$MY_LOCAL_DISK_SECTORS" ]; then
         fi
 fi
 if [ "$PARTITION_MY_DISK" == "yes" ]; then
+        echo "*** DISKFULL script: creating partitions"
         for t in 1 2 3 4 5 6; do
                 parted $MY_LOCAL_DISK_NAME -s rm $t 2> /dev/null
         done
@@ -88,9 +101,11 @@ if [ "$PARTITION_MY_DISK" == "yes" ]; then
         parted $MY_LOCAL_DISK_NAME -s 'set 2 boot on'
         parted $MY_LOCAL_DISK_NAME -s 'name 1"EFI System Partition"'
 fi
+echo "*** DISKFULL script: waiting for partitions"
 while [[ ! -b ${MY_LOCAL_DISK_NAME}${DP}1 ]] || [[ ! -b ${MY_LOCAL_DISK_NAME}${DP}2 ]] || [[ ! -b ${MY_LOCAL_DISK_NAME}${DP}3 ]] || [[ ! -b ${MY_LOCAL_DISK_NAME}${DP}4 ]]; do sleep 1; done
 
 if [ "$FORMAT_MY_DISK" == "yes" ]; then
+        echo "*** DISKFULL script: formatting partitions"
         mkswap ${MY_LOCAL_DISK_NAME}${DP}3
         swaplabel -L swappart ${MY_LOCAL_DISK_NAME}${DP}3
 
@@ -98,6 +113,7 @@ if [ "$FORMAT_MY_DISK" == "yes" ]; then
         mkfs.ext4 ${MY_LOCAL_DISK_NAME}${DP}2
         mkfs.ext4 ${MY_LOCAL_DISK_NAME}${DP}4
 fi
+echo "*** DISKFULL script: mounting disks"
 umount -l /sysroot &> /dev/null
 mount ${MY_LOCAL_DISK_NAME}${DP}4 /sysroot
 mkdir /sysroot/boot
@@ -108,18 +124,14 @@ mount ${MY_LOCAL_DISK_NAME}${DP}1 /sysroot/boot/efi
 
     postscript = """
 . /tmp/my-local-disk.sh
-DP=$(echo $MY_LOCAL_DISK_NAME | grep -i nvme &> /dev/null && echo p)
-BYID=$(echo $MY_LOCAL_DISK_NAME | grep 'by-id' &> /dev/null && echo yes)
-BYPATH=$(echo $MY_LOCAL_DISK_NAME | grep 'by-path' &> /dev/null && echo yes)
-if [ "$BYID" ] || [ "$BYPATH" ]; then
-    DP="-part"
-fi
+. /tmp/my-fetch-disk.sh
 
 mkdir /sysroot/proc /sysroot/dev /sysroot/sys &> /dev/null
 mount -t proc proc /sysroot/proc 
 mount -t devtmpfs devtmpfs /sysroot/dev
 mount -t sysfs sysfs /sysroot/sys
 
+echo "*** DISKFULL script: writing fstab"
 FSTAB_DISK=${MY_LOCAL_DISK_NAME}
 FSTAB_DP=${DP}
 if [ "$BYPATH" ]; then
@@ -127,17 +139,24 @@ if [ "$BYPATH" ]; then
     FSTAB_DP=$(echo $FSTAB_DISK | grep -i nvme &> /dev/null && echo p)
 fi
 
-grep -v ${FSTAB_DISK} /sysroot/etc/fstab > /tmp/fstab
+FSTAB_DISK_P1=$(blkid -o export ${FSTAB_DISK}${FSTAB_DP}1 | grep -w UUID || echo ${FSTAB_DISK}${FSTAB_DP}1)
+FSTAB_DISK_P2=$(blkid -o export ${FSTAB_DISK}${FSTAB_DP}2 | grep -w UUID || echo ${FSTAB_DISK}${FSTAB_DP}2)
+FSTAB_DISK_P3=$(blkid -o export ${FSTAB_DISK}${FSTAB_DP}3 | grep -w UUID || echo ${FSTAB_DISK}${FSTAB_DP}3)
+FSTAB_DISK_P4=$(blkid -o export ${FSTAB_DISK}${FSTAB_DP}4 | grep -w UUID || echo ${FSTAB_DISK}${FSTAB_DP}4)
+
+grep -v -e "${FSTAB_DISK}" -e "${FSTAB_DISK_P4}" -e "${FSTAB_DISK_P3}" \
+        -e "${FSTAB_DISK_P2}" -e "${FSTAB_DISK_P1}" /sysroot/etc/fstab > /tmp/fstab
 grep -v -w '/' /tmp/fstab > /sysroot/etc/fstab
 
 cat << EOF >> /sysroot/etc/fstab
-${FSTAB_DISK}${FSTAB_DP}4   /       ext4    defaults        1 1
-${FSTAB_DISK}${FSTAB_DP}2   /boot   ext4    defaults        1 2
-${FSTAB_DISK}${FSTAB_DP}1   /boot/efi   vfat    defaults        1 2
-${FSTAB_DISK}${FSTAB_DP}3   swap    swap    defaults        0 0
+${FSTAB_DISK_P4}   /       ext4    defaults        1 1
+${FSTAB_DISK_P2}   /boot   ext4    defaults        1 2
+${FSTAB_DISK_P1}   /boot/efi   vfat    defaults        1 2
+${FSTAB_DISK_P3}   swap    swap    defaults        0 0
 EOF
 
 if [ "$MAKE_BOOT" == "yes" ]; then
+    echo "*** DISKFULL script: configuring shim boot partition"
     rm -rf /sysroot/lib/dracut/modules.d/95luna/
 
     SH=$(chroot /sysroot /bin/bash -c "efibootmgr -v|grep Shim1|grep -oE '^Boot[0-9]+'|grep -oE '[0-9]+'")
@@ -158,4 +177,5 @@ chroot /sysroot /bin/bash -c "cd /boot && ln -s /boot boot; \
 umount /sysroot/sys
 umount /sysroot/dev
 umount /sysroot/proc
+echo "*** DISKFULL script: done"
     """

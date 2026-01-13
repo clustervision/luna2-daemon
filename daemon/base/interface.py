@@ -202,6 +202,7 @@ class Interface():
                     )
                     if network or ipaddress or set_dhcp or clear_ip:
                         ipaddress_ipv6 = None
+                        clear_ipv4, clear_ipv6 = False, False
                         nodes_in_pool = False # only used as confirmation variable
                         if not ipaddress:
                             if existing:
@@ -231,6 +232,8 @@ class Interface():
                                                 )
                                                 if avail:
                                                     ipaddress = avail
+                                            else: # when we no longer have ipv4 for the new network
+                                                clear_ipv4 = True
                                             if network_details[0]['network_ipv6']:
                                                 ips = Config().get_all_occupied_ips_from_network(network,'ipv6')
                                                 avail = Helper().get_available_ip(
@@ -240,6 +243,8 @@ class Interface():
                                                 )
                                                 if avail:
                                                     ipaddress_ipv6 = avail
+                                            else: # when we no longer have ipv6 for the new network
+                                                clear_ipv6 = True
                                     else:
                                         message=f"Invalid request: network {network} does not exist"
                                         return False, message
@@ -276,22 +281,41 @@ class Interface():
                                         message+="the network has dhcp_nodes_in_pool configured"
                                         message+=". "
                                         message+="automatic ip address assignment not available"
-                        elif nodes_in_pool and (not existing):
-                            # the interface itself exists, but there is not ipaddress config. A new interface.
+                        elif nodes_in_pool: # and (not existing): # <- not sure if we need to check if network already exists
+                            # the interface itself exists, but there is not ipaddress config.
                             # can we safely create the interface? We inherit?                            
                             set_dhcp = True
                             dhcp = True
                         # ---------------------------------------------------------------------------------
 
                         if result and clear_ip:
+                            self.logger.debug(f"------------ clearing all IPs --------------")
                             for ipversion in ['ipv4','ipv6']:
                                 result, message = Config().node_interface_clear_ipaddress(
                                     nodeid,
                                     interface_name,
                                     ipversion=ipversion
                                 )
+                                self.logger.info(f"result: [{result}]")
+
+                        if result and clear_ipv4:
+                            self.logger.debug(f"------------ clearing IPv4 --------------")
+                            result, message = Config().node_interface_clear_ipaddress(
+                                    nodeid,
+                                    interface_name,
+                                    ipversion='ipv4'
+                                )
+
+                        if result and clear_ipv6:
+                            self.logger.debug(f"------------ clearing IPv6 --------------")
+                            result, message = Config().node_interface_clear_ipaddress(
+                                    nodeid,
+                                    interface_name,
+                                    ipversion='ipv6'
+                                )
 
                         if result and set_dhcp:
+                            self.logger.debug(f"------------ set dhcp --------------")
                             result, message = Config().node_interface_dhcp_config(
                                 nodeid,
                                 interface_name,
@@ -301,6 +325,7 @@ class Interface():
 
                         if ipaddress or ipaddress_ipv6:
                             if result and ipaddress:
+                                self.logger.debug(f"------------ IPv4 --------------")
                                 result, message = Config().node_interface_ipaddress_config(
                                     nodeid,
                                     interface_name,
@@ -309,6 +334,7 @@ class Interface():
                                     force
                                 )
                             if result and ipaddress_ipv6:
+                                self.logger.debug(f"------------ IPv6 --------------")
                                 result, message = Config().node_interface_ipaddress_config(
                                     nodeid,
                                     interface_name,

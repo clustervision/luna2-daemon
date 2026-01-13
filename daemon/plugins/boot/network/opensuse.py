@@ -123,11 +123,6 @@ EOF
     fi
     """
 
-    hostname = """
-        echo "$HOSTNAME" > /proc/sys/kernel/hostname
-        chroot /sysroot hostnamectl --static set-hostname $HOSTNAME 2> /dev/null
-    """
-
     gateway = """
         if [ "$GATEWAY" ]; then
             sed -i 's%^#route1=%route1=0.0.0.0/0,'$GATEWAY','$METRIC'%' /sysroot/etc/NetworkManager/system-connections/Connection_${DEVICE}.nmconnection

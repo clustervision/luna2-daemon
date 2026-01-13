@@ -533,7 +533,6 @@ class Node():
         """
         This method will return update requested node.
         """
-        # status = False
         data = {}
         items = {
             # 'setupbmc': False,
@@ -545,6 +544,7 @@ class Node():
         # real time and not here
         create, update = False, False
         status = False
+        needs_rewrite = False
         response = "Internal error"
         if request_data:
             data = request_data['config']['node'][name]
@@ -571,6 +571,24 @@ class Node():
                     ret_msg = 'newnodename is only allowed while update, rename or clone a node'
                     return status, ret_msg
                 create = True
+
+            for item in ['scripts','roles','provision_method','provision_fallback']:
+                if item in data:
+                    boot_plugins = Helper().plugin_finder(f'{self.plugins_path}/boot')
+            for item in ['scripts','roles']:
+                if item in data:
+                    item_datas = data[item].replace(',,',',')
+                    if item_datas:
+                        for item_data in item_datas.split(','):
+                            item_data = item_data.strip()
+                            if item_data+'.py' not in boot_plugins['boot'][item]:
+                                status = False
+                                return status, f'plugin {item_data} does not exist'
+            for item in ['provision_method','provision_fallback']:
+                if item in data and data[item]:
+                    if data['provision_method']+'.py' not in boot_plugins['boot']['provision']:
+                        status = False
+                        return status, f'provisioning plugin {data[item]} does not exist'
 
             for key, value in items.items():
                 if key in data:
@@ -608,6 +626,7 @@ class Node():
             interfaces = None
             if 'interfaces' in data:
                 interfaces = data['interfaces']
+                needs_rewrite = True
                 del data['interfaces']
 
             if 'osimagetag' in data:
@@ -685,15 +704,16 @@ class Node():
                 # below might look as redundant but is added to prevent a possible race condition
                 # when many nodes are added in a loop.
                 # the below tasks ensures that even the last node will be included in dhcp/dns
-                Queue().add_task_to_queue(task='restart', param='dhcp', 
+                if needs_rewrite:
+                    Queue().add_task_to_queue(task='restart', param='dhcp',
                                           subsystem='housekeeper', request_id='__node_update__')
-                Queue().add_task_to_queue(task='restart', param='dhcp6', 
+                    Queue().add_task_to_queue(task='restart', param='dhcp6',
                                           subsystem='housekeeper', request_id='__node_update__')
-                Queue().add_task_to_queue(task='reload', param='dns', 
+                    Queue().add_task_to_queue(task='reload', param='dns',
                                           subsystem='housekeeper', request_id='__node_update__')
 
                 # ---- we call the node plugin - maybe someone wants to run something after create/update?
-                Queue().add_task_to_queue(task='run_bulk', param='node:master', 
+                Queue().add_task_to_queue(task='run_bulk', param='node:master',
                                           subsystem='housekeeper', request_id='__node_update__')
                 group_details = Database().get_record_join(['group.name'],
                                                            ['group.id=node.groupid'],
@@ -1023,15 +1043,15 @@ class Node():
                 # Service().queue('dhcp6','restart')
                 # do we need dhcp restart? MAC is wiped on new NIC so no real need i guess. pending
                 #Service().queue('dns','reload')
-                #Queue().add_task_to_queue(task='restart', param='dhcp', 
+                #Queue().add_task_to_queue(task='restart', param='dhcp',
                 #                          subsystem='housekeeper', request_id='__node_clone__')
-                #Queue().add_task_to_queue(task='restart', param='dhcp6', 
+                #Queue().add_task_to_queue(task='restart', param='dhcp6',
                 #                          subsystem='housekeeper', request_id='__node_clone__')
-                Queue().add_task_to_queue(task='reload', param='dns', 
+                Queue().add_task_to_queue(task='reload', param='dns',
                                           subsystem='housekeeper', request_id='__node_clone__')
 
                 # ---- we call the node plugin - maybe someone wants to run something after clone?
-                Queue().add_task_to_queue(task='run_bulk', param='node:master', 
+                Queue().add_task_to_queue(task='run_bulk', param='node:master',
                                           subsystem='housekeeper', request_id='__node_clone__')
                 group_details = Database().get_record_join(['group.name'],
                                                            ['group.id=node.groupid'],
@@ -1093,16 +1113,16 @@ class Node():
             # below might look redundant but is added to prevent a possible race condition
             # when many nodes are added in a loop.
             # the below tasks ensures that even the last node will be included in dhcp/dns
-            Queue().add_task_to_queue(task='restart', param='dhcp', 
+            Queue().add_task_to_queue(task='restart', param='dhcp',
                                       subsystem='housekeeper', request_id='__node_delete__')
-            Queue().add_task_to_queue(task='restart', param='dhcp6', 
+            Queue().add_task_to_queue(task='restart', param='dhcp6',
                                       subsystem='housekeeper', request_id='__node_delete__')
-            Queue().add_task_to_queue(task='reload', param='dns', 
+            Queue().add_task_to_queue(task='reload', param='dns',
                                       subsystem='housekeeper', request_id='__node_delete__')
             response = f'Node {name} with all its interfaces removed'
             status=True
             # ---- we call the node plugin - maybe someone wants to run something after delete?
-            Queue().add_task_to_queue(task='run_bulk', param='node:master', 
+            Queue().add_task_to_queue(task='run_bulk', param='node:master',
                                       subsystem='housekeeper', request_id='__node_delete__')
             node_plugins = Helper().plugin_finder(f'{self.plugins_path}/hooks')
             node_plugin=Helper().plugin_load(node_plugins,'hooks/config','node')

@@ -13,32 +13,32 @@ zone={{ LUNA_INTERFACES[interface]['zone'] }}
 interface-name=${interface_name}
 autoconnect=true
 
-{% if LUNA_INTERFACES[interface]['type'] == 'bond' %}
+{% if LUNA_INTERFACES[interface]['type'] == 'bond' -%}
 [bond]
 mode={{ LUNA_INTERFACES[interface]['bond_mode'] }}
-    {% if LUNA_INTERFACES[interface]['mtu'] %}
+    {%- if LUNA_INTERFACES[interface]['mtu'] %}
 [ethernet]
 mtu={{ LUNA_INTERFACES[interface]['mtu'] }}
-    {% endif %}
-{% else %}
-    {% if LUNA_INTERFACES[interface]['networktype'] == 'infiniband' %}
+    {%- endif -%}
+{%- else -%}
+    {%- if LUNA_INTERFACES[interface]['networktype'] == 'infiniband' %}
 [infiniband]
 #mtu=65520
 #transport-mode=connected
 transport-mode=datagram
     {%- else %}
 [ethernet]
-    {%- endif %}
+    {%- endif -%}
     {%- if LUNA_INTERFACES[interface]['mtu'] %}
 mtu={{ LUNA_INTERFACES[interface]['mtu'] }}
     {%- endif %}
 {%- endif %}
 
-{% if LUNA_INTERFACES[interface]['type'] == 'slave' %}
+{% if LUNA_INTERFACES[interface]['type'] == 'slave' -%}
 [bond-port]
-{%- else %}
+{%- else -%}
 
-  {% if LUNA_INTERFACES[interface]['type'] == 'vlan' %}
+  {%- if LUNA_INTERFACES[interface]['type'] == 'vlan' or LUNA_INTERFACES[interface]['vlanid'] %}
 [vlan]
     {%- if LUNA_INTERFACES[interface]['vlan_parent'] %}
 parent=${parent_name}
@@ -48,11 +48,7 @@ parent=${interface_name}
 id={{ LUNA_INTERFACES[interface]['vlanid'] }}
   {%- endif %}
 
-[proxy]
-
-{{ LUNA_INTERFACES[interface]['options'] | b64decode }}
-
-  {%- if LUNA_INTERFACES[interface]['dhcp'] %}
+  {% if LUNA_INTERFACES[interface]['dhcp'] %}
 [ipv4]
 method=auto
 dns=
@@ -63,7 +59,7 @@ dhcp-hostname={{ NODE_NAME }}
 method=auto
 dns=
 dns-search=
-  {%- else %}
+  {%- else -%}
     {%- if LUNA_INTERFACES[interface]['ipaddress'] %}
 [ipv4]
 method=manual
@@ -86,10 +82,14 @@ dns-search={{ DOMAIN_SEARCH|join(';') }}
       {%- endif %}
       {%- if LUNA_INTERFACES[interface]['gateway_ipv6'] %}
 route1=0.0.0.0/0,{{ LUNA_INTERFACES[interface]['gateway_ipv6'] }},{{ LUNA_INTERFACES[interface]['gateway_metric'] }}
-      {%- endif %}
+      {%- endif -%}
     {%- else %}
 [ipv6]
 method=ignore
-    {%- endif %}
-  {%- endif %}
+    {%- endif -%}
+  {%- endif -%}
 {%- endif %}
+
+[proxy]
+
+{{ LUNA_INTERFACES[interface]['options'] | b64decode }}

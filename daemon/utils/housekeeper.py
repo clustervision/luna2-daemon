@@ -68,7 +68,7 @@ class Housekeeper(object):
         self.logger = Log.get_logger()
 
     def tasks_mother(self,event):
-        counter=0
+        counter=1
         self.logger.info("Starting tasks thread")
         prev_mother_status=None
         ha_object=HA()
@@ -88,7 +88,7 @@ class Housekeeper(object):
                         self.logger.info(f"tasks_mother will work on {task} {first}")
 
                         match task:
-                            case 'restart'|'reload':
+                            case 'restart'|'reload'|'only_start':
                                 service=first
                                 if service in ['dhcp','dhcp6','dns']:
                                     Queue().update_task_status_in_queue(next_id,'in progress')
@@ -175,6 +175,8 @@ class Housekeeper(object):
                                         new_state = f'image unpack failed'
                                         state = {'monitor': {'status': {osimage: {'state': new_state, 'status': '501'} } } }
                                 Monitor().update_itemstatus(item='sync', name=osimage, request_data=state)
+                            case _:
+                                self.logger.warning(f"tasks_mother doesn't know how to handle task {task} {first} {second}")
 
                         if remove_from_queue:
                             Queue().remove_task_from_queue(next_id)

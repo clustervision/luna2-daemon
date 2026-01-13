@@ -123,6 +123,12 @@ class Service(object):
                         else:
                             response = f'{name} config file has errors.'
                             status=False
+                    case 'only_start':
+                        action = 'start'
+                        command = f'{CONSTANT["SERVICES"]["COMMAND"]} {action} {name}'
+                        output, exit_code = Helper().runcommand(command,True,60)
+                        sleep(1)
+                        status, response = self.service_status(name, action, exit_code, output)
                     case 'status':
                         command = f'{CONSTANT["SERVICES"]["COMMAND"]} {action} {name}'
                         output, exit_code = Helper().runcommand(command,True,60)
@@ -210,8 +216,8 @@ class Service(object):
                     status=False
         return status, response
 
-    def service_mother(self,service,action,request_id):  # service and action not really mandatory unless we use the below commented block
 
+    def service_mother(self,service,action,request_id):  # service and action not really mandatory unless we use the below commented block
         self.logger.info("service_mother called")
         try:
 #            # Below section is already done in config/pack GET call but kept here in case we want to move it back

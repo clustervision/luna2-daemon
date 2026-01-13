@@ -54,13 +54,6 @@ class Plugin():
         #$OPTIONS
     """
 
-    hostname = """
-        cd /sysroot
-        echo "$HOSTNAME" > /proc/sys/kernel/hostname
-        echo "HOSTNAME=$HOSTNAME" >> etc/sysconfig/network
-        echo "$HOSTNAME" > etc/hostname
-    """
-
     gateway = """
         cd /sysroot
         EXISTMETRIC=$(grep GATEWAYMETRIC etc/sysconfig/network || echo "999")

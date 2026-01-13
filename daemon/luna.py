@@ -95,7 +95,7 @@ def on_starting(server):
                                   subsystem='housekeeper', request_id='__luna start__')
         Queue().add_task_to_queue(task='reload', param='dns', 
                                   subsystem='housekeeper', request_id='__luna start__')
-        Queue().add_task_to_queue(task='start', param='dns', 
+        Queue().add_task_to_queue(task='only_start', param='dns', 
                                   subsystem='housekeeper', request_id='__luna start__')
 
         # we no longer do this here as to allow syncs first. also quicker startup

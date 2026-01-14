@@ -72,6 +72,8 @@ class Housekeeper(object):
         self.logger.info("Starting tasks thread")
         prev_mother_status=None
         ha_object=HA()
+        if (not ha_object.get_hastate()) or (not ha_object.get_role()):
+            counter=3
         while True:
             try:
                 counter+=1

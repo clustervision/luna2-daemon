@@ -99,8 +99,8 @@ class Secret():
                 response = {'config': {'secrets': {} }}
                 status=True
             else:
-                self.logger.error(f'Secrets are not available for node {name}.')
-                response = f'Secrets are not available for node {name}'
+                self.logger.warning(f'no secrets available for node {name}')
+                response = f'No secrets available for node {name}'
                 status=False
             if nodesecrets:
                 response['config']['secrets']['node'] = {}
@@ -378,7 +378,8 @@ class Secret():
                     response['config']['secrets']['group'][name].append(grp)
                     status=True
             else:
-                response = f'Secrets are not available for group {name}'
+                self.logger.warning(f'no secrets available for group {name}')
+                response = f'No secrets available for group {name}'
                 status=False
         else:
             response = f'Group {name} is not available'

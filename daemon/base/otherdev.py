@@ -136,6 +136,8 @@ class OtherDev():
                 if result is False:
                     response = f'{message}'
                     status=False
+                    if create:
+                        self.delete_otherdev(name)
             elif ipaddress or network:
                 result, message = Config().device_ipaddress_config(
                     device_id,
@@ -146,6 +148,8 @@ class OtherDev():
                 if result is False:
                     response = f'{message}'
                     status=False
+                    if create:
+                        self.delete_otherdev(name)
                 else:
                     Service().queue('dhcp','restart')
                     Service().queue('dhcp6','restart')

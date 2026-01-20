@@ -141,10 +141,10 @@ if [ "$FORMAT_MY_DISK" == "yes" ]; then
         # there is a fair share the RAID labeled disks are not availabe as a UUID block device. We test, try and move on.
         if [ "${MY_LOCAL_DISK1_UUID}" ] && [ "${MY_LOCAL_DISK2_UUID}" ] && [ -e /dev/disk/by-uuid/${MY_LOCAL_DISK1_UUID} ] && [ -e /dev/disk/by-uuid/${MY_LOCAL_DISK2_UUID} ]; then
             echo "*** RAID1 script: making RAID1 on [/dev/disk/by-uuid/${MY_LOCAL_DISK1_UUID}] + [/dev/disk/by-uuid/${MY_LOCAL_DISK2_UUID}]"
-            echo y | mdadm --create /dev/md0 --metadata 1.2 --force --assume-clean --level=mirror --raid-devices=2 /dev/disk/by-uuid/${MY_LOCAL_DISK1_UUID} /dev/disk/by-uuid/${MY_LOCAL_DISK2_UUID}
+            echo y | mdadm --create /dev/md0 --metadata 1.2 --bitmap=internal --force --assume-clean --level=mirror --raid-devices=2 /dev/disk/by-uuid/${MY_LOCAL_DISK1_UUID} /dev/disk/by-uuid/${MY_LOCAL_DISK2_UUID}
         else
             echo "*** RAID1 script: making RAID1 on [${MY_LOCAL_DISK1_NAME}${DP1}4] + [${MY_LOCAL_DISK2_NAME}${DP2}4]"
-            echo y | mdadm --create /dev/md0 --metadata 1.2 --force --assume-clean --level=mirror --raid-devices=2 ${MY_LOCAL_DISK1_NAME}${DP1}4 ${MY_LOCAL_DISK2_NAME}${DP2}4
+            echo y | mdadm --create /dev/md0 --metadata 1.2 --bitmap=internal --force --assume-clean --level=mirror --raid-devices=2 ${MY_LOCAL_DISK1_NAME}${DP1}4 ${MY_LOCAL_DISK2_NAME}${DP2}4
         fi
         sleep 3
         mkfs.ext4 /dev/md0

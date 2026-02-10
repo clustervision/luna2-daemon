@@ -55,8 +55,18 @@ def boot():
     else:
         if human_friendly_errors:
             access_code = 200
-            return render_template_string(response['template_data'],
-                                          MESSAGE = response['message']), access_code
+            if isinstance(response, dict): 
+                if 'template' in response:
+                    return render_template(
+                        response['template'],
+                        LUNA_CONTROLLER        = response['ipaddress'],
+                        WEBSERVER_PORT         = response['webserver_port'],
+                        WEBSERVER_PROTOCOL     = response['webserver_protocol'],
+                        MESSAGE = response['message']), access_code
+                elif 'template_data' in response:
+                    return render_template_string(
+                        response['template_data'],
+                        MESSAGE = response['message']), access_code
         else:
             access_code = 404
             return response, access_code
@@ -91,8 +101,18 @@ def boot_short():
     else:
         if human_friendly_errors:
             access_code = 200
-            return render_template_string(reponse['template_data'],
-                                          MESSAGE = response['message']), access_code
+            if isinstance(response, dict): 
+                if 'template' in response:
+                    return render_template(
+                        response['template'],
+                        LUNA_CONTROLLER        = response['ipaddress'],
+                        WEBSERVER_PORT         = response['webserver_port'],
+                        WEBSERVER_PROTOCOL     = response['webserver_protocol'],
+                        MESSAGE = response['message']), access_code
+                elif 'template_data' in response:
+                    return render_template_string(
+                        response['template_data'],
+                        MESSAGE = response['message']), access_code
         else:
             access_code = 404
             return response, access_code
@@ -124,8 +144,19 @@ def boot_disk():
     else:
         if human_friendly_errors:
             access_code = 200
-            return render_template_string(response['template_data'],
-                                          MESSAGE = response['message']), access_code
+            if isinstance(response, dict): 
+                if 'template' in response:
+                    return render_template(
+                        response['template'],
+                        LUNA_CONTROLLER        = response['ipaddress'],
+                        WEBSERVER_PORT         = response['webserver_port'],
+                        WEBSERVER_PROTOCOL     = response['webserver_protocol'],
+                        PATH                   = '/boot/disk',
+                        MESSAGE = response['message']), access_code
+                elif 'template_data' in response:
+                    return render_template_string(
+                        response['template_data'],
+                        MESSAGE = response['message']), access_code
         else:
             access_code = 404
             return response, access_code

@@ -137,6 +137,34 @@ class Boot():
             self.controller_name = 'controller'
 
 
+    def failed_boot(self,message="undefined error"):
+        webserver_protocol = CONSTANT['API']['PROTOCOL']
+        webserver_port = '7050'
+        endpoint = CONSTANT['API']['ENDPOINT'].split(':')
+        if len(endpoint) > 1:
+            webserver_port = endpoint[1]
+        if self.controller_name:
+            webserver_port = self.controller_serverport
+            if 'WEBSERVER' in CONSTANT:
+                if 'PORT' in CONSTANT['WEBSERVER']:
+                    webserver_port = CONSTANT['WEBSERVER']['PORT']
+                if 'PROTOCOL' in CONSTANT['WEBSERVER']:
+                    webserver_protocol = CONSTANT['WEBSERVER']['PROTOCOL']
+        faildata = {
+            'message'            : message,
+            'ipaddress'          : self.controller_ip,
+            'webserver_protocol' : webserver_protocol,
+            'webserver_port'     : webserver_port
+        }
+        template = 'templ_boot_failed.cfg'
+        template_path = f'{CONSTANT["TEMPLATES"]["TEMPLATE_FILES"]}/{template}'
+        check_template = Helper().check_jinja(template_path)
+        if not check_template:
+            faildata['template_data'] = self.failtemplate
+        else:
+            faildata['template'] = template
+        return faildata
+
     def wait_for_insync(self,trial=25):
         while self.insync is False and trial>0:
             self.insync = self.ha_object.get_insync()
@@ -254,7 +282,7 @@ class Boot():
         template_path = f'{CONSTANT["TEMPLATES"]["TEMPLATE_FILES"]}/{template}'
         check_template = Helper().check_jinja(template_path)
         if not check_template:
-            faildata = {'template_data': self.failtemplate, 'message': "default boot template does not exist"}
+            faildata = self.failed_boot("default boot template does not exist")
             return False, faildata
         controller_ips=[]
         for controller in self.all_controllers.keys():
@@ -298,7 +326,7 @@ class Boot():
             status=True
         else:
             self.logger.error(f"configuration error: No controller available or missing network for controller {self.controller_name}")
-            faildata = {'template_data': self.failtemplate, 'message': "no controller available"}
+            faildata = self.failed_boot("no controller available")
             return False, faildata
         self.logger.info(f'Boot API serving {template}')
         response = {
@@ -328,7 +356,7 @@ class Boot():
         template_path = f'{CONSTANT["TEMPLATES"]["TEMPLATE_FILES"]}/{template}'
         check_template = Helper().check_jinja(template_path)
         if not check_template:
-            faildata = {'template_data': self.failtemplate, 'message': "short boot template does not exist"}
+            faildata = self.failed_boot("short boot template does not exist")
             return False, faildata
         controller_ips=[]
         for controller in self.all_controllers.keys():
@@ -377,7 +405,7 @@ class Boot():
         template_path = f'{CONSTANT["TEMPLATES"]["TEMPLATE_FILES"]}/{template}'
         check_template = Helper().check_jinja(template_path)
         if not check_template:
-            faildata = {'template_data': self.failtemplate, 'message': "disk boot template does not exist"}
+            faildata = self.failed_boot("disk boot template does not exist")
             return False, faildata
         controller_ips=[]
         for controller in self.all_controllers.keys():
@@ -439,7 +467,7 @@ class Boot():
         template_path = f'{CONSTANT["TEMPLATES"]["TEMPLATE_FILES"]}/{template}'
         check_template = Helper().check_jinja(template_path)
         if not check_template:
-            faildata = {'template_data': self.failtemplate, 'message': "node boot template does not exist"}
+            faildata = self.failed_boot("node boot template does not exist")
             return False, faildata
         if mac:
             mac = mac.lower()
@@ -669,19 +697,7 @@ class Boot():
         # -----------------------------------------------------------------------
         if not data['nodeid']:
             self.logger.info(f"node with macaddress {mac} wants to boot but we do not have any config")
-            faildata = {
-                'message'            : "No config available for node with this MAC address",
-                'ipaddress'          : self.controller_ip,
-                'webserver_protocol' : data['webserver_protocol'],
-                'webserver_port'     : data['webserver_port']
-            }
-            template = 'templ_boot_failed.cfg'
-            template_path = f'{CONSTANT["TEMPLATES"]["TEMPLATE_FILES"]}/{template}'
-            check_template = Helper().check_jinja(template_path)
-            if not check_template:
-                faildata['template_data'] = self.failtemplate
-            else:
-                faildata['template'] = template
+            faildata = self.failed_boot(f"No config or autodetect available for node with MAC address {mac}")
             return False, faildata
 
         data['kerneloptions']=""
@@ -752,7 +768,7 @@ class Boot():
                     template_path = f'{CONSTANT["TEMPLATES"]["TEMPLATE_FILES"]}/{template}'
                     check_template = Helper().check_jinja(template_path)
                     if not check_template:
-                        faildata = {'template_data': self.failtemplate, 'message': "template for kickstart not defined or not existing"}
+                        faildata = self.failed_boot("template for kickstart not defined or not existing")
                         return False, faildata
 
                 # ------------------------------------------------------------------
@@ -768,8 +784,7 @@ class Boot():
             template_path = f'{CONSTANT["TEMPLATES"]["TEMPLATE_FILES"]}/{template}'
             check_template = Helper().check_jinja(template_path)
             if not check_template:
-                environment = jinja2.Environment()
-                faildata = { template_data: self.failtemplate, message: "disk boot template does not exist" }
+                faildata = self.failed_boot("disk boot template does not exist" )
                 return False, faildata
             data['template'] = template
 
@@ -789,19 +804,7 @@ class Boot():
                     if more_info:
                         self.logger.error(more_info)
                         break
-            faildata = {
-                'message'            : more_info,
-                'ipaddress'          : self.controller_ip,
-                'webserver_protocol' : data['webserver_protocol'],
-                'webserver_port'     : data['webserver_port']
-            }
-            template = 'templ_boot_failed.cfg'
-            template_path = f'{CONSTANT["TEMPLATES"]["TEMPLATE_FILES"]}/{template}'
-            check_template = Helper().check_jinja(template_path)
-            if not check_template:
-                faildata['template_data'] = self.failtemplate
-            else:
-                faildata['template'] = template
+            faildata = self.failed_boot(more_info)
             return False, faildata
             #self.logger.info(f'template mac search data: {data}')
         self.logger.info(f'Boot API serving {template}')
@@ -839,7 +842,7 @@ class Boot():
         template_path = f'{CONSTANT["TEMPLATES"]["TEMPLATE_FILES"]}/{template}'
         check_template = Helper().check_jinja(template_path)
         if not check_template:
-            faildata = {'template_data': self.failtemplate, 'message': "node boot template does not exist"}
+            faildata = self.failed_boot("node boot template does not exist")
             return False, faildata
         if mac:
             mac = mac.lower()
@@ -1095,7 +1098,7 @@ class Boot():
                     template_path = f'{CONSTANT["TEMPLATES"]["TEMPLATE_FILES"]}/{template}'
                     check_template = Helper().check_jinja(template_path)
                     if not check_template:
-                        faildata = {'template_data': self.failtemplate, 'message': "template for kickstart not defined or not existing"}
+                        faildata = self.failed_boot("template for kickstart not defined or not existing")
                         return False, faildata
 
                 # ------------------------------------------------------------------
@@ -1111,7 +1114,7 @@ class Boot():
             template_path = f'{CONSTANT["TEMPLATES"]["TEMPLATE_FILES"]}/{template}'
             check_template = Helper().check_jinja(template_path)
             if not check_template:
-                faildata = {'template_data': self.failtemplate, 'message': "disk boot template does not exist"}
+                faildata = self.failed_boot("disk boot template does not exist")
                 return False, faildata
             data['template'] = template
 
@@ -1130,19 +1133,7 @@ class Boot():
                     if more_info:
                         self.logger.error(more_info)
                         break
-            faildata = {
-                'message'            : more_info,
-                'ipaddress'          : self.controller_ip,
-                'webserver_protocol' : data['webserver_protocol'],
-                'webserver_port'     : data['webserver_port']
-            }
-            template = 'templ_boot_failed.cfg'
-            template_path = f'{CONSTANT["TEMPLATES"]["TEMPLATE_FILES"]}/{template}'
-            check_template = Helper().check_jinja(template_path)
-            if not check_template:
-                faildata['template_data'] = self.failtemplate
-            else:
-                faildata['template'] = template
+            faildata = self.failed_boot(more_info)
             return False, faildata
         self.logger.info(f'Boot API serving {template}')
         return status, data
@@ -1178,7 +1169,7 @@ class Boot():
         template_path = f'{CONSTANT["TEMPLATES"]["TEMPLATE_FILES"]}/{template}'
         check_template = Helper().check_jinja(template_path)
         if not check_template:
-            faildata = {'template_data': self.failtemplate, 'message': "node boot template does not exist"}
+            faildata = self.failed_boot("node boot template does not exist")
             return False, faildata
         # Antoine
         if self.controller_name:
@@ -1321,7 +1312,7 @@ class Boot():
                     template_path = f'{CONSTANT["TEMPLATES"]["TEMPLATE_FILES"]}/{template}'
                     check_template = Helper().check_jinja(template_path)
                     if not check_template:
-                        faildata = {'template_data': self.failtemplate, 'message': "template for kickstart not defined or not existing"}
+                        faildata = self.failed_boot("template for kickstart not defined or not existing")
                         return False, faildata
 
                 # ------------------------------------------------------------------
@@ -1337,7 +1328,7 @@ class Boot():
             template_path = f'{CONSTANT["TEMPLATES"]["TEMPLATE_FILES"]}/{template}'
             check_template = Helper().check_jinja(template_path)
             if not check_template:
-                faildata = {'template_data': self.failtemplate, 'message': "disk boot template does not exist"}
+                faildata = self.failed_boot("disk boot template does not exist")
                 return False, faildata
             data['template'] = template
 
@@ -1356,19 +1347,7 @@ class Boot():
                     if more_info:
                         self.logger.error(more_info)
                         break
-            faildata = {
-                'message'            : more_info,
-                'ipaddress'          : self.controller_ip,
-                'webserver_protocol' : data['webserver_protocol'],
-                'webserver_port'     : data['webserver_port']
-            }
-            template = 'templ_boot_failed.cfg'
-            template_path = f'{CONSTANT["TEMPLATES"]["TEMPLATE_FILES"]}/{template}'
-            check_template = Helper().check_jinja(template_path)
-            if not check_template:
-                faildata['template_data'] = self.failtemplate
-            else:
-                faildata['template'] = template
+            faildata = self.failed_boot(more_info)
             return False, faildata
         self.logger.info(f'Boot API serving {template}')
         return status, data

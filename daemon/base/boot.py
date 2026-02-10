@@ -669,7 +669,19 @@ class Boot():
         # -----------------------------------------------------------------------
         if not data['nodeid']:
             self.logger.info(f"node with macaddress {mac} wants to boot but we do not have any config")
-            faildata = {'template_data': self.failtemplate, 'message': "No config available for node with this MAC address"}
+            faildata = {
+                'message'            : "No config available for node with this MAC address",
+                'ipaddress'          : self.controller_ip,
+                'webserver_protocol' : data['webserver_protocol'],
+                'webserver_port'     : data['webserver_port']
+            }
+            template = 'templ_boot_failed.cfg'
+            template_path = f'{CONSTANT["TEMPLATES"]["TEMPLATE_FILES"]}/{template}'
+            check_template = Helper().check_jinja(template_path)
+            if not check_template:
+                faildata['template_data'] = self.failtemplate
+            else:
+                faildata['template'] = template
             return False, faildata
 
         data['kerneloptions']=""
@@ -778,7 +790,6 @@ class Boot():
                         self.logger.error(more_info)
                         break
             faildata = {
-                'template_data'      : self.failtemplate,
                 'message'            : more_info,
                 'ipaddress'          : self.controller_ip,
                 'webserver_protocol' : data['webserver_protocol'],

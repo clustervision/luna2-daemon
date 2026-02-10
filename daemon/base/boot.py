@@ -1798,16 +1798,16 @@ class Boot():
             state = {'monitor': {'status': {data['nodename']: {'state': "install.rendered"} } } }
             Monitor().update_nodestatus(data['nodename'], state)
         else:
-            failmessage = None
+            fail_info = "Not all requirements met. Node cannot install"
             for key, value in data.items():
                 if value is None:
                     self.logger.error(f"{key} has no value. Node {data['nodename']} cannot boot")
-                    if not failmessage:
-                        failmessage = f"{key} has no value. Node {data['nodename']} cannot boot"
+                    fail_info = f"{key} has no value. Node {data['nodename']} cannot boot"
                     more_info=Helper().get_more_info(key)
                     if more_info:
                         self.logger.error(more_info)
-            return False, (failmessage or "Not all requirements met. Node cannot install")
+                        fail_info = more_info
+            return False, fail_info
 
         data['template_data'] = template_data
         jwt_token = None

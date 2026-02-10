@@ -55,8 +55,8 @@ def boot():
     else:
         if human_friendly_errors:
             access_code = 200
-            return render_template_string(data['template_data'],
-                                          MESSAGE = data['message']), access_code
+            return render_template_string(response['template_data'],
+                                          MESSAGE = response['message']), access_code
         else:
             access_code = 404
             return response, access_code
@@ -91,8 +91,8 @@ def boot_short():
     else:
         if human_friendly_errors:
             access_code = 200
-            return render_template_string(data['template_data'],
-                                          MESSAGE = data['message']), access_code
+            return render_template_string(reponse['template_data'],
+                                          MESSAGE = response['message']), access_code
         else:
             access_code = 404
             return response, access_code
@@ -124,8 +124,8 @@ def boot_disk():
     else:
         if human_friendly_errors:
             access_code = 200
-            return render_template_string(data['template_data'],
-                                          MESSAGE = data['message']), access_code
+            return render_template_string(response['template_data'],
+                                          MESSAGE = response['message']), access_code
         else:
             access_code = 404
             return response, access_code
@@ -312,10 +312,6 @@ def boot_install(node=None):
         access_code = 200
     else:
         access_code = 404
-        if human_friendly_errors:
-            if isinstance(data, dict):
-                return render_template_string(data['template_data'],
-                                          MESSAGE = data['message']), access_code
         return data, access_code
 
     return render_template_string(
@@ -370,10 +366,6 @@ def kickstart_install(node=None):
         access_code = 200
     else:
         access_code = 404
-        if human_friendly_errors:
-            if isinstance(data, dict):
-                return render_template_string(data['template_data'],
-                                          MESSAGE = data['message']), access_code
         return data, access_code
 
     return render_template_string(

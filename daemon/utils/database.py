@@ -506,12 +506,16 @@ class Database():
                             if symbol and time_value and time_denom:
                                 values.append(f"datetime('now','{symbol}{time_value} {time_denom}')")
                                 # only sqlite complaint! pending
-                            else:
+                            elif str(each["value"]).isdecimal():
                                 values.append('datetime('+str(each["value"])+',"unixepoch")')
+                            else:
+                                values.append('datetime("'+str(each["value"])+'")')
                         elif each["value"] is None:
                             values.append('datetime(0,"unixepoch")')
-                        else:
+                        elif str(each["value"]).isdecimal():
                             values.append('datetime('+str(each["value"])+',"unixepoch")')
+                        else:
+                            values.append('datetime("'+str(each["value"])+'")')
                 else:
                     if each["value"] is not None:
                         if isinstance(each["value"], str):
@@ -590,12 +594,16 @@ class Database():
                             if symbol and time_value and time_denom:
                                 column = column + f" = datetime('now','{symbol}{time_value} {time_denom}')"
                                 # only sqlite compliant! pending
-                            else:
+                            elif str(cols['value']).isdecimal():
                                 column = column + f" = datetime({cols['value']}, 'unixepoch')"
+                            else:
+                                column = column + f" = datetime('{cols['value']}')"
                         elif cols["value"] is None:
                             column = column + f" = datetime(0, 'unixepoch')"
-                        else:
+                        elif str(cols['value']).isdecimal():
                             column = column + f" = datetime({cols['value']}, 'unixepoch')"
+                        else:
+                            column = column + f" = datetime('{cols['value']}')"
                 else:
                     if cols['value'] is not None:
                         if isinstance(cols["value"], str):

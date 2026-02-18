@@ -175,13 +175,11 @@ class Tables():
                     if 'STRUCTURE' in record:
                         result=DBStructure().check_and_fix_table_layout(table,layout=record['STRUCTURE'])
                         if not result:
-                            self.logger.error(f"Error importing structure for table {table}")
+                            self.logger.error(f"error importing structure for table {table}")
                             return False
                         structure_present=True
-            else:
-                self.logger.warning(f"Skipping importing structure for table {table}")
             if (not structure_present) or (not fixtable):
-                self.logger.info(f"Mangling data to match structure of table {table}")
+                self.logger.warning(f"mangling data to match structure of table {table}")
                 data=DBStructure().check_and_match_table_data(table,data)
         Database().clear(table)
         if not data:

@@ -156,7 +156,7 @@ class Tables():
         return status, response
 
 
-    def import_table(self,table,data=[],emptyok=False):
+    def import_table(self,table,data=[],emptyok=False,fixtable=True):
         seq=None
         result=True
         if not data:
@@ -167,14 +167,22 @@ class Tables():
                 self.logger.error(f"data for table {table} is empty but clashes with emptyok {emptyok}")
                 return False
         if data:
-            for record in data:
-                if 'SQLITE_SEQUENCE' in record:
-                    seq=record['SQLITE_SEQUENCE']
-                if 'STRUCTURE' in record:
-                    result=DBStructure().check_and_fix_table_layout(table,layout=record['STRUCTURE'])
-                    if not result:
-                        self.logger.error(f"Error importing structure for table {table}")
-                        return False
+            structure_present=False
+            if fixtable:
+                for record in data:
+                    if 'SQLITE_SEQUENCE' in record:
+                        seq=record['SQLITE_SEQUENCE']
+                    if 'STRUCTURE' in record:
+                        result=DBStructure().check_and_fix_table_layout(table,layout=record['STRUCTURE'])
+                        if not result:
+                            self.logger.error(f"Error importing structure for table {table}")
+                            return False
+                        structure_present=True
+            else:
+                self.logger.warning(f"Skipping importing structure for table {table}")
+            if (not structure_present) or (not fixtable):
+                self.logger.info(f"Mangling data to match structure of table {table}")
+                data=DBStructure().check_and_match_table_data(table,data)
         Database().clear(table)
         if not data:
             self.logger.warning(f"No data for table {table} found so we only cleared the table")

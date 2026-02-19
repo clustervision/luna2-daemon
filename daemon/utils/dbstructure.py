@@ -106,6 +106,34 @@ class DBStructure():
                 Database().create(table, layout)
         return True
    
+    def check_and_match_table_data(self,table,data,dbcolumns=None):
+        """
+        This method will remove unknown table columns from the data.
+        input: a whole block of e.g. node, osimage or group
+        output: sanitized data mafching the table.
+        """
+        if not data:
+            self.logger.error(f'No data provided. cannot proceed')
+            return data
+        if not dbcolumns:
+            dbcolumns = Database().get_columns(table)
+        if dbcolumns:
+            fixed_data=[]
+            for record in data:
+                fixed_record={}
+                if 'SQLITE_SEQUENCE' in record:
+                    continue
+                if 'STRUCTURE' in record:
+                    continue
+                for key in record:
+                    if key not in dbcolumns:
+                        self.logger.warning(f"fix data: column {key} is not present in table {table} layout")
+                    else:
+                        fixed_record[key] = record[key]
+                fixed_data.append(fixed_record)
+            return fixed_data
+        return data
+
     def create_database_tables(self,table=None):
         """
         This method will create DB table

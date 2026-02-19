@@ -119,7 +119,7 @@ class Cluster():
                 status, backup=self.export_config()
                 if status and backup:
                     for table in data.keys():
-                        status=Tables().import_table(table,data[table],emptyok=True)
+                        status=Tables().import_table(table,data[table],emptyok=True,fixtable=False)
                         if not status:
                             response=f"Error importing table {table}. Rolling back config import"
                             for table in backup:

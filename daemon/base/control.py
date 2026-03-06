@@ -106,9 +106,9 @@ class Control():
                     username,
                     password
                 )
+                response = {'control': {subsystem: message}}
                 if 'power' in action:
                     action=action.replace('power ','') # wee ugly but we need to review the API response design - Antoine
-                response = {'control': {subsystem : message } }
                 if result and subsystem == "power" and action in ['on','off','reset','cycle']:
                     state = {'monitor': {'status': {hostname: {'state': command} } } }
                     Monitor().update_nodestatus(hostname, state)
@@ -117,7 +117,7 @@ class Control():
                     node[0]['groupname'],
                     command
                 )
-                status=True
+                status=result
             else:
                 response = f'{hostname} does not have a suitable bmcsetup'
                 status=False

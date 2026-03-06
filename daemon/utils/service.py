@@ -136,17 +136,6 @@ class Service(object):
                     case _:
                         response = f'Service Action {action} Is Not Recognized.'
                         status=False
-            case 'luna2':
-                match action:
-                    case 'start' | 'stop' | 'reload' | 'restart':
-                        response = 'not implemented'
-                        status=True
-                    case 'status':
-                        response = 'not implemented'
-                        status=True
-                    case _:
-                        response = f'Service Action {action} Is Not Recognized.'
-                        status=False
             case _:
                 self.logger.error(f'Service Name {name} Is Not Recognized.')
                 response = f'Service Name {name} Is Not Recognized.'

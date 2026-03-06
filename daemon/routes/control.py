@@ -59,7 +59,10 @@ def control_action_get(hostname=None, subsystem=None, action=None):
             access_code = 200
         response = dumps(response)
     else:
-        response = {'message': response}
+        if response and 'control' in response:
+            access_code = 501
+        else:
+            response = {'message': response}
     return response, access_code
 
 

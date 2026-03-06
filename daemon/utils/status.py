@@ -53,6 +53,7 @@ class Status(object):
 
     def add_message(self,request_id,username_initiator,message,remote_request_id=None,remote_host=None):
         mymessage=f"{message}"
+        mymessage=mymessage[:4096]
         mymessage=mymessage.replace("b'", '')
         mymessage=mymessage.replace("'",'')
         mymessage=mymessage.replace('"','')

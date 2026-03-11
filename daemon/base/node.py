@@ -560,9 +560,9 @@ class Node():
                     if node_check:
                         status = False
                         return status, f'{nodename_new} already present in database'
-                    else:
-                        data['name'] = data['newnodename']
-                        del data['newnodename']
+                    data['name'] = data['newnodename']
+                    del data['newnodename']
+                    needs_rewrite = True
                 update = True
             else:
                 if 'newnodename' in data:

@@ -51,7 +51,7 @@ class Status(object):
         return str(time()) + str(randint(1001, 9999)) + str(getpid())
 
 
-    def add_message(self,request_id,username_initiator,message,remote_request_id=None,remote_host=None):
+    def add_message(self,request_id,username_initiator,message,remote_request_id=None,remote_host=None,status=200):
         mymessage=f"{message}"
         mymessage=mymessage[:4096]
         mymessage=mymessage.replace("b'", '')
@@ -63,25 +63,11 @@ class Status(object):
              {"column": "created", "value": str(current_datetime)},
              {"column": "username_initiator", "value": f"{username_initiator}"},
              {"column": "read", "value": "0"},
+             {"column": "status", "value": f"{status}"},
              {"column": "message", "value": f"{mymessage}"}]
         if remote_request_id and remote_host:
             row.append({"column": "remote_request_id", "value": remote_request_id})
             row.append({"column": "remote_host", "value": remote_host})
-        Database().insert('status', row)
-
-
-    def add_remote_message(self,request_id,username_initiator,message,remote_):
-        mymessage=f"{message}"
-        mymessage=mymessage.replace("b'", '')
-        mymessage=mymessage.replace("'", '"')
-        mymessage=mymessage.replace('"','')
-        #current_datetime=datetime.now().replace(microsecond=0)
-        current_datetime="NOW"
-        row=[{"column": "request_id", "value": f"{request_id}"},
-             {"column": "created", "value": str(current_datetime)},
-             {"column": "username_initiator", "value": f"{username_initiator}"},
-             {"column": "read", "value": "0"},
-             {"column": "message", "value": f"{mymessage}"}]
         Database().insert('status', row)
 
 
@@ -103,10 +89,11 @@ class Status(object):
         """
         This method will get the exact status from queue, depends on the request ID.
         """
-        status = Database().get_record(table='status', where=f'request_id = "{request_id}"')
-        if status:
+        status = 200
+        records = Database().get_record(table='status', where=f'request_id = "{request_id}"')
+        if records:
             message = []
-            for record in status:
+            for record in records:
                 if record['remote_host'] and record['remote_request_id']:
                     status, response = Request().get_request(record['remote_host'], f"/config/status/{record['remote_request_id']}")
                     if status is False:
@@ -119,9 +106,11 @@ class Status(object):
                             if record['message'] == "EOF":
                                 self.del_messages(request_id)
                             else:
+                                if record['status'] != "200":
+                                    status = record['status']
                                 created, *_ = record['created'].split('.') + [None]
                                 message.append(created + " :: " + record['message'])
-            response = {'message': (';;').join(message) }
+            response = {'message': (';;').join(message), 'status': status}
             self.mark_messages_read(request_id)
             return True, response
         return False, 'No data for this request'

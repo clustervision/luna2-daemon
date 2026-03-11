@@ -106,7 +106,7 @@ class Status(object):
                             if record['message'] == "EOF":
                                 self.del_messages(request_id)
                             else:
-                                if record['status'] != "200":
+                                if record['status'] != 200:
                                     status = record['status']
                                 created, *_ = record['created'].split('.') + [None]
                                 message.append(created + " :: " + record['message'])

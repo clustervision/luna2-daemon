@@ -230,6 +230,7 @@ class Control():
         """
         This method will get the exact status of the nodes, depends on the request ID.
         """
+        states = {'200': True, '404': None, '500': False}
         status = Database().get_record(table='status', where=f'request_id = "{request_id}"')
         if status:
             subsystem='unknown'
@@ -246,7 +247,7 @@ class Control():
                             node, command, result, message, *_ = (record['message'].split(':',3) + [None] + [None] + [None])
                             subsystem, action = command.split(' ',1)
                             if subsystem == 'power' and action == 'status':
-                                if result == 'True':
+                                if states[record['status']]:
                                     if message == "on":
                                         on_nodes[node] = 'None'
                                     elif message == "off":
@@ -256,7 +257,7 @@ class Control():
                                 else:
                                     failed_nodes[node] = message
                             else:
-                                if result == 'True':
+                                if states[record['status']]:
                                     ok_nodes[node]=subsystem+' '+action
                                 else:
                                     failed_nodes[node] = message

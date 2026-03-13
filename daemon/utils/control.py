@@ -317,6 +317,7 @@ class Control():
         This method will handle main thread of power control.
         """
         # self.logger.info("control_mother called")
+        states = {'None': 404, 'True': 200, 'False': 500}
         try:
             while pipeline.has_nodes():
                 with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
@@ -327,7 +328,17 @@ class Control():
 
                 for key in list(results):
                     self.logger.debug(f"control_mother result: {key}: {results[key]}")
-                    Status().add_message(request_id, "lpower", f"{key}:{results[key]}")
+                    # -----
+                    status = 200
+                    try:
+                        _,state,*_ = (results[key].split(':',3) + [None] + [None] + [None])
+                        if state in states.keys():
+                            status = states[state]
+                    except:
+                        pass
+                    # -----
+                    Status().add_message(request_id=request_id, username_initiator="lpower",
+                                         message=f"{key}:{results[key]}",status=status)
                     pipeline.del_message(key)
                 sleep(delay)
             Status().add_message(request_id, "lpower", "EOF")

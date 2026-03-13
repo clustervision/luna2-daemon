@@ -39,6 +39,7 @@ DATABASE_LAYOUT_status = [
 {"column": "username_initiator",   "datatype": "VARCHAR", "length": "250"},
 {"column": "created",              "datatype": "NUMERIC"},
 {"column": "read",                 "datatype": "INTEGER"},
+{"column": "status",               "datatype": "INTEGER"},
 {"column": "message",              "datatype": "TEXT"}]
 
 DATABASE_LAYOUT_queue = [

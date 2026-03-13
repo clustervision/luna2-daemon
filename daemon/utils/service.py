@@ -233,18 +233,21 @@ class Service(object):
 
                 if action and service:
                     Queue().update_task_status_in_queue(next_id,'in progress')
-                    Status().add_message(request_id,"luna",f"{action} service {service}")
+                    Status().add_message(request_id=request_id, username_initiator="luna",
+                                         message=f"{action} service {service}")
 
                     status, response = self.luna_service(service, action)
                     if status is True:
                         self.logger.info(f'service {service} {action} successful.')
-                        Status().add_message(request_id,"luna",f"finished {action} service {service}")
+                        Status().add_message(request_id=request_id, username_initiator="luna",
+                                             message=f"finished {action} service {service}", status=200)
                     else:
                         self.logger.info(f'service {service} {action} error: {response}.')
-                        Status().add_message(request_id,"luna",f"error {action} service {service}: {response}")
+                        Status().add_message(request_id=request_id, username_initiator="luna",
+                                             message=f"error {action} service {service}: {response}", status=500)
 
                     Queue().remove_task_from_queue(next_id)
-                    Status().add_message(request_id,"luna","EOF")
+                    Status().add_message(request_id=request_id, username_initiator="luna", message="EOF")
                 else:
                     self.logger.info(f"{details['task']} is not for us.")
                     sleep(10)

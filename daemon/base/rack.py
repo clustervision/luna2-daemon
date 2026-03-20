@@ -288,11 +288,13 @@ class Rack():
                                (subset == "configured" and devices_dict[device_type][device]['rackid']) or 
                                (subset == "unconfigured" and not devices_dict[device_type][device]['rackid'])
                             ):
+                            if devices_dict[device_type][device]['height'] is None:
+                                devices_dict[device_type][device]['height'] = self.inventory_items['height']
                             response['config']['rack']['inventory'].append({
                                               'name': device,
                                               'type': device_type,
                                               'vendor': devices_dict[device_type][device]['vendor'],
-                                              'height': devices_dict[device_type][device]['height'] or self.inventory_items['height'],
+                                              'height': devices_dict[device_type][device]['height'],
                                               'orientation': devices_dict[device_type][device]['orientation'] or self.inventory_items['orientation']
                                               })
                     elif (not subset) or subset == "unconfigured":
@@ -355,6 +357,9 @@ class Rack():
                     if item in device:
                         device_data[item] = device[item]
                            
+                if 'height' in device_data and str(device_data['height']) == '0' and device_type != 'otherdevices':
+                    return False, f"{device['name']} is not allowed to have 0 height"
+
                 for key, value in self.inventory_items.items():
                     if key in device_data:
                         if isinstance(value, bool):

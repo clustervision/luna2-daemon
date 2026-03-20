@@ -36,7 +36,7 @@ NAME = compute-image
 PATH = /trinity/images/compute-image
 
 [BMCSETUP]
-NAME = compute-bmcsetup
+NAME = default-bmcsetup
 USERNAME = admin
 PASSWORD = P@ssword!
 

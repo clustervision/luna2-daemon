@@ -122,7 +122,7 @@ class Control():
                 response = f'{hostname} does not have a suitable bmcsetup'
                 status=False
         else:
-            response = f'bmcsetup for {hostname} does not exist or does not have BMC configured'
+            response = f'unknown host {hostname} or no BMC interface configured for host'
             status=False
         return status, response
 

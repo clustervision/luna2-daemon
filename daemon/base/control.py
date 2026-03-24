@@ -122,7 +122,7 @@ class Control():
                 response = f'{hostname} does not have a suitable bmcsetup'
                 status=False
         else:
-            response = f'unknown host {hostname} or no BMC interface configured for host'
+            response = f'host {hostname} does not exist or has no BMC interface configured'
             status=False
         return status, response
 
@@ -246,8 +246,9 @@ class Control():
                         else:
                             node, command, result, message, *_ = (record['message'].split(':',3) + [None] + [None] + [None])
                             subsystem, action = command.split(' ',1)
+                            state = str([record['status']]) # record status has an int returned by command success
                             if subsystem == 'power' and action == 'status':
-                                if states[record['status']]:
+                                if state in states and states[state]:
                                     if message == "on":
                                         on_nodes[node] = 'None'
                                     elif message == "off":
@@ -257,7 +258,7 @@ class Control():
                                 else:
                                     failed_nodes[node] = message
                             else:
-                                if states[record['status']]:
+                                if state in states and states[state]:
                                     ok_nodes[node]=subsystem+' '+action
                                 else:
                                     failed_nodes[node] = message

@@ -131,7 +131,7 @@ class Control():
                         pipeline.add_message({nodename: command+':None:does not have a suitable bmcsetup'})
                 else:
                     self.logger.info(f'{nodename} does not have any suitable config or BMC interface not found.')
-                    pipeline.add_message({nodename: command+':None:does not exist or does not have BMC configured'})
+                    pipeline.add_message({nodename: command+':None:host does not exist or has no BMC interface configured'})
                 run = 0
                 # setting this to 0 means we only do one iteration.
                 # we can do loops, but we let mother control this

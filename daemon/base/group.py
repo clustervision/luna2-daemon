@@ -302,21 +302,30 @@ class Group():
                 update = True
             else:
                 if 'newgroupname' in data:
-                    status=False
-                    return status, 'Invalid request: newgroupname is not allowed while creating a new group'
-                if 'interfaces' not in data:
-                    controller = Database().get_record_join(
-                        ['network.name as network'],
-                        ['ipaddress.tablerefid=controller.id','network.id=ipaddress.networkid'],
-                        ['tableref="controller"', 'controller.beacon=1']
-                    )
+                    return False, 'Invalid request: newgroupname is not allowed while creating a new group'
+                elif 'setupbmc' in data and data['setupbmc']:
+                    if not 'bmcsetupname' in data:
+                        return False, 'enabling setupbmc requires a bmcsetup'
+                controller = Database().get_record_join(
+                    ['network.name as network'],
+                    ['ipaddress.tablerefid=controller.id','network.id=ipaddress.networkid'],
+                    ['tableref="controller"', 'controller.beacon=1']
+                )
+                if ('interfaces' not in data) or (not isinstance(data['interfaces'], list)):
                     data['interfaces']=[]
+                if not any(interface.get('interface') == 'BOOTIF' for interface in data['interfaces']):
                     if controller:
                         data['interfaces'].append(
                         {
                             'interface': 'BOOTIF',
                             'network': controller[0]['network']
                         })
+                    else:
+                        return False, 'BOOTIF interface not defined and could not be determined'
+                if 'bmcsetupname' in data:
+                    if not any(interface.get('interface') == 'BMC' for interface in data['interfaces']):
+                        return False, 'using a bmcsetup requires a BMC interface'
+                    data['setupbmc'] = True
                 create = True
 
             for item in ['scripts','roles','provision_method','provision_fallback']:

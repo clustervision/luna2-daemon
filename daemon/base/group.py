@@ -57,6 +57,10 @@ class Group():
         This method will return all the groups in detailed format.
         """
         overrides = ['provision_interface','provision_method','provision_fallback','kerneloptions']
+        osimages = Database().get_record(table='osimage')
+        bmcsetups = Database().get_record(table='bmcsetup')
+        osimage = Helper().convert_list_to_dict(osimages, 'id')
+        bmcsetup = Helper().convert_list_to_dict(bmcsetups, 'id')
         groups = Database().get_record(table='group', orderby='name')
         if groups:
             response = {'config': {'group': {} }}
@@ -93,10 +97,15 @@ class Group():
                 group['setupbmc'] = Helper().make_bool(group['setupbmc'])
                 group['netboot'] = Helper().make_bool(group['netboot'])
                 group['bootmenu'] = Helper().make_bool(group['bootmenu'])
-                group['osimage'] = Database().name_by_id('osimage', group['osimageid'])
+                group['osimage'] = None
+                if group['osimageid'] and group['osimageid'] in osimage:
+                    group['osimage'] = osimage[group['osimageid']]['name']
+                    if not group['kerneloptions']:
+                        group['kerneloptions'] = osimage[group['osimageid']]['kerneloptions']
                 del group['osimageid']
-                if group['bmcsetupid']:
-                    group['bmcsetupname'] = Database().name_by_id('bmcsetup', group['bmcsetupid'])
+                group['bmcsetupname'] = None
+                if group['bmcsetupid'] and group['bmcsetupid'] in bmcsetup:
+                    group['bmcsetupname'] = bmcsetup[group['bmcsetupid']]['name']
                 del group['bmcsetupid']
                 response['config']['group'][name] = group
         else:
@@ -133,14 +142,11 @@ class Group():
             group_id = group['id']
             osimage = None
             group['_override'] = False
+            group['osimage'] = None
             if group['osimageid']:
                 osimage = Database().get_record(table='osimage', where=f"id = '{group['osimageid']}'")
                 if osimage:
                     group['osimage'] = osimage[0]['name']
-                else:    
-                    group['osimage'] = Database().name_by_id('osimage', group['osimageid'])
-            else: 
-                group['osimage'] = None
 
             group_interface = Database().get_record_join(
                 [

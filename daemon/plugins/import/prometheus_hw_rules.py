@@ -37,6 +37,7 @@ import requests
 import json
 import shutil
 import yaml
+import subprocess
 from utils.log import Log
 
 from typing import Dict, List, Optional
@@ -169,9 +170,12 @@ class Plugin():
         return components
       
     def _prometheus_reload(self):
-        response = requests.post(f"{self.prometheus_url}/-/reload", verify=False, timeout=5)
-        if response.status_code != 200:
+        reload_exit_code = subprocess.call(["systemctl", "reload", "prometheus-server"])
+        if reload_exit_code != 0:
             raise RuntimeError(f"Failed to reload Prometheus server")
+        #response = requests.post(f"{self.prometheus_url}/-/reload", verify=False, timeout=5)
+        #if response.status_code != 200:
+        #    raise RuntimeError(f"Failed to reload Prometheus server")
   
     def _generate_hostname_path(self, hostname):
         hostname_regex = r'^([a-zA-Z0-9-_.])+$'

@@ -203,7 +203,7 @@ class Switch():
             check_switch = Database().get_record(table=self.table, where=where)
             if check_switch:
                 status=False
-                return status, f'{newswitchname} already present in database'
+                return status, f'Invalid request: {newswitchname} already present in database'
             ipaddress, network = None, None
             if 'ipaddress' in data:
                 ipaddress = data['ipaddress']
@@ -228,7 +228,7 @@ class Switch():
                     switch_id = Database().insert(self.table, row)
                     if not switch_id:
                         status=False
-                        return status, 'Switch not cloned due to clashing config'
+                        return status, 'Internal error: Switch not cloned due to clashing config'
                     status=True
                     network=None
                     if networkname:
@@ -349,7 +349,7 @@ class Switch():
                 while len(inuse) > 0 and len(inuseby) < 11:
                     node=inuse.pop(0)
                     inuseby.append(node['name'])
-                response = f"switch {name} currently in use by "+', '.join(inuseby)+" ..."
+                response = f"Invalid request: switch {name} currently in use by "+', '.join(inuseby)+" ..."
                 return False, response
 
             Database().delete_row('rackinventory', [{"column": "tablerefid", "value": switchid},

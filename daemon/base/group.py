@@ -299,7 +299,7 @@ class Group():
                     where = f'name = "{newgroupname}"'
                     check_group = Database().get_record(table='group', where=where)
                     if check_group:
-                        return False, f'{newgroupname} Already present in database'
+                        return False, f'Invalid request: {newgroupname} Already present in database'
                     else:
                         data['name'] = data['newgroupname']
                         del data['newgroupname']
@@ -309,7 +309,7 @@ class Group():
                     return False, 'Invalid request: newgroupname is not allowed while creating a new group'
                 elif 'setupbmc' in data and data['setupbmc']:
                     if not 'bmcsetupname' in data:
-                        return False, 'enabling setupbmc requires a bmcsetup'
+                        return False, 'Invalid request creating group: enabling setupbmc requires a bmcsetup'
                 controller = Database().get_record_join(
                     ['network.name as network'],
                     ['ipaddress.tablerefid=controller.id','network.id=ipaddress.networkid'],
@@ -325,10 +325,10 @@ class Group():
                             'network': controller[0]['network']
                         })
                     else:
-                        return False, 'BOOTIF interface not defined and could not be determined'
+                        return False, 'Invalid request creating group: BOOTIF interface not defined and could not be determined'
                 if 'bmcsetupname' in data:
                     if not any(interface.get('interface') == 'BMC' for interface in data['interfaces']):
-                        return False, 'using a bmcsetup requires a BMC interface'
+                        return False, 'Invalid request creating group: using a bmcsetup requires a BMC interface'
                     data['setupbmc'] = True
                 create = True
 
@@ -342,11 +342,11 @@ class Group():
                         for item_data in item_datas.split(','):
                             item_data = item_data.strip()
                             if item_data+'.py' not in boot_plugins['boot'][item]:
-                                return False, f'plugin {item_data} does not exist'
+                                return False, f'Invalid request: plugin {item_data} does not exist'
             for item in ['provision_method','provision_fallback']:
                 if item in data and data[item]:
                     if data['provision_method']+'.py' not in boot_plugins['boot']['provision']:
-                        return False, f'provisioning plugin {data[item]} does not exist'
+                        return False, f'Invalid request: provisioning plugin {data[item]} does not exist'
 
             # we reset to make sure we don't add something that won't work
             if 'osimage' in data:
@@ -370,14 +370,14 @@ class Group():
                 if data['bmcsetupid']:
                     del data['bmcsetupname']
                 else:
-                    return False, f'BMC Setup {bmcsetupname} does not exist'
+                    return False, f'Invalid request: BMC Setup {bmcsetupname} does not exist'
             if 'osimage' in data:
                 osimage = data['osimage']
                 data['osimageid'] = Database().id_by_name('osimage', osimage)
                 if data['osimageid']:
                     del data['osimage']
                 else:
-                    return False, f'OSimage {osimage} does not exist'
+                    return False, f'Invalid request: OSimage {osimage} does not exist'
 
             new_interface = None
             if 'interfaces' in data:
@@ -398,7 +398,7 @@ class Group():
                     if osimagetagids:
                         data['osimagetagid'] = osimagetagids[0]['id']
                     else:
-                        return False, 'Unknown tag, or osimage and tag not related'
+                        return False, 'Invalid request: Unknown tag, or osimage and tag not related'
 
             if 'roles' in data:
                 if len(data['roles']) > 0:
@@ -459,7 +459,7 @@ class Group():
                         if 'options' in ifx:
                             options = ifx['options']
                         
-                        result, response_if = Config().group_interface_config(groupid=group_id,
+                        result, if_response = Config().group_interface_config(groupid=group_id,
                                                                 interface_name=interface_name,
                                                                 network=network, vlanid=vlanid, mtu=mtu,
                                                                 vlan_parent=vlan_parent, bond_mode=bond_mode,
@@ -495,7 +495,7 @@ class Group():
                         else:
                             if create and group_id:
                                 self.delete_group(group_id)
-                            return False, f"Error creating or updating group: {response_if} for {interface_name}"
+                            return False, f"Invalid request for group: {if_response} for {interface_name} interface"
 
                 # ---- we call the group plugin - maybe someone wants to run something after create/update?
                 Queue().add_task_to_queue(task='run_bulk', param='group:master', 
@@ -553,11 +553,11 @@ class Group():
                     where = f'name = "{newgroupname}"'
                     check_group = Database().get_record(table='group', where=where)
                     if check_group:
-                        return False, f'{newgroupname} Already present in database'
+                        return False, f'Invalid request: {newgroupname} Already present in database'
                     data['name'] = data['newgroupname']
                     del data['newgroupname']
                 else:
-                    return False, 'Destination group name not supplied'
+                    return False, 'Invalid request: Destination group name not supplied'
             else:
                 return False, f'Source group {name} does not exist'
 
@@ -583,7 +583,7 @@ class Group():
                 if data['bmcsetupid']:
                     del data['bmcsetupname']
                 else:
-                    return False, f'BMC Setup {bmcsetupname} does not exist'
+                    return False, f'Invalid request: BMC Setup {bmcsetupname} does not exist'
             if 'osimage' in data:
                 osimage = data['osimage']
                 del data['osimage']
@@ -598,7 +598,7 @@ class Group():
                 row = Helper().make_rows(data)
                 new_group_id = Database().insert('group', row)
                 if not new_group_id:
-                    return False, f'Group {newgroupname} is not created due to possible property clash'
+                    return False, f'Internal error: Group {newgroupname} is not created due to possible property clash'
                 # response = f'Group {name} created successfully'
                 response = f'Group {name} cloned as {newgroupname} successfully'
                 status=True
@@ -631,7 +631,7 @@ class Group():
                     result = Database().insert('groupsecrets', row)
                     if not result:
                         self.delete_group(new_group_id)
-                        return False, f'Secrets copy for {newgroupname} failed'
+                        return False, f'Internal error: Secrets copy for {newgroupname} failed'
 
                 # ------ interfaces -------
                 skip_interface = []
@@ -748,7 +748,7 @@ class Group():
                 while len(inuse) > 0 and len(inuseby) < 11:
                     node=inuse.pop(0)
                     inuseby.append(node['name'])
-                return False, f"group {name} currently in use by "+', '.join(inuseby)+" ..."
+                return False, f"Invalid request: group {name} currently in use by "+', '.join(inuseby)+" ..."
             where = [{"column": "id", "value": groupid}]
             Database().delete_row('group', where)
             where = [{"column": "groupid", "value": group[0]['id']}]

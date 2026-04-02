@@ -181,7 +181,7 @@ class OtherDev():
             device = Database().get_record(table=self.table, where=where)
             if device:
                 status=False
-                return status, f'{newotherdevname} already present in database'
+                return status, f'Invalid request: {newotherdevname} already present in database'
             ipaddress, network = None, None
             if 'ipaddress' in data:
                 ipaddress = data['ipaddress']
@@ -207,7 +207,7 @@ class OtherDev():
                     device_id = Database().insert(self.table, row)
                     if not device_id:
                         status=False
-                        return status, 'Device not cloned due to clashing config'
+                        return status, 'Internal error: Device not cloned due to clashing config'
                     status=True
                     network = None
                     if networkname:

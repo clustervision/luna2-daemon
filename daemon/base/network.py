@@ -157,7 +157,7 @@ class Network():
                     check_network = Database().get_record(table='network', where=where)
                     if check_network:
                         status=False
-                        return status, f'{newnetname} already present in database'
+                        return status, f'Invalid request: {newnetname} already present in database'
                     else:
                         data['name'] = data['newnetname']
                         del data['newnetname']
@@ -394,7 +394,7 @@ class Network():
                 status=Database().update('ipaddress', row, where)
                 if not status:
                     status=False
-                    ret_msg = f"Error updating ip address for controller {controller['hostname']}"
+                    ret_msg = f"Internal error updating ip address for controller {controller['hostname']}"
                     return status, ret_msg
                 
             network_columns = Database().get_columns('network')
@@ -432,7 +432,8 @@ class Network():
                             avail = nwk_size - dhcp_size
                             self.logger.info(f"NETWORK {name} UPDATE. used_ips = {used_ips}, avail: {avail} = nwk_size {nwk_size} - dhcp_size {dhcp_size}")
                             if avail < used_ips:
-                                response = f'The proposed network config allows for {nwk_size} ip '
+                                response = 'Invalid request: '
+                                response += f'The proposed network config allows for {nwk_size} ip '
                                 response += f'addresses. DHCP range will occupy {dhcp_size} ip '
                                 response += 'addresses. The request will not accomodate for the '
                                 response += f'currently {used_ips} in use ip addresses'
@@ -449,7 +450,8 @@ class Network():
                             avail6 = nwk6_size - dhcp6_size
                             self.logger.info(f"NETWORK {name} UPDATE. used6_ips = {used6_ips}, avail6: {avail6} = nwk6_size {nwk6_size} - dhcp6_size {dhcp6_size}")
                             if avail6 < used6_ips:
-                                response = f'The proposed IPv6 network config allows for {nwk6_size} ip '
+                                response = 'Invalid request: '
+                                response += f'The proposed IPv6 network config allows for {nwk6_size} ip '
                                 response += f'addresses. DHCP range will occupy {dhcp6_size} ip '
                                 response += 'addresses. The request will not accomodate for the '
                                 response += f'currently {used6_ips} in use ip addresses'
@@ -539,7 +541,7 @@ class Network():
                 response = 'Network removed'
                 status=True
             else:
-                response = f'Network {name} cannot be removed because it is in use by controller'
+                response = f'Invalid request: Network {name} cannot be removed because it is in use by controller'
                 status=False
         else:
             response = f'Network {name} not present in database'
@@ -566,7 +568,7 @@ class Network():
                     response = {'config': {'network': {ipaddress: {'status': 'free'} } } }
                     status=True
             else:
-                response = f'{ipaddress} is not in the range'
+                response = f'Invalid request: {ipaddress} is not in the range'
                 status=False
         else:
             response = f'Network {name} not present in database'
@@ -593,7 +595,7 @@ class Network():
             status=Database().insert('reservedipaddress', row)
             status=True
         else:
-            response = f'network {name} does not provide for any free IP address'
+            response = f'Invalid request: network {name} does not provide for any free IP address'
         return status, response
 
 
@@ -635,7 +637,7 @@ class Network():
                 response = {'config': {'network': {name: {'taken': taken} } } }
                 status=True
             else:
-                response = 'All IP Address are free on Network {name}. None is Taken'
+                response = 'Invalid request: All IP Address are free on Network {name}. None is Taken'
                 status=False
         else:
             response = f'Network {name} not present in database'

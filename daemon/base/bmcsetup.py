@@ -161,7 +161,7 @@ class BMCSetup():
             while len(inuse) > 0 and len(inuseby) < 11:
                 node=inuse.pop(0)
                 inuseby.append(node['name'])
-            response = f"bmcsetup {name} currently in use by "+', '.join(inuseby)+" ..."
+            response = f"Invalid request: bmcsetup {name} currently in use by "+', '.join(inuseby)+" ..."
             return False, response
 
         status, response = Model().delete_record(

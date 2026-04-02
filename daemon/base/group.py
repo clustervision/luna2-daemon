@@ -109,8 +109,7 @@ class Group():
                 del group['bmcsetupid']
                 response['config']['group'][name] = group
         else:
-            response = 'No groups available'
-            return False, response
+            return False, 'No groups available'
         return True,response
 
 
@@ -300,8 +299,7 @@ class Group():
                     where = f'name = "{newgroupname}"'
                     check_group = Database().get_record(table='group', where=where)
                     if check_group:
-                        status=False
-                        return status, f'{newgroupname} Already present in database'
+                        return False, f'{newgroupname} Already present in database'
                     else:
                         data['name'] = data['newgroupname']
                         del data['newgroupname']
@@ -344,13 +342,11 @@ class Group():
                         for item_data in item_datas.split(','):
                             item_data = item_data.strip()
                             if item_data+'.py' not in boot_plugins['boot'][item]:
-                                status = False
-                                return status, f'plugin {item_data} does not exist'
+                                return False, f'plugin {item_data} does not exist'
             for item in ['provision_method','provision_fallback']:
                 if item in data and data[item]:
                     if data['provision_method']+'.py' not in boot_plugins['boot']['provision']:
-                        status = False
-                        return status, f'provisioning plugin {data[item]} does not exist'
+                        return False, f'provisioning plugin {data[item]} does not exist'
 
             # we reset to make sure we don't add something that won't work
             if 'osimage' in data:
@@ -374,16 +370,14 @@ class Group():
                 if data['bmcsetupid']:
                     del data['bmcsetupname']
                 else:
-                    status=False
-                    return status, f'BMC Setup {bmcsetupname} does not exist'
+                    return False, f'BMC Setup {bmcsetupname} does not exist'
             if 'osimage' in data:
                 osimage = data['osimage']
                 data['osimageid'] = Database().id_by_name('osimage', osimage)
                 if data['osimageid']:
                     del data['osimage']
                 else:
-                    status=False
-                    return status, f'OSimage {osimage} does not exist'
+                    return False, f'OSimage {osimage} does not exist'
 
             new_interface = None
             if 'interfaces' in data:
@@ -404,8 +398,7 @@ class Group():
                     if osimagetagids:
                         data['osimagetagid'] = osimagetagids[0]['id']
                     else:
-                        status = False
-                        return status, 'Unknown tag, or osimage and tag not related'
+                        return False, 'Unknown tag, or osimage and tag not related'
 
             if 'roles' in data:
                 if len(data['roles']) > 0:
@@ -428,20 +421,20 @@ class Group():
                 if update:
                     where = [{"column": "id", "value": group_id}]
                     row = Helper().make_rows(data)
-                    Database().update('group', row, where)
-                    response = f'Group {name} updated successfully'
-                    status=True
-                if create:
+                    if Database().update('group', row, where):
+                        response = f'Group {name} updated successfully'
+                        status=True
+                elif create:
                     data['name'] = name
                     row = Helper().make_rows(data)
                     group_id = Database().insert('group', row)
-                    response = f'Group {name} created successfully'
-                    status=True
-                if new_interface:
+                    if group_id:
+                        response = f'Group {name} created successfully'
+                        status=True
+                if status and new_interface:
                     for ifx in new_interface:
                         if not 'interface' in ifx:
-                            status=False
-                            return status, 'Invalid request: interface name is required for this operation'
+                            return False, 'Invalid request: interface name is required for this operation'
                         interface_name = ifx['interface']
 
                         where_interface = f'groupid = "{group_id}" AND interface = "{interface_name}"'
@@ -466,7 +459,7 @@ class Group():
                         if 'options' in ifx:
                             options = ifx['options']
                         
-                        result, response = Config().group_interface_config(groupid=group_id,
+                        result, response_if = Config().group_interface_config(groupid=group_id,
                                                                 interface_name=interface_name,
                                                                 network=network, vlanid=vlanid, mtu=mtu,
                                                                 vlan_parent=vlan_parent, bond_mode=bond_mode,
@@ -479,14 +472,14 @@ class Group():
                         if result:
                             queue_id = None
                             if check_interface:
-                                response = 'Interface updated'
+                                response += f', Interface {interface_name} updated'
                                 queue_id, _ = Queue().add_task_to_queue(
                                     task='update_interface_for_group_nodes',
                                     param=f'{name}:{interface_name}',
                                     subsystem='group_interface'
                                 )
                             else:
-                                response = 'Interface created'
+                                response += f', Interface {interface_name} created'
                                 queue_id, _ = Queue().add_task_to_queue(
                                     task='add_interface_to_group_nodes',
                                     param=f'{name}:{interface_name}',
@@ -500,9 +493,9 @@ class Group():
                                 executor.shutdown(wait=False)
                                 # Config().update_interface_on_group_nodes(name)
                         else:
-                            response = f"{response} for {interface_name}"
-                            status = False
-                            return False, response
+                            if create and group_id:
+                                self.delete_group(group_id)
+                            return False, f"Error creating or updating group: {response_if} for {interface_name}"
 
                 # ---- we call the group plugin - maybe someone wants to run something after create/update?
                 Queue().add_task_to_queue(task='run_bulk', param='group:master', 
@@ -560,16 +553,13 @@ class Group():
                     where = f'name = "{newgroupname}"'
                     check_group = Database().get_record(table='group', where=where)
                     if check_group:
-                        status=False
-                        return status, f'{newgroupname} Already present in database'
+                        return False, f'{newgroupname} Already present in database'
                     data['name'] = data['newgroupname']
                     del data['newgroupname']
                 else:
-                    status=False
-                    return status, 'Destination group name not supplied'
+                    return False, 'Destination group name not supplied'
             else:
-                status=False,
-                return status, f'Source group {name} does not exist'
+                return False, f'Source group {name} does not exist'
 
             del grp[0]['id']
             for item in grp[0]:
@@ -593,8 +583,7 @@ class Group():
                 if data['bmcsetupid']:
                     del data['bmcsetupname']
                 else:
-                    status=False
-                    return status, f'BMC Setup {bmcsetupname} does not exist'
+                    return False, f'BMC Setup {bmcsetupname} does not exist'
             if 'osimage' in data:
                 osimage = data['osimage']
                 del data['osimage']
@@ -609,8 +598,7 @@ class Group():
                 row = Helper().make_rows(data)
                 new_group_id = Database().insert('group', row)
                 if not new_group_id:
-                    status=False
-                    return status, f'Group {newgroupname} is not created due to possible property clash'
+                    return False, f'Group {newgroupname} is not created due to possible property clash'
                 # response = f'Group {name} created successfully'
                 response = f'Group {name} cloned as {newgroupname} successfully'
                 status=True
@@ -643,8 +631,7 @@ class Group():
                     result = Database().insert('groupsecrets', row)
                     if not result:
                         self.delete_group(new_group_id)
-                        status=False
-                        return status, f'Secrets copy for {newgroupname} failed'
+                        return False, f'Secrets copy for {newgroupname} failed'
 
                 # ------ interfaces -------
                 skip_interface = []
@@ -701,7 +688,7 @@ class Group():
                 if status is False:
                     # rollback
                     self.delete_group(new_group_id)
-                    return status, response
+                    return False, response
 
                 if group_interfaces:
                     for ifx in group_interfaces:
@@ -761,8 +748,7 @@ class Group():
                 while len(inuse) > 0 and len(inuseby) < 11:
                     node=inuse.pop(0)
                     inuseby.append(node['name'])
-                response = f"group {name} currently in use by "+', '.join(inuseby)+" ..."
-                return False, response
+                return False, f"group {name} currently in use by "+', '.join(inuseby)+" ..."
             where = [{"column": "id", "value": groupid}]
             Database().delete_row('group', where)
             where = [{"column": "groupid", "value": group[0]['id']}]

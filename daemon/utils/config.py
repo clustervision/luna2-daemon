@@ -739,7 +739,7 @@ class Config(object):
                         # --------------------------------------------------------------------------------------
                         else: # we have nothing! are we doing pure dhcp?
                             if not host['dhcp']:
-                                self.logger.warning(f"node {host['host']} does not appear to have any ip address configured")
+                                self.logger.warning(f"node {host['host']} does not appear to have any ipaddress configured")
                             del dns_zone_records[networkname][host['host']]
                         if ipaddress and nwk['dhcp_nodes_in_pool']:
                             return_code, message = dns_plugin().nsupdate(host=f"{host['host']}.{networkname}", ipaddress=ipaddress, ttl=3600,
@@ -844,7 +844,7 @@ class Config(object):
             self.logger.info(f"IP for {device} created => {result_ip}.")
         if result_ip is False:
             return False,"IP address assignment failed"
-        return True,"ip address changed"
+        return True,"ipaddress changed"
 
     def device_ipaddress_config(self, device_id=None, device=None, ipaddress=None, network=None):
         """
@@ -904,7 +904,7 @@ class Config(object):
                 self.logger.info(f"IP for {device} created => {result_ip}.")
                 if result_ip is False:
                     return False,"IP address assignment failed"
-            return True,"ip address changed"
+            return True,"ipaddress changed"
         return False,"not enough details"
 
     # ----------------------------------------------------------------------------------------------
@@ -1030,7 +1030,7 @@ class Config(object):
         """
         where_interface = f'nodeid = "{nodeid}" AND interface = "{interface_name}"'
         check_interface = Database().get_record(table='nodeinterface', where=where_interface)
-        result_if = "not able to clear ip address config. interface not configured"
+        result_if = "not able to clear ipaddress config. interface not configured"
         if check_interface:
             tablerefid = check_interface[0]['id']
             where_ipaddress = f'tableref="nodeinterface" AND tablerefid={tablerefid}'
@@ -1125,10 +1125,11 @@ class Config(object):
 
     def node_interface_ipaddress_config(self, nodeid, interface_name, ipaddress, network=None, force=False):
         """
-        This method configures ip addresses for interface of nodes.
+        This method configures ipaddresses for interface of nodes.
         """
         ipaddress_check, valid_ip, result_ip = False, False, False
         my_ipaddress = {}
+        message = ''
 
         if network is not None:
             network_details = Database().get_record(table='network', where=f'name="{network}"')
@@ -1188,7 +1189,10 @@ class Config(object):
                 )
                 if ipaddress_check_own and ((ipaddress_check_own[0]['nodeid'] != nodeid) or (interface_name != ipaddress_check_own[0]['interface'])):
                     if not force:
-                        return False, f"ip address {ipaddress} is already in use"
+                        message = f"ipaddress {ipaddress} is already in use "
+                        message += f"on interface {ipaddress_check_own[0]['interface']} "
+                        message += f"for node {ipaddress_check_own[0]['nodename']}"
+                        return False, message
                     else:
                         status, message = self.node_interface_clear_ipaddress(
                             ipaddress_check_own[0]['nodeid'],
@@ -1196,7 +1200,14 @@ class Config(object):
                             ipversion=ipversion
                         )
                         if not status:
-                            return False, f"ip address {ipaddress} could not be cleared and set"
+                            message = f"ipaddress {ipaddress} on interface "
+                            message += f"{ipaddress_check_own[0]['interface']} "
+                            message += f"for node {ipaddress_check_own[0]['nodename']} "
+                            message += "could not be cleared"
+                            return False, message
+                        message = f"ipaddress {ipaddress} cleared on interface "
+                        message += f"{ipaddress_check_own[0]['interface']} "
+                        message += f"for node {ipaddress_check_own[0]['nodename']}, "
 
         my_interface = Database().get_record_join(
             ['ipaddress.*'],
@@ -1224,11 +1235,11 @@ class Config(object):
                 result_ip = Database().insert('ipaddress', row)
 
         if result_ip:
-            message = f"ipaddress for {interface_name} configured with result {result_ip}"
-            self.logger.info(message)
+            message += f"ipaddress {ipaddress} for {interface_name} configured successfully"
+            self.logger.info(message+"  with result {result_ip}")
             return True, message
-        message = f"ipaddress for {interface_name} config failed with result {result_ip}"
-        self.logger.info(message)
+        message = f"ipaddress {ipaddress} for {interface_name} config failed"
+        self.logger.info(message+" with result {result_ip}")
         return False, message
 
     # ----------------------------------------------------------------------------------------------

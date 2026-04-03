@@ -142,6 +142,7 @@ class Interface():
         This method will add or update the node interface.
         """
         status=False
+        message = None
         if data and nodeid:
             for interface in data:
                 # Antoine
@@ -360,6 +361,9 @@ class Interface():
                     response = f'{message} for {interface_name}'
                     status=False
                     break
+                elif force: # we are more verbose
+                    response = message or 'Interface updated'
+                    status=True
                 else:
                     response = 'Interface updated'
                     status=True

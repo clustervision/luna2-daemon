@@ -304,7 +304,7 @@ class Secret():
                             where = f'nodeid = "{nodeid}" AND name = "{newsecretname}"'
                             new_secret_data = Database().get_record(table='nodesecrets', where=where)
                             if new_secret_data:
-                                response = f'Secret {newsecretname} already present'
+                                response = f'Invalid request: Secret {newsecretname} already present'
                                 status=False
                             else:
                                 node_secret_columns = Database().get_columns('nodesecrets')

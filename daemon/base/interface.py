@@ -105,7 +105,7 @@ class Interface():
                     response['config']['node'][name]['interfaces'] = my_interface
                 status=True
             else:
-                response = f'Node {name} dont have any interface'
+                response = f'Node {name} does not have any interface configured'
                 status=False
         else:
             self.logger.error('No nodes available.')
@@ -709,7 +709,7 @@ class Interface():
                     response['config']['group'][groupname]['interfaces'] = group_interfaces
                 else:
                     self.logger.error(f'Group {name} does not have any interface.')
-                    response = f'Group {name} does not have any interface'
+                    response = f'Group {name} does not have any interface configured'
                     status=False
             status=True
         else:

@@ -558,8 +558,7 @@ class Node():
                     where = f'name = "{nodename_new}"'
                     node_check = Database().get_record(table='node', where=where)
                     if node_check:
-                        status = False
-                        return status, f'{nodename_new} already present in database'
+                        return False, f'Invalid request: {nodename_new} already present in database'
                     data['name'] = data['newnodename']
                     del data['newnodename']
                     needs_rewrite = True
@@ -567,9 +566,7 @@ class Node():
             else:
                 if 'newnodename' in data:
                     nodename_new = data['newnodename']
-                    status = False
-                    ret_msg = 'newnodename is only allowed while update, rename or clone a node'
-                    return status, ret_msg
+                    return False, 'Invalid request: newnodename is only allowed while update, rename or clone a node' 
                 create = True
 
             for item in ['scripts','roles','provision_method','provision_fallback']:
@@ -582,13 +579,11 @@ class Node():
                         for item_data in item_datas.split(','):
                             item_data = item_data.strip()
                             if item_data+'.py' not in boot_plugins['boot'][item]:
-                                status = False
-                                return status, f'plugin {item_data} does not exist'
+                                return False, f'Invalid request: plugin {item_data} does not exist'
             for item in ['provision_method','provision_fallback']:
                 if item in data and data[item]:
                     if data['provision_method']+'.py' not in boot_plugins['boot']['provision']:
-                        status = False
-                        return status, f'provisioning plugin {data[item]} does not exist'
+                        return False, f'Invalid request: provisioning plugin {data[item]} does not exist'
 
             for key, value in items.items():
                 if key in data:
@@ -619,8 +614,7 @@ class Node():
                     else:
                         data[key+'id'] = Database().id_by_name(key, check_name)
                         if not data[key+'id']:
-                            status = False
-                            return status, f'{key} {check_name} is not known or valid'
+                            return False, f'Invalid request: {key} {check_name} is not known or valid'
                     del data[key]
 
             interfaces = None
@@ -646,9 +640,7 @@ class Node():
                     if osimagetagids:
                         data['osimagetagid'] = osimagetagids[0]['id']
                     else:
-                        status = False
-                        ret_msg = 'Unknown tag or osimage and tag not related'
-                        return status, ret_msg
+                        return False, 'Invalid request: Unknown tag or osimage and tag not related'
 
             if 'roles' in data:
                 if len(data['roles']) > 0:
@@ -680,8 +672,7 @@ class Node():
                     if 'groupid' not in data:
                         # ai, we DO need this for new nodes...... kind of.
                         # we agreed on this. pending?
-                        status = False
-                        return status, 'group name is required for new nodes'
+                        return False, 'Invalid request: group name is required for new nodes'
                     data['name'] = name
                     row = Helper().make_rows(data)
                     nodeid = Database().insert('node', row)
@@ -694,8 +685,7 @@ class Node():
                 if interfaces:
                     result, message = Interface().change_node_interface(nodeid=nodeid, data=interfaces)
                     if result is False:
-                        status = False
-                        return status, f'{message}'
+                        return False, f'{message}'
 
                 # For now i have the below two disabled. it's testing. -Antoine aug 8 2023
                 #Service().queue('dhcp', 'restart')
@@ -747,8 +737,7 @@ class Node():
         response="Internal error"
         if request_data:
             if 'node' not in request_data['config'].keys():
-                status=False
-                return status, 'Bad Request'
+                return False, 'Invalid Request'
 
             newnodename=None
             data = request_data['config']['node'][name]
@@ -760,17 +749,14 @@ class Node():
                     where = f'name = "{newnodename}"'
                     node_check = Database().get_record(table='node', where=where)
                     if node_check:
-                        status=False
-                        return status, f'{newnodename} already present in database'
+                        return False, f'Invalid request: {newnodename} already present in database'
                     else:
                         data['name'] = data['newnodename']
                         del data['newnodename']
                 else:
-                    status=False
-                    return status, 'Destination node name not supplied'
+                    return False, 'Invalid request: Destination node name not supplied'
             else:
-                status=False
-                return status, f'Source node {name} does not exist'
+                return False, f'Invalid request: Source node {name} does not exist'
 
             del node[0]['id']
             del node[0]['status']
@@ -796,8 +782,7 @@ class Node():
                     else:
                         data[key+'id'] = Database().id_by_name(key, check_name)
                         if not data[key+'id']:
-                            status=False
-                            return status, f'{key} {check_name} is not known or valid'
+                            return False, f'Invalid request: {key} {check_name} is not known or valid'
                     del data[key]
             interfaces = None
             if 'interfaces' in data:
@@ -810,8 +795,7 @@ class Node():
                 row = Helper().make_rows(data)
                 new_nodeid = Database().insert('node', row)
                 if not new_nodeid:
-                    status=False
-                    return status, f'Node {newnodename} is not created due to possible property clash'
+                    return False, f'Internal error: Node {newnodename} is not created due to possible property clash'
                 response = f'Node {newnodename} created successfully'
                 status=True
 
@@ -824,8 +808,7 @@ class Node():
                     result = Database().insert('nodesecrets', row)
                     if not result:
                         self.delete_node(new_nodeid)
-                        status=False
-                        return status, f'Secrets copy for {newnodename} failed'
+                        return False, f'Internal error: Secrets copy for {newnodename} failed'
 
                 # ------ interfaces -------
                 node_interfaces = Database().get_record_join(
@@ -941,12 +924,10 @@ class Node():
                                     )
                             else:
                                 self.delete_node(new_nodeid)
-                                status=False
-                                return status, f"Interface {interface_name} creation failed. Network and/or ip address missing or incorrect"
+                                return False, f"Invalid request: Interface {interface_name} creation failed. Network and/or ip address missing or incorrect"
                         if result is False:
                             self.delete_node(new_nodeid)
-                            status=False
-                            return status, f'{message}'
+                            return False, f'{message}'
 
                 # what we have in the database
                 for node_interface in node_interfaces:
@@ -997,8 +978,7 @@ class Node():
                                             )
                                             if result is False:
                                                 self.delete_node(new_nodeid)
-                                                status=False
-                                                return status, f'{message}'
+                                                return False, f'{message}'
                                     # IPv6
                                     if network[0]['network_ipv6']:
                                         ips = Config().get_all_occupied_ips_from_network(networkname,'ipv6')
@@ -1019,8 +999,7 @@ class Node():
                                             )
                                             if result is False:
                                                 self.delete_node(new_nodeid)
-                                                status=False
-                                                return status, f'{message}'
+                                                return False, f'{message}'
                                 # DHCP
                                 if interface_dhcp:
                                     result, message = Config().node_interface_dhcp_config(
@@ -1031,14 +1010,12 @@ class Node():
                                     )
                                     if result is False:
                                         self.delete_node(new_nodeid)
-                                        status=False
-                                        return status, f'{message}'
+                                        return False, f'{message}'
                     if result is False:
-                        status=False
                         self.delete_node(new_nodeid)
                         if isinstance(message, str):
-                            return status, f'Interface {interface_name} creation failed: {message}'
-                        return status, f'Interface {interface_name} creation failed'
+                            return False, f'Invalid request: Interface {interface_name} creation failed: {message}'
+                        return False, f'Invalid request: Interface {interface_name} creation failed'
                 # Service().queue('dhcp','restart')
                 # Service().queue('dhcp6','restart')
                 # do we need dhcp restart? MAC is wiped on new NIC so no real need i guess. pending

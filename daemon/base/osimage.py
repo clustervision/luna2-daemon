@@ -272,7 +272,7 @@ class OSImage():
                     osimage_check = Database().get_record(table='osimage', where=where)
                     if osimage_check:
                         status=False
-                        return status, f'{newosimage} Already present in database'
+                        return status, f'Invalid request: {newosimage} Already present in database'
                     else:
                         oldosimage=data['name']
                         data['name'] = data['newosimage']
@@ -367,7 +367,7 @@ class OSImage():
             'distribution',
             'osrelease'
         }
-        response = {"message": 'OS image copy failed. No sign of life of spawned thread'}
+        response = {"message": 'Internal error: OS image copy failed. No sign of life of spawned thread'}
         if request_data:
             data = request_data['config']['osimage'][name]
             bare = False
@@ -392,7 +392,7 @@ class OSImage():
                     osimage_check = Database().get_record(table='osimage', where=where)
                     if osimage_check:
                         status=False
-                        return status, f'{newosimage} Already present in database'
+                        return status, f'Invalid request: {newosimage} Already present in database'
                     else:
                         data['name'] = data['newosimage']
                         for item in items:
@@ -401,7 +401,7 @@ class OSImage():
                         del data['newosimage']
                         if 'path' in data and data['path'] and path.exists(data['path']):
                             status=False
-                            return status, f"Destination path {data['path']} already exists."
+                            return status, f"Invalid request: Destination path {data['path']} already exists."
                 else:
                     status=False
                     return status, 'Invalid request: New OS Image name not provided'
@@ -416,7 +416,7 @@ class OSImage():
                 img_id = Database().insert('osimage', row)
                 if not img_id:
                     status = False
-                    return status, "Failed cloning image"
+                    return status, "Internal error: Failed cloning image"
                 if nocopy is True:
                     status = True
                     return status, "OS Image cloned successfully"
@@ -432,7 +432,7 @@ class OSImage():
                 if not task_id:
                     self.logger.info("config_osimage_clone cannot get queue_id")
                     status=False
-                    return status, f"Internal error: OS image {name}->{data['name']} clone queuing failed."
+                    return status, f"Internal error: OS image {name}->{data['name']} clone queuing failed"
 
                 if text != "added":
                     # this means we already have an equal request in the queue
@@ -499,7 +499,7 @@ class OSImage():
             while len(inuse) > 0 and len(inuseby) < 11:
                 node=inuse.pop(0)
                 inuseby.append(node['name'])
-            response = f"osimage {name} currently in use by "+', '.join(inuseby)+" ..."
+            response = f"Invalid request: osimage {name} currently in use by "+', '.join(inuseby)+" ..."
             return False, response
 
         image = Database().get_record(table='osimage', where=f'name = "{name}"')
@@ -626,7 +626,7 @@ class OSImage():
                     osimage=image_details[0]['osimagename']
                 else:
                     status=False
-                    ret_msg=f"Grab failed for {osimage}. This node has osimage or group configured?"
+                    ret_msg=f"Invalid request: Grab failed for {osimage}. This node has an osimage or group configured?"
                     return status, ret_msg
 
             request_id = str(time()) + str(randint(1001, 9999)) + str(getpid())
@@ -642,7 +642,7 @@ class OSImage():
             if not task_id:
                 self.logger.info("config_osimage_grab cannot get queue_id")
                 status=False
-                return status, f'OS image {osimage} grab queuing failed'
+                return status, f'Internal error: OS image {osimage} grab queuing failed'
             if text != "added":
                 # this means we already have an equal request in the queue
                 Status().add_message(text, "luna", f"similar task with id {task_id} is already queued. its progress is listed here")
@@ -681,7 +681,7 @@ class OSImage():
                 self.logger.info(f"my response [{response}] [{request_id}]")
                 return status, response, request_id
         status=False
-        return status, "osimage grab missing data"
+        return status, "Invalid request: osimage grab request is missing data"
 
 
     def push(self, entity_name=None, request_data=None):
@@ -730,7 +730,7 @@ class OSImage():
                     osimage=image_details[0]['osimagename']
                 else:
                     status=False
-                    ret_msg=f"Push failed for {osimage}. No osimage configured for this node or group?"
+                    ret_msg=f"Invalid request: Push failed for {osimage}. No osimage configured for this node or group?"
                     return status, ret_msg
 
             request_id = str(time()) + str(randint(1001, 9999)) + str(getpid())
@@ -785,7 +785,7 @@ class OSImage():
                 self.logger.info(f"my response [{response}] [{request_id}]")
                 return status, response, request_id
         status=False
-        return status, "osimage push missing data"
+        return status, "Invalid request: osimage push request is missing data"
 
 
     def pack(self, name=None):
@@ -794,7 +794,7 @@ class OSImage():
         """
         status=False
         response="unknown state"
-        response = {"message": f'OS image {name} packing failed. No sign of life of spawned thread'}
+        response = {"message": f'Internal error: OS image {name} packing failed. No sign of life of spawned thread'}
         # Antoine
         image = Database().get_record(table='osimage', where=f'name = "{name}"')
         force = False
@@ -875,7 +875,7 @@ class OSImage():
                     img_id = Database().update('osimage', row, where)
                     if not img_id:
                         status = False
-                        return status, "Failed updating image"
+                        return status, "Internal error: Failed updating image"
                     if bare is True:
                         status=True
                         response = f'OS Image {name} Kernel updated'
@@ -887,7 +887,7 @@ class OSImage():
                     if not task_id:
                         self.logger.info("config_osimage_kernel cannot get queue_id")
                         status=False
-                        return status, f'OS image {name} pack queuing failed'
+                        return status, f'Internal error: OS image {name} pack queuing failed'
                     if text != "added":
                         # this means we already have an equal request in the queue
                         Status().add_message(text, "luna", f"similar task with id {task_id} is already queued. its progress is listed here")
@@ -975,38 +975,16 @@ class OSImage():
                             response=f"Tag {tagname} updated for OS Image {name}"
                             status=True
                     else:
-                        response=f"Could not create tag for OS Image {name}"
+                        response=f"Internal error: Could not create tag for OS Image {name}"
                         status=False
                 else:
                     response=f"OS Image {name} does not exist"
                     status=False
             else:
-                response="Required field 'tag' not supplied"
+                response="Invalid request: Required field 'tag' not supplied"
                 status=False
         else:
             response = 'Invalid request: Did not receive data'
             status=False
         return status, response
 
-
-    # below has been 'moved' to utils/status
-    def get_status(self, request_id=None):
-        """
-        This method will get the exact status from queue, depends on the request ID.
-        """
-        status = Database().get_record(table='status', where=f'request_id = "{request_id}"')
-        if status:
-            message = []
-            for record in status:
-                if 'read' in record:
-                    if record['read'] == 0:
-                        if 'message' in record:
-                            if record['message'] == "EOF":
-                                Status().del_messages(request_id)
-                            else:
-                                created, *_ = record['created'].split('.') + [None]
-                                message.append(created + " :: " + record['message'])
-            response = {'message': (';;').join(message) }
-            Status().mark_messages_read(request_id)
-            return True, response
-        return False, 'No data for this request'

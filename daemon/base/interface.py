@@ -147,9 +147,12 @@ class Interface():
             for interface in data:
                 # Antoine
                 interface_name = interface['interface']
+                new_interface_name = None
                 ipaddress, macaddress, network, clear_ip = None, None, None, False
                 options, vlanid, force, dhcp, set_dhcp = None, None, False, None, False
                 vlan_parent, bond_mode, bond_slaves, mtu = None, None, None, None
+                if 'newinterfacename' in interface.keys():
+                    new_interface_name = interface['newinterfacename']
                 if 'macaddress' in interface.keys():
                     macaddress = interface['macaddress']
                 if 'mtu' in interface.keys():
@@ -175,14 +178,23 @@ class Interface():
                     set_dhcp = True
                 if ipaddress == '': # clearing the config!
                     clear_ip = True
-                   
-                result, message = Config().node_interface_config(
-                    nodeid=nodeid, interface_name=interface_name,
-                    macaddress=macaddress, mtu=mtu,
-                    vlanid=vlanid, vlan_parent=vlan_parent,
-                    bond_mode=bond_mode, bond_slaves=bond_slaves,
-                    options=options
-                )
+
+                result = True
+                if new_interface_name is not None:
+                    result, message = Config().node_interface_rename(
+                        nodeid=nodeid, interface_name=interface_name,
+                        new_interface_name=new_interface_name
+                    )
+                    if result:
+                        interface_name = new_interface_name
+                if result:
+                    result, message = Config().node_interface_config(
+                        nodeid=nodeid, interface_name=interface_name,
+                        macaddress=macaddress, mtu=mtu,
+                        vlanid=vlanid, vlan_parent=vlan_parent,
+                        bond_mode=bond_mode, bond_slaves=bond_slaves,
+                        options=options
+                    )
                 if result:
                     existing = Database().get_record_join(
                         [
@@ -344,7 +356,8 @@ class Interface():
                                     force
                                 )
                     elif ((macaddress is None) and (options is None) and (vlan_parent is None) and (vlanid is None) and
-                        (bond_mode is None) and (bond_slaves is None) and (mtu is None)):
+                        (bond_mode is None) and (bond_slaves is None) and (mtu is None) and
+                        (new_interface_name is None)):
                             # this means we just made an empty interface. a no no - Antoine
                             # beware that we _have_ to test for None as 
                             #    clearing parameters by "" is caught by 'not maccaddress'
@@ -358,7 +371,7 @@ class Interface():
                         self.delete_node_interface(nodeid=nodeid, interface=interface_name)
 
                 if result is False:
-                    response = f'{message} for {interface_name}'
+                    response = f'error handling {interface_name}: {message}'
                     status=False
                     break
                 elif force: # we are more verbose

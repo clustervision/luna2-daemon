@@ -909,6 +909,41 @@ class Config(object):
 
     # ----------------------------------------------------------------------------------------------
 
+    def node_interface_rename(self, nodeid=None, interface_name=None, new_interface_name=None):
+        """
+        This method renames the interface name for a given interface.
+        It validates whether all minimum requirements are met before proceeding
+        """
+        result_if = False
+        my_interface = {}
+
+        where_interface = f'nodeid = "{nodeid}"'
+        check_interface = Database().get_record(table='nodeinterface', where=where_interface)
+        interface_byname = Helper().convert_list_to_dict(check_interface, 'interface')
+
+        if not check_interface: # ----> easy. interfaces do not exist
+            message = f"no interfaces defined"
+            return False, message
+        elif interface_name not in interface_byname.keys():
+            message = f"interface {interface_name} does not exist"
+            return False, message
+        elif new_interface_name in interface_byname.keys():
+            message = f"interface {new_interface_name} already exists"
+            return False, message
+        else:
+            # we have to update the interface
+            my_interface['interface'] = new_interface_name
+            row = Helper().make_rows(my_interface)
+            where = [{"column": "id", "value": interface_byname[interface_name]['id']}]
+            result_if = Database().update('nodeinterface', row, where)
+
+        if result_if:
+            message = f"interface {interface_name} renamed to {new_interface_name}"
+            return True, message
+        message = f"interface {interface_name} could not be renamed"
+        return False, message
+
+
     def node_interface_config(self, nodeid=None, interface_name=None, macaddress=None, mtu=None, vlanid=None, vlan_parent=None, bond_mode=None, bond_slaves=None, options=None):
         """
         This method will collect node interfaces and return configuration.

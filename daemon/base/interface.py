@@ -752,12 +752,15 @@ class Interface():
                             status=False
                             return status, 'Invalid request: interface name is required for this operation'
                         interface_name = ifx['interface']
+                        new_interface_name = None
 
                         where_interface = f'groupid = "{group_id}" AND interface = "{interface_name}"'
                         check_interface = Database().get_record(table='groupinterface', where=where_interface)
 
                         network, bond_mode, bond_slaves, mtu = None, None, None, None
                         vlanid, vlan_parent, dhcp, options = None, None, None, None
+                        if 'newinterfacename' in ifx:
+                            new_interface_name = ifx['newinterfacename']
                         if 'network' in ifx:
                             network = ifx['network']
                         if 'mtu' in ifx:
@@ -775,7 +778,28 @@ class Interface():
                         if 'options' in ifx:
                             options = ifx['options']
 
-                        result, response = Config().group_interface_config(groupid=group_id,
+                        result = True
+                        if new_interface_name is not None:
+                            result, response = Config().group_interface_rename(
+                                groupid=group_id, interface_name=interface_name,
+                                new_interface_name=new_interface_name
+                            )
+                            if result:
+                                queue_id, _ = Queue().add_task_to_queue(
+                                    task='rename_interface_for_group_nodes',
+                                    param=f'{name}:{interface_name}+{new_interface_name}',
+                                    subsystem='group_interface'
+                                )
+                                next_id = Queue().next_task_in_queue('group_interface')
+                                if queue_id == next_id:
+                                    executor = ThreadPoolExecutor(max_workers=1)
+                                    executor.submit(Config().update_interface_on_group_nodes,name)
+                                    executor.shutdown(wait=False)
+                                # new name is the name going forward
+                                interface_name = new_interface_name
+
+                        if result:
+                            result, response = Config().group_interface_config(groupid=group_id,
                                                                 interface_name=interface_name,
                                                                 network=network, mtu=mtu, vlanid=vlanid,
                                                                 vlan_parent=vlan_parent, bond_mode=bond_mode,

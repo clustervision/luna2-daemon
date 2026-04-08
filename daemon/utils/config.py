@@ -927,6 +927,9 @@ class Config(object):
         elif interface_name not in interface_byname.keys():
             message = f"interface {interface_name} does not exist"
             return False, message
+        elif interface_name == new_interface_name:
+            message = f"current and new interface name are the same"
+            return False, message
         elif new_interface_name in interface_byname.keys():
             message = f"interface {new_interface_name} already exists"
             return False, message

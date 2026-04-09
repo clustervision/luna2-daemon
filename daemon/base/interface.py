@@ -142,13 +142,17 @@ class Interface():
         This method will add or update the node interface.
         """
         status=False
+        message = None
         if data and nodeid:
             for interface in data:
                 # Antoine
                 interface_name = interface['interface']
+                new_interface_name = None
                 ipaddress, macaddress, network, clear_ip = None, None, None, False
                 options, vlanid, force, dhcp, set_dhcp = None, None, False, None, False
                 vlan_parent, bond_mode, bond_slaves, mtu = None, None, None, None
+                if 'newinterfacename' in interface.keys():
+                    new_interface_name = interface['newinterfacename']
                 if 'macaddress' in interface.keys():
                     macaddress = interface['macaddress']
                 if 'mtu' in interface.keys():
@@ -174,14 +178,23 @@ class Interface():
                     set_dhcp = True
                 if ipaddress == '': # clearing the config!
                     clear_ip = True
-                   
-                result, message = Config().node_interface_config(
-                    nodeid=nodeid, interface_name=interface_name,
-                    macaddress=macaddress, mtu=mtu,
-                    vlanid=vlanid, vlan_parent=vlan_parent,
-                    bond_mode=bond_mode, bond_slaves=bond_slaves,
-                    options=options
-                )
+
+                result = True
+                if new_interface_name is not None:
+                    result, message = Config().node_interface_rename(
+                        nodeid=nodeid, interface_name=interface_name,
+                        new_interface_name=new_interface_name
+                    )
+                    if result:
+                        interface_name = new_interface_name
+                if result:
+                    result, message = Config().node_interface_config(
+                        nodeid=nodeid, interface_name=interface_name,
+                        macaddress=macaddress, mtu=mtu,
+                        vlanid=vlanid, vlan_parent=vlan_parent,
+                        bond_mode=bond_mode, bond_slaves=bond_slaves,
+                        options=options
+                    )
                 if result:
                     existing = Database().get_record_join(
                         [
@@ -343,7 +356,8 @@ class Interface():
                                     force
                                 )
                     elif ((macaddress is None) and (options is None) and (vlan_parent is None) and (vlanid is None) and
-                        (bond_mode is None) and (bond_slaves is None) and (mtu is None)):
+                        (bond_mode is None) and (bond_slaves is None) and (mtu is None) and
+                        (new_interface_name is None)):
                             # this means we just made an empty interface. a no no - Antoine
                             # beware that we _have_ to test for None as 
                             #    clearing parameters by "" is caught by 'not maccaddress'
@@ -357,9 +371,12 @@ class Interface():
                         self.delete_node_interface(nodeid=nodeid, interface=interface_name)
 
                 if result is False:
-                    response = f'{message} for {interface_name}'
+                    response = f'error handling {interface_name}: {message}'
                     status=False
                     break
+                elif force: # we are more verbose
+                    response = message or 'Interface updated'
+                    status=True
                 else:
                     response = 'Interface updated'
                     status=True
@@ -735,12 +752,15 @@ class Interface():
                             status=False
                             return status, 'Invalid request: interface name is required for this operation'
                         interface_name = ifx['interface']
+                        new_interface_name = None
 
                         where_interface = f'groupid = "{group_id}" AND interface = "{interface_name}"'
                         check_interface = Database().get_record(table='groupinterface', where=where_interface)
 
                         network, bond_mode, bond_slaves, mtu = None, None, None, None
                         vlanid, vlan_parent, dhcp, options = None, None, None, None
+                        if 'newinterfacename' in ifx:
+                            new_interface_name = ifx['newinterfacename']
                         if 'network' in ifx:
                             network = ifx['network']
                         if 'mtu' in ifx:
@@ -758,7 +778,28 @@ class Interface():
                         if 'options' in ifx:
                             options = ifx['options']
 
-                        result, response = Config().group_interface_config(groupid=group_id,
+                        result = True
+                        if new_interface_name is not None:
+                            result, response = Config().group_interface_rename(
+                                groupid=group_id, interface_name=interface_name,
+                                new_interface_name=new_interface_name
+                            )
+                            if result:
+                                queue_id, _ = Queue().add_task_to_queue(
+                                    task='rename_interface_for_group_nodes',
+                                    param=f'{name}:{interface_name}+{new_interface_name}',
+                                    subsystem='group_interface'
+                                )
+                                next_id = Queue().next_task_in_queue('group_interface')
+                                if queue_id == next_id:
+                                    executor = ThreadPoolExecutor(max_workers=1)
+                                    executor.submit(Config().update_interface_on_group_nodes,name)
+                                    executor.shutdown(wait=False)
+                                # new name is the name going forward
+                                interface_name = new_interface_name
+
+                        if result:
+                            result, response = Config().group_interface_config(groupid=group_id,
                                                                 interface_name=interface_name,
                                                                 network=network, mtu=mtu, vlanid=vlanid,
                                                                 vlan_parent=vlan_parent, bond_mode=bond_mode,

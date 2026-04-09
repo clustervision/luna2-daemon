@@ -739,7 +739,7 @@ class Config(object):
                         # --------------------------------------------------------------------------------------
                         else: # we have nothing! are we doing pure dhcp?
                             if not host['dhcp']:
-                                self.logger.warning(f"node {host['host']} does not appear to have any ip address configured")
+                                self.logger.warning(f"node {host['host']} does not appear to have any ipaddress configured")
                             del dns_zone_records[networkname][host['host']]
                         if ipaddress and nwk['dhcp_nodes_in_pool']:
                             return_code, message = dns_plugin().nsupdate(host=f"{host['host']}.{networkname}", ipaddress=ipaddress, ttl=3600,
@@ -844,7 +844,7 @@ class Config(object):
             self.logger.info(f"IP for {device} created => {result_ip}.")
         if result_ip is False:
             return False,"IP address assignment failed"
-        return True,"ip address changed"
+        return True,"ipaddress changed"
 
     def device_ipaddress_config(self, device_id=None, device=None, ipaddress=None, network=None):
         """
@@ -904,10 +904,48 @@ class Config(object):
                 self.logger.info(f"IP for {device} created => {result_ip}.")
                 if result_ip is False:
                     return False,"IP address assignment failed"
-            return True,"ip address changed"
+            return True,"ipaddress changed"
         return False,"not enough details"
 
     # ----------------------------------------------------------------------------------------------
+
+    def node_interface_rename(self, nodeid=None, interface_name=None, new_interface_name=None):
+        """
+        This method renames the interface name for a given interface.
+        It validates whether all minimum requirements are met before proceeding
+        """
+        result_if = False
+        my_interface = {}
+
+        where_interface = f'nodeid = "{nodeid}"'
+        check_interface = Database().get_record(table='nodeinterface', where=where_interface)
+        interface_byname = Helper().convert_list_to_dict(check_interface, 'interface')
+
+        if not check_interface: # ----> easy. interfaces do not exist
+            message = f"no interfaces defined"
+            return False, message
+        elif interface_name not in interface_byname.keys():
+            message = f"interface {interface_name} does not exist"
+            return False, message
+        elif interface_name == new_interface_name:
+            message = f"current and new interface name are the same"
+            return False, message
+        elif new_interface_name in interface_byname.keys():
+            message = f"interface {new_interface_name} already exists"
+            return False, message
+        else:
+            # we have to update the interface
+            my_interface['interface'] = new_interface_name
+            row = Helper().make_rows(my_interface)
+            where = [{"column": "id", "value": interface_byname[interface_name]['id']}]
+            result_if = Database().update('nodeinterface', row, where)
+
+        if result_if:
+            message = f"interface {interface_name} renamed to {new_interface_name}"
+            return True, message
+        message = f"interface {interface_name} could not be renamed"
+        return False, message
+
 
     def node_interface_config(self, nodeid=None, interface_name=None, macaddress=None, mtu=None, vlanid=None, vlan_parent=None, bond_mode=None, bond_slaves=None, options=None):
         """
@@ -1030,7 +1068,7 @@ class Config(object):
         """
         where_interface = f'nodeid = "{nodeid}" AND interface = "{interface_name}"'
         check_interface = Database().get_record(table='nodeinterface', where=where_interface)
-        result_if = "not able to clear ip address config. interface not configured"
+        result_if = "not able to clear ipaddress config. interface not configured"
         if check_interface:
             tablerefid = check_interface[0]['id']
             where_ipaddress = f'tableref="nodeinterface" AND tablerefid={tablerefid}'
@@ -1125,10 +1163,11 @@ class Config(object):
 
     def node_interface_ipaddress_config(self, nodeid, interface_name, ipaddress, network=None, force=False):
         """
-        This method configures ip addresses for interface of nodes.
+        This method configures ipaddresses for interface of nodes.
         """
         ipaddress_check, valid_ip, result_ip = False, False, False
         my_ipaddress = {}
+        message = ''
 
         if network is not None:
             network_details = Database().get_record(table='network', where=f'name="{network}"')
@@ -1188,7 +1227,10 @@ class Config(object):
                 )
                 if ipaddress_check_own and ((ipaddress_check_own[0]['nodeid'] != nodeid) or (interface_name != ipaddress_check_own[0]['interface'])):
                     if not force:
-                        return False, f"ip address {ipaddress} is already in use"
+                        message = f"ipaddress {ipaddress} is already in use "
+                        message += f"on interface {ipaddress_check_own[0]['interface']} "
+                        message += f"for node {ipaddress_check_own[0]['nodename']}"
+                        return False, message
                     else:
                         status, message = self.node_interface_clear_ipaddress(
                             ipaddress_check_own[0]['nodeid'],
@@ -1196,7 +1238,14 @@ class Config(object):
                             ipversion=ipversion
                         )
                         if not status:
-                            return False, f"ip address {ipaddress} could not be cleared and set"
+                            message = f"ipaddress {ipaddress} on interface "
+                            message += f"{ipaddress_check_own[0]['interface']} "
+                            message += f"for node {ipaddress_check_own[0]['nodename']} "
+                            message += "could not be cleared"
+                            return False, message
+                        message = f"ipaddress {ipaddress} cleared on interface "
+                        message += f"{ipaddress_check_own[0]['interface']} "
+                        message += f"for node {ipaddress_check_own[0]['nodename']}, "
 
         my_interface = Database().get_record_join(
             ['ipaddress.*'],
@@ -1224,14 +1273,50 @@ class Config(object):
                 result_ip = Database().insert('ipaddress', row)
 
         if result_ip:
-            message = f"ipaddress for {interface_name} configured with result {result_ip}"
-            self.logger.info(message)
+            message += f"ipaddress {ipaddress} for {interface_name} configured successfully"
+            self.logger.info(message+f"  with result {result_ip}")
             return True, message
-        message = f"ipaddress for {interface_name} config failed with result {result_ip}"
-        self.logger.info(message)
+        message = f"ipaddress {ipaddress} for {interface_name} config failed"
+        self.logger.info(message+f" with result {result_ip}")
         return False, message
 
     # ----------------------------------------------------------------------------------------------
+
+    def group_interface_rename(self, groupid=None, interface_name=None, new_interface_name=None):
+        """
+        This method renames the interface name for a given interface.
+        """
+        result_if = False
+        my_interface = {}
+
+        where_interface = f'groupid = "{groupid}"'
+        check_interface = Database().get_record(table='groupinterface', where=where_interface)
+        interface_byname = Helper().convert_list_to_dict(check_interface, 'interface')
+
+        if not check_interface: # ----> easy. interfaces do not exist
+            message = f"no interfaces defined"
+            return False, message
+        elif interface_name not in interface_byname.keys():
+            message = f"interface {interface_name} does not exist"
+            return False, message
+        elif interface_name == new_interface_name:
+            message = f"current and new interface name are the same"
+            return False, message
+        elif new_interface_name in interface_byname.keys():
+            message = f"interface {new_interface_name} already exists"
+            return False, message
+        else:
+            # we have to update the interface
+            my_interface['interface'] = new_interface_name
+            row = Helper().make_rows(my_interface)
+            where = [{"column": "id", "value": interface_byname[interface_name]['id']}]
+            result_if = Database().update('groupinterface', row, where)
+
+        if result_if:
+            message = f"interface {interface_name} renamed to {new_interface_name}"
+            return True, message
+        message = f"interface {interface_name} could not be renamed"
+        return False, message
 
 
     def group_interface_config(self, groupid=None, interface_name=None, network=None, mtu=None, vlanid=None, vlan_parent=None, bond_mode=None, bond_slaves=None, dhcp=None, options=None):
@@ -1390,8 +1475,29 @@ class Config(object):
                 group, interface, *_ = details['param'].split(':') + [None]
 
                 if group == name:
+                    # RENAMING ---------------------------------------------------------------
+                    if (action in ['rename_interface_for_group_nodes']) and interface:
+                        old_interface, new_interface = interface.split('+')
+                        self.logger.info(f"Renaming interface {old_interface} to {new_interface} for group {group} nodes")
+                        nodes = Database().get_record_join(
+                            ['node.id as nodeid','nodeinterface.id as nodeinterfaceid'],
+                            ['node.groupid=group.id','nodeinterface.nodeid=node.id'],
+                            [f"`group`.name='{group}'",f"nodeinterface.interface='{old_interface}'"]
+                        )
+                        if nodes:
+                            for node in nodes:
+                                self.logger.debug(f"renaming interface {old_interface} to {new_interface} for node.id {node['nodeid']}/group {group}")
+                                my_interface = {}
+                                my_interface['interface'] = new_interface
+                                row = Helper().make_rows(my_interface)
+                                where = [{"column": "id", "value": node['nodeinterfaceid']}]
+                                result_if = Database().update('nodeinterface', row, where)
+                                if not result_if:
+                                    self.logger.error(f"rename failed for node.id {node['nodeid']}/group {group}: {result_if}")
+                        else:
+                            self.logger.warning(f"No nodes found for group {group}")
                     # ADDING/UPDATING --------------------------------------------------------
-                    if (action in ['add_interface_to_group_nodes', 'update_interface_for_group_nodes']) and interface:
+                    elif (action in ['add_interface_to_group_nodes', 'update_interface_for_group_nodes']) and interface:
                         network = Database().get_record_join(
                             [
                                 'ipaddress.ipaddress',

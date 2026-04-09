@@ -96,6 +96,7 @@ MATCH = {
     'scripts': 'loosecsv',
     'tag': 'anything',
     'interface': 'minimal',
+    'newinterfacename': 'interface',
     'gateway_metric': 'integer',
     'vlanid': 'intandnone',
     'vlan_parent': 'intfandclear',

@@ -225,6 +225,8 @@ class Node():
                             if 'ipaddress' in interface:
                                 del interface['ipaddress']
                                 interface['comment'] = 'ipaddress configured but ignored using dhcp and dhcp_nodes_in_pool set'
+                        elif (not 'ipaddress' in interface) and (not 'ipaddress_ipv6' in interface):
+                                interface['ipaddress'] = '!!Invalid!!'
                         if not interface['dhcp']:
                             del interface['dhcp']
                         elif not interface['networkdhcp']:
@@ -504,6 +506,8 @@ class Node():
                         if 'ipaddress' in interface:
                             del interface['ipaddress']
                             interface['comment'] = 'ipaddress configured but ignored using dhcp and dhcp_nodes_in_pool set'
+                    elif (not 'ipaddress' in interface) and (not 'ipaddress_ipv6' in interface):
+                        interface['ipaddress'] = '!!Invalid!!'
                     if not interface['dhcp']:
                         del interface['dhcp']
                     elif not interface['networkdhcp']:

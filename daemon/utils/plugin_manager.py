@@ -21,6 +21,7 @@ Plugin manager helpers for Luna dynamic plugin loading.
 """
 
 import importlib
+import sys
 
 
 class PluginManager(object):
@@ -85,6 +86,27 @@ class PluginManager(object):
                 raise KeyError(f"Missing plugin tree step: {treestep}")
         return subtree
 
+    def invalidate(self, module_name=None, class_name=None):
+        """Invalidate one cached plugin class or all cache entries."""
+        if module_name is None:
+            self._class_cache.clear()
+            return
+
+        if class_name is not None:
+            self._class_cache.pop((module_name, class_name), None)
+            return
+
+        stale_keys = [key for key in self._class_cache if key[0] == module_name]
+        for stale_key in stale_keys:
+            self._class_cache.pop(stale_key, None)
+
+    def _import_plugin_module(self, module_name, reload=False):
+        if reload and module_name in sys.modules:
+            self._log_debug(f'reloading {module_name}')
+            return importlib.reload(sys.modules[module_name])
+        self._log_debug(f'loading {module_name}')
+        return importlib.import_module(module_name)
+
     def _candidate_modules(self, subtree, root, levelone, leveltwo):
         root_module = root.replace('/', '.')
         seen = set()
@@ -117,7 +139,7 @@ class PluginManager(object):
         if module_name:
             yield module_name
 
-    def load(self, plugins=None, root=None, levelone=None, leveltwo=None, class_name='Plugin'):
+    def load(self, plugins=None, root=None, levelone=None, leveltwo=None, class_name='Plugin', reload=False):
         """Return the requested plugin class or None on failure."""
         if not plugins:
             self._log_error(f'Provided plugins tree is empty. root=[{root}]')
@@ -134,12 +156,13 @@ class PluginManager(object):
         for one in levelones:
             for module_name in self._candidate_modules(subtree, root, one, leveltwo):
                 cache_key = (module_name, class_name)
-                if cache_key in self._class_cache:
+                if reload:
+                    self.invalidate(module_name, class_name)
+                if not reload and cache_key in self._class_cache:
                     self._log_debug(f'loading {module_name}.{class_name} from cache')
                     return self._class_cache[cache_key]
                 try:
-                    self._log_debug(f'loading {module_name}.{class_name}')
-                    module = importlib.import_module(module_name)
+                    module = self._import_plugin_module(module_name, reload=reload)
                     plugin_class = self._resolve_plugin_class(module, class_name, module_name)
                     self._class_cache[cache_key] = plugin_class
                     return plugin_class
@@ -157,12 +180,13 @@ class PluginManager(object):
 
         module_name = f'plugins.{root_module}.default'
         cache_key = (module_name, class_name)
-        if cache_key in self._class_cache:
+        if reload:
+            self.invalidate(module_name, class_name)
+        if not reload and cache_key in self._class_cache:
             self._log_debug(f'loading {module_name}.{class_name} from cache')
             return self._class_cache[cache_key]
         try:
-            self._log_debug(f'loading {module_name}.{class_name}')
-            module = importlib.import_module(module_name)
+            module = self._import_plugin_module(module_name, reload=reload)
             plugin_class = self._resolve_plugin_class(module, class_name, module_name)
             self._class_cache[cache_key] = plugin_class
             return plugin_class

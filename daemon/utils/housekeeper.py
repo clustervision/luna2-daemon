@@ -209,11 +209,11 @@ class Housekeeper(object):
         #    return
         #self.logger.info(f"osimage_tasks_mother sees job in queue as next: {next_id}")
         try:
-            OsImage().osimage_mother()
+            executor = concurrent.futures.ProcessPoolExecutor(max_workers=1)
+            executor.submit(OsImage().osimage_mother_wrapper)
         except Exception as exp:
             exc_type, exc_obj, exc_tb = sys.exc_info()
             self.logger.error(f"osimage_tasks_mother up thread encountered problem: {exp}, {exc_type}, in {exc_tb.tb_lineno}")
-        return
 
 
     def cleanup_mother(self,event):

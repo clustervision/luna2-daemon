@@ -39,6 +39,35 @@ class PluginManager(object):
         if self.logger:
             self.logger.error(message)
 
+    def _legacy_metadata(self, plugin_class, module_name):
+        plugin_name = getattr(plugin_class, 'PLUGIN_NAME', None)
+        plugin_kind = getattr(plugin_class, 'PLUGIN_KIND', None)
+        plugin_api_version = getattr(plugin_class, 'PLUGIN_API_VERSION', None)
+
+        if plugin_name and plugin_kind and plugin_api_version is not None:
+            return plugin_class
+
+        module_parts = module_name.split('.')[1:]
+        inferred_name = module_parts[-1] if module_parts else 'default'
+        inferred_kind = '/'.join(module_parts[:-1]) if len(module_parts) > 1 else ''
+
+        if not plugin_name:
+            setattr(plugin_class, 'PLUGIN_NAME', inferred_name)
+        if not plugin_kind:
+            setattr(plugin_class, 'PLUGIN_KIND', inferred_kind)
+        if plugin_api_version is None:
+            setattr(plugin_class, 'PLUGIN_API_VERSION', 1)
+
+        self._log_debug(f'legacy plugin format detected for {module_name}')
+        return plugin_class
+
+    def _resolve_plugin_class(self, module, class_name, module_name):
+        for candidate in [class_name, 'Plugin', 'plugin', 'Handler']:
+            plugin_class = getattr(module, candidate, None)
+            if plugin_class is not None:
+                return self._legacy_metadata(plugin_class, module_name)
+        raise AttributeError(f'No compatible plugin class found in {module_name}')
+
     def _normalize_levelones(self, levelone):
         if isinstance(levelone, str):
             return [levelone]
@@ -111,7 +140,7 @@ class PluginManager(object):
                 try:
                     self._log_debug(f'loading {module_name}.{class_name}')
                     module = importlib.import_module(module_name)
-                    plugin_class = getattr(module, class_name)
+                    plugin_class = self._resolve_plugin_class(module, class_name, module_name)
                     self._class_cache[cache_key] = plugin_class
                     return plugin_class
                 except ModuleNotFoundError as exp:
@@ -134,7 +163,7 @@ class PluginManager(object):
         try:
             self._log_debug(f'loading {module_name}.{class_name}')
             module = importlib.import_module(module_name)
-            plugin_class = getattr(module, class_name)
+            plugin_class = self._resolve_plugin_class(module, class_name, module_name)
             self._class_cache[cache_key] = plugin_class
             return plugin_class
         except ModuleNotFoundError as exp:

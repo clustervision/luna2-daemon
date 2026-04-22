@@ -45,6 +45,7 @@ from netaddr import IPNetwork, IPAddress
 from jinja2 import Environment, meta, FileSystemLoader
 from utils.log import Log
 from utils.database import Database
+from utils.plugin_manager import PluginManager
 from common.constant import CONSTANT
 
 
@@ -939,68 +940,14 @@ class Helper(object):
         """
         This method will load the plugin.
         """
-        roottree = root.split('/')
-        root = root.replace('/','.')
-        self.logger.debug(f"Loading module {class_name}/Plugin from plugins.{root}.{levelone}.{leveltwo} / {plugins}")
-        if not plugins: # or (root and root not in plugins):
-            self.logger.error(f"Provided Plugins tree is empty or is missing root. plugins = [{plugins}], root = [{root}]")
-            return None
-        module = None
-        class_name = class_name or 'Plugin'
-        levelones = []
-        try:
-            myplugin = plugins
-            for treestep in roottree:
-                if treestep in myplugin:
-                    myplugin = myplugin[treestep]
-            self.logger.debug(f"myplugin = [{myplugin}]")
-        except Exception as exp:
-            self.logger.error(f"Loading module caused a problem in roottree: {exp}")
-            return None
-        if type(levelone) == type('string'):
-            levelones.append(levelone)
-        else:
-            levelones = levelone
-        try:
-            for levelone in levelones:
-                if leveltwo and levelone+leveltwo+'.py' in myplugin:
-                    self.logger.debug(f"loading plugins.{root}.{levelone}{leveltwo}")
-                    module = __import__('plugins.'+root+'.'+levelone+leveltwo,fromlist=[class_name])
-                    break
-                elif levelone in myplugin.keys():
-                    if leveltwo and leveltwo in myplugin[levelone]:
-                        plugin = leveltwo.rsplit('.',1)
-                        self.logger.debug(f"loading plugins.{root}.{levelone}.{plugin[0]}")
-                        module = __import__('plugins.'+root+'.'+levelone+'.'+plugin[0],fromlist=[class_name])
-                        break
-                    elif 'default.py' in myplugin[levelone]:
-                        self.logger.debug(f"loading plugins.{root}.{levelone}.default")
-                        module = __import__('plugins.'+root+'.'+levelone+'.default',fromlist=[class_name])
-                        break
-                elif levelone+'.py' in myplugin:
-                    self.logger.debug(f"loading plugins.{root}.{levelone}")
-                    module = __import__('plugins.'+root+'.'+levelone,fromlist=[class_name])
-                    break
-            if not module:
-                self.logger.debug(f"loading plugins.{root}.default")
-                module = __import__('plugins.'+root+'.default',fromlist=[class_name])
-        except Exception as exp:
-            exc_type, exc_obj, exc_tb = sys.exc_info()
-            #fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
-            #print(exc_type, fname, exc_tb.tb_lineno)
-            self.logger.error(f"Loading module caused a problem during selection: {exp}, {exc_type} in {exc_tb.tb_lineno}]")
-            return None
-
-        try:
-            if module:
-                self.logger.debug(vars(module))
-                self.logger.debug(dir(module))
-                my_class = getattr(module,class_name)
-                return my_class
-            return None
-        except Exception as exp:
-            self.logger.error(f"Getattr caused a problem: {exp}")
-            return None
+        manager = PluginManager(logger=self.logger)
+        return manager.load(
+            plugins=plugins,
+            root=root,
+            levelone=levelone,
+            leveltwo=leveltwo,
+            class_name=class_name,
+        )
 
     # -----------------------------------------------------------------------------------
 

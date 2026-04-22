@@ -83,8 +83,6 @@ class PluginManager(object):
         for treestep in self._root_steps(root):
             if treestep in subtree:
                 subtree = subtree[treestep]
-            else:
-                raise KeyError(f"Missing plugin tree step: {treestep}")
         return subtree
 
     def _module_file(self, module):

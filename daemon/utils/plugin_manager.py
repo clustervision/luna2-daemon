@@ -94,13 +94,15 @@ class PluginManager(object):
             self._log_error(f'Provided plugins tree is empty. root=[{root}]')
             return None
         class_name = class_name or 'Plugin'
+        root_module = root.replace('/', '.')
         try:
             subtree = self._subtree(plugins, root)
         except Exception as exp:
             self._log_error(f'Loading module caused a problem in roottree: {exp}')
             return None
 
-        for one in self._normalize_levelones(levelone):
+        levelones = self._normalize_levelones(levelone)
+        for one in levelones:
             for module_name in self._candidate_modules(subtree, root, one, leveltwo):
                 cache_key = (module_name, class_name)
                 if cache_key in self._class_cache:
@@ -112,12 +114,37 @@ class PluginManager(object):
                     plugin_class = getattr(module, class_name)
                     self._class_cache[cache_key] = plugin_class
                     return plugin_class
-                except ModuleNotFoundError:
-                    continue
+                except ModuleNotFoundError as exp:
+                    if exp.name == module_name:
+                        continue
+                    self._log_error(f'Loading module caused a nested import problem in {module_name}: {exp}')
+                    return None
                 except AttributeError as exp:
                     self._log_error(f'Plugin class missing in {module_name}: {exp}')
                     return None
                 except Exception as exp:
                     self._log_error(f'Loading module caused a problem during selection: {exp}')
                     return None
-        return None
+
+        module_name = f'plugins.{root_module}.default'
+        cache_key = (module_name, class_name)
+        if cache_key in self._class_cache:
+            self._log_debug(f'loading {module_name}.{class_name} from cache')
+            return self._class_cache[cache_key]
+        try:
+            self._log_debug(f'loading {module_name}.{class_name}')
+            module = importlib.import_module(module_name)
+            plugin_class = getattr(module, class_name)
+            self._class_cache[cache_key] = plugin_class
+            return plugin_class
+        except ModuleNotFoundError as exp:
+            if exp.name == module_name:
+                return None
+            self._log_error(f'Loading module caused a nested import problem in {module_name}: {exp}')
+            return None
+        except AttributeError as exp:
+            self._log_error(f'Plugin class missing in {module_name}: {exp}')
+            return None
+        except Exception as exp:
+            self._log_error(f'Loading module caused a problem during selection: {exp}')
+            return None

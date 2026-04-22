@@ -77,6 +77,40 @@ from routes.plugin_import import import_blueprint
 from routes.ha import ha_blueprint
 
 event = Event()
+background_futures = []
+
+############# Helper functions ##################
+
+def register_future(executor, future):
+    background_futures.append((executor, future))
+    return future
+
+
+def queue_has_pending_work():
+    queue = Queue()
+    subsystems = [
+        'service',
+        'group_interface',
+        'node_control',
+    ]
+    for subsystem in subsystems:
+        if queue.tasks_in_queue(subsystem=subsystem):
+            LOGGER.info(f" ... subsystem {subsystem} busy")
+            return True
+    return False
+
+
+def wait_for_queue_drain(max_wait=3600, interval=15):
+    waited = 0
+    while waited < max_wait:
+        if not queue_has_pending_work():
+            LOGGER.info("Luna queue drained, continuing shutdown/reload")
+            return True
+        LOGGER.info("Delaying shutdown/reload until Luna queue is drained")
+        sleep(interval)
+        waited += interval
+    LOGGER.warning("Timed out waiting for Luna queue to drain")
+    return False
 
 ############# Gunicorn Server Hooks #############
 
@@ -121,26 +155,37 @@ def on_starting(server):
     except Exception as exp:
         exc_type, exc_obj, exc_tb = sys.exc_info()
         sys.stderr.write(f"ERROR: Startup hook plugin returned an exception: {exp}, {exc_type}, in {exc_tb.tb_lineno}\n")
+    event.clear()
     # --------------- status message cleanup thread ----------------
     executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
-    executor.submit(Housekeeper().cleanup_mother, event)
-    executor.shutdown(wait=False)
+    register_future(executor, executor.submit(Housekeeper().cleanup_mother, event))
+    #executor.submit(Housekeeper().cleanup_mother, event)
+    #executor.shutdown(wait=False)
     # ----------------- queue housekeeper thread -------------------
     executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
-    executor.submit(Housekeeper().tasks_mother, event)
-    executor.shutdown(wait=False)
+    register_future(executor, executor.submit(Housekeeper().tasks_mother, event))
+    #executor.submit(Housekeeper().tasks_mother, event)
+    #executor.shutdown(wait=False)
     # ------------- switch/port/mac detection thread ---------------
     executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
-    executor.submit(Housekeeper().switchport_scan, event)
-    executor.shutdown(wait=False)
+    register_future(executor, executor.submit(Housekeeper().switchport_scan, event))
+    #executor.submit(Housekeeper().switchport_scan, event)
+    #executor.shutdown(wait=False)
     # --------------- journal / replication thread -----------------
     executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
+    register_future(executor, executor.submit(Housekeeper().journal_mother, event))
     executor.submit(Housekeeper().journal_mother, event)
     executor.shutdown(wait=False)
     # ----------------- invalid config thread ----------------------
     executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
-    executor.submit(Housekeeper().invalid_config_mother, event)
-    executor.shutdown(wait=False)
+    register_future(executor, executor.submit(Housekeeper().invalid_config_mother, event))
+    #executor.submit(Housekeeper().invalid_config_mother, event)
+    #executor.shutdown(wait=False)
+    # ----------------- invalid config thread ----------------------
+    executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
+    register_future(executor, executor.submit(Housekeeper().osimage_tasks_mother, event))
+    #executor.submit(Housekeeper().osimage_tasks_mother, event)
+    #executor.shutdown(wait=False)
     # --------------------------------------------------------------
     LOGGER.info(vars(server))
     LOGGER.info('Gunicorn server hook on start')
@@ -166,6 +211,16 @@ def on_exit(server):
     #        LOGGER.info("Delaying shutdown. Tasks scheduled in queue or running...")
     #        sleep(10)
     event.set()  # stops the threads like cleanup
+    wait_for_queue_drain()
+    for executor, future in background_futures:
+        try:
+            future.result(timeout=10)
+        except Exception as exp:
+            LOGGER.warning(f"Background future shutdown issue: {exp}")
+        try:
+            executor.shutdown(wait=False)
+        except Exception as exp:
+            LOGGER.warning(f"Executor shutdown issue: {exp}")
     LOGGER.info(vars(server))
     LOGGER.info('Gunicorn server hook on exit')
     # we call the shutdown hook plugin

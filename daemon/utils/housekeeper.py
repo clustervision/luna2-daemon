@@ -202,6 +202,20 @@ class Housekeeper(object):
             sleep(5)
 
 
+    def osimage_tasks_mother(self,event):
+        self.logger.info("Starting osimage pending tasks thread")
+        #next_id = Queue().next_task_in_queue('osimage')
+        #if not next_id:
+        #    return
+        #self.logger.info(f"osimage_tasks_mother sees job in queue as next: {next_id}")
+        try:
+            OsImage().osimage_mother()
+        except Exception as exp:
+            exc_type, exc_obj, exc_tb = sys.exc_info()
+            self.logger.error(f"osimage_tasks_mother up thread encountered problem: {exp}, {exc_type}, in {exc_tb.tb_lineno}")
+        return
+
+
     def cleanup_mother(self,event):
         counter=0
         self.logger.info("Starting cleanup thread")

@@ -164,7 +164,7 @@ def cleanup_queue_and_status():
     """
     This method will clean the Queue
     """
-    Database().clear('queue',"subsystem!='housekeeper'") # we exclude housekeeper tasks being removed
+    Database().clear('queue',"subsystem!='housekeeper' AND subsystem!='osimage'") # we exclude housekeeper tasks being removed
     Database().clear('status')
 
 def cleanup_and_init_ping():

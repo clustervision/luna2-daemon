@@ -112,6 +112,9 @@ class Queue(object):
     def remove_task_from_queue_by_request_id(self,request_id):
         Database().delete_row('queue', [{"column": "request_id", "value": request_id}])
 
+    def remove_task_from_queue_by_subsystem(self,subsystem):
+        Database().delete_row('queue', [{"column": "subsystem", "value": subsystem}])
+
     def next_task_in_queue(self,subsystem,status=None,request_id=None):
         where=None
         status_query, request_id_query = "", ""

@@ -204,10 +204,11 @@ class Housekeeper(object):
 
     def osimage_tasks_mother(self,event):
         self.logger.info("Starting osimage pending tasks thread")
-        #next_id = Queue().next_task_in_queue('osimage')
-        #if not next_id:
-        #    return
-        #self.logger.info(f"osimage_tasks_mother sees job in queue as next: {next_id}")
+        ha_object=HA()
+        if ha_object.get_hastate() and not ha_object.get_role():
+            self.logger.warning(f"osimage_tasks_mother will clear queued osimage tasks as i am no longer master")
+            Queue().remove_task_from_queue_by_subsystem('osimage')
+            return
         try:
             executor = concurrent.futures.ProcessPoolExecutor(max_workers=1)
             executor.submit(OsImage().osimage_mother_wrapper)

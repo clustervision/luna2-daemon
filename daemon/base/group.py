@@ -283,8 +283,7 @@ class Group():
             'postscript': 'ZWNobyAndG1wZnMgLyB0bXBmcyBtcG9sPWludGVybGVhdmUgMCAwJyA+PiAvc3lzcm9vdC9ldGMvZnN0YWIK',
             'setupbmc': False,
             'netboot': True,
-            'bootmenu': False,
-            'provision_interface': 'BOOTIF'
+            'bootmenu': False
         }
         create, update = False, False
         if request_data:

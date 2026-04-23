@@ -33,6 +33,7 @@ __status__      = 'Development'
 import re
 import os
 import sys
+import signal
 import shutil
 import threading
 from time import sleep
@@ -59,6 +60,11 @@ class OsImage(object):
         plugins_path=CONSTANT["PLUGINS"]["PLUGINS_DIRECTORY"]
         self.osimage_plugins = Helper().plugin_finder(f'{plugins_path}/osimage')
         self.boot_plugins = Helper().plugin_finder(f'{plugins_path}/boot')
+        self._stop_requested = False
+
+    def _signal_stop(self, signum, frame):
+        self.logger.warning(f"osimage_mother received signal {signum}, requesting graceful stop")
+        self._stop_requested = True
 
     # ---------------------------------------------------------------------------
 
@@ -1000,9 +1006,9 @@ class OsImage(object):
     # ------------------------------------------------------------------- 
     # The mother of all.
 
-    def osimage_mother(self,only_request_id=None):
-
+    def osimage_mother(self,only_request_id=None,event=None):
         self.logger.info(f"osimage_mother called with request_id {only_request_id}")
+        self._stop_requested = False
         try:
 
 #            # Below section is already done in config/pack GET call but kept here in case we want to move it back
@@ -1025,6 +1031,10 @@ class OsImage(object):
 #           we clean up the placeholder request as a last task to do. it's like eating its own tail :)  --Antoine
 
             while next_id := Queue().next_task_in_queue('osimage','queued',only_request_id):
+                if self._stop_requested or (event and event.is_set()):
+                    self._stop_requested = True
+                    self.logger.warning("osimage_mother stopping before taking next queued task")
+                    break
                 details=Queue().get_task_details(next_id)
                 request_id=details['request_id']
                 action=details['task']
@@ -1079,65 +1089,93 @@ class OsImage(object):
                 elif action == "copy_osimage" or action == "clone_osimage":
                     if first and second:
                         Queue().update_task_status_in_queue(next_id,'in progress')
-                        ret=self.copy_osimage(next_id,request_id)
-                        Queue().remove_task_from_queue(next_id)
-                        if not ret:
+                        ret = self.copy_osimage(next_id,request_id)
+                        if self._stop_requested:
+                            Queue().update_task_status_in_queue(next_id,'queued')
+                        elif not ret:
+                            Queue().remove_task_from_queue(next_id)
                             Queue().remove_task_from_queue_by_request_id(request_id)
                             Status().add_message(request_id=request_id, username_initiator="luna", message="EOF")
+                        else:
+                            Queue().remove_task_from_queue(next_id)
  
                 elif action == "pack_osimage":
                     if first:
                         Queue().update_task_status_in_queue(next_id,'in progress')
-                        ret=self.pack_osimage(next_id,request_id)
-                        Queue().remove_task_from_queue(next_id)
-                        if not ret:
+                        ret = self.pack_osimage(next_id,request_id)
+                        if self._stop_requested:
+                            Queue().update_task_status_in_queue(next_id,'queued')
+                        elif not ret:
+                            Queue().remove_task_from_queue(next_id)
                             Queue().remove_task_from_queue_by_request_id(request_id)
                             Status().add_message(request_id=request_id, username_initiator="luna", message="EOF")
+                        else:
+                            Queue().remove_task_from_queue(next_id)
 
                 elif action == "build_osimage":
                     if first:
                         Queue().update_task_status_in_queue(next_id,'in progress')
-                        ret=self.build_osimage(next_id,request_id)
-                        Queue().remove_task_from_queue(next_id)
-                        if not ret:
+                        ret = self.build_osimage(next_id,request_id)
+                        if self._stop_requested:
+                            Queue().update_task_status_in_queue(next_id,'queued')
+                        elif not ret:
+                            Queue().remove_task_from_queue(next_id)
                             Queue().remove_task_from_queue_by_request_id(request_id)
                             Status().add_message(request_id=request_id, username_initiator="luna", message="EOF")
+                        else:
+                            Queue().remove_task_from_queue(next_id)
 
                 elif action == "provision_osimage":
                     if first:
                         Queue().update_task_status_in_queue(next_id,'in progress')
-                        ret=self.provision_osimage(next_id,request_id)
-                        Queue().remove_task_from_queue(next_id)
-                        if not ret:
+                        ret = self.provision_osimage(next_id,request_id)
+                        if self._stop_requested:
+                            Queue().update_task_status_in_queue(next_id,'queued')
+                        elif not ret:
+                            Queue().remove_task_from_queue(next_id)
                             Queue().remove_task_from_queue_by_request_id(request_id)
                             Status().add_message(request_id=request_id, username_initiator="luna", message="EOF")
+                        else:
+                            Queue().remove_task_from_queue(next_id)
 
                 elif action == "grab_osimage":
                     if first and second:
                         Queue().update_task_status_in_queue(next_id,'in progress')
-                        ret=self.grab_osimage(next_id,request_id)
-                        Queue().remove_task_from_queue(next_id)
-                        if not ret:
+                        ret = self.grab_osimage(next_id,request_id)
+                        if self._stop_requested:
+                            Queue().update_task_status_in_queue(next_id,'queued')
+                        elif not ret:
+                            Queue().remove_task_from_queue(next_id)
                             Queue().remove_task_from_queue_by_request_id(request_id)
                             Status().add_message(request_id=request_id, username_initiator="luna", message="EOF")
+                        else:
+                            Queue().remove_task_from_queue(next_id)
 
                 elif action == "push_osimage_to_group":
                     if first and second:
                         Queue().update_task_status_in_queue(next_id,'in progress')
-                        ret=self.push_osimage(next_id,request_id,'group')
-                        Queue().remove_task_from_queue(next_id)
-                        if not ret:
+                        ret = self.push_osimage(next_id,request_id,'group')
+                        if self._stop_requested:
+                            Queue().update_task_status_in_queue(next_id,'queued')
+                        elif not ret:
+                            Queue().remove_task_from_queue(next_id)
                             Queue().remove_task_from_queue_by_request_id(request_id)
                             Status().add_message(request_id=request_id, username_initiator="luna", message="EOF")
+                        else:
+                            Queue().remove_task_from_queue(next_id)
 
                 elif action == "push_osimage_to_node":
                     if first and second:
                         Queue().update_task_status_in_queue(next_id,'in progress')
-                        ret=self.push_osimage(next_id,request_id,'node')
-                        Queue().remove_task_from_queue(next_id)
-                        if not ret:
+                        ret = self.push_osimage(next_id,request_id,'node')
+                        if self._stop_requested:
+                            Queue().update_task_status_in_queue(next_id,'queued')
+                        elif not ret:
+                            Queue().remove_task_from_queue(next_id)
                             Queue().remove_task_from_queue_by_request_id(request_id)
                             Status().add_message(request_id=request_id, username_initiator="luna", message="EOF")
+                        else:
+                            Queue().remove_task_from_queue(next_id)
 
                 elif action == "close_task" and first:
                     Queue().remove_task_from_queue(first)
@@ -1150,6 +1188,10 @@ class OsImage(object):
 
             # parked tasks are there to be there. it should be seen as a placeholder for something else.
             while next_id := Queue().next_task_in_queue('osimage','parked',only_request_id):
+                if self._stop_requested or (event and event.is_set()):
+                    self._stop_requested = True
+                    self.logger.warning("osimage_mother stopping before taking next parked task")
+                    break
                 details=Queue().get_task_details(next_id)
                 request_id=details['request_id']
                 action=details['task']
@@ -1178,8 +1220,24 @@ class OsImage(object):
                 Status().add_message(request_id=request_id, username_initiator="luna", message="EOF")
             except Exception as nexp:
                 self.logger.error(f"osimage_mother has problems during exception handling: {nexp}")
-           
         self.logger.info(f"osimage_mother finished with request_id {only_request_id}")
+
+
+    def osimage_mother_wrapper(self, only_request_id=None):
+        old_sigint = None
+        old_sigterm = None
+        try:
+            old_sigint = signal.getsignal(signal.SIGINT)
+            old_sigterm = signal.getsignal(signal.SIGTERM)
+            signal.signal(signal.SIGINT, self._signal_stop)
+            signal.signal(signal.SIGTERM, self._signal_stop)
+            return self.osimage_mother(only_request_id=only_request_id)
+        finally:
+            if old_sigint is not None:
+                signal.signal(signal.SIGINT, old_sigint)
+            if old_sigterm is not None:
+                signal.signal(signal.SIGTERM, old_sigterm)
+
 
     # ---------------------- child for bulk parallel operations --------------------------------
 

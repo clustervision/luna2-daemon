@@ -112,6 +112,9 @@ class Queue(object):
     def remove_task_from_queue_by_request_id(self,request_id):
         Database().delete_row('queue', [{"column": "request_id", "value": request_id}])
 
+    def remove_task_from_queue_by_subsystem(self,subsystem):
+        Database().delete_row('queue', [{"column": "subsystem", "value": subsystem}])
+
     def next_task_in_queue(self,subsystem,status=None,request_id=None):
         where=None
         status_query, request_id_query = "", ""
@@ -169,4 +172,28 @@ class Queue(object):
         row = [{"column": "subsystem", "value": f"{subsystem}"}]
         where = [{"column": "id", "value": f"{taskid}"}]
         status = Database().update('queue', row, where)
+
+    def queue_has_pending_work(self):
+        subsystems = [
+            'service',
+            'group_interface',
+            'node_control',
+        ]
+        for subsystem in subsystems:
+            if self.tasks_in_queue(subsystem=subsystem):
+                self.logger.info(f" ... subsystem {subsystem} busy")
+                return True
+        return False
+
+    def wait_for_queue_drain(self, max_wait=1800, interval=15):
+        waited = 0
+        while waited < max_wait:
+            if not self.queue_has_pending_work():
+                self.logger.info("Luna queue is now drained")
+                return True
+            self.logger.info("Waiting for Luna queue being drained...")
+            sleep(interval)
+            waited += interval
+        self.logger.warning("Time out waiting for Luna queue to drain")
+        return False
 

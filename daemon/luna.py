@@ -78,6 +78,14 @@ from routes.ha import ha_blueprint
 
 event = Event()
 
+############# Helper functions ##################
+
+background_futures = []
+def register_future(executor, future):
+    background_futures.append((executor, future))
+    return future
+
+
 ############# Gunicorn Server Hooks #############
 
 def on_starting(server):
@@ -121,26 +129,25 @@ def on_starting(server):
     except Exception as exp:
         exc_type, exc_obj, exc_tb = sys.exc_info()
         sys.stderr.write(f"ERROR: Startup hook plugin returned an exception: {exp}, {exc_type}, in {exc_tb.tb_lineno}\n")
+    event.clear()
     # --------------- status message cleanup thread ----------------
     executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
-    executor.submit(Housekeeper().cleanup_mother, event)
-    executor.shutdown(wait=False)
+    register_future(executor, executor.submit(Housekeeper().cleanup_mother, event))
     # ----------------- queue housekeeper thread -------------------
     executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
-    executor.submit(Housekeeper().tasks_mother, event)
-    executor.shutdown(wait=False)
+    register_future(executor, executor.submit(Housekeeper().tasks_mother, event))
     # ------------- switch/port/mac detection thread ---------------
     executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
-    executor.submit(Housekeeper().switchport_scan, event)
-    executor.shutdown(wait=False)
+    register_future(executor, executor.submit(Housekeeper().switchport_scan, event))
     # --------------- journal / replication thread -----------------
     executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
-    executor.submit(Housekeeper().journal_mother, event)
-    executor.shutdown(wait=False)
+    register_future(executor, executor.submit(Housekeeper().journal_mother, event))
     # ----------------- invalid config thread ----------------------
     executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
-    executor.submit(Housekeeper().invalid_config_mother, event)
-    executor.shutdown(wait=False)
+    register_future(executor, executor.submit(Housekeeper().invalid_config_mother, event))
+    # ----------------- osimage tasks thread -----------------------
+    executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
+    register_future(executor, executor.submit(Housekeeper().osimage_tasks_mother, event))
     # --------------------------------------------------------------
     LOGGER.info(vars(server))
     LOGGER.info('Gunicorn server hook on start')
@@ -152,6 +159,7 @@ def on_reload(server):
     A Testing Method for Gunicorn on_reload.
     """
     LOGGER.info(vars(server))
+    Queue().wait_for_queue_drain()
     LOGGER.info('Gunicorn server hook on reload')
     return True
 
@@ -166,6 +174,16 @@ def on_exit(server):
     #        LOGGER.info("Delaying shutdown. Tasks scheduled in queue or running...")
     #        sleep(10)
     event.set()  # stops the threads like cleanup
+    Queue().wait_for_queue_drain()
+    for executor, future in background_futures:
+        try:
+            future.result(timeout=10)
+        except Exception as exp:
+            LOGGER.warning(f"Background future shutdown issue: {exp}")
+        try:
+            executor.shutdown(wait=False)
+        except Exception as exp:
+            LOGGER.warning(f"Executor shutdown issue: {exp}")
     LOGGER.info(vars(server))
     LOGGER.info('Gunicorn server hook on exit')
     # we call the shutdown hook plugin

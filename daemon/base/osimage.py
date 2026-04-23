@@ -448,14 +448,14 @@ class OSImage():
                 next_id = Queue().next_task_in_queue('osimage')
                 if task_id == next_id:
                     executor = ProcessPoolExecutor(max_workers=1)
-                    executor.submit(OsImager().osimage_mother)
+                    executor.submit(OsImager().osimage_mother_wrapper)
                     executor.shutdown(wait=False)
                 else:
                     next_id = Queue().next_parallel_task_in_queue('osimage',name,'queued')
                     if task_id == next_id:
                         # ok, so we are not the first mother running... let's only do our own request
                         executor = ProcessPoolExecutor(max_workers=1)
-                        executor.submit(OsImager().osimage_mother, request_id)
+                        executor.submit(OsImager().osimage_mother_wrapper, request_id)
                         executor.shutdown(wait=False)
                     else:
                         Status().add_message(request_id, "luna", f"other task with id {next_id} is being processed first. please wait")
@@ -659,7 +659,7 @@ class OSImage():
             if task_id == next_id:
                 # we're first in the queue. wake up mother!
                 executor = ProcessPoolExecutor(max_workers=1)
-                executor.submit(OsImager().osimage_mother)
+                executor.submit(OsImager().osimage_mother_wrapper)
                 executor.shutdown(wait=False)
                 # OsImager().osimage_mother(request_id)
                 # we should check after a few seconds if there is a status update for us.
@@ -669,7 +669,7 @@ class OSImage():
                 if task_id == next_id:
                     # ok, so we are not the first mother running... let's only do our own request
                     executor = ProcessPoolExecutor(max_workers=1)
-                    executor.submit(OsImager().osimage_mother, request_id)
+                    executor.submit(OsImager().osimage_mother_wrapper, request_id)
                     executor.shutdown(wait=False)
                 else:
                     Status().add_message(request_id, "luna", f"other task with id {next_id} is being processed first. please wait")
@@ -763,7 +763,7 @@ class OSImage():
             if task_id == next_id:
                 # w're first in the queue. let's wake up mother
                 executor = ProcessPoolExecutor(max_workers=1)
-                executor.submit(OsImager().osimage_mother)
+                executor.submit(OsImager().osimage_mother_wrapper)
                 executor.shutdown(wait=False)
                 # OsImager().osimage_mother(request_id)
                 # we should check after a few seconds if there is a status update for us.
@@ -773,7 +773,7 @@ class OSImage():
                 if task_id == next_id:
                     # We're not the first mother running... we only do our own stuff
                     executor = ProcessPoolExecutor(max_workers=1)
-                    executor.submit(OsImager().osimage_mother, request_id)
+                    executor.submit(OsImager().osimage_mother_wrapper, request_id)
                     executor.shutdown(wait=False)
                 else:
                     Status().add_message(request_id, "luna", f"other task with id {next_id} is being processed first. please wait")
@@ -826,7 +826,7 @@ class OSImage():
         if queue_id == next_id:
             # w're first in the queue. let's wake up mother
             executor = ProcessPoolExecutor(max_workers=1)
-            executor.submit(OsImager().osimage_mother)
+            executor.submit(OsImager().osimage_mother_wrapper)
             executor.shutdown(wait=False)
             # OsImager().osimage_mother(request_id)
             # we should check after a few seconds if there is a status update for us.
@@ -836,7 +836,7 @@ class OSImage():
             if queue_id == next_id:
                 # We're not the first mother running... we only do our own stuff
                 executor = ProcessPoolExecutor(max_workers=1)
-                executor.submit(OsImager().osimage_mother, request_id)
+                executor.submit(OsImager().osimage_mother_wrapper, request_id)
                 executor.shutdown(wait=False)
             else:
                 Status().add_message(request_id, "luna", f"other task with id {next_id} is being processed first. please wait")
@@ -902,14 +902,14 @@ class OSImage():
                     if task_id == next_id:
                         # we're first in the queue, let's wake up mother
                         executor = ProcessPoolExecutor(max_workers=1)
-                        executor.submit(OsImager().osimage_mother)
+                        executor.submit(OsImager().osimage_mother_wrapper)
                         executor.shutdown(wait=False)
                     else:
                         next_id = Queue().next_parallel_task_in_queue('osimage',name,'queued')
                         if task_id == next_id:
                             # there is another mother running so we focus on our own stuff
                             executor = ProcessPoolExecutor(max_workers=1)
-                            executor.submit(OsImager().osimage_mother, request_id)
+                            executor.submit(OsImager().osimage_mother_wrapper, request_id)
                             executor.shutdown(wait=False)
                         else:
                             Status().add_message(request_id, "luna", f"other task with id {next_id} is being processed first. please wait")

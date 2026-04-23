@@ -191,7 +191,7 @@ class Queue(object):
             if not self.queue_has_pending_work():
                 self.logger.info("Luna queue is now drained")
                 return True
-            self.logger.info("Wating for Luna queue being drained...")
+            self.logger.info("Waiting for Luna queue being drained...")
             sleep(interval)
             waited += interval
         self.logger.warning("Time out waiting for Luna queue to drain")

@@ -26,10 +26,6 @@ import os
 def build_plugin_tree(startpath=None, logger=None):
     """Build the nested plugin tree structure used by plugin/template managers."""
 
-    def log_debug(message):
-        if logger:
-            logger.debug(message)
-
     def set_leaf(tree=None, branches=None, leaf=None):
         if len(branches) == 1:
             tree[branches[0]] = leaf
@@ -44,5 +40,6 @@ def build_plugin_tree(startpath=None, logger=None):
         if root != startpath:
             branches.extend(os.path.relpath(root, startpath).split(os.sep))
         set_leaf(tree, branches, dict([(d, {}) for d in dirs] + [(f, None) for f in files]))
-    log_debug(f"PLUGIN TREE {startpath}: {tree}")
+    if logger is not None:
+        logger.debug(f"PLUGIN TREE {startpath}: {tree}")
     return tree

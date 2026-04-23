@@ -23,6 +23,7 @@ Plugin manager helpers for Luna dynamic plugin loading.
 import importlib
 import os
 import sys
+from utils.log import Log
 from utils.plugin_tree import build_plugin_tree
 
 
@@ -33,15 +34,7 @@ class PluginManager(object):
     _module_state = {}
 
     def __init__(self, logger=None):
-        self.logger = logger
-
-    def _log_debug(self, message):
-        if self.logger:
-            self.logger.debug(message)
-
-    def _log_error(self, message):
-        if self.logger:
-            self.logger.error(message)
+        self.logger = Log.get_logger()
 
     def _resolve_plugin_class(self, module, class_name, module_name):
         requested = class_name or 'Plugin'
@@ -126,11 +119,11 @@ class PluginManager(object):
 
     def _import_plugin_module(self, module_name, reload=False):
         if reload and module_name in sys.modules:
-            self._log_debug(f'reloading {module_name}')
+            self.logger.debug(f'reloading {module_name}')
             module = importlib.reload(sys.modules[module_name])
             self._remember_module_state(module_name, module)
             return module
-        self._log_debug(f'loading {module_name}')
+        self.logger.debug(f'loading {module_name}')
         module = importlib.import_module(module_name)
         self._remember_module_state(module_name, module)
         return module
@@ -169,19 +162,19 @@ class PluginManager(object):
 
     def _legacy_load_error(self, exp):
         exc_type, exc_obj, exc_tb = sys.exc_info()
-        self._log_error(f'Loading module caused a problem during selection: {exp}, {exc_type} in {exc_tb.tb_lineno}]')
+        self.logger.error(f'Loading module caused a problem during selection: {exp}, {exc_type} in {exc_tb.tb_lineno}]')
 
     def load(self, plugins=None, root=None, levelone=None, leveltwo=None, class_name='Plugin', reload=False):
         """Return the requested plugin class or None on failure."""
         if not plugins:
-            self._log_error(f'Provided Plugins tree is empty or is missing root. plugins = [{plugins}], root = [{root}]')
+            self.logger.error(f'Provided Plugins tree is empty or is missing root. plugins = [{plugins}], root = [{root}]')
             return None
         class_name = class_name or 'Plugin'
         root_module = (root or '').replace('/', '.')
         try:
             subtree = self._subtree(plugins, root)
         except Exception as exp:
-            self._log_error(f'Loading module caused a problem in roottree: {exp}')
+            self.logger.error(f'Loading module caused a problem in roottree: {exp}')
             return None
 
         levelones = self._normalize_levelones(levelone)
@@ -190,13 +183,13 @@ class PluginManager(object):
                 cache_key = (module_name, class_name)
                 candidate_reload = reload
                 if not candidate_reload and cache_key in self._class_cache and self._module_changed_on_disk(module_name):
-                    self._log_debug(f'plugin changed on disk, invalidating {module_name}')
+                    self.logger.debug(f'plugin changed on disk, invalidating {module_name}')
                     self.invalidate(module_name, class_name)
                     candidate_reload = True
                 if candidate_reload:
                     self.invalidate(module_name, class_name)
                 if not candidate_reload and cache_key in self._class_cache:
-                    self._log_debug(f'loading {module_name}.{class_name} from cache')
+                    self.logger.debug(f'loading {module_name}.{class_name} from cache')
                     return self._class_cache[cache_key]
                 try:
                     module = self._import_plugin_module(module_name, reload=candidate_reload)
@@ -206,10 +199,10 @@ class PluginManager(object):
                 except ModuleNotFoundError as exp:
                     if exp.name == module_name:
                         continue
-                    self._log_error(f'Loading module caused a nested import problem in {module_name}: {exp}')
+                    self.logger.error(f'Loading module caused a nested import problem in {module_name}: {exp}')
                     continue
                 except AttributeError as exp:
-                    self._log_error(f'Getattr caused a problem: {exp}')
+                    self.logger.error(f'Getattr caused a problem: {exp}')
                     continue
                 except Exception as exp:
                     self._legacy_load_error(exp)
@@ -219,13 +212,13 @@ class PluginManager(object):
         cache_key = (module_name, class_name)
         default_reload = reload
         if not default_reload and cache_key in self._class_cache and self._module_changed_on_disk(module_name):
-            self._log_info(f'plugin changed on disk, invalidating and reloading {module_name}')
+            self.logger.info(f'plugin changed on disk, invalidating and reloading {module_name}')
             self.invalidate(module_name, class_name)
             default_reload = True
         if default_reload:
             self.invalidate(module_name, class_name)
         if not default_reload and cache_key in self._class_cache:
-            self._log_debug(f'loading {module_name}.{class_name} from cache')
+            self.logger.debug(f'loading {module_name}.{class_name} from cache')
             return self._class_cache[cache_key]
         try:
             module = self._import_plugin_module(module_name, reload=default_reload)
@@ -235,10 +228,10 @@ class PluginManager(object):
         except ModuleNotFoundError as exp:
             if exp.name == module_name:
                 return None
-            self._log_error(f'Loading module caused a nested import problem in {module_name}: {exp}')
+            self.logger.error(f'Loading module caused a nested import problem in {module_name}: {exp}')
             return None
         except AttributeError as exp:
-            self._log_error(f'Getattr caused a problem: {exp}')
+            self.logger.error(f'Getattr caused a problem: {exp}')
             return None
         except Exception as exp:
             self._legacy_load_error(exp)

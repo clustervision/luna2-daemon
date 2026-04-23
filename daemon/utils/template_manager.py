@@ -21,6 +21,7 @@ Template manager helpers for Luna dynamic template lookup.
 """
 
 import sys
+from utils.log import Log
 from utils.plugin_tree import build_plugin_tree
 
 
@@ -28,15 +29,7 @@ class TemplateManager(object):
     """Resolve template paths using the legacy Helper.template_find rules."""
 
     def __init__(self, logger=None):
-        self.logger = logger
-
-    def _log_debug(self, message):
-        if self.logger:
-            self.logger.debug(message)
-
-    def _log_error(self, message):
-        if self.logger:
-            self.logger.error(message)
+        self.logger = Log.get_logger()
 
     def find_templates(self, startpath=None):
         """Build the template tree from a filesystem path."""
@@ -69,35 +62,35 @@ class TemplateManager(object):
 
     def find(self, plugins=None, root=None, levelone=None, leveltwo=None):
         """Return the template path or None on failure."""
-        self._log_debug(f"Finding template in plugins.{root}.{levelone}.{leveltwo} / {plugins}")
+        self.logger.debug(f"Finding template in plugins.{root}.{levelone}.{leveltwo} / {plugins}")
         if not plugins:
-            self._log_error(f"Provided Plugins tree is empty or is missing root. plugins = [{plugins}], root = [{root}]")
+            self.logger.error(f"Provided Plugins tree is empty or is missing root. plugins = [{plugins}], root = [{root}]")
             return None
         try:
             subtree = self._subtree(plugins, root)
-            self._log_debug(f"myplugin = [{subtree}]")
+            self.logger.debug(f"myplugin = [{subtree}]")
         except Exception as exp:
-            self._log_error(f"Loading template caused a problem in roottree: {exp}")
+            self.logger.error(f"Loading template caused a problem in roottree: {exp}")
             return None
         levelones = self._normalize_levelones(levelone)
         try:
             for one in levelones:
                 if leveltwo and one + leveltwo + '.templ' in subtree:
-                    self._log_debug(f"found plugins.{root}.{one}{leveltwo}")
+                    self.logger.debug(f"found plugins.{root}.{one}{leveltwo}")
                     return root + '/' + one + leveltwo + '.templ'
                 elif one in subtree.keys():
                     if leveltwo and leveltwo in subtree[one]:
                         template = leveltwo.rsplit('.', 1)
-                        self._log_debug(f"found plugins.{root}.{one}.{template[0]}")
+                        self.logger.debug(f"found plugins.{root}.{one}.{template[0]}")
                         return root + '/' + one + '/' + template[0] + '.templ'
                     elif 'default.templ' in subtree[one]:
-                        self._log_debug(f"found plugins.{root}.{one}.default")
+                        self.logger.debug(f"found plugins.{root}.{one}.default")
                         return root + '/' + one + '/default.templ'
                 elif one + '.templ' in subtree:
-                    self._log_debug(f"found plugins.{root}.{one}")
+                    self.logger.debug(f"found plugins.{root}.{one}")
                     return root + '/' + one + '.templ'
             return None
         except Exception as exp:
             exc_type, exc_obj, exc_tb = sys.exc_info()
-            self._log_error(f"Loading template caused a problem during selection: {exp}, {exc_type} in {exc_tb.tb_lineno}]")
+            self.logger.error(f"Loading template caused a problem during selection: {exp}, {exc_type} in {exc_tb.tb_lineno}]")
             return None

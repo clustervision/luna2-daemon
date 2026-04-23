@@ -23,6 +23,7 @@ Plugin manager helpers for Luna dynamic plugin loading.
 import importlib
 import os
 import sys
+from utils.plugin_tree import build_plugin_tree
 
 
 class PluginManager(object):
@@ -52,6 +53,22 @@ class PluginManager(object):
             if plugin_class is not None:
                 return plugin_class
         raise AttributeError(f'No compatible plugin class found in {module_name}')
+
+    def find_plugins(self, startpath=None):
+        """Build the plugin tree from a filesystem path."""
+        return build_plugin_tree(startpath=startpath, logger=self.logger)
+
+    def load_from_path(self, startpath=None, root=None, levelone=None, leveltwo=None, class_name='Plugin', reload=False):
+        """Build the tree from disk and load the requested plugin class."""
+        plugins = self.find_plugins(startpath=startpath)
+        return self.load(
+            plugins=plugins,
+            root=root,
+            levelone=levelone,
+            leveltwo=leveltwo,
+            class_name=class_name,
+            reload=reload,
+        )
 
     def _normalize_levelones(self, levelone):
         if isinstance(levelone, str):

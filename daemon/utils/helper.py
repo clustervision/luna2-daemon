@@ -47,6 +47,7 @@ from utils.log import Log
 from utils.database import Database
 from utils.plugin_manager import PluginManager
 from utils.template_manager import TemplateManager
+from utils.plugin_tree import build_plugin_tree
 from common.constant import CONSTANT
 
 
@@ -907,34 +908,7 @@ class Helper(object):
         """
         This method will find the plugin.
         """
-        # plugin_finder traverses a path to find python 'plugin' files in nested directories
-
-        def set_leaf(tree=None, branches=None, leaf=None):
-            """
-            Set a terminal element to *leaf* within nested dictionaries.              
-            *branches* defines the path through dictionaries.                            
-            Example:                                                                      
-            >>> t = {}                                                                    
-            >>> set_leaf(t, ['b1','b2','b3'], 'new_leaf')                                 
-            >>> print t                                                                   
-            {'b1': {'b2': {'b3': 'new_leaf'}}}                                             
-            """
-            if len(branches) == 1:
-                tree[branches[0]] = leaf
-                return
-            if not branches[0] in tree.keys():
-                tree[branches[0]] = {}
-            set_leaf(tree[branches[0]], branches[1:], leaf)
-
-        tree = {}
-        for root, dirs, files in os.walk(startpath):
-            # branches = [startpath]
-            branches = [os.path.basename(startpath)]
-            if root != startpath:
-                branches.extend(os.path.relpath(root, startpath).split(os.sep))
-            set_leaf(tree, branches, dict([(d,{}) for d in dirs]+[(f,None) for f in files]))
-        self.logger.debug(f"PLUGIN TREE {startpath}: {tree}")
-        return tree
+        return build_plugin_tree(startpath=startpath, logger=self.logger)
 
 
     def plugin_load(self, plugins=None, root=None, levelone=None, leveltwo=None, class_name=None):

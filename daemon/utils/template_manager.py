@@ -21,6 +21,7 @@ Template manager helpers for Luna dynamic template lookup.
 """
 
 import sys
+from utils.plugin_tree import build_plugin_tree
 
 
 class TemplateManager(object):
@@ -36,6 +37,20 @@ class TemplateManager(object):
     def _log_error(self, message):
         if self.logger:
             self.logger.error(message)
+
+    def find_templates(self, startpath=None):
+        """Build the template tree from a filesystem path."""
+        return build_plugin_tree(startpath=startpath, logger=self.logger)
+
+    def find_from_path(self, startpath=None, root=None, levelone=None, leveltwo=None):
+        """Build the tree from disk and resolve the requested template path."""
+        plugins = self.find_templates(startpath=startpath)
+        return self.find(
+            plugins=plugins,
+            root=root,
+            levelone=levelone,
+            leveltwo=leveltwo,
+        )
 
     def _normalize_levelones(self, levelone):
         if isinstance(levelone, str):

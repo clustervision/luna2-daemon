@@ -21,6 +21,7 @@ Plugin manager helpers for Luna dynamic plugin loading.
 """
 
 import importlib
+import os
 import sys
 
 
@@ -41,33 +42,15 @@ class PluginManager(object):
         if self.logger:
             self.logger.error(message)
 
-    def _legacy_metadata(self, plugin_class, module_name):
-        plugin_name = getattr(plugin_class, 'PLUGIN_NAME', None)
-        plugin_kind = getattr(plugin_class, 'PLUGIN_KIND', None)
-        plugin_api_version = getattr(plugin_class, 'PLUGIN_API_VERSION', None)
-
-        if plugin_name and plugin_kind and plugin_api_version is not None:
-            return plugin_class
-
-        module_parts = module_name.split('.')[1:]
-        inferred_name = module_parts[-1] if module_parts else 'default'
-        inferred_kind = '/'.join(module_parts[:-1]) if len(module_parts) > 1 else ''
-
-        if not plugin_name:
-            setattr(plugin_class, 'PLUGIN_NAME', inferred_name)
-        if not plugin_kind:
-            setattr(plugin_class, 'PLUGIN_KIND', inferred_kind)
-        if plugin_api_version is None:
-            setattr(plugin_class, 'PLUGIN_API_VERSION', 1)
-
-        self._log_debug(f'legacy plugin format detected for {module_name}')
-        return plugin_class
-
     def _resolve_plugin_class(self, module, class_name, module_name):
-        for candidate in [class_name, 'Plugin', 'plugin', 'Handler']:
-            plugin_class = getattr(module, candidate, None)
+        requested = class_name or 'Plugin'
+        plugin_class = getattr(module, requested, None)
+        if plugin_class is not None:
+            return plugin_class
+        if requested != 'Plugin':
+            plugin_class = getattr(module, 'Plugin', None)
             if plugin_class is not None:
-                return self._legacy_metadata(plugin_class, module_name)
+                return plugin_class
         raise AttributeError(f'No compatible plugin class found in {module_name}')
 
     def _normalize_levelones(self, levelone):
@@ -167,13 +150,17 @@ class PluginManager(object):
         if module_name:
             yield module_name
 
+    def _legacy_load_error(self, exp):
+        exc_type, exc_obj, exc_tb = sys.exc_info()
+        self._log_error(f'Loading module caused a problem during selection: {exp}, {exc_type} in {exc_tb.tb_lineno}]')
+
     def load(self, plugins=None, root=None, levelone=None, leveltwo=None, class_name='Plugin', reload=False):
         """Return the requested plugin class or None on failure."""
         if not plugins:
-            self._log_error(f'Provided plugins tree is empty. root=[{root}]')
+            self._log_error(f'Provided Plugins tree is empty or is missing root. plugins = [{plugins}], root = [{root}]')
             return None
         class_name = class_name or 'Plugin'
-        root_module = root.replace('/', '.')
+        root_module = (root or '').replace('/', '.')
         try:
             subtree = self._subtree(plugins, root)
         except Exception as exp:
@@ -184,17 +171,18 @@ class PluginManager(object):
         for one in levelones:
             for module_name in self._candidate_modules(subtree, root, one, leveltwo):
                 cache_key = (module_name, class_name)
-                if not reload and cache_key in self._class_cache and self._module_changed_on_disk(module_name):
+                candidate_reload = reload
+                if not candidate_reload and cache_key in self._class_cache and self._module_changed_on_disk(module_name):
                     self._log_debug(f'plugin changed on disk, invalidating {module_name}')
                     self.invalidate(module_name, class_name)
-                    reload = True
-                if reload:
+                    candidate_reload = True
+                if candidate_reload:
                     self.invalidate(module_name, class_name)
-                if not reload and cache_key in self._class_cache:
+                if not candidate_reload and cache_key in self._class_cache:
                     self._log_debug(f'loading {module_name}.{class_name} from cache')
                     return self._class_cache[cache_key]
                 try:
-                    module = self._import_plugin_module(module_name, reload=reload)
+                    module = self._import_plugin_module(module_name, reload=candidate_reload)
                     plugin_class = self._resolve_plugin_class(module, class_name, module_name)
                     self._class_cache[cache_key] = plugin_class
                     return plugin_class
@@ -202,27 +190,28 @@ class PluginManager(object):
                     if exp.name == module_name:
                         continue
                     self._log_error(f'Loading module caused a nested import problem in {module_name}: {exp}')
-                    return None
+                    continue
                 except AttributeError as exp:
-                    self._log_error(f'Plugin class missing in {module_name}: {exp}')
-                    return None
+                    self._log_error(f'Getattr caused a problem: {exp}')
+                    continue
                 except Exception as exp:
-                    self._log_error(f'Loading module caused a problem during selection: {exp}')
-                    return None
+                    self._legacy_load_error(exp)
+                    continue
 
         module_name = f'plugins.{root_module}.default'
         cache_key = (module_name, class_name)
-        if not reload and cache_key in self._class_cache and self._module_changed_on_disk(module_name):
+        default_reload = reload
+        if not default_reload and cache_key in self._class_cache and self._module_changed_on_disk(module_name):
             self._log_debug(f'plugin changed on disk, invalidating {module_name}')
             self.invalidate(module_name, class_name)
-            reload = True
-        if reload:
+            default_reload = True
+        if default_reload:
             self.invalidate(module_name, class_name)
-        if not reload and cache_key in self._class_cache:
+        if not default_reload and cache_key in self._class_cache:
             self._log_debug(f'loading {module_name}.{class_name} from cache')
             return self._class_cache[cache_key]
         try:
-            module = self._import_plugin_module(module_name, reload=reload)
+            module = self._import_plugin_module(module_name, reload=default_reload)
             plugin_class = self._resolve_plugin_class(module, class_name, module_name)
             self._class_cache[cache_key] = plugin_class
             return plugin_class
@@ -232,8 +221,8 @@ class PluginManager(object):
             self._log_error(f'Loading module caused a nested import problem in {module_name}: {exp}')
             return None
         except AttributeError as exp:
-            self._log_error(f'Plugin class missing in {module_name}: {exp}')
+            self._log_error(f'Getattr caused a problem: {exp}')
             return None
         except Exception as exp:
-            self._log_error(f'Loading module caused a problem during selection: {exp}')
+            self._legacy_load_error(exp)
             return None

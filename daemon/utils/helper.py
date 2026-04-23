@@ -46,6 +46,7 @@ from jinja2 import Environment, meta, FileSystemLoader
 from utils.log import Log
 from utils.database import Database
 from utils.plugin_manager import PluginManager
+from utils.template_manager import TemplateManager
 from common.constant import CONSTANT
 
 
@@ -955,48 +956,13 @@ class Helper(object):
         """
         This method will find the desired template in the same style as plugin_load
         """
-        roottree = root.split('/')
-        self.logger.debug(f"Finding template in plugins.{root}.{levelone}.{leveltwo} / {plugins}")
-        if not plugins: # or (root and root not in plugins):
-            self.logger.error(f"Provided Plugins tree is empty or is missing root. plugins = [{plugins}], root = [{root}]")
-            return None
-        levelones = []
-        try:
-            myplugin = plugins
-            for treestep in roottree:
-                if treestep in myplugin:
-                    myplugin = myplugin[treestep]
-            self.logger.debug(f"myplugin = [{myplugin}]")
-        except Exception as exp:
-            self.logger.error(f"Loading template caused a problem in roottree: {exp}")
-            return None
-        if type(levelone) == type('string'):
-            levelones.append(levelone)
-        else:
-            levelones = levelone
-        try:
-            for levelone in levelones:
-                if leveltwo and levelone+leveltwo+'.templ' in myplugin:
-                    self.logger.debug(f"found plugins.{root}.{levelone}{leveltwo}")
-                    return root+'/'+levelone+leveltwo+'.templ'
-                elif levelone in myplugin.keys():
-                    if leveltwo and leveltwo in myplugin[levelone]:
-                        template = leveltwo.rsplit('.',1)
-                        self.logger.debug(f"found plugins.{root}.{levelone}.{template[0]}")
-                        return root+'/'+levelone+'/'+template[0]+'.templ'
-                    elif 'default.templ' in myplugin[levelone]:
-                        self.logger.debug(f"found plugins.{root}.{levelone}.default")
-                        return root+'/'+levelone+'/default.templ'
-                elif levelone+'.templ' in myplugin:
-                    self.logger.debug(f"found plugins.{root}.{levelone}")
-                    return root+'/'+levelone+'.templ'
-            #self.logger.debug(f"loading plugins.{root}.default")
-            #return root+'/default.templ'
-            return None
-        except Exception as exp:
-            exc_type, exc_obj, exc_tb = sys.exc_info()
-            self.logger.error(f"Loading template caused a problem during selection: {exp}, {exc_type} in {exc_tb.tb_lineno}]")
-            return None
+        manager = TemplateManager(logger=self.logger)
+        return manager.find(
+            plugins=plugins,
+            root=root,
+            levelone=levelone,
+            leveltwo=leveltwo,
+        )
 
 
     # -----------------------------------------------------------------------------------

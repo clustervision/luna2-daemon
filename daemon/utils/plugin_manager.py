@@ -119,7 +119,7 @@ class PluginManager(object):
 
     def _import_plugin_module(self, module_name, reload=False):
         if reload and module_name in sys.modules:
-            self.logger.debug(f'reloading {module_name}')
+            self.logger.info(f'reloading {module_name}')
             module = importlib.reload(sys.modules[module_name])
             self._remember_module_state(module_name, module)
             return module
@@ -183,7 +183,7 @@ class PluginManager(object):
                 cache_key = (module_name, class_name)
                 candidate_reload = reload
                 if not candidate_reload and cache_key in self._class_cache and self._module_changed_on_disk(module_name):
-                    self.logger.debug(f'plugin changed on disk, invalidating {module_name}')
+                    self.logger.info(f'plugin changed on disk, invalidating {module_name}')
                     self.invalidate(module_name, class_name)
                     candidate_reload = True
                 if candidate_reload:
@@ -212,7 +212,7 @@ class PluginManager(object):
         cache_key = (module_name, class_name)
         default_reload = reload
         if not default_reload and cache_key in self._class_cache and self._module_changed_on_disk(module_name):
-            self.logger.info(f'plugin changed on disk, invalidating and reloading {module_name}')
+            self.logger.info(f'plugin changed on disk, invalidating {module_name}')
             self.invalidate(module_name, class_name)
             default_reload = True
         if default_reload:

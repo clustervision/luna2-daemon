@@ -205,11 +205,12 @@ class Housekeeper(object):
     def osimage_tasks_mother(self,event):
         self.logger.info("Starting osimage pending tasks thread")
         ha_object=HA()
-        if ha_object.get_hastate():
+        if ha_object.get_hastate(): # we're part of an HA setup
             insync_check=0
+            sleep(3) # we sleep a tiny bit to ensure journal mother has time to set in_sync to False
             while ha_object.get_insync() is False:
                 if insync_check < 1:
-                    self.logger.warning(f"osimage_tasks_mother is waiting for controller to get insync...")
+                    self.logger.info(f"osimage_tasks_mother is waiting for controller to get insync...")
                     insync_check=40
                 insync_check-=1
                 if event.is_set():

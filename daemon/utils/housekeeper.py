@@ -205,10 +205,21 @@ class Housekeeper(object):
     def osimage_tasks_mother(self,event):
         self.logger.info("Starting osimage pending tasks thread")
         ha_object=HA()
-        if ha_object.get_hastate() and not ha_object.get_role():
-            self.logger.warning(f"osimage_tasks_mother will clear queued osimage tasks as i am no longer master")
-            Queue().remove_task_from_queue_by_subsystem('osimage')
-            return
+        if ha_object.get_hastate(): # we're part of an HA setup
+            insync_check=0
+            sleep(3) # we sleep a tiny bit to ensure journal mother has time to set in_sync to False
+            while ha_object.get_insync() is False:
+                if insync_check < 1:
+                    self.logger.info(f"osimage_tasks_mother is waiting for controller to get insync...")
+                    insync_check=40
+                insync_check-=1
+                if event.is_set():
+                    return
+                sleep(5)
+            if not ha_object.get_role(): # not master
+                self.logger.warning(f"osimage_tasks_mother will clear queued osimage tasks as I am no longer master")
+                Queue().remove_task_from_queue_by_subsystem('osimage')
+                return
         try:
             executor = concurrent.futures.ProcessPoolExecutor(max_workers=1)
             executor.submit(OsImage().osimage_mother_wrapper)

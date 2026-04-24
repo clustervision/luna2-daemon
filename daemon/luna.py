@@ -43,6 +43,7 @@ from flask import Flask, abort, json, Response, request
 from common.constant import LOGGER, CONSTANT
 from common.bootstrap import validate_bootstrap
 from utils.housekeeper import Housekeeper
+from utils.plugin_sync import PluginSync
 from utils.service import Service
 from utils.helper import Helper
 from utils.queue import Queue
@@ -139,6 +140,9 @@ def on_starting(server):
     # ------------- switch/port/mac detection thread ---------------
     executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
     register_future(executor, executor.submit(Housekeeper().switchport_scan, event))
+    # -------------- boot plugin sync watcher thread ---------------
+    executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
+    register_future(executor, executor.submit(PluginSync().boot_plugins_mother, event))
     # --------------- journal / replication thread -----------------
     executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
     register_future(executor, executor.submit(Housekeeper().journal_mother, event))

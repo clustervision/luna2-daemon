@@ -192,6 +192,7 @@ DATABASE_LAYOUT_network = [
 {"column": "ntp_server",           "datatype": "VARCHAR", "length": "60"},
 {"column": "dhcp",                 "datatype": "INTEGER", "length": "10"},
 {"column": "dhcp_nodes_in_pool",   "datatype": "INTEGER", "length": "10"},
+{"column": "dhcp_nodes_only",      "datatype": "INTEGER", "length": "10"},
 {"column": "dhcp_range_begin",     "datatype": "VARCHAR", "length": "20"},
 {"column": "dhcp_range_begin_ipv6","datatype": "VARCHAR", "length": "60"},
 {"column": "dhcp_range_end",       "datatype": "VARCHAR", "length": "20"},

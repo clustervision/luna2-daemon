@@ -146,6 +146,7 @@ class Network():
             redistribute_ipaddress, reconfigure_ipaddress, clear_ipv4, clear_ipv6 = False, False, False, False
             default_gateway_metric, default_zone = "101", "internal"
             controller_ips=[]
+            network_changed = False
 
             data = request_data['config']['network'][name]
             data['name'] = name
@@ -186,11 +187,13 @@ class Network():
                         status=False
                         ret_msg = f"Invalid request: Clashing network/subnet with existing network {claship[0]['name']}"
                         return status, ret_msg
-                    used_ips = Helper().get_quantity_occupied_ipaddress_in_network(name,ipversion='ipv4')
-                    used6_ips = Helper().get_quantity_occupied_ipaddress_in_network(name,ipversion='ipv6')
                     if network: #database data
-                        if ((db_data['network'] != data['network'] or db_data['subnet'] != data['subnet']) and
-                               (db_data['network_ipv6'] != data['network']) or (db_data['subnet_ipv6'] != data['subnet'])):
+                        ipv4_changed = (db_data['network'] != data['network']) or (db_data['subnet'] != data['subnet'])
+                        ipv6_changed = (db_data['network_ipv6'] != data['network']) or (db_data['subnet_ipv6'] != data['subnet'])
+                        network_changed = ipv4_changed or ipv6_changed
+                        if network_changed:
+                            used_ips = Helper().get_quantity_occupied_ipaddress_in_network(name,ipversion='ipv4')
+                            used6_ips = Helper().get_quantity_occupied_ipaddress_in_network(name,ipversion='ipv6')
 
                             # renumbering controllers prepare. this could be tricky. - Antoine
                             # for H/A things should be taken in consideration.... 
@@ -529,7 +532,7 @@ class Network():
                             if clear_ipv4:
                                 clear_data['ipaddress'] = None
                             if clear_ipv6:
-                                clear_data['ipaddress'] = None
+                                clear_data['ipaddress_ipv6'] = None
                             row = Helper().make_rows(clear_data)
                             for entry in entry_list:
                                 where = [{"column": "id", "value": entry['id']}]

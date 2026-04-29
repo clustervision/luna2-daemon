@@ -45,6 +45,9 @@ from netaddr import IPNetwork, IPAddress
 from jinja2 import Environment, meta, FileSystemLoader
 from utils.log import Log
 from utils.database import Database
+from utils.plugin_manager import PluginManager
+from utils.template_manager import TemplateManager
+from utils.plugin_tree import build_plugin_tree
 from common.constant import CONSTANT
 
 
@@ -905,102 +908,21 @@ class Helper(object):
         """
         This method will find the plugin.
         """
-        # plugin_finder traverses a path to find python 'plugin' files in nested directories
-
-        def set_leaf(tree=None, branches=None, leaf=None):
-            """
-            Set a terminal element to *leaf* within nested dictionaries.              
-            *branches* defines the path through dictionaries.                            
-            Example:                                                                      
-            >>> t = {}                                                                    
-            >>> set_leaf(t, ['b1','b2','b3'], 'new_leaf')                                 
-            >>> print t                                                                   
-            {'b1': {'b2': {'b3': 'new_leaf'}}}                                             
-            """
-            if len(branches) == 1:
-                tree[branches[0]] = leaf
-                return
-            if not branches[0] in tree.keys():
-                tree[branches[0]] = {}
-            set_leaf(tree[branches[0]], branches[1:], leaf)
-
-        tree = {}
-        for root, dirs, files in os.walk(startpath):
-            # branches = [startpath]
-            branches = [os.path.basename(startpath)]
-            if root != startpath:
-                branches.extend(os.path.relpath(root, startpath).split(os.sep))
-            set_leaf(tree, branches, dict([(d,{}) for d in dirs]+[(f,None) for f in files]))
-        self.logger.debug(f"PLUGIN TREE {startpath}: {tree}")
-        return tree
+        return build_plugin_tree(startpath=startpath, logger=self.logger)
 
 
     def plugin_load(self, plugins=None, root=None, levelone=None, leveltwo=None, class_name=None):
         """
         This method will load the plugin.
         """
-        roottree = root.split('/')
-        root = root.replace('/','.')
-        self.logger.debug(f"Loading module {class_name}/Plugin from plugins.{root}.{levelone}.{leveltwo} / {plugins}")
-        if not plugins: # or (root and root not in plugins):
-            self.logger.error(f"Provided Plugins tree is empty or is missing root. plugins = [{plugins}], root = [{root}]")
-            return None
-        module = None
-        class_name = class_name or 'Plugin'
-        levelones = []
-        try:
-            myplugin = plugins
-            for treestep in roottree:
-                if treestep in myplugin:
-                    myplugin = myplugin[treestep]
-            self.logger.debug(f"myplugin = [{myplugin}]")
-        except Exception as exp:
-            self.logger.error(f"Loading module caused a problem in roottree: {exp}")
-            return None
-        if type(levelone) == type('string'):
-            levelones.append(levelone)
-        else:
-            levelones = levelone
-        try:
-            for levelone in levelones:
-                if leveltwo and levelone+leveltwo+'.py' in myplugin:
-                    self.logger.debug(f"loading plugins.{root}.{levelone}{leveltwo}")
-                    module = __import__('plugins.'+root+'.'+levelone+leveltwo,fromlist=[class_name])
-                    break
-                elif levelone in myplugin.keys():
-                    if leveltwo and leveltwo in myplugin[levelone]:
-                        plugin = leveltwo.rsplit('.',1)
-                        self.logger.debug(f"loading plugins.{root}.{levelone}.{plugin[0]}")
-                        module = __import__('plugins.'+root+'.'+levelone+'.'+plugin[0],fromlist=[class_name])
-                        break
-                    elif 'default.py' in myplugin[levelone]:
-                        self.logger.debug(f"loading plugins.{root}.{levelone}.default")
-                        module = __import__('plugins.'+root+'.'+levelone+'.default',fromlist=[class_name])
-                        break
-                elif levelone+'.py' in myplugin:
-                    self.logger.debug(f"loading plugins.{root}.{levelone}")
-                    module = __import__('plugins.'+root+'.'+levelone,fromlist=[class_name])
-                    break
-            if not module:
-                self.logger.debug(f"loading plugins.{root}.default")
-                module = __import__('plugins.'+root+'.default',fromlist=[class_name])
-        except Exception as exp:
-            exc_type, exc_obj, exc_tb = sys.exc_info()
-            #fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
-            #print(exc_type, fname, exc_tb.tb_lineno)
-            self.logger.error(f"Loading module caused a problem during selection: {exp}, {exc_type} in {exc_tb.tb_lineno}]")
-            return None
-
-        try:
-            if module:
-                self.logger.debug(vars(module))
-                self.logger.debug(dir(module))
-                my_class = getattr(module,class_name)
-                return my_class
-            return None
-        except Exception as exp:
-            self.logger.error(f"Getattr caused a problem: {exp}")
-            return None
+        manager = PluginManager(logger=self.logger)
+        return manager.load(
+            plugins=plugins,
+            root=root,
+            levelone=levelone,
+            leveltwo=leveltwo,
+            class_name=class_name,
+        )
 
     # -----------------------------------------------------------------------------------
 
@@ -1008,48 +930,13 @@ class Helper(object):
         """
         This method will find the desired template in the same style as plugin_load
         """
-        roottree = root.split('/')
-        self.logger.debug(f"Finding template in plugins.{root}.{levelone}.{leveltwo} / {plugins}")
-        if not plugins: # or (root and root not in plugins):
-            self.logger.error(f"Provided Plugins tree is empty or is missing root. plugins = [{plugins}], root = [{root}]")
-            return None
-        levelones = []
-        try:
-            myplugin = plugins
-            for treestep in roottree:
-                if treestep in myplugin:
-                    myplugin = myplugin[treestep]
-            self.logger.debug(f"myplugin = [{myplugin}]")
-        except Exception as exp:
-            self.logger.error(f"Loading template caused a problem in roottree: {exp}")
-            return None
-        if type(levelone) == type('string'):
-            levelones.append(levelone)
-        else:
-            levelones = levelone
-        try:
-            for levelone in levelones:
-                if leveltwo and levelone+leveltwo+'.templ' in myplugin:
-                    self.logger.debug(f"found plugins.{root}.{levelone}{leveltwo}")
-                    return root+'/'+levelone+leveltwo+'.templ'
-                elif levelone in myplugin.keys():
-                    if leveltwo and leveltwo in myplugin[levelone]:
-                        template = leveltwo.rsplit('.',1)
-                        self.logger.debug(f"found plugins.{root}.{levelone}.{template[0]}")
-                        return root+'/'+levelone+'/'+template[0]+'.templ'
-                    elif 'default.templ' in myplugin[levelone]:
-                        self.logger.debug(f"found plugins.{root}.{levelone}.default")
-                        return root+'/'+levelone+'/default.templ'
-                elif levelone+'.templ' in myplugin:
-                    self.logger.debug(f"found plugins.{root}.{levelone}")
-                    return root+'/'+levelone+'.templ'
-            #self.logger.debug(f"loading plugins.{root}.default")
-            #return root+'/default.templ'
-            return None
-        except Exception as exp:
-            exc_type, exc_obj, exc_tb = sys.exc_info()
-            self.logger.error(f"Loading template caused a problem during selection: {exp}, {exc_type} in {exc_tb.tb_lineno}]")
-            return None
+        manager = TemplateManager(logger=self.logger)
+        return manager.find(
+            plugins=plugins,
+            root=root,
+            levelone=levelone,
+            leveltwo=leveltwo,
+        )
 
 
     # -----------------------------------------------------------------------------------

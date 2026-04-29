@@ -51,6 +51,26 @@ class Network():
         self.logger = Log.get_logger()
 
 
+    def _network_family_changed(self, db_data, data):
+        """
+        Determine if network/subnet changed for either IP family.
+        """
+        ipv4_changed = (db_data['network'] != data['network']) or (db_data['subnet'] != data['subnet'])
+        ipv6_changed = (db_data['network_ipv6'] != data['network']) or (db_data['subnet_ipv6'] != data['subnet'])
+        return ipv4_changed, ipv6_changed, (ipv4_changed or ipv6_changed)
+
+
+    def _validate_dhcp_mode_exclusive(self, data, db_data):
+        """
+        Validate mutually exclusive DHCP modes.
+        """
+        if 'dhcp_nodes_only' in data and db_data and db_data['dhcp_nodes_in_pool']:
+            return False, "Invalid request: dhcp_nodes_in_pool is enabled and is mutually exclusive. Please disable this setting first"
+        if 'dhcp_nodes_in_pool' in data and db_data and db_data['dhcp_nodes_only']:
+            return False, "Invalid request: dhcp_nodes_only is enabled and is mutually exclusive. Please disable this setting first"
+        return True, None
+
+
     def get_all_networks(self):
         """
         This method will return all the network in detailed format.
@@ -188,9 +208,7 @@ class Network():
                         ret_msg = f"Invalid request: Clashing network/subnet with existing network {claship[0]['name']}"
                         return status, ret_msg
                     if network: #database data
-                        ipv4_changed = (db_data['network'] != data['network']) or (db_data['subnet'] != data['subnet'])
-                        ipv6_changed = (db_data['network_ipv6'] != data['network']) or (db_data['subnet_ipv6'] != data['subnet'])
-                        network_changed = ipv4_changed or ipv6_changed
+                        _, _, network_changed = self._network_family_changed(db_data, data)
                         if network_changed:
                             used_ips = Helper().get_quantity_occupied_ipaddress_in_network(name,ipversion='ipv4')
                             used6_ips = Helper().get_quantity_occupied_ipaddress_in_network(name,ipversion='ipv6')
@@ -293,16 +311,20 @@ class Network():
                     if not regex.match(data['ntp_server']):
                         status=False
                         return status, f'Invalid request: Incorrect NTP Server IP: {data["ntp_server"]}'
+            valid = True
             if 'dhcp_nodes_only' in data:
-                data['dhcp_nodes_only'] = Helper().bool_to_string(data['dhcp_nodes_only'])
+                data['dhcp_nodes_only'] = Helper().make_bool_string(data['dhcp_nodes_only'])
                 if data['dhcp_nodes_only'] not in ['0','1']:
-                    status=False
+                    valid = False
                     ret_msg = f"Invalid request: dhcp_nodes_only should be y, yes, n or no"
-                    return status, ret_msg
-                if db_data and db_data['dhcp_nodes_in_pool']:
-                    status=False
-                    ret_msg = f"Invalid request: dhcp_nodes_in_pool is enabled and is mutually exclusive. Please disable this setting first"
-                    return status, ret_msg
+            if not valid:
+                status=False
+                return status, ret_msg
+            valid, ret_msg = self._validate_dhcp_mode_exclusive(data, db_data)
+            if not valid:
+                status=False
+                return status, ret_msg
+            if 'dhcp_nodes_only' in data:
                 if data['dhcp_nodes_only'] != "0":
                     self.logger.info("We will clear the DHCP range and only serve DHCP known hosts")
                     data['dhcp_range_begin'] = None
@@ -314,7 +336,7 @@ class Network():
                     self.logger.info("We will serve a DHCP range again")
                     data['dhcp'] = True
             if 'dhcp' in data:
-                data['dhcp'] = Helper().bool_to_string(data['dhcp'])
+                data['dhcp'] = Helper().make_bool_string(data['dhcp'])
                 if data['dhcp'] not in ['0','1']:
                     status=False
                     ret_msg = f"Invalid request: dhcp should be y, yes, n or no"
@@ -357,20 +379,17 @@ class Network():
                         redistribute_ipaddress = True
                         # to make sure we do not overlap with existing node ip configs
             if 'dhcp_nodes_in_pool' in data:
-                data['dhcp_nodes_in_pool'] = Helper().bool_to_string(data['dhcp_nodes_in_pool'])
+                data['dhcp_nodes_in_pool'] = Helper().make_bool_string(data['dhcp_nodes_in_pool'])
                 if data['dhcp_nodes_in_pool'] not in ['0','1']:
                     status=False
                     ret_msg = f"Invalid request: dhcp_nodes_in_pool should be y, yes, n or no"
                     return status, ret_msg
-                if db_data and db_data['dhcp_nodes_only']:
-                    status=False
-                    ret_msg = f"Invalid request: dhcp_nodes_only is enabled and is mutually exclusive. Please disable this setting first"
-                    return status, ret_msg
+            if 'dhcp_nodes_in_pool' in data:
                 if data['dhcp_nodes_in_pool'] == "0":
                     self.logger.info("We will (re)configure ip addresses")
                     reconfigure_ipaddress = True
             if 'non_authoritative' in data:
-                data['non_authoritative'] = Helper().bool_to_string(data['non_authoritative'])
+                data['non_authoritative'] = Helper().make_bool_string(data['non_authoritative'])
                 if data['non_authoritative'] not in ['0','1']:
                     status=False
                     ret_msg = f"Invalid request: non_authoritative should be y, yes, n or no"
@@ -442,6 +461,10 @@ class Network():
                     response = f'Network {name} created successfully'
                     status=True
                 elif update:
+                    changed_fields = {
+                        key for key, value in data.items()
+                        if key in db_data and db_data[key] != value
+                    }
                     dhcp_size, dhcp6_size = 0, 0
                     if redistribute_ipaddress is True:
                         if 'dhcp_range_begin' in data:
@@ -539,9 +562,23 @@ class Network():
                                 Database().update('ipaddress', row, where)
                     response = f'Network {name} updated successfully'
                     status=True
-                Service().queue('dns','reload')
-                Service().queue('dhcp','restart')
-                Service().queue('dhcp6','restart')
+                trigger_fields = {
+                    'network', 'subnet', 'network_ipv6', 'subnet_ipv6',
+                    'gateway', 'gateway_ipv6', 'gateway_metric',
+                    'dhcp', 'dhcp_range_begin', 'dhcp_range_end',
+                    'dhcp_range_begin_ipv6', 'dhcp_range_end_ipv6',
+                    'dhcp_nodes_only', 'dhcp_nodes_in_pool',
+                    'zone', 'nameserver_ip', 'nameserver_ip_ipv6',
+                    'ntp_server', 'shared', 'non_authoritative'
+                }
+                if create:
+                    Service().queue('dns','reload')
+                    Service().queue('dhcp','restart')
+                    Service().queue('dhcp6','restart')
+                elif update and ('changed_fields' in locals()) and changed_fields.intersection(trigger_fields):
+                    Service().queue('dns','reload')
+                    Service().queue('dhcp','restart')
+                    Service().queue('dhcp6','restart')
                 # technically only needed when dhcp changes, but it doesn't hurt to just do it
             else:
                 status=False

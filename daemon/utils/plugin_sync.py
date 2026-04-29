@@ -107,10 +107,11 @@ class PluginSync(object):
             self.logger.error(f'boot plugin sync journal failed: {journal_response}')
             return False
 
-        import_status, import_response = Import().plugin('boot_plugins', payload)
-        if not import_status:
-            self.logger.error(f'boot plugin sync import failed: {import_response}')
-            return False
+        # We, ourselves do not need to copy. This code kept in place for future use.
+        #import_status, import_response = Import().plugin('boot_plugins', payload)
+        #if not import_status:
+        #    self.logger.error(f'boot plugin sync import failed: {import_response}')
+        #    return False
 
         self.logger.info('boot plugin synchronization completed')
         return True

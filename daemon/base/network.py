@@ -71,6 +71,31 @@ class Network():
         return True, None
 
 
+    def _queue_network_services(self):
+        """
+        Queue service actions required after network config changes.
+        """
+        Service().queue('dns','reload')
+        Service().queue('dhcp','restart')
+        Service().queue('dhcp6','restart')
+
+
+    def _network_change_touches_runtime(self, changed_fields):
+        """
+        Check whether updated columns require DHCP/DNS runtime refresh.
+        """
+        trigger_fields = {
+            'network', 'subnet', 'network_ipv6', 'subnet_ipv6',
+            'gateway', 'gateway_ipv6', 'gateway_metric',
+            'dhcp', 'dhcp_range_begin', 'dhcp_range_end',
+            'dhcp_range_begin_ipv6', 'dhcp_range_end_ipv6',
+            'dhcp_nodes_only', 'dhcp_nodes_in_pool',
+            'zone', 'nameserver_ip', 'nameserver_ip_ipv6',
+            'ntp_server', 'shared', 'non_authoritative'
+        }
+        return bool(changed_fields and changed_fields.intersection(trigger_fields))
+
+
     def get_all_networks(self):
         """
         This method will return all the network in detailed format.
@@ -586,23 +611,10 @@ class Network():
                                 Database().update('ipaddress', row, where)
                     response = f'Network {name} updated successfully'
                     status=True
-                trigger_fields = {
-                    'network', 'subnet', 'network_ipv6', 'subnet_ipv6',
-                    'gateway', 'gateway_ipv6', 'gateway_metric',
-                    'dhcp', 'dhcp_range_begin', 'dhcp_range_end',
-                    'dhcp_range_begin_ipv6', 'dhcp_range_end_ipv6',
-                    'dhcp_nodes_only', 'dhcp_nodes_in_pool',
-                    'zone', 'nameserver_ip', 'nameserver_ip_ipv6',
-                    'ntp_server', 'shared', 'non_authoritative'
-                }
                 if create:
-                    Service().queue('dns','reload')
-                    Service().queue('dhcp','restart')
-                    Service().queue('dhcp6','restart')
-                elif update and ('changed_fields' in locals()) and changed_fields.intersection(trigger_fields):
-                    Service().queue('dns','reload')
-                    Service().queue('dhcp','restart')
-                    Service().queue('dhcp6','restart')
+                    self._queue_network_services()
+                elif update and ('changed_fields' in locals()) and self._network_change_touches_runtime(changed_fields):
+                    self._queue_network_services()
                 # technically only needed when dhcp changes, but it doesn't hurt to just do it
             else:
                 status=False

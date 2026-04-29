@@ -413,9 +413,10 @@ class Config(object):
         network_id = nwk['id']
         network_name = nwk['name']+add_string
         network_ip = nwk['network'+add_string]
-        if nwk['dhcp'] and not shared:
-            subnet['range_begin']=nwk['dhcp_range_begin'+add_string]
-            subnet['range_end']=nwk['dhcp_range_end'+add_string]
+        if nwk['dhcp'] and not shared and not nwk.get('dhcp_nodes_only'):
+            if nwk['dhcp_range_begin'+add_string] and nwk['dhcp_range_end'+add_string]:
+                subnet['range_begin']=nwk['dhcp_range_begin'+add_string]
+                subnet['range_end']=nwk['dhcp_range_end'+add_string]
         netmask = nwk['subnet_ipv6']
         subnet['prefix'] = nwk['subnet_ipv6']
         if ipversion == 'ipv4':

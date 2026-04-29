@@ -312,11 +312,17 @@ class Network():
                         status=False
                         return status, f'Invalid request: Incorrect NTP Server IP: {data["ntp_server"]}'
             valid = True
+            request_dhcp = None
+            request_dhcp_nodes_only = None
+            request_dhcp_nodes_in_pool = None
+
             if 'dhcp_nodes_only' in data:
-                data['dhcp_nodes_only'] = Helper().make_bool_string(data['dhcp_nodes_only'])
-                if data['dhcp_nodes_only'] not in ['0','1']:
+                request_dhcp_nodes_only = Helper().make_bool(data['dhcp_nodes_only'])
+                if request_dhcp_nodes_only is None:
                     valid = False
                     ret_msg = f"Invalid request: dhcp_nodes_only should be y, yes, n or no"
+                else:
+                    data['dhcp_nodes_only'] = Helper().make_bool_string(request_dhcp_nodes_only)
             if not valid:
                 status=False
                 return status, ret_msg
@@ -324,68 +330,86 @@ class Network():
             if not valid:
                 status=False
                 return status, ret_msg
-            if 'dhcp_nodes_only' in data:
-                if data['dhcp_nodes_only'] != "0":
-                    self.logger.info("We will clear the DHCP range and only serve DHCP known hosts")
-                    data['dhcp_range_begin'] = None
-                    data['dhcp_range_end'] = None
-                    data['dhcp_range_begin_ipv6']=None
-                    data['dhcp_range_end_ipv6']=None
-                    redistribute_ipaddress = False
-                else:
-                    self.logger.info("We will serve a DHCP range again")
-                    data['dhcp'] = True
-            if 'dhcp' in data:
-                data['dhcp'] = Helper().make_bool_string(data['dhcp'])
-                if data['dhcp'] not in ['0','1']:
+
+            db_dhcp_nodes_only = Helper().make_bool(db_data['dhcp_nodes_only']) if db_data else False
+            effective_dhcp_nodes_only = request_dhcp_nodes_only if request_dhcp_nodes_only is not None else db_dhcp_nodes_only
+
+            if request_dhcp_nodes_only is True:
+                self.logger.info("We will clear the DHCP range and only serve DHCP known hosts")
+                data['dhcp_range_begin'] = None
+                data['dhcp_range_end'] = None
+                data['dhcp_range_begin_ipv6'] = None
+                data['dhcp_range_end_ipv6'] = None
+                redistribute_ipaddress = False
+            elif request_dhcp_nodes_only is False:
+                self.logger.info("We will serve a DHCP range again")
+                request_dhcp = True
+                data['dhcp'] = Helper().make_bool_string(True)
+
+            # If dhcp_nodes_only is already enabled in DB (or enabled in this request),
+            # ignore any provided DHCP range values to prevent leaking pool ranges into
+            # generated DHCP configs.
+            if effective_dhcp_nodes_only:
+                if any(k in data for k in ['dhcp_range_begin','dhcp_range_end','dhcp_range_begin_ipv6','dhcp_range_end_ipv6']):
+                    self.logger.info("Ignoring DHCP range values because dhcp_nodes_only is enabled")
+                data['dhcp_range_begin'] = None
+                data['dhcp_range_end'] = None
+                data['dhcp_range_begin_ipv6'] = None
+                data['dhcp_range_end_ipv6'] = None
+
+            if 'dhcp' in data and request_dhcp is None:
+                request_dhcp = Helper().make_bool(data['dhcp'])
+                if request_dhcp is None:
                     status=False
                     ret_msg = f"Invalid request: dhcp should be y, yes, n or no"
                     return status, ret_msg
-                if (((db_data and not db_data['dhcp_nodes_only'])
-                    and (not 'dhcp_nodes_only' in data))
-                    or ('dhcp_nodes_only' in data and data['dhcp_nodes_only'] == "0")):
+                data['dhcp'] = Helper().make_bool_string(request_dhcp)
+
+            if request_dhcp is not None:
+                if not effective_dhcp_nodes_only:
                     self.logger.info("Verifying if we need DHCP ranges....")
                     if 'dhcp_range_begin' in data:
                         dhcp_start_details = None
                         if 'network' in data and 'subnet' in data:
                             dhcp_start_details = Helper().check_ip_range(data['dhcp_range_begin'], data['network'] + '/' + data['subnet'])
-                        elif Helper().check_if_ipv6(data['dhcp_range_begin']) and db_data['network_ipv6'] and db_data['subnet_ipv6']:
+                        elif db_data and Helper().check_if_ipv6(data['dhcp_range_begin']) and db_data['network_ipv6'] and db_data['subnet_ipv6']:
                             dhcp_start_details = Helper().check_ip_range(data['dhcp_range_begin'], db_data['network_ipv6'] + '/' + db_data['subnet_ipv6'])
-                        elif db_data['network'] and db_data['subnet']:
+                        elif db_data and db_data['network'] and db_data['subnet']:
                             dhcp_start_details = Helper().check_ip_range(data['dhcp_range_begin'], db_data['network'] + '/' + db_data['subnet'])
                         if not dhcp_start_details:
                             status=False
                             ret_msg = f'Invalid request: Incorrect dhcp start: {data["dhcp_range_begin"]}'
                             return status, ret_msg
-                    elif data['dhcp'] != "0":
+                    elif request_dhcp is True:
                         status=False
                         return status, 'Invalid request: DHCP start range is a required parameter'
                     if 'dhcp_range_end' in data:
                         dhcp_end_details = None
                         if 'network' in data and 'subnet' in data:
                             dhcp_end_details = Helper().check_ip_range(data['dhcp_range_end'], data['network'] + '/' + data['subnet'])
-                        elif Helper().check_if_ipv6(data['dhcp_range_end']) and db_data['network_ipv6'] and db_data['subnet_ipv6']:
+                        elif db_data and Helper().check_if_ipv6(data['dhcp_range_end']) and db_data['network_ipv6'] and db_data['subnet_ipv6']:
                             dhcp_end_details = Helper().check_ip_range(data['dhcp_range_end'], db_data['network_ipv6'] + '/' + db_data['subnet_ipv6'])
-                        elif db_data['network'] and db_data['subnet']:
+                        elif db_data and db_data['network'] and db_data['subnet']:
                             dhcp_end_details = Helper().check_ip_range(data['dhcp_range_end'], db_data['network'] + '/' + db_data['subnet'])
                         if not dhcp_end_details:
                             status=False
                             ret_msg = f'Invalid request: Incorrect dhcp end: {data["dhcp_range_end"]}'
                             return status, ret_msg
-                    elif data['dhcp'] != "0":
+                    elif request_dhcp is True:
                         status=False
                         return status, 'Invalid request: DHCP end range is a required parameter'
-                    if data['dhcp'] == "1":
-                        redistribute_ipaddress = True
-                        # to make sure we do not overlap with existing node ip configs
+                if request_dhcp is True:
+                    redistribute_ipaddress = True
+                    # to make sure we do not overlap with existing node ip configs
+
             if 'dhcp_nodes_in_pool' in data:
-                data['dhcp_nodes_in_pool'] = Helper().make_bool_string(data['dhcp_nodes_in_pool'])
-                if data['dhcp_nodes_in_pool'] not in ['0','1']:
+                request_dhcp_nodes_in_pool = Helper().make_bool(data['dhcp_nodes_in_pool'])
+                if request_dhcp_nodes_in_pool is None:
                     status=False
                     ret_msg = f"Invalid request: dhcp_nodes_in_pool should be y, yes, n or no"
                     return status, ret_msg
-            if 'dhcp_nodes_in_pool' in data:
-                if data['dhcp_nodes_in_pool'] == "0":
+                data['dhcp_nodes_in_pool'] = Helper().make_bool_string(request_dhcp_nodes_in_pool)
+                if request_dhcp_nodes_in_pool is False:
                     self.logger.info("We will (re)configure ip addresses")
                     reconfigure_ipaddress = True
             if 'non_authoritative' in data:

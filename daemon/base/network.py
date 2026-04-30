@@ -390,9 +390,22 @@ class Network():
                 status=False
                 return status, ret_msg
 
+            if 'dhcp_nodes_in_pool' in data:
+                request_dhcp_nodes_in_pool = Helper().make_bool(data['dhcp_nodes_in_pool'])
+                if request_dhcp_nodes_in_pool is None:
+                    status=False
+                    ret_msg = f"Invalid request: dhcp_nodes_in_pool should be y, yes, n or no"
+                    return status, ret_msg
+                data['dhcp_nodes_in_pool'] = Helper().make_bool_string(request_dhcp_nodes_in_pool)
+                if request_dhcp_nodes_in_pool is False:
+                    self.logger.info("We will (re)configure ip addresses")
+                    reconfigure_ipaddress = True
+
             db_dhcp_nodes_only = Helper().make_bool(db_data['dhcp_nodes_only']) if db_data else False
+            db_dhcp_nodes_in_pool = Helper().make_bool(db_data['dhcp_nodes_in_pool']) if db_data else False
             effective_dhcp_nodes_only = request_dhcp_nodes_only if request_dhcp_nodes_only is not None else db_dhcp_nodes_only
             toggle_off_dhcp_nodes_only = (request_dhcp_nodes_only is False and db_dhcp_nodes_only is True)
+            #toggle_on_dhcp_nodes_in_pool = (request_dhcp_nodes_in_pool is True and db_dhcp_nodes_in_pool is False)
 
             if request_dhcp_nodes_only is True:
                 self.logger.info("We will clear the DHCP range and only serve DHCP known hosts")
@@ -408,6 +421,18 @@ class Network():
                 data['dhcp'] = Helper().make_bool_string(True)
             elif create is True:
                 data['dhcp_nodes_only']="0"
+
+            if request_dhcp_nodes_in_pool is True:
+                request_dhcp = True
+                data['dhcp'] = Helper().make_bool_string(True)
+            elif request_dhcp_nodes_in_pool is False:
+                self.logger.info("We will (re)configure ip addresses")
+                reconfigure_ipaddress = True
+            #elif toggle_on_dhcp_nodes_in_pool:
+            #    request_dhcp = True
+            #    data['dhcp'] = Helper().make_bool_string(True)
+            elif create is True:
+                data['dhcp_nodes_in_pool']="0"
 
             # If dhcp_nodes_only is already enabled in DB (or enabled in this request),
             # ignore any provided DHCP range values to prevent leaking pool ranges into
@@ -438,18 +463,6 @@ class Network():
                     redistribute_ipaddress = True
                     # to make sure we do not overlap with existing node ip configs
 
-            if 'dhcp_nodes_in_pool' in data:
-                request_dhcp_nodes_in_pool = Helper().make_bool(data['dhcp_nodes_in_pool'])
-                if request_dhcp_nodes_in_pool is None:
-                    status=False
-                    ret_msg = f"Invalid request: dhcp_nodes_in_pool should be y, yes, n or no"
-                    return status, ret_msg
-                data['dhcp_nodes_in_pool'] = Helper().make_bool_string(request_dhcp_nodes_in_pool)
-                if request_dhcp_nodes_in_pool is False:
-                    self.logger.info("We will (re)configure ip addresses")
-                    reconfigure_ipaddress = True
-            elif create is True:
-                data['dhcp_nodes_in_pool']="0"
             if 'non_authoritative' in data:
                 data['non_authoritative'] = Helper().make_bool_string(data['non_authoritative'])
                 if data['non_authoritative'] not in ['0','1']:

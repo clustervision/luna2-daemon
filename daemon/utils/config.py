@@ -200,10 +200,10 @@ class Config(object):
             shared_name = f"{network}-" + "-".join(shared[network])
             #
             # the main network/carrier
+            config_pools[shared_name]={}
+            config_pools[shared_name]['policy']='deny'
+            config_pools[shared_name]['members']=shared[network]
             if networksbyname[network]['dhcp'] and not networksbyname[network].get('dhcp_nodes_only'):
-                config_pools[shared_name]={}
-                config_pools[shared_name]['policy']='deny'
-                config_pools[shared_name]['members']=shared[network]
                 config_pools[shared_name]['range_begin']=networksbyname[network]['dhcp_range_begin']
                 config_pools[shared_name]['range_end']=networksbyname[network]['dhcp_range_end']
             #
@@ -216,14 +216,14 @@ class Config(object):
             for piggyback in shared[network]:
                 config_shared[shared_name][piggyback]=self.dhcp_subnet_config(networksbyname[piggyback],'shared','ipv4')
                 config_reservations[piggyback] = []
+                config_pools[piggyback]={}
+                config_pools[piggyback]['policy']='allow'
+                config_pools[piggyback]['members']=[piggyback]
                 if not networksbyname[piggyback].get('dhcp_nodes_only'):
-                    config_pools[piggyback]={}
-                    config_pools[piggyback]['policy']='allow'
-                    config_pools[piggyback]['members']=[piggyback]
                     config_pools[piggyback]['range_begin']=networksbyname[piggyback]['dhcp_range_begin']
                     config_pools[piggyback]['range_end']=networksbyname[piggyback]['dhcp_range_end']
-                    config_classes[piggyback]={}
-                    config_classes[piggyback]['network']=piggyback
+                config_classes[piggyback]={}
+                config_classes[piggyback]['network']=piggyback
                 handled.append(piggyback)
 
         # IPv6 - shared networks
@@ -231,11 +231,11 @@ class Config(object):
             shared_name = f"{network}-" + "-".join(shared6[network])
             #
             # the main network/carrier
+            config_pools6[shared_name]={}
+            config_pools6[shared_name]['policy']='deny'
+            config_pools6[shared_name]['primary']=true
+            config_pools6[shared_name]['members']=shared6[network]
             if networksbyname[network]['dhcp'] and not networksbyname[network].get('dhcp_nodes_only'):
-                config_pools6[shared_name]={}
-                config_pools6[shared_name]['policy']='deny'
-                config_pools6[shared_name]['primary']=true
-                config_pools6[shared_name]['members']=shared6[network]
                 config_pools6[shared_name]['range_begin']=networksbyname[network]['dhcp_range_begin_ipv6']
                 config_pools6[shared_name]['range_end']=networksbyname[network]['dhcp_range_end_ipv6']
             #
@@ -248,14 +248,14 @@ class Config(object):
             for piggyback in shared6[network]:
                 config_shared6[shared_name][piggyback]=self.dhcp_subnet_config(networksbyname[piggyback],'shared','ipv6')
                 config_reservations6[piggyback] = []
+                config_pools6[piggyback]={}
+                config_pools6[piggyback]['policy']='allow'
+                config_pools6[piggyback]['members']=[piggyback]
                 if not networksbyname[piggyback].get('dhcp_nodes_only'):
-                    config_pools6[piggyback]={}
-                    config_pools6[piggyback]['policy']='allow'
-                    config_pools6[piggyback]['members']=[piggyback]
                     config_pools6[piggyback]['range_begin']=networksbyname[piggyback]['dhcp_range_begin_ipv6']
                     config_pools6[piggyback]['range_end']=networksbyname[piggyback]['dhcp_range_end_ipv6']
-                    config_classes6[piggyback]={}
-                    config_classes6[piggyback]['network']=piggyback
+                config_classes6[piggyback]={}
+                config_classes6[piggyback]['network']=piggyback
                 handled.append(piggyback+'_ipv6')
 
         # we handle all (remaining) networks below

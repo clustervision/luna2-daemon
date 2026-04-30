@@ -392,6 +392,7 @@ class Network():
 
             db_dhcp_nodes_only = Helper().make_bool(db_data['dhcp_nodes_only']) if db_data else False
             effective_dhcp_nodes_only = request_dhcp_nodes_only if request_dhcp_nodes_only is not None else db_dhcp_nodes_only
+            toggle_off_dhcp_nodes_only = (request_dhcp_nodes_only is False and db_dhcp_nodes_only is True)
 
             if request_dhcp_nodes_only is True:
                 self.logger.info("We will clear the DHCP range and only serve DHCP known hosts")
@@ -400,7 +401,8 @@ class Network():
                 data['dhcp_range_begin_ipv6'] = None
                 data['dhcp_range_end_ipv6'] = None
                 redistribute_ipaddress = False
-            elif request_dhcp_nodes_only is False:
+            #elif request_dhcp_nodes_only is False:
+            elif toggle_off_dhcp_nodes_only:
                 self.logger.info("We will serve a DHCP range again")
                 request_dhcp = True
                 data['dhcp'] = Helper().make_bool_string(True)

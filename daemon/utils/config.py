@@ -1169,6 +1169,7 @@ class Config(object):
             return True, message
         message = f"dhcp config for {interface_name} failed with result {result_ip}"
         self.logger.info(message)
+        return False, message
 
 
     def node_interface_ipaddress_config(self, nodeid, interface_name, ipaddress, network=None, force=False):

@@ -104,9 +104,9 @@ class Network():
         """
         if 'network' in data and 'subnet' in data:
             return data['network'] + '/' + data['subnet']
-        if db_data and Helper().check_if_ipv6(value) and db_data['network_ipv6'] and db_data['subnet_ipv6']:
+        elif db_data and Helper().check_if_ipv6(value) and db_data['network_ipv6'] and db_data['subnet_ipv6']:
             return db_data['network_ipv6'] + '/' + db_data['subnet_ipv6']
-        if db_data and db_data['network'] and db_data['subnet']:
+        elif db_data and db_data['network'] and db_data['subnet']:
             return db_data['network'] + '/' + db_data['subnet']
         return None
 
@@ -119,6 +119,8 @@ class Network():
             subnet = self._resolve_network_for_ip_check(data, db_data, data['dhcp_range_begin'])
             if not subnet or not Helper().check_ip_range(data['dhcp_range_begin'], subnet):
                 return False, f'Invalid request: Incorrect dhcp start: {data["dhcp_range_begin"]}'
+        elif db_data and (db_data['dhcp_range_begin'] or db_data['dhcp_range_begin_ipv6']):
+            pass
         elif request_dhcp is True:
             return False, 'Invalid request: DHCP start range is a required parameter'
 
@@ -126,6 +128,8 @@ class Network():
             subnet = self._resolve_network_for_ip_check(data, db_data, data['dhcp_range_end'])
             if not subnet or not Helper().check_ip_range(data['dhcp_range_end'], subnet):
                 return False, f'Invalid request: Incorrect dhcp end: {data["dhcp_range_end"]}'
+        elif db_data and (db_data['dhcp_range_end'] or db_data['dhcp_range_end_ipv6']):
+            pass
         elif request_dhcp is True:
             return False, 'Invalid request: DHCP end range is a required parameter'
 

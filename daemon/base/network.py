@@ -405,7 +405,6 @@ class Network():
             db_dhcp_nodes_in_pool = Helper().make_bool(db_data['dhcp_nodes_in_pool']) if db_data else False
             effective_dhcp_nodes_only = request_dhcp_nodes_only if request_dhcp_nodes_only is not None else db_dhcp_nodes_only
             toggle_off_dhcp_nodes_only = (request_dhcp_nodes_only is False and db_dhcp_nodes_only is True)
-            #toggle_on_dhcp_nodes_in_pool = (request_dhcp_nodes_in_pool is True and db_dhcp_nodes_in_pool is False)
 
             if request_dhcp_nodes_only is True:
                 self.logger.info("We will clear the DHCP range and only serve DHCP known hosts")
@@ -414,7 +413,6 @@ class Network():
                 data['dhcp_range_begin_ipv6'] = None
                 data['dhcp_range_end_ipv6'] = None
                 redistribute_ipaddress = False
-            #elif request_dhcp_nodes_only is False:
             elif toggle_off_dhcp_nodes_only:
                 self.logger.info("We will serve a DHCP range again")
                 request_dhcp = True
@@ -428,9 +426,6 @@ class Network():
             elif request_dhcp_nodes_in_pool is False:
                 self.logger.info("We will (re)configure ip addresses")
                 reconfigure_ipaddress = True
-            #elif toggle_on_dhcp_nodes_in_pool:
-            #    request_dhcp = True
-            #    data['dhcp'] = Helper().make_bool_string(True)
             elif create is True:
                 data['dhcp_nodes_in_pool']="0"
 

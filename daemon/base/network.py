@@ -64,10 +64,12 @@ class Network():
         """
         Validate mutually exclusive DHCP modes.
         """
-        if 'dhcp_nodes_only' in data and db_data and db_data['dhcp_nodes_in_pool']:
+        if 'dhcp_nodes_only' in data and Helper().make_bool(data['dhcp_nodes_only']) and db_data and db_data['dhcp_nodes_in_pool']:
             return False, "Invalid request: dhcp_nodes_in_pool is enabled and is mutually exclusive. Please disable this setting first"
-        if 'dhcp_nodes_in_pool' in data and db_data and db_data['dhcp_nodes_only']:
+        elif 'dhcp_nodes_in_pool' in data and Helper().make_bool(data['dhcp_nodes_in_pool']) and db_data and db_data['dhcp_nodes_only']:
             return False, "Invalid request: dhcp_nodes_only is enabled and is mutually exclusive. Please disable this setting first"
+        elif 'dhcp_nodes_only' in data and Helper().make_bool(data['dhcp_nodes_only']) and 'dhcp_nodes_in_pool' in data and Helper().make_bool(data['dhcp_nodes_in_pool']):
+            return False, "Invalid request: dhcp_nodes_only and dhcp_nodes_in_pool are mutually exclusive"
         return True, None
 
 

@@ -233,7 +233,7 @@ class Config(object):
             # the main network/carrier
             config_pools6[shared_name]={}
             config_pools6[shared_name]['policy']='deny'
-            config_pools6[shared_name]['primary']=true
+            #config_pools6[shared_name]['primary']=true # might be completely unused
             config_pools6[shared_name]['members']=shared6[network]
             if networksbyname[network]['dhcp'] and not networksbyname[network].get('dhcp_nodes_only'):
                 config_pools6[shared_name]['range_begin']=networksbyname[network]['dhcp_range_begin_ipv6']

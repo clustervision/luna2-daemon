@@ -334,8 +334,6 @@ class Network():
                 default_zone=data['zone']
             elif create is True:
                 data['zone']="internal"
-                data['dhcp_nodes_in_pool']="0"
-                data['dhcp_nodes_only']="0"
             if 'gateway' in data:
                 if data['gateway'] == "":
                     data['gateway'] = None
@@ -404,6 +402,8 @@ class Network():
                 self.logger.info("We will serve a DHCP range again")
                 request_dhcp = True
                 data['dhcp'] = Helper().make_bool_string(True)
+            elif create is True:
+                data['dhcp_nodes_only']="0"
 
             # If dhcp_nodes_only is already enabled in DB (or enabled in this request),
             # ignore any provided DHCP range values to prevent leaking pool ranges into
@@ -444,6 +444,8 @@ class Network():
                 if request_dhcp_nodes_in_pool is False:
                     self.logger.info("We will (re)configure ip addresses")
                     reconfigure_ipaddress = True
+            elif create is True:
+                data['dhcp_nodes_in_pool']="0"
             if 'non_authoritative' in data:
                 data['non_authoritative'] = Helper().make_bool_string(data['non_authoritative'])
                 if data['non_authoritative'] not in ['0','1']:

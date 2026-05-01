@@ -33,7 +33,9 @@ __maintainer__  = 'Sumit Sharma'
 __email__       = 'sumit.sharma@clustervision.com'
 __status__      = 'Development'
 
+import os
 import sys
+import fcntl
 import concurrent.futures
 from threading import Event
 import traceback
@@ -78,13 +80,102 @@ from routes.plugin_import import import_blueprint
 from routes.ha import ha_blueprint
 
 event = Event()
+BACKGROUND_LOCKFILE = '/tmp/luna2-daemon-background.lock'
 
 ############# Helper functions ##################
 
 background_futures = []
+background_lock_handle = None
+background_started = False
+
 def register_future(executor, future):
     background_futures.append((executor, future))
     return future
+
+
+def clear_background_futures():
+    background_futures.clear()
+
+
+def start_background_workers():
+    """
+    Start Luna singleton background workers after Gunicorn forks a worker.
+    One worker is elected using a non-blocking file lock.
+    """
+    global background_lock_handle
+    global background_started
+
+    if background_started:
+        LOGGER.info('Background workers already started in this process')
+        return True
+
+    event.clear()
+    background_lock_handle = open(BACKGROUND_LOCKFILE, 'a+', encoding='utf-8')
+    try:
+        fcntl.flock(background_lock_handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except BlockingIOError:
+        LOGGER.info(f'Worker pid {os.getpid()} is not the background owner')
+        return False
+
+    # --------------- status message cleanup thread ----------------
+    executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
+    register_future(executor, executor.submit(Housekeeper().cleanup_mother, event))
+    # ----------------- queue housekeeper thread -------------------
+    executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
+    register_future(executor, executor.submit(Housekeeper().tasks_mother, event))
+    # ------------- switch/port/mac detection thread ---------------
+    executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
+    register_future(executor, executor.submit(Housekeeper().switchport_scan, event))
+    # -------------- boot plugin sync watcher thread ---------------
+    executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
+    register_future(executor, executor.submit(PluginSync().boot_plugins_mother, event))
+    # --------------- journal / replication thread -----------------
+    executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
+    register_future(executor, executor.submit(Housekeeper().journal_mother, event))
+    # ----------------- invalid config thread ----------------------
+    executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
+    register_future(executor, executor.submit(Housekeeper().invalid_config_mother, event))
+    # ----------------- osimage tasks thread -----------------------
+    executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
+    register_future(executor, executor.submit(Housekeeper().osimage_tasks_mother, event))
+    # --------------------------------------------------------------
+    background_started = True
+    LOGGER.info(f'Background workers started in pid {os.getpid()}')
+    return True
+
+
+def stop_background_workers(wait_for_queue=False):
+    """
+    Stop Luna singleton background workers from the owning worker process.
+    """
+    global background_lock_handle
+    global background_started
+
+    if not background_started:
+        return True
+
+    event.set()
+    if wait_for_queue:
+        Queue().wait_for_queue_drain()
+    for executor, future in background_futures:
+        try:
+            future.result(timeout=10)
+        except Exception as exp:
+            LOGGER.warning(f"Background future shutdown issue: {exp}")
+        try:
+            executor.shutdown(wait=False)
+        except Exception as exp:
+            LOGGER.warning(f"Executor shutdown issue: {exp}")
+    clear_background_futures()
+    try:
+        if background_lock_handle is not None:
+            fcntl.flock(background_lock_handle.fileno(), fcntl.LOCK_UN)
+            background_lock_handle.close()
+    except Exception as exp:
+        LOGGER.warning(f"Background lock cleanup issue: {exp}")
+    background_lock_handle = None
+    background_started = False
+    return True
 
 
 ############# Gunicorn Server Hooks #############
@@ -130,31 +221,26 @@ def on_starting(server):
     except Exception as exp:
         exc_type, exc_obj, exc_tb = sys.exc_info()
         sys.stderr.write(f"ERROR: Startup hook plugin returned an exception: {exp}, {exc_type}, in {exc_tb.tb_lineno}\n")
-    event.clear()
-    # --------------- status message cleanup thread ----------------
-    executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
-    register_future(executor, executor.submit(Housekeeper().cleanup_mother, event))
-    # ----------------- queue housekeeper thread -------------------
-    executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
-    register_future(executor, executor.submit(Housekeeper().tasks_mother, event))
-    # ------------- switch/port/mac detection thread ---------------
-    executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
-    register_future(executor, executor.submit(Housekeeper().switchport_scan, event))
-    # -------------- boot plugin sync watcher thread ---------------
-    executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
-    register_future(executor, executor.submit(PluginSync().boot_plugins_mother, event))
-    # --------------- journal / replication thread -----------------
-    executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
-    register_future(executor, executor.submit(Housekeeper().journal_mother, event))
-    # ----------------- invalid config thread ----------------------
-    executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
-    register_future(executor, executor.submit(Housekeeper().invalid_config_mother, event))
-    # ----------------- osimage tasks thread -----------------------
-    executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
-    register_future(executor, executor.submit(Housekeeper().osimage_tasks_mother, event))
-    # --------------------------------------------------------------
     LOGGER.info(vars(server))
     LOGGER.info('Gunicorn server hook on start')
+    return True
+
+
+def post_worker_init(worker):
+    """
+    Start singleton background workers after fork in one elected worker.
+    """
+    LOGGER.info(f'post_worker_init called for worker pid {worker.pid} age {worker.age}')
+    start_background_workers()
+    return True
+
+
+def worker_exit(server, worker):
+    """
+    Stop singleton background workers when the owning worker exits.
+    """
+    LOGGER.info(f'worker_exit called for worker pid {worker.pid} age {worker.age}')
+    stop_background_workers(wait_for_queue=False)
     return True
 
 
@@ -172,22 +258,7 @@ def on_exit(server):
     """
     A Testing Method for Gunicorn on_reload.
     """
-    # commented out for future implementation. Currently forks do not catch signals.
-    #for pending_task in ['pack_n_build_osimage','clone_n_pack_osimage','grab_n_pack_n_build_osimage']:
-    #    while Queue().tasks_in_queue(subsystem='osimage',task=pending_task):
-    #        LOGGER.info("Delaying shutdown. Tasks scheduled in queue or running...")
-    #        sleep(10)
-    event.set()  # stops the threads like cleanup
-    Queue().wait_for_queue_drain()
-    for executor, future in background_futures:
-        try:
-            future.result(timeout=10)
-        except Exception as exp:
-            LOGGER.warning(f"Background future shutdown issue: {exp}")
-        try:
-            executor.shutdown(wait=False)
-        except Exception as exp:
-            LOGGER.warning(f"Executor shutdown issue: {exp}")
+    # master hook only; worker-owned background shutdown happens in worker_exit
     LOGGER.info(vars(server))
     LOGGER.info('Gunicorn server hook on exit')
     # we call the shutdown hook plugin

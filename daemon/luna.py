@@ -80,7 +80,7 @@ from routes.plugin_import import import_blueprint
 from routes.ha import ha_blueprint
 
 event = Event()
-BACKGROUND_LOCKFILE = '/tmp/luna2-daemon-background.lock'
+BACKGROUND_LOCKFILE = '/var/lib/luna2-daemon-background.lock'
 
 ############# Helper functions ##################
 

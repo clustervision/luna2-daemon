@@ -97,6 +97,32 @@ def clear_background_futures():
     background_futures.clear()
 
 
+def _is_default_hook(cfg, hook_name):
+    hook = getattr(cfg, hook_name, None)
+    return (
+        getattr(hook, '__module__', '') == 'gunicorn.config'
+        and getattr(hook, '__name__', '') == hook_name
+    )
+
+
+def inject_compat_hooks(cfg):
+    """
+    Backfill newer Gunicorn hooks when an older gunicorn.py did not define them.
+    This allows luna.py to support both old and new gunicorn.py files.
+    """
+    hook_map = {
+        'post_worker_init': post_worker_init,
+        'worker_exit': worker_exit,
+        'on_reload': on_reload,
+        'on_exit': on_exit,
+        'worker_abort': worker_abort,
+    }
+    for hook_name, hook_fn in hook_map.items():
+        if _is_default_hook(cfg, hook_name):
+            cfg.set(hook_name, hook_fn)
+            LOGGER.info(f'Injected compatibility hook {hook_name} -> luna.{hook_name}')
+
+
 def start_background_workers():
     """
     Start Luna singleton background workers after Gunicorn forks a worker.
@@ -184,6 +210,7 @@ def on_starting(server):
     """
     A Testing Method for Gunicorn on_starting.
     """
+    inject_compat_hooks(server.cfg)
     result = validate_bootstrap()
     if result is False:
         sys.exit(1)

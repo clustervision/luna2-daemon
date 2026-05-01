@@ -174,9 +174,16 @@ class Config(object):
         # prepare - we check if we are shared, are ipv4/v6, etc
         for network in networksbyname.keys():
             networksbyname[network]['ipv6'], networksbyname[network]['ipv4'] = False, False
-            if networksbyname[network]['dhcp_range_begin'] and networksbyname[network]['dhcp_range_end'] and networksbyname[network]['network']:
+            dhcp_nodes_only = bool(networksbyname[network].get('dhcp_nodes_only'))
+            if networksbyname[network]['network'] and (
+                dhcp_nodes_only or
+                (networksbyname[network]['dhcp_range_begin'] and networksbyname[network]['dhcp_range_end'])
+            ):
                 networksbyname[network]['ipv4'] = True
-            if networksbyname[network]['dhcp_range_begin_ipv6'] and networksbyname[network]['dhcp_range_end_ipv6'] and networksbyname[network]['network_ipv6']:
+            if networksbyname[network]['network_ipv6'] and (
+                dhcp_nodes_only or
+                (networksbyname[network]['dhcp_range_begin_ipv6'] and networksbyname[network]['dhcp_range_end_ipv6'])
+            ):
                 networksbyname[network]['ipv6'] = True
             if networksbyname[network]['shared'] and networksbyname[network]['shared'] in networksbyname.keys():
                 if networksbyname[network]['ipv4']:
@@ -193,10 +200,10 @@ class Config(object):
             shared_name = f"{network}-" + "-".join(shared[network])
             #
             # the main network/carrier
-            if networksbyname[network]['dhcp']:
-                config_pools[shared_name]={}
-                config_pools[shared_name]['policy']='deny'
-                config_pools[shared_name]['members']=shared[network]
+            config_pools[shared_name]={}
+            config_pools[shared_name]['policy']='deny'
+            config_pools[shared_name]['members']=shared[network]
+            if networksbyname[network]['dhcp'] and not networksbyname[network].get('dhcp_nodes_only'):
                 config_pools[shared_name]['range_begin']=networksbyname[network]['dhcp_range_begin']
                 config_pools[shared_name]['range_end']=networksbyname[network]['dhcp_range_end']
             #
@@ -212,8 +219,9 @@ class Config(object):
                 config_pools[piggyback]={}
                 config_pools[piggyback]['policy']='allow'
                 config_pools[piggyback]['members']=[piggyback]
-                config_pools[piggyback]['range_begin']=networksbyname[piggyback]['dhcp_range_begin']
-                config_pools[piggyback]['range_end']=networksbyname[piggyback]['dhcp_range_end']
+                if not networksbyname[piggyback].get('dhcp_nodes_only'):
+                    config_pools[piggyback]['range_begin']=networksbyname[piggyback]['dhcp_range_begin']
+                    config_pools[piggyback]['range_end']=networksbyname[piggyback]['dhcp_range_end']
                 config_classes[piggyback]={}
                 config_classes[piggyback]['network']=piggyback
                 handled.append(piggyback)
@@ -223,11 +231,11 @@ class Config(object):
             shared_name = f"{network}-" + "-".join(shared6[network])
             #
             # the main network/carrier
-            if networksbyname[network]['dhcp']:
-                config_pools6[shared_name]={}
-                config_pools6[shared_name]['policy']='deny'
-                config_pools6[shared_name]['primary']=true
-                config_pools6[shared_name]['members']=shared6[network]
+            config_pools6[shared_name]={}
+            config_pools6[shared_name]['policy']='deny'
+            #config_pools6[shared_name]['primary']=true # might be completely unused
+            config_pools6[shared_name]['members']=shared6[network]
+            if networksbyname[network]['dhcp'] and not networksbyname[network].get('dhcp_nodes_only'):
                 config_pools6[shared_name]['range_begin']=networksbyname[network]['dhcp_range_begin_ipv6']
                 config_pools6[shared_name]['range_end']=networksbyname[network]['dhcp_range_end_ipv6']
             #
@@ -243,8 +251,9 @@ class Config(object):
                 config_pools6[piggyback]={}
                 config_pools6[piggyback]['policy']='allow'
                 config_pools6[piggyback]['members']=[piggyback]
-                config_pools6[piggyback]['range_begin']=networksbyname[piggyback]['dhcp_range_begin_ipv6']
-                config_pools6[piggyback]['range_end']=networksbyname[piggyback]['dhcp_range_end_ipv6']
+                if not networksbyname[piggyback].get('dhcp_nodes_only'):
+                    config_pools6[piggyback]['range_begin']=networksbyname[piggyback]['dhcp_range_begin_ipv6']
+                    config_pools6[piggyback]['range_end']=networksbyname[piggyback]['dhcp_range_end_ipv6']
                 config_classes6[piggyback]={}
                 config_classes6[piggyback]['network']=piggyback
                 handled.append(piggyback+'_ipv6')
@@ -404,9 +413,10 @@ class Config(object):
         network_id = nwk['id']
         network_name = nwk['name']+add_string
         network_ip = nwk['network'+add_string]
-        if nwk['dhcp'] and not shared:
-            subnet['range_begin']=nwk['dhcp_range_begin'+add_string]
-            subnet['range_end']=nwk['dhcp_range_end'+add_string]
+        if nwk['dhcp'] and not shared and not nwk.get('dhcp_nodes_only'):
+            if nwk['dhcp_range_begin'+add_string] and nwk['dhcp_range_end'+add_string]:
+                subnet['range_begin']=nwk['dhcp_range_begin'+add_string]
+                subnet['range_end']=nwk['dhcp_range_end'+add_string]
         netmask = nwk['subnet_ipv6']
         subnet['prefix'] = nwk['subnet_ipv6']
         if ipversion == 'ipv4':
@@ -1159,6 +1169,7 @@ class Config(object):
             return True, message
         message = f"dhcp config for {interface_name} failed with result {result_ip}"
         self.logger.info(message)
+        return False, message
 
 
     def node_interface_ipaddress_config(self, nodeid, interface_name, ipaddress, network=None, force=False):

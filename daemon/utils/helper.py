@@ -620,6 +620,14 @@ class Helper(object):
         return variable
 
 
+    def make_bool_string(self, variable=None):
+        """
+        Input - bool-like value
+        Output - '1'/'0' or None
+        """
+        return self.bool_to_string(variable)
+
+
     def encrypt_string(self, string=None):
         """
         Input - string

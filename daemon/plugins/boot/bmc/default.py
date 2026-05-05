@@ -48,49 +48,99 @@ class Plugin():
     if ls /dev/ipmi* 1> /dev/null 2>&1
     then
         RESETIPMI=0
-        IPMITOOL="`ipmitool lan print $NETCHANNEL`"
-        CUR_IPSRC=`echo "${IPMITOOL}" | grep -e "^IP Address Source" | awk '{ print $5 }'`
-        CUR_IPADDR=`echo "${IPMITOOL}" | grep -e "^IP Address.*: [0-9]" | awk '{ print $4 }'`
-        CUR_NETMASK=`echo "${IPMITOOL}" | grep -e "^Subnet Mask" | awk '{ print $4 }'`
-        CUR_DEFGW=`echo "${IPMITOOL}" | grep -e "^Default Gateway IP" | awk '{ print $5 }'`
-        CUR_VLANID=`echo "${IPMITOOL}" | grep -e "^802.1q VLAN ID" | awk '{ print $5 }'`
+        IPMI_SET_MAX_ATTEMPTS=10
+        IPMI_SET_RETRY_SLEEP=1
+
+        refresh_ipmi_state() {
+            IPMITOOL="$(ipmitool lan print ${NETCHANNEL} 2>/dev/null)"
+            CUR_IPSRC="$(echo "${IPMITOOL}" | grep -e "^IP Address Source" | awk '{ print $5 }')"
+            CUR_IPADDR="$(echo "${IPMITOOL}" | grep -e "^IP Address.*: [0-9]" | awk '{ print $4 }')"
+            CUR_NETMASK="$(echo "${IPMITOOL}" | grep -e "^Subnet Mask" | awk '{ print $4 }')"
+            CUR_DEFGW="$(echo "${IPMITOOL}" | grep -e "^Default Gateway IP" | awk '{ print $5 }')"
+            CUR_VLANID="$(echo "${IPMITOOL}" | grep -e "^802.1q VLAN ID" | awk '{ print $5 }')"
+        }
+
+        get_current_ipmi_value() {
+            case "$1" in
+                ipsrc)
+                    echo "${CUR_IPSRC}"
+                    ;;
+                ipaddr)
+                    echo "${CUR_IPADDR}"
+                    ;;
+                netmask)
+                    echo "${CUR_NETMASK}"
+                    ;;
+                defgw)
+                    echo "${CUR_DEFGW}"
+                    ;;
+                vlan)
+                    echo "${CUR_VLANID}"
+                    ;;
+            esac
+        }
+
+        set_ipmi_value() {
+            local FIELD="$1"
+            local EXPECTED="$2"
+            local ATTEMPT=1
+            local CURRENT_VALUE=""
+            local COMMAND_RC=0
+            shift 2
+            while [[ "${ATTEMPT}" -le "${IPMI_SET_MAX_ATTEMPTS}" ]]
+            do
+                "$@"
+                COMMAND_RC=$?
+                sleep "${IPMI_SET_RETRY_SLEEP}"
+                refresh_ipmi_state
+                CURRENT_VALUE="$(get_current_ipmi_value "${FIELD}")"
+                if [[ "${CURRENT_VALUE}" == "${EXPECTED}" ]]
+                then
+                    return 0
+                fi
+                if [[ "${COMMAND_RC}" -ne 0 ]]
+                then
+                    echo "Luna2: ipmitool command for ${FIELD} returned ${COMMAND_RC} on attempt ${ATTEMPT}/${IPMI_SET_MAX_ATTEMPTS}" >&2
+                fi
+                ATTEMPT=$((ATTEMPT+1))
+            done
+            echo "Luna2: failed to set IPMI ${FIELD} to ${EXPECTED} after ${IPMI_SET_MAX_ATTEMPTS} attempts; current value is ${CURRENT_VALUE}" >&2
+            return 1
+        }
+
+        if [[ "$VLANID" == "" ]]
+        then
+            VLANID='Disabled'
+        fi
+
+        refresh_ipmi_state
         if [[ "${CUR_IPSRC}" != "Static" ]]
         then
             RESETIPMI=1
-            ipmitool lan set $NETCHANNEL ipsrc static
+            set_ipmi_value ipsrc "Static" ipmitool lan set ${NETCHANNEL} ipsrc static || return 1
         fi
         if [[ "${CUR_IPADDR}" != "${IPADDRESS}" ]]
         then
             RESETIPMI=1
-            ipmitool lan set ${NETCHANNEL} ipaddr ${IPADDRESS}
-            # yup, twice. some devices need it
-            ipmitool lan set ${NETCHANNEL} ipaddr ${IPADDRESS}
+            set_ipmi_value ipaddr "${IPADDRESS}" ipmitool lan set ${NETCHANNEL} ipaddr ${IPADDRESS} || return 1
         fi
         if [[ "${CUR_NETMASK}" != "${NETMASK}" ]]
         then
             RESETIPMI=1
-            ipmitool lan set ${NETCHANNEL} netmask ${NETMASK}
-            # yup, twice. some devices need it
-            ipmitool lan set ${NETCHANNEL} netmask ${NETMASK}
+            set_ipmi_value netmask "${NETMASK}" ipmitool lan set ${NETCHANNEL} netmask ${NETMASK} || return 1
         fi
         if [[ "${CUR_DEFGW}" != "${GATEWAY}" ]]
         then
             RESETIPMI=1
-            ipmitool lan set ${NETCHANNEL} defgw ipaddr ${GATEWAY}
-            # yup, twice. some devices need it
-            ipmitool lan set ${NETCHANNEL} defgw ipaddr ${GATEWAY}
-        fi
-        if [[ "$VLANID" == "" ]]
-        then
-            VLANID='Disabled'
+            set_ipmi_value defgw "${GATEWAY}" ipmitool lan set ${NETCHANNEL} defgw ipaddr ${GATEWAY} || return 1
         fi
         if [[ "${CUR_VLANID}" != "${VLANID}" ]]
         then
             RESETIPMI=1
             if [ "$VLANID" == 'Disabled' ]; then
-                ipmitool lan set ${NETCHANNEL} vlan id off
+                set_ipmi_value vlan "${VLANID}" ipmitool lan set ${NETCHANNEL} vlan id off || return 1
             else
-                ipmitool lan set ${NETCHANNEL} vlan id $VLANID
+                set_ipmi_value vlan "${VLANID}" ipmitool lan set ${NETCHANNEL} vlan id ${VLANID} || return 1
             fi
         fi
         case $UNMANAGED in

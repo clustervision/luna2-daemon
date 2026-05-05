@@ -80,18 +80,87 @@ class Plugin():
             esac
         }
 
+        get_expected_ipmi_value() {
+            case "$1" in
+                ipsrc)
+                    echo "Static"
+                    ;;
+                ipaddr)
+                    echo "${IPADDRESS}"
+                    ;;
+                netmask)
+                    echo "${NETMASK}"
+                    ;;
+                defgw)
+                    echo "${GATEWAY}"
+                    ;;
+                vlan)
+                    echo "${VLANID}"
+                    ;;
+            esac
+        }
+
+        get_ipmi_run_count() {
+            case "$1" in
+                ipaddr)
+                    echo "2"
+                    ;;
+                *)
+                    echo "1"
+                    ;;
+            esac
+        }
+
+        run_ipmi_command() {
+            local FIELD="$1"
+            local RUN_COUNT="$2"
+            local RUN_INDEX=1
+            local COMMAND_RC=0
+            while [[ "${RUN_INDEX}" -le "${RUN_COUNT}" ]]
+            do
+                case "${FIELD}" in
+                    ipsrc)
+                        ipmitool lan set ${NETCHANNEL} ipsrc static
+                        ;;
+                    ipaddr)
+                        ipmitool lan set ${NETCHANNEL} ipaddr ${IPADDRESS}
+                        ;;
+                    netmask)
+                        ipmitool lan set ${NETCHANNEL} netmask ${NETMASK}
+                        ;;
+                    defgw)
+                        ipmitool lan set ${NETCHANNEL} defgw ipaddr ${GATEWAY}
+                        ;;
+                    vlan)
+                        if [ "$VLANID" == 'Disabled' ]; then
+                            ipmitool lan set ${NETCHANNEL} vlan id off
+                        else
+                            ipmitool lan set ${NETCHANNEL} vlan id ${VLANID}
+                        fi
+                        ;;
+                esac
+                COMMAND_RC=$?
+                if [[ "${COMMAND_RC}" -ne 0 ]]
+                then
+                    return ${COMMAND_RC}
+                fi
+                RUN_INDEX=$((RUN_INDEX+1))
+            done
+            return 0
+        }
+
         set_ipmi_value() {
             local FIELD="$1"
-            local EXPECTED="$2"
+            local EXPECTED="$(get_expected_ipmi_value "${FIELD}")"
+            local RUN_COUNT="$(get_ipmi_run_count "${FIELD}")"
             local ATTEMPT=1
             local CURRENT_VALUE=""
             local COMMAND_RC=0
-            shift 2
             echo "Luna2: configuring BMC ${FIELD} -> ${EXPECTED}"
             while [[ "${ATTEMPT}" -le "${IPMI_SET_MAX_ATTEMPTS}" ]]
             do
                 echo "Luna2: applying ${FIELD} attempt ${ATTEMPT}/${IPMI_SET_MAX_ATTEMPTS}"
-                "$@"
+                run_ipmi_command "${FIELD}" "${RUN_COUNT}"
                 COMMAND_RC=$?
                 sleep "${IPMI_SET_RETRY_SLEEP}"
                 refresh_ipmi_state
@@ -114,8 +183,7 @@ class Plugin():
 
         ensure_ipmi_value() {
             local FIELD="$1"
-            local EXPECTED="$2"
-            shift 2
+            local EXPECTED="$(get_expected_ipmi_value "${FIELD}")"
             local CURRENT_VALUE="$(get_current_ipmi_value "${FIELD}")"
             if [[ "${CURRENT_VALUE}" == "${EXPECTED}" ]]
             then
@@ -123,7 +191,7 @@ class Plugin():
                 return 0
             fi
             RESETIPMI=1
-            set_ipmi_value "${FIELD}" "${EXPECTED}" "$@"
+            set_ipmi_value "${FIELD}"
         }
 
         if [[ "$VLANID" == "" ]]
@@ -134,25 +202,11 @@ class Plugin():
         echo "Luna2: starting BMC configuration on net channel ${NETCHANNEL}"
         refresh_ipmi_state
 
-        ensure_ipmi_value ipsrc "Static" \
-            ipmitool lan set ${NETCHANNEL} ipsrc static || return 1
-
-        ensure_ipmi_value ipaddr "${IPADDRESS}" \
-            sh -c 'ipmitool lan set "$1" ipaddr "$2" && ipmitool lan set "$1" ipaddr "$2"' sh ${NETCHANNEL} ${IPADDRESS} || return 1
-
-        ensure_ipmi_value netmask "${NETMASK}" \
-            ipmitool lan set ${NETCHANNEL} netmask ${NETMASK} || return 1
-
-        ensure_ipmi_value defgw "${GATEWAY}" \
-            ipmitool lan set ${NETCHANNEL} defgw ipaddr ${GATEWAY} || return 1
-
-        if [ "$VLANID" == 'Disabled' ]; then
-            ensure_ipmi_value vlan "${VLANID}" \
-                ipmitool lan set ${NETCHANNEL} vlan id off || return 1
-        else
-            ensure_ipmi_value vlan "${VLANID}" \
-                ipmitool lan set ${NETCHANNEL} vlan id ${VLANID} || return 1
-        fi
+        ensure_ipmi_value ipsrc || return 1
+        ensure_ipmi_value ipaddr || return 1
+        ensure_ipmi_value netmask || return 1
+        ensure_ipmi_value defgw || return 1
+        ensure_ipmi_value vlan || return 1
 
         case $UNMANAGED in
             delete)

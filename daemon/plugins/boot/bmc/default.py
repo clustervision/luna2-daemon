@@ -100,22 +100,16 @@ class Plugin():
             esac
         }
 
-        get_ipmi_run_count() {
-            case "$1" in
-                ipaddr)
-                    echo "2"
-                    ;;
-                *)
-                    echo "1"
-                    ;;
-            esac
-        }
-
         run_ipmi_command() {
             local FIELD="$1"
-            local RUN_COUNT="$2"
             local RUN_INDEX=1
+            local RUN_COUNT=1
             local COMMAND_RC=0
+            case "${FIELD}" in
+                ipaddr)
+                    RUN_COUNT=2
+                    ;;
+            esac
             while [[ "${RUN_INDEX}" -le "${RUN_COUNT}" ]]
             do
                 case "${FIELD}" in
@@ -152,7 +146,6 @@ class Plugin():
         set_ipmi_value() {
             local FIELD="$1"
             local EXPECTED="$(get_expected_ipmi_value "${FIELD}")"
-            local RUN_COUNT="$(get_ipmi_run_count "${FIELD}")"
             local ATTEMPT=1
             local CURRENT_VALUE=""
             local COMMAND_RC=0
@@ -160,7 +153,7 @@ class Plugin():
             while [[ "${ATTEMPT}" -le "${IPMI_SET_MAX_ATTEMPTS}" ]]
             do
                 echo "Luna2: applying ${FIELD} attempt ${ATTEMPT}/${IPMI_SET_MAX_ATTEMPTS}"
-                run_ipmi_command "${FIELD}" "${RUN_COUNT}"
+                run_ipmi_command "${FIELD}"
                 COMMAND_RC=$?
                 sleep "${IPMI_SET_RETRY_SLEEP}"
                 refresh_ipmi_state
@@ -209,13 +202,7 @@ class Plugin():
         ensure_ipmi_value vlan || return 1
 
         case $UNMANAGED in
-            delete)
-                echo "Luna2: disabling unmanaged BMC users mode=${UNMANAGED}"
-                for userid in $(ipmitool user list 1|grep -oE '^[0-9]+\s{1,10}.[^ ]+'|grep -oE '^[0-9]+'); do
-                    ipmitool user disable $userid
-                done
-                ;;
-            disable)
+            delete|disable)
                 echo "Luna2: disabling unmanaged BMC users mode=${UNMANAGED}"
                 for userid in $(ipmitool user list 1|grep -oE '^[0-9]+\s{1,10}.[^ ]+'|grep -oE '^[0-9]+'); do
                     ipmitool user disable $userid

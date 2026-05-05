@@ -122,7 +122,7 @@ class Plugin():
     # the fetch variable defines the method used in the template to fetch the image_file
     # -------------------------------
     fetch = """
-    echo "Luna2: Downloading torrent" | tee -a /tmp/luna-installer.log
+    echo "Luna2: Downloading torrent" | tee -a /tmp/luna_install.log
     cd /{{ LUNA_SYSTEMROOT }}
     if [ "$(echo LUNA_API_PROTOCOL | grep ':')" ]; then
         curl $INTERFACE -H "x-access-tokens: $LUNA_TOKEN" -s {{ WEBSERVER_PROTOCOL }}://[{{ LUNA_CONTROLLER }}]:{{ WEBSERVER_PORT }}/files/{{ LUNA_IMAGEFILE }}.torrent > {{ LUNA_IMAGEFILE }}.torrent

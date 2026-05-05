@@ -87,8 +87,10 @@ class Plugin():
             local CURRENT_VALUE=""
             local COMMAND_RC=0
             shift 2
+            echo "Luna2: configuring BMC ${FIELD} -> ${EXPECTED}"
             while [[ "${ATTEMPT}" -le "${IPMI_SET_MAX_ATTEMPTS}" ]]
             do
+                echo "Luna2: applying ${FIELD} attempt ${ATTEMPT}/${IPMI_SET_MAX_ATTEMPTS}"
                 "$@"
                 COMMAND_RC=$?
                 sleep "${IPMI_SET_RETRY_SLEEP}"
@@ -96,8 +98,10 @@ class Plugin():
                 CURRENT_VALUE="$(get_current_ipmi_value "${FIELD}")"
                 if [[ "${CURRENT_VALUE}" == "${EXPECTED}" ]]
                 then
+                    echo "Luna2: BMC ${FIELD} now set to ${CURRENT_VALUE}"
                     return 0
                 fi
+                echo "Luna2: BMC ${FIELD} currently '${CURRENT_VALUE}', waiting for '${EXPECTED}'"
                 if [[ "${COMMAND_RC}" -ne 0 ]]
                 then
                     echo "Luna2: ipmitool command for ${FIELD} returned ${COMMAND_RC} on attempt ${ATTEMPT}/${IPMI_SET_MAX_ATTEMPTS}" >&2
@@ -108,59 +112,73 @@ class Plugin():
             return 1
         }
 
+        ensure_ipmi_value() {
+            local FIELD="$1"
+            local EXPECTED="$2"
+            shift 2
+            local CURRENT_VALUE="$(get_current_ipmi_value "${FIELD}")"
+            if [[ "${CURRENT_VALUE}" == "${EXPECTED}" ]]
+            then
+                echo "Luna2: BMC ${FIELD} already set to ${CURRENT_VALUE}"
+                return 0
+            fi
+            RESETIPMI=1
+            set_ipmi_value "${FIELD}" "${EXPECTED}" "$@"
+        }
+
         if [[ "$VLANID" == "" ]]
         then
             VLANID='Disabled'
         fi
 
+        echo "Luna2: starting BMC configuration on net channel ${NETCHANNEL}"
         refresh_ipmi_state
-        if [[ "${CUR_IPSRC}" != "Static" ]]
-        then
-            RESETIPMI=1
-            set_ipmi_value ipsrc "Static" ipmitool lan set ${NETCHANNEL} ipsrc static || return 1
+
+        ensure_ipmi_value ipsrc "Static" \
+            ipmitool lan set ${NETCHANNEL} ipsrc static || return 1
+
+        ensure_ipmi_value ipaddr "${IPADDRESS}" \
+            sh -c 'ipmitool lan set "$1" ipaddr "$2" && ipmitool lan set "$1" ipaddr "$2"' sh ${NETCHANNEL} ${IPADDRESS} || return 1
+
+        ensure_ipmi_value netmask "${NETMASK}" \
+            ipmitool lan set ${NETCHANNEL} netmask ${NETMASK} || return 1
+
+        ensure_ipmi_value defgw "${GATEWAY}" \
+            ipmitool lan set ${NETCHANNEL} defgw ipaddr ${GATEWAY} || return 1
+
+        if [ "$VLANID" == 'Disabled' ]; then
+            ensure_ipmi_value vlan "${VLANID}" \
+                ipmitool lan set ${NETCHANNEL} vlan id off || return 1
+        else
+            ensure_ipmi_value vlan "${VLANID}" \
+                ipmitool lan set ${NETCHANNEL} vlan id ${VLANID} || return 1
         fi
-        if [[ "${CUR_IPADDR}" != "${IPADDRESS}" ]]
-        then
-            RESETIPMI=1
-            set_ipmi_value ipaddr "${IPADDRESS}" ipmitool lan set ${NETCHANNEL} ipaddr ${IPADDRESS} || return 1
-        fi
-        if [[ "${CUR_NETMASK}" != "${NETMASK}" ]]
-        then
-            RESETIPMI=1
-            set_ipmi_value netmask "${NETMASK}" ipmitool lan set ${NETCHANNEL} netmask ${NETMASK} || return 1
-        fi
-        if [[ "${CUR_DEFGW}" != "${GATEWAY}" ]]
-        then
-            RESETIPMI=1
-            set_ipmi_value defgw "${GATEWAY}" ipmitool lan set ${NETCHANNEL} defgw ipaddr ${GATEWAY} || return 1
-        fi
-        if [[ "${CUR_VLANID}" != "${VLANID}" ]]
-        then
-            RESETIPMI=1
-            if [ "$VLANID" == 'Disabled' ]; then
-                set_ipmi_value vlan "${VLANID}" ipmitool lan set ${NETCHANNEL} vlan id off || return 1
-            else
-                set_ipmi_value vlan "${VLANID}" ipmitool lan set ${NETCHANNEL} vlan id ${VLANID} || return 1
-            fi
-        fi
+
         case $UNMANAGED in
             delete)
+                echo "Luna2: disabling unmanaged BMC users mode=${UNMANAGED}"
                 for userid in $(ipmitool user list 1|grep -oE '^[0-9]+\s{1,10}.[^ ]+'|grep -oE '^[0-9]+'); do
                     ipmitool user disable $userid
                 done
                 ;;
             disable)
+                echo "Luna2: disabling unmanaged BMC users mode=${UNMANAGED}"
                 for userid in $(ipmitool user list 1|grep -oE '^[0-9]+\s{1,10}.[^ ]+'|grep -oE '^[0-9]+'); do
                     ipmitool user disable $userid
                 done
                 ;;
         esac
+        echo "Luna2: configuring BMC user id ${USERID} name ${USERNAME} on management channel ${MGMTCHANNEL}"
         ipmitool user set name ${USERID} ${USERNAME}
+        echo "Luna2: setting BMC password for user id ${USERID} (value hidden)"
         ipmitool user set password ${USERID} ${PASSWORD}
+        echo "Luna2: enabling BMC channel access for user id ${USERID} on management channel ${MGMTCHANNEL}"
         ipmitool channel setaccess ${MGMTCHANNEL} ${USERID} link=on ipmi=on callin=on privilege=4
+        echo "Luna2: enabling BMC user id ${USERID}"
         ipmitool user enable ${USERID}
         if [[ "${RESETIPMI}" == "1" ]]
         then
+            echo "Luna2: issuing BMC cold reset"
             ipmitool mc reset cold
         fi
     fi

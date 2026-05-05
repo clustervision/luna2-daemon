@@ -149,7 +149,7 @@ class Plugin():
             local ATTEMPT=1
             local CURRENT_VALUE=""
             local COMMAND_RC=0
-            echo "Luna2: configuring BMC ${FIELD} -> ${EXPECTED}"
+            echo "Luna2: configuring BMC ${FIELD} to ${EXPECTED}"
             while [[ "${ATTEMPT}" -le "${IPMI_SET_MAX_ATTEMPTS}" ]]
             do
                 echo "Luna2: applying ${FIELD} attempt ${ATTEMPT}/${IPMI_SET_MAX_ATTEMPTS}"
@@ -202,8 +202,14 @@ class Plugin():
         ensure_ipmi_value vlan || return 1
 
         case $UNMANAGED in
-            delete|disable)
+            disable)
                 echo "Luna2: disabling unmanaged BMC users mode=${UNMANAGED}"
+                for userid in $(ipmitool user list 1|grep -oE '^[0-9]+\s{1,10}.[^ ]+'|grep -oE '^[0-9]+'); do
+                    ipmitool user disable $userid
+                done
+                ;;
+            delete)
+                echo "Luna2: disabling unmanaged BMC users mode=${UNMANAGED}. deletion pending feature"
                 for userid in $(ipmitool user list 1|grep -oE '^[0-9]+\s{1,10}.[^ ]+'|grep -oE '^[0-9]+'); do
                     ipmitool user disable $userid
                 done
@@ -222,5 +228,7 @@ class Plugin():
             echo "Luna2: issuing BMC cold reset"
             ipmitool mc reset cold
         fi
+    else
+        echo "Luna2: BMC not ready or not available - skipping config"
     fi
     """

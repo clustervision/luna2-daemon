@@ -126,7 +126,11 @@ class Plugin():
                         ipmitool lan set ${NETCHANNEL} defgw ipaddr ${GATEWAY}
                         ;;
                     vlan)
-                        ipmitool lan set ${NETCHANNEL} vlan id ${VLANID}
+                        if [ "$VLANID" == 'Disabled' ]; then
+                            ipmitool lan set ${NETCHANNEL} vlan id off
+                        else
+                            ipmitool lan set ${NETCHANNEL} vlan id ${VLANID}
+                        fi
                         ;;
                 esac
                 COMMAND_RC=$?
@@ -185,7 +189,7 @@ class Plugin():
 
         if [[ "$VLANID" == "" ]]
         then
-            VLANID='off'
+            VLANID='Disabled'
         fi
 
         echo "Luna2: starting BMC configuration on net channel ${NETCHANNEL}"

@@ -90,14 +90,44 @@ class Plugin():
                 esac
             }
 
+            racadm_get_first() {
+                local VALUE=""
+                local KEY=""
+                for KEY in "$@"
+                do
+                    VALUE="$(racadm get "${KEY}" 2>/dev/null | awk -F'=' -v key="${KEY}" '$1 ~ key {gsub(/^[ \t]+|[ \t]+$/, "", $2); print $2; exit}')"
+                    if [[ -n "${VALUE}" ]]
+                    then
+                        echo "${VALUE}"
+                        return 0
+                    fi
+                done
+                return 1
+            }
+
+            racadm_set_first() {
+                local VALUE="$1"
+                shift
+                local KEY=""
+                for KEY in "$@"
+                do
+                    if racadm set "${KEY}" "${VALUE}" >/dev/null 2>&1
+                    then
+                        echo "${KEY}"
+                        return 0
+                    fi
+                done
+                return 1
+            }
+
             refresh_racadm_state() {
                 RAC_NIC_RAW="$(racadm getniccfg 2>/dev/null)"
                 RAC_IPADDR="$(echo "${RAC_NIC_RAW}" | awk '/IP Address/{print $4; exit}')"
                 RAC_NETMASK="$(echo "${RAC_NIC_RAW}" | awk '/Subnet Mask/{print $4; exit}')"
                 RAC_DEFGW="$(echo "${RAC_NIC_RAW}" | awk '/Gateway/{print $3; exit}')"
                 RAC_IPSRC="$(echo "${RAC_NIC_RAW}" | awk '/DHCP Enabled/{if ($4=="No") print "Static"; else print "DHCP"; exit}')"
-                RAC_VLAN_ENABLE="$(racadm get iDRAC.NIC.VLanEnable 2>/dev/null | awk -F'=' '/iDRAC.NIC.VLanEnable/{gsub(/^[ \t]+|[ \t]+$/, "", $2); print $2; exit}')"
-                RAC_VLAN_ID="$(racadm get iDRAC.NIC.VLanID 2>/dev/null | awk -F'=' '/iDRAC.NIC.VLanID/{gsub(/^[ \t]+|[ \t]+$/, "", $2); print $2; exit}')"
+                RAC_VLAN_ENABLE="$(racadm_get_first iDRAC.NIC.VLanEnable iDRAC.NIC.VLANEnable cfgLanNetworking.VLanEnable)"
+                RAC_VLAN_ID="$(racadm_get_first iDRAC.NIC.VLanID iDRAC.NIC.VLANId cfgLanNetworking.VLanId)"
                 if [[ "${RAC_VLAN_ENABLE}" == "Disabled" || "${RAC_VLAN_ENABLE}" == "0" || "${RAC_VLAN_ENABLE}" == "Off" ]]
                 then
                     RAC_VLAN_ID='Disabled'
@@ -143,16 +173,16 @@ class Plugin():
                         ;;
                     vlan_enable)
                         if [[ "$VLANID" == 'Disabled' ]]; then
-                            racadm set iDRAC.NIC.VLanEnable Disabled
+                            racadm_set_first Disabled iDRAC.NIC.VLanEnable iDRAC.NIC.VLANEnable cfgLanNetworking.VLanEnable >/dev/null
                         else
-                            racadm set iDRAC.NIC.VLanEnable Enabled
+                            racadm_set_first Enabled iDRAC.NIC.VLanEnable iDRAC.NIC.VLANEnable cfgLanNetworking.VLanEnable >/dev/null
                         fi
                         ;;
                     vlan_id)
                         if [[ "$VLANID" == 'Disabled' ]]; then
-                            racadm set iDRAC.NIC.VLanEnable Disabled
+                            racadm_set_first Disabled iDRAC.NIC.VLanEnable iDRAC.NIC.VLANEnable cfgLanNetworking.VLanEnable >/dev/null
                         else
-                            racadm set iDRAC.NIC.VLanID ${VLANID}
+                            racadm_set_first ${VLANID} iDRAC.NIC.VLanID iDRAC.NIC.VLANId cfgLanNetworking.VLanId >/dev/null
                         fi
                         ;;
                 esac
@@ -197,8 +227,8 @@ class Plugin():
             }
 
             echo "Luna2: Dell racadm detected, configuring iDRAC"
-            racadm set iDRAC.IPMILan.Enable 1 >/dev/null 2>&1 || true
-            racadm set iDRAC.NIC.Enable 1 >/dev/null 2>&1 || true
+            racadm_set_first 1 iDRAC.IPMILan.Enable cfgIpmiLan.Enable >/dev/null || true
+            racadm_set_first 1 iDRAC.NIC.Enable cfgLanNetworking.Enable >/dev/null || true
 
             ensure_racadm_value ipsrc || DELL_BMC_RACADM_READY=0
             if [[ "${DELL_BMC_RACADM_READY}" == "1" ]]; then ensure_racadm_value ipaddr || DELL_BMC_RACADM_READY=0; fi
@@ -210,11 +240,11 @@ class Plugin():
             if [[ "${DELL_BMC_RACADM_READY}" == "1" ]]
             then
                 echo "Luna2: Dell racadm configuring BMC user id ${USERID} name ${USERNAME}"
-                racadm set iDRAC.Users.${USERID}.UserName ${USERNAME} >/dev/null 2>&1 || DELL_BMC_RACADM_READY=0
-                racadm set iDRAC.Users.${USERID}.Password ${PASSWORD} >/dev/null 2>&1 || DELL_BMC_RACADM_READY=0
-                racadm set iDRAC.Users.${USERID}.Enable 1 >/dev/null 2>&1 || DELL_BMC_RACADM_READY=0
-                racadm set iDRAC.Users.${USERID}.IpmiLanPrivilege 4 >/dev/null 2>&1 || true
-                racadm set iDRAC.Users.${USERID}.Privilege 511 >/dev/null 2>&1 || true
+                racadm_set_first ${USERNAME} iDRAC.Users.${USERID}.UserName cfgUserAdmin.UserName >/dev/null || DELL_BMC_RACADM_READY=0
+                racadm_set_first ${PASSWORD} iDRAC.Users.${USERID}.Password cfgUserAdmin.Password >/dev/null || DELL_BMC_RACADM_READY=0
+                racadm_set_first 1 iDRAC.Users.${USERID}.Enable cfgUserAdmin.Enable >/dev/null || DELL_BMC_RACADM_READY=0
+                racadm_set_first 4 iDRAC.Users.${USERID}.IpmiLanPrivilege cfgUserAdmin.IpmiLanPrivilege >/dev/null || true
+                racadm_set_first 511 iDRAC.Users.${USERID}.Privilege cfgUserAdmin.Privilege >/dev/null || true
             fi
 
             case $UNMANAGED in

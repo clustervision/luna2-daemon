@@ -1180,10 +1180,10 @@ class OsImage(object):
                 elif action == "close_task" and first:
                     Queue().remove_task_from_queue(first)
                     Queue().remove_task_from_queue(next_id)
-
                 else:
                     self.logger.info(f"{details['task']} is not for us.")
                     sleep(10)
+                Queue().log_tasks_in_queue(subsystem='osimage')
 
 
             # parked tasks are there to be there. it should be seen as a placeholder for something else.
@@ -1209,6 +1209,7 @@ class OsImage(object):
                 else:
                     self.logger.info(f"{details['task']} is not for us.")
                     sleep(10)
+                Queue().log_tasks_in_queue(subsystem='osimage')
 
 
         except Exception as exp:

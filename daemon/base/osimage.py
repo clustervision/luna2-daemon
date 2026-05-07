@@ -436,6 +436,7 @@ class OSImage():
 
                 if text != "added":
                     # this means we already have an equal request in the queue
+                    Queue().log_tasks_in_queue(subsystem='osimage')
                     Status().add_message(text, "luna", f"similar task with id {task_id} is already queued. its progress is listed here")
                     response = f"osimage clone for {data['name']} already queued"
                     #response = {"message": message, "request_id": text}
@@ -443,6 +444,7 @@ class OSImage():
                     status=True
                     return status, response, text
                 self.logger.info(f"config_osimage_clone added task with id {task_id} to queue")
+                Queue().log_tasks_in_queue(subsystem='osimage')
                 message = f"queued clone osimage {name}->{data['name']} with id {task_id}"
                 Status().add_message(request_id, "luna", message)
                 next_id = Queue().next_task_in_queue('osimage')
@@ -544,6 +546,7 @@ class OSImage():
                     table = 'osimagetag',
                     table_cap = 'OS image tag'
                 )
+        Queue().log_tasks_in_queue(subsystem='housekeeper')
         status, response = Model().delete_record(
             name = name,
             table = self.table,
@@ -587,6 +590,7 @@ class OSImage():
                 if item == 'imagefile':
                     queue_id,queue_response = Queue().add_task_to_queue(task='cleanup_old_provisioning', param=tag_details[0][item],
                                                                         subsystem='housekeeper', request_id='__tag_delete__', when='1h')
+        Queue().log_tasks_in_queue(subsystem='housekeeper')
         return status, response
 
 
@@ -645,6 +649,7 @@ class OSImage():
                 return status, f'Internal error: OS image {osimage} grab queuing failed'
             if text != "added":
                 # this means we already have an equal request in the queue
+                Queue().log_tasks_in_queue(subsystem='osimage')
                 Status().add_message(text, "luna", f"similar task with id {task_id} is already queued. its progress is listed here")
                 response = f"osimage grab for {osimage} already queued"
                 self.logger.info(f"my response [{response}] [{text}]")
@@ -652,6 +657,7 @@ class OSImage():
                 return status, response, text
 
             self.logger.info(f"config_osimage_grab added task with id {task_id} to queue")
+            Queue().log_tasks_in_queue(subsystem='osimage')
             message = f"queued grab osimage {osimage} with id {task_id}"
             Status().add_message(request_id, "luna", message)
 
@@ -749,6 +755,7 @@ class OSImage():
                 return status, f'Internal error: OS image {osimage} push queuing failed'
             if text != "added":
                 # this means we already have an equal request in the queue
+                Queue().log_tasks_in_queue(subsystem='osimage')
                 Status().add_message(text, "luna", f"similar task with id {task_id} is already queued. its progress is listed here")
                 response = f"osimage push for {osimage} already queued"
                 status=True
@@ -756,6 +763,7 @@ class OSImage():
                 return status, response, text
 
             self.logger.info(f"config_osimage_push added task with id {task_id} to queue")
+            Queue().log_tasks_in_queue(subsystem='osimage')
             message = f"queued push osimage {osimage} with id {task_id}"
             Status().add_message(request_id, "luna", message)
 
@@ -812,6 +820,7 @@ class OSImage():
             return status, f'Internal error: OS image {name} pack queuing failed'
         if queue_response != "added":
             # this means we already have an equal request in the queue
+            Queue().log_tasks_in_queue(subsystem='osimage')
             Status().add_message(queue_response, "luna", f"similar task with id {queue_id} is already queued. its progress is listed here")
             response = f"osimage pack for {name} already queued"
             self.logger.info(f"my response [{response}] [{queue_response}]")
@@ -819,6 +828,7 @@ class OSImage():
             return status, response, queue_response
 
         self.logger.info(f"config_osimage_pack added task with id {queue_id} to queue")
+        Queue().log_tasks_in_queue(subsystem='osimage')
         message = f"queued pack osimage {name} with id {queue_id}"
         Status().add_message(request_id, "luna", message)
 
@@ -890,12 +900,14 @@ class OSImage():
                         return status, f'Internal error: OS image {name} pack queuing failed'
                     if text != "added":
                         # this means we already have an equal request in the queue
+                        Queue().log_tasks_in_queue(subsystem='osimage')
                         Status().add_message(text, "luna", f"similar task with id {task_id} is already queued. its progress is listed here")
                         response = f"osimage pack for {name} already queued"
                         self.logger.info(f"my response [{response}] [{text}]")
                         status=True
                         return status, response, text
                     self.logger.info(f"config_osimage_kernel added task with id {task_id} to queue")
+                    Queue().log_tasks_in_queue(subsystem='osimage')
                     message = f"queued pack osimage {name} with id {task_id}"
                     Status().add_message(request_id, "luna", message)
                     next_id = Queue().next_task_in_queue('osimage')

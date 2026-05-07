@@ -80,6 +80,7 @@ class Housekeeper(object):
                 if counter > 3:
                     counter=0
                     while next_id := Queue().next_task_in_queue('housekeeper'):
+                        Queue().log_tasks_in_queue(subsystem='housekeeper')
                         remove_from_queue=True
                         self.logger.info(f"tasks_mother sees job in queue as next: {next_id}")
                         details=Queue().get_task_details(next_id)
@@ -221,6 +222,8 @@ class Housekeeper(object):
                     self.logger.warning(f"osimage_tasks_mother will clear queued osimage tasks as I am no longer master")
                     Queue().remove_task_from_queue_by_subsystem('osimage')
                     return
+            Queue().log_tasks_in_queue(subsystem='osimage')
+            self.logger.info("Spawning osimage pending tasks worker")
             executor = concurrent.futures.ProcessPoolExecutor(max_workers=1)
             executor.submit(OsImage().osimage_mother_wrapper)
         except Exception as exp:

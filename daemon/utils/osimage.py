@@ -1046,7 +1046,7 @@ class OsImage(object):
 #           a bit of a draw back is that the placeholder tasks has to remain in the queue (so that other similar CLI requests will be ditched)
 #           we clean up the placeholder request as a last task to do. it's like eating its own tail :)  --Antoine
 
-            while next_id := Queue().next_task_in_queue('osimage','queued',only_request_id):
+            while next_id := Queue().next_task_in_queue(subsystem='osimage',status='queued',request_id=only_request_id):
                 if self._stop_requested or (event and event.is_set()):
                     self._stop_requested = True
                     self.logger.warning("osimage_mother stopping before taking next queued task")

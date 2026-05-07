@@ -149,16 +149,23 @@ class Queue(object):
     def remove_task_from_queue_by_subsystem(self,subsystem):
         Database().delete_row('queue', [{"column": "subsystem", "value": subsystem}])
 
-    def next_task_in_queue(self,subsystem,status=None,request_id=None,task=None):
+    def get_expired_tasks(self,subsystem):
+        where=f"subsystem='{subsystem}' AND created<=datetime('now','-60 minute')"
+        rows = Database().get_record(table='queue', where=where)
+        tasks = []
+        if rows:
+            for row in rows:
+                tasks.append(row['id'])
+        return tasks
+
+    def next_task_in_queue(self,subsystem,status=None,request_id=None):
         where=None
-        status_query, request_id_query, task_query = "", "", ""
+        status_query, request_id_query = "", ""
         if status:
             status_query=f"status='{status}' AND"
         if request_id:
             request_id_query=f"request_id='{request_id}' AND"
-        if task:
-            task_query=f"task='{task}' AND"
-        where=f"subsystem='{subsystem}' AND {status_query} {request_id_query} {task_query} created>datetime('now','-60 minute') AND created<=datetime('now') ORDER BY id ASC LIMIT 1"
+        where=f"subsystem='{subsystem}' AND {status_query} {request_id_query} created>datetime('now','-60 minute') AND created<=datetime('now') ORDER BY id ASC LIMIT 1"
         task = Database().get_record(table='queue', where=where)
         if task:
             return task[0]['id']

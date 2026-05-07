@@ -222,10 +222,22 @@ class Housekeeper(object):
                     self.logger.warning(f"osimage_tasks_mother will clear queued osimage tasks as I am no longer master")
                     Queue().remove_task_from_queue_by_subsystem('osimage')
                     return
+            tasks=Queue().get_expired_tasks(subsystem='osimage')
+            if tasks:
+                Queue().log_tasks_in_queue(subsystem='osimage')
+            for task in tasks:
+                details=Queue().get_task_details(task)
+                action=details['task']
+                first,second,third,*_=details['param'].split(':')+[None]+[None]+[None]
+                self.logger.warning(f"removing expired queued osimage task {task}: {action} {first}")
+                Queue().remove_task_from_queue(task)
             Queue().log_tasks_in_queue(subsystem='osimage')
             self.logger.info("Spawning osimage pending tasks worker")
-            executor = concurrent.futures.ProcessPoolExecutor(max_workers=1)
-            executor.submit(OsImage().osimage_mother_wrapper)
+            with concurrent.futures.ProcessPoolExecutor(max_workers=1) as executor:
+                future = executor.submit(OsImage().osimage_mother_wrapper)
+                future.result()
+            #executor = concurrent.futures.ProcessPoolExecutor(max_workers=1)
+            #executor.submit(OsImage().osimage_mother_wrapper)
         except Exception as exp:
             exc_type, exc_obj, exc_tb = sys.exc_info()
             self.logger.error(f"osimage_tasks_mother up thread encountered problem: {exp}, {exc_type}, in {exc_tb.tb_lineno}")

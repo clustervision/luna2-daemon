@@ -101,6 +101,41 @@ class Queue(object):
         # the id is supposed to be kept bij de caller so it can update the status, either directly or after other pending stuff is done
         return id,'added'
 
+    def log_tasks_in_queue(self, subsystem=None):
+        where = None
+        if subsystem:
+            where = f"subsystem='{subsystem}'"
+        tasks = Database().get_record(table='queue', where=where, orderby='created')
+
+        if not tasks:
+            scope = f" for subsystem '{subsystem}'" if subsystem else ""
+            self.logger.info(f"Queue is empty{scope}")
+            return False
+
+        scope = f" for subsystem '{subsystem}'" if subsystem else ""
+        self.logger.info(f"Queue contents{scope} ({len(tasks)} task(s)):")
+        self.logger.info("  ID | Created             | Subsystem        | Status     | Request ID           | Task")
+        self.logger.info("  ---+---------------------+------------------+------------+----------------------+------------------------------")
+
+        for task in tasks:
+            task_name = task['task']
+            if task.get('param'):
+                task_name += f": {task['param']}"
+            if Helper().make_bool(task.get('noeof')):
+                task_name += " [subtask]"
+
+            self.logger.info(
+                "  "
+                f"{str(task['id']):>2} | "
+                f"{str(task['created']):<19} | "
+                f"{str(task['subsystem']):<16} | "
+                f"{str(task['status']):<10} | "
+                f"{str(task['request_id']):<20} | "
+                f"{task_name}"
+            )
+
+        return True
+
     def update_task_status_in_queue(self,taskid,status):
         row = [{"column": "status", "value": f"{status}"}]
         where = [{"column": "id", "value": f"{taskid}"}]

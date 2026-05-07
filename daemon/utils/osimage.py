@@ -168,6 +168,7 @@ class OsImage(object):
                     for char in [' ',',,','\r\n','\n']:
                         image[0]['grab_exclude']=image[0]['grab_exclude'].replace(char,',')
                     grab_ex=image[0]['grab_exclude'].split(",")
+                self.pending_cleanup(image_path,request_id)
                 Status().add_message(request_id=request_id, username_initiator="luna",
                                      message=f"grabbing osimage {osimage} [{runtype}]")
                 response=os_grab_plugin().grab(
@@ -286,6 +287,7 @@ class OsImage(object):
                 os_image_plugin=Helper().plugin_load(self.osimage_plugins,'osimage/operations/image',distribution,osrelease)
 
                 #------------------------------------------------------
+                self.pending_cleanup(image_path,request_id)
                 Status().add_message(request_id=request_id, username_initiator="luna",
                                      message=f"assembling kernel and ramdisk for osimage {osimage}")
                 response=os_image_plugin().pack(
@@ -393,6 +395,7 @@ class OsImage(object):
                 # loading the plugin depending on OS
                 os_image_plugin=Helper().plugin_load(self.osimage_plugins,'osimage/operations/image',distribution,osrelease)
 
+                self.pending_cleanup(image_path,request_id)
                 Status().add_message(request_id=request_id, username_initiator="luna",
                                      message=f"building osimage {osimage}")
                 response=os_image_plugin().build(
@@ -531,6 +534,7 @@ class OsImage(object):
                             if srcimage[0]['path'] == dstimage[0]['path']:
                                 mesg=f"{src}:{srcimage[0]['path']} and {dst}:{dstimage[0]['path']} are the same"
                             else:
+                                self.pending_cleanup(dstimage[0]['path'],request_id)
                                 exit_code=0
                                 if not os.path.exists(dstimage[0]['path']):
                                     command=f"mkdir -p \"{dstimage[0]['path']}\""
@@ -899,6 +903,8 @@ class OsImage(object):
                 os_image_plugin=Helper().plugin_load(self.osimage_plugins,'osimage/filesystem',filesystem_plugin)
 
                 #------------------------------------------------------
+                # not here as it's called from housekeeper as well causing deadlocks
+                #self.pending_cleanup(image_path,request_id)
                 Status().add_message(request_id=request_id, username_initiator="luna",
                                      message=f"unpacking osimage {osimage}")
                 response=os_image_plugin().extract(
@@ -1002,6 +1008,16 @@ class OsImage(object):
             subsystem='osimage'
         queue_id,queue_response = Queue().add_task_to_queue(task='provision_osimage', param=osimage, subsystem=subsystem, request_id=request_id)
         return queue_id
+
+    def pending_cleanup(self,image_path,request_id=None):
+        singleshot=False
+        while Queue().tasks_in_queue(subsystem='housekeeper',task='remove_osimage_path',subitem=image_path,exactmatch=True):
+            if not singleshot and request_id:
+                Status().add_message(request_id=request_id, username_initiator="luna",
+                                 message=f"waiting for clashing queued task to finish: remove_osimage_path {image_path}", status=200)
+                singleshot=True
+            self.logger.warning(f"waiting for clashing queued task to finish: remove_osimage_path {image_path}")
+            sleep(15)
 
     # ------------------------------------------------------------------- 
     # The mother of all.

@@ -149,14 +149,16 @@ class Queue(object):
     def remove_task_from_queue_by_subsystem(self,subsystem):
         Database().delete_row('queue', [{"column": "subsystem", "value": subsystem}])
 
-    def next_task_in_queue(self,subsystem,status=None,request_id=None):
+    def next_task_in_queue(self,subsystem,status=None,request_id=None,task=None):
         where=None
-        status_query, request_id_query = "", ""
+        status_query, request_id_query, task_query = "", "", ""
         if status:
             status_query=f"status='{status}' AND"
         if request_id:
             request_id_query=f"request_id='{request_id}' AND"
-        where=f"subsystem='{subsystem}' AND {status_query} {request_id_query} created>datetime('now','-60 minute') AND created<=datetime('now') ORDER BY id ASC LIMIT 1"
+        if task:
+            task_query=f"task='{task}' AND"
+        where=f"subsystem='{subsystem}' AND {status_query} {request_id_query} {task_query} created>datetime('now','-60 minute') AND created<=datetime('now') ORDER BY id ASC LIMIT 1"
         task = Database().get_record(table='queue', where=where)
         if task:
             return task[0]['id']

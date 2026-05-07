@@ -288,8 +288,11 @@ class Monitor():
                 details['level']='maintask'
                 if task['noeof']:
                     details['level']='subtask'
-                for item in ['request_id','username_initiator','created','subsystem','task','status']:
-                    details[item]=task[item]
+                for item in ['id','request_id','username_initiator','created','subsystem','task','status']:
+                    if item == 'id':
+                        details['queue_id']=task[item]
+                    else:
+                        details[item]=task[item]
                 details['task']+=f" {task['param']}"
                 response.append(details)
         return status, response

@@ -101,6 +101,40 @@ class Queue(object):
         # the id is supposed to be kept bij de caller so it can update the status, either directly or after other pending stuff is done
         return id,'added'
 
+    def log_tasks_in_queue(self, subsystem=None):
+        where = None
+        if subsystem:
+            where = f"subsystem='{subsystem}'"
+        tasks = Database().get_record(table='queue', where=where, orderby='created')
+
+        if not tasks:
+            scope = f" for subsystem '{subsystem}'" if subsystem else ""
+            self.logger.info(f"Queue is empty{scope}")
+            return False
+
+        scope = f" for subsystem '{subsystem}'" if subsystem else ""
+        self.logger.info(f"Queue contents{scope} ({len(tasks)} task(s)):")
+        self.logger.info(" ID   | Created             | Subsystem        | Status       | Request ID                    | Task")
+        self.logger.info(" -----+---------------------+------------------+--------------+-------------------------------+------------------------------")
+
+        for task in tasks:
+            task_name = task['task']
+            if task.get('param'):
+                task_name += f": {task['param']}"
+            if Helper().make_bool(task.get('noeof')):
+                task_name += " [subtask]"
+
+            self.logger.info(
+                " "
+                f"{str(task['id']):>4} | "
+                f"{str(task['created']):<19} | "
+                f"{str(task['subsystem']):<16} | "
+                f"{str(task['status']):<12} | "
+                f"{str(task['request_id']):<29} | "
+                f"{task_name}"
+            )
+        return True
+
     def update_task_status_in_queue(self,taskid,status):
         row = [{"column": "status", "value": f"{status}"}]
         where = [{"column": "id", "value": f"{taskid}"}]
@@ -114,6 +148,15 @@ class Queue(object):
 
     def remove_task_from_queue_by_subsystem(self,subsystem):
         Database().delete_row('queue', [{"column": "subsystem", "value": subsystem}])
+
+    def get_expired_tasks(self,subsystem):
+        where=f"subsystem='{subsystem}' AND created<=datetime('now','-60 minute')"
+        rows = Database().get_record(table='queue', where=where)
+        tasks = []
+        if rows:
+            for row in rows:
+                tasks.append(row['id'])
+        return tasks
 
     def next_task_in_queue(self,subsystem,status=None,request_id=None):
         where=None

@@ -80,6 +80,7 @@ class Housekeeper(object):
                 if counter > 3:
                     counter=0
                     while next_id := Queue().next_task_in_queue('housekeeper'):
+                        Queue().log_tasks_in_queue(subsystem='housekeeper')
                         remove_from_queue=True
                         self.logger.info(f"tasks_mother sees job in queue as next: {next_id}")
                         details=Queue().get_task_details(next_id)
@@ -204,28 +205,45 @@ class Housekeeper(object):
 
     def osimage_tasks_mother(self,event):
         self.logger.info("Starting osimage pending tasks thread")
-        ha_object=HA()
-        if ha_object.get_hastate(): # we're part of an HA setup
-            insync_check=0
-            sleep(3) # we sleep a tiny bit to ensure journal mother has time to set in_sync to False
-            while ha_object.get_insync() is False:
-                if insync_check < 1:
-                    self.logger.info(f"osimage_tasks_mother is waiting for controller to get insync...")
-                    insync_check=40
-                insync_check-=1
-                if event.is_set():
-                    return
-                sleep(5)
-            if not ha_object.get_role(): # not master
-                self.logger.warning(f"osimage_tasks_mother will clear queued osimage tasks as I am no longer master")
-                Queue().remove_task_from_queue_by_subsystem('osimage')
-                return
         try:
-            executor = concurrent.futures.ProcessPoolExecutor(max_workers=1)
-            executor.submit(OsImage().osimage_mother_wrapper)
+            ha_object=HA()
+            if ha_object.get_hastate(): # we're part of an HA setup
+                insync_check=0
+                sleep(3) # we sleep a tiny bit to ensure journal mother has time to set in_sync to False
+                while ha_object.get_insync() is False:
+                    if insync_check < 1:
+                        self.logger.info(f"osimage_tasks_mother is waiting for controller to get insync...")
+                        insync_check=40
+                    insync_check-=1
+                    if event.is_set():
+                        return
+                    sleep(5)
+                if not ha_object.get_role(): # not master
+                    self.logger.warning(f"osimage_tasks_mother will clear queued osimage tasks as I am no longer master")
+                    Queue().remove_task_from_queue_by_subsystem('osimage')
+                    return
+            tasks=Queue().get_expired_tasks(subsystem='osimage')
+            if tasks:
+                Queue().log_tasks_in_queue(subsystem='osimage')
+            for task in tasks:
+                details=Queue().get_task_details(task)
+                action=details['task']
+                first,second,third,*_=details['param'].split(':')+[None]+[None]+[None]
+                self.logger.warning(f"removing expired queued osimage task {task}: {action} {first}")
+                Queue().remove_task_from_queue(task)
+            Queue().log_tasks_in_queue(subsystem='osimage')
+            self.logger.info("Spawning osimage pending tasks worker")
+            with concurrent.futures.ProcessPoolExecutor(max_workers=1) as executor:
+                future = executor.submit(OsImage().osimage_mother_wrapper)
+                future.result()
+            #executor = concurrent.futures.ProcessPoolExecutor(max_workers=1)
+            #executor.submit(OsImage().osimage_mother_wrapper)
         except Exception as exp:
             exc_type, exc_obj, exc_tb = sys.exc_info()
             self.logger.error(f"osimage_tasks_mother up thread encountered problem: {exp}, {exc_type}, in {exc_tb.tb_lineno}")
+            self.logger.warning(f"osimage_tasks_mother will clear queued osimage tasks to prevent blockage of new tasks")
+            Queue().remove_task_from_queue_by_subsystem('osimage')
+        self.logger.info("Exiting osimage pending tasks thread")
 
 
     def cleanup_mother(self,event):

@@ -168,6 +168,7 @@ class OsImage(object):
                     for char in [' ',',,','\r\n','\n']:
                         image[0]['grab_exclude']=image[0]['grab_exclude'].replace(char,',')
                     grab_ex=image[0]['grab_exclude'].split(",")
+                self.pending_cleanup(image_path,request_id)
                 Status().add_message(request_id=request_id, username_initiator="luna",
                                      message=f"grabbing osimage {osimage} [{runtype}]")
                 response=os_grab_plugin().grab(
@@ -286,6 +287,7 @@ class OsImage(object):
                 os_image_plugin=Helper().plugin_load(self.osimage_plugins,'osimage/operations/image',distribution,osrelease)
 
                 #------------------------------------------------------
+                self.pending_cleanup(image_path,request_id)
                 Status().add_message(request_id=request_id, username_initiator="luna",
                                      message=f"assembling kernel and ramdisk for osimage {osimage}")
                 response=os_image_plugin().pack(
@@ -393,6 +395,7 @@ class OsImage(object):
                 # loading the plugin depending on OS
                 os_image_plugin=Helper().plugin_load(self.osimage_plugins,'osimage/operations/image',distribution,osrelease)
 
+                self.pending_cleanup(image_path,request_id)
                 Status().add_message(request_id=request_id, username_initiator="luna",
                                      message=f"building osimage {osimage}")
                 response=os_image_plugin().build(
@@ -531,6 +534,7 @@ class OsImage(object):
                             if srcimage[0]['path'] == dstimage[0]['path']:
                                 mesg=f"{src}:{srcimage[0]['path']} and {dst}:{dstimage[0]['path']} are the same"
                             else:
+                                self.pending_cleanup(dstimage[0]['path'],request_id)
                                 exit_code=0
                                 if not os.path.exists(dstimage[0]['path']):
                                     command=f"mkdir -p \"{dstimage[0]['path']}\""
@@ -899,6 +903,8 @@ class OsImage(object):
                 os_image_plugin=Helper().plugin_load(self.osimage_plugins,'osimage/filesystem',filesystem_plugin)
 
                 #------------------------------------------------------
+                # not here as it's called from housekeeper as well causing deadlocks
+                #self.pending_cleanup(image_path,request_id)
                 Status().add_message(request_id=request_id, username_initiator="luna",
                                      message=f"unpacking osimage {osimage}")
                 response=os_image_plugin().extract(
@@ -1003,6 +1009,16 @@ class OsImage(object):
         queue_id,queue_response = Queue().add_task_to_queue(task='provision_osimage', param=osimage, subsystem=subsystem, request_id=request_id)
         return queue_id
 
+    def pending_cleanup(self,image_path,request_id=None):
+        singleshot=False
+        while Queue().tasks_in_queue(subsystem='housekeeper',task='remove_osimage_path',subitem=image_path,exactmatch=True):
+            if not singleshot and request_id:
+                Status().add_message(request_id=request_id, username_initiator="luna",
+                                 message=f"waiting for clashing queued task to finish: remove_osimage_path {image_path}", status=200)
+                singleshot=True
+            self.logger.warning(f"waiting for clashing queued task to finish: remove_osimage_path {image_path}")
+            sleep(15)
+
     # ------------------------------------------------------------------- 
     # The mother of all.
 
@@ -1030,7 +1046,7 @@ class OsImage(object):
 #           a bit of a draw back is that the placeholder tasks has to remain in the queue (so that other similar CLI requests will be ditched)
 #           we clean up the placeholder request as a last task to do. it's like eating its own tail :)  --Antoine
 
-            while next_id := Queue().next_task_in_queue('osimage','queued',only_request_id):
+            while next_id := Queue().next_task_in_queue(subsystem='osimage',status='queued',request_id=only_request_id):
                 if self._stop_requested or (event and event.is_set()):
                     self._stop_requested = True
                     self.logger.warning("osimage_mother stopping before taking next queued task")
@@ -1180,10 +1196,10 @@ class OsImage(object):
                 elif action == "close_task" and first:
                     Queue().remove_task_from_queue(first)
                     Queue().remove_task_from_queue(next_id)
-
                 else:
                     self.logger.info(f"{details['task']} is not for us.")
                     sleep(10)
+                Queue().log_tasks_in_queue(subsystem='osimage')
 
 
             # parked tasks are there to be there. it should be seen as a placeholder for something else.
@@ -1209,6 +1225,7 @@ class OsImage(object):
                 else:
                     self.logger.info(f"{details['task']} is not for us.")
                     sleep(10)
+                Queue().log_tasks_in_queue(subsystem='osimage')
 
 
         except Exception as exp:

@@ -116,13 +116,16 @@ class Plugin():
                 if regex.match(image_file) and os.path.exists('/usr/bin/lbzip2'):
                     unpack=f"cd {tmp_dir}/{image_file}.dir && lbzip2 -dc < {files_path}/{image_file} | tar xf -"
                 self.logger.info(unpack)
-                message,exit_code = Helper().runcommand(unpack,True,60)
+                message,exit_code = Helper().runcommand(unpack,True,600)
+                self.logger.debug(f"exit_code: {exit_code}, message: {message[:2000]}...")
                 if exit_code == 0:
                     sync=f"rsync -aHv --numeric-ids --delete-after --exclude=/proc/ --exclude=/dev/ --exclude=/sys/ {tmp_dir}/{image_file}.dir/* {image_path}/ > /tmp/extract.out"
                     self.logger.info(sync)
                     message,exit_code = Helper().runcommand(sync,True,3600)
-                    self.logger.debug(f"exit_code = {exit_code}")
-                self.logger.debug(f"exit_code: {exit_code}, message: {message}")
+                    if exit_code != 0:
+                        self.logger.error(f"exit_code: {exit_code}, message: {message[:200]}...")
+                else:
+                    self.logger.error(f"exit_code: {exit_code}, message: {message[:200]}...")
                 # always cleanup to save space
                 cleanup=f"rm -rf {tmp_dir}/{image_file}.dir"
                 Helper().runcommand(cleanup,True,3600)

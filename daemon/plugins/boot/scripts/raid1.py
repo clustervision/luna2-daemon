@@ -59,6 +59,7 @@ else
   echo "*** RAID1 script: my-local-disk override found"
 fi
 cat /tmp/my-local-disk.sh
+echo "*** RAID1 script: \$rootmnt: $rootmnt"
     """
 
     partscript = """

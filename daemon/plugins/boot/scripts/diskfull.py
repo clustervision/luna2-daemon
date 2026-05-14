@@ -163,73 +163,71 @@ if [ "$MAKE_BOOT" == "yes" ]; then
     OS_ID=$(chroot "$rootmnt" /bin/bash -c '. /etc/os-release >/dev/null 2>&1; echo $ID')
     DISTRO=$(ls "$rootmnt"/boot/efi/EFI/ 2>/dev/null | grep -im1 -e ubuntu -e rocky -e redhat -e alma -e centos)
     if [ ! "$DISTRO" ]; then
-        DISTRO=$(echo "$OS_ID" | grep -iw ubuntu >/dev/null 2>&1 && echo ubuntu || echo rocky)
+        case "$OS_ID" in
+            ubuntu|rocky|redhat|alma|centos) DISTRO=$OS_ID ;;
+            *) DISTRO=rocky ;;
+        esac
     fi
 
     EFI_TARGET=x86_64-efi
     EFI_SHIM=shimx64.efi
     EFI_GRUB=grubx64.efi
+    EFI_BOOT=BOOTX64.EFI
     if chroot "$rootmnt" /bin/bash -c "[ -e /usr/lib/shim/shimaa64.efi.signed ] || uname -m | grep -Eq '^(aarch64|arm64)$'"; then
         EFI_TARGET=arm64-efi
         EFI_SHIM=shimaa64.efi
         EFI_GRUB=grubaa64.efi
+        EFI_BOOT=BOOTAA64.EFI
     fi
 
     CHROOT_GRUB_INSTALL=$(chroot "$rootmnt" /bin/bash -c 'if command -v grub2-install >/dev/null 2>&1; then echo grub2-install; elif command -v grub-install >/dev/null 2>&1; then echo grub-install; fi')
     CHROOT_GRUB_MKCONFIG=$(chroot "$rootmnt" /bin/bash -c 'if command -v grub2-mkconfig >/dev/null 2>&1; then echo grub2-mkconfig; elif command -v grub-mkconfig >/dev/null 2>&1; then echo grub-mkconfig; fi')
 
-    if [ "$CHROOT_GRUB_INSTALL" ]; then
-        if [ "$OS_ID" == "ubuntu" ]; then
-            echo "*** DISKFULL script: installing ubuntu EFI bootloader [$EFI_TARGET]"
-            DISTRO=ubuntu
-        else
-            echo "*** DISKFULL script: installing ${DISTRO} EFI bootloader [$EFI_TARGET]"
+    EFI_CFG=/boot/efi/EFI/${DISTRO}/grub.cfg
+    BOOT_COPY_DIR=""
+    if [ "$OS_ID" == "ubuntu" ]; then
+        DISTRO=ubuntu
+        EFI_CFG=/boot/grub/grub.cfg
+        if [ "$EFI_TARGET" == "arm64-efi" ]; then
+            BOOT_COPY_DIR="$rootmnt/boot/efi/EFI/BOOT"
         fi
-        chroot "$rootmnt" /bin/bash -c "$CHROOT_GRUB_INSTALL --target=${EFI_TARGET} --efi-directory=/boot/efi --bootloader-id=${DISTRO} --no-nvram"
-        chroot "$rootmnt" /bin/bash -c "$CHROOT_GRUB_INSTALL --target=${EFI_TARGET} --efi-directory=/boot/efi --bootloader-id=${DISTRO} --removable --no-nvram"
     fi
 
-    if [ "$OS_ID" == "ubuntu" ] && [ "$EFI_TARGET" == "arm64-efi" ]; then
-        mkdir -p "$rootmnt"/boot/efi/EFI/BOOT
-        if [ -e "$rootmnt"/boot/efi/EFI/ubuntu/${EFI_SHIM} ]; then
-            cp -f "$rootmnt"/boot/efi/EFI/ubuntu/${EFI_SHIM} "$rootmnt"/boot/efi/EFI/BOOT/BOOTAA64.EFI
-        fi
-        if [ -e "$rootmnt"/boot/efi/EFI/ubuntu/${EFI_GRUB} ]; then
-            cp -f "$rootmnt"/boot/efi/EFI/ubuntu/${EFI_GRUB} "$rootmnt"/boot/efi/EFI/BOOT/${EFI_GRUB}
-        fi
+    if [ "$CHROOT_GRUB_INSTALL" ]; then
+        echo "*** DISKFULL script: installing ${DISTRO} EFI bootloader [$EFI_TARGET]"
+        for EXTRA in '' '--removable'; do
+            chroot "$rootmnt" /bin/bash -c "$CHROOT_GRUB_INSTALL --target=${EFI_TARGET} --efi-directory=/boot/efi --bootloader-id=${DISTRO} ${EXTRA} --no-nvram"
+        done
+    fi
+
+    if [ "$BOOT_COPY_DIR" ]; then
+        mkdir -p "$BOOT_COPY_DIR"
+        [ -e "$rootmnt"/boot/efi/EFI/${DISTRO}/${EFI_SHIM} ] && cp -f "$rootmnt"/boot/efi/EFI/${DISTRO}/${EFI_SHIM} "$BOOT_COPY_DIR/${EFI_BOOT}"
+        [ -e "$rootmnt"/boot/efi/EFI/${DISTRO}/${EFI_GRUB} ] && cp -f "$rootmnt"/boot/efi/EFI/${DISTRO}/${EFI_GRUB} "$BOOT_COPY_DIR/${EFI_GRUB}"
     fi
 
     EFI_LOADER=$EFI_SHIM
-    if [ ! -e "$rootmnt"/boot/efi/EFI/${DISTRO}/${EFI_LOADER} ]; then
-        EFI_LOADER=$EFI_GRUB
-    fi
+    [ ! -e "$rootmnt"/boot/efi/EFI/${DISTRO}/${EFI_LOADER} ] && EFI_LOADER=$EFI_GRUB
 
     if [ -e "$rootmnt"/boot/efi/EFI/${DISTRO}/${EFI_LOADER} ]; then
         BOOT_DISK=$(readlink -f ${MY_LOCAL_DISK_NAME} 2>/dev/null || echo ${MY_LOCAL_DISK_NAME})
         SH=$(chroot "$rootmnt" /bin/bash -c "efibootmgr -v 2>/dev/null|grep Shim1|grep -oE '^Boot[0-9]+'|grep -oE '[0-9]+'")
-        if [ "$SH" ]; then
-            chroot "$rootmnt" /bin/bash -c "efibootmgr -B -b $SH"
-        fi
+        [ "$SH" ] && chroot "$rootmnt" /bin/bash -c "efibootmgr -B -b $SH"
         chroot "$rootmnt" /bin/bash -c "if command -v efibootmgr >/dev/null 2>&1 && efibootmgr -v >/dev/null 2>&1; then efibootmgr --disk "${BOOT_DISK}" --part 1 --create --label "Shim1" --loader /EFI/${DISTRO}/${EFI_LOADER}; else echo '*** DISKFULL script: efibootmgr unavailable or EFI vars inaccessible, relying on fallback bootloader'; fi"
     fi
 
-    if [ "$OS_ID" == "ubuntu" ]; then
-        if [ "$CHROOT_GRUB_MKCONFIG" ]; then
-            chroot "$rootmnt" /bin/bash -c "$CHROOT_GRUB_MKCONFIG -o /boot/grub/grub.cfg"
-        fi
-        if [ "$EFI_TARGET" == "arm64-efi" ] && [ -e "$rootmnt"/boot/grub/grub.cfg ]; then
-            mkdir -p "$rootmnt"/boot/efi/EFI/BOOT
-            cp -f "$rootmnt"/boot/grub/grub.cfg "$rootmnt"/boot/efi/EFI/BOOT/grub.cfg
-        fi
-    elif [ "$CHROOT_GRUB_MKCONFIG" ]; then
-        chroot "$rootmnt" /bin/bash -c "$CHROOT_GRUB_MKCONFIG -o /boot/efi/EFI/${DISTRO}/grub.cfg"
+    if [ "$CHROOT_GRUB_MKCONFIG" ]; then
+        chroot "$rootmnt" /bin/bash -c "$CHROOT_GRUB_MKCONFIG -o ${EFI_CFG}"
+    fi
+    if [ "$BOOT_COPY_DIR" ] && [ -e "$rootmnt${EFI_CFG}" ]; then
+        cp -f "$rootmnt${EFI_CFG}" "$BOOT_COPY_DIR/grub.cfg"
     fi
     # commented out next command as it imposes reboots. When netboot is set to no and with correct bios settings,
     # this would impose desired behavior. To cover all bases, we now relabel before the pivot. See below.
     #$null > "$rootmnt"/.autorelabel
 fi
 
-chroot "$rootmnt" /bin/bash -c "cd /boot && ln -s /boot boot;                               restorecon -r -p / 2> /dev/null"
+chroot "$rootmnt" /bin/bash -c "cd /boot && ln -s /boot boot; restorecon -r -p / 2> /dev/null"
 
 umount "$rootmnt"/sys
 umount "$rootmnt"/dev

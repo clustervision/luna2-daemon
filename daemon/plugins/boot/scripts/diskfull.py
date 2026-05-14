@@ -157,16 +157,56 @@ ${FSTAB_DISK_P3}   swap    swap    defaults        0 0
 EOF
 
 if [ "$MAKE_BOOT" == "yes" ]; then
-    echo "*** DISKFULL script: configuring shim boot partition"
+    echo "*** DISKFULL script: configuring grub/shim boot partition"
     rm -rf "$rootmnt"/lib/dracut/modules.d/95luna/
+    mkdir -p "$rootmnt"/boot/efi/EFI
 
-    SH=$(chroot "$rootmnt" /bin/bash -c "efibootmgr -v|grep Shim1|grep -oE '^Boot[0-9]+'|grep -oE '[0-9]+'")
-    if [ "$SH" ]; then
-        chroot "$rootmnt" /bin/bash -c "efibootmgr -B -b $SH"
+    OS_ID=$(chroot "$rootmnt" /bin/bash -c '. /etc/os-release >/dev/null 2>&1; echo $ID')
+    DISTRO=$(ls "$rootmnt"/boot/efi/EFI/ 2>/dev/null | grep -im1 -e ubuntu -e rocky -e redhat -e alma -e centos)
+    if [ ! "$DISTRO" ]; then
+        DISTRO=$(echo "$OS_ID" | grep -iw ubuntu >/dev/null 2>&1 && echo ubuntu || echo rocky)
     fi
-    DISTRO=$(ls "$rootmnt"/boot/efi/EFI/ | grep -ie rocky -e redhat -e alma -e centos || echo rocky)
-    chroot "$rootmnt" /bin/bash -c "efibootmgr --disk ${MY_LOCAL_DISK_NAME} --part 1 --create --label \"Shim1\" --loader /EFI/${DISTRO}/shimx64.efi; \
-                                  grub2-mkconfig -o /boot/efi/EFI/${DISTRO}/grub.cfg"
+
+    EFI_TARGET=x86_64-efi
+    EFI_SHIM=shimx64.efi
+    EFI_GRUB=grubx64.efi
+    if chroot "$rootmnt" /bin/bash -c "[ -e /usr/lib/shim/shimaa64.efi.signed ] || uname -m | grep -Eq '^(aarch64|arm64)$'"; then
+        EFI_TARGET=arm64-efi
+        EFI_SHIM=shimaa64.efi
+        EFI_GRUB=grubaa64.efi
+    fi
+
+    CHROOT_GRUB_INSTALL=$(chroot "$rootmnt" /bin/bash -c 'if command -v grub2-install >/dev/null 2>&1; then echo grub2-install; elif command -v grub-install >/dev/null 2>&1; then echo grub-install; fi')
+    CHROOT_GRUB_MKCONFIG=$(chroot "$rootmnt" /bin/bash -c 'if command -v grub2-mkconfig >/dev/null 2>&1; then echo grub2-mkconfig; elif command -v grub-mkconfig >/dev/null 2>&1; then echo grub-mkconfig; fi')
+
+    if [ "$OS_ID" == "ubuntu" ] && [ "$CHROOT_GRUB_INSTALL" ]; then
+        echo "*** DISKFULL script: installing ubuntu EFI bootloader [$EFI_TARGET]"
+        chroot "$rootmnt" /bin/bash -c "$CHROOT_GRUB_INSTALL --target=${EFI_TARGET} --efi-directory=/boot/efi --bootloader-id=ubuntu --no-nvram"
+        chroot "$rootmnt" /bin/bash -c "$CHROOT_GRUB_INSTALL --target=${EFI_TARGET} --efi-directory=/boot/efi --bootloader-id=ubuntu --removable --no-nvram"
+        DISTRO=ubuntu
+    fi
+
+    EFI_LOADER=$EFI_SHIM
+    if [ ! -e "$rootmnt"/boot/efi/EFI/${DISTRO}/${EFI_LOADER} ]; then
+        EFI_LOADER=$EFI_GRUB
+    fi
+
+    if [ -e "$rootmnt"/boot/efi/EFI/${DISTRO}/${EFI_LOADER} ]; then
+        BOOT_DISK=$(readlink -f ${MY_LOCAL_DISK_NAME} 2>/dev/null || echo ${MY_LOCAL_DISK_NAME})
+        SH=$(chroot "$rootmnt" /bin/bash -c "efibootmgr -v 2>/dev/null|grep Shim1|grep -oE '^Boot[0-9]+'|grep -oE '[0-9]+'")
+        if [ "$SH" ]; then
+            chroot "$rootmnt" /bin/bash -c "efibootmgr -B -b $SH"
+        fi
+        chroot "$rootmnt" /bin/bash -c "if command -v efibootmgr >/dev/null 2>&1 && efibootmgr -v >/dev/null 2>&1; then efibootmgr --disk \"${BOOT_DISK}\" --part 1 --create --label \"Shim1\" --loader /EFI/${DISTRO}/${EFI_LOADER}; else echo '*** DISKFULL script: efibootmgr unavailable or EFI vars inaccessible, relying on fallback bootloader'; fi"
+    fi
+
+    if [ "$OS_ID" == "ubuntu" ]; then
+        if [ "$CHROOT_GRUB_MKCONFIG" ]; then
+            chroot "$rootmnt" /bin/bash -c "$CHROOT_GRUB_MKCONFIG -o /boot/grub/grub.cfg"
+        fi
+    elif [ "$CHROOT_GRUB_MKCONFIG" ]; then
+        chroot "$rootmnt" /bin/bash -c "$CHROOT_GRUB_MKCONFIG -o /boot/efi/EFI/${DISTRO}/grub.cfg"
+    fi
     # commented out next command as it imposes reboots. When netboot is set to no and with correct bios settings,
     # this would impose desired behavior. To cover all bases, we now relabel before the pivot. See below.
     #$null > "$rootmnt"/.autorelabel

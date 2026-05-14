@@ -179,11 +179,15 @@ if [ "$MAKE_BOOT" == "yes" ]; then
     CHROOT_GRUB_INSTALL=$(chroot "$rootmnt" /bin/bash -c 'if command -v grub2-install >/dev/null 2>&1; then echo grub2-install; elif command -v grub-install >/dev/null 2>&1; then echo grub-install; fi')
     CHROOT_GRUB_MKCONFIG=$(chroot "$rootmnt" /bin/bash -c 'if command -v grub2-mkconfig >/dev/null 2>&1; then echo grub2-mkconfig; elif command -v grub-mkconfig >/dev/null 2>&1; then echo grub-mkconfig; fi')
 
-    if [ "$OS_ID" == "ubuntu" ] && [ "$CHROOT_GRUB_INSTALL" ]; then
-        echo "*** DISKFULL script: installing ubuntu EFI bootloader [$EFI_TARGET]"
-        chroot "$rootmnt" /bin/bash -c "$CHROOT_GRUB_INSTALL --target=${EFI_TARGET} --efi-directory=/boot/efi --bootloader-id=ubuntu --no-nvram"
-        chroot "$rootmnt" /bin/bash -c "$CHROOT_GRUB_INSTALL --target=${EFI_TARGET} --efi-directory=/boot/efi --bootloader-id=ubuntu --removable --no-nvram"
-        DISTRO=ubuntu
+    if [ "$CHROOT_GRUB_INSTALL" ]; then
+        if [ "$OS_ID" == "ubuntu" ]; then
+            echo "*** DISKFULL script: installing ubuntu EFI bootloader [$EFI_TARGET]"
+            DISTRO=ubuntu
+        else
+            echo "*** DISKFULL script: installing ${DISTRO} EFI bootloader [$EFI_TARGET]"
+        fi
+        chroot "$rootmnt" /bin/bash -c "$CHROOT_GRUB_INSTALL --target=${EFI_TARGET} --efi-directory=/boot/efi --bootloader-id=${DISTRO} --no-nvram"
+        chroot "$rootmnt" /bin/bash -c "$CHROOT_GRUB_INSTALL --target=${EFI_TARGET} --efi-directory=/boot/efi --bootloader-id=${DISTRO} --removable --no-nvram"
     fi
 
     EFI_LOADER=$EFI_SHIM

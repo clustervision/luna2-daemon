@@ -145,8 +145,7 @@ FSTAB_DISK_P2=$(blkid -o export ${FSTAB_DISK}${FSTAB_DP}2 | grep -w UUID || echo
 FSTAB_DISK_P3=$(blkid -o export ${FSTAB_DISK}${FSTAB_DP}3 | grep -w UUID || echo ${FSTAB_DISK}${FSTAB_DP}3)
 FSTAB_DISK_P4=$(blkid -o export ${FSTAB_DISK}${FSTAB_DP}4 | grep -w UUID || echo ${FSTAB_DISK}${FSTAB_DP}4)
 
-grep -v -e "${FSTAB_DISK}" -e "${FSTAB_DISK_P4}" -e "${FSTAB_DISK_P3}" \
-        -e "${FSTAB_DISK_P2}" -e "${FSTAB_DISK_P1}" "$rootmnt"/etc/fstab > /tmp/fstab
+grep -v -e "${FSTAB_DISK}" -e "${FSTAB_DISK_P4}" -e "${FSTAB_DISK_P3}"         -e "${FSTAB_DISK_P2}" -e "${FSTAB_DISK_P1}" "$rootmnt"/etc/fstab > /tmp/fstab
 grep -v -w '/' /tmp/fstab > "$rootmnt"/etc/fstab
 
 cat << EOF >> "$rootmnt"/etc/fstab
@@ -190,6 +189,16 @@ if [ "$MAKE_BOOT" == "yes" ]; then
         chroot "$rootmnt" /bin/bash -c "$CHROOT_GRUB_INSTALL --target=${EFI_TARGET} --efi-directory=/boot/efi --bootloader-id=${DISTRO} --removable --no-nvram"
     fi
 
+    if [ "$OS_ID" == "ubuntu" ] && [ "$EFI_TARGET" == "arm64-efi" ]; then
+        mkdir -p "$rootmnt"/boot/efi/EFI/BOOT
+        if [ -e "$rootmnt"/boot/efi/EFI/ubuntu/${EFI_SHIM} ]; then
+            cp -f "$rootmnt"/boot/efi/EFI/ubuntu/${EFI_SHIM} "$rootmnt"/boot/efi/EFI/BOOT/BOOTAA64.EFI
+        fi
+        if [ -e "$rootmnt"/boot/efi/EFI/ubuntu/${EFI_GRUB} ]; then
+            cp -f "$rootmnt"/boot/efi/EFI/ubuntu/${EFI_GRUB} "$rootmnt"/boot/efi/EFI/BOOT/${EFI_GRUB}
+        fi
+    fi
+
     EFI_LOADER=$EFI_SHIM
     if [ ! -e "$rootmnt"/boot/efi/EFI/${DISTRO}/${EFI_LOADER} ]; then
         EFI_LOADER=$EFI_GRUB
@@ -201,12 +210,16 @@ if [ "$MAKE_BOOT" == "yes" ]; then
         if [ "$SH" ]; then
             chroot "$rootmnt" /bin/bash -c "efibootmgr -B -b $SH"
         fi
-        chroot "$rootmnt" /bin/bash -c "if command -v efibootmgr >/dev/null 2>&1 && efibootmgr -v >/dev/null 2>&1; then efibootmgr --disk \"${BOOT_DISK}\" --part 1 --create --label \"Shim1\" --loader /EFI/${DISTRO}/${EFI_LOADER}; else echo '*** DISKFULL script: efibootmgr unavailable or EFI vars inaccessible, relying on fallback bootloader'; fi"
+        chroot "$rootmnt" /bin/bash -c "if command -v efibootmgr >/dev/null 2>&1 && efibootmgr -v >/dev/null 2>&1; then efibootmgr --disk "${BOOT_DISK}" --part 1 --create --label "Shim1" --loader /EFI/${DISTRO}/${EFI_LOADER}; else echo '*** DISKFULL script: efibootmgr unavailable or EFI vars inaccessible, relying on fallback bootloader'; fi"
     fi
 
     if [ "$OS_ID" == "ubuntu" ]; then
         if [ "$CHROOT_GRUB_MKCONFIG" ]; then
             chroot "$rootmnt" /bin/bash -c "$CHROOT_GRUB_MKCONFIG -o /boot/grub/grub.cfg"
+        fi
+        if [ "$EFI_TARGET" == "arm64-efi" ] && [ -e "$rootmnt"/boot/grub/grub.cfg ]; then
+            mkdir -p "$rootmnt"/boot/efi/EFI/BOOT
+            cp -f "$rootmnt"/boot/grub/grub.cfg "$rootmnt"/boot/efi/EFI/BOOT/grub.cfg
         fi
     elif [ "$CHROOT_GRUB_MKCONFIG" ]; then
         chroot "$rootmnt" /bin/bash -c "$CHROOT_GRUB_MKCONFIG -o /boot/efi/EFI/${DISTRO}/grub.cfg"
@@ -216,8 +229,7 @@ if [ "$MAKE_BOOT" == "yes" ]; then
     #$null > "$rootmnt"/.autorelabel
 fi
 
-chroot "$rootmnt" /bin/bash -c "cd /boot && ln -s /boot boot; \
-                              restorecon -r -p / 2> /dev/null"
+chroot "$rootmnt" /bin/bash -c "cd /boot && ln -s /boot boot;                               restorecon -r -p / 2> /dev/null"
 
 umount "$rootmnt"/sys
 umount "$rootmnt"/dev

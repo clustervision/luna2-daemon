@@ -17,9 +17,16 @@ network:
 {%- if 'bond_mode' in LUNA_INTERFACES[interface] and 'bond_slaves' in LUNA_INTERFACES[interface] %}
   ethernets:
   {%- for bond_slave in LUNA_INTERFACES[interface]['bond_slaves'] %}
+    {%- if bond_slave == PROVISION_INTERFACE %}
+    #${interface_bootif}:
+    #  dhcp4: no
+    #  dhcp6: no
+$(printf '%s\n' {%- for temp_slave in LUNA_INTERFACES[interface]['bond_slaves'] %} "{{ temp_slave }}" {%- endfor %} | grep -qxF -- "${interface_bootif}" || printf '    %s:\n      dhcp4: no\n      dhcp6: no\n' "${interface_bootif}")
+    {%- else %}
     {{ bond_slave }}:
       dhcp4: no
       dhcp6: no
+    {%- endif %}
     {%- if LUNA_INTERFACES[interface]['mtu'] %}
       mtu: {{ LUNA_INTERFACES[interface]['mtu'] }}
     {%- endif %}
@@ -31,7 +38,12 @@ network:
     {%- endif %}
       interfaces:
   {%- for bond_slave in LUNA_INTERFACES[interface]['bond_slaves'] %}
+    {%- if bond_slave == PROVISION_INTERFACE %}
+        #- ${interface_bootif}
+$(printf '%s\n' {%- for temp_slave in LUNA_INTERFACES[interface]['bond_slaves'] %} "{{ temp_slave }}" {%- endfor %} | grep -qxF -- "${interface_bootif}" || printf '        - %s\n' "${interface_bootif}")
+    {%- else %}
         - {{ bond_slave }}
+    {%- endif %}
   {%- endfor %}
 {%- else %}
   ethernets:

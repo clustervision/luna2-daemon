@@ -57,6 +57,7 @@ else
   echo "** DISKFULL script: my-local-disk override found"
 fi
 cat /tmp/my-local-disk.sh
+echo "*** DISKFULL script \$rootmnt: $rootmnt"
     """
 
     partscript = """
@@ -114,22 +115,22 @@ if [ "$FORMAT_MY_DISK" == "yes" ]; then
         mkfs.ext4 ${MY_LOCAL_DISK_NAME}${DP}4
 fi
 echo "*** DISKFULL script: mounting disks"
-umount -l /sysroot &> /dev/null
-mount ${MY_LOCAL_DISK_NAME}${DP}4 /sysroot
-mkdir /sysroot/boot
-mount ${MY_LOCAL_DISK_NAME}${DP}2 /sysroot/boot
-mkdir /sysroot/boot/efi
-mount ${MY_LOCAL_DISK_NAME}${DP}1 /sysroot/boot/efi
+umount -l "$rootmnt" &> /dev/null
+mount ${MY_LOCAL_DISK_NAME}${DP}4 "$rootmnt"
+mkdir "$rootmnt"/boot
+mount ${MY_LOCAL_DISK_NAME}${DP}2 "$rootmnt"/boot
+mkdir "$rootmnt"/boot/efi
+mount ${MY_LOCAL_DISK_NAME}${DP}1 "$rootmnt"/boot/efi
     """
 
     postscript = """
 . /tmp/my-local-disk.sh
 . /tmp/my-fetch-disk.sh
 
-mkdir /sysroot/proc /sysroot/dev /sysroot/sys &> /dev/null
-mount -t proc proc /sysroot/proc 
-mount -t devtmpfs devtmpfs /sysroot/dev
-mount -t sysfs sysfs /sysroot/sys
+mkdir "$rootmnt"/proc "$rootmnt"/dev "$rootmnt"/sys &> /dev/null
+mount -t proc proc "$rootmnt"/proc 
+mount -t devtmpfs devtmpfs "$rootmnt"/dev
+mount -t sysfs sysfs "$rootmnt"/sys
 
 echo "*** DISKFULL script: writing fstab"
 FSTAB_DISK=${MY_LOCAL_DISK_NAME}
@@ -144,11 +145,10 @@ FSTAB_DISK_P2=$(blkid -o export ${FSTAB_DISK}${FSTAB_DP}2 | grep -w UUID || echo
 FSTAB_DISK_P3=$(blkid -o export ${FSTAB_DISK}${FSTAB_DP}3 | grep -w UUID || echo ${FSTAB_DISK}${FSTAB_DP}3)
 FSTAB_DISK_P4=$(blkid -o export ${FSTAB_DISK}${FSTAB_DP}4 | grep -w UUID || echo ${FSTAB_DISK}${FSTAB_DP}4)
 
-grep -v -e "${FSTAB_DISK}" -e "${FSTAB_DISK_P4}" -e "${FSTAB_DISK_P3}" \
-        -e "${FSTAB_DISK_P2}" -e "${FSTAB_DISK_P1}" /sysroot/etc/fstab > /tmp/fstab
-grep -v -w '/' /tmp/fstab > /sysroot/etc/fstab
+grep -v -e "${FSTAB_DISK}" -e "${FSTAB_DISK_P4}" -e "${FSTAB_DISK_P3}"         -e "${FSTAB_DISK_P2}" -e "${FSTAB_DISK_P1}" "$rootmnt"/etc/fstab > /tmp/fstab
+grep -v -w '/' /tmp/fstab > "$rootmnt"/etc/fstab
 
-cat << EOF >> /sysroot/etc/fstab
+cat << EOF >> "$rootmnt"/etc/fstab
 ${FSTAB_DISK_P4}   /       ext4    defaults        1 1
 ${FSTAB_DISK_P2}   /boot   ext4    defaults        1 2
 ${FSTAB_DISK_P1}   /boot/efi   vfat    defaults        1 2
@@ -156,26 +156,81 @@ ${FSTAB_DISK_P3}   swap    swap    defaults        0 0
 EOF
 
 if [ "$MAKE_BOOT" == "yes" ]; then
-    echo "*** DISKFULL script: configuring shim boot partition"
-    rm -rf /sysroot/lib/dracut/modules.d/95luna/
+    echo "*** DISKFULL script: configuring grub/shim boot partition"
+    rm -rf "$rootmnt"/lib/dracut/modules.d/95luna/
+    mkdir -p "$rootmnt"/boot/efi/EFI
 
-    SH=$(chroot /sysroot /bin/bash -c "efibootmgr -v|grep Shim1|grep -oE '^Boot[0-9]+'|grep -oE '[0-9]+'")
-    if [ "$SH" ]; then
-        chroot /sysroot /bin/bash -c "efibootmgr -B -b $SH"
+    OS_ID=$(chroot "$rootmnt" /bin/bash -c '. /etc/os-release >/dev/null 2>&1; echo $ID')
+    DISTRO=$(ls "$rootmnt"/boot/efi/EFI/ 2>/dev/null | grep -im1 -e ubuntu -e rocky -e redhat -e alma -e centos)
+    if [ ! "$DISTRO" ]; then
+        case "$OS_ID" in
+            ubuntu|rocky|redhat|alma|centos) DISTRO=$OS_ID ;;
+            *) DISTRO=rocky ;;
+        esac
     fi
-    DISTRO=$(ls /sysroot/boot/efi/EFI/ | grep -ie rocky -e redhat -e alma -e centos || echo rocky)
-    chroot /sysroot /bin/bash -c "efibootmgr --disk ${MY_LOCAL_DISK_NAME} --part 1 --create --label \"Shim1\" --loader /EFI/${DISTRO}/shimx64.efi; \
-                                  grub2-mkconfig -o /boot/efi/EFI/${DISTRO}/grub.cfg"
+
+    EFI_TARGET=x86_64-efi
+    EFI_SHIM=shimx64.efi
+    EFI_GRUB=grubx64.efi
+    EFI_BOOT=BOOTX64.EFI
+    if chroot "$rootmnt" /bin/bash -c "[ -e /usr/lib/shim/shimaa64.efi.signed ] || uname -m | grep -Eq '^(aarch64|arm64)$'"; then
+        EFI_TARGET=arm64-efi
+        EFI_SHIM=shimaa64.efi
+        EFI_GRUB=grubaa64.efi
+        EFI_BOOT=BOOTAA64.EFI
+    fi
+
+    CHROOT_GRUB_INSTALL=$(chroot "$rootmnt" /bin/bash -c 'if command -v grub2-install >/dev/null 2>&1; then echo grub2-install; elif command -v grub-install >/dev/null 2>&1; then echo grub-install; fi')
+    CHROOT_GRUB_MKCONFIG=$(chroot "$rootmnt" /bin/bash -c 'if command -v grub2-mkconfig >/dev/null 2>&1; then echo grub2-mkconfig; elif command -v grub-mkconfig >/dev/null 2>&1; then echo grub-mkconfig; fi')
+
+    EFI_CFG=/boot/efi/EFI/${DISTRO}/grub.cfg
+    BOOT_COPY_DIR=""
+    if [ "$OS_ID" == "ubuntu" ]; then
+        DISTRO=ubuntu
+        EFI_CFG=/boot/grub/grub.cfg
+        if [ "$EFI_TARGET" == "arm64-efi" ]; then
+            BOOT_COPY_DIR="$rootmnt/boot/efi/EFI/BOOT"
+        fi
+    fi
+
+    if [ "$CHROOT_GRUB_INSTALL" ]; then
+        echo "*** DISKFULL script: installing ${DISTRO} EFI bootloader [$EFI_TARGET]"
+        for EXTRA in '' '--removable'; do
+            chroot "$rootmnt" /bin/bash -c "$CHROOT_GRUB_INSTALL --target=${EFI_TARGET} --efi-directory=/boot/efi --bootloader-id=${DISTRO} ${EXTRA} --no-nvram"
+        done
+    fi
+
+    if [ "$BOOT_COPY_DIR" ]; then
+        mkdir -p "$BOOT_COPY_DIR"
+        [ -e "$rootmnt"/boot/efi/EFI/${DISTRO}/${EFI_SHIM} ] && cp -f "$rootmnt"/boot/efi/EFI/${DISTRO}/${EFI_SHIM} "$BOOT_COPY_DIR/${EFI_BOOT}"
+        [ -e "$rootmnt"/boot/efi/EFI/${DISTRO}/${EFI_GRUB} ] && cp -f "$rootmnt"/boot/efi/EFI/${DISTRO}/${EFI_GRUB} "$BOOT_COPY_DIR/${EFI_GRUB}"
+    fi
+
+    EFI_LOADER=$EFI_SHIM
+    [ ! -e "$rootmnt"/boot/efi/EFI/${DISTRO}/${EFI_LOADER} ] && EFI_LOADER=$EFI_GRUB
+
+    if [ -e "$rootmnt"/boot/efi/EFI/${DISTRO}/${EFI_LOADER} ]; then
+        BOOT_DISK=$(readlink -f ${MY_LOCAL_DISK_NAME} 2>/dev/null || echo ${MY_LOCAL_DISK_NAME})
+        SH=$(chroot "$rootmnt" /bin/bash -c "efibootmgr -v 2>/dev/null|grep Shim1|grep -oE '^Boot[0-9]+'|grep -oE '[0-9]+'")
+        [ "$SH" ] && chroot "$rootmnt" /bin/bash -c "efibootmgr -B -b $SH"
+        chroot "$rootmnt" /bin/bash -c "if command -v efibootmgr >/dev/null 2>&1 && efibootmgr -v >/dev/null 2>&1; then efibootmgr --disk "${BOOT_DISK}" --part 1 --create --label "Shim1" --loader /EFI/${DISTRO}/${EFI_LOADER}; else echo '*** DISKFULL script: efibootmgr unavailable or EFI vars inaccessible, relying on fallback bootloader'; fi"
+    fi
+
+    if [ "$CHROOT_GRUB_MKCONFIG" ]; then
+        chroot "$rootmnt" /bin/bash -c "$CHROOT_GRUB_MKCONFIG -o ${EFI_CFG}"
+    fi
+    if [ "$BOOT_COPY_DIR" ] && [ -e "$rootmnt${EFI_CFG}" ]; then
+        cp -f "$rootmnt${EFI_CFG}" "$BOOT_COPY_DIR/grub.cfg"
+    fi
     # commented out next command as it imposes reboots. When netboot is set to no and with correct bios settings,
     # this would impose desired behavior. To cover all bases, we now relabel before the pivot. See below.
-    #$null > /sysroot/.autorelabel
+    #$null > "$rootmnt"/.autorelabel
 fi
 
-chroot /sysroot /bin/bash -c "cd /boot && ln -s /boot boot; \
-                              restorecon -r -p / 2> /dev/null"
+chroot "$rootmnt" /bin/bash -c "cd /boot && ln -s /boot boot; restorecon -r -p / 2> /dev/null"
 
-umount /sysroot/sys
-umount /sysroot/dev
-umount /sysroot/proc
+umount "$rootmnt"/sys
+umount "$rootmnt"/dev
+umount "$rootmnt"/proc
 echo "*** DISKFULL script: done"
     """

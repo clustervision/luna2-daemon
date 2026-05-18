@@ -194,9 +194,16 @@ def config_osimage_clone(name=None):
     if hastate is True:
         master=HA().get_role()
         if master is False:
+            returned = OSImage().clone_osimage(name, True, request.data)
+            status=returned[0]
+            response=returned[1]
+            if status is False:
+                response = {'message': response}
+                return response, access_code
             response={'message': 'something went wrong.....'}
             request_id = Status().gen_request_id()
-            status, message = Journal().add_request(function="OSImage.clone_osimage",object=name,payload=request.data,masteronly=True,misc=request_id)
+            status, message = Journal().add_request(function="OSImage.clone_osimage",object=name,param=True,payload=request.data,remoteonly=True)
+            status, message = Journal().add_request(function="OSImage.clone_osimage",object=name,param=False,payload=request.data,masteronly=True,misc=request_id)
             if status is True:
                 Status().add_message(request_id,"luna","request submitted to master...")
                 Status().mark_messages_read(request_id)
@@ -206,7 +213,7 @@ def config_osimage_clone(name=None):
                 response={'message': message}
             return response, access_code
     # below only when we are master
-    returned = OSImage().clone_osimage(name, request.data)
+    returned = OSImage().clone_osimage(name, False, request.data)
     status=returned[0]
     response=returned[1]
     if status is True:

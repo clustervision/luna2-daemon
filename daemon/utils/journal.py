@@ -106,7 +106,7 @@ class Journal():
         return self.me
 
 
-    def add_request(self,function,object=None,param=None,payload=None,masteronly=False,misc=None,sendnow=True,keeptrying=5):
+    def add_request(self,function,object=None,param=None,payload=None,masteronly=False,remoteonly=False,misc=None,sendnow=True,keeptrying=5):
         if not self.ha_object.get_hastate():
             return True, "Not in H/A mode"
         if not self.ha_object.get_overrule():
@@ -131,6 +131,7 @@ class Journal():
                 data['param'] = param
                 data['payload'] = payload
                 data['masteronly'] = Helper().bool_to_string(masteronly)
+                data['remoteonly'] = Helper().bool_to_string(remoteonly)
                 data['misc'] = misc
                 data['sendby'] = self.me
                 data['sendto'] = None
@@ -169,9 +170,14 @@ class Journal():
                 status=True
                 for record in all_records:
                     masteronly=Helper().make_bool(record['masteronly'])
+                    remoteonly=Helper().make_bool(record['remoteonly'])
                     self.logger.debug(f"master: {master}, masteronly: {masteronly}")
                     if masteronly is True and master is False:
                         self.logger.info(f"request {record['function']}({record['object']}) is not for us. master ({master}) != masteronly ({masteronly})")
+                        Database().delete_row('journal', [{"column": "id", "value": record['id']}])
+                        continue
+                    elif remoteonly is True and master is True:
+                        self.logger.info(f"request {record['function']}({record['object']}) is not for us. master ({master}) != remoteonly ({remoteonly})")
                         Database().delete_row('journal', [{"column": "id", "value": record['id']}])
                         continue
    

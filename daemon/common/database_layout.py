@@ -329,6 +329,7 @@ DATABASE_LAYOUT_journal = [
 {"column": "param",                "datatype": "VARCHAR", "length": "1024"},
 {"column": "payload",              "datatype": "VARCHAR", "length": "65536"},
 {"column": "masteronly",           "datatype": "INTEGER", "length": "10"},
+{"column": "remoteonly",           "datatype": "INTEGER", "length": "10"},
 {"column": "misc",                 "datatype": "VARCHAR", "length": "1024"},
 {"column": "sendfor",              "datatype": "VARCHAR", "length": "80"},
 {"column": "sendto",               "datatype": "VARCHAR", "length": "80"},

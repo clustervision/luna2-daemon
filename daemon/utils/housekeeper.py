@@ -133,6 +133,11 @@ class Housekeeper(object):
                                         self.logger.error(f"Path {first} does not exist. Cannot remove")
                                 else:
                                     self.logger.error(f"Path {first} is not safe. Cannot remove")
+                            case 'remove_osimage_on_remote':
+                                if ha_object.get_hastate():
+                                    osimage=first
+                                    self.logger.info(f"Removing remote osimage {osimage}")
+                                    ret,mesg=Journal().add_request(function='OsImager.remove_osimage',object=osimage,keeptrying=60)
                             case 'sync_osimage_with_master':
                                 osimage=first
                                 master=second

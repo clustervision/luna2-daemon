@@ -1123,6 +1123,8 @@ class OsImage(object):
                             Queue().remove_task_from_queue(next_id)
                             Queue().remove_task_from_queue_by_request_id(request_id)
                             self.remove_osimage(third)
+                            queue_id,queue_response = Queue().add_task_to_queue(task='remove_osimage_on_remote', param=third,
+                                                                                subsystem='housekeeper', request_id='__clone_failed__')
                             Status().add_message(request_id=request_id, username_initiator="luna", message="EOF")
                         else:
                             Queue().remove_task_from_queue(next_id)

@@ -193,7 +193,12 @@ def config_osimage_clone(name=None):
     hastate=HA().get_hastate()
     if hastate is True:
         master=HA().get_role()
-        if master is False:
+        if master is True:
+            status, message = Journal().add_request(function="OSImage.clone_osimage",object=name,param=True,payload=request.data,remoteonly=True)
+            if status is False:
+                response={'message': message}
+                return response, access_code
+        else:
             returned = OSImage().clone_osimage(name, True, request.data)
             status=returned[0]
             response=returned[1]

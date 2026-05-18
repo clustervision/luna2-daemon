@@ -171,7 +171,7 @@ if [ "$FORMAT_MY_DISK" == "yes" ]; then
         mdadm --stop /dev/md0 /dev/md127 /dev/md126 2>/dev/null || true
         mdadm --zero-superblock ${MY_LOCAL_DISK1_NAME}${DP1}4 ${MY_LOCAL_DISK2_NAME}${DP2}4 2>/dev/null || true
         mkfs.fat -F 16 ${MY_LOCAL_DISK1_NAME}${DP1}1
-        mkfs.fat -F 16 ${MY_LOCAL_DISK2_NAME}${DP1}1
+        mkfs.fat -F 16 ${MY_LOCAL_DISK2_NAME}${DP2}1
         mkfs.ext4 ${MY_LOCAL_DISK1_NAME}${DP1}2
         MY_LOCAL_DISK1_UUID=$(blkid -o export ${MY_LOCAL_DISK1_NAME}${DP1}4 | grep -w UUID | awk -F '=' '{ print $2 }')
         MY_LOCAL_DISK2_UUID=$(blkid -o export ${MY_LOCAL_DISK2_NAME}${DP2}4 | grep -w UUID | awk -F '=' '{ print $2 }')

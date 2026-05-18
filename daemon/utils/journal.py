@@ -202,6 +202,8 @@ class Journal():
                     # introducing some uglyness since we do not use the created field in classes.
                     if class_name == "HA" and function_name == "set_role":
                         returned=repl_function(repl_class(),record['object'],record['createdsec'])
+                    elif record['object'] and record['param'] and payload:
+                        returned=repl_function(repl_class(),record['object'],record['param'],payload)
                     elif record['param'] and payload:
                         returned=repl_function(repl_class(),record['object'],record['param'],payload)
                     elif record['param']:

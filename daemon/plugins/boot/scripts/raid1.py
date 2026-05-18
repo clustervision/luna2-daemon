@@ -136,6 +136,7 @@ while [[ ! -b ${MY_LOCAL_DISK2_NAME}${DP2}1 ]] || [[ ! -b ${MY_LOCAL_DISK2_NAME}
 if [ "$FORMAT_MY_DISK" == "yes" ]; then
         echo "*** RAID1 script: formatting partitions"
         mkfs.fat -F 16 ${MY_LOCAL_DISK1_NAME}${DP1}1
+        mkfs.fat -F 16 ${MY_LOCAL_DISK2_NAME}${DP1}1
         mkfs.ext4 ${MY_LOCAL_DISK1_NAME}${DP1}2
         MY_LOCAL_DISK1_UUID=$(blkid -o export ${MY_LOCAL_DISK1_NAME}${DP1}4 | grep -w UUID | awk -F '=' '{ print $2 }')
         MY_LOCAL_DISK2_UUID=$(blkid -o export ${MY_LOCAL_DISK2_NAME}${DP2}4 | grep -w UUID | awk -F '=' '{ print $2 }')

@@ -42,6 +42,8 @@ class Plugin():
         postscript = runs before OS pivot
         """
 
+    # ====================== pre ========================
+
     prescript = """
 if [ ! -d /tmp ]; then mkdir /tmp; fi
 if [ ! -f /tmp/my-local-disk.sh ]; then
@@ -61,6 +63,8 @@ fi
 cat /tmp/my-local-disk.sh
 echo "*** RAID1 script: \$rootmnt: $rootmnt"
     """
+
+    # ====================== part =======================
 
     partscript = """
 . /tmp/my-local-disk.sh
@@ -133,8 +137,39 @@ echo "*** RAID1 script: waiting for partitions"
 while [[ ! -b ${MY_LOCAL_DISK1_NAME}${DP1}1 ]] || [[ ! -b ${MY_LOCAL_DISK1_NAME}${DP1}2 ]] || [[ ! -b ${MY_LOCAL_DISK1_NAME}${DP1}3 ]] || [[ ! -b ${MY_LOCAL_DISK1_NAME}${DP1}4 ]]; do echo -n .; sleep 1; done
 while [[ ! -b ${MY_LOCAL_DISK2_NAME}${DP2}1 ]] || [[ ! -b ${MY_LOCAL_DISK2_NAME}${DP2}2 ]] || [[ ! -b ${MY_LOCAL_DISK2_NAME}${DP2}3 ]] || [[ ! -b ${MY_LOCAL_DISK2_NAME}${DP2}4 ]]; do echo -n .; sleep 1; done; echo
 
+# -------------------------------------------------------------
+
+function get_md_device_by_member() {
+    local member="$1"
+    local md
+
+    for md in /dev/md/* /dev/md[0-9]*; do
+        [ -e "$md" ] || continue
+        mdadm --detail "$md" 2>/dev/null | grep -Fq "$member" && {
+            readlink -f "$md"
+            return 0
+        }
+    done
+    return 1
+}
+
+function set_md_device_path() {
+        # detect real md device instead of assuming /dev/md0
+        ROOT_MD=$(readlink -f /dev/md/node-root 2>/dev/null || true)
+        [ -z "$ROOT_MD" ] && ROOT_MD=$(get_md_device_by_member "${MY_LOCAL_DISK1_NAME}${DP1}4")
+        [ -z "$ROOT_MD" ] && ls /dev/md0 &> /dev/null && ROOT_MD=/dev/md0
+        [ -z "$ROOT_MD" ] && ls /dev/md127 &> /dev/null && ROOT_MD=/dev/md127
+        [ -z "$ROOT_MD" ] && ROOT_MD=/dev/md0
+        export ROOT_MD
+        echo "export ROOT_MD=${ROOT_MD}" > /tmp/root_md.sh
+}
+
+# -------------------------------------------------------------
+
 if [ "$FORMAT_MY_DISK" == "yes" ]; then
         echo "*** RAID1 script: formatting partitions"
+        mdadm --stop /dev/md0 /dev/md127 /dev/md126 2>/dev/null || true
+        mdadm --zero-superblock ${MY_LOCAL_DISK1_NAME}${DP1}4 ${MY_LOCAL_DISK2_NAME}${DP2}4 2>/dev/null || true
         mkfs.fat -F 16 ${MY_LOCAL_DISK1_NAME}${DP1}1
         mkfs.fat -F 16 ${MY_LOCAL_DISK2_NAME}${DP1}1
         mkfs.ext4 ${MY_LOCAL_DISK1_NAME}${DP1}2
@@ -143,22 +178,28 @@ if [ "$FORMAT_MY_DISK" == "yes" ]; then
         # there is a fair share the RAID labeled disks are not availabe as a UUID block device. We test, try and move on.
         if [ "${MY_LOCAL_DISK1_UUID}" ] && [ "${MY_LOCAL_DISK2_UUID}" ] && [ -e /dev/disk/by-uuid/${MY_LOCAL_DISK1_UUID} ] && [ -e /dev/disk/by-uuid/${MY_LOCAL_DISK2_UUID} ]; then
             echo "*** RAID1 script: making RAID1 on [/dev/disk/by-uuid/${MY_LOCAL_DISK1_UUID}] + [/dev/disk/by-uuid/${MY_LOCAL_DISK2_UUID}]"
-            echo y | mdadm --create /dev/md0 --metadata 1.2 --bitmap=internal --force --assume-clean --level=mirror --raid-devices=2 /dev/disk/by-uuid/${MY_LOCAL_DISK1_UUID} /dev/disk/by-uuid/${MY_LOCAL_DISK2_UUID}
+            echo y | mdadm --create /dev/md0 --name=node-root --metadata 1.2 --bitmap=internal --force --assume-clean --level=mirror --raid-devices=2 /dev/disk/by-uuid/${MY_LOCAL_DISK1_UUID} /dev/disk/by-uuid/${MY_LOCAL_DISK2_UUID}
         else
             echo "*** RAID1 script: making RAID1 on [${MY_LOCAL_DISK1_NAME}${DP1}4] + [${MY_LOCAL_DISK2_NAME}${DP2}4]"
-            echo y | mdadm --create /dev/md0 --metadata 1.2 --bitmap=internal --force --assume-clean --level=mirror --raid-devices=2 ${MY_LOCAL_DISK1_NAME}${DP1}4 ${MY_LOCAL_DISK2_NAME}${DP2}4
+            echo y | mdadm --create /dev/md0 --name=node-root --metadata 1.2 --bitmap=internal --force --assume-clean --level=mirror --raid-devices=2 ${MY_LOCAL_DISK1_NAME}${DP1}4 ${MY_LOCAL_DISK2_NAME}${DP2}4
         fi
         sleep 3
-        mkfs.ext4 /dev/md0
+        udevadm settle || true
+        set_md_device_path
+        echo "*** RAID1 script: Using created ${ROOT_MD} as the Raid disk"
 
+        mkfs.ext4 "${ROOT_MD}"
         mkswap ${MY_LOCAL_DISK1_NAME}${DP1}3
         swaplabel -L swappart ${MY_LOCAL_DISK1_NAME}${DP1}3
         mkswap ${MY_LOCAL_DISK2_NAME}${DP2}3
         swaplabel -L swappart ${MY_LOCAL_DISK2_NAME}${DP2}3
+else
+        set_md_device_path
+        echo "*** RAID1 script: Using discovered ${ROOT_MD} as the Raid disk"
 fi
 echo "*** RAID1 script: mounting disks"
 umount -l "$rootmnt" &> /dev/null
-mount /dev/md0 "$rootmnt"
+mount "${ROOT_MD}" "$rootmnt"
 mkdir -p "$rootmnt"/boot
 mount ${MY_LOCAL_DISK1_NAME}${DP1}2 "$rootmnt"/boot
 mkdir -p "$rootmnt"/boot/efi
@@ -167,9 +208,12 @@ mkdir -p "$rootmnt"/boot/efi2
 mount ${MY_LOCAL_DISK2_NAME}${DP2}1 "$rootmnt"/boot/efi2
     """
 
+    # ====================== post =======================
+
     postscript = """
 . /tmp/my-local-disk.sh
 . /tmp/my-fetch-disk.sh
+. /tmp/root_md.sh
 
 mkdir "$rootmnt"/proc "$rootmnt"/dev "$rootmnt"/sys &> /dev/null
 mount -t proc proc "$rootmnt"/proc 
@@ -190,13 +234,13 @@ if [ "$BYPATH2" ]; then
     FSTAB_DP2=$(echo $FSTAB_DISK2 | grep -i nvme &> /dev/null && echo p)
 fi
 
-FSTAB_MD0=$(blkid -o export /dev/md0 | grep -w UUID || echo '/dev/md0')
+FSTAB_MD0=$(blkid -o export ${ROOT_MD} | grep -w UUID || echo "${ROOT_MD}")
 FSTAB_DISK1_P1=$(blkid -o export ${FSTAB_DISK1}${FSTAB_DP1}1 | grep -w UUID || echo ${FSTAB_DISK1}${FSTAB_DP1}1)
 FSTAB_DISK1_P2=$(blkid -o export ${FSTAB_DISK1}${FSTAB_DP1}2 | grep -w UUID || echo ${FSTAB_DISK1}${FSTAB_DP1}2)
 FSTAB_DISK1_P3=$(blkid -o export ${FSTAB_DISK1}${FSTAB_DP1}3 | grep -w UUID || echo ${FSTAB_DISK1}${FSTAB_DP1}3)
 FSTAB_DISK2_P3=$(blkid -o export ${FSTAB_DISK2}${FSTAB_DP2}3 | grep -w UUID || echo ${FSTAB_DISK2}${FSTAB_DP2}3)
 
-grep -v -e md0 -e "${FSTAB_DISK1}" -e "${FSTAB_DISK2}" \
+grep -v -e md0 -e "${ROOT_MD}" -e "${FSTAB_DISK1}" -e "${FSTAB_DISK2}" \
     -e "${FSTAB_MD0}" -e "${FSTAB_DISK1_P1}" -e "${FSTAB_DISK1_P2}" \
     -e "${FSTAB_DISK1_P3}" -e "${FSTAB_DISK2_P3}" "$rootmnt"/etc/fstab > /tmp/fstab
 grep -v -w '/' /tmp/fstab > "$rootmnt"/etc/fstab

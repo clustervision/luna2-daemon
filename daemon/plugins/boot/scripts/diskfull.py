@@ -42,6 +42,8 @@ class Plugin():
         postscript = runs before OS pivot
         """
 
+    # ====================== pre ========================
+
     prescript = """
 if [ ! -d /tmp ]; then mkdir /tmp; fi
 if [ ! -f /tmp/my-local-disk.sh ]; then
@@ -59,6 +61,8 @@ fi
 cat /tmp/my-local-disk.sh
 echo "*** DISKFULL script \$rootmnt: $rootmnt"
     """
+
+    # ====================== part========================
 
     partscript = """
 . /tmp/my-local-disk.sh
@@ -122,6 +126,8 @@ mount ${MY_LOCAL_DISK_NAME}${DP}2 "$rootmnt"/boot
 mkdir "$rootmnt"/boot/efi
 mount ${MY_LOCAL_DISK_NAME}${DP}1 "$rootmnt"/boot/efi
     """
+
+    # ====================== post ========================
 
     postscript = """
 . /tmp/my-local-disk.sh

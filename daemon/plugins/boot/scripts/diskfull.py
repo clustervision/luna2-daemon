@@ -59,7 +59,7 @@ else
   echo "** DISKFULL script: my-local-disk override found"
 fi
 cat /tmp/my-local-disk.sh
-echo "*** DISKFULL script \$rootmnt: $rootmnt"
+echo "*** DISKFULL script \\$rootmnt: $rootmnt"
     """
 
     # ====================== part========================
@@ -74,7 +74,7 @@ if [ "$BYUUID" ]; then
     echo "*** DISKFULL script: UUID translates to $MY_LOCAL_DISK_NAME"
 fi
 if [ ! -e $MY_LOCAL_DISK_NAME ]; then
-    echo "!!! DISKFULL script: \$MY_LOCAL_DISK_NAME [$MY_LOCAL_DISK_NAME] does not exist - Have to STOP !!!"
+    echo "!!! DISKFULL script: \\$MY_LOCAL_DISK_NAME [$MY_LOCAL_DISK_NAME] does not exist - Have to STOP !!!"
     exit 1
 fi
 export DP=$(echo $MY_LOCAL_DISK_NAME | grep -i nvme &> /dev/null && echo p)
@@ -103,8 +103,10 @@ if [ "$PARTITION_MY_DISK" == "yes" ]; then
         parted $MY_LOCAL_DISK_NAME -s 'mkpart boot ext4 1g 2g'
         parted $MY_LOCAL_DISK_NAME -s 'mkpart swap linux-swap 2g 4g'
         parted $MY_LOCAL_DISK_NAME -s 'mkpart root ext4 4g 100%'
+        parted $MY_LOCAL_DISK_NAME -s 'set 1 esp on'
         parted $MY_LOCAL_DISK_NAME -s 'set 2 boot on'
         parted $MY_LOCAL_DISK_NAME -s 'name 1"EFI System Partition"'
+        udevadm settle || true
 fi
 echo "*** DISKFULL script: waiting for partitions"
 while [[ ! -b ${MY_LOCAL_DISK_NAME}${DP}1 ]] || [[ ! -b ${MY_LOCAL_DISK_NAME}${DP}2 ]] || [[ ! -b ${MY_LOCAL_DISK_NAME}${DP}3 ]] || [[ ! -b ${MY_LOCAL_DISK_NAME}${DP}4 ]]; do sleep 1; done
@@ -114,7 +116,7 @@ if [ "$FORMAT_MY_DISK" == "yes" ]; then
         mkswap ${MY_LOCAL_DISK_NAME}${DP}3
         swaplabel -L swappart ${MY_LOCAL_DISK_NAME}${DP}3
 
-        mkfs.fat -F 16 ${MY_LOCAL_DISK_NAME}${DP}1
+        mkfs.fat -F 32 ${MY_LOCAL_DISK_NAME}${DP}1
         mkfs.ext4 ${MY_LOCAL_DISK_NAME}${DP}2
         mkfs.ext4 ${MY_LOCAL_DISK_NAME}${DP}4
 fi
@@ -151,7 +153,8 @@ FSTAB_DISK_P2=$(blkid -o export ${FSTAB_DISK}${FSTAB_DP}2 | grep -w UUID || echo
 FSTAB_DISK_P3=$(blkid -o export ${FSTAB_DISK}${FSTAB_DP}3 | grep -w UUID || echo ${FSTAB_DISK}${FSTAB_DP}3)
 FSTAB_DISK_P4=$(blkid -o export ${FSTAB_DISK}${FSTAB_DP}4 | grep -w UUID || echo ${FSTAB_DISK}${FSTAB_DP}4)
 
-grep -v -e "${FSTAB_DISK}" -e "${FSTAB_DISK_P4}" -e "${FSTAB_DISK_P3}"         -e "${FSTAB_DISK_P2}" -e "${FSTAB_DISK_P1}" "$rootmnt"/etc/fstab > /tmp/fstab
+grep -v -e "${FSTAB_DISK}" -e "${FSTAB_DISK_P4}" -e "${FSTAB_DISK_P3}" \
+        -e "${FSTAB_DISK_P2}" -e "${FSTAB_DISK_P1}" "$rootmnt"/etc/fstab > /tmp/fstab
 grep -v -w '/' /tmp/fstab > "$rootmnt"/etc/fstab
 
 cat << EOF >> "$rootmnt"/etc/fstab
@@ -209,6 +212,25 @@ if [ "$MAKE_BOOT" == "yes" ]; then
 
     BOOT_COPY_DIR="$rootmnt/boot/efi/EFI/BOOT"
 
+    # For Ubuntu, grub-install does not place shim. Shim lives in /usr/lib/shim/
+    # and the signed grub in /usr/lib/grub/<arch>-efi-signed/. We copy them into
+    # EFI/ubuntu/ before running grub-install so the signed chain is complete.
+    if [ "$OS_ID" == "ubuntu" ]; then
+        SHIM_SRC=$(ls "$rootmnt"/usr/lib/shim/${EFI_SHIM}.dualsigned \
+                      "$rootmnt"/usr/lib/shim/${EFI_SHIM}.signed \
+                      "$rootmnt"/usr/lib/shim/${EFI_SHIM} 2>/dev/null | head -1)
+        GRUB_SIGNED_SRC=$(ls "$rootmnt"/usr/lib/grub/${EFI_TARGET}-signed/${EFI_GRUB}.signed 2>/dev/null | head -1)
+        if [ "$SHIM_SRC" ] || [ "$GRUB_SIGNED_SRC" ]; then
+            echo "*** DISKFULL script: populating Ubuntu EFI/ubuntu/ with shim + signed grub"
+            mkdir -p "$rootmnt/boot/efi/EFI/ubuntu"
+            [ "$SHIM_SRC" ]        && cp -f "$SHIM_SRC"        "$rootmnt/boot/efi/EFI/ubuntu/${EFI_SHIM}"
+            [ "$GRUB_SIGNED_SRC" ] && cp -f "$GRUB_SIGNED_SRC" "$rootmnt/boot/efi/EFI/ubuntu/${EFI_GRUB}"
+            # also copy mmX64 / MOK manager if present
+            MM_SRC=$(ls "$rootmnt"/usr/lib/shim/mm${EFI_SHIM#shim} 2>/dev/null | head -1)
+            [ "$MM_SRC" ] && cp -f "$MM_SRC" "$rootmnt/boot/efi/EFI/ubuntu/mm${EFI_SHIM#shim}"
+        fi
+    fi
+
     if [ "$CHROOT_GRUB_INSTALL" ]; then
         echo "*** DISKFULL script: installing ${BOOTLOADER_ID} EFI bootloader [$EFI_TARGET]"
         for EXTRA in '' '--removable'; do
@@ -229,7 +251,7 @@ if [ "$MAKE_BOOT" == "yes" ]; then
         BOOT_DISK=$(readlink -f ${MY_LOCAL_DISK_NAME} 2>/dev/null || echo ${MY_LOCAL_DISK_NAME})
         SH=$(chroot "$rootmnt" /bin/bash -c "efibootmgr -v 2>/dev/null|grep Shim1|grep -oE '^Boot[0-9]+'|grep -oE '[0-9]+'")
         [ "$SH" ] && chroot "$rootmnt" /bin/bash -c "efibootmgr -B -b $SH"
-        chroot "$rootmnt" /bin/bash -c "if command -v efibootmgr >/dev/null 2>&1 && efibootmgr -v >/dev/null 2>&1; then efibootmgr --disk "${BOOT_DISK}" --part 1 --create --label "Shim1" --loader /EFI/${BOOTLOADER_ID}/${EFI_LOADER}; else echo '*** DISKFULL script: efibootmgr unavailable or EFI vars inaccessible, relying on fallback bootloader'; fi"
+        chroot "$rootmnt" /bin/bash -c "if command -v efibootmgr >/dev/null 2>&1 && efibootmgr -v >/dev/null 2>&1; then efibootmgr --disk \"${BOOT_DISK}\" --part 1 --create --label \"Shim1\" --loader /EFI/${BOOTLOADER_ID}/${EFI_LOADER}; else echo '*** DISKFULL script: efibootmgr unavailable or EFI vars inaccessible, relying on fallback bootloader'; fi"
     fi
 
     if [ "$CHROOT_GRUB_MKCONFIG" ]; then

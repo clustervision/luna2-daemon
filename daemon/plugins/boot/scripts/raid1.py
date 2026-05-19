@@ -128,7 +128,8 @@ if [ "$PARTITION_MY_DISK" == "yes" ]; then
                 parted $RAID_DISK -s 'mkpart boot ext4 1g 2g'
                 parted $RAID_DISK -s 'mkpart swap linux-swap 2g 4g'
                 parted $RAID_DISK -s 'mkpart root ext4 4g 100%'
-                parted $RAID_DISK -s 'set 1 boot on'
+                parted $RAID_DISK -s 'set 1 esp on'
+                parted $RAID_DISK -s 'set 2 boot on'
                 parted $RAID_DISK -s 'set 4 raid on'
                 parted $RAID_DISK -s 'name 1 "EFI System Partition"'
         done
@@ -170,8 +171,8 @@ if [ "$FORMAT_MY_DISK" == "yes" ]; then
         echo "*** RAID1 script: formatting partitions"
         mdadm --stop /dev/md0 /dev/md127 /dev/md126 2>/dev/null || true
         mdadm --zero-superblock ${MY_LOCAL_DISK1_NAME}${DP1}4 ${MY_LOCAL_DISK2_NAME}${DP2}4 2>/dev/null || true
-        mkfs.fat -F 16 ${MY_LOCAL_DISK1_NAME}${DP1}1
-        mkfs.fat -F 16 ${MY_LOCAL_DISK2_NAME}${DP2}1
+        mkfs.fat -F 32 ${MY_LOCAL_DISK1_NAME}${DP1}1
+        mkfs.fat -F 32 ${MY_LOCAL_DISK2_NAME}${DP2}1
         mkfs.ext4 ${MY_LOCAL_DISK1_NAME}${DP1}2
         MY_LOCAL_DISK1_UUID=$(blkid -o export ${MY_LOCAL_DISK1_NAME}${DP1}4 | grep -w UUID | awk -F '=' '{ print $2 }')
         MY_LOCAL_DISK2_UUID=$(blkid -o export ${MY_LOCAL_DISK2_NAME}${DP2}4 | grep -w UUID | awk -F '=' '{ print $2 }')
@@ -268,11 +269,11 @@ if [ "$MAKE_BOOT" == "yes" ]; then
     fi
 
     echo "*** RAID1 script: configuring grub/shim boot partition"
-    GRUB_CMDLINE_LINUX=$(grep GRUB_CMDLINE_LINUX "$rootmnt"/etc/default/grub || echo 'GRUB_CMDLINE_LINUX=')
+    GRUB_CMDLINE_LINUX=$(grep -E \'^GRUB_CMDLINE_LINUX=\' "$rootmnt"/etc/default/grub | head -1 || echo \'GRUB_CMDLINE_LINUX=\')
     GRUB_CMDLINE_LINUX=$(echo $GRUB_CMDLINE_LINUX | tr -d '"')
     GRUB_CMDLINE_LINUX="${GRUB_CMDLINE_LINUX} rd.md=1 rd.md.conf=1 rd.auto=1 net.ifnames=1 biosdevname=0"
     GRUB_CMDLINE_LINUX=$(echo $GRUB_CMDLINE_LINUX | sed -e 's/GRUB_CMDLINE_LINUX=/GRUB_CMDLINE_LINUX="/' | sed -e 's/$/"/')
-    grep -v GRUB_CMDLINE_LINUX "$rootmnt"/etc/default/grub > /tmp/grub-def
+    grep -vE '^GRUB_CMDLINE_LINUX=' "$rootmnt"/etc/default/grub > /tmp/grub-def
     cat /tmp/grub-def > "$rootmnt"/etc/default/grub
     echo "$GRUB_CMDLINE_LINUX" >> "$rootmnt"/etc/default/grub
 
@@ -318,6 +319,25 @@ if [ "$MAKE_BOOT" == "yes" ]; then
     CHROOT_GRUB_MKCONFIG=$(chroot "$rootmnt" /bin/bash -c 'if command -v grub2-mkconfig >/dev/null 2>&1; then echo grub2-mkconfig; elif command -v grub-mkconfig >/dev/null 2>&1; then echo grub-mkconfig; fi')
 
     BOOT_COPY_DIR="$rootmnt/boot/efi/EFI/BOOT"
+
+    # For Ubuntu, grub-install does not place shim. Shim lives in /usr/lib/shim/
+    # and the signed grub in /usr/lib/grub/<arch>-efi-signed/. We copy them into
+    # EFI/ubuntu/ before running grub-install so the signed chain is complete.
+    if [ "$OS_ID" == "ubuntu" ]; then
+        SHIM_SRC=$(ls "$rootmnt"/usr/lib/shim/${EFI_SHIM}.dualsigned \\
+                      "$rootmnt"/usr/lib/shim/${EFI_SHIM}.signed \\
+                      "$rootmnt"/usr/lib/shim/${EFI_SHIM} 2>/dev/null | head -1)
+        GRUB_SIGNED_SRC=$(ls "$rootmnt"/usr/lib/grub/${EFI_TARGET}-signed/${EFI_GRUB}.signed 2>/dev/null | head -1)
+        if [ "$SHIM_SRC" ] || [ "$GRUB_SIGNED_SRC" ]; then
+            echo "*** RAID1 script: populating Ubuntu EFI/ubuntu/ with shim + signed grub"
+            mkdir -p "$rootmnt/boot/efi/EFI/ubuntu"
+            [ "$SHIM_SRC" ]        && cp -f "$SHIM_SRC"        "$rootmnt/boot/efi/EFI/ubuntu/${EFI_SHIM}"
+            [ "$GRUB_SIGNED_SRC" ] && cp -f "$GRUB_SIGNED_SRC" "$rootmnt/boot/efi/EFI/ubuntu/${EFI_GRUB}"
+            # also copy mmX64 / MOK manager if present
+            MM_SRC=$(ls "$rootmnt"/usr/lib/shim/mm${EFI_SHIM#shim} 2>/dev/null | head -1)
+            [ "$MM_SRC" ] && cp -f "$MM_SRC" "$rootmnt/boot/efi/EFI/ubuntu/mm${EFI_SHIM#shim}"
+        fi
+    fi
 
     if [ "$CHROOT_GRUB_INSTALL" ]; then
         echo "*** RAID1 script: installing ${BOOTLOADER_ID} EFI bootloader [$EFI_TARGET]"

@@ -161,6 +161,8 @@ class Housekeeper(object):
                                         ret,mesg=Journal().add_request(function='OsImager.schedule_provision',object=osimage,param='housekeeper')
                                     if ret is True and HA().get_syncimages() is True:
                                         ret,mesg=Journal().add_request(function='Queue.add_task_to_queue_legacy',object=f'unpack_osimage:{osimage}',param='housekeeper')
+                                    elif HA().get_syncimages() is False:
+                                        self.logger.warning("Sync images is set to false, skipping remote controller image content syncing to image path")
                                 if not ret and mesg:
                                     self.logger.warning(f"While working on sync_osimage_with_master task {next_id}, adding to journal returned: {mesg}")
                                     new_state = f'Image sync failed for {osimage}: {mesg}'
@@ -573,10 +575,10 @@ class Housekeeper(object):
                     prev_ping_status = ping_status
 
                     if prev_check_status is None or prev_check_status != check_status:
-                        if ping_status and not check_status: 
+                        if ping_status and not check_status:
                             ha_state['ping'] = {'state': 'HA controller not receiving pings', 'status': '501'}
                     prev_check_status = check_status
-                
+
                     for ha_component in ['ping','insync']:
                         if ha_component in ha_state:
                             state = {'monitor': {'status': {ha_component: ha_state[ha_component] }}}

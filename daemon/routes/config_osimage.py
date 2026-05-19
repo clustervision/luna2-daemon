@@ -35,6 +35,7 @@ __status__      = "Development"
 
 from json import dumps
 from flask import Blueprint, request
+from copy import deepcopy
 from utils.log import Log
 from common.validate_auth import token_required
 from common.validate_input import input_filter, validate_name
@@ -193,10 +194,23 @@ def config_osimage_clone(name=None):
     hastate=HA().get_hastate()
     if hastate is True:
         master=HA().get_role()
-        if master is False:
+        if master is True:
+            status, message = Journal().add_request(function="OSImage.clone_osimage",object=name,param=True,payload=request.data,remoteonly=True)
+            if status is False:
+                response={'message': message}
+                return response, access_code
+        else:
+            request_data_copy = deepcopy(request.data)
+            returned = OSImage().clone_osimage(name, True, request_data_copy)
+            status=returned[0]
+            response=returned[1]
+            if status is False:
+                response = {'message': response}
+                return response, access_code
             response={'message': 'something went wrong.....'}
             request_id = Status().gen_request_id()
-            status, message = Journal().add_request(function="OSImage.clone_osimage",object=name,payload=request.data,masteronly=True,misc=request_id)
+            status, message = Journal().add_request(function="OSImage.clone_osimage",object=name,param=True,payload=request.data,remoteonly=True)
+            status, message = Journal().add_request(function="OSImage.clone_osimage",object=name,param=False,payload=request.data,masteronly=True,misc=request_id)
             if status is True:
                 Status().add_message(request_id,"luna","request submitted to master...")
                 Status().mark_messages_read(request_id)
@@ -206,7 +220,7 @@ def config_osimage_clone(name=None):
                 response={'message': message}
             return response, access_code
     # below only when we are master
-    returned = OSImage().clone_osimage(name, request.data)
+    returned = OSImage().clone_osimage(name, False, request.data)
     status=returned[0]
     response=returned[1]
     if status is True:

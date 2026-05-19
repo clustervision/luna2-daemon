@@ -46,6 +46,7 @@ from utils.helper import Helper
 from utils.status import Status
 from utils.queue import Queue
 from utils.request import Request
+from utils.model import Model
 
 
 class OsImage(object):
@@ -61,6 +62,8 @@ class OsImage(object):
         self.osimage_plugins = Helper().plugin_finder(f'{plugins_path}/osimage')
         self.boot_plugins = Helper().plugin_finder(f'{plugins_path}/boot')
         self._stop_requested = False
+        self.table = 'osimage'
+        self.table_cap = 'OS Image'
 
     def _signal_stop(self, signum, frame):
         self.logger.warning(f"osimage_mother received signal {signum}, requesting graceful stop")
@@ -1019,6 +1022,14 @@ class OsImage(object):
             self.logger.warning(f"waiting for clashing queued task to finish: remove_osimage_path {image_path}")
             sleep(15)
 
+    def remove_osimage(self, osimage):
+        status, response = Model().delete_record(
+            name = osimage,
+            table = self.table,
+            table_cap = self.table_cap
+        )
+        return status
+
     # ------------------------------------------------------------------- 
     # The mother of all.
 
@@ -1111,6 +1122,9 @@ class OsImage(object):
                         elif not ret:
                             Queue().remove_task_from_queue(next_id)
                             Queue().remove_task_from_queue_by_request_id(request_id)
+                            self.remove_osimage(third)
+                            queue_id,queue_response = Queue().add_task_to_queue(task='remove_osimage_on_remote', param=third,
+                                                                                subsystem='housekeeper', request_id='__clone_failed__')
                             Status().add_message(request_id=request_id, username_initiator="luna", message="EOF")
                         else:
                             Queue().remove_task_from_queue(next_id)

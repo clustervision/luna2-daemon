@@ -349,7 +349,7 @@ class OSImage():
         return status, response
 
 
-    def clone_osimage(self, name=None, request_data=None):
+    def clone_osimage(self, name=None, create_only=False, request_data=None):
         """
         This method will clone a osimage.
         """
@@ -417,7 +417,7 @@ class OSImage():
                 if not img_id:
                     status = False
                     return status, "Internal error: Failed cloning image"
-                if nocopy is True:
+                if nocopy is True or create_only is True:
                     status = True
                     return status, "OS Image cloned successfully"
                 request_id  = str(time()) + str(randint(1001, 9999)) + str(getpid())

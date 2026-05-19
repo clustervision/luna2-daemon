@@ -42,6 +42,8 @@ class Plugin():
         postscript = runs before OS pivot
         """
 
+    # ====================== pre ========================
+
     prescript = """
 if [ ! -d /tmp ]; then mkdir /tmp; fi
 if [ ! -f /tmp/my-local-disk.sh ]; then
@@ -61,6 +63,8 @@ fi
 cat /tmp/my-local-disk.sh
 echo "*** RAID1 script: \$rootmnt: $rootmnt"
     """
+
+    # ====================== part =======================
 
     partscript = """
 . /tmp/my-local-disk.sh
@@ -133,40 +137,83 @@ echo "*** RAID1 script: waiting for partitions"
 while [[ ! -b ${MY_LOCAL_DISK1_NAME}${DP1}1 ]] || [[ ! -b ${MY_LOCAL_DISK1_NAME}${DP1}2 ]] || [[ ! -b ${MY_LOCAL_DISK1_NAME}${DP1}3 ]] || [[ ! -b ${MY_LOCAL_DISK1_NAME}${DP1}4 ]]; do echo -n .; sleep 1; done
 while [[ ! -b ${MY_LOCAL_DISK2_NAME}${DP2}1 ]] || [[ ! -b ${MY_LOCAL_DISK2_NAME}${DP2}2 ]] || [[ ! -b ${MY_LOCAL_DISK2_NAME}${DP2}3 ]] || [[ ! -b ${MY_LOCAL_DISK2_NAME}${DP2}4 ]]; do echo -n .; sleep 1; done; echo
 
+# -------------------------------------------------------------
+
+function get_md_device_by_member() {
+    local member="$1"
+    local md
+
+    for md in /dev/md/* /dev/md[0-9]*; do
+        [ -e "$md" ] || continue
+        mdadm --detail "$md" 2>/dev/null | grep -Fq "$member" && {
+            readlink -f "$md"
+            return 0
+        }
+    done
+    return 1
+}
+
+function set_md_device_path() {
+        # detect real md device instead of assuming /dev/md0
+        ROOT_MD=$(readlink -f /dev/md/node-root 2>/dev/null || true)
+        [ -z "$ROOT_MD" ] && ROOT_MD=$(get_md_device_by_member "${MY_LOCAL_DISK1_NAME}${DP1}4")
+        [ -z "$ROOT_MD" ] && ls /dev/md0 &> /dev/null && ROOT_MD=/dev/md0
+        [ -z "$ROOT_MD" ] && ls /dev/md127 &> /dev/null && ROOT_MD=/dev/md127
+        [ -z "$ROOT_MD" ] && ROOT_MD=/dev/md0
+        export ROOT_MD
+        echo "export ROOT_MD=${ROOT_MD}" > /tmp/root_md.sh
+}
+
+# -------------------------------------------------------------
+
 if [ "$FORMAT_MY_DISK" == "yes" ]; then
         echo "*** RAID1 script: formatting partitions"
+        mdadm --stop /dev/md0 /dev/md127 /dev/md126 2>/dev/null || true
+        mdadm --zero-superblock ${MY_LOCAL_DISK1_NAME}${DP1}4 ${MY_LOCAL_DISK2_NAME}${DP2}4 2>/dev/null || true
         mkfs.fat -F 16 ${MY_LOCAL_DISK1_NAME}${DP1}1
+        mkfs.fat -F 16 ${MY_LOCAL_DISK2_NAME}${DP2}1
         mkfs.ext4 ${MY_LOCAL_DISK1_NAME}${DP1}2
         MY_LOCAL_DISK1_UUID=$(blkid -o export ${MY_LOCAL_DISK1_NAME}${DP1}4 | grep -w UUID | awk -F '=' '{ print $2 }')
         MY_LOCAL_DISK2_UUID=$(blkid -o export ${MY_LOCAL_DISK2_NAME}${DP2}4 | grep -w UUID | awk -F '=' '{ print $2 }')
         # there is a fair share the RAID labeled disks are not availabe as a UUID block device. We test, try and move on.
         if [ "${MY_LOCAL_DISK1_UUID}" ] && [ "${MY_LOCAL_DISK2_UUID}" ] && [ -e /dev/disk/by-uuid/${MY_LOCAL_DISK1_UUID} ] && [ -e /dev/disk/by-uuid/${MY_LOCAL_DISK2_UUID} ]; then
             echo "*** RAID1 script: making RAID1 on [/dev/disk/by-uuid/${MY_LOCAL_DISK1_UUID}] + [/dev/disk/by-uuid/${MY_LOCAL_DISK2_UUID}]"
-            echo y | mdadm --create /dev/md0 --metadata 1.2 --bitmap=internal --force --assume-clean --level=mirror --raid-devices=2 /dev/disk/by-uuid/${MY_LOCAL_DISK1_UUID} /dev/disk/by-uuid/${MY_LOCAL_DISK2_UUID}
+            echo y | mdadm --create /dev/md0 --name=node-root --metadata 1.2 --bitmap=internal --force --assume-clean --level=mirror --raid-devices=2 /dev/disk/by-uuid/${MY_LOCAL_DISK1_UUID} /dev/disk/by-uuid/${MY_LOCAL_DISK2_UUID}
         else
             echo "*** RAID1 script: making RAID1 on [${MY_LOCAL_DISK1_NAME}${DP1}4] + [${MY_LOCAL_DISK2_NAME}${DP2}4]"
-            echo y | mdadm --create /dev/md0 --metadata 1.2 --bitmap=internal --force --assume-clean --level=mirror --raid-devices=2 ${MY_LOCAL_DISK1_NAME}${DP1}4 ${MY_LOCAL_DISK2_NAME}${DP2}4
+            echo y | mdadm --create /dev/md0 --name=node-root --metadata 1.2 --bitmap=internal --force --assume-clean --level=mirror --raid-devices=2 ${MY_LOCAL_DISK1_NAME}${DP1}4 ${MY_LOCAL_DISK2_NAME}${DP2}4
         fi
         sleep 3
-        mkfs.ext4 /dev/md0
+        udevadm settle || true
+        set_md_device_path
+        echo "*** RAID1 script: Using created ${ROOT_MD} as the Raid disk"
 
+        mkfs.ext4 "${ROOT_MD}"
         mkswap ${MY_LOCAL_DISK1_NAME}${DP1}3
         swaplabel -L swappart ${MY_LOCAL_DISK1_NAME}${DP1}3
         mkswap ${MY_LOCAL_DISK2_NAME}${DP2}3
         swaplabel -L swappart ${MY_LOCAL_DISK2_NAME}${DP2}3
+else
+        set_md_device_path
+        echo "*** RAID1 script: Using discovered ${ROOT_MD} as the Raid disk"
 fi
 echo "*** RAID1 script: mounting disks"
 umount -l "$rootmnt" &> /dev/null
-mount /dev/md0 "$rootmnt"
-mkdir "$rootmnt"/boot
+mount "${ROOT_MD}" "$rootmnt"
+mkdir -p "$rootmnt"/boot
 mount ${MY_LOCAL_DISK1_NAME}${DP1}2 "$rootmnt"/boot
-mkdir "$rootmnt"/boot/efi
+mkdir -p "$rootmnt"/boot/efi
 mount ${MY_LOCAL_DISK1_NAME}${DP1}1 "$rootmnt"/boot/efi
+mkdir -p "$rootmnt"/boot/efi2
+mount ${MY_LOCAL_DISK2_NAME}${DP2}1 "$rootmnt"/boot/efi2
     """
+
+    # ====================== post =======================
 
     postscript = """
 . /tmp/my-local-disk.sh
 . /tmp/my-fetch-disk.sh
+. /tmp/root_md.sh
 
 mkdir "$rootmnt"/proc "$rootmnt"/dev "$rootmnt"/sys &> /dev/null
 mount -t proc proc "$rootmnt"/proc 
@@ -187,13 +234,13 @@ if [ "$BYPATH2" ]; then
     FSTAB_DP2=$(echo $FSTAB_DISK2 | grep -i nvme &> /dev/null && echo p)
 fi
 
-FSTAB_MD0=$(blkid -o export /dev/md0 | grep -w UUID || echo '/dev/md0')
+FSTAB_MD0=$(blkid -o export ${ROOT_MD} | grep -w UUID || echo "${ROOT_MD}")
 FSTAB_DISK1_P1=$(blkid -o export ${FSTAB_DISK1}${FSTAB_DP1}1 | grep -w UUID || echo ${FSTAB_DISK1}${FSTAB_DP1}1)
 FSTAB_DISK1_P2=$(blkid -o export ${FSTAB_DISK1}${FSTAB_DP1}2 | grep -w UUID || echo ${FSTAB_DISK1}${FSTAB_DP1}2)
 FSTAB_DISK1_P3=$(blkid -o export ${FSTAB_DISK1}${FSTAB_DP1}3 | grep -w UUID || echo ${FSTAB_DISK1}${FSTAB_DP1}3)
 FSTAB_DISK2_P3=$(blkid -o export ${FSTAB_DISK2}${FSTAB_DP2}3 | grep -w UUID || echo ${FSTAB_DISK2}${FSTAB_DP2}3)
 
-grep -v -e md0 -e "${FSTAB_DISK1}" -e "${FSTAB_DISK2}" \
+grep -v -e md0 -e "${ROOT_MD}" -e "${FSTAB_DISK1}" -e "${FSTAB_DISK2}" \
     -e "${FSTAB_MD0}" -e "${FSTAB_DISK1_P1}" -e "${FSTAB_DISK1_P2}" \
     -e "${FSTAB_DISK1_P3}" -e "${FSTAB_DISK2_P3}" "$rootmnt"/etc/fstab > /tmp/fstab
 grep -v -w '/' /tmp/fstab > "$rootmnt"/etc/fstab
@@ -207,6 +254,7 @@ ${FSTAB_DISK2_P3}   swap    swap    defaults        0 0
 EOF
 
 if [ "$MAKE_BOOT" == "yes" ]; then
+    EFI_MIRROR_DIR="$rootmnt/boot/efi2"
     echo "*** RAID1 script: building new ramdisk"
     echo "AUTO -all" > "$rootmnt"/etc/mdadm.conf
     chroot "$rootmnt" /bin/bash -c "mdadm --detail --scan --verbose | grep ARRAY >> /etc/mdadm.conf"
@@ -228,20 +276,38 @@ if [ "$MAKE_BOOT" == "yes" ]; then
     cat /tmp/grub-def > "$rootmnt"/etc/default/grub
     echo "$GRUB_CMDLINE_LINUX" >> "$rootmnt"/etc/default/grub
 
-    OS_ID=$(chroot "$rootmnt" /bin/bash -c '. /etc/os-release >/dev/null 2>&1; echo $ID')
-    DISTRO=$(ls "$rootmnt"/boot/efi/EFI/ 2>/dev/null | grep -im1 -e ubuntu -e rocky -e redhat -e alma -e centos)
-    if [ ! "$DISTRO" ]; then
-        case "$OS_ID" in
-            ubuntu|rocky|redhat|alma|centos) DISTRO=$OS_ID ;;
-            *) DISTRO=rocky ;;
-        esac
-    fi
+    OS_ID=$(chroot "$rootmnt" /bin/bash -c '. /etc/os-release >/dev/null 2>&1; echo ${ID:-unknown}')
+    DISTRO=$(ls "$rootmnt"/boot/efi/EFI/ 2>/dev/null | grep -im1 -e ubuntu -e opensuse -e rocky -e redhat -e alma -e centos)
+    BOOTLOADER_ID=
+    case "$OS_ID" in
+        ubuntu)
+            DISTRO=ubuntu
+            BOOTLOADER_ID=ubuntu
+            EFI_CFG=/boot/grub/grub.cfg
+            ;;
+        opensuse*|opensuse-leap|sled|sles|sle_hpc)
+            DISTRO=opensuse
+            BOOTLOADER_ID=opensuse
+            EFI_CFG=/boot/grub2/grub.cfg
+            ;;
+        rocky|redhat|alma|centos)
+            [ "$DISTRO" ] || DISTRO=$OS_ID
+            BOOTLOADER_ID=$DISTRO
+            EFI_CFG=/boot/efi/EFI/${DISTRO}/grub.cfg
+            ;;
+        *)
+            [ "$DISTRO" ] || DISTRO=$OS_ID
+            [ "$DISTRO" ] || DISTRO=linux
+            BOOTLOADER_ID=$DISTRO
+            EFI_CFG=/boot/efi/EFI/${DISTRO}/grub.cfg
+            ;;
+    esac
 
     EFI_TARGET=x86_64-efi
     EFI_SHIM=shimx64.efi
     EFI_GRUB=grubx64.efi
     EFI_BOOT=BOOTX64.EFI
-    if chroot "$rootmnt" /bin/bash -c "[ -e /usr/lib/shim/shimaa64.efi.signed ] || uname -m | grep -Eq '^(aarch64|arm64)$'"; then
+    if chroot "$rootmnt" /bin/bash -c "uname -m | grep -Eq '^(aarch64|arm64)$'"; then
         EFI_TARGET=arm64-efi
         EFI_SHIM=shimaa64.efi
         EFI_GRUB=grubaa64.efi
@@ -251,37 +317,29 @@ if [ "$MAKE_BOOT" == "yes" ]; then
     CHROOT_GRUB_INSTALL=$(chroot "$rootmnt" /bin/bash -c 'if command -v grub2-install >/dev/null 2>&1; then echo grub2-install; elif command -v grub-install >/dev/null 2>&1; then echo grub-install; fi')
     CHROOT_GRUB_MKCONFIG=$(chroot "$rootmnt" /bin/bash -c 'if command -v grub2-mkconfig >/dev/null 2>&1; then echo grub2-mkconfig; elif command -v grub-mkconfig >/dev/null 2>&1; then echo grub-mkconfig; fi')
 
-    EFI_CFG=/boot/efi/EFI/${DISTRO}/grub.cfg
-    BOOT_COPY_DIR=""
-    if [ "$OS_ID" == "ubuntu" ]; then
-        DISTRO=ubuntu
-        EFI_CFG=/boot/grub/grub.cfg
-        if [ "$EFI_TARGET" == "arm64-efi" ]; then
-            BOOT_COPY_DIR="$rootmnt/boot/efi/EFI/BOOT"
-        fi
-    fi
+    BOOT_COPY_DIR="$rootmnt/boot/efi/EFI/BOOT"
 
     if [ "$CHROOT_GRUB_INSTALL" ]; then
-        echo "*** RAID1 script: installing ${DISTRO} EFI bootloader [$EFI_TARGET]"
+        echo "*** RAID1 script: installing ${BOOTLOADER_ID} EFI bootloader [$EFI_TARGET]"
         for EXTRA in '' '--removable'; do
-            chroot "$rootmnt" /bin/bash -c "$CHROOT_GRUB_INSTALL --target=${EFI_TARGET} --efi-directory=/boot/efi --bootloader-id=${DISTRO} ${EXTRA} --no-nvram"
+            chroot "$rootmnt" /bin/bash -c "$CHROOT_GRUB_INSTALL --target=${EFI_TARGET} --efi-directory=/boot/efi --bootloader-id=${BOOTLOADER_ID} ${EXTRA} --no-nvram"
         done
     fi
 
     if [ "$BOOT_COPY_DIR" ]; then
         mkdir -p "$BOOT_COPY_DIR"
-        [ -e "$rootmnt"/boot/efi/EFI/${DISTRO}/${EFI_SHIM} ] && cp -f "$rootmnt"/boot/efi/EFI/${DISTRO}/${EFI_SHIM} "$BOOT_COPY_DIR/${EFI_BOOT}"
-        [ -e "$rootmnt"/boot/efi/EFI/${DISTRO}/${EFI_GRUB} ] && cp -f "$rootmnt"/boot/efi/EFI/${DISTRO}/${EFI_GRUB} "$BOOT_COPY_DIR/${EFI_GRUB}"
+        [ -e "$rootmnt"/boot/efi/EFI/${BOOTLOADER_ID}/${EFI_SHIM} ] && cp -f "$rootmnt"/boot/efi/EFI/${BOOTLOADER_ID}/${EFI_SHIM} "$BOOT_COPY_DIR/${EFI_BOOT}"
+        [ -e "$rootmnt"/boot/efi/EFI/${BOOTLOADER_ID}/${EFI_GRUB} ] && cp -f "$rootmnt"/boot/efi/EFI/${BOOTLOADER_ID}/${EFI_GRUB} "$BOOT_COPY_DIR/${EFI_GRUB}"
     fi
 
     EFI_LOADER=$EFI_SHIM
-    [ ! -e "$rootmnt"/boot/efi/EFI/${DISTRO}/${EFI_LOADER} ] && EFI_LOADER=$EFI_GRUB
+    [ ! -e "$rootmnt"/boot/efi/EFI/${BOOTLOADER_ID}/${EFI_LOADER} ] && EFI_LOADER=$EFI_GRUB
 
-    if [ -e "$rootmnt"/boot/efi/EFI/${DISTRO}/${EFI_LOADER} ]; then
+    if [ -e "$rootmnt"/boot/efi/EFI/${BOOTLOADER_ID}/${EFI_LOADER} ]; then
         BOOT_DISK=$(readlink -f ${MY_LOCAL_DISK1_NAME} 2>/dev/null || echo ${MY_LOCAL_DISK1_NAME})
         SH=$(chroot "$rootmnt" /bin/bash -c "efibootmgr -v 2>/dev/null|grep Shim1|grep -oE '^Boot[0-9]+'|grep -oE '[0-9]+'")
         [ "$SH" ] && chroot "$rootmnt" /bin/bash -c "efibootmgr -B -b $SH"
-        chroot "$rootmnt" /bin/bash -c "if command -v efibootmgr >/dev/null 2>&1 && efibootmgr -v >/dev/null 2>&1; then efibootmgr --disk "${BOOT_DISK}" --part 1 --create --label "Shim1" --loader /EFI/${DISTRO}/${EFI_LOADER}; else echo '*** RAID1 script: efibootmgr unavailable or EFI vars inaccessible, relying on fallback bootloader'; fi"
+        chroot "$rootmnt" /bin/bash -c "if command -v efibootmgr >/dev/null 2>&1 && efibootmgr -v >/dev/null 2>&1; then efibootmgr --disk "${BOOT_DISK}" --part 1 --create --label "Shim1" --loader /EFI/${BOOTLOADER_ID}/${EFI_LOADER}; else echo '*** RAID1 script: efibootmgr unavailable or EFI vars inaccessible, relying on fallback bootloader'; fi"
     fi
 
     if [ "$CHROOT_GRUB_MKCONFIG" ]; then
@@ -290,6 +348,12 @@ if [ "$MAKE_BOOT" == "yes" ]; then
     if [ "$BOOT_COPY_DIR" ] && [ -e "$rootmnt${EFI_CFG}" ]; then
         cp -f "$rootmnt${EFI_CFG}" "$BOOT_COPY_DIR/grub.cfg"
     fi
+    if mount | grep -F " on $EFI_MIRROR_DIR " >/dev/null 2>&1; then
+        mkdir -p "$EFI_MIRROR_DIR/EFI"
+        rm -rf "$EFI_MIRROR_DIR/EFI/${BOOTLOADER_ID}" "$EFI_MIRROR_DIR/EFI/BOOT"
+        cp -a "$rootmnt/boot/efi/EFI/${BOOTLOADER_ID}" "$EFI_MIRROR_DIR/EFI/"
+        cp -a "$rootmnt/boot/efi/EFI/BOOT" "$EFI_MIRROR_DIR/EFI/"
+    fi
     # commented out next command as it imposes reboots. When netboot is set to no and with correct bios settings,
     # this would impose desired behavior. To cover all bases, we now relabel before the pivot. See below.
     #$null > "$rootmnt"/.autorelabel
@@ -297,6 +361,7 @@ fi
 
 chroot "$rootmnt" /bin/bash -c "cd /boot && ln -s /boot boot; restorecon -r -p / 2> /dev/null"
 
+umount "$rootmnt"/boot/efi2 2> /dev/null
 umount "$rootmnt"/sys
 umount "$rootmnt"/dev
 umount "$rootmnt"/proc

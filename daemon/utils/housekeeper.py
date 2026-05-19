@@ -128,7 +128,10 @@ class Housekeeper(object):
                                 if first and len(first) > 2 and first.startswith('/'):
                                     if os.path.exists(first):
                                         self.logger.info(f"Removing path {first}")
-                                        shutil.rmtree(first)
+                                        try:
+                                            shutil.rmtree(first)
+                                        except Exception as exp:
+                                            self.logger.error(f"while deleting {first} i encountered: {exp}")
                                     else:
                                         self.logger.error(f"Path {first} does not exist. Cannot remove")
                                 else:

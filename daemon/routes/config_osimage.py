@@ -35,6 +35,7 @@ __status__      = "Development"
 
 from json import dumps
 from flask import Blueprint, request
+from copy import deepcopy
 from utils.log import Log
 from common.validate_auth import token_required
 from common.validate_input import input_filter, validate_name
@@ -199,7 +200,8 @@ def config_osimage_clone(name=None):
                 response={'message': message}
                 return response, access_code
         else:
-            returned = OSImage().clone_osimage(name, True, request.data)
+            request_data_copy = deepcopy(request.data)
+            returned = OSImage().clone_osimage(name, True, request_data_copy)
             status=returned[0]
             response=returned[1]
             if status is False:

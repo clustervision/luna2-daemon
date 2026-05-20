@@ -59,7 +59,7 @@ else
   echo "** DISKFULL script: my-local-disk override found"
 fi
 cat /tmp/my-local-disk.sh
-echo "*** DISKFULL script \\$rootmnt: $rootmnt"
+echo "*** DISKFULL script \$rootmnt: $rootmnt"
     """
 
     # ====================== part========================
@@ -74,7 +74,7 @@ if [ "$BYUUID" ]; then
     echo "*** DISKFULL script: UUID translates to $MY_LOCAL_DISK_NAME"
 fi
 if [ ! -e $MY_LOCAL_DISK_NAME ]; then
-    echo "!!! DISKFULL script: \\$MY_LOCAL_DISK_NAME [$MY_LOCAL_DISK_NAME] does not exist - Have to STOP !!!"
+    echo "!!! DISKFULL script: \$MY_LOCAL_DISK_NAME [$MY_LOCAL_DISK_NAME] does not exist - Have to STOP !!!"
     exit 1
 fi
 export DP=$(echo $MY_LOCAL_DISK_NAME | grep -i nvme &> /dev/null && echo p)

@@ -109,7 +109,9 @@ if [ "$PARTITION_MY_DISK" == "yes" ]; then
         udevadm settle || true
 fi
 echo "*** DISKFULL script: waiting for partitions"
-while [[ ! -b ${MY_LOCAL_DISK_NAME}${DP}1 ]] || [[ ! -b ${MY_LOCAL_DISK_NAME}${DP}2 ]] || [[ ! -b ${MY_LOCAL_DISK_NAME}${DP}3 ]] || [[ ! -b ${MY_LOCAL_DISK_NAME}${DP}4 ]]; do sleep 1; done
+WAIT_DISK=$(readlink -f ${MY_LOCAL_DISK_NAME} 2>/dev/null || echo ${MY_LOCAL_DISK_NAME})
+WAIT_DP=$(echo $WAIT_DISK | grep -i nvme &>/dev/null && echo p || true)
+while [[ ! -b ${WAIT_DISK}${WAIT_DP}1 ]] || [[ ! -b ${WAIT_DISK}${WAIT_DP}2 ]] || [[ ! -b ${WAIT_DISK}${WAIT_DP}3 ]] || [[ ! -b ${WAIT_DISK}${WAIT_DP}4 ]]; do sleep 1; done
 
 if [ "$FORMAT_MY_DISK" == "yes" ]; then
         echo "*** DISKFULL script: formatting partitions"
@@ -123,9 +125,9 @@ fi
 echo "*** DISKFULL script: mounting disks"
 umount -l "$rootmnt" &> /dev/null
 mount ${MY_LOCAL_DISK_NAME}${DP}4 "$rootmnt"
-mkdir "$rootmnt"/boot
+mkdir -p "$rootmnt"/boot
 mount ${MY_LOCAL_DISK_NAME}${DP}2 "$rootmnt"/boot
-mkdir "$rootmnt"/boot/efi
+mkdir -p "$rootmnt"/boot/efi
 mount ${MY_LOCAL_DISK_NAME}${DP}1 "$rootmnt"/boot/efi
     """
 
@@ -251,7 +253,23 @@ if [ "$MAKE_BOOT" == "yes" ]; then
         BOOT_DISK=$(readlink -f ${MY_LOCAL_DISK_NAME} 2>/dev/null || echo ${MY_LOCAL_DISK_NAME})
         SH=$(chroot "$rootmnt" /bin/bash -c "efibootmgr -v 2>/dev/null|grep Shim1|grep -oE '^Boot[0-9]+'|grep -oE '[0-9]+'")
         [ "$SH" ] && chroot "$rootmnt" /bin/bash -c "efibootmgr -B -b $SH"
-        chroot "$rootmnt" /bin/bash -c "if command -v efibootmgr >/dev/null 2>&1 && efibootmgr -v >/dev/null 2>&1; then efibootmgr --disk \"${BOOT_DISK}\" --part 1 --create --label \"Shim1\" --loader /EFI/${BOOTLOADER_ID}/${EFI_LOADER}; else echo '*** DISKFULL script: efibootmgr unavailable or EFI vars inaccessible, relying on fallback bootloader'; fi"
+        cat << 'EFISCRIPT' > "$rootmnt"/tmp/shim_boot.sh
+#!/bin/bash
+if ! command -v efibootmgr >/dev/null 2>&1 || ! efibootmgr -v >/dev/null 2>&1; then
+    echo '*** DISKFULL script: efibootmgr unavailable or EFI vars inaccessible, relying on fallback bootloader'
+    exit 0
+fi
+efibootmgr --disk "$1" --part 1 --create --label "Shim1" --loader "/EFI/$2/$3" >/dev/null
+NEW=$(efibootmgr 2>/dev/null | grep -i Shim1 | grep -oE '^Boot[0-9]+' | grep -oE '[0-9]+' | head -1)
+[ -z "$NEW" ] && exit 0
+OLD=$(efibootmgr 2>/dev/null | grep '^BootOrder' | sed 's/BootOrder: //')
+REORDERED=$(echo "$OLD" | tr ',' '\n' | grep -v "^${NEW}$" | tr '\n' ',' | sed 's/,$//')
+NEW_ORDER="${REORDERED},${NEW}"
+efibootmgr -o "$NEW_ORDER" >/dev/null
+echo "*** DISKFULL script: Shim1 (Boot${NEW}) added as last boot entry (BootOrder: ${NEW_ORDER})"
+EFISCRIPT
+        chmod 755 "$rootmnt"/tmp/shim_boot.sh
+        chroot \"$rootmnt\" /bin/bash /tmp/shim_boot.sh \"${BOOT_DISK}\" \"${BOOTLOADER_ID}\" \"${EFI_LOADER}\"\n        rm -f "$rootmnt"/tmp/shim_boot.sh
     fi
 
     if [ "$CHROOT_GRUB_MKCONFIG" ]; then

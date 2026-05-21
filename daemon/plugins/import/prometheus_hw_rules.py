@@ -141,7 +141,7 @@ class Plugin():
         # Aggregate count by all relevant fields
         label_fields = ",".join(self.prometheus_rules_component_fields)
         query = (
-            f'count(lshw_device{{class=~"processor|memory|disk|network|display", hostname="{nodename}", description!~"Virt|virt|USB"}})'
+            f'count(lshw_device{{class=~"processor|memory|disk|network|display", hostname="{nodename}", description!~"Virt|virt|USB", product!~"Virt.*"}})'
             f' by ({label_fields})'
         )
         response = requests.get(

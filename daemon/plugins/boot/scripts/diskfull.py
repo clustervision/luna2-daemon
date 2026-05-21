@@ -220,15 +220,15 @@ if [ "$MAKE_BOOT" == "yes" ]; then
     if [ "$OS_ID" == "ubuntu" ]; then
         SHIM_SRC=$(ls "$rootmnt"/usr/lib/shim/${EFI_SHIM}.dualsigned \
                       "$rootmnt"/usr/lib/shim/${EFI_SHIM}.signed \
-                      "$rootmnt"/usr/lib/shim/${EFI_SHIM} 2>/dev/null | head -1)
-        GRUB_SIGNED_SRC=$(ls "$rootmnt"/usr/lib/grub/${EFI_TARGET}-signed/${EFI_GRUB}.signed 2>/dev/null | head -1)
+                      "$rootmnt"/usr/lib/shim/${EFI_SHIM} 2>/dev/null | awk 'NR==1')
+        GRUB_SIGNED_SRC=$(ls "$rootmnt"/usr/lib/grub/${EFI_TARGET}-signed/${EFI_GRUB}.signed 2>/dev/null | awk 'NR==1')
         if [ "$SHIM_SRC" ] || [ "$GRUB_SIGNED_SRC" ]; then
             echo "*** DISKFULL script: populating Ubuntu EFI/ubuntu/ with shim + signed grub"
             mkdir -p "$rootmnt/boot/efi/EFI/ubuntu"
             [ "$SHIM_SRC" ]        && cp -f "$SHIM_SRC"        "$rootmnt/boot/efi/EFI/ubuntu/${EFI_SHIM}"
             [ "$GRUB_SIGNED_SRC" ] && cp -f "$GRUB_SIGNED_SRC" "$rootmnt/boot/efi/EFI/ubuntu/${EFI_GRUB}"
             # also copy mmX64 / MOK manager if present
-            MM_SRC=$(ls "$rootmnt"/usr/lib/shim/mm${EFI_SHIM#shim} 2>/dev/null | head -1)
+            MM_SRC=$(ls "$rootmnt"/usr/lib/shim/mm${EFI_SHIM#shim} 2>/dev/null | awk 'NR==1')
             [ "$MM_SRC" ] && cp -f "$MM_SRC" "$rootmnt/boot/efi/EFI/ubuntu/mm${EFI_SHIM#shim}"
         fi
     fi
@@ -260,7 +260,7 @@ if ! command -v efibootmgr >/dev/null 2>&1 || ! efibootmgr -v >/dev/null 2>&1; t
     exit 0
 fi
 efibootmgr --disk "$1" --part 1 --create --label "Shim1" --loader "/EFI/$2/$3" >/dev/null
-NEW=$(efibootmgr 2>/dev/null | grep -i Shim1 | grep -oE '^Boot[0-9]+' | grep -oE '[0-9]+' | head -1)
+NEW=$(efibootmgr 2>/dev/null | grep -i Shim1 | grep -oE '^Boot[0-9]+' | grep -m1 -oE '[0-9]+')
 [ -z "$NEW" ] && exit 0
 OLD=$(efibootmgr 2>/dev/null | grep '^BootOrder' | sed 's/BootOrder: //')
 REORDERED=$(echo "$OLD" | tr ',' '\n' | grep -v "^${NEW}$" | tr '\n' ',' | sed 's/,$//')

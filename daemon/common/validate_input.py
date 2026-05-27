@@ -294,7 +294,7 @@ def filter_data(data=None, name=None):
                 data = re.sub(r"" + rep, CONVERT[MATCH[name]][rep], data)
             LOGGER.debug(f"CONVERT OUT {MATCH[name]} = {data}")
     else:
-        LOGGER.error(f"Filter match problem. {name} does not exist in MATCH")
+        LOGGER.debug(f"Filter match problem. {name} does not exist in MATCH")
     return data
 
 

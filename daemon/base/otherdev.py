@@ -274,11 +274,7 @@ class OtherDev():
                                 if avail:
                                     ipaddress6 = avail
                         else:
-                            where = [{"column": "id", "value": device_id}]
-                            Database().delete_row(self.table, where)
-                            # roll back
-                            status=False
-                            return status, 'Invalid request: Network and ipaddress not provided'
+                            return True, 'Device cloned without network or ipaddress'
                     if ipaddress:
                         result, message = Config().device_ipaddress_config(
                             device_id,
@@ -298,12 +294,12 @@ class OtherDev():
                         Database().delete_row(self.table, where)
                         # roll back
                         status=False
-                        response = f'{message}'
+                        response = f'Invalid request: {message}'
                     else:
                         Service().queue('dhcp', 'restart')
                         Service().queue('dhcp6','restart')
                         Service().queue('dns', 'reload')
-                        response = 'Device created'
+                        response = 'Device cloned'
                 else:
                     response = 'Invalid request: Columns are incorrect'
                     status=False

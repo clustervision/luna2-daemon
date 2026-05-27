@@ -296,11 +296,7 @@ class Switch():
                                 if avail:
                                     ipaddress6 = avail
                         else:
-                            where = [{"column": "id", "value": switch_id}]
-                            Database().delete_row(self.table, where)
-                            # roll back
-                            status=False
-                            return status, 'Invalid request: Network and ipaddress not provided'
+                            return True, 'Switch cloned without network or ipaddress'
                     if ipaddress:
                         result, message = Config().device_ipaddress_config(
                             switch_id,
@@ -320,12 +316,12 @@ class Switch():
                         Database().delete_row(self.table, where)
                         # roll back
                         status=False
-                        response = f'{message}'
+                        response = f'Invalid request: {message}'
                     else:
                         Service().queue('dhcp', 'restart')
                         Service().queue('dhcp6', 'restart')
                         Service().queue('dns', 'reload')
-                        response = 'Switch created'
+                        response = 'Switch cloned'
                 else:
                     response = 'Invalid request: Columns are incorrect'
                     status=False

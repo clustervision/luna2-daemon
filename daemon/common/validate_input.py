@@ -97,7 +97,7 @@ MATCH = {
     'osimagetag': 'nameandclear',
     'roles': 'loosecsv',
     'scripts': 'loosecsv',
-    'tag': 'anything',
+    'tag': 'nameandclear',
     'interface': 'minimal',
     'newinterfacename': 'interface',
     'gateway_metric': 'integer',
@@ -112,6 +112,7 @@ MAXLENGTH = {
     'host': 63,
     'newosimage': 127,
     'osimagetag': 127,
+    'tag': 127,
     'name': 253,
     'newnetname': 253,
     'domainname': 253
@@ -127,8 +128,7 @@ STRICT_NAMES = ['config_node_get','config_node_post','config_node_clone','config
                 'config_network_get','config_network_post','config_network_delete','config_network_ip',
                 'config_network_taken','config_network_nextip']
 
-STRICT_MATCHES = {'config_network_get': 'domainname', 'config_network_post': 'domainname',
-                  'config_network_ip': 'domainname'}
+STRICT_MATCHES = {'config_network_get': 'domainname', 'config_network_post': 'domainname'}
 
 ERROR = None
 SKIP_LIST = []

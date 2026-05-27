@@ -274,6 +274,9 @@ class OtherDev():
                                 if avail:
                                     ipaddress6 = avail
                         else:
+                            where = [{"column": "id", "value": device_id}]
+                            Database().delete_row(self.table, where)
+                            # roll back
                             status=False
                             return status, 'Invalid request: Network and ipaddress not provided'
                     if ipaddress:

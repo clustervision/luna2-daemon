@@ -57,10 +57,11 @@ REG_EXP = {
     'intfandclear': { 'regexp': r'^[a-zA-Z0-9\.\-\:]{3,}|$', 'error': 'combination of minimal 3 small characters a-z A-Z, numbers 0-9, \'.\', \':\', \'-\' and \',\'' },
     'ipaddress': { 'regexp': r'^[0-9a-f:\.]+$', 'error': 'combination of characters small a-f, numbers 0-9, \':\' and \'.\'' },
     'macaddress': { 'regexp': r'^(([0-9A-Fa-f]{2}((-|:)[0-9A-Za-f]{2}){5})|)$', 'error': '6 blocks of 2 characters a-f or numbers 0-9, separated by \':\' or \'-\'' },
+    'domainname': { 'regexp': r'^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)*[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.?$', 'error': "lowercase a-z, numbers 0-9, '-', labels 1-63 chars, labels not starting/ending with '-'" },
     'minimal': { 'regexp': r'^\S.*$', 'error': 'minimal character requirement. at least one' },
     'integer': { 'regexp': r'^[0-9]+$', 'error': 'integers only' },
     'intandnone': { 'regexp': r'^[0-9]*$', 'error': 'integers or empty only' },
-    'anything': { 'regexp': r'', 'error': 'anything' },
+    'anything': { 'regexp': r'', 'error': 'anything' }
 }
 RESERVED = {
     'name': ['default','inventory'],
@@ -73,6 +74,7 @@ CONVERT = {
     'vlan_parent': {'-':':'},
     'name': {r'\.+':'.'},
     'strictname': {r'\.+':'.'},
+    'domainname': {r'\.+':'.'}
 }
 MATCH = {
     'name': 'name',
@@ -84,14 +86,15 @@ MATCH = {
     'newswitchname': 'strictname',
     'newotherdevicename': 'strictname',
     'newotherdevname': 'strictname',
-    'newnetname': 'strictname',
+    'newnetname': 'domainname',
+    'domainname': 'domainname',
     'ipaddress': 'ipaddress',
     'macaddress': 'macaddress',
     'newosimage': 'name',
     'newgroupname': 'name',
     'newbmcname': 'name',
     'newsecretname': 'name',
-    'osimagetag': 'anything',
+    'osimagetag': 'nameandclear',
     'roles': 'loosecsv',
     'scripts': 'loosecsv',
     'tag': 'anything',
@@ -104,9 +107,14 @@ MATCH = {
     'bond_slaves': 'interfacecsv'
 }
 MAXLENGTH = {
-    'request_id': '256',
-    'newnodename': '63',
-    'host': '63'
+    'request_id': 256,
+    'newnodename': 63,
+    'host': 63,
+    'newosimage': 127,
+    'osimagetag': 127,
+    'name': 253,
+    'newnetname': 253,
+    'domainname': 253
 }
 
 # Strict names is a bit of a hack where i use the name of the function to determine whether we have
@@ -118,6 +126,9 @@ STRICT_NAMES = ['config_node_get','config_node_post','config_node_clone','config
                 'config_otherdev','config_otherdev_get','config_otherdev_post','config_otherdev_clone','config_otherdev_delete',
                 'config_network_get','config_network_post','config_network_delete','config_network_ip',
                 'config_network_taken','config_network_nextip']
+
+STRICT_MATCHES = {'config_network_get': 'domainname', 'config_network_post': 'domainname',
+                  'config_network_ip': 'domainname'}
 
 ERROR = None
 SKIP_LIST = []
@@ -132,11 +143,16 @@ def input_filter(checks=None, skip=None, json=True):
             global SKIP_LIST
             global ERROR
             global STRICT_NAME
+            global STRICT_MATCH
             data=None
             ERROR = None
             STRICT_NAME = True
+            STRICT_MATCH = None
             if function.__name__ not in STRICT_NAMES:
                 STRICT_NAME = False
+            elif function.__name__ in STRICT_MATCHES.keys():
+                STRICT_MATCH = STRICT_MATCHES[function.__name__]
+            LOGGER.debug(f"STRICT CHECKING: STRICT_NAME: {STRICT_NAME}, STRICT_MATCH: {STRICT_MATCH}")
             if json:
                 if not Helper().check_json(request.data):
                     response = {'message': "data is not valid json"}
@@ -182,9 +198,14 @@ def validate_name(function):
     @wraps(function)
     def decorator(*args, **kwargs):
         global STRICT_NAME
+        global STRICT_MATCH
         STRICT_NAME = True
+        STRICT_MATCH = None
         if function.__name__ not in STRICT_NAMES:
             STRICT_NAME = False
+        elif function.__name__ in STRICT_MATCHES.keys():
+            STRICT_MATCH = STRICT_MATCHES[function.__name__]
+        LOGGER.debug(f"STRICT CHECKING: STRICT_NAME: {STRICT_NAME}, STRICT_MATCH: {STRICT_MATCH}")
         for name_key, name_value in kwargs.items():
             global ERROR
             filter_data(name_value, name_key)
@@ -240,8 +261,8 @@ def filter_data(data=None, name=None):
     """
     global ERROR
     if STRICT_NAME and name == 'name':
-        name='strictname'
-        LOGGER.debug("Applying strict name rules")
+        name=STRICT_MATCH or 'strictname'
+        LOGGER.debug(f"Applying strict {name} rules")
     if name in SKIP_LIST:
         LOGGER.debug(f"Skipping filter on {name}")
         return data
@@ -249,7 +270,7 @@ def filter_data(data=None, name=None):
     data = data.replace("'", "")
     data = data.replace('"', "")
     if name in MAXLENGTH.keys():
-        if len(data) > int(MAXLENGTH[name]):
+        if len(data) > MAXLENGTH[name]:
             LOGGER.info(f"length of {name} exceeds {MAXLENGTH[name]}")
             ERROR = f"length of {name} exceeds {MAXLENGTH[name]}"
             return
@@ -272,6 +293,8 @@ def filter_data(data=None, name=None):
                 #data = data.replace(rep ,CONVERT[MATCH[name]][rep])
                 data = re.sub(r"" + rep, CONVERT[MATCH[name]][rep], data)
             LOGGER.debug(f"CONVERT OUT {MATCH[name]} = {data}")
+    else:
+        LOGGER.error(f"Filter match problem. {name} does not exist in MATCH")
     return data
 
 

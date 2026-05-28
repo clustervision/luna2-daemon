@@ -56,7 +56,7 @@ class Group():
         """
         This method will return all the groups in detailed format.
         """
-        overrides = ['provision_interface','provision_method','provision_fallback','kerneloptions']
+        overrides = ['provision_interface','provision_method','provision_fallback','kerneloptions','ipxe_kernel']
         osimages = Database().get_record(table='osimage')
         bmcsetups = Database().get_record(table='bmcsetup')
         osimage = Helper().convert_list_to_dict(osimages, 'id')
@@ -128,9 +128,10 @@ class Group():
             'provision_interface':'BOOTIF',
             'provision_method': 'torrent',
             'provision_fallback': 'http',
-            'kerneloptions': None
+            'kerneloptions': None,
+            'ipxe_kernel': 'default'
         }
-        overrides = ['provision_interface','provision_method','provision_fallback','kerneloptions']
+        overrides = ['provision_interface','provision_method','provision_fallback','kerneloptions','ipxe_kernel']
         # same as above but now specifically base64
         b64items = {'prescript': '', 'partscript': '', 'postscript': ''}
         cluster = Database().get_record(table='cluster')
@@ -283,7 +284,8 @@ class Group():
             'postscript': 'ZWNobyAndG1wZnMgLyB0bXBmcyBtcG9sPWludGVybGVhdmUgMCAwJyA+PiAvc3lzcm9vdC9ldGMvZnN0YWIK',
             'setupbmc': False,
             'netboot': True,
-            'bootmenu': False
+            'bootmenu': False,
+            'ipxe_kernel': 'default'
         }
         create, update = False, False
         if request_data:
@@ -346,6 +348,10 @@ class Group():
                 if item in data and data[item]:
                     if data['provision_method']+'.py' not in boot_plugins['boot']['provision']:
                         return False, f'Invalid request: provisioning plugin {data[item]} does not exist'
+            if 'ipxe_kernel' in data and data['ipxe_kernel']:
+                data['ipxe_kernel'] = str(data['ipxe_kernel']).strip().lower()
+                if data['ipxe_kernel'] not in ['default', 'alternative']:
+                    return False, 'Invalid request: ipxe_kernel must be default or alternative'
 
             # we reset to make sure we don't add something that won't work
             if 'osimage' in data:

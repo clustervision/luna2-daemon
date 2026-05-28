@@ -76,12 +76,15 @@ class Config(object):
 
     def ipxe_bootfiles(self, ipxe_kernel=None):
         """Return architecture-specific iPXE boot filenames for the selected kernel."""
-        if self.normalize_ipxe_kernel(ipxe_kernel) == 'alternative':
+        normalized = self.normalize_ipxe_kernel(ipxe_kernel) or 'default'
+        if normalized == 'alternative':
             return {
+                'class': 'ipxe-kernel-alternative',
                 'x86_64': 'luna_snponly.efi',
                 'arm64': 'luna_snponly_arm64.efi'
             }
         return {
+            'class': 'ipxe-kernel-default',
             'x86_64': 'luna_ipxe.efi',
             'arm64': 'luna_ipxe_arm64.efi'
         }
@@ -354,6 +357,7 @@ class Config(object):
                                 config_host6['domain']=nwkdomain
                                 config_host6['ipaddress']=interface['ipaddress_ipv6']
                                 config_host6['macaddress']=interface['macaddress']
+                                config_host6['ipxe_kernel_class']=ipxe_bootfiles['class']
                                 config_host6['ipxe_bootfile']=ipxe_bootfiles['x86_64']
                                 config_host6['ipxe_bootfile_arm64']=ipxe_bootfiles['arm64']
                                 next_server = self.dhcp_reservation_nextserver(
@@ -369,6 +373,7 @@ class Config(object):
                                 config_host['domain']=nwkdomain
                                 config_host['ipaddress']=interface['ipaddress']
                                 config_host['macaddress']=interface['macaddress']
+                                config_host['ipxe_kernel_class']=ipxe_bootfiles['class']
                                 config_host['ipxe_bootfile']=ipxe_bootfiles['x86_64']
                                 config_host['ipxe_bootfile_arm64']=ipxe_bootfiles['arm64']
                                 next_server = self.dhcp_reservation_nextserver(

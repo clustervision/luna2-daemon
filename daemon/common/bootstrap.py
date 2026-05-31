@@ -343,6 +343,7 @@ def bootstrap(bootstrapfile=None):
             {'column': 'createnode_ondemand', 'value': '1'},
             {'column': 'createnode_macashost', 'value': '0'},
             {'column': 'nextnode_discover', 'value': '0'},
+            {'column': 'bind_legacy', 'value': '0'},
             {'column': 'nameserver_ip', 'value': defaultserver_ip},
             {'column': 'forwardserver_ip', 'value': forwardserver_ip},
             {'column': 'domain_search', 'value': domain_search},

@@ -64,7 +64,8 @@ class Cluster():
             cluster_id = cluster[0]['id']
             del cluster[0]['id']
             for item in ['debug','security','createnode_ondemand','createnode_macashost',
-                         'nextnode_discover','packing_bootpause']:
+                         'nextnode_discover','packing_bootpause','bind_legacy',
+                         'dnssec_enable','dnssec_validation']:
                 cluster[0][item] = Helper().make_bool(cluster[0][item])
             response = {'config': {'cluster': cluster[0] }}
             controllers = Database().get_record_join(
@@ -142,7 +143,8 @@ class Cluster():
         status=False
         response="Internal error"
         items = {'debug': False, 'security': False, 'createnode_ondemand': True,
-                 'createnode_macashost': True, 'nextnode_discover': False}
+                 'createnode_macashost': True, 'nextnode_discover': False,
+                 'bind_legacy': False}
         if request_data:
             data = request_data['config']['cluster']
             if (len(data.keys()) < 1):
@@ -293,6 +295,10 @@ class Cluster():
                             data['domain_search'] = temp
                         else:
                             data['domain_search'] = None
+
+                    for item in ['dnssec_enable', 'dnssec_validation']:
+                        if item in data:
+                            data[item] = Helper().bool_to_string(data[item])
 
                     for key, value in items.items():
                         if key in data:

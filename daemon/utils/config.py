@@ -636,6 +636,13 @@ class Config(object):
         controller_network = controller[0]['networkname']
         if 'forwardserver_ip' in cluster[0] and cluster[0]['forwardserver_ip']:
             forwarder = cluster[0]['forwardserver_ip'].split(',')
+        bind_legacy = bool(cluster[0].get('bind_legacy'))
+        dnssec_enable = None
+        dnssec_validation = None
+        if bind_legacy and cluster[0].get('dnssec_enable') is not None:
+            dnssec_enable = 'yes' if cluster[0]['dnssec_enable'] else 'no'
+        if cluster[0].get('dnssec_validation') is not None and dnssec_enable != 'no':
+            dnssec_validation = 'yes' if cluster[0]['dnssec_validation'] else 'no'
         networks = Database().get_record(table='network')
         if networks:
             dns_allowed_query=['127.0.0.0/8']
@@ -858,7 +865,10 @@ class Config(object):
         dns_conf_template = env.get_template(template_dns_conf)
         dns_conf_config = dns_conf_template.render(ALLOWED_QUERY=dns_allowed_query,FORWARDERS=forwarder,
                                                    MANAGED_KEYS=managed_keys,OMAPIKEY=omapikey,
-                                                   TSIGKEY=tsigkey,TSIGALGO=tsigalgo)
+                                                   TSIGKEY=tsigkey,TSIGALGO=tsigalgo,
+                                                   BIND_LEGACY=bind_legacy,
+                                                   DNSSEC_ENABLE=dnssec_enable,
+                                                   DNSSEC_VALIDATION=dnssec_validation)
         dns_zones_conf_template = env.get_template(template_dns_zones_conf)
         dns_zones_conf_config = dns_zones_conf_template.render(ZONES=dns_zones,OMAPIKEY=omapikey,
                                                                TSIGKEY=tsigkey,TSIGALGO=tsigalgo,

@@ -323,6 +323,7 @@ def bootstrap(bootstrapfile=None):
     if 'CONTROLLER' in BOOTSTRAP['HOSTS'].keys():  # the virtual host+ip
         defaultserver_ip=BOOTSTRAP['HOSTS']['CONTROLLER']['IP']
     domain_search, forwardserver_ip=None, None
+    bind_legacy=0
     if 'CLUSTER' in BOOTSTRAP.keys():
         if 'DOMAIN_SEARCH' in BOOTSTRAP['CLUSTER']:
             domain_search=BOOTSTRAP['CLUSTER']['DOMAIN_SEARCH']
@@ -330,8 +331,10 @@ def bootstrap(bootstrapfile=None):
             domain_search=domain_search.replace(',,',',') 
         if 'FORWARDSERVER_IP' in BOOTSTRAP['CLUSTER']:
             forwardserver_ip=BOOTSTRAP['CLUSTER']['FORWARDSERVER_IP']
-            forwardserver_ip=forwardserver_ip.replace(' ',',') 
-            forwardserver_ip=forwardserver_ip.replace(',,',',') 
+            forwardserver_ip=forwardserver_ip.replace(' ',',')
+            forwardserver_ip=forwardserver_ip.replace(',,',',')
+        if 'BIND_LEGACY' in BOOTSTRAP['CLUSTER']:
+            bind_legacy=1 if BOOTSTRAP['CLUSTER']['BIND_LEGACY'] in is_true else 0
     default_cluster = [
             {'column': 'name', 'value': 'mycluster'},
             {'column': 'technical_contacts', 'value': 'root@localhost'},
@@ -343,6 +346,7 @@ def bootstrap(bootstrapfile=None):
             {'column': 'createnode_ondemand', 'value': '1'},
             {'column': 'createnode_macashost', 'value': '0'},
             {'column': 'nextnode_discover', 'value': '0'},
+            {'column': 'bind_legacy', 'value': bind_legacy},
             {'column': 'nameserver_ip', 'value': defaultserver_ip},
             {'column': 'forwardserver_ip', 'value': forwardserver_ip},
             {'column': 'domain_search', 'value': domain_search},

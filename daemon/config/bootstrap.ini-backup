@@ -5,6 +5,7 @@
 ;DOMAIN_SEARCH = cluster,ib,ipmi
 ; dns forwarders
 ;FORWARDSERVER_IP = 8.8.8.8,8.8.4.4
+;BIND_LEGACY = False
 
 [HOSTS]
 ; used in cluster, "clusterips" for templates

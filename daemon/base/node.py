@@ -94,7 +94,8 @@ class Node():
                 'provision_method': 'torrent',
                 'provision_fallback': 'http',
                 'provision_interface': 'BOOTIF',
-                'kerneloptions': None
+                'kerneloptions': None,
+                'ipxe_kernel': 'default'
             }
             for node in nodes:
                 node_name = node['name']
@@ -277,7 +278,8 @@ class Node():
                 'group.provision_method AS group_provision_method',
                 'group.provision_fallback AS group_provision_fallback',
                 'group.provision_interface AS group_provision_interface',
-                'group.kerneloptions AS group_kerneloptions'
+                'group.kerneloptions AS group_kerneloptions',
+                'group.ipxe_kernel AS group_ipxe_kernel'
             ],
             ['group.id=node.groupid'],
             f"node.name='{name}'"
@@ -381,7 +383,8 @@ class Node():
                 'provision_method': 'torrent',
                 'provision_fallback': 'http',
                 'provision_interface': 'BOOTIF',
-                'kerneloptions': None
+                'kerneloptions': None,
+                'ipxe_kernel': 'default'
             }
             for key, value in items.items():
                 if 'cluster_'+key in node and isinstance(value, bool):
@@ -588,6 +591,10 @@ class Node():
                 if item in data and data[item]:
                     if data['provision_method']+'.py' not in boot_plugins['boot']['provision']:
                         return False, f'Invalid request: provisioning plugin {data[item]} does not exist'
+            if 'ipxe_kernel' in data and data['ipxe_kernel']:
+                data['ipxe_kernel'] = str(data['ipxe_kernel']).strip().lower()
+                if data['ipxe_kernel'] not in ['default', 'alternative']:
+                    return False, 'Invalid request: ipxe_kernel must be default or alternative'
 
             for key, value in items.items():
                 if key in data:

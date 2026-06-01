@@ -63,6 +63,51 @@ class Config(object):
         self.hooks_plugins = None
 
 
+    def normalize_ipxe_kernel(self, value=None):
+        """Normalize the iPXE kernel selector stored on groups and nodes."""
+        if value is None or value == '':
+            return None
+        normalized = str(value).strip().lower()
+        if normalized in ['default', 'alternative']:
+            return normalized
+        self.logger.warning(f"unknown ipxe_kernel value {value}; falling back to default")
+        return 'default'
+
+
+    def ipxe_bootfiles(self, ipxe_kernel=None):
+        """Return architecture-specific iPXE boot filenames for the selected kernel."""
+        normalized = self.normalize_ipxe_kernel(ipxe_kernel) or 'default'
+        if normalized == 'alternative':
+            return {
+                'class': 'ipxe-kernel-alternative',
+                'x86_64': 'luna_snponly.efi',
+                'arm64': 'luna_snponly_arm64.efi'
+            }
+        return {
+            'class': 'ipxe-kernel-default',
+            'x86_64': 'luna_ipxe.efi',
+            'arm64': 'luna_ipxe_arm64.efi'
+        }
+
+
+    def dhcp_reservation_nextserver(self, network_name=None, subnets=None, shared=None):
+        """Return next-server/port for a network from normal or shared subnet config."""
+        subnets = subnets or {}
+        shared = shared or {}
+        if network_name in subnets:
+            return {
+                'server': subnets[network_name].get('nextserver'),
+                'port': subnets[network_name].get('nextport')
+            }
+        for share in shared.values():
+            if network_name in share:
+                return {
+                    'server': share[network_name].get('nextserver'),
+                    'port': share[network_name].get('nextport')
+                }
+        return {'server': None, 'port': None}
+
+
     def dhcp_overwrite(self):
         """
         This method collect dhcp enabled networks, node interfaces belongs to the networks and
@@ -290,9 +335,11 @@ class Config(object):
                     if nwk['ipv6']:
                         config_zones6[nwk['name']] = self.dhcp_zone_config(nwk,'ipv6')
                 node_interface = Database().get_record_join(
-                    ['node.name as nodename', 'ipaddress.ipaddress', 
+                    ['node.name as nodename', 'node.ipxe_kernel as node_ipxe_kernel',
+                     'group.ipxe_kernel as group_ipxe_kernel', 'ipaddress.ipaddress',
                      'ipaddress.ipaddress_ipv6', 'nodeinterface.macaddress','ipaddress.dhcp'],
-                    ['ipaddress.tablerefid=nodeinterface.id', 'nodeinterface.nodeid=node.id'],
+                    ['ipaddress.tablerefid=nodeinterface.id', 'nodeinterface.nodeid=node.id',
+                     'group.id=node.groupid'],
                     ['tableref="nodeinterface"', f'ipaddress.networkid="{network_id}"']
                 )
                 nwkdomain=nwk['name']
@@ -301,12 +348,23 @@ class Config(object):
                         if nwk['dhcp_nodes_in_pool'] and interface['dhcp']:
                             continue
                         elif interface['macaddress']:
+                            ipxe_bootfiles = self.ipxe_bootfiles(
+                                interface['node_ipxe_kernel'] or interface['group_ipxe_kernel']
+                            )
                             if interface['ipaddress_ipv6']:
                                 config_host6={}
                                 config_host6['name']=interface['nodename']
                                 config_host6['domain']=nwkdomain
                                 config_host6['ipaddress']=interface['ipaddress_ipv6']
                                 config_host6['macaddress']=interface['macaddress']
+                                config_host6['ipxe_kernel_class']=ipxe_bootfiles['class']
+                                config_host6['ipxe_bootfile']=ipxe_bootfiles['x86_64']
+                                config_host6['ipxe_bootfile_arm64']=ipxe_bootfiles['arm64']
+                                next_server = self.dhcp_reservation_nextserver(
+                                    nwk['name'], config_subnets6, config_shared6
+                                )
+                                config_host6['nextserver']=next_server['server']
+                                config_host6['nextport']=next_server['port']
                                 if nwk['name'] in config_reservations6:
                                     config_reservations6[nwk['name']].append(config_host6)
                             elif interface['ipaddress']:
@@ -315,6 +373,14 @@ class Config(object):
                                 config_host['domain']=nwkdomain
                                 config_host['ipaddress']=interface['ipaddress']
                                 config_host['macaddress']=interface['macaddress']
+                                config_host['ipxe_kernel_class']=ipxe_bootfiles['class']
+                                config_host['ipxe_bootfile']=ipxe_bootfiles['x86_64']
+                                config_host['ipxe_bootfile_arm64']=ipxe_bootfiles['arm64']
+                                next_server = self.dhcp_reservation_nextserver(
+                                    nwk['name'], config_subnets, config_shared
+                                )
+                                config_host['nextserver']=next_server['server']
+                                config_host['nextport']=next_server['port']
                                 if nwk['name'] in config_reservations:
                                     config_reservations[nwk['name']].append(config_host)
                 else:
@@ -570,6 +636,13 @@ class Config(object):
         controller_network = controller[0]['networkname']
         if 'forwardserver_ip' in cluster[0] and cluster[0]['forwardserver_ip']:
             forwarder = cluster[0]['forwardserver_ip'].split(',')
+        bind_legacy = bool(cluster[0].get('bind_legacy'))
+        dnssec_enable = None
+        dnssec_validation = None
+        if bind_legacy and cluster[0].get('dnssec_enable') is not None:
+            dnssec_enable = 'yes' if cluster[0]['dnssec_enable'] else 'no'
+        if cluster[0].get('dnssec_validation') is not None and dnssec_enable != 'no':
+            dnssec_validation = 'yes' if cluster[0]['dnssec_validation'] else 'no'
         networks = Database().get_record(table='network')
         if networks:
             dns_allowed_query=['127.0.0.0/8']
@@ -792,7 +865,10 @@ class Config(object):
         dns_conf_template = env.get_template(template_dns_conf)
         dns_conf_config = dns_conf_template.render(ALLOWED_QUERY=dns_allowed_query,FORWARDERS=forwarder,
                                                    MANAGED_KEYS=managed_keys,OMAPIKEY=omapikey,
-                                                   TSIGKEY=tsigkey,TSIGALGO=tsigalgo)
+                                                   TSIGKEY=tsigkey,TSIGALGO=tsigalgo,
+                                                   BIND_LEGACY=bind_legacy,
+                                                   DNSSEC_ENABLE=dnssec_enable,
+                                                   DNSSEC_VALIDATION=dnssec_validation)
         dns_zones_conf_template = env.get_template(template_dns_zones_conf)
         dns_zones_conf_config = dns_zones_conf_template.render(ZONES=dns_zones,OMAPIKEY=omapikey,
                                                                TSIGKEY=tsigkey,TSIGALGO=tsigalgo,

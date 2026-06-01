@@ -164,6 +164,7 @@ DATABASE_LAYOUT_group = [
 {"column": "osimageid",            "datatype": "INTEGER", "length": "10"},
 {"column": "osimagetagid",         "datatype": "INTEGER", "length": "10"},
 {"column": "kerneloptions",        "datatype": "VARCHAR", "length": "200"},
+{"column": "ipxe_kernel",          "datatype": "VARCHAR", "length": "20"},
 {"column": "prescript",            "datatype": "TEXT"},
 {"column": "partscript",           "datatype": "TEXT"},
 {"column": "postscript",           "datatype": "TEXT"},
@@ -267,6 +268,7 @@ DATABASE_LAYOUT_node = [
 {"column": "osimageid",            "datatype": "INTEGER", "length": "10"},
 {"column": "osimagetagid",         "datatype": "INTEGER", "length": "10"},
 {"column": "kerneloptions",        "datatype": "VARCHAR", "length": "200"},
+{"column": "ipxe_kernel",          "datatype": "VARCHAR", "length": "20"},
 {"column": "switchid",             "datatype": "INTEGER", "length": "10"},
 {"column": "switchport",           "datatype": "INTEGER", "length": "10"},
 {"column": "cloudid",              "datatype": "INTEGER", "length": "10"},
@@ -308,7 +310,10 @@ DATABASE_LAYOUT_cluster = [
 {"column": "packing_bootpause",    "datatype": "INTEGER", "length": "10"},
 {"column": "createnode_ondemand",  "datatype": "INTEGER", "length": "10"},
 {"column": "createnode_macashost", "datatype": "INTEGER", "length": "10"},
-{"column": "nextnode_discover",    "datatype": "INTEGER", "length": "10"}]
+{"column": "nextnode_discover",    "datatype": "INTEGER", "length": "10"},
+{"column": "bind_legacy",          "datatype": "INTEGER", "length": "10"},
+{"column": "dnssec_enable",        "datatype": "INTEGER", "length": "10"},
+{"column": "dnssec_validation",    "datatype": "INTEGER", "length": "10"}]
 
 DATABASE_LAYOUT_tracker = [
 {"column": "id",                   "datatype": "INTEGER", "key": "PRIMARY", "keyadd": "AUTOINCREMENT"},

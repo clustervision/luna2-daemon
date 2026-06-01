@@ -641,7 +641,7 @@ class Config(object):
         dnssec_validation = None
         if bind_legacy and cluster[0].get('dnssec_enable') is not None:
             dnssec_enable = 'yes' if cluster[0]['dnssec_enable'] else 'no'
-        if cluster[0].get('dnssec_validation') is not None and dnssec_enable != 'no':
+        if bind_legacy and cluster[0].get('dnssec_validation') is not None and dnssec_enable != 'no':
             dnssec_validation = 'yes' if cluster[0]['dnssec_validation'] else 'no'
         networks = Database().get_record(table='network')
         if networks:

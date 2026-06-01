@@ -643,6 +643,7 @@ class Config(object):
             dnssec_enable = 'yes' if cluster[0]['dnssec_enable'] else 'no'
         if bind_legacy and cluster[0].get('dnssec_validation') is not None and dnssec_enable != 'no':
             dnssec_validation = 'yes' if cluster[0]['dnssec_validation'] else 'no'
+        self.logger.info(f"bind_legacy: {bind_legacy}, dnssec_enable: {dnssec_enable}, dnssec validation: {dnssec_validation}")
         networks = Database().get_record(table='network')
         if networks:
             dns_allowed_query=['127.0.0.0/8']

@@ -246,7 +246,7 @@ class Control():
                         else:
                             node, command, result, message, *_ = (record['message'].split(':',3) + [None] + [None] + [None])
                             subsystem, action = command.split(' ',1)
-                            state = str([record['status']]) # record status has an int returned by command success
+                            state = str(record['status']) # record status has an int returned by command success
                             if subsystem == 'power' and action == 'status':
                                 if state in states and states[state]:
                                     if message == "on":

@@ -44,12 +44,13 @@ from configparser import RawConfigParser
 import hostlist
 from netaddr import IPNetwork, IPAddress
 from jinja2 import Environment, meta, FileSystemLoader
+from cryptography.fernet import Fernet
 from utils.log import Log
 from utils.database import Database
 from utils.plugin_manager import PluginManager
 from utils.template_manager import TemplateManager
 from utils.plugin_tree import build_plugin_tree
-from common.constant import CONSTANT
+from common.constant import CONSTANT, LUNAKEY
 
 
 class Helper(object):
@@ -629,26 +630,46 @@ class Helper(object):
         return self.bool_to_string(variable)
 
 
+    def _secret_cipher(self):
+        """Build a Fernet from LUNAKEY, or return None if the key is unusable."""
+        try:
+            return Fernet(bytes(LUNAKEY, 'utf-8'))
+        except Exception:
+            return None
+
+
     def encrypt_string(self, string=None):
         """
-        Input - string
-        Output - Encrypt String
+        Input  - base64 secret string
+        Output - Fernet token when [API] ENCRYPT_SECRETS is enabled and a usable
+                 key exists; otherwise the input unchanged (legacy base64 at rest).
         """
-        return string
-        # fernetobj = Fernet(bytes(LUNAKEY, 'utf-8'))
-        # response = fernetobj.encrypt(string.encode()).decode()
-        # return response
+        if not string:
+            return string
+        enabled = str(CONSTANT.get('API', {}).get('ENCRYPT_SECRETS', '')).strip().lower() in ('1', 'true', 'yes', 'on')
+        if not enabled:
+            return string
+        cipher = self._secret_cipher()
+        if not cipher:
+            return string
+        return cipher.encrypt(string.encode()).decode()
 
 
     def decrypt_string(self, string=None):
         """
-        Input - string
-        Output - Decrypt Encoded String
+        Input  - stored secret (Fernet token or legacy base64/plain)
+        Output - decrypted value for Fernet tokens; the input unchanged for
+                 legacy values. Never raises on legacy data.
         """
-        return string
-        # fernetobj = Fernet(bytes(LUNAKEY, 'utf-8'))
-        # response = fernetobj.decrypt(string).decode()
-        # return response
+        if not string:
+            return string
+        cipher = self._secret_cipher()
+        if not cipher:
+            return string
+        try:
+            return cipher.decrypt(string.encode()).decode()
+        except Exception:
+            return string
 
 
     def check_section(self, filename=None, parent_dict=None):

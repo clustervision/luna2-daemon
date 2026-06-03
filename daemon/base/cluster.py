@@ -242,7 +242,7 @@ class Cluster():
                     boot_plugins = Helper().plugin_finder(f'{self.plugins_path}/boot')
             for item in ['provision_method','provision_fallback']:
                 if item in data and data[item]:
-                    if data['provision_method']+'.py' not in boot_plugins['boot']['provision']:
+                    if data[item]+'.py' not in boot_plugins['boot']['provision']:
                         status = False
                         return status, f'provisioning plugin {data[item]} does not exist'
 

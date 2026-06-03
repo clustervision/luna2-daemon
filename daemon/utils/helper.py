@@ -33,6 +33,7 @@ __status__      = 'Development'
 import os
 import sys
 import subprocess
+import logging
 import threading
 import re
 import queue
@@ -708,7 +709,8 @@ class Helper(object):
         # ipmitool -U {username} -P {password} chassis power {action} -H {hostname} -I lanplus -C3
         self.logger.info(f'hostname: {hostname}.')
         command = f'ipmitool -U {username} -P {password} chassis power {action} -H 127.0.0.1 -I lanplus -C3'
-        self.logger.info(f'IPMI command to be executed: {command}.')
+        log_command = command if self.logger.isEnabledFor(logging.DEBUG) else command.replace(password, '******')
+        self.logger.info(f'IPMI command to be executed: {log_command}.')
         output,exit_code = self.runcommand(command,True,10)
         if output and exit_code == 0:
             response = str(output[0].decode())

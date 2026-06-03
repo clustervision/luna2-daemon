@@ -36,7 +36,7 @@ __status__      = "Development"
 from json import dumps
 from flask import Blueprint, request
 from utils.log import Log
-from common.validate_auth import token_required
+from common.validate_auth import token_required, provision_token_required
 from common.validate_input import input_filter, validate_name
 from base.secret import Secret
 from utils.journal import Journal
@@ -64,7 +64,7 @@ def config_secrets_get():
 
 
 @secrets_blueprint.route("/config/secrets/node/<string:name>", methods=['GET'])
-@token_required
+@provision_token_required
 @validate_name
 def config_get_secrets_node(name=None):
     """

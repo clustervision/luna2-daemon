@@ -1816,7 +1816,10 @@ class Boot():
             api_expiry = datetime.timedelta(minutes=int(CONSTANT['API']['EXPIRY']))
             api_expiry = datetime.timedelta(minutes=int(60))
             expiry_time = datetime.datetime.utcnow() + api_expiry
-            jwt_token = jwt.encode({'id': 0, 'exp': expiry_time}, api_key, 'HS256')
+            jwt_token = jwt.encode(
+                {'node': node, 'scope': 'provision', 'exp': expiry_time},
+                api_key, 'HS256'
+            )
         except Exception as exp:
             self.logger.info(f"Token creation error: {exp}")
         data['jwt_token'] = jwt_token

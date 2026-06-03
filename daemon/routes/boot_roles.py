@@ -35,7 +35,7 @@ __status__      = "Development"
 from json import dumps
 from flask import Blueprint, request
 from utils.log import Log
-from common.validate_auth import token_required, agent_check
+from common.validate_auth import token_required, provision_token_required, agent_check
 from common.validate_input import input_filter, validate_name
 from base.boot_roles import Roles
 from utils.helper import Helper
@@ -45,7 +45,7 @@ roles_blueprint = Blueprint('roles', __name__)
 
 
 @roles_blueprint.route('/boot/roles/<string:role>', methods=['GET'])
-@token_required
+@provision_token_required
 @validate_name
 def get_role(role=None):
     """

@@ -1743,7 +1743,7 @@ class Boot():
             try:
                 segment = str(network_plugin().init)
                 template_data = template_data.replace("## NETWORK INIT CODE SEGMENT", segment)
-            except:
+            except Exception as exp:
                 self.logger.warning(f"{exp}")
             # --------- ipv4
             try:
@@ -1753,7 +1753,7 @@ class Boot():
                 template_data = template_data.replace("## GATEWAY CODE SEGMENT", segment)
                 segment = str(network_plugin().dns)
                 template_data = template_data.replace("## DNS CODE SEGMENT", segment)
-            except:
+            except Exception as exp:
                 self.logger.warning(f"{exp}")
             # --------- ipv6
             try:
@@ -1763,7 +1763,7 @@ class Boot():
                 template_data = template_data.replace("## GATEWAY IPv6 CODE SEGMENT", segment)
                 segment = str(network_plugin().dns_ipv6)
                 template_data = template_data.replace("## DNS IPv6 CODE SEGMENT", segment)
-            except:
+            except Exception as exp:
                 self.logger.warning(f"{exp}")
 
         ## BMC CODE SEGMENT

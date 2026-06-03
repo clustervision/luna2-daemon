@@ -145,10 +145,10 @@ class Config(object):
             self.logger.error(f"Error building dhcp6 config. {template6_path} does not exist")
             return False
 
-        if len(dhcp_config_path) < 5 and dhcp_config_path.startswith != '/':
+        if len(dhcp_config_path) < 5 or not dhcp_config_path.startswith('/'):
             self.logger.error(f"Error building dhcp config. dhcp_config_path {dhcp_config_path} not matching minimum criterea")
             return False
-        if len(dhcp6_config_path) < 5 and dhcp6_config_path.startswith != '/':
+        if len(dhcp6_config_path) < 5 or not dhcp6_config_path.startswith('/'):
             self.logger.error(f"Error building dhcp6 config. dhcp6_config_path {dhcp6_config_path} not matching minimum criterea")
             return False
 

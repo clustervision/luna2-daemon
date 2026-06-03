@@ -1813,7 +1813,6 @@ class Boot():
         jwt_token = None
         try:
             api_key = CONSTANT['API']['SECRET_KEY']
-            api_expiry = datetime.timedelta(minutes=int(CONSTANT['API']['EXPIRY']))
             api_expiry = datetime.timedelta(minutes=int(60))
             expiry_time = datetime.datetime.utcnow() + api_expiry
             jwt_token = jwt.encode(

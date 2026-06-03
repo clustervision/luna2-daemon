@@ -161,7 +161,15 @@ def set_constants(section=None, option=None, item=None):
     """
     if option == 'EXPIRY':
         if item:
-            CONSTANT[section][option] = int(item.replace('h', ''))*60*60
+            value = str(item).strip().lower()
+            if value.endswith('h'):
+                CONSTANT[section][option] = int(value[:-1]) * 3600
+            elif value.endswith('m'):
+                CONSTANT[section][option] = int(value[:-1]) * 60
+            elif value.endswith('s'):
+                CONSTANT[section][option] = int(value[:-1])
+            else:
+                CONSTANT[section][option] = int(value) * 3600
         else:
             CONSTANT[section][option] = 24*60*60
     elif option.upper() == 'COOLDOWN':

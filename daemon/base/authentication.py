@@ -62,7 +62,7 @@ class Authentication():
                 username = request_data['username']
                 if 'password' in request_data:
                     password = request_data['password']
-                    api_expiry = timedelta(minutes=int(CONSTANT['API']['EXPIRY']))
+                    api_expiry = timedelta(seconds=int(CONSTANT['API']['EXPIRY']))
                     expiry_time = datetime.utcnow() + api_expiry
                     api_key = CONSTANT['API']['SECRET_KEY']
                     if username and password:
@@ -128,7 +128,7 @@ class Authentication():
 
         self.logger.debug(f"TPM auth: {request_data}")
 
-        api_expiry = timedelta(minutes=int(CONSTANT['API']['EXPIRY']))
+        api_expiry = timedelta(seconds=int(CONSTANT['API']['EXPIRY']))
         expiry_time = datetime.utcnow() + api_expiry
         api_key = CONSTANT['API']['SECRET_KEY']
 

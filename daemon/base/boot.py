@@ -536,7 +536,7 @@ class Boot():
                              'ipaddress.ipaddress', 'network.name as network', 'network.gateway',
                              'ipaddress.ipaddress_ipv6', 'ipaddress.dhcp', 'network.gateway_ipv6',
                              'network.network_ipv6 as networkip_ipv6', 'network.dhcp as networkdhcp',
-                             'network.network as networkip', 'network.subnet'],
+                             'network.network as networkip', 'network.subnet', 'network.subnet_ipv6'],
                             ['network.id=ipaddress.networkid',
                              'ipaddress.tablerefid=nodeinterface.id'],
                             ['tableref="nodeinterface"', f"nodeinterface.macaddress='{mac}'"]
@@ -566,7 +566,7 @@ class Boot():
                              'ipaddress.ipaddress', 'network.name as network', 'network.gateway',
                              'ipaddress.ipaddress_ipv6', 'ipaddress.dhcp', 'network.gateway_ipv6',
                              'network.network_ipv6 as networkip_ipv6', 'network.dhcp as networkdhcp',
-                             'network.network as networkip', 'network.subnet',
+                             'network.network as networkip', 'network.subnet', 'network.subnet_ipv6',
                              'nodeinterface.macaddress'],
                             ['node.id=nodeinterface.nodeid','network.id=ipaddress.networkid',
                              'ipaddress.tablerefid=nodeinterface.id','cloud.id=node.cloudid'],
@@ -589,7 +589,7 @@ class Boot():
                                             macaddress=mac
                                         )
                                     data['nodeid'] = node['nodeid']
-                                    if nodeinterface[0]["dhcp"] and nodeinterface[0]["networkdhcp"]:
+                                    if node["dhcp"] and node["networkdhcp"]:
                                         data['nodeip'] = 'dhcp'
                                     elif node["ipaddress_ipv6"]:
                                         data['nodeip'] = f'{node["ipaddress_ipv6"]}/{node["subnet_ipv6"]}'

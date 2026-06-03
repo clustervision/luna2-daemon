@@ -138,7 +138,7 @@ class Helper(object):
                 if os.access(path, os.W_OK):
                     state = True
                 else:
-                    self.logger.debug(f'{path_type} {path} is writable.')
+                    self.logger.debug(f'{path_type} {path} is not writable.')
             else:
                 self.logger.debug(f'{path_type} {path} is not readable.')
         else:
@@ -154,9 +154,9 @@ class Helper(object):
         path_status = self.check_path(path)
         if path_status:
             if os.path.isdir(path):
-                response = 'File'
-            elif os.path.isfile(path):
                 response = 'Directory'
+            elif os.path.isfile(path):
+                response = 'File'
             else:
                 response = 'socket or FIFO or device'
         else:

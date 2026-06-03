@@ -60,7 +60,7 @@ def check_path_state(path=None):
                 path_check = True
             else:
                 LOGGER = Log.init_log('info')
-                LOGGER.error(f'{pathtype} {path} is writable')
+                LOGGER.error(f'{pathtype} {path} is not writable')
         else:
             LOGGER = Log.init_log('info')
             LOGGER.error(f'{pathtype} {path} is not readable')
@@ -78,9 +78,9 @@ def check_path_type(path=None):
     pathstatus = check_path(path)
     if pathstatus:
         if os.path.isdir(path):
-            response = 'File'
-        elif os.path.isfile(path):
             response = 'Directory'
+        elif os.path.isfile(path):
+            response = 'File'
         else:
             response = 'socket or FIFO or device'
     else:

@@ -1692,7 +1692,7 @@ class Config(object):
                                             if valid_ip and ip_details[0]['ipaddress'] and ip_details[0]['ipaddress'] not in dhcp_ips:
                                                 avail = ip_details[0]['ipaddress']
                                                 self.logger.info(f"---> reusing ipaddress {avail}")
-                                            if valid_ip6 and ip_details[0]['ipaddress_ipv6'] and ip_details[0]['ipaddress_ipv6'] not in dhcp_ips6:
+                                            if valid_ip6 and ip_details[0]['ipaddress_ipv6'] and ip_details[0]['ipaddress_ipv6'] not in dhcp6_ips:
                                                 avail6 = ip_details[0]['ipaddress_ipv6']
                                                 self.logger.info(f"---> reusing ipaddress {avail6}")
 

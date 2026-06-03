@@ -663,6 +663,7 @@ def validate_bootstrap():
     bootstrapfile_check = Helper().check_path_state(bootstrapfile)
     LOGGER.info('########################### DB/TABLE check ############################')
     db_check=check_db()
+    db_tables_check = False
     if db_check is True:
         db_tables_check=DBStructure().check_db_tables()
     LOGGER.info(f'db_check = [{db_check}], db_tables_check = [{db_tables_check}]')

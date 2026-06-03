@@ -377,9 +377,8 @@ class Boot():
             status=True
         else:
             self.logger.error(f"configuration error: No controller available or missing network for controller {self.controller_name}")
-            environment = jinja2.Environment()
-            template = environment.from_string('No Controller is available.')
-            status=False
+            faildata = self.failed_boot("no controller available")
+            return False, faildata
         self.logger.info(f'Boot API serving {template}')
         response = {
             'template': template,

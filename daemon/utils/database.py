@@ -519,7 +519,7 @@ class Database():
                 else:
                     if each["value"] is not None:
                         if isinstance(each["value"], str):
-                            each["value"].replace("'",'"')
+                            each["value"] = each["value"].replace("'",'"')
                         values.append("'"+str(each["value"])+"'")
                     else:
                         values.append('NULL')
@@ -607,7 +607,7 @@ class Database():
                 else:
                     if cols['value'] is not None:
                         if isinstance(cols["value"], str):
-                            cols["value"].replace("'",'"')
+                            cols["value"] = cols["value"].replace("'",'"')
                         column = column + " = '" +str(cols['value']) +"'"
                     else:
                         column = column + ' = NULL'

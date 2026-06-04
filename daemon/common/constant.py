@@ -219,7 +219,6 @@ CONSTANT = {
     'API': {'USERNAME': None, 'PASSWORD': None, 'EXPIRY': None, 'SECRET_KEY': None, 'ENDPOINT': None, 'PROTOCOL': None},
     'DATABASE': {'DRIVER': None, 'DATABASE': None, 'DBUSER': None,
                 'DBPASSWORD': None, 'HOST': None, 'PORT': None},
-    'SECRETS': {'ENCRYPT_SECRETS': None},
     'FILES': {'KEYFILE': None, 'IMAGE_FILES': None, 'IMAGE_DIRECTORY': None, 'MAXPACKAGINGTIME': None, 'TMP_DIRECTORY': None},
     'PLUGINS':  {'PLUGINS_DIRECTORY': None, 'IMAGE_FILESYSTEM': None},
     'SERVICES': {'DHCP': None, 'DNS': None, 'CONTROL': None, 'COOLDOWN': None, 'COMMAND': None},

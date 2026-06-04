@@ -63,9 +63,9 @@ def tracker_announce_get():
             resp.status_code = access_code
             return resp
         except Exception as exp:
-            # here we do return a code as this is a error message
+            LOGGER.error(f"announce error: {exp}")
             access_code = 500
-            return f"{exp}\n",access_code
+            return "Internal Server Error\n", access_code
     return response, access_code
 
 
@@ -92,7 +92,8 @@ def tracker_scrape_get():
             resp.status_code = access_code
             return resp
         except Exception as exp:
+            LOGGER.error(f"scrape error: {exp}")
             access_code = 500
-            return f"{exp}\n", access_code
+            return "Internal Server Error\n", access_code
     return response, access_code
 

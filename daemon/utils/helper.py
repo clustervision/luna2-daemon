@@ -641,12 +641,12 @@ class Helper(object):
     def encrypt_string(self, string=None):
         """
         Input  - base64 secret string
-        Output - Fernet token when [API] ENCRYPT_SECRETS is enabled and a usable
+        Output - Fernet token when [SECRETS] ENCRYPT_SECRETS is enabled and a usable
                  key exists; otherwise the input unchanged (legacy base64 at rest).
         """
         if not string:
             return string
-        enabled = str(CONSTANT.get('API', {}).get('ENCRYPT_SECRETS', '')).strip().lower() in ('1', 'true', 'yes', 'on')
+        enabled = self.make_bool(CONSTANT.get('SECRETS', {}).get('ENCRYPT_SECRETS', ''))
         if not enabled:
             return string
         cipher = self._secret_cipher()

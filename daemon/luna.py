@@ -394,14 +394,14 @@ def main():
 
 
 @daemon.errorhandler(400)
-def bad_request():
+def bad_request(error):
     """ Abort All 400"""
     error = {'message': 'Bad Requests'}
     return json.dumps(error), 400
 
 
 @daemon.errorhandler(401)
-def unauthorized():
+def unauthorized(error):
     """ Abort All 401"""
     error = {'message': 'Unauthorized'}
     return json.dumps(error), 401
@@ -419,7 +419,7 @@ def page_not_found(error):
 
 
 @daemon.errorhandler(500)
-def server_error():
+def server_error(error):
     """ Abort All 500"""
     error = {'message': 'Server Error'}
     return json.dumps(error), 500

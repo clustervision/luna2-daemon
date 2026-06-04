@@ -399,7 +399,7 @@ class Config(object):
                                     config_host6['name']=device['name']
                                     config_host6['domain']=nwkdomain
                                     config_host6['ipaddress']=device['ipaddress_ipv6']
-                                    config_host6['maccaddress']=device['macaddress']
+                                    config_host6['macaddress']=device['macaddress']
                                     if nwk['name'] in config_reservations6:
                                         config_reservations6[nwk['name']].append(config_host6)
                                 else:
@@ -407,7 +407,7 @@ class Config(object):
                                     config_host['name']=device['name']
                                     config_host['domain']=nwkdomain
                                     config_host['ipaddress']=device['ipaddress']
-                                    config_host['maccaddress']=device['macaddress']
+                                    config_host['macaddress']=device['macaddress']
                                     if nwk['name'] in config_reservations:
                                         config_reservations[nwk['name']].append(config_host)
                     else:

@@ -69,7 +69,7 @@ setup(
     url = "https://gitlab.taurusgroup.one/clustervision/luna2-daemon.git",
     download_url = f"https://{PRE}@gitlab.taurusgroup.one/api/v4/projects/20/packages/pypi/simple",
     packages = find_packages(),
-    license = "MIT",
+    license = "GPLv3",
     keywords = ["luna", "daemon", "Trinity", "ClusterVision", "Sumit", "Sumit Sharma"],
     entry_points = {
         'console_scripts': [

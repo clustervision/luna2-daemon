@@ -33,6 +33,7 @@ __status__      = 'Development'
 import os
 import sys
 import subprocess
+import logging
 import threading
 import re
 import queue
@@ -43,12 +44,13 @@ from configparser import RawConfigParser
 import hostlist
 from netaddr import IPNetwork, IPAddress
 from jinja2 import Environment, meta, FileSystemLoader
+from cryptography.fernet import Fernet
 from utils.log import Log
 from utils.database import Database
 from utils.plugin_manager import PluginManager
 from utils.template_manager import TemplateManager
 from utils.plugin_tree import build_plugin_tree
-from common.constant import CONSTANT
+from common.constant import CONSTANT, LUNAKEY
 
 
 class Helper(object):
@@ -136,7 +138,7 @@ class Helper(object):
                 if os.access(path, os.W_OK):
                     state = True
                 else:
-                    self.logger.debug(f'{path_type} {path} is writable.')
+                    self.logger.debug(f'{path_type} {path} is not writable.')
             else:
                 self.logger.debug(f'{path_type} {path} is not readable.')
         else:
@@ -152,9 +154,9 @@ class Helper(object):
         path_status = self.check_path(path)
         if path_status:
             if os.path.isdir(path):
-                response = 'File'
-            elif os.path.isfile(path):
                 response = 'Directory'
+            elif os.path.isfile(path):
+                response = 'File'
             else:
                 response = 'socket or FIFO or device'
         else:
@@ -628,26 +630,46 @@ class Helper(object):
         return self.bool_to_string(variable)
 
 
+    def _secret_cipher(self):
+        """Build a Fernet from LUNAKEY, or return None if the key is unusable."""
+        try:
+            return Fernet(bytes(LUNAKEY, 'utf-8'))
+        except Exception:
+            return None
+
+
     def encrypt_string(self, string=None):
         """
-        Input - string
-        Output - Encrypt String
+        Input  - base64 secret string
+        Output - Fernet token when [SECRETS] ENCRYPT_SECRETS is enabled and a usable
+                 key exists; otherwise the input unchanged (legacy base64 at rest).
         """
-        return string
-        # fernetobj = Fernet(bytes(LUNAKEY, 'utf-8'))
-        # response = fernetobj.encrypt(string.encode()).decode()
-        # return response
+        if not string:
+            return string
+        enabled = self.make_bool(CONSTANT.get('SECRETS', {}).get('ENCRYPT_SECRETS', ''))
+        if not enabled:
+            return string
+        cipher = self._secret_cipher()
+        if not cipher:
+            return string
+        return cipher.encrypt(string.encode()).decode()
 
 
     def decrypt_string(self, string=None):
         """
-        Input - string
-        Output - Decrypt Encoded String
+        Input  - stored secret (Fernet token or legacy base64/plain)
+        Output - decrypted value for Fernet tokens; the input unchanged for
+                 legacy values. Never raises on legacy data.
         """
-        return string
-        # fernetobj = Fernet(bytes(LUNAKEY, 'utf-8'))
-        # response = fernetobj.decrypt(string).decode()
-        # return response
+        if not string:
+            return string
+        cipher = self._secret_cipher()
+        if not cipher:
+            return string
+        try:
+            return cipher.decrypt(string.encode()).decode()
+        except Exception:
+            return string
 
 
     def check_section(self, filename=None, parent_dict=None):
@@ -708,7 +730,8 @@ class Helper(object):
         # ipmitool -U {username} -P {password} chassis power {action} -H {hostname} -I lanplus -C3
         self.logger.info(f'hostname: {hostname}.')
         command = f'ipmitool -U {username} -P {password} chassis power {action} -H 127.0.0.1 -I lanplus -C3'
-        self.logger.info(f'IPMI command to be executed: {command}.')
+        log_command = command if self.logger.isEnabledFor(logging.DEBUG) else command.replace(password, '******')
+        self.logger.info(f'IPMI command to be executed: {log_command}.')
         output,exit_code = self.runcommand(command,True,10)
         if output and exit_code == 0:
             response = str(output[0].decode())

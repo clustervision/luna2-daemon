@@ -33,7 +33,7 @@ from json import dumps
 from flask import Blueprint, request
 from utils.log import Log
 from utils.helper import Helper
-from common.validate_auth import token_required
+from common.validate_auth import token_required, provision_token_required
 from common.validate_input import validate_name, input_filter
 from base.monitor import Monitor
 from utils.journal import Journal
@@ -219,7 +219,7 @@ def monitor_status_get(node=None):
 
 @monitor_blueprint.route("/monitor/node/<string:node>", methods=['POST'])
 @validate_name
-@token_required
+@provision_token_required
 @input_filter(checks=['monitor:status'], skip=None)
 def monitor_status_post(node=None):
     """

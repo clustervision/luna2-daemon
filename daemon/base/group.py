@@ -346,7 +346,7 @@ class Group():
                                 return False, f'Invalid request: plugin {item_data} does not exist'
             for item in ['provision_method','provision_fallback']:
                 if item in data and data[item]:
-                    if data['provision_method']+'.py' not in boot_plugins['boot']['provision']:
+                    if data[item]+'.py' not in boot_plugins['boot']['provision']:
                         return False, f'Invalid request: provisioning plugin {data[item]} does not exist'
             if 'ipxe_kernel' in data and data['ipxe_kernel']:
                 data['ipxe_kernel'] = str(data['ipxe_kernel']).strip().lower()

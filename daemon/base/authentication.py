@@ -29,6 +29,7 @@ __maintainer__  = 'Sumit Sharma'
 __email__       = 'sumit.sharma@clustervision.com'
 __status__      = 'Development'
 
+import logging
 from  hashlib import md5
 from datetime import datetime, timedelta
 from re import search
@@ -62,7 +63,7 @@ class Authentication():
                 username = request_data['username']
                 if 'password' in request_data:
                     password = request_data['password']
-                    api_expiry = timedelta(minutes=int(CONSTANT['API']['EXPIRY']))
+                    api_expiry = timedelta(seconds=int(CONSTANT['API']['EXPIRY']))
                     expiry_time = datetime.utcnow() + api_expiry
                     api_key = CONSTANT['API']['SECRET_KEY']
                     if username and password:
@@ -84,14 +85,16 @@ class Authentication():
                                     self.logger.debug(message)
                                     status = True
                                 else:
-                                    message = f'Incorrect password {password} for user {username}'
+                                    shown = password if self.logger.isEnabledFor(logging.DEBUG) else '******'
+                                    message = f'Incorrect password {shown} for user {username}'
                                     self.logger.warning(message)
                             else:
                                 message = f'User {username} does not exist'
                                 self.logger.error(message)
                         else:
                             if CONSTANT['API']['PASSWORD'] != password:
-                                message = f'Incorrect password {password}, check luna.ini'
+                                shown = password if self.logger.isEnabledFor(logging.DEBUG) else '******'
+                                message = f'Incorrect password {shown}, check luna.ini'
                                 self.logger.warning(message)
                             else:
                                 # Creating Token via JWT with default id =1, expiry time
@@ -128,7 +131,7 @@ class Authentication():
 
         self.logger.debug(f"TPM auth: {request_data}")
 
-        api_expiry = timedelta(minutes=int(CONSTANT['API']['EXPIRY']))
+        api_expiry = timedelta(seconds=int(CONSTANT['API']['EXPIRY']))
         expiry_time = datetime.utcnow() + api_expiry
         api_key = CONSTANT['API']['SECRET_KEY']
 

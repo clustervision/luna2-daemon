@@ -270,6 +270,7 @@ class Model():
         response = {}
         status=False
         data = request_data['config'][table][name]
+        new_record = new_name
         if new_name in request_data['config'][table][name]:
             data['name'] = data[new_name]
             new_record = data[new_name]

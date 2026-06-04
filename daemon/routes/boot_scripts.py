@@ -35,7 +35,7 @@ __status__      = "Development"
 from json import dumps
 from flask import Blueprint, request
 from utils.log import Log
-from common.validate_auth import token_required, agent_check
+from common.validate_auth import token_required, provision_token_required, agent_check
 from common.validate_input import input_filter, validate_name
 from base.boot_scripts import Scripts
 from utils.helper import Helper
@@ -45,7 +45,7 @@ scripts_blueprint = Blueprint('scripts', __name__)
 
 
 @scripts_blueprint.route('/boot/scripts/<string:script>', methods=['GET'])
-@token_required
+@provision_token_required
 @validate_name
 def get_script(script=None):
     """

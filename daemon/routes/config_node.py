@@ -36,7 +36,7 @@ __status__      = "Development"
 from json import dumps
 from flask import Blueprint, request
 from utils.log import Log
-from common.validate_auth import token_required
+from common.validate_auth import token_required, provision_token_required
 from common.validate_input import input_filter, validate_name
 from base.node import Node
 from base.interface import Interface
@@ -84,7 +84,7 @@ def config_node_get(name=None):
 
 
 @node_blueprint.route('/config/node/<string:name>', methods=['POST'])
-@token_required
+@provision_token_required
 @validate_name
 @input_filter(checks=['config:node'], skip=None)
 def config_node_post(name=None):

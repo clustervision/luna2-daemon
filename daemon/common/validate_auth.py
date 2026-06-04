@@ -59,7 +59,7 @@ def token_required(function):
             code = 401
             return json.dumps(response), code
         try:
-            jwt.decode(token, CONSTANT['API']['SECRET_KEY'], algorithms=['HS256']) ## Decoding Token
+            claims = jwt.decode(token, CONSTANT['API']['SECRET_KEY'], algorithms=['HS256']) ## Decoding Token
         except jwt.exceptions.DecodeError:
             LOGGER.error('Token is invalid. Cannot decode')
             response = {'message': 'Token is invalid'}
@@ -70,6 +70,47 @@ def token_required(function):
             response = {'message': 'Token is invalid'}
             code = 401
             return json.dumps(response), code
+        if claims.get('scope') == 'provision':
+            LOGGER.error('Provision-scoped token rejected on a protected endpoint')
+            response = {'message': 'Token is not permitted for this endpoint'}
+            return json.dumps(response), 403
+        return function(**kwargs)
+    return decorator
+
+
+def provision_token_required(function):
+    """
+    Input - Token
+    Process - Accept an admin token, or a node-scoped provision token whose
+    'node' claim matches the node/name in the request. Used only on the
+    endpoints the in-install kickstart script must reach.
+    Output - Success or Failure.
+    """
+    @wraps(function)
+    def decorator(*args, **kwargs):
+        token = None
+        if 'x-access-tokens' in request.headers:
+            token = request.headers['x-access-tokens']
+        if not token:
+            LOGGER.error('A valid token is missing. None supplied')
+            response = {'message': 'A valid token is missing'}
+            return json.dumps(response), 401
+        try:
+            claims = jwt.decode(token, CONSTANT['API']['SECRET_KEY'], algorithms=['HS256'])
+        except jwt.exceptions.DecodeError:
+            LOGGER.error('Token is invalid. Cannot decode')
+            response = {'message': 'Token is invalid'}
+            return json.dumps(response), 401
+        except Exception as exp:
+            LOGGER.error(f'Token is invalid. {exp}')
+            response = {'message': 'Token is invalid'}
+            return json.dumps(response), 401
+        if claims.get('scope') == 'provision':
+            target = kwargs.get('node') or kwargs.get('name')
+            if target and claims.get('node') != target:
+                LOGGER.error(f"Provision token for {claims.get('node')} used on {target}")
+                response = {'message': 'Token is not valid for this node'}
+                return json.dumps(response), 403
         return function(**kwargs)
     return decorator
 

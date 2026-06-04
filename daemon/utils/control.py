@@ -102,6 +102,7 @@ class Control():
                     bmcsetup = Database().get_record(table='bmcsetup', where=f'id = "{bmcsetupid}"')
                     if bmcsetup and 'device' in node[0] and node[0]['device']:
                         self.logger.debug(f"control_child thread {t}: bmcsetup: {bmcsetup}")
+                        ret = None
                         try:
                             device   = node[0]['device']
                             username = bmcsetup[0]['username']
@@ -261,36 +262,36 @@ class Control():
                         nodename=nodename, groupname=groupname
                     )
                 case 'power off':
-                    return_code, message = hook_plugin().power_on(
+                    return_code, message = hook_plugin().power_off(
                         nodename=nodename, groupname=groupname
                     )
                 case 'power status':
-                    return_code, message = hook_plugin().power_on(
+                    return_code, message = hook_plugin().power_status(
                         nodename=nodename, groupname=groupname
                     )
                 case 'power reset':
-                    return_code, message = hook_plugin().power_on(
+                    return_code, message = hook_plugin().power_reset(
                         nodename=nodename, groupname=groupname
                     )
                 case 'power cycle':
-                    return_code, message = hook_plugin().power_on(
+                    return_code, message = hook_plugin().power_cycle(
                         nodename=nodename, groupname=groupname
                     )
                 case 'chassis identify':
-                    return_code, message = hook_plugin().power_on(
+                    return_code, message = hook_plugin().identify(
                         nodename=nodename, groupname=groupname
                     )
                 case 'chassis noidentify':
-                    return_code, message = hook_plugin().power_on(
+                    return_code, message = hook_plugin().no_identify(
                         nodename=nodename, groupname=groupname
                     )
                 case 'sel list':
-                    return_code, message = hook_plugin().power_on(
+                    return_code, message = hook_plugin().sel_list(
                         nodename=nodename, groupname=groupname
                     )
                     message = message.replace("\n",";;")
                 case 'sel clear':
-                    return_code, message = hook_plugin().power_on(
+                    return_code, message = hook_plugin().sel_clear(
                         nodename=nodename, groupname=groupname
                     )
                 case _:

@@ -137,7 +137,7 @@ class OsImage(object):
                 if not os.path.exists(image_path):
                     os.mkdir(image_path, 0o755)
 
-                distribution = str(image[0]['distribution']) or 'redhat'
+                distribution = str(image[0]['distribution'] or 'redhat')
                 distribution=distribution.lower()
 
                 # loading the plugin depending on OS
@@ -386,7 +386,7 @@ class OsImage(object):
                                              status=500)
                         return False
 
-                distribution = str(image[0]['distribution']) or 'redhat'
+                distribution = str(image[0]['distribution'] or 'redhat')
                 distribution=distribution.lower()
                 osrelease = 'default'
                 if image[0]['osrelease']:
@@ -511,10 +511,9 @@ class OsImage(object):
                     image_directory = CONSTANT['FILES']['IMAGE_DIRECTORY']
                     srcimage = Database().get_record(table='osimage', where=f"name='{src}'")
                     dstimage = Database().get_record(table='osimage', where=f"name='{dst}'")
-                    distribution = str(dstimage[0]['distribution']) or 'redhat'
-                    distribution=distribution.lower()
-                    osrelease = str(dstimage[0]['osrelease']) or 'default.py'
                     if srcimage and dstimage:
+                        distribution = str(dstimage[0]['distribution'] or 'redhat').lower()
+                        osrelease = str(dstimage[0]['osrelease'] or 'default')
                         # loading the plugin depending on setting in luna.ini
                         filesystem_plugin = 'default'
                         if 'IMAGE_FILESYSTEM' in CONSTANT['PLUGINS'] and CONSTANT['PLUGINS']['IMAGE_FILESYSTEM']:
@@ -547,6 +546,9 @@ class OsImage(object):
                                     response=os_clone_plugin().clone(source=srcimage[0]['path'],destination=dstimage[0]['path'])
                                     result=response[0]
                                     mesg=response[1]
+                    else:
+                        result = False
+                        mesg = f"Required osimages do not exist in the database"
 
                     sleep(1) # needed to prevent immediate concurrent access to the database. Pooling,WAL,WIF,WAF,etc won't fix this. Only sleep
                     if result is True:
@@ -612,7 +614,7 @@ class OsImage(object):
                 if osimage and dst:
                     image = Database().get_record(table='osimage', where=f"name='{osimage}'")
                     if image:
-                        distribution = str(image[0]['distribution']) or 'redhat'
+                        distribution = str(image[0]['distribution'] or 'redhat')
                         distribution=distribution.lower()
                         grab_fs=[]
                         grab_ex=[]

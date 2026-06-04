@@ -115,7 +115,7 @@ class Controller():
                     'shadow': controller['shadow']
                 }
                 if 'network' in controller:
-                    all_controllers[controller['hostname']]['network'] = controller['network'],
+                    all_controllers[controller['hostname']]['network'] = controller['network']
             return all_controllers
         self.logger.error('No controller available, returning defaults')
         all_controllers['controller']={

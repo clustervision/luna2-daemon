@@ -377,9 +377,8 @@ class Boot():
             status=True
         else:
             self.logger.error(f"configuration error: No controller available or missing network for controller {self.controller_name}")
-            environment = jinja2.Environment()
-            template = environment.from_string('No Controller is available.')
-            status=False
+            faildata = self.failed_boot("no controller available")
+            return False, faildata
         self.logger.info(f'Boot API serving {template}')
         response = {
             'template': template,
@@ -536,7 +535,7 @@ class Boot():
                              'ipaddress.ipaddress', 'network.name as network', 'network.gateway',
                              'ipaddress.ipaddress_ipv6', 'ipaddress.dhcp', 'network.gateway_ipv6',
                              'network.network_ipv6 as networkip_ipv6', 'network.dhcp as networkdhcp',
-                             'network.network as networkip', 'network.subnet'],
+                             'network.network as networkip', 'network.subnet', 'network.subnet_ipv6'],
                             ['network.id=ipaddress.networkid',
                              'ipaddress.tablerefid=nodeinterface.id'],
                             ['tableref="nodeinterface"', f"nodeinterface.macaddress='{mac}'"]
@@ -566,7 +565,7 @@ class Boot():
                              'ipaddress.ipaddress', 'network.name as network', 'network.gateway',
                              'ipaddress.ipaddress_ipv6', 'ipaddress.dhcp', 'network.gateway_ipv6',
                              'network.network_ipv6 as networkip_ipv6', 'network.dhcp as networkdhcp',
-                             'network.network as networkip', 'network.subnet',
+                             'network.network as networkip', 'network.subnet', 'network.subnet_ipv6',
                              'nodeinterface.macaddress'],
                             ['node.id=nodeinterface.nodeid','network.id=ipaddress.networkid',
                              'ipaddress.tablerefid=nodeinterface.id','cloud.id=node.cloudid'],
@@ -589,7 +588,7 @@ class Boot():
                                             macaddress=mac
                                         )
                                     data['nodeid'] = node['nodeid']
-                                    if nodeinterface[0]["dhcp"] and nodeinterface[0]["networkdhcp"]:
+                                    if node["dhcp"] and node["networkdhcp"]:
                                         data['nodeip'] = 'dhcp'
                                     elif node["ipaddress_ipv6"]:
                                         data['nodeip'] = f'{node["ipaddress_ipv6"]}/{node["subnet_ipv6"]}'
@@ -1743,7 +1742,7 @@ class Boot():
             try:
                 segment = str(network_plugin().init)
                 template_data = template_data.replace("## NETWORK INIT CODE SEGMENT", segment)
-            except:
+            except Exception as exp:
                 self.logger.warning(f"{exp}")
             # --------- ipv4
             try:
@@ -1753,7 +1752,7 @@ class Boot():
                 template_data = template_data.replace("## GATEWAY CODE SEGMENT", segment)
                 segment = str(network_plugin().dns)
                 template_data = template_data.replace("## DNS CODE SEGMENT", segment)
-            except:
+            except Exception as exp:
                 self.logger.warning(f"{exp}")
             # --------- ipv6
             try:
@@ -1763,7 +1762,7 @@ class Boot():
                 template_data = template_data.replace("## GATEWAY IPv6 CODE SEGMENT", segment)
                 segment = str(network_plugin().dns_ipv6)
                 template_data = template_data.replace("## DNS IPv6 CODE SEGMENT", segment)
-            except:
+            except Exception as exp:
                 self.logger.warning(f"{exp}")
 
         ## BMC CODE SEGMENT
@@ -1813,10 +1812,12 @@ class Boot():
         jwt_token = None
         try:
             api_key = CONSTANT['API']['SECRET_KEY']
-            api_expiry = datetime.timedelta(minutes=int(CONSTANT['API']['EXPIRY']))
             api_expiry = datetime.timedelta(minutes=int(60))
             expiry_time = datetime.datetime.utcnow() + api_expiry
-            jwt_token = jwt.encode({'id': 0, 'exp': expiry_time}, api_key, 'HS256')
+            jwt_token = jwt.encode(
+                {'node': node, 'scope': 'provision', 'exp': expiry_time},
+                api_key, 'HS256'
+            )
         except Exception as exp:
             self.logger.info(f"Token creation error: {exp}")
         data['jwt_token'] = jwt_token

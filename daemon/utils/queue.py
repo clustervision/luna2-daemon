@@ -31,6 +31,7 @@ __email__       = 'antoine.schonewille@clustervision.com'
 __status__      = 'Development'
 
 import re
+from time import sleep
 from utils.log import Log
 from utils.database import Database
 from utils.helper import Helper

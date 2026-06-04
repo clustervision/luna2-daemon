@@ -145,10 +145,10 @@ class Config(object):
             self.logger.error(f"Error building dhcp6 config. {template6_path} does not exist")
             return False
 
-        if len(dhcp_config_path) < 5 and dhcp_config_path.startswith != '/':
+        if len(dhcp_config_path) < 5 or not dhcp_config_path.startswith('/'):
             self.logger.error(f"Error building dhcp config. dhcp_config_path {dhcp_config_path} not matching minimum criterea")
             return False
-        if len(dhcp6_config_path) < 5 and dhcp6_config_path.startswith != '/':
+        if len(dhcp6_config_path) < 5 or not dhcp6_config_path.startswith('/'):
             self.logger.error(f"Error building dhcp6 config. dhcp6_config_path {dhcp6_config_path} not matching minimum criterea")
             return False
 
@@ -1692,7 +1692,7 @@ class Config(object):
                                             if valid_ip and ip_details[0]['ipaddress'] and ip_details[0]['ipaddress'] not in dhcp_ips:
                                                 avail = ip_details[0]['ipaddress']
                                                 self.logger.info(f"---> reusing ipaddress {avail}")
-                                            if valid_ip6 and ip_details[0]['ipaddress_ipv6'] and ip_details[0]['ipaddress_ipv6'] not in dhcp_ips6:
+                                            if valid_ip6 and ip_details[0]['ipaddress_ipv6'] and ip_details[0]['ipaddress_ipv6'] not in dhcp6_ips:
                                                 avail6 = ip_details[0]['ipaddress_ipv6']
                                                 self.logger.info(f"---> reusing ipaddress {avail6}")
 

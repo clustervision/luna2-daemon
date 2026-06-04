@@ -60,7 +60,7 @@ def check_path_state(path=None):
                 path_check = True
             else:
                 LOGGER = Log.init_log('info')
-                LOGGER.error(f'{pathtype} {path} is writable')
+                LOGGER.error(f'{pathtype} {path} is not writable')
         else:
             LOGGER = Log.init_log('info')
             LOGGER.error(f'{pathtype} {path} is not readable')
@@ -78,9 +78,9 @@ def check_path_type(path=None):
     pathstatus = check_path(path)
     if pathstatus:
         if os.path.isdir(path):
-            response = 'File'
-        elif os.path.isfile(path):
             response = 'Directory'
+        elif os.path.isfile(path):
+            response = 'File'
         else:
             response = 'socket or FIFO or device'
     else:
@@ -161,7 +161,15 @@ def set_constants(section=None, option=None, item=None):
     """
     if option == 'EXPIRY':
         if item:
-            CONSTANT[section][option] = int(item.replace('h', ''))*60*60
+            value = str(item).strip().lower()
+            if value.endswith('h'):
+                CONSTANT[section][option] = int(value[:-1]) * 3600
+            elif value.endswith('m'):
+                CONSTANT[section][option] = int(value[:-1]) * 60
+            elif value.endswith('s'):
+                CONSTANT[section][option] = int(value[:-1])
+            else:
+                CONSTANT[section][option] = int(value) * 3600
         else:
             CONSTANT[section][option] = 24*60*60
     elif option.upper() == 'COOLDOWN':
@@ -211,6 +219,7 @@ CONSTANT = {
     'API': {'USERNAME': None, 'PASSWORD': None, 'EXPIRY': None, 'SECRET_KEY': None, 'ENDPOINT': None, 'PROTOCOL': None},
     'DATABASE': {'DRIVER': None, 'DATABASE': None, 'DBUSER': None,
                 'DBPASSWORD': None, 'HOST': None, 'PORT': None},
+    'SECRETS': {'ENCRYPT_SECRETS': None},
     'FILES': {'KEYFILE': None, 'IMAGE_FILES': None, 'IMAGE_DIRECTORY': None, 'MAXPACKAGINGTIME': None, 'TMP_DIRECTORY': None},
     'PLUGINS':  {'PLUGINS_DIRECTORY': None, 'IMAGE_FILESYSTEM': None},
     'SERVICES': {'DHCP': None, 'DNS': None, 'CONTROL': None, 'COOLDOWN': None, 'COMMAND': None},

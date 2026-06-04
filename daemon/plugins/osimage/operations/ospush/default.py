@@ -64,10 +64,12 @@ class Plugin():
             exit_code=0
             for grab in grab_filesystems:
                 if exit_code == 0:
+                    # /.{grab} anchors the exclude patterns at image_path regardless of how
+                    # grab is written; no --delete-after on purpose, a push must not remove node-local state
                     if nodry is True: # nodry is True means it's for real
-                        command=f"rsync -aHv --numeric-ids --one-file-system {exclude_string} {image_path}/{grab} {node}:/ >> /tmp/ospush.out"
+                        command=f"rsync -aHvR --numeric-ids --one-file-system {exclude_string} {image_path}/.{grab} {node}:/ >> /tmp/ospush.out"
                     else:
-                        command=f"rsync -aHvn --numeric-ids --one-file-system {exclude_string} {image_path}/{grab} {node}:/ >> /tmp/ospush.out"
+                        command=f"rsync -aHvnR --numeric-ids --one-file-system {exclude_string} {image_path}/.{grab} {node}:/ >> /tmp/ospush.out"
                     self.logger.info(command)
                     message,exit_code = Helper().runcommand(command,True,3600)
                     self.logger.debug(f"exit_code = {exit_code}")

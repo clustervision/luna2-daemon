@@ -66,7 +66,7 @@ class Cluster():
             for item in ['debug','security','createnode_ondemand','createnode_macashost',
                          'nextnode_discover','packing_bootpause','bind_legacy',
                          'dnssec_enable','dnssec_validation']:
-                cluster[0][item] = Helper().make_bool(cluster[0][item])
+                cluster[0][item] = Helper().make_bool(cluster[0][item],empty_is_none=True)
             response = {'config': {'cluster': cluster[0] }}
             controllers = Database().get_record_join(
                 ['controller.*', 'ipaddress.ipaddress'],

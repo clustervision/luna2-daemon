@@ -94,7 +94,7 @@ class Tables():
                 if data:
                     merged="#"
                     for record in data:
-                        merged+=dumps(data)+";"
+                        merged+=dumps(record)+";"
                     hashes[table]=str(hashlib.sha256(merged.encode()).hexdigest())
         self.logger.debug(f"HASHES: {hashes}")
         return hashes

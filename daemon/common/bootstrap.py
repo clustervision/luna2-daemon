@@ -483,8 +483,8 @@ def bootstrap(bootstrapfile=None):
         osimage_kernelversion=osimage_kernelversion.decode('utf-8')
     default_osimage = [
         {'column': 'name', 'value': str(BOOTSTRAP['OSIMAGE']['NAME'])},
-        {'column': 'grab_filesystems', 'value': '/, /boot'},
-        {'column': 'grab_exclude', 'value': '/proc/*, /sys/*, /dev/*, /tmp/*, /run/*, /opt/*, /var/log/*, /trinity/shared/*'},
+        {'column': 'grab_filesystems', 'value': '/, /boot, /var'},
+        {'column': 'grab_exclude', 'value': '/proc/*, /sys/*, /dev/*, /tmp/*, /run/*, /opt/*, /var/log/*, /trinity/shared/*, /boot/*, /cm/*, /data/*, /fhgfs/*, /local/*, /scratch/*, /media/*, lost+found/, /tftpboot/*, /etc/aliases.db, /etc/blkid/*, /etc/exports, /etc/fstab, /etc/HOSTNAME, /etc/hostname, /etc/hosts, /etc/lvm/cache/*, /etc/lvm/archive/*, /etc/lvm/backup/*, /etc/mtab, /etc/ntp.conf, /etc/ntp/*, /etc/chrony.conf, /etc/chrony.keys, /etc/chrony/*, /etc/openvpn/*, /etc/postfix/main.cf, /etc/resolv.conf, /etc/sysconfig/network, /etc/sysconfig/network-scripts/*, /etc/NetworkManager/system-connections/*, /etc/network/interfaces.d/*, /etc/udev/rules.d/*-persistent-*, /var/cache/*, /var/lib/dhclient/*, /var/lib/dhcpcd/*, /var/lib/ldap/*, /var/lib/logrotate.status, /var/lib/mlocate/*, /var/lib/nfs/*, /var/lib/ntp/*, /var/lib/chrony/*, /var/lib/rpm/__db.*, /var/lib/sss/*, /var/lib/systemd/random-seed, /var/spool/*, /var/tmp/*'},
         {'column': 'kernelversion', 'value': f'{osimage_kernelversion}'},
         {'column': 'kerneloptions', 'value': '_net.ifnames=0 _biosdevname=0'},
         {'column': 'path', 'value': f'{osimage_path}'},

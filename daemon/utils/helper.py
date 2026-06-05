@@ -585,7 +585,7 @@ class Helper(object):
         return variable
 
 
-    def make_bool(self, variable=None):
+    def make_bool(self, variable=None, empty_is_none=False):
         """
         Input - string
         Output - Boolean
@@ -597,12 +597,14 @@ class Helper(object):
                 variable = True
             elif variable in ('0', 0, 'false', 'False', 'FALSE', 'no', 'No', 'NO', 'n'):
                 variable = False
+            elif empty_is_none and len(variable)==0:
+                variable = None
         else:
             variable = None
         return variable
 
 
-    def bool_to_string(self, variable=None):
+    def bool_to_string(self, variable=None, empty_is_none=False):
         """
         Input - string
         Output - Boolean
@@ -617,6 +619,8 @@ class Helper(object):
                 variable = '1'
             elif variable in ('0', 0, 'false', 'False', 'FALSE', 'no', 'No', 'NO', 'n'):
                 variable = '0'
+            elif empty_is_none and len(variable)==0:
+                variable = None
         else:
             variable = None
         return variable

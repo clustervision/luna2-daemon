@@ -66,7 +66,10 @@ class Cluster():
             for item in ['debug','security','createnode_ondemand','createnode_macashost',
                          'nextnode_discover','packing_bootpause','bind_legacy',
                          'dnssec_enable','dnssec_validation']:
-                cluster[0][item] = Helper().make_bool(cluster[0][item])
+                cluster[0][item] = Helper().make_bool(cluster[0][item],empty_is_none=True)
+            if not cluster[0]['bind_legacy']:
+                cluster[0]['dnssec_enable'] = 'N/A'
+
             response = {'config': {'cluster': cluster[0] }}
             controllers = Database().get_record_join(
                 ['controller.*', 'ipaddress.ipaddress'],
@@ -296,10 +299,9 @@ class Cluster():
                         else:
                             data['domain_search'] = None
 
-                    for item in ['dnssec_enable', 'dnssec_validation']:
+                    for item in ['bind_legacy', 'dnssec_enable', 'dnssec_validation']:
                         if item in data:
-                            data[item] = Helper().bool_to_string(data[item])
-
+                            data[item] = Helper().bool_to_string(data[item],empty_is_none=True)
                     for key, value in items.items():
                         if key in data:
                             data[key] = str(data[key]) or value

@@ -139,7 +139,7 @@ class DBStructure():
         This method will create DB table
         """
         for table in self.tables:
-            layout = get_database_table_structure(table=table)
+            layout = self.get_database_table_structure(table=table)
             Database().create(table, layout)
     
     def get_appended_database_table_structure(self,table=None):

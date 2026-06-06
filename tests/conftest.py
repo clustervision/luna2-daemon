@@ -74,6 +74,13 @@ def helper():
 
 
 @pytest.fixture
+def config():
+    """A Config instance backed by the stubbed configuration."""
+    from utils.config import Config
+    return Config()
+
+
+@pytest.fixture
 def sqlite_db_path(tmp_path):
     """
     A fresh, EMPTY temporary SQLite database wired into the daemon's config.

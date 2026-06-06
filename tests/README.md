@@ -13,7 +13,9 @@ tests/
   cases/
     helper_cases.py      data-driven cases for Helper methods
     validate_cases.py    data-driven cases for validate_input functions
+    config_cases.py      data-driven cases for Config (pure methods)
   unit/
+    test_config.py       runs config_cases.py
     test_helper.py       runs helper_cases.py + hand-written edge tests
     test_validate_input.py
   regression/
@@ -45,8 +47,11 @@ puts `daemon/` and `tests/` on the path.
 Key fixtures (in `conftest.py`):
 
 - `helper` — a `Helper()` instance.
+- `config` — a `Config()` instance.
 - `constant` — the stubbed `CONSTANT` dict, if a test needs to read or tweak config.
-- `sqlite_db` — a temporary, schema-complete SQLite database built from the daemon's
+- `sqlite_db_path` — an empty temp SQLite database wired into config (no schema); for
+  tests that build tables themselves.
+- `sqlite_db` — as `sqlite_db_path` but with the full schema built from the daemon's
   own `database_layout` definitions; the data layer runs against it for real.
 
 ## Adding tests

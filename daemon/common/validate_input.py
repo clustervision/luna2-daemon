@@ -285,7 +285,7 @@ def filter_data(data=None, name=None):
         if not regex.match(data):
             LOGGER.info(f"MATCH name = {name} with data = {data} mismatch with:")
             LOGGER.info(f"    REG_EXP['{MATCH[name]}']['regexp'] = {REG_EXP[MATCH[name]]['regexp']}")
-            ERROR = f"field {name} with content {data} does match criteria {REG_EXP[MATCH[name]]['error']}"
+            ERROR = f"field {name} with content {data} does not match criteria {REG_EXP[MATCH[name]]['error']}"
             return
         if MATCH[name] in CONVERT.keys():
             LOGGER.debug(f"CONVERT IN {MATCH[name]} = {data}")

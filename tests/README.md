@@ -21,6 +21,7 @@ tests/
   regression/
     test_helper_golden.py    network math pinned to a stored golden file
     test_database_sqlite.py  real CRUD against a temp SQLite database
+    test_config_render.py    dhcp_overwrite/dns_configure + networking funcs
     golden/network_math.json the golden baseline
     regen_network_math.py    regenerate the golden after an intended change
 ```
@@ -119,3 +120,11 @@ git diff tests/regression/golden/network_math.json
 
 An **unexpected** diff means a behavioural regression — investigate, don't just
 regenerate.
+
+`test_config_render.py` exercises `Config.dhcp_overwrite` and `Config.dns_configure`
+end to end: it seeds a minimal cluster into a temp SQLite database, renders the
+daemon's own Jinja templates, and asserts on the generated `dhcpd.conf` / zone
+files. System side effects are neutralised — the dhcpd/named syntax-check
+subprocess is stubbed to succeed and `shutil.copyfile` / `os.makedirs` are
+no-ops — so nothing is written to `/etc` or `/var/named`. The `config_env`
+fixture restores the config sections it overrides on teardown.

@@ -22,6 +22,7 @@ tests/
     test_helper_golden.py    network math pinned to a stored golden file
     test_database_sqlite.py  real CRUD against a temp SQLite database
     test_config_render.py    dhcp_overwrite/dns_configure + networking funcs
+    test_config_interfaces.py node/group interface config, rename, dhcp-range
     golden/network_math.json the golden baseline
     regen_network_math.py    regenerate the golden after an intended change
 ```
@@ -128,3 +129,11 @@ files. System side effects are neutralised — the dhcpd/named syntax-check
 subprocess is stubbed to succeed and `shutil.copyfile` / `os.makedirs` are
 no-ops — so nothing is written to `/etc` or `/var/named`. The `config_env`
 fixture restores the config sections it overrides on teardown.
+
+`test_config_interfaces.py` covers the node/group interface methods
+(`node_interface_config`, `group_interface_config`, the rename variants) and
+`update_dhcp_range_on_network_change`, asserting both the returned
+`(ok, message)` and the stored rows. The queue-driven propagation methods
+(`update_interface_on_group_nodes`, `update_interface_ipaddress_on_network_change`)
+are not covered — they loop on the task queue and `sleep(10)`, so they need a
+queue/service harness rather than a focused test.

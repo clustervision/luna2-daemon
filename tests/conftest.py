@@ -74,14 +74,13 @@ def helper():
 
 
 @pytest.fixture
-def sqlite_db(tmp_path):
+def sqlite_db_path(tmp_path):
     """
-    A temporary, schema-complete SQLite database for regression tests.
+    A fresh, EMPTY temporary SQLite database wired into the daemon's config.
 
-    Points the stubbed DATABASE at a temp file, builds every table from the
-    daemon's own database_layout definitions, and yields the file path. The
-    daemon's Database() picks up the path through CONSTANT, so the real data
-    layer is exercised, not a mock.
+    Points the stubbed DATABASE at a temp file and clears the cached thread
+    connection so Database() binds to it. No schema is created -- use this when
+    the test itself builds the tables (e.g. exercising create_database_tables).
     """
     constant = sys.modules["common.constant"].CONSTANT
     original = constant["DATABASE"]["DATABASE"]
@@ -89,21 +88,33 @@ def sqlite_db(tmp_path):
     constant["DATABASE"]["DATABASE"] = db_path
 
     from utils import database as database_module
-    from utils.database import Database
-    from utils.dbstructure import DBStructure
 
     # Database caches a per-thread connection; drop any cached one so this test
     # binds to the temp file rather than a connection from an earlier test.
     _reset_thread_connection(database_module)
 
-    structure = DBStructure()
-    for table in structure.tables:
-        Database().create(table, structure.get_database_table_structure(table))
-
     yield db_path
 
     _reset_thread_connection(database_module)
     constant["DATABASE"]["DATABASE"] = original
+
+
+@pytest.fixture
+def sqlite_db(sqlite_db_path):
+    """
+    A temporary, schema-complete SQLite database for regression tests.
+
+    Builds every table from the daemon's own database_layout definitions on top
+    of sqlite_db_path. The daemon's Database() picks up the path through
+    CONSTANT, so the real data layer is exercised, not a mock.
+    """
+    from utils.database import Database
+    from utils.dbstructure import DBStructure
+
+    structure = DBStructure()
+    for table in structure.tables:
+        Database().create(table, structure.get_database_table_structure(table))
+    return sqlite_db_path
 
 
 def _reset_thread_connection(database_module):

@@ -20,6 +20,29 @@ def database(sqlite_db):
 
 
 @pytest.mark.regression
+def test_create_database_tables_builds_full_schema(sqlite_db_path):
+    """
+    Regression for the DBStructure.create_database_tables NameError.
+
+    The method called a bare get_database_table_structure() (only defined as an
+    instance method), so it raised NameError and created nothing whenever
+    invoked. On an empty database it must build every declared table. Runs on
+    sqlite_db_path (no pre-built schema) so the method itself does the work.
+    """
+    from utils.database import Database
+    from utils.dbstructure import DBStructure
+
+    structure = DBStructure()
+    # The database starts empty: no table exists yet.
+    assert not Database().get_columns(structure.tables[0])
+
+    structure.create_database_tables()
+
+    for table in structure.tables:
+        assert Database().get_columns(table), f"table {table} was not created"
+
+
+@pytest.mark.regression
 def test_schema_has_expected_tables(database):
     """Every declared table exists with columns after the schema build."""
     from utils.dbstructure import DBStructure

@@ -40,3 +40,33 @@ luna cluster change --cm y --co y --nx y
 - boot the nodes
 
 
+# luna controller zero-touch provisioning (ZTP) for NVIDIA NVOS / NVLink switches
+
+Luna can hand an NVOS switch its DHCP boot options and serve the ZTP recipe it
+fetches, so the switch installs NVOS and applies its config on first boot.
+
+- a switch record carries four ZTP fields (auto-migrated onto existing databases):
+  - `default_url` — DHCP option 114; the NVOS/ONIE image URL, reused as the ZTP
+    `01-image` install URL
+  - `bootfile` — DHCP option 67 (`filename`); the URL the switch fetches its ZTP
+    recipe from, normally luna's own `/boot/switch/<name>` endpoint
+  - `next_server` — optional `next-server` for TFTP-based setups
+  - `ztpconfig` — the NVOS commands-list applied by ZTP; when empty luna serves a
+    minimal generated default (hostname + ssh) instead
+- set them on the switch (these reservation fields render into both the ISC and
+  Kea DHCP configs):
+```
+luna switch change --default-url http://<controller>/images/<nvos>.bin \
+                   --bootfile http://<controller>:7050/boot/switch/<name> \
+                   <name>
+```
+  > Note: the matching `luna switch` flags are a separate addition in luna2-cli;
+  > until they land the fields are set through the REST API (`config/switch/<name>`).
+- luna then serves, for a switch `<name>`:
+  - `GET /boot/switch/<name>` — the ZTP recipe JSON (`01-image` → `02-commands-list`
+    → `03-connectivity-check`)
+  - `GET /boot/switch/<name>/commands` — the commands-list applied by `02-commands-list`
+- boot the switch; it requests DHCP, receives option 114/67, fetches the recipe and
+  provisions itself
+
+

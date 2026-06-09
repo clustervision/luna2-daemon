@@ -386,8 +386,11 @@ class Config(object):
                 else:
                     self.logger.info(f'no nodes available for network {network_name} IPv4: {network_ip} or IPv6: {network_ipv6}')
                 for item in ['otherdevices', 'switch']:
+                    select = [f'{item}.name','ipaddress.ipaddress','ipaddress.ipaddress_ipv6',f'{item}.macaddress']
+                    if item == 'switch':
+                        select += ['switch.default_url', 'switch.bootfile', 'switch.next_server']
                     devices = Database().get_record_join(
-                        [f'{item}.name','ipaddress.ipaddress','ipaddress.ipaddress_ipv6',f'{item}.macaddress'],
+                        select,
                         [f'ipaddress.tablerefid={item}.id'],
                         [f'tableref="{item}"', f'ipaddress.networkid="{network_id}"']
                     )
@@ -408,6 +411,10 @@ class Config(object):
                                     config_host['domain']=nwkdomain
                                     config_host['ipaddress']=device['ipaddress']
                                     config_host['macaddress']=device['macaddress']
+                                    if item == 'switch':
+                                        for field in ['default_url', 'bootfile', 'next_server']:
+                                            if device[field]:
+                                                config_host[field]=device[field]
                                     if nwk['name'] in config_reservations:
                                         config_reservations[nwk['name']].append(config_host)
                     else:

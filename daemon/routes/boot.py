@@ -130,6 +130,44 @@ def boot_short():
     ), access_code
 
 
+@boot_blueprint.route('/boot/switch/<string:name>', methods=['GET'])
+@validate_name
+def boot_switch(name=None):
+    """
+    This route serves the NVOS ZTP recipe (JSON) for a switch.
+    Input - switch name
+    Output - templ_switch_ztp.json
+    """
+    status, response = Boot().switch_ztp(name)
+    if status is not True:
+        return response, 404
+    return render_template(
+        response['template'],
+        SWITCH_NAME       = response['SWITCH_NAME'],
+        IMAGE_URL         = response['IMAGE_URL'],
+        COMMANDS_URL      = response['COMMANDS_URL'],
+        CONNECTIVITY_HOST = response['CONNECTIVITY_HOST']
+    ), 200, {'Content-Type': 'application/json'}
+
+
+@boot_blueprint.route('/boot/switch/<string:name>/commands', methods=['GET'])
+@validate_name
+def boot_switch_commands(name=None):
+    """
+    This route serves the NVOS commands-list applied by ZTP for a switch.
+    Input - switch name
+    Output - admin-supplied ztpconfig, or templ_switch_commands.cfg default
+    """
+    status, response = Boot().switch_commands(name)
+    if status is not True:
+        return response, 404
+    if 'template_data' in response:
+        body = response['template_data']
+    else:
+        body = render_template(response['template'], SWITCH_NAME=response['SWITCH_NAME'])
+    return body, 200, {'Content-Type': 'text/plain'}
+
+
 @boot_blueprint.route('/boot/disk', methods=['GET'])
 def boot_disk():
     """

@@ -395,6 +395,48 @@ class Boot():
         return status, response
 
 
+    def switch_ztp(self, name=None):
+        """
+        This method will provide the NVOS ZTP recipe (JSON) for a switch.
+        """
+        template = 'templ_switch_ztp.json'
+        template_path = f'{CONSTANT["TEMPLATES"]["TEMPLATE_FILES"]}/{template}'
+        if not Helper().check_jinja(template_path):
+            return False, self.failed_boot("switch ztp template does not exist")
+        switch = Database().get_record(table='switch', where=f'name="{name}"')
+        if not switch:
+            return False, self.failed_boot(f"switch {name} does not exist")
+        switch = switch[0]
+        protocol = CONSTANT['API']['PROTOCOL']
+        controller = self.controller_ipv4 or self.controller_ip
+        base_url = f"{protocol}://{controller}:{self.controller_serverport}/boot/switch/{name}"
+        self.logger.info(f'Boot API serving {template} for switch {name}')
+        response = {
+            'template': template,
+            'SWITCH_NAME': name,
+            'IMAGE_URL': switch['default_url'],
+            'COMMANDS_URL': f"{base_url}/commands",
+            'CONNECTIVITY_HOST': controller
+        }
+        return True, response
+
+
+    def switch_commands(self, name=None):
+        """
+        This method will provide the NVOS commands-list applied by ZTP for a switch.
+        An admin-supplied ztpconfig is served verbatim; otherwise a minimal default
+        is generated from the switch identity.
+        """
+        switch = Database().get_record(table='switch', where=f'name="{name}"')
+        if not switch:
+            return False, self.failed_boot(f"switch {name} does not exist")
+        switch = switch[0]
+        self.logger.info(f'Boot API serving commands-list for switch {name}')
+        if switch['ztpconfig']:
+            return True, {'template_data': switch['ztpconfig']}
+        return True, {'template': 'templ_switch_commands.cfg', 'SWITCH_NAME': name}
+
+
     def boot_disk(self):
         """
         This method will provide a boot disk ipxe template.

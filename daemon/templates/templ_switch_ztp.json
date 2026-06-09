@@ -1,0 +1,33 @@
+{% autoescape None %}
+{
+  "ztp": {
+    {%- if IMAGE_URL %}
+    "01-image": {
+      "image": {
+        "install": {
+          "url": "{{ IMAGE_URL }}",
+          "skip-reboot": false
+        }
+      },
+      "halt-on-failure": true,
+      "description": "{{ SWITCH_NAME }}: ensure correct NVOS version, reboot, then continue"
+    },
+    {%- endif %}
+    "02-commands-list": {
+      "url": "{{ COMMANDS_URL }}",
+      "clear-config": "true",
+      "save-config": "true",
+      "halt-on-failure": true,
+      "description": "{{ SWITCH_NAME }}: apply identity + services, persist, disable ZTP"
+    },
+    "03-connectivity-check": {
+      "connectivity-check": {
+        "ping-hosts": ["{{ CONNECTIVITY_HOST }}"],
+        "ping-count": 5,
+        "ignore-result": true
+      },
+      "description": "{{ SWITCH_NAME }}: sanity-check mgmt reachability"
+    }
+  }
+}
+{% endautoescape %}

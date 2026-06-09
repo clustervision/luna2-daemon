@@ -78,5 +78,10 @@ luna switch change --netboot y \
   - `GET /boot/switch/<name>/commands` — the commands-list applied by `02-commands-list`
 - boot the switch; it requests DHCP, receives option 114/67, fetches the recipe and
   provisions itself
+- **Security caveat:** these `/boot/switch/<name>` endpoints are **unauthenticated** (the
+  switch has no token during ZTP, same as the node `/boot` routes), so the served
+  `ztpconfig` is readable by anyone who can reach the controller on that port and knows or
+  guesses a switch name. Keep `ztpconfig` to identity/services only — do **not** put
+  passwords, hashes or other secrets in it.
 
 

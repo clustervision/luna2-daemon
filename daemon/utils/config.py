@@ -388,7 +388,7 @@ class Config(object):
                 for item in ['otherdevices', 'switch']:
                     select = [f'{item}.name','ipaddress.ipaddress','ipaddress.ipaddress_ipv6',f'{item}.macaddress']
                     if item == 'switch':
-                        select += ['switch.default_url', 'switch.bootfile', 'switch.next_server']
+                        select += ['switch.netboot', 'switch.default_url', 'switch.bootfile', 'switch.next_server']
                     devices = Database().get_record_join(
                         select,
                         [f'ipaddress.tablerefid={item}.id'],
@@ -411,7 +411,7 @@ class Config(object):
                                     config_host['domain']=nwkdomain
                                     config_host['ipaddress']=device['ipaddress']
                                     config_host['macaddress']=device['macaddress']
-                                    if item == 'switch':
+                                    if item == 'switch' and Helper().make_bool(device['netboot']) is not False:
                                         for field in ['default_url', 'bootfile', 'next_server']:
                                             if device[field]:
                                                 config_host[field]=device[field]

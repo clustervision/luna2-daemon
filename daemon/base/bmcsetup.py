@@ -116,6 +116,14 @@ class BMCSetup():
                             data[key] = str(Helper().bool_to_string(data[key]))
                     if key in data and (not data[key]) and (key not in items):
                         del data[key]
+                if 'unmanaged_bmc_users' in data:
+                    value = str(data['unmanaged_bmc_users']).strip().lower()
+                    if value in ('', 'none', 'skip'):
+                        data['unmanaged_bmc_users'] = ''
+                    elif value in ('disable', 'delete'):
+                        data['unmanaged_bmc_users'] = value
+                    else:
+                        return False, 'Invalid request: unmanaged_bmc_users must be disable, delete or empty'
                 for key in data:
                     request_data['config'][self.table][name][key] = data[key]
         status, response = Model().change_record(

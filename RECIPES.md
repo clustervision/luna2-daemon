@@ -45,9 +45,14 @@ luna cluster change --cm y --co y --nx y
 Luna can hand an NVOS switch its DHCP boot options and serve the ZTP recipe it
 fetches, so the switch installs NVOS and applies its config on first boot.
 
+- place the NVOS image in luna's files directory, `/trinity/local/luna/files`. It is
+  then served at `GET /files/<image>` with **no token**, which the switch needs since
+  it has no credentials during ZTP. Keep a `.bin` extension: luna only token-gates the
+  image extensions `.gz/.tar/.bz/.bz2/.torrent` (see `daemon/base/file.py`), so a
+  `.bin` NVOS image downloads token-free.
 - a switch record carries four ZTP fields (auto-migrated onto existing databases):
   - `default_url` — DHCP option 114; the NVOS/ONIE image URL, reused as the ZTP
-    `01-image` install URL
+    `01-image` install URL. Point it at the `/files` URL above.
   - `bootfile` — DHCP option 67 (`filename`); the URL the switch fetches its ZTP
     recipe from, normally luna's own `/boot/switch/<name>` endpoint
   - `next_server` — optional `next-server` for TFTP-based setups
@@ -56,7 +61,7 @@ fetches, so the switch installs NVOS and applies its config on first boot.
 - set them on the switch (these reservation fields render into both the ISC and
   Kea DHCP configs):
 ```
-luna switch change --default-url http://<controller>/images/<nvos>.bin \
+luna switch change --default-url http://<controller>:7050/files/<nvos>.bin \
                    --bootfile http://<controller>:7050/boot/switch/<name> \
                    <name>
 ```

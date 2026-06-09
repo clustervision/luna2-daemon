@@ -145,6 +145,7 @@ def boot_switch(name=None):
         response['template'],
         SWITCH_NAME       = response['SWITCH_NAME'],
         IMAGE_URL         = response['IMAGE_URL'],
+        ZTP_FORMAT        = response['ZTP_FORMAT'],
         COMMANDS_URL      = response['COMMANDS_URL'],
         CONNECTIVITY_HOST = response['CONNECTIVITY_HOST']
     ), 200, {'Content-Type': 'application/json'}

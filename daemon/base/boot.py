@@ -411,11 +411,15 @@ class Boot():
         controller = self.controller_ipv4 or self.controller_ip
         controller_url = f"{protocol}://{controller}:{self.controller_serverport}"
         image_url = f"{controller_url}/{switch['default_url']}" if switch['default_url'] else None
+        # the served config is yaml only when an admin ztpconfig is present and flagged yaml;
+        # the generated fallback is always a commands-list
+        ztpformat = 'yaml' if (switch['ztpconfig'] and str(switch['ztpformat']).lower() == 'yaml') else 'commands'
         self.logger.info(f'Boot API serving {template} for switch {name}')
         response = {
             'template': template,
             'SWITCH_NAME': name,
             'IMAGE_URL': image_url,
+            'ZTP_FORMAT': ztpformat,
             'COMMANDS_URL': f"{controller_url}/boot/switch/{name}/commands",
             'CONNECTIVITY_HOST': controller
         }

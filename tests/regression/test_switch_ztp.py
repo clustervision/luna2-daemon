@@ -203,6 +203,7 @@ def test_switch_ztp_json_renders_valid(seeded_switch):
         "templ_switch_ztp.json",
         SWITCH_NAME=SWITCH_NAME,
         IMAGE_URL=image,
+        ZTP_FORMAT="commands",
         COMMANDS_URL=commands,
         CONNECTIVITY_HOST=CONTROLLER_IP,
     )
@@ -210,7 +211,26 @@ def test_switch_ztp_json_renders_valid(seeded_switch):
 
     assert recipe["ztp"]["01-image"]["image"]["install"]["url"] == image
     assert recipe["ztp"]["02-commands-list"]["url"] == commands
+    assert "02-startup-file" not in recipe["ztp"]
     assert recipe["ztp"]["03-connectivity-check"]["connectivity-check"]["ping-hosts"] == [CONTROLLER_IP]
+
+
+@pytest.mark.regression
+def test_switch_ztp_json_yaml_format_uses_startup_file():
+    commands = f"http://{CONTROLLER_IP}:7050/boot/switch/{SWITCH_NAME}/commands"
+    rendered = _render(
+        "templ_switch_ztp.json",
+        SWITCH_NAME=SWITCH_NAME,
+        IMAGE_URL=None,
+        ZTP_FORMAT="yaml",
+        COMMANDS_URL=commands,
+        CONNECTIVITY_HOST=CONTROLLER_IP,
+    )
+    recipe = json.loads(rendered)
+
+    # yaml format swaps the section to 02-startup-file (NVUE declarative), same URL
+    assert "02-commands-list" not in recipe["ztp"]
+    assert recipe["ztp"]["02-startup-file"]["url"] == commands
 
 
 @pytest.mark.regression

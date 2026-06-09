@@ -233,6 +233,7 @@ DATABASE_LAYOUT_switch = [
 {"column": "default_url",          "datatype": "VARCHAR", "length": "255"},
 {"column": "bootfile",             "datatype": "VARCHAR", "length": "255"},
 {"column": "ztpconfig",            "datatype": "TEXT"},
+{"column": "ztpformat",            "datatype": "VARCHAR", "length": "20"},
 {"column": "comment",              "datatype": "VARCHAR", "length": "60"}]
 
 DATABASE_LAYOUT_otherdevices = [

@@ -13,6 +13,15 @@
       "description": "{{ SWITCH_NAME }}: ensure correct NVOS version, reboot, then continue"
     },
     {%- endif %}
+    {%- if ZTP_FORMAT == 'yaml' %}
+    "02-startup-file": {
+      "url": "{{ COMMANDS_URL }}",
+      "clear-config": true,
+      "save-config": true,
+      "halt-on-failure": true,
+      "description": "{{ SWITCH_NAME }}: apply NVUE startup config, persist, disable ZTP"
+    },
+    {%- else %}
     "02-commands-list": {
       "url": "{{ COMMANDS_URL }}",
       "clear-config": "true",
@@ -20,6 +29,7 @@
       "halt-on-failure": true,
       "description": "{{ SWITCH_NAME }}: apply identity + services, persist, disable ZTP"
     },
+    {%- endif %}
     "03-connectivity-check": {
       "connectivity-check": {
         "ping-hosts": ["{{ CONNECTIVITY_HOST }}"],

@@ -55,22 +55,23 @@ fetches, so the switch installs NVOS and applies its config on first boot.
     boot options below into the DHCP reservation. Disabled keeps the IP reservation but
     emits no `default-url`/`filename`/`next-server`, so the switch does not fetch the NVOS
     image or re-run ZTP — flip it off to lock a provisioned switch against reinstall.
-  - `default_url` — DHCP option 114; the NVOS/ONIE image URL, reused as the ZTP
-    `01-image` install URL. Point it at the `/files` URL above.
-  - `bootfile` — DHCP option 67 (`filename`); the URL the switch fetches its ZTP
-    recipe from, normally luna's own `/boot/switch/<name>` endpoint
-  - `next_server` — optional `next-server` for TFTP-based setups
+  - `default_url` — DHCP option 114; a **controller-relative path** to the NVOS/ONIE
+    image (e.g. `files/<nvos>.bin`), reused as the ZTP `01-image` install URL.
+  - `bootfile` — DHCP option 67 (`filename`); a **controller-relative path** to the ZTP
+    recipe, normally luna's own `boot/switch/<name>` endpoint.
   - `ztpconfig` — the NVOS commands-list applied by ZTP; when empty luna serves a
     minimal generated default (hostname + ssh) instead
-- set them on the switch (these reservation fields render into both the ISC and
-  Kea DHCP configs):
+- `default_url`/`bootfile` store only the path: luna prepends the controller
+  `http://<nextserver>:<nextport>/` automatically, reusing the same per-reservation
+  `nextserver`/`nextport` the node `filename` already uses. The `next-server` line is
+  the controller too (no separate field). Set them on the switch (rendered into both the
+  ISC and Kea DHCP configs):
 ```
-luna switch change --default-url http://<controller>:7050/files/<nvos>.bin \
-                   --bootfile http://<controller>:7050/boot/switch/<name> \
+luna switch change --netboot y \
+                   --default-url files/<nvos>.bin \
+                   --bootfile boot/switch/<name> \
                    <name>
 ```
-  > Note: the matching `luna switch` flags are a separate addition in luna2-cli;
-  > until they land the fields are set through the REST API (`config/switch/<name>`).
 - luna then serves, for a switch `<name>`:
   - `GET /boot/switch/<name>` — the ZTP recipe JSON (`01-image` → `02-commands-list`
     → `03-connectivity-check`)

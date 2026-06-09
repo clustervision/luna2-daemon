@@ -232,7 +232,6 @@ DATABASE_LAYOUT_switch = [
 {"column": "netboot",              "datatype": "INTEGER", "length": "10"},
 {"column": "default_url",          "datatype": "VARCHAR", "length": "255"},
 {"column": "bootfile",             "datatype": "VARCHAR", "length": "255"},
-{"column": "next_server",          "datatype": "VARCHAR", "length": "60"},
 {"column": "ztpconfig",            "datatype": "TEXT"},
 {"column": "comment",              "datatype": "VARCHAR", "length": "60"}]
 

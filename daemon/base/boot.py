@@ -409,13 +409,14 @@ class Boot():
         switch = switch[0]
         protocol = CONSTANT['API']['PROTOCOL']
         controller = self.controller_ipv4 or self.controller_ip
-        base_url = f"{protocol}://{controller}:{self.controller_serverport}/boot/switch/{name}"
+        controller_url = f"{protocol}://{controller}:{self.controller_serverport}"
+        image_url = f"{controller_url}/{switch['default_url']}" if switch['default_url'] else None
         self.logger.info(f'Boot API serving {template} for switch {name}')
         response = {
             'template': template,
             'SWITCH_NAME': name,
-            'IMAGE_URL': switch['default_url'],
-            'COMMANDS_URL': f"{base_url}/commands",
+            'IMAGE_URL': image_url,
+            'COMMANDS_URL': f"{controller_url}/boot/switch/{name}/commands",
             'CONNECTIVITY_HOST': controller
         }
         return True, response

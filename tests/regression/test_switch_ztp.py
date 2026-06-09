@@ -8,7 +8,7 @@ Two angles are exercised against the real code:
 
 * dhcp_overwrite renders the switch DHCP reservation fields (option 114
   default-url, filename/boot-file-name, next-server) into both the ISC and Kea
-  templates when a switch carries default_url/bootfile/next_server.
+  templates when a switch carries default_url/bootfile (controller prepended).
 * the served ZTP recipe (templ_switch_ztp.json) and the generated commands-list
   (templ_switch_commands.cfg) render into valid, expected content.
 
@@ -32,9 +32,10 @@ CONTROLLER_IP = "10.141.255.254"
 SWITCH_IP = "10.141.253.1"
 SWITCH_MAC = "aa:bb:cc:00:11:22"
 SWITCH_NAME = "nvlink-sw01"
-DEFAULT_URL = "http://10.141.255.254/images/nvos-amd64-25.02.2225.bin"
-BOOTFILE = "http://10.141.255.254:7050/boot/switch/nvlink-sw01"
-NEXT_SERVER = "10.141.200.50"
+# default_url / bootfile are stored as controller-relative paths; the templates
+# prepend http://<nextserver>:<nextport>/ (the controller, reused from the node logic).
+DEFAULT_URL = "files/nvos-amd64-25.02.2225.bin"
+BOOTFILE = "boot/switch/nvlink-sw01"
 
 
 def _insert(table, **columns):
@@ -62,7 +63,7 @@ def _seed_cluster_with_switch(netboot=None):
             tablerefid=ctrlid, networkid=netid)
 
     switch_cols = dict(name=SWITCH_NAME, macaddress=SWITCH_MAC,
-                       default_url=DEFAULT_URL, bootfile=BOOTFILE, next_server=NEXT_SERVER)
+                       default_url=DEFAULT_URL, bootfile=BOOTFILE)
     if netboot is not None:
         switch_cols["netboot"] = netboot
     _insert("switch", **switch_cols)
@@ -122,9 +123,12 @@ def test_dhcp_isc_renders_switch_reservation(config_env, seeded_switch):
     assert "option default-url code 114 = text;" in content
     assert f"host {SWITCH_NAME}.{NETWORK}" in content
     assert f"hardware ethernet {SWITCH_MAC}" in content
-    assert f'option default-url "{DEFAULT_URL}";' in content
-    assert f'filename "{BOOTFILE}";' in content
-    assert f"next-server {NEXT_SERVER};" in content
+    # controller (== subnet nextserver) is prepended to the stored relative paths
+    assert f'option default-url "http://{CONTROLLER_IP}:' in content
+    assert f'/{DEFAULT_URL}";' in content
+    assert f'filename "http://{CONTROLLER_IP}:' in content
+    assert f'/{BOOTFILE}";' in content
+    assert f"next-server {CONTROLLER_IP};" in content
 
 
 @pytest.mark.regression
@@ -142,9 +146,9 @@ def test_dhcp_isc_netboot_disabled_suppresses_boot_options(config_env, sqlite_db
     assert f"hardware ethernet {SWITCH_MAC}" in content
     assert f"fixed-address {SWITCH_IP}" in content
     # ...but with netboot disabled, no boot options are handed out
+    assert 'option default-url "http' not in content
     assert DEFAULT_URL not in content
     assert BOOTFILE not in content
-    assert f"next-server {NEXT_SERVER};" not in content
 
 
 @pytest.mark.regression
@@ -158,24 +162,28 @@ def test_dhcp_kea_renders_switch_reservation(config_env, constant, seeded_switch
     content = open(os.path.join(config_env, "dhcpd.conf"), encoding="utf-8").read()
 
     assert f'"hw-address": "{SWITCH_MAC}"' in content
-    assert f'"boot-file-name": "{BOOTFILE}"' in content
-    assert f'"next-server": "{NEXT_SERVER}"' in content
-    assert f'"name": "v4-captive-portal", "data": "{DEFAULT_URL}"' in content
+    assert f'"boot-file-name": "http://{CONTROLLER_IP}:' in content
+    assert f'/{BOOTFILE}"' in content
+    assert f'"next-server": "{CONTROLLER_IP}"' in content
+    assert 'v4-captive-portal' in content
+    assert f'/{DEFAULT_URL}" }}' in content
 
 
 @pytest.mark.regression
 def test_switch_ztp_json_renders_valid(seeded_switch):
+    image = f"http://{CONTROLLER_IP}:7050/{DEFAULT_URL}"
+    commands = f"http://{CONTROLLER_IP}:7050/boot/switch/{SWITCH_NAME}/commands"
     rendered = _render(
         "templ_switch_ztp.json",
         SWITCH_NAME=SWITCH_NAME,
-        IMAGE_URL=DEFAULT_URL,
-        COMMANDS_URL=f"{BOOTFILE}/commands",
+        IMAGE_URL=image,
+        COMMANDS_URL=commands,
         CONNECTIVITY_HOST=CONTROLLER_IP,
     )
     recipe = json.loads(rendered)
 
-    assert recipe["ztp"]["01-image"]["image"]["install"]["url"] == DEFAULT_URL
-    assert recipe["ztp"]["02-commands-list"]["url"] == f"{BOOTFILE}/commands"
+    assert recipe["ztp"]["01-image"]["image"]["install"]["url"] == image
+    assert recipe["ztp"]["02-commands-list"]["url"] == commands
     assert recipe["ztp"]["03-connectivity-check"]["connectivity-check"]["ping-hosts"] == [CONTROLLER_IP]
 
 

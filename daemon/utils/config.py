@@ -388,7 +388,7 @@ class Config(object):
                 for item in ['otherdevices', 'switch']:
                     select = [f'{item}.name','ipaddress.ipaddress','ipaddress.ipaddress_ipv6',f'{item}.macaddress']
                     if item == 'switch':
-                        select += ['switch.netboot', 'switch.default_url', 'switch.bootfile', 'switch.next_server']
+                        select += ['switch.netboot', 'switch.default_url', 'switch.bootfile']
                     devices = Database().get_record_join(
                         select,
                         [f'ipaddress.tablerefid={item}.id'],
@@ -412,7 +412,13 @@ class Config(object):
                                     config_host['ipaddress']=device['ipaddress']
                                     config_host['macaddress']=device['macaddress']
                                     if item == 'switch' and Helper().make_bool(device['netboot']) is not False:
-                                        for field in ['default_url', 'bootfile', 'next_server']:
+                                        config_host['switch']=True
+                                        next_server = self.dhcp_reservation_nextserver(
+                                            nwk['name'], config_subnets, config_shared
+                                        )
+                                        config_host['nextserver']=next_server['server']
+                                        config_host['nextport']=next_server['port']
+                                        for field in ['default_url', 'bootfile']:
                                             if device[field]:
                                                 config_host[field]=device[field]
                                     if nwk['name'] in config_reservations:

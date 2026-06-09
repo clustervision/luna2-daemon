@@ -279,7 +279,8 @@ class Node():
                 'group.provision_fallback AS group_provision_fallback',
                 'group.provision_interface AS group_provision_interface',
                 'group.kerneloptions AS group_kerneloptions',
-                'group.ipxe_kernel AS group_ipxe_kernel'
+                'group.ipxe_kernel AS group_ipxe_kernel',
+                'group.unmanaged_bmc_users AS group_unmanaged_bmc_users'
             ],
             ['group.id=node.groupid'],
             f"node.name='{name}'"
@@ -335,8 +336,26 @@ class Node():
                 node['_bmcsetup_source'] = 'group'
             else:
                 node['bmcsetup'] = None
+            effective_bmcsetupid = node['bmcsetupid'] or node.get('group_bmcsetupid')
             if 'group_bmcsetupid' in node:
                 del node['group_bmcsetupid']
+            # unmanaged_bmc_users inherits node -> group -> bmcsetup -> None
+            unmanaged = node['unmanaged_bmc_users']
+            unmanaged_source = 'node'
+            if not unmanaged:
+                unmanaged = node.get('group_unmanaged_bmc_users')
+                unmanaged_source = 'group'
+            if not unmanaged and effective_bmcsetupid:
+                bmcsetup = Database().get_record(table='bmcsetup', where=f"id='{effective_bmcsetupid}'")
+                if bmcsetup:
+                    unmanaged = bmcsetup[0]['unmanaged_bmc_users']
+                    unmanaged_source = 'bmcsetup'
+            node['unmanaged_bmc_users'] = unmanaged or None
+            node['_unmanaged_bmc_users_source'] = unmanaged_source if unmanaged else 'default'
+            if unmanaged and unmanaged_source == 'node':
+                node['_override'] = True
+            if 'group_unmanaged_bmc_users' in node:
+                del node['group_unmanaged_bmc_users']
             #---
             if node['osimagetagid']:
                 node['osimagetag'] = Database().name_by_id('osimagetag', node['osimagetagid']) or 'default'
@@ -595,6 +614,14 @@ class Node():
                 data['ipxe_kernel'] = str(data['ipxe_kernel']).strip().lower()
                 if data['ipxe_kernel'] not in ['default', 'alternative']:
                     return False, 'Invalid request: ipxe_kernel must be default or alternative'
+            if 'unmanaged_bmc_users' in data:
+                value = str(data['unmanaged_bmc_users']).strip().lower()
+                if value in ('', 'none', 'skip'):
+                    data['unmanaged_bmc_users'] = ''
+                elif value in ('disable', 'delete'):
+                    data['unmanaged_bmc_users'] = value
+                else:
+                    return False, 'Invalid request: unmanaged_bmc_users must be disable, delete or empty'
 
             for key, value in items.items():
                 if key in data:

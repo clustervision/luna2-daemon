@@ -51,10 +51,12 @@ fetches, so the switch installs NVOS and applies its config on first boot.
   image extensions `.gz/.tar/.bz/.bz2/.torrent` (see `daemon/base/file.py`), so a
   `.bin` NVOS image downloads token-free.
 - a switch record carries these ZTP fields (auto-migrated onto existing databases):
-  - `netboot` — master toggle. Enabled (the default; unset counts as enabled) renders the
-    boot options below into the DHCP reservation. Disabled keeps the IP reservation but
-    emits no `default-url`/`filename`/`next-server`, so the switch does not fetch the NVOS
-    image or re-run ZTP — flip it off to lock a provisioned switch against reinstall.
+  - `netboot` — master toggle, **off by default** (unset counts as off). Set it on to
+    render the boot options below into the DHCP reservation; off keeps the IP reservation
+    but emits no `default-url`/`filename`/`next-server`, so the switch does not fetch the
+    NVOS image or re-run ZTP. Leave it off once a switch is provisioned to lock it against
+    reinstall. If netboot is on but **neither `default_url` nor `bootfile` is defined**,
+    luna logs a warning and skips netboot for that switch (no half-configured reservation).
   - `default_url` — DHCP option 114; a **controller-relative path** to the NVOS/ONIE
     image (e.g. `files/<nvos>.bin`), reused as the ZTP `01-image` install URL.
   - `bootfile` — DHCP option 67 (`filename`); a **controller-relative path** to the ZTP

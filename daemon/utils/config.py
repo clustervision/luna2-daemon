@@ -411,16 +411,22 @@ class Config(object):
                                     config_host['domain']=nwkdomain
                                     config_host['ipaddress']=device['ipaddress']
                                     config_host['macaddress']=device['macaddress']
-                                    if item == 'switch' and Helper().make_bool(device['netboot']) is not False:
-                                        config_host['switch']=True
-                                        next_server = self.dhcp_reservation_nextserver(
-                                            nwk['name'], config_subnets, config_shared
-                                        )
-                                        config_host['nextserver']=next_server['server']
-                                        config_host['nextport']=next_server['port']
-                                        for field in ['default_url', 'bootfile']:
-                                            if device[field]:
-                                                config_host[field]=device[field]
+                                    if item == 'switch' and Helper().make_bool(device['netboot']) is True:
+                                        if not device['default_url'] and not device['bootfile']:
+                                            self.logger.warning(
+                                                f"Switch {device['name']}: netboot is enabled but neither "
+                                                "default_url nor bootfile is defined; skipping netboot"
+                                            )
+                                        else:
+                                            config_host['switch']=True
+                                            next_server = self.dhcp_reservation_nextserver(
+                                                nwk['name'], config_subnets, config_shared
+                                            )
+                                            config_host['nextserver']=next_server['server']
+                                            config_host['nextport']=next_server['port']
+                                            for field in ['default_url', 'bootfile']:
+                                                if device[field]:
+                                                    config_host[field]=device[field]
                                     if nwk['name'] in config_reservations:
                                         config_reservations[nwk['name']].append(config_host)
                     else:

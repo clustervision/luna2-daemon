@@ -43,11 +43,11 @@ def _insert(table, **columns):
     Database().insert(table, [{"column": k, "value": v} for k, v in columns.items()])
 
 
-def _seed_cluster_with_switch(netboot=None):
-    """Seed a minimal cluster with one switch carrying the ZTP DHCP fields.
+def _seed_cluster_with_switch(netboot=1, default_url=DEFAULT_URL, bootfile=BOOTFILE):
+    """Seed a minimal cluster with one switch.
 
-    netboot is left at the column default (None -> treated as enabled) unless a
-    value is passed, so the disabled path can be exercised explicitly.
+    netboot defaults to enabled here so the rendering tests have something to
+    assert; the off-by-default and missing-file paths pass explicit values.
     """
     from utils.database import Database
 
@@ -62,10 +62,13 @@ def _seed_cluster_with_switch(netboot=None):
     _insert("ipaddress", ipaddress=CONTROLLER_IP, tableref="controller",
             tablerefid=ctrlid, networkid=netid)
 
-    switch_cols = dict(name=SWITCH_NAME, macaddress=SWITCH_MAC,
-                       default_url=DEFAULT_URL, bootfile=BOOTFILE)
+    switch_cols = dict(name=SWITCH_NAME, macaddress=SWITCH_MAC)
     if netboot is not None:
         switch_cols["netboot"] = netboot
+    if default_url is not None:
+        switch_cols["default_url"] = default_url
+    if bootfile is not None:
+        switch_cols["bootfile"] = bootfile
     _insert("switch", **switch_cols)
     sid = Database().get_record(table="switch", where=f'name="{SWITCH_NAME}"')[0]["id"]
     _insert("ipaddress", ipaddress=SWITCH_IP, tableref="switch",
@@ -75,7 +78,7 @@ def _seed_cluster_with_switch(netboot=None):
 
 @pytest.fixture
 def seeded_switch(sqlite_db):
-    """A minimal cluster carrying one switch with the ZTP DHCP fields set (netboot default)."""
+    """A minimal cluster carrying one switch with netboot enabled and the ZTP fields set."""
     return _seed_cluster_with_switch()
 
 
@@ -131,11 +134,14 @@ def test_dhcp_isc_renders_switch_reservation(config_env, seeded_switch):
     assert f"next-server {CONTROLLER_IP};" in content
 
 
+# netboot=0 is explicitly disabled; netboot=None leaves the column NULL, which is
+# the default and must also be treated as off.
 @pytest.mark.regression
-def test_dhcp_isc_netboot_disabled_suppresses_boot_options(config_env, sqlite_db):
+@pytest.mark.parametrize("netboot", [0, None])
+def test_dhcp_isc_netboot_off_suppresses_boot_options(config_env, sqlite_db, netboot):
     from utils.config import Config
 
-    _seed_cluster_with_switch(netboot=0)
+    _seed_cluster_with_switch(netboot=netboot)
 
     assert Config().dhcp_overwrite() is True
 
@@ -145,10 +151,30 @@ def test_dhcp_isc_netboot_disabled_suppresses_boot_options(config_env, sqlite_db
     assert f"host {SWITCH_NAME}.{NETWORK}" in content
     assert f"hardware ethernet {SWITCH_MAC}" in content
     assert f"fixed-address {SWITCH_IP}" in content
-    # ...but with netboot disabled, no boot options are handed out
+    # ...but with netboot off, no boot options are handed out
     assert 'option default-url "http' not in content
     assert DEFAULT_URL not in content
     assert BOOTFILE not in content
+
+
+@pytest.mark.regression
+def test_netboot_enabled_without_boot_file_warns_and_skips(config_env, sqlite_db, caplog):
+    import logging
+    from utils.config import Config
+
+    _seed_cluster_with_switch(netboot=1, default_url=None, bootfile=None)
+
+    with caplog.at_level(logging.WARNING, logger="luna2-daemon"):
+        assert Config().dhcp_overwrite() is True
+
+    content = open(os.path.join(config_env, "dhcpd.conf"), encoding="utf-8").read()
+
+    # reservation kept, but netboot is not performed (no boot options)
+    assert f"host {SWITCH_NAME}.{NETWORK}" in content
+    assert 'option default-url "http' not in content
+    # and the misconfiguration is surfaced to the logger
+    assert any("netboot is enabled" in r.message and SWITCH_NAME in r.message
+               for r in caplog.records)
 
 
 @pytest.mark.regression

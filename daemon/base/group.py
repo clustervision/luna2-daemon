@@ -56,7 +56,7 @@ class Group():
         """
         This method will return all the groups in detailed format.
         """
-        overrides = ['provision_interface','provision_method','provision_fallback','kerneloptions','ipxe_kernel']
+        overrides = ['provision_interface','provision_method','provision_fallback','kerneloptions','ipxe_kernel','unmanaged_bmc_users']
         osimages = Database().get_record(table='osimage')
         bmcsetups = Database().get_record(table='bmcsetup')
         osimage = Helper().convert_list_to_dict(osimages, 'id')
@@ -106,6 +106,7 @@ class Group():
                 group['bmcsetupname'] = None
                 if group['bmcsetupid'] and group['bmcsetupid'] in bmcsetup:
                     group['bmcsetupname'] = bmcsetup[group['bmcsetupid']]['name']
+                    group['unmanaged_bmc_users'] = group['unmanaged_bmc_users'] or bmcsetup[group['bmcsetupid']]['unmanaged_bmc_users']
                 del group['bmcsetupid']
                 response['config']['group'][name] = group
         else:
@@ -129,7 +130,8 @@ class Group():
             'provision_method': 'torrent',
             'provision_fallback': 'http',
             'kerneloptions': None,
-            'ipxe_kernel': 'default'
+            'ipxe_kernel': 'default',
+            'unmanaged_bmc_users': None
         }
         overrides = ['provision_interface','provision_method','provision_fallback','kerneloptions','ipxe_kernel']
         # same as above but now specifically base64
@@ -147,6 +149,14 @@ class Group():
                 osimage = Database().get_record(table='osimage', where=f"id = '{group['osimageid']}'")
                 if osimage:
                     group['osimage'] = osimage[0]['name']
+            group['bmcsetupname'] = None
+            bmcsetup = None
+            if group['bmcsetupid']:
+                bmcsetup = Database().get_record(table='bmcsetup', where=f"id = '{group['bmcsetupid']}'")
+                if bmcsetup:
+                    group['bmcsetupname'] = bmcsetup[0]['name']
+                else:
+                    group['bmcsetupname'] = '!!Invalid!!'
 
             group_interface = Database().get_record_join(
                 [
@@ -189,6 +199,11 @@ class Group():
                         osimage[0][key] = str(Helper().make_bool(osimage[0][key]))
                     group[key] = str(osimage[0][key])
                     group['_'+key+'_source'] = 'osimage'
+                elif bmcsetup and key in bmcsetup[0] and ((not key in group) or (not group[key])):
+                    if isinstance(value, bool):
+                        bmcsetup[0][key] = str(Helper().make_bool(bmcsetup[0][key]))
+                    group[key] = str(bmcsetup[0][key])
+                    group['_'+key+'_source'] = 'bmcsetup'
                 elif key in group and group[key]:
                     if isinstance(value, bool):
                         group[key] = str(Helper().make_bool(group[key]))
@@ -219,9 +234,6 @@ class Group():
                 group['provision_fallback'] = None
                 group['_provision_fallback_source'] = 'osimage'
             del group['osimageid']
-            group['bmcsetupname'] = None
-            if group['bmcsetupid']:
-                group['bmcsetupname'] = Database().name_by_id('bmcsetup', group['bmcsetupid'])
             del group['bmcsetupid']
             # ---
             if group['osimagetagid']:

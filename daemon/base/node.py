@@ -327,16 +327,21 @@ class Node():
             if 'group_osimageid' in node:
                 del node['group_osimageid']
             #---
+            bmcsetup = None
+            effective_bmcsetupid = node['bmcsetupid'] or node.get('group_bmcsetupid')
+            if effective_bmcsetupid:
+                bmcsetup = Database().get_record(table='bmcsetup', where=f"id='{effective_bmcsetupid}'")
+                if bmcsetup:
+                    node['bmcsetup'] = bmcsetup[0]['name']
+                else:
+                    node['bmcsetup'] = '!!Invalid!!'
+            else:
+                node['bmcsetup'] = None
             if node['bmcsetupid']:
-                node['bmcsetup'] = Database().name_by_id('bmcsetup',node['bmcsetupid']) or '!!Invalid!!'
                 node['_bmcsetup_source'] = 'node'
                 node['_override'] = True
             elif 'group_bmcsetupid' in node and node['group_bmcsetupid']:
-                node['bmcsetup'] = Database().name_by_id('bmcsetup', node['group_bmcsetupid']) or '!!Invalid!!'
                 node['_bmcsetup_source'] = 'group'
-            else:
-                node['bmcsetup'] = None
-            effective_bmcsetupid = node['bmcsetupid'] or node.get('group_bmcsetupid')
             if 'group_bmcsetupid' in node:
                 del node['group_bmcsetupid']
             # unmanaged_bmc_users inherits node -> group -> bmcsetup -> None
@@ -346,7 +351,6 @@ class Node():
                 unmanaged = node.get('group_unmanaged_bmc_users')
                 unmanaged_source = 'group'
             if not unmanaged and effective_bmcsetupid:
-                bmcsetup = Database().get_record(table='bmcsetup', where=f"id='{effective_bmcsetupid}'")
                 if bmcsetup:
                     unmanaged = bmcsetup[0]['unmanaged_bmc_users']
                     unmanaged_source = 'bmcsetup'

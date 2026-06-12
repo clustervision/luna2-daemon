@@ -37,6 +37,7 @@ from utils.log import Log
 from utils.helper import Helper
 from utils.config import Config
 from utils.service import Service
+from utils.controller import Controller
 
 
 class Network():
@@ -279,7 +280,13 @@ class Network():
                             used6_ips = Helper().get_quantity_occupied_ipaddress_in_network(name,ipversion='ipv6')
 
                             # renumbering controllers prepare. this could be tricky. - Antoine
-                            # for H/A things should be taken in consideration.... 
+                            # for H/A things should be taken in consideration....
+                            # aargh! python arg_parser replaces - to _ "to be complaint".... :( -Antoine
+                            if 'controller' in data:
+                                beacon_hostname = Controller().get_beacon().replace('-','_')
+                                if beacon_hostname != 'controller':
+                                    data[beacon_hostname] = data['controller']
+                                    del data['controller']
                             controllers = Database().get_record_join(
                                 ['controller.hostname','ipaddress.ipaddress','ipaddress.ipaddress_ipv6','ipaddress.id as ipid'],
                                 ['ipaddress.tablerefid=controller.id','ipaddress.networkid=network.id'],
@@ -289,19 +296,20 @@ class Network():
                                 self.logger.info("Network change affects controllers...")
                                 for controller in controllers:
                                     controller_details=None
-                                    if controller['hostname'] in data:
-                                        if controller['ipaddress'] == data[controller['hostname']] or controller['ipaddress_ipv6'] == data[controller['hostname']]:
-                                            self.logger.info(f"Not using new ip address {data[controller['hostname']]} for controller {controller['hostname']}")
+                                    controller_hostname = controller['hostname'].replace('-','_')
+                                    if controller_hostname in data:
+                                        if controller['ipaddress'] == data[controller_hostname] or controller['ipaddress_ipv6'] == data[controller_hostname]:
+                                            self.logger.info(f"Not using new ip address {data[controller_hostname]} for controller {controller['hostname']}")
                                         else:
-                                            controller_details = Helper().check_ip_range(data[controller['hostname']], data['network'] + '/' + data['subnet'])
+                                            controller_details = Helper().check_ip_range(data[controller_hostname], data['network'] + '/' + data['subnet'])
                                             if not controller_details:
                                                 status=False
                                                 ret_msg = f"Invalid request: Controller address mismatch with network address/subnet. "
                                                 ret_msg += f"Please provide valid ip address for controller {controller['hostname']}"
                                                 return status, ret_msg
-                                            controller_ips.append({'ipaddress': data[controller['hostname']], 'id': controller['ipid'], 'hostname': controller['hostname']})
-                                            self.logger.info(f"Using new ip address {data[controller['hostname']]} for controller {controller['hostname']}")
-                                            del data[controller['hostname']]
+                                            controller_ips.append({'ipaddress': data[controller_hostname], 'id': controller['ipid'], 'hostname': controller['hostname']})
+                                            self.logger.info(f"Using new ip address {data[controller_hostname]} for controller {controller['hostname']}")
+                                            del data[controller_hostname]
                                     else:
                                         if Helper().check_if_ipv6(data['network']):
                                             controller_details = Helper().check_ip_range(controller['ipaddress_ipv6'], data['network'] + '/' + data['subnet'])
@@ -504,8 +512,9 @@ class Network():
             controllers = Database().get_record(table="controller")
             if controllers:
                  for controller in controllers:
-                     if controller['hostname'] in data:
-                         del data[controller['hostname']]
+                     controller_hostname = controller['hostname'].replace('-','_')
+                     if controller_hostname in data:
+                         del data[controller_hostname]
 
             for controller in controller_ips:
                 where = f"ipaddress='{controller['ipaddress']}' OR ipaddress_ipv6='{controller['ipaddress']}'"

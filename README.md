@@ -97,3 +97,7 @@ systemctl status luna2-daemon.service
 systemctl enable luna2-daemon.service
 ```
 http://127.0.0.1:7050
+
+## Contributing
+
+Please read the [contribution guidelines](Guidelines.rst) before submitting changes, including the legal terms that apply to all contributions.

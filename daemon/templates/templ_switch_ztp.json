@@ -10,7 +10,7 @@
         }
       },
       "halt-on-failure": true,
-      "description": "{{ SWITCH_NAME }}: ensure correct NVOS version, reboot, then continue"
+      "description": "{{ SWITCH_NAME }}: ensure correct OS version, reboot, then continue"
     },
     {%- endif %}
     {%- if ZTP_FORMAT == 'yaml' %}

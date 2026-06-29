@@ -397,7 +397,7 @@ class Boot():
 
     def switch_ztp(self, name=None):
         """
-        This method will provide the NVOS ZTP recipe (JSON) for a switch.
+        This method will provide the ZTP recipe (JSON) for a switch.
         """
         template = 'templ_switch_ztp.json'
         template_path = f'{CONSTANT["TEMPLATES"]["TEMPLATE_FILES"]}/{template}'
@@ -428,7 +428,7 @@ class Boot():
 
     def switch_commands(self, name=None):
         """
-        This method will provide the NVOS commands-list applied by ZTP for a switch.
+        This method will provide the commands-list applied by ZTP for a switch.
         An admin-supplied ztpconfig (base64) is decoded and served; otherwise a minimal default
         is generated from the switch identity.
         """

@@ -40,28 +40,28 @@ luna cluster change --cm y --co y --nx y
 - boot the nodes
 
 
-# luna controller zero-touch provisioning (ZTP) for NVIDIA NVOS / NVLink switches
+# luna controller zero-touch provisioning (ZTP) for switches
 
-Luna can hand an NVOS switch its DHCP boot options and serve the ZTP recipe it
-fetches, so the switch installs NVOS and applies its config on first boot.
+Luna can hand a switch its DHCP boot options and serve the ZTP recipe it
+fetches, so the switch installs its image and applies its config on first boot.
 
-- place the NVOS image in luna's files directory, `/trinity/local/luna/files`. It is
+- place the switch image in luna's files directory, `/trinity/local/luna/files`. It is
   then served at `GET /files/<image>` with **no token**, which the switch needs since
   it has no credentials during ZTP. Keep a `.bin` extension: luna only token-gates the
   image extensions `.gz/.tar/.bz/.bz2/.torrent` (see `daemon/base/file.py`), so a
-  `.bin` NVOS image downloads token-free.
+  `.bin` image downloads token-free.
 - a switch record carries these ZTP fields (auto-migrated onto existing databases):
   - `netboot` — master toggle, **off by default** (unset counts as off). Set it on to
     render the boot options below into the DHCP reservation; off keeps the IP reservation
     but emits no `default-url`/`filename`/`next-server`, so the switch does not fetch the
-    NVOS image or re-run ZTP. Leave it off once a switch is provisioned to lock it against
+    image or re-run ZTP. Leave it off once a switch is provisioned to lock it against
     reinstall. If netboot is on but **neither `default_url` nor `bootfile` is defined**,
     luna logs a warning and skips netboot for that switch (no half-configured reservation).
-  - `default_url` — DHCP option 114; a **controller-relative path** to the NVOS/ONIE
-    image (e.g. `files/<nvos>.bin`), reused as the ZTP `01-image` install URL.
+  - `default_url` — DHCP option 114; a **controller-relative path** to the switch
+    image (e.g. `files/<image>.bin`), reused as the ZTP `01-image` install URL.
   - `bootfile` — DHCP option 67 (`filename`); a **controller-relative path** to the ZTP
     recipe, normally luna's own `boot/switch/<name>` endpoint.
-  - `ztpconfig` — the NVOS config applied by ZTP; when empty luna serves a
+  - `ztpconfig` — the switch config applied by ZTP; when empty luna serves a
     minimal generated default (hostname + ssh) instead.
   - `ztpformat` — `commands` (default) or `yaml`. With `yaml` (and a `ztpconfig`
     present) luna emits the ZTP recipe's config section as `02-startup-file` (NVUE
@@ -75,7 +75,7 @@ fetches, so the switch installs NVOS and applies its config on first boot.
   ISC and Kea DHCP configs):
 ```
 luna switch change --netboot y \
-                   --default-url files/<nvos>.bin \
+                   --default-url files/<image>.bin \
                    --bootfile boot/switch/<name> \
                    <name>
 ```

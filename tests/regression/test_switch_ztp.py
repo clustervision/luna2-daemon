@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 """
-Regression tests for NVOS/NVLink switch boot + ZTP support (TRIX-1880).
+Regression tests for switch boot + ZTP support (TRIX-1880).
 
 Two angles are exercised against the real code:
 
@@ -31,11 +31,11 @@ RANGE_END = "10.141.10.254"
 CONTROLLER_IP = "10.141.255.254"
 SWITCH_IP = "10.141.253.1"
 SWITCH_MAC = "aa:bb:cc:00:11:22"
-SWITCH_NAME = "nvlink-sw01"
+SWITCH_NAME = "leaf-sw01"
 # default_url / bootfile are stored as controller-relative paths; the templates
 # prepend http://<nextserver>:<nextport>/ (the controller, reused from the node logic).
-DEFAULT_URL = "files/nvos-amd64-25.02.2225.bin"
-BOOTFILE = "boot/switch/nvlink-sw01"
+DEFAULT_URL = "files/image-amd64-25.02.2225.bin"
+BOOTFILE = "boot/switch/leaf-sw01"
 
 
 def _insert(table, **columns):

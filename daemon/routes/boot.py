@@ -134,7 +134,7 @@ def boot_short():
 @validate_name
 def boot_switch(name=None):
     """
-    This route serves the NVOS ZTP recipe (JSON) for a switch.
+    This route serves the ZTP recipe (JSON) for a switch.
     Input - switch name
     Output - templ_switch_ztp.json
     """
@@ -155,7 +155,7 @@ def boot_switch(name=None):
 @validate_name
 def boot_switch_commands(name=None):
     """
-    This route serves the NVOS commands-list applied by ZTP for a switch.
+    This route serves the commands-list applied by ZTP for a switch.
     Input - switch name
     Output - admin-supplied ztpconfig, or templ_switch_commands.cfg default
     """

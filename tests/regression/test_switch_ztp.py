@@ -228,7 +228,7 @@ def test_switch_ztp_json_yaml_format_uses_startup_file():
     )
     recipe = json.loads(rendered)
 
-    # yaml format swaps the section to 02-startup-file (NVUE declarative), same URL
+    # yaml format swaps the section to 02-startup-file (declarative), same URL
     assert "02-commands-list" not in recipe["ztp"]
     assert recipe["ztp"]["02-startup-file"]["url"] == commands
 

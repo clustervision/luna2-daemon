@@ -19,7 +19,7 @@
       "clear-config": true,
       "save-config": true,
       "halt-on-failure": true,
-      "description": "{{ SWITCH_NAME }}: apply NVUE startup config, persist, disable ZTP"
+      "description": "{{ SWITCH_NAME }}: apply startup config, persist, disable ZTP"
     },
     {%- else %}
     "02-commands-list": {

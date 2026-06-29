@@ -64,8 +64,7 @@ fetches, so the switch installs its image and applies its config on first boot.
   - `ztpconfig` — the switch config applied by ZTP; when empty luna serves a
     minimal generated default (hostname + ssh) instead.
   - `ztpformat` — `commands` (default) or `yaml`. With `yaml` (and a `ztpconfig`
-    present) luna emits the ZTP recipe's config section as `02-startup-file` (NVUE
-    declarative) instead of `02-commands-list`; the served content is unchanged. ZTP
+    present) luna emits the ZTP recipe's config section as `02-startup-file` (declarative) instead of `02-commands-list`; the served content is unchanged. ZTP
     itself downloads the section URL, so the same `/boot/switch/<name>/commands`
     endpoint serves either format.
 - `default_url`/`bootfile` store only the path: luna prepends the controller
@@ -82,7 +81,7 @@ luna switch change --netboot y \
 - luna then serves, for a switch `<name>`:
   - `GET /boot/switch/<name>` — the ZTP recipe JSON (`01-image` → `02-commands-list`
     or `02-startup-file` → `03-connectivity-check`)
-  - `GET /boot/switch/<name>/commands` — the `ztpconfig` (commands-list or NVUE yaml)
+  - `GET /boot/switch/<name>/commands` — the `ztpconfig` (commands-list or declarative yaml)
 - boot the switch; it requests DHCP, receives option 114/67, fetches the recipe and
   provisions itself
 - **Security caveat:** these `/boot/switch/<name>` endpoints are **unauthenticated** (the

@@ -424,9 +424,11 @@ class Config(object):
                                             )
                                             config_host['nextserver']=next_server['server']
                                             config_host['nextport']=next_server['port']
-                                            for field in ['default_url', 'bootfile']:
-                                                if device[field]:
-                                                    config_host[field]=device[field]
+                                            if device['default_url']:
+                                                config_host['default_url']=device['default_url']
+                                            # The daemon serves the switch recipe at boot/switch/<name>,
+                                            # so advertise that path when no explicit bootfile is set.
+                                            config_host['bootfile']=device['bootfile'] or f"boot/switch/{device['name']}"
                                     if nwk['name'] in config_reservations:
                                         config_reservations[nwk['name']].append(config_host)
                     else:

@@ -429,7 +429,7 @@ class Boot():
     def switch_commands(self, name=None):
         """
         This method will provide the NVOS commands-list applied by ZTP for a switch.
-        An admin-supplied ztpconfig is served verbatim; otherwise a minimal default
+        An admin-supplied ztpconfig (base64) is decoded and served; otherwise a minimal default
         is generated from the switch identity.
         """
         switch = Database().get_record(table='switch', where=f'name="{name}"')
@@ -438,7 +438,7 @@ class Boot():
         switch = switch[0]
         self.logger.info(f'Boot API serving commands-list for switch {name}')
         if switch['ztpconfig']:
-            return True, {'template_data': switch['ztpconfig']}
+            return True, {'template_data': b64decode(switch['ztpconfig']).decode()}
         return True, {'template': 'templ_switch_commands.cfg', 'SWITCH_NAME': name}
 
 

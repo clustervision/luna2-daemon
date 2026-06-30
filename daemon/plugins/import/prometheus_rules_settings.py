@@ -84,7 +84,7 @@ class PrometheusRules(BaseModel):
     
 
 class HWSettings(BaseModel):
-    nhc: Optional[bool] = True
+    nhc: Optional[bool] = False
     disabled: Optional[bool] = False
 
 class Settings(BaseModel):

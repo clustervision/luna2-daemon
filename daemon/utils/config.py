@@ -511,6 +511,9 @@ class Config(object):
         subnet['nameserver_ip']=nwk['nameserver_ip']
         subnet['nameserver_ip_ipv6']=nwk['nameserver_ip_ipv6']
         subnet['ntp_server']=nwk['ntp_server']
+        relays = [relay.strip() for relay in (nwk.get('dhcp_relay') or '').split(',') if relay.strip()]
+        if relays:
+            subnet['dhcp_relay']=relays
         if nwk['gateway'+add_string] and nwk['gateway'+add_string] != "None": # left over from database().update/insert bug - Antoine
             subnet['gateway']=nwk['gateway'+add_string]
         if controller and (controller[0]['networkname'] == nwk['name'] or 'gateway' in subnet):

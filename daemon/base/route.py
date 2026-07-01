@@ -79,10 +79,15 @@ class Route():
         if not request_data:
             return False, "Invalid request: Did not receive data"
         data = request_data['config']['route'][name]
-        destination = data.get('destination')
-        gateway = data.get('gateway') or ''
-        device = data.get('device') or ''
-        valid, message = self.validate_route(destination, gateway, device, data.get('metric'))
+        # a change only carries the edited fields, so fall back to the stored route
+        exist = Database().get_record(table='route', where=f"name='{name}'")
+        current = exist[0] if exist else {}
+        destination = data.get('destination', current.get('destination'))
+        gateway = data.get('gateway', current.get('gateway')) or ''
+        device = data.get('device', current.get('device')) or ''
+        metric = data.get('metric', current.get('metric'))
+        comment = data.get('comment', current.get('comment'))
+        valid, message = self.validate_route(destination, gateway, device, metric)
         if not valid:
             return False, message
         row_data = {
@@ -90,13 +95,12 @@ class Route():
             'destination': destination,
             'gateway': gateway,
             'device': device,
-            'metric': data.get('metric'),
-            'comment': data.get('comment'),
+            'metric': metric,
+            'comment': comment,
         }
         row = Helper().make_rows(row_data)
-        exist = Database().get_record(table='route', where=f"name='{name}'")
         if exist:
-            Database().update('route', row, [{"column": "id", "value": exist[0]['id']}])
+            Database().update('route', row, [{"column": "id", "value": current['id']}])
             return True, f"Route {name} updated"
         Database().insert('route', row)
         return True, f"Route {name} created"

@@ -82,6 +82,11 @@ class Route():
         # a change only carries the edited fields, so fall back to the stored route
         exist = Database().get_record(table='route', where=f"name='{name}'")
         current = exist[0] if exist else {}
+        newname = data.get('newname')
+        if newname and exist:
+            if Database().get_record(table='route', where=f"name='{newname}'"):
+                return False, f"Invalid request: route {newname} already exists"
+        target_name = newname if (newname and exist) else name
         destination = data.get('destination', current.get('destination'))
         gateway = data.get('gateway', current.get('gateway')) or ''
         device = data.get('device', current.get('device')) or ''
@@ -91,7 +96,7 @@ class Route():
         if not valid:
             return False, message
         row_data = {
-            'name': name,
+            'name': target_name,
             'destination': destination,
             'gateway': gateway,
             'device': device,
@@ -101,6 +106,8 @@ class Route():
         row = Helper().make_rows(row_data)
         if exist:
             Database().update('route', row, [{"column": "id", "value": current['id']}])
+            if target_name != name:
+                return True, f"Route {name} renamed to {target_name}"
             return True, f"Route {name} updated"
         Database().insert('route', row)
         return True, f"Route {name} created"

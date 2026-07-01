@@ -80,6 +80,12 @@ class Node():
         bmcsetup = Helper().convert_list_to_dict(bmcsetups, 'id')
         monitoring = Helper().convert_list_to_dict(monitorings, 'tablerefid')
         cluster = Database().get_record(table='cluster')
+        route_names = {r['id']: r['name'] for r in (Database().get_record(table='route') or [])}
+        route_couplings = {}
+        for coupling in Database().get_record(table='routemap') or []:
+            route_name = route_names.get(coupling['routeid'])
+            if route_name:
+                route_couplings.setdefault((coupling['tableref'], coupling['tablerefid']), []).append(route_name)
         if nodes:
             response['config'] = {}
             response['config']['node'] = {}
@@ -150,6 +156,11 @@ class Node():
                             node[key] = node[key] or value
                             node['_override'] = True
                 # -------------
+                stacked_routes = list(route_couplings.get(('node', nodeid), []))
+                for route_name in route_couplings.get(('group', groupid), []):
+                    if route_name not in stacked_routes:
+                        stacked_routes.append(route_name)
+                node['routes'] = ','.join(stacked_routes)
                 node['switch'] = None
                 if node['switchid']:
                     node['switch'] = '!!Invalid!!'

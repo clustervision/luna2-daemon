@@ -150,7 +150,8 @@ class Network():
                 network['network'] = Helper().get_network(network['network'], network['subnet'])
                 if network['network_ipv6']:
                     network['network_ipv6'] = Helper().get_network(network['network_ipv6'], network['subnet_ipv6'])
-                network['routes'] = ', '.join(Route().assigned_names('network', network['id']))
+                network_route_names = Route().assigned_names('network', network['id'])
+                network['routes'] = ', '.join(network_route_names) if network_route_names else None
                 del network['id']
                 del network['subnet']
                 network['dhcp'] = Helper().make_bool(network['dhcp'])
@@ -190,7 +191,8 @@ class Network():
                     network['network'] = Helper().get_network(network['network'], network['subnet'])
                 if network['network_ipv6']:
                     network['network_ipv6'] = Helper().get_network(network['network_ipv6'], network['subnet_ipv6'])
-                network['routes'] = ', '.join(Route().assigned_names('network', network['id']))
+                network_route_names = Route().assigned_names('network', network['id'])
+                network['routes'] = ', '.join(network_route_names) if network_route_names else None
                 del network['id']
                 del network['subnet']
                 del network['subnet_ipv6']

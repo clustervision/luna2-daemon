@@ -7,11 +7,17 @@
 """
 TRIX-1481 unit tests for the Route class, run against a throwaway SQLite database
 (see conftest.py). These exercise the real catalog CRUD, coupling/reconcile,
-rename, clone/delete coupling hooks, the in-use delete guard, and the boot-time
-route resolution (scope precedence, dedup, and interface binding).
+rename, clone/delete coupling hooks, the in-use delete guard, the boot-time route
+resolution (strict override precedence, dedup, interface binding), and the full
+boot path where an override-resolved route is rendered into a network template.
 """
 
+import os
+
 from conftest import make_route
+
+NETDIR = os.path.abspath(os.path.join(
+    os.path.dirname(__file__), '..', '..', 'daemon', 'plugins', 'boot', 'network'))
 
 
 def _interfaces(clusterid, extid):
@@ -191,9 +197,43 @@ def test_resolve_no_interfaces_is_a_noop(db, seed):
     assert empty == {}
 
 
+def _render_iface(clusterid):
+    """One interface carrying both the keys resolve_for_node binds against and the keys
+    the NetworkManager template renders — so a resolved route can be rendered end to end."""
+    return {'eth0': {
+        'network': '10.141.0.5/16', 'network_ipv6': None, 'networkid': clusterid,
+        'type': 'ethernet', 'networktype': 'ethernet', 'zone': 'trusted', 'mtu': '',
+        'ipaddress': '10.141.0.5', 'prefix': '16', 'vlanid': '', 'vlan_parent': '',
+        'ipaddress_ipv6': '', 'prefix_ipv6': '', 'nameserver_ip': ['10.141.0.1'],
+        'nameserver_ip_ipv6': [], 'gateway': '10.141.0.1', 'gateway_ipv6': '',
+        'gateway_metric': '101', 'dhcp': None, 'options': '', 'master': '',
+        'bond_mode': '', 'bond_slaves': [], 'routes': [], 'routes_ipv6': []}}
+
+
+def test_boot_path_override_resolves_and_renders(db, seed):
+    """End-to-end boot path: resolve_for_node (what boot.py calls) applies the node
+    override, and only the winning route reaches the rendered NetworkManager keyfile."""
+    from base.route import Route
+    from jinja2 import Environment, FileSystemLoader
+    make_route('nod', '10.1.0.0/16', '10.141.0.9')
+    make_route('grp', '10.2.0.0/16', '10.141.0.8')
+    Route().reconcile('node', seed['nodeid'], ['nod'])
+    Route().reconcile('group', seed['groupid'], ['grp'])
+    iface = _render_iface(seed['clusterid'])
+    Route().resolve_for_node(iface, seed['nodeid'], 'eth0')
+    env = Environment(loader=FileSystemLoader(NETDIR))
+    env.filters['b64decode'] = lambda value: ""
+    out = env.get_template('redhat9.templ').render(
+        LUNA_INTERFACES=iface, interface='eth0', PROVISION_INTERFACE='eth0',
+        NODE_NAME='node001', DOMAIN_SEARCH=['cluster'])
+    assert '10.1.0.0/16' in out          # node route rendered
+    assert '10.2.0.0/16' not in out      # group route overridden, never rendered
+
+
 def test_resolve_precedence_node_over_group_over_network(db, seed):
     from base.route import Route
-    # same destination + metric at all three scopes, different next-hops
+    # under strict override only the node scope is read; same dest+metric at every scope
+    # still yields the node's next-hop, exactly once
     make_route('net', '10.50.0.0/16', '10.141.0.1', metric=100)
     make_route('grp', '10.50.0.0/16', '10.141.0.2', metric=100)
     make_route('nod', '10.50.0.0/16', '10.141.0.3', metric=100)

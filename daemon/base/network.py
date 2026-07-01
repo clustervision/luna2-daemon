@@ -383,6 +383,10 @@ class Network():
                         status=False
                         return status, f'Invalid request: Incorrect NTP Server IP: {data["ntp_server"]}'
             if 'dhcp_relay' in data and data['dhcp_relay'] != '':
+                shared_network = data['shared'] if 'shared' in data else (db_data['shared'] if db_data else None)
+                if not shared_network:
+                    status=False
+                    return status, 'Invalid request: network is not shared, dhcp_relay can only be set on a shared network'
                 for relay in data['dhcp_relay'].split(','):
                     if not Helper().check_ip(relay.strip()):
                         status=False

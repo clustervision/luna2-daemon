@@ -39,6 +39,7 @@ from utils.queue import Queue
 from utils.helper import Helper
 from utils.monitor import Monitor
 from base.interface import Interface
+from base.route import Route
 from common.constant import CONSTANT
 
 
@@ -292,7 +293,6 @@ class Node():
             response = {'config': {'node': {} }}
             nodename = node['name']
             nodeid = node['id']
-            from base.route import Route
             node['routes'] = ','.join(Route().assigned_names('node', nodeid))
             if node.get('groupid'):
                 node['group_routes'] = ','.join(Route().assigned_names('group', node['groupid']))
@@ -730,7 +730,6 @@ class Node():
                         Interface().update_node_group_interface(nodeid=nodeid, groupid=data['groupid'])
 
                 if node_routes is not None:
-                    from base.route import Route
                     Route().reconcile('node', nodeid, node_routes)
 
                 if interfaces:
@@ -851,7 +850,6 @@ class Node():
                 status=True
 
                 # ------ route couplings ------
-                from base.route import Route
                 Route().copy_couplings('node', nodeid, new_nodeid)
 
                 # ------ secrets ------
@@ -1138,7 +1136,6 @@ class Node():
             Database().delete_row('nodesecrets', [{"column": "nodeid", "value": nodeid}])
             Database().delete_row('rackinventory', [{"column": "tablerefid", "value": nodeid},
                                                     {"column": "tableref", "value": "node"}])
-            from base.route import Route
             Route().delete_couplings('node', nodeid)
             # for now i have disabled the below two lines for testing purposes. Antoine Aug 8 2023
             #Service().queue('dns', 'resload')

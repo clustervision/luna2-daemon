@@ -35,6 +35,7 @@ from utils.queue import Queue
 from utils.database import Database
 from utils.log import Log
 from utils.helper import Helper
+from base.route import Route
 from utils.config import Config
 from utils.service import Service
 from utils.controller import Controller
@@ -682,7 +683,6 @@ class Network():
             )
             if not controller:
                 Database().delete_row('network', [{"column": "name", "value": name}])
-                from base.route import Route
                 Route().delete_couplings('network', network[0]['id'])
                 data = {}
                 data['shared'] = ""

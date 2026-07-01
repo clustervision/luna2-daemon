@@ -36,6 +36,7 @@ from utils.log import Log
 from utils.config import Config
 from utils.queue import Queue
 from utils.helper import Helper
+from base.route import Route
 from common.constant import CONSTANT
 
 
@@ -628,7 +629,6 @@ class Group():
                 response = f'Group {name} cloned as {newgroupname} successfully'
                 status=True
                 # ------ route couplings ------
-                from base.route import Route
                 Route().copy_couplings('group', Database().id_by_name('group', name), new_group_id)
                 group_interfaces_byname = None
                 group_interfaces = Database().get_record_join(
@@ -782,7 +782,6 @@ class Group():
             where = [{"column": "groupid", "value": group[0]['id']}]
             Database().delete_row('groupinterface', where)
             Database().delete_row('groupsecrets', where)
-            from base.route import Route
             Route().delete_couplings('group', groupid)
             response = f'Group {name} removed'
             status=True

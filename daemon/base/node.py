@@ -177,7 +177,7 @@ class Node():
                                 net_names.append(route_name)
                     effective = net_names
                     route_source = 'network' if effective else None
-                node['routes'] = ','.join(effective)
+                node['routes'] = ','.join(effective) if effective else None
                 if route_source:
                     node['_routes_source'] = route_source
                 node['switch'] = None
@@ -335,8 +335,11 @@ class Node():
                 node['_routes_source'] = 'group'
             else:
                 network_route_names = Route().network_route_names(Route().network_ids_for_node(nodeid))
-                node['routes'] = ','.join(network_route_names)
-                node['_routes_source'] = 'network' if network_route_names else 'default'
+                if network_route_names:
+                    node['routes'] = ','.join(network_route_names)
+                    node['_routes_source'] = 'network'
+                else:
+                    node['routes'] = None
             node['_override'] = False
             alt_source = {}
             if node['osimageid']:

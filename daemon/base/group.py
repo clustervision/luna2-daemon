@@ -74,8 +74,11 @@ class Group():
                     group['_routes_source'] = 'group'
                 else:
                     network_route_names = Route().network_route_names(Route().network_ids_for_group(group_id))
-                    group['routes'] = ','.join(network_route_names)
-                    group['_routes_source'] = 'network' if network_route_names else 'default'
+                    if network_route_names:
+                        group['routes'] = ','.join(network_route_names)
+                        group['_routes_source'] = 'network'
+                    else:
+                        group['routes'] = None
                 group['_override'] = False
                 for key in overrides:
                     if key in group and group[key]:
@@ -157,8 +160,11 @@ class Group():
                 group['_routes_source'] = 'group'
             else:
                 network_route_names = Route().network_route_names(Route().network_ids_for_group(group_id))
-                group['routes'] = ','.join(network_route_names)
-                group['_routes_source'] = 'network' if network_route_names else 'default'
+                if network_route_names:
+                    group['routes'] = ','.join(network_route_names)
+                    group['_routes_source'] = 'network'
+                else:
+                    group['routes'] = None
             osimage = None
             group['_override'] = False
             group['osimage'] = None

@@ -178,14 +178,13 @@ class Route():
 
     def assigned_names(self, tableref=None, tablerefid=None):
         """Return the names of routes coupled to a network/group/node (for show/list)."""
-        names = []
         rows = Database().get_record(
             table='routemap', where=f"tableref='{tableref}' AND tablerefid='{tablerefid}'")
-        for row in rows or []:
-            name = Database().name_by_id('route', row['routeid'])
-            if name:
-                names.append(name)
-        return names
+        ids = [str(row['routeid']) for row in rows or []]
+        if not ids:
+            return []
+        routes = Database().get_record(table='route', where=f"id IN ({','.join(ids)})") or []
+        return [route['name'] for route in routes]
 
     def reconcile(self, tableref=None, tablerefid=None, names=None):
         """
@@ -316,13 +315,15 @@ class Route():
         if not destination:
             return False, "Invalid request: destination is required"
         try:
-            ipaddress.ip_network(destination, strict=False)
+            network = ipaddress.ip_network(destination, strict=False)
         except ValueError:
             return False, f"Invalid request: {destination} is not a valid network/host"
         if not gateway and not device:
             return False, "Invalid request: a route needs a gateway (next-hop) or a device"
         if gateway and not Helper().check_ip(gateway):
             return False, f"Invalid request: {gateway} is not a valid next-hop address"
+        if gateway and ipaddress.ip_address(gateway).version != network.version:
+            return False, f"Invalid request: next-hop {gateway} does not match the IPv{network.version} destination"
         if metric not in (None, '') and not str(metric).isdigit():
             return False, "Invalid request: metric must be a number"
         return True, "valid"

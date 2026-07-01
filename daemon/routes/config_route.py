@@ -64,6 +64,7 @@ def get_routes():
 
 @route_blueprint.route('/config/route/<string:name>', methods=['GET'])
 @token_required
+@validate_name
 def get_route(name=None):
     """
     This api sends a single route from the catalog.
@@ -97,6 +98,7 @@ def config_route(name=None):
 
 @route_blueprint.route('/config/route/<string:name>/_delete', methods=['GET'])
 @token_required
+@validate_name
 def delete_route(name=None):
     """
     This api deletes a route from the catalog (refused while still coupled).

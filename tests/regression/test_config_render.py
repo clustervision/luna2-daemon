@@ -117,6 +117,41 @@ def test_dhcp_overwrite_renders_subnet_and_host(config_env, seeded):
 
 
 @pytest.mark.regression
+def test_dhcp_kea_renders_relay_on_shared_network(config_env, seeded, constant):
+    """TRIX-1921: a shared network carrying dhcp_relay renders a Kea 'relay' ip-addresses block."""
+    from utils.config import Config
+
+    _insert("network", name="remote", network="10.150.0.0", subnet="255.255.0.0", dhcp=1,
+            dhcp_range_begin="10.150.10.1", dhcp_range_end="10.150.10.254",
+            nameserver_ip="10.141.0.1", ntp_server="10.141.0.1", zone="remote",
+            shared=NETWORK, dhcp_relay="10.150.0.1,10.150.0.2")
+    constant["DHCP"]["TEMPLATE"] = "templ_kea-dhcp4.cfg"
+
+    assert Config().dhcp_overwrite() is True
+    content = open(os.path.join(config_env, "dhcpd.conf"), encoding="utf-8").read()
+
+    assert '"relay"' in content
+    assert '"10.150.0.1"' in content and '"10.150.0.2"' in content
+
+
+@pytest.mark.regression
+def test_dhcp_kea_no_relay_block_when_unset(config_env, seeded, constant):
+    """Without dhcp_relay, the Kea render must not emit a subnet 'relay' block."""
+    from utils.config import Config
+
+    _insert("network", name="remote", network="10.150.0.0", subnet="255.255.0.0", dhcp=1,
+            dhcp_range_begin="10.150.10.1", dhcp_range_end="10.150.10.254",
+            nameserver_ip="10.141.0.1", ntp_server="10.141.0.1", zone="remote",
+            shared=NETWORK)
+    constant["DHCP"]["TEMPLATE"] = "templ_kea-dhcp4.cfg"
+
+    assert Config().dhcp_overwrite() is True
+    content = open(os.path.join(config_env, "dhcpd.conf"), encoding="utf-8").read()
+
+    assert '"relay"' not in content
+
+
+@pytest.mark.regression
 def test_dns_configure_renders_zone_and_named_conf(config_env, seeded):
     from utils.config import Config
 

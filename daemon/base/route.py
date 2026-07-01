@@ -62,6 +62,7 @@ class Route():
         for route in routes:
             targets = self.coupled_targets(route['id'])
             response['config']['route'][route['name']] = {
+                'name': route['name'],
                 'destination': route['destination'],
                 'gateway': route['gateway'],
                 'metric': route['metric'],

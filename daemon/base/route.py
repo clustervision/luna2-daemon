@@ -175,6 +175,60 @@ class Route():
                 targets.append(f"{row['tableref']}/{name}")
         return targets
 
+    def assigned_names(self, tableref=None, tablerefid=None):
+        """Return the names of routes coupled to a network/group/node (for show/list)."""
+        names = []
+        rows = Database().get_record(
+            table='routemap', where=f"tableref='{tableref}' AND tablerefid='{tablerefid}'")
+        for row in rows or []:
+            name = Database().name_by_id('route', row['routeid'])
+            if name:
+                names.append(name)
+        return names
+
+    def reconcile(self, tableref=None, tablerefid=None, names=None):
+        """
+        Make the couplings of a target match the given route names (inline -R/--routes).
+        An empty/None list clears all couplings. Unknown names are ignored.
+        """
+        if tableref not in self.COUPLE_TABLES or not tablerefid:
+            return
+        if isinstance(names, str):
+            names = names.split(',')
+        wanted = set()
+        for name in names or []:
+            name = name.strip()
+            if not name:
+                continue
+            route = Database().get_record(table='route', where=f"name='{name}'")
+            if route:
+                wanted.add(route[0]['id'])
+        current = {}
+        rows = Database().get_record(
+            table='routemap', where=f"tableref='{tableref}' AND tablerefid='{tablerefid}'")
+        for row in rows or []:
+            current[row['routeid']] = row['id']
+        for routeid in wanted - set(current):
+            Database().insert('routemap', Helper().make_rows(
+                {'tableref': tableref, 'tablerefid': tablerefid, 'routeid': routeid}))
+        for routeid, mapid in current.items():
+            if routeid not in wanted:
+                Database().delete_row('routemap', [{"column": "id", "value": mapid}])
+
+    def copy_couplings(self, tableref=None, source_id=None, target_id=None):
+        """Copy all route couplings from one target id to another (used on clone)."""
+        rows = Database().get_record(
+            table='routemap', where=f"tableref='{tableref}' AND tablerefid='{source_id}'")
+        for row in rows or []:
+            Database().insert('routemap', Helper().make_rows(
+                {'tableref': tableref, 'tablerefid': target_id, 'routeid': row['routeid']}))
+
+    def delete_couplings(self, tableref=None, tablerefid=None):
+        """Remove all route couplings of a target (used when a network/group/node is deleted)."""
+        Database().delete_row('routemap', [
+            {"column": "tableref", "value": tableref},
+            {"column": "tablerefid", "value": tablerefid}])
+
     def validate_route(self, destination, gateway, device, metric):
         """
         Boundary validation: destination must be a valid CIDR, at least one of

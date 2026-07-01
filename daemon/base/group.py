@@ -627,6 +627,9 @@ class Group():
                 # response = f'Group {name} created successfully'
                 response = f'Group {name} cloned as {newgroupname} successfully'
                 status=True
+                # ------ route couplings ------
+                from base.route import Route
+                Route().copy_couplings('group', Database().id_by_name('group', name), new_group_id)
                 group_interfaces_byname = None
                 group_interfaces = Database().get_record_join(
                     [
@@ -779,6 +782,8 @@ class Group():
             where = [{"column": "groupid", "value": group[0]['id']}]
             Database().delete_row('groupinterface', where)
             Database().delete_row('groupsecrets', where)
+            from base.route import Route
+            Route().delete_couplings('group', groupid)
             response = f'Group {name} removed'
             status=True
             # ---- we call the group plugin - maybe someone wants to run something after delete?

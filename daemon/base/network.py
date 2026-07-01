@@ -682,6 +682,8 @@ class Network():
             )
             if not controller:
                 Database().delete_row('network', [{"column": "name", "value": name}])
+                from base.route import Route
+                Route().delete_couplings('network', network[0]['id'])
                 data = {}
                 data['shared'] = ""
                 row = Helper().make_rows(data)

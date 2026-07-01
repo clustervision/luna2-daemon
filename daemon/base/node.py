@@ -841,6 +841,10 @@ class Node():
                 response = f'Node {newnodename} created successfully'
                 status=True
 
+                # ------ route couplings ------
+                from base.route import Route
+                Route().copy_couplings('node', nodeid, new_nodeid)
+
                 # ------ secrets ------
                 secrets = Database().get_record(table='nodesecrets', where=f'nodeid = "{nodeid}"')
                 for secret in secrets:
@@ -1125,6 +1129,8 @@ class Node():
             Database().delete_row('nodesecrets', [{"column": "nodeid", "value": nodeid}])
             Database().delete_row('rackinventory', [{"column": "tablerefid", "value": nodeid},
                                                     {"column": "tableref", "value": "node"}])
+            from base.route import Route
+            Route().delete_couplings('node', nodeid)
             # for now i have disabled the below two lines for testing purposes. Antoine Aug 8 2023
             #Service().queue('dns', 'resload')
             #Service().queue('dhcp', 'restart')

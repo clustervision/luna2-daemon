@@ -86,6 +86,13 @@ class Node():
             route_name = route_names.get(coupling['routeid'])
             if route_name:
                 route_couplings.setdefault((coupling['tableref'], coupling['tablerefid']), []).append(route_name)
+        node_networks = {}
+        for row in Database().get_record_join(
+                ['nodeinterface.nodeid', 'ipaddress.networkid'],
+                ['ipaddress.tablerefid=nodeinterface.id'],
+                ['tableref="nodeinterface"']) or []:
+            if row.get('networkid'):
+                node_networks.setdefault(row['nodeid'], set()).add(row['networkid'])
         if nodes:
             response['config'] = {}
             response['config']['node'] = {}
@@ -156,11 +163,23 @@ class Node():
                             node[key] = node[key] or value
                             node['_override'] = True
                 # -------------
-                stacked_routes = list(route_couplings.get(('node', nodeid), []))
-                for route_name in route_couplings.get(('group', groupid), []):
-                    if route_name not in stacked_routes:
-                        stacked_routes.append(route_name)
-                node['routes'] = ','.join(stacked_routes)
+                # strict override: node overrides group overrides the network base
+                effective = route_couplings.get(('node', nodeid), [])
+                route_source = 'node' if effective else None
+                if not effective and groupid:
+                    effective = route_couplings.get(('group', groupid), [])
+                    route_source = 'group' if effective else None
+                if not effective:
+                    net_names = []
+                    for networkid in node_networks.get(nodeid, ()):
+                        for route_name in route_couplings.get(('network', networkid), []):
+                            if route_name not in net_names:
+                                net_names.append(route_name)
+                    effective = net_names
+                    route_source = 'network' if effective else None
+                node['routes'] = ','.join(effective)
+                if route_source:
+                    node['_routes_source'] = route_source
                 node['switch'] = None
                 if node['switchid']:
                     node['switch'] = '!!Invalid!!'
@@ -304,9 +323,20 @@ class Node():
             response = {'config': {'node': {} }}
             nodename = node['name']
             nodeid = node['id']
-            node['routes'] = ','.join(Route().assigned_names('node', nodeid))
-            if node.get('groupid'):
-                node['group_routes'] = ','.join(Route().assigned_names('group', node['groupid']))
+            # effective routes follow strict override: node -> group -> network base
+            node_route_names = Route().assigned_names('node', nodeid)
+            group_route_names = Route().assigned_names('group', node['groupid']) if node.get('groupid') else []
+            if node_route_names:
+                node['routes'] = ','.join(node_route_names)
+                node['_routes_source'] = 'node'
+                node['_override'] = True
+            elif group_route_names:
+                node['routes'] = ','.join(group_route_names)
+                node['_routes_source'] = 'group'
+            else:
+                network_route_names = Route().network_route_names(Route().network_ids_for_node(nodeid))
+                node['routes'] = ','.join(network_route_names)
+                node['_routes_source'] = 'network' if network_route_names else 'default'
             node['_override'] = False
             alt_source = {}
             if node['osimageid']:

@@ -68,7 +68,14 @@ class Group():
             for group in groups:
                 name = group['name']
                 group_id = group['id']
-                group['routes'] = ','.join(Route().assigned_names('group', group_id))
+                group_route_names = Route().assigned_names('group', group_id)
+                if group_route_names:
+                    group['routes'] = ','.join(group_route_names)
+                    group['_routes_source'] = 'group'
+                else:
+                    network_route_names = Route().network_route_names(Route().network_ids_for_group(group_id))
+                    group['routes'] = ','.join(network_route_names)
+                    group['_routes_source'] = 'network' if network_route_names else 'default'
                 group['_override'] = False
                 for key in overrides:
                     if key in group and group[key]:
@@ -144,7 +151,14 @@ class Group():
             response = {'config': {'group': {} }}
             group = groups[0]
             group_id = group['id']
-            group['routes'] = ','.join(Route().assigned_names('group', group_id))
+            group_route_names = Route().assigned_names('group', group_id)
+            if group_route_names:
+                group['routes'] = ','.join(group_route_names)
+                group['_routes_source'] = 'group'
+            else:
+                network_route_names = Route().network_route_names(Route().network_ids_for_group(group_id))
+                group['routes'] = ','.join(network_route_names)
+                group['_routes_source'] = 'network' if network_route_names else 'default'
             osimage = None
             group['_override'] = False
             group['osimage'] = None

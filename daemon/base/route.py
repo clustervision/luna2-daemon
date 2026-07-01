@@ -240,45 +240,71 @@ class Route():
             {"column": "tableref", "value": tableref},
             {"column": "tablerefid", "value": tablerefid}])
 
+    def effective_for_node(self, nodeid=None, groupid=None, networkids=None):
+        """
+        Strict override, like provision_interface: the highest level that has any coupled
+        routes wins outright -- node overrides group overrides the network base -- and the
+        lower levels are then ignored. networkids are the ids of the networks the node is
+        attached to. Returns the winning level's routes, deduped by (destination, metric).
+        """
+        levels = [f'tableref="node" AND tablerefid="{nodeid}"']
+        if groupid:
+            levels.append(f'tableref="group" AND tablerefid="{groupid}"')
+        if networkids:
+            ids = ",".join(str(n) for n in networkids)
+            levels.append(f'tableref="network" AND tablerefid IN ({ids})')
+        for where in levels:
+            routeids = [str(row['routeid']) for row in
+                        Database().get_record(table='routemap', where=where) or []]
+            if not routeids:
+                continue
+            routes = Database().get_record(table='route', where=f"id IN ({','.join(routeids)})") or []
+            best = {}
+            for route in routes:
+                best[(route['destination'], route['metric'])] = route
+            return list(best.values())
+        return []
+
     def resolve_for_node(self, interfaces=None, nodeid=None, provision_interface=None):
         """
-        Distribute coupled static routes onto a node's already-built interfaces for
-        template rendering (mutates the interfaces in place). Needs the interfaces the
-        caller assembled plus the node id and its provision interface -- a hostname alone
-        is not enough since binding uses each interface's network/networkid. Additive
-        only: with no coupled routes the interfaces are untouched. Any error is logged and
-        skipped so existing provisioning behaviour is never affected.
+        Distribute the node's effective static routes onto its already-built interfaces for
+        template rendering (mutates the interfaces in place). Additive: with no coupled
+        routes the interfaces are untouched. Any error is logged and skipped so existing
+        provisioning behaviour is never affected.
         """
         try:
             if not interfaces or not nodeid:
                 return
             node = Database().get_record(table='node', where=f'id="{nodeid}"')
             groupid = node[0]['groupid'] if node else None
-            networkids = [str(i['networkid']) for i in interfaces.values() if i.get('networkid')]
-            scope = {}
-            weighted = [(f'tableref="node" AND tablerefid="{nodeid}"', 3)]
-            if groupid:
-                weighted.append((f'tableref="group" AND tablerefid="{groupid}"', 2))
-            if networkids:
-                weighted.append((f'tableref="network" AND tablerefid IN ({",".join(networkids)})', 1))
-            for where, weight in weighted:
-                for row in Database().get_record(table='routemap', where=where) or []:
-                    if scope.get(row['routeid'], 0) < weight:
-                        scope[row['routeid']] = weight
-            if not scope:
-                return
-            ids = ",".join(str(rid) for rid in scope)
-            routes = Database().get_record(table='route', where=f'id IN ({ids})') or []
-            best = {}
+            networkids = [i['networkid'] for i in interfaces.values() if i.get('networkid')]
+            routes = self.effective_for_node(nodeid, groupid, networkids)
             for route in routes:
-                key = (route['destination'], route['metric'])
-                weight = scope.get(route['id'], 0)
-                if key not in best or best[key][0] < weight:
-                    best[key] = (weight, route)
-            for _weight, route in best.values():
                 self._bind_route(interfaces, provision_interface, route)
         except Exception as exp:
             self.logger.error(f"TRIX-1481 static route resolution skipped: {exp}")
+
+    def network_ids_for_node(self, nodeid=None):
+        """Ids of the networks a node's own interfaces are attached to (network-base fallback)."""
+        rows = Database().get_record_join(
+            ['ipaddress.networkid'],
+            ['ipaddress.tablerefid=nodeinterface.id'],
+            ['tableref="nodeinterface"', f"nodeinterface.nodeid='{nodeid}'"])
+        return [row['networkid'] for row in rows or [] if row.get('networkid')]
+
+    def network_ids_for_group(self, groupid=None):
+        """Ids of the networks a group's interfaces are attached to (network-base fallback)."""
+        rows = Database().get_record(table='groupinterface', where=f"groupid='{groupid}'")
+        return [row['networkid'] for row in rows or [] if row.get('networkid')]
+
+    def network_route_names(self, networkids=None):
+        """Route names coupled to any of the given networks (deduped, order-preserving)."""
+        names = []
+        for networkid in networkids or []:
+            for name in self.assigned_names('network', networkid):
+                if name not in names:
+                    names.append(name)
+        return names
 
     def _bind_route(self, interfaces, provision_interface, route):
         """Attach one route to the interface selected by device or next-hop subnet."""

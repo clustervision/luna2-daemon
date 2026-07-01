@@ -206,6 +206,42 @@ def test_resolve_precedence_node_over_group_over_network(db, seed):
     assert hops == ['10.141.0.3']                                     # node wins, once
 
 
+def test_resolve_node_overrides_group_entirely(db, seed):
+    """Strict override: a node with its own routes ignores group routes completely."""
+    from base.route import Route
+    make_route('nod', '10.1.0.0/16', '10.141.0.1')
+    make_route('grp', '10.2.0.0/16', '10.141.0.2')
+    Route().reconcile('node', seed['nodeid'], ['nod'])
+    Route().reconcile('group', seed['groupid'], ['grp'])
+    ifaces = _interfaces(seed['clusterid'], seed['extid'])
+    Route().resolve_for_node(ifaces, seed['nodeid'], 'BOOTIF')
+    dests = [r['destination'] for r in ifaces['BOOTIF']['routes']]
+    assert '10.1.0.0/16' in dests and '10.2.0.0/16' not in dests
+
+
+def test_resolve_group_overrides_network_base(db, seed):
+    """A group with routes ignores the network base entirely."""
+    from base.route import Route
+    make_route('grp', '10.4.0.0/16', '10.141.0.1')
+    make_route('net', '10.5.0.0/16', '10.141.0.2')
+    Route().reconcile('group', seed['groupid'], ['grp'])
+    Route().reconcile('network', seed['clusterid'], ['net'])
+    ifaces = _interfaces(seed['clusterid'], seed['extid'])
+    Route().resolve_for_node(ifaces, seed['nodeid'], 'BOOTIF')
+    dests = [r['destination'] for r in ifaces['BOOTIF']['routes']]
+    assert '10.4.0.0/16' in dests and '10.5.0.0/16' not in dests
+
+
+def test_resolve_falls_back_to_network_base(db, seed):
+    """With no node or group routes, the network base applies."""
+    from base.route import Route
+    make_route('net', '10.3.0.0/16', '10.141.0.9')
+    Route().reconcile('network', seed['clusterid'], ['net'])
+    ifaces = _interfaces(seed['clusterid'], seed['extid'])
+    Route().resolve_for_node(ifaces, seed['nodeid'], 'BOOTIF')
+    assert any(r['destination'] == '10.3.0.0/16' for r in ifaces['BOOTIF']['routes'])
+
+
 def test_resolve_same_dest_different_metric_keeps_both(db, seed):
     from base.route import Route
     make_route('m1', '10.60.0.0/16', '10.141.0.1', metric=100)

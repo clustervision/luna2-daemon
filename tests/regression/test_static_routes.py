@@ -88,6 +88,37 @@ def test_nm_ipv6_route_without_gateway_is_route1(name):
     assert 'route1=fd10::/32,fd00::9' in out
 
 
+def _ub_iface(routes=None, routes_ipv6=None, dhcp=False, gateway='10.145.255.254'):
+    return {'eth0': {
+        'type': 'ethernet', 'networktype': 'ethernet', 'zone': 'trusted', 'mtu': '',
+        'ipaddress': '10.145.0.5', 'prefix': '16', 'vlanid': '', 'vlan_parent': '',
+        'ipaddress_ipv6': '', 'prefix_ipv6': '', 'nameserver_ip': ['10.145.0.1'],
+        'nameserver_ip_ipv6': [], 'gateway': '' if dhcp else gateway, 'gateway_ipv6': '',
+        'gateway_metric': '101', 'dhcp': dhcp, 'options': '', 'master': '',
+        'bond_mode': '', 'bond_slaves': [], 'routes': routes or [], 'routes_ipv6': routes_ipv6 or []}}
+
+
+def test_netplan_static_route():
+    out = _env().get_template('ubuntu.templ').render(
+        LUNA_INTERFACES=_ub_iface(routes=[{'destination': '10.30.0.0/16', 'gateway': '172.16.0.33', 'metric': 300}]),
+        interface='eth0', PROVISION_INTERFACE='eth0', NODE_NAME='node002', DOMAIN_SEARCH=['cluster'])
+    assert '- to: 10.30.0.0/16' in out and 'via: 172.16.0.33' in out and 'metric: 300' in out
+
+
+def test_netplan_onlink_route_uses_scope_link():
+    out = _env().get_template('ubuntu.templ').render(
+        LUNA_INTERFACES=_ub_iface(routes=[{'destination': '10.88.0.0/16', 'gateway': '', 'metric': 66}]),
+        interface='eth0', PROVISION_INTERFACE='eth0', NODE_NAME='node002', DOMAIN_SEARCH=['cluster'])
+    assert '- to: 10.88.0.0/16' in out and 'scope: link' in out
+
+
+def test_netplan_routes_render_on_dhcp_interface():
+    out = _env().get_template('ubuntu.templ').render(
+        LUNA_INTERFACES=_ub_iface(routes=[{'destination': '172.16.0.0/12', 'gateway': '172.16.0.33', 'metric': 200}], dhcp=True),
+        interface='eth0', PROVISION_INTERFACE='eth0', NODE_NAME='node002', DOMAIN_SEARCH=['cluster'])
+    assert 'dhcp4: True' in out and '- to: 172.16.0.0/12' in out
+
+
 def test_database_layout_shape():
     sys.path.insert(0, os.path.join(DAEMON, 'common'))
     import database_layout as dl

@@ -68,6 +68,7 @@ class Group():
             for group in groups:
                 name = group['name']
                 group_id = group['id']
+                group['routes'] = ','.join(Route().assigned_names('group', group_id))
                 group['_override'] = False
                 for key in overrides:
                     if key in group and group[key]:
@@ -143,6 +144,7 @@ class Group():
             response = {'config': {'group': {} }}
             group = groups[0]
             group_id = group['id']
+            group['routes'] = ','.join(Route().assigned_names('group', group_id))
             osimage = None
             group['_override'] = False
             group['osimage'] = None
@@ -441,6 +443,7 @@ class Group():
                 else:
                     data['scripts'] = None
 
+            group_routes = data.pop('routes', None)
             group_columns = Database().get_columns('group')
             column_check = Helper().compare_list(data, group_columns)
             if column_check:
@@ -457,6 +460,8 @@ class Group():
                     if group_id:
                         response = f'Group {name} created successfully'
                         status=True
+                if status and group_routes is not None:
+                    Route().reconcile('group', group_id, group_routes)
                 if status and new_interface:
                     for ifx in new_interface:
                         if not 'interface' in ifx:

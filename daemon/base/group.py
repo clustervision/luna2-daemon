@@ -70,12 +70,12 @@ class Group():
                 group_id = group['id']
                 group_route_names = Route().assigned_names('group', group_id)
                 if group_route_names:
-                    group['routes'] = ','.join(group_route_names)
+                    group['routes'] = ', '.join(group_route_names)
                     group['_routes_source'] = 'group'
                 else:
                     network_route_names = Route().network_route_names(Route().network_ids_for_group(group_id))
                     if network_route_names:
-                        group['routes'] = ','.join(network_route_names)
+                        group['routes'] = ', '.join(network_route_names)
                         group['_routes_source'] = 'network'
                     else:
                         group['routes'] = None
@@ -156,12 +156,12 @@ class Group():
             group_id = group['id']
             group_route_names = Route().assigned_names('group', group_id)
             if group_route_names:
-                group['routes'] = ','.join(group_route_names)
+                group['routes'] = ', '.join(group_route_names)
                 group['_routes_source'] = 'group'
             else:
                 network_route_names = Route().network_route_names(Route().network_ids_for_group(group_id))
                 if network_route_names:
-                    group['routes'] = ','.join(network_route_names)
+                    group['routes'] = ', '.join(network_route_names)
                     group['_routes_source'] = 'network'
                 else:
                     group['routes'] = None

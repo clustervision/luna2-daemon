@@ -92,7 +92,7 @@ class Network():
             'gateway', 'gateway_ipv6', 'gateway_metric',
             'dhcp', 'dhcp_range_begin', 'dhcp_range_end',
             'dhcp_range_begin_ipv6', 'dhcp_range_end_ipv6',
-            'dhcp_nodes_only', 'dhcp_nodes_in_pool',
+            'dhcp_nodes_only', 'dhcp_nodes_in_pool', 'dhcp_relay',
             'zone', 'nameserver_ip', 'nameserver_ip_ipv6',
             'ntp_server', 'shared', 'non_authoritative'
         }
@@ -382,6 +382,15 @@ class Network():
                     if not regex.match(data['ntp_server']):
                         status=False
                         return status, f'Invalid request: Incorrect NTP Server IP: {data["ntp_server"]}'
+            if 'dhcp_relay' in data and data['dhcp_relay'] != '':
+                shared_network = data['shared'] if 'shared' in data else (db_data['shared'] if db_data else None)
+                if not shared_network:
+                    status=False
+                    return status, 'Invalid request: network is not shared, dhcp_relay can only be set on a shared network'
+                for relay in data['dhcp_relay'].split(','):
+                    if not Helper().check_ip(relay.strip()):
+                        status=False
+                        return status, f'Invalid request: Incorrect DHCP relay IP: {relay.strip()}'
             valid = True
             request_dhcp = None
             request_dhcp_nodes_only = None

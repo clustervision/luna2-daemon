@@ -166,6 +166,7 @@ class Plugin():
                     hostname_rules_path = self._generate_hostname_path(hostname)
                     rules = self._read_rules(hostname_rules_path)
                     response.append({"hostname": hostname, "status": True, "data": rules.model_dump(by_alias=True)})
+                    status = True
                 except Exception as exception:
                     error_message = f"Error encountered while reading the Prometheus Rules for {hostname}: {exception}."
                     self.logger.error(error_message)

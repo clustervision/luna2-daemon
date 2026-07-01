@@ -292,6 +292,10 @@ class Node():
             response = {'config': {'node': {} }}
             nodename = node['name']
             nodeid = node['id']
+            from base.route import Route
+            node['routes'] = ','.join(Route().assigned_names('node', nodeid))
+            if node.get('groupid'):
+                node['group_routes'] = ','.join(Route().assigned_names('group', node['groupid']))
             node['_override'] = False
             alt_source = {}
             if node['osimageid']:
@@ -699,6 +703,7 @@ class Node():
                 else:
                     data['scripts'] = None
 
+            node_routes = data.pop('routes', None)
             node_columns = Database().get_columns('node')
             columns_check = Helper().compare_list(data, node_columns)
             if columns_check:
@@ -723,6 +728,10 @@ class Node():
 
                     if nodeid and 'groupid' in data and data['groupid']:
                         Interface().update_node_group_interface(nodeid=nodeid, groupid=data['groupid'])
+
+                if node_routes is not None:
+                    from base.route import Route
+                    Route().reconcile('node', nodeid, node_routes)
 
                 if interfaces:
                     result, message = Interface().change_node_interface(nodeid=nodeid, data=interfaces)

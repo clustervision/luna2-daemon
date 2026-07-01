@@ -112,6 +112,23 @@ def test_netplan_onlink_route_uses_scope_link():
     assert '- to: 10.88.0.0/16' in out and 'scope: link' in out
 
 
+def test_netplan_offlink_route_emits_on_link():
+    """An off-link next-hop (binder set on_link) renders via + on-link: true so
+    systemd-networkd installs the route instead of stalling the interface."""
+    out = _env().get_template('ubuntu.templ').render(
+        LUNA_INTERFACES=_ub_iface(routes=[{'destination': '10.30.0.0/16', 'gateway': '10.9.9.1', 'metric': 300, 'on_link': True}]),
+        interface='eth0', PROVISION_INTERFACE='eth0', NODE_NAME='node002', DOMAIN_SEARCH=['cluster'])
+    assert 'via: 10.9.9.1' in out and 'on-link: true' in out
+
+
+def test_netplan_on_link_line_absent_for_on_link_nexthop():
+    """A directly-reachable next-hop carries no on_link flag, so on-link is not emitted."""
+    out = _env().get_template('ubuntu.templ').render(
+        LUNA_INTERFACES=_ub_iface(routes=[{'destination': '10.30.0.0/16', 'gateway': '172.16.0.33', 'metric': 300}]),
+        interface='eth0', PROVISION_INTERFACE='eth0', NODE_NAME='node002', DOMAIN_SEARCH=['cluster'])
+    assert 'on-link: true' not in out
+
+
 def test_netplan_routes_render_on_dhcp_interface():
     out = _env().get_template('ubuntu.templ').render(
         LUNA_INTERFACES=_ub_iface(routes=[{'destination': '172.16.0.0/12', 'gateway': '172.16.0.33', 'metric': 200}], dhcp=True),

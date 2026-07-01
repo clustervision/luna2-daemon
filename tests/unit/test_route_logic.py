@@ -178,6 +178,26 @@ def test_resolve_onlink_route_has_empty_nexthop(db, seed):
     assert entry['gateway'] == ''
 
 
+def test_resolve_device_offlink_gateway_marks_on_link(db, seed):
+    from base.route import Route
+    make_route('off', '10.30.0.0/16', '10.141.0.9', device='ext01')   # hop in cluster, bound to ext01
+    Route().reconcile('node', seed['nodeid'], ['off'])
+    ifaces = _interfaces(seed['clusterid'], seed['extid'])
+    Route().resolve_for_node(ifaces, seed['nodeid'], 'BOOTIF')
+    entry = [r for r in ifaces['ext01']['routes'] if r['destination'] == '10.30.0.0/16'][0]
+    assert entry.get('on_link') is True
+
+
+def test_resolve_onlink_gateway_not_marked(db, seed):
+    from base.route import Route
+    make_route('on', '10.30.0.0/16', '10.145.0.9', device='ext01')    # hop inside ext01's own subnet
+    Route().reconcile('node', seed['nodeid'], ['on'])
+    ifaces = _interfaces(seed['clusterid'], seed['extid'])
+    Route().resolve_for_node(ifaces, seed['nodeid'], 'BOOTIF')
+    entry = [r for r in ifaces['ext01']['routes'] if r['destination'] == '10.30.0.0/16'][0]
+    assert 'on_link' not in entry
+
+
 def test_resolve_ipv6_route_goes_to_ipv6_bucket(db, seed):
     from base.route import Route
     make_route('6', 'fd10::/32', 'fd00:141::9')

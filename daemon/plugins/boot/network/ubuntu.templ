@@ -64,6 +64,9 @@ $(printf '%s\n' {%- for temp_slave in LUNA_INTERFACES[interface]['bond_slaves'] 
         - to: {{ r['destination'] }}
         {%- if r['gateway'] %}
           via: {{ r['gateway'] }}
+          {%- if r['on_link'] %}
+          on-link: true
+          {%- endif %}
         {%- else %}
           scope: link
         {%- endif %}
@@ -96,6 +99,9 @@ $(printf '%s\n' {%- for temp_slave in LUNA_INTERFACES[interface]['bond_slaves'] 
         - to: {{ r['destination'] }}
         {%- if r['gateway'] %}
           via: {{ r['gateway'] }}
+          {%- if r['on_link'] %}
+          on-link: true
+          {%- endif %}
         {%- else %}
           scope: link
         {%- endif %}

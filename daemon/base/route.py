@@ -323,24 +323,25 @@ class Route():
         if not target or target not in interfaces:
             target = provision_interface
         if target in interfaces:
+            if nexthop and not self._nexthop_on_link(interfaces[target], nexthop, family):
+                entry['on_link'] = True
             interfaces[target].setdefault(family, []).append(entry)
+
+    def _nexthop_on_link(self, iface, nexthop, family):
+        """True if the next-hop lives inside the interface's own subnet (directly reachable)."""
+        cidr = iface.get('network_ipv6' if family == 'routes_ipv6' else 'network')
+        if not cidr:
+            return False
+        try:
+            return ipaddress.ip_address(nexthop) in ipaddress.ip_network(cidr, strict=False)
+        except ValueError:
+            return False
 
     def _interface_for_nexthop(self, interfaces, nexthop, family):
         """Return the interface whose network subnet contains the next-hop, else None."""
-        try:
-            hop = ipaddress.ip_address(nexthop)
-        except ValueError:
-            return None
-        cidr_key = 'network_ipv6' if family == 'routes_ipv6' else 'network'
         for name, iface in interfaces.items():
-            cidr = iface.get(cidr_key)
-            if not cidr:
-                continue
-            try:
-                if hop in ipaddress.ip_network(cidr, strict=False):
-                    return name
-            except ValueError:
-                continue
+            if self._nexthop_on_link(iface, nexthop, family):
+                return name
         return None
 
     def validate_route(self, destination, gateway, device, metric):

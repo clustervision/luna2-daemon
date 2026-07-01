@@ -114,52 +114,57 @@ class Route():
             return False, f"Invalid request: route {name} currently in use by {inuse} ..."
         return Model().delete_record(name=name, table='route', table_cap='Route')
 
-    def couple_route(self, tableref=None, target=None, route_name=None):
+    def couple_route(self, name=None, target_ref=None):
         """
         This method couples (stacks) a route onto a network, group or node.
+        target_ref is a 'tableref/target' string (e.g. 'group/compute'), kept as a
+        single param so HA journal replay maps (object, param) correctly.
         """
-        valid, ref = self.resolve_target(tableref, target, route_name)
+        valid, ref = self.resolve_target(name, target_ref)
         if not valid:
             return False, ref
-        routeid, tablerefid = ref
+        tableref, target, routeid, tablerefid = ref
         exist = Database().get_record(
             table='routemap',
             where=f"tableref='{tableref}' AND tablerefid='{tablerefid}' AND routeid='{routeid}'"
         )
         if exist:
-            return True, f"Route {route_name} already coupled to {tableref} {target}"
+            return True, f"Route {name} already coupled to {tableref} {target}"
         Database().insert('routemap', Helper().make_rows(
             {'tableref': tableref, 'tablerefid': tablerefid, 'routeid': routeid}))
-        return True, f"Route {route_name} coupled to {tableref} {target}"
+        return True, f"Route {name} coupled to {tableref} {target}"
 
-    def decouple_route(self, tableref=None, target=None, route_name=None):
+    def decouple_route(self, name=None, target_ref=None):
         """
         This method removes a route coupling from a network, group or node.
         """
-        valid, ref = self.resolve_target(tableref, target, route_name)
+        valid, ref = self.resolve_target(name, target_ref)
         if not valid:
             return False, ref
-        routeid, tablerefid = ref
+        tableref, target, routeid, tablerefid = ref
         exist = Database().get_record(
             table='routemap',
             where=f"tableref='{tableref}' AND tablerefid='{tablerefid}' AND routeid='{routeid}'"
         )
         if not exist:
-            return False, f"Route {route_name} is not coupled to {tableref} {target}"
+            return False, f"Route {name} is not coupled to {tableref} {target}"
         Database().delete_row('routemap', [{"column": "id", "value": exist[0]['id']}])
-        return True, f"Route {route_name} decoupled from {tableref} {target}"
+        return True, f"Route {name} decoupled from {tableref} {target}"
 
-    def resolve_target(self, tableref, target, route_name):
-        """Validate a couple request and return (routeid, tablerefid)."""
+    def resolve_target(self, route_name, target_ref):
+        """Validate a couple request and return (tableref, target, routeid, tablerefid)."""
+        tableref, _, target = (target_ref or '').partition('/')
         if tableref not in self.COUPLE_TABLES:
             return False, f"Invalid request: {tableref} cannot carry routes"
+        if not target:
+            return False, "Invalid request: missing target name"
         route = Database().get_record(table='route', where=f"name='{route_name}'")
         if not route:
             return False, f"Route {route_name} does not exist"
         tablerefid = Database().id_by_name(tableref, target)
         if not tablerefid:
             return False, f"{tableref.capitalize()} {target} does not exist"
-        return True, (route[0]['id'], tablerefid)
+        return True, (tableref, target, route[0]['id'], tablerefid)
 
     def coupled_targets(self, routeid):
         """Return human-readable 'type/name' labels for everything a route is coupled to."""

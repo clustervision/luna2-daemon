@@ -56,6 +56,7 @@ from routes.boot_scripts import scripts_blueprint
 from routes.config_bmcsetup import bmcsetup_blueprint
 from routes.config_cluster import cluster_blueprint
 from routes.config_dns import dns_blueprint
+from routes.config_route import route_blueprint
 from routes.config_group import group_blueprint
 from routes.config_network import network_blueprint
 from routes.config_node import node_blueprint
@@ -328,6 +329,7 @@ daemon.register_blueprint(scripts_blueprint)
 daemon.register_blueprint(bmcsetup_blueprint)
 daemon.register_blueprint(cluster_blueprint)
 daemon.register_blueprint(dns_blueprint)
+daemon.register_blueprint(route_blueprint)
 daemon.register_blueprint(group_blueprint)
 daemon.register_blueprint(network_blueprint)
 daemon.register_blueprint(node_blueprint)

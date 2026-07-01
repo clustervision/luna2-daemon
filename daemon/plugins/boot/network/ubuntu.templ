@@ -58,6 +58,20 @@ $(printf '%s\n' {%- for temp_slave in LUNA_INTERFACES[interface]['bond_slaves'] 
 {%- if LUNA_INTERFACES[interface]['dhcp'] %}
       dhcp4: True
       dhcp6: True
+    {%- if LUNA_INTERFACES[interface]['routes']|default([], true) or LUNA_INTERFACES[interface]['routes_ipv6']|default([], true) %}
+      routes:
+      {%- for r in (LUNA_INTERFACES[interface]['routes']|default([], true)) + (LUNA_INTERFACES[interface]['routes_ipv6']|default([], true)) %}
+        - to: {{ r['destination'] }}
+        {%- if r['gateway'] %}
+          via: {{ r['gateway'] }}
+        {%- else %}
+          scope: link
+        {%- endif %}
+        {%- if r['metric'] %}
+          metric: {{ r['metric'] }}
+        {%- endif %}
+      {%- endfor %}
+    {%- endif %}
 {%- else %}
       addresses:
     {%- if LUNA_INTERFACES[interface]['ipaddress'] %}

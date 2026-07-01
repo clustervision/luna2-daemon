@@ -54,11 +54,17 @@ method=auto
 dns=
 dns-search=
 dhcp-hostname={{ NODE_NAME }}
+    {%- for r in LUNA_INTERFACES[interface]['routes']|default([], true) %}
+route{{ loop.index }}={{ r['destination'] }},{{ r['gateway'] }}{% if r['metric'] %},{{ r['metric'] }}{% endif %}
+    {%- endfor %}
 
 [ipv6]
 method=auto
 dns=
 dns-search=
+    {%- for r in LUNA_INTERFACES[interface]['routes_ipv6']|default([], true) %}
+route{{ loop.index }}={{ r['destination'] }},{{ r['gateway'] }}{% if r['metric'] %},{{ r['metric'] }}{% endif %}
+    {%- endfor %}
   {%- else -%}
     {%- if LUNA_INTERFACES[interface]['ipaddress'] %}
 [ipv4]

@@ -69,6 +69,17 @@ def test_nm_renders_routes(name):
 
 
 @pytest.mark.parametrize('name', NM_TEMPLATES)
+def test_nm_routes_render_on_dhcp_interface(name):
+    """Static routes must also render on a DHCP (method=auto) interface (TRIX-1481:
+    the internal/provision network is often DHCP, and NM applies routeN on top)."""
+    iface = _iface(routes=[{'destination': '172.16.0.0/12', 'gateway': '10.141.255.254', 'metric': 200}])
+    iface['eth1']['dhcp'] = True
+    out = _env().get_template(f'{name}.templ').render(LUNA_INTERFACES=iface, **_CTX)
+    assert 'method=auto' in out
+    assert 'route1=172.16.0.0/12,10.141.255.254,200' in out
+
+
+@pytest.mark.parametrize('name', NM_TEMPLATES)
 def test_nm_ipv6_route_without_gateway_is_route1(name):
     """Without an IPv6 gateway the first IPv6 route is route1."""
     out = _env().get_template(f'{name}.templ').render(

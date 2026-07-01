@@ -229,6 +229,83 @@ class Route():
             {"column": "tableref", "value": tableref},
             {"column": "tablerefid", "value": tablerefid}])
 
+    def resolve_for_node(self, interfaces=None, nodeid=None, provision_interface=None):
+        """
+        Distribute coupled static routes onto a node's already-built interfaces for
+        template rendering (mutates the interfaces in place). Needs the interfaces the
+        caller assembled plus the node id and its provision interface -- a hostname alone
+        is not enough since binding uses each interface's network/networkid. Additive
+        only: with no coupled routes the interfaces are untouched. Any error is logged and
+        skipped so existing provisioning behaviour is never affected.
+        """
+        try:
+            if not interfaces or not nodeid:
+                return
+            node = Database().get_record(table='node', where=f'id="{nodeid}"')
+            groupid = node[0]['groupid'] if node else None
+            networkids = [str(i['networkid']) for i in interfaces.values() if i.get('networkid')]
+            scope = {}
+            weighted = [(f'tableref="node" AND tablerefid="{nodeid}"', 3)]
+            if groupid:
+                weighted.append((f'tableref="group" AND tablerefid="{groupid}"', 2))
+            if networkids:
+                weighted.append((f'tableref="network" AND tablerefid IN ({",".join(networkids)})', 1))
+            for where, weight in weighted:
+                for row in Database().get_record(table='routemap', where=where) or []:
+                    if scope.get(row['routeid'], 0) < weight:
+                        scope[row['routeid']] = weight
+            if not scope:
+                return
+            ids = ",".join(str(rid) for rid in scope)
+            routes = Database().get_record(table='route', where=f'id IN ({ids})') or []
+            best = {}
+            for route in routes:
+                key = (route['destination'], route['metric'])
+                weight = scope.get(route['id'], 0)
+                if key not in best or best[key][0] < weight:
+                    best[key] = (weight, route)
+            for _weight, route in best.values():
+                self._bind_route(interfaces, provision_interface, route)
+        except Exception as exp:
+            self.logger.error(f"TRIX-1481 static route resolution skipped: {exp}")
+
+    def _bind_route(self, interfaces, provision_interface, route):
+        """Attach one route to the interface selected by device or next-hop subnet."""
+        destination = route.get('destination')
+        if not destination:
+            return
+        nexthop = route.get('gateway') or ''
+        device = route.get('device') or ''
+        family = 'routes_ipv6' if ':' in destination else 'routes'
+        entry = {'destination': destination, 'gateway': nexthop, 'metric': route.get('metric')}
+        target = None
+        if device:
+            target = provision_interface if device == 'BOOTIF' else (device if device in interfaces else None)
+        elif nexthop:
+            target = self._interface_for_nexthop(interfaces, nexthop, family)
+        if not target or target not in interfaces:
+            target = provision_interface
+        if target in interfaces:
+            interfaces[target].setdefault(family, []).append(entry)
+
+    def _interface_for_nexthop(self, interfaces, nexthop, family):
+        """Return the interface whose network subnet contains the next-hop, else None."""
+        try:
+            hop = ipaddress.ip_address(nexthop)
+        except ValueError:
+            return None
+        cidr_key = 'network_ipv6' if family == 'routes_ipv6' else 'network'
+        for name, iface in interfaces.items():
+            cidr = iface.get(cidr_key)
+            if not cidr:
+                continue
+            try:
+                if hop in ipaddress.ip_network(cidr, strict=False):
+                    return name
+            except ValueError:
+                continue
+        return None
+
     def validate_route(self, destination, gateway, device, metric):
         """
         Boundary validation: destination must be a valid CIDR, at least one of

@@ -45,6 +45,7 @@ from utils.helper import Helper
 from utils.service import Service
 from utils.config import Config
 from base.node import Node
+from base.route import Route
 from utils.journal import Journal
 from utils.ha import HA
 from utils.controller import Controller
@@ -1352,85 +1353,6 @@ class Boot():
         return status, data
 
 
-    def attach_static_routes(self, data=None):
-        """
-        TRIX-1481: distribute coupled static routes onto a node's interfaces for
-        template rendering. Additive only: with no coupled routes the interfaces keep
-        their empty 'routes'/'routes_ipv6' lists and rendering is unchanged. Any error
-        is logged and skipped so existing provisioning behaviour is never affected.
-        """
-        try:
-            interfaces = data.get('interfaces') if data else None
-            nodeid = data.get('nodeid') if data else None
-            if not interfaces or not nodeid:
-                return
-            group = Database().get_record(table='node', where=f'id="{nodeid}"')
-            groupid = group[0]['groupid'] if group else None
-            networkids = [str(i['networkid']) for i in interfaces.values() if i.get('networkid')]
-            scope = {}
-            weighted = [(f'tableref="node" AND tablerefid="{nodeid}"', 3)]
-            if groupid:
-                weighted.append((f'tableref="group" AND tablerefid="{groupid}"', 2))
-            if networkids:
-                weighted.append((f'tableref="network" AND tablerefid IN ({",".join(networkids)})', 1))
-            for where, weight in weighted:
-                for row in Database().get_record(table='routemap', where=where) or []:
-                    if scope.get(row['routeid'], 0) < weight:
-                        scope[row['routeid']] = weight
-            if not scope:
-                return
-            ids = ",".join(str(rid) for rid in scope)
-            routes = Database().get_record(table='route', where=f'id IN ({ids})') or []
-            best = {}
-            for route in routes:
-                key = (route['destination'], route['metric'])
-                weight = scope.get(route['id'], 0)
-                if key not in best or best[key][0] < weight:
-                    best[key] = (weight, route)
-            provision_interface = data.get('provision_interface')
-            for _weight, route in best.values():
-                self.bind_static_route(interfaces, provision_interface, route)
-        except Exception as exp:
-            self.logger.error(f"TRIX-1481 static route resolution skipped: {exp}")
-
-    def bind_static_route(self, interfaces, provision_interface, route):
-        """Attach one route to the interface selected by device or next-hop subnet."""
-        destination = route.get('destination')
-        if not destination:
-            return
-        nexthop = route.get('gateway') or ''
-        device = route.get('device') or ''
-        family = 'routes_ipv6' if ':' in destination else 'routes'
-        entry = {'destination': destination, 'gateway': nexthop, 'metric': route.get('metric')}
-        target = None
-        if device:
-            target = provision_interface if device == 'BOOTIF' else (device if device in interfaces else None)
-        elif nexthop:
-            target = self.interface_for_nexthop(interfaces, nexthop, family)
-        if not target or target not in interfaces:
-            target = provision_interface
-        if target in interfaces:
-            interfaces[target].setdefault(family, []).append(entry)
-
-    def interface_for_nexthop(self, interfaces, nexthop, family):
-        """Return the interface whose network subnet contains the next-hop, else None."""
-        import ipaddress
-        try:
-            hop = ipaddress.ip_address(nexthop)
-        except ValueError:
-            return None
-        cidr_key = 'network_ipv6' if family == 'routes_ipv6' else 'network'
-        for name, iface in interfaces.items():
-            cidr = iface.get(cidr_key)
-            if not cidr:
-                continue
-            try:
-                if hop in ipaddress.ip_network(cidr, strict=False):
-                    return name
-            except ValueError:
-                continue
-        return None
-
     def install(self, node=None, method=None):
         """
         This method will provide a install ipxe template for a node.
@@ -1753,7 +1675,7 @@ class Boot():
                     # clearly, the user wants something that has no interface involvement. fallback to '', but not None
                     data['domain_search'] = ['']
 
-            self.attach_static_routes(data)
+            Route().resolve_for_node(data['interfaces'], data.get('nodeid'), data.get('provision_interface'))
 
         # needed for generating network config templates on server side
         if data['kerneloptions']:

@@ -178,3 +178,35 @@ def test_dashed_controller_renumber_persists_new_ip(network_harness):
     assert net_row["subnet"] == "16"
 
     assert ("dns", "reload") in network_harness["services"]
+
+
+# --- dhcp_relay set / clear (TRIX-1921) ---------------------------------------
+
+@pytest.mark.regression
+def test_dhcp_relay_set_then_cleared(network_harness):
+    """dhcp_relay is settable on a shared network and can be cleared again with ''."""
+    from base.network import Network
+    _insert("network", name="cluster", network="10.141.0.0", subnet="16",
+            network_ipv6="", subnet_ipv6="", shared="carrier")
+
+    ok, msg = Network().update_network("cluster", _request(dhcp_relay="10.1.2.3,10.1.2.4"))
+    assert ok is True, msg
+    assert _record("network", 'name="cluster"')[0]["dhcp_relay"] == "10.1.2.3,10.1.2.4"
+
+    ok, msg = Network().update_network("cluster", _request(dhcp_relay=""))
+    assert ok is True, msg
+    assert (_record("network", 'name="cluster"')[0]["dhcp_relay"] or "") == ""
+
+
+@pytest.mark.regression
+def test_dhcp_relay_clear_allowed_on_non_shared(network_harness):
+    """Clearing ('') is always allowed; setting a value on a non-shared network is rejected."""
+    from base.network import Network
+    _insert("network", name="cluster", network="10.141.0.0", subnet="16",
+            network_ipv6="", subnet_ipv6="")  # not shared
+
+    ok, msg = Network().update_network("cluster", _request(dhcp_relay="10.1.2.3"))
+    assert ok is False and "shared" in msg
+
+    ok, msg = Network().update_network("cluster", _request(dhcp_relay=""))
+    assert ok is True, msg

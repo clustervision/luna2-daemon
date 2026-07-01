@@ -377,3 +377,18 @@ DATABASE_LAYOUT_rackinventory = [
 {"column": "position",             "datatype": "INTEGER", "length": "10"},
 {"column": "orientation",          "datatype": "VARCHAR", "length": "20"}]
 
+DATABASE_LAYOUT_route = [
+{"column": "id",                   "datatype": "INTEGER", "key": "PRIMARY", "keyadd": "AUTOINCREMENT"},
+{"column": "name",                 "datatype": "VARCHAR", "length": "60", "key": "UNIQUE"},
+{"column": "destination",          "datatype": "VARCHAR", "length": "60"},
+{"column": "gateway",              "datatype": "VARCHAR", "length": "60"},
+{"column": "metric",               "datatype": "INTEGER", "length": "10"},
+{"column": "device",               "datatype": "VARCHAR", "length": "60"},
+{"column": "comment",              "datatype": "VARCHAR", "length": "200"}]
+
+DATABASE_LAYOUT_routemap = [
+{"column": "id",                   "datatype": "INTEGER", "key": "PRIMARY", "keyadd": "AUTOINCREMENT"},
+{"column": "tableref",             "datatype": "VARCHAR", "length": "100"},
+{"column": "tablerefid",           "datatype": "INTEGER", "length": "10"},
+{"column": "routeid",              "datatype": "INTEGER", "length": "10"}]
+

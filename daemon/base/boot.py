@@ -45,6 +45,7 @@ from utils.helper import Helper
 from utils.service import Service
 from utils.config import Config
 from base.node import Node
+from base.route import Route
 from utils.journal import Journal
 from utils.ha import HA
 from utils.controller import Controller
@@ -1619,7 +1620,10 @@ class Boot():
                                 'options': interface['options'] or "",
                                 'zone': zone,
                                 'type': interface['type'] or "ethernet",
-                                'networktype': interface['networktype'] or "ethernet"
+                                'networktype': interface['networktype'] or "ethernet",
+                                'networkid': interface['networkid'],
+                                'routes': [],
+                                'routes_ipv6': []
                             }
 
                         if interface['nameserver_ip']:
@@ -1717,6 +1721,8 @@ class Boot():
                 else:
                     # clearly, the user wants something that has no interface involvement. fallback to '', but not None
                     data['domain_search'] = ['']
+
+            Route().resolve_for_node(data['interfaces'], data.get('nodeid'), data.get('provision_interface'))
 
         # needed for generating network config templates on server side
         if data['kerneloptions']:

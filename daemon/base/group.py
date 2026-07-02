@@ -36,6 +36,7 @@ from utils.log import Log
 from utils.config import Config
 from utils.queue import Queue
 from utils.helper import Helper
+from base.route import Route
 from common.constant import CONSTANT
 
 
@@ -67,6 +68,17 @@ class Group():
             for group in groups:
                 name = group['name']
                 group_id = group['id']
+                group_route_names = Route().assigned_names('group', group_id)
+                if group_route_names:
+                    group['routes'] = ', '.join(group_route_names)
+                    group['_routes_source'] = 'group'
+                else:
+                    network_route_names = Route().network_route_names(Route().network_ids_for_group(group_id))
+                    if network_route_names:
+                        group['routes'] = ', '.join(network_route_names)
+                        group['_routes_source'] = 'network'
+                    else:
+                        group['routes'] = None
                 group['_override'] = False
                 for key in overrides:
                     if key in group and group[key]:
@@ -142,6 +154,17 @@ class Group():
             response = {'config': {'group': {} }}
             group = groups[0]
             group_id = group['id']
+            group_route_names = Route().assigned_names('group', group_id)
+            if group_route_names:
+                group['routes'] = ', '.join(group_route_names)
+                group['_routes_source'] = 'group'
+            else:
+                network_route_names = Route().network_route_names(Route().network_ids_for_group(group_id))
+                if network_route_names:
+                    group['routes'] = ', '.join(network_route_names)
+                    group['_routes_source'] = 'network'
+                else:
+                    group['routes'] = None
             osimage = None
             group['_override'] = False
             group['osimage'] = None
@@ -440,6 +463,7 @@ class Group():
                 else:
                     data['scripts'] = None
 
+            group_routes = data.pop('routes', None)
             group_columns = Database().get_columns('group')
             column_check = Helper().compare_list(data, group_columns)
             if column_check:
@@ -456,6 +480,8 @@ class Group():
                     if group_id:
                         response = f'Group {name} created successfully'
                         status=True
+                if status and group_routes is not None:
+                    Route().reconcile('group', group_id, group_routes)
                 if status and new_interface:
                     for ifx in new_interface:
                         if not 'interface' in ifx:
@@ -627,6 +653,8 @@ class Group():
                 # response = f'Group {name} created successfully'
                 response = f'Group {name} cloned as {newgroupname} successfully'
                 status=True
+                # ------ route couplings ------
+                Route().copy_couplings('group', Database().id_by_name('group', name), new_group_id)
                 group_interfaces_byname = None
                 group_interfaces = Database().get_record_join(
                     [
@@ -779,6 +807,7 @@ class Group():
             where = [{"column": "groupid", "value": group[0]['id']}]
             Database().delete_row('groupinterface', where)
             Database().delete_row('groupsecrets', where)
+            Route().delete_couplings('group', groupid)
             response = f'Group {name} removed'
             status=True
             # ---- we call the group plugin - maybe someone wants to run something after delete?

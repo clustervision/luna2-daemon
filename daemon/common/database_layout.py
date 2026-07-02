@@ -198,6 +198,7 @@ DATABASE_LAYOUT_network = [
 {"column": "dhcp_range_begin_ipv6","datatype": "VARCHAR", "length": "60"},
 {"column": "dhcp_range_end",       "datatype": "VARCHAR", "length": "20"},
 {"column": "dhcp_range_end_ipv6",  "datatype": "VARCHAR", "length": "60"},
+{"column": "dhcp_relay",           "datatype": "VARCHAR", "length": "200"},
 {"column": "zone",                 "datatype": "VARCHAR", "length": "60"},
 {"column": "shared",               "datatype": "VARCHAR", "length": "60"},
 {"column": "type",                 "datatype": "VARCHAR", "length": "100"},
@@ -229,6 +230,11 @@ DATABASE_LAYOUT_switch = [
 {"column": "rw",                   "datatype": "VARCHAR", "length": "60"},
 {"column": "uplinkports",          "datatype": "VARCHAR", "length": "60"},
 {"column": "vendor",               "datatype": "VARCHAR", "length": "60"},
+{"column": "netboot",              "datatype": "INTEGER", "length": "10"},
+{"column": "default_url",          "datatype": "VARCHAR", "length": "255"},
+{"column": "bootfile",             "datatype": "VARCHAR", "length": "255"},
+{"column": "ztpconfig",            "datatype": "TEXT"},
+{"column": "ztpformat",            "datatype": "VARCHAR", "length": "20"},
 {"column": "comment",              "datatype": "VARCHAR", "length": "60"}]
 
 DATABASE_LAYOUT_otherdevices = [
@@ -370,4 +376,19 @@ DATABASE_LAYOUT_rackinventory = [
 {"column": "height",               "datatype": "INTEGER", "length": "10"},
 {"column": "position",             "datatype": "INTEGER", "length": "10"},
 {"column": "orientation",          "datatype": "VARCHAR", "length": "20"}]
+
+DATABASE_LAYOUT_route = [
+{"column": "id",                   "datatype": "INTEGER", "key": "PRIMARY", "keyadd": "AUTOINCREMENT"},
+{"column": "name",                 "datatype": "VARCHAR", "length": "60", "key": "UNIQUE"},
+{"column": "destination",          "datatype": "VARCHAR", "length": "60"},
+{"column": "gateway",              "datatype": "VARCHAR", "length": "60"},
+{"column": "metric",               "datatype": "INTEGER", "length": "10"},
+{"column": "device",               "datatype": "VARCHAR", "length": "60"},
+{"column": "comment",              "datatype": "VARCHAR", "length": "200"}]
+
+DATABASE_LAYOUT_routemap = [
+{"column": "id",                   "datatype": "INTEGER", "key": "PRIMARY", "keyadd": "AUTOINCREMENT"},
+{"column": "tableref",             "datatype": "VARCHAR", "length": "100"},
+{"column": "tablerefid",           "datatype": "INTEGER", "length": "10"},
+{"column": "routeid",              "datatype": "INTEGER", "length": "10"}]
 

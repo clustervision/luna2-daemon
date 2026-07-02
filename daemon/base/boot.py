@@ -45,6 +45,7 @@ from utils.helper import Helper
 from utils.service import Service
 from utils.config import Config
 from base.node import Node
+from base.route import Route
 from utils.journal import Journal
 from utils.ha import HA
 from utils.controller import Controller
@@ -393,6 +394,53 @@ class Boot():
             'WEBSERVER_PROTOCOL': webserver_protocol
         }
         return status, response
+
+
+    def switch_ztp(self, name=None):
+        """
+        This method will provide the ZTP recipe (JSON) for a switch.
+        """
+        template = 'templ_switch_ztp.json'
+        template_path = f'{CONSTANT["TEMPLATES"]["TEMPLATE_FILES"]}/{template}'
+        if not Helper().check_jinja(template_path):
+            return False, self.failed_boot("switch ztp template does not exist")
+        switch = Database().get_record(table='switch', where=f'name="{name}"')
+        if not switch:
+            return False, self.failed_boot(f"switch {name} does not exist")
+        switch = switch[0]
+        protocol = CONSTANT['API']['PROTOCOL']
+        controller = self.controller_ipv4 or self.controller_ip
+        controller_url = f"{protocol}://{controller}:{self.controller_serverport}"
+        image_url = f"{controller_url}/{switch['default_url']}" if switch['default_url'] else None
+        # the served config is yaml only when an admin ztpconfig is present and flagged yaml;
+        # the generated fallback is always a commands-list
+        ztpformat = 'yaml' if (switch['ztpconfig'] and str(switch['ztpformat']).lower() == 'yaml') else 'commands'
+        self.logger.info(f'Boot API serving {template} for switch {name}')
+        response = {
+            'template': template,
+            'SWITCH_NAME': name,
+            'IMAGE_URL': image_url,
+            'ZTP_FORMAT': ztpformat,
+            'COMMANDS_URL': f"{controller_url}/boot/switch/{name}/commands",
+            'CONNECTIVITY_HOST': controller
+        }
+        return True, response
+
+
+    def switch_commands(self, name=None):
+        """
+        This method will provide the commands-list applied by ZTP for a switch.
+        An admin-supplied ztpconfig (base64) is decoded and served; otherwise a minimal default
+        is generated from the switch identity.
+        """
+        switch = Database().get_record(table='switch', where=f'name="{name}"')
+        if not switch:
+            return False, self.failed_boot(f"switch {name} does not exist")
+        switch = switch[0]
+        self.logger.info(f'Boot API serving commands-list for switch {name}')
+        if switch['ztpconfig']:
+            return True, {'template_data': b64decode(switch['ztpconfig']).decode()}
+        return True, {'template': 'templ_switch_commands.cfg', 'SWITCH_NAME': name}
 
 
     def boot_disk(self):
@@ -1572,7 +1620,10 @@ class Boot():
                                 'options': interface['options'] or "",
                                 'zone': zone,
                                 'type': interface['type'] or "ethernet",
-                                'networktype': interface['networktype'] or "ethernet"
+                                'networktype': interface['networktype'] or "ethernet",
+                                'networkid': interface['networkid'],
+                                'routes': [],
+                                'routes_ipv6': []
                             }
 
                         if interface['nameserver_ip']:
@@ -1670,6 +1721,8 @@ class Boot():
                 else:
                     # clearly, the user wants something that has no interface involvement. fallback to '', but not None
                     data['domain_search'] = ['']
+
+            Route().resolve_for_node(data['interfaces'], data.get('nodeid'), data.get('provision_interface'))
 
         # needed for generating network config templates on server side
         if data['kerneloptions']:

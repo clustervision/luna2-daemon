@@ -58,6 +58,23 @@ $(printf '%s\n' {%- for temp_slave in LUNA_INTERFACES[interface]['bond_slaves'] 
 {%- if LUNA_INTERFACES[interface]['dhcp'] %}
       dhcp4: True
       dhcp6: True
+    {%- if LUNA_INTERFACES[interface]['routes']|default([], true) or LUNA_INTERFACES[interface]['routes_ipv6']|default([], true) %}
+      routes:
+      {%- for r in (LUNA_INTERFACES[interface]['routes']|default([], true)) + (LUNA_INTERFACES[interface]['routes_ipv6']|default([], true)) %}
+        - to: {{ r['destination'] }}
+        {%- if r['gateway'] %}
+          via: {{ r['gateway'] }}
+          {%- if r['on_link'] %}
+          on-link: true
+          {%- endif %}
+        {%- else %}
+          scope: link
+        {%- endif %}
+        {%- if r['metric'] %}
+          metric: {{ r['metric'] }}
+        {%- endif %}
+      {%- endfor %}
+    {%- endif %}
 {%- else %}
       addresses:
     {%- if LUNA_INTERFACES[interface]['ipaddress'] %}
@@ -66,7 +83,7 @@ $(printf '%s\n' {%- for temp_slave in LUNA_INTERFACES[interface]['bond_slaves'] 
     {%- if LUNA_INTERFACES[interface]['ipaddress_ipv6'] %}
         - {{ LUNA_INTERFACES[interface]['ipaddress_ipv6'] }}/{{ LUNA_INTERFACES[interface]['prefix_ipv6'] }}
     {%- endif %}
-    {%- if LUNA_INTERFACES[interface]['gateway'] or LUNA_INTERFACES[interface]['gateway_ipv6'] %}
+    {%- if LUNA_INTERFACES[interface]['gateway'] or LUNA_INTERFACES[interface]['gateway_ipv6'] or LUNA_INTERFACES[interface]['routes']|default([], true) or LUNA_INTERFACES[interface]['routes_ipv6']|default([], true) %}
       routes:
       {%- if LUNA_INTERFACES[interface]['gateway'] %}      
         - to: default
@@ -78,6 +95,20 @@ $(printf '%s\n' {%- for temp_slave in LUNA_INTERFACES[interface]['bond_slaves'] 
           via: {{ LUNA_INTERFACES[interface]['gateway_ipv6'] }}
           metric: {{ LUNA_INTERFACES[interface]['gateway_metric'] }}
       {%- endif %}
+      {%- for r in (LUNA_INTERFACES[interface]['routes']|default([], true)) + (LUNA_INTERFACES[interface]['routes_ipv6']|default([], true)) %}
+        - to: {{ r['destination'] }}
+        {%- if r['gateway'] %}
+          via: {{ r['gateway'] }}
+          {%- if r['on_link'] %}
+          on-link: true
+          {%- endif %}
+        {%- else %}
+          scope: link
+        {%- endif %}
+        {%- if r['metric'] %}
+          metric: {{ r['metric'] }}
+        {%- endif %}
+      {%- endfor %}
     {%- endif %}
     {%- if LUNA_INTERFACES[interface]['nameserver_ip'] or LUNA_INTERFACES[interface]['nameserver_ip_ipv6'] %}
       nameservers:

@@ -386,8 +386,11 @@ class Config(object):
                 else:
                     self.logger.info(f'no nodes available for network {network_name} IPv4: {network_ip} or IPv6: {network_ipv6}')
                 for item in ['otherdevices', 'switch']:
+                    select = [f'{item}.name','ipaddress.ipaddress','ipaddress.ipaddress_ipv6',f'{item}.macaddress']
+                    if item == 'switch':
+                        select += ['switch.netboot', 'switch.default_url', 'switch.bootfile']
                     devices = Database().get_record_join(
-                        [f'{item}.name','ipaddress.ipaddress','ipaddress.ipaddress_ipv6',f'{item}.macaddress'],
+                        select,
                         [f'ipaddress.tablerefid={item}.id'],
                         [f'tableref="{item}"', f'ipaddress.networkid="{network_id}"']
                     )
@@ -408,6 +411,24 @@ class Config(object):
                                     config_host['domain']=nwkdomain
                                     config_host['ipaddress']=device['ipaddress']
                                     config_host['macaddress']=device['macaddress']
+                                    if item == 'switch' and Helper().make_bool(device['netboot']) is True:
+                                        if not device['default_url'] and not device['bootfile']:
+                                            self.logger.warning(
+                                                f"Switch {device['name']}: netboot is enabled but neither "
+                                                "default_url nor bootfile is defined; skipping netboot"
+                                            )
+                                        else:
+                                            config_host['switch']=True
+                                            next_server = self.dhcp_reservation_nextserver(
+                                                nwk['name'], config_subnets, config_shared
+                                            )
+                                            config_host['nextserver']=next_server['server']
+                                            config_host['nextport']=next_server['port']
+                                            if device['default_url']:
+                                                config_host['default_url']=device['default_url']
+                                            # The daemon serves the switch recipe at boot/switch/<name>,
+                                            # so advertise that path when no explicit bootfile is set.
+                                            config_host['bootfile']=device['bootfile'] or f"boot/switch/{device['name']}"
                                     if nwk['name'] in config_reservations:
                                         config_reservations[nwk['name']].append(config_host)
                     else:
@@ -511,6 +532,9 @@ class Config(object):
         subnet['nameserver_ip']=nwk['nameserver_ip']
         subnet['nameserver_ip_ipv6']=nwk['nameserver_ip_ipv6']
         subnet['ntp_server']=nwk['ntp_server']
+        relays = [relay.strip() for relay in (nwk.get('dhcp_relay') or '').split(',') if relay.strip()]
+        if relays:
+            subnet['dhcp_relay']=relays
         if nwk['gateway'+add_string] and nwk['gateway'+add_string] != "None": # left over from database().update/insert bug - Antoine
             subnet['gateway']=nwk['gateway'+add_string]
         if controller and (controller[0]['networkname'] == nwk['name'] or 'gateway' in subnet):

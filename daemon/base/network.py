@@ -35,6 +35,7 @@ from utils.queue import Queue
 from utils.database import Database
 from utils.log import Log
 from utils.helper import Helper
+from base.route import Route
 from utils.config import Config
 from utils.service import Service
 from utils.controller import Controller
@@ -92,7 +93,7 @@ class Network():
             'gateway', 'gateway_ipv6', 'gateway_metric',
             'dhcp', 'dhcp_range_begin', 'dhcp_range_end',
             'dhcp_range_begin_ipv6', 'dhcp_range_end_ipv6',
-            'dhcp_nodes_only', 'dhcp_nodes_in_pool',
+            'dhcp_nodes_only', 'dhcp_nodes_in_pool', 'dhcp_relay',
             'zone', 'nameserver_ip', 'nameserver_ip_ipv6',
             'ntp_server', 'shared', 'non_authoritative'
         }
@@ -149,6 +150,8 @@ class Network():
                 network['network'] = Helper().get_network(network['network'], network['subnet'])
                 if network['network_ipv6']:
                     network['network_ipv6'] = Helper().get_network(network['network_ipv6'], network['subnet_ipv6'])
+                network_route_names = Route().assigned_names('network', network['id'])
+                network['routes'] = ', '.join(network_route_names) if network_route_names else None
                 del network['id']
                 del network['subnet']
                 network['dhcp'] = Helper().make_bool(network['dhcp'])
@@ -188,6 +191,8 @@ class Network():
                     network['network'] = Helper().get_network(network['network'], network['subnet'])
                 if network['network_ipv6']:
                     network['network_ipv6'] = Helper().get_network(network['network_ipv6'], network['subnet_ipv6'])
+                network_route_names = Route().assigned_names('network', network['id'])
+                network['routes'] = ', '.join(network_route_names) if network_route_names else None
                 del network['id']
                 del network['subnet']
                 del network['subnet_ipv6']
@@ -382,6 +387,15 @@ class Network():
                     if not regex.match(data['ntp_server']):
                         status=False
                         return status, f'Invalid request: Incorrect NTP Server IP: {data["ntp_server"]}'
+            if 'dhcp_relay' in data and data['dhcp_relay'] != '':
+                shared_network = data['shared'] if 'shared' in data else (db_data['shared'] if db_data else None)
+                if not shared_network:
+                    status=False
+                    return status, 'Invalid request: network is not shared, dhcp_relay can only be set on a shared network'
+                for relay in data['dhcp_relay'].split(','):
+                    if not Helper().check_ip(relay.strip()):
+                        status=False
+                        return status, f'Invalid request: Incorrect DHCP relay IP: {relay.strip()}'
             valid = True
             request_dhcp = None
             request_dhcp_nodes_only = None
@@ -535,14 +549,17 @@ class Network():
                     ret_msg = f"Internal error updating ip address for controller {controller['hostname']}"
                     return status, ret_msg
                 
+            network_routes = data.pop('routes', None)
             network_columns = Database().get_columns('network')
             column_check = Helper().compare_list(data, network_columns)
             if column_check:
                 row = Helper().make_rows(data)
                 if create:
-                    Database().insert('network', row)
+                    networkid = Database().insert('network', row)
                     response = f'Network {name} created successfully'
                     status=True
+                    if network_routes is not None:
+                        Route().reconcile('network', networkid, network_routes)
                 elif update:
                     changed_fields = {
                         key for key, value in data.items()
@@ -602,6 +619,8 @@ class Network():
 
                     where = [{"column": "id", "value": networkid}]
                     Database().update('network', row, where)
+                    if network_routes is not None:
+                        Route().reconcile('network', networkid, network_routes)
                     # TWANNIE
                     if redistribute_ipaddress is True:
                         # basically when we have set dhcp on
@@ -673,6 +692,7 @@ class Network():
             )
             if not controller:
                 Database().delete_row('network', [{"column": "name", "value": name}])
+                Route().delete_couplings('network', network[0]['id'])
                 data = {}
                 data['shared'] = ""
                 row = Helper().make_rows(data)

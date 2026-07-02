@@ -39,6 +39,7 @@ from utils.queue import Queue
 from utils.helper import Helper
 from utils.monitor import Monitor
 from base.interface import Interface
+from base.route import Route
 from common.constant import CONSTANT
 
 
@@ -79,6 +80,19 @@ class Node():
         bmcsetup = Helper().convert_list_to_dict(bmcsetups, 'id')
         monitoring = Helper().convert_list_to_dict(monitorings, 'tablerefid')
         cluster = Database().get_record(table='cluster')
+        route_names = {r['id']: r['name'] for r in (Database().get_record(table='route') or [])}
+        route_couplings = {}
+        for coupling in Database().get_record(table='routemap') or []:
+            route_name = route_names.get(coupling['routeid'])
+            if route_name:
+                route_couplings.setdefault((coupling['tableref'], coupling['tablerefid']), []).append(route_name)
+        node_networks = {}
+        for row in Database().get_record_join(
+                ['nodeinterface.nodeid', 'ipaddress.networkid'],
+                ['ipaddress.tablerefid=nodeinterface.id'],
+                ['tableref="nodeinterface"']) or []:
+            if row.get('networkid'):
+                node_networks.setdefault(row['nodeid'], set()).add(row['networkid'])
         if nodes:
             response['config'] = {}
             response['config']['node'] = {}
@@ -149,6 +163,23 @@ class Node():
                             node[key] = node[key] or value
                             node['_override'] = True
                 # -------------
+                # strict override: node overrides group overrides the network base
+                effective = route_couplings.get(('node', nodeid), [])
+                route_source = 'node' if effective else None
+                if not effective and groupid:
+                    effective = route_couplings.get(('group', groupid), [])
+                    route_source = 'group' if effective else None
+                if not effective:
+                    net_names = []
+                    for networkid in node_networks.get(nodeid, ()):
+                        for route_name in route_couplings.get(('network', networkid), []):
+                            if route_name not in net_names:
+                                net_names.append(route_name)
+                    effective = net_names
+                    route_source = 'network' if effective else None
+                node['routes'] = ', '.join(effective) if effective else None
+                if route_source:
+                    node['_routes_source'] = route_source
                 node['switch'] = None
                 if node['switchid']:
                     node['switch'] = '!!Invalid!!'
@@ -292,6 +323,23 @@ class Node():
             response = {'config': {'node': {} }}
             nodename = node['name']
             nodeid = node['id']
+            # effective routes follow strict override: node -> group -> network base
+            node_route_names = Route().assigned_names('node', nodeid)
+            group_route_names = Route().assigned_names('group', node['groupid']) if node.get('groupid') else []
+            if node_route_names:
+                node['routes'] = ', '.join(node_route_names)
+                node['_routes_source'] = 'node'
+                node['_override'] = True
+            elif group_route_names:
+                node['routes'] = ', '.join(group_route_names)
+                node['_routes_source'] = 'group'
+            else:
+                network_route_names = Route().network_route_names(Route().network_ids_for_node(nodeid))
+                if network_route_names:
+                    node['routes'] = ', '.join(network_route_names)
+                    node['_routes_source'] = 'network'
+                else:
+                    node['routes'] = None
             node['_override'] = False
             alt_source = {}
             if node['osimageid']:
@@ -699,6 +747,7 @@ class Node():
                 else:
                     data['scripts'] = None
 
+            node_routes = data.pop('routes', None)
             node_columns = Database().get_columns('node')
             columns_check = Helper().compare_list(data, node_columns)
             if columns_check:
@@ -723,6 +772,9 @@ class Node():
 
                     if nodeid and 'groupid' in data and data['groupid']:
                         Interface().update_node_group_interface(nodeid=nodeid, groupid=data['groupid'])
+
+                if node_routes is not None:
+                    Route().reconcile('node', nodeid, node_routes)
 
                 if interfaces:
                     result, message = Interface().change_node_interface(nodeid=nodeid, data=interfaces)
@@ -840,6 +892,9 @@ class Node():
                     return False, f'Internal error: Node {newnodename} is not created due to possible property clash'
                 response = f'Node {newnodename} created successfully'
                 status=True
+
+                # ------ route couplings ------
+                Route().copy_couplings('node', nodeid, new_nodeid)
 
                 # ------ secrets ------
                 secrets = Database().get_record(table='nodesecrets', where=f'nodeid = "{nodeid}"')
@@ -1125,6 +1180,7 @@ class Node():
             Database().delete_row('nodesecrets', [{"column": "nodeid", "value": nodeid}])
             Database().delete_row('rackinventory', [{"column": "tablerefid", "value": nodeid},
                                                     {"column": "tableref", "value": "node"}])
+            Route().delete_couplings('node', nodeid)
             # for now i have disabled the below two lines for testing purposes. Antoine Aug 8 2023
             #Service().queue('dns', 'resload')
             #Service().queue('dhcp', 'restart')

@@ -49,7 +49,7 @@ class DBStructure():
                        'groupinterface', 'roles', 'group', 'network', 'user', 'switch',
                        'cloud', 'otherdevices', 'controller', 'groupsecrets', 'node',
                        'cluster', 'tracker', 'dns', 'journal', 'rack', 'rackinventory',
-                       'ping', 'reservedipaddress', 'reference']
+                       'ping', 'reservedipaddress', 'reference', 'route', 'routemap']
    
  
     def check_db_tables(self):
@@ -222,5 +222,9 @@ class DBStructure():
             return DATABASE_LAYOUT_reservedipaddress
         if table == "reference":
             return DATABASE_LAYOUT_reference
+        if table == "route":
+            return DATABASE_LAYOUT_route
+        if table == "routemap":
+            return DATABASE_LAYOUT_routemap
         return
 

@@ -32,17 +32,15 @@ __status__      = "Development"
 
 import re
 import os
-import json
 import yaml
 from utils.log import Log
 from typing import Optional, Dict, List
 from pydantic import BaseModel, Field, field_validator
 
 
-
-
 class Annotations(BaseModel):
     description: str
+
 
 class Rule(BaseModel):
     alert: str
@@ -77,9 +75,11 @@ class Rule(BaseModel):
             value['category'] = 'generic'
         return value
 
+
 class Group(BaseModel):
     name: str
     rules: List[Rule]
+
 
 class PrometheusRules(BaseModel):
     groups: List[Group]
@@ -97,6 +97,7 @@ class Plugin():
         self.logger = Log.get_logger()
         self.prometheus_rules_folder = '/trinity/local/etc/prometheus_server/rules/'
 
+
     def _generate_hostname_path(self, hostname):
         hostname_regex = r'^([a-zA-Z0-9-_.])+$'
         if not re.match(hostname_regex, hostname):
@@ -106,9 +107,23 @@ class Plugin():
             raise FileNotFoundError (f"Path ({os.path.dirname(path)}) does not exist")
         return path
 
+
+    def _has_config(self, hostname):
+        """
+        This method will check if the Prometheus rules file exists for a specific node.
+        """
+        hostname_regex = r'^([a-zA-Z0-9-_.])+$'
+        if not re.match(hostname_regex, hostname):
+            raise ValueError(f"Hostname ({hostname}) is invalid, should satisfy {hostname_regex}")
+        path = f"/trinity/local/etc/prometheus_server/rules/trix.hw.{hostname}.rules"
+        self.logger.debug(f'path => {os.path.exists(os.path.dirname(path))}')
+        return os.path.exists(path)
+
+
     def _read_rules(self, path) -> PrometheusRules:
         with open(path, 'r', encoding="utf-8") as file:
             return PrometheusRules.model_validate(yaml.safe_load(file))
+
 
     def _list_rules_hostnames(self):
         files = os.listdir(self.prometheus_rules_folder)
@@ -117,34 +132,44 @@ class Plugin():
         return [m.group(1) for m in hostnames_matches]
 
 
-    def Export(self,args=None):
+    def Export(self, args: dict = None) -> tuple[bool, list]:
         """
         This method will check the both files rules and detailed, and return the output from the
         detailed file with status.
         This method will generate and save the Prometheus Hardware Rules for a specific node.
         """
-        
+        status, response, everything = False, [], False
         self.logger.warning(f'args => {args}')
+
+        if (args is not None) and ("hasconfig" in args):
+            if args["hasconfig"] == "" or len(args["hasconfig"]) == 0:
+                response  = "Error: No hostnames provided."
+            else:
+                hostnames = str(args["hasconfig"]).split(",")
+                self.logger.info(f'hasconfig condition => {hostnames}')
+                for hostname in hostnames:
+                    response.append({"hostname": hostname, "status": self._has_config(hostname)})
+                status = True
         
-        if (args is not None) and ("hostnames" in args):
-            hostnames = args["hostnames"].split(",")
+        elif (args is not None) and ("hostnames" in args):
+            hostnames = str(args["hostnames"]).split(",")
+            self.logger.info(f'hostnames condition => {hostnames}')
+            everything = True
         else:
             hostnames = self._list_rules_hostnames()
-            
-        status, response = True, []
+            self.logger.info(f'ELSE condition => {hostnames}')
+            everything = True
         
-        for hostname in hostnames:
-            
-            try:
-                hostname_rules_path = self._generate_hostname_path(hostname)
-
-                rules = self._read_rules(hostname_rules_path)
-                    
-                response.append({"hostname": hostname, "status": True, "data": rules.model_dump(by_alias=True)})
-
-            except Exception as exception:
-                error_message = f"Error encountered while reading the Prometheus Rules for {hostname}: {exception}."
-                self.logger.error(error_message)
-                response.append({"hostname": hostname, "status": False, "message": error_message})
+        if everything is True:            
+            for hostname in hostnames:
+                try:
+                    hostname_rules_path = self._generate_hostname_path(hostname)
+                    rules = self._read_rules(hostname_rules_path)
+                    response.append({"hostname": hostname, "status": True, "data": rules.model_dump(by_alias=True)})
+                    status = True
+                except Exception as exception:
+                    error_message = f"Error encountered while reading the Prometheus Rules for {hostname}: {exception}."
+                    self.logger.error(error_message)
+                    response.append({"hostname": hostname, "status": False, "message": error_message})
             
         return status, response

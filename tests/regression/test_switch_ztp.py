@@ -254,3 +254,27 @@ def test_switch_commands_default_renders():
 
     assert f"nv set system hostname {SWITCH_NAME}" in rendered
     assert rendered.strip().endswith("nv config apply -y")
+
+
+# Clearing a ZTP field from the CLI sends an empty string; it must be stored as
+# NULL so it reads back identically to a never-set field ("None"), not as blank.
+@pytest.mark.regression
+@pytest.mark.parametrize("field", ["bootfile", "default_url", "ztpconfig", "ztpformat"])
+def test_clearing_ztp_field_stores_null(sqlite_db, field):
+    from utils.database import Database
+    from base.switch import Switch
+
+    _seed_cluster_with_switch()
+    Database().update(
+        "switch",
+        [{"column": "ztpconfig", "value": "hostname leaf-sw01"},
+         {"column": "ztpformat", "value": "commands"}],
+        [{"column": "name", "value": SWITCH_NAME}],
+    )
+
+    request_data = {"config": {"switch": {SWITCH_NAME: {field: ""}}}}
+    status, _ = Switch().update_switch(name=SWITCH_NAME, request_data=request_data)
+    assert status is True
+
+    record = Database().get_record(table="switch", where=f'name="{SWITCH_NAME}"')[0]
+    assert record[field] is None

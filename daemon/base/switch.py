@@ -121,6 +121,12 @@ class Switch():
                 if key in data and (not data[key]) and (key not in items):
                     del data[key]
 
+            # an empty string from the CLI means: clear the field. Store NULL so
+            # a cleared field reads back the same as a never-set one ("None").
+            for key in ('bootfile', 'default_url', 'ztpconfig', 'ztpformat'):
+                if key in data and str(data[key]).strip() == '':
+                    data[key] = None
+
             ipaddress, network = None, None
             if 'ipaddress' in data.keys():
                 ipaddress = data['ipaddress']

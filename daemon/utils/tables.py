@@ -51,9 +51,10 @@ class Tables():
 
     def __init__(self):
         self.logger = Log.get_logger()
-        self.tables = ['osimage', 'osimagetag', 'nodesecrets', 'nodeinterface', 'bmcsetup', 
-              'ipaddress', 'groupinterface', 'roles', 'group', 'network', 'user', 'switch', 
-              'otherdevices', 'groupsecrets', 'node', 'cluster', 'dns','controller','cloud']
+        self.tables = ['osimage', 'osimagetag', 'nodesecrets', 'nodeinterface', 'bmcsetup',
+              'ipaddress', 'groupinterface', 'roles', 'group', 'network', 'user', 'switch',
+              'otherdevices', 'groupsecrets', 'node', 'cluster', 'dns','controller','cloud',
+              'nodeinventory', 'nodeinventorydisk', 'nodeinventorygpu']
         self.sharedip = False
 
     def get_tables(self):

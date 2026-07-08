@@ -60,6 +60,7 @@ from routes.config_route import route_blueprint
 from routes.config_group import group_blueprint
 from routes.config_network import network_blueprint
 from routes.config_node import node_blueprint
+from routes.config_node_inventory import node_inventory_blueprint
 from routes.config_osgroup import osgroup_blueprint
 from routes.config_osimage import osimage_blueprint
 from routes.config_osuser import osuser_blueprint
@@ -333,6 +334,7 @@ daemon.register_blueprint(route_blueprint)
 daemon.register_blueprint(group_blueprint)
 daemon.register_blueprint(network_blueprint)
 daemon.register_blueprint(node_blueprint)
+daemon.register_blueprint(node_inventory_blueprint)
 daemon.register_blueprint(osgroup_blueprint)
 daemon.register_blueprint(osimage_blueprint)
 daemon.register_blueprint(osuser_blueprint)

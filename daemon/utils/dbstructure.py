@@ -50,7 +50,8 @@ class DBStructure():
                        'cloud', 'otherdevices', 'controller', 'groupsecrets', 'node',
                        'cluster', 'tracker', 'dns', 'journal', 'rack', 'rackinventory',
                        'ping', 'reservedipaddress', 'reference', 'route', 'routemap',
-                       'nodeinventory', 'nodeinventorydisk', 'nodeinventorygpu']
+                       'nodeinventory', 'nodeinventorydisk', 'nodeinventorygpu',
+                       'nodeinventorynic']
    
  
     def check_db_tables(self):
@@ -233,5 +234,7 @@ class DBStructure():
             return DATABASE_LAYOUT_nodeinventorydisk
         if table == "nodeinventorygpu":
             return DATABASE_LAYOUT_nodeinventorygpu
+        if table == "nodeinventorynic":
+            return DATABASE_LAYOUT_nodeinventorynic
         return
 

@@ -405,6 +405,7 @@ DATABASE_LAYOUT_nodeinventory = [
 {"column": "disk_count",           "datatype": "INTEGER", "length": "10"},
 {"column": "disk_total_gb",        "datatype": "INTEGER", "length": "10"},
 {"column": "gpu_count",            "datatype": "INTEGER", "length": "10"},
+{"column": "nic_count",            "datatype": "INTEGER", "length": "10"},
 {"column": "bios_version",         "datatype": "VARCHAR", "length": "64"},
 {"column": "inventory",            "datatype": "TEXT"},
 {"column": "hash",                 "datatype": "VARCHAR", "length": "64"},
@@ -429,4 +430,13 @@ DATABASE_LAYOUT_nodeinventorygpu = [
 {"column": "model",                "datatype": "VARCHAR", "length": "128"},
 {"column": "memory_mb",            "datatype": "INTEGER", "length": "10"},
 {"column": "uuid",                 "datatype": "VARCHAR", "length": "64"}]
+
+DATABASE_LAYOUT_nodeinventorynic = [
+{"column": "id",                   "datatype": "INTEGER", "key": "PRIMARY", "keyadd": "AUTOINCREMENT"},
+{"column": "nodeid",               "datatype": "INTEGER", "length": "10"},
+{"column": "source",               "datatype": "VARCHAR", "length": "20"},
+{"column": "name",                 "datatype": "VARCHAR", "length": "32"},
+{"column": "mac",                  "datatype": "VARCHAR", "length": "32"},
+{"column": "speed_mbps",           "datatype": "INTEGER", "length": "10"},
+{"column": "capabilities",         "datatype": "VARCHAR", "length": "128"}]
 

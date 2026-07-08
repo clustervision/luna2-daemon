@@ -52,12 +52,14 @@ class NodeInventory():
         self.table = 'nodeinventory'
         self.disk_table = 'nodeinventorydisk'
         self.gpu_table = 'nodeinventorygpu'
+        self.nic_table = 'nodeinventorynic'
         self.default_source = 'inband'
         # scalar columns stored on the parent row (rollups + node-level facts)
         self.parent_fields = ['manufacturer', 'product', 'serial', 'cpu_model',
                               'cpu_count', 'memory_mb', 'bios_version']
         self.disk_fields = ['name', 'size_gb', 'type', 'model', 'serial']
         self.gpu_fields = ['busid', 'vendor', 'model', 'memory_mb', 'uuid']
+        self.nic_fields = ['name', 'mac', 'speed_mbps', 'capabilities']
 
 
     def get_inventory(self, name=None):
@@ -78,10 +80,11 @@ class NodeInventory():
         for parent in parents:
             source = parent['source']
             snapshot = {'source': source}
-            for field in self.parent_fields + ['disk_count', 'disk_total_gb', 'gpu_count', 'updated']:
+            for field in self.parent_fields + ['disk_count', 'disk_total_gb', 'gpu_count', 'nic_count', 'updated']:
                 snapshot[field] = parent[field]
             snapshot['disks'] = self._child_rows(self.disk_table, nodeid, source, self.disk_fields)
             snapshot['gpus'] = self._child_rows(self.gpu_table, nodeid, source, self.gpu_fields)
+            snapshot['nics'] = self._child_rows(self.nic_table, nodeid, source, self.nic_fields)
             snapshots.append(snapshot)
         response = {'config': {'node': {name: {'inventory': snapshots}}}}
         status = True
@@ -98,7 +101,7 @@ class NodeInventory():
             ['node.name', 'nodeinventory.source', 'nodeinventory.product',
              'nodeinventory.serial', 'nodeinventory.cpu_count', 'nodeinventory.memory_mb',
              'nodeinventory.disk_count', 'nodeinventory.disk_total_gb',
-             'nodeinventory.gpu_count', 'nodeinventory.updated'],
+             'nodeinventory.gpu_count', 'nodeinventory.nic_count', 'nodeinventory.updated'],
             ['nodeinventory.nodeid=node.id'])
         if not records:
             return status, response
@@ -134,6 +137,7 @@ class NodeInventory():
 
         disks = data.get('disks') or []
         gpus = data.get('gpus') or []
+        nics = data.get('nics') or []
 
         parent_data = {'nodeid': nodeid, 'source': source}
         for field in self.parent_fields:
@@ -142,6 +146,7 @@ class NodeInventory():
         parent_data['disk_count'] = len(disks)
         parent_data['disk_total_gb'] = sum(int(disk.get('size_gb') or 0) for disk in disks)
         parent_data['gpu_count'] = len(gpus)
+        parent_data['nic_count'] = len(nics)
         parent_data['inventory'] = dumps(data)
         parent_data['hash'] = hashlib.sha256(parent_data['inventory'].encode()).hexdigest()
         parent_data['updated'] = datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
@@ -156,6 +161,7 @@ class NodeInventory():
 
         self._refresh_children(self.disk_table, nodeid, source, disks, self.disk_fields)
         self._refresh_children(self.gpu_table, nodeid, source, gpus, self.gpu_fields)
+        self._refresh_children(self.nic_table, nodeid, source, nics, self.nic_fields)
 
         response = f"Inventory for node {name} updated"
         status = True
@@ -167,7 +173,7 @@ class NodeInventory():
         This method will remove a node's rows from all three inventory tables.
         Called from the node delete path.
         """
-        for table in [self.table, self.disk_table, self.gpu_table]:
+        for table in [self.table, self.disk_table, self.gpu_table, self.nic_table]:
             Database().delete_row(table, [{"column": "nodeid", "value": nodeid}])
         return True, "Inventory cleared"
 

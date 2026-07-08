@@ -1183,6 +1183,7 @@ class Node():
             Database().delete_row('nodeinventory', [{"column": "nodeid", "value": nodeid}])
             Database().delete_row('nodeinventorydisk', [{"column": "nodeid", "value": nodeid}])
             Database().delete_row('nodeinventorygpu', [{"column": "nodeid", "value": nodeid}])
+            Database().delete_row('nodeinventorynic', [{"column": "nodeid", "value": nodeid}])
             Route().delete_couplings('node', nodeid)
             # for now i have disabled the below two lines for testing purposes. Antoine Aug 8 2023
             #Service().queue('dns', 'resload')

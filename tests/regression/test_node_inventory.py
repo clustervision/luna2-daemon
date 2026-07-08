@@ -24,7 +24,7 @@ def node(database):
     return database.insert("node", [{"column": "name", "value": "node001"}])
 
 
-def _payload(disks, gpus, source="inband"):
+def _payload(disks, gpus, source="inband", nics=None):
     return {"config": {"node": {"node001": {"inventory": {
         "source": source,
         "manufacturer": "Dell",
@@ -36,7 +36,14 @@ def _payload(disks, gpus, source="inband"):
         "bios_version": "2.1.5",
         "disks": disks,
         "gpus": gpus,
+        "nics": nics if nics is not None else _NICS,
     }}}}}
+
+
+_NICS = [
+    {"name": "eno1", "mac": "aa:bb:cc:00:00:01", "speed_mbps": 25000, "capabilities": ""},
+    {"name": "ib0", "mac": "aa:bb:cc:00:00:02", "speed_mbps": 200000, "capabilities": "infiniband"},
+]
 
 
 _DISKS = [
@@ -63,10 +70,14 @@ def test_update_inventory_creates_parent_and_children(database, node):
     assert parent[0]["gpu_count"] == 1
     assert parent[0]["hash"]
 
+    assert parent[0]["nic_count"] == 2
     disks = database.get_record(table="nodeinventorydisk", where=f'nodeid="{node}"')
     gpus = database.get_record(table="nodeinventorygpu", where=f'nodeid="{node}"')
+    nics = database.get_record(table="nodeinventorynic", where=f'nodeid="{node}"')
     assert len(disks) == 2
     assert len(gpus) == 1
+    assert len(nics) == 2
+    assert {n["mac"] for n in nics} == {"aa:bb:cc:00:00:01", "aa:bb:cc:00:00:02"}
 
 
 @pytest.mark.regression
@@ -142,7 +153,7 @@ def test_delete_cascade_removes_all_three(database, node):
 
     inv.delete_inventory(node)
 
-    for table in ["nodeinventory", "nodeinventorydisk", "nodeinventorygpu"]:
+    for table in ["nodeinventory", "nodeinventorydisk", "nodeinventorygpu", "nodeinventorynic"]:
         assert not database.get_record(table=table, where=f'nodeid="{node}"')
 
 
@@ -155,7 +166,7 @@ def test_node_delete_cascades_inventory(database, node):
 
     Node().delete_node(node)
 
-    for table in ["nodeinventory", "nodeinventorydisk", "nodeinventorygpu"]:
+    for table in ["nodeinventory", "nodeinventorydisk", "nodeinventorygpu", "nodeinventorynic"]:
         assert not database.get_record(table=table, where=f'nodeid="{node}"')
 
 

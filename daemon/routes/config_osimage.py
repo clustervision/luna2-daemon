@@ -316,6 +316,51 @@ def config_osimage_pack(name=None):
     return response, access_code
 
 
+@osimage_blueprint.route("/config/osimage/<string:name>/_updatecerts", methods=['GET'])
+@token_required
+@validate_name
+def config_osimage_updatecerts(name=None):
+    """
+    Input - OS Image ID or Name
+    Process - Copy the controller's RHSM CA certificates (/etc/rhsm/ca/) into the
+              image. Used to refresh the Satellite/Katello and Red Hat CA keys,
+              which are rotated roughly every 6 months.
+    Output - Success or Failure.
+    """
+    access_code=404
+    hastate=HA().get_hastate()
+    if hastate is True:
+        master=HA().get_role()
+        if master is False:
+            response={'message': 'something went wrong.....'}
+            request_id = Status().gen_request_id()
+            status, message = Journal().add_request(function="OSImage.update_certs",object=name,masteronly=True,misc=request_id)
+            if status is True:
+                Status().add_message(request_id,"luna","request submitted to master...")
+                Status().mark_messages_read(request_id)
+                access_code=200
+                response = {"message": "request submitted to master...", "request_id": request_id}
+            else:
+                response={'message': message}
+            return response, access_code
+    # below only when we are master
+    returned = OSImage().update_certs(name)
+    status=returned[0]
+    response=returned[1]
+    if status is True:
+        access_code=200
+        if len(returned)==3:
+            request_id=returned[2]
+            if hastate is True:
+                Journal().queue_source_sync(name,request_id)
+            response = {"message": response, "request_id": request_id}
+        else:
+            response = {'message': response}
+    else:
+        response = {'message': response}
+    return response, access_code
+
+
 @osimage_blueprint.route("/config/osimage/<string:name>/kernel", methods=['POST'])
 @token_required
 @validate_name

@@ -341,6 +341,105 @@ class OsImage(object):
             
     # ---------------------------------------------------------------------------
 
+    def updatecerts_osimage(self,taskid,request_id):
+
+        self.logger.info("updatecerts_osimage called")
+        try:
+
+            result=False
+            details=Queue().get_task_details(taskid)
+            request_id=details['request_id']
+            noeof=details['noeof']
+            osimage=details['param']
+
+            source_dir = '/etc/rhsm/ca'
+            image_directory = CONSTANT['FILES']['IMAGE_DIRECTORY']
+            image = Database().get_record(table='osimage', where=f"name='{osimage}'")
+            if not image:
+                Status().add_message(request_id=request_id, username_initiator="luna",
+                                     message=f"error updating certificates for osimage {osimage}: Image {osimage} does not exist?",
+                                     status=404)
+                return False
+
+            if not image[0]['path']:
+                filesystem_plugin = 'default'
+                if 'IMAGE_FILESYSTEM' in CONSTANT['PLUGINS'] and CONSTANT['PLUGINS']['IMAGE_FILESYSTEM']:
+                    filesystem_plugin = CONSTANT['PLUGINS']['IMAGE_FILESYSTEM']
+                os_image_plugin=Helper().plugin_load(self.osimage_plugins,'osimage/filesystem',filesystem_plugin)
+                ret, data = os_image_plugin().getpath(image_directory=image_directory, osimage=image[0]['name'], tag=None)
+                if ret is True:
+                    image[0]['path'] = data
+                else:
+                    Status().add_message(request_id=request_id, username_initiator="luna",
+                                         message=f"error updating certificates for osimage {osimage}: Image path not defined",
+                                         status=500)
+                    return False
+
+            image_path = str(image[0]['path'])
+            if image_path[0] != '/': # not an absolute path. prepend what's in luna.ini
+                if len(image_directory) > 1:
+                    image_path = f"{image_directory}/{image[0]['path']}"
+                else:
+                    Status().add_message(request_id=request_id, username_initiator="luna",
+                                         message=f"error updating certificates for osimage {osimage}: image path {image_path} is not an absolute path while IMAGE_DIRECTORY setting in FILES is not defined",
+                                         status=500)
+                    return False
+
+            if image_path == "/" or image_path == "." or image_path == "..":
+                Status().add_message(request_id=request_id, username_initiator="luna",
+                                     message=f"error updating certificates for osimage {osimage}: image path {image_path} is invalid or dangerous",
+                                     status=500)
+                return False
+
+            if not os.path.isdir(image_path):
+                Status().add_message(request_id=request_id, username_initiator="luna",
+                                     message=f"error updating certificates for osimage {osimage}: image path {image_path} does not exist",
+                                     status=500)
+                return False
+
+            if not os.path.isdir(source_dir):
+                Status().add_message(request_id=request_id, username_initiator="luna",
+                                     message=f"error updating certificates for osimage {osimage}: {source_dir} not found on the controller. Is this host registered (subscription-manager / Satellite)?",
+                                     status=500)
+                return False
+
+            certificates = sorted([entry for entry in os.listdir(source_dir)
+                                   if os.path.isfile(os.path.join(source_dir, entry))])
+            if not certificates:
+                Status().add_message(request_id=request_id, username_initiator="luna",
+                                     message=f"error updating certificates for osimage {osimage}: no certificates found in {source_dir}",
+                                     status=500)
+                return False
+
+            destination_dir = f"{image_path}/etc/rhsm/ca"
+            Status().add_message(request_id=request_id, username_initiator="luna",
+                                 message=f"updating {len(certificates)} RHSM CA certificate(s) in osimage {osimage}")
+            os.makedirs(destination_dir, mode=0o755, exist_ok=True)
+            for certificate in certificates:
+                shutil.copy2(os.path.join(source_dir, certificate), os.path.join(destination_dir, certificate))
+                self.logger.info(f"updatecerts_osimage copied {certificate} into {destination_dir}")
+            Status().add_message(request_id=request_id, username_initiator="luna",
+                                 message=f"finished updating RHSM CA certificates for osimage {osimage}: {', '.join(certificates)}",
+                                 status=200)
+            result=True
+
+            if not noeof:
+                Status().add_message(request_id=request_id, username_initiator="luna", message="EOF")
+            return result
+
+        except Exception as exp:
+            exc_type, exc_obj, exc_tb = sys.exc_info()
+            self.logger.error(f"updatecerts_osimage has problems: {exp}, {exc_type}, in {exc_tb.tb_lineno}")
+            try:
+                Status().add_message(request_id=request_id, username_initiator="luna",
+                                     message=f"Certificate update failed: {exp}", status=501)
+                Status().add_message(request_id=request_id, username_initiator="luna", message="EOF")
+            except Exception as nexp:
+                self.logger.error(f"updatecerts_osimage has problems during exception handling: {nexp}")
+            return False
+
+    # ---------------------------------------------------------------------------
+
     def build_osimage(self,taskid,request_id):
 
         self.logger.info("build_osimage called")
@@ -1135,6 +1234,19 @@ class OsImage(object):
                     if first:
                         Queue().update_task_status_in_queue(next_id,'in progress')
                         ret = self.pack_osimage(next_id,request_id)
+                        if self._stop_requested:
+                            Queue().update_task_status_in_queue(next_id,'queued')
+                        elif not ret:
+                            Queue().remove_task_from_queue(next_id)
+                            Queue().remove_task_from_queue_by_request_id(request_id)
+                            Status().add_message(request_id=request_id, username_initiator="luna", message="EOF")
+                        else:
+                            Queue().remove_task_from_queue(next_id)
+
+                elif action == "updatecerts_osimage":
+                    if first:
+                        Queue().update_task_status_in_queue(next_id,'in progress')
+                        ret = self.updatecerts_osimage(next_id,request_id)
                         if self._stop_requested:
                             Queue().update_task_status_in_queue(next_id,'queued')
                         elif not ret:

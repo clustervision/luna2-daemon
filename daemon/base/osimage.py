@@ -860,6 +860,64 @@ class OSImage():
         return status, response
 
 
+    def update_certs(self, name=None):
+        """
+        This method will refresh the RHSM CA certificates (/etc/rhsm/ca/) inside
+        the requested osimage by copying them from the controller. The Satellite/
+        Katello and Red Hat CA keys are rotated roughly every 6 months, and a
+        stale CA breaks every dnf call inside the image.
+        """
+        status=False
+        response = {"message": f'Internal error: OS image {name} certificate update failed. No sign of life of spawned thread'}
+        image = Database().get_record(table='osimage', where=f'name = "{name}"')
+        if not image:
+            return False, f'OS image {name} does not exist'
+        request_id = str(time()) + str(randint(1001, 9999)) + str(getpid())
+        queue_id, queue_response = Queue().add_task_to_queue(task='updatecerts_osimage', param=name,
+                                                             subsystem='osimage', request_id=request_id)
+        if not queue_id:
+            self.logger.info("config_osimage_updatecerts cannot get queue_id")
+            status=False
+            return status, f'Internal error: OS image {name} certificate update queuing failed'
+        if queue_response != "added":
+            # this means we already have an equal request in the queue
+            Queue().log_tasks_in_queue(subsystem='osimage')
+            Status().add_message(queue_response, "luna", f"similar task with id {queue_id} is already queued. its progress is listed here")
+            response = f"osimage certificate update for {name} already queued"
+            self.logger.info(f"my response [{response}] [{queue_response}]")
+            status=True
+            return status, response, queue_response
+
+        self.logger.info(f"config_osimage_updatecerts added task with id {queue_id} to queue")
+        Queue().log_tasks_in_queue(subsystem='osimage')
+        message = f"queued update certs osimage {name} with id {queue_id}"
+        Status().add_message(request_id, "luna", message)
+
+        next_id = Queue().next_task_in_queue('osimage')
+        if queue_id == next_id:
+            # we're first in the queue. let's wake up mother
+            executor = ProcessPoolExecutor(max_workers=1)
+            executor.submit(OsImager().osimage_mother_wrapper)
+            executor.shutdown(wait=False)
+        else:
+            next_id = Queue().next_parallel_task_in_queue('osimage',name,'queued')
+            if queue_id == next_id:
+                # We're not the first mother running... we only do our own stuff
+                executor = ProcessPoolExecutor(max_workers=1)
+                executor.submit(OsImager().osimage_mother_wrapper, request_id)
+                executor.shutdown(wait=False)
+            else:
+                Status().add_message(request_id, "luna", f"other task with id {next_id} is being processed first. please wait")
+        sleep(1)
+        status = Database().get_record(table='status', where=f'request_id = "{request_id}"')
+        if status:
+            status=True
+            response = f"osimage certificate update for {name} queued"
+            self.logger.info(f"my response [{response}] [{request_id}]")
+            return status, response, request_id
+        return status, response
+
+
     def change_kernel(self, name=None, request_data=None):
         """
         This method will change the kernel of an image and pack again that image.

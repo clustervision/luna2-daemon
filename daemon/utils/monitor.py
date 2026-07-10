@@ -52,8 +52,16 @@ class Monitor(object):
                 "install.error"
             ]
         }
+        # Post-install states: reported by the node's real OS after reboot, not by the
+        # in-installer script. Mapped to a friendly label (not the "Luna installer:"
+        # prefix, which would be misleading here). Extend with 'down' etc. when needed.
+        self.post_install = {
+            "booted": "Booted"
+        }
 
     def installer_state(self,state,status=404):
+        if state in self.post_install:
+            return self.post_install[state], 200
         if state in self.node_state[204]:
             state = state.replace("install.", '')
             state = f'Luna installer: {state}'

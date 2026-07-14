@@ -64,6 +64,7 @@ from base.bmcsetup import BMCSetup
 from base.switch import Switch
 from base.otherdev import OtherDev
 from base.rack import Rack
+from base.nodeinventory import NodeInventory
 from base.network import Network
 from base.dns import DNS
 from base.secret import Secret

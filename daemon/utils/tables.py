@@ -54,7 +54,8 @@ class Tables():
         self.tables = ['osimage', 'osimagetag', 'nodesecrets', 'nodeinterface', 'bmcsetup',
               'ipaddress', 'groupinterface', 'roles', 'group', 'network', 'user', 'switch',
               'otherdevices', 'groupsecrets', 'node', 'cluster', 'dns','controller','cloud',
-              'nodeinventory', 'nodeinventorydisk', 'nodeinventorygpu', 'nodeinventorynic']
+              'nodeinventory', 'nodeinventorydisk', 'nodeinventorygpu', 'nodeinventorynic',
+              'rack', 'rackinventory']
         self.sharedip = False
 
     def get_tables(self):

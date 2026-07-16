@@ -353,6 +353,11 @@ class OSImage():
         """
         This method will clone a osimage.
         """
+        # replication hands us this as text: journal.param is a VARCHAR and the value is stored
+        # with str(), so a replicated True arrives as the string 'True'. bare and nocopy below
+        # are normalised for the same reason. anything that is not bool-like reads as None here,
+        # which keeps an older peer's payload-shaped param out of the create_only decision.
+        create_only = Helper().make_bool(create_only)
         data = {}
         status=False
         response="Internal error"

@@ -66,6 +66,7 @@ from base.otherdev import OtherDev
 from base.rack import Rack
 from base.nodeinventory import NodeInventory
 from base.network import Network
+from base.route import Route
 from base.dns import DNS
 from base.secret import Secret
 from base.osuser import OsUser
@@ -197,8 +198,20 @@ class Journal():
                     self.logger.info(f"executing {class_name}().{function_name}({record['object']},{record['param']},payload)/{record['tries']} send by {record['sendby']} on {record['created']}")
 
                     returned=[]
+                    # we dispatch by name. a base class not imported at the top of this module, or a
+                    # method that does not exist, cannot be resolved and no amount of retrying changes
+                    # that. we drop the record instead of raising: an exception here escapes all the way
+                    # out of journal_mother's main loop, which means the delete at the end of this loop
+                    # never runs, this record comes back first on every next pass, and every entry behind
+                    # it waits forever. the rest of that loop - insync, pings, the hardsync table repair -
+                    # is skipped along with it. dropping one record we can never execute keeps replication
+                    # alive for everything else, and the hardsync comparison repairs what the drop costs.
+                    if class_name not in globals() or not hasattr(globals()[class_name],function_name):
+                        self.logger.error(f"cannot replicate {record['function']}({record['object']}) send by {record['sendby']}: {class_name}.{function_name} does not resolve in journal. dropping record {record['id']}")
+                        Database().delete_row('journal', [{"column": "id", "value": record['id']}])
+                        continue
                     repl_class = globals()[class_name]                # -> base.node.Node
-                    repl_function = getattr(repl_class,function_name) # -> base.node.Node.node_update
+                    repl_function = getattr(repl_class,function_name) # -> base.node.Node.update_node
 
                     # introducing some uglyness since we do not use the created field in classes.
                     if class_name == "HA" and function_name == "set_role":

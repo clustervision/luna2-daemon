@@ -55,7 +55,7 @@ class Tables():
               'ipaddress', 'groupinterface', 'roles', 'group', 'network', 'user', 'switch',
               'otherdevices', 'groupsecrets', 'node', 'cluster', 'dns','controller','cloud',
               'nodeinventory', 'nodeinventorydisk', 'nodeinventorygpu', 'nodeinventorynic',
-              'rack', 'rackinventory']
+              'rack', 'rackinventory', 'route', 'routemap']
         self.sharedip = False
 
     def get_tables(self):

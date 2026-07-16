@@ -107,7 +107,14 @@ class Cluster():
             status=True
             response={}
             for table in tables:
-                response[table]=Tables().export_table(table,sequence=True,structure=True)
+                data=Tables().export_table(table,sequence=True,structure=True)
+                # a table we could not read is not an empty table. a backup that quietly leaves one
+                # out restores clean and without the customer's data, which is the worst thing this
+                # can do - so fail the whole export rather than hand back a plausible one.
+                if data is None:
+                    self.logger.error(f"export of table {table} failed. not returning an incomplete backup")
+                    return False, f"Internal error: table {table} could not be exported"
+                response[table]=data
         return status, response
 
 

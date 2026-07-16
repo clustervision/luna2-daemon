@@ -211,8 +211,23 @@ class Tables():
 
 
     def export_table(self,table,sequence=True,structure=True):
+        """
+        Input - table name
+        Process - Exports the table's structure and rows.
+                    An empty table is a normal thing and exports as its structure with no rows.
+                    A table we could not READ is not the same thing, and must not look like one:
+                    get_columns and get_record both answer None for a failure and a list for a
+                    result, and collapsing those two is how a populated table exports as empty -
+                    which import_table then restores over the real data. import_table already
+                    refuses None ("which i cannot permit"), and that guard has never been
+                    reachable from here because this returned a list either way.
+        Output - the table data, or None if it could not be read.
+        """
         data=[]
         dbcolumns = Database().get_columns(table)
+        if dbcolumns is None:
+            self.logger.error(f"cannot read the columns of table {table}. not reporting it as empty")
+            return None
         if dbcolumns:
             status=True
             if sequence:
@@ -224,10 +239,11 @@ class Tables():
                 if tbstructure:
                     data.append({'STRUCTURE': tbstructure})
             dbdata=Database().get_record(select=Database().quote_columns(dbcolumns),table=table)
-            if dbdata:
-                for record in dbdata:
-                    data.append(record)
-                    #group_data = b64encode(data.encode())
-                    #group_data = group_data.decode("ascii")
+            if dbdata is None:
+                self.logger.error(f"cannot read table {table}. not reporting it as empty")
+                return None
+            # an empty table is legitimate and exports as its structure with no rows.
+            for record in dbdata:
+                data.append(record)
         return data
 

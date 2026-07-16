@@ -187,7 +187,11 @@ class Helper(object):
             with open(template, encoding='utf-8') as template:
                 env.parse(template.read())
             check = True
-        except OSError as exp:
+        # env.parse is here to catch a syntax error, and a jinja TemplateSyntaxError is not an
+        # OSError - so catching only OSError meant the one thing this check exists for escaped
+        # instead of returning False. templates are the customisation surface: an admin's typo
+        # reached the housekeeper, where a raise blocks every queued task behind it.
+        except Exception as exp:
             self.logger.error(f'{template} Have Errors {exp}.')
         return check
 

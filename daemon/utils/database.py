@@ -728,6 +728,18 @@ class Database():
         return response
 
 
+    def quote_columns(self, columns: list) -> list:
+        """
+        Input - column names, as get_columns returns them
+        Process - Wraps each in double quotes so it survives as an identifier.
+                    rack has a column named 'order' and tracker one named 'left';
+                    unquoted, the query is a syntax error and the table reads empty.
+                    insert quotes its keys for the same reason.
+        Output - The column names, quoted, for building a select.
+        """
+        return [f'"{column}"' for column in columns]
+
+
     def id_by_name(self, table=None, name=None):
         """
         Input - tablename, name

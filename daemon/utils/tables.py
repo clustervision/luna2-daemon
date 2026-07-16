@@ -54,7 +54,8 @@ class Tables():
         self.tables = ['osimage', 'osimagetag', 'nodesecrets', 'nodeinterface', 'bmcsetup',
               'ipaddress', 'groupinterface', 'roles', 'group', 'network', 'user', 'switch',
               'otherdevices', 'groupsecrets', 'node', 'cluster', 'dns','controller','cloud',
-              'nodeinventory', 'nodeinventorydisk', 'nodeinventorygpu', 'nodeinventorynic']
+              'nodeinventory', 'nodeinventorydisk', 'nodeinventorygpu', 'nodeinventorynic',
+              'rack', 'rackinventory', 'route', 'routemap']
         self.sharedip = False
 
     def get_tables(self):
@@ -91,7 +92,7 @@ class Tables():
                         order='hostname'
                 #order=f"ORDER BY {order} ASC"
                 dbcolumns.sort()
-                data=Database().get_record(select=dbcolumns,table=table,orderby=order)
+                data=Database().get_record(select=Database().quote_columns(dbcolumns),table=table,orderby=order)
                 if data:
                     merged="#"
                     for record in data:
@@ -222,7 +223,7 @@ class Tables():
                 tbstructure=DBStructure().get_appended_database_table_structure(table)
                 if tbstructure:
                     data.append({'STRUCTURE': tbstructure})
-            dbdata=Database().get_record(select=dbcolumns,table=table)
+            dbdata=Database().get_record(select=Database().quote_columns(dbcolumns),table=table)
             if dbdata:
                 for record in dbdata:
                     data.append(record)

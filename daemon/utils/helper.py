@@ -232,17 +232,15 @@ class Helper(object):
 
     def check_if_ipv6(self, ipaddr=None):
         """
-        just a simple check if the address is ipv6. defaults to ipv4
+        just a simple check if the address is ipv6. defaults to ipv4.
+        the colon is the whole test: an IPv4 address cannot carry one and neither can a host
+        name, while no valid IPv6 address is without one. this also answered True on a leading
+        [a-f], which reads any name starting with those letters - europe.pool.ntp.org,
+        clock.example.com - as IPv6. that could only ever produce a false positive, and it did:
+        it rejected the very server names ntp_server exists to accept, and bracketed host names
+        into broken URLs. accepts a name as well as an address, so it is safe on either.
         """
-        if ipaddr and ":" in ipaddr:
-            return True
-        IPv6regex = re.compile(r"[a-f]+")
-        try:
-            if IPv6regex.match(ipaddr):
-                return True
-        except:
-            pass
-        return False
+        return bool(ipaddr and ':' in str(ipaddr))
 
 
     def check_ip(self, ipaddr=None):

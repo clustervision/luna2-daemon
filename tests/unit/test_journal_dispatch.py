@@ -104,6 +104,96 @@ def test_dynamic_dispatch_list_is_still_accurate():
     )
 
 
+def _journal_db(tmp_path):
+    """A throwaway database with a journal table, and a Journal that owns it."""
+    import common.constant as constant
+    from utils import database
+    from utils.database import Database
+    from utils.dbstructure import DBStructure
+    from utils.journal import Journal
+
+    constant.CONSTANT['DATABASE']['DATABASE'] = str(tmp_path / 'journal.db')
+    database.local_thread.connection = None
+    Database().create('journal', DBStructure().get_database_table_structure('journal'))
+    journal = Journal()
+    journal.me = 'controller2'
+    return journal
+
+
+def _queue(function, object_name, created):
+    from utils.database import Database
+    Database().insert('journal', [
+        {"column": "function", "value": function},
+        {"column": "object", "value": object_name},
+        {"column": "sendfor", "value": 'controller2'},
+        {"column": "sendby", "value": 'controller1'},
+        {"column": "created", "value": created},
+    ])
+
+
+def test_a_raising_record_does_not_block_the_ones_behind_it(tmp_path, monkeypatch):
+    """The failure that matters is not the record -- it is everything queued behind it."""
+    import utils.journal as J
+    from utils.database import Database
+
+    class Exploder:
+        def boom(self, *args, **kwargs):
+            raise RuntimeError('the replicated method raised')
+
+    class Worker:
+        def work(self, *args, **kwargs):
+            return True
+
+    journal = _journal_db(tmp_path)
+    monkeypatch.setitem(vars(J), 'Exploder', Exploder)
+    monkeypatch.setitem(vars(J), 'Worker', Worker)
+
+    _queue('Exploder.boom', 'poison', '2026-01-01 00:00:00')
+    _queue('Worker.work', 'behind-it', '2026-01-01 00:00:01')
+
+    journal.handle_requests()
+
+    left = {r['function'] for r in (Database().get_record(table='journal') or [])}
+    assert 'Worker.work' not in left, (
+        "a record queued behind a raising one was never processed. One failure has taken out "
+        "replication for everything behind it, which is the whole defect."
+    )
+    assert 'Exploder.boom' in left, (
+        "the raising record was dropped on its first failure; it should be retried, since the "
+        "cause may be transient."
+    )
+
+
+def test_a_raising_record_counts_its_attempts_and_is_finally_dropped(tmp_path, monkeypatch):
+    """tries exists in the schema for this. Retrying forever is what it was meant to prevent."""
+    import utils.journal as J
+    from utils.database import Database
+
+    class Exploder:
+        def boom(self, *args, **kwargs):
+            raise RuntimeError('still broken')
+
+    journal = _journal_db(tmp_path)
+    monkeypatch.setitem(vars(J), 'Exploder', Exploder)
+    _queue('Exploder.boom', 'poison', '2026-01-01 00:00:00')
+
+    seen = []
+    for _ in range(J.MAX_REPLICATION_TRIES):
+        journal.handle_requests()
+        rows = Database().get_record(table='journal') or []
+        if rows:
+            seen.append(int(rows[0]['tries']))
+
+    assert seen == list(range(1, J.MAX_REPLICATION_TRIES)), (
+        f"tries did not count up one per attempt: {seen}. Without that there is no give-up path "
+        f"and the record is retried forever."
+    )
+    assert not (Database().get_record(table='journal') or []), (
+        f"the record survived {J.MAX_REPLICATION_TRIES} failed attempts. It must be dropped, "
+        f"loudly, rather than retried for the life of the daemon."
+    )
+
+
 def test_unresolvable_record_is_dropped_not_left_to_block(tmp_path):
     """A record naming an unknown class is removed, so the entries behind it still run."""
     import common.constant as constant

@@ -358,10 +358,18 @@ class Route():
             return False, f"Invalid request: {destination} is not a valid network/host"
         if not gateway and not device:
             return False, "Invalid request: a route needs a gateway (next-hop) or a device"
-        if gateway and not Helper().check_ip(gateway):
-            return False, f"Invalid request: {gateway} is not a valid next-hop address"
-        if gateway and ipaddress.ip_address(gateway).version != network.version:
-            return False, f"Invalid request: next-hop {gateway} does not match the IPv{network.version} destination"
+        if gateway:
+            # a next-hop is one bare address. check_ip is the wrong instrument here: it tolerates a
+            # CIDR and a comma-separated list and hands back the first host part, so it answers
+            # "valid" for "10.141.0.1/24" and the raw value then fails ip_address() below with an
+            # uncaught ValueError - a 500 where this line means to return a 400. ip_address is the
+            # check we actually want, and it gives us the family in the same step.
+            try:
+                next_hop = ipaddress.ip_address(gateway)
+            except ValueError:
+                return False, f"Invalid request: {gateway} is not a valid next-hop address"
+            if next_hop.version != network.version:
+                return False, f"Invalid request: next-hop {gateway} does not match the IPv{network.version} destination"
         if metric not in (None, '') and not str(metric).isdigit():
             return False, "Invalid request: metric must be a number"
         return True, "valid"

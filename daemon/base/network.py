@@ -378,6 +378,8 @@ class Network():
                     ret_msg = f'Invalid request: Incorrect Nameserver IP: {data["nameserver_ip"]}'
                     return status, ret_msg
             if 'ntp_server' in data:
+                # this field holds a server name or an IPv4 address, never IPv6: the dhcp4 config
+                # cannot carry one. check_if_ipv6 is safe on a name as well as an address.
                 if Helper().check_if_ipv6(data['ntp_server']):
                     status=False
                     return status, f'Invalid request: Incorrect NTP Server IP: {data["ntp_server"]}. Server name or IPv4 address expected'

@@ -62,9 +62,14 @@ class Tables():
         status=False
         response="Invalid request: table not supplied"
         if table:
+            data=UTables().export_table(table)
+            # None means we could not read it, which is not the same as it being empty. saying
+            # True here hands the peer an empty table it will import over its own good copy.
+            if data is None:
+                return False, f"Internal error: table {table} could not be read"
             status=True
             response={}
-            response[table]=UTables().export_table(table)
+            response[table]=data
             response={'table': {'data': response}}
         return status, response
 

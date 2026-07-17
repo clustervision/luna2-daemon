@@ -66,6 +66,7 @@ from base.otherdev import OtherDev
 from base.rack import Rack
 from base.nodeinventory import NodeInventory
 from base.network import Network
+from base.route import Route
 from base.dns import DNS
 from base.secret import Secret
 from base.osuser import OsUser
@@ -169,6 +170,11 @@ class Journal():
             if all_records:
                 master=HA().get_role()
                 status=True
+                # these are ordered and depend on each other: a later record assumes the earlier one
+                # landed. so the dispatch below is deliberately unguarded - a record that raises holds
+                # the queue until the cause is fixed, rather than letting its dependents apply over a
+                # prerequisite that is not there. do not catch per record and do not drop after N
+                # tries: either way a real change is lost and the ones behind it apply regardless.
                 for record in all_records:
                     masteronly=Helper().make_bool(record['masteronly'])
                     remoteonly=Helper().make_bool(record['remoteonly'])

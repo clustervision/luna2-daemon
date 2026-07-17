@@ -107,7 +107,14 @@ class Cluster():
             status=True
             response={}
             for table in tables:
-                response[table]=Tables().export_table(table,sequence=True,structure=True)
+                data=Tables().export_table(table,sequence=True,structure=True)
+                # a table we could not read is not an empty table. a backup that quietly leaves one
+                # out restores clean and without the customer's data, which is the worst thing this
+                # can do - so fail the whole export rather than hand back a plausible one.
+                if data is None:
+                    self.logger.error(f"export of table {table} failed. not returning an incomplete backup")
+                    return False, f"Internal error: table {table} could not be exported"
+                response[table]=data
         return status, response
 
 
@@ -254,7 +261,7 @@ class Cluster():
             if cluster_check:
                 cluster = Database().get_record(table='cluster')
                 if cluster:
-                    if 'ntp_server' in data: 
+                    if 'ntp_server' in data:
                         if data['ntp_server']:
                             temp = data['ntp_server']
                             temp = temp.replace(' ',',')
@@ -263,6 +270,13 @@ class Cluster():
                                 if not Helper().check_ip(ipaddress):
                                     status=False
                                     return status, f'{ipaddress} is an invalid NTP server IP'
+                                # this renders into dhcpd.conf as a global option, where an IPv6
+                                # address is a parse error that costs the entire file. check_ip
+                                # accepts both families, so it cannot be the only check here. the
+                                # IPv6 side of this is served by the dhcp6 config, not by this field.
+                                if Helper().check_if_ipv6(ipaddress):
+                                    status=False
+                                    return status, f'{ipaddress} is an invalid NTP server IP: an IPv4 address is expected'
                             data['ntp_server'] = temp
                         else:
                             data['ntp_server'] = None
@@ -275,6 +289,12 @@ class Cluster():
                                 if not Helper().check_ip(ipaddress):
                                     status=False
                                     return status, f'{ipaddress} is an invalid name server IP'
+                                # same as ntp_server above: this is the IPv4 name server, rendered as
+                                # a global option in dhcpd.conf. its IPv6 counterpart is a separate
+                                # value that the dhcp6 config takes from the controller.
+                                if Helper().check_if_ipv6(ipaddress):
+                                    status=False
+                                    return status, f'{ipaddress} is an invalid name server IP: an IPv4 address is expected'
                             data['nameserver_ip'] = temp
                         else:
                             data['nameserver_ip'] = None

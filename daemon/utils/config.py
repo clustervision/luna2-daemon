@@ -532,7 +532,12 @@ class Config(object):
         subnet['nameserver_ip']=nwk['nameserver_ip']
         subnet['nameserver_ip_ipv6']=nwk['nameserver_ip_ipv6']
         subnet['ntp_server']=nwk['ntp_server']
+        # dhcp_relay is one field feeding both the dhcp4 and dhcp6 templates, and it has no _ipv6
+        # twin to pick the family for us, so we filter here. a config may only carry its own family:
+        # kea fails the whole subnet element on a mismatch - not just the relay line - so a single
+        # IPv6 relay would take DHCPv4 down for everything in this subnet.
         relays = [relay.strip() for relay in (nwk.get('dhcp_relay') or '').split(',') if relay.strip()]
+        relays = [relay for relay in relays if Helper().check_if_ipv6(relay) == (ipversion == 'ipv6')]
         if relays:
             subnet['dhcp_relay']=relays
         if nwk['gateway'+add_string] and nwk['gateway'+add_string] != "None": # left over from database().update/insert bug - Antoine

@@ -29,6 +29,8 @@ to call. These tests keep journal.py's imports in step with it.
 import ast
 import os
 
+import pytest
+
 DAEMON = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), 'daemon')
 
 # Names built at runtime rather than written as a literal, with where they are built.
@@ -131,8 +133,20 @@ def _queue(function, object_name, created):
     ])
 
 
-def test_a_raising_record_does_not_block_the_ones_behind_it(tmp_path, monkeypatch):
-    """The failure that matters is not the record -- it is everything queued behind it."""
+def test_a_raising_record_holds_the_queue_on_purpose(tmp_path, monkeypatch):
+    """TRIX-1937: the journal is fail-stop, and this pins it so nobody "fixes" it again.
+
+    The records are ordered and depend on each other: a config change replicates as a sequence,
+    and a later record assumes the earlier one landed. So a record that raises must NOT be
+    skipped, dropped, or counted out -- everything behind it has to wait until the cause is
+    fixed. Replication stopping is the feature. A controller consistently behind is recoverable;
+    one that applied later changes over a missing prerequisite is corrupted config that nobody
+    is looking for.
+
+    This reads like a loop body somebody forgot to wrap, which is exactly why it needs a test:
+    the guard is the kind of thing a well-meaning change adds back. If this fails, do not adjust
+    it to match the code -- find out what the code started doing instead.
+    """
     import utils.journal as J
     from utils.database import Database
 
@@ -151,76 +165,36 @@ def test_a_raising_record_does_not_block_the_ones_behind_it(tmp_path, monkeypatc
     _queue('Exploder.boom', 'poison', '2026-01-01 00:00:00')
     _queue('Worker.work', 'behind-it', '2026-01-01 00:00:01')
 
-    journal.handle_requests()
+    with pytest.raises(RuntimeError):
+        journal.handle_requests()
 
     left = {r['function'] for r in (Database().get_record(table='journal') or [])}
-    assert 'Worker.work' not in left, (
-        "a record queued behind a raising one was never processed. One failure has taken out "
-        "replication for everything behind it, which is the whole defect."
-    )
     assert 'Exploder.boom' in left, (
-        "the raising record was dropped on its first failure; it should be retried, since the "
-        "cause may be transient."
+        "the failing record was removed. It must stay: it has not been applied on this "
+        "controller, and dropping it loses the change for good."
+    )
+    assert 'Worker.work' in left, (
+        "a record queued behind a failing one was applied anyway. It may depend on the one that "
+        "failed, so applying it writes config on top of a prerequisite that is not there."
     )
 
 
-def test_a_raising_record_counts_its_attempts_and_is_finally_dropped(tmp_path, monkeypatch):
-    """tries exists in the schema for this. Retrying forever is what it was meant to prevent."""
-    import utils.journal as J
-    from utils.database import Database
+def test_an_unresolvable_record_also_holds_the_queue(tmp_path):
+    """A name this module cannot resolve means our code is wrong -- usually a missing import.
 
-    class Exploder:
-        def boom(self, *args, **kwargs):
-            raise RuntimeError('still broken')
+    Wedging until it is deployed is correct. Dropping the record would lose a real change and
+    let its dependents apply over the gap. The missing import is caught in CI by the tests
+    above, which is where that belongs -- not by weakening this at runtime.
+    """
+    from utils.database import Database
 
     journal = _journal_db(tmp_path)
-    monkeypatch.setitem(vars(J), 'Exploder', Exploder)
-    _queue('Exploder.boom', 'poison', '2026-01-01 00:00:00')
+    _queue('NoSuchClass.no_such_method', 'probe', '2026-01-01 00:00:00')
 
-    seen = []
-    for _ in range(J.MAX_REPLICATION_TRIES):
+    with pytest.raises(Exception):
         journal.handle_requests()
-        rows = Database().get_record(table='journal') or []
-        if rows:
-            seen.append(int(rows[0]['tries']))
 
-    assert seen == list(range(1, J.MAX_REPLICATION_TRIES)), (
-        f"tries did not count up one per attempt: {seen}. Without that there is no give-up path "
-        f"and the record is retried forever."
-    )
-    assert not (Database().get_record(table='journal') or []), (
-        f"the record survived {J.MAX_REPLICATION_TRIES} failed attempts. It must be dropped, "
-        f"loudly, rather than retried for the life of the daemon."
-    )
-
-
-def test_unresolvable_record_is_dropped_not_left_to_block(tmp_path):
-    """A record naming an unknown class is removed, so the entries behind it still run."""
-    import common.constant as constant
-    from utils import database
-    from utils.database import Database
-    from utils.dbstructure import DBStructure
-    from utils.journal import Journal
-
-    constant.CONSTANT['DATABASE']['DATABASE'] = str(tmp_path / 'journal.db')
-    database.local_thread.connection = None
-    Database().create('journal', DBStructure().get_database_table_structure('journal'))
-
-    me = 'controller2'
-    Database().insert('journal', [
-        {"column": "function", "value": "NoSuchClass.no_such_method"},
-        {"column": "object", "value": "node001"},
-        {"column": "sendfor", "value": me},
-        {"column": "sendby", "value": "controller1"},
-        {"column": "created", "value": "2026-01-01 00:00:00"},
-    ])
-
-    journal = Journal()
-    journal.me = me
-    journal.handle_requests()
-
-    left = Database().get_record(table='journal', where=f"sendfor='{me}'")
-    assert not left, (
-        "an unresolvable journal record survived handle_requests. It will be read first on every "
-        "subsequent pass and block every record queued behind it."
+    left = {r['function'] for r in (Database().get_record(table='journal') or [])}
+    assert 'NoSuchClass.no_such_method' in left, (
+        "an unresolvable record was dropped rather than holding the queue."
     )

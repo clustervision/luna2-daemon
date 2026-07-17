@@ -74,12 +74,6 @@ from base.monitor import Monitor
 from base.cloud import Cloud
 from base.plugin_import import Import
 
-# how often a journal record may fail before we give up on it. the schema has always had a
-# tries column for this and nothing ever counted it, so a record that could not be applied was
-# retried forever. a record at the head of the queue is read first on every pass, so "forever"
-# is not a slow leak - it is the queue.
-MAX_REPLICATION_TRIES = 5
-
 lock = Lock()
 #sem = Semaphore()
 sem = tLock()
@@ -176,6 +170,11 @@ class Journal():
             if all_records:
                 master=HA().get_role()
                 status=True
+                # these are ordered and depend on each other: a later record assumes the earlier one
+                # landed. so the dispatch below is deliberately unguarded - a record that raises holds
+                # the queue until the cause is fixed, rather than letting its dependents apply over a
+                # prerequisite that is not there. do not catch per record and do not drop after N
+                # tries: either way a real change is lost and the ones behind it apply regardless.
                 for record in all_records:
                     masteronly=Helper().make_bool(record['masteronly'])
                     remoteonly=Helper().make_bool(record['remoteonly'])
@@ -189,111 +188,80 @@ class Journal():
                         Database().delete_row('journal', [{"column": "id", "value": record['id']}])
                         continue
    
-                    try:
-                        payload=None
-                        if record['payload']:
-                            payload = None
-                            decoded = b64decode(record['payload'])
-                            string = decoded.decode("ascii")
-                            try:
-                                payload = loads(string)
-                            except:
-                                payload = string
-                            self.logger.debug(f"replication payload: {payload}")
+                    payload=None
+                    if record['payload']:
+                        payload = None
+                        decoded = b64decode(record['payload'])
+                        string = decoded.decode("ascii")
+                        try:
+                            payload = loads(string)
+                        except:
+                            payload = string
+                        self.logger.debug(f"replication payload: {payload}")
                    
-                        class_name,function_name=record['function'].split('.')
-                        self.logger.info(f"executing {class_name}().{function_name}({record['object']},{record['param']},payload)/{record['tries']} send by {record['sendby']} on {record['created']}")
+                    class_name,function_name=record['function'].split('.')
+                    self.logger.info(f"executing {class_name}().{function_name}({record['object']},{record['param']},payload)/{record['tries']} send by {record['sendby']} on {record['created']}")
 
-                        returned=[]
-                        # we dispatch by name. a base class not imported at the top of this module, or a
-                        # method that does not exist, cannot be resolved and no amount of retrying changes
-                        # that. we drop the record instead of raising: an exception here escapes all the way
-                        # out of journal_mother's main loop, which means the delete at the end of this loop
-                        # never runs, this record comes back first on every next pass, and every entry behind
-                        # it waits forever. the rest of that loop - insync, pings, the hardsync table repair -
-                        # is skipped along with it. dropping one record we can never execute keeps replication
-                        # alive for everything else, and the hardsync comparison repairs what the drop costs.
-                        if class_name not in globals() or not hasattr(globals()[class_name],function_name):
-                            self.logger.error(f"cannot replicate {record['function']}({record['object']}) send by {record['sendby']}: {class_name}.{function_name} does not resolve in journal. dropping record {record['id']}")
-                            Database().delete_row('journal', [{"column": "id", "value": record['id']}])
-                            continue
-                        repl_class = globals()[class_name]                # -> base.node.Node
-                        repl_function = getattr(repl_class,function_name) # -> base.node.Node.update_node
+                    returned=[]
+                    repl_class = globals()[class_name]                # -> base.node.Node
+                    repl_function = getattr(repl_class,function_name) # -> base.node.Node.node_update
 
-                        # introducing some uglyness since we do not use the created field in classes.
-                        if class_name == "HA" and function_name == "set_role":
-                            returned=repl_function(repl_class(),record['object'],record['createdsec'])
-                        elif record['object'] and record['param'] is not None and payload:
-                            returned=repl_function(repl_class(),record['object'],record['param'],payload)
-                        elif record['param'] is not None and payload:
-                            returned=repl_function(repl_class(),record['object'],record['param'],payload)
-                        elif record['param'] is not None:
-                            returned=repl_function(repl_class(),record['object'],record['param'])
-                        elif record['object'] and payload:
-                            returned=repl_function(repl_class(),record['object'],payload)
-                        elif payload:
-                            returned=repl_function(repl_class(),payload)
+                    # introducing some uglyness since we do not use the created field in classes.
+                    if class_name == "HA" and function_name == "set_role":
+                        returned=repl_function(repl_class(),record['object'],record['createdsec'])
+                    elif record['object'] and record['param'] is not None and payload:
+                        returned=repl_function(repl_class(),record['object'],record['param'],payload)
+                    elif record['param'] is not None and payload:
+                        returned=repl_function(repl_class(),record['object'],record['param'],payload)
+                    elif record['param'] is not None:
+                        returned=repl_function(repl_class(),record['object'],record['param'])
+                    elif record['object'] and payload:
+                        returned=repl_function(repl_class(),record['object'],payload)
+                    elif payload:
+                        returned=repl_function(repl_class(),payload)
+                    else:
+                        returned=repl_function(repl_class(),record['object'])
+                    if returned:
+                        status_, message = None, None
+                        if isinstance(returned, bool):
+                            status_=returned
+                            self.logger.info(f"result for {record['function']}({record['object']}): {status_}")
+                        elif isinstance(returned, int):
+                            status_=returned
+                            self.logger.info(f"result for {record['function']}({record['object']}): {status_}")
                         else:
-                            returned=repl_function(repl_class(),record['object'])
-                        if returned:
-                            status_, message = None, None
-                            if isinstance(returned, bool):
-                                status_=returned
-                                self.logger.info(f"result for {record['function']}({record['object']}): {status_}")
-                            elif isinstance(returned, int):
-                                status_=returned
-                                self.logger.info(f"result for {record['function']}({record['object']}): {status_}")
-                            else:
-                                status_=returned[0]
-                                message=returned[1]
+                            status_=returned[0]
+                            message=returned[1]
 
-                                self.logger.info(f"result for {record['function']}({record['object']}): {status_}, {message}")
-                                request_id=None
-                                if len(returned)>2:
-                                    request_id=returned[2]
+                            self.logger.info(f"result for {record['function']}({record['object']}): {status_}, {message}")
+                            request_id=None
+                            if len(returned)>2:
+                                request_id=returned[2]
 
-                                if class_name == 'OSImage':
-                                    if status_ is True:
-                                        if function_name in ['pack','change_kernel']:
-                                            self.queue_source_sync(record['object'],request_id)
-                                        elif function_name == 'clone_osimage':
-                                            self.logger.debug(f"CLONE object: {record['object']}, payload: {payload}")
-                                            self.queue_target_sync(record['object'],payload,request_id)
-                                        elif function_name == 'grab':
-                                            self.queue_source_sync_by_node_name(record['object'],request_id)
-                                    else:
-                                        # something went wrong. we have to inform the remote host
-                                        if not request_id:
-                                            request_id=str(time()) + str(randint(1001, 9999)) + str(getpid())
-                                        Status().add_message(request_id, "luna", message)
-                                        Status().add_message(request_id, "luna", "EOF")
+                            if class_name == 'OSImage':
+                                if status_ is True:
+                                    if function_name in ['pack','change_kernel']:
+                                        self.queue_source_sync(record['object'],request_id)
+                                    elif function_name == 'clone_osimage':
+                                        self.logger.debug(f"CLONE object: {record['object']}, payload: {payload}")
+                                        self.queue_target_sync(record['object'],payload,request_id)
+                                    elif function_name == 'grab':
+                                        self.queue_source_sync_by_node_name(record['object'],request_id)
+                                else:
+                                    # something went wrong. we have to inform the remote host
+                                    if not request_id:
+                                        request_id=str(time()) + str(randint(1001, 9999)) + str(getpid())
+                                    Status().add_message(request_id, "luna", message)
+                                    Status().add_message(request_id, "luna", "EOF")
                                         
-                                    if record['misc'] and request_id:
-                                        # we have to keep track of the request_id as we have to inform the requestor about the progress.
-                                        Status().forward_status_request(record['misc'], record['sendby'], request_id, self.me)
-                        else:
-                            self.logger.info(f"result for {record['function']}({record['object']}): {returned}")
+                                if record['misc'] and request_id:
+                                    # we have to keep track of the request_id as we have to inform the requestor about the progress.
+                                    Status().forward_status_request(record['misc'], record['sendby'], request_id, self.me)
+                    else:
+                        self.logger.info(f"result for {record['function']}({record['object']}): {returned}")
 
-                        # we *always* have to remove the entries in the DB regarding outcome.
-                        Database().delete_row('journal', [{"column": "id", "value": record['id']}])
-                    except Exception as exp:
-                        # anything this record does can raise: decoding its payload, splitting its
-                        # function name, or the replicated method itself. unguarded, that exception
-                        # leaves handle_requests entirely and is caught around the whole
-                        # journal_mother loop, so the delete below never runs, this record is read
-                        # first again on the next pass, and nothing behind it ever replicates -
-                        # while insync, the pings and the hardsync repair are skipped along with it.
-                        # catch it per record instead: count the attempt, and keep going. the rest
-                        # of the queue is not this record's business.
-                        tries = int(record['tries'] or 0) + 1
-                        detail = f"{record['function']}({record['object']}) send by {record['sendby']}"
-                        if tries >= MAX_REPLICATION_TRIES:
-                            self.logger.error(f"replicating {detail} failed {tries} times, giving up. dropping record {record['id']}: {exp}")
-                            Database().delete_row('journal', [{"column": "id", "value": record['id']}])
-                        else:
-                            self.logger.error(f"replicating {detail} failed, attempt {tries} of {MAX_REPLICATION_TRIES}, will retry: {exp}")
-                            Database().update('journal', [{"column": "tries", "value": str(tries)}],
-                                              [{"column": "id", "value": record['id']}])
+                    # we *always* have to remove the entries in the DB regarding outcome.
+                    Database().delete_row('journal', [{"column": "id", "value": record['id']}])
         return status
 
 

@@ -266,6 +266,23 @@ class Helper(object):
         return ','.join(response)
 
 
+    def check_cidr(self, value=None, ipv6=None):
+        """
+        Validate a CIDR prefix such as 10.144.35.0/24 or 2001:db8:35::/64. A prefix is required
+        (a bare address is rejected). When ipv6 is True or False, the address family must match,
+        so the caller can keep a v4-only or v6-only field honest. Returns True or False.
+        """
+        if not value or '/' not in str(value):
+            return False
+        try:
+            net = ipaddress.ip_network(str(value), strict=False)
+        except (ValueError, TypeError):
+            return False
+        if ipv6 is not None and (net.version == 6) != bool(ipv6):
+            return False
+        return True
+
+
     def get_network(self, ipaddr=None, subnet=None):
         """
         Input - IP Address + Subnet

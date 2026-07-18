@@ -38,7 +38,7 @@ import shutil
 from time import time, sleep
 import re
 from jinja2 import Environment, FileSystemLoader
-from ipaddress import ip_address
+from ipaddress import ip_address, ip_network
 from textwrap import dedent
 from utils.log import Log
 from utils.database import Database
@@ -134,6 +134,11 @@ class Config(object):
             if 'CONFIG6_PATH' in CONSTANT["DHCP"]:
                 dhcp6_config_path = CONSTANT["DHCP"]["CONFIG6_PATH"]
 
+        # option 82.5 link-selection is a Kea-only construct (shared-networks + link anchor). On the
+        # ISC dhcpd backend a link network must keep rendering exactly as before, so the routing
+        # change below is gated on the selected template being Kea, per family.
+        is_kea = 'kea' in template.lower()
+        is_kea6 = 'kea' in template6.lower()
         template_path = f'{CONSTANT["TEMPLATES"]["TEMPLATE_FILES"]}/{template}'
         check_template = Helper().check_jinja(template_path)
         if not check_template:
@@ -231,11 +236,15 @@ class Config(object):
             ):
                 networksbyname[network]['ipv6'] = True
             if networksbyname[network]['shared'] and networksbyname[network]['shared'] in networksbyname.keys():
-                if networksbyname[network]['ipv4']:
+                # a network carrying a dhcp_link_subnet anchor is rendered as its own Kea
+                # shared-networks block (option 82.5, below), so it does not join the flat shared
+                # group for that family. The decision is per family: a v4-only anchor still lets
+                # the v6 side piggyback as before.
+                if networksbyname[network]['ipv4'] and not (is_kea and networksbyname[network].get('dhcp_link_subnet')):
                     if not networksbyname[network]['shared'] in shared.keys():
                         shared[networksbyname[network]['shared']] = []
                     shared[networksbyname[network]['shared']].append(network)
-                if networksbyname[network]['ipv6']:
+                if networksbyname[network]['ipv6'] and not (is_kea6 and networksbyname[network].get('dhcp_link_subnet_ipv6')):
                     if not networksbyname[network]['shared'] in shared6.keys():
                         shared6[networksbyname[network]['shared']] = []
                     shared6[networksbyname[network]['shared']].append(network)
@@ -302,6 +311,30 @@ class Config(object):
                 config_classes6[piggyback]={}
                 config_classes6[piggyback]['network']=piggyback
                 handled.append(piggyback+'_ipv6')
+
+        # option-82.5 (RFC 3527) link-selection: a network with a dhcp_link_subnet anchor is lifted
+        # into its own Kea shared-networks block - a pool-less anchor on the relay's link prefix
+        # alongside the boot subnet - so a relay that rewrites subnet selection via sub-option 5
+        # still lands the client in the boot pool. Only the opted-in network moves; it is excluded
+        # from the shared groups above and marked handled here so the plain subnet loop skips it.
+        config_linksel = {}
+        config_linksel6 = {}
+        for network in networksbyname.keys():
+            nwk = networksbyname[network]
+            if not nwk['dhcp']:
+                continue
+            if is_kea and nwk.get('dhcp_link_subnet') and nwk['ipv4'] and network not in handled:
+                anchors = self.dhcp_link_anchors(nwk['dhcp_link_subnet'], 'ipv4')
+                if anchors:
+                    config_linksel[network] = {'anchor': anchors, 'boot': self.dhcp_subnet_config(nwk, False, 'ipv4')}
+                    config_reservations[network] = []
+                    handled.append(network)
+            if is_kea6 and nwk.get('dhcp_link_subnet_ipv6') and nwk['ipv6'] and network+'_ipv6' not in handled:
+                anchors = self.dhcp_link_anchors(nwk['dhcp_link_subnet_ipv6'], 'ipv6')
+                if anchors:
+                    config_linksel6[network] = {'anchor': anchors, 'boot': self.dhcp_subnet_config(nwk, False, 'ipv6')}
+                    config_reservations6[network] = []
+                    handled.append(network+'_ipv6')
 
         # we handle all (remaining) networks below
         if networksbyname:
@@ -438,10 +471,11 @@ class Config(object):
             file_loader = FileSystemLoader(CONSTANT["TEMPLATES"]["TEMPLATE_FILES"])
             env = Environment(loader=file_loader)
             # IPv4 -----------------------------------
-            if any([config_subnets, config_shared, config_empty]):
+            if any([config_subnets, config_shared, config_empty, config_linksel]):
                 dhcpd_template = env.get_template(template)
                 dhcpd_config = dhcpd_template.render(CLASSES=config_classes,SHARED=config_shared,SUBNETS=config_subnets,
                                                      ZONES=config_zones,EMPTY=config_empty,POOLS=config_pools,
+                                                     LINKSEL=config_linksel,
                                                      DOMAINNAME=domain,NAMESERVERS=nameserver_ip,NTPSERVERS=ntp_server,
                                                      RESERVATIONS=config_reservations,OMAPIKEY=omapikey,
                                                      TSIGKEY=tsigkey,TSIGALGO=tsigalgo)
@@ -459,11 +493,12 @@ class Config(object):
                 else:
                     shutil.copyfile(dhcp_file, dhcp_config_path)
             # IPv6 -----------------------------------
-            if any([config_subnets6, config_shared6, config_empty6]):
+            if any([config_subnets6, config_shared6, config_empty6, config_linksel6]):
                 interfaces = Helper().get_controller_interfaces_for_networks()
                 dhcpd_template = env.get_template(template6)
                 dhcpd_config = dhcpd_template.render(CLASSES=config_classes6,SHARED=config_shared6,SUBNETS=config_subnets6,
                                                      ZONES=config_zones6,EMPTY=config_empty6,POOLS=config_pools6,
+                                                     LINKSEL=config_linksel6,
                                                      DOMAINNAME=domain,NAMESERVERS=nameserver_ip,
                                                      NAMESERVERS_IPV6=nameserver_ip_ipv6,NTPSERVERS=ntp_server,
                                                      RESERVATIONS=config_reservations6,OMAPIKEY=omapikey,
@@ -488,8 +523,33 @@ class Config(object):
         return validate
 
 
+    def dhcp_link_anchors (self, value=None, ipversion='ipv4'):
+        """
+        Split a dhcp_link_subnet CSV into normalised anchor prefixes (network form, e.g.
+        10.144.35.253/24 -> 10.144.35.0/24). Entries of the wrong family or that will not parse
+        are skipped loudly rather than reaching the Kea config, where they would fail the whole
+        subnet element. Validation in base/network.py should have caught these already.
+        """
+        want_ipv6 = (ipversion == 'ipv6')
+        anchors = []
+        for entry in (value or '').split(','):
+            entry = entry.strip()
+            if not entry:
+                continue
+            try:
+                net = ip_network(entry, strict=False)
+            except (ValueError, TypeError) as exp:
+                self.logger.error(f"Skipping invalid dhcp_link_subnet anchor {entry}: {exp}")
+                continue
+            if (net.version == 6) != want_ipv6:
+                self.logger.error(f"Skipping dhcp_link_subnet anchor {entry}: wrong family for {ipversion}")
+                continue
+            anchors.append(str(net))
+        return anchors
+
+
     def dhcp_subnet_config (self,nwk=[],shared=False,ipversion='ipv4'):
-        """ 
+        """
         dhcp subnetblock with config
         glue between the various other subnet blocks: prepare for dhcp_subnet function
         """

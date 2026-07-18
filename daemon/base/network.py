@@ -94,6 +94,7 @@ class Network():
             'dhcp', 'dhcp_range_begin', 'dhcp_range_end',
             'dhcp_range_begin_ipv6', 'dhcp_range_end_ipv6',
             'dhcp_nodes_only', 'dhcp_nodes_in_pool', 'dhcp_relay',
+            'dhcp_link_subnet', 'dhcp_link_subnet_ipv6',
             'zone', 'nameserver_ip', 'nameserver_ip_ipv6',
             'ntp_server', 'shared', 'non_authoritative'
         }
@@ -398,6 +399,25 @@ class Network():
                     if not Helper().check_ip(relay.strip()):
                         status=False
                         return status, f'Invalid request: Incorrect DHCP relay IP: {relay.strip()}'
+            # dhcp_link_subnet(_ipv6): the option-82.5 (RFC 3527) link-selection anchor prefix. It
+            # only has meaning on a relayed path, so it requires dhcp_relay; and it renders into the
+            # family-specific Kea config, so each entry must be a CIDR of that family.
+            effective_relay = data['dhcp_relay'] if 'dhcp_relay' in data else (db_data['dhcp_relay'] if db_data else None)
+            for link_field, link_ipv6 in (('dhcp_link_subnet', False), ('dhcp_link_subnet_ipv6', True)):
+                if link_field in data and data[link_field] != '':
+                    if not (effective_relay and str(effective_relay).strip()):
+                        status=False
+                        return status, f'Invalid request: {link_field} requires dhcp_relay to be set first'
+                    for link in data[link_field].split(','):
+                        if not Helper().check_cidr(link.strip(), ipv6=link_ipv6):
+                            family = 'IPv6' if link_ipv6 else 'IPv4'
+                            status=False
+                            return status, f'Invalid request: Incorrect DHCP link subnet ({family} CIDR expected): {link.strip()}'
+            # clearing the relay removes the reason for any link anchor: cascade-clear both link twins
+            # so no orphaned option-82.5 config can be left behind.
+            if 'dhcp_relay' in data and data['dhcp_relay'] == '':
+                data['dhcp_link_subnet'] = ''
+                data['dhcp_link_subnet_ipv6'] = ''
             valid = True
             request_dhcp = None
             request_dhcp_nodes_only = None

@@ -179,6 +179,56 @@ def test_dhcp_kea_link_selection_renders_shared_network(config_env, seeded, cons
 
 
 @pytest.mark.regression
+def test_dhcp_kea_ntp_v4_emitted_only_for_ipv4(config_env, seeded, constant):
+    """TRIX-1939: dhcp4 ntp-servers (option 42) is emitted only for an IPv4 ntp_server. A network
+    whose ntp_server is an IPv6 address or a host name must not emit it -- that value fails the
+    whole subnet4 element in kea."""
+    from utils.config import Config
+
+    # seeded 'cluster' has an IPv4 ntp_server (emitted). Add one IPv6-ntp and one host-name-ntp net.
+    _insert("network", name="n6", network="10.161.0.0", subnet="255.255.0.0", dhcp=1,
+            dhcp_range_begin="10.161.10.1", dhcp_range_end="10.161.10.254",
+            nameserver_ip="10.141.0.1", ntp_server="2001:db8::9", zone="n6")
+    _insert("network", name="nf", network="10.162.0.0", subnet="255.255.0.0", dhcp=1,
+            dhcp_range_begin="10.162.10.1", dhcp_range_end="10.162.10.254",
+            nameserver_ip="10.141.0.1", ntp_server="ntp.example.org", zone="nf")
+    constant["DHCP"]["TEMPLATE"] = "templ_kea-dhcp4.cfg"
+
+    assert Config().dhcp_overwrite() is True
+    content = open(os.path.join(config_env, "dhcpd.conf"), encoding="utf-8").read()
+
+    # three DHCP networks, three ntp_server values, but only the IPv4 one may emit ntp-servers
+    assert content.count('"ntp-servers"') == 1
+
+
+@pytest.mark.regression
+def test_dhcp_kea_ntp_v6_srv_addr_and_srv_fqdn(config_env, seeded, constant):
+    """TRIX-1939: dhcp6 carries an IPv6 ntp_server as the srv-addr sub-option and a host name as
+    the srv-fqdn sub-option of option 56 (RFC 5908); an IPv4 value is dropped."""
+    from utils.config import Config
+
+    _insert("network", name="v6addr", network="10.163.0.0", subnet="255.255.0.0",
+            network_ipv6="2001:db8:163::", subnet_ipv6="64", dhcp=1,
+            dhcp_range_begin_ipv6="2001:db8:163::10", dhcp_range_end_ipv6="2001:db8:163::ff",
+            nameserver_ip="10.141.0.1", ntp_server="2001:db8::9", zone="v6addr")
+    _insert("network", name="v6fqdn", network="10.164.0.0", subnet="255.255.0.0",
+            network_ipv6="2001:db8:164::", subnet_ipv6="64", dhcp=1,
+            dhcp_range_begin_ipv6="2001:db8:164::10", dhcp_range_end_ipv6="2001:db8:164::ff",
+            nameserver_ip="10.141.0.1", ntp_server="ntp.example.org", zone="v6fqdn")
+    constant["DHCP"]["TEMPLATE"] = "templ_kea-dhcp4.cfg"
+    constant["DHCP"]["TEMPLATE6"] = "templ_kea-dhcp6.cfg"
+
+    assert Config().dhcp_overwrite() is True
+    content = open(os.path.join(config_env, "dhcpd6.conf"), encoding="utf-8").read()
+
+    assert '"space": "ntp-server"' in content                 # the sub-option definitions exist
+    assert '"name": "ntp-server-srv-addr"' in content         # IPv6 address -> srv-addr
+    assert '"name": "ntp-server-srv-fqdn"' in content         # host name -> srv-fqdn
+    # the old plain-address form (rejected by kea 3.0) must be gone
+    assert '"name": "ntp-server", "csv-format"' not in content
+
+
+@pytest.mark.regression
 def test_dns_configure_renders_zone_and_named_conf(config_env, seeded):
     from utils.config import Config
 

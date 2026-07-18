@@ -152,6 +152,33 @@ def test_dhcp_kea_no_relay_block_when_unset(config_env, seeded, constant):
 
 
 @pytest.mark.regression
+def test_dhcp_kea_link_selection_renders_shared_network(config_env, seeded, constant):
+    """TRIX-1921: a network with dhcp_link_subnet is lifted into a Kea shared-networks block -- a
+    pool-less anchor on the link prefix (authoritative:false) beside the boot subnet, with the pool
+    fenced only on the option-82.5 path."""
+    from utils.config import Config
+
+    _insert("network", name="edge", network="10.160.0.0", subnet="255.255.0.0", dhcp=1,
+            dhcp_range_begin="10.160.10.1", dhcp_range_end="10.160.10.254",
+            nameserver_ip="10.141.0.1", ntp_server="10.141.0.1", zone="edge",
+            shared=NETWORK, dhcp_relay="10.160.0.1", dhcp_link_subnet="10.170.35.0/24")
+    constant["DHCP"]["TEMPLATE"] = "templ_kea-dhcp4.cfg"
+
+    assert Config().dhcp_overwrite() is True
+    content = open(os.path.join(config_env, "dhcpd.conf"), encoding="utf-8").read()
+
+    assert '"shared-networks"' in content
+    assert '"edge-linksel"' in content
+    assert '"subnet": "10.170.35.0/24"' in content        # the pool-less anchor
+    assert '"authoritative": false' in content            # suppress, not NAK, for foreign clients
+    assert '"edge-boot-class"' in content                 # the boot-pool fence
+    assert "relay4[5].exists" in content                  # fence gates only the 82.5 path
+    assert '"subnet": "10.160.0.0/' in content            # the boot subnet moved into the block
+    # the boot network no longer appears as a plain top-level subnet4 entry (it is inside the block)
+    assert content.index('"shared-networks"') < content.index('"subnet": "10.160.0.0/')
+
+
+@pytest.mark.regression
 def test_dns_configure_renders_zone_and_named_conf(config_env, seeded):
     from utils.config import Config
 

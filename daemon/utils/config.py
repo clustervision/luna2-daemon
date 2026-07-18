@@ -592,6 +592,19 @@ class Config(object):
         subnet['nameserver_ip']=nwk['nameserver_ip']
         subnet['nameserver_ip_ipv6']=nwk['nameserver_ip_ipv6']
         subnet['ntp_server']=nwk['ntp_server']
+        # An ntp_server may be an IPv4 address, an IPv6 address, or a host name. Each DHCP family can
+        # only carry some of these: the dhcp4 ntp-servers option (42) takes IPv4 addresses, and the
+        # dhcp6 ntp-server option (56) takes an IPv6 address (srv-addr) or a name (srv-fqdn). Classify
+        # it once here - through the shared helper, never a hand-rolled test - so each template emits
+        # only what its option accepts and drops what it cannot represent rather than feeding kea a
+        # value it rejects (which fails the whole subnet element).
+        if nwk['ntp_server']:
+            if Helper().check_if_ipv6(nwk['ntp_server']):
+                subnet['ntp_server_kind']='ipv6'
+            elif Helper().check_ip(nwk['ntp_server']):
+                subnet['ntp_server_kind']='ipv4'
+            else:
+                subnet['ntp_server_kind']='fqdn'
         # dhcp_relay is one field feeding both the dhcp4 and dhcp6 templates, and it has no _ipv6
         # twin to pick the family for us, so we filter here. a config may only carry its own family:
         # kea fails the whole subnet element on a mismatch - not just the relay line - so a single

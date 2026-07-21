@@ -137,8 +137,13 @@ class Config(object):
         if str(device.get('ostype') or '').lower() == 'cumulus':
             boot['cumulus'] = True
         # tftp_enable off (default) suppresses option 66 for the switch (HTTP ZTP goes straight through).
+        # When tftp is enabled and url_server overrides the boot host, point option 66 at that same host
+        # so it follows the override like next-server and the boot URL do; without an override the switch
+        # keeps inheriting the subnet-level tftp-server-name.
         if Helper().make_bool(device.get('tftp_enable')) is not True:
             boot['tftp_suppress'] = True
+        elif device.get('url_server'):
+            boot['tftp_server'] = device['url_server']
         return boot
 
 

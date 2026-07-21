@@ -332,6 +332,24 @@ def test_kea_tftp_enable_on_keeps_option66(config_env, constant, sqlite_db):
 
 
 @pytest.mark.regression
+def test_kea_tftp_enable_with_url_server_points_option66_at_override(config_env, constant, sqlite_db):
+    """tftp_enable=on + url_server: option 66 (tftp-server-name) follows the url_server override —
+    like next-server and the boot URL — instead of the switch inheriting the subnet default."""
+    from utils.config import Config
+    from utils.database import Database
+
+    _seed_cluster_with_switch(tftp_enable=1)
+    Database().update("switch", [{"column": "url_server", "value": "10.141.0.9"}],
+                      [{"column": "name", "value": SWITCH_NAME}])
+    constant["DHCP"]["TEMPLATE"] = "templ_kea-dhcp4.cfg"
+    assert Config().dhcp_overwrite() is True
+    content = open(os.path.join(config_env, "dhcpd.conf"), encoding="utf-8").read()
+
+    assert '"never-send": true' not in content                                  # enabled -> not suppressed
+    assert '"name": "tftp-server-name", "data": "10.141.0.9"' in content        # host-level, follows url_server
+
+
+@pytest.mark.regression
 def test_switch_ztp_json_renders_valid(seeded_switch):
     image = f"http://{CONTROLLER_IP}:7050/{DEFAULT_URL}"
     commands = f"http://{CONTROLLER_IP}:7050/boot/switch/{SWITCH_NAME}/commands"

@@ -123,7 +123,8 @@ class Switch():
 
             # an empty string from the CLI means: clear the field. Store NULL so
             # a cleared field reads back the same as a never-set one ("None").
-            for key in ('bootfile', 'default_url', 'ztpconfig', 'ztpformat'):
+            for key in ('bootfile', 'default_url', 'ztpconfig', 'ztpformat',
+                        'url_protocol', 'url_server', 'ostype'):
                 if key in data and str(data[key]).strip() == '':
                     data[key] = None
 
@@ -356,6 +357,15 @@ class Switch():
                     inuseby.append(node['name'])
                 response = f"Invalid request: switch {name} currently in use by "+', '.join(inuseby)+" ..."
                 return False, response
+
+            # a switch's interfaces (and their ipaddress rows) are not owned by Model().delete_record,
+            # so clear them here or they orphan when the switch is deleted.
+            for switch_interface in Database().get_record(table='switchinterface',
+                                                          where=f'switchid="{switchid}"'):
+                Database().delete_row('ipaddress',
+                                      [{"column": "tablerefid", "value": switch_interface['id']},
+                                       {"column": "tableref", "value": "switchinterface"}])
+            Database().delete_row('switchinterface', [{"column": "switchid", "value": switchid}])
 
             Database().delete_row('rackinventory', [{"column": "tablerefid", "value": switchid},
                                                     {"column": "tableref", "value": "switch"}])

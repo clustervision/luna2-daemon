@@ -237,7 +237,17 @@ DATABASE_LAYOUT_switch = [
 {"column": "bootfile",             "datatype": "VARCHAR", "length": "255"},
 {"column": "ztpconfig",            "datatype": "TEXT"},
 {"column": "ztpformat",            "datatype": "VARCHAR", "length": "20"},
+{"column": "url_protocol",         "datatype": "VARCHAR", "length": "20"},
+{"column": "url_server",           "datatype": "VARCHAR", "length": "255"},
+{"column": "tftp_enable",          "datatype": "INTEGER", "length": "10"},
+{"column": "ostype",               "datatype": "VARCHAR", "length": "20"},
 {"column": "comment",              "datatype": "VARCHAR", "length": "60"}]
+
+DATABASE_LAYOUT_switchinterface = [
+{"column": "id",                   "datatype": "INTEGER", "key": "PRIMARY", "keyadd": "AUTOINCREMENT"},
+{"column": "switchid",             "datatype": "INTEGER", "length": "10", "key": "UNIQUE", "with": "interface"},
+{"column": "interface",            "datatype": "VARCHAR", "length": "50"},
+{"column": "macaddress",           "datatype": "VARCHAR", "length": "200"}]
 
 DATABASE_LAYOUT_otherdevices = [
 {"column": "id",                   "datatype": "INTEGER", "key": "PRIMARY", "keyadd": "AUTOINCREMENT"},

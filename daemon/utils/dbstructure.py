@@ -47,6 +47,7 @@ class DBStructure():
         self.tables = ['status', 'queue', 'osimage', 'osimagetag', 'nodesecrets',
                        'nodeinterface', 'bmcsetup','ha', 'monitor', 'ipaddress',
                        'groupinterface', 'roles', 'group', 'network', 'user', 'switch',
+                       'switchinterface',
                        'cloud', 'otherdevices', 'controller', 'groupsecrets', 'node',
                        'cluster', 'tracker', 'dns', 'journal', 'rack', 'rackinventory',
                        'ping', 'reservedipaddress', 'reference', 'route', 'routemap',
@@ -194,6 +195,8 @@ class DBStructure():
             return DATABASE_LAYOUT_user
         if table == "switch":
             return DATABASE_LAYOUT_switch
+        if table == "switchinterface":
+            return DATABASE_LAYOUT_switchinterface
         if table == "cloud":
             return DATABASE_LAYOUT_cloud
         if table == "otherdevices":

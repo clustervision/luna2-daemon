@@ -184,3 +184,41 @@ def test_update_dhcp_range_outside_network_recalculates(sqlite_db):
     # the recomputed range now fits inside 10.141.0.0/24
     assert Helper().check_ip_range(net["dhcp_range_begin"], "10.141.0.0/24")
     assert Helper().check_ip_range(net["dhcp_range_end"], "10.141.0.0/24")
+
+
+# --- switch interface: an empty ipaddress clears both families (the node way) ---
+
+@pytest.mark.regression
+def test_switch_interface_empty_ipaddress_clears_both_families(seed, constant, monkeypatch):
+    """Matching node semantics: an empty ipaddress clears the whole address config (both v4 and
+    v6). There is no per-family clear input; a node drops one family by moving networks."""
+    from base.interface import Interface
+    from utils.database import Database
+
+    constant["SERVICES"].update({"DHCP": "kea-dhcp4", "DHCP6": "kea-dhcp6", "DNS": "named"})
+    monkeypatch.setattr("utils.service.Service.queue", lambda *a, **k: None)
+
+    _insert("network", name="dual", network="10.150.0.0", subnet="255.255.0.0",
+            network_ipv6="2001:db8:150::", subnet_ipv6="64")
+    _insert("switch", name="sw1", netboot=1)
+
+    def change(**addr):
+        rd = {"config": {"switch": {"sw1": {"interfaces":
+              [{"interface": "eth1", "network": "dual", **addr}]}}}}
+        return Interface().change_switch_interface("sw1", rd)
+
+    def iprow():
+        ifid = Database().get_record(table="switchinterface", where='interface="eth1"')[0]["id"]
+        return Database().get_record(table="ipaddress",
+               where=f'tableref="switchinterface" AND tablerefid={ifid}')[0]
+
+    ok, _ = change(ipaddress="10.150.0.10", ipaddress_ipv6="2001:db8:150::10")
+    assert ok is True
+    assert iprow()["ipaddress"] == "10.150.0.10"
+    assert iprow()["ipaddress_ipv6"] == "2001:db8:150::10"
+
+    # empty ipaddress clears BOTH families, like a node
+    ok, _ = change(ipaddress="")
+    assert ok is True
+    assert not iprow()["ipaddress"]
+    assert not iprow()["ipaddress_ipv6"]

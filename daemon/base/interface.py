@@ -935,3 +935,97 @@ class Interface():
             response = f'Group {name} not present in database'
             status=False
         return status, response
+
+
+    # -------------------- switch interfaces (TRIX-1880) --------------------
+    # A switch interface is deliberately lighter than a node interface: just a name and a mac,
+    # with its IP/network carried in the shared ipaddress table (tableref="switchinterface").
+    # Each interface (mac/ip) yields its own DHCP reservation; families (v4+v6) both supported.
+
+    def get_all_switch_interface(self, name=None):
+        """Return all interfaces of a switch."""
+        switch = Database().get_record(table='switch', where=f'name="{name}"')
+        if not switch:
+            return False, f'Switch {name} not present in database'
+        response = {'config': {'switch': {name: {'interfaces': []}}}}
+        interfaces = Database().get_record_join(
+            ['switchinterface.interface', 'switchinterface.macaddress',
+             'ipaddress.ipaddress', 'ipaddress.ipaddress_ipv6', 'network.name as network'],
+            ['ipaddress.tablerefid=switchinterface.id', 'network.id=ipaddress.networkid'],
+            [f'switchinterface.switchid="{switch[0]["id"]}"', 'ipaddress.tableref="switchinterface"']
+        )
+        if not interfaces:
+            return False, f'Switch {name} does not have any interface configured'
+        for iface in interfaces:
+            response['config']['switch'][name]['interfaces'].append(
+                {key: value for key, value in iface.items() if value}
+            )
+        return True, response
+
+
+    def change_switch_interface(self, name=None, request_data=None):
+        """Add or update one or more interfaces of a switch."""
+        if not request_data:
+            return False, 'Invalid request: Did not receive data'
+        switch = Database().get_record(table='switch', where=f'name="{name}"')
+        if not switch:
+            return False, f'Switch {name} not present in database'
+        switchid = switch[0]['id']
+        interfaces = request_data.get('config', {}).get('switch', {}).get(name, {}).get('interfaces')
+        if not interfaces:
+            return False, 'Invalid request: no interfaces provided'
+        for ifx in interfaces:
+            if 'interface' not in ifx:
+                return False, 'Invalid request: interface name is required for this operation'
+            interface = ifx['interface']
+            where = f'switchid="{switchid}" AND interface="{interface}"'
+            existing = Database().get_record(table='switchinterface', where=where)
+            row = [{'column': 'switchid', 'value': switchid},
+                   {'column': 'interface', 'value': interface}]
+            if ifx.get('macaddress') is not None:
+                row.append({'column': 'macaddress', 'value': ifx['macaddress']})
+            if existing:
+                interface_id = existing[0]['id']
+                Database().update('switchinterface', row, [{'column': 'id', 'value': interface_id}])
+            else:
+                interface_id = Database().insert('switchinterface', row)
+            network = ifx.get('network')
+            # Match node semantics: an empty ipaddress clears the whole address config (both
+            # families). There is no per-family clear input; to keep one family you move the
+            # interface to a network without the other, exactly as a node does.
+            if ifx.get('ipaddress') == '':
+                for ipversion in ('ipv4', 'ipv6'):
+                    result, message = Config().device_interface_clear_ipaddress(
+                        interface_id, 'switchinterface', ipversion=ipversion
+                    )
+                    if result is False:
+                        return False, message
+            else:
+                for address in (ifx.get('ipaddress'), ifx.get('ipaddress_ipv6')):
+                    if address:
+                        result, message = Config().device_ipaddress_config(
+                            interface_id, 'switchinterface', address, network
+                        )
+                        if result is False:
+                            return False, message
+        Service().queue('dhcp', 'restart')
+        Service().queue('dhcp6', 'restart')
+        return True, f'Switch {name} interface(s) updated'
+
+
+    def delete_switch_interface(self, name=None, interface=None):
+        """Remove one interface of a switch (and its ipaddress row)."""
+        switch = Database().get_record(table='switch', where=f'name="{name}"')
+        if not switch:
+            return False, f'Switch {name} not present in database'
+        where = f'switchid="{switch[0]["id"]}" AND interface="{interface}"'
+        existing = Database().get_record(table='switchinterface', where=where)
+        if not existing:
+            return False, f'Switch {name} interface {interface} not present in database'
+        interface_id = existing[0]['id']
+        Database().delete_row('ipaddress', [{'column': 'tablerefid', 'value': interface_id},
+                                            {'column': 'tableref', 'value': 'switchinterface'}])
+        Database().delete_row('switchinterface', [{'column': 'id', 'value': interface_id}])
+        Service().queue('dhcp', 'restart')
+        Service().queue('dhcp6', 'restart')
+        return True, f'Switch {name} interface {interface} removed'

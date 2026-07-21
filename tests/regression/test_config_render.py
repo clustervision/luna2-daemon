@@ -249,6 +249,44 @@ def test_dns_configure_renders_zone_and_named_conf(config_env, seeded):
 
 
 @pytest.mark.regression
+def test_dns_switch_interfaces_resolve_as_switch_dash_interface(config_env, seeded):
+    """A switch's own IP keeps its bare <switch> name; each switch interface with an IP on a
+    network resolves as <switch>-<interface> (so interfaces on the same zone do not collide);
+    a mac-only interface with no network is absent from DNS."""
+    from utils.config import Config
+    from utils.database import Database
+
+    netid = seeded["netid"]
+    _insert("switch", name="nvsw01", netboot=1)
+    swid = Database().get_record(table="switch", where='name="nvsw01"')[0]["id"]
+    _insert("ipaddress", ipaddress="10.141.0.20", tableref="switch", tablerefid=swid, networkid=netid)
+    _insert("switchinterface", switchid=swid, interface="eth1", macaddress="aa:bb:cc:00:00:e1")
+    eth1id = Database().get_record(table="switchinterface",
+                                   where=f'switchid={swid} AND interface="eth1"')[0]["id"]
+    _insert("ipaddress", ipaddress="10.141.0.21", tableref="switchinterface",
+            tablerefid=eth1id, networkid=netid)
+    # mac-only interface: no ipaddress row, so no network/zone -> must not reach DNS
+    _insert("switchinterface", switchid=swid, interface="mgmtonly", macaddress="aa:bb:cc:00:00:e2")
+
+    assert Config().dns_configure() is True
+    zone = open(os.path.join(config_env, f"{NETWORK}.luna.zone"), encoding="utf-8").read()
+
+    def a_record(name, ip):
+        return any(parts and parts[0] == name and "A" in parts and ip in parts
+                   for parts in (line.split() for line in zone.splitlines()))
+
+    assert a_record("nvsw01", "10.141.0.20")           # primary keeps bare name
+    assert a_record("nvsw01-eth1", "10.141.0.21")      # interface suffixed, distinct
+    # mac-only interface is silently and correctly skipped (no zone to live in)
+    first_labels = {line.split()[0] for line in zone.splitlines() if line.split()}
+    assert "mgmtonly" not in first_labels
+    assert "nvsw01-mgmtonly" not in first_labels
+    # reverse PTR carries the same distinct names
+    rev = open(os.path.join(config_env, "0.141.10.in-addr.arpa.luna.zone"), encoding="utf-8").read()
+    assert "nvsw01-eth1.cluster." in rev
+
+
+@pytest.mark.regression
 def test_get_dhcp_range_ips_from_network(config_env, seeded):
     from utils.config import Config
 

@@ -39,6 +39,7 @@ from utils.log import Log
 from common.validate_auth import token_required
 from common.validate_input import input_filter, validate_name
 from base.switch import Switch
+from base.interface import Interface
 from utils.journal import Journal
 from utils.helper import Helper
 
@@ -124,3 +125,40 @@ def config_switch_delete(name=None):
     access_code=Helper().get_access_code(status,response)
     response = {'message': response}
     return response, access_code
+
+
+@switch_blueprint.route("/config/switch/<string:name>/interfaces", methods=['GET'])
+@token_required
+@validate_name
+def config_switch_interfaces_get(name=None):
+    """This route will list all interfaces of a switch."""
+    status, response = Interface().get_all_switch_interface(name)
+    access_code = Helper().get_access_code(status, response)
+    if status is True:
+        return response, access_code
+    return {'message': response}, access_code
+
+
+@switch_blueprint.route("/config/switch/<string:name>/interfaces", methods=['POST'])
+@token_required
+@validate_name
+@input_filter(checks=['config:switch'], skip=None)
+def config_switch_interfaces_post(name=None):
+    """This route will add or update switch interface(s)."""
+    status, response = Journal().add_request(function="Interface.change_switch_interface", object=name, payload=request.data)
+    if status is True:
+        status, response = Interface().change_switch_interface(name, request.data)
+    access_code = Helper().get_access_code(status, response)
+    return {'message': response}, access_code
+
+
+@switch_blueprint.route("/config/switch/<string:name>/interfaces/<string:interface>/_delete", methods=['GET'])
+@token_required
+@validate_name
+def config_switch_interface_delete(name=None, interface=None):
+    """This route will delete a switch interface."""
+    status, response = Journal().add_request(function="Interface.delete_switch_interface", object=name, param=interface)
+    if status is True:
+        status, response = Interface().delete_switch_interface(name, interface)
+    access_code = Helper().get_access_code(status, response)
+    return {'message': response}, access_code

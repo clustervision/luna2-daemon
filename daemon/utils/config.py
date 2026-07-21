@@ -90,10 +90,11 @@ class Config(object):
         }
 
 
-    def dhcp_reservation_nextserver(self, network_name=None, subnets=None, shared=None):
-        """Return next-server/port for a network from normal or shared subnet config."""
+    def dhcp_reservation_nextserver(self, network_name=None, subnets=None, shared=None, linksel=None):
+        """Return next-server/port for a network from normal, shared, or link-selection subnet config."""
         subnets = subnets or {}
         shared = shared or {}
+        linksel = linksel or {}
         if network_name in subnets:
             return {
                 'server': subnets[network_name].get('nextserver'),
@@ -105,7 +106,40 @@ class Config(object):
                     'server': share[network_name].get('nextserver'),
                     'port': share[network_name].get('nextport')
                 }
+        # option-82.5 link-selection networks live in their own shared-networks block, so their
+        # next-server sits in the link-sel 'boot' subnet rather than in subnets/shared.
+        if network_name in linksel:
+            boot = linksel[network_name].get('boot', {})
+            return {'server': boot.get('nextserver'), 'port': boot.get('nextport')}
         return {'server': None, 'port': None}
+
+
+    def switch_boot_reservation(self, device, next_server):
+        """ZTP boot-option fields for a netboot switch reservation, shared by the v4 and v6
+        renderers. Returns an empty dict when the switch is not doing netboot, so callers can
+        blindly update() their host dict. next_server is the family-appropriate next-server."""
+        boot = {}
+        if Helper().make_bool(device.get('netboot')) is not True:
+            return boot
+        if not device.get('default_url') and not device.get('bootfile'):
+            self.logger.warning(
+                f"Switch {device['name']}: netboot is enabled but neither "
+                "default_url nor bootfile is defined; skipping netboot"
+            )
+            return boot
+        boot['switch'] = True
+        # url_server is an optional manual override of the boot host; else the known next-server.
+        boot['nextserver'] = device.get('url_server') or next_server['server']
+        boot['nextport'] = next_server['port']
+        # the daemon serves the switch recipe at boot/switch/<name>; advertise it when no explicit bootfile.
+        boot['bootfile'] = device.get('bootfile') or f"boot/switch/{device['name']}"
+        # ostype gates the Cumulus-only option 239; NVOS/generic never get it.
+        if str(device.get('ostype') or '').lower() == 'cumulus':
+            boot['cumulus'] = True
+        # tftp_enable off (default) suppresses option 66 for the switch (HTTP ZTP goes straight through).
+        if Helper().make_bool(device.get('tftp_enable')) is not True:
+            boot['tftp_suppress'] = True
+        return boot
 
 
     def dhcp_overwrite(self):
@@ -418,13 +452,23 @@ class Config(object):
                                     config_reservations[nwk['name']].append(config_host)
                 else:
                     self.logger.info(f'no nodes available for network {network_name} IPv4: {network_ip} or IPv6: {network_ipv6}')
-                for item in ['otherdevices', 'switch']:
-                    select = [f'{item}.name','ipaddress.ipaddress','ipaddress.ipaddress_ipv6',f'{item}.macaddress']
-                    if item == 'switch':
-                        select += ['switch.netboot', 'switch.default_url', 'switch.bootfile']
+                for item in ['otherdevices', 'switch', 'switchinterface']:
+                    if item == 'switchinterface':
+                        # additive: each extra switch interface (eth1+) gets its own reservation, keyed on
+                        # its own mac/ip but carrying the parent switch's ZTP config (netboot/ostype/...).
+                        select = ['switch.name', 'ipaddress.ipaddress', 'ipaddress.ipaddress_ipv6',
+                                  'switchinterface.macaddress', 'switch.netboot', 'switch.default_url',
+                                  'switch.bootfile', 'switch.ostype', 'switch.tftp_enable', 'switch.url_server']
+                        join = ['ipaddress.tablerefid=switchinterface.id', 'switchinterface.switchid=switch.id']
+                    else:
+                        select = [f'{item}.name','ipaddress.ipaddress','ipaddress.ipaddress_ipv6',f'{item}.macaddress']
+                        if item == 'switch':
+                            select += ['switch.netboot', 'switch.default_url', 'switch.bootfile',
+                                       'switch.ostype', 'switch.tftp_enable', 'switch.url_server']
+                        join = [f'ipaddress.tablerefid={item}.id']
                     devices = Database().get_record_join(
                         select,
-                        [f'ipaddress.tablerefid={item}.id'],
+                        join,
                         [f'tableref="{item}"', f'ipaddress.networkid="{network_id}"']
                     )
                     if devices:
@@ -436,6 +480,11 @@ class Config(object):
                                     config_host6['domain']=nwkdomain
                                     config_host6['ipaddress']=device['ipaddress_ipv6']
                                     config_host6['macaddress']=device['macaddress']
+                                    if item in ('switch', 'switchinterface'):
+                                        next_server = self.dhcp_reservation_nextserver(
+                                            nwk['name'], config_subnets6, config_shared6, config_linksel6
+                                        )
+                                        config_host6.update(self.switch_boot_reservation(device, next_server))
                                     if nwk['name'] in config_reservations6:
                                         config_reservations6[nwk['name']].append(config_host6)
                                 else:
@@ -444,24 +493,11 @@ class Config(object):
                                     config_host['domain']=nwkdomain
                                     config_host['ipaddress']=device['ipaddress']
                                     config_host['macaddress']=device['macaddress']
-                                    if item == 'switch' and Helper().make_bool(device['netboot']) is True:
-                                        if not device['default_url'] and not device['bootfile']:
-                                            self.logger.warning(
-                                                f"Switch {device['name']}: netboot is enabled but neither "
-                                                "default_url nor bootfile is defined; skipping netboot"
-                                            )
-                                        else:
-                                            config_host['switch']=True
-                                            next_server = self.dhcp_reservation_nextserver(
-                                                nwk['name'], config_subnets, config_shared
-                                            )
-                                            config_host['nextserver']=next_server['server']
-                                            config_host['nextport']=next_server['port']
-                                            if device['default_url']:
-                                                config_host['default_url']=device['default_url']
-                                            # The daemon serves the switch recipe at boot/switch/<name>,
-                                            # so advertise that path when no explicit bootfile is set.
-                                            config_host['bootfile']=device['bootfile'] or f"boot/switch/{device['name']}"
+                                    if item in ('switch', 'switchinterface'):
+                                        next_server = self.dhcp_reservation_nextserver(
+                                            nwk['name'], config_subnets, config_shared, config_linksel
+                                        )
+                                        config_host.update(self.switch_boot_reservation(device, next_server))
                                     if nwk['name'] in config_reservations:
                                         config_reservations[nwk['name']].append(config_host)
                     else:
@@ -835,6 +871,22 @@ class Config(object):
                 if devices:
                     mergedlist.append(devices)
 
+            # switch interfaces resolve as <switch>-<interface> so multiple interfaces of one
+            # switch on the same network do not collide on the bare switch name. The join through
+            # ipaddress+network self-gates: only an interface with an IP on an existing network
+            # appears here, so a mac-only interface is skipped (it has no zone to live in).
+            switch_ifaces = Database().get_record_join(
+                ['switch.name as switchname', 'switchinterface.interface as interface',
+                 'ipaddress.ipaddress', 'ipaddress.ipaddress_ipv6', 'network.name as networkname'],
+                ['ipaddress.tablerefid=switchinterface.id', 'switchinterface.switchid=switch.id',
+                 'network.id=ipaddress.networkid'],
+                ['ipaddress.tableref="switchinterface"', f'ipaddress.networkid="{network_id}"']
+            )
+            if switch_ifaces:
+                for switch_iface in switch_ifaces:
+                    switch_iface['host'] = f"{switch_iface['switchname']}-{switch_iface['interface']}"
+                mergedlist.append(switch_ifaces)
+
             additional = Database().get_record_join(
                     ['dns.*','network.name as networkname'],
                     ['dns.networkid=network.id'],
@@ -1044,8 +1096,8 @@ class Config(object):
         else:
             network_details = Database().get_record_join(
                 ['network.name as network', 'network.id'],
-                ['ipaddress.tablerefid=switch.id', 'network.id=ipaddress.networkid'],
-                [f'tableref="{device}"', f"switch.id='{device_id}'"]
+                [f'ipaddress.tablerefid={device}.id', 'network.id=ipaddress.networkid'],
+                [f'tableref="{device}"', f"{device}.id='{device_id}'"]
             )
             if network_details:
                 network_id = network_details[0]['id']
@@ -1095,6 +1147,28 @@ class Config(object):
                     return False,"IP address assignment failed"
             return True,"ipaddress changed"
         return False,"not enough details"
+
+    def device_interface_clear_ipaddress(self, device_id=None, device=None, ipversion='ipv4'):
+        """Clear (None) one address family of a device interface's ipaddress row, leaving the other
+        family untouched. Generic, device-parameterised parallel of device_ipaddress_config; device
+        is the tableref (e.g. 'switchinterface'). Mirrors node_interface_clear_ipaddress but by
+        tableref so it is not node-specific."""
+        where = f'tableref="{device}" AND tablerefid={device_id}'
+        check_ipaddress = Database().get_record(table='ipaddress', where=where)
+        if not check_ipaddress:
+            return True, "interface had no address configuration to clear"
+        clear_ip = {}
+        if ipversion == 'ipv4':
+            clear_ip['ipaddress'] = None
+        if ipversion == 'ipv6':
+            clear_ip['ipaddress_ipv6'] = None
+        row = Helper().make_rows(clear_ip)
+        result = Database().update('ipaddress', row,
+                                   [{"column": "tableref", "value": device},
+                                    {"column": "tablerefid", "value": device_id}])
+        if result:
+            return True, f"{ipversion} address cleared"
+        return False, f"failed to clear {ipversion} address"
 
     # ----------------------------------------------------------------------------------------------
 

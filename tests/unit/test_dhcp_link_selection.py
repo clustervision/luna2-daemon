@@ -78,23 +78,24 @@ def test_link_requires_relay_is_validated():
         "relayed path; without a relay it is a misconfiguration.")
 
 
-def test_link_is_validated_as_family_correct_cidr():
+def test_link_is_validated_as_cidr():
     source = inspect.getsource(Network.update_network)
-    assert "Helper().check_cidr(link.strip(), ipv6=link_ipv6)" in source, (
-        "dhcp_link_subnet(_ipv6) is no longer validated as a family-correct CIDR.")
+    assert "Helper().check_cidr(link, ipv6=None)" in source, (
+        "dhcp_link_subnet entries are no longer validated as CIDRs of either family before being "
+        "stored in the single twinless field.")
 
 
 def test_clearing_relay_cascades_to_clear_link():
     source = inspect.getsource(Network.update_network)
-    assert "data['dhcp_link_subnet'] = ''" in source and "data['dhcp_link_subnet_ipv6'] = ''" in source, (
-        "clearing dhcp_relay no longer cascade-clears the link twins, so an orphaned option-82.5 "
+    assert "data['dhcp_relay'] == ''" in source and "data['dhcp_link_subnet'] = ''" in source, (
+        "clearing dhcp_relay no longer cascade-clears dhcp_link_subnet, so an orphaned option-82.5 "
         "anchor can be left behind.")
 
 
-def test_link_fields_trigger_dhcp_refresh():
+def test_link_field_triggers_dhcp_refresh():
     source = inspect.getsource(Network)
-    assert "'dhcp_link_subnet', 'dhcp_link_subnet_ipv6'" in source, (
-        "the link fields are missing from the DHCP runtime-refresh trigger set; a change to them "
+    assert "'dhcp_link_subnet'," in source, (
+        "dhcp_link_subnet is missing from the DHCP runtime-refresh trigger set; a change to it "
         "would not regenerate the DHCP config.")
 
 

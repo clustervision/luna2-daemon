@@ -1001,13 +1001,16 @@ class Interface():
                     if result is False:
                         return False, message
             else:
-                for address in (ifx.get('ipaddress'), ifx.get('ipaddress_ipv6')):
-                    if address:
-                        result, message = Config().device_ipaddress_config(
-                            interface_id, 'switchinterface', address, network
-                        )
-                        if result is False:
-                            return False, message
+                # Node model: a single ipaddress, family auto-detected by device_ipaddress_config
+                # (writes ipaddress or ipaddress_ipv6, leaving the other family untouched). Set both
+                # families with two calls, exactly as a node interface does.
+                address = ifx.get('ipaddress')
+                if address:
+                    result, message = Config().device_ipaddress_config(
+                        interface_id, 'switchinterface', address, network
+                    )
+                    if result is False:
+                        return False, message
         Service().queue('dhcp', 'restart')
         Service().queue('dhcp6', 'restart')
         return True, f'Switch {name} interface(s) updated'

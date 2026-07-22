@@ -212,7 +212,15 @@ def test_switch_interface_empty_ipaddress_clears_both_families(seed, constant, m
         return Database().get_record(table="ipaddress",
                where=f'tableref="switchinterface" AND tablerefid={ifid}')[0]
 
-    ok, _ = change(ipaddress="10.150.0.10", ipaddress_ipv6="2001:db8:150::10")
+    # Node model: a single ipaddress, family auto-detected. v4 first...
+    ok, _ = change(ipaddress="10.150.0.10")
+    assert ok is True
+    assert iprow()["ipaddress"] == "10.150.0.10"
+    assert not iprow()["ipaddress_ipv6"]
+
+    # ...then v6 in a second call sets the ipv6 column AND preserves the existing v4
+    # (both families = two calls, exactly like a node interface; there is no -I6).
+    ok, _ = change(ipaddress="2001:db8:150::10")
     assert ok is True
     assert iprow()["ipaddress"] == "10.150.0.10"
     assert iprow()["ipaddress_ipv6"] == "2001:db8:150::10"

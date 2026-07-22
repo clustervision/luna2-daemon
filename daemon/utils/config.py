@@ -279,11 +279,12 @@ class Config(object):
                 # shared-networks block (option 82.5, below), so it does not join the flat shared
                 # group for that family. The decision is per family: a v4-only anchor still lets
                 # the v6 side piggyback as before.
-                if networksbyname[network]['ipv4'] and not (is_kea and networksbyname[network].get('dhcp_link_subnet')):
+                link_field = networksbyname[network].get('dhcp_link_subnet')
+                if networksbyname[network]['ipv4'] and not (is_kea and link_field and self.dhcp_link_anchors(link_field, 'ipv4')):
                     if not networksbyname[network]['shared'] in shared.keys():
                         shared[networksbyname[network]['shared']] = []
                     shared[networksbyname[network]['shared']].append(network)
-                if networksbyname[network]['ipv6'] and not (is_kea6 and networksbyname[network].get('dhcp_link_subnet_ipv6')):
+                if networksbyname[network]['ipv6'] and not (is_kea6 and link_field and self.dhcp_link_anchors(link_field, 'ipv6')):
                     if not networksbyname[network]['shared'] in shared6.keys():
                         shared6[networksbyname[network]['shared']] = []
                     shared6[networksbyname[network]['shared']].append(network)
@@ -368,8 +369,8 @@ class Config(object):
                     config_linksel[network] = {'anchor': anchors, 'boot': self.dhcp_subnet_config(nwk, False, 'ipv4')}
                     config_reservations[network] = []
                     handled.append(network)
-            if is_kea6 and nwk.get('dhcp_link_subnet_ipv6') and nwk['ipv6'] and network+'_ipv6' not in handled:
-                anchors = self.dhcp_link_anchors(nwk['dhcp_link_subnet_ipv6'], 'ipv6')
+            if is_kea6 and nwk.get('dhcp_link_subnet') and nwk['ipv6'] and network+'_ipv6' not in handled:
+                anchors = self.dhcp_link_anchors(nwk['dhcp_link_subnet'], 'ipv6')
                 if anchors:
                     config_linksel6[network] = {'anchor': anchors, 'boot': self.dhcp_subnet_config(nwk, False, 'ipv6')}
                     config_reservations6[network] = []

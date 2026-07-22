@@ -200,7 +200,6 @@ DATABASE_LAYOUT_network = [
 {"column": "dhcp_range_end_ipv6",  "datatype": "VARCHAR", "length": "60"},
 {"column": "dhcp_relay",           "datatype": "VARCHAR", "length": "200"},
 {"column": "dhcp_link_subnet",     "datatype": "VARCHAR", "length": "200"},
-{"column": "dhcp_link_subnet_ipv6","datatype": "VARCHAR", "length": "200"},
 {"column": "zone",                 "datatype": "VARCHAR", "length": "60"},
 {"column": "shared",               "datatype": "VARCHAR", "length": "60"},
 {"column": "type",                 "datatype": "VARCHAR", "length": "100"},

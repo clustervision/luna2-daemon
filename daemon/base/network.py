@@ -94,7 +94,7 @@ class Network():
             'dhcp', 'dhcp_range_begin', 'dhcp_range_end',
             'dhcp_range_begin_ipv6', 'dhcp_range_end_ipv6',
             'dhcp_nodes_only', 'dhcp_nodes_in_pool', 'dhcp_relay',
-            'dhcp_link_subnet', 'dhcp_link_subnet_ipv6',
+            'dhcp_link_subnet',
             'zone', 'nameserver_ip', 'nameserver_ip_ipv6',
             'ntp_server', 'shared', 'non_authoritative'
         }
@@ -373,11 +373,28 @@ class Network():
                             default_gateway_metric="100"
                         data['gateway_metric'] = default_gateway_metric
             if 'nameserver_ip' in data:
-                nsip_details = Helper().check_ip(data['nameserver_ip'])
-                if (not nsip_details) and data['nameserver_ip'] != '':
-                    status=False
-                    ret_msg = f'Invalid request: Incorrect Nameserver IP: {data["nameserver_ip"]}'
-                    return status, ret_msg
+                # nameserver_ip is a single input that may carry a mixed CSV of IPv4 and IPv6
+                # servers; segregate by family into the nameserver_ip (v4) and nameserver_ip_ipv6
+                # (v6) columns -- the same routing a single -N/--network value gets -- so the v6
+                # column is reachable from the one flag rather than being unsettable. Empty clears both.
+                if str(data['nameserver_ip']).strip() == '':
+                    data['nameserver_ip'] = ''
+                    data['nameserver_ip_ipv6'] = ''
+                else:
+                    v4_ns, v6_ns = [], []
+                    for nsip in data['nameserver_ip'].split(','):
+                        nsip = nsip.strip()
+                        if not nsip:
+                            continue
+                        if not Helper().check_ip(nsip):
+                            status=False
+                            return status, f'Invalid request: Incorrect Nameserver IP: {nsip}'
+                        if Helper().check_if_ipv6(nsip):
+                            v6_ns.append(nsip)
+                        else:
+                            v4_ns.append(nsip)
+                    data['nameserver_ip'] = ','.join(v4_ns)
+                    data['nameserver_ip_ipv6'] = ','.join(v6_ns)
             if 'ntp_server' in data:
                 # this field holds a server name or an IPv4 address, never IPv6: the dhcp4 config
                 # cannot carry one. check_if_ipv6 is safe on a name as well as an address.
@@ -399,25 +416,24 @@ class Network():
                     if not Helper().check_ip(relay.strip()):
                         status=False
                         return status, f'Invalid request: Incorrect DHCP relay IP: {relay.strip()}'
-            # dhcp_link_subnet(_ipv6): the option-82.5 (RFC 3527) link-selection anchor prefix. It
-            # only has meaning on a relayed path, so it requires dhcp_relay; and it renders into the
-            # family-specific Kea config, so each entry must be a CIDR of that family.
+            # dhcp_link_subnet: the option-82.5 (RFC 3527) link-selection anchor prefix(es). Like its
+            # sibling dhcp_relay, this is a single twinless field carrying a mixed CSV of IPv4 and IPv6
+            # CIDRs; the render filters it per family (dhcp_link_anchors), so there is no _ipv6 twin. A
+            # link anchor only has meaning on a relayed path, so it requires dhcp_relay.
             effective_relay = data['dhcp_relay'] if 'dhcp_relay' in data else (db_data['dhcp_relay'] if db_data else None)
-            for link_field, link_ipv6 in (('dhcp_link_subnet', False), ('dhcp_link_subnet_ipv6', True)):
-                if link_field in data and data[link_field] != '':
-                    if not (effective_relay and str(effective_relay).strip()):
+            if 'dhcp_link_subnet' in data and data['dhcp_link_subnet'] != '':
+                if not (effective_relay and str(effective_relay).strip()):
+                    status=False
+                    return status, 'Invalid request: dhcp_link_subnet requires dhcp_relay to be set first'
+                for link in data['dhcp_link_subnet'].split(','):
+                    link = link.strip()
+                    if link and not Helper().check_cidr(link, ipv6=None):
                         status=False
-                        return status, f'Invalid request: {link_field} requires dhcp_relay to be set first'
-                    for link in data[link_field].split(','):
-                        if not Helper().check_cidr(link.strip(), ipv6=link_ipv6):
-                            family = 'IPv6' if link_ipv6 else 'IPv4'
-                            status=False
-                            return status, f'Invalid request: Incorrect DHCP link subnet ({family} CIDR expected): {link.strip()}'
-            # clearing the relay removes the reason for any link anchor: cascade-clear both link twins
-            # so no orphaned option-82.5 config can be left behind.
+                        return status, f'Invalid request: Incorrect DHCP link subnet (IPv4 or IPv6 CIDR expected): {link}'
+            # clearing the relay removes the reason for any link anchor: cascade-clear it so no
+            # orphaned option-82.5 config can be left behind.
             if 'dhcp_relay' in data and data['dhcp_relay'] == '':
                 data['dhcp_link_subnet'] = ''
-                data['dhcp_link_subnet_ipv6'] = ''
             valid = True
             request_dhcp = None
             request_dhcp_nodes_only = None

@@ -1057,6 +1057,7 @@ class Interface():
                         return False, message
         Service().queue('dhcp', 'restart')
         Service().queue('dhcp6', 'restart')
+        Service().queue('dns', 'reload')
         return True, f'Switch {name} interface(s) updated'
 
 
@@ -1081,4 +1082,5 @@ class Interface():
         Database().delete_row('switchinterface', [{'column': 'id', 'value': interface_id}])
         Service().queue('dhcp', 'restart')
         Service().queue('dhcp6', 'restart')
+        Service().queue('dns', 'reload')
         return True, f'Switch {name} interface {interface} removed'

@@ -142,3 +142,21 @@ def test_switch_add_creates_mgmt_interface(sqlite_db):
                                where=f"tablerefid={ifaces[0]['id']} AND tableref='switchinterface'")
     assert ip and ip[0]["ipaddress"] == "10.141.0.9"
     assert not Database().get_record(table="ipaddress", where=f"tableref='switch' AND tablerefid={swid}")
+
+
+@pytest.mark.regression
+def test_switch_interface_change_and_delete_queue_dns_reload(sqlite_db, monkeypatch):
+    """A switch interface renders DNS A/PTR records (bare <switch> for mgmt, <switch>-<interface>
+    otherwise), so editing one must refresh DNS, not only DHCP -- as the node/group interface path
+    already does. Without the dns reload the zone keeps stale records until some other trigger."""
+    calls = []
+    monkeypatch.setattr("utils.service.Service.queue", lambda *a, **k: calls.append(a[1:]))
+    _seed_two_iface_switch()
+    ok, msg = _change("sw1", {"interface": "eth1", "newinterfacename": "swp1"})
+    assert ok is True, msg
+    assert ("dns", "reload") in calls, f"interface change must queue a dns reload; queued {calls}"
+    calls.clear()
+    from base.interface import Interface
+    ok, msg = Interface().delete_switch_interface("sw1", "swp1")   # non-mgmt, allowed
+    assert ok is True, msg
+    assert ("dns", "reload") in calls, f"interface delete must queue a dns reload; queued {calls}"

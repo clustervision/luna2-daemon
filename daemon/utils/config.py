@@ -462,9 +462,10 @@ class Config(object):
                     if item == 'switchinterface':
                         # additive: each extra switch interface (eth1+) gets its own reservation, keyed on
                         # its own mac/ip but carrying the parent switch's ZTP config (netboot/ostype/...).
-                        select = ['switch.name', 'ipaddress.ipaddress', 'ipaddress.ipaddress_ipv6',
-                                  'switchinterface.macaddress', 'switch.netboot', 'switch.default_url',
-                                  'switch.bootfile', 'switch.ostype', 'switch.tftp_enable', 'switch.url_server']
+                        select = ['switch.name', 'switchinterface.interface', 'ipaddress.ipaddress',
+                                  'ipaddress.ipaddress_ipv6', 'switchinterface.macaddress', 'switch.netboot',
+                                  'switch.default_url', 'switch.bootfile', 'switch.ostype',
+                                  'switch.tftp_enable', 'switch.url_server']
                         join = ['ipaddress.tablerefid=switchinterface.id', 'switchinterface.switchid=switch.id']
                     else:
                         select = [f'{item}.name','ipaddress.ipaddress','ipaddress.ipaddress_ipv6',f'{item}.macaddress']
@@ -480,9 +481,15 @@ class Config(object):
                     if devices:
                         for device in devices:
                             if device['macaddress']:
+                                # switch interfaces resolve as <switch>-<interface> so multiple
+                                # interfaces of one switch on a network do not collide on the bare
+                                # switch name (matches dns_configure). The primary keeps <switch>.
+                                resv_name = device['name']
+                                if item == 'switchinterface':
+                                    resv_name = f"{device['name']}-{device['interface']}"
                                 if device['ipaddress_ipv6']:
                                     config_host6={}
-                                    config_host6['name']=device['name']
+                                    config_host6['name']=resv_name
                                     config_host6['domain']=nwkdomain
                                     config_host6['ipaddress']=device['ipaddress_ipv6']
                                     config_host6['macaddress']=device['macaddress']
@@ -495,7 +502,7 @@ class Config(object):
                                         config_reservations6[nwk['name']].append(config_host6)
                                 else:
                                     config_host={}
-                                    config_host['name']=device['name']
+                                    config_host['name']=resv_name
                                     config_host['domain']=nwkdomain
                                     config_host['ipaddress']=device['ipaddress']
                                     config_host['macaddress']=device['macaddress']

@@ -476,3 +476,34 @@ def test_synthetic_mgmt_interface_does_not_leak_into_render(config_env, seeded_s
     content = open(os.path.join(config_env, "dhcpd.conf"), encoding="utf-8").read()
     assert content.count(f"host {SWITCH_NAME}.{NETWORK}") == 1
     assert f"{SWITCH_NAME}-{Interface.MGMT_INTERFACE}" not in content
+
+
+@pytest.mark.regression
+def test_switch_interface_reservations_are_uniquely_named(config_env, constant):
+    """Each mac'd switch interface gets its own DHCP reservation, named so they do not collide:
+    the management interface (the switch's own IP) keeps the bare <switch> name, every extra
+    interface is <switch>-<interface>. On ISC dhcpd two 'host' blocks of the same name would be an
+    invalid config; on Kea two reservations would share a hostname. Applies to both backends."""
+    from utils.config import Config
+    from utils.database import Database
+
+    seeded = _seed_cluster_with_switch()
+    _insert("switchinterface", switchid=seeded["switchid"], interface="eth1",
+            macaddress="aa:bb:cc:00:11:33")
+    e1 = Database().get_record(table="switchinterface", where="interface='eth1'")[0]["id"]
+    _insert("ipaddress", ipaddress="10.141.253.2", tableref="switchinterface",
+            tablerefid=e1, networkid=seeded["netid"])
+
+    # ISC dhcpd: two distinctly-named host blocks (mgmt bare, eth1 suffixed)
+    assert Config().dhcp_overwrite() is True
+    isc = open(os.path.join(config_env, "dhcpd.conf"), encoding="utf-8").read()
+    assert f"host {SWITCH_NAME}.{NETWORK} {{" in isc
+    assert f"host {SWITCH_NAME}-eth1.{NETWORK} {{" in isc
+    assert "aa:bb:cc:00:11:22" in isc and "aa:bb:cc:00:11:33" in isc
+
+    # Kea: same names as hostnames on the two reservations
+    constant["DHCP"]["TEMPLATE"] = "templ_kea-dhcp4.cfg"
+    assert Config().dhcp_overwrite() is True
+    kea = open(os.path.join(config_env, "dhcpd.conf"), encoding="utf-8").read()
+    assert f'"hostname": "{SWITCH_NAME}"' in kea
+    assert f'"hostname": "{SWITCH_NAME}-eth1"' in kea

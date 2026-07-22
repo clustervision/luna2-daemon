@@ -425,11 +425,30 @@ class Network():
                 if not (effective_relay and str(effective_relay).strip()):
                     status=False
                     return status, 'Invalid request: dhcp_link_subnet requires dhcp_relay to be set first'
+                # this network's own boot subnet(s), normalised. A link anchor equal to one of them
+                # renders a duplicate subnet inside the same shared-network, which Kea refuses
+                # ("can't store subnet because of conflict") -- so the whole config fails to load.
+                # Kea tolerates a non-equal overlap, so only the exact-duplicate case is rejected.
+                own_subnets = []
+                for net_field, sub_field in (('network', 'subnet'), ('network_ipv6', 'subnet_ipv6')):
+                    net_val = data[net_field] if net_field in data else (db_data[net_field] if db_data else None)
+                    sub_val = data[sub_field] if sub_field in data else (db_data[sub_field] if db_data else None)
+                    if net_val and sub_val:
+                        own = Helper().get_network(net_val, str(sub_val))
+                        if own and own != 'None':
+                            own_subnets.append(own)
                 for link in data['dhcp_link_subnet'].split(','):
                     link = link.strip()
-                    if link and not Helper().check_cidr(link, ipv6=None):
+                    if not link:
+                        continue
+                    if not Helper().check_cidr(link, ipv6=None):
                         status=False
                         return status, f'Invalid request: Incorrect DHCP link subnet (IPv4 or IPv6 CIDR expected): {link}'
+                    ip_part, _, prefix_part = link.partition('/')
+                    if Helper().get_network(ip_part, prefix_part) in own_subnets:
+                        status=False
+                        return status, (f'Invalid request: DHCP link subnet {link} is this network\'s own '
+                                        'subnet; the option-82.5 anchor must be a different prefix')
             # clearing the relay removes the reason for any link anchor: cascade-clear it so no
             # orphaned option-82.5 config can be left behind.
             if 'dhcp_relay' in data and data['dhcp_relay'] == '':

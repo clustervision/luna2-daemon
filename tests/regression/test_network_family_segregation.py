@@ -74,3 +74,45 @@ def test_dhcp_link_subnet_requires_relay(sqlite_db):
     ok, msg = _update("norelay", dhcp_link_subnet="192.0.2.0/24")
     assert ok is False
     assert "requires dhcp_relay" in msg
+
+
+def test_dhcp_link_subnet_rejects_own_subnet(sqlite_db):
+    """A link anchor equal to the network's own subnet renders a duplicate subnet Kea refuses
+    ('can't store subnet because of conflict'), so it is rejected at write-time."""
+    _insert("network", name="base3", network="10.150.0.0", subnet="255.255.0.0")
+    _insert("network", name="prov3", network="192.0.2.0", subnet="24",
+            shared="base3", dhcp_relay="198.51.100.1")
+    ok, msg = _update("prov3", dhcp_link_subnet="192.0.2.0/24")
+    assert ok is False
+    assert "own" in msg and "different prefix" in msg
+
+
+def test_dhcp_link_subnet_rejects_own_subnet_netmask_form(sqlite_db):
+    """Recognised even when the subnet is stored as a netmask rather than a prefix length."""
+    _insert("network", name="base5", network="10.150.0.0", subnet="255.255.0.0")
+    _insert("network", name="prov5", network="192.0.2.0", subnet="255.255.255.0",
+            shared="base5", dhcp_relay="198.51.100.1")
+    ok, msg = _update("prov5", dhcp_link_subnet="192.0.2.0/24")
+    assert ok is False
+    assert "own" in msg
+
+
+def test_dhcp_link_subnet_rejects_own_subnet_ipv6(sqlite_db):
+    """The same guard on the IPv6 side, against the network's own v6 subnet."""
+    _insert("network", name="base6", network="10.150.0.0", subnet="255.255.0.0")
+    _insert("network", name="prov6", network="192.0.2.0", subnet="24",
+            network_ipv6="2001:db8:6::", subnet_ipv6="64",
+            shared="base6", dhcp_relay="198.51.100.1")
+    ok, msg = _update("prov6", dhcp_link_subnet="2001:db8:6::/64")
+    assert ok is False
+    assert "own" in msg
+
+
+def test_dhcp_link_subnet_allows_distinct_prefix(sqlite_db):
+    """A distinct link prefix (the remote link the relay stamps) is accepted and stored."""
+    _insert("network", name="base4", network="10.150.0.0", subnet="255.255.0.0")
+    _insert("network", name="prov4", network="192.0.2.0", subnet="24",
+            shared="base4", dhcp_relay="198.51.100.1")
+    ok, msg = _update("prov4", dhcp_link_subnet="203.0.113.0/24,2001:db8:1::/64")
+    assert ok is True, msg
+    assert _row("prov4")["dhcp_link_subnet"] == "203.0.113.0/24,2001:db8:1::/64"

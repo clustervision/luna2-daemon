@@ -75,6 +75,21 @@ class Switch():
         return status, response
 
 
+    def ensure_mgmt_interface(self, switchid):
+        """The id of the switch's management interface (mgmt=1), creating a default 'eth0' one if the
+        switch has none yet. Routes the switch's own IP/MAC (from -I/-N/-m) onto it (unify model)."""
+        rows = Database().get_record(table='switchinterface', where=f"switchid='{switchid}' AND mgmt=1")
+        if rows:
+            return sorted(rows, key=lambda r: r['id'])[0]['id']
+        name = 'eth0'
+        if Database().get_record(table='switchinterface', where=f"switchid='{switchid}' AND interface='{name}'"):
+            name = 'mgmt0'
+        return Database().insert('switchinterface', [
+            {'column': 'switchid', 'value': switchid},
+            {'column': 'interface', 'value': name},
+            {'column': 'mgmt', 'value': 1}])
+
+
     def update_switch(self, name=None, request_data=None):
         """
         This method will create or update a switch.
@@ -128,13 +143,18 @@ class Switch():
                 if key in data and str(data[key]).strip() == '':
                     data[key] = None
 
-            ipaddress, network = None, None
+            ipaddress, network, macaddress = None, None, None
             if 'ipaddress' in data.keys():
                 ipaddress = data['ipaddress']
                 del data['ipaddress']
             if 'network' in data.keys():
                 network = data['network']
                 del data['network']
+            # the switch's own MAC belongs to its management interface (unify model), not the switch
+            # row; take it out of the row data and apply it to that interface below.
+            if 'macaddress' in data.keys():
+                macaddress = data['macaddress']
+                del data['macaddress']
 
             switch_columns = Database().get_columns(self.table)
             column_check = Helper().compare_list(data, switch_columns)
@@ -155,34 +175,34 @@ class Switch():
                     response = 'Invalid request: Columns are incorrect'
                     status=False
                     return status, response
-            # Antoine --->>> ----------- interface(s) update/create -------------
-            if nonetwork:
-                result, message = Config().device_raw_ipaddress_config(
-                    switchid,
-                    self.table,
-                    ipaddress
-                )
-                if result is False:
-                    response = f'{message}'
-                    status=False
-                    if create:
-                        self.delete_switch(name)
-            elif ipaddress or network:
-                result, message = Config().device_ipaddress_config(
-                    switchid,
-                    self.table,
-                    ipaddress,
-                    network
-                )
-                if result is False:
-                    response = f'{message}'
-                    status=False
-                    if create:
-                        self.delete_switch(name)
-                else:
-                    Service().queue('dhcp','restart')
-                    Service().queue('dhcp6','restart')
-                    Service().queue('dns','reload')
+            # ----------- management interface (mgmt=1) update/create -------------
+            # the switch's own IP/MAC live on its management interface, not the switch row.
+            if macaddress is not None or ipaddress is not None or network is not None or nonetwork:
+                mgmt_ifid = self.ensure_mgmt_interface(switchid)
+                if macaddress is not None:
+                    Database().update('switchinterface',
+                                      [{'column': 'macaddress', 'value': macaddress or None}],
+                                      [{'column': 'id', 'value': mgmt_ifid}])
+                if nonetwork:
+                    result, message = Config().device_raw_ipaddress_config(
+                        mgmt_ifid, 'switchinterface', ipaddress)
+                    if result is False:
+                        response = f'{message}'
+                        status=False
+                        if create:
+                            self.delete_switch(name)
+                elif ipaddress or network:
+                    result, message = Config().device_ipaddress_config(
+                        mgmt_ifid, 'switchinterface', ipaddress, network)
+                    if result is False:
+                        response = f'{message}'
+                        status=False
+                        if create:
+                            self.delete_switch(name)
+                    else:
+                        Service().queue('dhcp','restart')
+                        Service().queue('dhcp6','restart')
+                        Service().queue('dns','reload')
             return status, response
         else:
             response = 'Invalid request: Did not received data'

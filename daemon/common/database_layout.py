@@ -246,7 +246,8 @@ DATABASE_LAYOUT_switchinterface = [
 {"column": "id",                   "datatype": "INTEGER", "key": "PRIMARY", "keyadd": "AUTOINCREMENT"},
 {"column": "switchid",             "datatype": "INTEGER", "length": "10", "key": "UNIQUE", "with": "interface"},
 {"column": "interface",            "datatype": "VARCHAR", "length": "50"},
-{"column": "macaddress",           "datatype": "VARCHAR", "length": "200"}]
+{"column": "macaddress",           "datatype": "VARCHAR", "length": "200"},
+{"column": "mgmt",                 "datatype": "INTEGER", "length": "1"}]
 
 DATABASE_LAYOUT_otherdevices = [
 {"column": "id",                   "datatype": "INTEGER", "key": "PRIMARY", "keyadd": "AUTOINCREMENT"},

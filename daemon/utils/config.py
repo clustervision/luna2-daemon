@@ -147,6 +147,22 @@ class Config(object):
         return boot
 
 
+    def effective_mgmt_iface_ids(self):
+        """switchinterface ids that are the *effective* management interface of their switch: the
+        first (lowest id) mgmt=1 row per switch. The management interface renders as the bare
+        <switch> name in DHCP and DNS; every other interface renders <switch>-<interface>. This is
+        defensive on purpose: if a switch has several mgmt=1 rows (a bug, a hand DB edit, an
+        out-of-order replicated write) only its first is treated as the prime, so rendering can
+        never emit two bare <switch> names that would collide."""
+        rows = Database().get_record(table="switchinterface", where="mgmt=1") or []
+        ids, seen = set(), set()
+        for row in sorted(rows, key=lambda r: r['id']):
+            if row['switchid'] not in seen:
+                ids.add(row['id'])
+                seen.add(row['switchid'])
+        return ids
+
+
     def dhcp_overwrite(self):
         """
         This method collect dhcp enabled networks, node interfaces belongs to the networks and
@@ -243,6 +259,7 @@ class Config(object):
         config_pools6 = {}
         config_reservations = {}
         config_reservations6 = {}
+        mgmt_iface_ids = self.effective_mgmt_iface_ids()
         #
         networksbyname = {}
         emptybyname = {}
@@ -462,9 +479,9 @@ class Config(object):
                     if item == 'switchinterface':
                         # additive: each extra switch interface (eth1+) gets its own reservation, keyed on
                         # its own mac/ip but carrying the parent switch's ZTP config (netboot/ostype/...).
-                        select = ['switch.name', 'switchinterface.interface', 'ipaddress.ipaddress',
-                                  'ipaddress.ipaddress_ipv6', 'switchinterface.macaddress', 'switch.netboot',
-                                  'switch.default_url', 'switch.bootfile', 'switch.ostype',
+                        select = ['switch.name', 'switchinterface.interface', 'switchinterface.id as ifid',
+                                  'ipaddress.ipaddress', 'ipaddress.ipaddress_ipv6', 'switchinterface.macaddress',
+                                  'switch.netboot', 'switch.default_url', 'switch.bootfile', 'switch.ostype',
                                   'switch.tftp_enable', 'switch.url_server']
                         join = ['ipaddress.tablerefid=switchinterface.id', 'switchinterface.switchid=switch.id']
                     else:
@@ -481,11 +498,11 @@ class Config(object):
                     if devices:
                         for device in devices:
                             if device['macaddress']:
-                                # switch interfaces resolve as <switch>-<interface> so multiple
-                                # interfaces of one switch on a network do not collide on the bare
-                                # switch name (matches dns_configure). The primary keeps <switch>.
+                                # the management interface keeps the bare <switch> name; every other
+                                # switch interface is <switch>-<interface> so interfaces of one switch
+                                # on a network do not collide (matches dns_configure).
                                 resv_name = device['name']
-                                if item == 'switchinterface':
+                                if item == 'switchinterface' and device.get('ifid') not in mgmt_iface_ids:
                                     resv_name = f"{device['name']}-{device['interface']}"
                                 if device['ipaddress_ipv6']:
                                     config_host6={}
@@ -730,6 +747,7 @@ class Config(object):
         self.hooks_plugins = Helper().plugin_finder(f'{self.plugins_path}/hooks')
         dns_plugin = Helper().plugin_load(self.hooks_plugins, 'hooks/config', 'dns')
         validate = True
+        mgmt_iface_ids = self.effective_mgmt_iface_ids()
         template_dns_conf = 'templ_dns_conf.cfg' # i.e. /etc/named.conf
         template_dns_zones_conf = 'templ_dns_zones_conf.cfg' # i.e. /etc/named.luna.zones
         template_dns_zone = 'templ_dns_zone.cfg' # the actual zone data
@@ -890,6 +908,7 @@ class Config(object):
             # appears here, so a mac-only interface is skipped (it has no zone to live in).
             switch_ifaces = Database().get_record_join(
                 ['switch.name as switchname', 'switchinterface.interface as interface',
+                 'switchinterface.id as ifid',
                  'ipaddress.ipaddress', 'ipaddress.ipaddress_ipv6', 'network.name as networkname'],
                 ['ipaddress.tablerefid=switchinterface.id', 'switchinterface.switchid=switch.id',
                  'network.id=ipaddress.networkid'],
@@ -897,7 +916,10 @@ class Config(object):
             )
             if switch_ifaces:
                 for switch_iface in switch_ifaces:
-                    switch_iface['host'] = f"{switch_iface['switchname']}-{switch_iface['interface']}"
+                    if switch_iface['ifid'] in mgmt_iface_ids:
+                        switch_iface['host'] = switch_iface['switchname']
+                    else:
+                        switch_iface['host'] = f"{switch_iface['switchname']}-{switch_iface['interface']}"
                 mergedlist.append(switch_ifaces)
 
             additional = Database().get_record_join(

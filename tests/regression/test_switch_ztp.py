@@ -287,9 +287,12 @@ def test_motherload_linksel_plus_switch_ztp(config_env, constant, sqlite_db, tmp
 
 @pytest.mark.regression
 def test_switch_interface_gets_its_own_reservation(config_env, constant, seeded_switch):
-    """An added switch interface (eth1) yields its own Kea reservation; eth0 (switch IP) stays."""
+    """An added switch interface (eth1) yields its own Kea reservation; the mgmt interface stays."""
     from base.interface import Interface
     from utils.config import Config
+    from common.bootstrap import migrate_switch_interfaces
+
+    migrate_switch_interfaces()  # unify: the switch's own IP/MAC become a mgmt=1 eth0 interface
 
     IF_MAC = "aa:bb:cc:00:11:33"
     IF_IP = "10.141.253.2"
@@ -313,12 +316,11 @@ def test_switch_interface_gets_its_own_reservation(config_env, constant, seeded_
 
     status, msg = Interface().delete_switch_interface(SWITCH_NAME, 'eth1')
     assert status is True, msg
-    # eth1 is gone, but the switch's own management IP remains and is presented as the synthetic
-    # management interface — so the listing is that one interface, not empty.
+    # eth1 is gone; the mgmt interface (eth0) remains
     status, resp = Interface().get_all_switch_interface(SWITCH_NAME)
     assert status is True
     ifaces = resp['config']['switch'][SWITCH_NAME]['interfaces']
-    assert [i['interface'] for i in ifaces] == [Interface.MGMT_INTERFACE]
+    assert [i['interface'] for i in ifaces] == ['eth0']
 
 
 @pytest.mark.regression
@@ -458,25 +460,6 @@ def test_delete_switch_cascades_to_switchinterface(config_env, seeded_switch):
                                      where=f'tableref="switchinterface" AND tablerefid={ifid}')
 
 
-@pytest.mark.regression
-def test_synthetic_mgmt_interface_does_not_leak_into_render(config_env, seeded_switch):
-    """The synthetic management interface lives only in the read API. DHCP renders from the
-    switchinterface table directly, so the management IP must appear exactly once as the bare
-    switch reservation and never as a <switch>-<mgmt> interface reservation."""
-    from base.interface import Interface
-    from utils.config import Config
-
-    # the read path does present it as a synthetic interface...
-    ok, resp = Interface().get_all_switch_interface(SWITCH_NAME)
-    assert ok is True
-    assert resp["config"]["switch"][SWITCH_NAME]["interfaces"][0]["interface"] == Interface.MGMT_INTERFACE
-
-    # ...but the render must not see it: bare <switch> reservation once, no <switch>-eth0.
-    assert Config().dhcp_overwrite() is True
-    content = open(os.path.join(config_env, "dhcpd.conf"), encoding="utf-8").read()
-    assert content.count(f"host {SWITCH_NAME}.{NETWORK}") == 1
-    assert f"{SWITCH_NAME}-{Interface.MGMT_INTERFACE}" not in content
-
 
 @pytest.mark.regression
 def test_switch_interface_reservations_are_uniquely_named(config_env, constant):
@@ -507,3 +490,44 @@ def test_switch_interface_reservations_are_uniquely_named(config_env, constant):
     kea = open(os.path.join(config_env, "dhcpd.conf"), encoding="utf-8").read()
     assert f'"hostname": "{SWITCH_NAME}"' in kea
     assert f'"hostname": "{SWITCH_NAME}-eth1"' in kea
+
+
+@pytest.mark.regression
+def test_unify_mgmt_renders_bare_extras_suffixed(config_env, constant):
+    """After the unify migration the primary is a mgmt=1 switchinterface row; it renders as the bare
+    <switch> DHCP reservation, while a non-mgmt interface renders <switch>-<interface>."""
+    from utils.database import Database
+    from common.bootstrap import migrate_switch_interfaces
+    from utils.config import Config
+    seeded = _seed_cluster_with_switch()
+    migrate_switch_interfaces()
+    _insert("switchinterface", switchid=seeded["switchid"], interface="eth1",
+            macaddress="aa:bb:cc:00:11:33")
+    e1 = Database().get_record(table="switchinterface", where="interface='eth1'")[0]["id"]
+    _insert("ipaddress", ipaddress="10.141.253.2", tableref="switchinterface",
+            tablerefid=e1, networkid=seeded["netid"])
+    assert Config().dhcp_overwrite() is True
+    isc = open(os.path.join(config_env, "dhcpd.conf"), encoding="utf-8").read()
+    assert f"host {SWITCH_NAME}.{NETWORK} {{" in isc          # mgmt interface -> bare switch name
+    assert f"host {SWITCH_NAME}-eth1.{NETWORK} {{" in isc     # extra interface -> suffixed
+    assert SWITCH_MAC in isc  # the migrated mgmt mac still renders
+
+
+@pytest.mark.regression
+def test_unify_first_mgmt_wins_safety_net(config_env):
+    """If a switch accidentally has several mgmt=1 rows, only the first (lowest id) renders as the
+    bare <switch> name; the rest fall back to <switch>-<interface>, so no two reservations collide."""
+    from utils.database import Database
+    from common.bootstrap import migrate_switch_interfaces
+    from utils.config import Config
+    seeded = _seed_cluster_with_switch()
+    migrate_switch_interfaces()  # eth0 mgmt=1 (lowest id)
+    _insert("switchinterface", switchid=seeded["switchid"], interface="eth9",
+            macaddress="aa:bb:cc:00:11:99", mgmt=1)  # a second, accidental mgmt=1
+    e9 = Database().get_record(table="switchinterface", where="interface='eth9'")[0]["id"]
+    _insert("ipaddress", ipaddress="10.141.253.9", tableref="switchinterface",
+            tablerefid=e9, networkid=seeded["netid"])
+    assert Config().dhcp_overwrite() is True
+    isc = open(os.path.join(config_env, "dhcpd.conf"), encoding="utf-8").read()
+    assert isc.count(f"host {SWITCH_NAME}.{NETWORK} {{") == 1     # exactly one bare block
+    assert f"host {SWITCH_NAME}-eth9.{NETWORK} {{" in isc         # the extra mgmt falls back

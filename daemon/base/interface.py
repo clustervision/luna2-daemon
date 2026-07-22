@@ -942,61 +942,25 @@ class Interface():
     # with its IP/network carried in the shared ipaddress table (tableref="switchinterface").
     # Each interface (mac/ip) yields its own DHCP reservation; families (v4+v6) both supported.
 
-    # The switch's management IP lives on tableref="switch" (the additive model) with no interface
-    # name of its own. For the listing it is presented as a synthetic interface under the name a
-    # switch conventionally gives its management port. This constant is the single place that name
-    # is decided — change it here (or make it per-platform later) without touching the logic below.
-    MGMT_INTERFACE = 'eth0'
-
-    @staticmethod
-    def _switch_named_interface(switchid, interface):
-        """The switchinterface row named `interface` for this switch, or None.
-
-        Name-agnostic: it serves the management-name lookup and the write-guards alike, for any
-        interface a switch may carry (eth0, eth1, mgmt1, ...).
-        """
-        existing = Database().get_record(
-            table='switchinterface', where=f'switchid="{switchid}" AND interface="{interface}"'
-        )
-        return existing[0] if existing else None
-
-    def _synthetic_mgmt_interface(self, switch):
-        """Present the management IP (tableref="switch") as a read-only interface named MGMT_INTERFACE.
-
-        Returns the interface dict, or None when there is nothing to present (no primary IP on a
-        network, or a real row already owns that name). Read-only: never written, and never seen by
-        a renderer — DHCP/DNS read the switchinterface table directly.
-        """
-        if self._switch_named_interface(switch['id'], self.MGMT_INTERFACE):
-            return None
-        primary = Database().get_record_join(
-            ['ipaddress.ipaddress', 'ipaddress.ipaddress_ipv6', 'network.name as network'],
-            ['ipaddress.tablerefid=switch.id', 'network.id=ipaddress.networkid'],
-            [f'switch.id="{switch["id"]}"', 'ipaddress.tableref="switch"']
-        )
-        if not primary:
-            return None
-        iface = {'interface': self.MGMT_INTERFACE, 'macaddress': switch.get('macaddress'), **primary[0]}
-        return {key: value for key, value in iface.items() if value}
+    # The prime/management interface of a switch is the one flagged mgmt=1; it renders as the bare
+    # <switch> name in DHCP/DNS while every other interface renders <switch>-<interface>. The old
+    # management IP (once stored on the switch row, tableref="switch") is moved into a mgmt=1
+    # interface at bootstrap by migrate_switch_interfaces(). The interface name is just a label.
 
     def get_all_switch_interface(self, name=None):
-        """Return all interfaces of a switch (synthetic management interface first, then rows)."""
+        """Return all interfaces of a switch (the management one carries mgmt=1)."""
         switch = Database().get_record(table='switch', where=f'name="{name}"')
         if not switch:
             return False, f'Switch {name} not present in database'
         response = {'config': {'switch': {name: {'interfaces': []}}}}
-        collected = []
-        synthetic = self._synthetic_mgmt_interface(switch[0])
-        if synthetic:
-            collected.append(synthetic)
         interfaces = Database().get_record_join(
-            ['switchinterface.interface', 'switchinterface.macaddress',
+            ['switchinterface.interface', 'switchinterface.macaddress', 'switchinterface.mgmt',
              'ipaddress.ipaddress', 'ipaddress.ipaddress_ipv6', 'network.name as network'],
             ['ipaddress.tablerefid=switchinterface.id', 'network.id=ipaddress.networkid'],
             [f'switchinterface.switchid="{switch[0]["id"]}"', 'ipaddress.tableref="switchinterface"']
         )
-        for iface in interfaces or []:
-            collected.append({key: value for key, value in iface.items() if value})
+        collected = [{key: value for key, value in iface.items() if value}
+                     for iface in (interfaces or [])]
         if not collected:
             return False, f'Switch {name} does not have any interface configured'
         response['config']['switch'][name]['interfaces'] = collected
@@ -1004,7 +968,7 @@ class Interface():
 
 
     def get_switch_interface(self, name=None, interface=None):
-        """Return one interface of a switch, the synthetic management interface included."""
+        """Return one interface of a switch."""
         status, response = self.get_all_switch_interface(name)
         if status is False:
             return status, response
@@ -1030,11 +994,21 @@ class Interface():
             if 'interface' not in ifx:
                 return False, 'Invalid request: interface name is required for this operation'
             interface = ifx['interface']
-            if interface == self.MGMT_INTERFACE and not self._switch_named_interface(switchid, interface):
-                return False, (f"Invalid request: {interface} is the switch's management interface; "
-                               "set it with 'luna switch change' (-N/-I/-m)")
-            where = f'switchid="{switchid}" AND interface="{interface}"'
-            existing = Database().get_record(table='switchinterface', where=where)
+            existing = Database().get_record(
+                table='switchinterface', where=f'switchid="{switchid}" AND interface="{interface}"')
+            # rename: the name is just a label (mgmt-ness is the mgmt flag), so any interface renames.
+            new_name = ifx.get('newinterfacename')
+            if new_name:
+                if not existing:
+                    return False, f'Switch {name} interface {interface} not present in database'
+                if Database().get_record(table='switchinterface',
+                                         where=f'switchid="{switchid}" AND interface="{new_name}"'):
+                    return False, f'Invalid request: switch {name} already has an interface {new_name}'
+                Database().update('switchinterface', [{'column': 'interface', 'value': new_name}],
+                                  [{'column': 'id', 'value': existing[0]['id']}])
+                interface = new_name
+                existing = Database().get_record(
+                    table='switchinterface', where=f'switchid="{switchid}" AND interface="{interface}"')
             row = [{'column': 'switchid', 'value': switchid},
                    {'column': 'interface', 'value': interface}]
             if ifx.get('macaddress') is not None:
@@ -1044,6 +1018,21 @@ class Interface():
                 Database().update('switchinterface', row, [{'column': 'id', 'value': interface_id}])
             else:
                 interface_id = Database().insert('switchinterface', row)
+            # the management flag: exactly one prime per switch. mgmt=1 moves it here and clears it
+            # everywhere else; clearing the sole mgmt is refused (a switch needs a prime).
+            if 'mgmt' in ifx:
+                if Helper().make_bool(ifx['mgmt']):
+                    Database().update('switchinterface', [{'column': 'mgmt', 'value': 0}],
+                                      [{'column': 'switchid', 'value': switchid}])
+                    Database().update('switchinterface', [{'column': 'mgmt', 'value': 1}],
+                                      [{'column': 'id', 'value': interface_id}])
+                elif Database().get_record(table='switchinterface',
+                        where=f'switchid="{switchid}" AND mgmt=1 AND id!="{interface_id}"'):
+                    Database().update('switchinterface', [{'column': 'mgmt', 'value': 0}],
+                                      [{'column': 'id', 'value': interface_id}])
+                else:
+                    return False, ('Invalid request: cannot clear the only management interface; '
+                                   'set --mgmt on another interface first')
             network = ifx.get('network')
             # Match node semantics: an empty ipaddress clears the whole address config (both
             # families). There is no per-family clear input; to keep one family you move the
@@ -1076,14 +1065,17 @@ class Interface():
         switch = Database().get_record(table='switch', where=f'name="{name}"')
         if not switch:
             return False, f'Switch {name} not present in database'
-        if interface == self.MGMT_INTERFACE and not self._switch_named_interface(switch[0]['id'], interface):
-            return False, (f"Invalid request: {interface} is the switch's management interface; "
-                           "manage it with 'luna switch change' / 'luna switch remove'")
-        where = f'switchid="{switch[0]["id"]}" AND interface="{interface}"'
-        existing = Database().get_record(table='switchinterface', where=where)
+        switchid = switch[0]['id']
+        existing = Database().get_record(
+            table='switchinterface', where=f'switchid="{switchid}" AND interface="{interface}"')
         if not existing:
             return False, f'Switch {name} interface {interface} not present in database'
         interface_id = existing[0]['id']
+        # refuse to remove the sole management interface (a switch must keep a prime)
+        if existing[0].get('mgmt') and not Database().get_record(table='switchinterface',
+                where=f'switchid="{switchid}" AND mgmt=1 AND id!="{interface_id}"'):
+            return False, (f'Invalid request: {interface} is the management interface; flag another '
+                           'interface with --mgmt first, or remove the switch')
         Database().delete_row('ipaddress', [{'column': 'tablerefid', 'value': interface_id},
                                             {'column': 'tableref', 'value': 'switchinterface'}])
         Database().delete_row('switchinterface', [{'column': 'id', 'value': interface_id}])

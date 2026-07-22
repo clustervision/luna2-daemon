@@ -307,7 +307,12 @@ class Housekeeper(object):
                 counter+=1
                 if counter > 120:
                     counter=0
-                    switches = Database().get_record_join(['switch.*','ipaddress.ipaddress'], ['ipaddress.tablerefid=switch.id'], ['ipaddress.tableref="switch"'])
+                    # the management IP lives on the switch's mgmt=1 interface (unify model); feed
+                    # that address to the SNMP port-detection plugin.
+                    switches = Database().get_record_join(
+                        ['switch.*', 'ipaddress.ipaddress'],
+                        ['ipaddress.tablerefid=switchinterface.id', 'switchinterface.switchid=switch.id'],
+                        ['ipaddress.tableref="switchinterface"', 'switchinterface.mgmt=1'])
                     self.logger.debug(f"switches {switches}")
                     if switches:
                         DetectionPlugin().clear()

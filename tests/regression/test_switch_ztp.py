@@ -313,8 +313,12 @@ def test_switch_interface_gets_its_own_reservation(config_env, constant, seeded_
 
     status, msg = Interface().delete_switch_interface(SWITCH_NAME, 'eth1')
     assert status is True, msg
+    # eth1 is gone, but the switch's own management IP remains and is presented as the synthetic
+    # management interface — so the listing is that one interface, not empty.
     status, resp = Interface().get_all_switch_interface(SWITCH_NAME)
-    assert status is False  # no interfaces left
+    assert status is True
+    ifaces = resp['config']['switch'][SWITCH_NAME]['interfaces']
+    assert [i['interface'] for i in ifaces] == [Interface.MGMT_INTERFACE]
 
 
 @pytest.mark.regression
@@ -452,3 +456,23 @@ def test_delete_switch_cascades_to_switchinterface(config_env, seeded_switch):
     assert not Database().get_record(table="switchinterface", where=f"switchid={sid}")
     assert not Database().get_record(table="ipaddress",
                                      where=f'tableref="switchinterface" AND tablerefid={ifid}')
+
+
+@pytest.mark.regression
+def test_synthetic_mgmt_interface_does_not_leak_into_render(config_env, seeded_switch):
+    """The synthetic management interface lives only in the read API. DHCP renders from the
+    switchinterface table directly, so the management IP must appear exactly once as the bare
+    switch reservation and never as a <switch>-<mgmt> interface reservation."""
+    from base.interface import Interface
+    from utils.config import Config
+
+    # the read path does present it as a synthetic interface...
+    ok, resp = Interface().get_all_switch_interface(SWITCH_NAME)
+    assert ok is True
+    assert resp["config"]["switch"][SWITCH_NAME]["interfaces"][0]["interface"] == Interface.MGMT_INTERFACE
+
+    # ...but the render must not see it: bare <switch> reservation once, no <switch>-eth0.
+    assert Config().dhcp_overwrite() is True
+    content = open(os.path.join(config_env, "dhcpd.conf"), encoding="utf-8").read()
+    assert content.count(f"host {SWITCH_NAME}.{NETWORK}") == 1
+    assert f"{SWITCH_NAME}-{Interface.MGMT_INTERFACE}" not in content

@@ -228,14 +228,19 @@ class Queue(object):
         return None
 
     def subsystem_requests(self,subsystem):
-        # One row per distinct request_id in the queue for a subsystem: whether it has an
-        # 'in progress' task, and the age in seconds of its oldest task. Feeds the reaper, which
-        # cleans up a chain with no live owner. sqlite-only (strftime); rest pending.
+        # One row per distinct request_id that has NON-PARKED work (queued / in progress) for a
+        # subsystem: whether it has an 'in progress' task, and the age of its oldest such task. Feeds
+        # the reaper. Parked tasks are excluded deliberately: a parked sync_osimage_with_master is
+        # deferred post-pack work (the HA image sync), not a stuck chain, so a completed pack whose
+        # only leftover is a parked task must NOT be treated as an orphan and cleaned up - it waits
+        # for the parked loop / startup drain, as before. A failed chain still carries non-parked
+        # tasks, so it is still caught here, and removing it by request_id then takes its parked task
+        # with it, which is correct: a failed pack must not sync. sqlite-only (strftime); rest pending.
         rows = Database().get_record_query(
             "SELECT request_id, "
             "MAX(CASE WHEN status='in progress' THEN 1 ELSE 0 END) AS in_progress, "
             "CAST(strftime('%s','now') AS INTEGER) - CAST(strftime('%s', MIN(created)) AS INTEGER) AS age_seconds "
-            f"FROM queue WHERE subsystem='{subsystem}' GROUP BY request_id")
+            f"FROM queue WHERE subsystem='{subsystem}' AND status != 'parked' GROUP BY request_id")
         return rows or []
 
     def get_task_details(self,taskid):

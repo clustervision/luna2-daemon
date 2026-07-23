@@ -147,6 +147,26 @@ def test_reap_leaves_a_just_queued_orphan(db):
     assert db.get_record(table='queue', where="request_id='Y'"), "young orphan kept (grace window)"
 
 
+def test_subsystem_requests_excludes_parked_only_chains(db):
+    """A parked-only request_id (deferred HA sync) is not a reaper candidate; a real chain is."""
+    from utils.queue import Queue
+    _add(db, request_id='PK', task='sync_osimage_with_master', status='parked')
+    assert 'PK' not in [r['request_id'] for r in Queue().subsystem_requests('osimage')], \
+        "a completed pack's lone parked sync is deferred work, not an orphan"
+    _add(db, request_id='WK', task='pack_osimage', status='in progress', owner_pid=999999, owner_started='1')
+    assert 'WK' in [r['request_id'] for r in Queue().subsystem_requests('osimage')]
+
+
+def test_reaper_keeps_lone_parked_sync_but_clears_a_failed_chain(db):
+    """Reaper preserves a completed pack's parked sync; a failed chain takes its parked with it."""
+    _add(db, request_id='DONE', task='sync_osimage_with_master', status='parked')
+    _add(db, request_id='FAIL', task='pack_osimage', status='in progress', owner_pid=999999, owner_started='1')
+    _add(db, request_id='FAIL', task='sync_osimage_with_master', status='parked')
+    _reaper().reap_osimage_queue()
+    assert db.get_record(table='queue', where="request_id='DONE'"), "completed pack's parked sync preserved"
+    assert not db.get_record(table='queue', where="request_id='FAIL'"), "failed chain incl. its parked sync removed"
+
+
 # --------------------------------------------------------------- safe cancel (kill gate)
 
 def test_safe_kill_worker_refuses_dead_vital_and_self(helper):

@@ -170,8 +170,10 @@ class Helper(object):
         try:
             if pgid == pid:
                 os.killpg(pgid, sig)      # isolated session leader: take the group and its children
+                self.logger.warning(f"safe_kill_worker: signalled process group {pgid} with signal {sig}")
             else:
                 os.kill(pid, sig)         # not isolated: signal only the worker, never its group
+                self.logger.warning(f"safe_kill_worker: signalled pid {pid} (not session-isolated) with signal {sig}")
             return True
         except (ProcessLookupError, PermissionError, OSError) as exp:
             self.logger.warning(f"could not signal worker pid {pid}: {exp}")

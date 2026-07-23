@@ -100,6 +100,14 @@ def test_chain_live_owner(db):
     assert Queue().chain_live_owner('C', my_pid=1) is None, "a dead pid does not count as owner"
 
 
+def test_log_tasks_in_queue_renders_pid_column(db):
+    """The queue-log table display must render the PID column without erroring, owner or not."""
+    from utils.queue import Queue
+    _add(db, request_id='LG1', status='in progress', owner_pid=12345, owner_started='1')
+    _add(db, request_id='LG2', status='queued')                       # no owner -> blank PID
+    assert Queue().log_tasks_in_queue(subsystem='osimage') is True
+
+
 def test_next_task_in_queue_skips_owned_chain(db):
     """The owner-aware selector is what prevents co-processing one chain; plain mode is unchanged."""
     from utils.queue import Queue

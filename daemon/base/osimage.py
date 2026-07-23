@@ -886,14 +886,23 @@ class OSImage():
         owner_pid = tasks[0]['owner_pid']
         owner_started = tasks[0].get('owner_started')
         request_id = tasks[0]['request_id']
+        chain_tasks = Database().get_record(table='queue', where=f"request_id='{request_id}'")
+        self.logger.warning(f"cancel_pack: cancelling osimage {name} chain {request_id} "
+                            f"(worker pid {owner_pid}); {len(chain_tasks or [])} task(s) to clear")
         signalled = Helper().safe_kill_worker(owner_pid, owner_started)
+        self.logger.warning(f"cancel_pack: worker for osimage {name} "
+                            f"{'stopped' if signalled else 'was already gone'} (pid {owner_pid})")
         # abort the chain either way - the kill was delivered, or the worker was already gone.
+        for chain_task in (chain_tasks or []):
+            self.logger.warning(f"  cancel removing queue task {chain_task['id']}: {chain_task['task']} "
+                                f"{chain_task.get('param')} [{chain_task['status']}]")
         Status().add_message(request_id=request_id, username_initiator="luna",
                              message=f"pack for osimage {name} cancelled", status=501)
         Status().add_message(request_id=request_id, username_initiator="luna", message="EOF")
         Queue().remove_task_from_queue_by_request_id(request_id)
         detail = "worker stopped" if signalled else "worker already gone"
-        self.logger.info(f"cancel_pack for osimage {name}: {detail} (pid {owner_pid})")
+        self.logger.warning(f"cancel_pack for osimage {name}: {detail} (pid {owner_pid}); "
+                            f"chain cleared ({len(chain_tasks or [])} task(s)), client EOF'd")
         return True, f"cancelled pack for osimage {name} ({detail})"
 
 

@@ -115,8 +115,8 @@ class Queue(object):
 
         scope = f" for subsystem '{subsystem}'" if subsystem else ""
         self.logger.info(f"Queue contents{scope} ({len(tasks)} task(s)):")
-        self.logger.info(" ID   | Created             | Subsystem        | Status       | Request ID                    | Task")
-        self.logger.info(" -----+---------------------+------------------+--------------+-------------------------------+------------------------------")
+        self.logger.info(" ID   | Created             | Subsystem        | Status       | PID      | Request ID                    | Task")
+        self.logger.info(" -----+---------------------+------------------+--------------+----------+-------------------------------+------------------------------")
 
         for task in tasks:
             task_name = task['task']
@@ -131,6 +131,7 @@ class Queue(object):
                 f"{str(task['created']):<19} | "
                 f"{str(task['subsystem']):<16} | "
                 f"{str(task['status']):<12} | "
+                f"{str(task.get('owner_pid') or ''):<8} | "
                 f"{str(task['request_id']):<29} | "
                 f"{task_name}"
             )

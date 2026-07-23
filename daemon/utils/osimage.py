@@ -1154,11 +1154,18 @@ class OsImage(object):
             # only queued with no owner       -> never started: abort once past the grace window.
             if not in_progress and age < grace_seconds:
                 continue
-            self.logger.warning(f"reaping osimage chain {request_id}: no live worker (in_progress={in_progress}, age={age}s)")
+            chain_tasks = Database().get_record(table='queue', where=f"request_id='{request_id}'")
+            self.logger.warning(f"reaper: cleaning osimage chain {request_id} - no live worker "
+                                f"(in_progress={in_progress}, age={age}s); removing {len(chain_tasks or [])} task(s)")
+            for chain_task in (chain_tasks or []):
+                self.logger.warning(f"  reaper removing queue task {chain_task['id']}: {chain_task['task']} "
+                                    f"{chain_task.get('param')} [{chain_task['status']}] owner={chain_task.get('owner_pid')}")
             Status().add_message(request_id=request_id, username_initiator="luna",
                                  message="pack aborted: worker no longer running", status=501)
             Status().add_message(request_id=request_id, username_initiator="luna", message="EOF")
             Queue().remove_task_from_queue_by_request_id(request_id)
+            self.logger.warning(f"reaper: osimage chain {request_id} cleaned "
+                                f"({len(chain_tasks or [])} task(s) removed, client EOF'd)")
 
     # ------------------------------------------------------------------- 
     # The mother of all.

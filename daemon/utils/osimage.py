@@ -1131,6 +1131,35 @@ class OsImage(object):
         )
         return status
 
+    def reap_osimage_queue(self):
+        # Cleanup-only safety net for the osimage queue. A chain whose owning worker is no longer
+        # alive is aborted here - its tasks removed and its client EOF'd - so the queue empties and
+        # new packs are not refused by leftover rows. It never resumes a chain and never spawns a
+        # worker. This sits strictly BEHIND the mother's own EOF/cleanup: the mother EOFs on success
+        # (provision) and on graceful failure, so this only catches what the mother cannot - a
+        # hard-killed worker (its process is gone) or a chain whose mother never spawned. No HA logic
+        # here on purpose; the caller (housekeeper.cleanup_mother) gates this to the master.
+        grace_seconds = 60   # a placeholder with no owner younger than this may just be awaiting the
+                             # mother pack() is about to spawn; seconds, unrelated to how long a pack takes.
+        for chain in Queue().subsystem_requests('osimage'):
+            request_id = chain['request_id']
+            if Queue().chain_live_owner(request_id):
+                continue                                    # a live worker owns this chain; leave it
+            in_progress = chain.get('in_progress')
+            try:
+                age = int(chain.get('age_seconds') or 0)
+            except (TypeError, ValueError):
+                age = 0
+            # in-progress with no live owner -> the worker died mid-chain: abort now.
+            # only queued with no owner       -> never started: abort once past the grace window.
+            if not in_progress and age < grace_seconds:
+                continue
+            self.logger.warning(f"reaping osimage chain {request_id}: no live worker (in_progress={in_progress}, age={age}s)")
+            Status().add_message(request_id=request_id, username_initiator="luna",
+                                 message="pack aborted: worker no longer running", status=501)
+            Status().add_message(request_id=request_id, username_initiator="luna", message="EOF")
+            Queue().remove_task_from_queue_by_request_id(request_id)
+
     # ------------------------------------------------------------------- 
     # The mother of all.
 
@@ -1158,12 +1187,23 @@ class OsImage(object):
 #           a bit of a draw back is that the placeholder tasks has to remain in the queue (so that other similar CLI requests will be ditched)
 #           we clean up the placeholder request as a last task to do. it's like eating its own tail :)  --Antoine
 
-            while next_id := Queue().next_task_in_queue(subsystem='osimage',status='queued',request_id=only_request_id):
+            my_pid = os.getpid()
+            my_started = Helper().proc_start_time(my_pid)
+            request_id = None
+            # owner_pid makes next_task_in_queue skip chains a live per-request mother already owns,
+            # so the main mother (only_request_id=None) steps around them instead of co-processing one
+            # image dir. Note request_id below is per-task - the task's OWN request_id, set for every
+            # task the main mother handles - not only_request_id; that is what the exception handler
+            # EOFs, so the main mother still closes out the right client.
+            while next_id := Queue().next_task_in_queue(subsystem='osimage', status='queued', request_id=only_request_id, owner_pid=my_pid):
                 if self._stop_requested or (event and event.is_set()):
                     self._stop_requested = True
                     self.logger.warning("osimage_mother stopping before taking next queued task")
                     break
                 details=Queue().get_task_details(next_id)
+                if not details:
+                    # vanished under us (e.g. the reaper cleaned up a dead sibling's chain); move on
+                    continue
                 request_id=details['request_id']
                 action=details['task']
                 noeof=details['noeof']
@@ -1171,7 +1211,8 @@ class OsImage(object):
                 self.logger.info(f"osimage_mother sees job {action} in queue as next: {next_id}")
 
                 if action == "clone_n_pack_osimage":
-                    Queue().update_task_status_in_queue(next_id,'in progress')
+                    if not Queue().claim_task(next_id, my_pid, my_started):
+                        continue
                     if first and second:
                         queue_id,queue_response = Queue().add_task_to_queue(task='copy_osimage',param=f'{first}:{second}:{third}',
                                                                             noeof=True, subsystem='osimage',request_id=request_id)
@@ -1183,7 +1224,8 @@ class OsImage(object):
                                                                                     subsystem='osimage', request_id=request_id)
 
                 elif action == "pack_n_build_osimage":
-                    Queue().update_task_status_in_queue(next_id,'in progress')
+                    if not Queue().claim_task(next_id, my_pid, my_started):
+                        continue
                     if first:
                         queue_id,queue_response = Queue().add_task_to_queue(task='pack_osimage', param=first, noeof=True, 
                                                                             subsystem='osimage', request_id=request_id)
@@ -1200,7 +1242,8 @@ class OsImage(object):
                                                                                         subsystem='osimage', request_id=request_id)
 
                 elif action == "grab_n_pack_n_build_osimage":
-                    Queue().update_task_status_in_queue(next_id,'in progress')
+                    if not Queue().claim_task(next_id, my_pid, my_started):
+                        continue
                     if first and second:
                         queue_id,queue_response = Queue().add_task_to_queue(task='grab_osimage', param=f'{first}:{second}:{third}', noeof=True,
                                                                             subsystem='osimage', request_id=request_id)
@@ -1216,7 +1259,8 @@ class OsImage(object):
 
                 elif action == "copy_osimage" or action == "clone_osimage":
                     if first and second:
-                        Queue().update_task_status_in_queue(next_id,'in progress')
+                        if not Queue().claim_task(next_id, my_pid, my_started):
+                            continue
                         ret = self.copy_osimage(next_id,request_id)
                         if self._stop_requested:
                             Queue().update_task_status_in_queue(next_id,'queued')
@@ -1232,7 +1276,8 @@ class OsImage(object):
  
                 elif action == "pack_osimage":
                     if first:
-                        Queue().update_task_status_in_queue(next_id,'in progress')
+                        if not Queue().claim_task(next_id, my_pid, my_started):
+                            continue
                         ret = self.pack_osimage(next_id,request_id)
                         if self._stop_requested:
                             Queue().update_task_status_in_queue(next_id,'queued')
@@ -1245,7 +1290,8 @@ class OsImage(object):
 
                 elif action == "updatecerts_osimage":
                     if first:
-                        Queue().update_task_status_in_queue(next_id,'in progress')
+                        if not Queue().claim_task(next_id, my_pid, my_started):
+                            continue
                         ret = self.updatecerts_osimage(next_id,request_id)
                         if self._stop_requested:
                             Queue().update_task_status_in_queue(next_id,'queued')
@@ -1258,7 +1304,8 @@ class OsImage(object):
 
                 elif action == "build_osimage":
                     if first:
-                        Queue().update_task_status_in_queue(next_id,'in progress')
+                        if not Queue().claim_task(next_id, my_pid, my_started):
+                            continue
                         ret = self.build_osimage(next_id,request_id)
                         if self._stop_requested:
                             Queue().update_task_status_in_queue(next_id,'queued')
@@ -1271,7 +1318,8 @@ class OsImage(object):
 
                 elif action == "provision_osimage":
                     if first:
-                        Queue().update_task_status_in_queue(next_id,'in progress')
+                        if not Queue().claim_task(next_id, my_pid, my_started):
+                            continue
                         ret = self.provision_osimage(next_id,request_id)
                         if self._stop_requested:
                             Queue().update_task_status_in_queue(next_id,'queued')
@@ -1284,7 +1332,8 @@ class OsImage(object):
 
                 elif action == "grab_osimage":
                     if first and second:
-                        Queue().update_task_status_in_queue(next_id,'in progress')
+                        if not Queue().claim_task(next_id, my_pid, my_started):
+                            continue
                         ret = self.grab_osimage(next_id,request_id)
                         if self._stop_requested:
                             Queue().update_task_status_in_queue(next_id,'queued')
@@ -1297,7 +1346,8 @@ class OsImage(object):
 
                 elif action == "push_osimage_to_group":
                     if first and second:
-                        Queue().update_task_status_in_queue(next_id,'in progress')
+                        if not Queue().claim_task(next_id, my_pid, my_started):
+                            continue
                         ret = self.push_osimage(next_id,request_id,'group')
                         if self._stop_requested:
                             Queue().update_task_status_in_queue(next_id,'queued')
@@ -1310,7 +1360,8 @@ class OsImage(object):
 
                 elif action == "push_osimage_to_node":
                     if first and second:
-                        Queue().update_task_status_in_queue(next_id,'in progress')
+                        if not Queue().claim_task(next_id, my_pid, my_started):
+                            continue
                         ret = self.push_osimage(next_id,request_id,'node')
                         if self._stop_requested:
                             Queue().update_task_status_in_queue(next_id,'queued')
@@ -1359,18 +1410,28 @@ class OsImage(object):
         except Exception as exp:
             exc_type, exc_obj, exc_tb = sys.exc_info()
             self.logger.error(f"osimage_mother has problems: {exp}, {exc_type}, in {exc_tb.tb_lineno}")
-            try:
-                Status().add_message(request_id=request_id, username_initiator="luna",
-                                     message=f"Operation failed: {exp}", status=501)
-                Status().add_message(request_id=request_id, username_initiator="luna", message="EOF")
-            except Exception as nexp:
-                self.logger.error(f"osimage_mother has problems during exception handling: {nexp}")
+            # EOF only the request whose task we were actually on (captured at the loop top), never a
+            # leftover request_id from a previous iteration nor an unset one.
+            if request_id:
+                try:
+                    Status().add_message(request_id=request_id, username_initiator="luna",
+                                         message=f"Operation failed: {exp}", status=501)
+                    Status().add_message(request_id=request_id, username_initiator="luna", message="EOF")
+                except Exception as nexp:
+                    self.logger.error(f"osimage_mother has problems during exception handling: {nexp}")
         self.logger.info(f"osimage_mother finished with request_id {only_request_id}")
 
 
     def osimage_mother_wrapper(self, only_request_id=None):
         old_sigint = None
         old_sigterm = None
+        # Own session/process group, so a targeted cancel can signal this mother's group - taking its
+        # dracut/tar children with it - without the signal ever reaching the gunicorn worker, the
+        # master or the background owner. Fails harmlessly if already a group leader.
+        try:
+            os.setsid()
+        except OSError:
+            pass
         try:
             old_sigint = signal.getsignal(signal.SIGINT)
             old_sigterm = signal.getsignal(signal.SIGTERM)

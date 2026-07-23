@@ -117,6 +117,38 @@ class Helper(object):
         return output
 
 
+    def proc_start_time(self, pid):
+        """
+        Return the kernel start-time (field 22 of /proc/<pid>/stat) as a string, or None when
+        the pid has no /proc entry. Stored alongside a worker pid so a reused pid - same number,
+        different process - can be told apart from the process we actually stamped.
+        """
+        try:
+            with open(f"/proc/{int(pid)}/stat", "r", encoding="utf-8") as handle:
+                data = handle.read()
+            # comm (field 2) is parenthesised and may itself contain spaces or ')', so split
+            # only what follows the final ')': starttime is field 22, i.e. index 19 after comm.
+            rest = data[data.rfind(')') + 1:].split()
+            return rest[19]
+        except (FileNotFoundError, ProcessLookupError, ValueError, IndexError):
+            return None
+
+    def pid_alive(self, pid, started=None):
+        """
+        True only if pid currently exists AND - when started is supplied - its start-time still
+        matches. A reused pid therefore reads as not alive, which is what keeps the reaper from
+        mistaking an unrelated process for a worker and what keeps a kill off the wrong target.
+        """
+        if not pid:
+            return False
+        current = self.proc_start_time(pid)
+        if current is None:
+            return False
+        if started is not None and str(started) != str(current):
+            return False
+        return True
+
+
     def stop(self, message=None):
         """
         Input - Error Message (String)

@@ -811,7 +811,13 @@ class OSImage():
         # Antoine
         image = Database().get_record(table='osimage', where=f'name = "{name}"')
         force = False
-        if image and 'changed' in image[0] and image[0]['changed']:
+        # force lets a genuinely-changed image rebuild despite a recent identical request (staleness),
+        # but it must never create a second concurrent chain: if this image is already being packed,
+        # fall through to the normal dedup so this request attaches to the running pack and streams
+        # its progress. Leave 'changed' set in that case so the running chain's result is not mistaken
+        # for one that already contains this change - the next pack will rebuild.
+        if image and 'changed' in image[0] and image[0]['changed'] \
+                and not Queue().tasks_in_queue(subsystem='osimage', subitem=name, exactmatch=True):
             force=True
             where = [{"column": "name", "value": name}]
             row = [{"column": "changed", "value": '0'}]

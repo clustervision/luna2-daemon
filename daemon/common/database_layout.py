@@ -51,7 +51,9 @@ DATABASE_LAYOUT_queue = [
 {"column": "task",                 "datatype": "varchar", "length": "128"},
 {"column": "param",                "datatype": "varchar", "length": "128"},
 {"column": "noeof",                "datatype": "INTEGER", "length": "10"},
-{"column": "status",               "datatype": "varchar", "length": "64"}]
+{"column": "status",               "datatype": "varchar", "length": "64"},
+{"column": "owner_pid",            "datatype": "INTEGER", "length": "10"},
+{"column": "owner_started",        "datatype": "TEXT"}]
 
 DATABASE_LAYOUT_osimage = [
 {"column": "id",                   "datatype": "INTEGER", "key": "PRIMARY", "keyadd": "AUTOINCREMENT"},

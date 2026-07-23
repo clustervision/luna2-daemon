@@ -152,6 +152,83 @@ def test_dhcp_kea_no_relay_block_when_unset(config_env, seeded, constant):
 
 
 @pytest.mark.regression
+def test_dhcp_kea_link_selection_renders_shared_network(config_env, seeded, constant):
+    """TRIX-1921: a network with dhcp_link_subnet is lifted into a Kea shared-networks block -- a
+    pool-less anchor on the link prefix (authoritative:false) beside the boot subnet, with the pool
+    fenced only on the option-82.5 path."""
+    from utils.config import Config
+
+    _insert("network", name="edge", network="10.160.0.0", subnet="255.255.0.0", dhcp=1,
+            dhcp_range_begin="10.160.10.1", dhcp_range_end="10.160.10.254",
+            nameserver_ip="10.141.0.1", ntp_server="10.141.0.1", zone="edge",
+            shared=NETWORK, dhcp_relay="10.160.0.1", dhcp_link_subnet="10.170.35.0/24")
+    constant["DHCP"]["TEMPLATE"] = "templ_kea-dhcp4.cfg"
+
+    assert Config().dhcp_overwrite() is True
+    content = open(os.path.join(config_env, "dhcpd.conf"), encoding="utf-8").read()
+
+    assert '"shared-networks"' in content
+    assert '"edge-linksel"' in content
+    assert '"subnet": "10.170.35.0/24"' in content        # the pool-less anchor
+    assert '"authoritative": false' in content            # suppress, not NAK, for foreign clients
+    assert '"edge-boot-class"' in content                 # the boot-pool fence
+    assert "relay4[5].exists" in content                  # fence gates only the 82.5 path
+    assert '"subnet": "10.160.0.0/' in content            # the boot subnet moved into the block
+    # the boot network no longer appears as a plain top-level subnet4 entry (it is inside the block)
+    assert content.index('"shared-networks"') < content.index('"subnet": "10.160.0.0/')
+
+
+@pytest.mark.regression
+def test_dhcp_kea_ntp_v4_emitted_only_for_ipv4(config_env, seeded, constant):
+    """TRIX-1939: dhcp4 ntp-servers (option 42) is emitted only for an IPv4 ntp_server. A network
+    whose ntp_server is an IPv6 address or a host name must not emit it -- that value fails the
+    whole subnet4 element in kea."""
+    from utils.config import Config
+
+    # seeded 'cluster' has an IPv4 ntp_server (emitted). Add one IPv6-ntp and one host-name-ntp net.
+    _insert("network", name="n6", network="10.161.0.0", subnet="255.255.0.0", dhcp=1,
+            dhcp_range_begin="10.161.10.1", dhcp_range_end="10.161.10.254",
+            nameserver_ip="10.141.0.1", ntp_server="2001:db8::9", zone="n6")
+    _insert("network", name="nf", network="10.162.0.0", subnet="255.255.0.0", dhcp=1,
+            dhcp_range_begin="10.162.10.1", dhcp_range_end="10.162.10.254",
+            nameserver_ip="10.141.0.1", ntp_server="ntp.example.org", zone="nf")
+    constant["DHCP"]["TEMPLATE"] = "templ_kea-dhcp4.cfg"
+
+    assert Config().dhcp_overwrite() is True
+    content = open(os.path.join(config_env, "dhcpd.conf"), encoding="utf-8").read()
+
+    # three DHCP networks, three ntp_server values, but only the IPv4 one may emit ntp-servers
+    assert content.count('"ntp-servers"') == 1
+
+
+@pytest.mark.regression
+def test_dhcp_kea_ntp_v6_srv_addr_and_srv_fqdn(config_env, seeded, constant):
+    """TRIX-1939: dhcp6 carries an IPv6 ntp_server as the srv-addr sub-option and a host name as
+    the srv-fqdn sub-option of option 56 (RFC 5908); an IPv4 value is dropped."""
+    from utils.config import Config
+
+    _insert("network", name="v6addr", network="10.163.0.0", subnet="255.255.0.0",
+            network_ipv6="2001:db8:163::", subnet_ipv6="64", dhcp=1,
+            dhcp_range_begin_ipv6="2001:db8:163::10", dhcp_range_end_ipv6="2001:db8:163::ff",
+            nameserver_ip="10.141.0.1", ntp_server="2001:db8::9", zone="v6addr")
+    _insert("network", name="v6fqdn", network="10.164.0.0", subnet="255.255.0.0",
+            network_ipv6="2001:db8:164::", subnet_ipv6="64", dhcp=1,
+            dhcp_range_begin_ipv6="2001:db8:164::10", dhcp_range_end_ipv6="2001:db8:164::ff",
+            nameserver_ip="10.141.0.1", ntp_server="ntp.example.org", zone="v6fqdn")
+    constant["DHCP"]["TEMPLATE"] = "templ_kea-dhcp4.cfg"
+    constant["DHCP"]["TEMPLATE6"] = "templ_kea-dhcp6.cfg"
+
+    assert Config().dhcp_overwrite() is True
+    content = open(os.path.join(config_env, "dhcpd6.conf"), encoding="utf-8").read()
+
+    assert '"space": "ntp-server"' in content                 # the sub-option definitions exist
+    assert '"name": "ntp-server-srv-addr"' in content         # IPv6 address -> srv-addr
+    assert '"name": "ntp-server-srv-fqdn"' in content         # host name -> srv-fqdn
+    # the old plain-address form (rejected by kea 3.0) must be gone
+    assert '"name": "ntp-server", "csv-format"' not in content
+
+
+@pytest.mark.regression
 def test_dns_configure_renders_zone_and_named_conf(config_env, seeded):
     from utils.config import Config
 
@@ -169,6 +246,44 @@ def test_dns_configure_renders_zone_and_named_conf(config_env, seeded):
     assert "controller.cluster." in zone
     assert f"node001                    IN A {NODE_IP}" in zone
     assert f"controller                    IN A {CONTROLLER_IP}" in zone
+
+
+@pytest.mark.regression
+def test_dns_switch_interfaces_resolve_as_switch_dash_interface(config_env, seeded):
+    """A switch's own IP keeps its bare <switch> name; each switch interface with an IP on a
+    network resolves as <switch>-<interface> (so interfaces on the same zone do not collide);
+    a mac-only interface with no network is absent from DNS."""
+    from utils.config import Config
+    from utils.database import Database
+
+    netid = seeded["netid"]
+    _insert("switch", name="nvsw01", netboot=1)
+    swid = Database().get_record(table="switch", where='name="nvsw01"')[0]["id"]
+    _insert("ipaddress", ipaddress="10.141.0.20", tableref="switch", tablerefid=swid, networkid=netid)
+    _insert("switchinterface", switchid=swid, interface="eth1", macaddress="aa:bb:cc:00:00:e1")
+    eth1id = Database().get_record(table="switchinterface",
+                                   where=f'switchid={swid} AND interface="eth1"')[0]["id"]
+    _insert("ipaddress", ipaddress="10.141.0.21", tableref="switchinterface",
+            tablerefid=eth1id, networkid=netid)
+    # mac-only interface: no ipaddress row, so no network/zone -> must not reach DNS
+    _insert("switchinterface", switchid=swid, interface="mgmtonly", macaddress="aa:bb:cc:00:00:e2")
+
+    assert Config().dns_configure() is True
+    zone = open(os.path.join(config_env, f"{NETWORK}.luna.zone"), encoding="utf-8").read()
+
+    def a_record(name, ip):
+        return any(parts and parts[0] == name and "A" in parts and ip in parts
+                   for parts in (line.split() for line in zone.splitlines()))
+
+    assert a_record("nvsw01", "10.141.0.20")           # primary keeps bare name
+    assert a_record("nvsw01-eth1", "10.141.0.21")      # interface suffixed, distinct
+    # mac-only interface is silently and correctly skipped (no zone to live in)
+    first_labels = {line.split()[0] for line in zone.splitlines() if line.split()}
+    assert "mgmtonly" not in first_labels
+    assert "nvsw01-mgmtonly" not in first_labels
+    # reverse PTR carries the same distinct names
+    rev = open(os.path.join(config_env, "0.141.10.in-addr.arpa.luna.zone"), encoding="utf-8").read()
+    assert "nvsw01-eth1.cluster." in rev
 
 
 @pytest.mark.regression

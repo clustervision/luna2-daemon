@@ -181,6 +181,45 @@ def legacy_and_forward_fixes():
         result=Database().update('ha', row)
 
 
+def migrate_switch_interfaces():
+    """Unify the switch interface model. Historically a switch's management IP lived on the switch
+    row (ipaddress tableref='switch') and was surfaced as a synthetic 'eth0'. Move it into a real
+    switchinterface row flagged mgmt=1, so every interface is uniform and which one is the prime is
+    an explicit flag rather than its name or its storage location. Idempotent: a switch that already
+    has a mgmt=1 interface is skipped, so this is safe to run on every startup and converges each
+    controller independently.
+    """
+    switches = Database().get_record(table="switch")
+    for switch in (switches or []):
+        swid = switch['id']
+        if Database().get_record(table="switchinterface", where=f"switchid='{swid}' AND mgmt=1"):
+            continue
+        primary = Database().get_record(table="ipaddress",
+                                        where=f"tableref='switch' AND tablerefid='{swid}'")
+        mac = switch.get('macaddress')
+        if not primary and not mac:
+            continue
+        name = 'eth0'
+        if Database().get_record(table="switchinterface", where=f"switchid='{swid}' AND interface='{name}'"):
+            name = 'mgmt0'
+        row = [{'column': 'switchid', 'value': swid},
+               {'column': 'interface', 'value': name},
+               {'column': 'mgmt', 'value': 1}]
+        if mac:
+            row.append({'column': 'macaddress', 'value': mac})
+        ifid = Database().insert('switchinterface', row)
+        for ip in (primary or []):
+            Database().update('ipaddress',
+                              [{'column': 'tableref', 'value': 'switchinterface'},
+                               {'column': 'tablerefid', 'value': ifid}],
+                              [{'column': 'id', 'value': ip['id']}])
+        if mac:
+            Database().update('switch', [{'column': 'macaddress', 'value': None}],
+                              [{'column': 'id', 'value': swid}])
+        LOGGER.info(f"Migrated switch {switch.get('name', swid)} management IP/MAC to "
+                    f"interface '{name}' (mgmt=1)")
+
+
 def get_config(filename=None):
     """
     From ini file Section Name is a section here, Option Name is an
@@ -694,6 +733,7 @@ def validate_bootstrap():
     LOGGER.info('######################### Other startup checks ########################')
     verify_and_set_beacon()
     legacy_and_forward_fixes()
+    migrate_switch_interfaces()
     cleanup_queue_and_status()
     cleanup_and_init_ping()
     LOGGER.info('################################ Done #################################')

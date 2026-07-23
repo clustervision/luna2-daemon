@@ -257,14 +257,26 @@ class Housekeeper(object):
 
 
     def cleanup_mother(self,event):
-        counter=0
+        clean_counter=0
+        reap_counter=0
         self.logger.info("Starting cleanup thread")
         prev_mother_status=None
+        ha_object=HA()
         while True:
             try:
-                counter+=1
-                if counter > 120:
-                    counter=0
+                clean_counter+=1
+                reap_counter+=1
+                # runtime safety net for osimage, master only, on a ~30s cadence (this loop sleeps 5s,
+                # so every 6th pass): abort chains whose worker died so the queue empties. The mother is
+                # the primary EOF/cleanup path; this only catches what a hard-killed or never-spawned
+                # process cannot do for itself, so it does not need to run every few seconds. HA gate
+                # lives here (the housekeeper owns HA); the osimage logic itself stays HA-free in OsImage.
+                if reap_counter >= 6:
+                    reap_counter=0
+                    if (not ha_object.get_hastate()) or ha_object.get_role():
+                        OsImage().reap_osimage_queue()
+                if clean_counter > 120:
+                    clean_counter=0
                     records=Database().get_record_query("select id,message from status where created<datetime('now','-1 hour')") # only sqlite compliant. rest pending
                     for record in records:
                         self.logger.info(f"cleaning up status id {record['id']} : {record['message']}")
@@ -307,7 +319,12 @@ class Housekeeper(object):
                 counter+=1
                 if counter > 120:
                     counter=0
-                    switches = Database().get_record_join(['switch.*','ipaddress.ipaddress'], ['ipaddress.tablerefid=switch.id'], ['ipaddress.tableref="switch"'])
+                    # the management IP lives on the switch's mgmt=1 interface (unify model); feed
+                    # that address to the SNMP port-detection plugin.
+                    switches = Database().get_record_join(
+                        ['switch.*', 'ipaddress.ipaddress'],
+                        ['ipaddress.tablerefid=switchinterface.id', 'switchinterface.switchid=switch.id'],
+                        ['ipaddress.tableref="switchinterface"', 'switchinterface.mgmt=1'])
                     self.logger.debug(f"switches {switches}")
                     if switches:
                         DetectionPlugin().clear()

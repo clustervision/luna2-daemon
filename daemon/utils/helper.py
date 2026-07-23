@@ -31,6 +31,7 @@ __email__       = 'sumit.sharma@clustervision.com'
 __status__      = 'Development'
 
 import os
+import signal
 import sys
 import subprocess
 import logging
@@ -115,6 +116,68 @@ class Helper(object):
         if return_exit_code:
             return output,exit_code
         return output
+
+
+    def proc_start_time(self, pid):
+        """
+        Return the kernel start-time (field 22 of /proc/<pid>/stat) as a string, or None when
+        the pid has no /proc entry. Stored alongside a worker pid so a reused pid - same number,
+        different process - can be told apart from the process we actually stamped.
+        """
+        try:
+            with open(f"/proc/{int(pid)}/stat", "r", encoding="utf-8") as handle:
+                data = handle.read()
+            # comm (field 2) is parenthesised and may itself contain spaces or ')', so split
+            # only what follows the final ')': starttime is field 22, i.e. index 19 after comm.
+            rest = data[data.rfind(')') + 1:].split()
+            return rest[19]
+        except (FileNotFoundError, ProcessLookupError, ValueError, IndexError):
+            return None
+
+    def pid_alive(self, pid, started=None):
+        """
+        True only if pid currently exists AND - when started is supplied - its start-time still
+        matches. A reused pid therefore reads as not alive, which is what keeps the reaper from
+        mistaking an unrelated process for a worker and what keeps a kill off the wrong target.
+        """
+        if not pid:
+            return False
+        current = self.proc_start_time(pid)
+        if current is None:
+            return False
+        if started is not None and str(started) != str(current):
+            return False
+        return True
+
+    def safe_kill_worker(self, pid, started, sig=signal.SIGKILL):
+        """
+        Kill a stamped worker as safely as possible: only after confirming it is still the exact
+        process we stamped (start-time match, via pid_alive), never a vital or our own pid, and only
+        group-killing when it is its own session leader (setsid succeeded) so the signal can never
+        reach the gunicorn worker, the master or the background owner. Returns True if a signal was
+        delivered, False if refused or the worker was already gone.
+        """
+        if not self.pid_alive(pid, started):
+            return False
+        pid = int(pid)
+        if pid <= 1 or pid == os.getpid():
+            self.logger.warning(f"refusing to signal vital or self pid {pid}")
+            return False
+        try:
+            pgid = os.getpgid(pid)
+        except (ProcessLookupError, OSError):
+            return False
+        try:
+            if pgid == pid:
+                os.killpg(pgid, sig)      # isolated session leader: take the group and its children
+                self.logger.warning(f"safe_kill_worker: signalled process group {pgid} with signal {sig}")
+            else:
+                os.kill(pid, sig)         # not isolated: signal only the worker, never its group
+                self.logger.warning(f"safe_kill_worker: signalled pid {pid} (not session-isolated) with signal {sig}")
+            return True
+        except (ProcessLookupError, PermissionError, OSError) as exp:
+            self.logger.warning(f"could not signal worker pid {pid}: {exp}")
+            return False
 
 
     def stop(self, message=None):
@@ -264,6 +327,23 @@ class Helper(object):
             self.logger.error(f'Invalid IP address: {ipaddr}, Exception is {exp}.')
             return None
         return ','.join(response)
+
+
+    def check_cidr(self, value=None, ipv6=None):
+        """
+        Validate a CIDR prefix such as 10.144.35.0/24 or 2001:db8:35::/64. A prefix is required
+        (a bare address is rejected). When ipv6 is True or False, the address family must match,
+        so the caller can keep a v4-only or v6-only field honest. Returns True or False.
+        """
+        if not value or '/' not in str(value):
+            return False
+        try:
+            net = ipaddress.ip_network(str(value), strict=False)
+        except (ValueError, TypeError):
+            return False
+        if ipv6 is not None and (net.version == 6) != bool(ipv6):
+            return False
+        return True
 
 
     def get_network(self, ipaddr=None, subnet=None):

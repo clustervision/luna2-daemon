@@ -811,7 +811,13 @@ class OSImage():
         # Antoine
         image = Database().get_record(table='osimage', where=f'name = "{name}"')
         force = False
-        if image and 'changed' in image[0] and image[0]['changed']:
+        # force lets a genuinely-changed image rebuild despite a recent identical request (staleness),
+        # but it must never create a second concurrent chain: if this image is already being packed,
+        # fall through to the normal dedup so this request attaches to the running pack and streams
+        # its progress. Leave 'changed' set in that case so the running chain's result is not mistaken
+        # for one that already contains this change - the next pack will rebuild.
+        if image and 'changed' in image[0] and image[0]['changed'] \
+                and not Queue().tasks_in_queue(subsystem='osimage', subitem=name, exactmatch=True):
             force=True
             where = [{"column": "name", "value": name}]
             row = [{"column": "changed", "value": '0'}]
@@ -863,6 +869,41 @@ class OSImage():
             self.logger.info(f"my response [{response}] [{request_id}]")
             return status, response, request_id
         return status, response
+
+
+    def cancel_pack(self, name=None):
+        """
+        Cancel an in-flight pack for an image: signal the owning worker's (isolated) process group so
+        its dracut/tar children die with it, then abort the chain - EOF the waiting client and remove
+        its tasks. The signal only ever reaches a worker positively identified by its stamped pid and
+        start-time; a reused or vital pid is refused by Helper().safe_kill_worker. Local and transient,
+        so it is not replicated.
+        """
+        tasks = Database().get_record(table='queue',
+            where=f"subsystem='osimage' AND status='in progress' AND param='{name}' AND owner_pid IS NOT NULL AND owner_pid != ''")
+        if not tasks:
+            return False, f"no active pack found for osimage {name}"
+        owner_pid = tasks[0]['owner_pid']
+        owner_started = tasks[0].get('owner_started')
+        request_id = tasks[0]['request_id']
+        chain_tasks = Database().get_record(table='queue', where=f"request_id='{request_id}'")
+        self.logger.warning(f"cancel_pack: cancelling osimage {name} chain {request_id} "
+                            f"(worker pid {owner_pid}); {len(chain_tasks or [])} task(s) to clear")
+        signalled = Helper().safe_kill_worker(owner_pid, owner_started)
+        self.logger.warning(f"cancel_pack: worker for osimage {name} "
+                            f"{'stopped' if signalled else 'was already gone'} (pid {owner_pid})")
+        # abort the chain either way - the kill was delivered, or the worker was already gone.
+        for chain_task in (chain_tasks or []):
+            self.logger.warning(f"  cancel removing queue task {chain_task['id']}: {chain_task['task']} "
+                                f"{chain_task.get('param')} [{chain_task['status']}]")
+        Status().add_message(request_id=request_id, username_initiator="luna",
+                             message=f"pack for osimage {name} cancelled", status=501)
+        Status().add_message(request_id=request_id, username_initiator="luna", message="EOF")
+        Queue().remove_task_from_queue_by_request_id(request_id)
+        detail = "worker stopped" if signalled else "worker already gone"
+        self.logger.warning(f"cancel_pack for osimage {name}: {detail} (pid {owner_pid}); "
+                            f"chain cleared ({len(chain_tasks or [])} task(s)), client EOF'd")
+        return True, f"cancelled pack for osimage {name} ({detail})"
 
 
     def update_certs(self, name=None):

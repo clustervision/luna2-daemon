@@ -115,8 +115,8 @@ class Queue(object):
 
         scope = f" for subsystem '{subsystem}'" if subsystem else ""
         self.logger.info(f"Queue contents{scope} ({len(tasks)} task(s)):")
-        self.logger.info(" ID   | Created             | Subsystem        | Status       | Request ID                    | Task")
-        self.logger.info(" -----+---------------------+------------------+--------------+-------------------------------+------------------------------")
+        self.logger.info(" ID   | Created             | Subsystem        | Status       | PID      | Request ID                    | Task")
+        self.logger.info(" -----+---------------------+------------------+--------------+----------+-------------------------------+------------------------------")
 
         for task in tasks:
             task_name = task['task']
@@ -131,6 +131,7 @@ class Queue(object):
                 f"{str(task['created']):<19} | "
                 f"{str(task['subsystem']):<16} | "
                 f"{str(task['status']):<12} | "
+                f"{str(task.get('owner_pid') or ''):<8} | "
                 f"{str(task['request_id']):<29} | "
                 f"{task_name}"
             )
@@ -140,6 +141,19 @@ class Queue(object):
         row = [{"column": "status", "value": f"{status}"}]
         where = [{"column": "id", "value": f"{taskid}"}]
         status = Database().update('queue', row, where)
+
+    def claim_task(self,taskid,owner_pid=None,owner_started=None):
+        # Compare-and-set take: flip 'queued' -> 'in progress' only while it is still queued, and
+        # stamp the owning worker. Returns True for the single caller that changed the row - two
+        # mothers selecting the same id cannot both proceed. Database().update() returns True only
+        # when rowcount>=1, and sqlite (WAL + busy_timeout) serialises the writers, so this is a
+        # genuine atomic claim rather than the old SELECT-then-unconditional-UPDATE.
+        row = [{"column": "status", "value": "in progress"}]
+        if owner_pid is not None:
+            row.append({"column": "owner_pid", "value": f"{owner_pid}"})
+            row.append({"column": "owner_started", "value": f"{owner_started}"})
+        where = [{"column": "id", "value": f"{taskid}"}, {"column": "status", "value": "queued"}]
+        return Database().update('queue', row, where)
 
     def remove_task_from_queue(self,taskid):
         Database().delete_row('queue', [{"column": "id", "value": taskid}])
@@ -159,17 +173,29 @@ class Queue(object):
                 tasks.append(row['id'])
         return tasks
 
-    def next_task_in_queue(self,subsystem,status=None,request_id=None):
+    def next_task_in_queue(self,subsystem,status=None,request_id=None,owner_pid=None):
         where=None
         status_query, request_id_query = "", ""
         if status:
             status_query=f"status='{status}' AND"
         if request_id:
             request_id_query=f"request_id='{request_id}' AND"
-        where=f"subsystem='{subsystem}' AND {status_query} {request_id_query} created>datetime('now','-60 minute') AND created<=datetime('now') ORDER BY id ASC LIMIT 1"
+        # owner_pid is opt-in. Without it this is the plain lowest-id task, as every existing caller
+        # expects. With it, we fetch the ordered candidates and return the first whose chain is NOT
+        # already owned by another live worker - which is what stops the main mother (request_id=None)
+        # co-processing a chain a per-request mother is on. The atomic claim can't do this: the two
+        # mothers take different task ids of one chain, so only a chain-level check catches it.
+        limit = "" if owner_pid is not None else " LIMIT 1"
+        where=f"subsystem='{subsystem}' AND {status_query} {request_id_query} created>datetime('now','-60 minute') AND created<=datetime('now') ORDER BY id ASC{limit}"
         task = Database().get_record(table='queue', where=where)
-        if task:
+        if not task:
+            return False
+        if owner_pid is None:
             return task[0]['id']
+        for row in task:
+            if self.chain_live_owner(row['request_id'], owner_pid):
+                continue
+            return row['id']
         return False
 
     def next_parallel_task_in_queue(self,subsystem,subitem,status=None,request_id=None):
@@ -185,6 +211,37 @@ class Queue(object):
         if task:
             return task[0]['id']
         return False
+
+    def chain_live_owner(self,request_id,my_pid=None):
+        # The pid of another live worker that owns this request's chain, or None. Ownership is the
+        # owner_pid stamped on an 'in progress' task of the request; a pid no longer alive (or a
+        # reused pid, caught by the start-time check in pid_alive) does not count. Lets a second
+        # mother step around a chain already being worked, and lets the reaper tell live from dead.
+        rows = Database().get_record(table='queue', where=f"request_id='{request_id}' AND status='in progress' AND owner_pid IS NOT NULL AND owner_pid != ''")
+        if not rows:
+            return None
+        for row in rows:
+            pid = row['owner_pid']
+            started = row.get('owner_started')
+            if pid and (my_pid is None or int(pid) != int(my_pid)) and Helper().pid_alive(pid, started):
+                return int(pid)
+        return None
+
+    def subsystem_requests(self,subsystem):
+        # One row per distinct request_id that has NON-PARKED work (queued / in progress) for a
+        # subsystem: whether it has an 'in progress' task, and the age of its oldest such task. Feeds
+        # the reaper. Parked tasks are excluded deliberately: a parked sync_osimage_with_master is
+        # deferred post-pack work (the HA image sync), not a stuck chain, so a completed pack whose
+        # only leftover is a parked task must NOT be treated as an orphan and cleaned up - it waits
+        # for the parked loop / startup drain, as before. A failed chain still carries non-parked
+        # tasks, so it is still caught here, and removing it by request_id then takes its parked task
+        # with it, which is correct: a failed pack must not sync. sqlite-only (strftime); rest pending.
+        rows = Database().get_record_query(
+            "SELECT request_id, "
+            "MAX(CASE WHEN status='in progress' THEN 1 ELSE 0 END) AS in_progress, "
+            "CAST(strftime('%s','now') AS INTEGER) - CAST(strftime('%s', MIN(created)) AS INTEGER) AS age_seconds "
+            f"FROM queue WHERE subsystem='{subsystem}' AND status != 'parked' GROUP BY request_id")
+        return rows or []
 
     def get_task_details(self,taskid):
         task = Database().get_record(table='queue', where=f"id='{taskid}'")

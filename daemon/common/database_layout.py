@@ -51,7 +51,9 @@ DATABASE_LAYOUT_queue = [
 {"column": "task",                 "datatype": "varchar", "length": "128"},
 {"column": "param",                "datatype": "varchar", "length": "128"},
 {"column": "noeof",                "datatype": "INTEGER", "length": "10"},
-{"column": "status",               "datatype": "varchar", "length": "64"}]
+{"column": "status",               "datatype": "varchar", "length": "64"},
+{"column": "owner_pid",            "datatype": "INTEGER", "length": "10"},
+{"column": "owner_started",        "datatype": "TEXT"}]
 
 DATABASE_LAYOUT_osimage = [
 {"column": "id",                   "datatype": "INTEGER", "key": "PRIMARY", "keyadd": "AUTOINCREMENT"},
@@ -199,6 +201,7 @@ DATABASE_LAYOUT_network = [
 {"column": "dhcp_range_end",       "datatype": "VARCHAR", "length": "20"},
 {"column": "dhcp_range_end_ipv6",  "datatype": "VARCHAR", "length": "60"},
 {"column": "dhcp_relay",           "datatype": "VARCHAR", "length": "200"},
+{"column": "dhcp_link_subnet",     "datatype": "VARCHAR", "length": "200"},
 {"column": "zone",                 "datatype": "VARCHAR", "length": "60"},
 {"column": "shared",               "datatype": "VARCHAR", "length": "60"},
 {"column": "type",                 "datatype": "VARCHAR", "length": "100"},
@@ -235,7 +238,18 @@ DATABASE_LAYOUT_switch = [
 {"column": "bootfile",             "datatype": "VARCHAR", "length": "255"},
 {"column": "ztpconfig",            "datatype": "TEXT"},
 {"column": "ztpformat",            "datatype": "VARCHAR", "length": "20"},
+{"column": "url_protocol",         "datatype": "VARCHAR", "length": "20"},
+{"column": "url_server",           "datatype": "VARCHAR", "length": "255"},
+{"column": "tftp_enable",          "datatype": "INTEGER", "length": "10"},
+{"column": "ostype",               "datatype": "VARCHAR", "length": "20"},
 {"column": "comment",              "datatype": "VARCHAR", "length": "60"}]
+
+DATABASE_LAYOUT_switchinterface = [
+{"column": "id",                   "datatype": "INTEGER", "key": "PRIMARY", "keyadd": "AUTOINCREMENT"},
+{"column": "switchid",             "datatype": "INTEGER", "length": "10", "key": "UNIQUE", "with": "interface"},
+{"column": "interface",            "datatype": "VARCHAR", "length": "50"},
+{"column": "macaddress",           "datatype": "VARCHAR", "length": "200"},
+{"column": "mgmt",                 "datatype": "INTEGER", "length": "1"}]
 
 DATABASE_LAYOUT_otherdevices = [
 {"column": "id",                   "datatype": "INTEGER", "key": "PRIMARY", "keyadd": "AUTOINCREMENT"},

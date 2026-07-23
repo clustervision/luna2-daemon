@@ -137,3 +137,91 @@ def test_reap_leaves_a_just_queued_orphan(db):
     _add(db, request_id='Y', status='queued', created='NOW')
     _reaper().reap_osimage_queue()
     assert db.get_record(table='queue', where="request_id='Y'"), "young orphan kept (grace window)"
+
+
+# --------------------------------------------------------------- safe cancel (kill gate)
+
+def test_safe_kill_worker_refuses_dead_vital_and_self(helper):
+    assert helper.safe_kill_worker(999999, '1') is False, "a dead/gone pid delivers nothing"
+    assert helper.safe_kill_worker(1, '1') is False, "pid 1 is refused"
+    me = os.getpid()
+    assert helper.safe_kill_worker(me, helper.proc_start_time(me)) is False, "never signal self"
+
+
+def test_safe_kill_worker_kills_an_isolated_child(helper):
+    """A worker in its own session (setsid) is group-killed, taking its children with it."""
+    import subprocess
+    import time
+    child = subprocess.Popen(['sleep', '30'], start_new_session=True)
+    try:
+        started = helper.proc_start_time(child.pid)
+        assert started is not None
+        assert helper.safe_kill_worker(child.pid, started) is True
+        for _ in range(50):
+            if child.poll() is not None:
+                break
+            time.sleep(0.05)
+        assert child.poll() is not None, "the isolated worker group should have been killed"
+    finally:
+        if child.poll() is None:
+            child.kill()
+
+
+def _base_osimage():
+    from base.osimage import OSImage
+    from utils.log import Log
+    oi = OSImage.__new__(OSImage)
+    oi.logger = Log.get_logger()
+    return oi
+
+
+def test_cancel_pack_no_active_pack(db):
+    assert _base_osimage().cancel_pack('nope')[0] is False, "nothing to cancel -> False"
+
+
+def test_cancel_pack_aborts_a_dead_worker_chain(db):
+    """Cancel with a worker already gone still aborts the chain and EOFs the client."""
+    _add(db, request_id='P', param='imgP', status='in progress', owner_pid=999999, owner_started='1')
+    ok, _msg = _base_osimage().cancel_pack('imgP')
+    assert ok is True
+    assert not db.get_record(table='queue', where="request_id='P'"), "chain removed"
+    assert db.get_record(table='status', where="request_id='P' AND message='EOF'"), "client EOF'd"
+
+
+def test_cancel_pack_kills_a_live_in_progress_worker(db, helper):
+    """The primary case: a running pack is cancelled by actually killing its live worker."""
+    import subprocess
+    import time
+    worker = subprocess.Popen(['sleep', '30'], start_new_session=True)   # a live session leader
+    try:
+        started = helper.proc_start_time(worker.pid)
+        _add(db, request_id='LP', param='imgLP', status='in progress',
+             owner_pid=worker.pid, owner_started=started)
+        ok, msg = _base_osimage().cancel_pack('imgLP')
+        assert ok is True
+        assert 'worker stopped' in msg, "a live worker must actually be signalled, not just cleaned up"
+        for _ in range(50):
+            if worker.poll() is not None:
+                break
+            time.sleep(0.05)
+        assert worker.poll() is not None, "the live in-progress worker must be killed"
+        assert not db.get_record(table='queue', where="request_id='LP'"), "chain aborted"
+    finally:
+        if worker.poll() is None:
+            worker.kill()
+
+
+def test_cancel_leaves_no_artifacts_across_subsystems_and_statuses(db):
+    """A cancel must leave nothing behind - chain steps, the housekeeper cleanup tasks, AND the
+    parked sync_osimage_with_master all share the pack's request_id, so all go."""
+    _add(db, request_id='C1', param='imgC', task='pack_n_build_osimage',
+         status='in progress', owner_pid=999999, owner_started='1')
+    _add(db, request_id='C1', param='imgC', task='build_osimage', status='queued')
+    _add(db, request_id='C1', param='imgC', task='cleanup_old_file',
+         subsystem='housekeeper', status='queued')
+    _add(db, request_id='C1', param='imgC:controller1', task='sync_osimage_with_master',
+         status='parked')
+    ok, _msg = _base_osimage().cancel_pack('imgC')
+    assert ok is True
+    assert not db.get_record(table='queue', where="request_id='C1'"), \
+        "no leftover tasks of any subsystem or status (queued/in progress/parked)"

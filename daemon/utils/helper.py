@@ -31,6 +31,7 @@ __email__       = 'sumit.sharma@clustervision.com'
 __status__      = 'Development'
 
 import os
+import signal
 import sys
 import subprocess
 import logging
@@ -147,6 +148,34 @@ class Helper(object):
         if started is not None and str(started) != str(current):
             return False
         return True
+
+    def safe_kill_worker(self, pid, started, sig=signal.SIGKILL):
+        """
+        Kill a stamped worker as safely as possible: only after confirming it is still the exact
+        process we stamped (start-time match, via pid_alive), never a vital or our own pid, and only
+        group-killing when it is its own session leader (setsid succeeded) so the signal can never
+        reach the gunicorn worker, the master or the background owner. Returns True if a signal was
+        delivered, False if refused or the worker was already gone.
+        """
+        if not self.pid_alive(pid, started):
+            return False
+        pid = int(pid)
+        if pid <= 1 or pid == os.getpid():
+            self.logger.warning(f"refusing to signal vital or self pid {pid}")
+            return False
+        try:
+            pgid = os.getpgid(pid)
+        except (ProcessLookupError, OSError):
+            return False
+        try:
+            if pgid == pid:
+                os.killpg(pgid, sig)      # isolated session leader: take the group and its children
+            else:
+                os.kill(pid, sig)         # not isolated: signal only the worker, never its group
+            return True
+        except (ProcessLookupError, PermissionError, OSError) as exp:
+            self.logger.warning(f"could not signal worker pid {pid}: {exp}")
+            return False
 
 
     def stop(self, message=None):

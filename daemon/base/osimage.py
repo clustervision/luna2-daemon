@@ -871,6 +871,32 @@ class OSImage():
         return status, response
 
 
+    def cancel_pack(self, name=None):
+        """
+        Cancel an in-flight pack for an image: signal the owning worker's (isolated) process group so
+        its dracut/tar children die with it, then abort the chain - EOF the waiting client and remove
+        its tasks. The signal only ever reaches a worker positively identified by its stamped pid and
+        start-time; a reused or vital pid is refused by Helper().safe_kill_worker. Local and transient,
+        so it is not replicated.
+        """
+        tasks = Database().get_record(table='queue',
+            where=f"subsystem='osimage' AND status='in progress' AND param='{name}' AND owner_pid IS NOT NULL AND owner_pid != ''")
+        if not tasks:
+            return False, f"no active pack found for osimage {name}"
+        owner_pid = tasks[0]['owner_pid']
+        owner_started = tasks[0].get('owner_started')
+        request_id = tasks[0]['request_id']
+        signalled = Helper().safe_kill_worker(owner_pid, owner_started)
+        # abort the chain either way - the kill was delivered, or the worker was already gone.
+        Status().add_message(request_id=request_id, username_initiator="luna",
+                             message=f"pack for osimage {name} cancelled", status=501)
+        Status().add_message(request_id=request_id, username_initiator="luna", message="EOF")
+        Queue().remove_task_from_queue_by_request_id(request_id)
+        detail = "worker stopped" if signalled else "worker already gone"
+        self.logger.info(f"cancel_pack for osimage {name}: {detail} (pid {owner_pid})")
+        return True, f"cancelled pack for osimage {name} ({detail})"
+
+
     def update_certs(self, name=None):
         """
         This method will refresh the RHSM CA certificates (/etc/rhsm/ca/) inside

@@ -316,6 +316,25 @@ def config_osimage_pack(name=None):
     return response, access_code
 
 
+@osimage_blueprint.route("/config/osimage/<string:name>/_cancel", methods=['GET'])
+@token_required
+@validate_name
+def config_osimage_cancel(name=None):
+    """
+    Input - OS Image Name
+    Process - Cancel an in-flight pack: stop its worker and abort its queue chain. Local and
+    transient (it acts on the controller running the pack), so it is not replicated.
+    Output - Success or Failure.
+    """
+    access_code=404
+    returned = OSImage().cancel_pack(name)
+    status=returned[0]
+    response=returned[1]
+    if status is True:
+        access_code=200
+    return {'message': response}, access_code
+
+
 @osimage_blueprint.route("/config/osimage/<string:name>/_updatecerts", methods=['GET'])
 @token_required
 @validate_name

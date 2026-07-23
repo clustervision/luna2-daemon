@@ -257,14 +257,14 @@ class Housekeeper(object):
 
 
     def cleanup_mother(self,event):
-        counter=0
+        clean_counter=0
         reap_counter=0
         self.logger.info("Starting cleanup thread")
         prev_mother_status=None
         ha_object=HA()
         while True:
             try:
-                counter+=1
+                clean_counter+=1
                 reap_counter+=1
                 # runtime safety net for osimage, master only, on a ~30s cadence (this loop sleeps 5s,
                 # so every 6th pass): abort chains whose worker died so the queue empties. The mother is
@@ -275,8 +275,8 @@ class Housekeeper(object):
                     reap_counter=0
                     if (not ha_object.get_hastate()) or ha_object.get_role():
                         OsImage().reap_osimage_queue()
-                if counter > 120:
-                    counter=0
+                if clean_counter > 120:
+                    clean_counter=0
                     records=Database().get_record_query("select id,message from status where created<datetime('now','-1 hour')") # only sqlite compliant. rest pending
                     for record in records:
                         self.logger.info(f"cleaning up status id {record['id']} : {record['message']}")

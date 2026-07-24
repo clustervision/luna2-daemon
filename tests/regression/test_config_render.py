@@ -178,6 +178,110 @@ def test_dhcp_kea_link_selection_renders_shared_network(config_env, seeded, cons
     assert content.index('"shared-networks"') < content.index('"subnet": "10.160.0.0/')
 
 
+def _alt_kernel_node(name, mac, netid, ip=None, ip6=None):
+    """A node selecting the ALTERNATIVE iPXE kernel, with a single-family boot interface. (A node
+    interface carrying both families renders only its v6 reservation -- if/elif in dhcp_config -- so
+    each family is exercised on its own interface.)"""
+    from utils.database import Database
+    _insert("group", name=f"{name}grp")
+    gid = Database().get_record(table="group", where=f'name="{name}grp"')[0]["id"]
+    _insert("node", name=name, groupid=gid, ipxe_kernel="alternative")
+    nid = Database().get_record(table="node", where=f'name="{name}"')[0]["id"]
+    _insert("nodeinterface", nodeid=nid, interface="BOOTIF", macaddress=mac)
+    ifid = Database().get_record(table="nodeinterface", where=f"nodeid={nid}")[0]["id"]
+    _insert("ipaddress", ipaddress=ip, ipaddress_ipv6=ip6,
+            tableref="nodeinterface", tablerefid=ifid, networkid=netid)
+
+
+ALT_CLASS = '"client-classes": [ "ipxe-kernel-alternative" ]'
+
+
+@pytest.mark.regression
+def test_alternative_ipxe_kernel_across_network_topologies(config_env, constant):
+    """TRIX-1921: the alternative iPXE kernel (luna_snponly.efi) is selected per node by the
+    ipxe-kernel-alternative client-class on that node's DHCP reservation. That class must survive in
+    ALL THREE boot topologies -- a regular network, a relayed (dhcp_relay) shared network, and a
+    relay + option-82.5 link-selection (dhcp_link_subnet) network -- in both address families.
+
+    The link-selection column of this matrix was the regression: a link-sel network lives only in
+    the link-sel render bucket, but the two node reservation-nextserver calls omitted that bucket
+    (while the switch calls passed it), so a link-sel node's reservation lost its next-server and its
+    ipxe_kernel class and silently booted the DEFAULT luna_ipxe.efi -- with a config kea still
+    accepts. The matrix pins every topology x family so the class cannot silently drop from any one
+    of them; the switch reservation in the link-sel net is the device-type parity anchor."""
+    from utils.config import Config
+    from utils.database import Database
+
+    _insert("cluster", name="mycluster", nameserver_ip="10.141.0.1", ntp_server="10.141.0.1")
+    # (1) REGULAR: the boot network itself, controller present -> serves next-server directly.
+    _insert("network", name="cluster", network="10.141.0.0", subnet="16",
+            network_ipv6="2001:db8:141::", subnet_ipv6="64", dhcp=1,
+            dhcp_range_begin="10.141.10.1", dhcp_range_end="10.141.10.254",
+            dhcp_range_begin_ipv6="2001:db8:141::10", dhcp_range_end_ipv6="2001:db8:141::ff",
+            nameserver_ip="10.141.0.1", nameserver_ip_ipv6="2001:db8:141::1",
+            ntp_server="10.141.0.1", zone="cluster")
+    _insert("controller", hostname="controller", beacon=1, clusterid=1)
+    ctrlid = Database().get_record(table="controller", where='hostname="controller"')[0]["id"]
+    clnet = Database().get_record(table="network", where='name="cluster"')[0]["id"]
+    _insert("ipaddress", ipaddress="10.141.255.254", ipaddress_ipv6="2001:db8:141::fe",
+            tableref="controller", tablerefid=ctrlid, networkid=clnet)
+    _alt_kernel_node("regn4", "aa:bb:cc:00:00:a1", clnet, ip="10.141.0.50")
+    _alt_kernel_node("regn6", "aa:bb:cc:00:00:a6", clnet, ip6="2001:db8:141::50")
+
+    # (2) RELAY: shared + dhcp_relay. gateway is the off-link route that lets next-server be served.
+    _insert("network", name="relayed", network="10.150.0.0", subnet="16",
+            network_ipv6="2001:db8:150::", subnet_ipv6="64", dhcp=1,
+            dhcp_range_begin="10.150.10.1", dhcp_range_end="10.150.10.254", gateway="10.150.0.1",
+            dhcp_range_begin_ipv6="2001:db8:150::10", dhcp_range_end_ipv6="2001:db8:150::ff",
+            gateway_ipv6="2001:db8:150::1", nameserver_ip="10.141.0.1",
+            nameserver_ip_ipv6="2001:db8:150::1", ntp_server="10.141.0.1", zone="relayed",
+            shared=NETWORK, dhcp_relay="10.150.0.1,2001:db8:150::1")
+    rid = Database().get_record(table="network", where='name="relayed"')[0]["id"]
+    _alt_kernel_node("relayn4", "aa:bb:cc:00:00:b1", rid, ip="10.150.10.50")
+    _alt_kernel_node("relayn6", "aa:bb:cc:00:00:b6", rid, ip6="2001:db8:150::50")
+
+    # (3) RELAY + LINK (82.5): shared + dhcp_relay + dhcp_link_subnet -- the regressed column.
+    _insert("network", name="linksel", network="10.160.0.0", subnet="16",
+            network_ipv6="2001:db8:160::", subnet_ipv6="64", dhcp=1,
+            dhcp_range_begin="10.160.10.1", dhcp_range_end="10.160.10.254", gateway="10.160.0.1",
+            dhcp_range_begin_ipv6="2001:db8:160::10", dhcp_range_end_ipv6="2001:db8:160::ff",
+            gateway_ipv6="2001:db8:160::1", nameserver_ip="10.141.0.1",
+            nameserver_ip_ipv6="2001:db8:160::1", ntp_server="10.141.0.1", zone="linksel",
+            shared=NETWORK, dhcp_relay="10.160.0.1,2001:db8:160::1",
+            dhcp_link_subnet="10.170.35.0/24,2001:db8:170::/64")
+    lid = Database().get_record(table="network", where='name="linksel"')[0]["id"]
+    _alt_kernel_node("linkn4", "aa:bb:cc:00:00:c1", lid, ip="10.160.10.50")
+    _alt_kernel_node("linkn6", "aa:bb:cc:00:00:c6", lid, ip6="2001:db8:160::50")
+    # device-type parity anchor: a netboot switch in the same link-sel segment.
+    _insert("switch", name="linksw", netboot=1, ostype="cumulus", default_url="http://edge")
+    swid = Database().get_record(table="switch", where='name="linksw"')[0]["id"]
+    _insert("switchinterface", switchid=swid, interface="eth0", macaddress="aa:bb:cc:00:00:c2", mgmt=1)
+    swifid = Database().get_record(table="switchinterface", where=f"switchid={swid}")[0]["id"]
+    _insert("ipaddress", ipaddress="10.160.10.6", tableref="switchinterface",
+            tablerefid=swifid, networkid=lid)
+
+    constant["DHCP"]["TEMPLATE"] = "templ_kea-dhcp4.cfg"
+    constant["DHCP"]["TEMPLATE6"] = "templ_kea-dhcp6.cfg"
+    assert Config().dhcp_overwrite() is True
+    v4 = open(os.path.join(config_env, "dhcpd.conf"), encoding="utf-8").read()
+    v6 = open(os.path.join(config_env, "dhcpd6.conf"), encoding="utf-8").read()
+
+    def reservation(content, mac):
+        import re
+        m = re.search(r'"hw-address": "' + mac + r'".*?\}', content, re.S)
+        return m.group(0) if m else ""
+
+    # every topology x family keeps the alternative-kernel class on its node reservation
+    for mac in ("aa:bb:cc:00:00:a1", "aa:bb:cc:00:00:b1", "aa:bb:cc:00:00:c1"):   # v4 reg/relay/link
+        assert ALT_CLASS in reservation(v4, mac), f"v4 {mac} lost its alternative-kernel class"
+    for mac in ("aa:bb:cc:00:00:a6", "aa:bb:cc:00:00:b6", "aa:bb:cc:00:00:c6"):   # v6 reg/relay/link
+        assert ALT_CLASS in reservation(v6, mac), f"v6 {mac} lost its alternative-kernel class"
+    # exactly the six node reservations carry it -- no over-emission at subnet/global scope
+    assert v4.count(ALT_CLASS) == 3 and v6.count(ALT_CLASS) == 3
+    # switch reservation in the link-sel net keeps its ZTP boot-file-name (parity anchor)
+    assert '"hw-address": "aa:bb:cc:00:00:c2"' in v4 and "boot/switch/linksw" in v4
+
+
 @pytest.mark.regression
 def test_dhcp_kea_ntp_v4_emitted_only_for_ipv4(config_env, seeded, constant):
     """TRIX-1939: dhcp4 ntp-servers (option 42) is emitted only for an IPv4 ntp_server. A network

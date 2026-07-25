@@ -59,6 +59,8 @@ class Switch():
             table_cap = self.table_cap,
             ip_check = True
         )
+        if status is True:
+            self.attach_mgmt_interface(response)
         return status, response
 
 
@@ -72,7 +74,35 @@ class Switch():
             table_cap = self.table_cap,
             ip_check = True
         )
+        if status is True:
+            self.attach_mgmt_interface(response)
         return status, response
+
+
+    def attach_mgmt_interface(self, response):
+        """Annotate each switch in a get_record response with its management interface (the mgmt=1
+        one): its name, and the switch's own IP/MAC -- which under the unify model live on that
+        interface, not the switch row. Model.get_record's ip_check looks at tableref="switch" and so
+        finds nothing now; sourcing IP/MAC here is what keeps `switch show` reporting them, above the
+        (legacy, now-empty) macaddress row column."""
+        for name, record in response['config'][self.table].items():
+            mgmt = Database().get_record_join(
+                ['switchinterface.id', 'switchinterface.interface', 'switchinterface.macaddress'],
+                ['switchinterface.switchid=switch.id'],
+                [f'switch.name="{name}"', 'switchinterface.mgmt=1']
+            )
+            if not mgmt:
+                continue
+            record['mgmt_interface'] = mgmt[0]['interface']
+            if mgmt[0]['macaddress']:
+                record['macaddress'] = mgmt[0]['macaddress']
+            ipaddress, ipaddress_ipv6, network = Model().get_ip_network(
+                table='switchinterface', record_id=mgmt[0]['id']
+            )
+            if ipaddress or ipaddress_ipv6:
+                record['ipaddress'] = ipaddress
+                record['ipaddress_ipv6'] = ipaddress_ipv6
+                record['network'] = network
 
 
     def ensure_mgmt_interface(self, switchid):

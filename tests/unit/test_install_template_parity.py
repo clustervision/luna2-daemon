@@ -135,34 +135,55 @@ def test_every_shared_function_is_byte_identical():
     )
 
 
-def test_lpart_does_not_call_what_it_does_not_own():
-    """lpart-osimage-install does the download and extraction; the flow must not repeat it."""
-    called = set(_flow(_read(LPART)))
-    overlap = sorted(called & NOT_CALLED_UNDER_LPART)
-    assert not overlap, (
-        f'the lpart flow still calls {overlap}, which lpart-osimage-install owns. '
-        f'Running both would fetch or extract the image twice.'
-    )
-
-
-def test_lpart_arms_no_trap_for_what_it_does_not_own():
+def test_lpart_arms_the_unpack_trap_only_on_the_fallback_path():
     """
-    Not calling a function is not the same as disarming it. unpack_imagefile is armed
-    as a SIGUSR1 handler in the classic template, so under lpart a signal from the fetch
-    client would still run a classic `tar -xf` into the systemroot -- the very work
-    lpart-osimage-install owns. Keeping the body (for parity) means the trap must go.
+    Not calling a function is not the same as disarming it. unpack_imagefile is armed at
+    top level as a SIGUSR1 handler in the classic template; under lpart that would let a
+    signal from the fetch client run a classic `tar -xf` into the systemroot -- work
+    lpart-osimage-install owns. So the lpart template must NOT arm it at top level, and
+    must arm it only once it has decided to fall back to the classic path.
     """
     lpart = _read(LPART)
-    for name in sorted(NOT_CALLED_UNDER_LPART):
-        assert f'trap {name} ' not in lpart, (
-            f'the lpart template still arms a trap for {name}, which it does not own. '
-            f'A signal would run the classic body behind lpart\'s back.'
-        )
-    # and the classic template must keep its trap -- removing it there is a real change
+    top_level = [line for line in lpart.splitlines() if line.startswith('trap unpack_imagefile')]
+    assert not top_level, (
+        'the lpart template arms the unpack trap at top level; a SIGUSR1 would then run '
+        "the classic extract behind lpart's back."
+    )
+    assert 'trap unpack_imagefile SIGUSR1' in lpart, (
+        'the fallback path needs the trap armed, since it runs the classic fetch/unpack'
+    )
+    # it belongs inside lpart_phase, on the branch that sets the fallback flag
+    phase_body = _functions(lpart)['lpart_phase']
+    assert 'trap unpack_imagefile SIGUSR1' in phase_body, (
+        'the trap is armed somewhere other than the fallback branch of lpart_phase'
+    )
+    assert 'LPART_FALLBACK=1' in phase_body, 'the fallback flag is not set where the trap is armed'
+    # and the classic template must keep its own top-level trap
     assert 'trap unpack_imagefile SIGUSR1' in _read(CLASSIC), (
         'the classic template lost its SIGUSR1 trap; that is a behaviour change to the '
         'legacy installer and not something this work should touch.'
     )
+
+
+def test_lpart_falls_back_to_the_classic_fetch_only_behind_the_flag():
+    """
+    lpart-osimage-install owns download and extraction, so the lpart flow must not call
+    the classic pair unconditionally -- only when lpart turned out to be unavailable and
+    the installer chose the legacy path instead.
+    """
+    lpart = _read(LPART)
+    tail = lpart.split('echo "Luna2: installer script"')[-1]
+    for name in sorted(NOT_CALLED_UNDER_LPART):
+        for line in tail.splitlines():
+            if re.match(rf'^\s*{name}\b', line):
+                raise AssertionError(
+                    f'{name} is called unconditionally in the lpart flow; it must be '
+                    f'guarded by the fallback flag, or lpart would fetch/extract twice.'
+                )
+        assert f'"$LPART_FALLBACK" = "1" ] && {name}' in tail, (
+            f'{name} has no fallback-guarded call, so a node whose osimage cannot run '
+            f'lpart would install with no image at all'
+        )
 
 
 @pytest.mark.parametrize('path,label', [(CLASSIC, 'classic'), (LPART, 'lpart')])

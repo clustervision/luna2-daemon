@@ -28,7 +28,7 @@ To Generate the Application Security Key -> python -c "import secrets; print(sec
 __author__      = 'Sumit Sharma'
 __copyright__   = 'Copyright 2025, Luna2 Project'
 __license__     = 'GPL'
-__version__     = '2.1'
+__version__     = '2.2'
 __maintainer__  = 'Sumit Sharma'
 __email__       = 'sumit.sharma@clustervision.com'
 __status__      = 'Development'
@@ -386,7 +386,7 @@ def files():
     # except OSError:
     #     version = "Error :: Not Available"
     version = '711e3a5---DUMMY---278ad6399b'
-    response = {'version': {'luna': '2.1.0001', 'api': 1, 'commit': version }}
+    response = {'version': {'luna': '2.2.0001', 'api': 1, 'commit': version }}
     access_code = 200
     return json.dumps(response), access_code
 

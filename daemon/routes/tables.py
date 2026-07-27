@@ -26,7 +26,7 @@ arguments and keyword arguments Of The API
 __author__      = "Antoine Schonewille"
 __copyright__   = "Copyright 2025, Luna2 Project"
 __license__     = "GPL"
-__version__     = "2.1"
+__version__     = "2.2"
 __maintainer__  = "Antoine Schonewille"
 __email__       = "antoine.schonewille@clustervision.com"
 __status__      = "Development"

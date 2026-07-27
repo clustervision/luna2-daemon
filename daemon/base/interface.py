@@ -24,7 +24,7 @@ Interface Class will make all operations on node and group interfaces.
 __author__      = 'Sumit Sharma'
 __copyright__   = 'Copyright 2025, Luna2 Project'
 __license__     = 'GPL'
-__version__     = '2.1'
+__version__     = '2.2'
 __maintainer__  = 'Sumit Sharma'
 __email__       = 'sumit.sharma@clustervision.com'
 __status__      = 'Development'

@@ -1514,6 +1514,18 @@ class Boot():
             data['nodehostname'] = node_details['hostname']
             data['roles']        = node_details['roles'] or ""
             data['scripts']      = node_details['scripts'] or ""
+            # install_mode selects which installer this node gets, and it is decided
+            # here rather than inside a template: 'legacy' keeps the classic installer,
+            # every other mode is an advanced-partitioner mode and gets the lpart
+            # installer. A method named by the route (kickstart) still wins.
+            if not method and data.get('install_mode') and data['install_mode'] != 'legacy':
+                template = 'templ_install_lpart.cfg'
+                template_path = f'{CONSTANT["TEMPLATES"]["TEMPLATE_FILES"]}/{template}'
+                if not Helper().check_jinja(template_path):
+                    return False, "lpart install template does not exist"
+                with open(template_path, 'r', encoding='utf-8') as file:
+                    template_data = file.read()
+                data['template'] = template
         else:
             status = False
             return status, "This node does not seem to exist"

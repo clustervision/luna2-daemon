@@ -444,6 +444,7 @@ class Node():
             if cluster:
                 node['cluster_provision_method'] = cluster[0]['provision_method']
                 node['cluster_provision_fallback'] = cluster[0]['provision_fallback']
+                node['cluster_install_mode'] = cluster[0]['install_mode']
 
             # What's configured for the node, or the group, or a default fallback
             items = {

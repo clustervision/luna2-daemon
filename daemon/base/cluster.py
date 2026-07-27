@@ -255,6 +255,11 @@ class Cluster():
                     if data[item]+'.py' not in boot_plugins['boot']['provision']:
                         status = False
                         return status, f'provisioning plugin {data[item]} does not exist'
+            if 'install_mode' in data and data['install_mode']:
+                data['install_mode'] = str(data['install_mode']).strip().lower()
+                if data['install_mode'] not in ['auto', 'sync', 'full', 'local', 'memboot', 'sanitize', 'legacy']:
+                    status = False
+                    return status, 'install_mode must be one of auto, sync, full, local, memboot, sanitize or legacy'
 
             cluster_columns = Database().get_columns('cluster')
             cluster_check = Helper().compare_list(data, cluster_columns)

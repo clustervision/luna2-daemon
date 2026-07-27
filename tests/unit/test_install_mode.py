@@ -60,7 +60,11 @@ DOCUMENTED_MODES = {'auto', 'sync', 'full', 'local', 'memboot', 'sanitize', 'leg
 # install_mode enum without depending on where in the file it sits.
 MARKER = 'memboot'
 
+# install_mode resolves node -> group -> cluster -> 'legacy', the same shape as
+# provision_method. Only node and group carry the fallback dict; cluster is a
+# source, not a resolver, so it validates but declares no default.
 SOURCES = ['base/node.py', 'base/group.py']
+VALIDATING_SOURCES = ['base/node.py', 'base/group.py', 'base/cluster.py']
 
 
 def _tree(relpath):
@@ -109,7 +113,7 @@ def test_install_mode_default_is_legacy(relpath):
         )
 
 
-@pytest.mark.parametrize('relpath', SOURCES)
+@pytest.mark.parametrize('relpath', VALIDATING_SOURCES)
 def test_install_mode_validated_against_the_documented_modes(relpath):
     """Each file must validate install_mode, and against exactly the seven modes."""
     accepted = _accepted_modes(relpath)
@@ -124,12 +128,58 @@ def test_install_mode_validated_against_the_documented_modes(relpath):
         )
 
 
-def test_node_and_group_accept_the_same_modes():
-    """The lists are inline in both files; this is what keeps them from drifting apart."""
-    node_modes = _accepted_modes('base/node.py')
-    group_modes = _accepted_modes('base/group.py')
-    assert node_modes and group_modes, 'both node.py and group.py must validate install_mode'
-    assert node_modes[0] == group_modes[0], (
-        f'node.py accepts {sorted(node_modes[0])} but group.py accepts {sorted(group_modes[0])}. '
-        f'install_mode cascades group -> node, so the two must agree.'
+def test_every_level_accepts_the_same_modes():
+    """The lists are inline in each file; this is what keeps them from drifting apart."""
+    seen = {}
+    for relpath in VALIDATING_SOURCES:
+        modes = _accepted_modes(relpath)
+        assert modes, f'{relpath} must validate install_mode'
+        seen[relpath] = modes[0]
+    distinct = {frozenset(m) for m in seen.values()}
+    assert len(distinct) == 1, (
+        f'the levels disagree on install_mode: '
+        + '; '.join(f'{k} accepts {sorted(v)}' for k, v in seen.items())
+        + '. install_mode cascades cluster -> group -> node, so all three must agree.'
+    )
+
+
+def test_install_mode_is_on_the_same_tables_as_provision_method():
+    """
+    Derived from the schema rather than listed here: install_mode is a cluster-wide
+    setting in the same sense provision_method is, so it must exist on exactly the
+    tables provision_method exists on. Enumerating the layout means a table added to
+    one and not the other fails here instead of silently losing a cascade level.
+    """
+    layout = os.path.join(DAEMON, 'common', 'database_layout.py')
+    with open(layout, 'r', encoding='utf-8') as handle:
+        tree = ast.parse(handle.read())
+
+    tables = {}
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Assign):
+            continue
+        for target in node.targets:
+            name = getattr(target, 'id', '')
+            if not name.startswith('DATABASE_LAYOUT_'):
+                continue
+            columns = set()
+            for entry in ast.walk(node.value):
+                if not isinstance(entry, ast.Dict):
+                    continue
+                for key, value in zip(entry.keys, entry.values):
+                    if (
+                        isinstance(key, ast.Constant)
+                        and key.value == 'column'
+                        and isinstance(value, ast.Constant)
+                    ):
+                        columns.add(value.value)
+            tables[name[len('DATABASE_LAYOUT_'):]] = columns
+
+    with_provision = {t for t, c in tables.items() if 'provision_method' in c}
+    with_install = {t for t, c in tables.items() if 'install_mode' in c}
+    assert with_provision, 'no table declares provision_method -- has the layout moved?'
+    assert with_install == with_provision, (
+        f'install_mode is on {sorted(with_install)} but provision_method is on '
+        f'{sorted(with_provision)}. install_mode is a cluster-wide setting in the same sense, '
+        f'so the two must sit on the same tables.'
     )

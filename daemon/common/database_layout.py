@@ -331,6 +331,7 @@ DATABASE_LAYOUT_cluster = [
 {"column": "technical_contacts",   "datatype": "VARCHAR", "length": "50"},
 {"column": "provision_method",     "datatype": "VARCHAR", "length": "20"},
 {"column": "provision_fallback",   "datatype": "VARCHAR", "length": "20"},
+{"column": "install_mode",         "datatype": "VARCHAR", "length": "20"},
 {"column": "debug",                "datatype": "INTEGER", "length": "10"},
 {"column": "security",             "datatype": "INTEGER", "length": "10"},
 {"column": "packing_bootpause",    "datatype": "INTEGER", "length": "10"},

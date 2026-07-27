@@ -16,15 +16,11 @@
 # Required project CI/CD variables: LOCATION, DEV_LOCATION, IPADDRESS, SSH_USER,
 # SSH_PASSWORD.
 #
-# NOTE ON THE REF: the pipeline currently lives on the gitlab-cicd-pipelines branch
-# 'twans_cicd', which is being treated as main while it is still being iterated on.
-# Change this ref to 'main' once that branch merges -- it is the only line here that
-# needs to move, in all three luna2 projects.
 
 include:
   - project: 'ClusterVision/gitlab-cicd-pipelines'
     file: '/pip-package-pipeline.yml'
-    ref: 'twans_cicd'
+    ref: 'main'
 
 #
 # The 2.0 line is dormant (last touched February 2025) but main-2.0 and

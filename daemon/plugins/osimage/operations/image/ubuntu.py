@@ -275,7 +275,15 @@ class Plugin():
         create = None
 
         try:
-            initramfs_cmd = (['/usr/sbin/mkinitramfs', '-o', '/tmp/' + ramdisk_file, kernel_version ])
+            # lpart: the campaign ubuntu client ships a dracut 95luna module; luna's
+            # stock ubuntu pack uses mkinitramfs (initramfs-tools) which IGNORES it,
+            # so the install initramfs would carry none of the lpart toolset. When the
+            # image carries the luna dracut module + dracut, pack with dracut instead.
+            _dracut = '/usr/bin/dracut' if os.path.exists('/usr/bin/dracut') else ('/usr/sbin/dracut' if os.path.exists('/usr/sbin/dracut') else None)
+            if _dracut and os.path.isdir('/usr/lib/dracut/modules.d/95luna'):
+                initramfs_cmd = ([_dracut, '--force', '--add', 'luna', '--kver', kernel_version, '/tmp/' + ramdisk_file])
+            else:
+                initramfs_cmd = (['/usr/sbin/mkinitramfs', '-o', '/tmp/' + ramdisk_file, kernel_version ])
 
             create = subprocess.Popen(initramfs_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             while create.poll() is None:

@@ -31,6 +31,7 @@ __email__       = 'sumit.sharma@clustervision.com'
 __status__      = 'Development'
 
 from base64 import b64decode, b64encode
+from utils.disklayout import validate as validate_disklayout, DisklayoutInvalid
 from utils.database import Database
 from utils.log import Log
 from utils.config import Config
@@ -631,6 +632,24 @@ class Node():
         response = "Internal error"
         if request_data:
             data = request_data['config']['node'][name]
+            # Validate a disklayout the operator is SETTING here, at store time,
+            # before it can reach a node. This is the daemon half of the
+            # two-location check (the node's Go validator is the other): a sound
+            # subset that rejects the common authoring mistakes -- malformed JSON,
+            # unknown keys, missing required fields, bad enums, non-/dev devices --
+            # with a clear message. Only the incoming value is checked; inherited
+            # or already-stored layouts are left untouched. The stored value is
+            # base64, so decode first; a value we cannot decode is left to the node.
+            if data.get('disklayout'):
+                try:
+                    disklayout_json = b64decode(data['disklayout']).decode('utf-8')
+                except (ValueError, UnicodeDecodeError):
+                    disklayout_json = None
+                if disklayout_json:
+                    try:
+                        validate_disklayout(disklayout_json)
+                    except DisklayoutInvalid as exp:
+                        return False, f'Invalid request: {exp}'
             node = Database().get_record(table='node', where=f'name = "{name}"')
             oldnodename = None
             if node:

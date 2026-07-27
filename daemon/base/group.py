@@ -29,7 +29,8 @@ __maintainer__  = 'Sumit Sharma'
 __email__       = 'sumit.sharma@clustervision.com'
 __status__      = 'Development'
 
-from base64 import b64encode
+from base64 import b64decode, b64encode
+from utils.disklayout import validate as validate_disklayout, DisklayoutInvalid
 from concurrent.futures import ThreadPoolExecutor
 from utils.database import Database
 from utils.log import Log
@@ -327,6 +328,20 @@ class Group():
         create, update = False, False
         if request_data:
             data = request_data['config']['group'][name]
+            # Validate a disklayout the operator is SETTING on the group, at store
+            # time, before it can cascade to any node (the daemon half of the
+            # two-location check; the node's Go validator is the other). Sound
+            # subset, incoming value only; stored value is base64 -> decode first.
+            if data.get('disklayout'):
+                try:
+                    disklayout_json = b64decode(data['disklayout']).decode('utf-8')
+                except (ValueError, UnicodeDecodeError):
+                    disklayout_json = None
+                if disklayout_json:
+                    try:
+                        validate_disklayout(disklayout_json)
+                    except DisklayoutInvalid as exp:
+                        return False, f'Invalid request: {exp}'
             oldgroupname = None
             group = Database().get_record(table='group', where=f'name = "{name}"')
             if group:

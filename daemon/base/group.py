@@ -145,7 +145,9 @@ class Group():
             'kerneloptions': None,
             'ipxe_kernel': 'default',
             'unmanaged_bmc_users': None,
-            'install_mode': 'auto'
+            # a group that predates the install-model, or never set it, must keep the
+            # classic installer. every other install_mode value is an lpart mode.
+            'install_mode': 'legacy'
         }
         overrides = ['provision_interface','provision_method','provision_fallback','kerneloptions','ipxe_kernel']
         # same as above but now specifically base64
@@ -404,6 +406,10 @@ class Group():
                 data['ipxe_kernel'] = str(data['ipxe_kernel']).strip().lower()
                 if data['ipxe_kernel'] not in ['default', 'alternative']:
                     return False, 'Invalid request: ipxe_kernel must be default or alternative'
+            if 'install_mode' in data and data['install_mode']:
+                data['install_mode'] = str(data['install_mode']).strip().lower()
+                if data['install_mode'] not in ['auto', 'sync', 'full', 'local', 'memboot', 'sanitize', 'legacy']:
+                    return False, 'Invalid request: install_mode must be one of auto, sync, full, local, memboot, sanitize or legacy'
             if 'unmanaged_bmc_users' in data:
                 value = str(data['unmanaged_bmc_users']).strip().lower()
                 if value in ('', 'none', 'skip'):

@@ -302,6 +302,9 @@ class Node():
                 'group.prescript AS group_prescript',
                 'group.partscript AS group_partscript',
                 'group.postscript AS group_postscript',
+                'group.install_mode AS group_install_mode',
+                'group.disklayout AS group_disklayout',
+                'group.osimage_filter AS group_osimage_filter',
                 'group.netboot AS group_netboot',
                 'group.bootmenu AS group_bootmenu',
                 'group.roles AS group_roles',
@@ -455,7 +458,8 @@ class Node():
                 'provision_fallback': 'http',
                 'provision_interface': 'BOOTIF',
                 'kerneloptions': None,
-                'ipxe_kernel': 'default'
+                'ipxe_kernel': 'default',
+                'install_mode': 'auto'
             }
             for key, value in items.items():
                 if 'cluster_'+key in node and isinstance(value, bool):
@@ -495,7 +499,8 @@ class Node():
                 if 'cluster_'+key in node:
                     del node['cluster_'+key]
             # same as above but now specifically base64
-            b64items = {'prescript': '', 'partscript': '', 'postscript': ''}
+            b64items = {'prescript': '', 'partscript': '', 'postscript': '',
+                        'disklayout': '', 'osimage_filter': ''}
             try:
                 for key, value in b64items.items():
                     if 'group_'+key in node and node['group_'+key] and not node[key]:

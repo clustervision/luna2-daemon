@@ -143,11 +143,13 @@ class Group():
             'provision_fallback': 'http',
             'kerneloptions': None,
             'ipxe_kernel': 'default',
-            'unmanaged_bmc_users': None
+            'unmanaged_bmc_users': None,
+            'install_mode': 'auto'
         }
         overrides = ['provision_interface','provision_method','provision_fallback','kerneloptions','ipxe_kernel']
         # same as above but now specifically base64
-        b64items = {'prescript': '', 'partscript': '', 'postscript': ''}
+        b64items = {'prescript': '', 'partscript': '', 'postscript': '',
+                    'disklayout': '', 'osimage_filter': ''}
         cluster = Database().get_record(table='cluster')
         groups = Database().get_record(table='group', where=f'name = "{name}"')
         if groups:

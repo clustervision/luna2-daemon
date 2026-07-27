@@ -170,15 +170,19 @@ def test_lpart_installer_falls_back_when_the_osimage_cannot_run_it():
         'the fallback does not report a distinct status, so a node silently installed '
         'with the wrong disk layout looks identical to one that got what it asked for'
     )
-    assert 'FALLING BACK' in guard, 'the fallback is not stated in the install output'
-    # update_status text is copied verbatim into the controller log, and that log is the
-    # only record that outlives the node rebooting -- so it must read as a sentence, not
-    # as a state nobody can decode.
-    warning = [line for line in guard.splitlines() if 'install.WARNING' in line]
-    assert warning, 'the fallback logs no human-legible warning to the controller'
-    text = warning[0]
-    for phrase in ('CLASSIC PATH', 'NOT the requested lpart layout', 'Rebuild the osimage'):
-        assert phrase in text, f'the logged warning does not say: {phrase}'
+    # The human-readable warning is echoed, not pushed through update_status: that field
+    # is the node's *state* and the next step overwrites it, so a sentence does not belong
+    # there. The echo lands on the install console and in the node's install log.
+    echoed = '\n'.join(line for line in guard.splitlines() if line.strip().startswith('echo'))
+    for phrase in ('FALLING BACK', 'NOT the', 'requested lpart layout',
+                   'install_mode=legacy', 'lpart-node-installer'):
+        assert phrase in echoed, f'the install output does not state: {phrase}'
+    # ...and the state stays short, because a state is not a message
+    states = re.findall(r'update_status "([^"]+)"', guard)
+    assert states == ['install.lpart_unavailable'], (
+        f'expected exactly one short state, got {states}. update_status sets the node '
+        f'state and is overwritten by the next step; it is not a place for prose.'
+    )
     assert 'lpart_phase' in lpart.split('command -v lpart-node-installer')[0][-500:], (
         'the capability check should sit inside lpart_phase, so every phase is covered'
     )

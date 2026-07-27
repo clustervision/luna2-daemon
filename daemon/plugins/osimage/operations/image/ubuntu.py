@@ -279,6 +279,18 @@ class Plugin():
             # stock ubuntu pack uses mkinitramfs (initramfs-tools) which IGNORES it,
             # so the install initramfs would carry none of the lpart toolset. When the
             # image carries the luna dracut module + dracut, pack with dracut instead.
+            #
+            # THESE TWO CHECKS MUST STAY AFTER os.chroot(image_path) ABOVE. They read
+            # absolute paths, so inside the chroot they ask "what did this IMAGE get
+            # built with"; moved before it, the identical code asks the CONTROLLER
+            # instead and answers confidently for the wrong machine -- a controller
+            # with dracut would pick dracut for an image that has none.
+            #
+            # The image is what decides, not the ubuntu release: 22.04/24.04 default to
+            # initramfs-tools and 25.10+ to dracut, but a site can install either on
+            # either, and the client package ships both (Depends: initramfs-tools |
+            # dracut). That is why this is one plugin asking the artifact rather than
+            # a per-release plugin inferring from the version.
             _dracut = '/usr/bin/dracut' if os.path.exists('/usr/bin/dracut') else ('/usr/sbin/dracut' if os.path.exists('/usr/sbin/dracut') else None)
             if _dracut and os.path.isdir('/usr/lib/dracut/modules.d/95luna'):
                 initramfs_cmd = ([_dracut, '--force', '--add', 'luna', '--kver', kernel_version, '/tmp/' + ramdisk_file])

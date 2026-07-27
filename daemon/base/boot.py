@@ -1496,6 +1496,7 @@ class Boot():
                 return False, "i received data back internally that i could not parse"
             self.logger.debug(f"DEBUG: {node_details}")
             for item in ['provision_method','provision_fallback','prescript','partscript','postscript',
+                         'install_mode','disklayout','osimage_filter',
                          'netboot','bootmenu','provision_interface','unmanaged_bmc_users','kerneloptions',
                          'name','setupbmc','bmcsetup','group','osimage','osimagetag']:
                 if item in items and isinstance(items[item], bool):

@@ -203,3 +203,94 @@ def test_lpart_is_never_reachable_without_the_daemon_choosing_it():
             f'only script a rebuilt osimage gets, and lpart would run with no '
             f'provisioning inputs written.'
         )
+
+# The classic installer's shape, blessed against `development` as of the 2.2 merge.
+# This is the compatibility guarantee expressed at the level that actually matters:
+# not "the file is byte-identical" -- which the first legitimate fix breaks -- but
+# "an old client is handed the same functions, called in the same order".
+CLASSIC_FUNCTIONS = {
+    'bmcsetup',
+    'change_net',
+    'cleanup',
+    'collect_mac_n_name_net',
+    'config_bmc',
+    'config_dns',
+    'config_dns_ipv6',
+    'config_gateway',
+    'config_gateway_ipv6',
+    'config_hostname',
+    'config_interface',
+    'config_interface_ipv6',
+    'config_network_init',
+    'customscript',
+    'download_image',
+    'dynamic_ip_check',
+    'fix_capabilities',
+    'get_encapsulated_content',
+    'get_interface_by_mac',
+    'get_json_segment',
+    'lunainit',
+    'node_roles',
+    'node_scripts',
+    'node_secrets',
+    'partscript',
+    'postscript',
+    'prescript',
+    'restore_selinux_context',
+    'unpack_imagefile',
+    'update_inventory',
+    'update_node_ip',
+    'update_status',
+    'update_system_info',
+}
+CLASSIC_FLOW = [
+    'lunainit', 'dynamic_ip_check', 'node_scripts', 'prescript', 'bmcsetup',
+    'partscript', 'download_image', 'unpack_imagefile', 'collect_mac_n_name_net',
+    'change_net', 'node_secrets', 'postscript', 'node_roles', 'fix_capabilities',
+    'restore_selinux_context', 'update_system_info', 'update_inventory', 'cleanup',
+    'update_status',
+]
+
+
+def _classic_functions():
+    import re as _re
+    return {m.group(1) for m in
+            _re.finditer(r'^function ([a-z_][a-z0-9_]*)\s*\{', _read(CLASSIC), _re.M)}
+
+
+def _classic_flow():
+    tail = _read(CLASSIC).split('echo "Luna2: installer script"')[-1]
+    out = []
+    for line in tail.splitlines():
+        t = line.strip()
+        if not t or t.startswith(('#', 'echo', '{%', '{{')):
+            continue
+        out.append(t.split()[0])
+    return out
+
+
+def test_classic_installer_offers_the_same_functions():
+    """
+    OLD CLIENT + NEW DAEMON, pinned by behaviour rather than by hash.
+
+    templ_install.cfg was byte-identical to development until the first legitimate
+    fix landed in it. Bytes were never the property worth protecting -- this is: an
+    osimage nobody has rebuilt must be handed the same installer it has always had.
+    A function added, removed or renamed here changes what that node runs.
+    """
+    found = _classic_functions()
+    assert found == CLASSIC_FUNCTIONS, (
+        f'the classic installer\'s function set changed: '
+        f'added {sorted(found - CLASSIC_FUNCTIONS)}, removed {sorted(CLASSIC_FUNCTIONS - found)}. '
+        f'If that is intended, re-bless the list here in the same commit and say why -- '
+        f'it is a change to what every un-rebuilt osimage executes.'
+    )
+
+
+def test_classic_installer_runs_them_in_the_same_order():
+    """The call list is the installer's actual behaviour; order is the contract."""
+    assert _classic_flow() == CLASSIC_FLOW, (
+        f'the classic installer\'s execution order changed:\n'
+        f'  expected: {CLASSIC_FLOW}\n'
+        f'  found:    {_classic_flow()}'
+    )

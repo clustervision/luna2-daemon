@@ -1751,6 +1751,20 @@ class Boot():
         osimage_plugin = Helper().plugin_load(self.osimage_plugins,'osimage/operations/image',data['distribution'],data['osrelease'])
         data['systemroot'] = str(osimage_plugin().systemroot or '/sysroot')
 
+        ## POST BOOT TEMPLATE
+        post_boot_template_path = f'{CONSTANT["TEMPLATES"]["TEMPLATE_FILES"]}/templ_post_boot.cfg'
+        check_template = Helper().check_jinja(post_boot_template_path)
+        if check_template:
+            try:
+                with open(post_boot_template_path, 'r', encoding='utf-8') as template_file:
+                    post_boot_script = template_file.read()
+                    segment = str(post_boot_script)
+                    template_data = template_data.replace("## POST BOOT SCRIPT SEGMENT", segment)
+            except Exception as exp:
+                self.logger.error(f"{exp}")
+        else:
+            self.logger.warning("post boot script templ_post_boot.cfg not found or could not be read")
+
         ## FETCH CODE SEGMENT
         cluster_provision_methods = [data['provision_method'], data['provision_fallback']]
 

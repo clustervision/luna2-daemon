@@ -15,7 +15,9 @@ These cover the parts that can be exercised without a running daemon:
 """
 
 import os
+import re
 import sys
+from ipaddress import ip_network
 
 import pytest
 from jinja2 import Environment, FileSystemLoader
@@ -32,13 +34,13 @@ def _env():
     return env
 
 
-def _iface(routes=None, routes_ipv6=None, gateway='192.168.1.1'):
+def _iface(routes=None, routes_ipv6=None, gateway='192.168.1.1', gateway_ipv6=''):
     return {'eth1': {
         'type': 'ethernet', 'networktype': 'ethernet', 'zone': 'trusted', 'mtu': '',
         'ipaddress': '10.141.0.5', 'prefix': '16', 'vlanid': '', 'vlan_parent': '',
         'ipaddress_ipv6': 'fd00::5', 'prefix_ipv6': '64',
         'nameserver_ip': ['10.141.0.1'], 'nameserver_ip_ipv6': ['fd00::1'],
-        'gateway': gateway, 'gateway_ipv6': '', 'gateway_metric': '101',
+        'gateway': gateway, 'gateway_ipv6': gateway_ipv6, 'gateway_metric': '101',
         'dhcp': None, 'options': '', 'master': '', 'bond_mode': '', 'bond_slaves': [],
         'routes': routes or [], 'routes_ipv6': routes_ipv6 or []}}
 
@@ -86,6 +88,53 @@ def test_nm_ipv6_route_without_gateway_is_route1(name):
         LUNA_INTERFACES=_iface(routes_ipv6=[{'destination': 'fd10::/32', 'gateway': 'fd00::9', 'metric': None}]),
         **_CTX)
     assert 'route1=fd10::/32,fd00::9' in out
+
+
+def _keyfile_routes(rendered):
+    """Yield (section, destination) for every routeN= in the rendered NM keyfile."""
+    section = None
+    for line in rendered.splitlines():
+        line = line.strip()
+        if line.startswith('[') and line.endswith(']'):
+            section = line
+        elif section in ('[ipv4]', '[ipv6]') and re.match(r'^route\d+=', line):
+            yield section, line.split('=', 1)[1].split(',')[0]
+
+
+@pytest.mark.parametrize('name', NM_TEMPLATES)
+def test_nm_route_destinations_match_the_family_of_their_section(name):
+    """TRIX-1937: an [ipv6] route destination must be an IPv6 prefix, and vice versa.
+
+    The IPv6 default route was written as 0.0.0.0/0 -- the IPv4 line, copied. It is not a
+    parse error: NetworkManager reads the profile, verifies it, and silently drops the route,
+    so the node comes up with an IPv6 address and no IPv6 default route. Nothing complains.
+
+    This asserts the family of every route destination against the section it lands in rather
+    than matching the one known-bad string, so a later IPv4 destination reaching [ipv6] by any
+    other route -- the routes_ipv6 loop included -- fails here too.
+    """
+    out = _env().get_template(f'{name}.templ').render(
+        LUNA_INTERFACES=_iface(gateway_ipv6='fd00::1',
+                               routes_ipv6=[{'destination': 'fd10::/32', 'gateway': 'fd00::9', 'metric': 200}],
+                               routes=[{'destination': '10.0.0.0/8', 'gateway': '10.141.255.254', 'metric': 200}]),
+        **_CTX)
+    found = list(_keyfile_routes(out))
+    assert found, "no routes rendered at all -- the fixture no longer reaches the route lines"
+    for section, destination in found:
+        expected = 4 if section == '[ipv4]' else 6
+        assert ip_network(destination, strict=False).version == expected, (
+            f"{name}.templ rendered {destination} as a route destination inside {section}. "
+            f"NetworkManager drops it silently -- the profile loads and the route is simply absent."
+        )
+
+
+@pytest.mark.parametrize('name', NM_TEMPLATES)
+def test_nm_ipv6_gateway_renders_the_ipv6_default_route(name):
+    """The IPv6 default route is ::/0, and the IPv4 one is still 0.0.0.0/0."""
+    out = _env().get_template(f'{name}.templ').render(
+        LUNA_INTERFACES=_iface(gateway_ipv6='fd00::1'), **_CTX)
+    assert 'route1=::/0,fd00::1,101' in out
+    assert 'route1=0.0.0.0/0,192.168.1.1,101' in out, "the IPv4 default route was collateral damage"
 
 
 def _ub_iface(routes=None, routes_ipv6=None, dhcp=False, gateway='10.145.255.254'):

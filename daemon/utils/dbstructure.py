@@ -47,9 +47,12 @@ class DBStructure():
         self.tables = ['status', 'queue', 'osimage', 'osimagetag', 'nodesecrets',
                        'nodeinterface', 'bmcsetup','ha', 'monitor', 'ipaddress',
                        'groupinterface', 'roles', 'group', 'network', 'user', 'switch',
+                       'switchinterface',
                        'cloud', 'otherdevices', 'controller', 'groupsecrets', 'node',
                        'cluster', 'tracker', 'dns', 'journal', 'rack', 'rackinventory',
-                       'ping', 'reservedipaddress', 'reference', 'route', 'routemap']
+                       'ping', 'reservedipaddress', 'reference', 'route', 'routemap',
+                       'nodeinventory', 'nodeinventorydisk', 'nodeinventorygpu',
+                       'nodeinventorynic']
    
  
     def check_db_tables(self):
@@ -192,6 +195,8 @@ class DBStructure():
             return DATABASE_LAYOUT_user
         if table == "switch":
             return DATABASE_LAYOUT_switch
+        if table == "switchinterface":
+            return DATABASE_LAYOUT_switchinterface
         if table == "cloud":
             return DATABASE_LAYOUT_cloud
         if table == "otherdevices":
@@ -226,5 +231,13 @@ class DBStructure():
             return DATABASE_LAYOUT_route
         if table == "routemap":
             return DATABASE_LAYOUT_routemap
+        if table == "nodeinventory":
+            return DATABASE_LAYOUT_nodeinventory
+        if table == "nodeinventorydisk":
+            return DATABASE_LAYOUT_nodeinventorydisk
+        if table == "nodeinventorygpu":
+            return DATABASE_LAYOUT_nodeinventorygpu
+        if table == "nodeinventorynic":
+            return DATABASE_LAYOUT_nodeinventorynic
         return
 

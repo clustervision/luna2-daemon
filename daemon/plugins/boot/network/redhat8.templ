@@ -91,7 +91,7 @@ dns={{ LUNA_INTERFACES[interface]['nameserver_ip_ipv6']|join(';') }}
 dns-search={{ DOMAIN_SEARCH|join(';') }}
       {%- endif %}
       {%- if LUNA_INTERFACES[interface]['gateway_ipv6'] %}
-route1=0.0.0.0/0,{{ LUNA_INTERFACES[interface]['gateway_ipv6'] }},{{ LUNA_INTERFACES[interface]['gateway_metric'] }}
+route1=::/0,{{ LUNA_INTERFACES[interface]['gateway_ipv6'] }},{{ LUNA_INTERFACES[interface]['gateway_metric'] }}
       {%- endif %}
       {%- set rbase6 = 1 if LUNA_INTERFACES[interface]['gateway_ipv6'] else 0 %}
       {%- for r in LUNA_INTERFACES[interface]['routes_ipv6']|default([], true) %}

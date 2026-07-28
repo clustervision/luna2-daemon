@@ -38,7 +38,8 @@ def _install_constant_stub():
     stub.CONSTANT = {
         "LOGGER": {"LEVEL": "error", "LOGFILE": None},
         "API": {"USERNAME": "luna", "PASSWORD": "luna", "EXPIRY": "1h",
-                "SECRET_KEY": "test", "ENDPOINT": "localhost:7050", "PROTOCOL": "http"},
+                "SECRET_KEY": "test", "ENDPOINT": "localhost:7050", "PROTOCOL": "http",
+                "VERIFY_CERTIFICATE": "no"},
         "DATABASE": {"DRIVER": "SQLite3", "DATABASE": ":memory:",
                      "DBUSER": "", "DBPASSWORD": "", "HOST": "", "PORT": ""},
         "FILES": {"KEYFILE": None, "IMAGE_FILES": None, "IMAGE_DIRECTORY": None,
@@ -47,6 +48,8 @@ def _install_constant_stub():
         "PLUGINS": {"PLUGINS_DIRECTORY": None, "IMAGE_FILESYSTEM": "default"},
         "SERVICES": {}, "DHCP": {}, "BMCCONTROL": {}, "TEMPLATES": {},
     }
+    # base/cluster.py imports this name and reports it as a path; nothing opens it here.
+    stub.CONFIGFILE = '/trinity/local/luna/daemon/config/luna.ini'
     stub.LUNAKEY = _LUNAKEY
     sys.modules["common.constant"] = stub
 

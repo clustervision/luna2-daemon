@@ -408,9 +408,19 @@ class Boot():
         if not switch:
             return False, self.failed_boot(f"switch {name} does not exist")
         switch = switch[0]
+        # Feature 1 (url_protocol): 'plain' -> [WEBSERVER] (http); 'secure'/AUTO/unset -> [API] (current)
         protocol = CONSTANT['API']['PROTOCOL']
-        controller = self.controller_ipv4 or self.controller_ip
-        controller_url = f"{protocol}://{controller}:{self.controller_serverport}"
+        port = self.controller_serverport
+        if str(switch['url_protocol'] or '').lower() == 'plain':
+            if 'WEBSERVER' in CONSTANT:
+                protocol = CONSTANT['WEBSERVER'].get('PROTOCOL', protocol)
+                port = CONSTANT['WEBSERVER'].get('PORT', port)
+            else:
+                self.logger.warning(f"switch {name}: url_protocol=plain but no [WEBSERVER] section; using API endpoint")
+        # Feature 2 (url_server): optional manual override of the URL host (IP or hostname, typed).
+        # Unset -> the controller IP already known (current behaviour).
+        controller = switch['url_server'] or self.controller_ipv4 or self.controller_ip
+        controller_url = f"{protocol}://{controller}:{port}"
         image_url = f"{controller_url}/{switch['default_url']}" if switch['default_url'] else None
         # the served config is yaml only when an admin ztpconfig is present and flagged yaml;
         # the generated fallback is always a commands-list

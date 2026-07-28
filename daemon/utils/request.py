@@ -171,7 +171,7 @@ class Request():
             except Exception as exp:
                 self.logger.error(f"{exp}")
         else:
-            self.logger.error(f"no token for {uri} on host {host}. invalid credentials or host is down.")
+            self.logger.error(f"no token for {filename} on host {host}. invalid credentials or host is down.")
         return False, None
 
 

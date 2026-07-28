@@ -51,7 +51,9 @@ DATABASE_LAYOUT_queue = [
 {"column": "task",                 "datatype": "varchar", "length": "128"},
 {"column": "param",                "datatype": "varchar", "length": "128"},
 {"column": "noeof",                "datatype": "INTEGER", "length": "10"},
-{"column": "status",               "datatype": "varchar", "length": "64"}]
+{"column": "status",               "datatype": "varchar", "length": "64"},
+{"column": "owner_pid",            "datatype": "INTEGER", "length": "10"},
+{"column": "owner_started",        "datatype": "TEXT"}]
 
 DATABASE_LAYOUT_osimage = [
 {"column": "id",                   "datatype": "INTEGER", "key": "PRIMARY", "keyadd": "AUTOINCREMENT"},
@@ -199,6 +201,7 @@ DATABASE_LAYOUT_network = [
 {"column": "dhcp_range_end",       "datatype": "VARCHAR", "length": "20"},
 {"column": "dhcp_range_end_ipv6",  "datatype": "VARCHAR", "length": "60"},
 {"column": "dhcp_relay",           "datatype": "VARCHAR", "length": "200"},
+{"column": "dhcp_link_subnet",     "datatype": "VARCHAR", "length": "200"},
 {"column": "zone",                 "datatype": "VARCHAR", "length": "60"},
 {"column": "shared",               "datatype": "VARCHAR", "length": "60"},
 {"column": "type",                 "datatype": "VARCHAR", "length": "100"},
@@ -235,7 +238,18 @@ DATABASE_LAYOUT_switch = [
 {"column": "bootfile",             "datatype": "VARCHAR", "length": "255"},
 {"column": "ztpconfig",            "datatype": "TEXT"},
 {"column": "ztpformat",            "datatype": "VARCHAR", "length": "20"},
+{"column": "url_protocol",         "datatype": "VARCHAR", "length": "20"},
+{"column": "url_server",           "datatype": "VARCHAR", "length": "255"},
+{"column": "tftp_enable",          "datatype": "INTEGER", "length": "10"},
+{"column": "ostype",               "datatype": "VARCHAR", "length": "20"},
 {"column": "comment",              "datatype": "VARCHAR", "length": "60"}]
+
+DATABASE_LAYOUT_switchinterface = [
+{"column": "id",                   "datatype": "INTEGER", "key": "PRIMARY", "keyadd": "AUTOINCREMENT"},
+{"column": "switchid",             "datatype": "INTEGER", "length": "10", "key": "UNIQUE", "with": "interface"},
+{"column": "interface",            "datatype": "VARCHAR", "length": "50"},
+{"column": "macaddress",           "datatype": "VARCHAR", "length": "200"},
+{"column": "mgmt",                 "datatype": "INTEGER", "length": "1"}]
 
 DATABASE_LAYOUT_otherdevices = [
 {"column": "id",                   "datatype": "INTEGER", "key": "PRIMARY", "keyadd": "AUTOINCREMENT"},
@@ -391,4 +405,52 @@ DATABASE_LAYOUT_routemap = [
 {"column": "tableref",             "datatype": "VARCHAR", "length": "100"},
 {"column": "tablerefid",           "datatype": "INTEGER", "length": "10"},
 {"column": "routeid",              "datatype": "INTEGER", "length": "10"}]
+
+DATABASE_LAYOUT_nodeinventory = [
+{"column": "id",                   "datatype": "INTEGER", "key": "PRIMARY", "keyadd": "AUTOINCREMENT"},
+{"column": "nodeid",               "datatype": "INTEGER", "length": "10", "key": "UNIQUE", "with": "source"},
+{"column": "source",               "datatype": "VARCHAR", "length": "20"},
+{"column": "manufacturer",         "datatype": "VARCHAR", "length": "64"},
+{"column": "product",              "datatype": "VARCHAR", "length": "128"},
+{"column": "serial",               "datatype": "VARCHAR", "length": "64"},
+{"column": "cpu_model",            "datatype": "VARCHAR", "length": "128"},
+{"column": "cpu_count",            "datatype": "INTEGER", "length": "10"},
+{"column": "memory_mb",            "datatype": "INTEGER", "length": "10"},
+{"column": "disk_count",           "datatype": "INTEGER", "length": "10"},
+{"column": "disk_total_gb",        "datatype": "INTEGER", "length": "10"},
+{"column": "gpu_count",            "datatype": "INTEGER", "length": "10"},
+{"column": "nic_count",            "datatype": "INTEGER", "length": "10"},
+{"column": "bios_version",         "datatype": "VARCHAR", "length": "64"},
+{"column": "inventory",            "datatype": "TEXT"},
+{"column": "hash",                 "datatype": "VARCHAR", "length": "64"},
+{"column": "updated",              "datatype": "VARCHAR", "length": "64"}]
+
+DATABASE_LAYOUT_nodeinventorydisk = [
+{"column": "id",                   "datatype": "INTEGER", "key": "PRIMARY", "keyadd": "AUTOINCREMENT"},
+{"column": "nodeid",               "datatype": "INTEGER", "length": "10"},
+{"column": "source",               "datatype": "VARCHAR", "length": "20"},
+{"column": "name",                 "datatype": "VARCHAR", "length": "32"},
+{"column": "size_gb",              "datatype": "INTEGER", "length": "10"},
+{"column": "type",                 "datatype": "VARCHAR", "length": "16"},
+{"column": "model",                "datatype": "VARCHAR", "length": "128"},
+{"column": "serial",               "datatype": "VARCHAR", "length": "64"}]
+
+DATABASE_LAYOUT_nodeinventorygpu = [
+{"column": "id",                   "datatype": "INTEGER", "key": "PRIMARY", "keyadd": "AUTOINCREMENT"},
+{"column": "nodeid",               "datatype": "INTEGER", "length": "10"},
+{"column": "source",               "datatype": "VARCHAR", "length": "20"},
+{"column": "busid",                "datatype": "VARCHAR", "length": "32"},
+{"column": "vendor",               "datatype": "VARCHAR", "length": "32"},
+{"column": "model",                "datatype": "VARCHAR", "length": "128"},
+{"column": "memory_mb",            "datatype": "INTEGER", "length": "10"},
+{"column": "uuid",                 "datatype": "VARCHAR", "length": "64"}]
+
+DATABASE_LAYOUT_nodeinventorynic = [
+{"column": "id",                   "datatype": "INTEGER", "key": "PRIMARY", "keyadd": "AUTOINCREMENT"},
+{"column": "nodeid",               "datatype": "INTEGER", "length": "10"},
+{"column": "source",               "datatype": "VARCHAR", "length": "20"},
+{"column": "name",                 "datatype": "VARCHAR", "length": "32"},
+{"column": "mac",                  "datatype": "VARCHAR", "length": "32"},
+{"column": "speed_mbps",           "datatype": "INTEGER", "length": "10"},
+{"column": "capabilities",         "datatype": "VARCHAR", "length": "128"}]
 

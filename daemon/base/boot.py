@@ -1423,6 +1423,8 @@ class Boot():
             'loghost'               : self.controller_beaconip,
             'beacon'                : self.controller_beaconip,
             'protocol'              : CONSTANT['API']['PROTOCOL'],
+            'username'              : CONSTANT['API']['USERNAME'],
+            'password'              : CONSTANT['API']['PASSWORD'],
             'verify_certificate'    : CONSTANT['API']['VERIFY_CERTIFICATE'],
             'webserver_protocol'    : CONSTANT['API']['PROTOCOL'],
             'nodeid'                : None,

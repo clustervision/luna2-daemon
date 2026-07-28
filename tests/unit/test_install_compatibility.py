@@ -381,9 +381,29 @@ def _baseline_classic_template():
     return None
 
 
+# Every line by which the classic installer differs from its owner, enumerated in both
+# directions -- a line that is *changed* is a removal and an addition, and listing only
+# what appeared would wave the other half through.
+BLESSED_CLASSIC_REMOVALS = [
+    # postboot addressed the target root as ${rootmnt} while every other function in
+    # the file, and postboot's own chroot line, use "/${rootmnt}". Made consistent.
+    # Identical in effect wherever rootmnt is absolute (// collapses to /), and correct
+    # rather than merely equivalent where a plugin reports a relative systemroot -- the
+    # leading slash is why the rest of the file carries one.
+    '    if [ ! -d "${rootmnt}/usr/local/sbin/" ]; then',
+    '        mkdir -p "${rootmnt}/usr/local/sbin/"',
+    "cat << 'LUNAEOF' > ${rootmnt}/usr/local/sbin/postboot.sh",
+    'chmod 750 ${rootmnt}/usr/local/sbin/postboot.sh 2> /dev/null',
+    "cat << 'LUNAEOF' > ${rootmnt}/etc/systemd/system/luna-post-boot.service",
+]
 BLESSED_CLASSIC_ADDITIONS = [
-    # Ours, and the only line of the classic installer that is. An operator reading a
-    # node's install log can tell which installer ran.
+    # the other half of the postboot change above, now quoted like its neighbours
+    '    if [ ! -d "/${rootmnt}/usr/local/sbin/" ]; then',
+    '        mkdir -p "/${rootmnt}/usr/local/sbin/"',
+    'cat << \'LUNAEOF\' > "/${rootmnt}/usr/local/sbin/postboot.sh"',
+    'chmod 750 "/${rootmnt}/usr/local/sbin/postboot.sh" 2> /dev/null',
+    'cat << \'LUNAEOF\' > "/${rootmnt}/etc/systemd/system/luna-post-boot.service"',
+    # an operator reading a node's install log can tell which installer ran
     'echo "Luna2: install_mode is legacy, installing via the classic installer"',
 ]
 
@@ -398,10 +418,10 @@ def test_classic_installer_only_differs_from_its_owner_by_what_we_blessed():
     fields. Structurally identical, behaviourally different, and invisible to every
     other test here.
 
-    So this compares the whole file against the branch that owns it. Exactly one
-    addition is allowed -- an echo naming the install model, so an operator reading a
-    node's install log can tell which installer ran -- and it is listed above rather
-    than tolerated by a loose rule. Nothing may be removed or altered.
+    So this compares the whole file against the branch that owns it, in both directions.
+    Every line we add and every line we drop is listed above with its reason, rather
+    than tolerated by a loose rule -- and both lists matter, because changing a line
+    shows up as one of each and checking only the additions would pass half of it.
 
     Another ticket's changes to this file are welcome and are not blessed here: they
     are ported commit-for-commit, so they land in the baseline as well as here and
@@ -419,11 +439,12 @@ def test_classic_installer_only_differs_from_its_owner_by_what_we_blessed():
     ))
     added = [line[1:] for line in diff if line.startswith('+') and not line.startswith('+++')]
     removed = [line[1:] for line in diff if line.startswith('-') and not line.startswith('---')]
-    assert removed == [], (
-        f'the classic installer is missing lines that {ref} has: {removed}. Every '
-        f'osimage that has not been rebuilt executes this file, so dropping a line here '
-        f'changes nodes nobody has touched. If this is a port that fell behind, finish '
-        f'the port; if it is deliberate, land it on {ref} first.'
+    assert removed == BLESSED_CLASSIC_REMOVALS, (
+        f'the classic installer dropped or altered lines that {ref} has and nobody '
+        f'blessed:\n  expected: {BLESSED_CLASSIC_REMOVALS}\n  found:    {removed}\n'
+        f'Every osimage that has not been rebuilt executes this file, so a line lost '
+        f'here changes nodes nobody has touched. If this is a port that fell behind, '
+        f'finish the port rather than blessing the gap.'
     )
     assert added == BLESSED_CLASSIC_ADDITIONS, (
         f'the classic installer gained lines that {ref} does not have and nobody '

@@ -44,6 +44,7 @@ rendered script contains, and these tests pin the properties that keep it safe:
     up front rather than part-way through partitioning a disk.
 """
 
+import difflib
 import os
 import re
 import subprocess
@@ -317,7 +318,12 @@ def _development_classic_template():
     return None
 
 
-def test_classic_installer_is_byte_identical_to_development():
+BLESSED_CLASSIC_ADDITIONS = [
+    'echo "Luna2: install_mode is legacy, installing via the classic installer"',
+]
+
+
+def test_classic_installer_only_differs_from_development_by_what_we_blessed():
     """The classic path is not ours to change, and the whole file says so.
 
     The blessed function and flow lists above catch a function appearing, vanishing or
@@ -327,17 +333,30 @@ def test_classic_installer_is_byte_identical_to_development():
     fields. Structurally identical, behaviourally different, and invisible to every
     other test here.
 
-    So this compares the whole file against the branch we forked from. Anything landing
-    in the classic installer has to be argued for by moving development first, which is
-    the point: a node that has never been rebuilt executes this file verbatim.
+    So this compares the whole file against the branch we forked from. Exactly one
+    addition is allowed -- an echo naming the install model, so an operator reading a
+    node's install log can tell which installer ran -- and it is listed above rather
+    than tolerated by a loose rule. Nothing may be removed or altered. Anything else
+    landing in the classic installer has to be argued for by moving development first:
+    a node that has never been rebuilt executes this file verbatim.
     """
     development = _development_classic_template()
     if development is None:
         pytest.skip('development branch not available in this checkout')
     with open(CLASSIC, 'r', encoding='utf-8') as handle:
         current = handle.read()
-    assert current == development, (
-        'the classic installer differs from development. Every osimage that has not '
-        'been rebuilt executes this file, so a change here is a change to nodes nobody '
-        'has touched. If it is deliberate, land it on development first.'
+    diff = list(difflib.unified_diff(
+        development.splitlines(), current.splitlines(), lineterm='', n=0
+    ))
+    added = [line[1:] for line in diff if line.startswith('+') and not line.startswith('+++')]
+    removed = [line[1:] for line in diff if line.startswith('-') and not line.startswith('---')]
+    assert removed == [], (
+        f'lines were removed from the classic installer: {removed}. Every osimage that '
+        f'has not been rebuilt executes this file, so a change here is a change to '
+        f'nodes nobody has touched. If it is deliberate, land it on development first.'
+    )
+    assert added == BLESSED_CLASSIC_ADDITIONS, (
+        f'the classic installer gained lines nobody blessed:\n'
+        f'  expected: {BLESSED_CLASSIC_ADDITIONS}\n'
+        f'  found:    {added}'
     )

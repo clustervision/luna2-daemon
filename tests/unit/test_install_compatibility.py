@@ -236,6 +236,7 @@ CLASSIC_FUNCTIONS = {
     'node_scripts',
     'node_secrets',
     'partscript',
+    'postboot',
     'postscript',
     'prescript',
     'restore_selinux_context',
@@ -248,27 +249,59 @@ CLASSIC_FUNCTIONS = {
 CLASSIC_FLOW = [
     'lunainit', 'dynamic_ip_check', 'node_scripts', 'prescript', 'bmcsetup',
     'partscript', 'download_image', 'unpack_imagefile', 'collect_mac_n_name_net',
-    'change_net', 'node_secrets', 'postscript', 'node_roles', 'fix_capabilities',
-    'restore_selinux_context', 'update_system_info', 'update_inventory', 'cleanup',
-    'update_status',
+    'change_net', 'node_secrets', 'postscript', 'node_roles', 'postboot',
+    'fix_capabilities', 'restore_selinux_context', 'update_system_info',
+    'update_inventory', 'cleanup', 'update_status',
 ]
 
 
+def _functions(path):
+    """The template's own functions, name -> body."""
+    out, name, body = {}, None, []
+    for line in _read(path).splitlines():
+        match = re.match(r'^function ([a-z_][a-z0-9_]*)\s*\{', line)
+        if match:
+            name, body = match.group(1), []
+            continue
+        if name is not None:
+            if line == '}':
+                out[name] = '\n'.join(body)
+                name = None
+            else:
+                body.append(line)
+    return out
+
+
 def _classic_functions():
-    import re as _re
-    return {m.group(1) for m in
-            _re.finditer(r'^function ([a-z_][a-z0-9_]*)\s*\{', _read(CLASSIC), _re.M)}
+    return set(_functions(CLASSIC))
+
+
+def _flow(path):
+    """Calls to the template's own functions, in order.
+
+    Only names the template defines count. The tail is ordinary bash and also holds
+    plain commands -- the lpart one guards two calls with `[ ... ] &&` -- whose first
+    word is not a step in the flow. Deriving the set from the function definitions
+    rather than listing exclusions means a function added or renamed is still seen and
+    nothing else has to be anticipated. Lines that are not function calls are not lost
+    to the suite: the whole-file comparison below sees every one of them.
+    """
+    tail = _read(path).split('echo "Luna2: installer script"')[-1]
+    functions = _functions(path)
+    out = []
+    for line in tail.splitlines():
+        stripped = line.strip()
+        if not stripped or stripped.startswith(('#', 'echo', '{%', '{{')):
+            continue
+        for word in stripped.split():
+            if word in functions:
+                out.append(word)
+                break
+    return out
 
 
 def _classic_flow():
-    tail = _read(CLASSIC).split('echo "Luna2: installer script"')[-1]
-    out = []
-    for line in tail.splitlines():
-        t = line.strip()
-        if not t or t.startswith(('#', 'echo', '{%', '{{')):
-            continue
-        out.append(t.split()[0])
-    return out
+    return _flow(CLASSIC)
 
 
 def test_classic_installer_offers_the_same_functions():
@@ -298,14 +331,25 @@ def test_classic_installer_runs_them_in_the_same_order():
     )
 
 
-def _development_classic_template():
-    """The classic installer as it stands on the branch this work forked from.
+# Where the classic installer's content legitimately comes from, most specific first.
+# It is not simply `development` any more: another ticket owns this file and its work
+# was ported here commit-for-commit ahead of its merge, so development is behind. Once
+# it merges, that branch and development agree and the first entry can go.
+CLASSIC_BASELINES = (
+    'origin/trix1221_lconsole',
+    'origin/development',
+    'development',
+)
 
-    Returns None when that cannot be read -- a shallow clone, an exported tree, no
-    git at all -- so the test skips rather than failing for reasons that have nothing
-    to do with the installer.
+
+def _baseline_classic_template():
+    """The classic installer as it stands on the branch that owns it.
+
+    Returns (ref, text), or None when no baseline can be read -- a shallow clone, an
+    exported tree, no git at all -- so the test skips rather than failing for reasons
+    that have nothing to do with the installer.
     """
-    for ref in ('origin/development', 'development'):
+    for ref in CLASSIC_BASELINES:
         try:
             result = subprocess.run(
                 ['git', 'show', f'{ref}:daemon/templates/templ_install.cfg'],
@@ -314,16 +358,18 @@ def _development_classic_template():
         except (OSError, subprocess.SubprocessError):
             return None
         if result.returncode == 0:
-            return result.stdout.decode('utf-8')
+            return ref, result.stdout.decode('utf-8')
     return None
 
 
 BLESSED_CLASSIC_ADDITIONS = [
+    # Ours, and the only line of the classic installer that is. An operator reading a
+    # node's install log can tell which installer ran.
     'echo "Luna2: install_mode is legacy, installing via the classic installer"',
 ]
 
 
-def test_classic_installer_only_differs_from_development_by_what_we_blessed():
+def test_classic_installer_only_differs_from_its_owner_by_what_we_blessed():
     """The classic path is not ours to change, and the whole file says so.
 
     The blessed function and flow lists above catch a function appearing, vanishing or
@@ -333,30 +379,90 @@ def test_classic_installer_only_differs_from_development_by_what_we_blessed():
     fields. Structurally identical, behaviourally different, and invisible to every
     other test here.
 
-    So this compares the whole file against the branch we forked from. Exactly one
+    So this compares the whole file against the branch that owns it. Exactly one
     addition is allowed -- an echo naming the install model, so an operator reading a
     node's install log can tell which installer ran -- and it is listed above rather
-    than tolerated by a loose rule. Nothing may be removed or altered. Anything else
-    landing in the classic installer has to be argued for by moving development first:
-    a node that has never been rebuilt executes this file verbatim.
+    than tolerated by a loose rule. Nothing may be removed or altered.
+
+    Another ticket's changes to this file are welcome and are not blessed here: they
+    are ported commit-for-commit, so they land in the baseline as well as here and
+    never show up as a difference. That is the point -- carrying someone else's work
+    as a diff we approve of is exactly how the ownership gets lost.
     """
-    development = _development_classic_template()
-    if development is None:
-        pytest.skip('development branch not available in this checkout')
+    baseline = _baseline_classic_template()
+    if baseline is None:
+        pytest.skip('no baseline branch available in this checkout')
+    ref, original = baseline
     with open(CLASSIC, 'r', encoding='utf-8') as handle:
         current = handle.read()
     diff = list(difflib.unified_diff(
-        development.splitlines(), current.splitlines(), lineterm='', n=0
+        original.splitlines(), current.splitlines(), lineterm='', n=0
     ))
     added = [line[1:] for line in diff if line.startswith('+') and not line.startswith('+++')]
     removed = [line[1:] for line in diff if line.startswith('-') and not line.startswith('---')]
     assert removed == [], (
-        f'lines were removed from the classic installer: {removed}. Every osimage that '
-        f'has not been rebuilt executes this file, so a change here is a change to '
-        f'nodes nobody has touched. If it is deliberate, land it on development first.'
+        f'the classic installer is missing lines that {ref} has: {removed}. Every '
+        f'osimage that has not been rebuilt executes this file, so dropping a line here '
+        f'changes nodes nobody has touched. If this is a port that fell behind, finish '
+        f'the port; if it is deliberate, land it on {ref} first.'
     )
     assert added == BLESSED_CLASSIC_ADDITIONS, (
-        f'the classic installer gained lines nobody blessed:\n'
-        f'  expected: {BLESSED_CLASSIC_ADDITIONS}\n'
-        f'  found:    {added}'
+        f'the classic installer gained lines that {ref} does not have and nobody '
+        f'blessed:\n  expected: {BLESSED_CLASSIC_ADDITIONS}\n  found:    {added}\n'
+        f'Changes to the classic installer belong to whoever owns it -- land them '
+        f'there and port them, rather than blessing them here.'
+    )
+
+
+# The lpart installer is a fork of the classic one. It exists to insert three lpart
+# steps into the same sequence; everything else is meant to be the same code, and the
+# fallback path inside it *is* the classic installer, so a divergence is not a variant
+# but a bug in the path we promise is unchanged.
+LPART_ONLY_FUNCTIONS = {'lpart_phase', 'write_provisioning_inputs'}
+
+
+def test_the_two_installers_share_one_copy_of_every_common_function():
+    """A fork drifts silently, and this is the shape it drifts in.
+
+    A fix lands in the classic installer and nobody remembers the fork has its own
+    copy of the same 30-odd functions. It has happened: a sweep replacing a template
+    variable with the runtime mount point went through the classic file and left the
+    fork addressing a path that is only correct on some distributions. Nothing failed
+    -- both files are valid, both render, and the difference shows up on a node.
+
+    Comparing the whole shared surface rather than the function someone thought to
+    check is what makes the next sweep safe: whatever gets fixed in one has to be
+    fixed in both, or this goes red.
+    """
+    classic, lpart = _functions(CLASSIC), _functions(LPART)
+    assert set(lpart) - set(classic) == LPART_ONLY_FUNCTIONS, (
+        f'the lpart installer defines functions the classic one does not, beyond the '
+        f'lpart steps: {sorted(set(lpart) - set(classic) - LPART_ONLY_FUNCTIONS)}. '
+        f'If it genuinely needs its own, add it to LPART_ONLY_FUNCTIONS and say why.'
+    )
+    assert set(classic) - set(lpart) == set(), (
+        f'the classic installer has functions the lpart fork lacks: '
+        f'{sorted(set(classic) - set(lpart))}. The fork must carry the whole classic '
+        f'surface -- its fallback path runs it.'
+    )
+    drifted = sorted(name for name in classic if classic[name] != lpart[name])
+    assert drifted == [], (
+        f'these functions differ between the two installers: {drifted}. They are meant '
+        f'to be one implementation in two files; a change to one is a change to both.'
+    )
+
+
+def test_the_lpart_installer_runs_the_classic_sequence_plus_its_own_steps():
+    """Same call order, with the lpart phases interleaved -- nothing dropped.
+
+    Derived from the classic flow rather than written out, so a step added there has
+    to appear here too instead of being remembered. Dropping the lpart steps from the
+    lpart flow must leave exactly the classic one.
+    """
+    reduced = [step for step in _flow(LPART) if step not in LPART_ONLY_FUNCTIONS]
+    assert reduced == CLASSIC_FLOW, (
+        f'with its lpart steps removed, the lpart installer does not run the classic '
+        f'sequence:\n  classic: {CLASSIC_FLOW}\n  lpart:   {reduced}\n'
+        f'A step present in one and not the other means a node installed the lpart way '
+        f'quietly skips something every other node gets.'
     )

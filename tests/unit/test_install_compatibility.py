@@ -266,19 +266,28 @@ CLASSIC_FLOW = [
 
 
 def _functions(path):
-    """The template's own functions, name -> body."""
-    out, name, body = {}, None, []
+    """The template's own functions, name -> the comment above it plus its body.
+
+    The leading comment counts as part of the function. It carries the *why*, it is
+    what a reader reaches for first, and it is the half that goes missing when a
+    function is copied between these two files -- a body-only comparison called the
+    copy identical while the explanation above it had been left behind.
+    """
+    out, name, body, pending = {}, None, [], []
     for line in _read(path).splitlines():
         match = re.match(r'^function ([a-z_][a-z0-9_]*)\s*\{', line)
         if match:
-            name, body = match.group(1), []
+            name, body = match.group(1), list(pending)
+            pending = []
             continue
-        if name is not None:
-            if line == '}':
-                out[name] = '\n'.join(body)
-                name = None
-            else:
-                body.append(line)
+        if name is None:
+            pending = pending + [line] if line.startswith('#') else []
+            continue
+        if line == '}':
+            out[name] = '\n'.join(body)
+            name = None
+        else:
+            body.append(line)
     return out
 
 

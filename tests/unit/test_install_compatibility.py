@@ -46,6 +46,7 @@ rendered script contains, and these tests pin the properties that keep it safe:
 
 import os
 import re
+import subprocess
 
 import pytest
 
@@ -293,4 +294,50 @@ def test_classic_installer_runs_them_in_the_same_order():
         f'the classic installer\'s execution order changed:\n'
         f'  expected: {CLASSIC_FLOW}\n'
         f'  found:    {_classic_flow()}'
+    )
+
+
+def _development_classic_template():
+    """The classic installer as it stands on the branch this work forked from.
+
+    Returns None when that cannot be read -- a shallow clone, an exported tree, no
+    git at all -- so the test skips rather than failing for reasons that have nothing
+    to do with the installer.
+    """
+    for ref in ('origin/development', 'development'):
+        try:
+            result = subprocess.run(
+                ['git', 'show', f'{ref}:daemon/templates/templ_install.cfg'],
+                cwd=os.path.dirname(DAEMON), capture_output=True, timeout=30
+            )
+        except (OSError, subprocess.SubprocessError):
+            return None
+        if result.returncode == 0:
+            return result.stdout.decode('utf-8')
+    return None
+
+
+def test_classic_installer_is_byte_identical_to_development():
+    """The classic path is not ours to change, and the whole file says so.
+
+    The blessed function and flow lists above catch a function appearing, vanishing or
+    moving. They cannot see a line changing *inside* one -- and that is exactly how the
+    classic installer drifted once: a single `exit 1` became `exit $LUNARET`, carried in
+    from the campaign's abandoned model where lpart ran inside the operator's script
+    fields. Structurally identical, behaviourally different, and invisible to every
+    other test here.
+
+    So this compares the whole file against the branch we forked from. Anything landing
+    in the classic installer has to be argued for by moving development first, which is
+    the point: a node that has never been rebuilt executes this file verbatim.
+    """
+    development = _development_classic_template()
+    if development is None:
+        pytest.skip('development branch not available in this checkout')
+    with open(CLASSIC, 'r', encoding='utf-8') as handle:
+        current = handle.read()
+    assert current == development, (
+        'the classic installer differs from development. Every osimage that has not '
+        'been rebuilt executes this file, so a change here is a change to nodes nobody '
+        'has touched. If it is deliberate, land it on development first.'
     )

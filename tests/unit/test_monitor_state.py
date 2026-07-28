@@ -22,9 +22,12 @@ from utils.monitor import Monitor
 
 
 def test_booted_is_post_install_label():
-    # 'booted' is reported by the real OS, so it gets its own label + 200, NOT the
+    # 'booted' is reported by the real OS. It is deliberately labelled with the
+    # familiar final installer string so the CLI status vocabulary stays unchanged
+    # for existing users; GUIs read the raw state from /monitor/node instead.
+    # It still must get 200, NOT the
     # "Luna installer:" prefix used for in-installer states.
-    assert Monitor().installer_state("booted") == ("Booted", 200)
+    assert Monitor().installer_state("booted") == ("Luna installer: success", 200)
 
 
 def test_install_states_still_map():

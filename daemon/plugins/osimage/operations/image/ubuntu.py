@@ -38,6 +38,45 @@ import sys
 from utils.log import Log
 # from utils.helper import Helper
 
+# Debian and Ubuntu ship two initramfs builders and an image may carry either, so
+# unlike the redhat plugin this one has to choose. Both spellings of each are probed
+# because the packaging has moved them between sbin and bin over the years.
+DRACUT_PATHS = ('/usr/bin/dracut', '/usr/sbin/dracut')
+MKINITRAMFS_PATHS = ('/usr/sbin/mkinitramfs', '/usr/bin/mkinitramfs')
+LUNA_DRACUT_MODULE = '/usr/lib/dracut/modules.d/95luna'
+
+
+def initramfs_command(kernel_version, ramdisk_file, exists=os.path.exists):
+    """Return (argv, builder_name) for building this image's initramfs, or (None, None).
+
+    CALL THIS ONLY AFTER os.chroot(image_path). Every path it probes is absolute, so
+    inside the chroot it asks "what was this IMAGE built with"; called before, the
+    identical code asks the CONTROLLER and answers confidently for the wrong machine.
+    That is what `exists` is for as well -- it keeps the probes injectable so the
+    choice can be tested without a real image.
+
+    Two independent questions, deliberately kept apart. WHICH BUILDER is decided by
+    what the image has installed; dracut wins when both are present, because before
+    ubuntu 25.10 it is not a default and its presence is a deliberate act, and from
+    25.10 it is the native tool. WHICH ADD-ONS is a separate matter: the luna dracut
+    module is requested when the image carries it and skipped when it does not --
+    `--add` on a module that is absent makes dracut fail, so this cannot be
+    unconditional the way the redhat plugin can afford to be. initramfs-tools needs
+    no equivalent flag; its hooks are picked up on their own. So whichever half of
+    the toolset a future client package ships, this stays as it is.
+    """
+    output = '/tmp/' + ramdisk_file
+    dracut = next((path for path in DRACUT_PATHS if exists(path)), None)
+    if dracut:
+        command = [dracut, '--force', '--kver', kernel_version]
+        if exists(LUNA_DRACUT_MODULE):
+            command += ['--add', 'luna']
+        return command + [output], 'dracut'
+    mkinitramfs = next((path for path in MKINITRAMFS_PATHS if exists(path)), None)
+    if mkinitramfs:
+        return [mkinitramfs, '-o', output, kernel_version], 'mkinitramfs'
+    return None, None
+
 
 class Plugin():
     """
@@ -273,33 +312,17 @@ class Plugin():
 
         initramfs_succeed = True
         create = None
+        builder = None
 
         try:
-            # lpart: the campaign ubuntu client ships a dracut 95luna module; luna's
-            # stock ubuntu pack uses mkinitramfs (initramfs-tools) which IGNORES it,
-            # so the install initramfs would carry none of the lpart toolset. When the
-            # image carries the luna dracut module + dracut, pack with dracut instead.
-            #
-            # THESE TWO CHECKS MUST STAY AFTER os.chroot(image_path) ABOVE. They read
-            # absolute paths, so inside the chroot they ask "what did this IMAGE get
-            # built with"; moved before it, the identical code asks the CONTROLLER
-            # instead and answers confidently for the wrong machine -- a controller
-            # with dracut would pick dracut for an image that has none.
-            #
-            # The image is what decides, not the ubuntu release: 22.04/24.04 default to
-            # initramfs-tools and 25.10+ to dracut, but a site can install either on
-            # either, and the client package ships both (Depends: initramfs-tools |
-            # dracut). That is why this is one plugin asking the artifact rather than
-            # a per-release plugin inferring from the version.
-            _dracut = '/usr/bin/dracut' if os.path.exists('/usr/bin/dracut') else ('/usr/sbin/dracut' if os.path.exists('/usr/sbin/dracut') else None)
-            if _dracut and os.path.isdir('/usr/lib/dracut/modules.d/95luna'):
-                initramfs_cmd = ([_dracut, '--force', '--add', 'luna', '--kver', kernel_version, '/tmp/' + ramdisk_file])
-            else:
-                initramfs_cmd = (['/usr/sbin/mkinitramfs', '-o', '/tmp/' + ramdisk_file, kernel_version ])
-
-            create = subprocess.Popen(initramfs_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-            while create.poll() is None:
-                line = create.stdout.readline()
+            # the image decides, not the ubuntu release, and not the controller --
+            # see initramfs_command, which must be called from inside this chroot
+            initramfs_cmd, builder = initramfs_command(kernel_version, ramdisk_file)
+            if initramfs_cmd:
+                self.logger.info(f"Building initramfs for osimage '{osimage}' with {builder}")
+                create = subprocess.Popen(initramfs_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                while create.poll() is None:
+                    line = create.stdout.readline()
 
         except:
             exc_type, exc_value, exc_traceback = sys.exc_info()
@@ -315,7 +338,11 @@ class Plugin():
 
         if not create:
             initramfs_succeed = False
-            message = "Could not open subprocess to run dracut"
+            message = (
+                f"Could not open subprocess to run {builder}" if builder else
+                f"No initramfs builder in osimage '{osimage}': neither dracut nor "
+                f"mkinitramfs is installed in the image"
+            )
 
         os.fchdir(real_root)
         os.chroot(".")

@@ -47,6 +47,7 @@ rendered script contains, and these tests pin the properties that keep it safe:
 import difflib
 import os
 import re
+import shutil
 import subprocess
 
 import pytest
@@ -65,6 +66,44 @@ INSTALL_MODEL_VARS = ['LUNA_INSTALL_MODE', 'LUNA_DISKLAYOUT_B64', 'LUNA_OSIMAGE_
 def _read(path):
     with open(path, encoding='utf-8') as handle:
         return handle.read()
+
+
+# One render context, so a test that wants a particular branch overrides rather than
+# keeping its own copy -- two copies drift and each test then proves something slightly
+# different from what it says it proves.
+RENDER_CONTEXT = dict(
+    LUNA_CONTROLLER='10.0.0.1', LUNA_BEACON='10.0.0.1', LUNA_API_PORT='7050',
+    LUNA_API_PROTOCOL='https', VERIFY_CERTIFICATE='False', WEBSERVER_PORT='7060',
+    WEBSERVER_PROTOCOL='http', LUNA_LOGHOST='10.0.0.1', NODE_HOSTNAME='n1',
+    NODE_NAME='n1', LUNA_GROUP='compute', LUNA_OSIMAGE='img',
+    LUNA_DISTRIBUTION='redhat', LUNA_OSRELEASE='9', LUNA_SYSTEMROOT='sysroot',
+    LUNA_IMAGEFILE='f.tar.bz2', LUNA_FILE='f.tar.bz2', LUNA_SELINUX_ENABLED='0',
+    LUNA_SETUPBMC=False, LUNA_BMC={}, LUNA_ROLES='', LUNA_SCRIPTS='',
+    LUNA_UNMANAGED_BMC_USERS='', LUNA_INTERFACES={}, LUNA_PRESCRIPT='',
+    LUNA_PARTSCRIPT='', LUNA_POSTSCRIPT='', PROVISION_METHOD='torrent',
+    PROVISION_FALLBACK='http', PROVISION_INTERFACE='BOOTIF',
+)
+
+
+def _render(path, **overrides):
+    """Render a template the way the daemon does, including its b64decode filter."""
+    from base64 import b64decode
+
+    from jinja2 import Environment
+
+    def _b64decode(value):
+        try:
+            decoded = b64decode(value)
+        except Exception:                                   # noqa: BLE001 - mirrors the daemon
+            return value
+        try:
+            return decoded.decode('ascii')
+        except Exception:                                   # noqa: BLE001
+            return decoded.decode('utf-8', 'replace')
+
+    env = Environment()                                     # noqa: S701 - not HTML
+    env.filters['b64decode'] = _b64decode
+    return env.from_string(_read(path)).render(**dict(RENDER_CONTEXT, **overrides))
 
 
 @pytest.mark.parametrize('variable', INSTALL_MODEL_VARS)
@@ -91,41 +130,12 @@ def test_classic_render_is_unaffected_by_the_extra_variables():
     Render the real classic template with the 2.1 variable set and with the 2.2 set,
     through the daemon's own b64decode filter, and require identical bytes.
     """
-    from base64 import b64decode
-
-    from jinja2 import Environment
-
-    def _b64decode(value):
-        try:
-            decoded = b64decode(value)
-        except Exception:                                   # noqa: BLE001 - mirrors the daemon
-            return value
-        try:
-            return decoded.decode('ascii')
-        except Exception:                                   # noqa: BLE001
-            return decoded.decode('utf-8', 'replace')
-
-    env = Environment()                                     # noqa: S701 - not HTML
-    env.filters['b64decode'] = _b64decode
-    template = env.from_string(_read(CLASSIC))
-
-    old = dict(
-        LUNA_CONTROLLER='10.0.0.1', LUNA_BEACON='10.0.0.1', LUNA_API_PORT='7050',
-        LUNA_API_PROTOCOL='https', VERIFY_CERTIFICATE='False', WEBSERVER_PORT='7060',
-        WEBSERVER_PROTOCOL='http', LUNA_LOGHOST='10.0.0.1', NODE_HOSTNAME='n1',
-        NODE_NAME='n1', LUNA_GROUP='compute', LUNA_OSIMAGE='img',
-        LUNA_DISTRIBUTION='redhat', LUNA_OSRELEASE='9', LUNA_SYSTEMROOT='sysroot',
-        LUNA_IMAGEFILE='f.tar.bz2', LUNA_FILE='f.tar.bz2', LUNA_SELINUX_ENABLED='0',
-        LUNA_SETUPBMC=False, LUNA_BMC={}, LUNA_ROLES='', LUNA_SCRIPTS='',
-        LUNA_UNMANAGED_BMC_USERS='', LUNA_INTERFACES={}, LUNA_PRESCRIPT='',
-        LUNA_PARTSCRIPT='', LUNA_POSTSCRIPT='', PROVISION_METHOD='torrent',
-        PROVISION_FALLBACK='http', PROVISION_INTERFACE='BOOTIF',
-    )
+    old = _render(CLASSIC)
     # what a 2.2 daemon adds, including for a node someone has given lpart values
-    new = dict(old, LUNA_INSTALL_MODE='full', LUNA_DISKLAYOUT_B64='eyJ2IjoyfQ==',
-               LUNA_OSIMAGE_FILTER_B64='e30=')
+    new = _render(CLASSIC, LUNA_INSTALL_MODE='full', LUNA_DISKLAYOUT_B64='eyJ2IjoyfQ==',
+                  LUNA_OSIMAGE_FILTER_B64='e30=')
 
-    assert template.render(**old) == template.render(**new), (
+    assert old == new, (
         'the classic installer renders differently once the install-model variables are '
         'supplied, so a 2.2 daemon would hand an un-rebuilt osimage a script it has '
         'never seen.'
@@ -465,4 +475,30 @@ def test_the_lpart_installer_runs_the_classic_sequence_plus_its_own_steps():
         f'sequence:\n  classic: {CLASSIC_FLOW}\n  lpart:   {reduced}\n'
         f'A step present in one and not the other means a node installed the lpart way '
         f'quietly skips something every other node gets.'
+    )
+
+
+@pytest.mark.parametrize('template', ['templ_install.cfg', 'templ_install_lpart.cfg',
+                                      'templ_post_boot.cfg'])
+def test_the_rendered_installer_is_valid_bash(template):
+    """Ask bash, rather than reading the template and forming an opinion.
+
+    These files are edited as templates and executed as scripts, and nothing in
+    between checks that. A quoting or heredoc mistake renders happily, passes every
+    text-level test here, and fails on a node part-way through an install -- which is
+    the most expensive place to find it. Both branch-heavy paths are rendered (roles
+    and BMC on) so the conditional blocks are in the output being checked.
+    """
+    if shutil.which('bash') is None:
+        pytest.skip('bash not available')
+    rendered = _render(os.path.join(TEMPLATES, template),
+                       LUNA_SETUPBMC=True, LUNA_ROLES='role1', LUNA_SCRIPTS='s',
+                       LUNA_TOKEN='t', LUNA_BOOTIF='eth0', LUNA_BOOTPROTO='dhcp',
+                       DOMAIN_SEARCH=['example'], LUNA_INSTALL_MODE='full',
+                       LUNA_DISKLAYOUT_B64='eyJ2IjoyfQ==', LUNA_OSIMAGE_FILTER_B64='e30=')
+    check = subprocess.run(['bash', '-n'], input=rendered.encode('utf-8'),
+                           capture_output=True, timeout=30)
+    assert check.returncode == 0, (
+        f'{template} renders to bash that will not parse:\n'
+        f'{check.stderr.decode("utf-8", "replace")}'
     )

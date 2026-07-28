@@ -43,7 +43,6 @@ from utils.log import Log
 # because the packaging has moved them between sbin and bin over the years.
 DRACUT_PATHS = ('/usr/bin/dracut', '/usr/sbin/dracut')
 MKINITRAMFS_PATHS = ('/usr/sbin/mkinitramfs', '/usr/bin/mkinitramfs')
-LUNA_DRACUT_MODULE = '/usr/lib/dracut/modules.d/95luna'
 
 
 def initramfs_command(kernel_version, ramdisk_file, exists=os.path.exists):
@@ -55,23 +54,22 @@ def initramfs_command(kernel_version, ramdisk_file, exists=os.path.exists):
     That is what `exists` is for as well -- it keeps the probes injectable so the
     choice can be tested without a real image.
 
-    Two independent questions, deliberately kept apart. WHICH BUILDER is decided by
-    what the image has installed; dracut wins when both are present, because before
-    ubuntu 25.10 it is not a default and its presence is a deliberate act, and from
-    25.10 it is the native tool. WHICH ADD-ONS is a separate matter: the luna dracut
-    module is requested when the image carries it and skipped when it does not --
-    `--add` on a module that is absent makes dracut fail, so this cannot be
-    unconditional the way the redhat plugin can afford to be. initramfs-tools needs
-    no equivalent flag; its hooks are picked up on their own. So whichever half of
-    the toolset a future client package ships, this stays as it is.
+    The only question asked here is WHICH BUILDER THIS IMAGE HAS. dracut wins when it
+    has both: before ubuntu 25.10 it is not a default and its presence is deliberate,
+    and from 25.10 it is the native tool.
+
+    Nothing about luna or lpart is probed, deliberately. What ends up inside the
+    ramdisk is the client package's business: it ships a dracut module, an
+    initramfs-tools hook, or both, and each pulls in its own toolset. dracut includes
+    an installed module on its own, so there is not even a name to pass. An image
+    missing the client is an image nobody installed the client into -- not something
+    for this to detect and work around, and a check here would only encode today's
+    packaging into the daemon and go stale when it changes.
     """
     output = '/tmp/' + ramdisk_file
     dracut = next((path for path in DRACUT_PATHS if exists(path)), None)
     if dracut:
-        command = [dracut, '--force', '--kver', kernel_version]
-        if exists(LUNA_DRACUT_MODULE):
-            command += ['--add', 'luna']
-        return command + [output], 'dracut'
+        return [dracut, '--force', '--kver', kernel_version, output], 'dracut'
     mkinitramfs = next((path for path in MKINITRAMFS_PATHS if exists(path)), None)
     if mkinitramfs:
         return [mkinitramfs, '-o', output, kernel_version], 'mkinitramfs'

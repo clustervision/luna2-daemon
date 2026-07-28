@@ -21,16 +21,19 @@
 Which initramfs builder an ubuntu osimage gets packed with.
 
 Debian and Ubuntu ship two, and an image may carry either -- so unlike the redhat
-plugin, which always has dracut, this one has to choose. Two questions are kept
-apart on purpose and both are pinned here:
+plugin, which always has dracut, this one has to choose. It chooses on one thing
+only: which builder the image has. dracut wins when it has both.
 
-  * WHICH BUILDER  -- decided by what the image has installed, nothing else
-  * WHICH ADD-ONS  -- the luna dracut module is requested if present, and its absence
-                      must never change the builder
+What ends up INSIDE the ramdisk is not this code's business and is pinned here as
+an absence. The client package ships a dracut module, an initramfs-tools hook, or
+both, and each pulls in its own toolset -- including the lpart binaries, which are
+an add-on the packer must never see. A probe for any of it would encode today's
+packaging into the daemon and go stale the moment the packaging moves, so the tests
+below assert that no such path changes the outcome.
 
-Conflating them is the defect this replaced: the luna module was used as the gate on
-the builder, so a dracut image without the module packed with mkinitramfs -- the wrong
-tool, and absent entirely on 25.10+, where the pack then failed.
+The defect this replaced did exactly that: it gated the builder on the luna dracut
+module, so a dracut image without it packed with mkinitramfs -- the wrong tool, and
+absent entirely on 25.10+, where the pack then failed.
 
 Every combination is enumerated rather than the one case that prompted the change,
 because the next image to arrive is the one nobody wrote an example for.
@@ -46,7 +49,6 @@ import pytest
 
 from plugins.osimage.operations.image.ubuntu import (
     DRACUT_PATHS,
-    LUNA_DRACUT_MODULE,
     MKINITRAMFS_PATHS,
     initramfs_command,
 )
@@ -54,6 +56,22 @@ from plugins.osimage.operations.image.ubuntu import (
 KERNEL = '6.8.0-31-generic'
 RAMDISK = 'img-1700000000-initramfs-6.8.0-31-generic'
 OUTPUT = '/tmp/' + RAMDISK
+DRACUT = DRACUT_PATHS[0]
+MKINITRAMFS = MKINITRAMFS_PATHS[0]
+
+DRACUT_ARGV = [DRACUT, '--force', '--kver', KERNEL, OUTPUT]
+MKINITRAMFS_ARGV = [MKINITRAMFS, '-o', OUTPUT, KERNEL]
+
+# Everything the client package may or may not have put in the image. None of it may
+# reach this decision -- naming one path would only prove that one was ignored.
+CLIENT_PAYLOAD = [
+    '/usr/lib/dracut/modules.d/95luna',
+    '/usr/share/initramfs-tools/hooks/luna',
+    '/usr/bin/lpart-node-installer', '/usr/bin/lpart-storage-prepare',
+    '/usr/bin/lpart-storage-check', '/usr/bin/lpart-osimage-install',
+    '/usr/bin/lpart-bootloader-finalise', '/usr/bin/lpart-emit',
+    '/usr/bin/lpart-tui', '/usr/bin/lpart-phase',
+]
 
 
 def probe(*present):
@@ -68,10 +86,8 @@ def test_an_image_with_only_initramfs_tools_is_unchanged():
     did before the builder became a choice, or the change reaches images nobody
     asked to be touched.
     """
-    command, builder = initramfs_command(KERNEL, RAMDISK,
-                                         exists=probe(MKINITRAMFS_PATHS[0]))
-    assert builder == 'mkinitramfs'
-    assert command == [MKINITRAMFS_PATHS[0], '-o', OUTPUT, KERNEL]
+    assert initramfs_command(KERNEL, RAMDISK, exists=probe(MKINITRAMFS)) == (
+        MKINITRAMFS_ARGV, 'mkinitramfs')
 
 
 def test_an_image_with_only_dracut_uses_dracut():
@@ -79,17 +95,13 @@ def test_an_image_with_only_dracut_uses_dracut():
 
     Previously this picked mkinitramfs and the pack failed on a missing binary.
     """
-    command, builder = initramfs_command(KERNEL, RAMDISK,
-                                         exists=probe(DRACUT_PATHS[0]))
-    assert builder == 'dracut'
-    assert command == [DRACUT_PATHS[0], '--force', '--kver', KERNEL, OUTPUT]
+    assert initramfs_command(KERNEL, RAMDISK, exists=probe(DRACUT)) == (
+        DRACUT_ARGV, 'dracut')
 
 
 def test_dracut_wins_when_the_image_has_both():
-    command, builder = initramfs_command(
-        KERNEL, RAMDISK, exists=probe(DRACUT_PATHS[0], MKINITRAMFS_PATHS[0]))
-    assert builder == 'dracut'
-    assert MKINITRAMFS_PATHS[0] not in command
+    assert initramfs_command(KERNEL, RAMDISK, exists=probe(DRACUT, MKINITRAMFS)) == (
+        DRACUT_ARGV, 'dracut')
 
 
 def test_an_image_with_neither_builder_reports_it():
@@ -111,53 +123,37 @@ def test_either_spelling_of_either_builder_is_found(dracut_path, mkinitramfs_pat
     assert builder == 'mkinitramfs', f'{mkinitramfs_path} not recognised'
 
 
-def test_the_luna_module_is_added_when_the_image_carries_it():
-    command, _ = initramfs_command(
-        KERNEL, RAMDISK, exists=probe(DRACUT_PATHS[0], LUNA_DRACUT_MODULE))
-    assert command == [DRACUT_PATHS[0], '--force', '--kver', KERNEL,
-                       '--add', 'luna', OUTPUT]
+def test_nothing_the_client_package_ships_reaches_this_decision():
+    """The whole client payload thrown at every image shape; not one output may move.
 
-
-def test_the_luna_module_is_not_requested_when_absent():
-    """`--add` on a module that is not there makes dracut fail.
-
-    So this cannot be unconditional the way the redhat plugin affords to be -- that
-    one runs against images whose client rpm always ships the module.
+    This is the property that keeps the packer abstract. The dracut module, the
+    initramfs-tools hook and every lpart binary are the client's to ship and the
+    client's to pull in -- dracut includes an installed module by itself, so there
+    is not even a name to pass. If any of it starts to matter here, the daemon has
+    grown an opinion about packaging that packaging is free to invalidate.
     """
-    command, _ = initramfs_command(KERNEL, RAMDISK, exists=probe(DRACUT_PATHS[0]))
+    for image in ((DRACUT,), (MKINITRAMFS,), (DRACUT, MKINITRAMFS), ()):
+        bare = initramfs_command(KERNEL, RAMDISK, exists=probe(*image))
+        loaded = initramfs_command(KERNEL, RAMDISK,
+                                   exists=probe(*image, *CLIENT_PAYLOAD))
+        assert bare == loaded, (
+            f'something the client package ships changed the outcome for an image '
+            f'holding {image}'
+        )
+
+
+def test_no_module_name_is_passed_to_dracut():
+    """dracut's own check() includes an installed 95luna, so --add would be noise.
+
+    Worse than noise: --add on a module the image does not have makes dracut fail
+    outright, which would turn "the client is not installed" into "the pack is
+    broken".
+    """
+    command, _ = initramfs_command(KERNEL, RAMDISK, exists=probe(DRACUT))
     assert '--add' not in command and 'luna' not in command
 
 
-def test_the_luna_module_never_decides_the_builder():
-    """The defect this replaced, pinned so it cannot come back.
-
-    The module is an add-on. Its presence or absence changes what is passed to the
-    builder and must never change which builder runs -- in either direction.
-    """
-    for extra in ((), (LUNA_DRACUT_MODULE,)):
-        _, builder = initramfs_command(KERNEL, RAMDISK,
-                                       exists=probe(DRACUT_PATHS[0], *extra))
-        assert builder == 'dracut', 'the luna module changed the builder choice'
-        _, builder = initramfs_command(KERNEL, RAMDISK,
-                                       exists=probe(MKINITRAMFS_PATHS[0], *extra))
-        assert builder == 'mkinitramfs', 'the luna module changed the builder choice'
-
-
-def test_initramfs_tools_gets_no_lpart_specific_flags():
-    """Nothing to pass: its hooks are picked up on their own.
-
-    This is what lets a future client package ship either half of the toolset without
-    the packer learning anything about it.
-    """
-    command, _ = initramfs_command(
-        KERNEL, RAMDISK, exists=probe(MKINITRAMFS_PATHS[0], LUNA_DRACUT_MODULE))
-    assert command == [MKINITRAMFS_PATHS[0], '-o', OUTPUT, KERNEL]
-
-
-def test_the_output_is_the_last_argument_for_both_builders():
+def test_the_output_is_the_last_argument_for_dracut():
     """dracut takes it positionally, so anything appended after it changes meaning."""
-    for present in (DRACUT_PATHS[0], MKINITRAMFS_PATHS[0]):
-        command, _ = initramfs_command(KERNEL, RAMDISK, exists=probe(present))
-        assert OUTPUT in command
-        if command[0] in DRACUT_PATHS:
-            assert command[-1] == OUTPUT
+    command, _ = initramfs_command(KERNEL, RAMDISK, exists=probe(DRACUT))
+    assert command[-1] == OUTPUT

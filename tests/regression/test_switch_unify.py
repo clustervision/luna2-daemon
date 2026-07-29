@@ -123,6 +123,33 @@ def test_delete_sole_mgmt_is_declined(sqlite_db):
 
 
 @pytest.mark.regression
+def test_switch_show_reports_mgmt_interface(sqlite_db):
+    """`switch show`/`list` must reveal which interface is the management one (mgmt=1) from the
+    switch record itself -- under the unify model the switch's own IP/MAC live on that interface,
+    so naming it is the only way the prime is visible without a second listinterface call. The
+    field must also follow the flag when the prime is moved."""
+    from base.switch import Switch
+    _seed_two_iface_switch()
+    ok, resp = Switch().get_switch("sw1")
+    assert ok is True, resp
+    sw = resp["config"]["switch"]["sw1"]
+    assert sw["mgmt_interface"] == "eth0"
+    # the switch's own IP/MAC are the mgmt interface's (eth0), not the empty switch-row column
+    assert sw["macaddress"] == "aa:bb:cc:00:00:01"
+    assert sw["ipaddress"] == "10.141.0.5"
+    assert sw["network"] == "cluster"
+    ok, resp = Switch().get_all_switches()
+    assert ok is True and resp["config"]["switch"]["sw1"]["mgmt_interface"] == "eth0"
+    # move the prime to eth1: name, IP and MAC all follow the flag
+    ok, msg = _change("sw1", {"interface": "eth1", "mgmt": True})
+    assert ok is True, msg
+    sw = Switch().get_switch("sw1")[1]["config"]["switch"]["sw1"]
+    assert sw["mgmt_interface"] == "eth1"
+    assert sw["macaddress"] == "aa:bb:cc:00:00:02"
+    assert sw["ipaddress"] == "10.141.0.6"
+
+
+@pytest.mark.regression
 def test_switch_add_creates_mgmt_interface(sqlite_db):
     """`switch add` with -I/-N/-m creates the switch's mgmt=1 interface and routes the IP+MAC onto
     it (unify model) -- nothing lands on the switch row or tableref='switch'."""

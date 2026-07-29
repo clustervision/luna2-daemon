@@ -451,7 +451,7 @@ class Config(object):
                                 config_host6['ipxe_bootfile']=ipxe_bootfiles['x86_64']
                                 config_host6['ipxe_bootfile_arm64']=ipxe_bootfiles['arm64']
                                 next_server = self.dhcp_reservation_nextserver(
-                                    nwk['name'], config_subnets6, config_shared6
+                                    nwk['name'], config_subnets6, config_shared6, config_linksel6
                                 )
                                 config_host6['nextserver']=next_server['server']
                                 config_host6['nextport']=next_server['port']
@@ -467,7 +467,7 @@ class Config(object):
                                 config_host['ipxe_bootfile']=ipxe_bootfiles['x86_64']
                                 config_host['ipxe_bootfile_arm64']=ipxe_bootfiles['arm64']
                                 next_server = self.dhcp_reservation_nextserver(
-                                    nwk['name'], config_subnets, config_shared
+                                    nwk['name'], config_subnets, config_shared, config_linksel
                                 )
                                 config_host['nextserver']=next_server['server']
                                 config_host['nextport']=next_server['port']

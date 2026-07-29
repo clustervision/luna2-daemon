@@ -20,7 +20,7 @@
 include:
   - project: 'ClusterVision/gitlab-cicd-pipelines'
     file: '/pip-package-pipeline.yml'
-    ref: 'development'
+    ref: 'main'
 
 #
 # The 2.0 line is dormant (last touched February 2025) but main-2.0 and

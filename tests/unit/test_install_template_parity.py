@@ -135,30 +135,36 @@ def test_every_shared_function_is_byte_identical():
     )
 
 
-def test_lpart_arms_the_unpack_trap_only_on_the_fallback_path():
+def test_the_unpack_trap_is_legacy_only():
     """
-    Not calling a function is not the same as disarming it. unpack_imagefile is armed at
-    top level as a SIGUSR1 handler in the classic template; under lpart that would let a
-    signal from the fetch client run a classic `tar -xf` into the systemroot -- work
-    lpart-osimage-install owns. So the lpart template must NOT arm it at top level, and
-    must arm it only once it has decided to fall back to the classic path.
+    SIGUSR1 is Luna 1 heritage: a seeder once signalled the installer when the image had
+    landed, and unpack_imagefile is the handler. Nothing raises it any more -- every
+    provision plugin runs its fetch synchronously and returns an exit code, and lpart
+    neither sends nor expects a signal (its only handling is SIGINT/SIGTERM in the TUI,
+    to cancel). So the trap is vestigial.
+
+    It stays in the classic template, because removing it would change the legacy
+    installer for no reason. It does not go in the lpart template, because there is
+    nothing there to want it: the fallback calls download_image and unpack_imagefile
+    directly off LPART_FALLBACK, so the classic path runs without a signal.
     """
     lpart = _read(LPART)
-    top_level = [line for line in lpart.splitlines() if line.startswith('trap unpack_imagefile')]
-    assert not top_level, (
-        'the lpart template arms the unpack trap at top level; a SIGUSR1 would then run '
-        "the classic extract behind lpart's back."
+    assert 'trap unpack_imagefile SIGUSR1' not in lpart, (
+        'the lpart template arms the unpack trap. Nothing raises SIGUSR1 -- not the '
+        'provision plugins, not lpart -- so the trap adds a second, signal-driven way '
+        'into an extract that the fallback already calls directly.'
     )
-    assert 'trap unpack_imagefile SIGUSR1' in lpart, (
-        'the fallback path needs the trap armed, since it runs the classic fetch/unpack'
-    )
-    # it belongs inside lpart_phase, on the branch that sets the fallback flag
+    # what the fallback actually relies on: the flag, and the two explicit calls
     phase_body = _functions(lpart)['lpart_phase']
-    assert 'trap unpack_imagefile SIGUSR1' in phase_body, (
-        'the trap is armed somewhere other than the fallback branch of lpart_phase'
+    assert 'LPART_FALLBACK=1' in phase_body, (
+        'the fallback flag is not set in lpart_phase; the classic path is then unreachable'
     )
-    assert 'LPART_FALLBACK=1' in phase_body, 'the fallback flag is not set where the trap is armed'
-    # and the classic template must keep its own top-level trap
+    for call in ('download_image', 'unpack_imagefile'):
+        assert f'[ "$LPART_FALLBACK" = "1" ] && {call}' in lpart, (
+            f'the fallback no longer calls {call}. Without it a node whose osimage '
+            'predates lpart reports the fallback and then installs nothing.'
+        )
+    # and the classic template keeps its own top-level trap
     assert 'trap unpack_imagefile SIGUSR1' in _read(CLASSIC), (
         'the classic template lost its SIGUSR1 trap; that is a behaviour change to the '
         'legacy installer and not something this work should touch.'

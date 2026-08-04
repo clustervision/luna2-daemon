@@ -88,7 +88,9 @@ class Plugin():
         - build  returns image_file_name upon success
         one variable:
         - systemroot   this is where the installer will unpack files (read: ramdisk image) to
-          systemroot   for debian/ubuntu is typically set to $rootmnt. note: $ROOT (not $rootmnt) points to /luna
+          systemroot   for debian/ubuntu this is whatever the initramfs mounted the target
+          systemroot   root on, asked of both frameworks: initramfs-tools' $rootmnt, else
+          systemroot   dracut's $NEWROOT. note: $ROOT (not $rootmnt) points to /luna
         """
         self.logger = Log.get_logger()
 
@@ -103,7 +105,14 @@ class Plugin():
 
     # ---------------------------------------------------------------------------
 
-    systemroot = "$rootmnt"
+    # Ask each initramfs framework in its own language, because ubuntu can be packed
+    # with either and they do not share a name for the target root: initramfs-tools
+    # exports rootmnt=/root, dracut exports NEWROOT=/sysroot and has no notion of
+    # rootmnt at all. Order matters -- rootmnt first keeps the passthrough that
+    # initramfs-tools relies on, and the literal is only reached when neither answered.
+    # A bare "$rootmnt" resolves to nothing under dracut, and every "/${rootmnt}/..."
+    # in the installer then addresses the initramfs' own root instead of the image.
+    systemroot = "${rootmnt:-${NEWROOT:-/sysroot}}"
 
     # ---------------------------------------------------------------------------
 

@@ -157,3 +157,62 @@ def test_the_output_is_the_last_argument_for_dracut():
     """dracut takes it positionally, so anything appended after it changes meaning."""
     command, _ = initramfs_command(KERNEL, RAMDISK, exists=probe(DRACUT))
     assert command[-1] == OUTPUT
+
+
+# ---------------------------------------------------------------------------
+# Where the installer unpacks to.
+#
+# The other consequence of ubuntu having two initramfs frameworks. They do not
+# share a name for the target root -- initramfs-tools exports rootmnt=/root,
+# dracut exports NEWROOT=/sysroot and has no notion of rootmnt -- so a plugin that
+# names only one of them is correct for exactly one builder.
+#
+# The value is shell, evaluated on the node, so these tests do what the node does:
+# render it into the two lines of templ_install.cfg that consume it and run them
+# under each framework. Asserting on the string would only prove it is the string
+# somebody wrote.
+# ---------------------------------------------------------------------------
+
+from plugins.osimage.operations.image.ubuntu import Plugin as UbuntuPlugin
+
+# verbatim from templ_install.cfg -- the unconditional export, then the guard
+SYSTEMROOT_PREAMBLE = (
+    'export _SYSTEMROOT="{systemroot}"\n'
+    'if [[ -z ${{rootmnt:-}} ]]; then\n'
+    '    export rootmnt="{systemroot}"\n'
+    'fi\n'
+    'printf "%s\\n%s\\n" "$_SYSTEMROOT" "$rootmnt"\n'
+)
+
+
+def _resolve(systemroot, environment):
+    """Evaluate the rendered preamble the way a booting node would."""
+    import subprocess
+    script = SYSTEMROOT_PREAMBLE.format(systemroot=systemroot)
+    result = subprocess.run(['bash', '-c', script], capture_output=True,
+                            text=True, env=environment, timeout=30)
+    assert result.returncode == 0, result.stderr
+    return result.stdout.split()
+
+
+@pytest.mark.parametrize('environment,expected', [
+    ({'rootmnt': '/root'},        '/root'),     # initramfs-tools
+    ({'NEWROOT': '/sysroot'},     '/sysroot'),  # dracut
+    ({},                          '/sysroot'),  # neither: the literal, never empty
+])
+def test_the_target_root_resolves_under_either_initramfs(environment, expected):
+    systemroot, rootmnt = _resolve(UbuntuPlugin.systemroot, environment)
+    assert rootmnt == expected
+    # _SYSTEMROOT is exported before the guard and is published to the operator's
+    # pre/part/post scripts, so it has to agree rather than merely be set.
+    assert systemroot == expected
+
+
+@pytest.mark.parametrize('environment', [{'rootmnt': '/root'}, {'NEWROOT': '/sysroot'}, {}])
+def test_the_target_root_is_never_empty_or_relative(environment):
+    """An empty resolution is the failure that matters: every "/${rootmnt}/..." in
+    the installer would then address the initramfs' own root, and the image would
+    unpack into a tmpfs that disappears at pivot."""
+    for value in _resolve(UbuntuPlugin.systemroot, environment):
+        assert value, 'the target root resolved to nothing'
+        assert value.startswith('/'), f'the target root is relative: {value}'

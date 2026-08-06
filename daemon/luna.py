@@ -63,6 +63,7 @@ from routes.config_node import node_blueprint
 from routes.config_node_inventory import node_inventory_blueprint
 from routes.config_osgroup import osgroup_blueprint
 from routes.config_osimage import osimage_blueprint
+from routes.config_hash import hash_blueprint
 from routes.config_osuser import osuser_blueprint
 from routes.config_otherdev import otherdev_blueprint
 from routes.config_secrets import secrets_blueprint
@@ -328,6 +329,7 @@ daemon.register_blueprint(boot_blueprint)
 daemon.register_blueprint(roles_blueprint)
 daemon.register_blueprint(scripts_blueprint)
 daemon.register_blueprint(bmcsetup_blueprint)
+daemon.register_blueprint(hash_blueprint)
 daemon.register_blueprint(cluster_blueprint)
 daemon.register_blueprint(dns_blueprint)
 daemon.register_blueprint(route_blueprint)

@@ -48,6 +48,7 @@ control_char_re = re.compile(f'[{re.escape(CONTROL_CHAR)}]')
 
 REG_EXP = {
     'name': { 'regexp': r'^[a-zA-Z0-9\-\.\_\ ]+$', 'error': 'combination of characters a-z A-Z, numbers 0-9, whitespace, \'-\', \'_\' and \'.\'' },
+    'artefactfile': { 'regexp': r'^[a-zA-Z0-9\-\.\_\+]+$', 'error': 'combination of characters a-z A-Z, numbers 0-9, \'-\', \'_\', \'.\' and \'+\'' },
     'nameandclear': { 'regexp': r'^[a-zA-Z0-9\-\.\_\ ]+|$', 'error': 'combination of characters a-z A-Z, numbers 0-9, whitespace, \'-\', \'_\' and \'.\'' },
     'strictname': { 'regexp': r'^[a-z0-9\-\.]+$', 'error': 'combination of small characters a-z, numbers 0-9, \'-\' and \'.\'' },
     'strictcsv': { 'regexp': r'^[a-z0-9\-\,\ ]+$', 'error': 'combination of small characters a-z, numbers 0-9, whitespace, \'-\' and \',\'' },
@@ -94,6 +95,8 @@ MATCH = {
     'newgroupname': 'name',
     'newbmcname': 'name',
     'newsecretname': 'name',
+    'object_type': 'strictname',
+    'file': 'artefactfile',
     'osimagetag': 'nameandclear',
     'roles': 'loosecsv',
     'scripts': 'loosecsv',

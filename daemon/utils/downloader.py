@@ -38,6 +38,7 @@ from utils.database import Database
 from common.constant import CONSTANT
 from utils.helper import Helper
 from utils.request import Request
+from utils.hashes import Hashes
 
 
 class Downloader(object):
@@ -75,12 +76,54 @@ class Downloader(object):
             location=CONSTANT["FILES"]["IMAGE_FILES"]
             for file in ['kernelfile','initrdfile','imagefile']:
                 if image[0][file]:
-                    status,_=Request().download_file(host,image[0][file],location)
+                    expected=self.remote_hash(host,osimage,image[0][file])
+                    status,_=Request().download_file(host,image[0][file],location,expected_sha256=expected)
                     if not status:
                         self.logger.error(f"downloading {file} for osimage {osimage} returned an error")
+                    else:
+                        # Record what we now hold, whether or not the peer could tell
+                        # us what to expect. Roles flip: a controller that pulled today
+                        # is master tomorrow, and it has to answer the same question it
+                        # just asked - otherwise a gap propagates, because the next
+                        # slave pulls from a master that never learned its own hashes.
+                        # hash_value is used when the download was verified (free, the
+                        # bytes already went through a digest); path makes it compute
+                        # one when the peer offered nothing.
+                        Hashes().record('osimage',osimage,image[0][file],
+                                        hash_value=expected,
+                                        path=f"{location}/{image[0][file]}")
                 else:
                     self.logger.warning(f"could not download {file} for osimage {osimage}. it has no value")
+        # deliberately unconditional. the journal dispatch is ordered and unguarded:
+        # raising holds the queue until someone fixes the cause, returning lets the
+        # records behind this one apply. a file transfer must not hold replication,
+        # so a failed pull is logged and life goes on. see journal.handle_requests.
         return True
+
+
+    def remote_hash(self,host,osimage,file):
+        # Ask the peer what its own copy hashes to. Best effort by design: a peer
+        # that predates the hash table, or an artefact packed before it existed,
+        # answers nothing - and that means 'cannot verify', not 'fail'.
+        status,data,code=Request().get_request_code(host,f'/hash/osimage/{osimage}/{file}')
+        if not status or not data:
+            # 404 means the peer genuinely holds no hash for this artefact. Anything
+            # else - no code at all, a 5xx, an auth failure - means we could not ask,
+            # which is a different thing and must not be mistaken for it.
+            if code == 404:
+                self.logger.info(f"{host} holds no hash for {file}; it will not be verified")
+            else:
+                self.logger.warning(f"could not ask {host} for the hash of {file} (code {code}); it will not be verified")
+            return None
+        try:
+            return data['config']['hash']['osimage'][osimage][file]['hash']
+        except (KeyError, TypeError, ValueError, IndexError):
+            # Whatever shape a peer answers with, an unusable answer means 'cannot
+            # verify' and never an error. Deliberately NOT a bare except: this runs
+            # on the journal path, where a genuine code fault should still raise and
+            # hold the queue rather than be swallowed.
+            self.logger.info(f"{host} returned no usable hash for {file}; it will not be verified")
+        return None
 
 
 

@@ -73,6 +73,22 @@ DATABASE_LAYOUT_osimage = [
 {"column": "changed",              "datatype": "INTEGER", "length": "10"},
 {"column": "comment",              "datatype": "VARCHAR", "length": "20"}]
 
+# Local artefact checksums. Deliberately NOT in Tables().tables: a row here is a
+# statement about a file on THIS controller, so it legitimately differs between
+# controllers and hashing it would make two healthy ones look permanently out of
+# sync. Kept general on purpose - object is the kind of thing ('osimage'), name
+# is which one, and file is the artefact - so kernels, ramdisks and whatever comes
+# later share one table instead of growing a column each.
+DATABASE_LAYOUT_hash = [
+{"column": "id",                   "datatype": "INTEGER", "key": "PRIMARY", "keyadd": "AUTOINCREMENT"},
+{"column": "object",               "datatype": "VARCHAR", "length": "60"},
+{"column": "name",                 "datatype": "VARCHAR", "length": "60"},
+{"column": "file",                 "datatype": "VARCHAR", "length": "100"},
+{"column": "hashtype",             "datatype": "VARCHAR", "length": "20"},
+{"column": "hash",                 "datatype": "VARCHAR", "length": "128"},
+{"column": "created",              "datatype": "VARCHAR", "length": "60"}
+]
+
 DATABASE_LAYOUT_osimagetag = [
 {"column": "id",                   "datatype": "INTEGER", "key": "PRIMARY", "keyadd": "AUTOINCREMENT"},
 {"column": "name",                 "datatype": "VARCHAR", "length": "60"},

@@ -43,6 +43,7 @@ from utils.log import Log
 from utils.database import Database
 from common.constant import CONSTANT
 from utils.helper import Helper
+from utils.hashes import Hashes
 from utils.status import Status
 from utils.queue import Queue
 from utils.request import Request
@@ -313,6 +314,15 @@ class OsImage(object):
                            {"column": "initrdfile", "value": ramdisk_file}]
                     where = [{"column": "id", "value": f"{image[0]['id']}"}]
                     status = Database().update('osimage', row, where)
+                    # Same reason build_osimage records the imagefile: a controller
+                    # should be able to say what it holds. These two matter more than
+                    # the tarball, not less - they are what a node actually boots -
+                    # and without them a puller can verify the image and not the
+                    # kernel it will run.
+                    for artefact in (kernel_file, ramdisk_file):
+                        if artefact:
+                            Hashes().record('osimage', osimage, artefact,
+                                            path=f"{files_path}/{artefact}")
                     Status().add_message(request_id=request_id, username_initiator="luna",
                                          message=f"finished assembling kernel and ramdisk for osimage {osimage}",
                                          status=200)
@@ -516,6 +526,14 @@ class OsImage(object):
                     row = [{"column": "imagefile", "value": image_file}]
                     where = [{"column": "id", "value": f"{image[0]['id']}"}]
                     status = Database().update('osimage', row, where)
+                    # Record what the artefact hashes to, here rather than in the
+                    # plugin: the plugin is told to produce a file and hands back its
+                    # name, and that is all it should have to know. Hashing needs the
+                    # database, and a plugin reaching back into the daemon is a
+                    # dependency every site that replaces it inherits.
+                    # Local and never replicated: it describes this controller's file.
+                    Hashes().record('osimage', osimage, image_file,
+                                    path=f"{files_path}/{image_file}")
                     Status().add_message(request_id=request_id, username_initiator="luna",
                                          message=f"finished building osimage {osimage}", status=200)
                     result=True
@@ -1060,6 +1078,18 @@ class OsImage(object):
         files_path = CONSTANT['FILES']['IMAGE_FILES']
         os_image_plugin=Helper().plugin_load(self.osimage_plugins,'osimage/other','cleanup')
         ret,mesg=os_image_plugin().cleanup(files_path=files_path,file_to_remove=file_to_remove)
+        if ret is True:
+            # The hash describes this file, so it goes when the file goes. Hooked
+            # here rather than in each delete path: everything that removes an
+            # artefact - image delete, tag delete, a repack superseding the
+            # previous one - arrives through cleanup_file, and the guards above
+            # already refuse while anything still refers to it.
+            Hashes().forget_file(file_to_remove)
+        # And sweep whatever was removed some other way. Cheap - one listdir - and
+        # it runs on the same occasions files are already being tidied, so the
+        # table cannot grow unboundedly just because something bypassed the line
+        # above.
+        Hashes().prune(files_path)
         return ret, mesg
 
     # -------------------------------------------------------------------

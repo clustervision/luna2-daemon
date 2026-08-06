@@ -270,6 +270,15 @@ def filter_data(data=None, name=None):
         LOGGER.debug(f"Skipping filter on {name}")
         return data
     data = control_char_re.sub('', data)
+    # Match on what the caller actually sent, not on a cleaned copy of it. The two
+    # differ, and only one of them reaches the code: validate_name discards this
+    # return value and calls the route with the original kwargs, so a value is
+    # approved in a form nothing downstream ever sees. "osimage'--" passes as
+    # "osimage--" and arrives at the query with its quote intact, where it closes
+    # the first condition and comments out the rest.
+    # Rejecting is right rather than cleaning: a quote in a name is a client
+    # mistake, and quietly answering about a different object is worse than a 400.
+    unfiltered = data
     data = data.replace("'", "")
     data = data.replace('"', "")
     if name in MAXLENGTH.keys():
@@ -285,8 +294,8 @@ def filter_data(data=None, name=None):
                     ERROR = f"field {name} with content {data} is a reserved keyword: {reserved}"
                     return
         regex = re.compile(r"" + REG_EXP[MATCH[name]]['regexp'])
-        if not regex.match(data):
-            LOGGER.info(f"MATCH name = {name} with data = {data} mismatch with:")
+        if not regex.match(unfiltered):
+            LOGGER.info(f"MATCH name = {name} with data = {unfiltered} mismatch with:")
             LOGGER.info(f"    REG_EXP['{MATCH[name]}']['regexp'] = {REG_EXP[MATCH[name]]['regexp']}")
             ERROR = f"field {name} with content {data} does not match criteria {REG_EXP[MATCH[name]]['error']}"
             return

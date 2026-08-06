@@ -48,3 +48,42 @@ def test_parse_item_filters_nested_strings():
     result = parse_item(data)
     assert result["outer"][0] == "ab"
     assert result["outer"][1]["inner"] == "cd"
+
+
+def test_a_quoted_name_is_rejected_rather_than_cleaned_into_a_valid_one():
+    """
+    The regex has to see what the caller sent.
+
+    filter_data returns a copy with the quotes taken out, but validate_name
+    discards that return and calls the route with the original kwargs. So the
+    value that gets approved and the value that reaches the query are not the
+    same string, and the check is meaningless for exactly the character that
+    matters: "osimage'--" cleans to "osimage--", which is a perfectly good
+    strictname, while the original arrives at the where clause with its quote
+    intact - closing the first condition and commenting the rest away.
+
+    Observed live before this: /hash/osimage'--/<name> returned every row for
+    the object type instead of the one asked for, because the name predicate
+    had been commented out.
+    """
+    import common.validate_input as validate_input
+    from common.validate_input import filter_data
+
+    for payload in ("osimage'--", 'osimage"--', "compute' OR '1'='1", "node'"):
+        validate_input.ERROR = None
+        filter_data(payload, 'object_type')
+        assert validate_input.ERROR, f"{payload!r} must be rejected, not cleaned into a valid name"
+
+    validate_input.ERROR = None
+    assert filter_data('osimage', 'object_type') == 'osimage'
+    assert not validate_input.ERROR, "an ordinary value must still pass"
+
+
+def test_cleaning_still_happens_for_fields_with_no_regex():
+    """
+    Only the check moved to the raw value; the sanitising is untouched. A field
+    with no MATCH entry has no regex to fail, so it is cleaned and passed on
+    exactly as before - which is what parse_item's callers rely on.
+    """
+    from common.validate_input import filter_data
+    assert filter_data("it's fine", 'some_unregistered_field') == 'its fine'

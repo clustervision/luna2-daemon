@@ -39,7 +39,6 @@ __maintainer__  = 'Antoine Schonewille'
 __email__       = 'antoine.schonewille@clustervision.com'
 __status__      = 'Development'
 
-import os
 import hashlib
 from time import strftime, localtime, time
 from utils.log import Log
@@ -127,36 +126,24 @@ class Hashes():
             self.logger.error(f"could not forget hash for {file}: {exp}")
 
 
-    def prune(self, files_path):
-        """
-        Drop rows whose artefact is no longer on disk.
-
-        forget_file() covers the tidy path - a file removed through cleanup_file
-        takes its row with it. This covers the untidy ones: a file removed by
-        hand, lost with a filesystem, or deleted by anything that does not route
-        through cleanup_file. Without it the table only ever grows, because a row
-        is never wrong enough to notice - it just describes something that is not
-        there any more.
-
-        A row without its file is stale by definition: the table records what
-        THIS controller holds, so nothing else can explain it.
-        """
-        try:
-            rows = Database().get_record(table='hash')
-            if not rows:
-                return 0
-            present = set(os.listdir(files_path))
-            gone = [r['file'] for r in rows if r['file'] not in present]
-            for file in gone:
-                Database().delete_row('hash', [{"column": "file", "value": file}])
-            if gone:
-                self.logger.info(f"pruned {len(gone)} hash row(s) whose artefact is gone: {', '.join(gone[:3])}"
-                                 + (" ..." if len(gone) > 3 else ""))
-            return len(gone)
-        except Exception as exp:
-            self.logger.error(f"could not prune the hash table: {exp}")
-        return 0
-
+    # Deliberately no prune(): there is no sweep over this table.
+    #
+    # A sweep would decide what to delete from what is on disk right now, and an
+    # empty listing is indistinguishable from every artefact having been removed -
+    # so a path that is unmounted, misconfigured or briefly unreadable takes the
+    # whole table with it. That failure is silent, because a missing row reads as
+    # 'not verifiable', which is a legitimate state: downloads would simply stop
+    # being verified and nothing would say so.
+    #
+    # The trade is not close. These rows are long-lived by nature - an image can
+    # sit unchanged for years - while a stale row is inert: lookups are by object,
+    # name and file, and artefact names carry a timestamp, so a name never recurs
+    # and the row is never consulted again. Accumulating a few hundred harmless
+    # bytes beats a mechanism that can silently delete good ones.
+    #
+    # forget_file() below is the whole cleanup story, and it is precise: it removes
+    # exactly the row for the file being removed, from the one place every artefact
+    # removal already passes through.
 
     def forget(self, object_type, name, file=None):
         # Called when the thing the hash describes is removed. A stale row is not

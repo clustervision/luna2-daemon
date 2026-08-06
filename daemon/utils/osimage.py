@@ -1085,11 +1085,6 @@ class OsImage(object):
             # previous one - arrives through cleanup_file, and the guards above
             # already refuse while anything still refers to it.
             Hashes().forget_file(file_to_remove)
-        # And sweep whatever was removed some other way. Cheap - one listdir - and
-        # it runs on the same occasions files are already being tidied, so the
-        # table cannot grow unboundedly just because something bypassed the line
-        # above.
-        Hashes().prune(files_path)
         return ret, mesg
 
     # -------------------------------------------------------------------

@@ -135,7 +135,6 @@ def test_the_store_survives_its_table_disappearing(db, artefact):
         assert Hashes().record('osimage', 'compute', 'x', hash_value='b' * 64) is None
         assert Hashes().lookup('osimage', 'compute', 'x') is None
         Hashes().forget_file('x')
-        assert Hashes().prune('/tmp') == 0
     finally:
         hashes_module.Database = original
 
@@ -153,28 +152,50 @@ def test_forgetting_an_unknown_file_is_a_no_op(db):
     Hashes().forget_file('never-heard-of-it.tar.bz2')
 
 
-def test_prune_drops_rows_whose_artefact_is_gone(db, tmp_path, artefact):
+def test_there_is_no_sweep_over_this_table():
     """
-    forget_file covers the tidy path. This covers the untidy ones - a file removed
-    by hand, or lost with a filesystem - because without it the table only ever
-    grows: a stale row is never wrong enough to notice, it simply describes
-    something that is not there any more.
+    A sweep decides what to delete from what is on disk at that moment, and an
+    empty listing is indistinguishable from every artefact having been removed.
+    A path that is unmounted, misconfigured or briefly unreadable would take the
+    whole table with it - silently, because a missing row reads as 'not
+    verifiable', which is a legitimate state. Downloads would quietly stop being
+    verified, which is the defect this work exists to remove.
+
+    These rows are long-lived: an image can sit unchanged for years. A stale one
+    is inert - lookups are by object, name and file, and artefact names carry a
+    timestamp, so a name never recurs and the row is never consulted again.
+    Accumulating harmless bytes beats being able to delete good rows.
+
+    forget_file is the whole cleanup story, and it is precise.
     """
+    import inspect
+    from utils.hashes import Hashes
+    from utils.osimage import OsImage
+    from utils.housekeeper import Housekeeper
+
+    assert not hasattr(Hashes, 'prune'), \
+        "no sweep over this table: an empty listing would delete every row"
+    for owner, method in ((OsImage, 'cleanup_file'), (Housekeeper, 'cleanup_mother')):
+        source = inspect.getsource(getattr(owner, method))
+        assert 'prune' not in source, f"{owner.__name__}.{method} must not sweep the hash table"
+
+
+def test_cleanup_is_targeted_at_the_file_being_removed(db, artefact):
+    """
+    The row goes when its file goes, and only that row. cleanup_file is the right
+    hook because every artefact removal - image delete, tag delete, a repack
+    superseding the previous generation - already passes through it, and its
+    existing guards refuse while anything still refers to the file.
+    """
+    keep = 'compute-other-generation.tar.bz2'
     Hashes().record('osimage', 'compute', os.path.basename(artefact), path=artefact)
-    for index in range(3):
-        Hashes().record('osimage', 'compute', f'ghost-{index}.tar.bz2', hash_value=f'{index}' * 64)
-    assert len(Database().get_record(table='hash')) == 4
+    Hashes().record('osimage', 'compute', keep, hash_value='c' * 64)
 
-    assert Hashes().prune(str(tmp_path)) == 3
-    remaining = Database().get_record(table='hash')
-    assert len(remaining) == 1
-    assert remaining[0]['file'] == os.path.basename(artefact)
+    Hashes().forget_file(os.path.basename(artefact))
 
-
-def test_prune_keeps_every_row_whose_artefact_is_present(db, tmp_path, artefact):
-    Hashes().record('osimage', 'compute', os.path.basename(artefact), path=artefact)
-    assert Hashes().prune(str(tmp_path)) == 0
-    assert len(Database().get_record(table='hash')) == 1
+    assert Hashes().lookup('osimage', 'compute', os.path.basename(artefact)) is None
+    assert Hashes().lookup('osimage', 'compute', keep) == 'c' * 64, \
+        "removing one artefact must not disturb another's row"
 
 
 # ---------------------------------------------------------------- the download contract

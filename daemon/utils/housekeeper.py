@@ -41,6 +41,7 @@ from common.constant import CONSTANT
 from utils.helper import Helper
 # below are needed to accomodate for the housekeeper
 from utils.queue import Queue
+from utils.downloader import Downloader
 from utils.osimage import OsImage
 from utils.service import Service
 from base.monitor import Monitor
@@ -111,6 +112,15 @@ class Housekeeper(object):
                                         ret,mesg=GroupConfigPlugin().bulk(fullset=all_nodes_data)
                                     if not ret:
                                         self.logger.error(f"bulk {first} operation: {mesg}")
+                            case 'resync_osimage_files':
+                                # Queued by the periodic check below when this controller is missing
+                                # an artefact its own configuration references. It lives on the
+                                # housekeeper subsystem on purpose: the osimage subsystem is cleared
+                                # on anything that is not master, and a slave is exactly who needs
+                                # this. pull_image_files reports its own outcome.
+                                Queue().update_task_status_in_queue(next_id,'in progress')
+                                self.logger.warning(f"re-syncing osimage {first} from {second}: artefacts are missing locally")
+                                Downloader().pull_image_files(first,second)
                             case 'cleanup_old_file':
                                 Queue().update_task_status_in_queue(next_id,'in progress')
                                 returned=OsImage().cleanup_file(first)
@@ -144,7 +154,12 @@ class Housekeeper(object):
                             case 'sync_osimage_with_master':
                                 osimage=first
                                 master=second
-                                new_state = f'Image sync success for {osimage}'
+                                # Not 'success': nothing has been fetched yet. The calls below only
+                                # queue the work, and 'ret' tracks whether the journal accepted the
+                                # request - never whether a byte arrived, which happens later and
+                                # elsewhere. Downloader.report_sync_outcome overwrites this with the
+                                # real result once the transfer has actually run.
+                                new_state = f'Image sync queued for {osimage}'
                                 state = {'monitor': {'status': {osimage: {'state': new_state, 'status': '200'} } } }
                                 Queue().update_task_status_in_queue(next_id,'in progress')
                                 ret,mesg=Journal().add_request(function='OsImager.schedule_cleanup',object=osimage,keeptrying=60)
@@ -292,6 +307,7 @@ class Housekeeper(object):
                         self.logger.info(f"cleaning up reserved ipaddress {record['ipaddress']}")
                         where = [{"column": "ipaddress", "value": record['ipaddress']}]
                         Database().delete_row('reservedipaddress', where)
+                    self.reconcile_osimage_artefacts(ha_object)
                 mother_status = True
 
             except Exception as exp:
@@ -309,6 +325,56 @@ class Housekeeper(object):
             if event.is_set():
                 return
             sleep(5)
+
+
+    def reconcile_osimage_artefacts(self,ha_object):
+        """
+        Close the loop on image sync: check what we hold, not what we were told.
+
+        A sync is fired by an event - something packed - and the pull that carries
+        it out cannot report failure through its return value, because that value
+        is the journal's contract. So a pull that fetched nothing leaves the
+        configuration naming an artefact this controller does not have, and
+        nothing notices: the controller comparison hashes database rows, and the
+        rows are identical. The next sync only comes with the next pack.
+
+        This runs on both roles deliberately. A master missing an artefact cannot
+        serve it to nodes or to a peer, which is worse than a slave missing one,
+        not better.
+        """
+        try:
+            if not ha_object.get_hastate():
+                return
+            missing = Downloader().local_artefacts_missing()
+            if not missing:
+                return
+            peers = self.peer_controllers(ha_object)
+            if not peers:
+                self.logger.error(f"artefacts are missing for {', '.join(missing)} but no peer is known to fetch them from")
+                return
+            for osimage, files in missing.items():
+                state = f"Image incomplete on {ha_object.get_me()}: {', '.join(files)} missing; re-syncing"
+                self.logger.error(state)
+                Monitor().update_itemstatus(item='sync', name=osimage,
+                                            request_data={'monitor':{'status':{osimage:{'state':state,'status':'501'}}}})
+                for peer in peers:
+                    # replace, so a repair that is already waiting is not queued twice
+                    # every time this comes round.
+                    Queue().add_task_to_queue(task='resync_osimage_files', param=f'{osimage}:{peer}',
+                                              subsystem='housekeeper', request_id='__artefact_reconcile__',
+                                              replace=True)
+        except Exception as exp:
+            self.logger.error(f"reconciling osimage artefacts encountered a problem: {exp}")
+
+
+    def peer_controllers(self,ha_object):
+        """
+        The other controllers, by name. Excludes this one, and the beacon entry,
+        which is the shared name of the pair rather than a machine to fetch from.
+        """
+        me = ha_object.get_me()
+        return [row['hostname'] for row in (Database().get_record(table='controller') or [])
+                if row['hostname'] != me and not row['beacon']]
 
 
     def switchport_scan(self,event):

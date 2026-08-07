@@ -39,6 +39,9 @@ from common.constant import CONSTANT
 from utils.helper import Helper
 from utils.request import Request
 from utils.hashes import Hashes
+# same import the housekeeper uses to report item status; there is no utils-level
+# equivalent of update_itemstatus.
+from base.monitor import Monitor
 
 
 class Downloader(object):
@@ -74,11 +77,13 @@ class Downloader(object):
         image = Database().get_record(table='osimage', where=f"name='{osimage}'")
         if image:
             location=CONSTANT["FILES"]["IMAGE_FILES"]
+            failed=[]
             for file in ['kernelfile','initrdfile','imagefile']:
                 if image[0][file]:
                     expected=self.remote_hash(host,osimage,image[0][file])
                     status,_=Request().download_file(host,image[0][file],location,expected_sha256=expected)
                     if not status:
+                        failed.append(image[0][file])
                         self.logger.error(f"downloading {file} for osimage {osimage} returned an error")
                     else:
                         # Record what we now hold, whether or not the peer could tell
@@ -94,11 +99,72 @@ class Downloader(object):
                                         path=f"{location}/{image[0][file]}")
                 else:
                     self.logger.warning(f"could not download {file} for osimage {osimage}. it has no value")
+            self.report_sync_outcome(osimage,failed)
         # deliberately unconditional. the journal dispatch is ordered and unguarded:
         # raising holds the queue until someone fixes the cause, returning lets the
         # records behind this one apply. a file transfer must not hold replication,
         # so a failed pull is logged and life goes on. see journal.handle_requests.
         return True
+
+
+    def report_sync_outcome(self,osimage,failed):
+        """
+        Say what actually happened, because the return value is not allowed to.
+
+        The return above means 'the journal may carry on', never 'the files
+        arrived' - and it has to stay that way. But the controller that queued the
+        sync reported success before the first byte was fetched: it only ever saw
+        whether the journal accepted the request, and by the time this runs it has
+        long since moved on. So this is the only place that knows the outcome, and
+        the only place that can correct the claim.
+        """
+        if failed:
+            state=f"Image sync failed for {osimage}: {', '.join(failed)} did not arrive"
+            code='501'
+            self.logger.error(state)
+        else:
+            state=f"Image sync success for {osimage}"
+            code='200'
+            self.logger.info(state)
+        try:
+            Monitor().update_itemstatus(item='sync', name=osimage,
+                                        request_data={'monitor':{'status':{osimage:{'state':state,'status':code}}}})
+        except Exception as exp:
+            # Reporting must never be what breaks the journal path. A status we
+            # could not write is bad; an exception here would be worse.
+            self.logger.error(f"could not report the sync outcome for {osimage}: {exp}")
+
+
+    def local_artefacts_missing(self):
+        """
+        Artefacts this controller's own configuration references but does not hold.
+
+        Controller comparison hashes database rows, not files, so a controller
+        whose osimage row names an artefact that is not on its disk looks
+        perfectly in sync. Nothing else looks at the files, and the sync that
+        failed is not retried until something packs again - so without this a
+        controller sits silently one image short until it is promoted or a node
+        tries to boot from it.
+
+        Deliberately conservative about the directory itself: if IMAGE_FILES is
+        not there - unmounted, misconfigured - then every artefact looks missing
+        and acting on that would queue a re-sync of everything at once. That is a
+        storm, not a repair. Say so loudly and do nothing.
+        """
+        location=CONSTANT["FILES"]["IMAGE_FILES"]
+        missing={}
+        try:
+            if not os.path.isdir(location):
+                self.logger.error(f"{location} is not a directory. cannot tell which artefacts are missing")
+                return missing
+            for image in Database().get_record(table='osimage') or []:
+                gone=[image[file] for file in ['kernelfile','initrdfile','imagefile']
+                      if image[file] and not os.path.exists(f"{location}/{image[file]}")]
+                if gone:
+                    missing[image['name']]=gone
+        except Exception as exp:
+            self.logger.error(f"could not determine which artefacts are missing: {exp}")
+        return missing
 
 
     def remote_hash(self,host,osimage,file):

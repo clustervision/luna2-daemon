@@ -217,3 +217,20 @@ def test_incomplete_images_are_reported_but_not_auto_repaired():
         'peer discovery duplicates what Journal already builds'
     assert "case 'resync_osimage_files'" not in inspect.getsource(Housekeeper.tasks_mother), \
         'the repair task type should be gone'
+
+
+def test_a_filename_without_an_extension_does_not_raise():
+    """
+    get_file decides whether a file needs a token from its extension. The regex
+    finds no match on a name with no dot, and group(1) on None raises - which the
+    route turns into a 500. Kernels and ramdisks are served under names that do
+    have dots, so this stayed hidden; anything else served from IMAGE_FILES hits
+    it. No extension simply means no extension: not authenticated, as before.
+    """
+    import inspect
+    from base.file import File
+    source = inspect.getsource(File.get_file)
+    line = [l for l in source.splitlines() if 'result.group(1)' in l]
+    assert line, 'expected the extension match to still be read'
+    assert 'if result:' in source, \
+        'group(1) must not be called when the filename has no extension'

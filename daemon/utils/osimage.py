@@ -1116,7 +1116,7 @@ class OsImage(object):
             # artefact - image delete, tag delete, a repack superseding the
             # previous one - arrives through cleanup_file, and the guards above
             # already refuse while anything still refers to it.
-            Hashes().forget_file(file_to_remove)
+            Hashes().delete_hashes(file=file_to_remove)
         return ret, mesg
 
     # -------------------------------------------------------------------

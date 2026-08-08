@@ -85,7 +85,8 @@ class File():
         needs_auth = False
         if filename:
             result = re.search(r"^.+(\..[^.]+)(\?|\&|;|#)?", filename)
-            ext = result.group(1)
+            if result:                      # a name with no extension has no match
+                ext = result.group(1)
             self.logger.debug(f"filename [{filename}], ext = [{ext}]")
             if ext in auth_ext:
                 self.logger.debug(f"We enforce authentication for file extension = [{ext}]")

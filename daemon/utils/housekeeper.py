@@ -112,15 +112,6 @@ class Housekeeper(object):
                                         ret,mesg=GroupConfigPlugin().bulk(fullset=all_nodes_data)
                                     if not ret:
                                         self.logger.error(f"bulk {first} operation: {mesg}")
-                            case 'resync_osimage_files':
-                                # Queued by the periodic check below when this controller is missing
-                                # an artefact its own configuration references. It lives on the
-                                # housekeeper subsystem on purpose: the osimage subsystem is cleared
-                                # on anything that is not master, and a slave is exactly who needs
-                                # this. pull_image_files reports its own outcome.
-                                Queue().update_task_status_in_queue(next_id,'in progress')
-                                self.logger.warning(f"re-syncing osimage {first} from {second}: artefacts are missing locally")
-                                Downloader().pull_image_files(first,second)
                             case 'cleanup_old_file':
                                 Queue().update_task_status_in_queue(next_id,'in progress')
                                 returned=OsImage().cleanup_file(first)
@@ -307,7 +298,7 @@ class Housekeeper(object):
                         self.logger.info(f"cleaning up reserved ipaddress {record['ipaddress']}")
                         where = [{"column": "ipaddress", "value": record['ipaddress']}]
                         Database().delete_row('reservedipaddress', where)
-                    self.reconcile_osimage_artefacts(ha_object)
+                    self.report_incomplete_osimages(ha_object)
                 mother_status = True
 
             except Exception as exp:
@@ -327,54 +318,35 @@ class Housekeeper(object):
             sleep(5)
 
 
-    def reconcile_osimage_artefacts(self,ha_object):
+    def report_incomplete_osimages(self,ha_object):
         """
-        Close the loop on image sync: check what we hold, not what we were told.
+        Say so when this controller does not hold what its own configuration names.
 
-        A sync is fired by an event - something packed - and the pull that carries
-        it out cannot report failure through its return value, because that value
-        is the journal's contract. So a pull that fetched nothing leaves the
-        configuration naming an artefact this controller does not have, and
-        nothing notices: the controller comparison hashes database rows, and the
-        rows are identical. The next sync only comes with the next pack.
+        Reporting only. It deliberately does not repair: a fetch that failed is
+        retried where it failed, in pull_image_files, which is the only place that
+        knows. What is left over here is the case no retry can fix - an artefact
+        that is not on this controller and is not coming, because the sync
+        happened while it was down, because someone removed the file, or because
+        the configuration names something that exists nowhere at all. Every one of
+        those needs a person, not another fetch.
 
-        This runs on both roles deliberately. A master missing an artefact cannot
-        serve it to nodes or to a peer, which is worse than a slave missing one,
-        not better.
+        That is not hypothetical: the first run of this found an osimage whose
+        three artefacts are present on neither controller. Nothing could have
+        fetched those. Saying so is the whole value.
+
+        Runs on both roles. A master that cannot serve an artefact to nodes or to
+        a peer is worse off than a slave missing one, not better.
         """
         try:
             if not ha_object.get_hastate():
                 return
-            missing = Downloader().local_artefacts_missing()
-            if not missing:
-                return
-            peers = self.peer_controllers(ha_object)
-            if not peers:
-                self.logger.error(f"artefacts are missing for {', '.join(missing)} but no peer is known to fetch them from")
-                return
-            for osimage, files in missing.items():
-                state = f"Image incomplete on {ha_object.get_me()}: {', '.join(files)} missing; re-syncing"
+            for osimage, files in Downloader().local_artefacts_missing().items():
+                state = f"Image incomplete on {ha_object.get_me()}: {', '.join(files)} missing"
                 self.logger.error(state)
                 Monitor().update_itemstatus(item='sync', name=osimage,
                                             request_data={'monitor':{'status':{osimage:{'state':state,'status':'501'}}}})
-                for peer in peers:
-                    # replace, so a repair that is already waiting is not queued twice
-                    # every time this comes round.
-                    Queue().add_task_to_queue(task='resync_osimage_files', param=f'{osimage}:{peer}',
-                                              subsystem='housekeeper', request_id='__artefact_reconcile__',
-                                              replace=True)
         except Exception as exp:
-            self.logger.error(f"reconciling osimage artefacts encountered a problem: {exp}")
-
-
-    def peer_controllers(self,ha_object):
-        """
-        The other controllers, by name. Excludes this one, and the beacon entry,
-        which is the shared name of the pair rather than a machine to fetch from.
-        """
-        me = ha_object.get_me()
-        return [row['hostname'] for row in (Database().get_record(table='controller') or [])
-                if row['hostname'] != me and not row['beacon']]
+            self.logger.error(f"checking osimage artefacts encountered a problem: {exp}")
 
 
     def switchport_scan(self,event):

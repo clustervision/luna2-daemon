@@ -71,6 +71,34 @@ lookup_retries = Retry(
 lookup_session = Session()
 lookup_session.mount('https://', HTTPAdapter(max_retries=lookup_retries))
 
+def _sweep_dead_partials(location, filename, logger):
+    """
+    Remove leftover .part files whose writer is gone.
+
+    A download killed outright - SIGKILL, a power cut - cannot run its own
+    cleanup, so the temporary survives and can be gigabytes. The pid is in the
+    name, so liveness is checkable rather than guessed at: only a temporary
+    belonging to a process that no longer exists is removed. That is why this
+    is safe with several gunicorn workers, where an age-based sweep would
+    eventually delete a slow but perfectly healthy download.
+    """
+    try:
+        for path in glob(f'{location}/{filename}.part-*'):
+            try:
+                pid = int(os.path.basename(path).rsplit('.part-', 1)[1].split('-')[0])
+            except (IndexError, ValueError):
+                continue
+            if os.path.isdir(f'/proc/{pid}'):
+                continue
+            size = os.path.getsize(path)
+            os.remove(path)
+            logger.warning(f"removed stale partial download {os.path.basename(path)} ({size} bytes); its writer {pid} is gone")
+    except Exception as exp:
+        # Never fatal: failing to tidy up must not stop the download that is
+        # about to start.
+        logger.error(f"could not sweep stale partial downloads: {exp}")
+
+
 class Request():
     """
     This class offers remote token functionality. get remote token etc.
@@ -136,33 +164,6 @@ class Request():
         else:
             self.logger.error(f"no token for {uri} on host {host}. invalid credentials or host is down.")
         return False, None
-
-    def sweep_dead_partials(self, location, filename):
-        """
-        Remove leftover .part files whose writer is gone.
-
-        A download killed outright - SIGKILL, a power cut - cannot run its own
-        cleanup, so the temporary survives and can be gigabytes. The pid is in the
-        name, so liveness is checkable rather than guessed at: only a temporary
-        belonging to a process that no longer exists is removed. That is why this
-        is safe with several gunicorn workers, where an age-based sweep would
-        eventually delete a slow but perfectly healthy download.
-        """
-        try:
-            for path in glob(f'{location}/{filename}.part-*'):
-                try:
-                    pid = int(os.path.basename(path).rsplit('.part-', 1)[1].split('-')[0])
-                except (IndexError, ValueError):
-                    continue
-                if os.path.isdir(f'/proc/{pid}'):
-                    continue
-                size = os.path.getsize(path)
-                os.remove(path)
-                self.logger.warning(f"removed stale partial download {os.path.basename(path)} ({size} bytes); its writer {pid} is gone")
-        except Exception as exp:
-            # Never fatal: failing to tidy up must not stop the download that is
-            # about to start.
-            self.logger.error(f"could not sweep stale partial downloads: {exp}")
 
 
     def get_request_code(self,host,uri):
@@ -251,7 +252,7 @@ class Request():
         # Unique per attempt, not per process: two pulls of the same file inside one
         # daemon share a pid, and would otherwise write to the same temporary and
         # trip over each other. Same directory, so the rename stays atomic.
-        self.sweep_dead_partials(location, filename)
+        _sweep_dead_partials(location, filename, self.logger)
         partial = f'{target}.part-{os.getpid()}-{uuid4().hex[:8]}'
         try:
             url = f'{self.protocol}://{endpoint}:{serverport}/files/{filename}'

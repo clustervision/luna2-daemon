@@ -28,6 +28,7 @@ import pytest
 from utils.database import Database
 from utils.dbstructure import DBStructure
 from utils.downloader import Downloader
+from utils.osimage import OsImage
 
 
 @pytest.fixture
@@ -123,13 +124,15 @@ def test_reporting_never_raises_on_the_journal_path(db, files, monkeypatch):
     path. A monitor that cannot be written is bad; an exception there would hold
     replication for every record behind it, which is worse.
     """
-    import utils.downloader as downloader_module
+    import base.monitor as monitor_module
 
     class Exploding:
         def update_itemstatus(self, *args, **kwargs):
             raise RuntimeError('monitor is having a bad day')
 
-    monkeypatch.setattr(downloader_module, 'Monitor', lambda: Exploding())
+    # patched at the source: report_sync_outcome imports Monitor inside the call, so
+    # that utils does not depend on base at module scope
+    monkeypatch.setattr(monitor_module, 'Monitor', lambda: Exploding())
     Downloader().report_sync_outcome('compute', ['img-1'])   # must not raise
 
 
@@ -144,7 +147,7 @@ def test_missing_artefacts_are_detected(db, files):
     _osimage()
     (files / 'k-1').write_text('kernel')
 
-    missing = Downloader().local_artefacts_missing()
+    missing = OsImage().artefacts_missing_locally()
     assert missing == {'compute': ['i-1', 'img-1']}
 
 
@@ -152,7 +155,7 @@ def test_nothing_is_reported_when_everything_is_present(db, files):
     _osimage()
     for name in ('k-1', 'i-1', 'img-1'):
         (files / name).write_text('x')
-    assert Downloader().local_artefacts_missing() == {}
+    assert OsImage().artefacts_missing_locally() == {}
 
 
 def test_an_absent_directory_reports_nothing_rather_than_everything(db, files):
@@ -166,13 +169,13 @@ def test_an_absent_directory_reports_nothing_rather_than_everything(db, files):
     import common.constant as constant
     _osimage()
     constant.CONSTANT['FILES']['IMAGE_FILES'] = str(files / 'does-not-exist')
-    assert Downloader().local_artefacts_missing() == {}
+    assert OsImage().artefacts_missing_locally() == {}
 
 
 def test_an_osimage_with_no_artefacts_named_is_not_reported_missing(db, files):
     """A row that names nothing is not a row that lost something."""
     _osimage(name='empty', kernel=None, initrd=None, image=None)
-    assert Downloader().local_artefacts_missing() == {}
+    assert OsImage().artefacts_missing_locally() == {}
 
 
 def test_a_failed_fetch_is_retried_once_where_it_failed():
@@ -207,6 +210,8 @@ def test_incomplete_images_are_reported_but_not_auto_repaired():
         'nothing calls the check, so a missing artefact is never noticed'
 
     report = inspect.getsource(Housekeeper.report_incomplete_osimages)
+    assert 'artefacts_missing_locally' in report, \
+        'the check lives on OsImage, which owns artefacts on disk'
     assert "'501'" in report, 'an incomplete image must be visible as a failure'
     assert 'add_task_to_queue' not in report, \
         'reporting must not queue repairs; the retry lives where the fetch fails'

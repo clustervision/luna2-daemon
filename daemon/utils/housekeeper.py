@@ -41,7 +41,6 @@ from common.constant import CONSTANT
 from utils.helper import Helper
 # below are needed to accomodate for the housekeeper
 from utils.queue import Queue
-from utils.downloader import Downloader
 from utils.osimage import OsImage
 from utils.service import Service
 from base.monitor import Monitor
@@ -340,7 +339,7 @@ class Housekeeper(object):
         try:
             if not ha_object.get_hastate():
                 return
-            for osimage, files in Downloader().local_artefacts_missing().items():
+            for osimage, files in OsImage().artefacts_missing_locally().items():
                 state = f"Image incomplete on {ha_object.get_me()}: {', '.join(files)} missing"
                 self.logger.error(state)
                 Monitor().update_itemstatus(item='sync', name=osimage,

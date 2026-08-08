@@ -1066,6 +1066,38 @@ class OsImage(object):
 
     # -------------------------------------------------------------------
   
+    def artefacts_missing_locally(self):
+        """
+        Artefacts this controller's own configuration references but does not hold.
+
+        Controller comparison hashes database rows, not files, so a controller
+        whose osimage row names an artefact that is not on its disk looks
+        perfectly in sync. Nothing else looks at the files, and the sync that
+        failed is not retried until something packs again - so without this a
+        controller sits silently one image short until it is promoted or a node
+        tries to boot from it.
+
+        Deliberately conservative about the directory itself: if IMAGE_FILES is
+        not there - unmounted, misconfigured - then every artefact looks missing
+        and acting on that would queue a re-sync of everything at once. That is a
+        storm, not a repair. Say so loudly and do nothing.
+        """
+        location=CONSTANT["FILES"]["IMAGE_FILES"]
+        missing={}
+        try:
+            if not os.path.isdir(location):
+                self.logger.error(f"{location} is not a directory. cannot tell which artefacts are missing")
+                return missing
+            for image in Database().get_record(table='osimage') or []:
+                gone=[image[file] for file in ['kernelfile','initrdfile','imagefile']
+                      if image[file] and not os.path.exists(f"{location}/{image[file]}")]
+                if gone:
+                    missing[image['name']]=gone
+        except Exception as exp:
+            self.logger.error(f"could not determine which artefacts are missing: {exp}")
+        return missing
+
+
     def cleanup_file(self,file_to_remove):
         self.logger.info(f"I was called to cleanup old file: {file_to_remove}")
         inuse = Database().get_record(table='osimage', where=f"kernelfile='{file_to_remove}' or initrdfile='{file_to_remove}' or imagefile='{file_to_remove}'")

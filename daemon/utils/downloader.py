@@ -39,9 +39,6 @@ from common.constant import CONSTANT
 from utils.helper import Helper
 from utils.request import Request
 from utils.hashes import Hashes
-# same import the housekeeper uses to report item status; there is no utils-level
-# equivalent of update_itemstatus.
-from base.monitor import Monitor
 
 
 class Downloader(object):
@@ -136,6 +133,11 @@ class Downloader(object):
             code='200'
             self.logger.info(state)
         try:
+            # Imported here rather than at module scope: utils must not depend on base,
+            # and update_itemstatus has no utils-level equivalent. Keeping it local
+            # confines the exception to the one call that needs it and keeps this
+            # module's import graph to utils, which is what it otherwise is.
+            from base.monitor import Monitor
             Monitor().update_itemstatus(item='sync', name=osimage,
                                         request_data={'monitor':{'status':{osimage:{'state':state,'status':code}}}})
         except Exception as exp:
@@ -143,37 +145,6 @@ class Downloader(object):
             # could not write is bad; an exception here would be worse.
             self.logger.error(f"could not report the sync outcome for {osimage}: {exp}")
 
-
-    def local_artefacts_missing(self):
-        """
-        Artefacts this controller's own configuration references but does not hold.
-
-        Controller comparison hashes database rows, not files, so a controller
-        whose osimage row names an artefact that is not on its disk looks
-        perfectly in sync. Nothing else looks at the files, and the sync that
-        failed is not retried until something packs again - so without this a
-        controller sits silently one image short until it is promoted or a node
-        tries to boot from it.
-
-        Deliberately conservative about the directory itself: if IMAGE_FILES is
-        not there - unmounted, misconfigured - then every artefact looks missing
-        and acting on that would queue a re-sync of everything at once. That is a
-        storm, not a repair. Say so loudly and do nothing.
-        """
-        location=CONSTANT["FILES"]["IMAGE_FILES"]
-        missing={}
-        try:
-            if not os.path.isdir(location):
-                self.logger.error(f"{location} is not a directory. cannot tell which artefacts are missing")
-                return missing
-            for image in Database().get_record(table='osimage') or []:
-                gone=[image[file] for file in ['kernelfile','initrdfile','imagefile']
-                      if image[file] and not os.path.exists(f"{location}/{image[file]}")]
-                if gone:
-                    missing[image['name']]=gone
-        except Exception as exp:
-            self.logger.error(f"could not determine which artefacts are missing: {exp}")
-        return missing
 
 
     def remote_hash(self,host,osimage,file):

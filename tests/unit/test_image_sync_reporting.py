@@ -175,29 +175,45 @@ def test_an_osimage_with_no_artefacts_named_is_not_reported_missing(db, files):
     assert Downloader().local_artefacts_missing() == {}
 
 
-def test_the_reconciler_is_wired_in_and_repairs_on_both_roles():
+def test_a_failed_fetch_is_retried_once_where_it_failed():
     """
-    Detection is worthless if nothing calls it, and a repair queued on the osimage
-    subsystem would never run on a slave - that subsystem is cleared on anything
-    that is not master, and a slave is exactly who needs this. So the repair task
-    belongs to the housekeeper subsystem, which runs on both.
+    The retry belongs at the point of failure, in the house style: tasks_mother
+    already does exactly this for unpack - try, sleep, try once more, then report.
+    Nowhere else can do it. The controller that queued the sync only ever saw
+    whether the journal accepted the request, and its task is gone by the time the
+    transfer runs.
+    """
+    import inspect
+    source = inspect.getsource(Downloader.pull_image_files)
+    assert source.count('download_file(') == 2, \
+        'a fetch that failed once must be attempted once more before being given up on'
+    assert 'Retrying one more time' in source, \
+        'match the wording tasks_mother already uses for the unpack retry'
+
+
+def test_incomplete_images_are_reported_but_not_auto_repaired():
+    """
+    Detection is worth keeping; the repair machinery is not. A fetch that failed is
+    retried where it failed. What is left here is the case no fetch can fix - an
+    artefact that is not coming, because the configuration names something that
+    exists nowhere. That needs a person, and the first live run found exactly such
+    an osimage. So: report, never queue a repair.
     """
     import inspect
     from utils.housekeeper import Housekeeper
 
     periodic = inspect.getsource(Housekeeper.cleanup_mother)
-    assert 'reconcile_osimage_artefacts' in periodic, \
-        'nothing calls the check, so a missing artefact is still never noticed'
+    assert 'report_incomplete_osimages' in periodic, \
+        'nothing calls the check, so a missing artefact is never noticed'
 
-    reconcile = inspect.getsource(Housekeeper.reconcile_osimage_artefacts)
-    assert 'resync_osimage_files' in reconcile
-    assert "subsystem='housekeeper'" in reconcile, \
-        'a repair on the osimage subsystem never runs on a slave'
-    assert 'replace=True' in reconcile, \
-        'without replace the same repair is queued again on every pass'
-    assert 'get_role' not in reconcile, \
+    report = inspect.getsource(Housekeeper.report_incomplete_osimages)
+    assert "'501'" in report, 'an incomplete image must be visible as a failure'
+    assert 'add_task_to_queue' not in report, \
+        'reporting must not queue repairs; the retry lives where the fetch fails'
+    assert 'get_role' not in report, \
         'a master missing an artefact cannot serve it either; do not gate this to a slave'
 
-    handler = inspect.getsource(Housekeeper.tasks_mother)
-    assert "case 'resync_osimage_files'" in handler, \
-        'the repair task is queued but nothing executes it'
+    assert not hasattr(Housekeeper, 'peer_controllers'), \
+        'peer discovery duplicates what Journal already builds'
+    assert "case 'resync_osimage_files'" not in inspect.getsource(Housekeeper.tasks_mother), \
+        'the repair task type should be gone'

@@ -83,6 +83,15 @@ class Downloader(object):
                     expected=self.remote_hash(host,osimage,image[0][file])
                     status,_=Request().download_file(host,image[0][file],location,expected_sha256=expected)
                     if not status:
+                        # Same shape as the unpack retry in tasks_mother: a transfer that
+                        # failed once is usually worth one more attempt, and here is the
+                        # only place that knows it failed - the controller that queued the
+                        # sync saw whether the journal accepted the request, never whether
+                        # a byte arrived, and its task is long gone by now.
+                        sleep(5)
+                        self.logger.warning(f"first attempt to fetch {file} for osimage {osimage} failed. Retrying one more time")
+                        status,_=Request().download_file(host,image[0][file],location,expected_sha256=expected)
+                    if not status:
                         failed.append(image[0][file])
                         self.logger.error(f"downloading {file} for osimage {osimage} returned an error")
                     else:

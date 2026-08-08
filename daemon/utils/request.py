@@ -255,25 +255,27 @@ class Request():
         partial = f'{target}.part-{os.getpid()}-{uuid4().hex[:8]}'
         try:
             url = f'{self.protocol}://{endpoint}:{serverport}/files/{filename}'
-            x = session.get(url, headers=headers, stream=True, timeout=10, verify=self.verify)
-            if str(x.status_code) not in self.good_ret:
-                self.logger.error(f"get request download {filename} on {host} failed. returned {x.status_code}")
-                return False, None
-            self.logger.debug(f"get request download {filename} on {host} success. returned {x.status_code}")
-            # streamed rather than through x.content: the digest needs the bytes
-            # anyway, and an imagefile is measured in gigabytes.
-            advertised = x.headers.get('Content-Length')
-            digest = hashlib.sha256()
-            written = 0
-            with open(partial, 'wb') as handle:
-                for chunk in x.iter_content(chunk_size=1048576):
-                    if not chunk:
-                        continue
-                    handle.write(chunk)
-                    digest.update(chunk)
-                    written += len(chunk)
-                handle.flush()
-                os.fsync(handle.fileno())
+            # 'with': a streamed response returns its connection to the pool when the
+            # body is consumed, and the early return below never consumes it.
+            with session.get(url, headers=headers, stream=True, timeout=10, verify=self.verify) as x:
+                if str(x.status_code) not in self.good_ret:
+                    self.logger.error(f"get request download {filename} on {host} failed. returned {x.status_code}")
+                    return False, None
+                self.logger.debug(f"get request download {filename} on {host} success. returned {x.status_code}")
+                # streamed rather than through x.content: the digest needs the bytes
+                # anyway, and an imagefile is measured in gigabytes.
+                advertised = x.headers.get('Content-Length')
+                digest = hashlib.sha256()
+                written = 0
+                with open(partial, 'wb') as handle:
+                    for chunk in x.iter_content(chunk_size=1048576):
+                        if not chunk:
+                            continue
+                        handle.write(chunk)
+                        digest.update(chunk)
+                        written += len(chunk)
+                    handle.flush()
+                    os.fsync(handle.fileno())
             # length is the cheap early exit; it catches truncation and nothing else.
             if advertised is not None and written != int(advertised):
                 self.logger.error(f"download of {filename} from {host} is short: {written} of {advertised} bytes")

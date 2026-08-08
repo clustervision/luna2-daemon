@@ -231,3 +231,5 @@ def test_download_writes_to_a_temporary_that_is_unique_per_attempt():
     assert '.part-' in source, "the download must not be written straight to the served name"
     assert 'uuid4' in source, "the temporary name must be unique per attempt, not per process"
     assert 'os.replace' in source, "the temporary must be renamed into place atomically"
+    assert 'with session.get(' in source, \
+        "a streamed response must be closed on every path, including the early return"

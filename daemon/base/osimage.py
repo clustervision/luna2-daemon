@@ -43,6 +43,7 @@ from utils.database import Database
 from utils.log import Log
 from utils.queue import Queue
 from utils.helper import Helper
+from utils.hashes import Hashes
 from utils.model import Model
 from utils.database import Database
 
@@ -552,6 +553,13 @@ class OSImage():
                     table_cap = 'OS image tag'
                 )
         Queue().log_tasks_in_queue(subsystem='housekeeper')
+        # The checksums go with the image, here rather than only through the file
+        # cleanup above. That cleanup is deferred by an hour, and a task deferred
+        # past the queue's selection window is never picked up - so relying on it
+        # alone leaves rows describing an osimage that no longer exists, with
+        # nothing that would ever remove them. This is keyed on the osimage, so it
+        # covers the tagged generations deleted just above as well.
+        Hashes().delete_hashes(object_type='osimage', name=name)
         status, response = Model().delete_record(
             name = name,
             table = self.table,

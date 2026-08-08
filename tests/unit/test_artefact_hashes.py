@@ -82,10 +82,16 @@ def test_hash_table_is_not_replicated_or_backed_up():
 
 # ---------------------------------------------------------------- recording and lookup
 
-def test_record_then_lookup_round_trips(db, artefact):
+def _stored(file):
+    """The hash actually on the row, read the way the API layer reads it."""
+    rows = Database().get_record(table='hash', where=f"file='{file}'")
+    return rows[0]['hash'] if rows else None
+
+
+def test_record_then_read_back_round_trips(db, artefact):
     recorded = Hashes().record('osimage', 'compute', os.path.basename(artefact), path=artefact)
     assert recorded
-    assert Hashes().lookup('osimage', 'compute', os.path.basename(artefact)) == recorded
+    assert _stored(os.path.basename(artefact)) == recorded
 
 
 def test_recording_twice_updates_rather_than_duplicates(db, artefact):
@@ -133,23 +139,72 @@ def test_the_store_survives_its_table_disappearing(db, artefact):
     hashes_module.Database = lambda: Exploding()
     try:
         assert Hashes().record('osimage', 'compute', 'x', hash_value='b' * 64) is None
-        assert Hashes().lookup('osimage', 'compute', 'x') is None
-        Hashes().forget_file('x')
+        Hashes().delete_hashes(file='x')
     finally:
         hashes_module.Database = original
 
 
 # ---------------------------------------------------------------- the row follows the file
 
-def test_forget_file_removes_the_row(db, artefact):
+def test_deleting_by_file_removes_the_row(db, artefact):
     name = os.path.basename(artefact)
     Hashes().record('osimage', 'compute', name, path=artefact)
-    Hashes().forget_file(name)
-    assert Hashes().lookup('osimage', 'compute', name) is None
+    Hashes().delete_hashes(file=name)
+    assert _stored(name) is None
 
 
-def test_forgetting_an_unknown_file_is_a_no_op(db):
-    Hashes().forget_file('never-heard-of-it.tar.bz2')
+def test_deleting_an_unknown_file_is_a_no_op(db):
+    Hashes().delete_hashes(file='never-heard-of-it.tar.bz2')
+
+
+def test_deleting_by_osimage_removes_every_artefact_it_owned(db, artefact):
+    """
+    The case per-file deletion cannot cover. Removing an osimage queues its file
+    cleanup deferred by an hour, and a task deferred past the queue's selection
+    window is never picked up - so the rows would describe an osimage that no
+    longer exists, with nothing left that would ever remove them.
+    """
+    for f in ('compute-k', 'compute-i', 'compute-img'):
+        Hashes().record('osimage', 'compute', f, hash_value='a' * 64)
+    Hashes().record('osimage', 'other', 'other-img', hash_value='b' * 64)
+
+    Hashes().delete_hashes(object_type='osimage', name='compute')
+
+    assert Database().get_record(table='hash', where="name='compute'") == []
+    assert _stored('other-img') == 'b' * 64, "only the named osimage's rows may go"
+
+
+def test_deleting_with_no_filter_never_reaches_the_database(db, artefact, monkeypatch):
+    """
+    An unfiltered call is refused before it goes anywhere near a query.
+
+    Asserting 'nothing was deleted' would prove nothing: delete_row builds its
+    clause by iterating the filter, so an empty one raises before any query runs
+    and the row survives either way. The distinction that matters is whether the
+    call is made at all.
+    """
+    import utils.hashes as hashes_module
+    called = []
+
+    class Recording:
+        def delete_row(self, *args, **kwargs):
+            called.append(args)
+    monkeypatch.setattr(hashes_module, 'Database', lambda: Recording())
+
+    Hashes().delete_hashes()
+    assert called == [], 'an unfiltered delete must not reach the database at all'
+
+    Hashes().delete_hashes(file='something')
+    assert len(called) == 1, 'a filtered delete must still get through'
+
+
+def test_osimage_deletion_removes_its_hashes():
+    """Detection is worthless if nothing calls it: the delete path must be wired."""
+    import inspect
+    from base.osimage import OSImage
+    source = inspect.getsource(OSImage.delete_osimage)
+    assert 'delete_hashes' in source, \
+        'deleting an osimage must take its checksums with it'
 
 
 def test_there_is_no_sweep_over_this_table():
@@ -166,7 +221,7 @@ def test_there_is_no_sweep_over_this_table():
     timestamp, so a name never recurs and the row is never consulted again.
     Accumulating harmless bytes beats being able to delete good rows.
 
-    forget_file is the whole cleanup story, and it is precise.
+    delete_hashes is the whole cleanup story, and it deletes on evidence.
     """
     import inspect
     from utils.hashes import Hashes
@@ -191,10 +246,10 @@ def test_cleanup_is_targeted_at_the_file_being_removed(db, artefact):
     Hashes().record('osimage', 'compute', os.path.basename(artefact), path=artefact)
     Hashes().record('osimage', 'compute', keep, hash_value='c' * 64)
 
-    Hashes().forget_file(os.path.basename(artefact))
+    Hashes().delete_hashes(file=os.path.basename(artefact))
 
-    assert Hashes().lookup('osimage', 'compute', os.path.basename(artefact)) is None
-    assert Hashes().lookup('osimage', 'compute', keep) == 'c' * 64, \
+    assert _stored(os.path.basename(artefact)) is None
+    assert _stored(keep) == 'c' * 64, \
         "removing one artefact must not disturb another's row"
 
 

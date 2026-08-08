@@ -102,30 +102,6 @@ class Hashes():
         return None
 
 
-    def lookup(self, object_type, name, file):
-        # Also never raises: a lookup that fails means 'cannot verify', and the
-        # caller treats that exactly like an artefact that predates hashing.
-        try:
-            record = Database().get_record(table='hash',
-                                           where=f"object='{object_type}' AND name='{name}' AND file='{file}'")
-            if record:
-                return record[0]['hash']
-        except Exception as exp:
-            self.logger.error(f"could not look up {self.hashtype} for {object_type}/{name}/{file}: {exp}")
-        return None
-
-
-    def forget_file(self, file):
-        # Keyed on the artefact alone, because the thing that removes a file knows
-        # its name and nothing else. Called when a file is actually deleted, so a
-        # hash never outlives what it describes - otherwise a later artefact
-        # reusing the name would look verifiable against the wrong bytes.
-        try:
-            Database().delete_row('hash', [{"column": "file", "value": file}])
-        except Exception as exp:
-            self.logger.error(f"could not forget hash for {file}: {exp}")
-
-
     # Deliberately no prune(): there is no sweep over this table.
     #
     # A sweep would decide what to delete from what is on disk right now, and an
@@ -135,22 +111,41 @@ class Hashes():
     # 'not verifiable', which is a legitimate state: downloads would simply stop
     # being verified and nothing would say so.
     #
-    # The trade is not close. These rows are long-lived by nature - an image can
-    # sit unchanged for years - while a stale row is inert: lookups are by object,
-    # name and file, and artefact names carry a timestamp, so a name never recurs
-    # and the row is never consulted again. Accumulating a few hundred harmless
-    # bytes beats a mechanism that can silently delete good ones.
-    #
-    # forget_file() below is the whole cleanup story, and it is precise: it removes
-    # exactly the row for the file being removed, from the one place every artefact
-    # removal already passes through.
+    # These rows are long-lived - an image can sit unchanged for years - while a
+    # stale row is inert: artefact names carry a timestamp, so a name never recurs
+    # and the row is never consulted again. delete_hashes below is the whole
+    # cleanup story, and it deletes on evidence rather than on absence.
 
-    def forget(self, object_type, name, file=None):
-        # Called when the thing the hash describes is removed. A stale row is not
-        # dangerous - it is looked up by name and file - but it is untidy and it
-        # would make a later artefact of the same name look verifiable when it is
-        # a different file.
-        where = [{"column": "object", "value": object_type}, {"column": "name", "value": name}]
+    def delete_hashes(self, object_type=None, name=None, file=None):
+        """
+        Remove hash rows. Narrow by artefact, by the thing that owns them, or both.
+
+        One method rather than two, because the callers differ only in what they
+        happen to know. Cleanup knows a filename and nothing else; deleting an
+        osimage knows the osimage and not which artefacts it had. Both are the same
+        act - the hashes go when the thing they describe goes.
+
+        A row that outlives its artefact is not merely untidy: a later artefact
+        reusing the name would look verifiable against the wrong bytes.
+
+        Never raises. This runs from the journal path and from cleanup, and a
+        tidy-up that fails must not take either of those down with it.
+        """
+        where = []
+        if object_type:
+            where.append({"column": "object", "value": object_type})
+        if name:
+            where.append({"column": "name", "value": name})
         if file:
             where.append({"column": "file", "value": file})
-        Database().delete_row('hash', where)
+        if not where:
+            # Not a data-loss guard: delete_row builds its clause by iterating the
+            # filter, so an empty one leaves the clause unassigned and raises before
+            # any query runs. The guard is here to say plainly what happened instead
+            # of leaving a NameError in the log for someone to decode.
+            self.logger.error("delete_hashes called with nothing to narrow on; ignoring")
+            return
+        try:
+            Database().delete_row('hash', where)
+        except Exception as exp:
+            self.logger.error(f"could not delete hash rows for {object_type}/{name}/{file}: {exp}")

@@ -252,7 +252,7 @@ class Plugin():
         #grab_filesystems = ['/','/boot']
 
         # hard coded ramdisk modules
-        ramdisk_modules = ['luna','-18n','-plymouth']
+        ramdisk_modules = ['luna','-i18n','-plymouth']
         if ramdisk_modules:
             for i in ramdisk_modules:
                 s = i.replace(" ", "")

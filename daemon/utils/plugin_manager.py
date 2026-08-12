@@ -156,9 +156,9 @@ class PluginManager(object):
             module_name = emit(f'plugins.{root_module}.{levelone}')
             if module_name:
                 yield module_name
-        module_name = emit(f'plugins.{root_module}.default')
-        if module_name:
-            yield module_name
+        # No default is offered here. load() falls back to it once every levelone has been
+        # tried, and offering it per levelone means the first one always resolves -- so a
+        # caller passing [nodename, groupname] never reaches the group.
 
     def _legacy_load_error(self, exp):
         exc_type, exc_obj, exc_tb = sys.exc_info()

@@ -46,7 +46,7 @@ from utils.helper import Helper
 from utils.log import Log
 from utils.queue import Queue
 from utils.ha import HA
-from base.profile import Profile, OUTCOME_REF, RETRY_SECONDS, GIVE_UP_HOURS
+from base.profile import Profile, OUTCOME_REF, RETRY_SECONDS
 
 APPLIER = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
                        'nodescripts', 'apply_profiles.py')
@@ -174,8 +174,8 @@ class ProfileSync():
         if stopped:
             # queued before we gave up, run after. None rather than False: it has not
             # failed here, we simply are not trying any more
-            return None, (f'not delivering to {name}: {stopped} failed attempts, given up '
-                          f'after about {GIVE_UP_HOURS} hours')
+            return None, (f'not delivering to {name}: {stopped} failed attempts in a row, '
+                          'no longer retrying')
         skip = self.skip_reason(name)
         if skip:
             # None, not False: a node that is not ready has not failed, and recording it

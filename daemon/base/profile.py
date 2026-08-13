@@ -46,14 +46,20 @@ from utils.queue import Queue
 OUTCOME_REF = 'nodeprofile'
 # how long we leave a failing node before trying it again
 RETRY_SECONDS = 300
-# a node that has refused every delivery for a whole day is not a transient failure any
+# a node that has refused this many deliveries in a row is not a transient failure any
 # more. We keep it visible and stop spending attempts on it, so the nodes that can still
 # be fixed are not buried under one that cannot.
 #
-# It is counted in attempts rather than clocked, because the attempt is already recorded
-# and a clock would need a second row that means something subtly different. At one
-# attempt every five minutes that is a day, near enough - and if the retry interval ever
-# changes, the day moves with it rather than quietly becoming a week
+# The bound is a count, not a clock: the attempt is already recorded, where a clock would
+# need a second row meaning something subtly different. At one attempt every five minutes
+# that is about a day.
+#
+# It stretches when many nodes are dark at once, because then throughput sets the pace
+# rather than the retry delay. The design case is up to a tenth of the cluster down:
+# measured on a live pair, one pass over 200 unreachable nodes takes ten minutes, so two
+# hundred dark nodes - a tenth of two thousand - are retried every ten minutes and reach
+# the limit in about two days. That is the accepted worst case. A cluster with far more
+# than a tenth of its nodes unreachable has a larger problem than its profile retries.
 GIVE_UP_HOURS = 24
 MAX_ATTEMPTS = (GIVE_UP_HOURS * 3600) // RETRY_SECONDS
 
@@ -579,9 +585,10 @@ class Profile():
           in sync      what it holds is what it should hold
           behind       they differ, and nothing has failed - it is on its way
           failed       the last attempt did not work, and the reason is here
-          given up     it has failed every attempt for about a day. Nothing is being
-                       tried any more, and 'attempts' says how many it took. Changing any
-                       profile it carries starts it over
+          given up     every delivery has failed MAX_ATTEMPTS times running - about a
+                       day at the usual pace, longer on a mostly dark cluster. Nothing is
+                       being tried any more, and 'attempts' says how many it took.
+                       Changing any profile it carries starts it over
           frozen       in sync, but carrying a disabled profile whose files Luna no
                        longer manages. It is not drift and it is not an error, and an
                        operator should not have to remember it

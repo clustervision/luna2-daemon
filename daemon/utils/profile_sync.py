@@ -200,14 +200,18 @@ class ProfileSync():
 
         if not status:
             return False, message
-        if message != digest:
+        # a plugin may append notes after the digest: the first line is the answer
+        reported, _, notes = str(message).partition('\n')
+        if reported != digest:
             # the node applied something other than what we sent it. recording it would
             # claim a state we cannot account for
-            self.logger.error(f"{name} reports digest {message} but was sent {digest}")
+            self.logger.error(f"{name} reports digest {reported} but was sent {digest}")
             return False, f'{name} reported an unexpected digest'
         Database().update('node', Helper().make_rows({'profiles_digest': digest}),
                           [{"column": "id", "value": node[0]['nodeid']}])
-        return True, digest
+        if notes:
+            self.logger.warning(f"{name} applied its profiles with warnings: {notes}")
+        return True, notes.replace('\n', '; ') if notes else 'delivered'
 
 
     def sync_child(self, pipeline, t=0):

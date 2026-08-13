@@ -62,6 +62,12 @@ def seed(db):
     return {'groupid': groupid, 'nodeid': nodeid}
 
 
+def _ids(db, *names):
+    """The reference form of an assignment list."""
+    from base.profile import Profile
+    return Profile().to_profile_ids(','.join(names))
+
+
 def _assign(db, table, rowid, *names):
     """Assign profiles the way the daemon stores them: by reference. The names go in at
     the API boundary, which has its own test - here we are past it."""
@@ -1211,3 +1217,49 @@ def test_dropping_leaves_other_subsystems_alone(db, seed):
     ProfileSync().drop_queued()
     remaining = db.get_record(table='queue')
     assert [row['subsystem'] for row in remaining] == ['housekeeper']
+
+
+def test_a_delivery_that_warned_says_so_instead_of_a_digest(db, seed, monkeypatch):
+    """The applier can succeed and still have something to say - a unit that would not
+    restart, a backup it could not find and so could not put back. Recording only the
+    digest threw those away, and an unrestored file looked exactly like a clean revert."""
+    from base.profile import Profile
+    from utils.profile_sync import ProfileSync
+    from utils.helper import Helper
+    _reconcile_db(db)
+    Profile().update_profile('p', _make('p'))
+    db.update('node', Helper().make_rows({'profiles': _ids(db, 'p')}),
+              [{"column": "id", "value": seed['nodeid']}])
+    digest = Profile().node_digest('node001')
+
+    class _Plugin:
+        def deliver(self, **kwargs):
+            return True, f'{digest}\nMISSING BACKUP FOR /etc/thing\nWARNING systemctl restart x exited 5'
+
+    monkeypatch.setattr(Helper, 'plugin_load', lambda *a, **k: _Plugin)
+    status, message = ProfileSync().deliver_node(seed['nodeid'])
+    assert status is True, message
+    assert 'MISSING BACKUP FOR /etc/thing' in message
+    assert 'exited 5' in message
+    assert digest not in message, 'the digest is not news; what went wrong is'
+    assert db.get_record(table='node', where=f'id = "{seed["nodeid"]}"')[0]['profiles_digest'] \
+        == digest, 'the node did apply it, so the digest must still be recorded'
+
+
+def test_a_clean_delivery_reads_as_delivered(db, seed, monkeypatch):
+    from base.profile import Profile
+    from utils.profile_sync import ProfileSync
+    from utils.helper import Helper
+    _reconcile_db(db)
+    Profile().update_profile('p', _make('p'))
+    db.update('node', Helper().make_rows({'profiles': _ids(db, 'p')}),
+              [{"column": "id", "value": seed['nodeid']}])
+    digest = Profile().node_digest('node001')
+
+    class _Plugin:
+        def deliver(self, **kwargs):
+            return True, digest
+
+    monkeypatch.setattr(Helper, 'plugin_load', lambda *a, **k: _Plugin)
+    status, message = ProfileSync().deliver_node(seed['nodeid'])
+    assert (status, message) == (True, 'delivered')

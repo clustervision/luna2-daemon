@@ -103,7 +103,9 @@ DATABASE_LAYOUT_nodesecrets = [
 {"column": "nodeid",               "datatype": "INTEGER", "length": "10"},
 {"column": "name",                 "datatype": "VARCHAR", "length": "50"},
 {"column": "content",              "datatype": "TEXT"},
-{"column": "path",                 "datatype": "VARCHAR", "length": "200"}]
+{"column": "path",                 "datatype": "VARCHAR", "length": "200"},
+{"column": "owner",                "datatype": "VARCHAR", "length": "100"},
+{"column": "mode",                 "datatype": "VARCHAR", "length": "10"}]
 
 DATABASE_LAYOUT_nodeinterface = [
 {"column": "id",                   "datatype": "INTEGER", "key": "PRIMARY", "keyadd": "AUTOINCREMENT"},
@@ -298,7 +300,15 @@ DATABASE_LAYOUT_groupsecrets = [
 {"column": "groupid",              "datatype": "INTEGER", "length": "10"},
 {"column": "name",                 "datatype": "VARCHAR", "length": "50"},
 {"column": "content",              "datatype": "TEXT"},
-{"column": "path",                 "datatype": "VARCHAR", "length": "200"}]
+{"column": "path",                 "datatype": "VARCHAR", "length": "200"},
+{"column": "owner",                "datatype": "VARCHAR", "length": "100"},
+{"column": "mode",                 "datatype": "VARCHAR", "length": "10"}]
+
+DATABASE_LAYOUT_ownercache = [
+{"column": "id",                   "datatype": "INTEGER", "key": "PRIMARY", "keyadd": "AUTOINCREMENT"},
+{"column": "name",                 "datatype": "VARCHAR", "length": "100", "key": "UNIQUE"},
+{"column": "resolved",             "datatype": "VARCHAR", "length": "100"},
+{"column": "updated",              "datatype": "NUMERIC"}]
 
 DATABASE_LAYOUT_node = [
 {"column": "id",                   "datatype": "INTEGER", "key": "PRIMARY", "keyadd": "AUTOINCREMENT"},

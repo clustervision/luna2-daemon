@@ -241,6 +241,9 @@ CLASSIC_FUNCTIONS = {
     'get_encapsulated_content',
     'get_interface_by_mac',
     'get_json_segment',
+    # TRIX-1209: exact-key token extraction for the owner/mode attributes; the loose
+    # matcher above it false-hits base64 content that happens to contain a key name
+    'get_json_exact',
     'lunainit',
     'node_roles',
     'node_scripts',
@@ -395,6 +398,8 @@ BLESSED_CLASSIC_REMOVALS = [
     "cat << 'LUNAEOF' > ${rootmnt}/usr/local/sbin/postboot.sh",
     'chmod 750 ${rootmnt}/usr/local/sbin/postboot.sh 2> /dev/null',
     "cat << 'LUNAEOF' > ${rootmnt}/etc/systemd/system/luna-post-boot.service",
+    # TRIX-1209: the hardcoded 600 became "${mode:-600}" -- same default, now overridable
+    '            chmod 600 "/${rootmnt}/$file" 2> /dev/null',
 ]
 BLESSED_CLASSIC_ADDITIONS = [
     # the other half of the postboot change above, now quoted like its neighbours
@@ -403,6 +408,32 @@ BLESSED_CLASSIC_ADDITIONS = [
     'cat << \'LUNAEOF\' > "/${rootmnt}/usr/local/sbin/postboot.sh"',
     'chmod 750 "/${rootmnt}/usr/local/sbin/postboot.sh" 2> /dev/null',
     'cat << \'LUNAEOF\' > "/${rootmnt}/etc/systemd/system/luna-post-boot.service"',
+    # TRIX-1209: secrets carry owner and mode. The daemon resolves names to numbers
+    # (the chroot cannot resolve directory users), the installer extracts them with
+    # exact key matching (base64 content can contain a bare key name) and applies
+    # them; unset attributes arrive as the defaults this file always applied.
+    'function get_json_exact {',
+    '    FILE=$1',
+    '    KEY=$2',
+    '    if [ ! -s $FILE ]; then',
+    '        echo',
+    '        return 1',
+    '    fi',
+    '    cat $FILE | grep -oE \'".[^"]+"\' | grep -A1 \'^"\'$KEY\'"$\' | grep -v \'^"\'$KEY\'"$\' | grep -v \'^\\-\\-$\'',
+    '}',
+    '',
+    "    get_json_exact /lunatmp/node.secrets.json 'resolved_owner' > /lunatmp/node.secrets.owners.dat",
+    "    get_json_exact /lunatmp/node.secrets.json 'mode' > /lunatmp/node.secrets.modes.dat",
+    '            owner=$(sed -n "$[TEL+1]p" /lunatmp/node.secrets.owners.dat)',
+    '            mode=$(sed -n "$[TEL+1]p" /lunatmp/node.secrets.modes.dat)',
+    '            if [ "$owner" ]; then owner=$(echo "${owner:1:-1}"); fi',
+    '            if [ "$mode" ]; then mode=$(echo "${mode:1:-1}"); fi',
+    '            chmod "${mode:-600}" "/${rootmnt}/$file" 2> /dev/null',
+    '            if [ "$owner" ] && [ "$owner" != "0:0" ]; then',
+    '                if ! chroot "/${rootmnt}" chown "$owner" "/$file" 2> /dev/null; then',
+    '                    echo "Luna2: --WARNING-- could not set owner [$owner] on secret [$file]"',
+    '                fi',
+    '            fi',
     # an operator reading a node's install log can tell which installer ran
     'echo "Luna2: install_mode is legacy, installing via the classic installer"',
 ]

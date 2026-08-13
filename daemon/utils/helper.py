@@ -34,6 +34,9 @@ import os
 import signal
 import sys
 import subprocess
+import pwd
+import grp
+from time import time
 import logging
 import threading
 import re
@@ -756,6 +759,78 @@ class Helper(object):
             return cipher.decrypt(string.encode()).decode()
         except Exception:
             return string
+
+
+    # in-memory resolution cache shared by all callers in the process. installs come in
+    # waves, so without it every node in a wave triggers the same lookups all over again.
+    owner_cache = {}
+    owner_cache_ttl = 60
+
+    def resolve_owner(self, owner=None):
+        """
+        Input  - owner as stored with a secret or profile file: 'user' or 'user:group',
+                 numeric parts allowed
+        Output - the numeric 'uid' or 'uid:gid' form when resolvable, the last stored
+                 resolution when the lookup fails (e.g. directory unreachable), or the
+                 input unchanged when it was never resolvable.
+        Resolution goes through glibc NSS (pwd/grp), the same stack getent uses: local
+        files, sssd/ldap, nis - whatever nsswitch.conf lists. The installer's chroot
+        cannot resolve directory users, which is why it receives numbers instead.
+        """
+        if not owner:
+            return owner
+        now = time()
+        cached = Helper.owner_cache.get(owner)
+        if cached and now - cached[1] < Helper.owner_cache_ttl:
+            return cached[0]
+        user, _, group = owner.partition(':')
+        resolved = None
+        try:
+            uid = user if user.isdigit() else str(pwd.getpwnam(user).pw_uid)
+            gid = None
+            if group:
+                gid = group if group.isdigit() else str(grp.getgrnam(group).gr_gid)
+            resolved = f"{uid}:{gid}" if group else uid
+        except KeyError:
+            pass
+        record = Database().get_record(table='ownercache', where=f'name = "{owner}"')
+        if resolved:
+            if record:
+                if record[0]['resolved'] != resolved:
+                    where = [{"column": "name", "value": owner}]
+                    row = self.make_rows({'resolved': resolved, 'updated': 'NOW'})
+                    Database().update('ownercache', row, where)
+            else:
+                row = self.make_rows({'name': owner, 'resolved': resolved, 'updated': 'NOW'})
+                Database().insert('ownercache', row)
+        elif record:
+            resolved = record[0]['resolved']
+            self.logger.warning(f"could not resolve owner {owner}; using stored {resolved}")
+        else:
+            resolved = owner
+            self.logger.warning(f"could not resolve owner {owner}; passing it on as is")
+        Helper.owner_cache[owner] = (resolved, now)
+        return resolved
+
+
+    def check_owner(self, owner=None):
+        """
+        True when every non-numeric part of 'user' or 'user:group' is known to NSS
+        right now. Unlike resolve_owner this never falls back to a stored value:
+        it is the write-time typo check, and a fallback would mask exactly the
+        mistake it exists to catch.
+        """
+        if not owner:
+            return True
+        user, _, group = owner.partition(':')
+        try:
+            if user and not user.isdigit():
+                pwd.getpwnam(user)
+            if group and not group.isdigit():
+                grp.getgrnam(group)
+        except KeyError:
+            return False
+        return True
 
 
     def check_section(self, filename=None, parent_dict=None):

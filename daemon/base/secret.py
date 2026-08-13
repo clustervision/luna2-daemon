@@ -111,6 +111,13 @@ class Secret():
                     del node['nodeid']
                     del node['id']
                     node['content'] = Helper().decrypt_string(node['content'])
+                    # the installer's parser cannot carry empty values, so unset
+                    # attributes travel as the defaults the installer applies anyway.
+                    # resolved_owner is numeric where possible: the installer's chroot
+                    # cannot resolve directory (ldap) users, the controller can.
+                    node['owner'] = node['owner'] or 'root:root'
+                    node['mode'] = node['mode'] or '600'
+                    node['resolved_owner'] = Helper().resolve_owner(node['owner'])
                     response['config']['secrets']['node'][nodename].append(node)
             if groupsecrets:
                 response['config']['secrets']['group'] = {}
@@ -121,6 +128,9 @@ class Secret():
                     del group['groupid']
                     del group['id']
                     group['content'] = Helper().decrypt_string(group['content'])
+                    group['owner'] = group['owner'] or 'root:root'
+                    group['mode'] = group['mode'] or '600'
+                    group['resolved_owner'] = Helper().resolve_owner(group['owner'])
                     response['config']['secrets']['group'][groupname].append(group)
         else:
             self.logger.error(f'Node {name} is not available.')
@@ -137,6 +147,7 @@ class Secret():
         response="Internal error"
         data = {}
         create, update = False, False
+        unresolvable = []
         if request_data:
             data = request_data['config']['secrets']['node'][name]
             node = Database().get_record(table='node', where=f'name = "{name}"')
@@ -148,6 +159,8 @@ class Secret():
                             status=False
                             return status, 'Invalid request: secret information not complete'
                         secret_name = secret['name']
+                        if secret.get('owner') and not Helper().check_owner(secret['owner']):
+                            unresolvable.append(f"{secret_name}: {secret['owner']}")
                         where = f'nodeid = "{nodeid}" AND name = "{secret_name}"'
                         secret_data = Database().get_record(table='nodesecrets', where=where)
                         if secret_data:
@@ -189,6 +202,8 @@ class Secret():
             elif create is False and update is True:
                 response = f'Node {name} Secret updated'
                 status=True
+            if status is True and unresolvable:
+                response += '. Warning: owner not currently resolvable: ' + ', '.join(unresolvable)
         else:
             response = 'Invalid request: Did not receive data'
             status=False
@@ -229,6 +244,7 @@ class Secret():
         response="Internal error"
         data = {}
         result=False
+        warning = ''
         if request_data:
             data = request_data['config']['secrets']['node'][name]
             node = Database().get_record(table='node', where=f'name = "{name}"')
@@ -238,6 +254,8 @@ class Secret():
                     node_secret_columns = Database().get_columns('nodesecrets')
                     column_check = Helper().compare_list(data[0], node_secret_columns)
                     secret_name = data[0]['name']
+                    if data[0].get('owner') and not Helper().check_owner(data[0]['owner']):
+                        warning = f". Warning: owner {data[0]['owner']} is not currently resolvable"
                     where = f'nodeid = "{nodeid}" AND name = "{secret_name}"'
                     secret_data = Database().get_record(table='nodesecrets', where=where)
                     if column_check:
@@ -276,6 +294,8 @@ class Secret():
         else:
             response = 'Invalid request: Did not receive data'
             status=False
+        if status is True and warning:
+            response += warning
         return status, response
 
 
@@ -395,6 +415,7 @@ class Secret():
         response="Internal error"
         data = {}
         result=False
+        unresolvable = []
         if request_data:
             data = request_data['config']['secrets']['group'][name]
             group = Database().get_record(table='group', where=f'name = "{name}"')
@@ -406,6 +427,8 @@ class Secret():
                             status=False
                             return status, 'Invalid request: secret information not complete'
                         secret_name = secret['name']
+                        if secret.get('owner') and not Helper().check_owner(secret['owner']):
+                            unresolvable.append(f"{secret_name}: {secret['owner']}")
                         where = f'groupid = "{groupid}" AND name = "{secret_name}"'
                         secret_data = Database().get_record(table='groupsecrets', where=where)
                         if secret_data:
@@ -437,6 +460,8 @@ class Secret():
                             status=False
                             response = f'Internal error: Group {name} secret {secret_name} create/update failed: {result}'
                             self.logger.error(response)
+                    if status is True and unresolvable:
+                        response += '. Warning: owner not currently resolvable: ' + ', '.join(unresolvable)
                 else:
                     response = 'Invalid request: secret information not complete'
                     status=False
@@ -482,6 +507,7 @@ class Secret():
         status=False
         response="Internal error"
         data = {}
+        warning = ''
         if request_data:
             data = request_data['config']['secrets']['group'][name]
             group = Database().get_record(table='group', where=f'name = "{name}"')
@@ -491,6 +517,8 @@ class Secret():
                     group_secret_columns = Database().get_columns('groupsecrets')
                     column_check = Helper().compare_list(data[0], group_secret_columns)
                     secret_name = data[0]['name']
+                    if data[0].get('owner') and not Helper().check_owner(data[0]['owner']):
+                        warning = f". Warning: owner {data[0]['owner']} is not currently resolvable"
                     where = f'groupid = "{groupid}" AND name = "{secret_name}"'
                     secret_data = Database().get_record(table='groupsecrets', where=where)
                     if column_check:
@@ -531,6 +559,8 @@ class Secret():
         else:
             response = 'Invalid request: Did not received data'
             status=False
+        if status is True and warning:
+            response += warning
         return status, response
 
 

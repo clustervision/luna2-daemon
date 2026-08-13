@@ -62,6 +62,8 @@ REG_EXP = {
     'minimal': { 'regexp': r'^\S.*$', 'error': 'minimal character requirement. at least one' },
     'integer': { 'regexp': r'^[0-9]+$', 'error': 'integers only' },
     'intandnone': { 'regexp': r'^[0-9]*$', 'error': 'integers or empty only' },
+    'fileowner': { 'regexp': r'^([A-Za-z_][A-Za-z0-9_.-]*(:[A-Za-z_][A-Za-z0-9_.-]*)?|)$', 'error': 'user or user:group, or empty' },
+    'filemode': { 'regexp': r'^([0-7]{3,4}|)$', 'error': '3 or 4 octal digits, or empty' },
     'anything': { 'regexp': r'', 'error': 'anything' }
 }
 RESERVED = {
@@ -95,6 +97,8 @@ MATCH = {
     'newgroupname': 'name',
     'newbmcname': 'name',
     'newsecretname': 'name',
+    'owner': 'fileowner',
+    'mode': 'filemode',
     'object_type': 'strictname',
     'file': 'artefactfile',
     'osimagetag': 'nameandclear',

@@ -163,12 +163,39 @@ class Config(object):
         return ids
 
 
+    def dhcp_syntax_check(self, command=None, path=None, family=None):
+        """
+        Run the configured syntax checker over a rendered DHCP file. True when the server accepts
+        it. On failure the server's own reason is logged: "containing errors" alone leaves an
+        administrator with nowhere to start, and the reason is the whole diagnosis - a missing
+        binary, an interface the host does not have, an address the option cannot hold.
+        """
+        try:
+            checked = subprocess.run(command.split() + [path], check=True,
+                                     capture_output=True, text=True)
+        except Exception as exp:
+            reason = (getattr(exp, 'stderr', None) or getattr(exp, 'stdout', None) or str(exp))
+            self.logger.error(f'{family} file : {path} containing errors. {reason.strip()}')
+            return False
+        if checked.returncode:
+            self.logger.error(f'{family} file : {path} containing errors. {(checked.stderr or "").strip()}')
+            return False
+        return True
+
+
     def dhcp_overwrite(self):
         """
         This method collect dhcp enabled networks, node interfaces belongs to the networks and
         other devices which have the mac address. write and validates the /var/tmp/luna/dhcpd.conf
+
+        Both families are validated before either is installed, and a fault in one still holds
+        the other back. That is deliberate: the two are reloaded together, and a v6 config the
+        server refuses is a reason to look at the cluster rather than to press on with v4. What
+        the fault must not do is masquerade as a fault in the family that is fine, so each half
+        is judged separately and the log says which one failed and why.
         """
-        validate = True
+        validate4, validate6 = True, True
+        rendered4, rendered6 = False, False
         dhcp_test = 'dhcpd -t -cf'
         dhcp6_test = 'dhcpd -6 -t -cf'
         dhcp_config_path = '/etc/dhcp/dhcpd.conf'
@@ -547,17 +574,8 @@ class Config(object):
                                                      TSIGKEY=tsigkey,TSIGALGO=tsigalgo)
                 with open(dhcp_file, 'w', encoding='utf-8') as dhcp:
                     dhcp.write(dhcpd_config)
-                try:
-                    validate_config = subprocess.run(dhcp_test.split() + [dhcp_file], check=True)
-                    if validate_config.returncode:
-                        validate = False
-                        self.logger.error(f'DHCP file : {dhcp_file} containing errors.')
-                except Exception as exp:
-                    self.logger.info(exp)
-                    validate = False
-                    self.logger.error(f'DHCP file : {dhcp_file} containing errors.')
-                else:
-                    shutil.copyfile(dhcp_file, dhcp_config_path)
+                rendered4 = True
+                validate4 = self.dhcp_syntax_check(dhcp_test, dhcp_file, 'DHCP')
             # IPv6 -----------------------------------
             if any([config_subnets6, config_shared6, config_empty6, config_linksel6]):
                 interfaces = Helper().get_controller_interfaces_for_networks()
@@ -571,22 +589,29 @@ class Config(object):
                                                      TSIGKEY=tsigkey,TSIGALGO=tsigalgo,INTERFACES=interfaces['ipv6'])
                 with open(dhcp6_file, 'w', encoding='utf-8') as dhcp:
                     dhcp.write(dhcpd_config)
-                try:
-                    validate_config = subprocess.run(dhcp6_test.split() + [dhcp6_file], check=True)
-                    if validate_config.returncode:
-                        validate = False
-                        self.logger.error(f'DHCP6 file : {dhcp6_file} containing errors.')
-                except Exception as exp:
-                    self.logger.info(exp)
-                    validate = False
-                    self.logger.error(f'DHCP6 file : {dhcp6_file} containing errors.')
-                else:
+                rendered6 = True
+                validate6 = self.dhcp_syntax_check(dhcp6_test, dhcp6_file, 'DHCP6')
+
+            # Install only once both families are accepted. They are reloaded together, so
+            # copying one in while the other is refused leaves the file on disk and the running
+            # service disagreeing, and some later unrelated restart applies a config nobody was
+            # told had gone in.
+            if validate4 and validate6:
+                if rendered4:
+                    shutil.copyfile(dhcp_file, dhcp_config_path)
+                if rendered6:
                     shutil.copyfile(dhcp6_file, dhcp6_config_path)
+            elif validate4 != validate6:
+                good, bad = ('DHCPv4', 'DHCPv6') if validate4 else ('DHCPv6', 'DHCPv4')
+                self.logger.error(f"the {good} configuration validated clean; it is NOT the "
+                                  f"cause. It is being held back because the {bad} configuration "
+                                  f"was refused, above. Both families are reloaded together, so "
+                                  f"resolve the {bad} fault and this will go through with it")
         except Exception as exp:
             exc_type, exc_obj, exc_tb = sys.exc_info()
             self.logger.error(f"building DHCP config encountered problems: {exp}, {exc_type}, in {exc_tb.tb_lineno}")
-            validate = False
-        return validate
+            validate4, validate6 = False, False
+        return validate4 and validate6
 
 
     def dhcp_link_anchors (self, value=None, ipversion='ipv4'):

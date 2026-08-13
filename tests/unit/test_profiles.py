@@ -972,7 +972,8 @@ def test_a_given_up_node_is_not_delivered_to(db, seed):
     _seed_failures(db, seed['nodeid'], MAX_ATTEMPTS)
     status, message = ProfileSync().deliver_node(seed['nodeid'])
     assert status is None, 'giving up must not read as a fresh failure'
-    assert 'given up' in message
+    assert 'no longer retrying' in message
+    assert str(MAX_ATTEMPTS) in message, 'the operator should be told how many it took'
 
 
 def test_a_given_up_node_says_so_and_says_how_often_it_tried(db, seed):

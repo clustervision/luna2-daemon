@@ -24,12 +24,18 @@ Debian and Ubuntu ship two, and an image may carry either -- so unlike the redha
 plugin, which always has dracut, this one has to choose. It chooses on one thing
 only: which builder the image has. dracut wins when it has both.
 
-What ends up INSIDE the ramdisk is not this code's business and is pinned here as
-an absence. The client package ships a dracut module, an initramfs-tools hook, or
-both, and each pulls in its own toolset -- including the lpart binaries, which are
-an add-on the packer must never see. A probe for any of it would encode today's
-packaging into the daemon and go stale the moment the packaging moves, so the tests
-below assert that no such path changes the outcome.
+What ends up INSIDE the ramdisk is not this code's business, with one exception.
+The client package ships a dracut module, an initramfs-tools hook, or both, and each
+pulls in its own toolset -- including the lpart binaries, which are an add-on the
+packer must never see. A probe for any of it would encode today's packaging into the
+daemon and go stale the moment the packaging moves, so the tests below assert that no
+such path changes the outcome.
+
+The exception is the name 'luna', passed to dracut as a constant. It is not a probe
+and nothing about the image is inspected to decide it, so the property above still
+holds: the argv is identical whatever the client did or did not install. It is there
+because a dracut that cannot install 95luna omits it and still exits 0, which is the
+one failure this code can turn from silent into loud.
 
 The defect this replaced did exactly that: it gated the builder on the luna dracut
 module, so a dracut image without it packed with mkinitramfs -- the wrong tool, and
@@ -59,7 +65,7 @@ OUTPUT = '/tmp/' + RAMDISK
 DRACUT = DRACUT_PATHS[0]
 MKINITRAMFS = MKINITRAMFS_PATHS[0]
 
-DRACUT_ARGV = [DRACUT, '--force', '--kver', KERNEL, OUTPUT]
+DRACUT_ARGV = [DRACUT, '--force', '--add', 'luna', '--kver', KERNEL, OUTPUT]
 MKINITRAMFS_ARGV = [MKINITRAMFS, '-o', OUTPUT, KERNEL]
 
 # Everything the client package may or may not have put in the image. None of it may
@@ -142,14 +148,29 @@ def test_nothing_the_client_package_ships_reaches_this_decision():
         )
 
 
-def test_no_module_name_is_passed_to_dracut():
-    """dracut's own check() includes an installed 95luna, so --add would be noise.
+def test_luna_is_named_so_a_ramdisk_without_it_cannot_be_built():
+    """The one module dracut may not silently omit, because omitting it is invisible.
 
-    Worse than noise: --add on a module the image does not have makes dracut fail
-    outright, which would turn "the client is not installed" into "the pack is
-    broken".
+    This reverses an earlier decision here, and the reason it reversed is worth
+    keeping. Leaving the name off rested on dracut including an installed 95luna by
+    itself. It does -- but only while every module 95luna depends on can also be
+    installed. When one cannot, dracut drops 95luna, prints an [E], and exits 0. The
+    ramdisk builds, packs and serves with no installer inside it, and the failure
+    only ever surfaces on a node's console. Ubuntu 26 does exactly this: dracut's
+    network modules are a separate package, and 95luna depends on them.
+
+    --add turns that into rc 1 and no artifact. The known cost is accepted: a dracut
+    image with no client installed now fails to pack rather than producing a
+    client-less ramdisk, which could never have installed a node anyway.
     """
     command, _ = initramfs_command(KERNEL, RAMDISK, exists=probe(DRACUT))
+    assert '--add' in command
+    assert command[command.index('--add') + 1] == 'luna'
+
+
+def test_the_module_name_never_reaches_mkinitramfs():
+    """It is a dracut flag; mkinitramfs has no such concept and would choke on it."""
+    command, _ = initramfs_command(KERNEL, RAMDISK, exists=probe(MKINITRAMFS))
     assert '--add' not in command and 'luna' not in command
 
 

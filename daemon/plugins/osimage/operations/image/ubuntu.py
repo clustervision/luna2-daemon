@@ -58,18 +58,31 @@ def initramfs_command(kernel_version, ramdisk_file, exists=os.path.exists):
     has both: before ubuntu 25.10 it is not a default and its presence is deliberate,
     and from 25.10 it is the native tool.
 
-    Nothing about luna or lpart is probed, deliberately. What ends up inside the
-    ramdisk is the client package's business: it ships a dracut module, an
-    initramfs-tools hook, or both, and each pulls in its own toolset. dracut includes
-    an installed module on its own, so there is not even a name to pass. An image
-    missing the client is an image nobody installed the client into -- not something
-    for this to detect and work around, and a check here would only encode today's
-    packaging into the daemon and go stale when it changes.
+    Nothing about lpart is probed, deliberately. What ends up inside the ramdisk is
+    the client package's business: it ships a dracut module, an initramfs-tools hook,
+    or both, and each pulls in its own toolset.
+
+    luna is the one exception, and it is named rather than left to dracut. dracut
+    auto-includes an installed module only while every module that module depends on
+    can also be installed; when one cannot it drops the module, prints an [E], and
+    STILL EXITS 0. The initramfs then packs and serves like any other while
+    containing no installer at all, and the node boots to "don't know how to handle
+    root=luna" -- ubuntu 26 hit exactly this, because it packages dracut's network
+    modules separately and 95luna depends on them. Naming it makes dracut fail (rc 1,
+    no artifact) instead, which the caller already turns into a failed pack.
+
+    The cost is that an image with dracut but no client no longer packs at all, where
+    it used to produce a client-less ramdisk. That ramdisk could never install a node,
+    so failing at pack time is the better of the two -- and it is the outcome the
+    redhat plugin already produces, though by the opposite test: it force-adds luna
+    only when --list-modules does NOT list it. That leaves redhat exposed to the case
+    here, because --list-modules reports a module that is present on disk whether or
+    not its dependencies can be resolved.
     """
     output = '/tmp/' + ramdisk_file
     dracut = next((path for path in DRACUT_PATHS if exists(path)), None)
     if dracut:
-        return [dracut, '--force', '--kver', kernel_version, output], 'dracut'
+        return [dracut, '--force', '--add', 'luna', '--kver', kernel_version, output], 'dracut'
     mkinitramfs = next((path for path in MKINITRAMFS_PATHS if exists(path)), None)
     if mkinitramfs:
         return [mkinitramfs, '-o', output, kernel_version], 'mkinitramfs'

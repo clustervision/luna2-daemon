@@ -46,7 +46,7 @@ from utils.helper import Helper
 from utils.log import Log
 from utils.queue import Queue
 from utils.ha import HA
-from base.profile import Profile
+from base.profile import Profile, OUTCOME_REF, RETRY_SECONDS, GIVE_UP_HOURS
 
 APPLIER = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
                        'nodescripts', 'apply_profiles.py')
@@ -56,7 +56,7 @@ DEFAULT_DELAY = 0
 # settle. Reachability is bounded by the transport's own connect and keepalive limits,
 # so this does not need to be the thing that notices a dead node
 DEFAULT_TIMEOUT = 900
-RETRY_DELAY = '300s'
+RETRY_DELAY = f'{RETRY_SECONDS}s'
 # where an install stops. anything else under install. is a step still in flight, and
 # these two stay on the record long after the install finished
 INSTALL_DONE = ('install.success', 'install.booted')
@@ -64,9 +64,6 @@ INSTALL_DONE = ('install.success', 'install.booted')
 # every five minutes, which is often enough for a node that has just come back and rare
 # enough that it is never the thing doing the work
 RECONCILE_PASSES = 60
-# the node's own monitor row holds its install state; a delivery outcome needs a
-# reference of its own or the two overwrite each other
-OUTCOME_REF = 'nodeprofile'
 # how long to leave a node alone after a failed attempt. Measured on a live pair: with a
 # fifteen second connect bound and twenty deliveries in flight, a thousand unreachable
 # nodes take about twelve minutes to work through. Without a cool-off the sweep would
@@ -173,6 +170,12 @@ class ProfileSync():
         desired = Profile().node_digest(name)
         if desired and desired == node[0]['delivered']:
             return True, 'already in line'
+        stopped = Profile().given_up(nodeid)
+        if stopped:
+            # queued before we gave up, run after. None rather than False: it has not
+            # failed here, we simply are not trying any more
+            return None, (f'not delivering to {name}: {stopped} failed attempts, given up '
+                          f'after about {GIVE_UP_HOURS} hours')
         skip = self.skip_reason(name)
         if skip:
             # None, not False: a node that is not ready has not failed, and recording it
@@ -288,10 +291,14 @@ class ProfileSync():
             if self.skip_reason(node['name']):
                 # it would be skipped at delivery anyway; queueing it here only churns
                 continue
+            if Profile().given_up(node['id']):
+                # we have stopped chasing it. It stays out of line and stays visible as
+                # such, but it no longer takes a worker's time every quarter of an hour
+                continue
             recent = Database().get_record(
                 table='monitor',
                 where=f'tableref = "{OUTCOME_REF}" AND tablerefid = "{node["id"]}" '
-                      f'AND status = "500" '
+                      f'AND state LIKE "failed%" '
                       f'AND updated > datetime("now","-{FAILURE_COOLOFF} minute")')
             if recent:
                 # it failed a moment ago and nothing has changed since; trying again now
@@ -325,10 +332,15 @@ class ProfileSync():
         the node's own monitor row carries its install state, and one would overwrite
         the other.
         """
+        # the count rides along in the state, so how long this has been going on needs no
+        # second row to be kept in step with this one
+        state = 'delivered'
+        if not status:
+            state = f'failed {Profile().failed_attempts(nodeid) + 1}'
         row = [{"column": "tableref", "value": OUTCOME_REF},
                {"column": "tablerefid", "value": nodeid},
-               {"column": "state", "value": str(message)[:200]},
-               {"column": "status", "value": 200 if status else 500},
+               {"column": "state", "value": state},
+               {"column": "status", "value": str(message)[:2000]},
                {"column": "updated", "value": "NOW"}]
         Database().insert('monitor', row, replace=True)
 
@@ -373,7 +385,11 @@ class ProfileSync():
                 # for the operator's benefit the log names the node, resolved now
                 node = Database().get_record(table='node', where=f'id = "{key}"')
                 label = node[0]['name'] if node else f'node id {key}'
-                self.record_outcome(key, status == 'True', message)
+                if node:
+                    # a node that has been deleted gets no outcome row: nothing will ever
+                    # read it, and it would sit in the monitor table for the life of the
+                    # cluster referring to something that no longer exists
+                    self.record_outcome(key, status == 'True', message)
                 if status == 'True':
                     self.logger.info(f"profiles delivered to {label}: {message}")
                 elif not node:

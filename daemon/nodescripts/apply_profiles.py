@@ -175,6 +175,38 @@ def resolve_owner(owner):
     return uid, gid
 
 
+def make_parents(path):
+    """
+    Create the directories a file needs, and report which ones we had to make. Only
+    those are ever removed again: a directory that was already there belongs to
+    somebody else, however empty it looks afterwards.
+    """
+    created = []
+    parent = os.path.dirname(path)
+    missing = []
+    while parent and parent != '/' and not os.path.isdir(parent):
+        missing.append(parent)
+        parent = os.path.dirname(parent)
+    for directory in reversed(missing):
+        try:
+            os.mkdir(directory)
+            created.append(directory)
+        except OSError:
+            break
+    return created
+
+
+def drop_parents(directories):
+    """Give back the directories we made, deepest first, and only while they are empty."""
+    for directory in sorted(directories or [], key=len, reverse=True):
+        try:
+            if os.path.isdir(directory) and not os.listdir(directory):
+                os.rmdir(directory)
+                print(f"REMOVED DIRECTORY {directory}")
+        except OSError:
+            pass
+
+
 def write_file(entry):
     """
     Write one profile file if it differs from what is on disk. Returns True when anything
@@ -184,8 +216,9 @@ def write_file(entry):
     content = base64.b64decode(entry.get('content') or '')
     changed = False
 
+    made = []
     if file_hash(path) != hashlib.sha256(content).hexdigest():
-        os.makedirs(os.path.dirname(path) or '/', exist_ok=True)
+        made = make_parents(path)
         tmp = path + '.luna.new'
         with open(tmp, 'wb') as handle:
             handle.write(content)
@@ -213,7 +246,7 @@ def write_file(entry):
     elif entry.get('owner'):
         print(f"WARNING owner {entry['owner']} for {path} cannot be resolved on this node")
 
-    return changed
+    return changed, made
 
 
 def act_on_service(service, action):
@@ -306,7 +339,8 @@ def apply_payload(payload):
                 existed = manifest[path].get('existed_before')
             else:
                 existed = preserve(path)
-            if write_file(entry):
+            written, made = write_file(entry)
+            if written:
                 touched_services[profile['name']] = (profile.get('service'),
                                                      profile.get('action'))
             # service and action are recorded per path, not just held in the payload:
@@ -319,6 +353,7 @@ def apply_payload(payload):
                 'mode': entry.get('mode'),
                 'service': profile.get('service'),
                 'action': profile.get('action'),
+                'created_dirs': made or manifest.get(path, {}).get('created_dirs') or [],
             }
 
     # what a disabled profile owns: left exactly as it is, and kept in the manifest so
@@ -346,6 +381,7 @@ def apply_payload(payload):
                 print(f"WARNING could not remove {path}: {exp}")
             # and forget anything kept for it, so a later cycle starts clean
             drop_backup(path)
+            drop_parents(record.get('created_dirs'))
         owner = record.get('profile')
         if owner and owner not in touched_services:
             touched_services[owner] = (record.get('service'), record.get('action'))

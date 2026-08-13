@@ -283,7 +283,10 @@ class Secret():
                     if column_check:
                         if secret_data:
                             secret_id = secret_data[0]['id']
-                            data[0]['content'] = Helper().encrypt_string(data[0]['content'])
+                            # a change may carry only the attributes being changed;
+                            # what is not sent keeps the value it already has
+                            if 'content' in data[0]:
+                                data[0]['content'] = Helper().encrypt_string(data[0]['content'])
                             where = [
                                 {"column": "id", "value": secret_id},
                                 {"column": "nodeid", "value": nodeid},
@@ -293,6 +296,8 @@ class Secret():
                             result=Database().update('nodesecrets', row, where)
                             response = f'Node {name} Secret {secret} updated'
                             status=True
+                        elif 'content' not in data[0]:
+                            return False, 'Invalid request: secret information not complete'
                         else:
                             data[0]['nodeid'] = nodeid
                             data[0]['content'] = Helper().encrypt_string(data[0]['content'])
@@ -555,7 +560,10 @@ class Secret():
                     if column_check:
                         if secret_data:
                             secret_id = secret_data[0]['id']
-                            data[0]['content'] = Helper().encrypt_string(data[0]['content'])
+                            # a change may carry only the attributes being changed;
+                            # what is not sent keeps the value it already has
+                            if 'content' in data[0]:
+                                data[0]['content'] = Helper().encrypt_string(data[0]['content'])
                             where = [
                                 {"column": "id", "value": secret_id},
                                 {"column": "groupid", "value": groupid},
@@ -565,6 +573,8 @@ class Secret():
                             Database().update('groupsecrets', row, where)
                             response = f'Group {name} secret {secret} updated'
                             status=True
+                        elif 'content' not in data[0]:
+                            return False, 'Invalid request: secret information not complete'
                         else:
                             data[0]['groupid'] = groupid
                             data[0]['content'] = Helper().encrypt_string(data[0]['content'])

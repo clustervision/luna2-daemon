@@ -41,6 +41,22 @@ from utils.log import Log
 from utils.helper import Helper
 from utils.queue import Queue
 
+# the node's own monitor row holds its install state; a delivery outcome needs a
+# reference of its own or the two overwrite each other
+OUTCOME_REF = 'nodeprofile'
+# how long we leave a failing node before trying it again
+RETRY_SECONDS = 300
+# a node that has refused every delivery for a whole day is not a transient failure any
+# more. We keep it visible and stop spending attempts on it, so the nodes that can still
+# be fixed are not buried under one that cannot.
+#
+# It is counted in attempts rather than clocked, because the attempt is already recorded
+# and a clock would need a second row that means something subtly different. At one
+# attempt every five minutes that is a day, near enough - and if the retry interval ever
+# changes, the day moves with it rather than quietly becoming a week
+GIVE_UP_HOURS = 24
+MAX_ATTEMPTS = (GIVE_UP_HOURS * 3600) // RETRY_SECONDS
+
 
 class Profile():
     """
@@ -283,6 +299,15 @@ class Profile():
             where = f'profileid = "{profileid}" AND name = "{filename}"'
             existing = Database().get_record(table='profilefile', where=where)
             if existing:
+                # the same invariant the create path enforces: a profile with no files
+                # and no service writes nothing and acts on nothing, while still sitting
+                # in the assignment lists looking like configuration
+                remaining = Database().get_record(
+                    table='profilefile', where=f'profileid = "{profileid}"')
+                if len(remaining) == 1 and not profile[0]['service']:
+                    return False, (f'Invalid request: {filename} is the last file of '
+                                   f'profile {name} and it has no service to act on. '
+                                   'Remove the profile itself, or give it a service first')
                 where = [
                     {"column": "profileid", "value": profileid},
                     {"column": "name", "value": filename}
@@ -368,8 +393,47 @@ class Profile():
             if not node:
                 return False
             nodeid = node[0]['id']
+        # a deliberate change deserves a fresh attempt and a fresh clock: clearing the
+        # outcome lifts the cool-off, and clearing the start means a node we had given up
+        # on gets its full day again rather than being written off by an older failure
+        self.clear_outcome(nodeid)
         Queue().add_task_to_queue(task='sync_profiles', param=str(nodeid), subsystem='profile')
         return True
+
+
+    def clear_outcome(self, nodeid=None):
+        """
+        Forget what happened last time, which also puts the attempt count back to nothing.
+        """
+        Database().delete_row('monitor', [{"column": "tableref", "value": OUTCOME_REF},
+                                          {"column": "tablerefid", "value": nodeid}])
+
+
+    def failed_attempts(self, nodeid=None):
+        """
+        How many times in a row delivering to this node has failed. The count lives in the
+        outcome row's state - 'failed 12' - so no second row has to be kept in step with
+        it, and a success wipes it by replacing the row.
+        """
+        row = Database().get_record(table='monitor',
+                                    where=f'tableref = "{OUTCOME_REF}" '
+                                          f'AND tablerefid = "{nodeid}"')
+        state = str(row[0]['state']) if row else ''
+        if not state.startswith('failed'):
+            return 0
+        tail = state.split(' ')[-1]
+        return int(tail) if tail.isdigit() else 1
+
+
+    def given_up(self, nodeid=None):
+        """
+        How many failures we stopped at, or 0 while we are still trying.
+
+        It is a comparison rather than a stored decision, so a node comes back the instant
+        its count is cleared - by a delivery that worked, or by anyone changing a profile.
+        """
+        attempts = self.failed_attempts(nodeid)
+        return attempts if attempts >= MAX_ATTEMPTS else 0
 
 
     def queue_nodes(self, nodeids=None):
@@ -451,6 +515,9 @@ class Profile():
           in sync      what it holds is what it should hold
           behind       they differ, and nothing has failed - it is on its way
           failed       the last attempt did not work, and the reason is here
+          given up     it has failed every attempt for about a day. Nothing is being
+                       tried any more, and 'attempts' says how many it took. Changing any
+                       profile it carries starts it over
           frozen       in sync, but carrying a disabled profile whose files Luna no
                        longer manages. It is not drift and it is not an error, and an
                        operator should not have to remember it
@@ -470,17 +537,20 @@ class Profile():
             desired = self.node_digest(node['name'])
             frozen = [profile for profile in assigned_list if known.get(profile) is False]
             outcome = Database().get_record(table='monitor',
-                                            where=f'tableref = "nodeprofile" '
+                                            where=f'tableref = "{OUTCOME_REF}" '
                                                   f'AND tablerefid = "{node["id"]}"')
             detail, since, failed = '', '', False
             if outcome:
-                detail = outcome[0]['state'] or ''
+                detail = outcome[0]['status'] or ''
                 since = outcome[0]['updated'] or ''
-                failed = str(outcome[0]['status']) == '500'
+                failed = str(outcome[0]['state']).startswith('failed')
+            attempts = self.failed_attempts(node['id'])
             if not delivered and not assigned_list:
                 state = 'not applied'
             elif desired == delivered:
                 state = 'frozen' if frozen else 'in sync'
+            elif attempts >= MAX_ATTEMPTS:
+                state = 'given up'
             elif failed:
                 state = 'failed'
             else:
@@ -491,6 +561,7 @@ class Profile():
                 'frozen': ','.join(frozen),
                 'detail': detail,
                 'since': since,
+                'attempts': attempts,
             }
             summary = response['config']['profiles']['summary']
             summary[state] = summary.get(state, 0) + 1

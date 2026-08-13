@@ -396,11 +396,12 @@ class Network():
                     data['nameserver_ip'] = ','.join(v4_ns)
                     data['nameserver_ip_ipv6'] = ','.join(v6_ns)
             if 'ntp_server' in data:
-                # this field holds a server name or an IPv4 address, never IPv6: the dhcp4 config
-                # cannot carry one. check_if_ipv6 is safe on a name as well as an address.
-                if Helper().check_if_ipv6(data['ntp_server']):
-                    status=False
-                    return status, f'Invalid request: Incorrect NTP Server IP: {data["ntp_server"]}. Server name or IPv4 address expected'
+                # this field holds a server name, an IPv4 address or an IPv6 address, and it feeds
+                # both families: the dhcp6 ntp-server option (56) carries an IPv6 address or a name
+                # where the dhcp4 option (42) carries neither. Which value a config may hold is
+                # therefore decided at the render, per family, like its sibling dhcp_relay - not
+                # here, where rejecting IPv6 would leave the dhcp6 side unable to hold what it is
+                # the only family able to serve.
                 ntp_details = Helper().check_ip(data['ntp_server'])
                 if (not ntp_details) and data['ntp_server'] != '':
                     regex = re.compile(r"^[a-z0-9\.\-]+$")

@@ -808,7 +808,10 @@ class Secret():
                     if column_check:
                         if secret_data:
                             secret_id = secret_data[0]['id']
-                            data[0]['content'] = Helper().encrypt_string(data[0]['content'])
+                            # a change may carry only the attributes being changed;
+                            # what is not sent keeps the value it already has
+                            if 'content' in data[0]:
+                                data[0]['content'] = Helper().encrypt_string(data[0]['content'])
                             where = [
                                 {"column": "id", "value": secret_id},
                                 {"column": "clusterid", "value": clusterid},
@@ -818,12 +821,14 @@ class Secret():
                             result=Database().update('clustersecrets', row, where)
                             response = f'Cluster secret {secret} updated'
                             status=True
+                        elif 'content' not in data[0]:
+                            return False, 'Invalid request: secret information not complete'
                         else:
                             data[0]['clusterid'] = clusterid
                             data[0]['content'] = Helper().encrypt_string(data[0]['content'])
                             row = Helper().make_rows(data[0])
                             result=Database().insert('clustersecrets', row)
-                            response = f'Cluster secret {secret} updated'
+                            response = f'Cluster secret {secret} created'
                             status=True
                         if not result:
                             response = f'Internal error: Cluster secret {secret} create/update failed: {result}'
@@ -877,7 +882,16 @@ class Secret():
                                 cluster_secret_columns = Database().get_columns('clustersecrets')
                                 column_check = Helper().compare_list(data[0], cluster_secret_columns)
                                 if column_check:
-                                    data[0]['content'] = Helper().encrypt_string(data[0]['content'])
+                                    # a clone copies what the caller did not override;
+                                    # anything else produces a copy that shares only
+                                    # its name with the secret it came from
+                                    if 'content' in data[0]:
+                                        data[0]['content'] = Helper().encrypt_string(data[0]['content'])
+                                    else:
+                                        data[0]['content'] = secret_data[0]['content']
+                                    for attribute in ['path', 'owner', 'mode']:
+                                        if not data[0].get(attribute):
+                                            data[0][attribute] = secret_data[0][attribute]
                                     row = Helper().make_rows(data[0])
                                     Database().insert('clustersecrets', row)
                                     response = f'Cluster Secret {secret} '

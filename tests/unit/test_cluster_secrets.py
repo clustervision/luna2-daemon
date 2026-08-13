@@ -160,6 +160,31 @@ def test_cluster_update_warns_when_an_owner_does_not_resolve(db, seed):
         'an unresolvable owner is a warning, not a rejection'
 
 
+def test_changing_one_attribute_keeps_the_content(db, seed):
+    """A change carries only what is changing. Encrypting a content the caller never
+    sent raises, and the raise surfaces as a 500 on a request that is not malformed:
+    'set this secret to mode 440' says nothing about its content."""
+    from base.secret import Secret
+    Secret().update_cluster_secrets(_cluster_payload(
+        {'name': 'ipa', 'content': 'a2VlcG1l', 'path': '/etc/ipa.pw', 'mode': '600'}))
+    status, message = Secret().update_cluster_secret('ipa', _cluster_payload(
+        {'name': 'ipa', 'mode': '440'}))
+    assert status, message
+    _, response = Secret().get_cluster_secret('ipa')
+    row = response['config']['secrets']['cluster'][0]
+    assert row['mode'] == '440'
+    assert row['content'] == 'a2VlcG1l', 'the untouched content did not survive the change'
+
+
+def test_creating_through_the_single_secret_route_still_needs_content(db, seed):
+    """Tolerating a missing content on update must not let a secret be created empty."""
+    from base.secret import Secret
+    status, message = Secret().update_cluster_secret('brandnew', _cluster_payload(
+        {'name': 'brandnew', 'mode': '440'}))
+    assert not status
+    assert 'not complete' in message
+
+
 def test_cluster_secret_clone_and_delete(db, seed):
     from base.secret import Secret
     Secret().update_cluster_secrets(_cluster_payload(
@@ -175,6 +200,38 @@ def test_cluster_secret_clone_and_delete(db, seed):
     assert names == {'copy'}
     status, message = Secret().delete_cluster_secret('orig')
     assert not status, 'deleting a deleted secret must fail loudly'
+
+
+def test_clone_copies_what_the_caller_did_not_override(db, seed):
+    """A clone with nothing but a new name is a copy, not an empty shell. Inserting
+    only what the request carried gives a secret that shares its name with the
+    original and nothing else - and it reports success while doing it."""
+    from base.secret import Secret
+    Secret().update_cluster_secrets(_cluster_payload(
+        {'name': 'orig', 'content': 'b3JpZ2luYWw=', 'path': '/etc/orig',
+         'owner': 'root:root', 'mode': '400'}))
+    status, message = Secret().clone_cluster_secret('orig', _cluster_payload(
+        {'name': 'orig', 'newsecretname': 'copy'}))
+    assert status, message
+    _, response = Secret().get_cluster_secret('copy')
+    row = response['config']['secrets']['cluster'][0]
+    assert row['content'] == 'b3JpZ2luYWw=', 'the clone did not carry the content over'
+    assert (row['path'], row['owner'], row['mode']) == ('/etc/orig', 'root:root', '400')
+
+
+def test_clone_honours_an_override(db, seed):
+    """What the caller does supply still wins - a clone to a different path is the
+    normal reason to clone at all."""
+    from base.secret import Secret
+    Secret().update_cluster_secrets(_cluster_payload(
+        {'name': 'orig', 'content': 'b3JpZ2luYWw=', 'path': '/etc/orig', 'mode': '400'}))
+    status, message = Secret().clone_cluster_secret('orig', _cluster_payload(
+        {'name': 'orig', 'newsecretname': 'copy', 'content': 'bmV3', 'path': '/etc/copy'}))
+    assert status, message
+    _, response = Secret().get_cluster_secret('copy')
+    row = response['config']['secrets']['cluster'][0]
+    assert (row['content'], row['path']) == ('bmV3', '/etc/copy')
+    assert row['mode'] == '400', 'an attribute nobody overrode should still be copied'
 
 
 def test_update_without_a_cluster_row_fails_loudly(db):

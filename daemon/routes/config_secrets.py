@@ -273,3 +273,108 @@ def config_group_secret_delete(name=None, secret=None):
     access_code=Helper().get_access_code(status,response)
     response = {'message': response}
     return response, access_code
+
+
+@secrets_blueprint.route("/config/secrets/cluster", methods=['GET'])
+@token_required
+def config_get_cluster_secrets():
+    """
+    Input - None
+    Output - Return all cluster secrets. Cluster secrets apply to every node,
+             stacked on top of group and node secrets.
+    """
+    access_code=404
+    status, response = Secret().get_cluster_secrets()
+    if status is True:
+        access_code=200
+        response=dumps(response)
+    else:
+        response = {'message': response}
+    return response, access_code
+
+
+@secrets_blueprint.route("/config/secrets/cluster", methods=['POST'])
+@token_required
+@input_filter(checks=['config:secrets:cluster'], skip=None)
+def config_post_cluster_secrets():
+    """
+    Input - Payload
+    Process - Create Or Update Cluster Secrets.
+    Output - None.
+    """
+    status, response = Journal().add_request(function="Secret.update_cluster_secrets",payload=request.data)
+    if status is True:
+        status, response = Secret().update_cluster_secrets(request.data)
+    access_code=Helper().get_access_code(status,response)
+    response = {'message': response}
+    return response, access_code
+
+
+@secrets_blueprint.route("/config/secrets/cluster/<string:secret>", methods=['GET'])
+@token_required
+@validate_name
+def config_get_cluster_secret(secret=None):
+    """
+    Input - Secret Name
+    Output - Return the Cluster Secret
+    """
+    access_code=404
+    status, response = Secret().get_cluster_secret(secret)
+    if status is True:
+        access_code=200
+        response=dumps(response)
+    else:
+        response = {'message': response}
+    return response, access_code
+
+
+@secrets_blueprint.route("/config/secrets/cluster/<string:secret>", methods=['POST'])
+@token_required
+@validate_name
+@input_filter(checks=['config:secrets:cluster'], skip=None)
+def config_post_cluster_secret(secret=None):
+    """
+    Input - Secret Name & Payload
+    Process - Create Or Update a Cluster Secret.
+    Output - None.
+    """
+    status, response = Journal().add_request(function="Secret.update_cluster_secret",object=secret,payload=request.data)
+    if status is True:
+        status, response = Secret().update_cluster_secret(secret, request.data)
+    access_code=Helper().get_access_code(status,response)
+    response = {'message': response}
+    return response, access_code
+
+
+@secrets_blueprint.route("/config/secrets/cluster/<string:secret>/_clone", methods=['POST'])
+@token_required
+@validate_name
+@input_filter(checks=['config:secrets:cluster'], skip=None)
+def config_clone_cluster_secret(secret=None):
+    """
+    Input - Secret Name & Payload
+    Process - Clone a Cluster Secret.
+    Output - None.
+    """
+    status, response = Journal().add_request(function="Secret.clone_cluster_secret",object=secret,payload=request.data)
+    if status is True:
+        status, response = Secret().clone_cluster_secret(secret, request.data)
+    access_code=Helper().get_access_code(status,response)
+    response = {'message': response}
+    return response, access_code
+
+
+@secrets_blueprint.route('/config/secrets/cluster/<string:secret>/_delete', methods=['GET'])
+@token_required
+@validate_name
+def config_cluster_secret_delete(secret=None):
+    """
+    Input - Secret Name
+    Output - Success or Failure
+    """
+    status, response = Journal().add_request(function="Secret.delete_cluster_secret",object=secret)
+    if status is True:
+        status, response = Secret().delete_cluster_secret(secret)
+    access_code=Helper().get_access_code(status,response)
+    response = {'message': response}
+    return response, access_code

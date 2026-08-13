@@ -225,7 +225,7 @@ class Secret():
                 response = f'Node {name} Secret updated'
                 status=True
             if status is True and unresolvable:
-                response += '. Warning: owner not currently resolvable: ' + ', '.join(unresolvable)
+                response += '. Warning: owner not currently resolvable (a numeric uid:gid works without a directory): ' + ', '.join(unresolvable)
         else:
             response = 'Invalid request: Did not receive data'
             status=False
@@ -277,7 +277,7 @@ class Secret():
                     column_check = Helper().compare_list(data[0], node_secret_columns)
                     secret_name = data[0]['name']
                     if data[0].get('owner') and not Helper().check_owner(data[0]['owner']):
-                        warning = f". Warning: owner {data[0]['owner']} is not currently resolvable"
+                        warning = f". Warning: owner {data[0]['owner']} is not currently resolvable (a numeric uid:gid works without a directory)"
                     where = f'nodeid = "{nodeid}" AND name = "{secret_name}"'
                     secret_data = Database().get_record(table='nodesecrets', where=where)
                     if column_check:
@@ -483,7 +483,7 @@ class Secret():
                             response = f'Internal error: Group {name} secret {secret_name} create/update failed: {result}'
                             self.logger.error(response)
                     if status is True and unresolvable:
-                        response += '. Warning: owner not currently resolvable: ' + ', '.join(unresolvable)
+                        response += '. Warning: owner not currently resolvable (a numeric uid:gid works without a directory): ' + ', '.join(unresolvable)
                 else:
                     response = 'Invalid request: secret information not complete'
                     status=False
@@ -540,7 +540,7 @@ class Secret():
                     column_check = Helper().compare_list(data[0], group_secret_columns)
                     secret_name = data[0]['name']
                     if data[0].get('owner') and not Helper().check_owner(data[0]['owner']):
-                        warning = f". Warning: owner {data[0]['owner']} is not currently resolvable"
+                        warning = f". Warning: owner {data[0]['owner']} is not currently resolvable (a numeric uid:gid works without a directory)"
                     where = f'groupid = "{groupid}" AND name = "{secret_name}"'
                     secret_data = Database().get_record(table='groupsecrets', where=where)
                     if column_check:
@@ -756,7 +756,7 @@ class Secret():
                 response = 'Cluster Secret updated'
                 status=True
             if status is True and unresolvable:
-                response += '. Warning: owner not currently resolvable: ' + ', '.join(unresolvable)
+                response += '. Warning: owner not currently resolvable (a numeric uid:gid works without a directory): ' + ', '.join(unresolvable)
         else:
             response = 'Invalid request: Did not receive data'
             status=False
@@ -802,7 +802,7 @@ class Secret():
                     column_check = Helper().compare_list(data[0], cluster_secret_columns)
                     secret_name = data[0]['name']
                     if data[0].get('owner') and not Helper().check_owner(data[0]['owner']):
-                        warning = f". Warning: owner {data[0]['owner']} is not currently resolvable"
+                        warning = f". Warning: owner {data[0]['owner']} is not currently resolvable (a numeric uid:gid works without a directory)"
                     where = f'clusterid = "{clusterid}" AND name = "{secret_name}"'
                     secret_data = Database().get_record(table='clustersecrets', where=where)
                     if column_check:

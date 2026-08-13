@@ -175,6 +175,35 @@ def test_update_warns_when_an_owner_does_not_resolve(db, seed):
         'an unresolvable owner is a warning, not a rejection'
 
 
+def test_the_boundary_accepts_a_numeric_owner():
+    """The documented escape hatch for a controller without directory access is to
+    supply the ids directly - so the API boundary must let numbers through. It did
+    not, and the warning pointed at an alternative the validation then rejected."""
+    import re
+    from common.validate_input import REG_EXP
+    pattern = re.compile(REG_EXP['fileowner']['regexp'])
+    for owner in ('1050', '1050:1051', 'ldapuser:1051', '1050:ldapgroup',
+                  'ldapuser', 'ldapuser:ldapgroup', ''):
+        assert pattern.match(owner), f'valid owner form rejected: {owner!r}'
+    for owner in (':1051', '10.50', 'user:', '-user'):
+        assert not pattern.match(owner), f'invalid owner form accepted: {owner!r}'
+
+
+def test_numeric_owner_round_trip(db, seed):
+    """A numeric owner needs no resolution anywhere: stored, emitted and chowned
+    as the numbers the user supplied."""
+    from base.secret import Secret
+    status, message = _post_node_secret('node001', {
+        'name': 'numeric', 'content': 'c2VjcmV0', 'path': '/etc/numeric',
+        'owner': '1050:1051', 'mode': '640'})
+    assert status, message
+    assert 'Warning' not in message, 'numeric ids are never unresolvable'
+    status, response = Secret().get_node_secrets('node001')
+    assert status, response
+    row = response['config']['secrets']['node']['node001'][0]
+    assert row['resolved_owner'] == '1050:1051'
+
+
 def test_update_stays_silent_for_a_resolvable_owner(db, seed):
     status, message = _post_node_secret('node001', {
         'name': 'fine', 'content': 'c2VjcmV0', 'path': '/etc/fine',

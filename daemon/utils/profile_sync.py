@@ -52,7 +52,10 @@ APPLIER = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__)
                        'nodescripts', 'apply_profiles.py')
 DEFAULT_BATCH = 10
 DEFAULT_DELAY = 0
-DEFAULT_TIMEOUT = 300
+# generous on purpose: the applier may be waiting on a service that takes minutes to
+# settle. Reachability is bounded by the transport's own connect and keepalive limits,
+# so this does not need to be the thing that notices a dead node
+DEFAULT_TIMEOUT = 900
 RETRY_DELAY = '300s'
 # where an install stops. anything else under install. is a step still in flight, and
 # these two stay on the record long after the install finished

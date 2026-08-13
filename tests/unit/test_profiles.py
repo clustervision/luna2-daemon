@@ -568,3 +568,24 @@ def test_the_empty_digest_differs_from_a_populated_one(db, seed):
     db.update('node', Helper().make_rows({'profiles': 'p'}),
               [{"column": "id", "value": seed['nodeid']}])
     assert Profile().node_digest('node001') != empty
+
+
+def test_the_delivery_transport_bounds_itself(db):
+    """Helper().runcommand takes a timeout, but it runs under a shell and kills only
+    that shell: an rsync and its ssh child outlive it, hold the pipes open, and the read
+    that was meant to be bounded blocks anyway. Verified against a black-holed address -
+    the kill left both processes running. So the transport carries its own limits.
+
+    --contimeout is deliberately absent: it applies only to an rsync daemon and is a
+    usage error over ssh, which would fail every delivery instantly."""
+    import os
+    plugin = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(
+        os.path.abspath(__file__)))), 'daemon', 'plugins', 'profile', 'delivery', 'default.py')
+    with open(plugin, encoding='utf-8') as handle:
+        source = handle.read()
+    assert 'ConnectTimeout' in source, 'nothing bounds the connect phase'
+    assert '--timeout=' in source, 'nothing bounds a stalled transfer'
+    assert 'ServerAliveInterval' in source, 'nothing notices a peer that goes quiet'
+    assert '--contimeout=' not in source, \
+        '--contimeout is an rsync-daemon option; over ssh it is a usage error'
+    assert 'BatchMode=yes' in source, 'a prompt would hang the worker'

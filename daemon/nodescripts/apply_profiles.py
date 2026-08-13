@@ -53,6 +53,7 @@ STATE = '/var/lib/luna/profiles'
 MANIFEST = os.path.join(STATE, 'manifest.json')
 BACKUP = os.path.join(STATE, 'backup')
 DIGEST_FILE = os.path.join(STATE, 'digest')
+SERVICE_TIMEOUT = 300
 
 
 def read_manifest():
@@ -211,7 +212,11 @@ def act_on_service(service, action):
         return
     command = ['systemctl', action, service]
     try:
-        result = subprocess.run(command, capture_output=True, timeout=120, check=False)
+        # a service can legitimately take minutes to come back - a database, a
+        # filesystem client, anything with state to settle. This bound is here to stop a
+        # hung unit holding the node forever, not to express an expectation about speed
+        result = subprocess.run(command, capture_output=True, timeout=SERVICE_TIMEOUT,
+                                check=False)
         if result.returncode != 0:
             print(f"WARNING {' '.join(command)} exited {result.returncode}: "
                   f"{result.stderr.decode(errors='replace').strip()}")

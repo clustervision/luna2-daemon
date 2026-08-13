@@ -270,3 +270,14 @@ def test_a_seeded_entry_that_never_existed_is_removed(tmp_path):
                                 'digest': 'gone'})
     assert code == 0, out
     assert not target.exists()
+
+
+def test_a_slow_service_is_given_room(tmp_path):
+    """A service can legitimately take minutes to come back - a database, a filesystem
+    client, anything with state to settle. The bound exists to stop a hung unit holding
+    the node forever, not to express an expectation about how fast a service restarts."""
+    with open(APPLIER, encoding='utf-8') as handle:
+        source = handle.read()
+    assert 'SERVICE_TIMEOUT = 300' in source, \
+        'the service action bound is short enough to kill a slow but healthy restart'
+    assert 'timeout=SERVICE_TIMEOUT' in source

@@ -36,6 +36,14 @@ from utils.log import Log
 from utils.helper import Helper
 
 STAGING = '/var/lib/luna/profiles/staging'
+# The transport bounds itself. Helper().runcommand takes a timeout, but it runs the
+# command under a shell and kills only that shell - an rsync and its ssh child outlive
+# it, keep the pipes open, and the read that was supposed to be bounded blocks anyway.
+# So ssh is told when to give up connecting, and rsync when to give up waiting.
+CONNECT_TIMEOUT = 15
+IO_TIMEOUT = 120
+SSH_OPTIONS = (f"-o BatchMode=yes -o ConnectTimeout={CONNECT_TIMEOUT} "
+               f"-o ServerAliveInterval=15 -o ServerAliveCountMax=3")
 
 
 class Plugin():
@@ -64,14 +72,17 @@ class Plugin():
         # rsync creates only the last component of the destination, and a node that has
         # never had a profile has none of the path at all. --rsync-path does the mkdir on
         # the far side in the same connection rather than costing a second one
-        command = (f"rsync -aH --delete --rsync-path='mkdir -p {STAGING} && rsync' "
+        # --timeout is the I/O stall bound; the connect bound is ssh's own, because
+        # --contimeout applies only to an rsync daemon and is a usage error over ssh
+        command = (f"rsync -aH --delete --timeout={IO_TIMEOUT} "
+                   f"-e 'ssh {SSH_OPTIONS}' --rsync-path='mkdir -p {STAGING} && rsync' "
                    f"{bundle}/ {target}:{STAGING}/")
         self.logger.debug(command)
         message, exit_code = Helper().runcommand(command, True, timeout)
         if exit_code != 0:
             return False, f"could not copy the profile bundle to {target}: {message}"
 
-        command = f"ssh -o BatchMode=yes {target} python3 {STAGING}/apply_profiles.py {STAGING}"
+        command = f"ssh {SSH_OPTIONS} {target} python3 {STAGING}/apply_profiles.py {STAGING}"
         self.logger.debug(command)
         message, exit_code = Helper().runcommand(command, True, timeout)
         output = ''

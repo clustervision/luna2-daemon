@@ -765,6 +765,39 @@ class Helper(object):
     # waves, so without it every node in a wave triggers the same lookups all over again.
     owner_cache = {}
     owner_cache_ttl = 60
+    # NSS has no timeout of its own: an unreachable directory makes getpwnam block for
+    # as long as its own client library allows, and this runs while a node waits for its
+    # install payload. A bounded lookup degrades to the stored resolution instead.
+    owner_lookup_timeout = 20
+
+    def nss_lookup(self, function, key):
+        """
+        Run one NSS lookup with a deadline. Returns the entry, or None when the name
+        is unknown OR the directory did not answer in time - the caller treats both
+        as 'not resolvable right now', which is what they are.
+        """
+        outcome = {}
+
+        def run():
+            try:
+                outcome['value'] = function(key)
+            except KeyError:
+                outcome['missing'] = True
+            except Exception as exp:
+                outcome['error'] = exp
+
+        worker = threading.Thread(target=run, daemon=True)
+        worker.start()
+        worker.join(Helper.owner_lookup_timeout)
+        if worker.is_alive():
+            self.logger.warning(
+                f"NSS lookup for {key} did not answer within "
+                f"{Helper.owner_lookup_timeout}s; treating it as unresolvable")
+            return None
+        if 'error' in outcome:
+            self.logger.error(f"NSS lookup for {key} failed: {outcome['error']}")
+            return None
+        return outcome.get('value')
 
     def resolve_owner(self, owner=None):
         """
@@ -785,14 +818,15 @@ class Helper(object):
             return cached[0]
         user, _, group = owner.partition(':')
         resolved = None
-        try:
-            uid = user if user.isdigit() else str(pwd.getpwnam(user).pw_uid)
-            gid = None
-            if group:
-                gid = group if group.isdigit() else str(grp.getgrnam(group).gr_gid)
+        uid, gid = user, group
+        if not user.isdigit():
+            entry = self.nss_lookup(pwd.getpwnam, user)
+            uid = str(entry.pw_uid) if entry else None
+        if group and not group.isdigit():
+            entry = self.nss_lookup(grp.getgrnam, group)
+            gid = str(entry.gr_gid) if entry else None
+        if uid and (gid or not group):
             resolved = f"{uid}:{gid}" if group else uid
-        except KeyError:
-            pass
         record = Database().get_record(table='ownercache', where=f'name = "{owner}"')
         if resolved:
             if record:
@@ -823,12 +857,9 @@ class Helper(object):
         if not owner:
             return True
         user, _, group = owner.partition(':')
-        try:
-            if user and not user.isdigit():
-                pwd.getpwnam(user)
-            if group and not group.isdigit():
-                grp.getgrnam(group)
-        except KeyError:
+        if user and not user.isdigit() and not self.nss_lookup(pwd.getpwnam, user):
+            return False
+        if group and not group.isdigit() and not self.nss_lookup(grp.getgrnam, group):
             return False
         return True
 

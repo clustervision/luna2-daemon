@@ -1295,3 +1295,47 @@ def test_an_ordinarily_behind_node_says_nothing_extra(db, seed):
     entry = response['config']['profiles']['status']['node001']
     assert entry['state'] == 'behind'
     assert entry['detail'] == ''
+
+
+def test_membership_does_not_depend_on_the_node_being_reachable(db, seed):
+    """Membership is an assignment, not a delivery. A node that has failed every attempt
+    still applies the profile - it is exactly the node an operator is looking for when
+    they ask what is holding one, and the deletion guard has to see it too."""
+    from base.profile import Profile
+    from utils.profile_sync import ProfileSync
+    from base.profile import MAX_ATTEMPTS
+    _reconcile_db(db)
+    Profile().update_profile('p', _make('p'))
+    _assign(db, 'node', seed['nodeid'], 'p')
+    ProfileSync().record_outcome(seed['nodeid'], False, 'could not reach it')
+    _seed_failures(db, seed['nodeid'], MAX_ATTEMPTS)
+
+    assert Profile().assigned_to('p') == ['node001']
+    status, message = Profile().delete_profile('p')
+    assert not status
+    assert 'node001' in message, 'a node we gave up on still holds the profile'
+
+
+def test_a_node_covered_by_its_group_is_not_listed_as_its_own_member(db, seed):
+    """Listing it would claim an assignment it does not have: removing the profile from
+    that node is not something an operator can do - the group is what applies it, and
+    that is what they have to change."""
+    from base.profile import Profile
+    Profile().update_profile('p', _make('p'))
+    _assign(db, 'group', seed['groupid'], 'p')
+    _, response = Profile().get_profile_member('p')
+    members = response['config']['profiles']['p']['members']
+    assert members['groups'] == ['compute']
+    assert members['nodes'] == [], 'a node was credited with an assignment it does not hold'
+
+
+def test_a_lookalike_profile_is_not_a_member(db, seed):
+    """'gpu' must not pick up what carries 'gpu-extra'."""
+    from base.profile import Profile
+    for name in ('gpu', 'gpu-extra'):
+        Profile().update_profile(name, _make(name))
+    _assign(db, 'node', seed['nodeid'], 'gpu-extra')
+    _, response = Profile().get_profile_member('gpu')
+    assert response['config']['profiles']['gpu']['members']['nodes'] == []
+    _, response = Profile().get_profile_member('gpu-extra')
+    assert response['config']['profiles']['gpu-extra']['members']['nodes'] == ['node001']

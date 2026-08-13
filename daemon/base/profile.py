@@ -626,6 +626,13 @@ class Profile():
                 state = 'failed'
             else:
                 state = 'behind'
+                if not detail:
+                    # a node can be behind and deliberately not delivered to - mid-install,
+                    # most often. The sweep records nothing for a skip, on purpose, so the
+                    # only way an operator learns why it has been behind for an hour is if
+                    # the reason is worked out here, where the state is decided anyway
+                    from utils.profile_sync import ProfileSync
+                    detail = ProfileSync().skip_reason(node['name']) or ''
             response['config']['profiles']['status'][node['name']] = {
                 'profiles': assigned or '',
                 'state': state,

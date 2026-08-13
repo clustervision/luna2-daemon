@@ -1263,3 +1263,35 @@ def test_a_clean_delivery_reads_as_delivered(db, seed, monkeypatch):
     monkeypatch.setattr(Helper, 'plugin_load', lambda *a, **k: _Plugin)
     status, message = ProfileSync().deliver_node(seed['nodeid'])
     assert (status, message) == (True, 'delivered')
+
+
+def test_a_node_held_back_by_an_install_says_so(db, seed):
+    """A node mid-install is deliberately not delivered to, and a skip records nothing -
+    which is right, because a skip is not a failure. But then the only thing an operator
+    sees is 'behind', with no detail, for as long as the install state lasts. The reason
+    is known at the moment the state is decided, so it is said here."""
+    from base.profile import Profile
+    from utils.helper import Helper
+    _status_db(db)
+    Profile().update_profile('p', _make('p'))
+    _assign(db, 'node', seed['nodeid'], 'p')
+    db.insert('monitor', Helper().make_rows(
+        {'tableref': 'node', 'tablerefid': seed['nodeid'], 'state': 'install.rendered'}))
+    _, response = Profile().status('node001')
+    entry = response['config']['profiles']['status']['node001']
+    assert entry['state'] == 'behind'
+    assert 'installing' in entry['detail'], \
+        'behind with an empty reason is indistinguishable from behind and stuck'
+    assert 'install.rendered' in entry['detail']
+
+
+def test_an_ordinarily_behind_node_says_nothing_extra(db, seed):
+    """The reason is only interesting when something is holding it back."""
+    from base.profile import Profile
+    _status_db(db)
+    Profile().update_profile('p', _make('p'))
+    _assign(db, 'node', seed['nodeid'], 'p')
+    _, response = Profile().status('node001')
+    entry = response['config']['profiles']['status']['node001']
+    assert entry['state'] == 'behind'
+    assert entry['detail'] == ''

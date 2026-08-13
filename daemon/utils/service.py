@@ -84,7 +84,10 @@ class Service(object):
                             sleep(1)
                             status, response = self.service_status(name, action, exit_code, output)
                         else:
-                            response = f'{name} config file has errors'
+                            # Both families are built here, so the fault may be in the other one:
+                            # naming this service's own config would send an administrator to a
+                            # file that is fine. The log says which family failed and why.
+                            response = f'DHCP configuration has errors; {action} of {name} not performed. See the daemon log'
                             status=False
                     case 'status':
                         command = f'{CONSTANT["SERVICES"]["COMMAND"]} {action} {name}'
@@ -103,7 +106,10 @@ class Service(object):
                             sleep(1)
                             status, response = self.service_status(name, action, exit_code, output)
                         else:
-                            response = f'{name} config file has errors'
+                            # Both families are built here, so the fault may be in the other one:
+                            # naming this service's own config would send an administrator to a
+                            # file that is fine. The log says which family failed and why.
+                            response = f'DHCP configuration has errors; {action} of {name} not performed. See the daemon log'
                             status=False
                     case 'status':
                         command = f'{CONSTANT["SERVICES"]["COMMAND"]} {action} {name}'

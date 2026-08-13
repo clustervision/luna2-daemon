@@ -437,6 +437,10 @@ class Profile():
         node = Database().get_record(table='node', where=f'name = "{name}"')
         if not node:
             return False, f'Node {name} is not available'
+        # a node with no profiles is a real answer, not an absence: it is precisely the
+        # node that has to be told, so it can put back whatever a profile displaced. an
+        # empty payload is what makes an unassign revert
+        status=True
         payload = {'node': name, 'profiles': [], 'frozen': []}
         merged = self.merged_profiles(node[0]['id'])
         for profile_name in merged.split(',') if merged else []:
@@ -452,7 +456,6 @@ class Profile():
                 payload['profiles'].append(detail)
             else:
                 payload['frozen'].append(profile_name)
-            status=True
         return status, payload
 
 

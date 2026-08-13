@@ -61,7 +61,11 @@ class Plugin():
         then stops answering must cost a bounded wait, not a stuck worker.
         """
         target = hostname or node
-        command = f"rsync -aH --delete {bundle}/ {target}:{STAGING}/"
+        # rsync creates only the last component of the destination, and a node that has
+        # never had a profile has none of the path at all. --rsync-path does the mkdir on
+        # the far side in the same connection rather than costing a second one
+        command = (f"rsync -aH --delete --rsync-path='mkdir -p {STAGING} && rsync' "
+                   f"{bundle}/ {target}:{STAGING}/")
         self.logger.debug(command)
         message, exit_code = Helper().runcommand(command, True, timeout)
         if exit_code != 0:

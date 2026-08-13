@@ -529,3 +529,42 @@ def test_a_new_file_still_needs_content_and_path(db):
         {'name': 'brandnew', 'mode': '600'}]))
     assert not status
     assert 'not complete' in message
+
+
+def test_a_finished_install_does_not_block_delivery(db, seed):
+    """install.booted and install.success are where an install STOPS, and they stay on
+    the record for the rest of the node's life. Testing the 'install.' prefix alone
+    excludes every successfully installed node in the cluster - quietly, because the
+    node simply never gets delivered to."""
+    from utils.profile_sync import ProfileSync
+    from utils.helper import Helper
+    from utils.dbstructure import DBStructure
+    db.create('monitor', DBStructure().get_database_table_structure('monitor'))
+    for state, blocked in (('install.booted', False), ('install.success', False),
+                           ('install.unpack', True), ('install.profiles', True)):
+        db.delete_row('monitor', [{"column": "tablerefid", "value": seed['nodeid']}])
+        db.insert('monitor', Helper().make_rows(
+            {'tableref': 'node', 'tablerefid': seed['nodeid'], 'state': state}))
+        reason = ProfileSync().skip_reason('node001')
+        assert bool(reason) is blocked, f'{state} gave {reason!r}'
+
+
+def test_a_node_with_no_profiles_still_gets_a_payload(db, seed):
+    """The most important delivery of all: unassigning the last profile is exactly when
+    the node has to be told, so it can put back what the profile displaced. Treating an
+    empty set as nothing-to-do leaves those files on the node for good."""
+    from base.profile import Profile
+    status, payload = Profile().node_payload('node001')
+    assert status, 'a node with no profiles must still be deliverable'
+    assert payload['profiles'] == [] and payload['frozen'] == []
+    assert Profile().node_digest('node001'), 'an empty set still needs a digest'
+
+
+def test_the_empty_digest_differs_from_a_populated_one(db, seed):
+    from base.profile import Profile
+    from utils.helper import Helper
+    empty = Profile().node_digest('node001')
+    Profile().update_profile('p', _make('p'))
+    db.update('node', Helper().make_rows({'profiles': 'p'}),
+              [{"column": "id", "value": seed['nodeid']}])
+    assert Profile().node_digest('node001') != empty

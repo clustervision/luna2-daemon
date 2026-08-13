@@ -54,6 +54,9 @@ DEFAULT_BATCH = 10
 DEFAULT_DELAY = 0
 DEFAULT_TIMEOUT = 300
 RETRY_DELAY = '300s'
+# where an install stops. anything else under install. is a step still in flight, and
+# these two stay on the record long after the install finished
+INSTALL_DONE = ('install.success', 'install.booted')
 
 
 class ProfileSync():
@@ -92,14 +95,23 @@ class ProfileSync():
 
     def skip_reason(self, name=None):
         """
-        Why we would not even try this node right now. Both checks are free and both
-        avoid a pointless connection attempt.
+        Why we would not even try this node right now. The check is free and it avoids a
+        pointless connection attempt - and, for a node that really is mid-install, avoids
+        racing the installer over the very files we are delivering.
+
+        'install.' as a prefix is NOT the test: an install ends at install.success and
+        the node then reports install.booted, and those sit on the record for the rest of
+        the node's life. Testing the prefix alone would exclude every successfully
+        installed node in the cluster, permanently and quietly.
         """
         state = Database().get_record_join(['monitor.state as state'],
                                            ['monitor.tablerefid=node.id'],
                                            [f'node.name="{name}"', "monitor.tableref='node'"])
-        if state and state[0]['state'] and str(state[0]['state']).startswith('install.'):
-            return 'it is installing'
+        if not state or not state[0]['state']:
+            return None
+        current = str(state[0]['state'])
+        if current.startswith('install.') and current not in INSTALL_DONE:
+            return f'it is installing ({current})'
         return None
 
 
@@ -129,8 +141,9 @@ class ProfileSync():
         a sweep over a large cluster is affordable: the decision costs one comparison and
         no connection.
         """
+        # the node name is the target, as the osimage push uses it: there is no
+        # separate hostname column on node
         node = Database().get_record_join(['node.id as nodeid', 'node.name as nodename',
-                                           'node.hostname as hostname',
                                            'node.profiles_digest as delivered',
                                            'group.name as groupname'],
                                           ['group.id=node.groupid'],
@@ -146,16 +159,12 @@ class ProfileSync():
 
         bundle, digest = self.build_bundle(name)
         if not bundle:
-            # the node applies no profiles at all. nothing to deliver, and nothing on the
-            # node to reclaim that a previous delivery did not already handle
-            Database().update('node', Helper().make_rows({'profiles_digest': ''}),
-                              [{"column": "id", "value": node[0]['nodeid']}])
-            return True, 'no profiles apply to this node'
+            return False, f'could not build a profile bundle for {name}'
         try:
             plugin = Helper().plugin_load(self.delivery_plugins, 'profile/delivery',
                                           [node[0]['nodename'], node[0]['groupname']])
             status, message = plugin().deliver(node=node[0]['nodename'],
-                                               hostname=node[0]['hostname'] or node[0]['nodename'],
+                                               hostname=node[0]['nodename'],
                                                bundle=bundle, timeout=DEFAULT_TIMEOUT)
         finally:
             shutil.rmtree(bundle, ignore_errors=True)
@@ -204,15 +213,19 @@ class ProfileSync():
             try:
                 if (not ha_object.get_hastate()) or ha_object.get_role():
                     pipeline = Helper().Pipeline()
-                    claimed = []
-                    while next_id := Queue().next_task_in_queue('profile'):
+                    claimed = {}
+                    while next_id := Queue().next_task_in_queue('profile', status='queued'):
                         task = Database().get_record(table='queue', where=f'id = "{next_id}"')
                         if task and task[0]['task'] == 'sync_profiles' and task[0]['param']:
                             pipeline.add_nodes({task[0]['param']: 'sync_profiles'})
-                        claimed.append(next_id)
-                        Queue().remove_task_from_queue(next_id)
+                            claimed[task[0]['param']] = next_id
+                        # marked, not removed: a task removed at claim time is lost if the
+                        # daemon stops before the delivery finishes, and the node then sits
+                        # out of line with nothing queued to bring it back
+                        Queue().update_task_status_in_queue(next_id, 'in progress')
+                    self.reclaim_abandoned()
                     if pipeline.has_nodes():
-                        self.deliver_batches(pipeline)
+                        self.deliver_batches(pipeline, claimed)
             except Exception as exp:
                 self.logger.error(f"profile sync thread encountered problem: {exp}")
             if event.is_set():
@@ -220,7 +233,23 @@ class ProfileSync():
             sleep(5)
 
 
-    def deliver_batches(self, pipeline):
+    def reclaim_abandoned(self):
+        """
+        Tasks left 'in progress' by a daemon that stopped mid-delivery. Nothing else will
+        ever pick them up, and the node they name is out of line with no record of it.
+        """
+        stale = Database().get_record(table='queue',
+                                      where="subsystem='profile' AND status='in progress' "
+                                            "AND created<datetime('now','-30 minute')")
+        for task in stale or []:
+            self.logger.warning(f"profile task {task['id']} for {task['param']} was left "
+                                "in progress; queueing it again")
+            Queue().remove_task_from_queue(task['id'])
+            Queue().add_task_to_queue(task='sync_profiles', param=task['param'],
+                                      subsystem='profile')
+
+
+    def deliver_batches(self, pipeline, claimed=None):
         """
         The batch loop, as the osimage push and the power control paths run it: a pool of
         children pulling from one pipeline, results collected per pass.
@@ -233,6 +262,9 @@ class ProfileSync():
             results = pipeline.get_messages()
             for key in list(results):
                 status, message, *_ = (results[key].split('=', 1) + [None])
+                taskid = (claimed or {}).get(key)
+                if taskid:
+                    Queue().remove_task_from_queue(taskid)
                 if status == 'True':
                     self.logger.info(f"profiles delivered to {key}: {message}")
                 else:

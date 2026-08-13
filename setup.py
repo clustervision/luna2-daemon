@@ -95,7 +95,9 @@ setup(
         "daemon/plugins/osimage/operations/ospush": ["README","*py"],
         "daemon/plugins/osimage/operations/image": ["README","*py"],
         "daemon/plugins/osimage/filesystem": ["README","*py"],
-        "daemon/plugins/osimage/other": ["README","*py"]
+        "daemon/plugins/osimage/other": ["README","*py"],
+        "daemon/plugins/profile/delivery": ["README","*.py"],
+        "daemon/nodescripts": ["*.py"]
     },
     data_files = [],
     zip_safe = False,

@@ -101,6 +101,24 @@ def config_profile_get(name=None):
     return response, access_code
 
 
+@profiles_blueprint.route("/config/profiles/<string:name>/_member", methods=['GET'])
+@token_required
+@validate_name
+def config_profile_member(name=None):
+    """
+    Input - Profile Name
+    Output - The groups and nodes that apply this Profile.
+    """
+    access_code = 404
+    status, response = Profile().get_profile_member(name)
+    if status is True:
+        access_code = 200
+        response = dumps(response)
+    else:
+        response = {'message': response}
+    return response, access_code
+
+
 @profiles_blueprint.route("/config/profiles/<string:name>", methods=['POST'])
 @token_required
 @validate_name

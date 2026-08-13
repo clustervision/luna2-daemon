@@ -45,7 +45,7 @@ def db(tmp_path):
     constant.CONSTANT['DATABASE']['DATABASE'] = str(tmp_path / 'unit.db')
     database.local_thread.connection = None
     Helper.owner_cache = {}
-    for table in ['node', 'group', 'profile', 'profilefile', 'ownercache']:
+    for table in ['node', 'group', 'profile', 'profilefile', 'ownercache', 'queue']:
         Database().create(table, DBStructure().get_database_table_structure(table))
     yield Database()
     constant.CONSTANT['DATABASE']['DATABASE'] = original
@@ -144,6 +144,36 @@ def test_profile_delete_takes_its_files_along(db):
     assert not db.get_record(table='profilefile'), 'orphaned profile files left behind'
 
 
+def test_a_profile_in_use_cannot_be_deleted(db, seed):
+    """Guarded like an osimage. Removing the assignment first is not busywork: that is
+    what puts the files back on the nodes, and it can only be worked out while the
+    profile still exists to say what should be undone."""
+    from base.profile import Profile
+    from utils.helper import Helper
+    Profile().update_profile('inuse', _make('inuse'))
+    db.update('group', Helper().make_rows({'profiles': 'inuse'}),
+              [{"column": "id", "value": seed['groupid']}])
+    status, message = Profile().delete_profile('inuse')
+    assert not status
+    assert 'compute' in message and 'Remove it from them first' in message
+    assert db.get_record(table='profile', where='name = "inuse"'), 'it was deleted anyway'
+
+    db.update('group', Helper().make_rows({'profiles': ''}),
+              [{"column": "id", "value": seed['groupid']}])
+    status, message = Profile().delete_profile('inuse')
+    assert status, message
+
+
+def test_in_use_matches_whole_names_only(db, seed):
+    """'gpu' must not be held in use by a node carrying 'gpu-extra'."""
+    from base.profile import Profile
+    from utils.helper import Helper
+    Profile().update_profile('gpu', _make('gpu'))
+    db.update('node', Helper().make_rows({'profiles': 'gpu-extra'}),
+              [{"column": "id", "value": seed['nodeid']}])
+    assert Profile().assigned_to('gpu') == []
+
+
 def test_profile_single_file_delete(db):
     from base.profile import Profile
     Profile().update_profile('munge', _make(files=[
@@ -240,6 +270,16 @@ def test_a_dangling_profile_assignment_does_not_break_the_rest(db, seed):
     assert list(response['config']['profiles'].keys()) == ['real']
 
 
+def test_an_ordinary_node_update_does_not_raise(db, seed):
+    """A plain change to a node must survive the profile trigger. The name of a renamed
+    node is only bound on the rename path, so reading it unconditionally raises on every
+    update that is not a rename - and it raises inside the update, after writes."""
+    from base.node import Node
+    status, message = Node().update_node('node001', {'config': {'node': {
+        'node001': {'comment': 'still here'}}}})
+    assert status, message
+
+
 def test_assigning_an_unknown_profile_is_rejected(db, seed):
     """The parallel list that must not silently drift: a profiles column may only
     name profiles that exist - same standard as roles' plugin check."""
@@ -312,3 +352,180 @@ def test_installer_applies_the_service_action():
     assert 'systemctl disable ${SERVICE}' in body
     assert re.search(r'none\)\s*\n\s*;;', body), "action 'none' must do nothing"
     assert 'chroot "/${rootmnt}"' in body
+
+
+# ---------------------------------------------------------------------------
+# live apply: enabled, the digest, and the three-state payload
+# ---------------------------------------------------------------------------
+
+def test_a_profile_with_no_enabled_value_is_enabled(db):
+    """The column arrives NULL on every row that predates it. Read as disabled, an
+    upgrade would freeze every existing profile in the cluster - and freezing is silent
+    by design, so nothing would report that convergence had stopped."""
+    from base.profile import Profile
+    Profile().update_profile('legacy', _make('legacy'))
+    row = db.get_record(table='profile', where='name = "legacy"')[0]
+    assert row['enabled'] is None, 'this test is meaningless if the row carries a value'
+    assert Profile().is_enabled(row) is True
+
+
+def test_disabled_profile_travels_as_a_name_only(db, seed):
+    """It must not simply vanish: the applier reclaims a path by finding it in its
+    manifest and not in the payload, so silence would revert exactly the files that
+    disabling is meant to leave alone."""
+    from base.profile import Profile
+    from utils.helper import Helper
+    Profile().update_profile('frozen', _make('frozen'))
+    Profile().update_profile('live', _payload('live', service='sshd', action='reload',
+        files=[{'name': 'x', 'content': 'eA==', 'path': '/etc/x'}]))
+    db.update('node', Helper().make_rows({'profiles': 'frozen,live'}),
+              [{"column": "id", "value": seed['nodeid']}])
+    db.update('profile', Helper().make_rows({'enabled': 0}),
+              [{"column": "name", "value": 'frozen'}])
+
+    status, payload = Profile().node_payload('node001')
+    assert status, payload
+    assert [entry['name'] for entry in payload['profiles']] == ['live']
+    assert payload['frozen'] == ['frozen']
+
+
+def test_editing_a_disabled_profile_moves_nothing(db, seed):
+    """No trigger when disabled: the digest carries a disabled profile's name, never its
+    content, so changing what it holds cannot cause a delivery."""
+    from base.profile import Profile
+    from utils.helper import Helper
+    Profile().update_profile('frozen', _make('frozen'))
+    db.update('node', Helper().make_rows({'profiles': 'frozen'}),
+              [{"column": "id", "value": seed['nodeid']}])
+    db.update('profile', Helper().make_rows({'enabled': 0}),
+              [{"column": "name", "value": 'frozen'}])
+
+    before = Profile().node_digest('node001')
+    Profile().update_profile('frozen', _make('frozen', files=[
+        {'name': 'key', 'content': 'Y29tcGxldGVseS1kaWZmZXJlbnQ=', 'path': '/etc/munge/munge.key'}]))
+    assert Profile().node_digest('node001') == before
+
+
+def test_flipping_enabled_does_move_the_digest(db, seed):
+    """One delivery follows, which is what teaches the node to freeze those paths
+    instead of reclaiming them on the next sweep."""
+    from base.profile import Profile
+    from utils.helper import Helper
+    Profile().update_profile('p', _make('p'))
+    db.update('node', Helper().make_rows({'profiles': 'p'}),
+              [{"column": "id", "value": seed['nodeid']}])
+    enabled = Profile().node_digest('node001')
+    db.update('profile', Helper().make_rows({'enabled': 0}),
+              [{"column": "name", "value": 'p'}])
+    assert Profile().node_digest('node001') != enabled
+
+
+def test_the_digest_is_stable_and_content_sensitive(db, seed):
+    """Stable across calls, or every sweep would deliver to every node; sensitive to
+    content, or an edit would never arrive."""
+    from base.profile import Profile
+    from utils.helper import Helper
+    Profile().update_profile('p', _make('p'))
+    db.update('node', Helper().make_rows({'profiles': 'p'}),
+              [{"column": "id", "value": seed['nodeid']}])
+    first = Profile().node_digest('node001')
+    assert first == Profile().node_digest('node001')
+    Profile().update_profile('p', _make('p', files=[
+        {'name': 'key', 'content': 'bmV3Y29udGVudA==', 'path': '/etc/munge/munge.key'}]))
+    assert Profile().node_digest('node001') != first
+
+
+def test_order_is_part_of_the_digest(db, seed):
+    """Order decides which profile wins a shared path, so swapping it is a real change."""
+    from base.profile import Profile
+    from utils.helper import Helper
+    for name in ('a', 'b'):
+        Profile().update_profile(name, _payload(name, service='', action='none',
+            files=[{'name': 'f', 'content': 'eA==', 'path': '/etc/shared'}]))
+    db.update('node', Helper().make_rows({'profiles': 'a,b'}),
+              [{"column": "id", "value": seed['nodeid']}])
+    one = Profile().node_digest('node001')
+    db.update('node', Helper().make_rows({'profiles': 'b,a'}),
+              [{"column": "id", "value": seed['nodeid']}])
+    assert Profile().node_digest('node001') != one
+
+
+def test_queueing_collapses_repeats(db, seed):
+    """A change touching one node many times is one delivery: the queue returns the
+    existing task for an identical task and param."""
+    from base.profile import Profile
+    from utils.helper import Helper
+    Profile().update_profile('p', _make('p'))
+    db.update('node', Helper().make_rows({'profiles': 'p'}),
+              [{"column": "id", "value": seed['nodeid']}])
+    for _ in range(5):
+        Profile().queue_node('node001')
+    queued = db.get_record(table='queue', where='subsystem = "profile"')
+    assert len(queued) == 1, f'expected one task, found {len(queued)}'
+    assert queued[0]['param'] == 'node001'
+
+
+def test_queueing_a_profile_reaches_the_nodes_that_apply_it(db, seed):
+    """Assignment is a comma list, so the match must be on the merged set: 'gpu' must
+    not pick up a node carrying 'gpu-extra'."""
+    from base.profile import Profile
+    from utils.helper import Helper
+    for name in ('gpu', 'gpu-extra'):
+        Profile().update_profile(name, _payload(name, service='', action='none'))
+    other = db.insert('node', Helper().make_rows(
+        {'name': 'node002', 'groupid': seed['groupid'], 'profiles': 'gpu-extra'}))
+    db.update('node', Helper().make_rows({'profiles': 'gpu'}),
+              [{"column": "id", "value": seed['nodeid']}])
+    Profile().queue_profile('gpu')
+    queued = [row['param'] for row in db.get_record(table='queue', where='subsystem = "profile"')]
+    assert queued == ['node001'], f'queued {queued}'
+
+
+def test_member_lists_who_applies_a_profile(db, seed):
+    """The same question the deletion guard asks, answered for a human: an operator who
+    cannot delete a profile should be able to see what is holding it."""
+    from base.profile import Profile
+    from utils.helper import Helper
+    Profile().update_profile('shared', _make('shared'))
+    db.update('group', Helper().make_rows({'profiles': 'shared'}),
+              [{"column": "id", "value": seed['groupid']}])
+    lone = db.insert('node', Helper().make_rows(
+        {'name': 'node009', 'groupid': seed['groupid'], 'profiles': 'shared'}))
+    status, response = Profile().get_profile_member('shared')
+    assert status, response
+    members = response['config']['profiles']['shared']['members']
+    assert members['groups'] == ['compute']
+    assert members['nodes'] == ['node009']
+
+
+def test_member_on_an_unknown_profile_says_so(db):
+    from base.profile import Profile
+    status, message = Profile().get_profile_member('ghost')
+    assert not status
+    assert 'not available' in message
+
+
+def test_changing_one_file_attribute_keeps_the_rest(db):
+    """A change carries only what is changing. Demanding the content back just to alter
+    a mode makes every caller re-send a secret it had no reason to touch."""
+    from base.profile import Profile
+    Profile().update_profile('p', _make('p', files=[
+        {'name': 'key', 'content': 'a2VlcG1l', 'path': '/etc/key', 'mode': '644'}]))
+    status, message = Profile().update_profile('p', _payload('p', files=[
+        {'name': 'key', 'mode': '600'}]))
+    assert status, message
+    _, response = Profile().get_profile('p')
+    entry = response['config']['profiles']['p']['files'][0]
+    assert entry['mode'] == '600'
+    assert entry['content'] == 'a2VlcG1l', 'the untouched content did not survive'
+    assert entry['path'] == '/etc/key'
+
+
+def test_a_new_file_still_needs_content_and_path(db):
+    """Tolerating a partial change must not let a file be created empty."""
+    from base.profile import Profile
+    Profile().update_profile('p', _make('p'))
+    status, message = Profile().update_profile('p', _payload('p', files=[
+        {'name': 'brandnew', 'mode': '600'}]))
+    assert not status
+    assert 'not complete' in message

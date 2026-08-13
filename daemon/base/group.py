@@ -37,6 +37,7 @@ from utils.log import Log
 from utils.config import Config
 from utils.queue import Queue
 from utils.helper import Helper
+from base.profile import Profile
 from base.route import Route
 from common.constant import CONSTANT
 
@@ -587,6 +588,9 @@ class Group():
                 # ---- we call the group plugin - maybe someone wants to run something after create/update?
                 Queue().add_task_to_queue(task='run_bulk', param='group:master', 
                                           subsystem='housekeeper', request_id='__group_update__')
+                # profiles are assigned on the group, so a change here changes what every
+                # node in it should hold
+                Profile().queue_group(name)
                 all_nodes_data = Helper().nodes_and_groups()
                 nodes_in_group = []
                 for row in all_nodes_data:

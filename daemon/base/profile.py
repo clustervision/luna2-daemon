@@ -153,8 +153,10 @@ class Profile():
                 return False, 'Invalid request: Supplied columns do not match the requirements'
             if newprofilename:
                 if not profile:
-                    return False, ('Invalid request: newprofilename is not allowed while '
-                                   'creating a new profile')
+                    # the caller asked to rename something. Telling them it cannot be
+                    # created reads as though they had asked for a create, and sends
+                    # them looking in the wrong place for the typo
+                    return False, f'Profile {name} is not available'
                 if Database().get_record(table='profile', where=f'name = "{newprofilename}"'):
                     return False, f'Invalid request: {newprofilename} already present in database'
                 data['name'] = newprofilename

@@ -1128,13 +1128,14 @@ def test_renaming_onto_an_existing_profile_is_refused(db):
     assert db.get_record(table='profile', where='name = "one"'), 'the source was renamed anyway'
 
 
-def test_a_new_profile_cannot_be_created_under_a_rename(db):
-    """Same guard the other entities carry: it would silently create rather than rename."""
+def test_renaming_something_that_does_not_exist_says_so(db):
+    """It must not create, and it must not blame the caller for a create they did not
+    ask for: a rename of a mistyped name should point at the name that is missing."""
     from base.profile import Profile
     status, message = Profile().update_profile('ghost', _payload(
         'ghost', scope='static', service='cron', action='reload', newprofilename='spectre'))
     assert not status
-    assert 'not allowed while creating' in message
+    assert message == 'Profile ghost is not available'
     assert not db.get_record(table='profile'), 'a profile was created by a rename'
 
 
@@ -1179,3 +1180,33 @@ def test_what_a_node_reports_is_names_not_numbers(db, seed):
     status, response = Node().get_node('node001')
     assert status, response
     assert response['config']['node']['node001']['profiles'] == 'ntp'
+
+
+def test_profile_work_queued_on_a_non_master_is_dropped(db, seed):
+    """The journal replays the requests that queue this work, so tasks land on the
+    secondary too - where the mother must not act on them. Left alone they are never
+    claimed, never reaped and never expire: the selection window stops them being
+    picked up, it does not remove them. They would sit in the table for the life of
+    the cluster, one per node per change."""
+    from utils.profile_sync import ProfileSync
+    from utils.queue import Queue
+    _reconcile_db(db)
+    Queue().add_task_to_queue(task='sync_profiles', param=str(seed['nodeid']),
+                              subsystem='profile')
+    assert db.get_record(table='queue', where='subsystem = "profile"')
+    ProfileSync().drop_queued()
+    assert not db.get_record(table='queue', where='subsystem = "profile"'), \
+        'work the controller must not do was left in its queue'
+
+
+def test_dropping_leaves_other_subsystems_alone(db, seed):
+    """It is one queue table shared by every subsystem."""
+    from utils.profile_sync import ProfileSync
+    from utils.queue import Queue
+    _reconcile_db(db)
+    Queue().add_task_to_queue(task='restart', param='dhcp', subsystem='housekeeper')
+    Queue().add_task_to_queue(task='sync_profiles', param=str(seed['nodeid']),
+                              subsystem='profile')
+    ProfileSync().drop_queued()
+    remaining = db.get_record(table='queue')
+    assert [row['subsystem'] for row in remaining] == ['housekeeper']

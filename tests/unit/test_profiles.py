@@ -901,3 +901,201 @@ def test_adding_a_service_later_to_a_file_only_profile_still_works(db):
         {'name': 'f', 'content': 'eA==', 'path': '/etc/f'}]))
     status, message = Profile().update_profile('p', _payload('p', service='cron'))
     assert status, message
+
+
+def _seed_failures(db, nodeid, count):
+    """A node that has failed `count` times running, with its cool-off already expired so
+    only the give-up decision is under test."""
+    from datetime import datetime, timedelta
+    from utils.helper import Helper
+    from utils.profile_sync import ProfileSync
+    ProfileSync().record_outcome(nodeid, False, 'could not reach it')
+    old = (datetime.utcnow() - timedelta(hours=1)).strftime('%Y-%m-%d %H:%M:%S')
+    db.update('monitor', Helper().make_rows({'state': f'failed {count}', 'updated': old}),
+              [{"column": "tableref", "value": 'nodeprofile'},
+               {"column": "tablerefid", "value": nodeid}])
+
+
+def _owes_a_profile(db, seed):
+    """A node with a profile assigned and nothing delivered: behind, by definition."""
+    from base.profile import Profile
+    from utils.helper import Helper
+    _reconcile_db(db)
+    Profile().update_profile('p', _make('p'))
+    db.update('node', Helper().make_rows({'profiles': 'p'}),
+              [{"column": "id", "value": seed['nodeid']}])
+
+
+def test_a_node_that_keeps_failing_is_eventually_given_up_on(db, seed):
+    """Retrying something that has refused for a day costs a worker slot every five
+    minutes forever and buries the nodes that can still be fixed."""
+    from base.profile import Profile, MAX_ATTEMPTS
+    from utils.profile_sync import ProfileSync
+    _owes_a_profile(db, seed)
+    _seed_failures(db, seed['nodeid'], MAX_ATTEMPTS)
+    assert Profile().given_up(seed['nodeid']) == MAX_ATTEMPTS
+    assert ProfileSync().nodes_behind() == [], 'a node we gave up on was queued again'
+
+
+def test_giving_up_takes_a_whole_day_of_attempts(db, seed):
+    """One attempt short it is an ordinary failure and must keep being retried."""
+    from base.profile import Profile, MAX_ATTEMPTS
+    from utils.profile_sync import ProfileSync
+    _owes_a_profile(db, seed)
+    _seed_failures(db, seed['nodeid'], MAX_ATTEMPTS - 1)
+    assert not Profile().given_up(seed['nodeid'])
+    assert [name for _, name in ProfileSync().nodes_behind()] == ['node001'], \
+        'a node still inside the day was written off early'
+
+
+def test_a_day_is_what_the_retry_interval_makes_it(db):
+    """The count is only a stand-in for time. If the retry interval changes and the count
+    does not follow it, the day quietly becomes a week."""
+    from base.profile import GIVE_UP_HOURS, MAX_ATTEMPTS, RETRY_SECONDS
+    assert MAX_ATTEMPTS * RETRY_SECONDS == GIVE_UP_HOURS * 3600
+
+
+def test_each_failure_counts_and_a_success_forgets_them_all(db, seed):
+    from base.profile import Profile
+    from utils.profile_sync import ProfileSync
+    _reconcile_db(db)
+    for expected in (1, 2, 3):
+        ProfileSync().record_outcome(seed['nodeid'], False, 'could not reach it')
+        assert Profile().failed_attempts(seed['nodeid']) == expected
+    ProfileSync().record_outcome(seed['nodeid'], True, 'delivered')
+    assert Profile().failed_attempts(seed['nodeid']) == 0, \
+        'the count outlived the failures it was counting'
+
+
+def test_changing_a_profile_gives_a_given_up_node_another_chance(db, seed):
+    """Otherwise a node written off yesterday would ignore everything asked of it today,
+    and the only way back would be a reboot."""
+    from base.profile import Profile, MAX_ATTEMPTS
+    from utils.profile_sync import ProfileSync
+    _owes_a_profile(db, seed)
+    # written off, and inside a fresh cool-off: clearing only one of the two would leave
+    # it sitting there just as quietly
+    _seed_failures(db, seed['nodeid'], MAX_ATTEMPTS)
+    ProfileSync().record_outcome(seed['nodeid'], False, 'still cannot reach it')
+    Profile().queue_node(nodeid=seed['nodeid'])
+    assert not Profile().given_up(seed['nodeid'])
+    assert [name for _, name in ProfileSync().nodes_behind()] == ['node001'], \
+        'the node stayed written off after somebody changed what it should have'
+
+
+def test_a_given_up_node_is_not_delivered_to(db, seed):
+    """A task queued before we gave up can still be claimed afterwards, and it must not
+    turn into a connection attempt."""
+    from base.profile import MAX_ATTEMPTS
+    from utils.profile_sync import ProfileSync
+    _owes_a_profile(db, seed)
+    _seed_failures(db, seed['nodeid'], MAX_ATTEMPTS)
+    status, message = ProfileSync().deliver_node(seed['nodeid'])
+    assert status is None, 'giving up must not read as a fresh failure'
+    assert 'given up' in message
+
+
+def test_a_given_up_node_says_so_and_says_how_often_it_tried(db, seed):
+    """Silence would be the worst outcome of the whole feature: a node that is not being
+    chased and does not look any different from one that is."""
+    from base.profile import Profile, MAX_ATTEMPTS
+    _status_db(db)
+    _owes_a_profile(db, seed)
+    _seed_failures(db, seed['nodeid'], MAX_ATTEMPTS)
+    _, response = Profile().status('node001')
+    entry = response['config']['profiles']['status']['node001']
+    assert entry['state'] == 'given up'
+    assert entry['attempts'] == MAX_ATTEMPTS
+    assert 'could not reach it' in entry['detail']
+
+
+def test_a_pending_retry_delivers_the_profile_as_it_is_now(db, seed):
+    """A retry queued yesterday for a node that was down must carry today's profile. The
+    task holds an id and nothing else, so the payload is built at delivery time - if it
+    ever carried the content instead, a node coming back would be handed the very state
+    the operator has since changed."""
+    from base.profile import Profile
+    from utils.profile_sync import ProfileSync
+    from utils.helper import Helper
+    _reconcile_db(db)
+    Profile().update_profile('p', _make('p'))
+    db.update('node', Helper().make_rows({'profiles': 'p'}),
+              [{"column": "id", "value": seed['nodeid']}])
+    Profile().queue_node(nodeid=seed['nodeid'])
+    stale = Profile().node_digest('node001')
+
+    Profile().update_profile('p', _payload('p', files=[
+        {'name': 'f', 'content': 'Y2hhbmdlZAo=', 'path': '/etc/f'}]))
+    bundle, digest = ProfileSync().build_bundle('node001')
+    assert digest != stale, 'the delivery would have carried the superseded profile'
+    assert digest == Profile().node_digest('node001')
+    import json, os, shutil
+    with open(os.path.join(bundle, 'payload.json'), encoding='utf-8') as handle:
+        payload = json.load(handle)
+    shutil.rmtree(bundle, ignore_errors=True)
+    contents = [entry['content'] for profile in payload['profiles']
+                for entry in profile['files']]
+    import base64
+    assert any(b'changed' in base64.b64decode(item) for item in contents)
+
+
+def test_deleting_a_node_takes_its_delivery_record_with_it(db, seed):
+    """Nothing will ever read it again, and it would refer to a node that is gone for the
+    life of the cluster."""
+    from base.profile import Profile
+    from utils.profile_sync import ProfileSync
+    _reconcile_db(db)
+    ProfileSync().record_outcome(seed['nodeid'], False, 'could not reach it')
+    Profile().clear_outcome(seed['nodeid'])
+    assert not db.get_record(table='monitor',
+                             where=f'tablerefid = "{seed["nodeid"]}" AND '
+                                   'tableref = "nodeprofile"')
+
+
+def test_removing_the_last_file_of_a_service_less_profile_is_refused(db):
+    """It would leave a profile that writes nothing and acts on nothing - the very state
+    the create path refuses - still sitting in the assignment lists looking like
+    configuration. The invariant has to hold from both directions."""
+    from base.profile import Profile
+    Profile().update_profile('lonely', _payload('lonely', scope='static', files=[
+        {'name': 'only', 'content': 'eA==', 'path': '/etc/only'}]))
+    status, message = Profile().delete_profile_file('lonely', 'only')
+    assert not status
+    assert 'last file' in message
+    assert db.get_record(table='profilefile', where='name = "only"'), 'it was deleted anyway'
+
+
+def test_the_last_file_can_go_when_a_service_remains(db):
+    """With a service to act on, a profile with no files is still a profile."""
+    from base.profile import Profile
+    Profile().update_profile('svc', _payload('svc', scope='static', service='cron',
+                                             action='reload', files=[
+        {'name': 'only', 'content': 'eA==', 'path': '/etc/only'}]))
+    status, message = Profile().delete_profile_file('svc', 'only')
+    assert status, message
+    assert not db.get_record(table='profilefile', where='name = "only"')
+
+
+def test_a_service_can_be_cleared_while_files_remain(db):
+    """Clearing the service is a legitimate change - it just cannot be the last thing the
+    profile had."""
+    from base.profile import Profile
+    Profile().update_profile('both', _payload('both', scope='static', service='cron',
+                                              action='reload', files=[
+        {'name': 'f', 'content': 'eA==', 'path': '/etc/f'}]))
+    status, message = Profile().update_profile('both', _payload('both', service='', action=''))
+    assert status, message
+    row = db.get_record(table='profile', where='name = "both"')[0]
+    assert not row['service'] and not row['action']
+
+
+def test_clearing_the_service_of_a_file_less_profile_is_refused(db):
+    """Nothing would be left. Same invariant, reached from the other side."""
+    from base.profile import Profile
+    Profile().update_profile('svconly', _payload('svconly', scope='static',
+                                                 service='cron', action='reload'))
+    status, message = Profile().update_profile('svconly', _payload('svconly', service=''))
+    assert not status
+    assert 'needs either a service' in message
+    assert db.get_record(table='profile', where='name = "svconly"')[0]['service'] == 'cron', \
+        'the service was cleared anyway'

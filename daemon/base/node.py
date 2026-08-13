@@ -1226,6 +1226,7 @@ class Node():
                     Database().delete_row('ipaddress', [{"column": "id", "value": node_ip['id']}])
             Database().delete_row('nodeinterface', [{"column": "nodeid", "value": nodeid}])
             Database().delete_row('nodesecrets', [{"column": "nodeid", "value": nodeid}])
+            Profile().clear_outcome(nodeid)
             Database().delete_row('rackinventory', [{"column": "tablerefid", "value": nodeid},
                                                     {"column": "tableref", "value": "node"}])
             Database().delete_row('nodeinventory', [{"column": "nodeid", "value": nodeid}])

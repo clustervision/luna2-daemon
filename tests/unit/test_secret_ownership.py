@@ -376,3 +376,47 @@ def test_installer_chowns_with_the_resolved_owner():
     assert "get_json_exact /lunatmp/node.secrets.json 'mode'" in body
     assert 'chown' in body and 'chroot' in body
     assert 'chmod "${mode:-600}"' in body
+
+
+def _post_group_secret(name, secret):
+    from base.secret import Secret
+    payload = {'config': {'secrets': {'group': {name: [secret]}}}}
+    return Secret().update_group_secret(name, secret['name'], payload)
+
+
+@pytest.mark.parametrize('scope', ['node', 'group'])
+def test_a_secret_can_be_changed_in_part(db, seed, scope):
+    """Changing the mode must not mean resupplying the content. The three scopes have to
+    agree on this: the cluster one already accepts a partial change, and a node or group
+    secret that demands the whole secret back leaves the operator retyping a key to
+    correct a permission - or, worse, sending something wrong."""
+    post = _post_node_secret if scope == 'node' else _post_group_secret
+    owner = 'node001' if scope == 'node' else 'compute'
+    status, message = post(owner, {'name': 'munge', 'content': 'a-key',
+                                   'path': '/etc/munge/munge.key',
+                                   'owner': 'munge:munge', 'mode': '400'})
+    assert status, message
+
+    status, message = post(owner, {'name': 'munge', 'mode': '440'})
+    assert status, message
+    row = db.get_record(table=f'{scope}secrets', where='name = "munge"')[0]
+    assert row['mode'] == '440'
+    assert row['owner'] == 'munge:munge', 'an attribute nobody mentioned was cleared'
+
+    from utils.helper import Helper
+    assert Helper().decrypt_string(row['content']) == 'a-key', \
+        'the content was lost by a change that never mentioned it'
+    assert row['path'] == '/etc/munge/munge.key'
+
+
+@pytest.mark.parametrize('scope', ['node', 'group'])
+def test_creating_a_secret_still_needs_its_content(db, seed, scope):
+    """Tolerating a missing content on update must not make it optional on create: there
+    is no existing value to keep, and a secret with no content is not a secret."""
+    post = _post_node_secret if scope == 'node' else _post_group_secret
+    owner = 'node001' if scope == 'node' else 'compute'
+    status, message = post(owner, {'name': 'brandnew', 'path': '/etc/brandnew'})
+    assert not status
+    assert 'not complete' in message
+    assert not db.get_record(table=f'{scope}secrets', where='name = "brandnew"'), \
+        'a contentless secret was created anyway'

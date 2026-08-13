@@ -398,6 +398,12 @@ class Group():
                             item_data = item_data.strip()
                             if item_data+'.py' not in boot_plugins['boot'][item]:
                                 return False, f'Invalid request: plugin {item_data} does not exist'
+            if 'profiles' in data and data['profiles']:
+                known_profiles = [prof['name'] for prof in Database().get_record(table='profile') or []]
+                for item_data in data['profiles'].replace(' ',',').split(','):
+                    item_data = item_data.strip()
+                    if item_data and item_data not in known_profiles:
+                        return False, f'Invalid request: profile {item_data} does not exist'
             for item in ['provision_method','provision_fallback']:
                 if item in data and data[item]:
                     if data[item]+'.py' not in boot_plugins['boot']['provision']:
@@ -478,6 +484,13 @@ class Group():
                     data['roles'] = temp.replace(',,',',')
                 else:
                     data['roles'] = None
+            if 'profiles' in data:
+                if len(data['profiles']) > 0:
+                    temp = data['profiles']
+                    temp = temp.replace(' ',',')
+                    data['profiles'] = temp.replace(',,',',')
+                else:
+                    data['profiles'] = None
             if 'scripts' in data:
                 if len(data['scripts']) > 0:
                     temp = data['scripts']

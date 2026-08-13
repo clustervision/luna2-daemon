@@ -45,6 +45,7 @@ from utils.helper import Helper
 from utils.service import Service
 from utils.config import Config
 from base.node import Node
+from base.profile import Profile
 from base.route import Route
 from utils.journal import Journal
 from utils.ha import HA
@@ -1516,6 +1517,9 @@ class Boot():
             data['nodehostname'] = node_details['hostname']
             data['roles']        = node_details['roles'] or ""
             data['scripts']      = node_details['scripts'] or ""
+            # profiles stack: the node applies its group's profiles plus its own,
+            # additively - not the inheritance-resolved single value roles use
+            data['profiles'] = Profile().merged_profiles(data['nodeid'])
             # install_mode selects which installer this node gets, and it is decided
             # here rather than inside a template: 'legacy' keeps the classic installer,
             # every other mode is an advanced-partitioner mode and gets the lpart

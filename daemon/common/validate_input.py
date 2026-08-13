@@ -64,6 +64,8 @@ REG_EXP = {
     'intandnone': { 'regexp': r'^[0-9]*$', 'error': 'integers or empty only' },
     'fileowner': { 'regexp': r'^(([A-Za-z_][A-Za-z0-9_.-]*|[0-9]+)(:([A-Za-z_][A-Za-z0-9_.-]*|[0-9]+))?|)$', 'error': 'user or user:group, names or numeric ids, or empty' },
     'filemode': { 'regexp': r'^([0-7]{3,4}|)$', 'error': '3 or 4 octal digits, or empty' },
+    'serviceaction': { 'regexp': r'^(restart|stop|reload|start|none|)$', 'error': 'restart, stop, reload, start or none' },
+    'profilescope': { 'regexp': r'^(static|dynamic|)$', 'error': 'static or dynamic' },
     'anything': { 'regexp': r'', 'error': 'anything' }
 }
 RESERVED = {
@@ -99,6 +101,10 @@ MATCH = {
     'newsecretname': 'name',
     'owner': 'fileowner',
     'mode': 'filemode',
+    'profiles': 'loosecsv',
+    'newprofilename': 'name',
+    'action': 'serviceaction',
+    'scope': 'profilescope',
     'object_type': 'strictname',
     'file': 'artefactfile',
     'osimagetag': 'nameandclear',

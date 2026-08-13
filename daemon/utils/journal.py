@@ -69,6 +69,7 @@ from base.network import Network
 from base.route import Route
 from base.dns import DNS
 from base.secret import Secret
+from base.profile import Profile
 from base.osuser import OsUser
 from base.monitor import Monitor
 from base.cloud import Cloud

@@ -378,3 +378,51 @@ def test_a_profile_with_no_files_still_acts_on_its_service(tmp_path):
     ]}
     code, out = _run(tmp_path, changed)
     assert 'systemctl reload sshd' in out, 'a changed service-only profile did nothing'
+
+
+def test_directories_we_made_are_given_back(tmp_path):
+    """A profile file often lands somewhere that does not exist yet. Removing the file
+    and leaving the tree behind is litter, and on a cluster with any churn it
+    accumulates - a cleanup that leaves something behind is not a cleanup."""
+    target = tmp_path / 'etc' / 'newdir' / 'deeper' / 'thing.conf'
+    (tmp_path / 'etc').mkdir()
+    _run(tmp_path, _payload(_file(target, 'x')))
+    assert target.exists()
+    code, out = _run(tmp_path, {'node': 'n', 'profiles': [], 'frozen': [], 'digest': 'g'})
+    assert code == 0, out
+    assert not (tmp_path / 'etc' / 'newdir').exists(), 'the tree we created was left behind'
+    assert (tmp_path / 'etc').exists(), 'a directory that was already there is not ours'
+
+
+def test_a_directory_someone_else_uses_is_left_alone(tmp_path):
+    """Only the ones we made, and only while empty."""
+    shared = tmp_path / 'etc' / 'shared'
+    shared.mkdir(parents=True)
+    target = shared / 'ours.conf'
+    _run(tmp_path, _payload(_file(target, 'x')))
+    (shared / 'someone-elses.conf').write_text('not ours')
+    code, out = _run(tmp_path, {'node': 'n', 'profiles': [], 'frozen': [], 'digest': 'g'})
+    assert code == 0, out
+    assert shared.exists() and (shared / 'someone-elses.conf').exists()
+
+
+def test_a_path_with_spaces_survives(tmp_path):
+    """The applier is python and handles it; the point is that nothing downstream
+    re-splits the path on whitespace."""
+    target = tmp_path / 'etc' / 'luna demo' / 'nested file.conf'
+    code, out = _run(tmp_path, _payload(_file(target, 'spaced')))
+    assert code == 0, out
+    assert target.read_text() == 'spaced'
+
+
+def test_binary_content_survives_byte_for_byte(tmp_path):
+    """The reason content travels base64 and the record is a manifest rather than a
+    marker comment: a keytab cannot carry a header, and must not be mangled."""
+    import base64 as _b64
+    raw = bytes(range(256))
+    target = tmp_path / 'etc' / 'thing.key'
+    entry = {'name': 'k', 'path': str(target),
+             'content': _b64.b64encode(raw).decode(), 'mode': '400'}
+    code, out = _run(tmp_path, _payload(entry))
+    assert code == 0, out
+    assert target.read_bytes() == raw

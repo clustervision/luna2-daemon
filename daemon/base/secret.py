@@ -53,7 +53,8 @@ class Secret():
         status=False
         nodesecrets = Database().get_record(table='nodesecrets')
         groupsecrets = Database().get_record(table='groupsecrets')
-        if nodesecrets or groupsecrets:
+        clustersecrets = Database().get_record(table='clustersecrets')
+        if nodesecrets or groupsecrets or clustersecrets:
             response = {'config': {'secrets': {} }}
             status=True
         else:
@@ -79,6 +80,13 @@ class Secret():
                 del group['id']
                 group['content'] = Helper().decrypt_string(group['content'])
                 response['config']['secrets']['group'][groupname].append(group)
+        if clustersecrets:
+            response['config']['secrets']['cluster'] = []
+            for secret in clustersecrets:
+                del secret['clusterid']
+                del secret['id']
+                secret['content'] = Helper().decrypt_string(secret['content'])
+                response['config']['secrets']['cluster'].append(secret)
         return status, response
 
 
@@ -95,13 +103,27 @@ class Secret():
             nodesecrets = Database().get_record(table='nodesecrets', where=where)
             where =  f'groupid = "{groupid}"'
             groupsecrets = Database().get_record(table='groupsecrets', where=where)
-            if nodesecrets or groupsecrets:
+            clustersecrets = Database().get_record(table='clustersecrets')
+            if nodesecrets or groupsecrets or clustersecrets:
                 response = {'config': {'secrets': {} }}
                 status=True
             else:
                 self.logger.warning(f'no secrets available for node {name}')
                 response = f'No secrets available for node {name}'
                 status=False
+            if clustersecrets:
+                # secrets stack: cluster secrets apply to every node, on top of - not
+                # instead of - the group and node ones. this section comes first so a
+                # node or group secret sharing a path is written later and wins.
+                response['config']['secrets']['cluster'] = []
+                for secret in clustersecrets:
+                    del secret['clusterid']
+                    del secret['id']
+                    secret['content'] = Helper().decrypt_string(secret['content'])
+                    secret['owner'] = secret['owner'] or 'root:root'
+                    secret['mode'] = secret['mode'] or '600'
+                    secret['resolved_owner'] = Helper().resolve_owner(secret['owner'])
+                    response['config']['secrets']['cluster'].append(secret)
             if nodesecrets:
                 response['config']['secrets']['node'] = {}
                 for node in nodesecrets:
@@ -111,6 +133,13 @@ class Secret():
                     del node['nodeid']
                     del node['id']
                     node['content'] = Helper().decrypt_string(node['content'])
+                    # the installer's parser cannot carry empty values, so unset
+                    # attributes travel as the defaults the installer applies anyway.
+                    # resolved_owner is numeric where possible: the installer's chroot
+                    # cannot resolve directory (ldap) users, the controller can.
+                    node['owner'] = node['owner'] or 'root:root'
+                    node['mode'] = node['mode'] or '600'
+                    node['resolved_owner'] = Helper().resolve_owner(node['owner'])
                     response['config']['secrets']['node'][nodename].append(node)
             if groupsecrets:
                 response['config']['secrets']['group'] = {}
@@ -121,6 +150,9 @@ class Secret():
                     del group['groupid']
                     del group['id']
                     group['content'] = Helper().decrypt_string(group['content'])
+                    group['owner'] = group['owner'] or 'root:root'
+                    group['mode'] = group['mode'] or '600'
+                    group['resolved_owner'] = Helper().resolve_owner(group['owner'])
                     response['config']['secrets']['group'][groupname].append(group)
         else:
             self.logger.error(f'Node {name} is not available.')
@@ -137,6 +169,7 @@ class Secret():
         response="Internal error"
         data = {}
         create, update = False, False
+        unresolvable = []
         if request_data:
             data = request_data['config']['secrets']['node'][name]
             node = Database().get_record(table='node', where=f'name = "{name}"')
@@ -148,6 +181,8 @@ class Secret():
                             status=False
                             return status, 'Invalid request: secret information not complete'
                         secret_name = secret['name']
+                        if secret.get('owner') and not Helper().check_owner(secret['owner']):
+                            unresolvable.append(f"{secret_name}: {secret['owner']}")
                         where = f'nodeid = "{nodeid}" AND name = "{secret_name}"'
                         secret_data = Database().get_record(table='nodesecrets', where=where)
                         if secret_data:
@@ -189,6 +224,8 @@ class Secret():
             elif create is False and update is True:
                 response = f'Node {name} Secret updated'
                 status=True
+            if status is True and unresolvable:
+                response += '. Warning: owner not currently resolvable (a numeric uid:gid works without a directory): ' + ', '.join(unresolvable)
         else:
             response = 'Invalid request: Did not receive data'
             status=False
@@ -229,6 +266,7 @@ class Secret():
         response="Internal error"
         data = {}
         result=False
+        warning = ''
         if request_data:
             data = request_data['config']['secrets']['node'][name]
             node = Database().get_record(table='node', where=f'name = "{name}"')
@@ -238,6 +276,8 @@ class Secret():
                     node_secret_columns = Database().get_columns('nodesecrets')
                     column_check = Helper().compare_list(data[0], node_secret_columns)
                     secret_name = data[0]['name']
+                    if data[0].get('owner') and not Helper().check_owner(data[0]['owner']):
+                        warning = f". Warning: owner {data[0]['owner']} is not currently resolvable (a numeric uid:gid works without a directory)"
                     where = f'nodeid = "{nodeid}" AND name = "{secret_name}"'
                     secret_data = Database().get_record(table='nodesecrets', where=where)
                     if column_check:
@@ -276,6 +316,8 @@ class Secret():
         else:
             response = 'Invalid request: Did not receive data'
             status=False
+        if status is True and warning:
+            response += warning
         return status, response
 
 
@@ -310,7 +352,16 @@ class Secret():
                                 node_secret_columns = Database().get_columns('nodesecrets')
                                 column_check = Helper().compare_list(data[0], node_secret_columns)
                                 if column_check:
-                                    data[0]['content'] = Helper().encrypt_string(data[0]['content'])
+                                    # a clone copies what the caller did not override;
+                                    # anything else produces a copy that shares only
+                                    # its name with the secret it came from
+                                    if data[0].get('content'):
+                                        data[0]['content'] = Helper().encrypt_string(data[0]['content'])
+                                    else:
+                                        data[0]['content'] = secret_data[0]['content']
+                                    for attribute in ['path', 'owner', 'mode']:
+                                        if not data[0].get(attribute):
+                                            data[0][attribute] = secret_data[0][attribute]
                                     row = Helper().make_rows(data[0])
                                     Database().insert('nodesecrets', row)
                                     response = f'Node {name} Secret {secret} '
@@ -395,6 +446,7 @@ class Secret():
         response="Internal error"
         data = {}
         result=False
+        unresolvable = []
         if request_data:
             data = request_data['config']['secrets']['group'][name]
             group = Database().get_record(table='group', where=f'name = "{name}"')
@@ -406,6 +458,8 @@ class Secret():
                             status=False
                             return status, 'Invalid request: secret information not complete'
                         secret_name = secret['name']
+                        if secret.get('owner') and not Helper().check_owner(secret['owner']):
+                            unresolvable.append(f"{secret_name}: {secret['owner']}")
                         where = f'groupid = "{groupid}" AND name = "{secret_name}"'
                         secret_data = Database().get_record(table='groupsecrets', where=where)
                         if secret_data:
@@ -437,6 +491,8 @@ class Secret():
                             status=False
                             response = f'Internal error: Group {name} secret {secret_name} create/update failed: {result}'
                             self.logger.error(response)
+                    if status is True and unresolvable:
+                        response += '. Warning: owner not currently resolvable (a numeric uid:gid works without a directory): ' + ', '.join(unresolvable)
                 else:
                     response = 'Invalid request: secret information not complete'
                     status=False
@@ -482,6 +538,7 @@ class Secret():
         status=False
         response="Internal error"
         data = {}
+        warning = ''
         if request_data:
             data = request_data['config']['secrets']['group'][name]
             group = Database().get_record(table='group', where=f'name = "{name}"')
@@ -491,6 +548,8 @@ class Secret():
                     group_secret_columns = Database().get_columns('groupsecrets')
                     column_check = Helper().compare_list(data[0], group_secret_columns)
                     secret_name = data[0]['name']
+                    if data[0].get('owner') and not Helper().check_owner(data[0]['owner']):
+                        warning = f". Warning: owner {data[0]['owner']} is not currently resolvable (a numeric uid:gid works without a directory)"
                     where = f'groupid = "{groupid}" AND name = "{secret_name}"'
                     secret_data = Database().get_record(table='groupsecrets', where=where)
                     if column_check:
@@ -531,6 +590,8 @@ class Secret():
         else:
             response = 'Invalid request: Did not received data'
             status=False
+        if status is True and warning:
+            response += warning
         return status, response
 
 
@@ -566,7 +627,16 @@ class Secret():
                                 group_secret_columns = Database().get_columns('groupsecrets')
                                 column_check = Helper().compare_list(data[0], group_secret_columns)
                                 if column_check:
-                                    data[0]['content'] = Helper().encrypt_string(data[0]['content'])
+                                    # a clone copies what the caller did not override;
+                                    # anything else produces a copy that shares only
+                                    # its name with the secret it came from
+                                    if data[0].get('content'):
+                                        data[0]['content'] = Helper().encrypt_string(data[0]['content'])
+                                    else:
+                                        data[0]['content'] = secret_data[0]['content']
+                                    for attribute in ['path', 'owner', 'mode']:
+                                        if not data[0].get(attribute):
+                                            data[0][attribute] = secret_data[0][attribute]
                                     row = Helper().make_rows(data[0])
                                     Database().insert('groupsecrets', row)
                                     response = f'Group {name} Secret {secret} '
@@ -614,5 +684,269 @@ class Secret():
                 status=False
         else:
             response = f'Group {name} is not available'
+            status=False
+        return status, response
+
+
+    def get_cluster_secrets(self):
+        """
+        This method will return all secrets of the cluster in detailed format.
+        Cluster secrets apply to every node, stacked on top of group and node secrets.
+        """
+        status=False
+        clustersecrets = Database().get_record(table='clustersecrets')
+        if clustersecrets:
+            response = {'config': {'secrets': {'cluster': [] } } }
+            for secret in clustersecrets:
+                del secret['clusterid']
+                del secret['id']
+                secret['content'] = Helper().decrypt_string(secret['content'])
+                response['config']['secrets']['cluster'].append(secret)
+            status=True
+        else:
+            self.logger.warning('no cluster secrets available')
+            response = 'No cluster secrets available'
+            status=False
+        return status, response
+
+
+    def update_cluster_secrets(self, request_data=None):
+        """
+        This method will create or update all secrets for the cluster.
+        """
+        status=False
+        response="Internal error"
+        data = {}
+        create, update = False, False
+        unresolvable = []
+        if request_data:
+            data = request_data['config']['secrets']['cluster']
+            cluster = Database().get_record(table='cluster')
+            if cluster:
+                clusterid = cluster[0]['id']
+                if data:
+                    for secret in data:
+                        if ('name' not in secret.keys()) or ('content' not in secret.keys()):
+                            status=False
+                            return status, 'Invalid request: secret information not complete'
+                        secret_name = secret['name']
+                        if secret.get('owner') and not Helper().check_owner(secret['owner']):
+                            unresolvable.append(f"{secret_name}: {secret['owner']}")
+                        where = f'clusterid = "{clusterid}" AND name = "{secret_name}"'
+                        secret_data = Database().get_record(table='clustersecrets', where=where)
+                        if secret_data:
+                            cluster_secret_columns = Database().get_columns('clustersecrets')
+                            column_check = Helper().compare_list(
+                                secret_data[0],
+                                cluster_secret_columns
+                            )
+                            if column_check:
+                                secret_id = secret_data[0]['id']
+                                secret['content'] = Helper().encrypt_string(secret['content'])
+                                where = [
+                                    {"column": "id", "value": secret_id},
+                                    {"column": "clusterid", "value": clusterid},
+                                    {"column": "name", "value": secret_name}
+                                    ]
+                                row = Helper().make_rows(secret)
+                                Database().update('clustersecrets', row, where)
+                                update = True
+                        else:
+                            secret['clusterid'] = clusterid
+                            secret['content'] = Helper().encrypt_string(secret['content'])
+                            row = Helper().make_rows(secret)
+                            Database().insert('clustersecrets', row)
+                            create = True
+                else:
+                    self.logger.error('not provided at least one secret.')
+                    response = 'Invalid request: secret information not complete'
+                    status=False
+            else:
+                response = 'Cluster is not available'
+                status=False
+            if create is True and update is True:
+                response = 'Cluster Secrets created & updated'
+                status=True
+            elif create is True and update is False:
+                response = 'Cluster Secret created'
+                status=True
+            elif create is False and update is True:
+                response = 'Cluster Secret updated'
+                status=True
+            if status is True and unresolvable:
+                response += '. Warning: owner not currently resolvable (a numeric uid:gid works without a directory): ' + ', '.join(unresolvable)
+        else:
+            response = 'Invalid request: Did not receive data'
+            status=False
+        return status, response
+
+
+    def get_cluster_secret(self, secret=None):
+        """
+        This method will return a requested secret of the cluster in detailed format.
+        """
+        status=False
+        where = f'name = "{secret}"'
+        secret_data = Database().get_record(table='clustersecrets', where=where)
+        if secret_data:
+            response = {'config': {'secrets': {'cluster': [] } } }
+            status=True
+            del secret_data[0]['clusterid']
+            del secret_data[0]['id']
+            secret_data[0]['content'] = Helper().decrypt_string(secret_data[0]['content'])
+            response['config']['secrets']['cluster'] = secret_data
+        else:
+            response = f'Secret {secret} is unavailable for the cluster'
+            status=False
+        return status, response
+
+
+    def update_cluster_secret(self, secret=None, request_data=None):
+        """
+        This method will create or update a cluster secret.
+        """
+        status=False
+        response="Internal error"
+        data = {}
+        result=False
+        warning = ''
+        if request_data:
+            data = request_data['config']['secrets']['cluster']
+            cluster = Database().get_record(table='cluster')
+            if cluster:
+                clusterid = cluster[0]['id']
+                if data:
+                    cluster_secret_columns = Database().get_columns('clustersecrets')
+                    column_check = Helper().compare_list(data[0], cluster_secret_columns)
+                    secret_name = data[0]['name']
+                    if data[0].get('owner') and not Helper().check_owner(data[0]['owner']):
+                        warning = f". Warning: owner {data[0]['owner']} is not currently resolvable (a numeric uid:gid works without a directory)"
+                    where = f'clusterid = "{clusterid}" AND name = "{secret_name}"'
+                    secret_data = Database().get_record(table='clustersecrets', where=where)
+                    if column_check:
+                        if secret_data:
+                            secret_id = secret_data[0]['id']
+                            # a change may carry only the attributes being changed;
+                            # what is not sent keeps the value it already has
+                            if 'content' in data[0]:
+                                data[0]['content'] = Helper().encrypt_string(data[0]['content'])
+                            where = [
+                                {"column": "id", "value": secret_id},
+                                {"column": "clusterid", "value": clusterid},
+                                {"column": "name", "value": secret_name}
+                                ]
+                            row = Helper().make_rows(data[0])
+                            result=Database().update('clustersecrets', row, where)
+                            response = f'Cluster secret {secret} updated'
+                            status=True
+                        elif 'content' not in data[0]:
+                            return False, 'Invalid request: secret information not complete'
+                        else:
+                            data[0]['clusterid'] = clusterid
+                            data[0]['content'] = Helper().encrypt_string(data[0]['content'])
+                            row = Helper().make_rows(data[0])
+                            result=Database().insert('clustersecrets', row)
+                            response = f'Cluster secret {secret} created'
+                            status=True
+                        if not result:
+                            response = f'Internal error: Cluster secret {secret} create/update failed: {result}'
+                            self.logger.error(response)
+                            status=False
+                    else:
+                        response = 'Invalid request: Supplied columns do not match the requirements'
+                        status=False
+                else:
+                    response = 'Invalid request: At least one secret needs to be provided'
+                    status=False
+            else:
+                response = 'Cluster is not available'
+                status=False
+        else:
+            response = 'Invalid request: Did not receive data'
+            status=False
+        if status is True and warning:
+            response += warning
+        return status, response
+
+
+    def clone_cluster_secret(self, secret=None, request_data=None):
+        """
+        This method will clone a requested cluster secret.
+        """
+        status=False
+        response="Internal error"
+        data = {}
+        if request_data:
+            data = request_data['config']['secrets']['cluster']
+            cluster = Database().get_record(table='cluster')
+            if cluster:
+                clusterid = cluster[0]['id']
+                if data:
+                    secret_name = data[0]['name']
+                    where = f'clusterid = "{clusterid}" AND name = "{secret_name}"'
+                    secret_data = Database().get_record(table='clustersecrets', where=where)
+                    if secret_data:
+                        if 'newsecretname' in data[0]:
+                            newsecretname = data[0]['newsecretname']
+                            del data[0]['newsecretname']
+                            data[0]['clusterid'] = clusterid
+                            data[0]['name'] = newsecretname
+                            where = f'clusterid = "{clusterid}" AND name = "{newsecretname}"'
+                            new_secret_data = Database().get_record(table='clustersecrets', where=where)
+                            if new_secret_data:
+                                response = f'Invalid request: Secret {newsecretname} already present'
+                                status=False
+                            else:
+                                cluster_secret_columns = Database().get_columns('clustersecrets')
+                                column_check = Helper().compare_list(data[0], cluster_secret_columns)
+                                if column_check:
+                                    # a clone copies what the caller did not override;
+                                    # anything else produces a copy that shares only
+                                    # its name with the secret it came from
+                                    if data[0].get('content'):
+                                        data[0]['content'] = Helper().encrypt_string(data[0]['content'])
+                                    else:
+                                        data[0]['content'] = secret_data[0]['content']
+                                    for attribute in ['path', 'owner', 'mode']:
+                                        if not data[0].get(attribute):
+                                            data[0][attribute] = secret_data[0][attribute]
+                                    row = Helper().make_rows(data[0])
+                                    Database().insert('clustersecrets', row)
+                                    response = f'Cluster Secret {secret} '
+                                    response += f'Cloned to {newsecretname}.'
+                                    status=True
+                        else:
+                            response = 'Invalid request: New secret name not provided'
+                            status=False
+                    else:
+                        response = f'Cluster secret {secret} is unavailable'
+                        status=False
+                else:
+                    response = 'Invalid request: At least one secret needs to be provided'
+                    status=False
+            else:
+                response = 'Cluster is not available'
+                status=False
+        else:
+            response = 'Invalid request: Did not receive data'
+            status=False
+        return status, response
+
+
+    def delete_cluster_secret(self, secret=None):
+        """
+        This method will delete a requested secret of the cluster.
+        """
+        status=False
+        response="Internal error"
+        where = f'name = "{secret}"'
+        db_secret = Database().get_record(table='clustersecrets', where=where)
+        if db_secret:
+            where = [{"column": "name", "value": secret}]
+            Database().delete_row('clustersecrets', where)
+            response = f'Secret {secret} deleted from the cluster'
+            status=True
+        else:
+            response = f'Secret {secret} is unavailable for the cluster'
             status=False
         return status, response

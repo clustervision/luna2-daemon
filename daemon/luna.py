@@ -53,6 +53,7 @@ from routes.auth import auth_blueprint
 from routes.boot import boot_blueprint
 from routes.boot_roles import roles_blueprint
 from routes.boot_scripts import scripts_blueprint
+from routes.boot_profiles import boot_profiles_blueprint
 from routes.config_bmcsetup import bmcsetup_blueprint
 from routes.config_cluster import cluster_blueprint
 from routes.config_dns import dns_blueprint
@@ -67,6 +68,7 @@ from routes.config_hash import hash_blueprint
 from routes.config_osuser import osuser_blueprint
 from routes.config_otherdev import otherdev_blueprint
 from routes.config_secrets import secrets_blueprint
+from routes.config_profiles import profiles_blueprint
 from routes.config_status import status_blueprint
 from routes.config_switch import switch_blueprint
 from routes.config_cloud import cloud_blueprint
@@ -328,6 +330,7 @@ daemon.register_blueprint(auth_blueprint)
 daemon.register_blueprint(boot_blueprint)
 daemon.register_blueprint(roles_blueprint)
 daemon.register_blueprint(scripts_blueprint)
+daemon.register_blueprint(boot_profiles_blueprint)
 daemon.register_blueprint(bmcsetup_blueprint)
 daemon.register_blueprint(hash_blueprint)
 daemon.register_blueprint(cluster_blueprint)
@@ -342,6 +345,7 @@ daemon.register_blueprint(osimage_blueprint)
 daemon.register_blueprint(osuser_blueprint)
 daemon.register_blueprint(otherdev_blueprint)
 daemon.register_blueprint(secrets_blueprint)
+daemon.register_blueprint(profiles_blueprint)
 daemon.register_blueprint(status_blueprint)
 daemon.register_blueprint(switch_blueprint)
 daemon.register_blueprint(cloud_blueprint)

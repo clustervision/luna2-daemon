@@ -52,7 +52,8 @@ class DBStructure():
                        'cluster', 'tracker', 'dns', 'journal', 'rack', 'rackinventory',
                        'ping', 'reservedipaddress', 'reference', 'route', 'routemap',
                        'nodeinventory', 'nodeinventorydisk', 'nodeinventorygpu',
-                       'nodeinventorynic', 'hash']
+                       'nodeinventorynic', 'hash', 'ownercache', 'clustersecrets',
+                       'profile', 'profilefile']
    
  
     def check_db_tables(self):
@@ -175,6 +176,14 @@ class DBStructure():
             return DATABASE_LAYOUT_osimagetag
         if table == "hash":
             return DATABASE_LAYOUT_hash
+        if table == "ownercache":
+            return DATABASE_LAYOUT_ownercache
+        if table == "clustersecrets":
+            return DATABASE_LAYOUT_clustersecrets
+        if table == "profile":
+            return DATABASE_LAYOUT_profile
+        if table == "profilefile":
+            return DATABASE_LAYOUT_profilefile
         if table == "nodesecrets":
             return DATABASE_LAYOUT_nodesecrets
         if table == "nodeinterface":

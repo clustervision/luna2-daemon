@@ -103,7 +103,9 @@ DATABASE_LAYOUT_nodesecrets = [
 {"column": "nodeid",               "datatype": "INTEGER", "length": "10"},
 {"column": "name",                 "datatype": "VARCHAR", "length": "50"},
 {"column": "content",              "datatype": "TEXT"},
-{"column": "path",                 "datatype": "VARCHAR", "length": "200"}]
+{"column": "path",                 "datatype": "VARCHAR", "length": "200"},
+{"column": "owner",                "datatype": "VARCHAR", "length": "100"},
+{"column": "mode",                 "datatype": "VARCHAR", "length": "10"}]
 
 DATABASE_LAYOUT_nodeinterface = [
 {"column": "id",                   "datatype": "INTEGER", "key": "PRIMARY", "keyadd": "AUTOINCREMENT"},
@@ -194,6 +196,7 @@ DATABASE_LAYOUT_group = [
 {"column": "comment",              "datatype": "VARCHAR", "length": "20"},
 {"column": "roles",                "datatype": "VARCHAR", "length": "512"},
 {"column": "scripts",              "datatype": "VARCHAR", "length": "512"},
+{"column": "profiles",             "datatype": "VARCHAR", "length": "512"},
 {"column": "provision_interface",  "datatype": "VARCHAR", "length": "20"},
 {"column": "provision_method",     "datatype": "VARCHAR", "length": "20"},
 {"column": "provision_fallback",   "datatype": "VARCHAR", "length": "20"},
@@ -298,7 +301,40 @@ DATABASE_LAYOUT_groupsecrets = [
 {"column": "groupid",              "datatype": "INTEGER", "length": "10"},
 {"column": "name",                 "datatype": "VARCHAR", "length": "50"},
 {"column": "content",              "datatype": "TEXT"},
-{"column": "path",                 "datatype": "VARCHAR", "length": "200"}]
+{"column": "path",                 "datatype": "VARCHAR", "length": "200"},
+{"column": "owner",                "datatype": "VARCHAR", "length": "100"},
+{"column": "mode",                 "datatype": "VARCHAR", "length": "10"}]
+
+DATABASE_LAYOUT_clustersecrets = [
+{"column": "id",                   "datatype": "INTEGER", "key": "PRIMARY", "keyadd": "AUTOINCREMENT"},
+{"column": "clusterid",            "datatype": "INTEGER", "length": "10"},
+{"column": "name",                 "datatype": "VARCHAR", "length": "50"},
+{"column": "content",              "datatype": "TEXT"},
+{"column": "path",                 "datatype": "VARCHAR", "length": "200"},
+{"column": "owner",                "datatype": "VARCHAR", "length": "100"},
+{"column": "mode",                 "datatype": "VARCHAR", "length": "10"}]
+
+DATABASE_LAYOUT_profile = [
+{"column": "id",                   "datatype": "INTEGER", "key": "PRIMARY", "keyadd": "AUTOINCREMENT"},
+{"column": "name",                 "datatype": "VARCHAR", "length": "50", "key": "UNIQUE"},
+{"column": "scope",                "datatype": "VARCHAR", "length": "20"},
+{"column": "service",              "datatype": "VARCHAR", "length": "100"},
+{"column": "action",               "datatype": "VARCHAR", "length": "20"}]
+
+DATABASE_LAYOUT_profilefile = [
+{"column": "id",                   "datatype": "INTEGER", "key": "PRIMARY", "keyadd": "AUTOINCREMENT"},
+{"column": "profileid",            "datatype": "INTEGER", "length": "10", "key": "UNIQUE", "with": "name"},
+{"column": "name",                 "datatype": "VARCHAR", "length": "50"},
+{"column": "content",              "datatype": "TEXT"},
+{"column": "path",                 "datatype": "VARCHAR", "length": "200"},
+{"column": "owner",                "datatype": "VARCHAR", "length": "100"},
+{"column": "mode",                 "datatype": "VARCHAR", "length": "10"}]
+
+DATABASE_LAYOUT_ownercache = [
+{"column": "id",                   "datatype": "INTEGER", "key": "PRIMARY", "keyadd": "AUTOINCREMENT"},
+{"column": "name",                 "datatype": "VARCHAR", "length": "100", "key": "UNIQUE"},
+{"column": "resolved",             "datatype": "VARCHAR", "length": "100"},
+{"column": "updated",              "datatype": "NUMERIC"}]
 
 DATABASE_LAYOUT_node = [
 {"column": "id",                   "datatype": "INTEGER", "key": "PRIMARY", "keyadd": "AUTOINCREMENT"},
@@ -318,6 +354,7 @@ DATABASE_LAYOUT_node = [
 {"column": "comment",              "datatype": "TEXT"},
 {"column": "roles",                "datatype": "VARCHAR", "length": "512"},
 {"column": "scripts",              "datatype": "VARCHAR", "length": "512"},
+{"column": "profiles",             "datatype": "VARCHAR", "length": "512"},
 {"column": "vendor",               "datatype": "VARCHAR", "length": "60"},
 {"column": "assettag",             "datatype": "VARCHAR", "length": "32"},
 {"column": "prescript",            "datatype": "TEXT"},

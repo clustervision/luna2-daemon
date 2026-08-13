@@ -262,11 +262,32 @@ class ProfileSync():
                     self.reclaim_abandoned()
                     if pipeline.has_nodes():
                         self.deliver_batches(pipeline, claimed)
+                else:
+                    # not the master: delivering from here would race the master's
+                    # applier, so there is nothing to do - but the journal replays the
+                    # requests that queue this work, so tasks land here anyway. Left
+                    # alone they are never claimed, never reaped and never expire, so
+                    # they are dropped: the master holds the same work, and whoever is
+                    # master next re-derives it from the digests
+                    self.drop_queued()
             except Exception as exp:
                 self.logger.error(f"profile sync thread encountered problem: {exp}")
             if event.is_set():
                 return
             sleep(5)
+
+
+    def drop_queued(self):
+        """
+        Clear profile work queued on a controller that must not act on it.
+        """
+        stale = Database().get_record(table='queue',
+                                      where="subsystem='profile' AND task='sync_profiles'")
+        for task in stale or []:
+            Queue().remove_task_from_queue(task['id'])
+        if stale:
+            self.logger.debug(f"dropped {len(stale)} profile task(s) queued on a "
+                              "controller that is not the master")
 
 
     def nodes_behind(self):

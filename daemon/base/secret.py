@@ -352,7 +352,16 @@ class Secret():
                                 node_secret_columns = Database().get_columns('nodesecrets')
                                 column_check = Helper().compare_list(data[0], node_secret_columns)
                                 if column_check:
-                                    data[0]['content'] = Helper().encrypt_string(data[0]['content'])
+                                    # a clone copies what the caller did not override;
+                                    # anything else produces a copy that shares only
+                                    # its name with the secret it came from
+                                    if data[0].get('content'):
+                                        data[0]['content'] = Helper().encrypt_string(data[0]['content'])
+                                    else:
+                                        data[0]['content'] = secret_data[0]['content']
+                                    for attribute in ['path', 'owner', 'mode']:
+                                        if not data[0].get(attribute):
+                                            data[0][attribute] = secret_data[0][attribute]
                                     row = Helper().make_rows(data[0])
                                     Database().insert('nodesecrets', row)
                                     response = f'Node {name} Secret {secret} '
@@ -618,7 +627,16 @@ class Secret():
                                 group_secret_columns = Database().get_columns('groupsecrets')
                                 column_check = Helper().compare_list(data[0], group_secret_columns)
                                 if column_check:
-                                    data[0]['content'] = Helper().encrypt_string(data[0]['content'])
+                                    # a clone copies what the caller did not override;
+                                    # anything else produces a copy that shares only
+                                    # its name with the secret it came from
+                                    if data[0].get('content'):
+                                        data[0]['content'] = Helper().encrypt_string(data[0]['content'])
+                                    else:
+                                        data[0]['content'] = secret_data[0]['content']
+                                    for attribute in ['path', 'owner', 'mode']:
+                                        if not data[0].get(attribute):
+                                            data[0][attribute] = secret_data[0][attribute]
                                     row = Helper().make_rows(data[0])
                                     Database().insert('groupsecrets', row)
                                     response = f'Group {name} Secret {secret} '
@@ -885,7 +903,7 @@ class Secret():
                                     # a clone copies what the caller did not override;
                                     # anything else produces a copy that shares only
                                     # its name with the secret it came from
-                                    if 'content' in data[0]:
+                                    if data[0].get('content'):
                                         data[0]['content'] = Helper().encrypt_string(data[0]['content'])
                                     else:
                                         data[0]['content'] = secret_data[0]['content']

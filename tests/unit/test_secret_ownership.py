@@ -237,6 +237,77 @@ def test_update_stays_silent_for_a_resolvable_owner(db, seed):
     assert 'Warning' not in message
 
 
+def test_clone_copies_what_the_caller_did_not_override(db, seed):
+    """TRIX-1982. A clone that carries only a new name is a copy, not an empty shell.
+
+    Inserting only what the request carried gave a secret sharing its name with the
+    original and nothing else - and it reported success while doing it, which is the
+    silent-wrong class rather than a visible failure.
+    """
+    from base.secret import Secret
+    _post_node_secret('node001', {
+        'name': 'orig', 'content': 'b3JpZ2luYWw=', 'path': '/etc/orig',
+        'owner': 'root:root', 'mode': '400'})
+    payload = {'config': {'secrets': {'node': {'node001': [
+        {'name': 'orig', 'newsecretname': 'copy'}]}}}}
+    status, message = Secret().clone_node_secret('node001', 'orig', payload)
+    assert status, message
+    row = db.get_record(table='nodesecrets', where='name = "copy"')[0]
+    from utils.helper import Helper
+    assert Helper().decrypt_string(row['content']) == 'b3JpZ2luYWw='
+    assert (row['path'], row['owner'], row['mode']) == ('/etc/orig', 'root:root', '400')
+
+
+def test_clone_ignores_a_falsy_content_rather_than_storing_it(db, seed):
+    """The CLI's -c is a store_true, so its unset value reaches the daemon as False.
+    Encrypting that returns it unchanged and the clone ends up with the string 'False'
+    as its content - a secret that exists, reports fine, and is garbage."""
+    from base.secret import Secret
+    _post_node_secret('node001', {
+        'name': 'orig', 'content': 'b3JpZ2luYWw=', 'path': '/etc/orig'})
+    payload = {'config': {'secrets': {'node': {'node001': [
+        {'name': 'orig', 'newsecretname': 'copy', 'content': False, 'path': None}]}}}}
+    status, message = Secret().clone_node_secret('node001', 'orig', payload)
+    assert status, message
+    row = db.get_record(table='nodesecrets', where='name = "copy"')[0]
+    assert row['content'] not in (False, 'False'), 'the clone stored the flag, not the secret'
+    from utils.helper import Helper
+    assert Helper().decrypt_string(row['content']) == 'b3JpZ2luYWw='
+    assert row['path'] == '/etc/orig'
+
+
+def test_group_clone_copies_the_source_too(db, seed):
+    """Both scopes had it; a fix to one is half a fix."""
+    from base.secret import Secret
+    Secret().update_group_secret('compute', 'g1', {'config': {'secrets': {'group': {
+        'compute': [{'name': 'g1', 'content': 'Z3JvdXA=', 'path': '/etc/g1',
+                     'mode': '440'}]}}}})
+    payload = {'config': {'secrets': {'group': {'compute': [
+        {'name': 'g1', 'newsecretname': 'g2', 'content': False}]}}}}
+    status, message = Secret().clone_group_secret('compute', 'g1', payload)
+    assert status, message
+    row = db.get_record(table='groupsecrets', where='name = "g2"')[0]
+    from utils.helper import Helper
+    assert Helper().decrypt_string(row['content']) == 'Z3JvdXA='
+    assert (row['path'], row['mode']) == ('/etc/g1', '440')
+
+
+def test_clone_honours_an_override(db, seed):
+    """What the caller does supply still wins."""
+    from base.secret import Secret
+    _post_node_secret('node001', {
+        'name': 'orig', 'content': 'b3JpZ2luYWw=', 'path': '/etc/orig', 'mode': '400'})
+    payload = {'config': {'secrets': {'node': {'node001': [
+        {'name': 'orig', 'newsecretname': 'copy', 'content': 'bmV3', 'path': '/etc/copy'}]}}}}
+    status, message = Secret().clone_node_secret('node001', 'orig', payload)
+    assert status, message
+    row = db.get_record(table='nodesecrets', where='name = "copy"')[0]
+    from utils.helper import Helper
+    assert Helper().decrypt_string(row['content']) == 'bmV3'
+    assert row['path'] == '/etc/copy'
+    assert row['mode'] == '400', 'an attribute nobody overrode should still be copied'
+
+
 # ---------------------------------------------------------------------------
 # the install-time parser
 # ---------------------------------------------------------------------------

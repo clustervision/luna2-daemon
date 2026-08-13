@@ -30,7 +30,6 @@ import inspect
 import pytest
 
 from base.cluster import Cluster
-from base.network import Network
 from utils.config import Config
 from utils.database import Database
 from utils.dbstructure import DBStructure
@@ -45,19 +44,8 @@ def cluster_db(db):
     return db
 
 
-@pytest.fixture
-def network_db(db, seed):
-    """The shared db fixture plus the ipaddress table update_network counts through."""
-    Database().create('ipaddress', DBStructure().get_database_table_structure('ipaddress'))
-    return db
-
-
 def _update_cluster(payload):
     return Cluster().update_cluster({'config': {'cluster': payload}})
-
-
-def _update_network(name, payload):
-    return Network().update_network(name, {'config': {'network': {name: payload}}})
 
 
 # ---------------------------------------------------------------- the shared family test
@@ -109,22 +97,17 @@ def test_cluster_v4_field_rejects_ipv6(cluster_db, field):
 # This field accepts a server NAME as well as an address, which is what makes the family
 # test subtle: a name is not an address and must not be read as one.
 #
-# Driving update_network end to end is deliberately not done here. Once validation passes,
-# the update reaches Service().queue(), which builds a real command and runs it -- a unit
-# test must not shell out. The guard is one call to the helper, and the helper is pinned
-# exhaustively above, so the value is in pinning that the guard USES it rather than
-# hand-rolling a test that drifts.
-
-def test_network_ntp_server_guard_uses_the_shared_helper():
-    """ntp_server holds a name or IPv4. Only the shared helper judges that correctly."""
-    source = inspect.getsource(Network.update_network)
-    assert "Helper().check_if_ipv6(data['ntp_server'])" in source, (
-        "network.ntp_server no longer decides address family through Helper().check_if_ipv6. "
-        "A hand-rolled test here reads a name like europe.pool.ntp.org as IPv6 and rejects it "
-        "with 'Server name or IPv4 address expected' -- the exact server names this field exists "
-        "to accept."
-    )
-
+# It is no longer guarded at the input, and that is a deliberate move rather than a removal.
+# The field feeds BOTH families -- the dhcp6 ntp-server option (56) carries an IPv6 address
+# or a name where the dhcp4 option (42) carries neither -- so it belongs with dhcp_relay
+# below, filtered per family at the render, and not with the cluster fields above, which
+# render into one family's config and are rejected at the input. Rejecting IPv6 here left
+# the only family able to serve it unable to hold it, so no administrator could reach that
+# half of the rendering at all.
+#
+# The entry point and each template's emission are pinned in tests/unit/test_ntp_server.py.
+# What stays here is the reading of a NAME, which is what this file is about, and what a
+# family test on this field gets wrong first.
 
 @pytest.mark.parametrize('hostname', [
     'europe.pool.ntp.org',   # leading 'e'
@@ -135,8 +118,8 @@ def test_network_ntp_server_guard_uses_the_shared_helper():
 def test_ntp_hostnames_are_not_read_as_ipv6(hostname):
     """The values that were rejected in the field, at the level that decides it."""
     assert Helper().check_if_ipv6(hostname) is False, (
-        f"{hostname!r} is a server name. Read as IPv6 it is rejected by network.ntp_server "
-        f"with 'Server name or IPv4 address expected'."
+        f"{hostname!r} is a server name. Read as IPv6 it is classified as an address, so the "
+        f"dhcp6 config carries it as srv-addr, which kea rejects: a name is not an address."
     )
 
 

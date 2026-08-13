@@ -62,6 +62,15 @@ def seed(db):
     return {'groupid': groupid, 'nodeid': nodeid}
 
 
+def _assign(db, table, rowid, *names):
+    """Assign profiles the way the daemon stores them: by reference. The names go in at
+    the API boundary, which has its own test - here we are past it."""
+    from base.profile import Profile
+    from utils.helper import Helper
+    ids = Profile().to_profile_ids(','.join(names))
+    db.update(table, Helper().make_rows({'profiles': ids}), [{"column": "id", "value": rowid}])
+
+
 def _payload(name, **detail):
     return {'config': {'profiles': {name: detail}}}
 
@@ -151,8 +160,7 @@ def test_a_profile_in_use_cannot_be_deleted(db, seed):
     from base.profile import Profile
     from utils.helper import Helper
     Profile().update_profile('inuse', _make('inuse'))
-    db.update('group', Helper().make_rows({'profiles': 'inuse'}),
-              [{"column": "id", "value": seed['groupid']}])
+    _assign(db, 'group', seed['groupid'], 'inuse')
     status, message = Profile().delete_profile('inuse')
     assert not status
     assert 'compute' in message and 'Remove it from them first' in message
@@ -169,8 +177,7 @@ def test_in_use_matches_whole_names_only(db, seed):
     from base.profile import Profile
     from utils.helper import Helper
     Profile().update_profile('gpu', _make('gpu'))
-    db.update('node', Helper().make_rows({'profiles': 'gpu-extra'}),
-              [{"column": "id", "value": seed['nodeid']}])
+    _assign(db, 'node', seed['nodeid'], 'gpu-extra')
     assert Profile().assigned_to('gpu') == []
 
 
@@ -220,19 +227,18 @@ def test_profiles_stack_group_first_then_node(db, seed):
     from base.profile import Profile
     from utils.helper import Helper
     for name in ('common', 'gpu', 'special'):
-        Profile().update_profile(name, _payload(name, service='', action='none'))
-    db.update('group', Helper().make_rows({'profiles': 'common,gpu'}),
-              [{"column": "id", "value": seed['groupid']}])
-    db.update('node', Helper().make_rows({'profiles': 'special,common'}),
-              [{"column": "id", "value": seed['nodeid']}])
+        Profile().update_profile(name, _make(name))
+    _assign(db, 'group', seed['groupid'], 'common', 'gpu')
+    _assign(db, 'node', seed['nodeid'], 'special', 'common')
     assert Profile().merged_profiles(seed['nodeid']) == 'common,gpu,special'
 
 
 def test_a_node_without_a_group_still_gets_its_own_profiles(db):
     from base.profile import Profile
     from utils.helper import Helper
-    nodeid = db.insert('node', Helper().make_rows({'name': 'lone', 'profiles': 'solo'}))
-    Profile().update_profile('solo', _payload('solo', service='', action='none'))
+    nodeid = db.insert('node', Helper().make_rows({'name': 'lone'}))
+    Profile().update_profile('solo', _make('solo'))
+    _assign(db, 'node', nodeid, 'solo')
     assert Profile().merged_profiles(nodeid) == 'solo'
 
 
@@ -245,10 +251,8 @@ def test_a_node_fetches_its_whole_profile_set_by_name(db, seed):
     Profile().update_profile('common', _make('common'))
     Profile().update_profile('special', _payload('special', service='sssd', action='reload',
         files=[{'name': 'x', 'content': 'eA==', 'path': '/etc/x'}]))
-    db.update('group', Helper().make_rows({'profiles': 'common'}),
-              [{"column": "id", "value": seed['groupid']}])
-    db.update('node', Helper().make_rows({'profiles': 'special'}),
-              [{"column": "id", "value": seed['nodeid']}])
+    _assign(db, 'group', seed['groupid'], 'common')
+    _assign(db, 'node', seed['nodeid'], 'special')
     status, response = Profile().get_node_profiles('node001')
     assert status, response
     profiles = response['config']['profiles']
@@ -263,8 +267,7 @@ def test_a_dangling_profile_assignment_does_not_break_the_rest(db, seed):
     from base.profile import Profile
     from utils.helper import Helper
     Profile().update_profile('real', _make('real'))
-    db.update('node', Helper().make_rows({'profiles': 'ghost,real'}),
-              [{"column": "id", "value": seed['nodeid']}])
+    _assign(db, 'node', seed['nodeid'], 'ghost', 'real')
     status, response = Profile().get_node_profiles('node001')
     assert status, response
     assert list(response['config']['profiles'].keys()) == ['real']
@@ -378,8 +381,7 @@ def test_disabled_profile_travels_as_a_name_only(db, seed):
     Profile().update_profile('frozen', _make('frozen'))
     Profile().update_profile('live', _payload('live', service='sshd', action='reload',
         files=[{'name': 'x', 'content': 'eA==', 'path': '/etc/x'}]))
-    db.update('node', Helper().make_rows({'profiles': 'frozen,live'}),
-              [{"column": "id", "value": seed['nodeid']}])
+    _assign(db, 'node', seed['nodeid'], 'frozen', 'live')
     db.update('profile', Helper().make_rows({'enabled': 0}),
               [{"column": "name", "value": 'frozen'}])
 
@@ -395,8 +397,7 @@ def test_editing_a_disabled_profile_moves_nothing(db, seed):
     from base.profile import Profile
     from utils.helper import Helper
     Profile().update_profile('frozen', _make('frozen'))
-    db.update('node', Helper().make_rows({'profiles': 'frozen'}),
-              [{"column": "id", "value": seed['nodeid']}])
+    _assign(db, 'node', seed['nodeid'], 'frozen')
     db.update('profile', Helper().make_rows({'enabled': 0}),
               [{"column": "name", "value": 'frozen'}])
 
@@ -412,8 +413,7 @@ def test_flipping_enabled_does_move_the_digest(db, seed):
     from base.profile import Profile
     from utils.helper import Helper
     Profile().update_profile('p', _make('p'))
-    db.update('node', Helper().make_rows({'profiles': 'p'}),
-              [{"column": "id", "value": seed['nodeid']}])
+    _assign(db, 'node', seed['nodeid'], 'p')
     enabled = Profile().node_digest('node001')
     db.update('profile', Helper().make_rows({'enabled': 0}),
               [{"column": "name", "value": 'p'}])
@@ -426,8 +426,7 @@ def test_the_digest_is_stable_and_content_sensitive(db, seed):
     from base.profile import Profile
     from utils.helper import Helper
     Profile().update_profile('p', _make('p'))
-    db.update('node', Helper().make_rows({'profiles': 'p'}),
-              [{"column": "id", "value": seed['nodeid']}])
+    _assign(db, 'node', seed['nodeid'], 'p')
     first = Profile().node_digest('node001')
     assert first == Profile().node_digest('node001')
     Profile().update_profile('p', _make('p', files=[
@@ -442,11 +441,9 @@ def test_order_is_part_of_the_digest(db, seed):
     for name in ('a', 'b'):
         Profile().update_profile(name, _payload(name, service='', action='none',
             files=[{'name': 'f', 'content': 'eA==', 'path': '/etc/shared'}]))
-    db.update('node', Helper().make_rows({'profiles': 'a,b'}),
-              [{"column": "id", "value": seed['nodeid']}])
+    _assign(db, 'node', seed['nodeid'], 'a', 'b')
     one = Profile().node_digest('node001')
-    db.update('node', Helper().make_rows({'profiles': 'b,a'}),
-              [{"column": "id", "value": seed['nodeid']}])
+    _assign(db, 'node', seed['nodeid'], 'b', 'a')
     assert Profile().node_digest('node001') != one
 
 
@@ -456,8 +453,7 @@ def test_queueing_collapses_repeats(db, seed):
     from base.profile import Profile
     from utils.helper import Helper
     Profile().update_profile('p', _make('p'))
-    db.update('node', Helper().make_rows({'profiles': 'p'}),
-              [{"column": "id", "value": seed['nodeid']}])
+    _assign(db, 'node', seed['nodeid'], 'p')
     for _ in range(5):
         Profile().queue_node('node001')
     queued = db.get_record(table='queue', where='subsystem = "profile"')
@@ -471,11 +467,11 @@ def test_queueing_a_profile_reaches_the_nodes_that_apply_it(db, seed):
     from base.profile import Profile
     from utils.helper import Helper
     for name in ('gpu', 'gpu-extra'):
-        Profile().update_profile(name, _payload(name, service='', action='none'))
+        Profile().update_profile(name, _make(name))
     other = db.insert('node', Helper().make_rows(
-        {'name': 'node002', 'groupid': seed['groupid'], 'profiles': 'gpu-extra'}))
-    db.update('node', Helper().make_rows({'profiles': 'gpu'}),
-              [{"column": "id", "value": seed['nodeid']}])
+        {'name': 'node002', 'groupid': seed['groupid']}))
+    _assign(db, 'node', other, 'gpu-extra')
+    _assign(db, 'node', seed['nodeid'], 'gpu')
     Profile().queue_profile('gpu')
     queued = [row['param'] for row in db.get_record(table='queue', where='subsystem = "profile"')]
     assert queued == [str(seed['nodeid'])], f'queued {queued}'
@@ -487,8 +483,7 @@ def test_member_lists_who_applies_a_profile(db, seed):
     from base.profile import Profile
     from utils.helper import Helper
     Profile().update_profile('shared', _make('shared'))
-    db.update('group', Helper().make_rows({'profiles': 'shared'}),
-              [{"column": "id", "value": seed['groupid']}])
+    _assign(db, 'group', seed['groupid'], 'shared')
     lone = db.insert('node', Helper().make_rows(
         {'name': 'node009', 'groupid': seed['groupid'], 'profiles': 'shared'}))
     status, response = Profile().get_profile_member('shared')
@@ -565,8 +560,7 @@ def test_the_empty_digest_differs_from_a_populated_one(db, seed):
     from utils.helper import Helper
     empty = Profile().node_digest('node001')
     Profile().update_profile('p', _make('p'))
-    db.update('node', Helper().make_rows({'profiles': 'p'}),
-              [{"column": "id", "value": seed['nodeid']}])
+    _assign(db, 'node', seed['nodeid'], 'p')
     assert Profile().node_digest('node001') != empty
 
 
@@ -617,8 +611,7 @@ def test_a_node_with_a_profile_and_no_delivery_is_behind(db, seed):
     from utils.helper import Helper
     _reconcile_db(db)
     Profile().update_profile('p', _make('p'))
-    db.update('node', Helper().make_rows({'profiles': 'p'}),
-              [{"column": "id", "value": seed['nodeid']}])
+    _assign(db, 'node', seed['nodeid'], 'p')
     assert [name for _, name in ProfileSync().nodes_behind()] == ['node001']
 
 
@@ -628,8 +621,7 @@ def test_a_node_already_in_line_is_not_touched(db, seed):
     from utils.helper import Helper
     _reconcile_db(db)
     Profile().update_profile('p', _make('p'))
-    db.update('node', Helper().make_rows({'profiles': 'p'}),
-              [{"column": "id", "value": seed['nodeid']}])
+    _assign(db, 'node', seed['nodeid'], 'p')
     db.update('node', Helper().make_rows(
         {'profiles_digest': Profile().node_digest('node001')}),
         [{"column": "id", "value": seed['nodeid']}])
@@ -644,8 +636,7 @@ def test_a_node_whose_profile_changed_falls_behind_again(db, seed):
     from utils.helper import Helper
     _reconcile_db(db)
     Profile().update_profile('p', _make('p'))
-    db.update('node', Helper().make_rows({'profiles': 'p'}),
-              [{"column": "id", "value": seed['nodeid']}])
+    _assign(db, 'node', seed['nodeid'], 'p')
     db.update('node', Helper().make_rows(
         {'profiles_digest': Profile().node_digest('node001')}),
         [{"column": "id", "value": seed['nodeid']}])
@@ -677,8 +668,7 @@ def test_an_installing_node_is_not_queued_by_the_sweep(db, seed):
     from utils.helper import Helper
     _reconcile_db(db)
     Profile().update_profile('p', _make('p'))
-    db.update('node', Helper().make_rows({'profiles': 'p'}),
-              [{"column": "id", "value": seed['nodeid']}])
+    _assign(db, 'node', seed['nodeid'], 'p')
     db.insert('monitor', Helper().make_rows(
         {'tableref': 'node', 'tablerefid': seed['nodeid'], 'state': 'install.unpack'}))
     assert ProfileSync().nodes_behind() == []
@@ -690,8 +680,7 @@ def test_the_sweep_queues_what_it_finds(db, seed):
     from utils.helper import Helper
     _reconcile_db(db)
     Profile().update_profile('p', _make('p'))
-    db.update('node', Helper().make_rows({'profiles': 'p'}),
-              [{"column": "id", "value": seed['nodeid']}])
+    _assign(db, 'node', seed['nodeid'], 'p')
     assert [name for _, name in ProfileSync().reconcile()] == ['node001']
     queued = db.get_record(table='queue', where='subsystem = "profile"')
     assert [row['param'] for row in queued] == [str(seed['nodeid'])], \
@@ -708,8 +697,7 @@ def test_a_rename_between_queueing_and_delivery_still_lands(db, seed):
     from utils.dbstructure import DBStructure
     db.create('monitor', DBStructure().get_database_table_structure('monitor'))
     Profile().update_profile('p', _make('p'))
-    db.update('node', Helper().make_rows({'profiles': 'p'}),
-              [{"column": "id", "value": seed['nodeid']}])
+    _assign(db, 'node', seed['nodeid'], 'p')
     Profile().queue_node('node001')
     queued = db.get_record(table='queue', where='subsystem = "profile"')[0]
 
@@ -749,8 +737,7 @@ def test_status_says_behind_then_in_sync(db, seed):
     from utils.helper import Helper
     _status_db(db)
     Profile().update_profile('p', _make('p'))
-    db.update('node', Helper().make_rows({'profiles': 'p'}),
-              [{"column": "id", "value": seed['nodeid']}])
+    _assign(db, 'node', seed['nodeid'], 'p')
     _, response = Profile().status('node001')
     assert response['config']['profiles']['status']['node001']['state'] == 'behind'
 
@@ -771,8 +758,7 @@ def test_status_reports_a_failure_with_its_reason(db, seed):
     from utils.helper import Helper
     _status_db(db)
     Profile().update_profile('p', _make('p'))
-    db.update('node', Helper().make_rows({'profiles': 'p'}),
-              [{"column": "id", "value": seed['nodeid']}])
+    _assign(db, 'node', seed['nodeid'], 'p')
     ProfileSync().record_outcome(seed['nodeid'], False, 'could not copy the bundle: timed out')
     _, response = Profile().status('node001')
     entry = response['config']['profiles']['status']['node001']
@@ -787,8 +773,7 @@ def test_a_success_clears_a_previous_failure(db, seed):
     from utils.helper import Helper
     _status_db(db)
     Profile().update_profile('p', _make('p'))
-    db.update('node', Helper().make_rows({'profiles': 'p'}),
-              [{"column": "id", "value": seed['nodeid']}])
+    _assign(db, 'node', seed['nodeid'], 'p')
     ProfileSync().record_outcome(seed['nodeid'], False, 'boom')
     ProfileSync().record_outcome(seed['nodeid'], True, 'delivered')
     db.update('node', Helper().make_rows(
@@ -805,8 +790,7 @@ def test_status_marks_a_node_carrying_a_frozen_profile(db, seed):
     from utils.helper import Helper
     _status_db(db)
     Profile().update_profile('p', _make('p'))
-    db.update('node', Helper().make_rows({'profiles': 'p'}),
-              [{"column": "id", "value": seed['nodeid']}])
+    _assign(db, 'node', seed['nodeid'], 'p')
     db.update('profile', Helper().make_rows({'enabled': 0}),
               [{"column": "name", "value": 'p'}])
     db.update('node', Helper().make_rows(
@@ -826,8 +810,7 @@ def test_a_node_that_just_failed_is_left_alone_for_a_while(db, seed):
     from utils.helper import Helper
     _reconcile_db(db)
     Profile().update_profile('p', _make('p'))
-    db.update('node', Helper().make_rows({'profiles': 'p'}),
-              [{"column": "id", "value": seed['nodeid']}])
+    _assign(db, 'node', seed['nodeid'], 'p')
     assert [name for _, name in ProfileSync().nodes_behind()] == ['node001']
 
     ProfileSync().record_outcome(seed['nodeid'], False, 'could not reach it')
@@ -842,8 +825,7 @@ def test_a_node_that_succeeded_is_not_held_back(db, seed):
     from utils.helper import Helper
     _reconcile_db(db)
     Profile().update_profile('p', _make('p'))
-    db.update('node', Helper().make_rows({'profiles': 'p'}),
-              [{"column": "id", "value": seed['nodeid']}])
+    _assign(db, 'node', seed['nodeid'], 'p')
     ProfileSync().record_outcome(seed['nodeid'], True, 'delivered')
     assert [name for _, name in ProfileSync().nodes_behind()] == ['node001']
 
@@ -857,8 +839,7 @@ def test_a_node_that_is_installing_has_not_failed(db, seed):
     from utils.helper import Helper
     _reconcile_db(db)
     Profile().update_profile('p', _make('p'))
-    db.update('node', Helper().make_rows({'profiles': 'p'}),
-              [{"column": "id", "value": seed['nodeid']}])
+    _assign(db, 'node', seed['nodeid'], 'p')
     db.insert('monitor', Helper().make_rows(
         {'tableref': 'node', 'tablerefid': seed['nodeid'], 'state': 'install.unpack'}))
     status, message = ProfileSync().deliver_node(seed['nodeid'])
@@ -922,8 +903,7 @@ def _owes_a_profile(db, seed):
     from utils.helper import Helper
     _reconcile_db(db)
     Profile().update_profile('p', _make('p'))
-    db.update('node', Helper().make_rows({'profiles': 'p'}),
-              [{"column": "id", "value": seed['nodeid']}])
+    _assign(db, 'node', seed['nodeid'], 'p')
 
 
 def test_a_node_that_keeps_failing_is_eventually_given_up_on(db, seed):
@@ -1019,8 +999,7 @@ def test_a_pending_retry_delivers_the_profile_as_it_is_now(db, seed):
     from utils.helper import Helper
     _reconcile_db(db)
     Profile().update_profile('p', _make('p'))
-    db.update('node', Helper().make_rows({'profiles': 'p'}),
-              [{"column": "id", "value": seed['nodeid']}])
+    _assign(db, 'node', seed['nodeid'], 'p')
     Profile().queue_node(nodeid=seed['nodeid'])
     stale = Profile().node_digest('node001')
 
@@ -1099,3 +1078,104 @@ def test_clearing_the_service_of_a_file_less_profile_is_refused(db):
     assert 'needs either a service' in message
     assert db.get_record(table='profile', where='name = "svconly"')[0]['service'] == 'cron', \
         'the service was cleared anyway'
+
+
+def test_renaming_a_profile_carries_its_assignments(db, seed):
+    """A profile is named in node.profiles and group.profiles rather than linked by id -
+    the one place Luna stores a name as the reference - so a rename that does not move
+    the assignments leaves every one of them pointing at nothing."""
+    from base.profile import Profile
+    from utils.helper import Helper
+    Profile().update_profile('ntp', _make('ntp'))
+    _assign(db, 'group', seed['groupid'], 'ntp')
+    _assign(db, 'node', seed['nodeid'], 'ntp')
+
+    before = db.get_record(table='group', where=f'id = "{seed["groupid"]}"')[0]['profiles']
+    assert before and before.isdigit(), 'the assignment should hold a reference, not a name'
+    status, message = Profile().update_profile('ntp', _payload('ntp', newprofilename='chrony'))
+    assert status, message
+    assert db.get_record(table='profile', where='name = "chrony"')
+    assert not db.get_record(table='profile', where='name = "ntp"')
+    # the assignment is untouched, which is the whole point: it never held the name
+    assert db.get_record(table='group', where=f'id = "{seed["groupid"]}"')[0]['profiles'] == before
+    assert Profile().merged_profiles(seed['nodeid']) == 'chrony'
+    assert Profile().assigned_to('chrony') == ['compute', 'node001']
+
+
+def test_a_rename_leaves_the_other_assignments_alone(db, seed):
+    """The reassignment rewrites a list that holds other profiles too, and a whole-name
+    match is the only thing standing between 'gpu' and a node carrying 'gpu-extra'."""
+    from base.profile import Profile
+    from utils.helper import Helper
+    for profile in ('gpu', 'gpu-extra', 'munge'):
+        Profile().update_profile(profile, _make(profile))
+    _assign(db, 'node', seed['nodeid'], 'munge', 'gpu', 'gpu-extra')
+    status, message = Profile().update_profile('gpu', _payload('gpu', newprofilename='nvidia'))
+    assert status, message
+    assert Profile().merged_profiles(seed['nodeid']) == 'munge,nvidia,gpu-extra', \
+        'the rename disturbed a neighbour it should not have touched'
+    assert Profile().assigned_to('gpu-extra') == ['node001'], 'a lookalike lost its assignment'
+
+
+def test_renaming_onto_an_existing_profile_is_refused(db):
+    """Two profiles of one name is not a state the assignment lists can express."""
+    from base.profile import Profile
+    Profile().update_profile('one', _make('one'))
+    Profile().update_profile('two', _make('two'))
+    status, message = Profile().update_profile('one', _payload('one', newprofilename='two'))
+    assert not status
+    assert 'already present' in message
+    assert db.get_record(table='profile', where='name = "one"'), 'the source was renamed anyway'
+
+
+def test_a_new_profile_cannot_be_created_under_a_rename(db):
+    """Same guard the other entities carry: it would silently create rather than rename."""
+    from base.profile import Profile
+    status, message = Profile().update_profile('ghost', _payload(
+        'ghost', scope='static', service='cron', action='reload', newprofilename='spectre'))
+    assert not status
+    assert 'not allowed while creating' in message
+    assert not db.get_record(table='profile'), 'a profile was created by a rename'
+
+
+def test_a_renamed_profile_is_redelivered(db, seed):
+    """The node-side manifest records which profile each file came from, so a rename is a
+    real change on the node even though no content moved."""
+    from base.profile import Profile
+    from utils.helper import Helper
+    _reconcile_db(db)
+    Profile().update_profile('ntp', _make('ntp'))
+    _assign(db, 'node', seed['nodeid'], 'ntp')
+    before = Profile().node_digest('node001')
+    Profile().update_profile('ntp', _payload('ntp', newprofilename='chrony'))
+    assert Profile().node_digest('node001') != before
+    queued = db.get_record(table='queue', where='subsystem = "profile"')
+    assert [row['param'] for row in queued] == [str(seed['nodeid'])]
+
+
+def test_the_api_takes_names_and_stores_references(db, seed):
+    """Names belong at the boundary: a human types 'ntp', and what is stored is the
+    profile it meant. Storing the name is what made a rename a bookkeeping exercise
+    across every node and group that carried it."""
+    from base.node import Node
+    from base.profile import Profile
+    Profile().update_profile('ntp', _make('ntp'))
+    profileid = db.get_record(table='profile', where='name = "ntp"')[0]['id']
+
+    status, message = Node().update_node('node001', {'config': {'node': {'node001': {
+        'profiles': 'ntp'}}}})
+    assert status, message
+    stored = db.get_record(table='node', where=f'id = "{seed["nodeid"]}"')[0]['profiles']
+    assert stored == str(profileid), f'the assignment stored {stored!r}, not the reference'
+
+
+def test_what_a_node_reports_is_names_not_numbers(db, seed):
+    """And the other direction: an operator reading 'luna node show' must see what the
+    profile is called, not the number it is stored as."""
+    from base.node import Node
+    from base.profile import Profile
+    Profile().update_profile('ntp', _make('ntp'))
+    Node().update_node('node001', {'config': {'node': {'node001': {'profiles': 'ntp'}}}})
+    status, response = Node().get_node('node001')
+    assert status, response
+    assert response['config']['node']['node001']['profiles'] == 'ntp'

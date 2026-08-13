@@ -280,6 +280,9 @@ class Node():
                         del interface['options']
                     node['interfaces'].append(interface)
 
+                # assignments hold ids; a human reading this wants the names, as
+                # they are now rather than as they were when assigned
+                node['profiles'] = ','.join(Profile().profile_names(node['profiles']))
                 response['config']['node'][node_name] = node
             status = True
         else:
@@ -612,6 +615,7 @@ class Node():
                     del interface['options']
                 node['interfaces'].append(interface)
 
+            node['profiles'] = ','.join(Profile().profile_names(node['profiles']))
             response['config']['node'][nodename] = node
             status = True
         else:
@@ -694,6 +698,10 @@ class Node():
                     item_data = item_data.strip()
                     if item_data and item_data not in known_profiles:
                         return False, f'Invalid request: profile {item_data} does not exist'
+                # a name is what a human types, and it is only true at the moment it is
+                # typed. The assignment keeps the reference, so a profile renamed later
+                # stays applied here
+                data['profiles'] = Profile().to_profile_ids(data['profiles'].replace(' ', ','))
             for item in ['provision_method','provision_fallback']:
                 if item in data and data[item]:
                     if data['provision_method']+'.py' not in boot_plugins['boot']['provision']:

@@ -122,6 +122,9 @@ class Group():
                     group['bmcsetupname'] = bmcsetup[group['bmcsetupid']]['name']
                     group['unmanaged_bmc_users'] = group['unmanaged_bmc_users'] or bmcsetup[group['bmcsetupid']]['unmanaged_bmc_users']
                 del group['bmcsetupid']
+                # assignments hold ids; a human reading this wants the names, as
+                # they are now rather than as they were when assigned
+                group['profiles'] = ','.join(Profile().profile_names(group['profiles']))
                 response['config']['group'][name] = group
         else:
             return False, 'No groups available'
@@ -276,6 +279,7 @@ class Group():
             if group['osimagetag'] == 'default':
                 group['_osimagetag_source'] = 'default'
             # ---
+            group['profiles'] = ','.join(Profile().profile_names(group['profiles']))
             response['config']['group'][name] = group
         else:
             response = f'No group {name} available'
@@ -405,6 +409,10 @@ class Group():
                     item_data = item_data.strip()
                     if item_data and item_data not in known_profiles:
                         return False, f'Invalid request: profile {item_data} does not exist'
+                # a name is what a human types, and it is only true at the moment it is
+                # typed. The assignment keeps the reference, so a profile renamed later
+                # stays applied here
+                data['profiles'] = Profile().to_profile_ids(data['profiles'].replace(' ', ','))
             for item in ['provision_method','provision_fallback']:
                 if item in data and data[item]:
                     if data[item]+'.py' not in boot_plugins['boot']['provision']:

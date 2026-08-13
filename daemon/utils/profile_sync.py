@@ -50,7 +50,7 @@ from base.profile import Profile
 
 APPLIER = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
                        'nodescripts', 'apply_profiles.py')
-DEFAULT_BATCH = 10
+DEFAULT_BATCH = 20
 DEFAULT_DELAY = 0
 # generous on purpose: the applier may be waiting on a service that takes minutes to
 # settle. Reachability is bounded by the transport's own connect and keepalive limits,

@@ -19,7 +19,7 @@ a failure must never return a digest: recording one marks the node in sync on a 
 
 Tuning the fan-out
 
-Deliveries run in parallel batches. The defaults are ten in flight with no pause between
+Deliveries run in parallel batches. The defaults are twenty in flight with no pause between
 batches, which is deliberately conservative: unlike the BMC batches, this limit protects
 the controller rather than the far end, since every child is an rsync plus an ssh of its
 own.

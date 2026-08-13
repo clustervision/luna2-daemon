@@ -63,6 +63,42 @@ def config_profiles_get():
     return response, access_code
 
 
+@profiles_blueprint.route("/config/profiles/status", methods=['GET'])
+@token_required
+def config_profiles_status():
+    """
+    Input - None
+    Output - Where every node stands: what it should have, what it last accepted, and
+             what happened the last time we tried.
+    """
+    access_code = 404
+    status, response = Profile().status()
+    if status is True:
+        access_code = 200
+        response = dumps(response)
+    else:
+        response = {'message': response}
+    return response, access_code
+
+
+@profiles_blueprint.route("/config/profiles/status/<string:name>", methods=['GET'])
+@token_required
+@validate_name
+def config_profile_status_node(name=None):
+    """
+    Input - Node Name
+    Output - Where that node stands.
+    """
+    access_code = 404
+    status, response = Profile().status(name)
+    if status is True:
+        access_code = 200
+        response = dumps(response)
+    else:
+        response = {'message': response}
+    return response, access_code
+
+
 @profiles_blueprint.route("/config/profiles/node/<string:name>", methods=['GET'])
 @provision_token_required
 @validate_name

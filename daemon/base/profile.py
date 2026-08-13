@@ -430,6 +430,62 @@ class Profile():
         return True
 
 
+    def status(self, name=None):
+        """
+        Where every node stands: what it should have, what it last accepted, and what
+        happened the last time we tried. A sweep that quietly fails on a dozen nodes is
+        worse than no sweep, and this is what makes that visible without reading a log.
+
+        States, and each says something different:
+          in sync      what it holds is what it should hold
+          behind       they differ, and nothing has failed - it is on its way
+          failed       the last attempt did not work, and the reason is here
+          frozen       in sync, but carrying a disabled profile whose files Luna no
+                       longer manages. It is not drift and it is not an error, and an
+                       operator should not have to remember it
+          not applied  no profiles, and nothing was ever delivered: uninvolved
+        """
+        where = f'name = "{name}"' if name else None
+        nodes = Database().get_record(table='node', where=where)
+        if not nodes:
+            return False, f'Node {name} is not available' if name else 'No nodes available'
+        response = {'config': {'profiles': {'status': {}, 'summary': {} } } }
+        known = {profile['name']: self.is_enabled(profile)
+                 for profile in Database().get_record(table='profile') or []}
+        for node in nodes:
+            assigned = self.merged_profiles(node['id'])
+            assigned_list = assigned.split(',') if assigned else []
+            delivered = node['profiles_digest']
+            desired = self.node_digest(node['name'])
+            frozen = [profile for profile in assigned_list if known.get(profile) is False]
+            outcome = Database().get_record(table='monitor',
+                                            where=f'tableref = "nodeprofile" '
+                                                  f'AND tablerefid = "{node["id"]}"')
+            detail, since, failed = '', '', False
+            if outcome:
+                detail = outcome[0]['state'] or ''
+                since = outcome[0]['updated'] or ''
+                failed = str(outcome[0]['status']) == '500'
+            if not delivered and not assigned_list:
+                state = 'not applied'
+            elif desired == delivered:
+                state = 'frozen' if frozen else 'in sync'
+            elif failed:
+                state = 'failed'
+            else:
+                state = 'behind'
+            response['config']['profiles']['status'][node['name']] = {
+                'profiles': assigned or '',
+                'state': state,
+                'frozen': ','.join(frozen),
+                'detail': detail,
+                'since': since,
+            }
+            summary = response['config']['profiles']['summary']
+            summary[state] = summary.get(state, 0) + 1
+        return True, response
+
+
     def node_payload(self, name=None):
         """
         Everything a node needs to bring itself into line, in three states:

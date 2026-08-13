@@ -724,3 +724,94 @@ def test_a_rename_between_queueing_and_delivery_still_lands(db, seed):
     status, message = ProfileSync().deliver_node(queued['param'])
     assert 'is not available' not in str(message), \
         f'the queued task could not find the renamed node: {message}'
+
+
+# ---------------------------------------------------------------------------
+# phase three: the status view
+# ---------------------------------------------------------------------------
+
+def _status_db(db):
+    from utils.dbstructure import DBStructure
+    for table in ['monitor']:
+        db.create(table, DBStructure().get_database_table_structure(table))
+
+
+def test_status_says_not_applied_for_an_uninvolved_node(db, seed):
+    from base.profile import Profile
+    _status_db(db)
+    status, response = Profile().status()
+    assert status, response
+    assert response['config']['profiles']['status']['node001']['state'] == 'not applied'
+
+
+def test_status_says_behind_then_in_sync(db, seed):
+    from base.profile import Profile
+    from utils.helper import Helper
+    _status_db(db)
+    Profile().update_profile('p', _make('p'))
+    db.update('node', Helper().make_rows({'profiles': 'p'}),
+              [{"column": "id", "value": seed['nodeid']}])
+    _, response = Profile().status('node001')
+    assert response['config']['profiles']['status']['node001']['state'] == 'behind'
+
+    db.update('node', Helper().make_rows(
+        {'profiles_digest': Profile().node_digest('node001')}),
+        [{"column": "id", "value": seed['nodeid']}])
+    _, response = Profile().status('node001')
+    entry = response['config']['profiles']['status']['node001']
+    assert entry['state'] == 'in sync'
+    assert entry['profiles'] == 'p'
+
+
+def test_status_reports_a_failure_with_its_reason(db, seed):
+    """A sweep failing quietly on a dozen nodes is worse than no sweep. The reason has
+    to be answerable without reading a log."""
+    from base.profile import Profile
+    from utils.profile_sync import ProfileSync
+    from utils.helper import Helper
+    _status_db(db)
+    Profile().update_profile('p', _make('p'))
+    db.update('node', Helper().make_rows({'profiles': 'p'}),
+              [{"column": "id", "value": seed['nodeid']}])
+    ProfileSync().record_outcome(seed['nodeid'], False, 'could not copy the bundle: timed out')
+    _, response = Profile().status('node001')
+    entry = response['config']['profiles']['status']['node001']
+    assert entry['state'] == 'failed'
+    assert 'timed out' in entry['detail']
+    assert entry['since']
+
+
+def test_a_success_clears_a_previous_failure(db, seed):
+    from base.profile import Profile
+    from utils.profile_sync import ProfileSync
+    from utils.helper import Helper
+    _status_db(db)
+    Profile().update_profile('p', _make('p'))
+    db.update('node', Helper().make_rows({'profiles': 'p'}),
+              [{"column": "id", "value": seed['nodeid']}])
+    ProfileSync().record_outcome(seed['nodeid'], False, 'boom')
+    ProfileSync().record_outcome(seed['nodeid'], True, 'delivered')
+    db.update('node', Helper().make_rows(
+        {'profiles_digest': Profile().node_digest('node001')}),
+        [{"column": "id", "value": seed['nodeid']}])
+    _, response = Profile().status('node001')
+    assert response['config']['profiles']['status']['node001']['state'] == 'in sync'
+
+
+def test_status_marks_a_node_carrying_a_frozen_profile(db, seed):
+    """In sync, but holding files Luna no longer manages. That is neither drift nor an
+    error, and an operator should not have to remember it."""
+    from base.profile import Profile
+    from utils.helper import Helper
+    _status_db(db)
+    Profile().update_profile('p', _make('p'))
+    db.update('node', Helper().make_rows({'profiles': 'p'}),
+              [{"column": "id", "value": seed['nodeid']}])
+    db.update('profile', Helper().make_rows({'enabled': 0}),
+              [{"column": "name", "value": 'p'}])
+    db.update('node', Helper().make_rows(
+        {'profiles_digest': Profile().node_digest('node001')}),
+        [{"column": "id", "value": seed['nodeid']}])
+    entry = Profile().status('node001')[1]['config']['profiles']['status']['node001']
+    assert entry['state'] == 'frozen'
+    assert entry['frozen'] == 'p'

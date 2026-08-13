@@ -64,6 +64,9 @@ INSTALL_DONE = ('install.success', 'install.booted')
 # every five minutes, which is often enough for a node that has just come back and rare
 # enough that it is never the thing doing the work
 RECONCILE_PASSES = 60
+# the node's own monitor row holds its install state; a delivery outcome needs a
+# reference of its own or the two overwrite each other
+OUTCOME_REF = 'nodeprofile'
 
 
 class ProfileSync():
@@ -297,6 +300,21 @@ class ProfileSync():
         return behind
 
 
+    def record_outcome(self, nodeid=None, status=None, message=None):
+        """
+        What happened the last time we tried this node, so the status view can answer
+        'did it work' without anyone reading a log. Kept under a reference of its own:
+        the node's own monitor row carries its install state, and one would overwrite
+        the other.
+        """
+        row = [{"column": "tableref", "value": OUTCOME_REF},
+               {"column": "tablerefid", "value": nodeid},
+               {"column": "state", "value": str(message)[:200]},
+               {"column": "status", "value": 200 if status else 500},
+               {"column": "updated", "value": "NOW"}]
+        Database().insert('monitor', row, replace=True)
+
+
     def reclaim_abandoned(self):
         """
         Tasks left 'in progress' by a daemon that stopped mid-delivery. Nothing else will
@@ -332,6 +350,7 @@ class ProfileSync():
                 # for the operator's benefit the log names the node, resolved now
                 node = Database().get_record(table='node', where=f'id = "{key}"')
                 label = node[0]['name'] if node else f'node id {key}'
+                self.record_outcome(key, status == 'True', message)
                 if status == 'True':
                     self.logger.info(f"profiles delivered to {label}: {message}")
                 else:

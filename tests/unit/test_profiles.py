@@ -815,3 +815,34 @@ def test_status_marks_a_node_carrying_a_frozen_profile(db, seed):
     entry = Profile().status('node001')[1]['config']['profiles']['status']['node001']
     assert entry['state'] == 'frozen'
     assert entry['frozen'] == 'p'
+
+
+def test_a_node_that_just_failed_is_left_alone_for_a_while(db, seed):
+    """Measured on a live pair: a thousand unreachable nodes take about twelve minutes
+    to work through. Re-queueing them every five would leave the worker permanently
+    busy, and a legitimate delivery would wait behind a cluster that is switched off."""
+    from base.profile import Profile
+    from utils.profile_sync import ProfileSync
+    from utils.helper import Helper
+    _reconcile_db(db)
+    Profile().update_profile('p', _make('p'))
+    db.update('node', Helper().make_rows({'profiles': 'p'}),
+              [{"column": "id", "value": seed['nodeid']}])
+    assert [name for _, name in ProfileSync().nodes_behind()] == ['node001']
+
+    ProfileSync().record_outcome(seed['nodeid'], False, 'could not reach it')
+    assert ProfileSync().nodes_behind() == [], 'a node that just failed was queued again'
+
+
+def test_a_node_that_succeeded_is_not_held_back(db, seed):
+    """The cool-off applies to failures only: a node that was delivered to and has since
+    drifted must be picked up at once."""
+    from base.profile import Profile
+    from utils.profile_sync import ProfileSync
+    from utils.helper import Helper
+    _reconcile_db(db)
+    Profile().update_profile('p', _make('p'))
+    db.update('node', Helper().make_rows({'profiles': 'p'}),
+              [{"column": "id", "value": seed['nodeid']}])
+    ProfileSync().record_outcome(seed['nodeid'], True, 'delivered')
+    assert [name for _, name in ProfileSync().nodes_behind()] == ['node001']

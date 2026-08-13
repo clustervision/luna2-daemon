@@ -67,6 +67,12 @@ RECONCILE_PASSES = 60
 # the node's own monitor row holds its install state; a delivery outcome needs a
 # reference of its own or the two overwrite each other
 OUTCOME_REF = 'nodeprofile'
+# how long to leave a node alone after a failed attempt. Measured on a live pair: with a
+# fifteen second connect bound and twenty deliveries in flight, a thousand unreachable
+# nodes take about twelve minutes to work through. Without a cool-off the sweep would
+# queue them all again every five minutes, so the worker would never be idle and a
+# legitimate delivery would wait behind a cluster that is simply switched off.
+FAILURE_COOLOFF = 15
 
 
 class ProfileSync():
@@ -279,6 +285,15 @@ class ProfileSync():
             if self.skip_reason(node['name']):
                 # it would be skipped at delivery anyway; queueing it here only churns
                 continue
+            recent = Database().get_record(
+                table='monitor',
+                where=f'tableref = "{OUTCOME_REF}" AND tablerefid = "{node["id"]}" '
+                      f'AND status = "500" '
+                      f'AND updated > datetime("now","-{FAILURE_COOLOFF} minute")')
+            if recent:
+                # it failed a moment ago and nothing has changed since; trying again now
+                # only spends the worker's time on a node that is still not there
+                continue
             behind.append((node['id'], node['name']))
         return behind
 
@@ -353,10 +368,14 @@ class ProfileSync():
                 self.record_outcome(key, status == 'True', message)
                 if status == 'True':
                     self.logger.info(f"profiles delivered to {label}: {message}")
+                elif not node:
+                    # the node was removed while its delivery was queued. re-queueing
+                    # would retry it forever against something that cannot come back
+                    self.logger.info(f"node id {key} no longer exists; dropping its "
+                                     "profile delivery")
                 else:
                     # a failure leaves the node's digest untouched, so it stays out of
-                    # line and is picked up again. retried here so phase one does not
-                    # depend on a sweep that does not exist yet
+                    # line and the sweep picks it up again once its cool-off has passed
                     self.logger.warning(f"delivering profiles to {label} failed: {message}")
                     Queue().add_task_to_queue(task='sync_profiles', param=key,
                                               subsystem='profile', when=RETRY_DELAY)

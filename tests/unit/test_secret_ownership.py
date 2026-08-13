@@ -204,6 +204,31 @@ def test_numeric_owner_round_trip(db, seed):
     assert row['resolved_owner'] == '1050:1051'
 
 
+def test_a_hanging_directory_does_not_hang_the_install(db, monkeypatch):
+    """
+    NSS has no timeout of its own, and this code runs while a node waits for its
+    install payload. A directory that never answers must degrade to the stored
+    resolution on a deadline, not block the fetch.
+    """
+    import time as timing
+    from utils.helper import Helper
+
+    def never_answers(_name):
+        timing.sleep(30)
+
+    monkeypatch.setattr(Helper, 'owner_lookup_timeout', 0.2)
+    monkeypatch.setattr('utils.helper.pwd.getpwnam', never_answers)
+    db.insert('ownercache', Helper().make_rows(
+        {'name': 'slowuser', 'resolved': '7777', 'updated': 'NOW'}))
+    started = timing.time()
+    assert Helper().resolve_owner('slowuser') == '7777'
+    assert timing.time() - started < 5, 'the lookup was not bounded by the deadline'
+    # and the write-time check reports it as unresolvable rather than waiting either
+    started = timing.time()
+    assert Helper().check_owner('slowuser') is False
+    assert timing.time() - started < 5
+
+
 def test_update_stays_silent_for_a_resolvable_owner(db, seed):
     status, message = _post_node_secret('node001', {
         'name': 'fine', 'content': 'c2VjcmV0', 'path': '/etc/fine',

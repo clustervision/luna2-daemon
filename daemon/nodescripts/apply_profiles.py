@@ -234,7 +234,12 @@ def write_file(entry):
     except (ValueError, OSError) as exp:
         print(f"WARNING could not set mode {mode} on {path}: {exp}")
 
-    uid, gid = resolve_owner(entry.get('owner'))
+    # the controller resolves the owner against the directory and sends the numbers,
+    # because this node may have no directory at all - which is the whole reason that
+    # resolution happens up there. The name is only the fallback, for a user that
+    # exists here and not there. The installer path has always used it this way
+    wanted_owner = entry.get('resolved_owner') or entry.get('owner')
+    uid, gid = resolve_owner(wanted_owner)
     if uid is not None:
         try:
             stat = os.stat(path)
@@ -242,9 +247,10 @@ def write_file(entry):
                 os.chown(path, uid, gid if gid is not None else -1)
                 changed = True
         except OSError as exp:
-            print(f"WARNING could not set owner {entry.get('owner')} on {path}: {exp}")
+            print(f"WARNING could not set owner {wanted_owner} on {path}: {exp}")
     elif entry.get('owner'):
-        print(f"WARNING owner {entry['owner']} for {path} cannot be resolved on this node")
+        print(f"WARNING owner {entry['owner']} for {path} could not be resolved, here or "
+              "on the controller; leaving it as it is")
 
     return changed, made
 

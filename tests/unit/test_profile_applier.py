@@ -426,3 +426,38 @@ def test_binary_content_survives_byte_for_byte(tmp_path):
     code, out = _run(tmp_path, _payload(entry))
     assert code == 0, out
     assert target.read_bytes() == raw
+
+
+def test_the_resolved_owner_is_what_gets_applied(tmp_path):
+    """The controller resolves the owner against the directory precisely because the node
+    may have none, and sends the numbers alongside the name. Applying the name instead
+    leaves the file root-owned on exactly the clusters that resolution exists for - while
+    the installer path, which uses the resolved value, gets it right. The same profile,
+    applied two different ways, is the bug this pins."""
+    target = tmp_path / 'owned.conf'
+    entry = _file(target, 'x', owner='a-directory-user:a-directory-group',
+                  resolved_owner=f'{os.getuid()}:{os.getgid()}', mode='644')
+    code, out = _run(tmp_path, _payload(entry))
+    assert code == 0, out
+    assert 'could not be resolved' not in out, \
+        'the name was used and failed, while the resolved number was sitting in the payload'
+    assert target.stat().st_uid == os.getuid()
+
+
+def test_a_name_is_still_honoured_when_the_controller_sent_no_number(tmp_path):
+    """A user that exists on the node but not on the controller still works: the name is
+    the fallback, not the other way round."""
+    target = tmp_path / 'named.conf'
+    entry = _file(target, 'x', owner=f'{os.getuid()}:{os.getgid()}', mode='644')
+    code, out = _run(tmp_path, _payload(entry))
+    assert code == 0, out
+    assert 'could not be resolved' not in out
+    assert target.stat().st_uid == os.getuid()
+
+
+def test_an_owner_nobody_can_resolve_is_reported_not_silently_dropped(tmp_path):
+    target = tmp_path / 'unknown.conf'
+    entry = _file(target, 'x', owner='nobody-anywhere:nobody-anywhere', mode='644')
+    code, out = _run(tmp_path, _payload(entry))
+    assert code == 0, out
+    assert 'could not be resolved' in out

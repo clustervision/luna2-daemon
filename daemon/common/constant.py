@@ -182,6 +182,11 @@ def set_constants(section=None, option=None, item=None):
             CONSTANT[section][option] = int(item.replace('m', ''))*60
         else:
             CONSTANT[section][option] = 10*60
+    elif option.upper() == 'PROFILE_BATCH_DELAY':
+        if item:
+            CONSTANT[section][option] = int(item.replace('s', ''))
+        else:
+            CONSTANT[section][option] = 0
     elif option.upper() == 'BMC_BATCH_DELAY':
         if item:
             CONSTANT[section][option] = int(item.replace('s', ''))

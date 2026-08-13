@@ -1,0 +1,40 @@
+Profile delivery plugins.
+
+Each plugin gets a node's profile bundle onto that node and runs its applier, and
+returns the digest the node reports it now holds.
+
+  default.py   rsync the bundle over and run the applier over ssh
+  none.py      no live delivery; the node applies its profiles when it installs
+
+Selection follows the usual plugin cascade: a module named after the node, else one
+named after its group, else default. So a node or a whole group that cannot be reached
+inbound is pointed at none.py by dropping a module of that name here.
+
+Required method:
+
+  deliver(node, hostname, bundle, timeout) -> (status: bool, message: str)
+
+On success the message is the digest the node reported. Anything else is a failure, and
+a failure must never return a digest: recording one marks the node in sync on a guess.
+
+Tuning the fan-out
+
+Deliveries run in parallel batches. The defaults are twenty in flight with no pause between
+batches, which is deliberately conservative: unlike the BMC batches, this limit protects
+the controller rather than the far end, since every child is an rsync plus an ssh of its
+own.
+
+A large cluster can override them by adding an optional section to luna.ini:
+
+  [PROFILES]
+  PROFILE_BATCH_SIZE = 25
+  PROFILE_BATCH_DELAY = 2
+
+Both are optional and so is the section. It is deliberately NOT declared in
+common/constant.py: a declared section is a required one, and check_section aborts startup
+on an ini that lacks it - before the logger exists to say why. Absent values simply fall
+back to the defaults above.
+
+luna.ini itself is rendered at install from trinityx-combined, so this section is not
+shipped by default; an admin adds it to the running controller's copy, or it goes into the
+installer template as a cross-repo pair.

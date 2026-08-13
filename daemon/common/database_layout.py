@@ -319,7 +319,8 @@ DATABASE_LAYOUT_profile = [
 {"column": "name",                 "datatype": "VARCHAR", "length": "50", "key": "UNIQUE"},
 {"column": "scope",                "datatype": "VARCHAR", "length": "20"},
 {"column": "service",              "datatype": "VARCHAR", "length": "100"},
-{"column": "action",               "datatype": "VARCHAR", "length": "20"}]
+{"column": "action",               "datatype": "VARCHAR", "length": "20"},
+{"column": "enabled",              "datatype": "INTEGER", "length": "10"}]
 
 DATABASE_LAYOUT_profilefile = [
 {"column": "id",                   "datatype": "INTEGER", "key": "PRIMARY", "keyadd": "AUTOINCREMENT"},
@@ -355,6 +356,7 @@ DATABASE_LAYOUT_node = [
 {"column": "roles",                "datatype": "VARCHAR", "length": "512"},
 {"column": "scripts",              "datatype": "VARCHAR", "length": "512"},
 {"column": "profiles",             "datatype": "VARCHAR", "length": "512"},
+{"column": "profiles_digest",      "datatype": "VARCHAR", "length": "64"},
 {"column": "vendor",               "datatype": "VARCHAR", "length": "60"},
 {"column": "assettag",             "datatype": "VARCHAR", "length": "32"},
 {"column": "prescript",            "datatype": "TEXT"},

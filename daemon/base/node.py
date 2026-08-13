@@ -40,6 +40,7 @@ from utils.queue import Queue
 from utils.helper import Helper
 from utils.monitor import Monitor
 from base.interface import Interface
+from base.profile import Profile
 from base.route import Route
 from common.constant import CONSTANT
 
@@ -656,7 +657,7 @@ class Node():
                     except DisklayoutInvalid as exp:
                         return False, f'Invalid request: {exp}'
             node = Database().get_record(table='node', where=f'name = "{name}"')
-            oldnodename = None
+            oldnodename, nodename_new = None, None
             if node:
                 nodeid = node[0]['id']
                 if 'newnodename' in data: # is mentioned as newhostname in design documents!
@@ -845,6 +846,7 @@ class Node():
                 # ---- we call the node plugin - maybe someone wants to run something after create/update?
                 Queue().add_task_to_queue(task='run_bulk', param='node:master',
                                           subsystem='housekeeper', request_id='__node_update__')
+                Profile().queue_node(nodename_new or name)
                 group_details = Database().get_record_join(['group.name'],
                                                            ['group.id=node.groupid'],
                                                            [f"node.name='{name}'"])

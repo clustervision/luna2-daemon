@@ -12,6 +12,7 @@ include daemon/log/*
 include daemon/routes/*
 include daemon/templates/*
 include daemon/utils/*
+include daemon/nodescripts/*
 recursive-include daemon/plugins *.py
 recursive-include daemon/plugins *.templ
 recursive-include daemon/plugins README

@@ -143,11 +143,21 @@ class Profile():
         if request_data:
             data = request_data['config']['profiles'][name]
             files = data.pop('files', None)
+            # popped before the column check: it is a request about the name, not a
+            # column of its own, exactly as the other entities take theirs
+            newprofilename = data.pop('newprofilename', None)
             profile = Database().get_record(table='profile', where=f'name = "{name}"')
             profile_columns = Database().get_columns('profile')
             column_check = Helper().compare_list(data, profile_columns)
             if not column_check:
                 return False, 'Invalid request: Supplied columns do not match the requirements'
+            if newprofilename:
+                if not profile:
+                    return False, ('Invalid request: newprofilename is not allowed while '
+                                   'creating a new profile')
+                if Database().get_record(table='profile', where=f'name = "{newprofilename}"'):
+                    return False, f'Invalid request: {newprofilename} already present in database'
+                data['name'] = newprofilename
             # a profile that writes nothing and acts on nothing does nothing, and it
             # would sit in the assignment lists looking like configuration. Decided
             # before anything is written: rejecting afterwards would leave the half a
@@ -166,6 +176,11 @@ class Profile():
                     row = Helper().make_rows(data)
                     Database().update('profile', row, where)
                 response = f'Profile {name} updated'
+                if newprofilename:
+                    # nothing else to do: assignments hold the id, so everything that
+                    # applies this profile keeps applying it
+                    name = newprofilename
+                    response = f'Profile renamed to {newprofilename}'
             else:
                 data['name'] = name
                 row = Helper().make_rows(data)
@@ -325,6 +340,52 @@ class Profile():
         return status, response
 
 
+    def profile_ids(self, assigned=None):
+        """
+        The profile ids in an assignment list.
+
+        A token that is not a number is read as a name: assignments were stored by name
+        before they became references, and a cluster upgraded mid-life still has those.
+        Resolving them here means an old value keeps working and is rewritten as an id
+        the next time the assignment is touched, rather than needing a migration that
+        runs once and is never testable again.
+        """
+        ids = []
+        for entry in (assigned or '').split(','):
+            entry = entry.strip()
+            if not entry:
+                continue
+            if entry.isdigit():
+                ids.append(int(entry))
+                continue
+            row = Database().get_record(table='profile', where=f'name = "{entry}"')
+            if row:
+                ids.append(row[0]['id'])
+        return ids
+
+
+    def profile_names(self, assigned=None):
+        """
+        The same list as names, resolved now rather than when it was written - which is
+        what a human, an installer template and the digest all want. An id that no longer
+        resolves is dropped: the profile was deleted, and naming it would be a lie.
+        """
+        names = []
+        for profileid in self.profile_ids(assigned):
+            row = Database().get_record(table='profile', where=f'id = "{profileid}"')
+            if row:
+                names.append(row[0]['name'])
+        return names
+
+
+    def to_profile_ids(self, names=None):
+        """
+        Names to ids, for the boundary where an assignment is written. The caller has
+        already established that every name exists.
+        """
+        return ','.join(str(profileid) for profileid in self.profile_ids(names))
+
+
     def merged_profiles(self, nodeid=None):
         """
         The profiles a node applies: its group's plus its own, additively and
@@ -341,9 +402,10 @@ class Profile():
                 rows = [{'group_profiles': None, 'node_profiles': rows[0]['profiles']}]
         for row in rows or []:
             for scoped in [row['group_profiles'], row['node_profiles']]:
-                for entry in (scoped or "").split(','):
-                    entry = entry.strip()
-                    if entry and entry not in merged:
+                # stored as ids, answered as names: the reference survives a rename, the
+                # answer says what the profile is called now
+                for entry in self.profile_names(scoped):
+                    if entry not in merged:
                         merged.append(entry)
         return ','.join(merged)
 
@@ -474,10 +536,10 @@ class Profile():
         if not profile:
             return status, f'Profile {name} is not available'
         members = {'groups': [], 'nodes': []}
+        profileid = profile[0]['id']
         for table, key in (('group', 'groups'), ('node', 'nodes')):
             for row in Database().get_record(table=table) or []:
-                assigned = [entry.strip() for entry in (row['profiles'] or '').split(',')]
-                if name in assigned:
+                if profileid in self.profile_ids(row['profiles']):
                     members[key].append(row['name'])
         # a node inside a group that applies it is covered by the group, and listing it
         # again would suggest an assignment it does not have

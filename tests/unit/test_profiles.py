@@ -589,3 +589,109 @@ def test_the_delivery_transport_bounds_itself(db):
     assert '--contimeout=' not in source, \
         '--contimeout is an rsync-daemon option; over ssh it is a usage error'
     assert 'BatchMode=yes' in source, 'a prompt would hang the worker'
+
+
+# ---------------------------------------------------------------------------
+# phase two: the reconciler
+# ---------------------------------------------------------------------------
+
+def _reconcile_db(db):
+    """The tables the sweep reads."""
+    from utils.dbstructure import DBStructure
+    for table in ['monitor']:
+        db.create(table, DBStructure().get_database_table_structure(table))
+
+
+def test_a_cluster_with_no_profiles_is_left_alone(db, seed):
+    """The trap in a sweep like this: a node that has never been delivered to differs
+    from an empty digest, so every node in a cluster where nobody uses profiles would
+    look out of line - and the sweep would connect to all of them to deliver nothing."""
+    from utils.profile_sync import ProfileSync
+    _reconcile_db(db)
+    assert ProfileSync().nodes_behind() == []
+
+
+def test_a_node_with_a_profile_and_no_delivery_is_behind(db, seed):
+    from base.profile import Profile
+    from utils.profile_sync import ProfileSync
+    from utils.helper import Helper
+    _reconcile_db(db)
+    Profile().update_profile('p', _make('p'))
+    db.update('node', Helper().make_rows({'profiles': 'p'}),
+              [{"column": "id", "value": seed['nodeid']}])
+    assert ProfileSync().nodes_behind() == ['node001']
+
+
+def test_a_node_already_in_line_is_not_touched(db, seed):
+    from base.profile import Profile
+    from utils.profile_sync import ProfileSync
+    from utils.helper import Helper
+    _reconcile_db(db)
+    Profile().update_profile('p', _make('p'))
+    db.update('node', Helper().make_rows({'profiles': 'p'}),
+              [{"column": "id", "value": seed['nodeid']}])
+    db.update('node', Helper().make_rows(
+        {'profiles_digest': Profile().node_digest('node001')}),
+        [{"column": "id", "value": seed['nodeid']}])
+    assert ProfileSync().nodes_behind() == []
+
+
+def test_a_node_whose_profile_changed_falls_behind_again(db, seed):
+    """The sweep is what notices a delivery that never happened - an edit made while a
+    node was unreachable, for instance."""
+    from base.profile import Profile
+    from utils.profile_sync import ProfileSync
+    from utils.helper import Helper
+    _reconcile_db(db)
+    Profile().update_profile('p', _make('p'))
+    db.update('node', Helper().make_rows({'profiles': 'p'}),
+              [{"column": "id", "value": seed['nodeid']}])
+    db.update('node', Helper().make_rows(
+        {'profiles_digest': Profile().node_digest('node001')}),
+        [{"column": "id", "value": seed['nodeid']}])
+    Profile().update_profile('p', _make('p', files=[
+        {'name': 'key', 'content': 'Y2hhbmdlZA==', 'path': '/etc/munge/munge.key'}]))
+    assert ProfileSync().nodes_behind() == ['node001']
+
+
+def test_a_node_that_had_profiles_removed_is_behind_until_told(db, seed):
+    """Unassigning is a change like any other: the node holds files it should not, and
+    it stays out of line until it has been told to put them back."""
+    from base.profile import Profile
+    from utils.profile_sync import ProfileSync
+    from utils.helper import Helper
+    _reconcile_db(db)
+    Profile().update_profile('p', _make('p'))
+    db.update('node', Helper().make_rows(
+        {'profiles': 'p', 'profiles_digest': 'whatever-it-had'}),
+        [{"column": "id", "value": seed['nodeid']}])
+    db.update('node', Helper().make_rows({'profiles': ''}),
+              [{"column": "id", "value": seed['nodeid']}])
+    assert ProfileSync().nodes_behind() == ['node001']
+
+
+def test_an_installing_node_is_not_queued_by_the_sweep(db, seed):
+    """It would be skipped at delivery anyway; queueing it only churns."""
+    from base.profile import Profile
+    from utils.profile_sync import ProfileSync
+    from utils.helper import Helper
+    _reconcile_db(db)
+    Profile().update_profile('p', _make('p'))
+    db.update('node', Helper().make_rows({'profiles': 'p'}),
+              [{"column": "id", "value": seed['nodeid']}])
+    db.insert('monitor', Helper().make_rows(
+        {'tableref': 'node', 'tablerefid': seed['nodeid'], 'state': 'install.unpack'}))
+    assert ProfileSync().nodes_behind() == []
+
+
+def test_the_sweep_queues_what_it_finds(db, seed):
+    from base.profile import Profile
+    from utils.profile_sync import ProfileSync
+    from utils.helper import Helper
+    _reconcile_db(db)
+    Profile().update_profile('p', _make('p'))
+    db.update('node', Helper().make_rows({'profiles': 'p'}),
+              [{"column": "id", "value": seed['nodeid']}])
+    assert ProfileSync().reconcile() == ['node001']
+    queued = db.get_record(table='queue', where='subsystem = "profile"')
+    assert [row['param'] for row in queued] == ['node001']

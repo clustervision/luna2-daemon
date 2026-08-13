@@ -60,6 +60,10 @@ RETRY_DELAY = '300s'
 # where an install stops. anything else under install. is a step still in flight, and
 # these two stay on the record long after the install finished
 INSTALL_DONE = ('install.success', 'install.booted')
+# the mother wakes every five seconds; this many passes puts a reconcile sweep roughly
+# every five minutes, which is often enough for a node that has just come back and rare
+# enough that it is never the thing doing the work
+RECONCILE_PASSES = 60
 
 
 class ProfileSync():
@@ -212,9 +216,16 @@ class ProfileSync():
         """
         self.logger.info("Starting profile sync thread")
         ha_object = HA()
+        sweep_counter = 0
         while True:
             try:
                 if (not ha_object.get_hastate()) or ha_object.get_role():
+                    # the reconcile sweep is deliberately infrequent: it exists to catch
+                    # what the event-driven path missed, not to do the work
+                    sweep_counter += 1
+                    if sweep_counter >= RECONCILE_PASSES:
+                        sweep_counter = 0
+                        self.reconcile()
                     pipeline = Helper().Pipeline()
                     claimed = {}
                     while next_id := Queue().next_task_in_queue('profile', status='queued'):
@@ -234,6 +245,48 @@ class ProfileSync():
             if event.is_set():
                 return
             sleep(5)
+
+
+    def nodes_behind(self):
+        """
+        Every node whose profiles are not what they should be. This is the whole of the
+        reconciler's decision, and it costs one query plus a digest per node - no
+        connection is made, so sweeping a large cluster is affordable.
+
+        A node that has never been delivered to AND has no profiles assigned is not
+        behind, it is uninvolved. Without that, a cluster where nobody uses profiles
+        would have every node "differ" - an empty digest against no digest at all - and
+        the sweep would ssh to all of them to deliver nothing.
+        """
+        behind = []
+        for node in Database().get_record(table='node') or []:
+            delivered = node['profiles_digest']
+            assigned = Profile().merged_profiles(node['id'])
+            if not delivered and not assigned:
+                continue
+            if Profile().node_digest(node['name']) == delivered:
+                continue
+            if self.skip_reason(node['name']):
+                # it would be skipped at delivery anyway; queueing it here only churns
+                continue
+            behind.append(node['name'])
+        return behind
+
+
+    def reconcile(self):
+        """
+        Queue whatever has drifted. This is what makes a node that was unreachable
+        converge on its own once it comes back, with no retry list to maintain: it is
+        simply a node whose digests still differ, and it stays that way until it is
+        delivered to. It is also what makes the queue's own sixty-minute window
+        harmless, since anything that ages out of it is added again here.
+        """
+        behind = self.nodes_behind()
+        if behind:
+            self.logger.info(f"profiles out of line on {len(behind)} node(s): "
+                             f"{', '.join(behind[:10])}{' ...' if len(behind) > 10 else ''}")
+            Profile().queue_nodes(behind)
+        return behind
 
 
     def reclaim_abandoned(self):

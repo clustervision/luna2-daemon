@@ -34,6 +34,7 @@ TRANSIENT = {
     'reference': 'lookup sidecar for monitor rows',
     'ha': 'this controller\'s own HA state',
     'reservedipaddress': 'short-lived IP reservations, garbage-collected after 10 minutes',
+    'ownercache': 'per-controller NSS owner resolutions, rebuilt from the directory on demand',
 }
 
 

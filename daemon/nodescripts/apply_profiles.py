@@ -119,9 +119,15 @@ def restore(path):
     try:
         with open(source + '.meta', 'r', encoding='utf-8') as handle:
             meta = json.load(handle)
+    except (IOError, OSError, ValueError):
+        # no sidecar: the installer seeds its backups with cp -a, which preserves owner
+        # and mode on the copy itself, so the backup is its own record
+        stat = os.stat(source)
+        meta = {'uid': stat.st_uid, 'gid': stat.st_gid, 'mode': oct(stat.st_mode & 0o7777)}
+    try:
         os.chown(path, meta['uid'], meta['gid'])
         os.chmod(path, int(meta['mode'], 8))
-    except (IOError, OSError, ValueError, KeyError):
+    except (OSError, ValueError, KeyError):
         pass
     os.remove(source)
     if os.path.exists(source + '.meta'):

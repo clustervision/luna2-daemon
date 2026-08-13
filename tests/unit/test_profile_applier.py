@@ -218,3 +218,55 @@ def test_removal_acts_on_the_service_it_recorded(tmp_path):
     assert code == 0, out
     assert 'systemctl restart munge' in out, \
         'a service whose configuration was just taken away was never told'
+
+
+# ---------------------------------------------------------------------------
+# the handover: a manifest written by the installer's bash, consumed by the applier
+# ---------------------------------------------------------------------------
+
+def _installer_seeded(tmp_path, path, existed_before):
+    """The manifest the installer's node_profiles() writes, in its exact shape."""
+    state = tmp_path / 'state'
+    (state / 'backup' / path.parent.relative_to(path.anchor)).mkdir(parents=True, exist_ok=True)
+    manifest = {str(path): {'profile': 'p', 'existed_before': existed_before,
+                            'service': 'chronyd', 'action': 'restart'}}
+    state.mkdir(parents=True, exist_ok=True)
+    (state / 'manifest.json').write_text(json.dumps(manifest))
+    return state
+
+
+def test_the_installers_manifest_is_understood(tmp_path):
+    """The installer seeds the record in bash and the applier maintains it from there.
+    If the two ever disagree about its shape, a freshly installed node quietly keeps the
+    profile's own output as the thing to restore."""
+    target = tmp_path / 'etc' / 'chrony.conf'
+    target.parent.mkdir(parents=True)
+    target.write_text('written by the installer')
+
+    _applier(tmp_path)                                  # creates the state dir path
+    state = _installer_seeded(tmp_path, target, existed_before=True)
+    backup = state / 'backup' / str(target).lstrip('/')
+    backup.parent.mkdir(parents=True, exist_ok=True)
+    backup.write_text('the original from the image')
+    os.chmod(backup, 0o640)
+
+    code, out = _run(tmp_path, {'node': 'node001', 'profiles': [], 'frozen': [],
+                                'digest': 'gone'})
+    assert code == 0, out
+    assert target.read_text() == 'the original from the image'
+    assert oct(target.stat().st_mode & 0o777) == '0o640', \
+        'cp -a preserved the mode on the backup, and the restore must use it'
+    assert 'systemctl restart chronyd' in out, \
+        'the service named in the installer-written manifest was never told'
+
+
+def test_a_seeded_entry_that_never_existed_is_removed(tmp_path):
+    target = tmp_path / 'etc' / 'brandnew.conf'
+    target.parent.mkdir(parents=True)
+    target.write_text('written by the installer')
+    _applier(tmp_path)
+    _installer_seeded(tmp_path, target, existed_before=False)
+    code, out = _run(tmp_path, {'node': 'node001', 'profiles': [], 'frozen': [],
+                                'digest': 'gone'})
+    assert code == 0, out
+    assert not target.exists()

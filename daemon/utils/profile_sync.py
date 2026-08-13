@@ -175,7 +175,10 @@ class ProfileSync():
             return True, 'already in line'
         skip = self.skip_reason(name)
         if skip:
-            return False, f'not delivering to {name} now: {skip}'
+            # None, not False: a node that is not ready has not failed, and recording it
+            # as a failure sends somebody chasing a problem that does not exist. It stays
+            # behind, which it is, and the sweep takes it when its state clears
+            return None, f'not delivering to {name} now: {skip}'
 
         bundle, digest = self.build_bundle(name)
         if not bundle:
@@ -362,6 +365,11 @@ class ProfileSync():
                 taskid = (claimed or {}).get(key)
                 if taskid:
                     Queue().remove_task_from_queue(taskid)
+                if status == 'None':
+                    # deferred, not failed: nothing recorded, nothing re-queued
+                    self.logger.info(message)
+                    pipeline.del_message(key)
+                    continue
                 # for the operator's benefit the log names the node, resolved now
                 node = Database().get_record(table='node', where=f'id = "{key}"')
                 label = node[0]['name'] if node else f'node id {key}'

@@ -281,3 +281,40 @@ def test_a_slow_service_is_given_room(tmp_path):
     assert 'SERVICE_TIMEOUT = 300' in source, \
         'the service action bound is short enough to kill a slow but healthy restart'
     assert 'timeout=SERVICE_TIMEOUT' in source
+
+
+def test_a_stale_backup_does_not_resurrect_a_file(tmp_path):
+    """Found on a live node. A path taken over, reclaimed (deleted, because nothing was
+    there before), then taken over again: if a leftover backup counts as proof the file
+    existed, removing the profile the second time restores a file that was not there -
+    and it survives a cleanup that was supposed to leave nothing behind."""
+    target = tmp_path / 'etc' / 'thing.conf'
+    target.parent.mkdir(parents=True)
+    target.write_text('an original, from long ago')
+
+    # cycle one: taken over, then reclaimed - the original goes back, backup consumed
+    _run(tmp_path, _payload(_file(target, 'managed')))
+    _run(tmp_path, {'node': 'n', 'profiles': [], 'frozen': [], 'digest': 'g'})
+    assert target.read_text() == 'an original, from long ago'
+
+    # the file is removed by hand, and the profile applies again
+    target.unlink()
+    _run(tmp_path, _payload(_file(target, 'managed again'), digest='d2'))
+
+    # cycle two: nothing was there this time, so removal must take it away
+    code, out = _run(tmp_path, {'node': 'n', 'profiles': [], 'frozen': [], 'digest': 'g2'})
+    assert code == 0, out
+    assert not target.exists(), 'a stale backup put back a file that did not exist'
+
+
+def test_reclaiming_by_deletion_forgets_the_backup(tmp_path):
+    """Otherwise the leftover is waiting to be believed on the next cycle."""
+    import os as _os
+    target = tmp_path / 'etc' / 'thing.conf'
+    _, state = _applier(tmp_path)
+    _run(tmp_path, _payload(_file(target, 'managed')))
+    _run(tmp_path, {'node': 'n', 'profiles': [], 'frozen': [], 'digest': 'g'})
+    leftovers = []
+    for root, _dirs, files in _os.walk(state / 'backup'):
+        leftovers += [f for f in files]
+    assert leftovers == [], f'backups left behind: {leftovers}'

@@ -93,10 +93,15 @@ def preserve(path):
     Returns True when the path existed before we touched it.
     """
     target = backup_path(path)
+    if not os.path.exists(path):
+        # nothing here now, so nothing was displaced. A backup left over from an earlier
+        # cycle is not evidence: the path may since have been reclaimed and the profile
+        # re-applied, and restoring that stale copy would put back a file which did not
+        # exist the last time we took the path over
+        drop_backup(path)
+        return False
     if os.path.exists(target):
         return True
-    if not os.path.exists(path):
-        return False
     os.makedirs(os.path.dirname(target), mode=0o700, exist_ok=True)
     shutil.copy2(path, target)
     stat = os.stat(path)
@@ -104,6 +109,17 @@ def preserve(path):
         json.dump({'uid': stat.st_uid, 'gid': stat.st_gid, 'mode': oct(stat.st_mode & 0o7777)},
                   handle)
     return True
+
+
+def drop_backup(path):
+    """Forget the original of a path we no longer hold."""
+    source = backup_path(path)
+    for leftover in (source, source + '.meta'):
+        if os.path.exists(leftover):
+            try:
+                os.remove(leftover)
+            except OSError:
+                pass
 
 
 def restore(path):
@@ -279,6 +295,8 @@ def apply_payload(payload):
                 print(f"REMOVED {path}")
             except OSError as exp:
                 print(f"WARNING could not remove {path}: {exp}")
+            # and forget anything kept for it, so a later cycle starts clean
+            drop_backup(path)
         owner = record.get('profile')
         if owner and owner not in touched_services:
             touched_services[owner] = (record.get('service'), record.get('action'))

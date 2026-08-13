@@ -846,3 +846,21 @@ def test_a_node_that_succeeded_is_not_held_back(db, seed):
               [{"column": "id", "value": seed['nodeid']}])
     ProfileSync().record_outcome(seed['nodeid'], True, 'delivered')
     assert [name for _, name in ProfileSync().nodes_behind()] == ['node001']
+
+
+def test_a_node_that_is_installing_has_not_failed(db, seed):
+    """It is not ready, which is not the same as broken. Recording it as a failure puts
+    it in the failed column of the status view and sends somebody chasing a problem that
+    does not exist - and on a cluster mid-boot that is most of the cluster."""
+    from base.profile import Profile
+    from utils.profile_sync import ProfileSync
+    from utils.helper import Helper
+    _reconcile_db(db)
+    Profile().update_profile('p', _make('p'))
+    db.update('node', Helper().make_rows({'profiles': 'p'}),
+              [{"column": "id", "value": seed['nodeid']}])
+    db.insert('monitor', Helper().make_rows(
+        {'tableref': 'node', 'tablerefid': seed['nodeid'], 'state': 'install.unpack'}))
+    status, message = ProfileSync().deliver_node(seed['nodeid'])
+    assert status is None, 'a deferred delivery must not read as a failure'
+    assert 'installing' in message

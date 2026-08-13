@@ -102,4 +102,12 @@ class Plugin():
             # the applier ran and said nothing we understand. treating that as success
             # would record a digest we never received and mark the node in sync on a guess
             return False, f"applier on {target} reported no digest: {output}"
+        # the applier can succeed and still have something to say: a unit that would not
+        # restart, a backup it could not find and so could not put back. Those lines are
+        # the only record that the node is not quite what was asked for, and dropping
+        # them here is what made an unrestored file look like a clean revert
+        notes = [line.strip() for line in output.splitlines()
+                 if line.startswith(('WARNING', 'MISSING'))]
+        if notes:
+            return True, digest + '\n' + '\n'.join(notes)
         return True, digest

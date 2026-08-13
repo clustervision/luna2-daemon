@@ -14,8 +14,14 @@ Required method:
 
   deliver(node, hostname, bundle, timeout) -> (status: bool, message: str)
 
-On success the message is the digest the node reported. Anything else is a failure, and
-a failure must never return a digest: recording one marks the node in sync on a guess.
+On success the message is the digest the node reported, optionally followed by further
+lines: anything the applier warned about while still succeeding - a unit that would not
+restart, a backup it could not find. Those lines end up in 'luna profile status' as the
+reason, so an operator can see that a node applied its profiles and something is still
+not as asked. Only the first line is compared against the digest.
+
+Anything else is a failure, and a failure must never return a digest: recording one marks
+the node in sync on a guess.
 
 Tuning the fan-out
 

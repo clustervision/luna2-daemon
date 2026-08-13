@@ -242,6 +242,37 @@ def act_on_service(service, action):
         print(f"WARNING could not run {' '.join(command)}: {exp}")
 
 
+SIGNATURES = os.path.join(STATE, 'profiles.json')
+
+
+def read_signatures():
+    """What each profile looked like the last time it was applied."""
+    try:
+        with open(SIGNATURES, 'r', encoding='utf-8') as handle:
+            return json.load(handle)
+    except (IOError, OSError, ValueError):
+        return {}
+
+
+def write_signatures(signatures):
+    os.makedirs(STATE, mode=0o700, exist_ok=True)
+    tmp = SIGNATURES + '.new'
+    with open(tmp, 'w', encoding='utf-8') as handle:
+        json.dump(signatures, handle, indent=2, sort_keys=True)
+    os.replace(tmp, SIGNATURES)
+
+
+def profile_signature(profile):
+    """A fingerprint of one profile as delivered."""
+    material = json.dumps({
+        'service': profile.get('service'),
+        'action': profile.get('action'),
+        'files': sorted((entry.get('path'), entry.get('content'), entry.get('owner'),
+                         entry.get('mode')) for entry in profile.get('files') or []),
+    }, sort_keys=True)
+    return hashlib.sha256(material.encode()).hexdigest()
+
+
 def apply_payload(payload):
     """
     Bring this node into line with the payload. Returns the new manifest.
@@ -249,13 +280,31 @@ def apply_payload(payload):
     manifest = read_manifest()
     new_manifest = {}
     touched_services = {}
+    # what each profile looked like last time, so one with no files at all - just a
+    # service to act on - still knows when it has something to do
+    seen = read_signatures()
+    signatures = {}
 
     # what is ours to manage this time round
     for profile in payload.get('profiles') or []:
+        signatures[profile['name']] = profile_signature(profile)
+        if not (profile.get('files') or []):
+            # nothing to write, so nothing can be compared: a profile that only acts on
+            # a service does so when the profile itself has changed
+            if seen.get(profile['name']) != signatures[profile['name']]:
+                touched_services[profile['name']] = (profile.get('service'),
+                                                     profile.get('action'))
         for entry in profile.get('files') or []:
             path = entry['path']
-            existed = manifest.get(path, {}).get('existed_before')
-            if existed is None:
+            if path in new_manifest:
+                # a second profile claiming the same path in the same run. What is on
+                # disk now is the FIRST profile's output, not anything that was
+                # displaced - backing it up would keep our own writing as the original
+                # and put it back for good when every profile is removed
+                existed = new_manifest[path]['existed_before']
+            elif path in manifest:
+                existed = manifest[path].get('existed_before')
+            else:
                 existed = preserve(path)
             if write_file(entry):
                 touched_services[profile['name']] = (profile.get('service'),
@@ -305,6 +354,7 @@ def apply_payload(payload):
     for service, action in touched_services.values():
         act_on_service(service, action)
 
+    write_signatures(signatures)
     return new_manifest
 
 

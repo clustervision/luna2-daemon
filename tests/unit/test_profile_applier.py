@@ -318,3 +318,63 @@ def test_reclaiming_by_deletion_forgets_the_backup(tmp_path):
     for root, _dirs, files in _os.walk(state / 'backup'):
         leftovers += [f for f in files]
     assert leftovers == [], f'backups left behind: {leftovers}'
+
+
+def test_two_profiles_claiming_one_path(tmp_path):
+    """Stacking allows it, and the later one wins. What must not happen is the second
+    one recording the FIRST one's output as the original: removing every profile would
+    then put our own writing back and leave it there for good."""
+    target = tmp_path / 'etc' / 'shared.conf'
+    payload = {'node': 'n', 'frozen': [], 'digest': 'd', 'profiles': [
+        {'name': 'base', 'service': '', 'action': 'none',
+         'files': [_file(target, 'from-base', mode='644')]},
+        {'name': 'override', 'service': '', 'action': 'none',
+         'files': [_file(target, 'from-override', mode='600')]},
+    ]}
+    code, out = _run(tmp_path, payload)
+    assert code == 0, out
+    assert target.read_text() == 'from-override', 'the later profile should win'
+    assert oct(target.stat().st_mode & 0o777) == '0o600'
+
+    code, out = _run(tmp_path, {'node': 'n', 'profiles': [], 'frozen': [], 'digest': 'g'})
+    assert code == 0, out
+    assert not target.exists(), \
+        'nothing was there before the profiles, so nothing should be left after them'
+
+
+def test_the_loser_takes_the_path_back_when_the_winner_goes(tmp_path):
+    """The path is still claimed, just by somebody else - it is not a removal."""
+    target = tmp_path / 'etc' / 'shared.conf'
+    both = {'node': 'n', 'frozen': [], 'digest': 'd', 'profiles': [
+        {'name': 'base', 'service': '', 'action': 'none',
+         'files': [_file(target, 'from-base')]},
+        {'name': 'override', 'service': '', 'action': 'none',
+         'files': [_file(target, 'from-override')]},
+    ]}
+    _run(tmp_path, both)
+    only_base = dict(both, digest='d2', profiles=[both['profiles'][0]])
+    code, out = _run(tmp_path, only_base)
+    assert code == 0, out
+    assert target.read_text() == 'from-base'
+    assert 'REMOVED' not in out and 'RESTORED' not in out
+
+
+def test_a_profile_with_no_files_still_acts_on_its_service(tmp_path):
+    """A profile can be nothing but a service and an action. With no file to compare,
+    the profile itself is what changed - or did not."""
+    payload = {'node': 'n', 'frozen': [], 'digest': 'd', 'profiles': [
+        {'name': 'justaservice', 'service': 'sshd', 'action': 'restart', 'files': []},
+    ]}
+    code, out = _run(tmp_path, payload)
+    assert code == 0, out
+    assert 'systemctl restart sshd' in out, 'a service-only profile did nothing at all'
+
+    code, out = _run(tmp_path, payload)
+    assert code == 0, out
+    assert 'systemctl' not in out, 'an unchanged service-only profile acted again'
+
+    changed = {'node': 'n', 'frozen': [], 'digest': 'd2', 'profiles': [
+        {'name': 'justaservice', 'service': 'sshd', 'action': 'reload', 'files': []},
+    ]}
+    code, out = _run(tmp_path, changed)
+    assert 'systemctl reload sshd' in out, 'a changed service-only profile did nothing'

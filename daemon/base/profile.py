@@ -132,6 +132,17 @@ class Profile():
             column_check = Helper().compare_list(data, profile_columns)
             if not column_check:
                 return False, 'Invalid request: Supplied columns do not match the requirements'
+            # a profile that writes nothing and acts on nothing does nothing, and it
+            # would sit in the assignment lists looking like configuration. Decided
+            # before anything is written: rejecting afterwards would leave the half a
+            # profile behind that the rejection says should not exist
+            service = data.get('service', profile[0]['service'] if profile else None)
+            existing_files = Database().get_record(
+                table='profilefile',
+                where=f'profileid = "{profile[0]["id"]}"') if profile else None
+            if not service and not files and not existing_files:
+                return False, ('Invalid request: a profile needs either a service to act '
+                               'on or at least one file')
             if profile:
                 profileid = profile[0]['id']
                 if data:

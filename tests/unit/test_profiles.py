@@ -864,3 +864,40 @@ def test_a_node_that_is_installing_has_not_failed(db, seed):
     status, message = ProfileSync().deliver_node(seed['nodeid'])
     assert status is None, 'a deferred delivery must not read as a failure'
     assert 'installing' in message
+
+
+def test_a_profile_with_neither_files_nor_a_service_is_rejected(db):
+    """It would write nothing and act on nothing, while sitting in the assignment lists
+    looking like configuration."""
+    from base.profile import Profile
+    status, message = Profile().update_profile('empty', _payload('empty', scope='static'))
+    assert not status
+    assert 'needs either a service' in message
+    assert not db.get_record(table='profile', where='name = "empty"'), \
+        'the profile the rejection says should not exist was created anyway'
+
+
+def test_a_service_only_profile_is_allowed(db):
+    """A profile can be nothing but a service to act on."""
+    from base.profile import Profile
+    status, message = Profile().update_profile('justaservice', _payload(
+        'justaservice', service='sshd', action='restart'))
+    assert status, message
+
+
+def test_a_file_only_profile_is_allowed(db):
+    """And it can be files with no service at all."""
+    from base.profile import Profile
+    status, message = Profile().update_profile('justfiles', _payload('justfiles', files=[
+        {'name': 'f', 'content': 'eA==', 'path': '/etc/f'}]))
+    assert status, message
+
+
+def test_adding_a_service_later_to_a_file_only_profile_still_works(db):
+    """The check must look at what the profile WILL be, not only at what the request
+    carries: a change that supplies a service alone is fine when files already exist."""
+    from base.profile import Profile
+    Profile().update_profile('p', _payload('p', files=[
+        {'name': 'f', 'content': 'eA==', 'path': '/etc/f'}]))
+    status, message = Profile().update_profile('p', _payload('p', service='cron'))
+    assert status, message

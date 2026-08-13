@@ -340,30 +340,39 @@ class Profile():
         return status, response
 
 
-    def queue_node(self, name=None):
+    def queue_node(self, name=None, nodeid=None):
         """
         Ask for a node to be brought into line. Identical requests collapse: the queue
         returns the existing task for the same task+param inside its own window, so a
         change touching one node five times is one delivery.
+
+        The task carries the node's id, never its name. A name can change between the
+        moment a delivery is queued and the moment it runs - a rename, a retry five
+        minutes later - and the task would then name something that no longer exists.
         """
-        if not name:
-            return False
-        Queue().add_task_to_queue(task='sync_profiles', param=name, subsystem='profile')
+        if nodeid is None:
+            if not name:
+                return False
+            node = Database().get_record(table='node', where=f'name = "{name}"')
+            if not node:
+                return False
+            nodeid = node[0]['id']
+        Queue().add_task_to_queue(task='sync_profiles', param=str(nodeid), subsystem='profile')
         return True
 
 
-    def queue_nodes(self, names=None):
+    def queue_nodes(self, nodeids=None):
         """The same, for a group's worth of nodes."""
-        for name in names or []:
-            self.queue_node(name)
+        for nodeid in nodeids or []:
+            self.queue_node(nodeid=nodeid)
         return True
 
 
     def queue_group(self, name=None):
         """Every node in a group, by group name."""
-        nodes = Database().get_record_join(['node.name as nodename'], ['group.id=node.groupid'],
+        nodes = Database().get_record_join(['node.id as nodeid'], ['group.id=node.groupid'],
                                            [f'`group`.name="{name}"'])
-        return self.queue_nodes([node['nodename'] for node in nodes or []])
+        return self.queue_nodes([node['nodeid'] for node in nodes or []])
 
 
     def assigned_to(self, name=None):
@@ -417,7 +426,7 @@ class Profile():
         for node in nodes or []:
             merged = self.merged_profiles(node['nodeid'])
             if name in (merged.split(',') if merged else []):
-                self.queue_node(node['nodename'])
+                self.queue_node(nodeid=node['nodeid'])
         return True
 
 

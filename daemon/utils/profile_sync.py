@@ -140,7 +140,7 @@ class ProfileSync():
         return bundle, digest
 
 
-    def deliver_node(self, name=None):
+    def deliver_node(self, nodeid=None):
         """
         Bring one node into line. Returns (status, message).
 
@@ -154,9 +154,13 @@ class ProfileSync():
                                            'node.profiles_digest as delivered',
                                            'group.name as groupname'],
                                           ['group.id=node.groupid'],
-                                          [f'node.name="{name}"'])
+                                          [f'node.id="{nodeid}"'])
         if not node:
-            return False, f'node {name} is not available'
+            return False, f'node {nodeid} is not available'
+        # the name is read now, at delivery time, rather than carried from whenever the
+        # task was queued: a rename in between would otherwise send us looking for a
+        # node that no longer answers to it
+        name = node[0]['nodename']
         desired = Profile().node_digest(name)
         if desired and desired == node[0]['delivered']:
             return True, 'already in line'
@@ -170,6 +174,9 @@ class ProfileSync():
         try:
             plugin = Helper().plugin_load(self.delivery_plugins, 'profile/delivery',
                                           [node[0]['nodename'], node[0]['groupname']])
+            if not plugin:
+                return False, ('no profile delivery plugin could be loaded; '
+                               f'looked under {self.delivery_plugins}')
             status, message = plugin().deliver(node=node[0]['nodename'],
                                                hostname=node[0]['nodename'],
                                                bundle=bundle, timeout=DEFAULT_TIMEOUT)
@@ -200,13 +207,13 @@ class ProfileSync():
                 # more workers than nodes left. not an error, and it must not raise:
                 # a child that dies inside an executor takes its exception with it
                 continue
-            nodename, _ = item
+            nodeid, _ = item
             try:
-                status, message = self.deliver_node(nodename)
+                status, message = self.deliver_node(nodeid)
             except Exception as exp:
                 status, message = False, f'{exp}'
-                self.logger.error(f"delivering profiles to {nodename}: {exp}")
-            pipeline.add_message({nodename: f"{status}={message}"})
+                self.logger.error(f"delivering profiles to node id {nodeid}: {exp}")
+            pipeline.add_message({nodeid: f"{status}={message}"})
 
 
     def sync_mother(self, event):
@@ -269,7 +276,7 @@ class ProfileSync():
             if self.skip_reason(node['name']):
                 # it would be skipped at delivery anyway; queueing it here only churns
                 continue
-            behind.append(node['name'])
+            behind.append((node['id'], node['name']))
         return behind
 
 
@@ -283,9 +290,10 @@ class ProfileSync():
         """
         behind = self.nodes_behind()
         if behind:
+            names = [name for _, name in behind]
             self.logger.info(f"profiles out of line on {len(behind)} node(s): "
-                             f"{', '.join(behind[:10])}{' ...' if len(behind) > 10 else ''}")
-            Profile().queue_nodes(behind)
+                             f"{', '.join(names[:10])}{' ...' if len(behind) > 10 else ''}")
+            Profile().queue_nodes([nodeid for nodeid, _ in behind])
         return behind
 
 
@@ -321,13 +329,16 @@ class ProfileSync():
                 taskid = (claimed or {}).get(key)
                 if taskid:
                     Queue().remove_task_from_queue(taskid)
+                # for the operator's benefit the log names the node, resolved now
+                node = Database().get_record(table='node', where=f'id = "{key}"')
+                label = node[0]['name'] if node else f'node id {key}'
                 if status == 'True':
-                    self.logger.info(f"profiles delivered to {key}: {message}")
+                    self.logger.info(f"profiles delivered to {label}: {message}")
                 else:
                     # a failure leaves the node's digest untouched, so it stays out of
                     # line and is picked up again. retried here so phase one does not
                     # depend on a sweep that does not exist yet
-                    self.logger.warning(f"delivering profiles to {key} failed: {message}")
+                    self.logger.warning(f"delivering profiles to {label} failed: {message}")
                     Queue().add_task_to_queue(task='sync_profiles', param=key,
                                               subsystem='profile', when=RETRY_DELAY)
                 pipeline.del_message(key)

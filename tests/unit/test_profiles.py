@@ -462,7 +462,7 @@ def test_queueing_collapses_repeats(db, seed):
         Profile().queue_node('node001')
     queued = db.get_record(table='queue', where='subsystem = "profile"')
     assert len(queued) == 1, f'expected one task, found {len(queued)}'
-    assert queued[0]['param'] == 'node001'
+    assert queued[0]['param'] == str(seed['nodeid'])
 
 
 def test_queueing_a_profile_reaches_the_nodes_that_apply_it(db, seed):
@@ -478,7 +478,7 @@ def test_queueing_a_profile_reaches_the_nodes_that_apply_it(db, seed):
               [{"column": "id", "value": seed['nodeid']}])
     Profile().queue_profile('gpu')
     queued = [row['param'] for row in db.get_record(table='queue', where='subsystem = "profile"')]
-    assert queued == ['node001'], f'queued {queued}'
+    assert queued == [str(seed['nodeid'])], f'queued {queued}'
 
 
 def test_member_lists_who_applies_a_profile(db, seed):
@@ -619,7 +619,7 @@ def test_a_node_with_a_profile_and_no_delivery_is_behind(db, seed):
     Profile().update_profile('p', _make('p'))
     db.update('node', Helper().make_rows({'profiles': 'p'}),
               [{"column": "id", "value": seed['nodeid']}])
-    assert ProfileSync().nodes_behind() == ['node001']
+    assert [name for _, name in ProfileSync().nodes_behind()] == ['node001']
 
 
 def test_a_node_already_in_line_is_not_touched(db, seed):
@@ -651,7 +651,7 @@ def test_a_node_whose_profile_changed_falls_behind_again(db, seed):
         [{"column": "id", "value": seed['nodeid']}])
     Profile().update_profile('p', _make('p', files=[
         {'name': 'key', 'content': 'Y2hhbmdlZA==', 'path': '/etc/munge/munge.key'}]))
-    assert ProfileSync().nodes_behind() == ['node001']
+    assert [name for _, name in ProfileSync().nodes_behind()] == ['node001']
 
 
 def test_a_node_that_had_profiles_removed_is_behind_until_told(db, seed):
@@ -667,7 +667,7 @@ def test_a_node_that_had_profiles_removed_is_behind_until_told(db, seed):
         [{"column": "id", "value": seed['nodeid']}])
     db.update('node', Helper().make_rows({'profiles': ''}),
               [{"column": "id", "value": seed['nodeid']}])
-    assert ProfileSync().nodes_behind() == ['node001']
+    assert [name for _, name in ProfileSync().nodes_behind()] == ['node001']
 
 
 def test_an_installing_node_is_not_queued_by_the_sweep(db, seed):
@@ -692,6 +692,35 @@ def test_the_sweep_queues_what_it_finds(db, seed):
     Profile().update_profile('p', _make('p'))
     db.update('node', Helper().make_rows({'profiles': 'p'}),
               [{"column": "id", "value": seed['nodeid']}])
-    assert ProfileSync().reconcile() == ['node001']
+    assert [name for _, name in ProfileSync().reconcile()] == ['node001']
     queued = db.get_record(table='queue', where='subsystem = "profile"')
-    assert [row['param'] for row in queued] == ['node001']
+    assert [row['param'] for row in queued] == [str(seed['nodeid'])], \
+        'the task must carry the id: a name can change before the delivery runs'
+
+
+def test_a_rename_between_queueing_and_delivery_still_lands(db, seed):
+    """The reason the task carries an id. A node can be renamed while a delivery is
+    queued - or during the five minutes before a retry - and a task naming the old name
+    would look for a node that no longer answers to it."""
+    from base.profile import Profile
+    from utils.profile_sync import ProfileSync
+    from utils.helper import Helper
+    from utils.dbstructure import DBStructure
+    db.create('monitor', DBStructure().get_database_table_structure('monitor'))
+    Profile().update_profile('p', _make('p'))
+    db.update('node', Helper().make_rows({'profiles': 'p'}),
+              [{"column": "id", "value": seed['nodeid']}])
+    Profile().queue_node('node001')
+    queued = db.get_record(table='queue', where='subsystem = "profile"')[0]
+
+    db.update('node', Helper().make_rows({'name': 'renamed001'}),
+              [{"column": "id", "value": seed['nodeid']}])
+
+    assert queued['param'] != 'node001', 'the task carried a name, which can change'
+    # the task still identifies the node, under whatever name it now has
+    found = db.get_record(table='node', where=f'id = "{queued["param"]}"')
+    assert found and found[0]['name'] == 'renamed001'
+    # and a delivery driven from that task gets past resolution rather than failing on it
+    status, message = ProfileSync().deliver_node(queued['param'])
+    assert 'is not available' not in str(message), \
+        f'the queued task could not find the renamed node: {message}'

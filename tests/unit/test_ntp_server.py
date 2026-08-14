@@ -24,7 +24,14 @@ import json
 import os
 import re
 
+import pytest
+
+from base.network import Network
 from utils.config import Config
+from utils.database import Database
+from utils.dbstructure import DBStructure
+from utils.queue import Queue
+from utils.service import Service
 
 TEMPLATE_DIR = os.path.join(
     os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
@@ -108,6 +115,75 @@ def test_v6_defines_both_ntp_suboptions():
     source = open(os.path.join(TEMPLATE_DIR, 'templ_kea-dhcp6.cfg')).read()
     assert '"space": "ntp-server"' in source and '"type": "ipv6-address"' in source and '"type": "fqdn"' in source, (
         "templ_kea-dhcp6.cfg no longer defines the ntp-server srv-addr / srv-fqdn sub-options.")
+
+
+# ---------------------------------------------------------------- the entry point
+# Rendering an IPv6 ntp_server correctly is worth nothing while the only way an administrator
+# can set one refuses it. update_network is that one way -- create and update both come through
+# it, and so does a replicated request from the peer -- so the value has to survive it. Seeding
+# the row directly, which is what the render tests above do, cannot see this.
+
+@pytest.fixture
+def network_db(db, seed, monkeypatch):
+    """The db fixture plus the ipaddress table, with the post-validation side effects stubbed.
+
+    A value that passes validation goes on to queue work and poke services, which builds and
+    runs real commands. Stub those rather than skip the test: the accepting path IS the case.
+    """
+    Database().create('ipaddress', DBStructure().get_database_table_structure('ipaddress'))
+    monkeypatch.setattr(Network, '_queue_network_services', lambda self: None)
+    monkeypatch.setattr(Queue, 'add_task_to_queue', lambda *args, **kwargs: (1, 'stubbed'))
+    monkeypatch.setattr(Queue, 'next_task_in_queue', lambda *args, **kwargs: None)
+    return db
+
+
+@pytest.mark.parametrize('value', ['2001:db8:1::9', '10.1.0.9', 'europe.pool.ntp.org'])
+def test_every_ntp_server_kind_survives_update_network(network_db, value):
+    """All three kinds this fix renders must be settable through the only path that sets them."""
+    status, response = Network().update_network(
+        'cluster', {'config': {'network': {'cluster': {'ntp_server': value}}}})
+    assert status is True, (
+        f"update_network rejected ntp_server={value!r}: {response}. The dhcp6 side is the only "
+        f"family able to serve an IPv6 NTP address, and rejecting it here leaves that half of "
+        f"the rendering unreachable by any administrator.")
+    stored = Database().get_record(table='network', where="name='cluster'")[0]['ntp_server']
+    assert stored == value, f"ntp_server stored as {stored!r}, not {value!r}"
+
+
+def _isc_ntp_lines(template, subnets):
+    from jinja2 import Environment, FileSystemLoader
+    env = Environment(loader=FileSystemLoader(TEMPLATE_DIR))
+    out = env.get_template(template).render(
+        CLASSES={}, SHARED={}, SUBNETS=subnets, ZONES={}, EMPTY={}, POOLS={}, LINKSEL={},
+        INTERFACES={}, DOMAINNAME='c', NAMESERVERS='10.1.0.1', NAMESERVERS_IPV6='2001:db8:1::1',
+        NTPSERVERS='', RESERVATIONS={k: [] for k in subnets}, OMAPIKEY=None,
+        TSIGKEY=None, TSIGALGO=None)
+    return [line.strip() for line in out.splitlines() if 'ntp-servers' in line]
+
+
+def _isc_sub(template, ntp):
+    """One ISC subnet. The v4 template nests its options inside the nextserver branch, so a
+    fixture without one renders a subnet carrying no options at all and proves nothing."""
+    if template == 'templ_dhcpd.cfg':
+        sub = _sub4('10.9.0.0', ntp)
+        sub.update({'nextserver': '10.9.0.1', 'nextport': 7050})
+        return sub
+    return _sub6('2001:db8:9::', ntp)
+
+
+@pytest.mark.parametrize('template', ['templ_dhcpd.cfg', 'templ_dhcpd6.cfg'])
+def test_isc_templates_drop_an_ipv6_ntp_server(template):
+    """isc-dhcpd refuses an IPv6 address in option ntp-servers -- in a v6 config as much as a v4
+    one, verified against 4.4.2b1 -- and one refused option costs the whole file. Both ISC
+    templates therefore drop that value, exactly as the kea dhcp4 template does."""
+    kept = _isc_ntp_lines(template, {'a': _isc_sub(template, 'europe.pool.ntp.org')})
+    dropped = _isc_ntp_lines(template, {'a': _isc_sub(template, '2001:db8:1::9')})
+    assert kept and 'europe.pool.ntp.org' in kept[0], (
+        f"{template} stopped emitting a host-name ntp_server; that value works today and this "
+        f"change must not take it away.")
+    assert dropped == [], (
+        f"{template} emitted an IPv6 ntp_server. dhcpd rejects the option and discards the "
+        f"entire configuration file, freezing DHCP on its last-good config.")
 
 
 def test_config_classifies_ntp_server_through_the_helper():

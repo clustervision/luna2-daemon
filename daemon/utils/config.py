@@ -202,6 +202,7 @@ class Config(object):
         dhcp6_config_path = '/etc/dhcp/dhcpd6.conf'
         template = 'templ_dhcpd.cfg'
         template6 = 'templ_dhcpd6.cfg'
+        dhcp6_interface = ''
         if 'DHCP' in CONSTANT:
             if 'TEMPLATE' in CONSTANT["DHCP"]:
                 template = CONSTANT["DHCP"]["TEMPLATE"]
@@ -215,6 +216,12 @@ class Config(object):
                 dhcp6_test = CONSTANT["DHCP"]["TEST6"]
             if 'CONFIG6_PATH' in CONSTANT["DHCP"]:
                 dhcp6_config_path = CONSTANT["DHCP"]["CONFIG6_PATH"]
+            # Last-resort interface for a DHCPv6 subnet with no controller address in range. Unset
+            # by default and deliberately so: kea refuses the entire configuration when given an
+            # interface the host does not have, so the name has to come from whoever knows the
+            # controller rather than from a guess shipped in a template.
+            if 'INTERFACE6' in CONSTANT["DHCP"]:
+                dhcp6_interface = CONSTANT["DHCP"]["INTERFACE6"] or ''
 
         # option 82.5 link-selection is a Kea-only construct (shared-networks + link anchor). On the
         # ISC dhcpd backend a link network must keep rendering exactly as before, so the routing
@@ -579,6 +586,10 @@ class Config(object):
             # IPv6 -----------------------------------
             if any([config_subnets6, config_shared6, config_empty6, config_linksel6]):
                 interfaces = Helper().get_controller_interfaces_for_networks()
+                if not dhcp6_interface:
+                    # With a fallback configured every subnet names an interface, so there is
+                    # nothing to report: kea will say soon enough whether that name is real.
+                    self.dhcp6_unservable(config_subnets6, config_shared6, config_linksel6, interfaces['ipv6'])
                 dhcpd_template = env.get_template(template6)
                 dhcpd_config = dhcpd_template.render(CLASSES=config_classes6,SHARED=config_shared6,SUBNETS=config_subnets6,
                                                      ZONES=config_zones6,EMPTY=config_empty6,POOLS=config_pools6,
@@ -586,7 +597,8 @@ class Config(object):
                                                      DOMAINNAME=domain,NAMESERVERS=nameserver_ip,
                                                      NAMESERVERS_IPV6=nameserver_ip_ipv6,NTPSERVERS=ntp_server,
                                                      RESERVATIONS=config_reservations6,OMAPIKEY=omapikey,
-                                                     TSIGKEY=tsigkey,TSIGALGO=tsigalgo,INTERFACES=interfaces['ipv6'])
+                                                     TSIGKEY=tsigkey,TSIGALGO=tsigalgo,INTERFACES=interfaces['ipv6'],
+                                                     FALLBACK_INTERFACE=dhcp6_interface)
                 with open(dhcp6_file, 'w', encoding='utf-8') as dhcp:
                     dhcp.write(dhcpd_config)
                 rendered6 = True
@@ -612,6 +624,32 @@ class Config(object):
             self.logger.error(f"building DHCP config encountered problems: {exp}, {exc_type}, in {exc_tb.tb_lineno}")
             validate4, validate6 = False, False
         return validate4 and validate6
+
+
+    def dhcp6_unservable(self, subnets=None, shared=None, linksel=None, interfaces=None):
+        """
+        Report every DHCPv6 subnet kea will never be able to select. kea picks a subnet6 by the
+        interface the request arrived on or by the relay that forwarded it; one with neither is
+        accepted by the parser and then silently never served, so nothing downstream reports it.
+        Mirrors the interface lookup the template does, per block type.
+        """
+        unservable = []
+        for name, subnet in (subnets or {}).items():
+            if name not in interfaces and 'dhcp_relay' not in subnet:
+                unservable.append(name)
+        for share, members in (shared or {}).items():
+            for name, subnet in members.items():
+                if name not in interfaces and share not in interfaces and 'dhcp_relay' not in subnet:
+                    unservable.append(name)
+        for name, link in (linksel or {}).items():
+            if name not in interfaces and 'dhcp_relay' not in link['boot']:
+                unservable.append(name)
+        if unservable:
+            self.logger.error(f"DHCPv6: network(s) {','.join(unservable)} have no controller "
+                              "interface in range and no dhcp_relay. kea cannot select these "
+                              "subnets, so they will not be served. give the controller an IPv6 "
+                              "address inside the network, or configure dhcp_relay for it")
+        return unservable
 
 
     def dhcp_link_anchors (self, value=None, ipversion='ipv4'):

@@ -1339,3 +1339,32 @@ def test_a_lookalike_profile_is_not_a_member(db, seed):
     assert response['config']['profiles']['gpu']['members']['nodes'] == []
     _, response = Profile().get_profile_member('gpu-extra')
     assert response['config']['profiles']['gpu-extra']['members']['nodes'] == ['node001']
+
+
+def test_a_bad_service_action_is_refused(db):
+    """The profile owns this rule. It used to live in the shared input validator, keyed
+    on the bare field name, which is why it has to be tested here now."""
+    from base.profile import Profile
+    status, message = Profile().update_profile('bad', _payload(
+        'bad', scope='static', service='cron', action='explode'))
+    assert not status
+    assert 'action must be' in message
+    assert not db.get_record(table='profile', where='name = "bad"')
+
+
+def test_the_valid_actions_are_all_accepted(db):
+    from base.profile import Profile
+    for action in ('restart', 'stop', 'reload', 'start', 'none'):
+        status, message = Profile().update_profile(f'p{action}', _payload(
+            f'p{action}', scope='static', service='cron', action=action))
+        assert status, f'{action}: {message}'
+
+
+def test_the_action_rule_is_not_imposed_on_every_request_in_the_daemon(db):
+    """It was: MATCH is keyed on the bare field name, so 'action' was validated against
+    the profile's service actions everywhere one appears - and 'luna control power
+    status' stopped working, because 'status' is not a service action. A rule that
+    belongs to one resource must not be enforced from the shared validator."""
+    from common.validate_input import MATCH
+    assert 'action' not in MATCH, \
+        'the shared validator is judging every action field in the daemon again'

@@ -103,7 +103,6 @@ MATCH = {
     'mode': 'filemode',
     'profiles': 'loosecsv',
     'newprofilename': 'name',
-    'action': 'serviceaction',
     'scope': 'profilescope',
     'object_type': 'strictname',
     'file': 'artefactfile',

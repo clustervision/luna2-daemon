@@ -170,6 +170,15 @@ class Profile():
             # would sit in the assignment lists looking like configuration. Decided
             # before anything is written: rejecting afterwards would leave the half a
             # profile behind that the rejection says should not exist
+            # the resource validates its own field. This used to be a rule in the shared
+            # input validator, keyed on the bare field name 'action' - which applied it to
+            # every request in the daemon that has one, and rejected 'luna control power
+            # status' as an invalid service action
+            action = data.get('action')
+            if action is not None and str(action) not in ('restart', 'stop', 'reload',
+                                                          'start', 'none', ''):
+                return False, ('Invalid request: action must be restart, stop, reload, '
+                               'start or none')
             service = data.get('service', profile[0]['service'] if profile else None)
             existing_files = Database().get_record(
                 table='profilefile',

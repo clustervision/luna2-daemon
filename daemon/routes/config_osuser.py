@@ -64,6 +64,7 @@ def config_get_os_user_list():
 
 @osuser_blueprint.route("/config/osuser/<string:name>", methods=['GET'])
 @token_required
+@validate_name
 def config_get_os_user(name):
     """
     Input - username

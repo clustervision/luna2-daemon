@@ -65,6 +65,7 @@ def config_get_os_group_list():
 
 @osgroup_blueprint.route("/config/osgroup/<string:name>", methods=['GET'])
 @token_required
+@validate_name
 def config_get_os_group(name):
     """
     Input - groupname

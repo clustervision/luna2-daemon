@@ -113,6 +113,7 @@ def delete_route(name=None):
 
 @route_blueprint.route('/config/route/<string:name>/<string:tableref>/<string:target>/_couple', methods=['GET'])
 @token_required
+@validate_name
 def couple_route(name=None, tableref=None, target=None):
     """
     This api couples (stacks) a route onto a network, group or node.
@@ -126,6 +127,7 @@ def couple_route(name=None, tableref=None, target=None):
 
 @route_blueprint.route('/config/route/<string:name>/<string:tableref>/<string:target>/_decouple', methods=['GET'])
 @token_required
+@validate_name
 def decouple_route(name=None, tableref=None, target=None):
     """
     This api removes a route coupling from a network, group or node.

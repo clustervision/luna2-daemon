@@ -48,6 +48,7 @@ dns_blueprint = Blueprint('config_dns', __name__)
 
 @dns_blueprint.route('/config/dns/<string:name>', methods=['GET'])
 @token_required
+@validate_name
 def get_dns(name=None):
     """
     This api will send all records for additional dns for the network.
@@ -81,6 +82,7 @@ def config_dns(name=None):
 
 @dns_blueprint.route('/config/dns/<string:network>/<string:name>/_delete', methods=['GET'])
 @token_required
+@validate_name
 def delete_dns(name=None,network=None):
     """
     This api deletes an additional dns entry.

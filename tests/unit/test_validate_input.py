@@ -87,3 +87,133 @@ def test_cleaning_still_happens_for_fields_with_no_regex():
     """
     from common.validate_input import filter_data
     assert filter_data("it's fine", 'some_unregistered_field') == 'its fine'
+
+
+# ---------------------------------------------------------------------------
+# Registration-list guards.
+#
+# The input validator is keyed on the field name and on the route function
+# name (MATCH, STRICT_NAMES). Both are hand-maintained lists paired with a
+# declarative reality nothing enforces: a field a base class accepts, a route
+# that puts a URL segment into a where clause. Forgetting the list is silent -
+# the value passes unchecked. These tests derive the lists from the code and
+# fail when they drift, so the miss is caught in CI rather than live.
+#
+# Each was written after finding a live drift: three rename fields absent from
+# MATCH (one produced an unaddressable route; another a route name accepted via
+# a where clause with no regex), and the route couple/decouple endpoints
+# carrying @token_required but not @validate_name - probed live, a name of
+# "x' OR '1'='1" changed the query's truth.
+# ---------------------------------------------------------------------------
+
+import ast
+import os
+
+DAEMON_DIR = os.path.join(
+    os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), 'daemon')
+
+
+def _rename_fields_accepted_by_base():
+    """
+    Every 'new<thing>name'-style key a base class reads from a request. These
+    become an object's stored name, so each must be validated like the name it
+    replaces. Derived by walking base/ for string subscripts of that shape.
+    """
+    found = {}
+    base_dir = os.path.join(DAEMON_DIR, 'base')
+    for name in os.listdir(base_dir):
+        if not name.endswith('.py'):
+            continue
+        path = os.path.join(base_dir, name)
+        with open(path, encoding='utf-8') as source:
+            tree = ast.parse(source.read(), filename=path)
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Constant) and isinstance(node.value, str):
+                value = node.value
+                if value.startswith('new') and value.endswith('name') and value not in ('new', 'name'):
+                    found.setdefault(value, name)
+    return found
+
+
+def test_every_base_rename_field_is_registered_in_MATCH():
+    """A rename field absent from MATCH is stored with no regex and no length bound."""
+    from common.validate_input import MATCH
+    fields = _rename_fields_accepted_by_base()
+    missing = {field: origin for field, origin in fields.items() if field not in MATCH}
+    assert not missing, (
+        "rename fields accepted by a base class but not in MATCH (stored unvalidated): "
+        + ', '.join(f'{field} (base/{origin})' for field, origin in sorted(missing.items())))
+
+
+def _routes_with_name_in_path():
+    """
+    Every route function whose URL carries a <string:...> segment, paired with
+    the decorators applied to it. Those segments are interpolated into where
+    clauses downstream, so each such function must carry @validate_name.
+    """
+    routes_dir = os.path.join(DAEMON_DIR, 'routes')
+    functions = []
+    for name in os.listdir(routes_dir):
+        if not name.endswith('.py'):
+            continue
+        path = os.path.join(routes_dir, name)
+        with open(path, encoding='utf-8') as source:
+            tree = ast.parse(source.read(), filename=path)
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.FunctionDef):
+                continue
+            decorators = []
+            has_string_path = False
+            for dec in node.decorator_list:
+                if isinstance(dec, ast.Name):
+                    decorators.append(dec.id)
+                elif isinstance(dec, ast.Attribute):
+                    decorators.append(dec.attr)
+                elif isinstance(dec, ast.Call):
+                    if isinstance(dec.func, ast.Name):
+                        decorators.append(dec.func.id)
+                    elif isinstance(dec.func, ast.Attribute):
+                        decorators.append(dec.func.attr)
+                    for arg in dec.args:
+                        if isinstance(arg, ast.Constant) and isinstance(arg.value, str) \
+                                and '<string:' in arg.value:
+                            has_string_path = True
+            if has_string_path:
+                functions.append((f'{name}:{node.name}', decorators))
+    return functions
+
+
+# Routes whose <string:...> segment does NOT reach a query, checked by hand and
+# listed with the reason - the segment's fate, not "it looked fine". A route added
+# here escapes the guard, so the reason has to be that the value genuinely cannot
+# reach SQL, not that validating it is inconvenient.
+PATH_SEGMENT_NOT_A_QUERY = {
+    'config_rack.py:config_inventory_get_subset':
+        "subset is only ever compared in Python (== 'configured'/'unconfigured'); "
+        "it never reaches a query",
+    'files.py:files_get':
+        "filename is a filesystem path served on the tokenless early-boot path; it is "
+        "not a SQL value, and File.get_file handles its own path containment. Its risk "
+        "class is traversal, not injection - guard it there, not with a name regex",
+}
+
+
+def test_every_route_with_a_name_in_its_path_validates_it():
+    """
+    A URL name segment reaches a where clause. Without @validate_name it is
+    unchecked - the couple/decouple SQL-injection hole. token_required proves
+    who is calling, not what they sent, so it is not a substitute here.
+
+    Broad by design: it flags every <string:...> segment and forces each that
+    does not validate to be either fixed or named in PATH_SEGMENT_NOT_A_QUERY
+    with the reason it cannot reach SQL. Narrowing the test to "only segments
+    that reach a query" would hide the next one that quietly starts to.
+    """
+    offenders = [
+        function for function, decorators in _routes_with_name_in_path()
+        if 'validate_name' not in decorators and 'input_filter' not in decorators
+        and function not in PATH_SEGMENT_NOT_A_QUERY
+    ]
+    assert not offenders, (
+        "routes with a <string:...> path segment but neither @validate_name nor "
+        "@input_filter (the segment reaches a query unvalidated): " + ', '.join(sorted(offenders)))

@@ -33,7 +33,7 @@ __status__      = 'Development'
 from flask import Blueprint, render_template, render_template_string
 from utils.log import Log
 from common.validate_input import validate_name
-from common.validate_auth import token_required
+from common.validate_auth import token_required, provision_token_required
 from base.boot import Boot
 
 LOGGER = Log.get_logger()
@@ -368,7 +368,7 @@ def boot_manual_hostname(hostname=None, macaddress=None):
 
 
 @boot_blueprint.route('/boot/install/<string:node>', methods=['GET'])
-@token_required
+@provision_token_required
 @validate_name
 def boot_install(node=None):
     """

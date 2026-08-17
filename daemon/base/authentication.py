@@ -172,7 +172,10 @@ class Authentication():
             create_token=True
 
         if create_token:
-            jwt_token = encode({'id': 0, 'exp': expiry_time}, api_key, 'HS256')
+            # A node authenticates here for provisioning only, so issue a token scoped to
+            # this node - the same shape the boot script embeds - rather than the admin
+            # token. provision_token_required then confines it to this node's own endpoints.
+            jwt_token = encode({'node': nodename, 'scope': 'provision', 'exp': expiry_time}, api_key, 'HS256')
             self.logger.debug(f'Node token generated successfully, Token {jwt_token}')
             status=True
             response = {"token" : jwt_token}

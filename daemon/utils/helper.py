@@ -34,6 +34,9 @@ import os
 import signal
 import sys
 import subprocess
+import pwd
+import grp
+from time import time
 import logging
 import threading
 import re
@@ -756,6 +759,109 @@ class Helper(object):
             return cipher.decrypt(string.encode()).decode()
         except Exception:
             return string
+
+
+    # in-memory resolution cache shared by all callers in the process. installs come in
+    # waves, so without it every node in a wave triggers the same lookups all over again.
+    owner_cache = {}
+    owner_cache_ttl = 60
+    # NSS has no timeout of its own: an unreachable directory makes getpwnam block for
+    # as long as its own client library allows, and this runs while a node waits for its
+    # install payload. A bounded lookup degrades to the stored resolution instead.
+    owner_lookup_timeout = 20
+
+    def nss_lookup(self, function, key):
+        """
+        Run one NSS lookup with a deadline. Returns the entry, or None when the name
+        is unknown OR the directory did not answer in time - the caller treats both
+        as 'not resolvable right now', which is what they are.
+        """
+        outcome = {}
+
+        def run():
+            try:
+                outcome['value'] = function(key)
+            except KeyError:
+                outcome['missing'] = True
+            except Exception as exp:
+                outcome['error'] = exp
+
+        worker = threading.Thread(target=run, daemon=True)
+        worker.start()
+        worker.join(Helper.owner_lookup_timeout)
+        if worker.is_alive():
+            self.logger.warning(
+                f"NSS lookup for {key} did not answer within "
+                f"{Helper.owner_lookup_timeout}s; treating it as unresolvable")
+            return None
+        if 'error' in outcome:
+            self.logger.error(f"NSS lookup for {key} failed: {outcome['error']}")
+            return None
+        return outcome.get('value')
+
+    def resolve_owner(self, owner=None):
+        """
+        Input  - owner as stored with a secret or profile file: 'user' or 'user:group',
+                 numeric parts allowed
+        Output - the numeric 'uid' or 'uid:gid' form when resolvable, the last stored
+                 resolution when the lookup fails (e.g. directory unreachable), or the
+                 input unchanged when it was never resolvable.
+        Resolution goes through glibc NSS (pwd/grp), the same stack getent uses: local
+        files, sssd/ldap, nis - whatever nsswitch.conf lists. The installer's chroot
+        cannot resolve directory users, which is why it receives numbers instead.
+        """
+        if not owner:
+            return owner
+        now = time()
+        cached = Helper.owner_cache.get(owner)
+        if cached and now - cached[1] < Helper.owner_cache_ttl:
+            return cached[0]
+        user, _, group = owner.partition(':')
+        resolved = None
+        uid, gid = user, group
+        if not user.isdigit():
+            entry = self.nss_lookup(pwd.getpwnam, user)
+            uid = str(entry.pw_uid) if entry else None
+        if group and not group.isdigit():
+            entry = self.nss_lookup(grp.getgrnam, group)
+            gid = str(entry.gr_gid) if entry else None
+        if uid and (gid or not group):
+            resolved = f"{uid}:{gid}" if group else uid
+        record = Database().get_record(table='ownercache', where=f'name = "{owner}"')
+        if resolved:
+            if record:
+                if record[0]['resolved'] != resolved:
+                    where = [{"column": "name", "value": owner}]
+                    row = self.make_rows({'resolved': resolved, 'updated': 'NOW'})
+                    Database().update('ownercache', row, where)
+            else:
+                row = self.make_rows({'name': owner, 'resolved': resolved, 'updated': 'NOW'})
+                Database().insert('ownercache', row)
+        elif record:
+            resolved = record[0]['resolved']
+            self.logger.warning(f"could not resolve owner {owner}; using stored {resolved}")
+        else:
+            resolved = owner
+            self.logger.warning(f"could not resolve owner {owner}; passing it on as is")
+        Helper.owner_cache[owner] = (resolved, now)
+        return resolved
+
+
+    def check_owner(self, owner=None):
+        """
+        True when every non-numeric part of 'user' or 'user:group' is known to NSS
+        right now. Unlike resolve_owner this never falls back to a stored value:
+        it is the write-time typo check, and a fallback would mask exactly the
+        mistake it exists to catch.
+        """
+        if not owner:
+            return True
+        user, _, group = owner.partition(':')
+        if user and not user.isdigit() and not self.nss_lookup(pwd.getpwnam, user):
+            return False
+        if group and not group.isdigit() and not self.nss_lookup(grp.getgrnam, group):
+            return False
+        return True
 
 
     def check_section(self, filename=None, parent_dict=None):

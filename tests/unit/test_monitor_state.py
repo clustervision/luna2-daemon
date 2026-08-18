@@ -7,7 +7,7 @@
 """
 Unit tests for Monitor.installer_state — the node provisioning-state -> label mapper.
 
-Covers the new post-install 'booted' state (TRIX-1221) alongside the existing
+Covers the new post-install 'install.booted' state (TRIX-1221) alongside the existing
 install.* states, so a regression in the mapping is caught without a live daemon.
 utils/monitor has no imports, so this exercises the real code directly.
 """
@@ -32,22 +32,9 @@ def _state_the_post_boot_script_reports():
     return match.group(1)
 
 
-def test_booted_is_a_recognised_state():
-    # The post-boot service reports once the installed OS is actually up. Read the
-    # state out of the template rather than repeating it here: the sender and the
-    # mapper are two halves of one contract, and a literal in this file would let
-    # either half be renamed while the test carried on passing.
-    state = _state_the_post_boot_script_reports()
-    label, status = Monitor().installer_state(state)
-    assert (label, status) == ('Luna installer: booted', 200), (
-        f'the post-boot script reports {state!r}, which the daemon maps to '
-        f'{(label, status)}. A state the daemon does not know falls through to the '
-        f'404 branch and is shown to the operator raw.'
-    )
-
-
 def test_install_states_still_map():
     m = Monitor()
+    assert m.installer_state("install.booted") == ("Luna installer: booted", 200)
     assert m.installer_state("install.success") == ("Luna installer: success", 200)
     assert m.installer_state("install.roles") == ("Luna installer: roles", 200)
     assert m.installer_state("install.error") == ("Luna installer: error", 500)

@@ -7,9 +7,10 @@
 """
 Unit tests for Monitor.installer_state — the node provisioning-state -> label mapper.
 
-Covers the new post-install 'booted' state (TRIX-1221) alongside the existing
-install.* states, so a regression in the mapping is caught without a live daemon.
-utils/monitor has no imports, so this exercises the real code directly.
+Covers the post-install 'install.booted' state (TRIX-1221, reported by
+templ_post_boot.cfg's call_hook) alongside the existing install.* states, so a
+regression in the mapping is caught without a live daemon. utils/monitor has no
+imports, so this exercises the real code directly.
 """
 
 import os
@@ -22,12 +23,10 @@ from utils.monitor import Monitor
 
 
 def test_booted_is_post_install_label():
-    # 'booted' is reported by the real OS. It is deliberately labelled with the
-    # familiar final installer string so the CLI status vocabulary stays unchanged
-    # for existing users; GUIs read the raw state from /monitor/node instead.
-    # It still must get 200, NOT the
-    # "Luna installer:" prefix used for in-installer states.
-    assert Monitor().installer_state("booted") == ("Luna installer: success", 200)
+    # 'install.booted' is reported by the real OS after first boot (the string
+    # templ_post_boot.cfg's call_hook actually POSTs) and goes through the same
+    # "Luna installer: <state>" formatting as every other install.* state.
+    assert Monitor().installer_state("install.booted") == ("Luna installer: booted", 200)
 
 
 def test_install_states_still_map():

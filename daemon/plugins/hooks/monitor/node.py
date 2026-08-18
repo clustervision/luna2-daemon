@@ -59,7 +59,7 @@ class Plugin():
         - install_setupbmc
         - install_setnet
         - install_success
-        - booted
+        - install_booted
 
         BEWARE that __init__ is not being called for this plugin
         """
@@ -102,7 +102,7 @@ class Plugin():
     def install_success(self,name=None):
         return True, "success"
 
-    def booted(self,name=None):
+    def install_booted(self,name=None):
         # Reported by the node's real OS at first boot after provisioning
         # (trinity-booted-notify.service). No-op by default; override to react.
         return True, "success"

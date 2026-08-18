@@ -360,11 +360,12 @@ def test_classic_installer_runs_them_in_the_same_order():
 
 
 # Where the classic installer's content legitimately comes from, most specific first.
-# It is not simply `development` any more: another ticket owns this file and its work
-# was ported here commit-for-commit ahead of its merge, so development is behind. Once
-# it merges, that branch and development agree and the first entry can go.
+# The branch that owned this file has merged, so development carries its content and is
+# the baseline again. Naming a feature branch ahead of its merge is what this list used
+# to do, and it does not survive: the branch was renamed, the ref stopped resolving, and
+# a ref that does not resolve falls through to the next entry silently rather than
+# failing -- so the comparison quietly changed what it was comparing against.
 CLASSIC_BASELINES = (
-    'origin/trix1221_lconsole',
     'origin/development',
     'development',
 )
@@ -404,8 +405,6 @@ BLESSED_CLASSIC_REMOVALS = [
     "cat << 'LUNAEOF' > ${rootmnt}/usr/local/sbin/postboot.sh",
     'chmod 750 ${rootmnt}/usr/local/sbin/postboot.sh 2> /dev/null',
     "cat << 'LUNAEOF' > ${rootmnt}/etc/systemd/system/luna-post-boot.service",
-    # TRIX-1209: the hardcoded 600 became "${mode:-600}" -- same default, now overridable
-    '            chmod 600 "/${rootmnt}/$file" 2> /dev/null',
 ]
 BLESSED_CLASSIC_ADDITIONS = [
     # the other half of the postboot change above, now quoted like its neighbours
@@ -414,32 +413,6 @@ BLESSED_CLASSIC_ADDITIONS = [
     'cat << \'LUNAEOF\' > "/${rootmnt}/usr/local/sbin/postboot.sh"',
     'chmod 750 "/${rootmnt}/usr/local/sbin/postboot.sh" 2> /dev/null',
     'cat << \'LUNAEOF\' > "/${rootmnt}/etc/systemd/system/luna-post-boot.service"',
-    # TRIX-1209: secrets carry owner and mode. The daemon resolves names to numbers
-    # (the chroot cannot resolve directory users), the installer extracts them with
-    # exact key matching (base64 content can contain a bare key name) and applies
-    # them; unset attributes arrive as the defaults this file always applied.
-    'function get_json_exact {',
-    '    FILE=$1',
-    '    KEY=$2',
-    '    if [ ! -s $FILE ]; then',
-    '        echo',
-    '        return 1',
-    '    fi',
-    '    cat $FILE | grep -oE \'".[^"]+"\' | grep -A1 \'^"\'$KEY\'"$\' | grep -v \'^"\'$KEY\'"$\' | grep -v \'^\\-\\-$\'',
-    '}',
-    '',
-    "    get_json_exact /lunatmp/node.secrets.json 'resolved_owner' > /lunatmp/node.secrets.owners.dat",
-    "    get_json_exact /lunatmp/node.secrets.json 'mode' > /lunatmp/node.secrets.modes.dat",
-    '            owner=$(sed -n "$[TEL+1]p" /lunatmp/node.secrets.owners.dat)',
-    '            mode=$(sed -n "$[TEL+1]p" /lunatmp/node.secrets.modes.dat)',
-    '            if [ "$owner" ]; then owner=$(echo "${owner:1:-1}"); fi',
-    '            if [ "$mode" ]; then mode=$(echo "${mode:1:-1}"); fi',
-    '            chmod "${mode:-600}" "/${rootmnt}/$file" 2> /dev/null',
-    '            if [ "$owner" ] && [ "$owner" != "0:0" ]; then',
-    '                if ! chroot "/${rootmnt}" chown "$owner" "/$file" 2> /dev/null; then',
-    '                    echo "Luna2: --WARNING-- could not set owner [$owner] on secret [$file]"',
-    '                fi',
-    '            fi',
     '}',
     '',
     # TRIX-1968: a profile is files plus a service action, assigned per group/node

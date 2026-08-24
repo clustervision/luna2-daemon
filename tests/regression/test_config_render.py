@@ -332,6 +332,98 @@ def test_dhcp_kea_anchor_beats_the_ignore_setting(config_env, seeded, constant):
     assert '"subnet": "10.170.35.0/24"' in content
 
 
+@pytest.mark.regression
+def test_dhcp_kea_relayed_pool_takes_no_policy_class(config_env, seeded, constant):
+    """A relayed member is picked out by its relay, so its pool must carry no policy class.
+
+    Every member class in a group holds the same udhcp test, so classing a relayed pool refuses
+    that network's own PXE clients -- which then fall through to the carrier's pool and boot on the
+    wrong subnet, with the wrong gateway. Measured on kea 3.0.3: an unknown node arriving over the
+    relay was offered the carrier's address instead of its own network's."""
+    from utils.config import Config
+
+    _insert("network", name="remote", network="10.150.0.0", subnet="16", dhcp=1,
+            dhcp_range_begin="10.150.10.1", dhcp_range_end="10.150.10.254",
+            nameserver_ip="10.141.0.1", zone="remote", shared=NETWORK, dhcp_relay="10.150.0.1")
+    constant["DHCP"]["TEMPLATE"] = "templ_kea-dhcp4.cfg"
+
+    assert Config().dhcp_overwrite() is True
+    content = open(os.path.join(config_env, "dhcpd.conf"), encoding="utf-8").read()
+    parsed = _kea(content)
+    _kea_accepts(content)
+    subnets = {s["subnet"]: s for s in parsed["Dhcp4"]["shared-networks"][0]["subnet4"]}
+    for pool in subnets["10.150.0.0/16"]["pools"]:
+        assert "client-class" not in pool, (
+            "a relayed member's pool carries a policy class; its own PXE clients are refused it "
+            "and fall through to the carrier's pool")
+    # the network on the wire still gets one -- that is what tells host from BMC
+    for pool in subnets["10.141.0.0/16"]["pools"]:
+        assert "client-class" in pool
+    _assert_classes_resolve(parsed["Dhcp4"])
+
+
+@pytest.mark.regression
+def test_dhcp_kea_anchor_keeps_its_own_block_when_the_group_spans_links(config_env, seeded, constant):
+    """An anchor joins its shared group only where the group really is one link.
+
+    luna's 'shared' means one wire for a host and its BMC, and is only the precondition dhcp_relay
+    insists on for a relayed network -- so a group can hold relayed networks on quite separate
+    links. Merged there, the anchor is reachable from every relayed member and selection lands on
+    whichever the render put first: measured, a link-selection client was served the other relayed
+    network's pool. Relays in common are the evidence that the link is shared."""
+    from utils.config import Config
+
+    _insert("network", name="remote", network="10.150.0.0", subnet="16", dhcp=1,
+            dhcp_range_begin="10.150.10.1", dhcp_range_end="10.150.10.254",
+            nameserver_ip="10.141.0.1", zone="remote", shared=NETWORK, dhcp_relay="10.150.0.1")
+    _insert("network", name="edge", network="10.160.0.0", subnet="16", dhcp=1,
+            dhcp_range_begin="10.160.10.1", dhcp_range_end="10.160.10.254",
+            nameserver_ip="10.141.0.1", zone="edge", shared=NETWORK,
+            dhcp_relay="10.160.0.1", dhcp_link_subnet="10.170.35.0/24")
+    constant["DHCP"]["TEMPLATE"] = "templ_kea-dhcp4.cfg"
+
+    assert Config().dhcp_overwrite() is True
+    content = open(os.path.join(config_env, "dhcpd.conf"), encoding="utf-8").read()
+    parsed = _kea(content)
+    _kea_accepts(content)
+    blocks = {b["name"]: [s["subnet"] for s in b["subnet4"]] for b in parsed["Dhcp4"]["shared-networks"]}
+    assert "edge-linksel" in blocks, (
+        f"the anchor was merged into a group spanning two relayed links: {list(blocks)}")
+    assert set(blocks["edge-linksel"]) == {"10.170.35.0/24", "10.160.0.0/16"}
+    # ...and it is not also a member of the group block, which would render it twice
+    other = [name for name in blocks if name != "edge-linksel"]
+    assert "10.160.0.0/16" not in blocks[other[0]]
+    _assert_classes_resolve(parsed["Dhcp4"])
+
+
+@pytest.mark.regression
+def test_dhcp_kea_anchor_joins_a_group_that_shares_the_relay(config_env, seeded, constant):
+    """The other half of the same rule: relays in common mean one link, so the anchor merges and
+    the sibling reachable over that relay is inside the block with it."""
+    from utils.config import Config
+
+    _insert("network", name="inband", network="10.145.0.0", subnet="16", dhcp=1,
+            dhcp_range_begin="10.145.10.1", dhcp_range_end="10.145.10.254",
+            nameserver_ip="10.141.0.1", zone="inband", shared=NETWORK,
+            dhcp_relay="10.160.0.1,10.160.0.2")
+    from utils.database import Database
+    Database().update("network", [
+        {"column": "dhcp_relay", "value": "10.160.0.1,10.160.0.2"},
+        {"column": "dhcp_link_subnet", "value": "10.170.35.0/24"},
+    ], where=[{"column": "name", "value": NETWORK}])
+    constant["DHCP"]["TEMPLATE"] = "templ_kea-dhcp4.cfg"
+
+    assert Config().dhcp_overwrite() is True
+    content = open(os.path.join(config_env, "dhcpd.conf"), encoding="utf-8").read()
+    parsed = _kea(content)
+    _kea_accepts(content)
+    assert len(parsed["Dhcp4"]["shared-networks"]) == 1
+    block = parsed["Dhcp4"]["shared-networks"][0]
+    assert {s["subnet"] for s in block["subnet4"]} == {
+        "10.170.35.0/24", "10.141.0.0/16", "10.145.0.0/16"}
+    _assert_classes_resolve(parsed["Dhcp4"])
+
+
 def _alt_kernel_node(name, mac, netid, ip=None, ip6=None):
     """A node selecting the ALTERNATIVE iPXE kernel, with a single-family boot interface. (A node
     interface carrying both families renders only its v6 reservation -- if/elif in dhcp_config -- so

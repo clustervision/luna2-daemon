@@ -335,15 +335,24 @@ class Config(object):
             ):
                 networksbyname[network]['ipv6'] = True
             if networksbyname[network]['shared'] and networksbyname[network]['shared'] in networksbyname.keys():
-                # a network carrying a dhcp_link_subnet anchor stays in its shared group: the anchor
-                # joins the group's block below. Splitting it out leaves its group siblings in a
-                # scope kea cannot reach from the anchor, so a node reserved in a sibling is served
-                # from the wrong network's pool.
-                if networksbyname[network]['ipv4']:
+                # A network carrying a dhcp_link_subnet anchor stays in its shared group so the
+                # anchor joins the group's block: a sibling left outside is unreachable from the
+                # anchor, and a node reserved there is served from the wrong network's pool. That
+                # only holds where the group really is one link - see dhcp_group_shares_link. Where
+                # it is not, the anchor keeps a block of its own, because selection through it
+                # cannot tell two relayed links apart.
+                link_field = networksbyname[network].get('dhcp_link_subnet')
+                one_link = (not link_field) or self.dhcp_group_shares_link(
+                    network, networksbyname[network]['shared'], networksbyname)
+                if networksbyname[network]['ipv4'] and not (
+                        is_kea and link_field and not one_link
+                        and self.dhcp_link_anchors(link_field, 'ipv4')):
                     if not networksbyname[network]['shared'] in shared.keys():
                         shared[networksbyname[network]['shared']] = []
                     shared[networksbyname[network]['shared']].append(network)
-                if networksbyname[network]['ipv6']:
+                if networksbyname[network]['ipv6'] and not (
+                        is_kea6 and link_field and not one_link
+                        and self.dhcp_link_anchors(link_field, 'ipv6')):
                     if not networksbyname[network]['shared'] in shared6.keys():
                         shared6[networksbyname[network]['shared']] = []
                     shared6[networksbyname[network]['shared']].append(network)
@@ -742,6 +751,34 @@ class Config(object):
         return unservable
 
 
+    def dhcp_group_shares_link (self, network=None, carrier=None, networksbyname=None):
+        """
+        Whether every relayed member of a shared group sits on the same link as this one, judged by
+        the relays they have in common.
+
+        luna's 'shared' carries two meanings. For a host and its BMC it says "the same wire", and a
+        link anchor there belongs to the whole group. For a relayed network it is only the
+        precondition dhcp_relay insists on, and the members can be quite separate links - so an
+        anchor merged into that group would be reachable from every relayed member in it, and
+        selection would land on whichever the render happened to put first. Relays in common are
+        the evidence that the link really is shared; a member with no relay is on the wire and
+        cannot be picked out by a relay anyway, so it does not argue either way.
+        """
+        def relays (name):
+            nwk = (networksbyname or {}).get(name) or {}
+            return {relay.strip() for relay in (nwk.get('dhcp_relay') or '').split(',') if relay.strip()}
+        mine = relays(network)
+        for member, nwk in (networksbyname or {}).items():
+            if member == network:
+                continue
+            if member != carrier and (nwk.get('shared') or '') != carrier:
+                continue
+            theirs = relays(member)
+            if theirs and not (theirs & mine):
+                return False
+        return True
+
+
     def dhcp_shared_pools (self, subnets=None, pools=None, group=None, carrier=None,
                            members=None, fence=None, policy=True):
         """
@@ -767,7 +804,11 @@ class Config(object):
             if 'range_begin' not in pool or 'range_end' not in pool:
                 continue
             subnet['range_begin'], subnet['range_end'] = pool['range_begin'], pool['range_end']
-            if policy:
+            # A relayed member is picked out by its relay, so its pool takes no policy class -
+            # the classes only tell apart members that share a wire, and they all carry the same
+            # udhcp test. Classing a relayed pool refuses its own network's PXE clients, which
+            # then fall through to the carrier's pool and boot on the wrong subnet.
+            if policy and 'dhcp_relay' not in subnet:
                 subnet['pool_class'] = carrier_class if name == carrier else f"{name}-class"
             elif fence:
                 subnet['pool_class'] = fence
@@ -775,11 +816,12 @@ class Config(object):
                                       for s in (subnets or {}).values()):
             derived.append({'name': carrier_class,
                             'test': ' and '.join(f"not member('{m}-class')" for m in members)})
-        if fence and policy:
+        if fence:
             for name, subnet in (subnets or {}).items():
-                if 'pool_class' not in subnet:
+                base = subnet.get('pool_class')
+                if not base or base == fence:
                     continue
-                base, fenced = subnet['pool_class'], f"{group}-{name}-pool-class"
+                fenced = f"{group}-{name}-pool-class"
                 subnet['pool_class'] = fenced
                 derived.append({'name': fenced,
                                 'test': f"member('{base}') and member('{fence}')"})

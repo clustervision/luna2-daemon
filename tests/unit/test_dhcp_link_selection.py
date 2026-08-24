@@ -225,3 +225,38 @@ def test_kea_templates_use_the_spelling_both_platforms_accept():
             assert "HOST[" in line, (
                 f"{template} uses the plural client-classes outside a host reservation, which "
                 f"kea 2.6 (EL9, EL10.0) refuses: {line.strip()}")
+
+
+# ------------------------------------------------------------------ is the group one link?
+# luna's 'shared' means "the same wire" for a host and its BMC, and is only the precondition
+# dhcp_relay insists on for a relayed network. An anchor may join the group only in the first
+# sense, so this truth table is where the judgement lives.
+
+def _nets(**spec):
+    """name -> row, from name=(shared_carrier, relays) pairs."""
+    return {name: {'shared': shared, 'dhcp_relay': relay}
+            for name, (shared, relay) in spec.items()}
+
+
+@pytest.mark.parametrize('networks,network,carrier,expected,why', [
+    # the wire: nobody is relayed, so nothing argues the link is not shared
+    (_nets(cluster=(None, None), ipmi=('cluster', None)), 'cluster', 'cluster', True,
+     'a group with no relays anywhere is one wire'),
+    # the reported case: two networks reached through the same relays
+    (_nets(cluster=(None, '10.0.12.7,10.0.12.8'), inband=('cluster', '10.0.12.7,10.0.12.8')),
+     'cluster', 'cluster', True, 'relays in common are the evidence the link is shared'),
+    # an untidy relay list still overlaps, and the anchor should still merge
+    (_nets(cluster=(None, '10.0.12.7,10.0.12.8'), inband=('cluster', '10.0.11.253,10.0.12.7')),
+     'cluster', 'cluster', True, 'a partial overlap is still the same link'),
+    # two relayed networks on different links: merging would make selection ambiguous
+    (_nets(cluster=(None, None), remote=('cluster', '10.0.150.1'), edge=('cluster', '10.0.160.1')),
+     'edge', 'cluster', False, 'a relayed member on another link must keep the anchor out'),
+    # a member with no relay is on the wire and cannot be picked out by a relay either way
+    (_nets(cluster=(None, '10.0.160.1'), ipmi=('cluster', None)), 'cluster', 'cluster', True,
+     'an unrelayed member does not argue against a shared link'),
+    # networks outside the group are irrelevant however they are relayed
+    (_nets(cluster=(None, '10.0.160.1'), other=(None, '10.0.99.1')), 'cluster', 'cluster', True,
+     'a network in another group has no bearing on this one'),
+])
+def test_dhcp_group_shares_link(networks, network, carrier, expected, why):
+    assert Config().dhcp_group_shares_link(network, carrier, networks) is expected, why

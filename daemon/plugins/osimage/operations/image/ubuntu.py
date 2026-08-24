@@ -266,16 +266,28 @@ class Plugin():
         # kernel_modules = list of drivers to be included/excluded
 
         def mount(source, target, fs):
-            try:
-                subprocess.Popen(['/usr/bin/mount', '-t', fs, source, target])
-            except Exception as error:
-                self.logger(f"Mount {target} failed with {error}")
+            result = subprocess.run(['/usr/bin/mount', '-t', fs, source, target],
+                                    capture_output=True, text=True)
+            if result.returncode:
+                self.logger.error(f"Mount {target} failed with: {result.stderr.strip()}")
+                return False
+            return True
 
+        # Recursive, and waited on. Building the ramdisk mounts efivarfs inside the image's
+        # own /sys, so by the time we come back the mount we made is no longer the only one
+        # there, and a plain umount of the parent is refused while the nested one is live.
+        # Firing umount through Popen never surfaced that refusal -- nothing waited on it and
+        # nothing read its status -- so the host's sysfs stayed mounted under the image tree
+        # and only a later delete of that tree would find out.
         def umount(source):
-            try:
-                subprocess.Popen(['/usr/bin/umount', source])
-            except Exception as error:
-                self.logger(f"Umount {source} failed with {error}")
+            if not os.path.ismount(source):
+                return True
+            result = subprocess.run(['/usr/bin/umount', '--recursive', source],
+                                    capture_output=True, text=True)
+            if result.returncode:
+                self.logger.error(f"Umount {source} failed with: {result.stderr.strip()}")
+                return False
+            return True
 
         def prepare_mounts(path):
             mount('devtmpfs', f"{path}/dev", 'devtmpfs')
@@ -283,9 +295,18 @@ class Plugin():
             mount('sysfs', f"{path}/sys", 'sysfs')
 
         def cleanup_mounts(path):
-            umount(f"{path}/dev")
-            umount(f"{path}/proc")
-            umount(f"{path}/sys")
+            # Reverse of prepare_mounts, and every one attempted even when an earlier one
+            # fails. What is left behind is a live door onto the host's own filesystems, so
+            # a failure here is logged rather than swallowed: the tree is no longer safe to
+            # delete and somebody has to know that.
+            clean = True
+            for leaf in ('sys', 'proc', 'dev'):
+                clean = umount(f"{path}/{leaf}") and clean
+            if not clean:
+                self.logger.error(
+                    f"Mounts remain under {path} after packing. Do not delete this image "
+                    "tree until they are cleared - they are the host's own filesystems.")
+            return clean
 
         if not os.path.exists(image_path):
             return False,f"Image path {image_path} does not exist"
@@ -324,51 +345,66 @@ class Plugin():
 #                else:
 #                    drivers_remove.extend(['--omit-drivers', s[1:]])
 
-        prepare_mounts(image_path)
+        # The mounts below are live doors onto the host's /dev, /proc and /sys, placed
+        # inside the image tree. They MUST come back out on every path: leave one mounted
+        # and a later delete of this image walks straight into the host's filesystems. So
+        # the whole mount-chroot-build lifecycle runs under try/finally, and the finally
+        # restores the root and unmounts even when the chroot or the builder raises.
         real_root = os.open("/", os.O_RDONLY)
-        os.chroot(image_path)
-        chroot_path = os.open("/", os.O_DIRECTORY)
-        os.fchdir(chroot_path)
-
+        chroot_path = None
         initramfs_succeed = True
         create = None
         builder = None
+        message = "Problem building initrd"
 
         try:
-            # the image decides, not the ubuntu release, and not the controller --
-            # see initramfs_command, which must be called from inside this chroot
-            initramfs_cmd, builder = initramfs_command(kernel_version, ramdisk_file)
-            if initramfs_cmd:
-                self.logger.info(f"Building initramfs for osimage '{osimage}' with {builder}")
-                create = subprocess.Popen(initramfs_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-                while create.poll() is None:
-                    line = create.stdout.readline()
+            prepare_mounts(image_path)
+            os.chroot(image_path)
+            chroot_path = os.open("/", os.O_DIRECTORY)
+            os.fchdir(chroot_path)
 
-        except:
-            exc_type, exc_value, exc_traceback = sys.exc_info()
-            self.logger.info(exc_value)
-            self.logger.debug(exc_traceback.format_exc())
-            initramfs_succeed = False
+            try:
+                # the image decides, not the ubuntu release, and not the controller --
+                # see initramfs_command, which must be called from inside this chroot
+                initramfs_cmd, builder = initramfs_command(kernel_version, ramdisk_file)
+                if initramfs_cmd:
+                    self.logger.info(f"Building initramfs for osimage '{osimage}' with {builder}")
+                    create = subprocess.Popen(initramfs_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                    while create.poll() is None:
+                        line = create.stdout.readline()
 
-        message = "Problem building initrd"
-        if create and create.returncode:
-            initramfs_succeed = False
-            all_messages = create.stderr.read().decode().split('\n')
-            message = '.'.join(all_messages[:3])
+            except:
+                exc_type, exc_value, exc_traceback = sys.exc_info()
+                self.logger.info(exc_value)
+                self.logger.debug(exc_traceback.format_exc())
+                initramfs_succeed = False
 
-        if not create:
-            initramfs_succeed = False
-            message = (
-                f"Could not open subprocess to run {builder}" if builder else
-                f"No initramfs builder in osimage '{osimage}': neither dracut nor "
-                f"mkinitramfs is installed in the image"
-            )
+            if create and create.returncode:
+                initramfs_succeed = False
+                all_messages = create.stderr.read().decode().split('\n')
+                message = '.'.join(all_messages[:3])
 
-        os.fchdir(real_root)
-        os.chroot(".")
-        os.close(real_root)
-        os.close(chroot_path)
-        cleanup_mounts(image_path)
+            if not create:
+                initramfs_succeed = False
+                message = (
+                    f"Could not open subprocess to run {builder}" if builder else
+                    f"No initramfs builder in osimage '{osimage}': neither dracut nor "
+                    f"mkinitramfs is installed in the image"
+                )
+
+        finally:
+            # Always restore the host root and take the mounts back out, whatever happened
+            # above. fchdir to the pre-chroot root fd escapes the chroot even if we are
+            # still inside it; if the chroot never happened this is a harmless no-op.
+            try:
+                os.fchdir(real_root)
+                os.chroot(".")
+            except Exception as exp:
+                self.logger.error(f"Failed to restore host root after pack of '{osimage}': {exp}")
+            os.close(real_root)
+            if chroot_path is not None:
+                os.close(chroot_path)
+            cleanup_mounts(image_path)
 
         if not initramfs_succeed:
             self.logger.info(f"Error while building ramdisk: {message}")

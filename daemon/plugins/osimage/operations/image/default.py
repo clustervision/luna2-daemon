@@ -205,16 +205,28 @@ class Plugin():
         # kernel_modules = list of drivers to be included/excluded
 
         def mount(source, target, fs):
-            try:
-                subprocess.Popen(['/usr/bin/mount', '-t', fs, source, target])
-            except Exception as error:
-                self.logger(f"Mount {target} failed with {error}")
+            result = subprocess.run(['/usr/bin/mount', '-t', fs, source, target],
+                                    capture_output=True, text=True)
+            if result.returncode:
+                self.logger.error(f"Mount {target} failed with: {result.stderr.strip()}")
+                return False
+            return True
 
+        # Recursive, and waited on. Building the ramdisk mounts efivarfs inside the image's
+        # own /sys, so by the time we come back the mount we made is no longer the only one
+        # there, and a plain umount of the parent is refused while the nested one is live.
+        # Firing umount through Popen never surfaced that refusal -- nothing waited on it and
+        # nothing read its status -- so the host's sysfs stayed mounted under the image tree
+        # and only a later delete of that tree would find out.
         def umount(source):
-            try:
-                subprocess.Popen(['/usr/bin/umount', source])
-            except Exception as error:
-                self.logger(f"Umount {source} failed with {error}")
+            if not os.path.ismount(source):
+                return True
+            result = subprocess.run(['/usr/bin/umount', '--recursive', source],
+                                    capture_output=True, text=True)
+            if result.returncode:
+                self.logger.error(f"Umount {source} failed with: {result.stderr.strip()}")
+                return False
+            return True
 
         def prepare_mounts(path):
             mount('devtmpfs', f"{path}/dev", 'devtmpfs')
@@ -222,9 +234,18 @@ class Plugin():
             mount('sysfs', f"{path}/sys", 'sysfs')
 
         def cleanup_mounts(path):
-            umount(f"{path}/dev")
-            umount(f"{path}/proc")
-            umount(f"{path}/sys")
+            # Reverse of prepare_mounts, and every one attempted even when an earlier one
+            # fails. What is left behind is a live door onto the host's own filesystems, so
+            # a failure here is logged rather than swallowed: the tree is no longer safe to
+            # delete and somebody has to know that.
+            clean = True
+            for leaf in ('sys', 'proc', 'dev'):
+                clean = umount(f"{path}/{leaf}") and clean
+            if not clean:
+                self.logger.error(
+                    f"Mounts remain under {path} after packing. Do not delete this image "
+                    "tree until they are cleared - they are the host's own filesystems.")
+            return clean
 
         if not os.path.exists(image_path):
             return False,f"Image path {image_path} does not exist"
@@ -332,7 +353,7 @@ class Plugin():
             # Always restore the host root and take the mounts back out, whatever
             # happened above. fchdir to the pre-chroot root fd escapes the chroot even
             # if we are still inside it; if the chroot never happened this is a
-            # harmless no-op. cleanup_mounts swallows umount failures of its own.
+            # harmless no-op. cleanup_mounts logs any umount it could not complete.
             try:
                 os.fchdir(real_root)
                 os.chroot(".")

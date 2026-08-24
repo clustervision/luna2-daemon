@@ -160,3 +160,68 @@ def test_v4_fence_preserves_plain_giaddr():
     assert "(not relay4[5].exists) or" in source, (
         "the link boot-class fence no longer starts with (not relay4[5].exists); it would deny "
         "non-boot clients arriving via plain giaddr, changing the merged relay behaviour.")
+
+
+# ------------------------------------------------------------------ the anchor and its group
+# An anchor is one pool-less subnet in the kea config, and kea refuses the whole configuration
+# when the same prefix is rendered twice. These pin the two halves that keep that impossible:
+# validation refuses a prefix another group already claims, and the render de-duplicates within
+# a group and drops - loudly - anything that slipped past.
+
+def test_duplicate_anchor_across_groups_is_refused():
+    source = inspect.getsource(Network.update_network)
+    assert "same_shared_group" in source and "is already " in source, (
+        "a dhcp_link_subnet already claimed by a network outside this one's shared group is no "
+        "longer refused. kea allows a prefix in one shared-network only and refuses the entire "
+        "configuration otherwise, so the DHCP config silently stops tracking the database.")
+
+
+def test_same_shared_group_reads_the_pending_value():
+    """A request that joins a group must be judged on where it is going, not where it has been."""
+    source = inspect.getsource(Network.same_shared_group)
+    assert "'shared' in data" in source, (
+        "same_shared_group no longer prefers the pending 'shared' value over the stored one, so a "
+        "request that joins a group is judged against its old group.")
+
+
+def test_render_drops_a_duplicate_anchor_rather_than_emitting_it():
+    source = inspect.getsource(Config.dhcp_overwrite)
+    assert "kea allows a prefix in one" in source and "anchors[group].remove(prefix)" in source, (
+        "the render no longer drops a duplicated link anchor. Validation refuses one, but a "
+        "database that predates it would produce a configuration kea rejects in its entirety - "
+        "and dhcp_overwrite then holds BOTH families back, so nothing at all is installed.")
+
+
+def test_anchor_joins_the_shared_group_it_belongs_to():
+    source = inspect.getsource(Config.dhcp_overwrite)
+    assert "group = shared_group_of.get(key)" in source, (
+        "a link anchor no longer joins its network's shared group. Split into a private block, the "
+        "group siblings sit outside every scope kea can reach from the anchor, so a node reserved "
+        "in a sibling is served from the wrong network's pool.")
+
+
+def test_kea_class_reference_is_a_name_and_never_an_expression():
+    """kea reads a client-class value as a NAME. An expression there matches nothing and takes the
+    subnet out of selection, with nothing reported at parse time or at run time."""
+    for template in ('templ_kea-dhcp4.cfg', 'templ_kea-dhcp6.cfg'):
+        body = open(os.path.join(TEMPLATE_DIR, template), encoding='utf-8').read()
+        for line in body.splitlines():
+            if '"client-class"' not in line and '"client-classes"' not in line:
+                continue
+            value = line.split(':', 1)[1]
+            assert 'not member(' not in value and ' or member(' not in value, (
+                f"{template} puts an expression where kea expects a class name: {line.strip()}")
+
+
+def test_kea_templates_use_the_spelling_both_platforms_accept():
+    """Plural client-classes at subnet or pool level is kea 3.0 only; kea 2.6 refuses the whole
+    file - and because both families install together, that holds DHCPv4 back as well."""
+    for template in ('templ_kea-dhcp4.cfg', 'templ_kea-dhcp6.cfg'):
+        body = open(os.path.join(TEMPLATE_DIR, template), encoding='utf-8').read()
+        for line in body.splitlines():
+            # the bare '"client-classes": [' that opens the definition array carries no value
+            if '"client-classes"' not in line or line.strip() == '"client-classes": [':
+                continue
+            assert "HOST[" in line, (
+                f"{template} uses the plural client-classes outside a host reservation, which "
+                f"kea 2.6 (EL9, EL10.0) refuses: {line.strip()}")

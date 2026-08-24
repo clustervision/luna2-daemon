@@ -44,14 +44,16 @@ def _sub6(net, **extra):
     return subnet
 
 
-def _render6(interfaces, subnets=None, shared=None, linksel=None, fallback=''):
+def _render6(interfaces, subnets=None, shared=None, linksel=None, fallback='',
+             anchor=None, derived=None):
     from jinja2 import Environment, FileSystemLoader
     env = Environment(loader=FileSystemLoader(TEMPLATE_DIR))
     names = list((subnets or {})) + [n for share in (shared or {}).values() for n in share] + \
         list((linksel or {}))
     out = env.get_template('templ_kea-dhcp6.cfg').render(
         CLASSES={}, SHARED=shared or {}, SUBNETS=subnets or {}, ZONES={}, EMPTY={}, POOLS={},
-        LINKSEL=linksel or {}, INTERFACES=interfaces, FALLBACK_INTERFACE=fallback, DOMAINNAME='c',
+        LINKSEL=linksel or {}, ANCHOR=anchor or {}, DERIVED=derived or [],
+        INTERFACES=interfaces, FALLBACK_INTERFACE=fallback, DOMAINNAME='c',
         NAMESERVERS='2001:db8:1::1', NAMESERVERS_IPV6='2001:db8:1::1', NTPSERVERS='',
         RESERVATIONS={name: [] for name in names}, OMAPIKEY=None, TSIGKEY=None, TSIGALGO=None)
     return json.loads("\n".join(re.sub(r'#.*$', '', line) for line in out.splitlines()))

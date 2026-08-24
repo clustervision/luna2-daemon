@@ -4,10 +4,17 @@
 # copyright: Copyright 2026, Luna2 Project
 # license: GPL
 #
-# Build and publish the pip package. The build/publish logic, the branch-to-stream
-# mapping and the CI/CD variables it needs all live in
-# ClusterVision/gitlab-cicd-pipelines, which also repoints the target directory's
-# "latest" symlinks at the build it just made and prunes older ones.
+# Build and publish the pip package. The build/publish logic lives once in
+# ClusterVision/gitlab-cicd-pipelines rather than being copied into every project:
+# it also points the target directory's "latest" symlinks at the build it just
+# produced and prunes older ones, which the per-project version never did.
+#
+# Branch -> stream:  main -> $LOCATION,  development -> $DEV_LOCATION,
+#                    ztp-poc -> $ZTPPOC_LOCATION (skipped where unset).
+# Any other branch is built but not published.
+#
+# Required project CI/CD variables: LOCATION, DEV_LOCATION, IPADDRESS, SSH_USER,
+# SSH_PASSWORD.
 #
 
 include:

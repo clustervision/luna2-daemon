@@ -61,6 +61,8 @@ REG_EXP = {
     'minimal': { 'regexp': r'^\S.*$', 'error': 'minimal character requirement. at least one' },
     'integer': { 'regexp': r'^[0-9]+$', 'error': 'integers only' },
     'intandnone': { 'regexp': r'^[0-9]*$', 'error': 'integers or empty only' },
+    'fileowner': { 'regexp': r'^(([A-Za-z_][A-Za-z0-9_.-]*|[0-9]+)(:([A-Za-z_][A-Za-z0-9_.-]*|[0-9]+))?|)$', 'error': 'user or user:group, names or numeric ids, or empty' },
+    'filemode': { 'regexp': r'^([0-7]{3,4}|)$', 'error': '3 or 4 octal digits, or empty' },
     'anything': { 'regexp': r'', 'error': 'anything' }
 }
 RESERVED = {
@@ -94,6 +96,14 @@ MATCH = {
     'newgroupname': 'name',
     'newbmcname': 'name',
     'newsecretname': 'name',
+    'newname': 'name',
+    'newrackname': 'name',
+    'newcloudname': 'name',
+    'tableref': 'strictname',
+    'target': 'name',
+    'network': 'domainname',
+    'owner': 'fileowner',
+    'mode': 'filemode',
     'osimagetag': 'nameandclear',
     'roles': 'loosecsv',
     'scripts': 'loosecsv',
@@ -124,6 +134,8 @@ STRICT_NAMES = ['config_node_get','config_node_post','config_node_clone','config
                 'config_node_osgrab','config_node_ospush','config_node_get_interfaces',
                 'config_node_post_interfaces','config_node_interface_get','config_node_delete_interface',
                 'config_switch_get','config_switch_post','config_switch_clone','config_switch_delete',
+                'config_switch_interfaces_get','config_switch_interface_get',
+                'config_switch_interfaces_post','config_switch_interface_delete',
                 'config_otherdev','config_otherdev_get','config_otherdev_post','config_otherdev_clone','config_otherdev_delete',
                 'config_network_get','config_network_post','config_network_delete','config_network_ip',
                 'config_network_taken','config_network_nextip']
@@ -267,6 +279,15 @@ def filter_data(data=None, name=None):
         LOGGER.debug(f"Skipping filter on {name}")
         return data
     data = control_char_re.sub('', data)
+    # Match the regex against what the caller actually sent, not against a cleaned
+    # copy of it. validate_name discards this return value and calls the route with
+    # the original kwargs, so a value approved here in cleaned form is not the value
+    # that reaches the query: "osimage'--" cleans to "osimage--", passes the name
+    # regex, and then arrives at the where clause with its quote intact - closing the
+    # first condition and commenting the rest away. Rejecting is right rather than
+    # cleaning: a quote in a name is a client mistake, and quietly answering about a
+    # different object is worse than a 400.
+    unfiltered = data
     data = data.replace("'", "")
     data = data.replace('"', "")
     if name in MAXLENGTH.keys():
@@ -282,8 +303,8 @@ def filter_data(data=None, name=None):
                     ERROR = f"field {name} with content {data} is a reserved keyword: {reserved}"
                     return
         regex = re.compile(r"" + REG_EXP[MATCH[name]]['regexp'])
-        if not regex.match(data):
-            LOGGER.info(f"MATCH name = {name} with data = {data} mismatch with:")
+        if not regex.match(unfiltered):
+            LOGGER.info(f"MATCH name = {name} with data = {unfiltered} mismatch with:")
             LOGGER.info(f"    REG_EXP['{MATCH[name]}']['regexp'] = {REG_EXP[MATCH[name]]['regexp']}")
             ERROR = f"field {name} with content {data} does not match criteria {REG_EXP[MATCH[name]]['error']}"
             return

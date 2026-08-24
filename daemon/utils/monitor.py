@@ -39,13 +39,20 @@ class Monitor(object):
                 "install.downloaded",
                 "install.started",
                 "install.completed",
+                "install.scripts",
                 "install.prescript",
+                "install.setupbmc",
                 "install.partscript",
+                "install.download",
+                "install.unpack",
+                "install.setnet",
+                "install.secrets",
                 "install.postscript",
                 "install.roles",
                 "install.image",
                 "install.finalizing",
-                "install.success"
+                "install.success",
+                "install.booted"
             ],
             500: [
                 "install.finalizing",

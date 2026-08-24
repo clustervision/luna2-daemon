@@ -53,9 +53,17 @@ class Files(object):
         Process - It will check if file is available or not
         Output - filepath
         """
-        filepath = f'{CONSTANT["FILES"]["IMAGE_FILES"]}/{filename}'
+        # Containment: the resolved path must stay under IMAGE_FILES. Flask's
+        # <string:> route converter already refuses a slash in the segment, but that
+        # is the route's guarantee, not this function's - a caller passing a name with
+        # a slash, or a future <path:> route, would otherwise walk out of the directory
+        # with '..'. realpath collapses any traversal before the check.
+        root = os.path.realpath(CONSTANT["FILES"]["IMAGE_FILES"])
+        filepath = os.path.realpath(os.path.join(root, filename))
         response = False
-        if os.path.exists(filepath):
+        if not filepath.startswith(root + os.sep):
+            self.logger.error(f'Refusing file path outside IMAGE_FILES: {filename}')
+        elif os.path.exists(filepath):
             self.logger.debug(f'Filepath {filepath} exists.')
             response = filepath
         else:

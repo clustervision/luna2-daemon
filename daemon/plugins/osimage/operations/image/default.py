@@ -285,6 +285,11 @@ class Plugin():
         if kernel_modules:
             for i in kernel_modules:
                 s = i.replace(" ", "")
+                # A trailing comma in the kernelmodules field leaves an empty entry
+                # here, and s[0] on it raises -- which the pack reports as the generic
+                # "Problem building initrd", pointing nowhere near the actual typo.
+                if not s:
+                    continue
                 if s[0] != '-':
                     drivers_add.extend(['--add-drivers', s])
                 else:

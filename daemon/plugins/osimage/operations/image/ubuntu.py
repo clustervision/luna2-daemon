@@ -44,8 +44,57 @@ from utils.log import Log
 DRACUT_PATHS = ('/usr/bin/dracut', '/usr/sbin/dracut')
 MKINITRAMFS_PATHS = ('/usr/sbin/mkinitramfs', '/usr/bin/mkinitramfs')
 
+# Where the image keeps its initramfs-tools configuration, and where we build the copy
+# we actually hand to mkinitramfs. Both are paths INSIDE the image -- everything here
+# runs after os.chroot(image_path).
+IMAGE_CONFDIR = '/etc/initramfs-tools'
+LUNA_CONFDIR = '/tmp/luna-initramfs-tools'
 
-def initramfs_command(kernel_version, ramdisk_file, exists=os.path.exists):
+
+def split_kernel_modules(kernel_modules):
+    """Return (add, omit) from the osimage kernelmodules field.
+
+    The field arrives already split on commas, with '-name' meaning omit -- the same
+    spelling the redhat plugin has always used, because it is the same field.
+    """
+    add, omit = [], []
+    for entry in kernel_modules or []:
+        name = entry.replace(' ', '')
+        if not name:
+            continue
+        if name.startswith('-'):
+            omit.append(name[1:])
+        else:
+            add.append(name)
+    return add, omit
+
+
+def write_module_confdir(modules, image_confdir=IMAGE_CONFDIR, luna_confdir=LUNA_CONFDIR):
+    """Copy the image's initramfs-tools config aside and append the requested modules.
+
+    CALL THIS ONLY AFTER os.chroot(image_path), like everything else here.
+
+    mkinitramfs has no flag for adding modules -- the only way in is the `modules` file
+    in its configuration directory. It does have `-d`, which points it at a different
+    configuration directory, and that is what keeps this non-destructive: the image's
+    own config is the SOURCE and is never written to. Customers hand-edit that file
+    today, because until this change it was the only thing that worked; regenerating it
+    in place would silently eat those edits, and the copy inherits them instead.
+
+    The copy is disposable and lives in the image's /tmp, which pack already treats as
+    scratch. The caller removes it on the way out.
+    """
+    if os.path.exists(luna_confdir):
+        shutil.rmtree(luna_confdir)
+    shutil.copytree(image_confdir, luna_confdir)
+    with open(os.path.join(luna_confdir, 'modules'), 'a', encoding='utf-8') as handle:
+        handle.write('\n# added by luna from the osimage kernelmodules field\n')
+        for module in modules:
+            handle.write(f"{module}\n")
+
+
+def initramfs_command(kernel_version, ramdisk_file, kernel_modules=None,
+                      exists=os.path.exists):
     """Return (argv, builder_name) for building this image's initramfs, or (None, None).
 
     CALL THIS ONLY AFTER os.chroot(image_path). Every path it probes is absolute, so
@@ -80,12 +129,27 @@ def initramfs_command(kernel_version, ramdisk_file, exists=os.path.exists):
     not its dependencies can be resolved.
     """
     output = '/tmp/' + ramdisk_file
+    add, omit = split_kernel_modules(kernel_modules)
+
     dracut = next((path for path in DRACUT_PATHS if exists(path)), None)
     if dracut:
-        return [dracut, '--force', '--add', 'luna', '--kver', kernel_version, output], 'dracut'
+        argv = [dracut, '--force', '--add', 'luna', '--kver', kernel_version]
+        for module in add:
+            argv.extend(['--add-drivers', module])
+        for module in omit:
+            argv.extend(['--omit-drivers', module])
+        # dracut takes the output positionally, so it stays last whatever was added.
+        return argv + [output], 'dracut'
+
     mkinitramfs = next((path for path in MKINITRAMFS_PATHS if exists(path)), None)
     if mkinitramfs:
-        return [mkinitramfs, '-o', output, kernel_version], 'mkinitramfs'
+        argv = [mkinitramfs]
+        if add:
+            # The modules ride in on a configuration directory, not on the argv --
+            # see write_module_confdir, which the caller runs to populate it.
+            argv.extend(['-d', LUNA_CONFDIR])
+        return argv + ['-o', output, kernel_version], 'mkinitramfs'
+
     return None, None
 
 
@@ -327,23 +391,14 @@ class Plugin():
             os.makedirs(files_path)
             #os.chown(files_path, user_id, grp_id)
 
-        modules_add = []
-        modules_remove = []
-        drivers_add = []
-        drivers_remove = []
         grab_filesystems = ['/','/boot']
 
-
-
-        # add modules goes in /image/etc/initramfs-tools/modules
-
-#        if kernel_modules:
-#            for i in kernel_modules:
-#                s = i.replace(" ", "")
-#                if s[0] != '-':
-#                    drivers_add.extend(['--add-drivers', s])
-#                else:
-#                    drivers_remove.extend(['--omit-drivers', s[1:]])
+        # An omit is a dracut concept. initramfs-tools has no subtract mechanism at all,
+        # so on an image packed with mkinitramfs there is nothing to translate '-name'
+        # into. Refuse the pack rather than dropping it: this field silently doing
+        # nothing on ubuntu is the whole defect being fixed here, and honouring half of
+        # a value quietly would put it straight back.
+        requested_add, requested_omit = split_kernel_modules(kernel_modules)
 
         # The mounts below are live doors onto the host's /dev, /proc and /sys, placed
         # inside the image tree. They MUST come back out on every path: leave one mounted
@@ -366,8 +421,17 @@ class Plugin():
             try:
                 # the image decides, not the ubuntu release, and not the controller --
                 # see initramfs_command, which must be called from inside this chroot
-                initramfs_cmd, builder = initramfs_command(kernel_version, ramdisk_file)
-                if initramfs_cmd:
+                initramfs_cmd, builder = initramfs_command(kernel_version, ramdisk_file,
+                                                           kernel_modules)
+                if builder == 'mkinitramfs' and requested_omit:
+                    initramfs_succeed = False
+                    message = (
+                        f"osimage '{osimage}' asks to omit {', '.join(requested_omit)} but "
+                        "is packed with mkinitramfs, which cannot exclude a module. Remove "
+                        "the '-' entries from kernelmodules, or use an image with dracut.")
+                elif initramfs_cmd:
+                    if builder == 'mkinitramfs' and requested_add:
+                        write_module_confdir(requested_add)
                     self.logger.info(f"Building initramfs for osimage '{osimage}' with {builder}")
                     create = subprocess.Popen(initramfs_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
                     while create.poll() is None:
@@ -384,7 +448,7 @@ class Plugin():
                 all_messages = create.stderr.read().decode().split('\n')
                 message = '.'.join(all_messages[:3])
 
-            if not create:
+            if not create and initramfs_succeed:
                 initramfs_succeed = False
                 message = (
                     f"Could not open subprocess to run {builder}" if builder else
@@ -404,6 +468,9 @@ class Plugin():
             os.close(real_root)
             if chroot_path is not None:
                 os.close(chroot_path)
+            # The confdir is ours and disposable; it is inside the image, so leaving it
+            # behind would ship in the next tarball.
+            shutil.rmtree(image_path + LUNA_CONFDIR, ignore_errors=True)
             cleanup_mounts(image_path)
 
         if not initramfs_succeed:

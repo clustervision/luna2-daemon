@@ -62,7 +62,7 @@ DATABASE_LAYOUT_osimage = [
 {"column": "grab_exclude",         "datatype": "TEXT"},
 {"column": "initrdfile",           "datatype": "VARCHAR", "length": "100"},
 {"column": "kernelfile",           "datatype": "VARCHAR", "length": "100"},
-{"column": "kernelmodules",        "datatype": "VARCHAR", "length": "100"},
+{"column": "kernelmodules",        "datatype": "VARCHAR", "length": "1024"},
 {"column": "kerneloptions",        "datatype": "VARCHAR", "length": "100"},
 {"column": "kernelversion",        "datatype": "VARCHAR", "length": "60"},
 {"column": "path",                 "datatype": "VARCHAR", "length": "60"},

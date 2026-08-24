@@ -26,6 +26,9 @@ TEMPLATES_DIR = os.path.normpath(os.path.join(HERE, "..", "..", "daemon", "templ
 # Fixed seed values reused across assertions.
 NETWORK = "cluster"
 NETWORK_CIDR = "10.141.0.0"
+# luna stores the prefix length in network.subnet; the dotted form is what the ISC
+# template derives from it, and what kea refuses ("prefix length is not an integer").
+PREFIX = "16"
 NETMASK = "255.255.0.0"
 RANGE_BEGIN = "10.141.10.1"
 RANGE_END = "10.141.10.254"
@@ -45,7 +48,7 @@ def seeded(sqlite_db):
     from utils.database import Database
 
     _insert("cluster", name="mycluster", nameserver_ip="10.141.0.1", ntp_server="10.141.0.1")
-    _insert("network", name=NETWORK, network=NETWORK_CIDR, subnet=NETMASK, dhcp=1,
+    _insert("network", name=NETWORK, network=NETWORK_CIDR, subnet=PREFIX, dhcp=1,
             dhcp_range_begin=RANGE_BEGIN, dhcp_range_end=RANGE_END,
             nameserver_ip="10.141.0.1", ntp_server="10.141.0.1", zone=NETWORK)
     netid = Database().get_record(table="network", where=f'name="{NETWORK}"')[0]["id"]
@@ -95,6 +98,64 @@ def config_env(sqlite_db, constant, tmp_path, monkeypatch):
         constant[section].clear()
         constant[section].update(original)
 
+
+def _kea(content):
+    """Parse a rendered kea config. The templates emit shell-style comments, which kea accepts and
+    json does not."""
+    import json
+    import re
+    return json.loads("\n".join(re.sub(r"#.*$", "", line) for line in content.splitlines()))
+
+
+def _kea_accepts(content, family="4"):
+    """Run the render through kea's own parser where one is installed.
+
+    kea is the authority on its own syntax and a regex is an opinion: the plural class spelling,
+    a duplicate subnet prefix and a forward class reference all read fine and are all refused. The
+    check is skipped, never faked, when no binary is present."""
+    import shutil
+    import subprocess
+    import tempfile
+    binary = shutil.which(f"kea-dhcp{family}") or f"/usr/sbin/kea-dhcp{family}"
+    if not os.path.exists(binary):
+        pytest.skip(f"kea-dhcp{family} not installed")
+    with tempfile.NamedTemporaryFile("w", suffix=".conf", delete=False) as handle:
+        handle.write(content)
+        path = handle.name
+    try:
+        done = subprocess.run([binary, "-t", path], capture_output=True, text=True)
+    finally:
+        os.unlink(path)
+    assert done.returncode == 0, f"kea-dhcp{family} refused the render:\n{done.stdout}{done.stderr}"
+
+def _assert_classes_resolve(family):
+    """Every class named anywhere must be defined, and defined before it is named.
+
+    kea reads an unknown client-class as a name that never matches: the subnet or pool carrying it
+    silently drops out of selection, with nothing reported at parse time or at run time. A member()
+    reference to a class defined later in the list is refused outright. Both have shipped."""
+    import re
+    defined = []
+    for entry in family.get("client-classes", []):
+        for named in re.findall(r"member\('([^']+)'\)", entry.get("test", "")):
+            assert named in defined, (
+                f"class {entry['name']!r} names {named!r}, which is defined later or not at all; "
+                f"kea refuses a forward reference and the whole configuration with it")
+        defined.append(entry["name"])
+    def _walk(subnets):
+        for subnet in subnets:
+            names = [subnet["client-class"]] if "client-class" in subnet else []
+            names += [pool["client-class"] for pool in subnet.get("pools", []) if "client-class" in pool]
+            for name in names:
+                assert name in defined, (
+                    f"subnet {subnet['subnet']} names class {name!r}, which is never defined; kea "
+                    f"takes it out of selection and says nothing")
+                assert not re.search(r"[ ()']", name), (
+                    f"subnet {subnet['subnet']} carries the expression {name!r} where kea expects a "
+                    f"class name; it matches nothing and the subnet is never selected")
+    _walk(family.get("subnet4", []) + family.get("subnet6", []))
+    for block in family.get("shared-networks", []):
+        _walk(block.get("subnet4", []) + block.get("subnet6", []))
 
 @pytest.mark.regression
 def test_dhcp_overwrite_renders_subnet_and_host(config_env, seeded):
@@ -153,12 +214,13 @@ def test_dhcp_kea_no_relay_block_when_unset(config_env, seeded, constant):
 
 @pytest.mark.regression
 def test_dhcp_kea_link_selection_renders_shared_network(config_env, seeded, constant):
-    """TRIX-1921: a network with dhcp_link_subnet is lifted into a Kea shared-networks block -- a
-    pool-less anchor on the link prefix (authoritative:false) beside the boot subnet, with the pool
-    fenced only on the option-82.5 path."""
+    """TRIX-1921/-: a network with dhcp_link_subnet gets a pool-less anchor on the link prefix
+    beside its boot subnet, with the pool fenced on the option-82.5 path. The anchor belongs to the
+    whole link, so it joins the network's shared group -- a group sibling left outside the block is
+    unreachable from the anchor, and a node reserved there is served from the wrong network."""
     from utils.config import Config
 
-    _insert("network", name="edge", network="10.160.0.0", subnet="255.255.0.0", dhcp=1,
+    _insert("network", name="edge", network="10.160.0.0", subnet="16", dhcp=1,
             dhcp_range_begin="10.160.10.1", dhcp_range_end="10.160.10.254",
             nameserver_ip="10.141.0.1", ntp_server="10.141.0.1", zone="edge",
             shared=NETWORK, dhcp_relay="10.160.0.1", dhcp_link_subnet="10.170.35.0/24")
@@ -166,16 +228,108 @@ def test_dhcp_kea_link_selection_renders_shared_network(config_env, seeded, cons
 
     assert Config().dhcp_overwrite() is True
     content = open(os.path.join(config_env, "dhcpd.conf"), encoding="utf-8").read()
+    parsed = _kea(content)
+    blocks = {block["name"]: block for block in parsed["Dhcp4"]["shared-networks"]}
 
-    assert '"shared-networks"' in content
-    assert '"edge-linksel"' in content
-    assert '"subnet": "10.170.35.0/24"' in content        # the pool-less anchor
-    assert '"authoritative": false' in content            # suppress, not NAK, for foreign clients
-    assert '"edge-boot-class"' in content                 # the boot-pool fence
-    assert "relay4[5].exists" in content                  # fence gates only the 82.5 path
-    assert '"subnet": "10.160.0.0/' in content            # the boot subnet moved into the block
-    # the boot network no longer appears as a plain top-level subnet4 entry (it is inside the block)
-    assert content.index('"shared-networks"') < content.index('"subnet": "10.160.0.0/')
+    assert list(blocks) == ["cluster-edge"], (
+        f"expected the anchor to join the shared group, got {list(blocks)}")
+    subnets = {subnet["subnet"]: subnet for subnet in blocks["cluster-edge"]["subnet4"]}
+
+    # the pool-less anchor on the link prefix: suppress, rather than NAK, for foreign clients
+    assert subnets["10.170.35.0/24"]["pools"] == []
+    assert subnets["10.170.35.0/24"]["authoritative"] is False
+    # both the anchor-carrying network and its group sibling are inside the same block, so kea can
+    # reach either from the anchor and finds a reservation wherever it lives
+    assert "10.160.0.0/16" in subnets and "10.141.0.0/16" in subnets
+    assert any(host["ip-address"] == NODE_IP
+               for host in subnets["10.141.0.0/16"].get("reservations", []))
+    # every pool in an anchored block is fenced, or the foreign devices on that link take addresses
+    # from a cluster pool -- which is what the anchor's empty pool exists to prevent
+    for prefix in ("10.160.0.0/16", "10.141.0.0/16"):
+        for pool in subnets[prefix]["pools"]:
+            assert "client-class" in pool, f"unfenced pool in an anchored block: {prefix}"
+    assert "relay4[5].exists" in content
+    _kea_accepts(content)
+
+    # nothing may reference a class that is not defined, and not before it is defined: kea reads an
+    # unknown name as a class that never matches and silently drops the subnet out of selection
+    _assert_classes_resolve(parsed["Dhcp4"])
+
+
+@pytest.mark.regression
+def test_dhcp_kea_shared_group_is_one_shared_network(config_env, seeded, constant):
+    """A luna shared group is one kea shared-networks block. Flattened into subnet4 it is not a
+    group at all: kea selects one subnet and can only move to a sibling inside a shared network, so
+    two networks behind one relay resolve by config order and a reservation in the other is never
+    found."""
+    from utils.config import Config
+
+    _insert("network", name="ipmi", network="10.148.0.0", subnet="16", dhcp=1,
+            dhcp_range_begin="10.148.10.1", dhcp_range_end="10.148.10.254",
+            nameserver_ip="10.141.0.1", zone="ipmi", shared=NETWORK)
+    constant["DHCP"]["TEMPLATE"] = "templ_kea-dhcp4.cfg"
+
+    assert Config().dhcp_overwrite() is True
+    content = open(os.path.join(config_env, "dhcpd.conf"), encoding="utf-8").read()
+    parsed = _kea(content)
+    _kea_accepts(content)
+
+    assert parsed["Dhcp4"].get("subnet4") == [], "a grouped network must not also be a flat subnet"
+    block = parsed["Dhcp4"]["shared-networks"][0]
+    assert {subnet["subnet"] for subnet in block["subnet4"]} == {"10.141.0.0/16", "10.148.0.0/16"}
+    # the allow/deny policy ISC writes per pool: it belongs on the pool, and it is a class NAME
+    for subnet in block["subnet4"]:
+        for pool in subnet["pools"]:
+            assert pool["client-class"] in {c["name"] for c in parsed["Dhcp4"]["client-classes"]}
+    _assert_classes_resolve(parsed["Dhcp4"])
+
+
+@pytest.mark.regression
+def test_dhcp_kea_honours_link_selection_by_default(config_env, seeded, constant):
+    """Off by default, and it must stay that way. Where a relay uses option 82 sub-option 5 to tell
+    apart several links behind one giaddr, the sub-option is the only thing that identifies the
+    link: ignoring it hands the client a lease from a sibling subnet, with the wrong gateway and no
+    error anywhere. Measured on kea 3.0.3 -- two links, one giaddr, second client moved subnet."""
+    from utils.config import Config
+
+    constant["DHCP"]["TEMPLATE"] = "templ_kea-dhcp4.cfg"
+    assert Config().dhcp_overwrite() is True
+    parsed = _kea(open(os.path.join(config_env, "dhcpd.conf"), encoding="utf-8").read())
+    assert "compatibility" not in parsed["Dhcp4"]
+
+
+@pytest.mark.regression
+def test_dhcp_kea_ignore_link_selection_is_opt_in(config_env, seeded, constant):
+    """Turned on, kea selects on giaddr -- which luna knows from dhcp_relay -- so a relay naming a
+    prefix luna does not manage no longer takes every client it forwards out of subnet selection,
+    and nothing luna does not own appears in the config."""
+    from utils.config import Config
+
+    constant["DHCP"]["TEMPLATE"] = "templ_kea-dhcp4.cfg"
+    constant["DHCP"]["IGNORE_LINK_SELECTION"] = "yes"
+    assert Config().dhcp_overwrite() is True
+    parsed = _kea(open(os.path.join(config_env, "dhcpd.conf"), encoding="utf-8").read())
+    assert parsed["Dhcp4"]["compatibility"]["ignore-rai-link-selection"] is True
+
+
+@pytest.mark.regression
+def test_dhcp_kea_anchor_beats_the_ignore_setting(config_env, seeded, constant):
+    """The two contradict: an anchor exists because the sub-option carries information we want. The
+    anchor is the more specific statement and wins, and the render says so rather than quietly
+    dropping one of them."""
+    from utils.config import Config
+
+    _insert("network", name="edge", network="10.160.0.0", subnet="16", dhcp=1,
+            dhcp_range_begin="10.160.10.1", dhcp_range_end="10.160.10.254",
+            nameserver_ip="10.141.0.1", zone="edge",
+            dhcp_relay="10.160.0.1", dhcp_link_subnet="10.170.35.0/24")
+    constant["DHCP"]["TEMPLATE"] = "templ_kea-dhcp4.cfg"
+    constant["DHCP"]["IGNORE_LINK_SELECTION"] = "yes"
+    assert Config().dhcp_overwrite() is True
+    content = open(os.path.join(config_env, "dhcpd.conf"), encoding="utf-8").read()
+    parsed = _kea(content)
+    assert "compatibility" not in parsed["Dhcp4"]
+    assert '"subnet": "10.170.35.0/24"' in content
 
 
 def _alt_kernel_node(name, mac, netid, ip=None, ip6=None):
@@ -280,6 +434,12 @@ def test_alternative_ipxe_kernel_across_network_topologies(config_env, constant)
     assert v4.count(ALT_CLASS) == 3 and v6.count(ALT_CLASS) == 3
     # switch reservation in the link-sel net keeps its ZTP boot-file-name (parity anchor)
     assert '"hw-address": "aa:bb:cc:00:00:c2"' in v4 and "boot/switch/linksw" in v4
+    # the richest fixture in the suite - dual-stack, three topologies in one group, both anchors,
+    # nodes and a switch - so it is where both families are put in front of kea's own parser
+    _kea_accepts(v4)
+    _kea_accepts(v6, "6")
+    _assert_classes_resolve(_kea(v4)["Dhcp4"])
+    _assert_classes_resolve(_kea(v6)["Dhcp6"])
 
 
 @pytest.mark.regression

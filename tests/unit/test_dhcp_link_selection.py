@@ -260,3 +260,138 @@ def _nets(**spec):
 ])
 def test_dhcp_group_shares_link(networks, network, carrier, expected, why):
     assert Config().dhcp_group_shares_link(network, carrier, networks) is expected, why
+
+
+# ------------------------------------------------------------------ the shared-group pool wiring
+# dhcp_shared_pools decides, per member of a group, which pool it gets and what gates it. Three
+# inputs interact - whether the member is relayed, whether the family wants the allow/deny policy,
+# and whether the group carries a link anchor - and each combination has bitten.
+
+def _group(**members):
+    """name -> subnet dict, from name=relay pairs ('' for an unrelayed member)."""
+    subnets = {}
+    for name, relay in members.items():
+        subnets[name] = {'network': '10.0.0.0', 'prefix': '16'}
+        if relay:
+            subnets[name]['dhcp_relay'] = [relay]
+    return subnets
+
+
+def _pools(*names, **ranges):
+    pools = {name: {'range_begin': '10.0.1.1', 'range_end': '10.0.1.9'} for name in names}
+    pools.update(ranges)
+    return pools
+
+
+def test_shared_pools_wire_members_are_told_apart_by_class():
+    """The ipmi case: nobody is relayed, so the class is the only thing distinguishing them."""
+    subnets = _group(cluster='', ipmi='')
+    derived = Config().dhcp_shared_pools(subnets=subnets, pools=_pools('cluster-ipmi', 'ipmi'),
+                                         group='cluster-ipmi', carrier='cluster', members=['ipmi'])
+    assert subnets['cluster']['pool_class'] == 'cluster-ipmi-carrier-class'
+    assert subnets['ipmi']['pool_class'] == 'ipmi-class'
+    assert subnets['cluster']['range_begin'] == '10.0.1.1'
+    assert [entry['name'] for entry in derived] == ['cluster-ipmi-carrier-class']
+    assert derived[0]['test'] == "not member('ipmi-class')"
+
+
+def test_shared_pools_the_carrier_excludes_every_member():
+    """Two members, so the joiner is actually exercised: the carrier serves what is in NONE of
+    them. Joined with 'or' it would serve anything outside any one of them - which is nearly
+    everything, and a BMC would be able to draw from the carrier's pool."""
+    subnets = _group(cluster='', ipmi='', bmc2='')
+    derived = Config().dhcp_shared_pools(
+        subnets=subnets, pools=_pools('cluster-ipmi-bmc2', 'ipmi', 'bmc2'),
+        group='cluster-ipmi-bmc2', carrier='cluster', members=['ipmi', 'bmc2'])
+    assert derived[0]['test'] == "not member('ipmi-class') and not member('bmc2-class')"
+
+
+def test_shared_pools_a_relayed_member_gets_no_policy_class():
+    """It is picked out by its relay. A class there refuses its own network's PXE clients, which
+    then fall through to the carrier's pool and boot on the wrong subnet."""
+    subnets = _group(cluster='', remote='10.0.150.1')
+    Config().dhcp_shared_pools(subnets=subnets, pools=_pools('cluster-remote', 'remote'),
+                               group='cluster-remote', carrier='cluster', members=['remote'])
+    assert subnets['cluster']['pool_class'] == 'cluster-remote-carrier-class'
+    assert 'pool_class' not in subnets['remote']
+    assert subnets['remote']['range_begin'] == '10.0.1.1', 'it still gets its pool'
+
+
+def test_shared_pools_an_anchored_group_fences_every_pool():
+    """A foreign device on the link reaches the server too, so nothing in the block is left open.
+    A member that also has a policy class gets both, as one derived class - kea takes one name."""
+    subnets = _group(cluster='', inband='10.0.12.7')
+    derived = Config().dhcp_shared_pools(subnets=subnets, pools=_pools('cluster-inband', 'inband'),
+                                         group='cluster-inband', carrier='cluster',
+                                         members=['inband'], fence='cluster-inband-boot-class')
+    assert subnets['cluster']['pool_class'] == 'cluster-inband-cluster-pool-class'
+    assert subnets['inband']['pool_class'] == 'cluster-inband-boot-class', (
+        'a relayed member has no policy class, so the fence stands alone')
+    names = [entry['name'] for entry in derived]
+    assert names.index('cluster-inband-carrier-class') < names.index('cluster-inband-cluster-pool-class'), (
+        'kea refuses a member() reference to a class defined later in the list')
+    combined = [e for e in derived if e['name'] == 'cluster-inband-cluster-pool-class'][0]
+    assert combined['test'] == ("member('cluster-inband-carrier-class') "
+                                "and member('cluster-inband-boot-class')")
+
+
+def test_shared_pools_v6_takes_no_policy_class_but_still_fences():
+    """DHCPv6 expresses the same choice at subnet level, so its pools are left alone - except for
+    the fence, which has no subnet-level equivalent."""
+    subnets = _group(cluster='', inband='10.0.12.7')
+    derived = Config().dhcp_shared_pools(subnets=subnets, pools=_pools('cluster-inband', 'inband'),
+                                         group='cluster-inband', carrier='cluster',
+                                         members=['inband'], policy=False,
+                                         fence='cluster-inband-boot-class')
+    assert subnets['cluster']['pool_class'] == 'cluster-inband-boot-class'
+    assert subnets['inband']['pool_class'] == 'cluster-inband-boot-class'
+    assert derived == [], 'no carrier negation and no combination is needed without the policy'
+
+
+def test_shared_pools_a_member_with_no_range_gets_no_pool_and_no_class():
+    """dhcp_nodes_only, or a network with no range: it still belongs in the block for its
+    reservations, and a class on a pool it does not have would be meaningless."""
+    subnets = _group(cluster='', ipmi='')
+    Config().dhcp_shared_pools(subnets=subnets, pools=_pools('cluster-ipmi'),
+                               group='cluster-ipmi', carrier='cluster', members=['ipmi'])
+    assert 'pool_class' not in subnets['ipmi'] and 'range_begin' not in subnets['ipmi']
+    assert subnets['cluster']['pool_class'] == 'cluster-ipmi-carrier-class'
+
+
+# ------------------------------------------------------------------ the DHCPv6 selection class
+# DHCPv6 carries the boot URL in a class, so every subnet is gated on the boot classes built for
+# it. That is a list, which only kea 3.0 accepts; one derived class says the same thing on both.
+
+def test_dhcp6_select_class_piggyback_on_the_wire_uses_its_own_class():
+    name, definition = Config().dhcp6_select_class(subnet={}, name='ipmi', group='cluster-ipmi',
+                                                   piggyback=True)
+    assert (name, definition) == ('ipmi-class', None), 'the template already defines that one'
+
+
+def test_dhcp6_select_class_a_relayed_piggyback_is_gated_on_boot_classes():
+    """Relayed, so its own class does not apply - it is selected by the relay and gated like any
+    other subnet."""
+    subnet = {'dhcp_relay': ['10.0.12.7'], 'nextserver': '10.0.0.1'}
+    name, definition = Config().dhcp6_select_class(subnet=subnet, name='inband',
+                                                   group='cluster-inband', piggyback=True)
+    assert name == 'cluster-inband-inband-select-class'
+    assert definition['test'] == ("member('ipxe-cluster-inband-inband') or "
+                                  "member('arch-x86-cluster-inband-inband') or "
+                                  "member('arch-arm64-cluster-inband-inband') or "
+                                  "member('arch-openpower')")
+
+
+def test_dhcp6_select_class_a_plain_subnet_is_named_without_a_group():
+    subnet = {'nextserver': '10.0.0.1'}
+    name, definition = Config().dhcp6_select_class(subnet=subnet, name='cluster')
+    assert name == 'cluster-select-class'
+    assert "member('ipxe-cluster')" in definition['test']
+    assert 'cluster-cluster' not in definition['test'], 'no group means no group in the names'
+
+
+def test_dhcp6_select_class_without_a_nextserver_only_openpower_remains():
+    """No next server means no boot URL to offer, so the arch and ipxe classes are not built for it
+    and naming them would gate the subnet on classes that do not exist."""
+    name, definition = Config().dhcp6_select_class(subnet={}, name='storage')
+    assert name == 'storage-select-class'
+    assert definition['test'] == "member('arch-openpower')"

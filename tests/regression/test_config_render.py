@@ -424,6 +424,75 @@ def test_dhcp_kea_anchor_joins_a_group_that_shares_the_relay(config_env, seeded,
     _assert_classes_resolve(parsed["Dhcp4"])
 
 
+def _dualstack(database, network):
+    """Give the seeded network a v6 side, and the controller an address in it."""
+    database.update("network", [
+        {"column": "network_ipv6", "value": "2001:db8:141::"},
+        {"column": "subnet_ipv6", "value": "64"},
+        {"column": "dhcp_range_begin_ipv6", "value": "2001:db8:141::10"},
+        {"column": "dhcp_range_end_ipv6", "value": "2001:db8:141::ff"},
+    ], where=[{"column": "name", "value": network}])
+    ctrl = database.get_record(table="controller", where='hostname="controller"')[0]["id"]
+    database.update("ipaddress", [{"column": "ipaddress_ipv6", "value": "2001:db8:141::fe"}],
+                    where=[{"column": "tablerefid", "value": ctrl},
+                           {"column": "tableref", "value": "controller"}])
+
+
+@pytest.mark.regression
+def test_dhcp_kea6_plain_subnet_is_a_config_kea_accepts(config_env, seeded, constant):
+    """The simplest DHCPv6 case there is: one plain network, and kea must load it.
+
+    The per-network arch classes carry the bootfile-url, and the ipxe_kernel classes name them with
+    member(). Emitted after them, the reference is forward and kea refuses the whole file -- 'Not
+    defined client class arch-x86-<network>'. Both families install together, so that takes the
+    DHCPv4 configuration down with it. Measured on kea 3.0.3."""
+    from utils.config import Config
+    from utils.database import Database
+
+    _dualstack(Database(), NETWORK)
+    constant["DHCP"]["TEMPLATE"] = "templ_kea-dhcp4.cfg"
+    constant["DHCP"]["TEMPLATE6"] = "templ_kea-dhcp6.cfg"
+    assert Config().dhcp_overwrite() is True
+    content = open(os.path.join(config_env, "dhcpd6.conf"), encoding="utf-8").read()
+    _kea_accepts(content, "6")
+    _assert_classes_resolve(_kea(content)["Dhcp6"])
+
+
+@pytest.mark.regression
+def test_dhcp_kea6_link_selection_network_gets_its_boot_classes(config_env, seeded, constant):
+    """DHCPv6 carries the boot file in a class built per network, so a link-selection network needs
+    its own as much as any other. Without them a node there cannot do first-stage PXE and its
+    ipxe_kernel choice has nothing to act on -- the alternative kernel is simply unreachable."""
+    from utils.config import Config
+    from utils.database import Database
+
+    _dualstack(Database(), NETWORK)
+    Database().update("network", [
+        {"column": "dhcp_relay", "value": "10.160.0.1,2001:db8:160::1"},
+        {"column": "dhcp_link_subnet", "value": "10.170.35.0/24,2001:db8:170::/64"},
+        {"column": "shared", "value": "ipmi"},
+    ], where=[{"column": "name", "value": NETWORK}])
+    _insert("network", name="ipmi", network="10.148.0.0", subnet="16", dhcp=1,
+            dhcp_range_begin="10.148.10.1", dhcp_range_end="10.148.10.254",
+            network_ipv6="2001:db8:148::", subnet_ipv6="64",
+            dhcp_range_begin_ipv6="2001:db8:148::10", dhcp_range_end_ipv6="2001:db8:148::ff",
+            nameserver_ip="10.141.0.1", zone="ipmi", dhcp_relay="10.150.0.1")
+    constant["DHCP"]["TEMPLATE"] = "templ_kea-dhcp4.cfg"
+    constant["DHCP"]["TEMPLATE6"] = "templ_kea-dhcp6.cfg"
+    assert Config().dhcp_overwrite() is True
+    content = open(os.path.join(config_env, "dhcpd6.conf"), encoding="utf-8").read()
+    parsed = _kea(content)
+    _kea_accepts(content, "6")
+    names = {entry["name"] for entry in parsed["Dhcp6"]["client-classes"]}
+    # the group does not share a link, so the anchor keeps its own block - and that block's network
+    # still needs the classes that make a boot file reachable
+    for wanted in (f"arch-x86-{NETWORK}", f"arch-arm64-{NETWORK}",
+                   f"ipxe-kernel-alternative-x86-{NETWORK}",
+                   f"ipxe-kernel-default-x86-{NETWORK}"):
+        assert wanted in names, f"a link-selection network has no {wanted}"
+    _assert_classes_resolve(parsed["Dhcp6"])
+
+
 def _alt_kernel_node(name, mac, netid, ip=None, ip6=None):
     """A node selecting the ALTERNATIVE iPXE kernel, with a single-family boot interface. (A node
     interface carrying both families renders only its v6 reservation -- if/elif in dhcp_config -- so

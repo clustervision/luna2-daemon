@@ -223,6 +223,22 @@ class Network():
         return status, response
 
 
+    def same_shared_group (self, name=None, other=None, data=None):
+        """
+        Whether two networks end up in the same shared group. A group is a carrier plus every
+        network whose 'shared' names it, so two networks are together when one names the other or
+        both name the same carrier. The pending value wins over the stored one, so a request that
+        joins a group is judged on where it is going, not where it has been.
+        """
+        rows = {row['name']: row for row in (Database().get_record(table='network') or [])}
+        def carrier(who):
+            if who == name and data and 'shared' in data:
+                return (data['shared'] or '').strip() or None
+            return ((rows.get(who) or {}).get('shared') or '').strip() or None
+        mine, theirs = carrier(name), carrier(other)
+        return mine == other or theirs == name or (mine is not None and mine == theirs)
+
+
     def update_network(self, name=None, request_data=None):
         """
         This method will create or update a network.
@@ -446,10 +462,31 @@ class Network():
                         status=False
                         return status, f'Invalid request: Incorrect DHCP link subnet (IPv4 or IPv6 CIDR expected): {link}'
                     ip_part, _, prefix_part = link.partition('/')
-                    if Helper().get_network(ip_part, prefix_part) in own_subnets:
+                    normalised = Helper().get_network(ip_part, prefix_part)
+                    if normalised in own_subnets:
                         status=False
                         return status, (f'Invalid request: DHCP link subnet {link} is this network\'s own '
                                         'subnet; the option-82.5 anchor must be a different prefix')
+                    # The anchor is one pool-less subnet in the kea config, and kea refuses the whole
+                    # configuration when a prefix appears twice - so a prefix already claimed by a
+                    # network outside this one's shared group cannot be rendered. Inside the group it
+                    # is the same block and the render de-duplicates, so that stays allowed.
+                    for other in (Database().get_record(table='network',
+                                                        where='dhcp_link_subnet IS NOT NULL '
+                                                              f'AND dhcp_link_subnet != "" AND name != "{name}"') or []):
+                        if not self.same_shared_group(name, other['name'], data):
+                            for claimed in (other['dhcp_link_subnet'] or '').split(','):
+                                claimed = claimed.strip()
+                                if not claimed:
+                                    continue
+                                claimed_ip, _, claimed_prefix = claimed.partition('/')
+                                if Helper().get_network(claimed_ip, claimed_prefix) == normalised:
+                                    status=False
+                                    return status, (f'Invalid request: DHCP link subnet {link} is already '
+                                                    f'the anchor of network {other["name"]}, which is not in '
+                                                    'this network\'s shared group. kea allows a prefix in one '
+                                                    'shared-network only and refuses the whole configuration '
+                                                    'otherwise; set the anchor on one of the two')
             # clearing the relay removes the reason for any link anchor: cascade-clear it so no
             # orphaned option-82.5 config can be left behind.
             if 'dhcp_relay' in data and data['dhcp_relay'] == '':

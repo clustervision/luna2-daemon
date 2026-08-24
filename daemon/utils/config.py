@@ -203,6 +203,7 @@ class Config(object):
         template = 'templ_dhcpd.cfg'
         template6 = 'templ_dhcpd6.cfg'
         dhcp6_interface = ''
+        ignore_link_selection = False
         if 'DHCP' in CONSTANT:
             if 'TEMPLATE' in CONSTANT["DHCP"]:
                 template = CONSTANT["DHCP"]["TEMPLATE"]
@@ -222,6 +223,14 @@ class Config(object):
             # controller rather than from a guess shipped in a template.
             if 'INTERFACE6' in CONSTANT["DHCP"]:
                 dhcp6_interface = CONSTANT["DHCP"]["INTERFACE6"] or ''
+            # Whether kea honours option 82 sub-option 5 (RFC 3527 link-selection). Off by default:
+            # where a relay uses the sub-option to tell apart several links behind one giaddr, it is
+            # the only thing that identifies the link, and ignoring it puts clients in a sibling
+            # subnet with no error anywhere. Turn it on where the sub-option names a prefix luna
+            # does not manage and giaddr alone identifies the link; dhcp_link_subnet is the other
+            # answer to that case, and keeps foreign devices out of our pools as well.
+            if 'IGNORE_LINK_SELECTION' in CONSTANT["DHCP"]:
+                ignore_link_selection = Helper().make_bool(CONSTANT["DHCP"]["IGNORE_LINK_SELECTION"])
 
         # option 82.5 link-selection is a Kea-only construct (shared-networks + link anchor). On the
         # ISC dhcpd backend a link network must keep rendering exactly as before, so the routing
@@ -326,23 +335,35 @@ class Config(object):
             ):
                 networksbyname[network]['ipv6'] = True
             if networksbyname[network]['shared'] and networksbyname[network]['shared'] in networksbyname.keys():
-                # a network carrying a dhcp_link_subnet anchor is rendered as its own Kea
-                # shared-networks block (option 82.5, below), so it does not join the flat shared
-                # group for that family. The decision is per family: a v4-only anchor still lets
-                # the v6 side piggyback as before.
+                # A network carrying a dhcp_link_subnet anchor stays in its shared group so the
+                # anchor joins the group's block: a sibling left outside is unreachable from the
+                # anchor, and a node reserved there is served from the wrong network's pool. That
+                # only holds where the group really is one link - see dhcp_group_shares_link. Where
+                # it is not, the anchor keeps a block of its own, because selection through it
+                # cannot tell two relayed links apart.
                 link_field = networksbyname[network].get('dhcp_link_subnet')
-                if networksbyname[network]['ipv4'] and not (is_kea and link_field and self.dhcp_link_anchors(link_field, 'ipv4')):
+                one_link = (not link_field) or self.dhcp_group_shares_link(
+                    network, networksbyname[network]['shared'], networksbyname)
+                if networksbyname[network]['ipv4'] and not (
+                        is_kea and link_field and not one_link
+                        and self.dhcp_link_anchors(link_field, 'ipv4')):
                     if not networksbyname[network]['shared'] in shared.keys():
                         shared[networksbyname[network]['shared']] = []
                     shared[networksbyname[network]['shared']].append(network)
-                if networksbyname[network]['ipv6'] and not (is_kea6 and link_field and self.dhcp_link_anchors(link_field, 'ipv6')):
+                if networksbyname[network]['ipv6'] and not (
+                        is_kea6 and link_field and not one_link
+                        and self.dhcp_link_anchors(link_field, 'ipv6')):
                     if not networksbyname[network]['shared'] in shared6.keys():
                         shared6[networksbyname[network]['shared']] = []
                     shared6[networksbyname[network]['shared']].append(network)
 
         # IPv4 - shared networks
+        shared_groups, shared_groups6, shared_group_of = [], [], {}
         for network in shared.keys():
             shared_name = f"{network}-" + "-".join(shared[network])
+            shared_groups.append((shared_name, network, list(shared[network])))
+            for member in [network] + shared[network]:
+                shared_group_of[member] = shared_name
             #
             # the main network/carrier
             config_pools[shared_name]={}
@@ -374,6 +395,9 @@ class Config(object):
         # IPv6 - shared networks
         for network in shared6.keys():
             shared_name = f"{network}-" + "-".join(shared6[network])
+            shared_groups6.append((shared_name, network, list(shared6[network])))
+            for member in [network] + shared6[network]:
+                shared_group_of[member + '_ipv6'] = shared_name
             #
             # the main network/carrier
             config_pools6[shared_name]={}
@@ -403,29 +427,85 @@ class Config(object):
                 config_classes6[piggyback]['network']=piggyback
                 handled.append(piggyback+'_ipv6')
 
-        # option-82.5 (RFC 3527) link-selection: a network with a dhcp_link_subnet anchor is lifted
-        # into its own Kea shared-networks block - a pool-less anchor on the relay's link prefix
-        # alongside the boot subnet - so a relay that rewrites subnet selection via sub-option 5
-        # still lands the client in the boot pool. Only the opted-in network moves; it is excluded
-        # from the shared groups above and marked handled here so the plain subnet loop skips it.
+        # option-82.5 (RFC 3527) link-selection: a relay may rewrite subnet selection with the
+        # link-selection sub-option, and kea then matches that address instead of giaddr. A network
+        # with a dhcp_link_subnet anchor gets a pool-less subnet on the relay's link prefix so the
+        # rewritten selection still lands somewhere we control. The anchor belongs to the whole
+        # link, so where the network is in a shared group the anchor joins that group's block -
+        # a group sibling outside it is unreachable from the anchor, and kea refuses the entire
+        # configuration if the same prefix is rendered in two blocks.
         config_linksel = {}
         config_linksel6 = {}
+        config_anchor = {}
+        config_anchor6 = {}
         for network in networksbyname.keys():
             nwk = networksbyname[network]
-            if not nwk['dhcp']:
+            if not nwk['dhcp'] or not nwk.get('dhcp_link_subnet'):
                 continue
-            if is_kea and nwk.get('dhcp_link_subnet') and nwk['ipv4'] and network not in handled:
-                anchors = self.dhcp_link_anchors(nwk['dhcp_link_subnet'], 'ipv4')
-                if anchors:
-                    config_linksel[network] = {'anchor': anchors, 'boot': self.dhcp_subnet_config(nwk, False, 'ipv4')}
-                    config_reservations[network] = []
-                    handled.append(network)
-            if is_kea6 and nwk.get('dhcp_link_subnet') and nwk['ipv6'] and network+'_ipv6' not in handled:
-                anchors = self.dhcp_link_anchors(nwk['dhcp_link_subnet'], 'ipv6')
-                if anchors:
-                    config_linksel6[network] = {'anchor': anchors, 'boot': self.dhcp_subnet_config(nwk, False, 'ipv6')}
-                    config_reservations6[network] = []
-                    handled.append(network+'_ipv6')
+            for family, kea, in_pool, linksel, anchor, reservations in (
+                ('ipv4', is_kea, nwk['ipv4'], config_linksel, config_anchor, config_reservations),
+                ('ipv6', is_kea6, nwk['ipv6'], config_linksel6, config_anchor6, config_reservations6),
+            ):
+                key = network if family == 'ipv4' else network + '_ipv6'
+                if not (kea and in_pool):
+                    continue
+                anchors = self.dhcp_link_anchors(nwk['dhcp_link_subnet'], family)
+                if not anchors:
+                    continue
+                group = shared_group_of.get(key)
+                if group:
+                    for prefix in anchors:
+                        if prefix not in anchor.setdefault(group, []):
+                            anchor[group].append(prefix)
+                elif key not in handled:
+                    linksel[network] = {'anchor': anchors, 'boot': self.dhcp_subnet_config(nwk, False, family)}
+                    reservations[network] = []
+                    handled.append(key)
+
+        # kea takes a shared group's pools from the subnet bodies rather than from a pool list, and
+        # fences them where the group carries a link anchor. This only adds keys; the ISC template
+        # reads neither and keeps taking its pools and its allow/deny from POOLS.
+        config_derived = []
+        config_derived6 = []
+        for groups, subnets, pools, anchors, derived, policy in (
+            (shared_groups, config_shared, config_pools, config_anchor, config_derived, True),
+            (shared_groups6, config_shared6, config_pools6, config_anchor6, config_derived6, False),
+        ):
+            for shared_name, carrier, members in groups:
+                derived += self.dhcp_shared_pools(
+                    subnets=subnets.get(shared_name), pools=pools, group=shared_name,
+                    carrier=carrier, members=members, policy=policy,
+                    fence=f"{shared_name}-boot-class" if shared_name in anchors else None)
+
+        # A link prefix may be rendered once only. Validation refuses a duplicate across networks,
+        # so this is the backstop for a database that predates it: drop the repeat and say so,
+        # rather than emit a configuration kea refuses in its entirety.
+        for anchors in (config_anchor, config_anchor6):
+            seen = {}
+            for group in list(anchors.keys()):
+                for prefix in list(anchors[group]):
+                    if prefix in seen:
+                        self.logger.error(f"dhcp_link_subnet {prefix} is claimed by both "
+                                          f"{seen[prefix]} and {group}; kea allows a prefix in one "
+                                          f"shared-network only, so it is dropped from {group}. "
+                                          f"Set the anchor on one of the two groups.")
+                        anchors[group].remove(prefix)
+                        continue
+                    seen[prefix] = group
+                if not anchors[group]:
+                    del anchors[group]
+
+        # An anchor says the sub-option carries information we want, which is the opposite of
+        # ignoring it. The anchor is the more specific statement, so it wins - loudly, because the
+        # two settings contradict and whoever set them should know which one took effect.
+        ignore_rai = is_kea and ignore_link_selection
+        if ignore_rai and (config_linksel or config_anchor):
+            self.logger.error("[DHCP] IGNORE_LINK_SELECTION is set, but "
+                              f"{', '.join(sorted(set(config_linksel) | set(config_anchor)))} "
+                              "declares a dhcp_link_subnet anchor, which only has meaning when the "
+                              "option-82.5 sub-option is honoured. Honouring it; clear the anchor "
+                              "or clear the setting.")
+            ignore_rai = False
 
         # we handle all (remaining) networks below
         if networksbyname:
@@ -567,6 +647,23 @@ class Config(object):
                     else:
                         self.logger.debug(f'{item} not available for {network_name}  IPv4: {network_ip} or IPv6: {network_ipv6}')
         
+        # DHCPv6 gates each subnet on the boot classes built for it; give every subnet the one
+        # derived class that says the same thing, so the render stops depending on a kea 3.0-only
+        # spelling. Done after the pool wiring so a group's carrier and piggybacks are known.
+        for shared_name, carrier, members in shared_groups6:
+            for name, subnet in (config_shared6.get(shared_name) or {}).items():
+                select, definition = self.dhcp6_select_class(subnet=subnet, name=name,
+                                                             group=shared_name,
+                                                             piggyback=(name != carrier))
+                subnet['select_class'] = select
+                if definition:
+                    config_derived6.append(definition)
+        for name, subnet in config_subnets6.items():
+            select, definition = self.dhcp6_select_class(subnet=subnet, name=name)
+            subnet['select_class'] = select
+            if definition:
+                config_derived6.append(definition)
+
         try:
             file_loader = FileSystemLoader(CONSTANT["TEMPLATES"]["TEMPLATE_FILES"])
             env = Environment(loader=file_loader)
@@ -575,7 +672,8 @@ class Config(object):
                 dhcpd_template = env.get_template(template)
                 dhcpd_config = dhcpd_template.render(CLASSES=config_classes,SHARED=config_shared,SUBNETS=config_subnets,
                                                      ZONES=config_zones,EMPTY=config_empty,POOLS=config_pools,
-                                                     LINKSEL=config_linksel,
+                                                     LINKSEL=config_linksel,ANCHOR=config_anchor,
+                                                     DERIVED=config_derived,IGNORE_RAI=ignore_rai,
                                                      DOMAINNAME=domain,NAMESERVERS=nameserver_ip,NTPSERVERS=ntp_server,
                                                      RESERVATIONS=config_reservations,OMAPIKEY=omapikey,
                                                      TSIGKEY=tsigkey,TSIGALGO=tsigalgo)
@@ -593,7 +691,8 @@ class Config(object):
                 dhcpd_template = env.get_template(template6)
                 dhcpd_config = dhcpd_template.render(CLASSES=config_classes6,SHARED=config_shared6,SUBNETS=config_subnets6,
                                                      ZONES=config_zones6,EMPTY=config_empty6,POOLS=config_pools6,
-                                                     LINKSEL=config_linksel6,
+                                                     LINKSEL=config_linksel6,ANCHOR=config_anchor6,
+                                                     DERIVED=config_derived6,
                                                      DOMAINNAME=domain,NAMESERVERS=nameserver_ip,
                                                      NAMESERVERS_IPV6=nameserver_ip_ipv6,NTPSERVERS=ntp_server,
                                                      RESERVATIONS=config_reservations6,OMAPIKEY=omapikey,
@@ -650,6 +749,107 @@ class Config(object):
                               "subnets, so they will not be served. give the controller an IPv6 "
                               "address inside the network, or configure dhcp_relay for it")
         return unservable
+
+
+    def dhcp_group_shares_link (self, network=None, carrier=None, networksbyname=None):
+        """
+        Whether every relayed member of a shared group sits on the same link as this one, judged by
+        the relays they have in common.
+
+        luna's 'shared' carries two meanings. For a host and its BMC it says "the same wire", and a
+        link anchor there belongs to the whole group. For a relayed network it is only the
+        precondition dhcp_relay insists on, and the members can be quite separate links - so an
+        anchor merged into that group would be reachable from every relayed member in it, and
+        selection would land on whichever the render happened to put first. Relays in common are
+        the evidence that the link really is shared; a member with no relay is on the wire and
+        cannot be picked out by a relay anyway, so it does not argue either way.
+        """
+        def relays (name):
+            nwk = (networksbyname or {}).get(name) or {}
+            return {relay.strip() for relay in (nwk.get('dhcp_relay') or '').split(',') if relay.strip()}
+        mine = relays(network)
+        for member, nwk in (networksbyname or {}).items():
+            if member == network:
+                continue
+            if member != carrier and (nwk.get('shared') or '') != carrier:
+                continue
+            theirs = relays(member)
+            if theirs and not (theirs & mine):
+                return False
+        return True
+
+
+    def dhcp_shared_pools (self, subnets=None, pools=None, group=None, carrier=None,
+                           members=None, fence=None, policy=True):
+        """
+        Give each member of a shared group the pool that the ISC template takes from POOLS, so the
+        kea templates can render the group as one shared-networks block through the same subnet
+        macro as everything else.
+
+        With policy, each pool also carries the class ISC writes as 'allow/deny members of': a
+        piggyback serves its own class, the carrier serves whatever is in none of them. DHCPv6
+        expresses the same choice at subnet level already and passes policy=False, so its pools are
+        left alone.
+
+        kea's client-class holds one class NAME and never an expression - an expression is read as
+        a name, matches nothing, and takes the subnet out of selection with no error anywhere - so
+        the negation, and any combination with the link fence, are emitted as derived classes and
+        referenced by name. They come back in dependency order, because kea refuses a member()
+        reference to a class defined later in the list.
+        """
+        derived = []
+        carrier_class = f"{group}-carrier-class"
+        for name, subnet in (subnets or {}).items():
+            pool = (pools or {}).get(group if name == carrier else name) or {}
+            if 'range_begin' not in pool or 'range_end' not in pool:
+                continue
+            subnet['range_begin'], subnet['range_end'] = pool['range_begin'], pool['range_end']
+            # A relayed member is picked out by its relay, so its pool takes no policy class -
+            # the classes only tell apart members that share a wire, and they all carry the same
+            # udhcp test. Classing a relayed pool refuses its own network's PXE clients, which
+            # then fall through to the carrier's pool and boot on the wrong subnet.
+            if policy and 'dhcp_relay' not in subnet:
+                subnet['pool_class'] = carrier_class if name == carrier else f"{name}-class"
+            elif fence:
+                subnet['pool_class'] = fence
+        if policy and members and any(s.get('pool_class') == carrier_class
+                                      for s in (subnets or {}).values()):
+            derived.append({'name': carrier_class,
+                            'test': ' and '.join(f"not member('{m}-class')" for m in members)})
+        if fence:
+            for name, subnet in (subnets or {}).items():
+                base = subnet.get('pool_class')
+                if not base or base == fence:
+                    continue
+                fenced = f"{group}-{name}-pool-class"
+                subnet['pool_class'] = fenced
+                derived.append({'name': fenced,
+                                'test': f"member('{base}') and member('{fence}')"})
+        return derived
+
+
+    def dhcp6_select_class (self, subnet=None, name=None, group=None, piggyback=False):
+        """
+        The one class name that gates selection of a DHCPv6 subnet, and its definition.
+
+        DHCPv6 carries the boot URL in a class (option 59), so the templates have always gated each
+        subnet on the boot classes built for it - a list, which is the kea 3.0 spelling and which
+        kea 2.6 refuses outright, taking DHCPv4 down with it because both families install together.
+        The same choice as one derived class works on both. A piggyback with a pool and no relay is
+        gated on its own class instead, exactly as before.
+
+        Returns (class name, definition or None). The definition is None when the name is a class
+        the template already defines.
+        """
+        if piggyback and 'dhcp_relay' not in subnet:
+            return f"{name}-class", None
+        suffix = f"{group}-{name}" if group else name
+        members = ['arch-openpower']
+        if subnet.get('nextserver'):
+            members = [f"ipxe-{suffix}", f"arch-x86-{suffix}", f"arch-arm64-{suffix}"] + members
+        select = f"{suffix}-select-class"
+        return select, {'name': select,
+                        'test': ' or '.join(f"member('{member}')" for member in members)}
 
 
     def dhcp_link_anchors (self, value=None, ipversion='ipv4'):

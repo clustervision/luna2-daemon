@@ -493,6 +493,86 @@ def test_dhcp_kea6_link_selection_network_gets_its_boot_classes(config_env, seed
     _assert_classes_resolve(parsed["Dhcp6"])
 
 
+def _full_cluster(database):
+    """The shape a cluster actually has: local nodes and BMCs on the controller's own subnet, a
+    plain relayed network, and a relay that rewrites selection with option 82.5. This is the
+    combination that found two defects the pairwise fixtures could not, so it stays in the suite."""
+    database.update("network", [{"column": "subnet", "value": "16"}],
+                    where=[{"column": "name", "value": NETWORK}])
+    _insert("network", name="ipmi", network="10.148.0.0", subnet="16", dhcp=1,
+            dhcp_range_begin="10.148.10.1", dhcp_range_end="10.148.10.254",
+            nameserver_ip="10.141.0.1", zone="ipmi", shared=NETWORK)
+    _insert("network", name="remote", network="10.150.0.0", subnet="16", dhcp=1,
+            dhcp_range_begin="10.150.10.1", dhcp_range_end="10.150.10.254", gateway="10.150.0.1",
+            nameserver_ip="10.141.0.1", zone="remote", shared=NETWORK, dhcp_relay="10.150.0.1")
+    _insert("network", name="edge", network="10.160.0.0", subnet="16", dhcp=1,
+            dhcp_range_begin="10.160.10.1", dhcp_range_end="10.160.10.254", gateway="10.160.0.1",
+            nameserver_ip="10.141.0.1", zone="edge", shared=NETWORK,
+            dhcp_relay="10.160.0.1", dhcp_link_subnet="10.170.35.0/24")
+
+
+@pytest.mark.regression
+def test_dhcp_kea_full_cluster_shape(config_env, seeded, constant):
+    """All four shapes in one cluster, which is how they arrive.
+
+    Each network has to end up in the right block with the right pool gate, and the three rules
+    interact here in a way no pairwise fixture reaches: the wire pair are classed, the relayed
+    member must not be, and the anchor must stay out of a group that spans two relayed links."""
+    from utils.config import Config
+    from utils.database import Database
+
+    _full_cluster(Database())
+    constant["DHCP"]["TEMPLATE"] = "templ_kea-dhcp4.cfg"
+    assert Config().dhcp_overwrite() is True
+    content = open(os.path.join(config_env, "dhcpd.conf"), encoding="utf-8").read()
+    parsed = _kea(content)
+    _kea_accepts(content)
+
+    blocks = {b["name"]: {s["subnet"]: s for s in b["subnet4"]}
+              for b in parsed["Dhcp4"]["shared-networks"]}
+    assert parsed["Dhcp4"].get("subnet4") == [], "every network here is grouped"
+    assert set(blocks) == {"cluster-ipmi-remote", "edge-linksel"}, (
+        f"the anchor must not merge a group spanning two relayed links: {sorted(blocks)}")
+
+    wire = blocks["cluster-ipmi-remote"]
+    assert set(wire) == {"10.141.0.0/16", "10.148.0.0/16", "10.150.0.0/16"}
+    # the wire pair are told apart by class; the relayed member is told apart by its relay
+    for prefix in ("10.141.0.0/16", "10.148.0.0/16"):
+        assert all("client-class" in pool for pool in wire[prefix]["pools"]), prefix
+    assert all("client-class" not in pool for pool in wire["10.150.0.0/16"]["pools"]), (
+        "a relayed member's pool must take no policy class, or its own PXE clients are refused it")
+
+    link = blocks["edge-linksel"]
+    assert set(link) == {"10.170.35.0/24", "10.160.0.0/16"}
+    assert link["10.170.35.0/24"]["pools"] == []
+    assert all("client-class" in pool for pool in link["10.160.0.0/16"]["pools"]), (
+        "a pool in an anchored block must be fenced")
+    _assert_classes_resolve(parsed["Dhcp4"])
+
+
+@pytest.mark.regression
+def test_dhcp_isc_ignores_the_keys_added_for_kea(config_env, seeded, constant):
+    """The kea render needed pools and classes on the shared-group subnet bodies. ISC dhcpd takes
+    both from POOLS and reads neither, so its output must not change - this is a Kea-only feature
+    and older clusters keep the backend they have."""
+    from utils.config import Config
+    from utils.database import Database
+
+    _full_cluster(Database())
+    # the ISC backend is the fixture default; name it anyway so the test says what it is testing
+    constant["DHCP"]["TEMPLATE"] = "templ_dhcpd.cfg"
+    assert Config().dhcp_overwrite() is True
+    content = open(os.path.join(config_env, "dhcpd.conf"), encoding="utf-8").read()
+
+    assert "shared-network" in content and "allow members of" in content
+    assert f"range {RANGE_BEGIN} {RANGE_END}" in content
+    for leaked in ("pool_class", "select_class", "carrier-class", "-pool-class",
+                   "ignore-rai-link-selection", "10.170.35.0/24"):
+        assert leaked not in content, (
+            f"{leaked!r} reached the ISC configuration; the kea render's keys must stay invisible "
+            f"to it, and link selection is not rendered on this backend at all")
+
+
 def _alt_kernel_node(name, mac, netid, ip=None, ip6=None):
     """A node selecting the ALTERNATIVE iPXE kernel, with a single-family boot interface. (A node
     interface carrying both families renders only its v6 reservation -- if/elif in dhcp_config -- so

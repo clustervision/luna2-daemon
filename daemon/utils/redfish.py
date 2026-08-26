@@ -399,7 +399,9 @@ class RedfishAccess():
         return True, {
             'scheme': setup[0]['scheme'] or 'https',
             'port': setup[0]['port'],
-            'verify': Helper().make_bool(setup[0]['verify']),
+            # a row written before verify had a default reads as None; make it a
+            # real bool here rather than relying on None being falsy downstream
+            'verify': bool(Helper().make_bool(setup[0]['verify'])),
             'username': account['username'],
             'password': account['password'],
             'account': account['name']

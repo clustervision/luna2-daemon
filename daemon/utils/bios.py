@@ -86,6 +86,17 @@ UNPORTABLE = (
 # identity, which is what the vendor precedent excludes too: a Dell Server
 # Configuration Profile exported for cloning comments out its I/O identity, where
 # one exported to replace a machine keeps the service tag.
+# How many times a stage may be re-attempted when the machine reports no error and
+# simply does not take the change. It is a count rather than a clock so the answer
+# is the same on a fast machine and a slow one, and so a report can say "3 of 3"
+# rather than "we gave it a while".
+MAX_ATTEMPTS = 3
+
+# A settings object can report a payload as rejected without the write itself
+# failing, and these are the severities that mean rejected. Anything else is
+# informational and must not be read as a refusal.
+REJECTED = ('critical', 'warning')
+
 DEFAULT_EXCLUDE = (
     '*AssetTag*', '*ServiceTag*', '*SerialNumber*', '*Uuid*', '*UUID*',
     '*HostName*', '*IscsiInitiatorName*', '*VirtualMac*', '*VirtualAddress*',
@@ -328,6 +339,116 @@ class Bios():
             for name in writable:
                 del pending[name]
         return True, stages
+
+
+    def rejection(self, messages=None):
+        """
+        This method returns why a machine rejected a settings payload, or None.
+
+        A settings object carries its own report, and it is the only place a
+        refusal shows up when the write itself succeeded: the PATCH is answered
+        200, the machine reboots, and the settings object says it would not take
+        it. Reading only the HTTP status misses this entirely.
+        """
+        for entry in messages or []:
+            if not isinstance(entry, dict):
+                continue
+            severity = str(entry.get('MessageSeverity')
+                           or entry.get('Severity') or '').strip().lower()
+            if severity in REJECTED:
+                text = entry.get('Message') or entry.get('MessageId')
+                resolution = entry.get('Resolution')
+                if text and resolution and str(resolution).strip().lower() != 'none':
+                    return f'{text} ({resolution})'
+                if text:
+                    return str(text)
+                return f'the machine reported a {severity} condition with no message'
+        return None
+
+
+    def verdict(self, wanted=None, attributes=None, error=None, messages=None,
+                attempts=0, limit=MAX_ATTEMPTS):
+        """
+        This method decides what happens after one attempt at one stage, and it is
+        the whole of that decision - deterministic, so the same inputs always give
+        the same answer and the same number of attempts.
+
+        Returns (outcome, reason) where outcome is one of:
+          'done'   everything asked for is in place
+          'retry'  no error, but the machine did not take it, and attempts remain
+          'failed' stop, for a reason that is stated
+
+        The two ways of giving up are deliberately different, because retrying
+        them has different value:
+
+        A clear, direct refusal - the write failed, or the settings object reports
+        the payload as rejected - ends it immediately. Retrying a refusal only
+        reboots the machine to be refused again, and the reason is already in hand.
+
+        No error and no effect is the other one, and it is the case people never
+        predict: the PATCH is accepted, the machine reboots, and the attribute is
+        simply not there. Nothing anywhere reports it, so the only way to know is
+        to read back and compare - and the only sane response is a bounded number
+        of attempts and then a stop that says how many were spent.
+        """
+        if error:
+            return 'failed', f'the machine refused the change: {error}'
+        refused = self.rejection(messages=messages)
+        if refused:
+            return 'failed', f'the machine rejected the settings: {refused}'
+        missing = self.unapplied(wanted=wanted, attributes=attributes)
+        if not missing:
+            return 'done', 'applied'
+        detail = ', '.join(f'{name} is {value!r}, wanted {wanted[name]!r}'
+                           for name, value in sorted(missing.items()))
+        if attempts < limit:
+            return 'retry', (f'{len(missing)} setting(s) did not take on attempt '
+                             f'{attempts} of {limit}: {detail}')
+        return 'failed', (f'{len(missing)} setting(s) never took after {limit} '
+                          f'attempt(s), with no error from the machine: {detail}')
+
+
+    def compatible(self, config=None, target=None, policy='warn'):
+        """
+        This method decides whether a configuration grabbed from one machine may
+        be pushed to another, and returns (status, reason).
+
+        The board is not negotiable: BIOS settings are only meaningful on the
+        hardware that published them, so a different manufacturer or model is
+        refused whatever the policy says.
+
+        The BIOS version is the judgement call, and it is a policy rather than a
+        rule because both answers are defensible - pushing across a firmware
+        refresh is a deliberate act, and doing it by accident is not. 'strict'
+        refuses, 'warn' proceeds and says what differed, 'ignore' does not look.
+
+        Note what this does NOT have to catch: an attribute the target's registry
+        does not carry is dropped when the push filters against that registry, so
+        an older BIOS missing three options loses those three rather than failing.
+        This gate is for the other case - the same attribute name meaning
+        something different, or taking different values, which no filter can see.
+        """
+        for field, label in (('manufacturer', 'manufacturer'), ('model', 'model')):
+            want = str((config or {}).get(field) or '').strip()
+            have = str((target or {}).get(field) or '').strip()
+            if not want or not have:
+                return False, f'the {label} is not known for both machines'
+            if want.casefold() != have.casefold():
+                return False, (f'{label} differs: the configuration came from '
+                               f'{want!r} and this node is {have!r}')
+        policy = str(policy or 'warn').strip().lower()
+        want = str((config or {}).get('biosversion') or '').strip()
+        have = str((target or {}).get('biosversion') or '').strip()
+        if policy == 'ignore' or (want and have and want == have):
+            return True, None
+        if not want or not have:
+            difference = 'the BIOS version is not known for both machines'
+        else:
+            difference = (f'BIOS version differs: the configuration came from '
+                          f'{want} and this node runs {have}')
+        if policy == 'strict':
+            return False, difference
+        return True, difference
 
 
     def unapplied(self, wanted=None, attributes=None):

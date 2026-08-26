@@ -163,6 +163,22 @@ class DBStructure():
                     layout.append({"column": column, "datatype": "VARCHAR", "length": "100"})
         return layout
     
+    def get_encrypted_columns(self,table=None):
+        """
+        This method returns the columns of a table whose stored value is encrypted,
+        read from the table's own layout.
+
+        It is derived rather than listed because the alternative is a second
+        hardcoded list over the same fact, and those drift. Marking the column in
+        common/database_layout.py is what makes a future encrypted column
+        participate without anyone remembering to update anything.
+        """
+        layout = self.get_database_table_structure(table)
+        if not layout:
+            return []
+        return [column['column'] for column in layout if column.get('encrypted')]
+
+
     def get_database_table_structure(self,table=None):
         if not table:
             return

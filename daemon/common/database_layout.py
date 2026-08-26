@@ -102,7 +102,7 @@ DATABASE_LAYOUT_nodesecrets = [
 {"column": "id",                   "datatype": "INTEGER", "key": "PRIMARY", "keyadd": "AUTOINCREMENT"},
 {"column": "nodeid",               "datatype": "INTEGER", "length": "10"},
 {"column": "name",                 "datatype": "VARCHAR", "length": "50"},
-{"column": "content",              "datatype": "TEXT"},
+{"column": "content",              "datatype": "TEXT", "encrypted": True},
 {"column": "path",                 "datatype": "VARCHAR", "length": "200"},
 {"column": "owner",                "datatype": "VARCHAR", "length": "100"},
 {"column": "mode",                 "datatype": "VARCHAR", "length": "10"}]
@@ -300,7 +300,7 @@ DATABASE_LAYOUT_groupsecrets = [
 {"column": "id",                   "datatype": "INTEGER", "key": "PRIMARY", "keyadd": "AUTOINCREMENT"},
 {"column": "groupid",              "datatype": "INTEGER", "length": "10"},
 {"column": "name",                 "datatype": "VARCHAR", "length": "50"},
-{"column": "content",              "datatype": "TEXT"},
+{"column": "content",              "datatype": "TEXT", "encrypted": True},
 {"column": "path",                 "datatype": "VARCHAR", "length": "200"},
 {"column": "owner",                "datatype": "VARCHAR", "length": "100"},
 {"column": "mode",                 "datatype": "VARCHAR", "length": "10"}]
@@ -309,7 +309,7 @@ DATABASE_LAYOUT_clustersecrets = [
 {"column": "id",                   "datatype": "INTEGER", "key": "PRIMARY", "keyadd": "AUTOINCREMENT"},
 {"column": "clusterid",            "datatype": "INTEGER", "length": "10"},
 {"column": "name",                 "datatype": "VARCHAR", "length": "50"},
-{"column": "content",              "datatype": "TEXT"},
+{"column": "content",              "datatype": "TEXT", "encrypted": True},
 {"column": "path",                 "datatype": "VARCHAR", "length": "200"},
 {"column": "owner",                "datatype": "VARCHAR", "length": "100"},
 {"column": "mode",                 "datatype": "VARCHAR", "length": "10"}]
@@ -326,7 +326,7 @@ DATABASE_LAYOUT_profilefile = [
 {"column": "id",                   "datatype": "INTEGER", "key": "PRIMARY", "keyadd": "AUTOINCREMENT"},
 {"column": "profileid",            "datatype": "INTEGER", "length": "10", "key": "UNIQUE", "with": "name"},
 {"column": "name",                 "datatype": "VARCHAR", "length": "50"},
-{"column": "content",              "datatype": "TEXT"},
+{"column": "content",              "datatype": "TEXT", "encrypted": True},
 {"column": "path",                 "datatype": "VARCHAR", "length": "200"},
 {"column": "owner",                "datatype": "VARCHAR", "length": "100"},
 {"column": "mode",                 "datatype": "VARCHAR", "length": "10"}]

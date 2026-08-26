@@ -57,6 +57,7 @@ class Tables():
               'otherdevices', 'groupsecrets', 'clustersecrets', 'profile', 'profilefile',
               'node', 'cluster', 'dns','controller','cloud',
               'nodeinventory', 'nodeinventorydisk', 'nodeinventorygpu', 'nodeinventorynic',
+              'nodeinventoryfirmware',
               'rack', 'rackinventory', 'route', 'routemap',
               'redfishsetup', 'redfishaccount']
         self.sharedip = False

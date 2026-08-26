@@ -33,11 +33,18 @@ __email__       = 'support@clustervision.com'
 __status__      = 'Development'
 
 import hashlib
+from time import time
+from random import randint
+from os import getpid
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from json import dumps
 from utils.database import Database
 from utils.log import Log
 from utils.helper import Helper
+from utils.redfish import Redfish, RedfishAccess
+from utils.status import Status
+from common.constant import CONSTANT
 
 class NodeInventory():
     """
@@ -53,6 +60,7 @@ class NodeInventory():
         self.disk_table = 'nodeinventorydisk'
         self.gpu_table = 'nodeinventorygpu'
         self.nic_table = 'nodeinventorynic'
+        self.firmware_table = 'nodeinventoryfirmware'
         self.default_source = 'inband'
         # scalar columns stored on the parent row (rollups + node-level facts)
         self.parent_fields = ['manufacturer', 'product', 'serial', 'cpu_model',
@@ -60,6 +68,12 @@ class NodeInventory():
         self.disk_fields = ['name', 'size_gb', 'type', 'model', 'serial']
         self.gpu_fields = ['busid', 'vendor', 'model', 'memory_mb', 'uuid']
         self.nic_fields = ['name', 'mac', 'speed_mbps', 'capabilities']
+        # A machine's firmware component set is implementation-defined: two boards from
+        # one vendor list different things, and a flash can change the list. So these are
+        # the fields a SoftwareInventory resource carries, not a list of components we
+        # expect - the components themselves are whatever the machine reports.
+        self.firmware_fields = ['name', 'component', 'version', 'updateable',
+                                'manufacturer', 'release_date', 'software_id', 'related_item']
 
 
     def get_inventory(self, name=None):
@@ -85,6 +99,8 @@ class NodeInventory():
             snapshot['disks'] = self._child_rows(self.disk_table, nodeid, source, self.disk_fields)
             snapshot['gpus'] = self._child_rows(self.gpu_table, nodeid, source, self.gpu_fields)
             snapshot['nics'] = self._child_rows(self.nic_table, nodeid, source, self.nic_fields)
+            snapshot['firmware'] = self._child_rows(self.firmware_table, nodeid, source,
+                                                    self.firmware_fields)
             snapshots.append(snapshot)
         response = {'config': {'node': {name: {'inventory': snapshots}}}}
         status = True
@@ -138,6 +154,7 @@ class NodeInventory():
         disks = data.get('disks') or []
         gpus = data.get('gpus') or []
         nics = data.get('nics') or []
+        firmware = data.get('firmware') or []
 
         parent_data = {'nodeid': nodeid, 'source': source}
         for field in self.parent_fields:
@@ -162,6 +179,8 @@ class NodeInventory():
         self._refresh_children(self.disk_table, nodeid, source, disks, self.disk_fields)
         self._refresh_children(self.gpu_table, nodeid, source, gpus, self.gpu_fields)
         self._refresh_children(self.nic_table, nodeid, source, nics, self.nic_fields)
+        self._refresh_children(self.firmware_table, nodeid, source, firmware,
+                               self.firmware_fields)
 
         response = f"Inventory for node {name} updated"
         status = True
@@ -173,7 +192,8 @@ class NodeInventory():
         This method will remove a node's rows from all three inventory tables.
         Called from the node delete path.
         """
-        for table in [self.table, self.disk_table, self.gpu_table, self.nic_table]:
+        for table in [self.table, self.disk_table, self.gpu_table, self.nic_table,
+                      self.firmware_table]:
             Database().delete_row(table, [{"column": "nodeid", "value": nodeid}])
         return True, "Inventory cleared"
 
@@ -204,3 +224,320 @@ class NodeInventory():
                 if field in device:
                     row_data[field] = device[field]
             Database().insert(table, Helper().make_rows(row_data))
+
+
+    def bmc_for(self, name=None):
+        """
+        This method resolves how to reach a node's BMC: its address, and the
+        credentials to use.
+
+        The account is chosen for a READ. That is the first thing the Redfish roles
+        are actually good for - an inventory sweep across a whole cluster has no
+        business running as a BMC administrator, which is what every Luna operation
+        does today. Where no redfishsetup is configured the bmcsetup credentials are
+        used, exactly as the control path does.
+        """
+        node = Database().get_record_join(
+            ['node.id as nodeid', 'node.name as nodename', 'node.groupid as groupid',
+             'ipaddress.ipaddress as device', 'node.bmcsetupid'],
+            ['nodeinterface.nodeid=node.id', 'ipaddress.tablerefid=nodeinterface.id'],
+            ['tableref="nodeinterface"', "nodeinterface.interface='BMC'",
+             f"node.name='{name}'"])
+        if not node:
+            return False, f'{name} does not exist or has no BMC interface configured'
+        if not node[0]['device']:
+            return False, f'{name} has no BMC address configured'
+        status, access = RedfishAccess().for_node(nodename=name, write=False)
+        if not status:
+            return False, access
+        if access:
+            return True, {'device': node[0]['device'], 'username': access['username'],
+                          'password': access['password'], 'scheme': access['scheme'],
+                          'port': access['port'], 'verify': access['verify']}
+        bmcsetupid = node[0]['bmcsetupid']
+        if not bmcsetupid:
+            group = Database().get_record(table='group', where=f"id = \"{node[0]['groupid']}\"")
+            bmcsetupid = group[0]['bmcsetupid'] if group else None
+        bmcsetup = Database().get_record(table='bmcsetup', where=f'id = "{bmcsetupid}"')
+        if not bmcsetup:
+            return False, f'{name} does not have a suitable bmcsetup'
+        return True, {'device': node[0]['device'], 'username': bmcsetup[0]['username'],
+                      'password': bmcsetup[0]['password'], 'scheme': 'https',
+                      'port': None, 'verify': False}
+
+
+    def redfish_snapshot(self, redfish=None):
+        """
+        This method builds an inventory snapshot from a Redfish service.
+
+        Everything is read from what the service publishes. Nothing here assumes a
+        resource path, a component list or a vendor: the collections are reached
+        through the service root, and the firmware components are whatever the
+        machine's own FirmwareInventory happens to list. A board that exposes
+        something nobody anticipated is stored correctly without a schema change,
+        because components are rows rather than columns.
+        """
+        snapshot = {'source': 'redfish'}
+        # the client answers (status, path, data), and on a failure the reason is in
+        # the second slot rather than the third - the third is None
+        status, system_path, system = redfish.system()
+        if not status:
+            return False, system_path
+        for column, key in (('manufacturer', 'Manufacturer'), ('product', 'Model'),
+                            ('serial', 'SerialNumber'), ('bios_version', 'BiosVersion')):
+            if system.get(key):
+                snapshot[column] = str(system[key])
+        processors = system.get('ProcessorSummary') or {}
+        if processors.get('Model'):
+            snapshot['cpu_model'] = str(processors['Model']).strip()
+        if processors.get('Count'):
+            snapshot['cpu_count'] = int(processors['Count'])
+        memory = system.get('MemorySummary') or {}
+        if memory.get('TotalSystemMemoryGiB'):
+            snapshot['memory_mb'] = int(float(memory['TotalSystemMemoryGiB']) * 1024)
+        snapshot['disks'] = self.redfish_disks(redfish=redfish, system=system)
+        snapshot['nics'] = self.redfish_nics(redfish=redfish, system=system)
+        snapshot['gpus'] = []
+        snapshot['firmware'] = self.redfish_firmware(redfish=redfish)
+        return True, snapshot
+
+
+    def redfish_disks(self, redfish=None, system=None):
+        """
+        This method reads the drives a system exposes.
+
+        Both shapes are tried because both are in the wild: Storage is the current
+        model and SimpleStorage is what older services publish. Neither is assumed.
+        """
+        disks = []
+        storage_path = (system.get('Storage') or {}).get('@odata.id')
+        if storage_path:
+            status, storage = redfish.get(path=storage_path)
+            for member in (storage.get('Members', []) if status else []):
+                status, controller = redfish.get(path=member.get('@odata.id'))
+                if not status:
+                    continue
+                for drive in controller.get('Drives', []) or []:
+                    status, data = redfish.get(path=drive.get('@odata.id'))
+                    if not status:
+                        continue
+                    disks.append({
+                        'name': str(data.get('Id') or data.get('Name') or ''),
+                        'size_gb': int((data.get('CapacityBytes') or 0) / 1000000000),
+                        'type': str(data.get('MediaType') or ''),
+                        'model': str(data.get('Model') or ''),
+                        'serial': str(data.get('SerialNumber') or ''),
+                    })
+        if disks:
+            return disks
+        simple_path = (system.get('SimpleStorage') or {}).get('@odata.id')
+        if simple_path:
+            status, simple = redfish.get(path=simple_path)
+            for member in (simple.get('Members', []) if status else []):
+                status, controller = redfish.get(path=member.get('@odata.id'))
+                if not status:
+                    continue
+                for device in controller.get('Devices', []) or []:
+                    disks.append({
+                        'name': str(device.get('Name') or ''),
+                        'size_gb': int((device.get('CapacityBytes') or 0) / 1000000000),
+                        'type': '',
+                        'model': str(device.get('Model') or ''),
+                        'serial': '',
+                    })
+        return disks
+
+
+    def redfish_nics(self, redfish=None, system=None):
+        """
+        This method reads the network interfaces a system exposes.
+        """
+        nics = []
+        path = (system.get('EthernetInterfaces') or {}).get('@odata.id')
+        if not path:
+            return nics
+        status, collection = redfish.get(path=path)
+        if not status:
+            return nics
+        for member in collection.get('Members', []):
+            status, data = redfish.get(path=member.get('@odata.id'))
+            if not status:
+                continue
+            nics.append({
+                'name': str(data.get('Id') or data.get('Name') or ''),
+                'mac': str(data.get('MACAddress') or data.get('PermanentMACAddress') or ''),
+                'speed_mbps': int(data.get('SpeedMbps') or 0),
+                'capabilities': str(data.get('Status', {}).get('Health') or ''),
+            })
+        return nics
+
+
+    def redfish_firmware(self, redfish=None):
+        """
+        This method reads every firmware component the machine reports.
+
+        Two levels, and both are taken. The BMC's own FirmwareVersion, which is one
+        of the two strings that are effectively always present and the one a flash is
+        verified against - and then UpdateService/FirmwareInventory, which is the
+        general answer and whose membership is entirely up to the implementation.
+
+        Updateable is carried deliberately: it says whether the update service will
+        touch a component at all, which is a question that is currently answered by
+        trying.
+        """
+        components = []
+        status, _, manager = redfish.manager()
+        if status and manager.get('FirmwareVersion'):
+            components.append({
+                'name': 'bmc',
+                'component': str(manager.get('Model') or 'BMC'),
+                'version': str(manager['FirmwareVersion']),
+                'updateable': 1,
+                'manufacturer': str(manager.get('Manufacturer') or ''),
+                'release_date': '',
+                'software_id': '',
+                'related_item': str(manager.get('@odata.id') or ''),
+            })
+        status, root = redfish.service_root()
+        if not status:
+            return components
+        update_path = (root.get('UpdateService') or {}).get('@odata.id')
+        if not update_path:
+            return components
+        status, update_service = redfish.get(path=update_path)
+        if not status:
+            return components
+        inventory_path = (update_service.get('FirmwareInventory') or {}).get('@odata.id')
+        if not inventory_path:
+            return components
+        status, collection = redfish.get(path=inventory_path)
+        if not status:
+            return components
+        for member in collection.get('Members', []):
+            status, data = redfish.get(path=member.get('@odata.id'))
+            if not status:
+                continue
+            related = data.get('RelatedItem') or []
+            components.append({
+                'name': str(data.get('Id') or data.get('Name') or ''),
+                'component': str(data.get('Name') or ''),
+                'version': str(data.get('Version') or ''),
+                'updateable': 1 if data.get('Updateable') else 0,
+                'manufacturer': str(data.get('Manufacturer') or ''),
+                'release_date': str(data.get('ReleaseDate') or ''),
+                'software_id': str(data.get('SoftwareId') or ''),
+                'related_item': str(related[0].get('@odata.id')) if related and isinstance(related[0], dict) else '',
+            })
+        return components
+
+
+    def collect_redfish(self, name=None):
+        """
+        This method collects a node's inventory over Redfish and hands it back in
+        the shape update_inventory takes, to be stored as the 'redfish' snapshot
+        beside whatever in-band collection left.
+
+        It collects and does not write, because storing it is a replicated change
+        and the route is what decides replication - every other base class here
+        leaves that to its route, and a base class reaching for the journal is a
+        circular import besides.
+
+        It works on a node that has never been provisioned and on one that is
+        powered off, which is the whole point: in-band collection runs only during
+        an install, so a brand-new node has no inventory at all and nothing that
+        selects on hardware can work for it.
+        """
+        status, access = self.bmc_for(name=name)
+        if not status:
+            return False, access
+        redfish = Redfish(device=access['device'], username=access['username'],
+                          password=access['password'], scheme=access['scheme'],
+                          port=access['port'], verify=access['verify'])
+        status, snapshot = self.redfish_snapshot(redfish=redfish)
+        if not status:
+            return False, f'{name}: {snapshot}'
+        return True, {'config': {'node': {name: {'inventory': snapshot}}}}
+
+
+    def store_collected(self, name=None, payload=None):
+        """
+        This method stores a collected snapshot, replicating it to the peer.
+
+        The journal import is function-local, which is the one case this repo allows
+        it: utils/journal.py imports this class by name so it can dispatch to it, so
+        importing Journal at the top of this module is a genuine cycle. base/boot.py
+        can import it at the top only because the journal does not import boot.
+        """
+        from utils.journal import Journal
+
+        status, response = Journal().add_request(function="NodeInventory.update_inventory",
+                                                 object=name, payload=payload)
+        if status is True:
+            status, response = self.update_inventory(name, payload)
+        return status, response
+
+
+    def collect_child(self, name=None, request_id=None):
+        """
+        This method collects one node and records the outcome against the request.
+
+        A node that cannot be reached is reported and does not raise: one dark BMC
+        must not take the sweep down, and the operator needs to know which node it
+        was rather than that something failed.
+        """
+        try:
+            status, payload = self.collect_redfish(name=name)
+            if status:
+                status, message = self.store_collected(name=name, payload=payload)
+            else:
+                message = payload
+        except Exception as exp:
+            status, message = False, f'{exp}'
+            self.logger.error(f'redfish inventory for {name} raised: {exp}')
+        # the shape Control().get_status parses, because this reuses that channel
+        # rather than growing a second one: <node>:<subsystem> <action>:<result>:<text>
+        Status().add_message(request_id=request_id, username_initiator='redfish_inventory',
+                             message=f"{name}:inventory redfish:{status}:{message}",
+                             status=200 if status else 500)
+        return status
+
+
+    def bulk_collect_redfish(self, request_data=None):
+        """
+        This method collects inventory over Redfish for a hostlist.
+
+        It runs outside the control pipeline deliberately - control is for turning
+        machines on and off, and a slow inventory sweep has no business occupying it.
+        Concurrency is bounded by the same BMC batch size the control path uses,
+        because it is the same resource being protected: a controller talking to too
+        many BMCs at once, and a rack of dark ones whose connect timeouts must not
+        starve the healthy nodes.
+
+        It returns as soon as the work is scheduled. Per-node outcomes arrive through
+        the request_id channel, which is what luna already polls for a hostlist.
+        """
+        if not request_data:
+            return False, 'Invalid request: Did not receive data'
+        try:
+            raw_hosts = request_data['config']['node']['hostlist']
+        except (KeyError, TypeError):
+            return False, 'Invalid request: no hostlist supplied'
+        hostlist = Helper().get_hostlist(raw_hosts)
+        if not hostlist:
+            return False, 'Invalid request: invalid hostlist'
+        batch = int(CONSTANT['BMCCONTROL']['BMC_BATCH_SIZE'])
+        request_id = str(time()) + str(randint(1001, 9999)) + str(getpid())
+        Status().add_message(request_id, 'redfish_inventory', 'Collecting inventory...')
+        Status().mark_messages_read(request_id)
+
+        def sweep():
+            with ThreadPoolExecutor(max_workers=batch) as executor:
+                for host in hostlist:
+                    executor.submit(self.collect_child, host, request_id)
+            Status().add_message(request_id, 'redfish_inventory', 'EOF')
+
+        starter = ThreadPoolExecutor(max_workers=1)
+        starter.submit(sweep)
+        starter.shutdown(wait=False)
+        return True, {'request_id': request_id,
+                      'config': {'node': {'inventory': {'queued': len(hostlist)}}}}

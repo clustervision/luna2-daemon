@@ -94,3 +94,39 @@ def config_node_inventory_post(name=None):
     access_code = Helper().get_access_code(status, response)
     response = {'message': response}
     return response, access_code
+
+
+@node_inventory_blueprint.route("/config/node/<string:name>/inventory/_redfish", methods=['GET'])
+@token_required
+@validate_name
+def config_node_inventory_redfish(name=None):
+    """
+    This route will collect one node's inventory over Redfish and store it.
+    """
+    status, response = NodeInventory().collect_redfish(name)
+    if status is True:
+        payload = response
+        status, response = Journal().add_request(function="NodeInventory.update_inventory",
+                                                 object=name, payload=payload)
+        if status is True:
+            status, response = NodeInventory().update_inventory(name, payload)
+    access_code = Helper().get_access_code(status, response)
+    response = {'message': response}
+    return response, access_code
+
+
+@node_inventory_blueprint.route("/config/node/inventory/_redfish", methods=['POST'])
+@token_required
+@input_filter(checks=['config:node'], skip=None)
+def config_node_inventory_redfish_bulk():
+    """
+    This route will collect inventory over Redfish for a hostlist.
+    """
+    access_code = 404
+    status, response = NodeInventory().bulk_collect_redfish(request.data)
+    if status is True:
+        access_code = 200
+        response = dumps(response)
+    else:
+        response = {'message': response}
+    return response, access_code

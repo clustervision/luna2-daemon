@@ -52,7 +52,7 @@ class DBStructure():
                        'cluster', 'tracker', 'dns', 'journal', 'rack', 'rackinventory',
                        'ping', 'reservedipaddress', 'reference', 'route', 'routemap',
                        'nodeinventory', 'nodeinventorydisk', 'nodeinventorygpu',
-                       'nodeinventorynic', 'hash', 'ownercache', 'clustersecrets',
+                       'nodeinventorynic', 'nodeinventoryfirmware', 'hash', 'ownercache', 'clustersecrets',
                        'profile', 'profilefile', 'redfishsetup', 'redfishaccount']
    
  
@@ -254,5 +254,7 @@ class DBStructure():
             return DATABASE_LAYOUT_nodeinventorygpu
         if table == "nodeinventorynic":
             return DATABASE_LAYOUT_nodeinventorynic
+        if table == "nodeinventoryfirmware":
+            return DATABASE_LAYOUT_nodeinventoryfirmware
         return
 

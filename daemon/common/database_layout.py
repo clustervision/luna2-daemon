@@ -130,6 +130,23 @@ DATABASE_LAYOUT_bmcsetup = [
 {"column": "comment",              "datatype": "TEXT"},
 {"column": "unmanaged_bmc_users",  "datatype": "VARCHAR", "length": "30"}]
 
+DATABASE_LAYOUT_redfishsetup = [
+{"column": "id",                   "datatype": "INTEGER", "key": "PRIMARY", "keyadd": "AUTOINCREMENT"},
+{"column": "name",                 "datatype": "VARCHAR", "length": "50", "key": "UNIQUE"},
+{"column": "scheme",               "datatype": "VARCHAR", "length": "10"},
+{"column": "port",                 "datatype": "INTEGER", "length": "10"},
+{"column": "verify",               "datatype": "INTEGER", "length": "10"},
+{"column": "comment",              "datatype": "TEXT"}]
+
+DATABASE_LAYOUT_redfishaccount = [
+{"column": "id",                   "datatype": "INTEGER", "key": "PRIMARY", "keyadd": "AUTOINCREMENT"},
+{"column": "redfishsetupid",       "datatype": "INTEGER", "length": "10", "key": "UNIQUE", "with": "name"},
+{"column": "name",                 "datatype": "VARCHAR", "length": "50"},
+{"column": "username",             "datatype": "VARCHAR", "length": "64"},
+{"column": "password",             "datatype": "VARCHAR", "length": "60"},
+{"column": "role",                 "datatype": "VARCHAR", "length": "20"},
+{"column": "comment",              "datatype": "TEXT"}]
+
 DATABASE_LAYOUT_monitor = [
 {"column": "id",                   "datatype": "INTEGER", "key": "PRIMARY", "keyadd": "AUTOINCREMENT"},
 {"column": "tableref",             "datatype": "VARCHAR", "length": "100", "key": "UNIQUE", "with": "tablerefid"},
@@ -179,6 +196,7 @@ DATABASE_LAYOUT_group = [
 {"column": "id",                   "datatype": "INTEGER", "key": "PRIMARY", "keyadd": "AUTOINCREMENT"},
 {"column": "name",                 "datatype": "VARCHAR", "length": "20", "key": "UNIQUE"},
 {"column": "bmcsetupid",           "datatype": "INTEGER", "length": "10"},
+{"column": "redfishsetupid",       "datatype": "INTEGER", "length": "10"},
 {"column": "setupbmc",             "datatype": "INTEGER", "length": "10"},
 {"column": "domain",               "datatype": "VARCHAR", "length": "20"},
 {"column": "osimageid",            "datatype": "INTEGER", "length": "10"},
@@ -350,6 +368,7 @@ DATABASE_LAYOUT_node = [
 {"column": "cloudid",              "datatype": "INTEGER", "length": "10"},
 {"column": "service",              "datatype": "INTEGER", "length": "10"},
 {"column": "bmcsetupid",           "datatype": "INTEGER", "length": "10"},
+{"column": "redfishsetupid",       "datatype": "INTEGER", "length": "10"},
 {"column": "setupbmc",             "datatype": "INTEGER", "length": "10"},
 {"column": "status",               "datatype": "VARCHAR", "length": "20"},
 {"column": "comment",              "datatype": "TEXT"},

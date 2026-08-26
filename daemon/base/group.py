@@ -122,6 +122,9 @@ class Group():
                     group['bmcsetupname'] = bmcsetup[group['bmcsetupid']]['name']
                     group['unmanaged_bmc_users'] = group['unmanaged_bmc_users'] or bmcsetup[group['bmcsetupid']]['unmanaged_bmc_users']
                 del group['bmcsetupid']
+                group['redfishsetupname'] = Database().name_by_id(
+                    'redfishsetup', group['redfishsetupid']) or None
+                del group['redfishsetupid']
                 # assignments hold ids; a human reading this wants the names, as
                 # they are now rather than as they were when assigned
                 group['profiles'] = ','.join(Profile().profile_names(group['profiles']))
@@ -189,6 +192,10 @@ class Group():
                     group['bmcsetupname'] = bmcsetup[0]['name']
                 else:
                     group['bmcsetupname'] = '!!Invalid!!'
+            group['redfishsetupname'] = None
+            if group['redfishsetupid']:
+                group['redfishsetupname'] = Database().name_by_id(
+                    'redfishsetup', group['redfishsetupid']) or '!!Invalid!!'
 
             group_interface = Database().get_record_join(
                 [
@@ -267,6 +274,7 @@ class Group():
                 group['_provision_fallback_source'] = 'osimage'
             del group['osimageid']
             del group['bmcsetupid']
+            del group['redfishsetupid']
             # ---
             if group['osimagetagid']:
                 group['osimagetag'] = Database().name_by_id('osimagetag', group['osimagetagid']) or 'default'
@@ -275,6 +283,7 @@ class Group():
             del group['osimagetagid']
             group['_osimage_source'] = 'group'
             group['_bmcsetupname_source'] = 'group'
+            group['_redfishsetupname_source'] = 'group'
             group['_osimagetag_source'] = 'group'
             if group['osimagetag'] == 'default':
                 group['_osimagetag_source'] = 'default'
@@ -450,6 +459,17 @@ class Group():
                 if key in data and (not data[key]) and (key not in items):
                     del data[key]
 
+            if 'redfishsetupname' in data:
+                redfishsetupname = data['redfishsetupname']
+                if redfishsetupname == "":
+                    data['redfishsetupid'] = ""
+                    del data['redfishsetupname']
+                else:
+                    data['redfishsetupid'] = Database().id_by_name('redfishsetup', redfishsetupname)
+                    if data['redfishsetupid']:
+                        del data['redfishsetupname']
+                    else:
+                        return False, f'Invalid request: Redfish Setup {redfishsetupname} does not exist'
             if 'bmcsetupname' in data:
                 bmcsetupname = data['bmcsetupname']
                 data['bmcsetupid'] = Database().id_by_name('bmcsetup', data['bmcsetupname'])
@@ -676,6 +696,17 @@ class Group():
                         data[item]=str(Helper().bool_to_string(data[item]))
                 if (not data[item]) and (item not in items):
                     del data[item]
+            if 'redfishsetupname' in data:
+                redfishsetupname = data['redfishsetupname']
+                if redfishsetupname == "":
+                    data['redfishsetupid'] = ""
+                    del data['redfishsetupname']
+                else:
+                    data['redfishsetupid'] = Database().id_by_name('redfishsetup', redfishsetupname)
+                    if data['redfishsetupid']:
+                        del data['redfishsetupname']
+                    else:
+                        return False, f'Invalid request: Redfish Setup {redfishsetupname} does not exist'
             if 'bmcsetupname' in data:
                 bmcsetupname = data['bmcsetupname']
                 data['bmcsetupid'] = Database().id_by_name('bmcsetup', data['bmcsetupname'])

@@ -153,3 +153,45 @@ def test_every_backed_up_table_is_readable(tmp_path):
             if not re.fullmatch(r'"%s"' % re.escape(original), q):
                 unreadable.append((table, original))
     assert not unreadable, f"columns not safely quoted for select: {unreadable}"
+
+
+def test_every_created_table_has_a_layout():
+    """
+    DBStructure carries two hardcoded lists, not one, and only the first is obvious.
+
+    self.tables names what the daemon creates; get_database_table_structure is an
+    if-chain mapping each of those names to its layout. A table in the first and
+    absent from the second is created with no columns at all -- Database().create
+    is handed None -- and every fixture and every bootstrap that builds the schema
+    dies on it.
+
+    The readability test above cannot see this: it skips a table whose layout is
+    missing, so the gap it would report is exactly the gap it steps over.
+    """
+    from utils.dbstructure import DBStructure
+
+    structure = DBStructure()
+    missing = [table for table in structure.tables
+               if not structure.get_database_table_structure(table)]
+    assert not missing, (
+        f"tables DBStructure creates but has no layout for: {sorted(missing)}. "
+        "Add them to the if-chain in get_database_table_structure, not only to self.tables."
+    )
+
+
+def test_every_layout_is_a_table_the_daemon_creates():
+    """
+    The other direction: a layout nobody creates is a table that does not exist.
+
+    A DATABASE_LAYOUT_<x> defined and never named in DBStructure().tables is silently
+    absent at runtime on a customer's controller, and nothing complains, because
+    nothing knows to look for it.
+    """
+    import common.database_layout as layout
+    from utils.dbstructure import DBStructure
+
+    defined = {name[len('DATABASE_LAYOUT_'):] for name in dir(layout)
+               if name.startswith('DATABASE_LAYOUT_')}
+    assert not defined - set(DBStructure().tables), (
+        f"layouts defined but never created: {sorted(defined - set(DBStructure().tables))}"
+    )

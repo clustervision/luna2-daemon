@@ -57,7 +57,8 @@ class Tables():
               'otherdevices', 'groupsecrets', 'clustersecrets', 'profile', 'profilefile',
               'node', 'cluster', 'dns','controller','cloud',
               'nodeinventory', 'nodeinventorydisk', 'nodeinventorygpu', 'nodeinventorynic',
-              'rack', 'rackinventory', 'route', 'routemap']
+              'rack', 'rackinventory', 'route', 'routemap',
+              'redfishsetup', 'redfishaccount']
         self.sharedip = False
 
     def get_tables(self):

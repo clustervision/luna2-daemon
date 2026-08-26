@@ -56,6 +56,7 @@ from routes.boot_roles import roles_blueprint
 from routes.boot_scripts import scripts_blueprint
 from routes.boot_profiles import boot_profiles_blueprint
 from routes.config_bmcsetup import bmcsetup_blueprint
+from routes.config_redfishsetup import redfishsetup_blueprint
 from routes.config_cluster import cluster_blueprint
 from routes.config_dns import dns_blueprint
 from routes.config_route import route_blueprint
@@ -336,6 +337,7 @@ daemon.register_blueprint(roles_blueprint)
 daemon.register_blueprint(scripts_blueprint)
 daemon.register_blueprint(boot_profiles_blueprint)
 daemon.register_blueprint(bmcsetup_blueprint)
+daemon.register_blueprint(redfishsetup_blueprint)
 daemon.register_blueprint(hash_blueprint)
 daemon.register_blueprint(cluster_blueprint)
 daemon.register_blueprint(dns_blueprint)

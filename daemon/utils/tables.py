@@ -96,8 +96,22 @@ class Tables():
                 dbcolumns.sort()
                 data=Database().get_record(select=Database().quote_columns(dbcolumns),table=table,orderby=order)
                 if data:
+                    # An encrypted column is hashed by what it means, not by how it happens to be
+                    # stored. Fernet puts 16 random bytes of IV in every token, so two controllers
+                    # holding the identical secret store different ciphertext - and the journal
+                    # replays the plaintext request, so each of them encrypts it independently.
+                    # Hashing the stored value makes a healthy pair disagree forever, and hardsync
+                    # then re-imports the table and bounces dhcp and dns over a difference that is
+                    # not one. decrypt_string returns anything that is not a token unchanged, so a
+                    # cluster with ENCRYPT_SECRETS off is unaffected.
+                    encrypted = DBStructure().get_encrypted_columns(table)
                     merged="#"
                     for record in data:
+                        if encrypted:
+                            record = dict(record)
+                            for column in encrypted:
+                                if column in record:
+                                    record[column] = Helper().decrypt_string(record[column])
                         merged+=dumps(record)+";"
                     hashes[table]=str(hashlib.sha256(merged.encode()).hexdigest())
         self.logger.debug(f"HASHES: {hashes}")

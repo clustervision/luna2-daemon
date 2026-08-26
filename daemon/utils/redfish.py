@@ -406,3 +406,70 @@ class RedfishAccess():
             'password': account['password'],
             'account': account['name']
         }
+
+
+    def hardware(self, nodename=None):
+        """
+        This method returns (vendor, model) for a node, normalised into the tokens
+        the plugin search path uses, or (None, None) where nothing is known yet.
+
+        The manufacturer is derived rather than configured: nodeinventory already
+        holds it per node, so there is no column for an administrator to set and
+        get wrong, and it stays true when hardware is replaced.
+
+        A node can hold a snapshot per source and the two can disagree - dmidecode
+        and Redfish do not always return the same vendor string for the same
+        machine - so redfish wins where both exist. It is the BMC's own answer,
+        and it is the one that exists before a node has ever been provisioned.
+        """
+        rows = Database().get_record(table='nodeinventory',
+                                     where=f'nodeid IN (SELECT id FROM node WHERE name = "{nodename}")')
+        if not rows:
+            return None, None
+        chosen = None
+        for row in rows:
+            if str(row['source'] or '').strip().lower() == 'redfish':
+                chosen = row
+                break
+            if chosen is None:
+                chosen = row
+        return self.token(chosen['manufacturer']), self.token(chosen['product'], first=False)
+
+
+    def token(self, value=None, first=True):
+        """
+        This method turns a hardware string into a plugin name.
+
+        Vendor strings carry punctuation and a company suffix - 'Dell Inc.',
+        'VMware, Inc.' - so the first word is what names the file. A model does not
+        split usefully that way ('PowerEdge R650' is one model, not a family called
+        PowerEdge), so the whole string is used for that.
+        """
+        text = str(value or '').strip()
+        if not text:
+            return None
+        if first:
+            text = text.split(' ')[0]
+        text = ''.join(character for character in text.lower() if character.isalnum())
+        return text or None
+
+
+    def speaks_redfish(self, nodename=None):
+        """
+        This method says whether there is evidence that a node's BMC speaks Redfish.
+
+        It gates the generic redfish plugin, and the reason is scale rather than
+        tidiness. A redfish control plugin tries Redfish and falls back to ipmitool,
+        so offering it to a BMC that does not speak Redfish costs a connect timeout
+        per node before the fallback runs - invisible on a rig, and half an hour
+        added to a sweep of a few thousand dark nodes.
+
+        Evidence is an administrator having assigned a redfishsetup, or an inventory
+        snapshot that came from Redfish and therefore proves it answered.
+        """
+        if self.setup_id(nodename=nodename):
+            return True
+        rows = Database().get_record(
+            table='nodeinventory',
+            where=f'source = "redfish" AND nodeid IN (SELECT id FROM node WHERE name = "{nodename}")')
+        return bool(rows)

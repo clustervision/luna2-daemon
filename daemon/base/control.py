@@ -33,6 +33,8 @@ __status__      = 'Development'
 from time import sleep, time
 from random import randint
 from os import getpid
+from base64 import b64decode
+from json import loads
 from concurrent.futures import ThreadPoolExecutor
 from common.constant import CONSTANT
 from common.validate_input import check_structure
@@ -127,6 +129,36 @@ class Control():
         return status, response
 
 
+    def redfish_payload(self, request_data=None, subsystem=None, action=None):
+        """
+        This method will pull a Redfish interaction's uri and content out of the
+        request, and hand back what the vendor plugin is given to work with.
+
+        The content travels base64. filter_data strips quotes out of every string
+        in a request body, so raw JSON would arrive silently mangled; encoding it
+        is also what the neighbouring script fields already do. It is decoded here
+        because this is the boundary - nothing further in has to guess whether a
+        field is encoded. Malformed content is refused once, here, rather than
+        against every BMC in the hostlist.
+        """
+        body = request_data['control'][subsystem][action]
+        uri = body['uri'] if 'uri' in body else None
+        if not uri:
+            return False, f'redfish {action} needs a uri to work on'
+        content = body['content'] if 'content' in body else None
+        if content is None:
+            return False, f'redfish {action} needs content to send'
+        try:
+            decoded = b64decode(str(content), validate=True).decode()
+        except Exception as exp:
+            return False, f'redfish {action} content is not valid base64: {exp}'
+        try:
+            payload = loads(decoded)
+        except Exception as exp:
+            return False, f'redfish {action} content is not valid json: {exp}'
+        return True, {'uri': uri, 'content': payload}
+
+
     def bulk_action(self, request_data=None):
         """
         This method will perform the power operation on requested hostlist, such as
@@ -146,6 +178,11 @@ class Control():
                 return status, 'Bad request'
             raw_hosts = request_data['control'][subsystem][action]['hostlist']
             hostlist = Helper().get_hostlist(raw_hosts)
+            payload = None
+            if subsystem == 'redfish':
+                valid, payload = self.redfish_payload(request_data, subsystem, action)
+                if not valid:
+                    return False, payload
             if hostlist:
                 size = int(CONSTANT['BMCCONTROL']['BMC_BATCH_SIZE'])
                 delay = CONSTANT['BMCCONTROL']['BMC_BATCH_DELAY']
@@ -159,7 +196,7 @@ class Control():
                 Status().mark_messages_read(request_id)
                 # -------------------------- end of work around -----------------------------------------------
                 executor = ThreadPoolExecutor(max_workers=1)
-                executor.submit(NodeControl().control_mother, pipeline, request_id, size, delay)
+                executor.submit(NodeControl().control_mother, pipeline, request_id, size, delay, payload)
                 executor.shutdown(wait=False)
                 # use below to not spawn a thread. easy for debugging.
                 # NodeControl().control_mother(pipeline, request_id, size, delay)
@@ -199,7 +236,10 @@ class Control():
                                         failed_nodes[node] = message
                                 else:
                                     if result == 'True':
-                                        ok_nodes[node]=subsystem+' '+action
+                                        # redfish answers with what it actually did - the resource a
+                                        # setting was staged on, the task an upload became. That is
+                                        # the outcome asked for, where 'power on' is not.
+                                        ok_nodes[node] = message if subsystem == 'redfish' else subsystem+' '+action
                                     else:
                                         failed_nodes[node] = message
 
@@ -259,7 +299,8 @@ class Control():
                                     failed_nodes[node] = message
                             else:
                                 if state in states and states[state]:
-                                    ok_nodes[node]=subsystem+' '+action
+                                    # see bulk_action: redfish reports the resource it worked on
+                                    ok_nodes[node] = message if subsystem == 'redfish' else subsystem+' '+action
                                 else:
                                     failed_nodes[node] = message
 

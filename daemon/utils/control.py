@@ -37,6 +37,7 @@ from time import sleep
 from utils.log import Log
 from utils.database import Database
 from utils.helper import Helper
+from utils.redfish import Redfish, RedfishAccess
 from utils.status import Status
 from common.constant import CONSTANT
 
@@ -53,10 +54,11 @@ class Control():
         self.logger = Log.get_logger()
         plugins_path=CONSTANT["PLUGINS"]["PLUGINS_DIRECTORY"]
         self.control_plugins = Helper().plugin_finder(f'{plugins_path}/control')
+        self.redfish_plugins = Helper().plugin_finder(f'{plugins_path}/redfish')
         self.hooks_plugins = Helper().plugin_finder(f'{plugins_path}/hooks')
 
 
-    def control_child(self, pipeline, t=0):
+    def control_child(self, pipeline, t=0, payload=None):
         """
         This method will control the child process
         """
@@ -114,7 +116,8 @@ class Control():
                                 command,
                                 device,
                                 username,
-                                password
+                                password,
+                                payload
                             )
                             self.logger.debug(f"control: ret=[{ret}], status=[{status}]")
                             runret, runstatus = self.control_hook(
@@ -141,8 +144,56 @@ class Control():
                 run = 0
 
 
-    def control_action(self, nodename=None, groupname=None,
-                       command=None, device=None, username=None, password=None):
+    def redfish_interact(self, action=None, nodename=None, groupname=None, device=None,
+                         username=None, password=None, payload=None):
+        """
+        This method will hand a Redfish interaction to the vendor plugin.
+
+        Core owns the client and therefore the credentials and the address; the
+        plugin only interacts with the service and reports what it found. That is
+        also what makes a vendor plugin testable without a BMC - it is handed a
+        client rather than building one.
+        """
+        if not payload or not payload.get('uri'):
+            return False, 'redfish needs a uri and content, sent through the hostlist form'
+        # both actions write, so the account has to be one that may
+        status, access = RedfishAccess().for_node(nodename=nodename, write=True)
+        if not status:
+            return False, access
+        redfish_plugin = Helper().plugin_load(
+            self.redfish_plugins,
+            'redfish',
+            [nodename,groupname]
+        )
+        if access:
+            client = Redfish(
+                device=device,
+                username=access['username'],
+                password=access['password'],
+                scheme=access['scheme'],
+                port=access['port'],
+                verify=access['verify']
+            )
+        else:
+            # no redfishsetup for this node, so the bmcsetup credentials it already
+            # uses, over https with no verification. That is what a cluster does
+            # today, and an install that never sets one keeps behaving that way.
+            client = Redfish(device=device, username=username, password=password)
+        if action == 'setting':
+            return redfish_plugin().setting(
+                redfish=client,
+                uri=payload['uri'],
+                payload=payload.get('content')
+            )
+        return redfish_plugin().upload(
+            redfish=client,
+            uri=payload['uri'],
+            payload=payload.get('content')
+        )
+
+
+    def control_action(self, nodename=None, groupname=None, command=None, device=None,
+                       username=None, password=None, payload=None):
         """
         This method will handle the power control actions.
         """
@@ -218,6 +269,14 @@ class Control():
                         device = device,
                         username = username,
                         password = password
+                    )
+                case 'redfish setting':
+                    return_code, message = self.redfish_interact(
+                        'setting', nodename, groupname, device, username, password, payload
+                    )
+                case 'redfish upload':
+                    return_code, message = self.redfish_interact(
+                        'upload', nodename, groupname, device, username, password, payload
                     )
                 case _:
                     return_code, message = False, "Instruction not implemented"
@@ -313,7 +372,7 @@ class Control():
         return return_code, message
 
 
-    def control_mother(self, pipeline=None, request_id=None, batch=10, delay=10):
+    def control_mother(self, pipeline=None, request_id=None, batch=10, delay=10, payload=None):
         """
         This method will handle main thread of power control.
         """
@@ -322,7 +381,7 @@ class Control():
         try:
             while pipeline.has_nodes():
                 with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
-                    _ = [executor.submit(self.control_child, pipeline,t) for t in range(1,batch)]
+                    _ = [executor.submit(self.control_child, pipeline,t,payload) for t in range(1,batch)]
                 sleep(0.1)
                 # not needed but just in case a child does a lock right after i fetch the list.
                 results=pipeline.get_messages()

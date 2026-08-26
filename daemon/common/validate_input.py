@@ -66,6 +66,8 @@ REG_EXP = {
     'filemode': { 'regexp': r'^([0-7]{3,4}|)$', 'error': '3 or 4 octal digits, or empty' },
     'serviceaction': { 'regexp': r'^(restart|stop|reload|start|none|)$', 'error': 'restart, stop, reload, start or none' },
     'profilescope': { 'regexp': r'^(static|dynamic|)$', 'error': 'static or dynamic' },
+    'redfishscheme': { 'regexp': r'^(https|http|)$', 'error': 'https or http' },
+    'redfishrole': { 'regexp': r'^[a-zA-Z0-9\-\_\.]*$', 'error': 'combination of characters a-z A-Z, numbers 0-9, \'-\', \'_\' and \'.\'' },
     'anything': { 'regexp': r'', 'error': 'anything' }
 }
 RESERVED = {
@@ -122,7 +124,11 @@ MATCH = {
     'vlanid': 'intandnone',
     'vlan_parent': 'intfandclear',
     'bond_mode': 'nameandclear',
-    'bond_slaves': 'interfacecsv'
+    'bond_slaves': 'interfacecsv',
+    'newredfishsetupname': 'name',
+    'account': 'name',
+    'scheme': 'redfishscheme',
+    'role': 'redfishrole'
 }
 MAXLENGTH = {
     'request_id': 256,

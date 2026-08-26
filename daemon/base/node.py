@@ -143,6 +143,9 @@ class Node():
                         node['bmcsetup'] = bmcsetup[group[groupid]['bmcsetupid']]['name'] or None
                     else:
                         node['bmcsetup'] = None
+                    node['redfishsetup'] = Database().name_by_id(
+                        'redfishsetup',
+                        node['redfishsetupid'] or group[groupid].get('redfishsetupid')) or None
                 else:
                     node['group'] = '!!Invalid!!'
                 # -------------
@@ -203,6 +206,7 @@ class Node():
 
                 del node['id']
                 del node['bmcsetupid']
+                del node['redfishsetupid']
                 del node['groupid']
                 del node['osimageid']
                 del node['switchid']
@@ -305,6 +309,7 @@ class Node():
                 'group.osimagetagid AS group_osimagetagid',
                 'group.setupbmc AS group_setupbmc',
                 'group.bmcsetupid AS group_bmcsetupid',
+                'group.redfishsetupid AS group_redfishsetupid',
                 'group.prescript AS group_prescript',
                 'group.partscript AS group_partscript',
                 'group.postscript AS group_postscript',
@@ -401,6 +406,20 @@ class Node():
                 node['_bmcsetup_source'] = 'group'
             if 'group_bmcsetupid' in node:
                 del node['group_bmcsetupid']
+            #---
+            effective_redfishsetupid = node['redfishsetupid'] or node.get('group_redfishsetupid')
+            node['redfishsetup'] = None
+            if effective_redfishsetupid:
+                node['redfishsetup'] = Database().name_by_id(
+                    'redfishsetup', effective_redfishsetupid) or '!!Invalid!!'
+            if node['redfishsetupid']:
+                node['_redfishsetup_source'] = 'node'
+                node['_override'] = True
+            elif node.get('group_redfishsetupid'):
+                node['_redfishsetup_source'] = 'group'
+            if 'group_redfishsetupid' in node:
+                del node['group_redfishsetupid']
+            del node['redfishsetupid']
             # unmanaged_bmc_users inherits node -> group -> bmcsetup -> None
             unmanaged = node['unmanaged_bmc_users']
             unmanaged_source = 'node'
@@ -743,7 +762,7 @@ class Node():
                     data['osimagetagid'] = "default"
 
             # True means: cannot be empty if supplied. False means: can only be empty or correct
-            checks = {'bmcsetup': False, 'group': True, 'osimage': False, 'switch': False, 'cloud': False}
+            checks = {'bmcsetup': False, 'group': True, 'osimage': False, 'switch': False, 'cloud': False, 'redfishsetup': False}
             for key, value in checks.items():
                 if key in data:
                     check_name = data[key]

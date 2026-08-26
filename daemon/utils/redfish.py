@@ -471,3 +471,33 @@ class RedfishAccess():
             table='nodeinventory',
             where=f'source = "redfish" AND nodeid IN (SELECT id FROM node WHERE name = "{nodename}")')
         return bool(rows)
+
+
+    def plugin_candidates(self, nodename=None, groupname=None, generic=None):
+        """
+        This method builds a plugin search path for a node, and the model that
+        narrows each step of it.
+
+        Node name and group name come first and are unchanged, so anything an
+        administrator has explicitly named still wins. After them comes the node's
+        manufacturer, derived from nodeinventory rather than configured, so the
+        derived candidates can only take a slot that would otherwise have gone to
+        default.
+
+        A caller that has a vendor-neutral plugin to fall back on names it as
+        generic, and it is offered only where there is evidence the BMC speaks
+        Redfish. The control family has one; boot/bmc does not, because its plugins
+        emit a shell snippet for the install rather than talking to a service.
+
+        The model is returned separately because it is the loader's second level:
+        it tries <name><model>.py, then <name>/<model>.py, then <name>/default.py,
+        then <name>.py. Hardware from one vendor does differ, and that is where the
+        difference goes.
+        """
+        candidates = [nodename, groupname]
+        vendor, model = self.hardware(nodename=nodename)
+        if vendor:
+            candidates.append(vendor)
+        if generic and self.speaks_redfish(nodename=nodename):
+            candidates.append(generic)
+        return [candidate for candidate in candidates if candidate], model

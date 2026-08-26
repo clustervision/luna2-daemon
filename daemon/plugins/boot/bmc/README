@@ -5,7 +5,34 @@
 
 # Plugin selection based on the following search path and priority:
 #
-# 1 node name                 e.g. plugins/bmc/node001.py
-# 2 group name                e.g. plugins/bmc/compute.py
-# 3 default                   e.g. plugins/bmc/default.py
+# 1 node name                 e.g. plugins/boot/bmc/node001.py
+# 2 group name                e.g. plugins/boot/bmc/compute.py
+# 3 manufacturer              e.g. plugins/boot/bmc/dell.py
+# 4 default                   e.g. plugins/boot/bmc/default.py
 #
+# Steps 1 to 3 are each narrowed by the node's model, which is offered first:
+#
+#   <name><model>.py    e.g. plugins/boot/bmc/dellpoweredger650.py
+#   <name>/<model>.py   e.g. plugins/boot/bmc/dell/poweredger650.py
+#   <name>/default.py   e.g. plugins/boot/bmc/dell/default.py
+#   <name>.py           e.g. plugins/boot/bmc/dell.py
+
+# The manufacturer and the model are DERIVED from the node's nodeinventory row,
+# normalised into a filename - lowercased, non-alphanumerics dropped, and the
+# first word only for the manufacturer, since vendor strings carry a company
+# suffix. 'Dell Inc.' becomes dell; 'PowerEdge R650' becomes poweredger650. See
+# plugins/control/README, which uses the same derivation.
+
+# THE TIMING MATTERS HERE, and it is why this arrived after the control family.
+# These plugins run WHILE a node is being provisioned, and in-band inventory is
+# collected BY that provisioning - so on a node's first install there is no in-band
+# snapshot to select on. The manufacturer therefore has to come from an
+# out-of-band Redfish collection, which is what 'luna node refreshinventory' does.
+# Collect a node's inventory before installing it and the vendor plugin applies to
+# the very first install; do not, and it resolves to default.py exactly as it
+# always has.
+
+# There is deliberately no vendor-neutral 'redfish' step here, unlike the control
+# family. These plugins emit a shell snippet that the install template runs on the
+# node - they do not talk to a service - so there is nothing standards-based to
+# fall back on.

@@ -143,9 +143,12 @@ def test_a_redfishsetup_on_the_group_is_evidence_too(inventory):
 
 # --- the search path --------------------------------------------------------
 
-def candidates_for(nodename='node001', groupname='compute'):
-    from utils.control import Control
-    return Control.control_candidates(Control.__new__(Control), nodename, groupname)
+def candidates_for(nodename='node001', groupname='compute', generic='redfish'):
+    """The control family's search path. boot/bmc asks the same helper without a
+    generic, because its plugins emit a shell snippet rather than talking to a
+    service - see test_boot_bmc_asks_for_the_same_path_without_a_generic."""
+    return RedfishAccess().plugin_candidates(nodename=nodename, groupname=groupname,
+                                             generic=generic)
 
 
 def test_a_node_the_daemon_knows_nothing_about_resolves_as_before(inventory):
@@ -279,3 +282,45 @@ def test_every_shipped_control_plugin_answers_the_whole_contract():
         instance = module.Plugin()
         missing = [method for method in required if not callable(getattr(instance, method, None))]
         assert not missing, f'plugins/control/{name}.py does not implement {missing}'
+
+
+# --- the boot/bmc family asks the same question -----------------------------
+
+def test_boot_bmc_asks_for_the_same_path_without_a_generic(inventory):
+    """
+    boot/bmc/dell.py prefers racadm over ipmitool and has shipped unreachable for
+    the same reason control/dell.py had: a node is not called 'dell'. It gets the
+    manufacturer too, but no vendor-neutral candidate - there is no such plugin,
+    because these emit a shell snippet for the install rather than talking to a
+    service.
+    """
+    add_inventory(source='redfish', manufacturer='Dell Inc.', product='PowerEdge R650')
+    names, model = candidates_for(generic=None)
+    assert names == ['node001', 'compute', 'dell']
+    assert 'redfish' not in names
+    assert model == 'poweredger650'
+
+
+def test_boot_bmc_resolves_unchanged_for_a_node_with_no_inventory(inventory):
+    """
+    The regression floor for the install path, which is the one that matters most:
+    boot/bmc runs while a node is being provisioned, and a node nobody has collected
+    inventory for must resolve exactly as it always did.
+    """
+    assert candidates_for(generic=None) == (['node001', 'compute'], None)
+
+
+def test_the_install_path_asks_for_no_generic_candidate():
+    """
+    Derived from the source rather than asserted about it: offering 'redfish' to
+    boot/bmc would select a plugin that does not exist, and quietly get default.
+    """
+    import inspect
+
+    from base.boot import Boot
+
+    source = inspect.getsource(Boot)
+    call = source[source.index("## BMC CODE SEGMENT"):]
+    call = call[:call.index("bmc_plugin = ") + 400]
+    assert 'plugin_candidates(' in call
+    assert 'generic' not in call.split('plugin_candidates(')[1][:200]

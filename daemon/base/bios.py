@@ -150,7 +150,10 @@ class Bios():
             'biosversion': record['biosversion'],
             'grabbedfrom': node or '',
             'settings': len(attributes),
-            'grab_exclude': ', '.join(self.exclude_list(record)),
+            # returned as stored, which is how it was sent: the client decodes
+            # its editor keys for display, and handing back a decoded value here
+            # would leave it showing something no other entity shows
+            'grab_exclude': record['grab_exclude'],
             'updated': record['updated'],
             'comment': record['comment']
         }
@@ -190,14 +193,24 @@ class Bios():
             data = request_data['config'][self.table][name]
         except (KeyError, TypeError):
             return False, 'Invalid request: BIOS configuration data not found in structure'
-        unknown = [key for key in data if key not in self.editable + ['newbiosname']]
+        # The CLI puts the record's own name in the body as well as in the URL, so
+        # it arrives on every change. It is the identity rather than a field, and
+        # the URL is what says which record is meant, so it is accepted and
+        # ignored. Rejecting it made every 'luna biosconfig change' fail.
+        unknown = [key for key in data if key not in self.editable + ['newbiosname', 'name']]
         if unknown:
             return False, f"Cannot set {', '.join(sorted(unknown))} on a BIOS configuration"
 
         record = Database().get_record(table=self.table, where=f'name = "{name}"')
         row = {}
         if 'grab_exclude' in data:
-            row['grab_exclude'] = self.encode(data['grab_exclude'])
+            # It arrives base64 and it is stored base64: grab_exclude is one of the
+            # CLI's editor keys, so the client has already encoded it, exactly as it
+            # does for comment. Encoding it again here stored a value that decoded
+            # to base64 rather than to the patterns, and the next grab excluded
+            # nothing. Both directions agree - what is sent encoded is stored and
+            # returned encoded, so no caller has to guess.
+            row['grab_exclude'] = data['grab_exclude']
         if 'comment' in data:
             row['comment'] = data['comment']
         if not record:

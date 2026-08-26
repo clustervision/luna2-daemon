@@ -379,3 +379,80 @@ def test_attributes_cannot_be_hand_edited_through_the_api(sqlite_db, bmc):
         'golden': {'attributes': {'BootMode': 'Bios'}}}}})
     assert status is False
     assert 'Cannot set attributes' in response
+
+
+# --- the payload the CLI actually sends --------------------------------------
+
+def test_a_change_accepts_the_payload_shape_the_cli_sends(sqlite_db, bmc):
+    """
+    Found on a live controller, not here: every 'luna biosconfig change' failed
+    with 'Cannot set name'.
+
+    Helper().update_record in the CLI nests the record under its own name AND
+    leaves 'name' inside it, so the field arrives on every change. The unit
+    tests had been calling update_bios with a hand-built body that did not carry
+    it, which is precisely the gap between proving the daemon and proving the
+    feature - curl sends what you typed, the CLI sends what it builds.
+    """
+    stored(sqlite_db, bmc)
+    status, response = Bios().update_bios('golden', {'config': {'biosconfig': {'golden': {
+        'name': 'golden', 'grab_exclude': '*ServiceTag*', 'comment': 'reference node'}}}})
+    assert status is True, response
+    row = Database().get_record(table='biosconfig', where='name = "golden"')[0]
+    assert Bios().exclude_list(row) == ['*ServiceTag*']
+    assert row['comment'] == 'reference node'
+
+
+def test_name_in_the_body_cannot_move_the_record(sqlite_db, bmc):
+    """
+    Accepting 'name' must not mean honouring it: the URL says which record is
+    meant, and a body naming a different one would rename by accident. Renaming
+    has its own field.
+    """
+    stored(sqlite_db, bmc)
+    Bios().update_bios('golden', {'config': {'biosconfig': {'golden': {
+        'name': 'something-else', 'comment': 'x'}}}})
+    assert Database().get_record(table='biosconfig', where='name = "golden"')
+    assert not Database().get_record(table='biosconfig', where='name = "something-else"')
+
+
+def test_an_editor_key_is_stored_exactly_as_it_arrives(sqlite_db, bmc):
+    """
+    Second defect found live, not here. grab_exclude is one of the CLI's editor
+    keys, so the client base64s it before sending - as it does for comment.
+    Encoding it again on arrival stored a value that decoded to base64 rather
+    than to the patterns, so the next grab excluded nothing and said nothing.
+
+    What is sent encoded is stored encoded and handed back encoded. One shape in
+    both directions, so no caller has to guess which it got.
+    """
+    from base64 import b64encode
+    stored(sqlite_db, bmc)
+    sent = b64encode(b'*ServiceTag*, *Uuid*').decode('ascii')
+    status, response = Bios().update_bios('golden', {'config': {'biosconfig': {'golden': {
+        'name': 'golden', 'grab_exclude': sent}}}})
+    assert status is True, response
+    row = Database().get_record(table='biosconfig', where='name = "golden"')[0]
+    assert row['grab_exclude'] == sent, 'the value was re-encoded on the way in'
+    assert Bios().exclude_list(row) == ['*ServiceTag*', '*Uuid*']
+    status, detail = Bios().get_bios('golden')
+    assert detail['config']['biosconfig']['golden']['grab_exclude'] == sent, \
+        'the value was decoded on the way out, so the client would decode it twice'
+
+
+def test_the_grab_honours_an_exclude_list_that_arrived_encoded(sqlite_db, bmc):
+    """
+    The consequence of getting the above wrong: a double-encoded list matches no
+    attribute name, so every exclude silently stops working. Assert on what the
+    next grab actually keeps, not on the stored bytes.
+    """
+    from base64 import b64encode
+    stored(sqlite_db, bmc)
+    Bios().update_bios('golden', {'config': {'biosconfig': {'golden': {
+        'name': 'golden', 'grab_exclude': b64encode(b'*ServiceTag*').decode('ascii')}}}})
+    bmc()
+    status, payload = Bios().collect_bios(node='node001', name='golden')
+    assert status is True
+    kept = payload['config']['biosconfig']['golden']['attributes']
+    assert 'AssetTag' in kept, 'the narrowed list was not honoured'
+    assert 'SystemServiceTag' not in kept

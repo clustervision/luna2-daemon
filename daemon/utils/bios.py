@@ -55,6 +55,8 @@ __email__       = 'antoine.schonewille@clustervision.com'
 __status__      = 'Development'
 
 
+from fnmatch import fnmatch
+
 from utils.log import Log
 
 # The metadata properties that stop an attribute being written. A dependency that
@@ -63,6 +65,32 @@ BLOCKING = ('ReadOnly', 'GrayOut', 'Hidden', 'Immutable')
 
 # What a MapFrom entry may compare with, from the AttributeRegistry schema.
 CONDITIONS = ('EQU', 'NEQ', 'GTR', 'GEQ', 'LSS', 'LEQ')
+
+# Registry flags that mean an attribute must not be carried to another machine.
+# Each says something different and the wording here is the schema's own, because
+# the distinctions matter: IsSystemUniqueProperty is the machine telling us this
+# value belongs to it alone, where ReadOnly is only telling us we cannot write it.
+UNPORTABLE = (
+    ('IsSystemUniqueProperty', 'unique to this system and not to be replicated'),
+    ('ReadOnly',               'read-only'),
+    ('Immutable',              'immutable, reflects a hardware state'),
+    ('WriteOnly',              'write-only, reverts after settings are applied'),
+)
+
+# The default exclude list, seeded onto a config when it is created so that an
+# administrator can see it and change it - the same shape as an osimage carrying
+# its own grab_exclude rather than the daemon holding one list for everybody.
+#
+# This exists because IsSystemUniqueProperty is optional in the schema and a
+# vendor is under no obligation to set it. Every entry below is per-machine
+# identity, which is what the vendor precedent excludes too: a Dell Server
+# Configuration Profile exported for cloning comments out its I/O identity, where
+# one exported to replace a machine keeps the service tag.
+DEFAULT_EXCLUDE = (
+    '*AssetTag*', '*ServiceTag*', '*SerialNumber*', '*Uuid*', '*UUID*',
+    '*HostName*', '*IscsiInitiatorName*', '*VirtualMac*', '*VirtualAddress*',
+    '*MacAddr*', '*WWPN*', '*WWNN*',
+)
 
 
 class Bios():
@@ -178,6 +206,84 @@ class Bios():
         entries = (registry or {}).get('RegistryEntries') or {}
         found = entries.get('Dependencies')
         return found if isinstance(found, list) else []
+
+
+    def attributes(self, registry=None):
+        """
+        This method pulls the attribute entries out of an attribute registry,
+        keyed by name so a caller can ask about one without walking the list.
+        """
+        entries = (registry or {}).get('RegistryEntries') or {}
+        found = entries.get('Attributes')
+        if not isinstance(found, list):
+            return {}
+        return {entry['AttributeName']: entry for entry in found
+                if isinstance(entry, dict) and entry.get('AttributeName')}
+
+
+    def unportable(self, entry=None):
+        """
+        This method says why an attribute must not be carried to another machine,
+        or None where nothing in the registry objects to it.
+
+        The order matters only for what an operator reads: an attribute that is
+        both unique and read-only is reported as unique, because that is the more
+        useful thing to know.
+        """
+        for flag, reason in UNPORTABLE:
+            if (entry or {}).get(flag) is True:
+                return reason
+        return None
+
+
+    def excluded(self, name=None, patterns=None):
+        """
+        This method returns the exclude pattern that matched an attribute name, or
+        None. Matching is case-insensitive because vendors do not agree on case
+        for the same concept - AssetTag, Assettag and ASSETTAG all occur.
+        """
+        for pattern in patterns or []:
+            pattern = str(pattern).strip()
+            if pattern and fnmatch(str(name).lower(), pattern.lower()):
+                return pattern
+        return None
+
+
+    def portable(self, registry=None, attributes=None, exclude=None):
+        """
+        This method splits a machine's attributes into what may be carried to
+        another machine and what may not, and says why for each one dropped.
+
+        Returns (kept, dropped) where dropped maps a name to its reason, so the
+        caller can report what was left behind rather than silently shrinking the
+        set. A grab that quietly drops half a configuration is indistinguishable
+        from one that found half a configuration.
+
+        Four things are dropped, and they are genuinely different questions:
+        the registry says the attribute is not portable; the administrator's
+        exclude list names it; it has no value; or the registry does not describe
+        it at all. The last is the one worth stating out loud - an attribute the
+        machine will not talk about is not one we should be copying.
+        """
+        described = self.attributes(registry=registry)
+        kept, dropped = {}, {}
+        for name, value in (attributes or {}).items():
+            if value is None:
+                dropped[name] = 'no value'
+                continue
+            if name not in described:
+                dropped[name] = 'not described by the attribute registry'
+                continue
+            reason = self.unportable(entry=described[name])
+            if reason:
+                dropped[name] = reason
+                continue
+            pattern = self.excluded(name=name, patterns=exclude)
+            if pattern:
+                dropped[name] = f'excluded by {pattern}'
+                continue
+            kept[name] = value
+        return kept, dropped
 
 
     def plan(self, registry=None, desired=None, current=None):

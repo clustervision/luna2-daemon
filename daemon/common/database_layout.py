@@ -147,6 +147,25 @@ DATABASE_LAYOUT_redfishaccount = [
 {"column": "role",                 "datatype": "VARCHAR", "length": "20"},
 {"column": "comment",              "datatype": "TEXT"}]
 
+# A BIOS configuration grabbed from one node, to be pushed to others. The three
+# hardware columns are what a push checks the target against before it writes
+# anything - a golden node's settings are only meaningful on the same board.
+# attributes and grab_exclude are ALWAYS base64, never sometimes: a field that is
+# only sometimes encoded pushes a guess onto every reader, and the guess is made
+# by pattern-matching content, which is how a value that merely looks like base64
+# gets decoded into nonsense.
+DATABASE_LAYOUT_biosconfig = [
+{"column": "id",                   "datatype": "INTEGER", "key": "PRIMARY", "keyadd": "AUTOINCREMENT"},
+{"column": "name",                 "datatype": "VARCHAR", "length": "40", "key": "UNIQUE"},
+{"column": "manufacturer",         "datatype": "VARCHAR", "length": "64"},
+{"column": "model",                "datatype": "VARCHAR", "length": "128"},
+{"column": "biosversion",          "datatype": "VARCHAR", "length": "64"},
+{"column": "nodeid",               "datatype": "INTEGER", "length": "10"},
+{"column": "attributes",           "datatype": "TEXT"},
+{"column": "grab_exclude",         "datatype": "TEXT"},
+{"column": "updated",              "datatype": "VARCHAR", "length": "64"},
+{"column": "comment",              "datatype": "VARCHAR", "length": "20"}]
+
 DATABASE_LAYOUT_monitor = [
 {"column": "id",                   "datatype": "INTEGER", "key": "PRIMARY", "keyadd": "AUTOINCREMENT"},
 {"column": "tableref",             "datatype": "VARCHAR", "length": "100", "key": "UNIQUE", "with": "tablerefid"},

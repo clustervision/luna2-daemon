@@ -52,8 +52,9 @@ class DBStructure():
                        'cluster', 'tracker', 'dns', 'journal', 'rack', 'rackinventory',
                        'ping', 'reservedipaddress', 'reference', 'route', 'routemap',
                        'nodeinventory', 'nodeinventorydisk', 'nodeinventorygpu',
-                       'nodeinventorynic', 'nodeinventoryfirmware', 'hash', 'ownercache', 'clustersecrets',
-                       'profile', 'profilefile', 'redfishsetup', 'redfishaccount']
+                       'nodeinventorynic', 'nodeinventoryfirmware', 'hash', 'ownercache',
+                       'clustersecrets', 'profile', 'profilefile', 'redfishsetup',
+                       'redfishaccount', 'biosconfig']
    
  
     def check_db_tables(self):
@@ -210,6 +211,8 @@ class DBStructure():
             return DATABASE_LAYOUT_redfishsetup
         if table == "redfishaccount":
             return DATABASE_LAYOUT_redfishaccount
+        if table == "biosconfig":
+            return DATABASE_LAYOUT_biosconfig
         if table == "monitor":
             return DATABASE_LAYOUT_monitor
         if table == "ipaddress":

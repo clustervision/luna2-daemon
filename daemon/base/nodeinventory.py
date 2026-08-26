@@ -34,6 +34,7 @@ __status__      = 'Development'
 
 import hashlib
 from datetime import datetime
+from base64 import b64encode
 from json import dumps
 from utils.database import Database
 from utils.log import Log
@@ -147,8 +148,17 @@ class NodeInventory():
         parent_data['disk_total_gb'] = sum(int(disk.get('size_gb') or 0) for disk in disks)
         parent_data['gpu_count'] = len(gpus)
         parent_data['nic_count'] = len(nics)
-        parent_data['inventory'] = dumps(data)
-        parent_data['hash'] = hashlib.sha256(parent_data['inventory'].encode()).hexdigest()
+        # The archive is stored base64, as this daemon carries every other piece of
+        # awkward content. Two things it buys: a restore through /config/cluster/import
+        # strips every quote from a text value, which turns stored JSON into something
+        # nothing can parse, and base64 has no quotes to lose. And it is always encoded
+        # rather than sometimes, so a reader never has to guess which it got.
+        snapshot = dumps(data)
+        parent_data['inventory'] = b64encode(snapshot.encode()).decode('ascii')
+        # the hash stays over the JSON, not over the encoding of it. It answers
+        # 'has this node's hardware changed', and that must not move because we
+        # changed how the same answer is written down
+        parent_data['hash'] = hashlib.sha256(snapshot.encode()).hexdigest()
         parent_data['updated'] = datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
 
         existing = Database().get_record(table=self.table,

@@ -281,8 +281,6 @@ def test_motherload_linksel_plus_switch_ztp(config_env, constant, sqlite_db, tmp
     assert '"name": "cumulus-provision-url", "data"' in content  # opt 239 for the cumulus switch only
     assert 'v4-captive-portal' not in content                    # image not advertised via DHCP
 
-    # write it out for live kea -t
-    open("/home/claude/trix-motherload-kea4.conf", "w").write(content)
 
 
 @pytest.mark.regression

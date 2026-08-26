@@ -36,8 +36,14 @@ DAEMON = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', 'da
 
 # Helper().plugin_load(<tree>, '<root>', [<levelone>, ...]) -- the list form is the one that
 # depends on the order under test. A single-string levelone cannot express a preference.
+#
+# The list is not always a literal at the call site. control builds its candidates in a
+# helper, because they depend on the node's manufacturer and on whether its BMC is known
+# to speak Redfish, so a name ending in "candidates" counts as the list form too. Matching
+# any bare identifier would be wrong: osimage passes a single `distribution` variable, and
+# that is one candidate, not a preference order.
 MULTI_CANDIDATE_CALL = re.compile(
-    r"plugin_load\(\s*[^,()]+,\s*f?['\"]([^'\"]+)['\"]\s*,\s*\[",
+    r"plugin_load\(\s*[^,()]+,\s*f?['\"]([^'\"]+)['\"]\s*,\s*(?:\[|\w*candidates\b)",
     re.DOTALL,
 )
 

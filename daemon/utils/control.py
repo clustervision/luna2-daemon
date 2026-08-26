@@ -144,6 +144,39 @@ class Control():
                 run = 0
 
 
+    def control_candidates(self, nodename=None, groupname=None):
+        """
+        This method builds the control plugin search path for a node, and the model
+        that narrows each step of it.
+
+        Node name and group name come first and are unchanged, so anything an
+        administrator has explicitly named still wins. After them comes the node's
+        manufacturer, derived from nodeinventory rather than configured, and then the
+        vendor-neutral redfish plugin - but only where there is evidence the BMC
+        speaks Redfish, which is a redfishsetup having been assigned or an inventory
+        snapshot having come from Redfish.
+
+        That gate is about scale rather than tidiness. A redfish plugin tries Redfish
+        and falls back to ipmitool, so offering it to a BMC that does not speak
+        Redfish costs a connect timeout per node before the fallback runs -
+        unnoticeable on a handful of nodes, and half an hour added to a sweep of a
+        few thousand dark ones.
+
+        The model is passed as the second level, which the loader already understands
+        from osimage: it tries <vendor><model>.py, then <vendor>/<model>.py, then
+        <vendor>/default.py, then <vendor>.py. Hardware from one vendor does differ,
+        and this is where that difference goes.
+        """
+        candidates = [nodename, groupname]
+        access = RedfishAccess()
+        vendor, model = access.hardware(nodename=nodename)
+        if vendor:
+            candidates.append(vendor)
+        if access.speaks_redfish(nodename=nodename):
+            candidates.append('redfish')
+        return [candidate for candidate in candidates if candidate], model
+
+
     def redfish_interact(self, action=None, nodename=None, groupname=None, device=None,
                          username=None, password=None, payload=None):
         """
@@ -209,10 +242,12 @@ class Control():
         # signal.signal(signal.SIGALRM, handler)
         # signal.alarm(60)
         try:
+            candidates, model = self.control_candidates(nodename, groupname)
             control_plugin = Helper().plugin_load(
                 self.control_plugins,
                 'control',
-                [nodename,groupname]
+                candidates,
+                model
             )
             match command:
                 case 'power on':

@@ -126,6 +126,8 @@ MATCH = {
     'bond_mode': 'nameandclear',
     'bond_slaves': 'interfacecsv',
     'newredfishsetupname': 'name',
+    'biosconfig': 'name',
+    'newbiosname': 'name',
     'account': 'name',
     'scheme': 'redfishscheme',
     'role': 'redfishrole'
@@ -145,7 +147,8 @@ MAXLENGTH = {
 # Strict names is a bit of a hack where i use the name of the function to determine whether we have
 # a node name, switch name or any sort like names on our hand, or just a group name, image name, etc - Antoine
 STRICT_NAMES = ['config_node_get','config_node_post','config_node_clone','config_node_delete',
-                'config_node_osgrab','config_node_ospush','config_node_get_interfaces',
+                'config_node_osgrab','config_node_ospush','config_node_biosgrab',
+                'config_node_get_interfaces',
                 'config_node_post_interfaces','config_node_interface_get','config_node_delete_interface',
                 'config_switch_get','config_switch_post','config_switch_clone','config_switch_delete',
                 'config_switch_interfaces_get','config_switch_interface_get',

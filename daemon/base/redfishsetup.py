@@ -208,6 +208,11 @@ class RedfishSetup():
             data['name'] = name
             if 'scheme' not in data or not data['scheme']:
                 data['scheme'] = 'https'
+            if 'verify' not in data:
+                # stated rather than left NULL: an operator reading verify: None
+                # cannot tell whether the certificate is checked, and the behaviour
+                # would rest on None happening to be falsy where it is consumed
+                data['verify'] = '0'
             setupid = Database().insert(self.table, Helper().make_rows(data))
             if not setupid:
                 response = f'Internal error: {self.table_cap} {name} create failed'

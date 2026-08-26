@@ -1,4 +1,6 @@
 Flask==2.3.3
+requests==2.29.0
+urllib3==1.26.16
 PyJWT==2.8.0
 pyodbc==4.0.39
 python-hostlist==1.23.0

@@ -1,0 +1,29 @@
+# REDFISH PLUGIN - interaction with a BMC's Redfish service
+#
+#        2 defined methods are mandatory which return <True|False>,message:
+#        - setting     modify properties of an existing resource (PATCH)
+#        - upload      submit a resource, or invoke an action (POST)
+#
+#        1 optional method, used where core wants to report what a BMC holds:
+#        - probe       read a resource and hand it back
+
+# Plugin selection based on the following search path and priority:
+#
+# 1 node name                 e.g. plugins/redfish/node001.py
+# 2 group name                e.g. plugins/redfish/compute.py
+# 3 default                   e.g. plugins/redfish/default.py
+
+# Core hands the plugin a client, it does not go and fetch one:
+#
+#        setting(redfish=<client>, uri=<resource>, payload=<decoded content>)
+#
+# The client is bound to one BMC and already carries its address and credentials,
+# so a plugin never sees them and never has to know how we reach a BMC. Everything
+# a plugin needs arrives as a parameter - it reads no database, writes no row and
+# imports nothing from base.
+
+# default.py is standards-based behaviour only, and that is deliberate. Where the
+# Redfish service answers something - where a staged write belongs, when it
+# applies, whether the work became a task - the service is the only source. A
+# vendor file carries only what discovery genuinely cannot answer, and says for
+# which model and firmware it was needed.

@@ -526,6 +526,19 @@ DATABASE_LAYOUT_nodeinventorygpu = [
 {"column": "memory_mb",            "datatype": "INTEGER", "length": "10"},
 {"column": "uuid",                 "datatype": "VARCHAR", "length": "64"}]
 
+DATABASE_LAYOUT_nodeinventoryfirmware = [
+{"column": "id",                   "datatype": "INTEGER", "key": "PRIMARY", "keyadd": "AUTOINCREMENT"},
+{"column": "nodeid",               "datatype": "INTEGER", "length": "10"},
+{"column": "source",               "datatype": "VARCHAR", "length": "20"},
+{"column": "name",                 "datatype": "VARCHAR", "length": "128"},
+{"column": "component",            "datatype": "VARCHAR", "length": "128"},
+{"column": "version",              "datatype": "VARCHAR", "length": "128"},
+{"column": "updateable",           "datatype": "INTEGER", "length": "10"},
+{"column": "manufacturer",         "datatype": "VARCHAR", "length": "128"},
+{"column": "release_date",         "datatype": "VARCHAR", "length": "40"},
+{"column": "software_id",          "datatype": "VARCHAR", "length": "128"},
+{"column": "related_item",         "datatype": "VARCHAR", "length": "255"}]
+
 DATABASE_LAYOUT_nodeinventorynic = [
 {"column": "id",                   "datatype": "INTEGER", "key": "PRIMARY", "keyadd": "AUTOINCREMENT"},
 {"column": "nodeid",               "datatype": "INTEGER", "length": "10"},

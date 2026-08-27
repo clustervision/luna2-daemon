@@ -55,6 +55,7 @@ __email__       = 'antoine.schonewille@clustervision.com'
 __status__      = 'Development'
 
 
+import re
 from fnmatch import fnmatch
 
 from utils.log import Log
@@ -101,6 +102,29 @@ DEFAULT_EXCLUDE = (
     '*AssetTag*', '*ServiceTag*', '*SerialNumber*', '*Uuid*', '*UUID*',
     '*HostName*', '*IscsiInitiatorName*', '*VirtualMac*', '*VirtualAddress*',
     '*MacAddr*', '*WWPN*', '*WWNN*',
+)
+
+# Value shapes that are machine identity wherever they turn up, whatever the
+# attribute happens to be called.
+#
+# A name list only catches what a vendor named honestly, and a vendor is under no
+# obligation to. A board that calls a boot entry FBO204, describes it only as
+# "Boot Option #4" and puts this machine's MAC in its value defeats every pattern
+# above - all twelve of them - while carrying exactly the identity they exist to
+# keep off another machine. Shapes travel where names do not.
+#
+# Only the three that cannot plausibly be anything else. A looser "looks like a
+# serial number" pattern matches real settings, and dropping a legitimate
+# attribute is the same silent shrinking of a configuration that this filter
+# exists to prevent, just in the other direction. The world wide name comes first
+# because a MAC pattern also matches the front of one, and the reason an operator
+# reads should be the accurate one.
+IDENTITY_SHAPES = (
+    ('a world wide name', re.compile(r'\b[0-9a-f]{2}(?::[0-9a-f]{2}){7}\b', re.I)),
+    ('a MAC address',     re.compile(r'\b[0-9a-f]{2}(?::[0-9a-f]{2}){5}\b', re.I)),
+    ('a MAC address',     re.compile(r'\b[0-9a-f]{2}(?:-[0-9a-f]{2}){5}\b', re.I)),
+    ('a UUID',            re.compile(r'\b[0-9a-f]{8}(?:-[0-9a-f]{4}){3}'
+                                     r'-[0-9a-f]{12}\b', re.I)),
 )
 
 
@@ -247,16 +271,46 @@ class Bios():
         return None
 
 
-    def excluded(self, name=None, patterns=None):
+    def excluded(self, name=None, patterns=None, entry=None):
         """
-        This method returns the exclude pattern that matched an attribute name, or
+        This method returns the exclude pattern that matched an attribute, or
         None. Matching is case-insensitive because vendors do not agree on case
         for the same concept - AssetTag, Assettag and ASSETTAG all occur.
+
+        The registry's display name is matched as well as the attribute name. A
+        board is free to call an attribute SETUP042 and only say "Asset Tag" in
+        the registry, and on such a board every pattern here is dead while the
+        thing it names is copied anyway. The display name is what an operator can
+        write a pattern against, so it is what a pattern is matched against.
         """
+        candidates = [str(name)]
+        display = (entry or {}).get('DisplayName')
+        if display:
+            candidates.append(str(display))
         for pattern in patterns or []:
             pattern = str(pattern).strip()
-            if pattern and fnmatch(str(name).lower(), pattern.lower()):
-                return pattern
+            if not pattern:
+                continue
+            for candidate in candidates:
+                if fnmatch(candidate.lower(), pattern.lower()):
+                    return pattern
+        return None
+
+
+    def identity(self, value=None):
+        """
+        This method returns what machine identity a value carries, or None.
+
+        The registry flags answer this where a vendor sets them, and the exclude
+        list answers it where a vendor named the attribute for what it holds.
+        Neither is guaranteed, and a board that does neither is not unusual - so
+        the value itself is read, because a MAC in a boot entry is that machine's
+        MAC on any board that ever publishes one.
+        """
+        text = str(value)
+        for shape, pattern in IDENTITY_SHAPES:
+            if pattern.search(text):
+                return shape
         return None
 
 
@@ -270,11 +324,16 @@ class Bios():
         set. A grab that quietly drops half a configuration is indistinguishable
         from one that found half a configuration.
 
-        Four things are dropped, and they are genuinely different questions:
-        the registry says the attribute is not portable; the administrator's
-        exclude list names it; it has no value; or the registry does not describe
-        it at all. The last is the one worth stating out loud - an attribute the
-        machine will not talk about is not one we should be copying.
+        Five things are dropped, and they are genuinely different questions: the
+        registry says the attribute is not portable; the administrator's exclude
+        list names it; it has no value; the registry does not describe it at all;
+        or the value carries this machine's identity whatever the registry and the
+        exclude list say about it.
+
+        The fourth is worth stating out loud - an attribute the machine will not
+        talk about is not one we should be copying. The fifth is the one that
+        earns its place on real hardware, where the flags are absent and the names
+        are opaque and the identity is sitting in the value regardless.
         """
         described = self.attributes(registry=registry)
         kept, dropped = {}, {}
@@ -289,9 +348,14 @@ class Bios():
             if reason:
                 dropped[name] = reason
                 continue
-            pattern = self.excluded(name=name, patterns=exclude)
+            pattern = self.excluded(name=name, patterns=exclude,
+                                    entry=described[name])
             if pattern:
                 dropped[name] = f'excluded by {pattern}'
+                continue
+            shape = self.identity(value=value)
+            if shape:
+                dropped[name] = f'the value carries {shape}'
                 continue
             kept[name] = value
         return kept, dropped

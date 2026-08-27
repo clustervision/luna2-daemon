@@ -291,6 +291,83 @@ class Redfish():
         return True, member_path, member_data
 
 
+    def singleton(self, name=None):
+        """
+        This method will resolve a service-root singleton - a resource the root
+        links to directly rather than through a collection - and return
+        (status, path, data).
+
+        Same answer shape as resource(), so a caller cannot be caught out by which
+        of the two it happened to use: on failure the reason is in the second slot.
+        """
+        status, root = self.service_root()
+        if not status:
+            return False, root, None
+        path = (root.get(name) or {}).get('@odata.id')
+        if not path:
+            return False, f'{name} is missing from the Redfish root', None
+        status, data = self.get(path=path, cache=True)
+        if not status:
+            return False, data, None
+        return True, path, data
+
+
+    def allowable(self, action=None, parameter=None):
+        """
+        This method returns the values a service will accept for one parameter of
+        one action, as a list, empty where it publishes none.
+
+        A board says so in one of two places - inline beside the action as
+        '<Parameter>@Redfish.AllowableValues', or only in the @Redfish.ActionInfo
+        document the action points at - and which one it uses varies by board and
+        by action rather than by vendor. Reading only the inline form is how a
+        board that supports something gets told it does not: measured, on a board
+        that publishes its transfer protocols in ActionInfo and nothing inline.
+        """
+        action = action or {}
+        inline = action.get(f'{parameter}@Redfish.AllowableValues')
+        if isinstance(inline, list) and inline:
+            return list(inline)
+        path = action.get('@Redfish.ActionInfo')
+        if not path:
+            return []
+        status, info = self.get(path=path, cache=True)
+        if not status or not isinstance(info, dict):
+            return []
+        for entry in info.get('Parameters') or []:
+            if isinstance(entry, dict) and entry.get('Name') == parameter:
+                values = entry.get('AllowableValues')
+                return list(values) if isinstance(values, list) else []
+        return []
+
+
+    def parameter_names(self, action=None):
+        """
+        This method returns the parameter names an action declares, as a list.
+
+        The concept an action takes is universal and the name it wears is not:
+        one board names the component to flash 'Targets' and another
+        'UpdateComponent', both declared properly in ActionInfo. Asking the board
+        what it calls things is the only way to build a payload it will accept.
+        """
+        path = (action or {}).get('@Redfish.ActionInfo')
+        if not path:
+            return []
+        status, info = self.get(path=path, cache=True)
+        if not status or not isinstance(info, dict):
+            return []
+        return [entry.get('Name') for entry in info.get('Parameters') or []
+                if isinstance(entry, dict) and entry.get('Name')]
+
+
+    def update_service(self):
+        """
+        This method will resolve the UpdateService, which the root links to
+        directly rather than through a collection.
+        """
+        return self.singleton(name='UpdateService')
+
+
     def system(self):
         """
         This method will resolve the first ComputerSystem.

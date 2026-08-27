@@ -480,13 +480,7 @@ class NodeInventory():
                 'software_id': '',
                 'related_item': str(manager.get('@odata.id') or ''),
             })
-        status, root = redfish.service_root()
-        if not status:
-            return components
-        update_path = (root.get('UpdateService') or {}).get('@odata.id')
-        if not update_path:
-            return components
-        status, update_service = redfish.get(path=update_path)
+        status, _, update_service = redfish.update_service()
         if not status:
             return components
         inventory_path = (update_service.get('FirmwareInventory') or {}).get('@odata.id')

@@ -396,8 +396,16 @@ class BiosPush():
 
     def push_mother(self, event):
         """
-        This method drains the BIOS push queue. Master only: two controllers
-        applying to the same machine would fight over its settings object.
+        This method drains the Redfish subsystem's queued work. Master only: two
+        controllers applying to the same machine would fight over its settings
+        object, and two collecting from it would replicate the same snapshot twice.
+
+        It owns two queues rather than one. The BIOS pushes are its own; the
+        inventory collections are queued by a node reporting install.setupbmc, and
+        they are drained here rather than by the general housekeeper worker because
+        that one also runs osimage syncs, service restarts and cleanups, and a BMC
+        that takes five seconds to refuse a connection has no business sitting in
+        front of those.
 
         There is no reconcile sweep here, and that is the design rather than an
         omission - see the module docstring. The loop only ever runs what
@@ -408,6 +416,7 @@ class BiosPush():
         while True:
             try:
                 if (not ha_object.get_hastate()) or ha_object.get_role():
+                    self.collect_queued_inventory()
                     self.reclaim_abandoned()
                     while next_id := Queue().next_task_in_queue('bios', status='queued'):
                         task = Database().get_record(table='queue', where=f'id = "{next_id}"')
@@ -510,6 +519,43 @@ class BiosPush():
                                           object=nodename, payload=payload)
         if status is True:
             Bios().record_match(name=nodename, payload=payload)
+
+
+    def collect_queued_inventory(self):
+        """
+        This method dispatches the out-of-band collections a node asked for when it
+        reported that its BMC was configured (TRIX-2028).
+
+        Drained first and in one batch. First, because a staged BIOS push holds
+        through reboots for up to fifteen minutes a stage, and a collection queued
+        behind one would wait that long for no reason. In one batch, because
+        bulk_collect_redfish already bounds its own concurrency with
+        BMC_BATCH_SIZE - handing it the whole set once is what a boot storm needs,
+        where handing it one node at a time would start a thread per node.
+
+        It does not block this loop: bulk_collect_redfish schedules the sweep and
+        returns, so a rack of dark BMCs times out on its own threads rather than on
+        this one. That is checked by a test, because a blocking call here would
+        stall every BIOS push on the cluster and nothing would say why.
+        """
+        from base.nodeinventory import NodeInventory
+
+        pending = []
+        while next_id := Queue().next_task_in_queue('redfish', status='queued'):
+            task = Database().get_record(table='queue', where=f'id = "{next_id}"')
+            if task and task[0].get('task') == 'collect_redfish_inventory':
+                pending.append(task[0]['param'])
+            # removed at claim time on purpose, unlike a push: a lost collection
+            # costs one stale inventory row until the next one, where a lost push
+            # leaves a machine part-configured
+            Queue().remove_task_from_queue(next_id)
+        if not pending:
+            return False
+        self.logger.info(f'collecting Redfish inventory for {len(pending)} node(s) '
+                         'that reported their BMC configured')
+        NodeInventory().bulk_collect_redfish(
+            {'config': {'node': {'hostlist': ','.join(sorted(set(pending)))}}})
+        return True
 
 
     def reclaim_abandoned(self):

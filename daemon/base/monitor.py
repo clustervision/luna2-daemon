@@ -37,6 +37,8 @@ from utils.helper import Helper
 from utils.database import Database
 from utils.monitor import Monitor as monitor
 from utils.status import Status
+from utils.queue import Queue
+from utils.redfish import RedfishAccess
 
 
 try:
@@ -189,6 +191,7 @@ class Monitor():
                     if result:
                         status=True
                         response = f'Node {node} updated'
+                        self.redfish_on_setupbmc(nodename=node_db[0]['name'], state=state)
                         try:
                             function_name = state.replace('.','_')
                             function_name = function_name.replace(' ','_')
@@ -209,6 +212,43 @@ class Monitor():
                 response = 'Invalid request: URL Node is not matching with requested node'
                 status=False
         return status, response
+
+
+    def redfish_on_setupbmc(self, nodename=None, state=None):
+        """
+        This method queues an out-of-band inventory collection when a node reports
+        that its BMC has just been configured (TRIX-2028).
+
+        Event-driven, and it has to be. install.setupbmc lasts about as long as it
+        takes ipmitool to write a few LAN settings, so anything sampling node state
+        on a timer would see it on a handful of nodes and miss it on the rest -
+        which is worse than missing it everywhere, because it looks like it works.
+        This runs at the moment the node reports.
+
+        It only queues. The collection is somebody else's turn - draining it here
+        would make a node's status update wait on its BMC answering, and the node
+        is mid-install.
+
+        Deliberately not in the monitor plugin, though that plugin already declares
+        an install_setupbmc hook and is called just below. That file is a site's to
+        replace, and a plugin here is dumb by contract - this is daemon behaviour
+        and belongs in the daemon. The hook stays theirs.
+        """
+        if str(state or '') != 'install.setupbmc':
+            return False
+        status, reason = RedfishAccess().for_node(nodename=nodename)
+        if not status:
+            # a node nobody configured Redfish for would have every collection
+            # refused, so queueing four thousand of them is work and log noise for
+            # a foregone answer. Said out loud rather than skipped quietly
+            self.logger.info(f'{nodename} reported its BMC configured, but no '
+                             f'inventory was queued: {reason}')
+            return False
+        Queue().add_task_to_queue(task='collect_redfish_inventory', param=nodename,
+                                  subsystem='redfish')
+        self.logger.info(f'{nodename} reported its BMC configured; queued an '
+                         'out-of-band inventory collection')
+        return True
 
 
     def update_itemstatus(self, item=None, name=None, request_data=None):

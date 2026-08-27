@@ -327,3 +327,84 @@ def test_a_bad_hostlist_is_refused_before_anything_is_scheduled():
 def test_a_request_without_a_hostlist_says_so():
     status, message = collector().bulk_collect_redfish({'config': {'node': {}}})
     assert status is False and 'hostlist' in message
+
+
+# --- sweeping a group, not just a hostlist ----------------------------------
+
+class Inline():
+    """An executor that runs the work where it was submitted.
+
+    bulk_collect_redfish returns as soon as the sweep is scheduled, which is the
+    behaviour that makes it usable on four thousand nodes - and it means a test
+    asserting on what was scheduled is racing the thread that schedules it.
+    """
+
+    def __init__(self, *args, **kwargs):
+        pass
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *args):
+        return False
+
+    def submit(self, function, *args, **kwargs):
+        function(*args, **kwargs)
+
+    def shutdown(self, *args, **kwargs):
+        pass
+
+
+def test_a_group_can_be_swept(sqlite_db, monkeypatch):
+    """
+    A GPU group and a compute group are the natural units to refresh, and the
+    hostlist form made an operator spell out what the database already knows.
+    """
+    from base.nodeinventory import NodeInventory
+    from utils.database import Database
+
+    Database().insert('group', [{"column": "name", "value": 'gpu'},
+                                {"column": "id", "value": 1}])
+    for num in (1, 2):
+        Database().insert('node', [{"column": "name", "value": f'node00{num}'},
+                                   {"column": "id", "value": num},
+                                   {"column": "groupid", "value": 1}])
+    scheduled = []
+    monkeypatch.setattr('base.nodeinventory.ThreadPoolExecutor', Inline)
+    monkeypatch.setattr('base.nodeinventory.NodeInventory.collect_child',
+                        lambda self, host, request_id: scheduled.append(host))
+    status, _ = NodeInventory().bulk_collect_redfish(
+        {'config': {'node': {'group': 'gpu'}}})
+    assert status is True
+    assert sorted(scheduled) == ['node001', 'node002']
+
+
+def test_an_empty_group_and_a_missing_one_are_different_answers(sqlite_db):
+    """
+    'group' is a reserved SQL word: bare in a where clause the statement is a
+    syntax error the daemon swallows, and the empty result then reads exactly like
+    a group with no nodes. The two need different fixes, so they get different
+    answers.
+    """
+    from base.nodeinventory import NodeInventory
+    from utils.database import Database
+
+    Database().insert('group', [{"column": "name", "value": 'empty'},
+                                {"column": "id", "value": 1}])
+    missing = NodeInventory().bulk_collect_redfish({'config': {'node': {'group': 'nope'}}})
+    empty = NodeInventory().bulk_collect_redfish({'config': {'node': {'group': 'empty'}}})
+    assert missing[0] is False and 'not available' in missing[1]
+    assert empty[0] is False and 'has no nodes' in empty[1]
+    assert missing[1] != empty[1]
+
+
+def test_a_hostlist_still_works(sqlite_db, monkeypatch):
+    from base.nodeinventory import NodeInventory
+
+    scheduled = []
+    monkeypatch.setattr('base.nodeinventory.ThreadPoolExecutor', Inline)
+    monkeypatch.setattr('base.nodeinventory.NodeInventory.collect_child',
+                        lambda self, host, request_id: scheduled.append(host))
+    status, _ = NodeInventory().bulk_collect_redfish(
+        {'config': {'node': {'hostlist': 'node[001-003]'}}})
+    assert status is True and len(scheduled) == 3

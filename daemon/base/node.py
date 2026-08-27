@@ -216,6 +216,7 @@ class Node():
                 node['netboot'] = Helper().make_bool(node['netboot'])
                 node['service'] = Helper().make_bool(node['service'])
                 node['setupbmc'] = Helper().make_bool(node['setupbmc'])
+                node['setupredfish'] = Helper().make_bool(node.get('setupredfish'))
                 node['hostname'] = node['name']
                 node['interfaces']=[]
                 all_node_interfaces_by_name = {}
@@ -566,6 +567,7 @@ class Node():
                 node['status'], *_ = Monitor().installer_state(monitoring[0]['state'])
             node['service'] = Helper().make_bool(node['service'])
             node['setupbmc'] = Helper().make_bool(node['setupbmc'])
+            node['setupredfish'] = Helper().make_bool(node.get('setupredfish'))
             node['hostname'] = nodename
 
             node['interfaces'] = []

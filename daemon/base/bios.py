@@ -470,24 +470,26 @@ class Bios():
           unknown      no Redfish inventory has ever been taken from it, so we
                        have never looked. Not a problem, just not an answer
         """
-        where = None
-        if name:
-            where = f'name = "{name}"'
-        elif group:
-            # the group is resolved on its own and the nodes selected by id. 'group'
-            # is a reserved SQL word, so a where clause naming it is a syntax error
-            # that the daemon logs and swallows - and the caller then sees an empty
-            # result, which is indistinguishable from a group with no nodes
-            record = Database().get_record(table='group', where=f'name = "{group}"')
-            if not record:
-                return False, f'Group {group} is not available'
-            where = f"groupid = \"{record[0]['id']}\""
-        nodes = Database().get_record(table='node', where=where)
+        if group and not name:
+            # 'group' is a reserved SQL word, so it is backticked - the form
+            # utils/osimage.py already uses. Bare, the statement is a syntax error
+            # that the daemon logs and swallows, and the caller then gets an empty
+            # result that reads exactly like a group with no nodes
+            nodes = Database().get_record_join(
+                ['node.id as id', 'node.name as name', 'node.groupid as groupid'],
+                ['group.id=node.groupid'], [f'`group`.name="{group}"'])
+        else:
+            nodes = Database().get_record(
+                table='node', where=f'name = "{name}"' if name else None)
         if not nodes:
             if name:
                 return False, f'Node {name} is not available'
             if group:
-                return False, f'Group {group} has no nodes'
+                # only on the empty path, and only to tell the two apart: a group
+                # nobody made and a group nobody put a node in want different answers
+                exists = Database().get_record(table='group', where=f'name = "{group}"')
+                return False, (f'Group {group} has no nodes' if exists
+                               else f'Group {group} is not available')
             return False, 'No nodes available'
         # one lookup for the whole cluster rather than one per node: at four thousand
         # nodes the difference is a query and four thousand queries

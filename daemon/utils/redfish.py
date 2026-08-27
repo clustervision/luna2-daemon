@@ -369,6 +369,27 @@ class RedfishAccess():
         for account in accounts:
             if not str(account['role'] or '').strip():
                 return account
+        if write and all(str(account['role'] or '').strip().lower() == 'readonly'
+                         for account in accounts):
+            # Refused rather than answered with an account that cannot do the job.
+            # Handing a ReadOnly account back for a write sends it, gets refused by
+            # the board, and reports a permission error the operator cannot explain
+            # from anything Luna told them.
+            #
+            # Only an all-ReadOnly setup refuses. ReadOnly is the one predefined
+            # role that provably cannot write - Login and ConfigureSelf, nothing
+            # else - while a vendor role we do not rank is unknown rather than
+            # known-bad, and stranding a node on an unknown is worse than trying it.
+            #
+            # It must not reach for the bmcsetup credentials instead. Those do work
+            # over Redfish - one user store, two front ends - and that is the reason
+            # not to: an administrator who configured only a ReadOnly account has
+            # said read-only, and using the IPMI administrator behind their back
+            # escalates past an explicit choice rather than around a missing one.
+            # Creating the Redfish accounts in the first place is the one place that
+            # credential is the right one, and that is a deliberate act gated by
+            # setupredfish rather than a fallback (TRIX-2001).
+            return None
         return accounts[0]
 
 
@@ -376,18 +397,28 @@ class RedfishAccess():
         """
         This method will return how to reach a node's BMC over Redfish.
 
-        Three answers, and they are deliberately different things:
-        (True, None)   no redfishsetup is configured, so the caller keeps using the
-                       bmcsetup credentials - what every install does today
+        Two answers now, and TRIX-2027 is why there are no longer three:
         (True, dict)   these settings and this account
-        (False, text)  a setup is configured but cannot be used. That is a
-                       misconfiguration and it is said out loud per node, rather
-                       than quietly falling back to a credential the administrator
-                       did not choose.
+        (False, text)  Redfish cannot be used for this node, and the reason is said
+                       out loud per node rather than worked around.
+
+        There used to be a third - no redfishsetup meant "carry on with the bmcsetup
+        credentials". It worked, because IPMI and Redfish share one user store on
+        the BMC, and that is exactly what made it wrong: an administrator who
+        deliberately assigned no redfishsetup still got Redfish traffic, on
+        credentials they had nominated for IPMI. The absence of configuration did
+        not mean the absence of Redfish, so there was no way to say "do not touch
+        this over Redfish" short of taking the BMC off the network.
+
+        Capability is now the gate, which needs no flag: no redfishsetup, no
+        Redfish. The protocol fallback is untouched - control still tries Redfish
+        and then ipmitool - because that is a different mechanism and it is the
+        feature.
         """
         setupid = self.setup_id(nodename=nodename)
         if not setupid:
-            return True, None
+            return False, (f'{nodename} has no redfishsetup assigned, so Redfish is '
+                           'not configured for it')
         setup = Database().get_record(table='redfishsetup', where=f'id = "{setupid}"')
         if not setup:
             return False, f'redfishsetup {setupid} assigned to {nodename} no longer exists'
@@ -396,6 +427,10 @@ class RedfishAccess():
         if not accounts:
             return False, f"redfishsetup {setup[0]['name']} has no accounts"
         account = self.pick_account(accounts=accounts, write=write)
+        if not account:
+            return False, (f"redfishsetup {setup[0]['name']} has no account that may "
+                           'write; add one with a role that can, or this node is '
+                           'read-only over Redfish by configuration')
         return True, {
             'scheme': setup[0]['scheme'] or 'https',
             'port': setup[0]['port'],

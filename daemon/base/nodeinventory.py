@@ -291,9 +291,13 @@ class NodeInventory():
 
         The account is chosen for a READ. That is the first thing the Redfish roles
         are actually good for - an inventory sweep across a whole cluster has no
-        business running as a BMC administrator, which is what every Luna operation
-        does today. Where no redfishsetup is configured the bmcsetup credentials are
-        used, exactly as the control path does.
+        business running as a BMC administrator.
+
+        A node with no redfishsetup is refused rather than reached with the bmcsetup
+        credentials (TRIX-2027). Those credentials do work over Redfish, because the
+        BMC keeps one user store behind both front ends - which is precisely why
+        using them was wrong: it meant an administrator could not express "leave
+        this BMC alone" by declining to configure Redfish for it.
         """
         node = Database().get_record_join(
             ['node.id as nodeid', 'node.name as nodename', 'node.groupid as groupid',
@@ -308,20 +312,9 @@ class NodeInventory():
         status, access = RedfishAccess().for_node(nodename=name, write=False)
         if not status:
             return False, access
-        if access:
-            return True, {'device': node[0]['device'], 'username': access['username'],
-                          'password': access['password'], 'scheme': access['scheme'],
-                          'port': access['port'], 'verify': access['verify']}
-        bmcsetupid = node[0]['bmcsetupid']
-        if not bmcsetupid:
-            group = Database().get_record(table='group', where=f"id = \"{node[0]['groupid']}\"")
-            bmcsetupid = group[0]['bmcsetupid'] if group else None
-        bmcsetup = Database().get_record(table='bmcsetup', where=f'id = "{bmcsetupid}"')
-        if not bmcsetup:
-            return False, f'{name} does not have a suitable bmcsetup'
-        return True, {'device': node[0]['device'], 'username': bmcsetup[0]['username'],
-                      'password': bmcsetup[0]['password'], 'scheme': 'https',
-                      'port': None, 'verify': False}
+        return True, {'device': node[0]['device'], 'username': access['username'],
+                      'password': access['password'], 'scheme': access['scheme'],
+                      'port': access['port'], 'verify': access['verify']}
 
 
     def redfish_snapshot(self, redfish=None):

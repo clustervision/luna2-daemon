@@ -471,6 +471,7 @@ class BiosPush():
         """
         # same import note as push_node: base/ imports utils/, so this looks back
         # up the layering here rather than at module level
+        from base.bios import Bios
         from base.nodeinventory import NodeInventory
         from utils.journal import Journal
         from utils.redfish import Redfish
@@ -487,12 +488,17 @@ class BiosPush():
         digest = NodeInventory().bios_digest(redfish=redfish, system=system)
         if not digest:
             return
-        # through the journal, not straight at the table: nodeinventory is in
-        # Tables().tables, so the peer is expected to hold the same content and the
-        # controllers hash it. Writing it here only would leave the other controller
-        # disagreeing on that table for good
-        Journal().add_request(function='Bios.record_match', object=nodename,
-                              payload={'config': configname, 'digest': digest})
+        # both halves, in this order, exactly as a mutating route does it.
+        # add_request queues the change for the PEER and does not apply it here, so
+        # the local write is a separate call - and it is conditional, because a
+        # controller that is not in sync must not write what it cannot replicate.
+        # Getting this wrong is invisible on a single controller, where add_request
+        # answers 'Not in H/A mode' and the local call does all the work
+        payload = {'config': configname, 'digest': digest}
+        status, _ = Journal().add_request(function='Bios.record_match',
+                                          object=nodename, payload=payload)
+        if status is True:
+            Bios().record_match(name=nodename, payload=payload)
 
 
     def reclaim_abandoned(self):

@@ -254,6 +254,22 @@ def test_the_match_is_replicated_rather_than_written_straight_at_the_table():
         'the applied configuration must be recorded through Journal().add_request'
     )
     assert 'Database().update' not in source, 'that write would not reach the peer'
+    # add_request queues for the PEER and applies nothing here, so the local write is
+    # a second, separate call - and it is conditional on the queueing having been
+    # accepted, because a controller that is not in sync must not write what it
+    # cannot replicate. Proven on a live pair: without this the secondary held the
+    # record and the controller that ran the push did not
+    assert 'Bios().record_match(' in source, (
+        'add_request does not apply locally; the caller has to, as every mutating '
+        'route does'
+    )
+    assert source.index('add_request') < source.index('Bios().record_match('), (
+        'queue for the peer first, then write locally - the other order writes what '
+        'may never replicate'
+    )
+    assert 'if status is True' in source, (
+        'the local write must be conditional on the peer having accepted the change'
+    )
 
 
 def test_the_journal_can_dispatch_what_the_executor_names():

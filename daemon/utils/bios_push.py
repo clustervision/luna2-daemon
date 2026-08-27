@@ -203,7 +203,7 @@ class BiosPush():
         if not wanted:
             return False, (f'this machine offers no reset that applies staged '
                            f'settings; it accepts {sorted(allowed)}')
-        status, code, data = redfish.call(method='POST', path=target,
+        status, code, data, _ = redfish.call(method='POST', path=target,
                                           payload={'ResetType': wanted})
         if not status:
             return False, f'reset ({wanted}) refused: {data}'

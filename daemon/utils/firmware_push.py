@@ -74,7 +74,6 @@ __status__      = 'Development'
 
 
 import concurrent.futures
-import socket
 from time import sleep
 from urllib.parse import urlparse
 
@@ -221,10 +220,16 @@ class FirmwarePush():
                                     targets=targets)
         if not status:
             return False, body
-        status, answer = redfish.post(path=uri, payload=body)
+        status, answer, location = redfish.action(path=uri, payload=body)
         if not status:
             return False, answer
-        return True, self.task_path(answer)
+        # A board answers with the task in the body, or in the Location header, or
+        # in neither. Both are read, and the body wins where both are there because
+        # it names the persistent task while the header often names a monitor that
+        # is deleted the moment the work finishes. Measured on a board that returns
+        # a bare 202: the header was the only handle on the work, and without it a
+        # perfectly ordinary flash looks like one that never started.
+        return True, self.task_path(answer) or location
 
 
     def task_path(self, answer=None):
@@ -415,41 +420,42 @@ class FirmwarePush():
                 sleep(delay)
 
 
-    def image_url(self, device=None, imagefile=None):
+    def image_url(self, nodename=None, imagefile=None):
         """
-        This method returns where this BMC can fetch an image from, or why it cannot.
+        This method returns where this node's BMC can fetch an image from, or why it
+        cannot.
 
-        The host is derived, and it has to be. A BMC sits on the management network,
-        and the address it can reach the controller on is the controller's address ON
-        THAT network - not its cluster address. Those are different interfaces on a
-        real machine, and handing a BMC the cluster one gives it something it cannot
-        route to.
+        A BMC sits on the management network, so the address it can reach the
+        controller on is the controller's address ON THAT network - not its cluster
+        address, which is a different interface and unroutable from there.
 
-        Luna does not know that address. Checked rather than assumed: a controller has
-        exactly one ipaddress row and it is always the cluster one, so on a cluster
-        whose BMCs live on their own network there is nothing in the database that
-        answers this. The kernel does answer it, so it is asked - a connectionless UDP
-        socket sends nothing and reports the source address the route would use, which
-        is the same answer 'ip route get' gives.
+        Both halves come from what Luna already knows how to work out. Which network
+        the BMC is on is in the database, because Luna gave it that address. Which of
+        the controller's own addresses is on that network is not - a controller has
+        one ipaddress row and it is the cluster one - so it comes from the same walk
+        of the interfaces that already maps a controller's NICs onto Luna's networks.
 
-        It answers for this controller, which is the correct one by construction: the
+        It answers for this controller, which is the right one by construction: the
         sweep is master only and the image is staged on the machine running it.
         """
         if not imagefile:
             return False, 'the catalogue entry names no image file'
-        if not device:
-            return False, 'no BMC address to work out a route to'
-        try:
-            probe = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-            try:
-                probe.connect((str(device).strip('[]'), 1))
-                source = probe.getsockname()[0]
-            finally:
-                probe.close()
-        except OSError as exp:
-            return False, f'no route from this controller to {device}: {exp}'
-        if not source or source.startswith('0.'):
-            return False, f'this controller has no address facing {device}'
+        bmc = Database().get_record_join(
+            ['network.name as network'],
+            ['nodeinterface.nodeid=node.id', 'ipaddress.tablerefid=nodeinterface.id',
+             'network.id=ipaddress.networkid'],
+            ['tableref="nodeinterface"', "nodeinterface.interface='BMC'",
+             f"node.name='{nodename}'"])
+        if not bmc or not bmc[0]['network']:
+            return False, f'{nodename} has no BMC address on a network Luna knows'
+        network = bmc[0]['network']
+        addresses = Helper().get_controller_addresses_for_networks()
+        source = addresses['ipv4'].get(network) or addresses['ipv6'].get(network)
+        if not source:
+            return False, (f'this controller has no address on {network}, so the BMC '
+                           'has nowhere to fetch from')
+        if ':' in source:
+            source = f'[{source}]'
         protocol, port = 'http', '7051'
         try:
             protocol = str(CONSTANT['WEBSERVER']['PROTOCOL'] or protocol)
@@ -558,7 +564,7 @@ class FirmwarePush():
         kind, uri = self.push_target(service=service)
         if not kind:
             return False, f'{label}: {uri}'
-        status, url = self.image_url(device=redfish.device, imagefile=item.get('imagefile'))
+        status, url = self.image_url(nodename=nodename, imagefile=item.get('imagefile'))
         if not status:
             return False, f'{label}: {url}'
         action = ((service.get('Actions') or {}).get('#UpdateService.SimpleUpdate')) or {}

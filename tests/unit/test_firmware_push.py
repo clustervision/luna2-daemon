@@ -51,6 +51,10 @@ class FakeBoard():
         self.posted.append({'path': path, 'payload': payload})
         return True, self.resources.get('__post__', {})
 
+    def action(self, path=None, payload=None):
+        status, data = self.post(path=path, payload=payload)
+        return status, data, self.resources.get('__location__')
+
     # The real implementations over this fake's transport, so the singleton walk
     # and the failure wording under test are the ones that ship.
     from utils.redfish import Redfish
@@ -340,3 +344,81 @@ def test_inline_allowable_values_are_honoured_where_a_board_publishes_them():
     status, reason = FirmwarePush().payload(
         redfish=machine, action=action, image_url='http://host/files/bmc.bin')
     assert status is False and 'does not accept HTTP' in reason
+
+
+def test_a_task_named_only_in_the_location_header_is_still_followed():
+    """
+    Measured on a real board: it answers the submission with a bare 202 and puts the
+    task in Location, nothing to follow in the body. Reading only the body loses the
+    one handle on the work, and an ordinary flash then looks like one that never
+    started.
+    """
+    from utils.firmware_push import FirmwarePush, SIMPLE
+
+    machine, action = action_board(parameters=AMI_PARAMETERS)
+
+    def action_with_header(path=None, payload=None):
+        machine.posted.append({'path': path, 'payload': payload})
+        return True, '', '/redfish/v1/TaskService/Tasks/1'
+    machine.action = action_with_header
+
+    status, task = FirmwarePush().submit(
+        redfish=machine, kind=SIMPLE, uri='/redfish/v1/UpdateService/Actions/SimpleUpdate',
+        action=action, image_url='http://host/files/bmc.bin', component='BMC')
+    assert status is True
+    assert task == '/redfish/v1/TaskService/Tasks/1'
+
+
+def test_the_body_wins_over_the_header_where_a_board_sends_both():
+    """
+    The body names the persistent task; the header often names a monitor that is
+    deleted the moment the work finishes. Following the one that disappears turns a
+    successful flash into an unknown.
+    """
+    from utils.firmware_push import FirmwarePush, SIMPLE
+
+    machine, action = action_board(parameters=AMI_PARAMETERS)
+
+    def action_with_both(path=None, payload=None):
+        return True, {'@odata.type': '#Task.v1_4_3.Task',
+                      '@odata.id': '/redfish/v1/TaskService/Tasks/7',
+                      'TaskState': 'Running'}, '/redfish/v1/TaskMonitors/abc'
+    machine.action = action_with_both
+
+    _, task = FirmwarePush().submit(
+        redfish=machine, kind=SIMPLE, uri='/redfish/v1/UpdateService/Actions/SimpleUpdate',
+        action=action, image_url='http://host/files/bmc.bin', component='BMC')
+    assert task == '/redfish/v1/TaskService/Tasks/7'
+
+
+# The task a real board produced when it refused an invalid image, transcribed.
+REFUSED_TASK = {
+    'Id': '1',
+    'Name': 'Update Service Task',
+    'TaskState': 'Exception',
+    'TaskStatus': 'Warning',
+    'Messages': [
+        {'MessageId': 'Exception', 'Severity': 'WARNING', 'Resolution': 'None',
+         'Message': 'Task /redfish/v1/UpdateService/Actions/SimpleUpdate has stopped '
+                    'due to an exception condition.'},
+        {'MessageId': 'FirmwareUpdateFailed', 'Severity': 'Warning', 'Resolution': 'None',
+         'Message': 'Action /redfish/v1/UpdateService/Actions/SimpleUpdate firmware '
+                    'update is failed.'},
+    ],
+}
+
+
+def test_a_refused_task_says_why_in_words():
+    """
+    A task states its trouble in a plain Messages array, not in extended info. Before
+    this was read, a board that explained itself perfectly clearly was reported to the
+    operator as 'Redfish HTTP 0'.
+    """
+    from utils.firmware_push import FirmwarePush
+
+    machine = FakeBoard({'/redfish/v1/TaskService/Tasks/1': REFUSED_TASK})
+    state, reason = FirmwarePush().track(redfish=machine,
+                                         task='/redfish/v1/TaskService/Tasks/1')
+    assert state == 'failed'
+    assert 'firmware update is failed' in reason
+    assert 'HTTP 0' not in reason

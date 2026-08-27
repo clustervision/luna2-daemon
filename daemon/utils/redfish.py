@@ -105,6 +105,16 @@ class Redfish():
                     if text and text not in messages:
                         messages.append(str(text))
             if not messages:
+                # A task states its trouble in a plain Messages array rather than in
+                # extended info - a different shape for the same thing, and the one a
+                # firmware task uses. Without this an operator is told 'Redfish HTTP 0'
+                # about a task that says in words what went wrong.
+                for entry in data.get('Messages') or []:
+                    if isinstance(entry, dict):
+                        text = entry.get('Message') or entry.get('MessageId')
+                        if text and text not in messages:
+                            messages.append(str(text))
+            if not messages:
                 text = data.get('error', {}).get('message')
                 if text:
                     messages.append(str(text))
@@ -141,14 +151,20 @@ class Redfish():
     def call(self, method='GET', path='/redfish/v1/', payload=None, headers=None):
         """
         This method will perform one Redfish request and return
-        (status, http_code, data). Data is the parsed body where the service
-        answered JSON, the raw text where it did not, and the failure reason
-        where the call did not succeed.
+        (status, http_code, data, answered). Data is the parsed body where the
+        service answered JSON, the raw text where it did not, and the failure reason
+        where the call did not succeed. Answered is the service's own response
+        headers, empty where the request never got that far.
+
+        The headers are carried because a service that accepts long running work
+        answers 202 and puts the task in Location - and on some boards that is the
+        ONLY place it appears, the body carrying nothing to follow. Dropping them
+        silently loses the one handle on the work.
         """
         if not self.device:
-            return False, 0, 'No BMC address configured for this node'
+            return False, 0, 'No BMC address configured for this node', {}
         if not path:
-            return False, 0, 'No Redfish resource requested'
+            return False, 0, 'No Redfish resource requested', {}
         if not str(path).startswith('/'):
             path = f'/{path}'
         url = f'{self.base}{path}'
@@ -165,7 +181,7 @@ class Redfish():
             )
         except requests.exceptions.RequestException as exp:
             self.logger.debug(f'redfish {method} {url} failed: {exp}')
-            return False, 0, f'{self.device}: {self.transport_reason(exp)}'
+            return False, 0, f'{self.device}: {self.transport_reason(exp)}', {}
 
         data = response.text
         if response.content:
@@ -175,8 +191,9 @@ class Redfish():
                 data = response.text
         if not response.ok:
             self.logger.debug(f'redfish {method} {url} answered {response.status_code}')
-            return False, response.status_code, self.reason(data, response.status_code)
-        return True, response.status_code, data
+            return False, response.status_code, self.reason(data, response.status_code), \
+                dict(response.headers)
+        return True, response.status_code, data, dict(response.headers)
 
 
     def get(self, path='/redfish/v1/', cache=False):
@@ -187,7 +204,7 @@ class Redfish():
         """
         if cache and path in self.cache:
             return True, self.cache[path]
-        status, _, data = self.call(method='GET', path=path)
+        status, _, data, _ = self.call(method='GET', path=path)
         if status and cache:
             self.cache[path] = data
         return status, data
@@ -197,15 +214,28 @@ class Redfish():
         """
         This method will submit a resource or invoke a Redfish action.
         """
-        status, _, data = self.call(method='POST', path=path, payload=payload)
+        status, _, data, _ = self.call(method='POST', path=path, payload=payload)
         return status, data
+
+
+    def action(self, path=None, payload=None):
+        """
+        This method invokes an action and returns (status, data, location).
+
+        Location is where the service said the work went, taken from its header,
+        and it is the reason this exists rather than post() being used: a board can
+        answer 202 with a task in the header and nothing to follow in the body.
+        """
+        status, _, data, answered = self.call(method='POST', path=path, payload=payload)
+        location = (answered or {}).get('Location') or (answered or {}).get('location')
+        return status, data, location
 
 
     def delete(self, path=None):
         """
         This method will remove a Redfish resource.
         """
-        status, _, data = self.call(method='DELETE', path=path)
+        status, _, data, _ = self.call(method='DELETE', path=path)
         return status, data
 
 
@@ -224,7 +254,7 @@ class Redfish():
             etag = current.get('@odata.etag')
             if etag:
                 headers = {'If-Match': etag}
-        status, _, data = self.call(method='PATCH', path=path, payload=payload, headers=headers)
+        status, _, data, _ = self.call(method='PATCH', path=path, payload=payload, headers=headers)
         return status, data
 
 

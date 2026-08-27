@@ -26,13 +26,16 @@ from utils.redfish import (Redfish, RedfishAccess, LOGIN,
 class FakeResponse():
     """Just enough of a requests response for the client to read."""
 
-    def __init__(self, status_code=200, payload=None, text=None):
+    def __init__(self, status_code=200, payload=None, text=None, headers=None):
         self.status_code = status_code
         self.payload = payload
         if text is None:
             text = dumps(payload) if payload is not None else ''
         self.text = text
         self.content = text.encode()
+        # a real response always has these; a service that accepts long running
+        # work puts the task in Location and the client has to be able to read it
+        self.headers = dict(headers or {})
 
     @property
     def ok(self):
@@ -136,8 +139,9 @@ def test_a_refused_call_reports_the_service_reason_not_the_body():
 
 
 def test_a_missing_device_is_refused_before_a_request_is_built():
-    status, _, message = Redfish(device=None).call()
+    status, _, message, answered = Redfish(device=None).call()
     assert status is False and 'No BMC address' in message
+    assert answered == {}, 'a request that was never made has no response headers'
 
 
 # --- discovery --------------------------------------------------------------

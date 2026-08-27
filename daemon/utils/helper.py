@@ -594,6 +594,62 @@ class Helper(object):
             )
             return len(ipaddress_list)
 
+    def get_controller_addresses_for_networks(self):
+        """
+        This method returns which of this controller's own addresses sits on each
+        Luna network, as {'ipv4': {network: ip}, 'ipv6': {network: ip}}.
+
+        The database cannot answer this. A controller carries exactly one ipaddress
+        row and it is the cluster one, so on a machine with an address per network -
+        which is every controller - the rest are known only to the kernel. They are
+        read from the interfaces and matched against the networks Luna already
+        defines, so the answer is in Luna's own terms rather than the operating
+        system's.
+
+        Which of an address's own networks it belongs to is the question two
+        different things need answered: what a BMC can reach the controller on, and
+        which address a per-network DNS zone should publish. Both were getting it
+        somewhere else, and somewhere else was wrong in both cases.
+        """
+        found = {'ipv4': {}, 'ipv6': {}}
+        for family, addresses in self.walk_controller_networks():
+            for network, interface, ip in addresses:
+                if network not in found[family]:
+                    found[family][network] = ip
+        return found
+
+
+    def walk_controller_networks(self):
+        """
+        This method pairs every local address with the Luna network it falls inside.
+
+        One walk of the interfaces, shared by the two callers that want different
+        halves of the answer - the interface name and the address - so a machine's
+        NICs are read once and matched by one rule.
+        """
+        networks = Database().get_record(table='network') or []
+        matched = {'ipv4': [], 'ipv6': []}
+        for interface in ni.interfaces():
+            for family, key, subnet in (('ipv6', 'network_ipv6', 'subnet_ipv6'),
+                                        ('ipv4', 'network', 'subnet')):
+                try:
+                    assignments = ni.ifaddresses(interface)[
+                        ni.AF_INET6 if family == 'ipv6' else ni.AF_INET]
+                except (KeyError, ValueError):
+                    continue
+                for assignment in assignments:
+                    ip, *_ = str(assignment.get('addr') or '').split('%', 1) + [None]
+                    if not ip:
+                        continue
+                    for network in networks:
+                        if not network[key] or not network[subnet]:
+                            continue
+                        if Helper().check_ip_range(ip, f"{network[key]}/{network[subnet]}"):
+                            matched[family].append((network['name'], interface, ip))
+                            break
+        return [('ipv6', matched['ipv6']), ('ipv4', matched['ipv4'])]
+
+
     def get_controller_interfaces_for_networks(self):
         interfaces={
             'ipv4': {},

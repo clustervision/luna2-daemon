@@ -208,46 +208,136 @@ def test_the_batch_size_has_a_default_and_can_be_configured(db):
         del constant.CONSTANT['FIRMWARE']
 
 
-def test_the_image_url_uses_the_address_that_faces_the_bmc(db):
-    """
-    Derived from the route rather than from configuration or from the database. The
-    database cannot answer it: a controller has one ipaddress row and it is the
-    cluster one, so on a cluster whose BMCs have their own network there is nothing
-    stored that says which address faces them.
+def bmc_on_network(db, nodeid, network='ipmi', address='10.148.0.1'):
+    """Give a node a BMC address on a Luna network, the way an install would."""
+    from utils.helper import Helper
 
-    Asked against the loopback, which is the one destination whose answer is knowable
-    without a network.
+    netid = db.insert('network', Helper().make_rows(
+        {'name': network, 'network': '10.148.0.0', 'subnet': '16'}))
+    interface = db.insert('nodeinterface', Helper().make_rows(
+        {'nodeid': nodeid, 'interface': 'BMC'}))
+    db.insert('ipaddress', Helper().make_rows(
+        {'tableref': 'nodeinterface', 'tablerefid': interface,
+         'ipaddress': address, 'networkid': netid}))
+    return netid
+
+
+def controller_addresses(monkeypatch, mapping):
+    """Stand in for the walk of this machine's own interfaces."""
+    from utils.helper import Helper
+
+    monkeypatch.setattr(Helper, 'get_controller_addresses_for_networks',
+                        lambda self: mapping)
+
+
+def test_the_image_url_uses_the_controller_address_on_the_bmc_network(db, nodes, monkeypatch):
+    """
+    The BMC is on the management network, so it can only reach the controller on the
+    controller's address there - not the cluster one, which is a different interface
+    and unroutable from a BMC.
     """
     from utils.firmware_push import FirmwarePush
 
-    status, url = FirmwarePush().image_url(device='127.0.0.1', imagefile='bmc-7.10.bin')
+    bmc_on_network(db, nodes['node001'])
+    controller_addresses(monkeypatch, {'ipv4': {'ipmi': '10.148.255.254',
+                                                'cluster': '10.141.255.254'},
+                                       'ipv6': {}})
+    status, url = FirmwarePush().image_url(nodename='node001', imagefile='bmc-7.10.bin')
     assert status is True
-    assert url == 'http://127.0.0.1:7051/files/bmc-7.10.bin'
+    assert url == 'http://10.148.255.254:7051/files/bmc-7.10.bin'
+    assert '10.141.255.254' not in url, 'the BMC was handed an address it cannot reach'
 
 
-def test_the_webserver_settings_are_honoured(db):
+def test_a_network_this_controller_has_no_address_on_is_refused(db, nodes, monkeypatch):
+    from utils.firmware_push import FirmwarePush
+
+    bmc_on_network(db, nodes['node001'])
+    controller_addresses(monkeypatch, {'ipv4': {'cluster': '10.141.255.254'}, 'ipv6': {}})
+    status, reason = FirmwarePush().image_url(nodename='node001', imagefile='bmc.bin')
+    assert status is False and 'nowhere to fetch from' in reason
+
+
+def test_an_ipv6_address_is_bracketed_for_a_url(db, nodes, monkeypatch):
+    from utils.firmware_push import FirmwarePush
+
+    bmc_on_network(db, nodes['node001'])
+    controller_addresses(monkeypatch, {'ipv4': {}, 'ipv6': {'ipmi': 'fd00::254'}})
+    status, url = FirmwarePush().image_url(nodename='node001', imagefile='bmc.bin')
+    assert status is True and url.startswith('http://[fd00::254]:7051/')
+
+
+def test_a_node_with_no_bmc_on_a_known_network_is_refused(db, nodes):
+    from utils.firmware_push import FirmwarePush
+
+    status, reason = FirmwarePush().image_url(nodename='node001', imagefile='bmc.bin')
+    assert status is False and 'no BMC address on a network Luna knows' in reason
+
+
+def test_the_webserver_settings_are_honoured(db, nodes, monkeypatch):
     import common.constant as constant
     from utils.firmware_push import FirmwarePush
 
+    bmc_on_network(db, nodes['node001'])
+    controller_addresses(monkeypatch, {'ipv4': {'ipmi': '10.148.255.254'}, 'ipv6': {}})
     constant.CONSTANT['WEBSERVER'] = {'PROTOCOL': 'https', 'PORT': '8443'}
     try:
-        _, url = FirmwarePush().image_url(device='127.0.0.1', imagefile='bmc.bin')
-        assert url == 'https://127.0.0.1:8443/files/bmc.bin'
+        _, url = FirmwarePush().image_url(nodename='node001', imagefile='bmc.bin')
+        assert url == 'https://10.148.255.254:8443/files/bmc.bin'
     finally:
         del constant.CONSTANT['WEBSERVER']
 
 
-def test_a_bmc_with_no_route_is_refused_with_the_reason(db):
-    """An address the kernel cannot route to has nowhere to fetch from."""
+def test_an_entry_with_no_image_file_is_refused_before_anything_is_contacted(db, nodes):
     from utils.firmware_push import FirmwarePush
 
-    status, reason = FirmwarePush().image_url(device='2001:db8::1', imagefile='bmc.bin')
-    assert status is False
-    assert 'no route' in reason or 'no address facing' in reason
-
-
-def test_an_entry_with_no_image_file_is_refused_before_anything_is_contacted(db):
-    from utils.firmware_push import FirmwarePush
-
-    status, reason = FirmwarePush().image_url(device='127.0.0.1', imagefile=None)
+    status, reason = FirmwarePush().image_url(nodename='node001', imagefile=None)
     assert status is False and 'no image file' in reason
+
+
+def test_the_walk_pairs_every_local_address_with_its_luna_network(db, monkeypatch):
+    """
+    The primitive both this and the per-network DNS zone need: which of this
+    machine's own addresses is on which Luna network. A controller has one ipaddress
+    row and it is the cluster one, so the rest are known only to the kernel.
+
+    The interfaces below are the shape TRIX-1946 reports: one NIC carrying two
+    addresses on two networks, and a separate InfiniBand NIC. Picking the wrong one
+    is what makes controller.ib resolve to an ethernet address.
+    """
+    import utils.helper as helper_module
+    from utils.helper import Helper
+
+    for name, network, subnet in (('cluster', '10.131.0.0', '16'),
+                                  ('ipmi', '10.138.0.0', '16'),
+                                  ('ib', '10.139.0.0', '16')):
+        db.insert('network', Helper().make_rows(
+            {'name': name, 'network': network, 'subnet': subnet}))
+
+    fake = {
+        'lo': {2: [{'addr': '127.0.0.1'}]},
+        'enp2s0f0np0': {2: [{'addr': '10.131.255.254'}, {'addr': '10.138.255.254'}]},
+        'ibp129s0': {2: [{'addr': '10.139.1.102'}]},
+    }
+    monkeypatch.setattr(helper_module.ni, 'interfaces', lambda: list(fake))
+    monkeypatch.setattr(helper_module.ni, 'ifaddresses', lambda name: fake[name])
+
+    found = Helper().get_controller_addresses_for_networks()['ipv4']
+    assert found['cluster'] == '10.131.255.254'
+    assert found['ipmi'] == '10.138.255.254'
+    assert found['ib'] == '10.139.1.102', 'the InfiniBand network took an ethernet address'
+
+
+def test_an_address_on_no_luna_network_is_ignored(db, monkeypatch):
+    """A controller carries addresses Luna knows nothing about; they are not answers."""
+    import utils.helper as helper_module
+    from utils.helper import Helper
+
+    db.insert('network', Helper().make_rows(
+        {'name': 'cluster', 'network': '10.131.0.0', 'subnet': '16'}))
+    fake = {'enp2s0f1np1': {2: [{'addr': '172.25.3.10'}]},
+            'enp2s0f0np0': {2: [{'addr': '10.131.255.254'}]}}
+    monkeypatch.setattr(helper_module.ni, 'interfaces', lambda: list(fake))
+    monkeypatch.setattr(helper_module.ni, 'ifaddresses', lambda name: fake[name])
+
+    found = Helper().get_controller_addresses_for_networks()['ipv4']
+    assert found == {'cluster': '10.131.255.254'}

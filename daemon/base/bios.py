@@ -250,6 +250,18 @@ class Bios():
         the standard's, not a vendor's, and skipping it - guessing the path -
         works on one machine and not the next.
 
+        Three fields can carry the name and services do not agree on which. A
+        collection entry has a Registry and an Id, and the document it points at
+        has an Id of its own; where a service is tidy all three say the same
+        thing, and where it is not, insisting on one of them refuses a registry
+        that is published and findable. So all three are accepted - the two free
+        ones first, and the document's own Id only for what is left, because that
+        one costs a fetch per candidate.
+
+        This is not the same as guessing a path, which is the thing this method
+        exists to avoid. It is still the service telling us which registry this
+        is; only the field it chose to say it in differs.
+
         Returns (True, registry) or (False, reason). A machine that serves no
         registry is a real answer rather than an error, and it is the caller that
         decides what to do about it.
@@ -260,6 +272,7 @@ class Bios():
         status, collection = redfish.get(path='/redfish/v1/Registries', cache=True)
         if not status:
             return False, f'registry collection unreadable: {collection}'
+        candidates = []
         for member in collection.get('Members') or []:
             path = member.get('@odata.id')
             if not path:
@@ -267,17 +280,42 @@ class Bios():
             status, entry = redfish.get(path=path, cache=True)
             # a registry that will not load is not the one we want; keep looking
             # rather than abandoning the search on the first bad member
-            if not status or entry.get('Registry') != wanted:
+            if not status:
                 continue
-            for location in entry.get('Location') or []:
-                uri = location.get('Uri')
-                if not uri:
-                    continue
-                status, registry = redfish.get(path=uri)
-                if status:
+            if wanted in (entry.get('Registry'), entry.get('Id')):
+                found, registry = self.located(redfish=redfish, entry=entry)
+                if found:
                     return True, registry
-            return False, f'registry {wanted} lists no readable location'
+                return False, f'registry {wanted} lists no readable location'
+            candidates.append(entry)
+        for entry in candidates:
+            found, registry = self.located(redfish=redfish, entry=entry)
+            if found and registry.get('Id') == wanted:
+                self.logger.info(
+                    f'this service names BIOS registry {wanted} only in the '
+                    f'document itself; its collection entry calls it '
+                    f'{entry.get("Id")}/{entry.get("Registry")}'
+                )
+                return True, registry
         return False, f'registry {wanted} is not published by this machine'
+
+
+    def located(self, redfish=None, entry=None):
+        """
+        This method reads the document a registry collection entry points at.
+
+        A entry may list several locations - languages, or a local copy beside a
+        published URI - so the first one that answers wins rather than the first
+        one listed.
+        """
+        for location in (entry or {}).get('Location') or []:
+            uri = location.get('Uri')
+            if not uri:
+                continue
+            status, registry = redfish.get(path=uri, cache=True)
+            if status:
+                return True, registry
+        return False, None
 
 
     def collect_bios(self, node=None, name=None):

@@ -14,18 +14,20 @@ routes, the @Redfish.Settings annotation, the settings object pointer, the JSON
 shapes and the error bodies are all somebody else's reading of the specification
 rather than ours.
 
-**It does not replace tests/unit/test_bios_push.py, and it proves less than that
-file does about the feature itself.** sushy-tools models no pending area: its
-BIOS PATCH route writes into the same store its BIOS GET route reads, so a write
-takes effect with no reset at all. Staging is the property this whole feature
-turns on, so the fake in test_bios_push.py - which stages, applies on reset, and
-can silently drop an attribute - remains the one that tests the behaviour. This
-file tests the plumbing underneath it.
+It stages: a PATCH to the settings object lands in a pending area and is applied
+on reset, which is the property a staged apply turns on and the reason this is
+worth more than a fixture. That is on sushy-tools' master and not in 2.2.0 - see
+tests/emulator/README.md, which is also why these want it installed from source.
+
+**It still does not replace tests/unit/test_bios_push.py.** That fake can also
+silently drop an attribute it accepted, which is the failure MAX_ATTEMPTS exists
+for and the one nobody predicts. No emulator models a board quietly ignoring you.
 
 Skipped unless an emulator is reachable, so the suite stays hermetic. To run it:
 
     python3 -m venv ~/sushy-emu-venv
-    ~/sushy-emu-venv/bin/pip install sushy-tools
+    ~/sushy-emu-venv/bin/pip install \
+        'sushy-tools @ git+https://opendev.org/openstack/sushy-tools'
     ~/sushy-emu-venv/bin/python tests/emulator/launch.py
 
 Point it elsewhere with LUNA_REDFISH_EMULATOR=host:port.
@@ -98,50 +100,55 @@ def test_the_settings_object_is_discovered_not_guessed(redfish):
         f'/redfish/v1/Systems/{SYSTEM}/BIOS/Settings'
 
 
-def test_a_machine_naming_a_registry_it_does_not_publish_is_refused(redfish):
+def test_a_registry_named_in_one_field_and_published_under_another(redfish):
     """
-    Not a contrived case: this emulator's BIOS resource names
-    'BiosAttributeRegistryP89.v1_0_0' while its registry collection publishes
-    'BiosAttributeRegistry.v1_0_0'. Guessing the path from the name would have
-    produced a confident wrong answer; resolving through the collection produces
-    a refusal, which is correct - a configuration we cannot filter is one we
-    would push identity values out of.
+    The case that found a bug in us rather than in anything else.
+
+    This service's BIOS resource names 'BiosAttributeRegistryP89.v1_0_0'; its
+    collection entry for that same registry says 'BiosAttributeRegistry.v1_0_0'
+    and 'BiosAttributeRegistry1.0'; only the registry document itself agrees with
+    the BIOS resource. We matched a single field and refused a registry that is
+    published and findable - sushy, the reference client, indexes all of them.
+
+    Both real boards we have seen say the same thing in all three fields, so
+    nothing but a service this untidy would have shown it.
     """
     _, _, bios = BiosPush().bios_resource(redfish=redfish)
-    status, reason = BaseBios().registry(redfish=redfish, bios=bios)
-    assert status is False
-    assert 'not published by this machine' in reason
+    assert bios['AttributeRegistry'] == 'BiosAttributeRegistryP89.v1_0_0'
+    status, registry = BaseBios().registry(redfish=redfish, bios=bios)
+    assert status is True, registry
+    assert registry['Id'] == bios['AttributeRegistry']
+    assert registry['RegistryEntries']['Attributes']
 
 
-def test_a_write_and_a_read_back_over_real_http(redfish):
-    status, _, bios = BiosPush().bios_resource(redfish=redfish)
-    settings = BiosPush().settings_path(bios=bios)
-    assert bios['Attributes']['QuietBoot'] == 'Enabled'
+def test_a_write_is_staged_and_not_applied_until_a_reset(redfish):
+    """
+    The property the whole feature turns on, against an implementation that is
+    not ours: the settings object holds it, the current attributes do not move,
+    and the reset is what applies it.
+    """
+    _, _, before = BiosPush().bios_resource(redfish=redfish)
+    settings = BiosPush().settings_path(bios=before)
+    was = before['Attributes']['BootMode']
+    assert was != 'Legacy', 'the test would prove nothing from this starting point'
 
     status, _, _ = redfish.call(method='PATCH', path=settings,
-                                payload={'Attributes': {'QuietBoot': 'Disabled'}})
+                                payload={'Attributes': {'BootMode': 'Legacy'}})
     assert status
 
+    _, _, during = BiosPush().bios_resource(redfish=redfish)
+    assert during['Attributes']['BootMode'] == was, 'applied without a reset'
+    _, pending = redfish.get(path=settings)
+    assert pending['Attributes']['BootMode'] == 'Legacy', 'not staged either'
+    assert Planner().unapplied(wanted={'BootMode': 'Legacy'},
+                               attributes=during['Attributes'])
+
+    status, reason = BiosPush().reset(redfish=redfish)
+    assert status, reason
     _, _, after = BiosPush().bios_resource(redfish=redfish)
-    assert Planner().unapplied(wanted={'QuietBoot': 'Disabled'},
+    assert after['Attributes']['BootMode'] == 'Legacy'
+    assert Planner().unapplied(wanted={'BootMode': 'Legacy'},
                                attributes=after['Attributes']) == {}
-
-
-def test_this_emulator_does_not_stage_and_that_is_why_the_fake_stays(redfish):
-    """
-    Pinned deliberately. If sushy-tools ever grows a pending area this test
-    fails, and that is worth knowing - it would make the emulator able to test
-    the part of the feature it currently cannot.
-    """
-    _, _, bios = BiosPush().bios_resource(redfish=redfish)
-    settings = BiosPush().settings_path(bios=bios)
-    redfish.call(method='PATCH', path=settings,
-                 payload={'Attributes': {'ProcVirtualization': 'Disabled'}})
-    _, _, after = BiosPush().bios_resource(redfish=redfish)
-    assert after['Attributes']['ProcVirtualization'] == 'Disabled', (
-        'applied with no reset at all - sushy-tools writes the settings object '
-        'straight into the current attributes, so staging is untestable here'
-    )
 
 
 def test_a_reset_really_goes_out(redfish):

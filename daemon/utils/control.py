@@ -157,7 +157,12 @@ class Control():
         if not payload or not payload.get('uri'):
             return False, 'redfish needs a uri and content, sent through the hostlist form'
         # both actions write, so the account has to be one that may
-        status, access = RedfishAccess().for_node(nodename=nodename, write=True)
+        # power and chassis actions are ComputerSystem.Reset, which the Redfish
+        # privilege registry puts behind ConfigureComponents - an Operator has it.
+        # Asking for Administrator here would use the strongest account a site
+        # configured for work that never needed it
+        status, access = RedfishAccess().for_node(nodename=nodename,
+                                                  needs=CONFIGURE_COMPONENTS)
         if not status:
             return False, access
         redfish_plugin = Helper().plugin_load(

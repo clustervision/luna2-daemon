@@ -19,7 +19,8 @@ import requests
 
 import pytest
 
-from utils.redfish import Redfish, RedfishAccess
+from utils.redfish import (Redfish, RedfishAccess, LOGIN,
+                           CONFIGURE_COMPONENTS, CONFIGURE_USERS)
 
 
 class FakeResponse():
@@ -267,16 +268,35 @@ def accounts(*roles):
             for n, role in enumerate(roles)]
 
 
-def test_a_write_takes_the_weakest_account_that_may_write():
+def test_an_operation_takes_the_weakest_account_that_carries_its_privilege():
+    """
+    Power control is ComputerSystem.Reset, which needs ConfigureComponents - and an
+    Operator has it. It used to pick the Administrator, because 'write' was read as
+    a rank rather than as a privilege, which quietly undid the reason a site had
+    configured two accounts.
+    """
     picked = RedfishAccess().pick_account(
-        accounts=accounts('ReadOnly', 'Operator', 'Administrator'), write=True)
-    assert picked['role'] == 'Administrator'
+        accounts=accounts('ReadOnly', 'Operator', 'Administrator'),
+        needs=CONFIGURE_COMPONENTS)
+    assert picked['role'] == 'Operator'
 
 
 def test_a_read_takes_the_weakest_account_of_all():
     picked = RedfishAccess().pick_account(
-        accounts=accounts('ReadOnly', 'Operator', 'Administrator'), write=False)
+        accounts=accounts('ReadOnly', 'Operator', 'Administrator'), needs=LOGIN)
     assert picked['role'] == 'ReadOnly'
+
+
+def test_managing_accounts_needs_an_administrator_and_nothing_less():
+    """
+    The other half of why a boolean could not express this: creating an account
+    needs ConfigureUsers, which only an Administrator carries. An Operator is
+    enough for power and not enough for this, and the same rule decides both.
+    """
+    picked = RedfishAccess().pick_account(
+        accounts=accounts('ReadOnly', 'Operator', 'Administrator'),
+        needs=CONFIGURE_USERS)
+    assert picked['role'] == 'Administrator'
 
 
 def test_an_account_without_a_role_is_usable_for_anything():
@@ -285,20 +305,33 @@ def test_an_account_without_a_role_is_usable_for_anything():
     with no role behaves exactly as a cluster does today. It also has to beat an
     account whose role is wrong for the job.
     """
-    picked = RedfishAccess().pick_account(accounts=accounts('ReadOnly', None), write=True)
+    picked = RedfishAccess().pick_account(accounts=accounts('ReadOnly', None),
+                                          needs=CONFIGURE_COMPONENTS)
     assert picked['role'] is None
 
 
 def test_a_single_administrator_account_behaves_as_today():
-    for write in (True, False):
-        picked = RedfishAccess().pick_account(accounts=accounts('Administrator'), write=write)
+    for needs in (LOGIN, CONFIGURE_COMPONENTS, CONFIGURE_USERS):
+        picked = RedfishAccess().pick_account(accounts=accounts('Administrator'),
+                                              needs=needs)
         assert picked['username'] == 'u0'
 
 
 def test_a_role_the_daemon_does_not_rank_still_gets_used():
-    """A vendor role name we have never heard of must not strand the node."""
-    picked = RedfishAccess().pick_account(accounts=accounts('OemPowerOnly'), write=True)
+    """
+    A vendor role name we have never heard of must not strand the node. Redfish
+    lets a vendor define roles with any privilege set it likes, so an unranked name
+    is unknown rather than known-unable, and it is tried.
+    """
+    picked = RedfishAccess().pick_account(accounts=accounts('OemPowerOnly'),
+                                          needs=CONFIGURE_COMPONENTS)
     assert picked['role'] == 'OemPowerOnly'
+
+
+def test_a_known_role_that_cannot_do_it_is_not_offered():
+    """The other side of the same coin: ReadOnly provably cannot reset a system."""
+    assert RedfishAccess().pick_account(accounts=accounts('ReadOnly'),
+                                        needs=CONFIGURE_COMPONENTS) is None
 
 
 # --- why a BMC could not be reached, in a few words -------------------------

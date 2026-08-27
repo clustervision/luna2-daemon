@@ -437,6 +437,99 @@ class Bios():
         return True, [name]
 
 
+    def status(self, name=None):
+        """
+        Where every node stands on its BIOS, from what is stored - no BMC is
+        contacted, and no node needs to be powered on.
+
+        This answers the question an operator asks weeks after a push, when the
+        machines may well be off: what is holding which configuration, and when
+        did we last actually look. It deliberately does NOT answer "how many
+        stages remain", because that needs the board's registry and its current
+        values, and a stored answer presented as a current one is worse than no
+        answer. `luna node biospush` recomputes that against the machine, which is
+        the only place it can honestly be computed.
+
+        Three fields carry the whole of it, which is why this costs bytes per node
+        rather than the tens of megabytes the attribute sets themselves would:
+        the digest of what the machine held when we last read it, the name of the
+        configuration it was last found to match, and the digest it had at that
+        moment. Drift is the third disagreeing with the first.
+
+        States, and each says something different:
+          matched      the last read found it holding that configuration
+          drifted      it matched once, and its BIOS has moved since - somebody
+                       changed something outside Luna, or a push half landed
+          collected    we have read its BIOS and it matches no configuration
+          unknown      no Redfish inventory has ever been taken from it, so we
+                       have never looked. Not a problem, just not an answer
+        """
+        where = f'name = "{name}"' if name else None
+        nodes = Database().get_record(table='node', where=where)
+        if not nodes:
+            return False, f'Node {name} is not available' if name else 'No nodes available'
+        response = {'config': {self.table: {'status': {}, 'summary': {}}}}
+        for node in nodes:
+            row = self.stored_state(nodeid=node['id'])
+            response['config'][self.table]['status'][node['name']] = row
+            summary = response['config'][self.table]['summary']
+            summary[row['state']] = summary.get(row['state'], 0) + 1
+        return True, response
+
+
+    def stored_state(self, nodeid=None):
+        """
+        This method reads one node's stored BIOS state and names it.
+        """
+        row = {'config': '', 'digest': '', 'state': 'unknown',
+               'bios_version': '', 'since': ''}
+        snapshot = Database().get_record(
+            table='nodeinventory',
+            where=f'nodeid = "{nodeid}" AND source = "redfish"')
+        if not snapshot:
+            return row
+        held = snapshot[0]
+        digest = held.get('bios_digest') or ''
+        row['config'] = held.get('bios_config') or ''
+        row['digest'] = digest[:12]
+        row['bios_version'] = held.get('bios_version') or ''
+        row['since'] = held.get('updated') or ''
+        if not digest:
+            return row
+        if not row['config']:
+            row['state'] = 'collected'
+        elif digest == (held.get('bios_config_digest') or ''):
+            row['state'] = 'matched'
+        else:
+            row['state'] = 'drifted'
+        return row
+
+
+    def record_match(self, nodename=None, config=None, digest=None):
+        """
+        This method records that a node was found holding a configuration.
+
+        Written where the inventory lives rather than on the node, because it is
+        an observation about the machine and it belongs beside the rest of what we
+        observed - backed up with it, and carrying its own timestamp so nobody
+        mistakes it for current.
+        """
+        node = Database().get_record(table='node', where=f'name = "{nodename}"')
+        if not node:
+            return False
+        where = [{"column": "nodeid", "value": node[0]['id']},
+                 {"column": "source", "value": "redfish"}]
+        row = Helper().make_rows({'bios_config': config or '',
+                                  'bios_config_digest': digest or '',
+                                  'bios_digest': digest or ''})
+        if Database().get_record(table='nodeinventory',
+                                 where=f"nodeid = \"{node[0]['id']}\" "
+                                       f'AND source = "redfish"'):
+            Database().update('nodeinventory', row, where)
+            return True
+        return False
+
+
     def push_bios(self, object_type=None, name=None, request_data=None):
         """
         This method queues a BIOS configuration to be applied to a node or to

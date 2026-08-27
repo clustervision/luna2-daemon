@@ -1,0 +1,220 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
+# This code is part of the TrinityX software suite
+# Copyright (C) 2026  ClusterVision Solutions b.v.
+
+"""
+TRIX-143: what a node was last seen holding.
+
+A push answers "get this machine to that configuration" and it has to talk to the
+machine to do it. This answers a different question - "what is running which
+configuration" - weeks later, when the machines may be off, and it answers from
+stored inventory without contacting anything.
+
+That is only affordable because of what is stored. The attribute sets themselves
+run from about a hundred entries to several hundred, which is tens of megabytes
+across a cluster, in the database, in every backup and in the hash the controllers
+compare on each pass. Three short strings answer the question instead: the digest
+of what the machine held when we last read it, the configuration it was last found
+to match, and the digest it had at that moment. Drift is the third disagreeing with
+the first.
+
+What that deliberately cannot answer is how many stages a node still needs, because
+that needs the board's registry and its live values. The status view says when it
+last looked rather than implying it knows now.
+"""
+
+import hashlib
+from json import dumps
+
+import pytest
+
+from base.bios import Bios
+from base.nodeinventory import NodeInventory
+from utils.database import Database
+
+
+def digest_of(attributes):
+    return hashlib.sha256(dumps(attributes, sort_keys=True).encode()).hexdigest()
+
+
+@pytest.fixture(name='cluster')
+def cluster_fixture(sqlite_db):
+    """Three nodes, and no BIOS anything until a test says otherwise."""
+    for num in (1, 2, 3):
+        Database().insert('node', [{"column": "name", "value": f'node00{num}'},
+                                   {"column": "id", "value": num}])
+    return ['node001', 'node002', 'node003']
+
+
+def snapshot(nodeid, digest=None, config=None, config_digest=None,
+             version='2.15.1', updated='2026-08-27 10:00:00'):
+    row = [{"column": "nodeid", "value": nodeid},
+           {"column": "source", "value": "redfish"},
+           {"column": "bios_version", "value": version},
+           {"column": "updated", "value": updated}]
+    for column, value in (('bios_digest', digest), ('bios_config', config),
+                          ('bios_config_digest', config_digest)):
+        if value is not None:
+            row.append({"column": column, "value": value})
+    Database().insert('nodeinventory', row)
+
+
+# --- the four states, each meaning something different ----------------------
+
+def test_a_node_never_read_is_unknown_not_broken(cluster):
+    """
+    No Redfish inventory has been taken, so we have never looked. That is not a
+    problem to report, it is an absence of an answer, and conflating the two is
+    how a status view teaches people to ignore it.
+    """
+    status, response = Bios().status('node001')
+    assert status is True
+    assert response['config']['biosconfig']['status']['node001']['state'] == 'unknown'
+
+
+def test_a_node_read_but_matching_nothing_is_collected(cluster):
+    snapshot(1, digest=digest_of({'BootMode': 'Uefi'}))
+    _, response = Bios().status('node001')
+    row = response['config']['biosconfig']['status']['node001']
+    assert row['state'] == 'collected'
+    assert row['config'] == ''
+    assert row['bios_version'] == '2.15.1'
+
+
+def test_a_node_holding_what_it_was_pushed_is_matched(cluster):
+    held = digest_of({'BootMode': 'Uefi', 'SriovGlobalEnable': 'Enabled'})
+    snapshot(1, digest=held, config='hpc-tuned', config_digest=held)
+    _, response = Bios().status('node001')
+    row = response['config']['biosconfig']['status']['node001']
+    assert row['state'] == 'matched'
+    assert row['config'] == 'hpc-tuned'
+    assert row['since'] == '2026-08-27 10:00:00', 'when we looked, not now'
+
+
+def test_a_bios_that_moved_since_it_matched_is_drifted(cluster):
+    """
+    The state that earns the third stored field. Somebody changed something
+    outside Luna, or a push half landed - either way the configuration name alone
+    would still say 'hpc-tuned' and would be a lie.
+    """
+    matched = digest_of({'BootMode': 'Uefi'})
+    now = digest_of({'BootMode': 'Legacy'})
+    snapshot(1, digest=now, config='hpc-tuned', config_digest=matched)
+    _, response = Bios().status('node001')
+    assert response['config']['biosconfig']['status']['node001']['state'] == 'drifted'
+
+
+def test_the_digest_is_shortened_for_reading_but_compared_in_full(cluster):
+    """A truncated digest in the output must not become a truncated comparison."""
+    matched = digest_of({'a': 1})
+    now = matched[:12] + 'f' * (len(matched) - 12)
+    assert matched[:12] == now[:12], 'the test needs them to share a prefix'
+    snapshot(1, digest=now, config='c', config_digest=matched)
+    _, response = Bios().status('node001')
+    row = response['config']['biosconfig']['status']['node001']
+    assert row['state'] == 'drifted', 'compared on the prefix, they would look equal'
+    assert len(row['digest']) == 12
+
+
+# --- the summary, which is what makes it usable at scale --------------------
+
+def test_the_summary_counts_every_node_exactly_once(cluster):
+    held = digest_of({'BootMode': 'Uefi'})
+    snapshot(1, digest=held, config='hpc-tuned', config_digest=held)
+    snapshot(2, digest=digest_of({'BootMode': 'Legacy'}))
+    _, response = Bios().status()
+    summary = response['config']['biosconfig']['summary']
+    assert summary == {'matched': 1, 'collected': 1, 'unknown': 1}
+    assert sum(summary.values()) == len(response['config']['biosconfig']['status'])
+
+
+def test_it_reads_the_database_and_never_the_machine(cluster, monkeypatch):
+    """
+    The whole point: a cluster of four thousand nodes, most of them off, answered
+    without a single connection. If this ever starts contacting BMCs it stops
+    being a thing you can run.
+    """
+    def refuse(*args, **kwargs):
+        raise AssertionError('status contacted a BMC')
+
+    monkeypatch.setattr('utils.redfish.Redfish.call', refuse)
+    snapshot(1, digest=digest_of({'BootMode': 'Uefi'}))
+    status, _ = Bios().status()
+    assert status is True
+
+
+def test_a_node_that_does_not_exist_is_refused_not_invented(cluster):
+    status, message = Bios().status('node404')
+    assert status is False
+    assert 'node404' in message
+
+
+# --- recording a match ------------------------------------------------------
+
+def test_recording_a_match_writes_all_three_fields(cluster):
+    snapshot(1, digest=digest_of({'BootMode': 'Legacy'}))
+    held = digest_of({'BootMode': 'Uefi'})
+    assert Bios().record_match(nodename='node001', config='hpc-tuned', digest=held)
+    _, response = Bios().status('node001')
+    row = response['config']['biosconfig']['status']['node001']
+    assert row['state'] == 'matched'
+    assert row['config'] == 'hpc-tuned'
+
+
+def test_recording_against_a_node_with_no_redfish_snapshot_does_not_invent_one(cluster):
+    """
+    A node we have never collected from has no row to annotate, and inventing one
+    would put a BIOS record beside no inventory at all.
+    """
+    assert Bios().record_match(nodename='node001', config='c', digest='abc') is False
+    _, response = Bios().status('node001')
+    assert response['config']['biosconfig']['status']['node001']['state'] == 'unknown'
+
+
+# --- the digest itself ------------------------------------------------------
+
+class BiosBmc():
+    def __init__(self, attributes=None, bios=True):
+        self.attributes = attributes
+        self.bios = bios
+
+    def get(self, path=None, cache=False):
+        if path == '/redfish/v1/Systems/1/Bios' and self.attributes is not None:
+            return True, {'Attributes': dict(self.attributes)}
+        return False, 'no'
+
+
+def system_with(bios=True):
+    return {'Bios': {'@odata.id': '/redfish/v1/Systems/1/Bios'}} if bios else {}
+
+
+def test_the_digest_ignores_the_order_attributes_arrive_in():
+    """Two reads of one unchanged machine must not look like a change."""
+    one = BiosBmc({'a': '1', 'b': '2'})
+    two = BiosBmc({'b': '2', 'a': '1'})
+    assert (NodeInventory().bios_digest(redfish=one, system=system_with())
+            == NodeInventory().bios_digest(redfish=two, system=system_with()))
+
+
+def test_a_changed_value_changes_the_digest():
+    one = BiosBmc({'a': '1'})
+    two = BiosBmc({'a': '2'})
+    assert (NodeInventory().bios_digest(redfish=one, system=system_with())
+            != NodeInventory().bios_digest(redfish=two, system=system_with()))
+
+
+@pytest.mark.parametrize('bmc,system', [
+    (BiosBmc(None), system_with()),
+    (BiosBmc({}), system_with()),
+    (BiosBmc({'a': '1'}), system_with(bios=False)),
+])
+def test_a_machine_with_no_bios_to_read_gets_no_digest(bmc, system):
+    """
+    Every one of these is a real board: licence-gated, exposing no Bios resource,
+    or serving an empty attribute set. None of them is an error - they simply have
+    nothing to fingerprint, and the status reads 'unknown' rather than a wrong
+    answer.
+    """
+    assert NodeInventory().bios_digest(redfish=bmc, system=system) is None

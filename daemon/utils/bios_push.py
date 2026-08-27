@@ -450,7 +450,43 @@ class BiosPush():
                                              request_id=request_id)
         except Exception as exp:
             status, message = False, f'{nodename}: {exp}'
+        if status:
+            # what the machine holds now, recorded so that weeks later somebody can
+            # ask what is running which configuration without waking the cluster.
+            # Only on success: a half-applied push has not reached the configuration,
+            # and recording it as though it had is the lie the status view exists to
+            # avoid telling
+            self.record_applied(nodename=nodename, configname=configname)
         self.report(request_id, message, status=200 if status else 500)
+
+
+    def record_applied(self, nodename=None, configname=None):
+        """
+        This method records the configuration a node now holds, and the digest it
+        held when it did.
+
+        The digest is read back from the machine rather than computed from what we
+        sent: what we sent is what we asked for, and the whole reason this feature
+        has stages is that the two are not the same thing until the board says so.
+        """
+        # same import note as push_node: base/ imports utils/, so this looks back
+        # up the layering here rather than at module level
+        from base.bios import Bios
+        from base.nodeinventory import NodeInventory
+        from utils.redfish import Redfish
+
+        status, access = NodeInventory().bmc_for(name=nodename)
+        if not status:
+            return
+        redfish = Redfish(device=access['device'], username=access['username'],
+                          password=access['password'], scheme=access['scheme'],
+                          port=access['port'], verify=access['verify'])
+        status, _, system = redfish.system()
+        if not status:
+            return
+        digest = NodeInventory().bios_digest(redfish=redfish, system=system)
+        if digest:
+            Bios().record_match(nodename=nodename, config=configname, digest=digest)
 
 
     def reclaim_abandoned(self):

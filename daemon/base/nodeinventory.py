@@ -65,7 +65,8 @@ class NodeInventory():
         self.default_source = 'inband'
         # scalar columns stored on the parent row (rollups + node-level facts)
         self.parent_fields = ['manufacturer', 'product', 'serial', 'cpu_model',
-                              'cpu_count', 'memory_mb', 'bios_version']
+                              'cpu_count', 'memory_mb', 'bios_version',
+                              'bios_digest', 'bios_config', 'bios_config_digest']
         self.disk_fields = ['name', 'size_gb', 'type', 'model', 'serial']
         self.gpu_fields = ['busid', 'vendor', 'model', 'memory_mb', 'uuid']
         self.nic_fields = ['name', 'mac', 'speed_mbps', 'capabilities']
@@ -305,11 +306,41 @@ class NodeInventory():
         memory = system.get('MemorySummary') or {}
         if memory.get('TotalSystemMemoryGiB'):
             snapshot['memory_mb'] = int(float(memory['TotalSystemMemoryGiB']) * 1024)
+        digest = self.bios_digest(redfish=redfish, system=system)
+        if digest:
+            snapshot['bios_digest'] = digest
         snapshot['disks'] = self.redfish_disks(redfish=redfish, system=system)
         snapshot['nics'] = self.redfish_nics(redfish=redfish, system=system)
         snapshot['gpus'] = []
         snapshot['firmware'] = self.redfish_firmware(redfish=redfish)
         return True, snapshot
+
+
+    def bios_digest(self, redfish=None, system=None):
+        """
+        This method returns a digest of the BIOS attributes a machine holds, or None.
+
+        A digest rather than the attributes themselves, and that is a decision
+        rather than an economy. The attribute set runs from about a hundred
+        entries to several hundred, so keeping it per node costs tens of megabytes
+        across a cluster - in the database, in every backup, and in the hash the
+        controllers compare on every pass. The questions an operator actually asks
+        of stored inventory are "has this machine's BIOS moved since we last
+        looked" and "do these nodes all hold the same one", and a digest answers
+        both of those exactly.
+
+        What it cannot answer is what the settings are, or how far a machine is
+        from a configuration. Those need the board, and the status view says so
+        rather than implying the stored answer is the current one.
+        """
+        bios_path = (system or {}).get('Bios', {}).get('@odata.id')
+        if not bios_path:
+            return None
+        status, bios = redfish.get(path=bios_path)
+        attributes = (bios or {}).get('Attributes') if status else None
+        if not isinstance(attributes, dict) or not attributes:
+            return None
+        return hashlib.sha256(dumps(attributes, sort_keys=True).encode()).hexdigest()
 
 
     def redfish_disks(self, redfish=None, system=None):

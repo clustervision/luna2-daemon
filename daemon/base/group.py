@@ -41,6 +41,12 @@ from base.profile import Profile
 from base.route import Route
 from common.constant import CONSTANT
 
+# The fields a group can hold in its own right rather than inherit, and which
+# therefore mean the group deviates from what it would otherwise be given.
+# One list: the listing and the single read must answer the same question.
+OVERRIDABLE = ['provision_interface', 'provision_method', 'provision_fallback',
+               'kerneloptions', 'ipxe_kernel', 'unmanaged_bmc_users']
+
 
 class Group():
     """
@@ -59,7 +65,6 @@ class Group():
         """
         This method will return all the groups in detailed format.
         """
-        overrides = ['provision_interface','provision_method','provision_fallback','kerneloptions','ipxe_kernel','unmanaged_bmc_users']
         osimages = Database().get_record(table='osimage')
         bmcsetups = Database().get_record(table='bmcsetup')
         osimage = Helper().convert_list_to_dict(osimages, 'id')
@@ -82,7 +87,9 @@ class Group():
                     else:
                         group['routes'] = None
                 group['_override'] = False
-                for key in overrides:
+                if group.get('_routes_source') == 'group':
+                    group['_override'] = True
+                for key in OVERRIDABLE:
                     if key in group and group[key]:
                         group['_override'] = True
                 group_interface = Database().get_record_join(
@@ -156,7 +163,6 @@ class Group():
             # classic installer. every other install_mode value is an lpart mode.
             'install_mode': 'legacy'
         }
-        overrides = ['provision_interface','provision_method','provision_fallback','kerneloptions','ipxe_kernel']
         # same as above but now specifically base64
         b64items = {'prescript': '', 'partscript': '', 'postscript': '',
                     'disklayout': '', 'osimage_filter': ''}
@@ -179,6 +185,8 @@ class Group():
                     group['routes'] = None
             osimage = None
             group['_override'] = False
+            if group.get('_routes_source') == 'group':
+                group['_override'] = True
             group['osimage'] = None
             if group['osimageid']:
                 osimage = Database().get_record(table='osimage', where=f"id = '{group['osimageid']}'")
@@ -248,7 +256,7 @@ class Group():
                         group[key] = str(Helper().make_bool(group[key]))
                     group['_'+key+'_source'] = 'group'
                     group[key] = group[key] or str(value)
-                    if key in overrides:
+                    if key in OVERRIDABLE:
                         group['_override'] = True
                 else:
                     group[key] = str(value)
@@ -339,7 +347,6 @@ class Group():
             'setupbmc': False,
             'netboot': True,
             'bootmenu': False,
-            'ipxe_kernel': 'default'
         }
         create, update = False, False
         if request_data:

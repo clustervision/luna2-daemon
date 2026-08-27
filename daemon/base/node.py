@@ -186,6 +186,8 @@ class Node():
                 node['routes'] = ', '.join(effective) if effective else None
                 if route_source:
                     node['_routes_source'] = route_source
+                if route_source == 'node':
+                    node['_override'] = True
                 node['switch'] = None
                 if node['switchid']:
                     node['switch'] = '!!Invalid!!'
@@ -337,6 +339,7 @@ class Node():
             response = {'config': {'node': {} }}
             nodename = node['name']
             nodeid = node['id']
+            node['_override'] = False
             # effective routes follow strict override: node -> group -> network base
             node_route_names = Route().assigned_names('node', nodeid)
             group_route_names = Route().assigned_names('group', node['groupid']) if node.get('groupid') else []
@@ -354,7 +357,6 @@ class Node():
                     node['_routes_source'] = 'network'
                 else:
                     node['routes'] = None
-            node['_override'] = False
             alt_source = {}
             if node['osimageid']:
                 osimage = Database().get_record(table='osimage', where=f"id = '{node['osimageid']}'")

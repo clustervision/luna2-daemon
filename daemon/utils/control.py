@@ -37,7 +37,7 @@ from time import sleep
 from utils.log import Log
 from utils.database import Database
 from utils.helper import Helper
-from utils.redfish import Redfish, RedfishAccess
+from utils.redfish import Redfish, RedfishAccess, CONFIGURE_COMPONENTS
 from utils.status import Status
 from common.constant import CONSTANT
 
@@ -157,7 +157,12 @@ class Control():
         if not payload or not payload.get('uri'):
             return False, 'redfish needs a uri and content, sent through the hostlist form'
         # both actions write, so the account has to be one that may
-        status, access = RedfishAccess().for_node(nodename=nodename, write=True)
+        # power and chassis actions are ComputerSystem.Reset, which the Redfish
+        # privilege registry puts behind ConfigureComponents - an Operator has it.
+        # Asking for Administrator here would use the strongest account a site
+        # configured for work that never needed it
+        status, access = RedfishAccess().for_node(nodename=nodename,
+                                                  needs=CONFIGURE_COMPONENTS)
         if not status:
             return False, access
         redfish_plugin = Helper().plugin_load(
@@ -165,20 +170,16 @@ class Control():
             'redfish',
             [nodename,groupname]
         )
-        if access:
-            client = Redfish(
-                device=device,
-                username=access['username'],
-                password=access['password'],
-                scheme=access['scheme'],
-                port=access['port'],
-                verify=access['verify']
-            )
-        else:
-            # no redfishsetup for this node, so the bmcsetup credentials it already
-            # uses, over https with no verification. That is what a cluster does
-            # today, and an install that never sets one keeps behaving that way.
-            client = Redfish(device=device, username=username, password=password)
+        # for_node either answers with an account or refuses; there is no longer a
+        # third answer meaning "carry on with the bmcsetup credentials" (TRIX-2027)
+        client = Redfish(
+            device=device,
+            username=access['username'],
+            password=access['password'],
+            scheme=access['scheme'],
+            port=access['port'],
+            verify=access['verify']
+        )
         if action == 'setting':
             return redfish_plugin().setting(
                 redfish=client,
@@ -209,10 +210,14 @@ class Control():
         # signal.signal(signal.SIGALRM, handler)
         # signal.alarm(60)
         try:
+            # node -> group -> vendor -> redfish -> default, each narrowed by model
+            candidates, model = RedfishAccess().plugin_candidates(
+                nodename=nodename, groupname=groupname, generic='redfish')
             control_plugin = Helper().plugin_load(
                 self.control_plugins,
                 'control',
-                [nodename,groupname]
+                candidates,
+                model
             )
             match command:
                 case 'power on':

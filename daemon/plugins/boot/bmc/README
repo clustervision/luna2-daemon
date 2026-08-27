@@ -5,7 +5,81 @@
 
 # Plugin selection based on the following search path and priority:
 #
-# 1 node name                 e.g. plugins/bmc/node001.py
-# 2 group name                e.g. plugins/bmc/compute.py
-# 3 default                   e.g. plugins/bmc/default.py
+# 1 node name                 e.g. plugins/boot/bmc/node001.py
+# 2 group name                e.g. plugins/boot/bmc/compute.py
+# 3 manufacturer              e.g. plugins/boot/bmc/dell.py
+# 4 default                   e.g. plugins/boot/bmc/default.py
 #
+# Steps 1 to 3 are each narrowed by the node's model, which is offered first:
+#
+#   <name><model>.py    e.g. plugins/boot/bmc/dellpoweredger650.py
+#   <name>/<model>.py   e.g. plugins/boot/bmc/dell/poweredger650.py
+#   <name>/default.py   e.g. plugins/boot/bmc/dell/default.py
+#   <name>.py           e.g. plugins/boot/bmc/dell.py
+
+# The manufacturer and the model are DERIVED from the node's nodeinventory row,
+# normalised into a filename - lowercased, non-alphanumerics dropped, and the
+# first word only for the manufacturer, since vendor strings carry a company
+# suffix. 'Dell Inc.' becomes dell; 'PowerEdge R650' becomes poweredger650. See
+# plugins/control/README, which uses the same derivation.
+
+# THE TIMING MATTERS HERE, and it is why this arrived after the control family.
+# These plugins run WHILE a node is being provisioned, and in-band inventory is
+# collected BY that provisioning - so on a node's first install there is no in-band
+# snapshot to select on. The manufacturer therefore has to come from an
+# out-of-band Redfish collection, which is what 'luna node refreshinventory' does.
+# Collect a node's inventory before installing it and the vendor plugin applies to
+# the very first install; do not, and it resolves to default.py exactly as it
+# always has.
+
+# There is deliberately no vendor-neutral 'redfish' step here, unlike the control
+# family. These plugins emit a shell snippet that the install template runs on the
+# node - they do not talk to a service - so there is nothing standards-based to
+# fall back on.
+
+# WHAT SHIPS, AND WHY EACH ONE EXISTS
+#
+#   default.py   the generic ipmitool flow: BMC network parameters and the
+#                managed admin user. Every other file here builds on it.
+#   dell.py      prefers racadm. iDRAC needs IPMI-over-LAN enabled explicitly.
+#   lenovo.py    prefers OneCLI. An XClarity Controller ships with IPMI-over-LAN
+#                switched OFF and its factory account behind a forced password
+#                change, so ipmitool cannot bootstrap a fresh XCC at all.
+#   hpe.py       prefers hponcfg. iLO ships with IPMI/DCMI-over-LAN switched OFF;
+#                hponcfg reaches it in band through the hpilo driver, which is
+#                why it can turn the network path on.
+#   hp.py        HPE hardware reporting 'HP' - the same plugin as hpe.py
+#   hewlett.py   HPE hardware reporting the full company name - same again
+#   ibm.py       x86 'IBM' is Lenovo hardware since 2014 - the same as lenovo.py
+#
+# The alias files exist as FILES rather than as entries in a lookup table on
+# purpose: what is supported is then visible in a directory listing, and a site
+# whose hardware reports something we have not seen adds one of these itself
+# rather than waiting for a table it cannot see to be extended.
+
+# WRITING ONE
+#
+# Compose, do not copy. lenovo.py and hpe.py subclass default.py and prepend
+# only their vendor block:
+#
+#     from plugins.boot.bmc.default import Plugin as DefaultPlugin
+#     class Plugin(DefaultPlugin):
+#         config = VENDOR_BLOCK + DefaultPlugin.config
+#
+# A vendor file that restates the generic bootstrap owns a private fork of it,
+# and the two drift - a fix lands in one and the node runs the other.
+# (dell.py predates this and still carries its own copy.)
+#
+# Find the tool with 'command -v <tool>' and nothing else, exactly as dell.py
+# finds racadm. A hardcoded /opt/<vendor>/... path is right on the machine it
+# was written on and wrong on the next one.
+#
+# Probe that the tool can actually TALK to the BMC before trusting it - being
+# installed is not the same as being able to reach anything - and carry a
+# readiness flag that any failing step clears. The generic flow then runs as it
+# would have on a machine with no vendor tool at all. A vendor plugin may add
+# behaviour; it may never remove any.
+#
+# Configure the BMC and nothing else. NTP servers, DNS servers, timezones, boot
+# order and password policy are things a site decides and Luna configures
+# elsewhere. tests/unit/test_bmc_vendor_plugins.py holds all of the above.

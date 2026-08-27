@@ -46,7 +46,8 @@ def _install_constant_stub():
                   "MAXPACKAGINGTIME": None, "TMP_DIRECTORY": None},
         "SECRETS": {"ENCRYPT_SECRETS": "yes"},
         "PLUGINS": {"PLUGINS_DIRECTORY": None, "IMAGE_FILESYSTEM": "default"},
-        "SERVICES": {}, "DHCP": {}, "BMCCONTROL": {}, "TEMPLATES": {},
+        "SERVICES": {}, "DHCP": {},
+        "BMCCONTROL": {"BMC_BATCH_SIZE": "10", "BMC_BATCH_DELAY": "0"}, "TEMPLATES": {},
     }
     # base/cluster.py imports this name and reports it as a path; nothing opens it here.
     stub.CONFIGFILE = '/trinity/local/luna/daemon/config/luna.ini'

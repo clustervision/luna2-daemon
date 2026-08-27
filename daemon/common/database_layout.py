@@ -147,6 +147,25 @@ DATABASE_LAYOUT_redfishaccount = [
 {"column": "role",                 "datatype": "VARCHAR", "length": "20"},
 {"column": "comment",              "datatype": "TEXT"}]
 
+# A BIOS configuration grabbed from one node, to be pushed to others. The three
+# hardware columns are what a push checks the target against before it writes
+# anything - a golden node's settings are only meaningful on the same board.
+# attributes and grab_exclude are ALWAYS base64, never sometimes: a field that is
+# only sometimes encoded pushes a guess onto every reader, and the guess is made
+# by pattern-matching content, which is how a value that merely looks like base64
+# gets decoded into nonsense.
+DATABASE_LAYOUT_biosconfig = [
+{"column": "id",                   "datatype": "INTEGER", "key": "PRIMARY", "keyadd": "AUTOINCREMENT"},
+{"column": "name",                 "datatype": "VARCHAR", "length": "40", "key": "UNIQUE"},
+{"column": "manufacturer",         "datatype": "VARCHAR", "length": "64"},
+{"column": "model",                "datatype": "VARCHAR", "length": "128"},
+{"column": "biosversion",          "datatype": "VARCHAR", "length": "64"},
+{"column": "nodeid",               "datatype": "INTEGER", "length": "10"},
+{"column": "attributes",           "datatype": "TEXT"},
+{"column": "grab_exclude",         "datatype": "TEXT"},
+{"column": "updated",              "datatype": "VARCHAR", "length": "64"},
+{"column": "comment",              "datatype": "VARCHAR", "length": "20"}]
+
 DATABASE_LAYOUT_monitor = [
 {"column": "id",                   "datatype": "INTEGER", "key": "PRIMARY", "keyadd": "AUTOINCREMENT"},
 {"column": "tableref",             "datatype": "VARCHAR", "length": "100", "key": "UNIQUE", "with": "tablerefid"},
@@ -198,6 +217,7 @@ DATABASE_LAYOUT_group = [
 {"column": "bmcsetupid",           "datatype": "INTEGER", "length": "10"},
 {"column": "redfishsetupid",       "datatype": "INTEGER", "length": "10"},
 {"column": "setupbmc",             "datatype": "INTEGER", "length": "10"},
+{"column": "setupredfish",         "datatype": "INTEGER", "length": "10"},
 {"column": "domain",               "datatype": "VARCHAR", "length": "20"},
 {"column": "osimageid",            "datatype": "INTEGER", "length": "10"},
 {"column": "osimagetagid",         "datatype": "INTEGER", "length": "10"},
@@ -370,6 +390,7 @@ DATABASE_LAYOUT_node = [
 {"column": "bmcsetupid",           "datatype": "INTEGER", "length": "10"},
 {"column": "redfishsetupid",       "datatype": "INTEGER", "length": "10"},
 {"column": "setupbmc",             "datatype": "INTEGER", "length": "10"},
+{"column": "setupredfish",         "datatype": "INTEGER", "length": "10"},
 {"column": "status",               "datatype": "VARCHAR", "length": "20"},
 {"column": "comment",              "datatype": "TEXT"},
 {"column": "roles",                "datatype": "VARCHAR", "length": "512"},
@@ -502,6 +523,9 @@ DATABASE_LAYOUT_nodeinventory = [
 {"column": "gpu_count",            "datatype": "INTEGER", "length": "10"},
 {"column": "nic_count",            "datatype": "INTEGER", "length": "10"},
 {"column": "bios_version",         "datatype": "VARCHAR", "length": "64"},
+{"column": "bios_digest",          "datatype": "VARCHAR", "length": "64"},
+{"column": "bios_config",          "datatype": "VARCHAR", "length": "64"},
+{"column": "bios_config_digest",   "datatype": "VARCHAR", "length": "64"},
 {"column": "inventory",            "datatype": "TEXT"},
 {"column": "hash",                 "datatype": "VARCHAR", "length": "64"},
 {"column": "updated",              "datatype": "VARCHAR", "length": "64"}]
@@ -525,6 +549,19 @@ DATABASE_LAYOUT_nodeinventorygpu = [
 {"column": "model",                "datatype": "VARCHAR", "length": "128"},
 {"column": "memory_mb",            "datatype": "INTEGER", "length": "10"},
 {"column": "uuid",                 "datatype": "VARCHAR", "length": "64"}]
+
+DATABASE_LAYOUT_nodeinventoryfirmware = [
+{"column": "id",                   "datatype": "INTEGER", "key": "PRIMARY", "keyadd": "AUTOINCREMENT"},
+{"column": "nodeid",               "datatype": "INTEGER", "length": "10"},
+{"column": "source",               "datatype": "VARCHAR", "length": "20"},
+{"column": "name",                 "datatype": "VARCHAR", "length": "128"},
+{"column": "component",            "datatype": "VARCHAR", "length": "128"},
+{"column": "version",              "datatype": "VARCHAR", "length": "128"},
+{"column": "updateable",           "datatype": "INTEGER", "length": "10"},
+{"column": "manufacturer",         "datatype": "VARCHAR", "length": "128"},
+{"column": "release_date",         "datatype": "VARCHAR", "length": "40"},
+{"column": "software_id",          "datatype": "VARCHAR", "length": "128"},
+{"column": "related_item",         "datatype": "VARCHAR", "length": "255"}]
 
 DATABASE_LAYOUT_nodeinventorynic = [
 {"column": "id",                   "datatype": "INTEGER", "key": "PRIMARY", "keyadd": "AUTOINCREMENT"},

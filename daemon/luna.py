@@ -47,6 +47,7 @@ from common.bootstrap import validate_bootstrap
 from utils.housekeeper import Housekeeper
 from utils.profile_sync import ProfileSync
 from utils.plugin_sync import PluginSync
+from utils.bios_push import BiosPush
 from utils.service import Service
 from utils.helper import Helper
 from utils.queue import Queue
@@ -57,6 +58,7 @@ from routes.boot_scripts import scripts_blueprint
 from routes.boot_profiles import boot_profiles_blueprint
 from routes.config_bmcsetup import bmcsetup_blueprint
 from routes.config_redfishsetup import redfishsetup_blueprint
+from routes.config_bios import bios_blueprint
 from routes.config_cluster import cluster_blueprint
 from routes.config_dns import dns_blueprint
 from routes.config_route import route_blueprint
@@ -171,6 +173,15 @@ def start_background_workers():
     # ---------------- profile delivery thread ---------------------
     executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
     register_future(executor, executor.submit(ProfileSync().sync_mother, event))
+
+    # ------------------ BIOS push thread ---------------------------
+    # its own executor, like every other worker. Sharing the one above put it in
+    # the queue behind sync_mother, which is a while True that only returns at
+    # shutdown - so it would never have started, and every queued push would sit
+    # there undrained with nothing saying why
+    LOGGER.info("Starting BIOS push thread")
+    executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
+    register_future(executor, executor.submit(BiosPush().push_mother, event))
     # ----------------- osimage tasks thread -----------------------
     executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
     register_future(executor, executor.submit(Housekeeper().osimage_tasks_mother, event))
@@ -338,6 +349,7 @@ daemon.register_blueprint(scripts_blueprint)
 daemon.register_blueprint(boot_profiles_blueprint)
 daemon.register_blueprint(bmcsetup_blueprint)
 daemon.register_blueprint(redfishsetup_blueprint)
+daemon.register_blueprint(bios_blueprint)
 daemon.register_blueprint(hash_blueprint)
 daemon.register_blueprint(cluster_blueprint)
 daemon.register_blueprint(dns_blueprint)

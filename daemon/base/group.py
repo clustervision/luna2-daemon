@@ -109,6 +109,7 @@ class Group():
                         group['interfaces'].append(interface)
                 del group['id']
                 group['setupbmc'] = Helper().make_bool(group['setupbmc'])
+                group['setupredfish'] = Helper().make_bool(group.get('setupredfish'))
                 group['netboot'] = Helper().make_bool(group['netboot'])
                 group['bootmenu'] = Helper().make_bool(group['bootmenu'])
                 group['osimage'] = None

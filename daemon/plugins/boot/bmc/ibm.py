@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 # This code is part of the TrinityX software suite
-# Copyright (C) 2023  ClusterVision Solutions b.v.
+# Copyright (C) 2026  ClusterVision Solutions b.v.
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -18,18 +18,16 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>
 
 """
-Plugin Class :: Dell Power Control
+Plugin Class :: IBM BMC - the same plugin as lenovo.py
 
-Dell iDRAC speaks standards-based Redfish, so everything this plugin does lives in
-the vendor-neutral plugin it inherits from - discovery, reset, identify and the
-log services, each already falling back to ipmitool.
+The search path resolves a plugin by what the hardware reports, normalised to a
+filename. IBM sold its x86 server line to Lenovo in 2014, so an x86 machine reporting 'IBM' is Lenovo hardware with an XCC,
+so it arrives here rather than at lenovo.py.
 
-It stays as a file for two reasons: it is the name the search path resolves for a
-Dell node, and it is where Dell-specific behaviour goes the day a board needs it.
-A per-model override sits beside it as dell/<model>.py.
-
-Selected by manufacturer: nodeinventory reports 'Dell Inc.', which the search path
-normalises to 'dell'.
+This exists as a file rather than as an entry in a lookup table on purpose: what
+is supported is then visible in a directory listing, and a site whose hardware
+reports something else adds one of these rather than waiting for us to extend a
+table it cannot see.
 """
 
 __author__      = 'Antoine Schonewille'
@@ -40,8 +38,8 @@ __maintainer__  = 'Antoine Schonewille'
 __email__       = 'antoine.schonewille@clustervision.com'
 __status__      = 'Development'
 
-from plugins.control.redfish import Plugin as RedfishPlugin
+from plugins.boot.bmc.lenovo import Plugin as VendorPlugin
 
 
-class Plugin(RedfishPlugin):
-    """Dell-specific control plugin. Standards-based behaviour is inherited."""
+class Plugin(VendorPlugin):
+    """IBM hardware, handled by lenovo.py."""

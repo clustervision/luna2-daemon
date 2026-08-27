@@ -48,6 +48,7 @@ from base.node import Node
 from base.profile import Profile
 from base.route import Route
 from utils.journal import Journal
+from utils.redfish import RedfishAccess
 from utils.ha import HA
 from utils.controller import Controller
 from utils.boot import Boot as UBoot
@@ -1862,10 +1863,23 @@ class Boot():
                 self.logger.warning(f"{exp}")
 
         ## BMC CODE SEGMENT
+        # node -> group -> vendor -> default, each narrowed by the model. boot/bmc
+        # plugins emit a shell snippet for the install rather than talking to a
+        # service, so there is no vendor-neutral one to fall back on and no generic
+        # candidate is asked for. boot/bmc/dell.py prefers racadm over ipmitool and
+        # has never been reachable, because a node is not called 'dell'.
+        #
+        # This runs while a node is being provisioned, so in-band inventory does not
+        # exist yet - the manufacturer comes from an out-of-band Redfish collection
+        # (TRIX-1981), which is why that had to land first. A node nobody has
+        # collected resolves exactly as it did before.
+        candidates, model = RedfishAccess().plugin_candidates(
+            nodename=data['nodename'], groupname=data['group'])
         bmc_plugin = Helper().plugin_load(
             self.boot_plugins,
             'boot/bmc',
-            [data['nodename'], data['group']]
+            candidates,
+            model
         )
         segment = str(bmc_plugin().config)
         template_data = template_data.replace("## BMC CODE SEGMENT",segment)

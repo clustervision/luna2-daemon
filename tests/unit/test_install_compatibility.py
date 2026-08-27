@@ -259,18 +259,29 @@ CLASSIC_FUNCTIONS = {
     'update_inventory',
     'update_node_ip',
     'update_status',
-    'update_system_info',
 }
 CLASSIC_FLOW = [
     'lunainit', 'dynamic_ip_check', 'node_scripts', 'prescript', 'bmcsetup',
+    # TRIX-143: hardware discovery moved up from the end of the install, deliberately.
+    # update_system_info was removed beside it: it ran dmidecode a second time to POST
+    # a vendor and an assettag that update_inventory already sends as manufacturer and
+    # serial. The daemon now derives the node's two columns from the snapshot, so they
+    # also refresh on an out-of-band collection instead of only at install.
+    # Everything it reads is available in the installer environment, so waiting for the
+    # image gains nothing - and loses the inventory for every node whose install fails
+    # after this point, which is the node somebody most needs the facts for. Before
+    # partscript, so the disks are recorded as found rather than as repartitioned; and
+    # before download_image, so a discovery boot can be acted on without first paying
+    # for an image nobody has decided on yet
+    'update_inventory',
     'partscript', 'download_image', 'unpack_imagefile', 'collect_mac_n_name_net',
     'change_net', 'node_secrets', 'postscript', 'node_roles',
     # TRIX-1968: profiles apply after roles; the call renders only for a node with
     # profiles assigned, so an unassigned node keeps its installer byte-identical
     'node_profiles',
     'postboot',
-    'fix_capabilities', 'restore_selinux_context', 'update_system_info',
-    'update_inventory', 'cleanup', 'update_status',
+    'fix_capabilities', 'restore_selinux_context',
+    'cleanup', 'update_status',
 ]
 
 
@@ -395,6 +406,25 @@ def _baseline_classic_template():
 # directions -- a line that is *changed* is a removal and an addition, and listing only
 # what appeared would wave the other half through.
 BLESSED_CLASSIC_REMOVALS = [
+    # TRIX-143: update_system_info collected a vendor and an assettag with a second
+    # dmidecode pass and a second POST, for values update_inventory already sends as
+    # manufacturer and serial. The node's two columns are now derived from the stored
+    # snapshot instead, so they survive - and they refresh on an out-of-band collection
+    # rather than only at install, which is what stops a replaced board reporting the
+    # machine it used to be. The whole function goes, and its call with it
+    'function update_system_info {',
+    '    dmidecode --help &> /dev/null',
+    '    ret=$?',
+    '    if [ "$ret" == "0" ]; then',
+    '        vendor=$(dmidecode -s system-manufacturer)',
+    '        assettag=$(dmidecode -s system-serial-number)',
+    '        json=\'{"config": {"node": { "{{ NODE_NAME }}": { "vendor": "\'$vendor\'", "assettag": "\'$assettag\'" } } } }\'',
+    '        curl $INTERFACE $INSECURE -X POST -H "x-access-tokens: $LUNA_TOKEN" -H "Content-Type: application/json" -d "$json" -s "${LUNA_URL}/config/node/{{ NODE_NAME }}"',
+    '    else',
+    '        echo "Luna2: dmidecode not found and could therefor not update system information"',
+    '    fi',
+    '}',
+    '',
     # postboot addressed the target root as ${rootmnt} while every other function in
     # the file, and postboot's own chroot line, use "/${rootmnt}". Made consistent.
     # Identical in effect wherever rootmnt is absolute (// collapses to /), and correct
@@ -405,6 +435,12 @@ BLESSED_CLASSIC_REMOVALS = [
     "cat << 'LUNAEOF' > ${rootmnt}/usr/local/sbin/postboot.sh",
     'chmod 750 ${rootmnt}/usr/local/sbin/postboot.sh 2> /dev/null',
     "cat << 'LUNAEOF' > ${rootmnt}/etc/systemd/system/luna-post-boot.service",
+    # TRIX-143: the other half of moving hardware discovery earlier - these two calls
+    # left the tail of the install, and the additions list carries them at their new
+    # position after bmcsetup. Nothing is dropped; a moved line is a removal and an
+    # addition, and both halves are enumerated so neither can be waved through alone
+    'update_system_info',
+    'update_inventory',
 ]
 BLESSED_CLASSIC_ADDITIONS = [
     # the other half of the postboot change above, now quoted like its neighbours
@@ -513,6 +549,19 @@ BLESSED_CLASSIC_ADDITIONS = [
     '    fi',
     # an operator reading a node's install log can tell which installer ran
     'echo "Luna2: install_mode is legacy, installing via the classic installer"',
+    # TRIX-143: hardware discovery moved up to here from the tail of the install. The
+    # two calls appear in the removals list above at their old position; these are the
+    # same two lines and the comment that explains why they sit where they now do.
+    # It also serves TRIX-933 - a discovery boot can be acted on before the node has
+    # paid for an image that the discovery may well change
+    '# Hardware discovery runs here rather than at the end of the install, and the',
+    '# position is the point of it. Everything it reads - dmidecode, /proc, lsblk,',
+    '# lspci, /sys/class/net - is available in the installer environment, so nothing',
+    '# is gained by waiting for the image: what is lost by waiting is every node whose',
+    '# install fails after this point, which reports no hardware at all and is exactly',
+    '# the node somebody needs the hardware facts for. Running before partscript also',
+    '# means the disks are recorded as found rather than as repartitioned.',
+    'update_inventory',
     '{% if LUNA_PROFILES %}',
     'node_profiles',
     '{% endif %}',

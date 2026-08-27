@@ -1,15 +1,60 @@
 # CONTROL PLUGIN - ipmi/bmc control
 #
-#        7 defined methods are mandatory which return <True|False>,message:
-#        - on
-#        - of
-#        - reset
-#        - cycle
-#        - indentify
-#        - noindentify
+#        9 defined methods are mandatory which return <True|False>,message:
+#        - power_on
+#        - power_off
+#        - power_reset
+#        - power_cycle
+#        - power_status
+#        - identify
+#        - no_identify
+#        - sel_list
+#        - sel_clear
 
 # Plugin selection based on the following search path and priority:
 #
 # 1 node name                 e.g. plugins/control/node001.py
 # 2 group name                e.g. plugins/control/compute.py
-# 3 default                   e.g. plugins/control/default.py
+# 3 manufacturer              e.g. plugins/control/dell.py
+# 4 redfish                   e.g. plugins/control/redfish.py
+# 5 default                   e.g. plugins/control/default.py
+#
+# Steps 1 to 4 are each narrowed by the node's model, which is offered first:
+#
+#   <name><model>.py    e.g. plugins/control/dellpoweredger650.py
+#   <name>/<model>.py   e.g. plugins/control/dell/poweredger650.py
+#   <name>/default.py   e.g. plugins/control/dell/default.py
+#   <name>.py           e.g. plugins/control/dell.py
+#
+# so hardware that differs within one vendor gets its own file without the vendor
+# file having to know about it.
+
+# The manufacturer and the model are DERIVED, from the node's nodeinventory row -
+# there is no column for an administrator to set. Where both an inband and a
+# redfish snapshot exist the redfish one wins, because it is the BMC's own answer
+# and it exists before a node has ever been provisioned.
+#
+# Both are normalised into a filename: lowercased, non-alphanumerics dropped, and
+# for the manufacturer only the first word is kept, since vendor strings carry a
+# company suffix. So:
+#
+#   'Dell Inc.'                  -> dell
+#   'VMware, Inc.'               -> vmware
+#   'Supermicro'                 -> supermicro
+#   'PowerEdge R650'             -> poweredger650
+#
+# Note what first-word costs: a board reporting 'Hewlett Packard Enterprise'
+# resolves to 'hewlett', not 'hpe'. Name the file after what the hardware actually
+# reports rather than after what the vendor is called.
+
+# Step 4, the vendor-neutral redfish plugin, is only offered where there is
+# evidence the BMC speaks Redfish - a redfishsetup assigned to the node or its
+# group, or an inventory snapshot that came from Redfish. Without that evidence a
+# node falls through to default.py exactly as it always did. The reason is cost:
+# a redfish plugin tries Redfish and falls back to ipmitool, so offering it to a
+# BMC that does not answer buys a connect timeout per node.
+
+# redfish.py holds everything standards-based. A vendor file subclasses it and
+# overrides only what that vendor does differently - dell.py overrides nothing
+# today, and exists as the name the search path resolves and as the place Dell
+# behaviour goes when a board needs it.

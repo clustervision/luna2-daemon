@@ -1,0 +1,3025 @@
+{
+ "@odata.context": "/redfish/v1/$metadata#AttributeRegistry.AttributeRegistry",
+ "@odata.etag": "Dummyetag",
+ "@odata.id ": "/redfish/v1/Registries/BiosAttributeRegistry.json",
+ "@odata.type": "#AttributeRegistry.v1_2_0.AttributeRegistry",
+ "Description": "This registry defines a representation of BIOS Attribute instances",
+ "Id": "BiosAttributeRegistry",
+ "Language": "en-US",
+ "Name": "BIOS Attribute Registry",
+ "OwningEntity": "GBT",
+ "RegistryEntries": {
+  "Attributes": [
+   {
+    "AttributeName": "Naples0023",
+    "DefaultValue": "Auto",
+    "DisplayName": "SMT Mode",
+    "HelpText": "Simultaneous multithreading. OFF=1T single-thread Auto=2T two-thread if capable.",
+    "ReadOnly": false,
+    "Type": "Enumeration",
+    "Value": [
+     {
+      "ValueDisplayName": "Off",
+      "ValueName": "Off"
+     },
+     {
+      "ValueDisplayName": "Auto",
+      "ValueName": "Auto"
+     }
+    ]
+   },
+   {
+    "AttributeName": "Naples0024",
+    "DefaultValue": "1 Step",
+    "DisplayName": "PCIe Link Training Type",
+    "HelpText": "PCIe Link training in 1 or 2 steps.",
+    "ReadOnly": false,
+    "Type": "Enumeration",
+    "Value": [
+     {
+      "ValueDisplayName": "1 Step",
+      "ValueName": "1 Step"
+     },
+     {
+      "ValueDisplayName": "2 Step",
+      "ValueName": "2 Step"
+     }
+    ]
+   },
+   {
+    "AttributeName": "Naples0184",
+    "DefaultValue": "Enabled",
+    "DisplayName": "RCD Parity",
+    "HelpText": "RCD Parity (RDimmParEn)",
+    "ReadOnly": false,
+    "Type": "Enumeration",
+    "Value": [
+     {
+      "ValueDisplayName": "Enabled",
+      "ValueName": "Enabled"
+     },
+     {
+      "ValueDisplayName": "Disabled",
+      "ValueName": "Disabled"
+     }
+    ]
+   },
+   {
+    "AttributeName": "Naples0187",
+    "DefaultValue": "Disabled",
+    "DisplayName": "Write CRC Enable",
+    "HelpText": "Write CRC Enable",
+    "ReadOnly": false,
+    "Type": "Enumeration",
+    "Value": [
+     {
+      "ValueDisplayName": "Disabled",
+      "ValueName": "Disabled"
+     },
+     {
+      "ValueDisplayName": "Enabled",
+      "ValueName": "Enabled"
+     },
+     {
+      "ValueDisplayName": "Auto",
+      "ValueName": "Auto"
+     }
+    ]
+   },
+   {
+    "AttributeName": "SETUP001",
+    "DisplayName": "Administrator Password",
+    "HelpText": "Set Administrator Password",
+    "MaxLength": 20,
+    "MinLength": 3,
+    "ReadOnly": false,
+    "Type": "Password"
+   },
+   {
+    "AttributeName": "SETUP002",
+    "DisplayName": "User Password",
+    "HelpText": "Set User Password",
+    "MaxLength": 20,
+    "MinLength": 3,
+    "ReadOnly": false,
+    "Type": "Password"
+   },
+   {
+    "AttributeName": "TCG003",
+    "DefaultValue": "Enable",
+    "DisplayName": "  Security Device Support",
+    "HelpText": "Enables or Disables BIOS support for security device. O.S. will not show Security Device. TCG EFI protocol and INT1A interface will not be available.",
+    "ReadOnly": false,
+    "Type": "Enumeration",
+    "Value": [
+     {
+      "ValueDisplayName": "Disable",
+      "ValueName": "Disable"
+     },
+     {
+      "ValueDisplayName": "Enable",
+      "ValueName": "Enable"
+     }
+    ]
+   },
+   {
+    "AttributeName": "REDF005",
+    "DefaultValue": "",
+    "DisplayName": "BMC Redfish Version",
+    "HelpText": "Redfish version supported by BMC",
+    "MaxLength": 5,
+    "MinLength": 5,
+    "ReadOnly": true,
+    "Type": "String"
+   },
+   {
+    "AttributeName": "REDF006",
+    "DefaultValue": "",
+    "DisplayName": "BIOS Redfish Version",
+    "HelpText": "Redfish version supported by BIOS",
+    "MaxLength": 5,
+    "MinLength": 5,
+    "ReadOnly": true,
+    "Type": "String"
+   },
+   {
+    "AttributeName": "REDF001",
+    "DefaultValue": "Basic Authentication",
+    "DisplayName": "Authentication mode",
+    "HelpText": "Select authentication mode",
+    "ReadOnly": false,
+    "Type": "Enumeration",
+    "Value": [
+     {
+      "ValueDisplayName": "Basic Authentication",
+      "ValueName": "Basic Authentication"
+     },
+     {
+      "ValueDisplayName": "Session Authentication",
+      "ValueName": "Session Authentication"
+     }
+    ]
+   },
+   {
+    "AttributeName": "REDF002",
+    "DefaultValue": "",
+    "DisplayName": "IP address",
+    "HelpText": "Enter IP address",
+    "MaxLength": 15,
+    "MinLength": 7,
+    "ReadOnly": false,
+    "Type": "String"
+   },
+   {
+    "AttributeName": "REDF003",
+    "DefaultValue": "",
+    "DisplayName": "IP Mask address",
+    "HelpText": "Enter IP Mask address",
+    "MaxLength": 15,
+    "MinLength": 7,
+    "ReadOnly": false,
+    "Type": "String"
+   },
+   {
+    "AttributeName": "REDF004",
+    "DefaultValue": 65535,
+    "DisplayName": "IP Port",
+    "HelpText": "Enter IP Port",
+    "LowerBound": 0,
+    "ReadOnly": false,
+    "ScalarIncrement": 1,
+    "Type": "Integer",
+    "UpperBound": 65535
+   },
+   {
+    "AttributeName": "TER010",
+    "DefaultValue": "COM1 / Serial Over LAN",
+    "DisplayName": "Redirection COM Port",
+    "HelpText": "Select a COM port to display redirection of Legacy OS and Legacy OPROM Messages",
+    "ReadOnly": false,
+    "Type": "Enumeration",
+    "Value": [
+     {
+      "ValueDisplayName": "COM1 / Serial Over LAN",
+      "ValueName": "COM1 / Serial Over LAN"
+     }
+    ]
+   },
+   {
+    "AttributeName": "TER009",
+    "DefaultValue": "80x24",
+    "DisplayName": "Resolution",
+    "HelpText": "On Legacy OS, the Number of Rows and Columns supported redirection",
+    "ReadOnly": false,
+    "Type": "Enumeration",
+    "Value": [
+     {
+      "ValueDisplayName": "80x24",
+      "ValueName": "80x24"
+     },
+     {
+      "ValueDisplayName": "80x25",
+      "ValueName": "80x25"
+     }
+    ]
+   },
+   {
+    "AttributeName": "TER00F",
+    "DefaultValue": "Always Enable",
+    "DisplayName": "Redirect After POST",
+    "HelpText": "When Bootloader is selected, then Legacy Console Redirection is disabled before booting to legacy OS. When Always Enable is selected, then Legacy Console Redirection is enabled for legacy OS. Default setting for this option is set to Always Enable.",
+    "ReadOnly": false,
+    "Type": "Enumeration",
+    "Value": [
+     {
+      "ValueDisplayName": "Always Enable",
+      "ValueName": "Always Enable"
+     },
+     {
+      "ValueDisplayName": "BootLoader",
+      "ValueName": "BootLoader"
+     }
+    ]
+   },
+   {
+    "AttributeName": "TER00A",
+    "DefaultValue": true,
+    "DisplayName": "VT-UTF8 Combo Key Support",
+    "HelpText": "Enable VT-UTF8 Combination Key Support for ANSI/VT100 terminals",
+    "ReadOnly": false,
+    "Type": "Boolean"
+   },
+   {
+    "AttributeName": "TER00B",
+    "DefaultValue": false,
+    "DisplayName": "Recorder Mode",
+    "HelpText": "With this mode enabled only text will be sent. This is to capture Terminal data.",
+    "ReadOnly": false,
+    "Type": "Boolean"
+   },
+   {
+    "AttributeName": "TER008",
+    "DefaultValue": true,
+    "DisplayName": "Resolution 100x31",
+    "HelpText": "Enables or disables extended terminal resolution",
+    "ReadOnly": false,
+    "Type": "Boolean"
+   },
+   {
+    "AttributeName": "TER00D",
+    "DefaultValue": "VT100",
+    "DisplayName": "Putty KeyPad",
+    "HelpText": "Select FunctionKey and KeyPad on Putty.",
+    "ReadOnly": false,
+    "Type": "Enumeration",
+    "Value": [
+     {
+      "ValueDisplayName": "VT100",
+      "ValueName": "VT100"
+     },
+     {
+      "ValueDisplayName": "LINUX",
+      "ValueName": "LINUX"
+     },
+     {
+      "ValueDisplayName": "XTERMR6",
+      "ValueName": "XTERMR6"
+     },
+     {
+      "ValueDisplayName": "SCO",
+      "ValueName": "SCO"
+     },
+     {
+      "ValueDisplayName": "ESCN",
+      "ValueName": "ESCN"
+     },
+     {
+      "ValueDisplayName": "VT400",
+      "ValueName": "VT400"
+     }
+    ]
+   },
+   {
+    "AttributeName": "Naples0021",
+    "DefaultValue": "Enabled",
+    "DisplayName": "SVM Mode",
+    "HelpText": "Enable/disable CPU Virtualization",
+    "ReadOnly": false,
+    "Type": "Enumeration",
+    "Value": [
+     {
+      "ValueDisplayName": "Disabled",
+      "ValueName": "Disabled"
+     },
+     {
+      "ValueDisplayName": "Enabled",
+      "ValueName": "Enabled"
+     }
+    ]
+   },
+   {
+    "AttributeName": "Naples0022",
+    "DefaultValue": "Enabled",
+    "DisplayName": "SMEE",
+    "HelpText": "Control secure memory encryption enable",
+    "ReadOnly": false,
+    "Type": "Enumeration",
+    "Value": [
+     {
+      "ValueDisplayName": "Disabled",
+      "ValueName": "Disabled"
+     },
+     {
+      "ValueDisplayName": "Enabled",
+      "ValueName": "Enabled"
+     }
+    ]
+   },
+   {
+    "AttributeName": "GBT0132",
+    "DefaultValue": "64 PCI Bus Clocks",
+    "DisplayName": "PCI-X Latency Timer",
+    "HelpText": "Value to be programmed into PCI Latency Timer Register.",
+    "ReadOnly": false,
+    "Type": "Enumeration",
+    "Value": [
+     {
+      "ValueDisplayName": "32 PCI Bus Clocks",
+      "ValueName": "32 PCI Bus Clocks"
+     },
+     {
+      "ValueDisplayName": "64 PCI Bus Clocks",
+      "ValueName": "64 PCI Bus Clocks"
+     },
+     {
+      "ValueDisplayName": "96 PCI Bus Clocks",
+      "ValueName": "96 PCI Bus Clocks"
+     },
+     {
+      "ValueDisplayName": "128 PCI Bus Clocks",
+      "ValueName": "128 PCI Bus Clocks"
+     },
+     {
+      "ValueDisplayName": "160 PCI Bus Clocks",
+      "ValueName": "160 PCI Bus Clocks"
+     },
+     {
+      "ValueDisplayName": "192 PCI Bus Clocks",
+      "ValueName": "192 PCI Bus Clocks"
+     },
+     {
+      "ValueDisplayName": "224 PCI Bus Clocks",
+      "ValueName": "224 PCI Bus Clocks"
+     },
+     {
+      "ValueDisplayName": "248 PCI Bus Clocks",
+      "ValueName": "248 PCI Bus Clocks"
+     }
+    ]
+   },
+   {
+    "AttributeName": "GBT0133",
+    "DefaultValue": "Disabled",
+    "DisplayName": "VGA Palette Snoop",
+    "HelpText": "Enables or Disables VGA Palette Registers Snooping.",
+    "ReadOnly": false,
+    "Type": "Enumeration",
+    "Value": [
+     {
+      "ValueDisplayName": "Disabled",
+      "ValueName": "Disabled"
+     },
+     {
+      "ValueDisplayName": "Enabled",
+      "ValueName": "Enabled"
+     }
+    ]
+   },
+   {
+    "AttributeName": "GBT0134",
+    "DefaultValue": "Disabled",
+    "DisplayName": "PERR# Generation",
+    "HelpText": "Enables or Disables PCI Device to Generate PERR#.",
+    "ReadOnly": false,
+    "Type": "Enumeration",
+    "Value": [
+     {
+      "ValueDisplayName": "Disabled",
+      "ValueName": "Disabled"
+     },
+     {
+      "ValueDisplayName": "Enabled",
+      "ValueName": "Enabled"
+     }
+    ]
+   },
+   {
+    "AttributeName": "PCIS003",
+    "DefaultValue": "Enabled",
+    "DisplayName": "Above 4G Decoding",
+    "HelpText": "Enables or Disables 64bit capable Devices to be Decoded in Above 4G Address Space (Only if System Supports 64 bit PCI Decoding).",
+    "ReadOnly": false,
+    "Type": "Enumeration",
+    "Value": [
+     {
+      "ValueDisplayName": "Disabled",
+      "ValueName": "Disabled"
+     },
+     {
+      "ValueDisplayName": "Enabled",
+      "ValueName": "Enabled"
+     }
+    ]
+   },
+   {
+    "AttributeName": "PCIS007",
+    "DefaultValue": "Enabled",
+    "DisplayName": "SR-IOV Support",
+    "HelpText": "If system has SR-IOV capable PCIe Devices, this option Enables or Disables Single Root IO Virtualization Support.",
+    "ReadOnly": false,
+    "Type": "Enumeration",
+    "Value": [
+     {
+      "ValueDisplayName": "Disabled",
+      "ValueName": "Disabled"
+     },
+     {
+      "ValueDisplayName": "Enabled",
+      "ValueName": "Enabled"
+     }
+    ]
+   },
+   {
+    "AttributeName": "GBT0135",
+    "DefaultValue": "Enabled",
+    "DisplayName": "Relaxed Ordering",
+    "HelpText": "Enables or Disables PCI Express Device Relaxed Ordering.",
+    "ReadOnly": false,
+    "Type": "Enumeration",
+    "Value": [
+     {
+      "ValueDisplayName": "Disabled",
+      "ValueName": "Disabled"
+     },
+     {
+      "ValueDisplayName": "Enabled",
+      "ValueName": "Enabled"
+     }
+    ]
+   },
+   {
+    "AttributeName": "GBT0136",
+    "DefaultValue": "Enabled",
+    "DisplayName": "No Snoop",
+    "HelpText": "Enables or Disables PCI Express Device No Snoop option.",
+    "ReadOnly": false,
+    "Type": "Enumeration",
+    "Value": [
+     {
+      "ValueDisplayName": "Disabled",
+      "ValueName": "Disabled"
+     },
+     {
+      "ValueDisplayName": "Enabled",
+      "ValueName": "Enabled"
+     }
+    ]
+   },
+   {
+    "AttributeName": "GBT0137",
+    "DefaultValue": "Auto",
+    "DisplayName": "Maximum Payload",
+    "HelpText": "Set Maximum Payload of PCI Express Device or allow System BIOS to select the value.",
+    "ReadOnly": false,
+    "Type": "Enumeration",
+    "Value": [
+     {
+      "ValueDisplayName": "Auto",
+      "ValueName": "Auto"
+     },
+     {
+      "ValueDisplayName": "128 Bytes",
+      "ValueName": "128 Bytes"
+     },
+     {
+      "ValueDisplayName": "256 Bytes",
+      "ValueName": "256 Bytes"
+     },
+     {
+      "ValueDisplayName": "512 Bytes",
+      "ValueName": "512 Bytes"
+     },
+     {
+      "ValueDisplayName": "1024 Bytes",
+      "ValueName": "1024 Bytes"
+     },
+     {
+      "ValueDisplayName": "2048 Bytes",
+      "ValueName": "2048 Bytes"
+     },
+     {
+      "ValueDisplayName": "4096 Bytes",
+      "ValueName": "4096 Bytes"
+     }
+    ]
+   },
+   {
+    "AttributeName": "GBT0138",
+    "DefaultValue": "Auto",
+    "DisplayName": "Maximum Read Request",
+    "HelpText": "Set Maximum Read Request Size of PCI Express Device or allow System BIOS to select the value.",
+    "ReadOnly": false,
+    "Type": "Enumeration",
+    "Value": [
+     {
+      "ValueDisplayName": "Auto",
+      "ValueName": "Auto"
+     },
+     {
+      "ValueDisplayName": "128 Bytes",
+      "ValueName": "128 Bytes"
+     },
+     {
+      "ValueDisplayName": "256 Bytes",
+      "ValueName": "256 Bytes"
+     },
+     {
+      "ValueDisplayName": "512 Bytes",
+      "ValueName": "512 Bytes"
+     },
+     {
+      "ValueDisplayName": "1024 Bytes",
+      "ValueName": "1024 Bytes"
+     },
+     {
+      "ValueDisplayName": "2048 Bytes",
+      "ValueName": "2048 Bytes"
+     },
+     {
+      "ValueDisplayName": "4096 Bytes",
+      "ValueName": "4096 Bytes"
+     }
+    ]
+   },
+   {
+    "AttributeName": "GBT0139",
+    "DefaultValue": "Disabled",
+    "DisplayName": "Extended Synch",
+    "HelpText": "If ENABLED allows generation of Extended Synchronization patterns.",
+    "ReadOnly": false,
+    "Type": "Enumeration",
+    "Value": [
+     {
+      "ValueDisplayName": "Disabled",
+      "ValueName": "Disabled"
+     },
+     {
+      "ValueDisplayName": "Enabled",
+      "ValueName": "Enabled"
+     }
+    ]
+   },
+   {
+    "AttributeName": "GBT0140",
+    "DefaultValue": "5",
+    "DisplayName": "Link Training Retry",
+    "HelpText": "Defines number of Retry Attempts software will take to retrain the link if previous training attempt was unsuccessful.",
+    "ReadOnly": false,
+    "Type": "Enumeration",
+    "Value": [
+     {
+      "ValueDisplayName": "Disabled",
+      "ValueName": "Disabled"
+     },
+     {
+      "ValueDisplayName": "2",
+      "ValueName": "2"
+     },
+     {
+      "ValueDisplayName": "3",
+      "ValueName": "3"
+     },
+     {
+      "ValueDisplayName": "5",
+      "ValueName": "5"
+     }
+    ]
+   },
+   {
+    "AttributeName": "GBT0141",
+    "DefaultValue": 1000,
+    "DisplayName": "Link Training Timeout (uS)",
+    "HelpText": "Defines number of Microseconds software will wait before polling 'Link Training' bit in Link Status register. Value range from 10 to 10000 uS.",
+    "LowerBound": 10,
+    "ReadOnly": false,
+    "ScalarIncrement": 10,
+    "Type": "Integer",
+    "UpperBound": 10000
+   },
+   {
+    "AttributeName": "GBT0144",
+    "DefaultValue": "Disabled",
+    "DisplayName": "ARI Forwarding",
+    "HelpText": "If supported by hardware and set to 'Enabled', the Downstream Port disables its traditional Device Number field being 0 enforcement when turning a Type1 Configuration Request into a Type0 Configuration Request, permitting access to Extended Functions in an ARI Device immediately below the Port. Default value: Disabled",
+    "ReadOnly": false,
+    "Type": "Enumeration",
+    "Value": [
+     {
+      "ValueDisplayName": "Disabled",
+      "ValueName": "Disabled"
+     },
+     {
+      "ValueDisplayName": "Enabled",
+      "ValueName": "Enabled"
+     }
+    ]
+   },
+   {
+    "AttributeName": "GBT0145",
+    "DefaultValue": "Disabled",
+    "DisplayName": "AtomicOp Egress Blocking",
+    "HelpText": "If supported by hardware and set to 'Enabled', outbound AtomicOp Requests via Egress Ports will be blocked.",
+    "ReadOnly": false,
+    "Type": "Enumeration",
+    "Value": [
+     {
+      "ValueDisplayName": "Disabled",
+      "ValueName": "Disabled"
+     },
+     {
+      "ValueDisplayName": "Enabled",
+      "ValueName": "Enabled"
+     }
+    ]
+   },
+   {
+    "AttributeName": "GBT0146",
+    "DefaultValue": "Disabled",
+    "DisplayName": "IDO Request Enable",
+    "HelpText": "If supported by hardware and set to 'Enabled', this permits setting the number of ID-Based Ordering (IDO) bit (Attribute[2]) requests to be initiated.",
+    "ReadOnly": false,
+    "Type": "Enumeration",
+    "Value": [
+     {
+      "ValueDisplayName": "Disabled",
+      "ValueName": "Disabled"
+     },
+     {
+      "ValueDisplayName": "Enabled",
+      "ValueName": "Enabled"
+     }
+    ]
+   },
+   {
+    "AttributeName": "GBT0147",
+    "DefaultValue": "Disabled",
+    "DisplayName": "IDO Completion Enable",
+    "HelpText": "If supported by hardware and set to 'Enabled', this permits setting the number of ID-Based Ordering (IDO) bit (Attribute[2]) requests to be initiated.",
+    "ReadOnly": false,
+    "Type": "Enumeration",
+    "Value": [
+     {
+      "ValueDisplayName": "Disabled",
+      "ValueName": "Disabled"
+     },
+     {
+      "ValueDisplayName": "Enabled",
+      "ValueName": "Enabled"
+     }
+    ]
+   },
+   {
+    "AttributeName": "GBT0148",
+    "DefaultValue": "Disabled",
+    "DisplayName": "End-End TLP Prefix Blocking",
+    "HelpText": "If supported by hardware and set to 'Enabled', this function will block forwarding of TLPs containing End-End TLP Prefixes.",
+    "ReadOnly": false,
+    "Type": "Enumeration",
+    "Value": [
+     {
+      "ValueDisplayName": "Disabled",
+      "ValueName": "Disabled"
+     },
+     {
+      "ValueDisplayName": "Enabled",
+      "ValueName": "Enabled"
+     }
+    ]
+   },
+   {
+    "AttributeName": "GBT0149",
+    "DefaultValue": "Auto",
+    "DisplayName": "Target Link Speed",
+    "HelpText": "If supported by hardware and set to 'Force to X.X GT/s' for Downstream Ports, this sets an upper limit on Link operational speed by restricting the values advertised by the Upstream component in its training sequences. When 'Auto' is selected HW initialized data will be used.",
+    "ReadOnly": false,
+    "Type": "Enumeration",
+    "Value": [
+     {
+      "ValueDisplayName": "Auto",
+      "ValueName": "Auto"
+     },
+     {
+      "ValueDisplayName": "Force to 2.5 GT/s",
+      "ValueName": "Force to 2.5 GT/s"
+     },
+     {
+      "ValueDisplayName": "Force to 5.0 GT/s",
+      "ValueName": "Force to 5.0 GT/s"
+     },
+     {
+      "ValueDisplayName": "Force to 8.0 GT/s",
+      "ValueName": "Force to 8.0 GT/s"
+     }
+    ]
+   },
+   {
+    "AttributeName": "GBT0150",
+    "DefaultValue": "Disabled",
+    "DisplayName": "Clock Power Management",
+    "HelpText": "If supported by hardware and set to 'Enabled', the device is permitted to use CLKREQ# signal for power management of Link clock in accordance to protocol defined in appropriate form factor specification.",
+    "ReadOnly": false,
+    "Type": "Enumeration",
+    "Value": [
+     {
+      "ValueDisplayName": "Disabled",
+      "ValueName": "Disabled"
+     },
+     {
+      "ValueDisplayName": "Enabled",
+      "ValueName": "Enabled"
+     }
+    ]
+   },
+   {
+    "AttributeName": "GBT0151",
+    "DefaultValue": "Enabled",
+    "DisplayName": "Hardware Autonomous Width",
+    "HelpText": "If supported by hardware and set to 'Disabled', this will disable the hardware's ability to change link width except width size reduction for the purpose of correcting unstable link operation.",
+    "ReadOnly": false,
+    "Type": "Enumeration",
+    "Value": [
+     {
+      "ValueDisplayName": "Enabled",
+      "ValueName": "Enabled"
+     },
+     {
+      "ValueDisplayName": "Disabled",
+      "ValueName": "Disabled"
+     }
+    ]
+   },
+   {
+    "AttributeName": "GBT0152",
+    "DefaultValue": "Enabled",
+    "DisplayName": "Hardware Autonomous Speed",
+    "HelpText": "If supported by hardware and set to 'Disabled', this will disable the hardware's ability to change link speed except speed rate reduction for the purpose of correcting unstable link operation.",
+    "ReadOnly": false,
+    "Type": "Enumeration",
+    "Value": [
+     {
+      "ValueDisplayName": "Enabled",
+      "ValueName": "Enabled"
+     },
+     {
+      "ValueDisplayName": "Disabled",
+      "ValueName": "Disabled"
+     }
+    ]
+   },
+   {
+    "AttributeName": "PRC0001",
+    "DefaultValue": "Enabled",
+    "DisplayName": "Post Error Message",
+    "HelpText": "Post Error Message Support Enabled/Disabled",
+    "ReadOnly": false,
+    "Type": "Enumeration",
+    "Value": [
+     {
+      "ValueDisplayName": "Disabled",
+      "ValueName": "Disabled"
+     },
+     {
+      "ValueDisplayName": "Enabled",
+      "ValueName": "Enabled"
+     }
+    ]
+   },
+   {
+    "AttributeName": "GBT0160",
+    "DefaultValue": "Disabled",
+    "DisplayName": "ERP mode",
+    "HelpText": "ErP Lot 9 support",
+    "ReadOnly": false,
+    "Type": "Enumeration",
+    "Value": [
+     {
+      "ValueDisplayName": "Disabled",
+      "ValueName": "Disabled"
+     },
+     {
+      "ValueDisplayName": "Lot 9",
+      "ValueName": "Lot 9"
+     }
+    ]
+   },
+   {
+    "AttributeName": "GBT0001",
+    "DefaultValue": "Enabled",
+    "DisplayName": "SLSAS Port 0 I/O ROM",
+    "HelpText": "Enable/Disable SLSAS Port 0 I/O ROM.",
+    "ReadOnly": false,
+    "Type": "Enumeration",
+    "Value": [
+     {
+      "ValueDisplayName": "Disabled",
+      "ValueName": "Disabled"
+     },
+     {
+      "ValueDisplayName": "Enabled",
+      "ValueName": "Enabled"
+     }
+    ]
+   },
+   {
+    "AttributeName": "GBT0005",
+    "DefaultValue": "Enabled",
+    "DisplayName": "SLSAS Port 1 I/O ROM",
+    "HelpText": "Enable/Disable SLSAS Port 1 I/O ROM.",
+    "ReadOnly": false,
+    "Type": "Enumeration",
+    "Value": [
+     {
+      "ValueDisplayName": "Disabled",
+      "ValueName": "Disabled"
+     },
+     {
+      "ValueDisplayName": "Enabled",
+      "ValueName": "Enabled"
+     }
+    ]
+   },
+   {
+    "AttributeName": "GBT0009",
+    "DefaultValue": "Enabled",
+    "DisplayName": "SLSAS Port 2 I/O ROM",
+    "HelpText": "Enable/Disable SLSAS Port 2 I/O ROM.",
+    "ReadOnly": false,
+    "Type": "Enumeration",
+    "Value": [
+     {
+      "ValueDisplayName": "Disabled",
+      "ValueName": "Disabled"
+     },
+     {
+      "ValueDisplayName": "Enabled",
+      "ValueName": "Enabled"
+     }
+    ]
+   },
+   {
+    "AttributeName": "GBT0013",
+    "DefaultValue": "Enabled",
+    "DisplayName": "SLSAS Port 3 I/O ROM",
+    "HelpText": "Enable/Disable SLSAS Port 3 I/O ROM.",
+    "ReadOnly": false,
+    "Type": "Enumeration",
+    "Value": [
+     {
+      "ValueDisplayName": "Disabled",
+      "ValueName": "Disabled"
+     },
+     {
+      "ValueDisplayName": "Enabled",
+      "ValueName": "Enabled"
+     }
+    ]
+   },
+   {
+    "AttributeName": "GBT0017",
+    "DefaultValue": "Enabled",
+    "DisplayName": "SLSAS Port 4 I/O ROM",
+    "HelpText": "Enable/Disable SLSAS Port 4 I/O ROM.",
+    "ReadOnly": false,
+    "Type": "Enumeration",
+    "Value": [
+     {
+      "ValueDisplayName": "Disabled",
+      "ValueName": "Disabled"
+     },
+     {
+      "ValueDisplayName": "Enabled",
+      "ValueName": "Enabled"
+     }
+    ]
+   },
+   {
+    "AttributeName": "GBT0021",
+    "DefaultValue": "Enabled",
+    "DisplayName": "SLSAS Port 5 I/O ROM",
+    "HelpText": "Enable/Disable SLSAS Port 5 I/O ROM.",
+    "ReadOnly": false,
+    "Type": "Enumeration",
+    "Value": [
+     {
+      "ValueDisplayName": "Disabled",
+      "ValueName": "Disabled"
+     },
+     {
+      "ValueDisplayName": "Enabled",
+      "ValueName": "Enabled"
+     }
+    ]
+   },
+   {
+    "AttributeName": "GBT0025",
+    "DefaultValue": "Enabled",
+    "DisplayName": "Riser 1 or 2 I/O ROM",
+    "HelpText": "Enable/Disable Riser 1 or 2 I/O ROM.",
+    "ReadOnly": false,
+    "Type": "Enumeration",
+    "Value": [
+     {
+      "ValueDisplayName": "Disabled",
+      "ValueName": "Disabled"
+     },
+     {
+      "ValueDisplayName": "Enabled",
+      "ValueName": "Enabled"
+     }
+    ]
+   },
+   {
+    "AttributeName": "GBT0049",
+    "DefaultValue": "Enabled",
+    "DisplayName": "Riser 3 I/O ROM",
+    "HelpText": "Enable/Disable Riser 3 I/O ROM.",
+    "ReadOnly": false,
+    "Type": "Enumeration",
+    "Value": [
+     {
+      "ValueDisplayName": "Disabled",
+      "ValueName": "Disabled"
+     },
+     {
+      "ValueDisplayName": "Enabled",
+      "ValueName": "Enabled"
+     }
+    ]
+   },
+   {
+    "AttributeName": "GBT0073",
+    "DefaultValue": "Enabled",
+    "DisplayName": "Riser 4 I/O ROM",
+    "HelpText": "Enable/Disable Riser 4 I/O ROM.",
+    "ReadOnly": false,
+    "Type": "Enumeration",
+    "Value": [
+     {
+      "ValueDisplayName": "Disabled",
+      "ValueName": "Disabled"
+     },
+     {
+      "ValueDisplayName": "Enabled",
+      "ValueName": "Enabled"
+     }
+    ]
+   },
+   {
+    "AttributeName": "GBT0089",
+    "DefaultValue": "Enabled",
+    "DisplayName": "MEZZ 1 I/O ROM",
+    "HelpText": "Enable/Disable MEZZ 1 I/O ROM.",
+    "ReadOnly": false,
+    "Type": "Enumeration",
+    "Value": [
+     {
+      "ValueDisplayName": "Disabled",
+      "ValueName": "Disabled"
+     },
+     {
+      "ValueDisplayName": "Enabled",
+      "ValueName": "Enabled"
+     }
+    ]
+   },
+   {
+    "AttributeName": "GBT0097",
+    "DefaultValue": "Enabled",
+    "DisplayName": "Onboard LAN Controller",
+    "HelpText": "Enable/Disable LAN1 controller.",
+    "ReadOnly": false,
+    "Type": "Enumeration",
+    "Value": [
+     {
+      "ValueDisplayName": "Disabled",
+      "ValueName": "Disabled"
+     },
+     {
+      "ValueDisplayName": "Enabled",
+      "ValueName": "Enabled"
+     }
+    ]
+   },
+   {
+    "AttributeName": "GBT0113",
+    "DefaultValue": "Enabled",
+    "DisplayName": "Onboard LAN1 I/O ROM",
+    "HelpText": "Enable/Disable LAN1 I/O ROM.",
+    "ReadOnly": false,
+    "Type": "Enumeration",
+    "Value": [
+     {
+      "ValueDisplayName": "Disabled",
+      "ValueName": "Disabled"
+     },
+     {
+      "ValueDisplayName": "Enabled",
+      "ValueName": "Enabled"
+     }
+    ]
+   },
+   {
+    "AttributeName": "GBT0114",
+    "DefaultValue": "Enabled",
+    "DisplayName": "Onboard LAN2 I/O ROM",
+    "HelpText": "Enable/Disable LAN2 I/O ROM.",
+    "ReadOnly": false,
+    "Type": "Enumeration",
+    "Value": [
+     {
+      "ValueDisplayName": "Disabled",
+      "ValueName": "Disabled"
+     },
+     {
+      "ValueDisplayName": "Enabled",
+      "ValueName": "Enabled"
+     }
+    ]
+   },
+   {
+    "AttributeName": "Naples0025",
+    "DefaultValue": "Enabled",
+    "DisplayName": "Page Table Entry Speculative Lock",
+    "HelpText": "Recommended to enable for normal operation.  Disabling this forces Page Table Entry locks to only be scheduled non-speculatively, resulting in performance loss.",
+    "ReadOnly": false,
+    "Type": "Enumeration",
+    "Value": [
+     {
+      "ValueDisplayName": "Disabled",
+      "ValueName": "Disabled"
+     },
+     {
+      "ValueDisplayName": "Enabled",
+      "ValueName": "Enabled"
+     }
+    ]
+   },
+   {
+    "AttributeName": "SECB001",
+    "DefaultValue": "Disabled",
+    "DisplayName": "Secure Boot",
+    "HelpText": "Secure Boot feature is Active if Secure Boot is Enabled,  Platform Key(PK) is enrolled and the System is in User mode.  The mode change requires platform reset",
+    "ReadOnly": false,
+    "Type": "Enumeration",
+    "Value": [
+     {
+      "ValueDisplayName": "Disabled",
+      "ValueName": "Disabled"
+     },
+     {
+      "ValueDisplayName": "Enabled",
+      "ValueName": "Enabled"
+     }
+    ]
+   },
+   {
+    "AttributeName": "SECB002",
+    "DefaultValue": "Custom",
+    "DisplayName": "Secure Boot Mode",
+    "HelpText": "Secure Boot mode options:  Standard or Custom.  In Custom mode, Secure Boot Policy variables can be configured by a physically present user without full authentication",
+    "ReadOnly": false,
+    "Type": "Enumeration",
+    "Value": [
+     {
+      "ValueDisplayName": "Standard",
+      "ValueName": "Standard"
+     },
+     {
+      "ValueDisplayName": "Custom",
+      "ValueName": "Custom"
+     }
+    ]
+   },
+   {
+    "AttributeName": "SECB008",
+    "DefaultValue": "Disabled",
+    "DisplayName": "Factory Key Provision",
+    "HelpText": "Install factory default Secure Boot keys after the platform reset and while the System is in Setup mode",
+    "ReadOnly": false,
+    "Type": "Enumeration",
+    "Value": [
+     {
+      "ValueDisplayName": "Disabled",
+      "ValueName": "Disabled"
+     },
+     {
+      "ValueDisplayName": "Enabled",
+      "ValueName": "Enabled"
+     }
+    ]
+   },
+   {
+    "AttributeName": "SETUP003",
+    "DefaultValue": 2,
+    "DisplayName": "Setup Prompt Timeout",
+    "HelpText": "Number of seconds to wait for setup activation key. 65535(0xFFFF) means indefinite waiting.",
+    "LowerBound": 0,
+    "ReadOnly": false,
+    "ScalarIncrement": 1,
+    "Type": "Integer",
+    "UpperBound": 65535
+   },
+   {
+    "AttributeName": "SETUP004",
+    "DefaultValue": "On",
+    "DisplayName": "Bootup NumLock State",
+    "HelpText": "Select the keyboard NumLock state",
+    "ReadOnly": false,
+    "Type": "Enumeration",
+    "Value": [
+     {
+      "ValueDisplayName": "On",
+      "ValueName": "On"
+     },
+     {
+      "ValueDisplayName": "Off",
+      "ValueName": "Off"
+     }
+    ]
+   },
+   {
+    "AttributeName": "SETUP005",
+    "DefaultValue": true,
+    "DisplayName": "Quiet Boot",
+    "HelpText": "Enables or disables Quiet Boot option",
+    "ReadOnly": false,
+    "Type": "Boolean"
+   },
+   {
+    "AttributeName": "FBO001",
+    "DefaultValue": "UEFI",
+    "DisplayName": "Boot mode select",
+    "HelpText": "Select boot mode LEGACY/UEFI",
+    "ReadOnly": false,
+    "Type": "Enumeration",
+    "Value": [
+     {
+      "ValueDisplayName": "LEGACY",
+      "ValueName": "LEGACY"
+     },
+     {
+      "ValueDisplayName": "UEFI",
+      "ValueName": "UEFI"
+     }
+    ]
+   },
+   {
+    "AttributeName": "FBO201",
+    "DefaultValue": "Hard Disk",
+    "DisplayName": "Boot Option #1",
+    "HelpText": "Sets the system boot order",
+    "ReadOnly": false,
+    "Type": "Enumeration",
+    "Value": [
+     {
+      "ValueDisplayName": "Hard Disk",
+      "ValueName": "Hard Disk"
+     },
+     {
+      "ValueDisplayName": "CD/DVD",
+      "ValueName": "CD/DVD"
+     },
+     {
+      "ValueDisplayName": "USB Device",
+      "ValueName": "USB Device"
+     },
+     {
+      "ValueDisplayName": "Network:UEFI: PXE IP4 Intel(R) Network AA:BB:CC:DD:EE:FF",
+      "ValueName": "Network:UEFI: PXE IP4 Intel(R) Network AA:BB:CC:DD:EE:FF"
+     },
+     {
+      "ValueDisplayName": "UEFI AP:UEFI: Built-in EFI Shell",
+      "ValueName": "UEFI AP:UEFI: Built-in EFI Shell"
+     },
+     {
+      "ValueDisplayName": "Disabled",
+      "ValueName": "Disabled"
+     }
+    ]
+   },
+   {
+    "AttributeName": "FBO202",
+    "DefaultValue": "CD/DVD",
+    "DisplayName": "Boot Option #2",
+    "HelpText": "Sets the system boot order",
+    "ReadOnly": false,
+    "Type": "Enumeration",
+    "Value": [
+     {
+      "ValueDisplayName": "Hard Disk",
+      "ValueName": "Hard Disk"
+     },
+     {
+      "ValueDisplayName": "CD/DVD",
+      "ValueName": "CD/DVD"
+     },
+     {
+      "ValueDisplayName": "USB Device",
+      "ValueName": "USB Device"
+     },
+     {
+      "ValueDisplayName": "Network:UEFI: PXE IP4 Intel(R) Network AA:BB:CC:DD:EE:FF",
+      "ValueName": "Network:UEFI: PXE IP4 Intel(R) Network AA:BB:CC:DD:EE:FF"
+     },
+     {
+      "ValueDisplayName": "UEFI AP:UEFI: Built-in EFI Shell",
+      "ValueName": "UEFI AP:UEFI: Built-in EFI Shell"
+     },
+     {
+      "ValueDisplayName": "Disabled",
+      "ValueName": "Disabled"
+     }
+    ]
+   },
+   {
+    "AttributeName": "FBO203",
+    "DefaultValue": "USB Device",
+    "DisplayName": "Boot Option #3",
+    "HelpText": "Sets the system boot order",
+    "ReadOnly": false,
+    "Type": "Enumeration",
+    "Value": [
+     {
+      "ValueDisplayName": "Hard Disk",
+      "ValueName": "Hard Disk"
+     },
+     {
+      "ValueDisplayName": "CD/DVD",
+      "ValueName": "CD/DVD"
+     },
+     {
+      "ValueDisplayName": "USB Device",
+      "ValueName": "USB Device"
+     },
+     {
+      "ValueDisplayName": "Network:UEFI: PXE IP4 Intel(R) Network AA:BB:CC:DD:EE:FF",
+      "ValueName": "Network:UEFI: PXE IP4 Intel(R) Network AA:BB:CC:DD:EE:FF"
+     },
+     {
+      "ValueDisplayName": "UEFI AP:UEFI: Built-in EFI Shell",
+      "ValueName": "UEFI AP:UEFI: Built-in EFI Shell"
+     },
+     {
+      "ValueDisplayName": "Disabled",
+      "ValueName": "Disabled"
+     }
+    ]
+   },
+   {
+    "AttributeName": "FBO204",
+    "DefaultValue": "Network:UEFI: PXE IP4 Intel(R) Network AA:BB:CC:DD:EE:FF",
+    "DisplayName": "Boot Option #4",
+    "HelpText": "Sets the system boot order",
+    "ReadOnly": false,
+    "Type": "Enumeration",
+    "Value": [
+     {
+      "ValueDisplayName": "Hard Disk",
+      "ValueName": "Hard Disk"
+     },
+     {
+      "ValueDisplayName": "CD/DVD",
+      "ValueName": "CD/DVD"
+     },
+     {
+      "ValueDisplayName": "USB Device",
+      "ValueName": "USB Device"
+     },
+     {
+      "ValueDisplayName": "Network:UEFI: PXE IP4 Intel(R) Network AA:BB:CC:DD:EE:FF",
+      "ValueName": "Network:UEFI: PXE IP4 Intel(R) Network AA:BB:CC:DD:EE:FF"
+     },
+     {
+      "ValueDisplayName": "UEFI AP:UEFI: Built-in EFI Shell",
+      "ValueName": "UEFI AP:UEFI: Built-in EFI Shell"
+     },
+     {
+      "ValueDisplayName": "Disabled",
+      "ValueName": "Disabled"
+     }
+    ]
+   },
+   {
+    "AttributeName": "FBO205",
+    "DefaultValue": "UEFI AP:UEFI: Built-in EFI Shell",
+    "DisplayName": "Boot Option #5",
+    "HelpText": "Sets the system boot order",
+    "ReadOnly": false,
+    "Type": "Enumeration",
+    "Value": [
+     {
+      "ValueDisplayName": "Hard Disk",
+      "ValueName": "Hard Disk"
+     },
+     {
+      "ValueDisplayName": "CD/DVD",
+      "ValueName": "CD/DVD"
+     },
+     {
+      "ValueDisplayName": "USB Device",
+      "ValueName": "USB Device"
+     },
+     {
+      "ValueDisplayName": "Network:UEFI: PXE IP4 Intel(R) Network AA:BB:CC:DD:EE:FF",
+      "ValueName": "Network:UEFI: PXE IP4 Intel(R) Network AA:BB:CC:DD:EE:FF"
+     },
+     {
+      "ValueDisplayName": "UEFI AP:UEFI: Built-in EFI Shell",
+      "ValueName": "UEFI AP:UEFI: Built-in EFI Shell"
+     },
+     {
+      "ValueDisplayName": "Disabled",
+      "ValueName": "Disabled"
+     }
+    ]
+   },
+   {
+    "AttributeName": "FBO101",
+    "DefaultValue": "Hard Disk",
+    "DisplayName": "Boot Option #1",
+    "HelpText": "Sets the system boot order",
+    "ReadOnly": false,
+    "Type": "Enumeration",
+    "Value": [
+     {
+      "ValueDisplayName": "Hard Disk",
+      "ValueName": "Hard Disk"
+     },
+     {
+      "ValueDisplayName": "CD/DVD",
+      "ValueName": "CD/DVD"
+     },
+     {
+      "ValueDisplayName": "USB Device",
+      "ValueName": "USB Device"
+     },
+     {
+      "ValueDisplayName": "Network",
+      "ValueName": "Network"
+     },
+     {
+      "ValueDisplayName": "Disabled",
+      "ValueName": "Disabled"
+     }
+    ]
+   },
+   {
+    "AttributeName": "FBO102",
+    "DefaultValue": "CD/DVD",
+    "DisplayName": "Boot Option #2",
+    "HelpText": "Sets the system boot order",
+    "ReadOnly": false,
+    "Type": "Enumeration",
+    "Value": [
+     {
+      "ValueDisplayName": "Hard Disk",
+      "ValueName": "Hard Disk"
+     },
+     {
+      "ValueDisplayName": "CD/DVD",
+      "ValueName": "CD/DVD"
+     },
+     {
+      "ValueDisplayName": "USB Device",
+      "ValueName": "USB Device"
+     },
+     {
+      "ValueDisplayName": "Network",
+      "ValueName": "Network"
+     },
+     {
+      "ValueDisplayName": "Disabled",
+      "ValueName": "Disabled"
+     }
+    ]
+   },
+   {
+    "AttributeName": "FBO103",
+    "DefaultValue": "USB Device",
+    "DisplayName": "Boot Option #3",
+    "HelpText": "Sets the system boot order",
+    "ReadOnly": false,
+    "Type": "Enumeration",
+    "Value": [
+     {
+      "ValueDisplayName": "Hard Disk",
+      "ValueName": "Hard Disk"
+     },
+     {
+      "ValueDisplayName": "CD/DVD",
+      "ValueName": "CD/DVD"
+     },
+     {
+      "ValueDisplayName": "USB Device",
+      "ValueName": "USB Device"
+     },
+     {
+      "ValueDisplayName": "Network",
+      "ValueName": "Network"
+     },
+     {
+      "ValueDisplayName": "Disabled",
+      "ValueName": "Disabled"
+     }
+    ]
+   },
+   {
+    "AttributeName": "FBO104",
+    "DefaultValue": "Network",
+    "DisplayName": "Boot Option #4",
+    "HelpText": "Sets the system boot order",
+    "ReadOnly": false,
+    "Type": "Enumeration",
+    "Value": [
+     {
+      "ValueDisplayName": "Hard Disk",
+      "ValueName": "Hard Disk"
+     },
+     {
+      "ValueDisplayName": "CD/DVD",
+      "ValueName": "CD/DVD"
+     },
+     {
+      "ValueDisplayName": "USB Device",
+      "ValueName": "USB Device"
+     },
+     {
+      "ValueDisplayName": "Network",
+      "ValueName": "Network"
+     },
+     {
+      "ValueDisplayName": "Disabled",
+      "ValueName": "Disabled"
+     }
+    ]
+   },
+   {
+    "AttributeName": "Naples0044",
+    "DefaultValue": "Auto",
+    "DisplayName": "Core Performance Boost",
+    "HelpText": "Disable CPB",
+    "ReadOnly": false,
+    "Type": "Enumeration",
+    "Value": [
+     {
+      "ValueDisplayName": "Disabled",
+      "ValueName": "Disabled"
+     },
+     {
+      "ValueDisplayName": "Auto",
+      "ValueName": "Auto"
+     }
+    ]
+   },
+   {
+    "AttributeName": "Naples0046",
+    "DefaultValue": "Auto",
+    "DisplayName": "Global C-state Control",
+    "HelpText": "Controls IO based C-state generation and DF C-states.",
+    "ReadOnly": false,
+    "Type": "Enumeration",
+    "Value": [
+     {
+      "ValueDisplayName": "Disabled",
+      "ValueName": "Disabled"
+     },
+     {
+      "ValueDisplayName": "Enabled",
+      "ValueName": "Enabled"
+     },
+     {
+      "ValueDisplayName": "Auto",
+      "ValueName": "Auto"
+     }
+    ]
+   },
+   {
+    "AttributeName": "Naples0050",
+    "DefaultValue": 1,
+    "DisplayName": "SEV-ES ASID Space Limit",
+    "HelpText": "SEV VMs using ASIDs below the SEV-ES ASID Space Limit must enable the SEV-ES feature. The valid values for this field are from 0x1 (1) - 0x10 (16).",
+    "LowerBound": 1,
+    "ReadOnly": false,
+    "ScalarIncrement": 0,
+    "Type": "Integer",
+    "UpperBound": 16
+   },
+   {
+    "AttributeName": "Naples0107",
+    "DefaultValue": "Auto",
+    "DisplayName": "L1 Stream HW Prefetcher",
+    "HelpText": "Option to Enable | Disable L1 Stream HW Prefetcher",
+    "ReadOnly": false,
+    "Type": "Enumeration",
+    "Value": [
+     {
+      "ValueDisplayName": "Disable",
+      "ValueName": "Disable"
+     },
+     {
+      "ValueDisplayName": "Enable",
+      "ValueName": "Enable"
+     },
+     {
+      "ValueDisplayName": "Auto",
+      "ValueName": "Auto"
+     }
+    ]
+   },
+   {
+    "AttributeName": "Naples0108",
+    "DefaultValue": "Auto",
+    "DisplayName": "L2 Stream HW Prefetcher",
+    "HelpText": "Option to Enable | Disable L2 Stream HW Prefetcher",
+    "ReadOnly": false,
+    "Type": "Enumeration",
+    "Value": [
+     {
+      "ValueDisplayName": "Disable",
+      "ValueName": "Disable"
+     },
+     {
+      "ValueDisplayName": "Enable",
+      "ValueName": "Enable"
+     },
+     {
+      "ValueDisplayName": "Auto",
+      "ValueName": "Auto"
+     }
+    ]
+   },
+   {
+    "AttributeName": "Naples0118",
+    "DefaultValue": "Auto",
+    "DisplayName": "Memory interleaving",
+    "HelpText": "Controls fabric level memory interleaving (AUTO, none, channel, die, socket). Note that channel, die, and socket has requirements on memory populations and it will be ignored if the memory doesn't support the selected option.",
+    "ReadOnly": false,
+    "Type": "Enumeration",
+    "Value": [
+     {
+      "ValueDisplayName": "None",
+      "ValueName": "None"
+     },
+     {
+      "ValueDisplayName": "Channel",
+      "ValueName": "Channel"
+     },
+     {
+      "ValueDisplayName": "Die",
+      "ValueName": "Die"
+     },
+     {
+      "ValueDisplayName": "Socket",
+      "ValueName": "Socket"
+     },
+     {
+      "ValueDisplayName": "Auto",
+      "ValueName": "Auto"
+     }
+    ]
+   },
+   {
+    "AttributeName": "Naples0119",
+    "DefaultValue": "Auto",
+    "DisplayName": "Memory interleaving size",
+    "HelpText": "Controls the memory interleaving size. The valid values are AUTO, 256 bytes, 512 bytes, 1 Kbytes or 2Kbytes. This determines the starting address of the interleave (bit 8, 9, 10 or 11).",
+    "ReadOnly": false,
+    "Type": "Enumeration",
+    "Value": [
+     {
+      "ValueDisplayName": "256 Bytes",
+      "ValueName": "256 Bytes"
+     },
+     {
+      "ValueDisplayName": "512 Bytes",
+      "ValueName": "512 Bytes"
+     },
+     {
+      "ValueDisplayName": "1 KB",
+      "ValueName": "1 KB"
+     },
+     {
+      "ValueDisplayName": "2 KB",
+      "ValueName": "2 KB"
+     },
+     {
+      "ValueDisplayName": "Auto",
+      "ValueName": "Auto"
+     }
+    ]
+   },
+   {
+    "AttributeName": "Naples0122",
+    "DefaultValue": "Auto",
+    "DisplayName": "1TB remap",
+    "HelpText": "Attempt to remap DRAM out of the space just below the 1TB boundary.  The ability to remap depends on DRAM configuration and interleaving selection, and may not always be possible.",
+    "ReadOnly": false,
+    "Type": "Enumeration",
+    "Value": [
+     {
+      "ValueDisplayName": "Do not remap",
+      "ValueName": "Do not remap"
+     },
+     {
+      "ValueDisplayName": "Attempt to remap",
+      "ValueName": "Attempt to remap"
+     },
+     {
+      "ValueDisplayName": "Auto",
+      "ValueName": "Auto"
+     }
+    ]
+   },
+   {
+    "AttributeName": "Naples0123",
+    "DefaultValue": "Auto",
+    "DisplayName": "ACPI SRAT below 1MB reporting mode",
+    "HelpText": "Controls whether or not 0xA0000 - 1MB is reported as DRAM in the SRAT.",
+    "ReadOnly": false,
+    "Type": "Enumeration",
+    "Value": [
+     {
+      "ValueDisplayName": "Do not report",
+      "ValueName": "Do not report"
+     },
+     {
+      "ValueDisplayName": "Report as DRAM",
+      "ValueName": "Report as DRAM"
+     },
+     {
+      "ValueDisplayName": "Auto",
+      "ValueName": "Auto"
+     }
+    ]
+   },
+   {
+    "AttributeName": "Naples0134",
+    "DefaultValue": "Auto",
+    "DisplayName": "Overclock",
+    "HelpText": "Memory Overclock Settings",
+    "ReadOnly": false,
+    "Type": "Enumeration",
+    "Value": [
+     {
+      "ValueDisplayName": "Auto",
+      "ValueName": "Auto"
+     },
+     {
+      "ValueDisplayName": "Enabled",
+      "ValueName": "Enabled"
+     }
+    ]
+   },
+   {
+    "AttributeName": "Naples0191",
+    "DefaultValue": "Auto",
+    "DisplayName": "DRAM ECC Symbol Size",
+    "HelpText": "DRAM ECC Symbol Size (x4/x8) - UMC_CH::EccCtrl[EccSymbolSize]",
+    "ReadOnly": false,
+    "Type": "Enumeration",
+    "Value": [
+     {
+      "ValueDisplayName": "x4",
+      "ValueName": "x4"
+     },
+     {
+      "ValueDisplayName": "x8",
+      "ValueName": "x8"
+     },
+     {
+      "ValueDisplayName": "Auto",
+      "ValueName": "Auto"
+     }
+    ]
+   },
+   {
+    "AttributeName": "Naples0192",
+    "DefaultValue": "Auto",
+    "DisplayName": "DRAM ECC Enable",
+    "HelpText": "Use this option to enable / disable DRAM ECC. Auto will set ECC to enable.",
+    "ReadOnly": false,
+    "Type": "Enumeration",
+    "Value": [
+     {
+      "ValueDisplayName": "Disabled",
+      "ValueName": "Disabled"
+     },
+     {
+      "ValueDisplayName": "Enabled",
+      "ValueName": "Enabled"
+     },
+     {
+      "ValueDisplayName": "Auto",
+      "ValueName": "Auto"
+     }
+    ]
+   },
+   {
+    "AttributeName": "Naples0193",
+    "DefaultValue": "Auto",
+    "DisplayName": "TSME",
+    "HelpText": "Transparent SME: AddrTweakEn = 1; ForceEncrEn =1; DataEncrEn = 0",
+    "ReadOnly": false,
+    "Type": "Enumeration",
+    "Value": [
+     {
+      "ValueDisplayName": "Disabled",
+      "ValueName": "Disabled"
+     },
+     {
+      "ValueDisplayName": "Enabled",
+      "ValueName": "Enabled"
+     },
+     {
+      "ValueDisplayName": "Auto",
+      "ValueName": "Auto"
+     }
+    ]
+   },
+   {
+    "AttributeName": "Naples0194",
+    "DefaultValue": "Auto",
+    "DisplayName": "Data Scramble",
+    "HelpText": "Data scrambling: DataScrambleEn",
+    "ReadOnly": false,
+    "Type": "Enumeration",
+    "Value": [
+     {
+      "ValueDisplayName": "Enabled",
+      "ValueName": "Enabled"
+     },
+     {
+      "ValueDisplayName": "Disabled",
+      "ValueName": "Disabled"
+     },
+     {
+      "ValueDisplayName": "Auto",
+      "ValueName": "Auto"
+     }
+    ]
+   },
+   {
+    "AttributeName": "Naples0195",
+    "DefaultValue": "Auto",
+    "DisplayName": "Chipselect Interleaving",
+    "HelpText": "Interleave memory blocks across the DRAM chip selects for CPU 0.",
+    "ReadOnly": false,
+    "Type": "Enumeration",
+    "Value": [
+     {
+      "ValueDisplayName": "Disabled",
+      "ValueName": "Disabled"
+     },
+     {
+      "ValueDisplayName": "Auto",
+      "ValueName": "Auto"
+     }
+    ]
+   },
+   {
+    "AttributeName": "Naples0196",
+    "DefaultValue": "Auto",
+    "DisplayName": "BankGroupSwap",
+    "HelpText": "No help string",
+    "ReadOnly": false,
+    "Type": "Enumeration",
+    "Value": [
+     {
+      "ValueDisplayName": "Enabled",
+      "ValueName": "Enabled"
+     },
+     {
+      "ValueDisplayName": "Disabled",
+      "ValueName": "Disabled"
+     },
+     {
+      "ValueDisplayName": "Auto",
+      "ValueName": "Auto"
+     }
+    ]
+   },
+   {
+    "AttributeName": "Naples0208",
+    "DefaultValue": "Auto",
+    "DisplayName": "Determinism Slider",
+    "HelpText": "Auto = Use default performance determinism settings  Power  Performance",
+    "ReadOnly": false,
+    "Type": "Enumeration",
+    "Value": [
+     {
+      "ValueDisplayName": "Auto",
+      "ValueName": "Auto"
+     },
+     {
+      "ValueDisplayName": "Power",
+      "ValueName": "Power"
+     },
+     {
+      "ValueDisplayName": "Performance",
+      "ValueName": "Performance"
+     }
+    ]
+   },
+   {
+    "AttributeName": "Naples0209",
+    "DefaultValue": "Auto",
+    "DisplayName": "cTDP Control",
+    "HelpText": "Auto = Use the fused cTDP  Manual = User can set customized cTDP",
+    "ReadOnly": false,
+    "Type": "Enumeration",
+    "Value": [
+     {
+      "ValueDisplayName": "Manual",
+      "ValueName": "Manual"
+     },
+     {
+      "ValueDisplayName": "Auto",
+      "ValueName": "Auto"
+     }
+    ]
+   },
+   {
+    "AttributeName": "Naples0223",
+    "DefaultValue": "Disabled",
+    "DisplayName": "IOMMU",
+    "HelpText": "Enable/Disable IOMMU",
+    "ReadOnly": false,
+    "Type": "Enumeration",
+    "Value": [
+     {
+      "ValueDisplayName": "Disabled",
+      "ValueName": "Disabled"
+     },
+     {
+      "ValueDisplayName": "Enabled",
+      "ValueName": "Enabled"
+     },
+     {
+      "ValueDisplayName": "Auto",
+      "ValueName": "Auto"
+     }
+    ]
+   },
+   {
+    "AttributeName": "Naples0239",
+    "DefaultValue": "Disabled",
+    "DisplayName": "Ignore sideband",
+    "HelpText": "Disable sideband",
+    "ReadOnly": false,
+    "Type": "Enumeration",
+    "Value": [
+     {
+      "ValueDisplayName": "Disabled",
+      "ValueName": "Disabled"
+     },
+     {
+      "ValueDisplayName": "Enabled",
+      "ValueName": "Enabled"
+     },
+     {
+      "ValueDisplayName": "Auto",
+      "ValueName": "Auto"
+     }
+    ]
+   },
+   {
+    "AttributeName": "Naples0240",
+    "DefaultValue": "Disabled",
+    "DisplayName": "Disable L1 w/a",
+    "HelpText": "Disable L1 w/a",
+    "ReadOnly": false,
+    "Type": "Enumeration",
+    "Value": [
+     {
+      "ValueDisplayName": "Disabled",
+      "ValueName": "Disabled"
+     },
+     {
+      "ValueDisplayName": "Enabled",
+      "ValueName": "Enabled"
+     },
+     {
+      "ValueDisplayName": "Auto",
+      "ValueName": "Auto"
+     }
+    ]
+   },
+   {
+    "AttributeName": "Naples0241",
+    "DefaultValue": "Disabled",
+    "DisplayName": "Disable BridgeDis",
+    "HelpText": "No BridgeDis update based on sideband",
+    "ReadOnly": false,
+    "Type": "Enumeration",
+    "Value": [
+     {
+      "ValueDisplayName": "Disabled",
+      "ValueName": "Disabled"
+     },
+     {
+      "ValueDisplayName": "Enabled",
+      "ValueName": "Enabled"
+     },
+     {
+      "ValueDisplayName": "Auto",
+      "ValueName": "Auto"
+     }
+    ]
+   },
+   {
+    "AttributeName": "Naples0242",
+    "DefaultValue": "Disabled",
+    "DisplayName": "Toggle RRC Enable",
+    "HelpText": "Toggle RRC Enable during hot plug events",
+    "ReadOnly": false,
+    "Type": "Enumeration",
+    "Value": [
+     {
+      "ValueDisplayName": "Disabled",
+      "ValueName": "Disabled"
+     },
+     {
+      "ValueDisplayName": "Enabled",
+      "ValueName": "Enabled"
+     },
+     {
+      "ValueDisplayName": "Auto",
+      "ValueName": "Auto"
+     }
+    ]
+   },
+   {
+    "AttributeName": "Naples0243",
+    "DefaultValue": "Disabled",
+    "DisplayName": "IRQ sets BridgeDis",
+    "HelpText": "Register control of BridgeDis only follows DL_Active",
+    "ReadOnly": false,
+    "Type": "Enumeration",
+    "Value": [
+     {
+      "ValueDisplayName": "Disabled",
+      "ValueName": "Disabled"
+     },
+     {
+      "ValueDisplayName": "Enabled",
+      "ValueName": "Enabled"
+     },
+     {
+      "ValueDisplayName": "Auto",
+      "ValueName": "Auto"
+     }
+    ]
+   },
+   {
+    "AttributeName": "Naples0265",
+    "DefaultValue": "Last State",
+    "DisplayName": "Ac Loss Control",
+    "HelpText": "Select Ac Loss Control Method",
+    "ReadOnly": false,
+    "Type": "Enumeration",
+    "Value": [
+     {
+      "ValueDisplayName": "Power Off",
+      "ValueName": "Power Off"
+     },
+     {
+      "ValueDisplayName": "Power On",
+      "ValueName": "Power On"
+     },
+     {
+      "ValueDisplayName": "Last State",
+      "ValueName": "Last State"
+     }
+    ]
+   },
+   {
+    "AttributeName": "IPMI001",
+    "DefaultValue": "No",
+    "DisplayName": "Erase SEL",
+    "HelpText": "Choose options for erasing SEL.",
+    "ReadOnly": false,
+    "Type": "Enumeration",
+    "Value": [
+     {
+      "ValueDisplayName": "No",
+      "ValueName": "No"
+     },
+     {
+      "ValueDisplayName": "Yes, On next reset",
+      "ValueName": "Yes, On next reset"
+     },
+     {
+      "ValueDisplayName": "Yes, On every reset",
+      "ValueName": "Yes, On every reset"
+     }
+    ]
+   },
+   {
+    "AttributeName": "IPMI002",
+    "DefaultValue": "Do Nothing",
+    "DisplayName": "When SEL is Full",
+    "HelpText": "Choose options for reactions to a full SEL.",
+    "ReadOnly": false,
+    "Type": "Enumeration",
+    "Value": [
+     {
+      "ValueDisplayName": "Do Nothing",
+      "ValueName": "Do Nothing"
+     },
+     {
+      "ValueDisplayName": "Erase Immediately",
+      "ValueName": "Erase Immediately"
+     }
+    ]
+   },
+   {
+    "AttributeName": "IPMI601",
+    "DefaultValue": "Unspecified",
+    "DisplayName": "IPv6 BMC Lan Option",
+    "HelpText": "Enable/Disable IPv6 BMC LAN channel function. Disable option will not modify any BMC network during BIOS Phase",
+    "ReadOnly": false,
+    "Type": "Enumeration",
+    "Value": [
+     {
+      "ValueDisplayName": "Unspecified",
+      "ValueName": "Unspecified"
+     },
+     {
+      "ValueDisplayName": "Disable",
+      "ValueName": "Disable"
+     },
+     {
+      "ValueDisplayName": "Enable",
+      "ValueName": "Enable"
+     }
+    ]
+   },
+   {
+    "AttributeName": "IPMI602",
+    "DefaultValue": "Unspecified",
+    "DisplayName": "IPv6 BMC Lan IP Address Source",
+    "HelpText": "Select to configure LAN channel parameters statically or dynamically(by BIOS or BMC)",
+    "ReadOnly": false,
+    "Type": "Enumeration",
+    "Value": [
+     {
+      "ValueDisplayName": "Unspecified",
+      "ValueName": "Unspecified"
+     },
+     {
+      "ValueDisplayName": "Static",
+      "ValueName": "Static"
+     },
+     {
+      "ValueDisplayName": "Dynamic-Obtained by BMC running DHCP",
+      "ValueName": "Dynamic-Obtained by BMC running DHCP"
+     }
+    ]
+   }
+  ],
+  "Dependencies": [
+   {
+    "Dependency": {
+     "MapFrom": [
+      {
+       "MapFromAttribute": "SYSACS",
+       "MapFromCondition": "EQU",
+       "MapFromProperty": "CurrentValue",
+       "MapFromValue": 1
+      }
+     ],
+     "MapToAttribute": "SETUP001",
+     "MapToProperty": "GrayOut",
+     "MapToValue": "true"
+    },
+    "DependencyFor": "SYSACS",
+    "Type": "Map"
+   },
+   {
+    "Dependency": {
+     "MapFrom": [
+      {
+       "MapFromAttribute": "SYSACS",
+       "MapFromCondition": "EQU",
+       "MapFromProperty": "CurrentValue",
+       "MapFromValue": 1
+      }
+     ],
+     "MapToAttribute": "GBT0132",
+     "MapToProperty": "GrayOut",
+     "MapToValue": "true"
+    },
+    "DependencyFor": "SYSACS",
+    "Type": "Map"
+   },
+   {
+    "Dependency": {
+     "MapFrom": [
+      {
+       "MapFromAttribute": "SYSACS",
+       "MapFromCondition": "EQU",
+       "MapFromProperty": "CurrentValue",
+       "MapFromValue": 1
+      }
+     ],
+     "MapToAttribute": "GBT0133",
+     "MapToProperty": "GrayOut",
+     "MapToValue": "true"
+    },
+    "DependencyFor": "SYSACS",
+    "Type": "Map"
+   },
+   {
+    "Dependency": {
+     "MapFrom": [
+      {
+       "MapFromAttribute": "SYSACS",
+       "MapFromCondition": "EQU",
+       "MapFromProperty": "CurrentValue",
+       "MapFromValue": 1
+      }
+     ],
+     "MapToAttribute": "GBT0134",
+     "MapToProperty": "GrayOut",
+     "MapToValue": "true"
+    },
+    "DependencyFor": "SYSACS",
+    "Type": "Map"
+   },
+   {
+    "Dependency": {
+     "MapFrom": [
+      {
+       "MapFromAttribute": "SYSACS",
+       "MapFromCondition": "EQU",
+       "MapFromProperty": "CurrentValue",
+       "MapFromValue": 1
+      }
+     ],
+     "MapToAttribute": "PCIS003",
+     "MapToProperty": "GrayOut",
+     "MapToValue": "true"
+    },
+    "DependencyFor": "SYSACS",
+    "Type": "Map"
+   },
+   {
+    "Dependency": {
+     "MapFrom": [
+      {
+       "MapFromAttribute": "SYSACS",
+       "MapFromCondition": "EQU",
+       "MapFromProperty": "CurrentValue",
+       "MapFromValue": 1
+      }
+     ],
+     "MapToAttribute": "PCIS007",
+     "MapToProperty": "GrayOut",
+     "MapToValue": "true"
+    },
+    "DependencyFor": "SYSACS",
+    "Type": "Map"
+   },
+   {
+    "Dependency": {
+     "MapFrom": [
+      {
+       "MapFromAttribute": "SYSACS",
+       "MapFromCondition": "EQU",
+       "MapFromProperty": "CurrentValue",
+       "MapFromValue": 1
+      }
+     ],
+     "MapToAttribute": "GBT0135",
+     "MapToProperty": "GrayOut",
+     "MapToValue": "true"
+    },
+    "DependencyFor": "SYSACS",
+    "Type": "Map"
+   },
+   {
+    "Dependency": {
+     "MapFrom": [
+      {
+       "MapFromAttribute": "SYSACS",
+       "MapFromCondition": "EQU",
+       "MapFromProperty": "CurrentValue",
+       "MapFromValue": 1
+      }
+     ],
+     "MapToAttribute": "GBT0136",
+     "MapToProperty": "GrayOut",
+     "MapToValue": "true"
+    },
+    "DependencyFor": "SYSACS",
+    "Type": "Map"
+   },
+   {
+    "Dependency": {
+     "MapFrom": [
+      {
+       "MapFromAttribute": "SYSACS",
+       "MapFromCondition": "EQU",
+       "MapFromProperty": "CurrentValue",
+       "MapFromValue": 1
+      }
+     ],
+     "MapToAttribute": "GBT0137",
+     "MapToProperty": "GrayOut",
+     "MapToValue": "true"
+    },
+    "DependencyFor": "SYSACS",
+    "Type": "Map"
+   },
+   {
+    "Dependency": {
+     "MapFrom": [
+      {
+       "MapFromAttribute": "SYSACS",
+       "MapFromCondition": "EQU",
+       "MapFromProperty": "CurrentValue",
+       "MapFromValue": 1
+      }
+     ],
+     "MapToAttribute": "GBT0138",
+     "MapToProperty": "GrayOut",
+     "MapToValue": "true"
+    },
+    "DependencyFor": "SYSACS",
+    "Type": "Map"
+   },
+   {
+    "Dependency": {
+     "MapFrom": [
+      {
+       "MapFromAttribute": "SYSACS",
+       "MapFromCondition": "EQU",
+       "MapFromProperty": "CurrentValue",
+       "MapFromValue": 1
+      }
+     ],
+     "MapToAttribute": "GBT0139",
+     "MapToProperty": "GrayOut",
+     "MapToValue": "true"
+    },
+    "DependencyFor": "SYSACS",
+    "Type": "Map"
+   },
+   {
+    "Dependency": {
+     "MapFrom": [
+      {
+       "MapFromAttribute": "SYSACS",
+       "MapFromCondition": "EQU",
+       "MapFromProperty": "CurrentValue",
+       "MapFromValue": 1
+      }
+     ],
+     "MapToAttribute": "GBT0140",
+     "MapToProperty": "GrayOut",
+     "MapToValue": "true"
+    },
+    "DependencyFor": "SYSACS",
+    "Type": "Map"
+   },
+   {
+    "Dependency": {
+     "MapFrom": [
+      {
+       "MapFromAttribute": "SYSACS",
+       "MapFromCondition": "EQU",
+       "MapFromProperty": "CurrentValue",
+       "MapFromValue": 1
+      }
+     ],
+     "MapToAttribute": "GBT0141",
+     "MapToProperty": "GrayOut",
+     "MapToValue": "true"
+    },
+    "DependencyFor": "SYSACS",
+    "Type": "Map"
+   },
+   {
+    "Dependency": {
+     "MapFrom": [
+      {
+       "MapFromAttribute": "SYSACS",
+       "MapFromCondition": "EQU",
+       "MapFromProperty": "CurrentValue",
+       "MapFromValue": 1
+      }
+     ],
+     "MapToAttribute": "GBT0144",
+     "MapToProperty": "GrayOut",
+     "MapToValue": "true"
+    },
+    "DependencyFor": "SYSACS",
+    "Type": "Map"
+   },
+   {
+    "Dependency": {
+     "MapFrom": [
+      {
+       "MapFromAttribute": "SYSACS",
+       "MapFromCondition": "EQU",
+       "MapFromProperty": "CurrentValue",
+       "MapFromValue": 1
+      }
+     ],
+     "MapToAttribute": "GBT0145",
+     "MapToProperty": "GrayOut",
+     "MapToValue": "true"
+    },
+    "DependencyFor": "SYSACS",
+    "Type": "Map"
+   },
+   {
+    "Dependency": {
+     "MapFrom": [
+      {
+       "MapFromAttribute": "SYSACS",
+       "MapFromCondition": "EQU",
+       "MapFromProperty": "CurrentValue",
+       "MapFromValue": 1
+      }
+     ],
+     "MapToAttribute": "GBT0146",
+     "MapToProperty": "GrayOut",
+     "MapToValue": "true"
+    },
+    "DependencyFor": "SYSACS",
+    "Type": "Map"
+   },
+   {
+    "Dependency": {
+     "MapFrom": [
+      {
+       "MapFromAttribute": "SYSACS",
+       "MapFromCondition": "EQU",
+       "MapFromProperty": "CurrentValue",
+       "MapFromValue": 1
+      }
+     ],
+     "MapToAttribute": "GBT0147",
+     "MapToProperty": "GrayOut",
+     "MapToValue": "true"
+    },
+    "DependencyFor": "SYSACS",
+    "Type": "Map"
+   },
+   {
+    "Dependency": {
+     "MapFrom": [
+      {
+       "MapFromAttribute": "SYSACS",
+       "MapFromCondition": "EQU",
+       "MapFromProperty": "CurrentValue",
+       "MapFromValue": 1
+      }
+     ],
+     "MapToAttribute": "GBT0148",
+     "MapToProperty": "GrayOut",
+     "MapToValue": "true"
+    },
+    "DependencyFor": "SYSACS",
+    "Type": "Map"
+   },
+   {
+    "Dependency": {
+     "MapFrom": [
+      {
+       "MapFromAttribute": "SYSACS",
+       "MapFromCondition": "EQU",
+       "MapFromProperty": "CurrentValue",
+       "MapFromValue": 1
+      }
+     ],
+     "MapToAttribute": "GBT0149",
+     "MapToProperty": "GrayOut",
+     "MapToValue": "true"
+    },
+    "DependencyFor": "SYSACS",
+    "Type": "Map"
+   },
+   {
+    "Dependency": {
+     "MapFrom": [
+      {
+       "MapFromAttribute": "SYSACS",
+       "MapFromCondition": "EQU",
+       "MapFromProperty": "CurrentValue",
+       "MapFromValue": 1
+      }
+     ],
+     "MapToAttribute": "GBT0150",
+     "MapToProperty": "GrayOut",
+     "MapToValue": "true"
+    },
+    "DependencyFor": "SYSACS",
+    "Type": "Map"
+   },
+   {
+    "Dependency": {
+     "MapFrom": [
+      {
+       "MapFromAttribute": "SYSACS",
+       "MapFromCondition": "EQU",
+       "MapFromProperty": "CurrentValue",
+       "MapFromValue": 1
+      }
+     ],
+     "MapToAttribute": "GBT0151",
+     "MapToProperty": "GrayOut",
+     "MapToValue": "true"
+    },
+    "DependencyFor": "SYSACS",
+    "Type": "Map"
+   },
+   {
+    "Dependency": {
+     "MapFrom": [
+      {
+       "MapFromAttribute": "SYSACS",
+       "MapFromCondition": "EQU",
+       "MapFromProperty": "CurrentValue",
+       "MapFromValue": 1
+      }
+     ],
+     "MapToAttribute": "GBT0152",
+     "MapToProperty": "GrayOut",
+     "MapToValue": "true"
+    },
+    "DependencyFor": "SYSACS",
+    "Type": "Map"
+   },
+   {
+    "Dependency": {
+     "MapFrom": [
+      {
+       "MapFromAttribute": "SYSACS",
+       "MapFromCondition": "EQU",
+       "MapFromProperty": "CurrentValue",
+       "MapFromValue": 1
+      }
+     ],
+     "MapToAttribute": "GBT0001",
+     "MapToProperty": "GrayOut",
+     "MapToValue": "true"
+    },
+    "DependencyFor": "SYSACS",
+    "Type": "Map"
+   },
+   {
+    "Dependency": {
+     "MapFrom": [
+      {
+       "MapFromAttribute": "SYSACS",
+       "MapFromCondition": "EQU",
+       "MapFromProperty": "CurrentValue",
+       "MapFromValue": 1
+      }
+     ],
+     "MapToAttribute": "GBT0005",
+     "MapToProperty": "GrayOut",
+     "MapToValue": "true"
+    },
+    "DependencyFor": "SYSACS",
+    "Type": "Map"
+   },
+   {
+    "Dependency": {
+     "MapFrom": [
+      {
+       "MapFromAttribute": "SYSACS",
+       "MapFromCondition": "EQU",
+       "MapFromProperty": "CurrentValue",
+       "MapFromValue": 1
+      }
+     ],
+     "MapToAttribute": "GBT0009",
+     "MapToProperty": "GrayOut",
+     "MapToValue": "true"
+    },
+    "DependencyFor": "SYSACS",
+    "Type": "Map"
+   },
+   {
+    "Dependency": {
+     "MapFrom": [
+      {
+       "MapFromAttribute": "SYSACS",
+       "MapFromCondition": "EQU",
+       "MapFromProperty": "CurrentValue",
+       "MapFromValue": 1
+      }
+     ],
+     "MapToAttribute": "GBT0013",
+     "MapToProperty": "GrayOut",
+     "MapToValue": "true"
+    },
+    "DependencyFor": "SYSACS",
+    "Type": "Map"
+   },
+   {
+    "Dependency": {
+     "MapFrom": [
+      {
+       "MapFromAttribute": "SYSACS",
+       "MapFromCondition": "EQU",
+       "MapFromProperty": "CurrentValue",
+       "MapFromValue": 1
+      }
+     ],
+     "MapToAttribute": "GBT0017",
+     "MapToProperty": "GrayOut",
+     "MapToValue": "true"
+    },
+    "DependencyFor": "SYSACS",
+    "Type": "Map"
+   },
+   {
+    "Dependency": {
+     "MapFrom": [
+      {
+       "MapFromAttribute": "SYSACS",
+       "MapFromCondition": "EQU",
+       "MapFromProperty": "CurrentValue",
+       "MapFromValue": 1
+      }
+     ],
+     "MapToAttribute": "GBT0021",
+     "MapToProperty": "GrayOut",
+     "MapToValue": "true"
+    },
+    "DependencyFor": "SYSACS",
+    "Type": "Map"
+   },
+   {
+    "Dependency": {
+     "MapFrom": [
+      {
+       "MapFromAttribute": "SYSACS",
+       "MapFromCondition": "EQU",
+       "MapFromProperty": "CurrentValue",
+       "MapFromValue": 1
+      }
+     ],
+     "MapToAttribute": "GBT0025",
+     "MapToProperty": "GrayOut",
+     "MapToValue": "true"
+    },
+    "DependencyFor": "SYSACS",
+    "Type": "Map"
+   },
+   {
+    "Dependency": {
+     "MapFrom": [
+      {
+       "MapFromAttribute": "SYSACS",
+       "MapFromCondition": "EQU",
+       "MapFromProperty": "CurrentValue",
+       "MapFromValue": 1
+      }
+     ],
+     "MapToAttribute": "GBT0049",
+     "MapToProperty": "GrayOut",
+     "MapToValue": "true"
+    },
+    "DependencyFor": "SYSACS",
+    "Type": "Map"
+   },
+   {
+    "Dependency": {
+     "MapFrom": [
+      {
+       "MapFromAttribute": "SYSACS",
+       "MapFromCondition": "EQU",
+       "MapFromProperty": "CurrentValue",
+       "MapFromValue": 1
+      }
+     ],
+     "MapToAttribute": "GBT0073",
+     "MapToProperty": "GrayOut",
+     "MapToValue": "true"
+    },
+    "DependencyFor": "SYSACS",
+    "Type": "Map"
+   },
+   {
+    "Dependency": {
+     "MapFrom": [
+      {
+       "MapFromAttribute": "SYSACS",
+       "MapFromCondition": "EQU",
+       "MapFromProperty": "CurrentValue",
+       "MapFromValue": 1
+      }
+     ],
+     "MapToAttribute": "GBT0089",
+     "MapToProperty": "GrayOut",
+     "MapToValue": "true"
+    },
+    "DependencyFor": "SYSACS",
+    "Type": "Map"
+   },
+   {
+    "Dependency": {
+     "MapFrom": [
+      {
+       "MapFromAttribute": "SYSACS",
+       "MapFromCondition": "EQU",
+       "MapFromProperty": "CurrentValue",
+       "MapFromValue": 1
+      }
+     ],
+     "MapToAttribute": "GBT0097",
+     "MapToProperty": "GrayOut",
+     "MapToValue": "true"
+    },
+    "DependencyFor": "SYSACS",
+    "Type": "Map"
+   },
+   {
+    "Dependency": {
+     "MapFrom": [
+      {
+       "MapFromAttribute": "GBT0097",
+       "MapFromCondition": "EQU",
+       "MapFromProperty": "CurrentValue",
+       "MapFromValue": "Disabled"
+      }
+     ],
+     "MapToAttribute": "GBT0113",
+     "MapToProperty": "Hidden",
+     "MapToValue": "true"
+    },
+    "DependencyFor": "GBT0097",
+    "Type": "Map"
+   },
+   {
+    "Dependency": {
+     "MapFrom": [
+      {
+       "MapFromAttribute": "SYSACS",
+       "MapFromCondition": "EQU",
+       "MapFromProperty": "CurrentValue",
+       "MapFromValue": 1
+      }
+     ],
+     "MapToAttribute": "GBT0113",
+     "MapToProperty": "Hidden",
+     "MapToValue": "true"
+    },
+    "DependencyFor": "SYSACS",
+    "Type": "Map"
+   },
+   {
+    "Dependency": {
+     "MapFrom": [
+      {
+       "MapFromAttribute": "GBT0097",
+       "MapFromCondition": "EQU",
+       "MapFromProperty": "CurrentValue",
+       "MapFromValue": "Disabled"
+      }
+     ],
+     "MapToAttribute": "GBT0114",
+     "MapToProperty": "Hidden",
+     "MapToValue": "true"
+    },
+    "DependencyFor": "GBT0097",
+    "Type": "Map"
+   },
+   {
+    "Dependency": {
+     "MapFrom": [
+      {
+       "MapFromAttribute": "SYSACS",
+       "MapFromCondition": "EQU",
+       "MapFromProperty": "CurrentValue",
+       "MapFromValue": 1
+      }
+     ],
+     "MapToAttribute": "GBT0114",
+     "MapToProperty": "Hidden",
+     "MapToValue": "true"
+    },
+    "DependencyFor": "SYSACS",
+    "Type": "Map"
+   },
+   {
+    "Dependency": {
+     "MapFrom": [
+      {
+       "MapFromAttribute": "SYSACS",
+       "MapFromCondition": "EQU",
+       "MapFromProperty": "CurrentValue",
+       "MapFromValue": 1
+      }
+     ],
+     "MapToAttribute": "SECB001",
+     "MapToProperty": "GrayOut",
+     "MapToValue": "true"
+    },
+    "DependencyFor": "SYSACS",
+    "Type": "Map"
+   },
+   {
+    "Dependency": {
+     "MapFrom": [
+      {
+       "MapFromAttribute": "SYSACS",
+       "MapFromCondition": "EQU",
+       "MapFromProperty": "CurrentValue",
+       "MapFromValue": 1
+      }
+     ],
+     "MapToAttribute": "SECB002",
+     "MapToProperty": "GrayOut",
+     "MapToValue": "true"
+    },
+    "DependencyFor": "SYSACS",
+    "Type": "Map"
+   },
+   {
+    "Dependency": {
+     "MapFrom": [
+      {
+       "MapFromAttribute": "FBO001",
+       "MapFromCondition": "EQU",
+       "MapFromProperty": "CurrentValue",
+       "MapFromValue": "LEGACY"
+      },
+      {
+       "MapFromAttribute": "FBO001",
+       "MapFromCondition": "EQU",
+       "MapFromProperty": "CurrentValue",
+       "MapTerms": "OR"
+      }
+     ],
+     "MapToAttribute": "FBO201",
+     "MapToProperty": "Hidden",
+     "MapToValue": "true"
+    },
+    "DependencyFor": "FBO001",
+    "Type": "Map"
+   },
+   {
+    "Dependency": {
+     "MapFrom": [
+      {
+       "MapFromAttribute": "FBO001",
+       "MapFromCondition": "EQU",
+       "MapFromProperty": "CurrentValue",
+       "MapFromValue": "LEGACY"
+      },
+      {
+       "MapFromAttribute": "FBO001",
+       "MapFromCondition": "EQU",
+       "MapFromProperty": "CurrentValue",
+       "MapTerms": "OR"
+      }
+     ],
+     "MapToAttribute": "FBO202",
+     "MapToProperty": "Hidden",
+     "MapToValue": "true"
+    },
+    "DependencyFor": "FBO001",
+    "Type": "Map"
+   },
+   {
+    "Dependency": {
+     "MapFrom": [
+      {
+       "MapFromAttribute": "FBO001",
+       "MapFromCondition": "EQU",
+       "MapFromProperty": "CurrentValue",
+       "MapFromValue": "LEGACY"
+      },
+      {
+       "MapFromAttribute": "FBO001",
+       "MapFromCondition": "EQU",
+       "MapFromProperty": "CurrentValue",
+       "MapTerms": "OR"
+      }
+     ],
+     "MapToAttribute": "FBO203",
+     "MapToProperty": "Hidden",
+     "MapToValue": "true"
+    },
+    "DependencyFor": "FBO001",
+    "Type": "Map"
+   },
+   {
+    "Dependency": {
+     "MapFrom": [
+      {
+       "MapFromAttribute": "FBO001",
+       "MapFromCondition": "EQU",
+       "MapFromProperty": "CurrentValue",
+       "MapFromValue": "LEGACY"
+      },
+      {
+       "MapFromAttribute": "FBO001",
+       "MapFromCondition": "EQU",
+       "MapFromProperty": "CurrentValue",
+       "MapTerms": "OR"
+      }
+     ],
+     "MapToAttribute": "FBO204",
+     "MapToProperty": "Hidden",
+     "MapToValue": "true"
+    },
+    "DependencyFor": "FBO001",
+    "Type": "Map"
+   },
+   {
+    "Dependency": {
+     "MapFrom": [
+      {
+       "MapFromAttribute": "FBO001",
+       "MapFromCondition": "EQU",
+       "MapFromProperty": "CurrentValue",
+       "MapFromValue": "LEGACY"
+      },
+      {
+       "MapFromAttribute": "FBO001",
+       "MapFromCondition": "EQU",
+       "MapFromProperty": "CurrentValue",
+       "MapTerms": "OR"
+      }
+     ],
+     "MapToAttribute": "FBO205",
+     "MapToProperty": "Hidden",
+     "MapToValue": "true"
+    },
+    "DependencyFor": "FBO001",
+    "Type": "Map"
+   },
+   {
+    "Dependency": {
+     "MapFrom": [
+      {
+       "MapFromAttribute": "FBO001",
+       "MapFromCondition": "EQU",
+       "MapFromProperty": "CurrentValue",
+       "MapFromValue": "UEFI"
+      },
+      {
+       "MapFromAttribute": "FBO001",
+       "MapFromCondition": "EQU",
+       "MapFromProperty": "CurrentValue",
+       "MapTerms": "OR"
+      }
+     ],
+     "MapToAttribute": "FBO101",
+     "MapToProperty": "Hidden",
+     "MapToValue": "true"
+    },
+    "DependencyFor": "FBO001",
+    "Type": "Map"
+   },
+   {
+    "Dependency": {
+     "MapFrom": [
+      {
+       "MapFromAttribute": "FBO001",
+       "MapFromCondition": "EQU",
+       "MapFromProperty": "CurrentValue",
+       "MapFromValue": "UEFI"
+      },
+      {
+       "MapFromAttribute": "FBO001",
+       "MapFromCondition": "EQU",
+       "MapFromProperty": "CurrentValue",
+       "MapTerms": "OR"
+      }
+     ],
+     "MapToAttribute": "FBO102",
+     "MapToProperty": "Hidden",
+     "MapToValue": "true"
+    },
+    "DependencyFor": "FBO001",
+    "Type": "Map"
+   },
+   {
+    "Dependency": {
+     "MapFrom": [
+      {
+       "MapFromAttribute": "FBO001",
+       "MapFromCondition": "EQU",
+       "MapFromProperty": "CurrentValue",
+       "MapFromValue": "UEFI"
+      },
+      {
+       "MapFromAttribute": "FBO001",
+       "MapFromCondition": "EQU",
+       "MapFromProperty": "CurrentValue",
+       "MapTerms": "OR"
+      }
+     ],
+     "MapToAttribute": "FBO103",
+     "MapToProperty": "Hidden",
+     "MapToValue": "true"
+    },
+    "DependencyFor": "FBO001",
+    "Type": "Map"
+   },
+   {
+    "Dependency": {
+     "MapFrom": [
+      {
+       "MapFromAttribute": "FBO001",
+       "MapFromCondition": "EQU",
+       "MapFromProperty": "CurrentValue",
+       "MapFromValue": "UEFI"
+      },
+      {
+       "MapFromAttribute": "FBO001",
+       "MapFromCondition": "EQU",
+       "MapFromProperty": "CurrentValue",
+       "MapTerms": "OR"
+      }
+     ],
+     "MapToAttribute": "FBO104",
+     "MapToProperty": "Hidden",
+     "MapToValue": "true"
+    },
+    "DependencyFor": "FBO001",
+    "Type": "Map"
+   },
+   {
+    "Dependency": {
+     "MapFrom": [
+      {
+       "MapFromAttribute": "IPMI000",
+       "MapFromCondition": "EQU",
+       "MapFromProperty": "CurrentValue",
+       "MapFromValue": "Disabled"
+      }
+     ],
+     "MapToAttribute": "IPMI001",
+     "MapToProperty": "GrayOut",
+     "MapToValue": "true"
+    },
+    "DependencyFor": "IPMI000",
+    "Type": "Map"
+   },
+   {
+    "Dependency": {
+     "MapFrom": [
+      {
+       "MapFromAttribute": "IPMI000",
+       "MapFromCondition": "EQU",
+       "MapFromProperty": "CurrentValue",
+       "MapFromValue": "Disabled"
+      }
+     ],
+     "MapToAttribute": "IPMI002",
+     "MapToProperty": "GrayOut",
+     "MapToValue": "true"
+    },
+    "DependencyFor": "IPMI000",
+    "Type": "Map"
+   },
+   {
+    "Dependency": {
+     "MapFrom": [
+      {
+       "MapFromAttribute": "IPMI601",
+       "MapFromCondition": "EQU",
+       "MapFromProperty": "CurrentValue",
+       "MapFromValue": "Disable"
+      }
+     ],
+     "MapToAttribute": "IPMI602",
+     "MapToProperty": "Hidden",
+     "MapToValue": "true"
+    },
+    "DependencyFor": "IPMI601",
+    "Type": "Map"
+   }
+  ]
+ },
+ "RegistryVersion": "R281-Z91-00_F25"
+}

@@ -252,6 +252,26 @@ class Redfish():
         return self.get(path='/redfish/v1/', cache=True)
 
 
+    def forget(self, path=None):
+        """
+        This method drops cached documents so a later read goes to the machine.
+
+        The cache exists for discovery, where the same few resources are walked
+        repeatedly and nothing moves under you. Polling is the opposite: a caller
+        waiting for a machine to finish POST needs each read to be a new answer,
+        and a cached one is not merely stale - it can never change, so the wait
+        either succeeds immediately on a pre-reset value or runs to its deadline.
+
+        With no path the whole cache goes, which is what a reset wants: the
+        machine is about to be a different machine.
+        """
+        if path is None:
+            self.cache = {}
+        else:
+            self.cache.pop(path, None)
+        return True
+
+
     def resource(self, collection=None):
         """
         This method will resolve a named service-root collection down to its
@@ -320,6 +340,26 @@ class Redfish():
         return False, f'task still {state} after {deadline} seconds: {location}'
 
 
+# The privileges a Redfish role carries, from the DMTF's predefined roles. Named
+# rather than ranked, because an operation needs a privilege and not a seniority:
+# resetting a system needs ConfigureComponents, which an Operator has, while
+# creating an account needs ConfigureUsers, which only an Administrator has.
+#
+# A vendor may define roles of its own with any privilege set it likes, so a name
+# absent from here is unknown rather than known-unable - see pick_account.
+LOGIN = 'Login'
+CONFIGURE_COMPONENTS = 'ConfigureComponents'
+CONFIGURE_USERS = 'ConfigureUsers'
+CONFIGURE_MANAGER = 'ConfigureManager'
+
+ROLE_PRIVILEGES = {
+    'readonly': (LOGIN, 'ConfigureSelf'),
+    'operator': (LOGIN, 'ConfigureSelf', CONFIGURE_COMPONENTS),
+    'administrator': (LOGIN, 'ConfigureSelf', CONFIGURE_COMPONENTS,
+                      CONFIGURE_USERS, CONFIGURE_MANAGER),
+}
+
+
 class RedfishAccess():
     """
     Resolves which Redfish setup and account a node is reached with.
@@ -350,44 +390,77 @@ class RedfishAccess():
         return None
 
 
-    def pick_account(self, accounts=None, write=False):
+    def pick_account(self, accounts=None, needs=LOGIN):
         """
-        This method will pick the weakest account that can do the job.
+        This method will pick the weakest account that carries the privilege an
+        operation actually needs.
 
-        Roles are optional. An account carrying none is usable for anything, so a
-        setup holding a single Administrator account behaves exactly as a cluster
-        does today - which is the point, because BMC account slots are finite and
-        customers use some of them for their own accounts.
+        One rule for reads and writes alike. It used to be two - reads took the
+        weakest account and writes took the strongest - and the second was wrong
+        in a way that quietly undid what an administrator had configured: power
+        control is a write, so a setup holding both an Operator and an
+        Administrator used the Administrator, and the reason for having two
+        accounts disappeared.
+
+        'write' could not express it either way, because a write is not one
+        privilege. Resetting a system needs ConfigureComponents, which an Operator
+        has; creating an account needs ConfigureUsers, which only an Administrator
+        has. Asking for the privilege rather than for a rank is what lets the same
+        rule serve both.
+
+        A role we do not rank is *unknown*, not known-unable. Redfish lets a vendor
+        define roles with arbitrary privilege sets, so one of those is tried rather
+        than refused - stranding a node on a name we have not seen would be worse
+        than attempting the call and reading the answer.
         """
-        preferred = ['Administrator', 'Operator']
-        if not write:
-            preferred = ['ReadOnly', 'Operator', 'Administrator']
-        for role in preferred:
-            for account in accounts:
-                if str(account['role'] or '').strip().lower() == role.lower():
-                    return account
-        for account in accounts:
-            if not str(account['role'] or '').strip():
-                return account
-        return accounts[0]
+        candidates = []
+        unknown = []
+        for account in accounts or []:
+            role = str(account['role'] or '').strip()
+            if not role:
+                # no role recorded: usable for anything, which is what a setup
+                # holding a single administrator has always relied on
+                unknown.append((0, account))
+                continue
+            privileges = ROLE_PRIVILEGES.get(role.lower())
+            if privileges is None:
+                unknown.append((0, account))
+            elif needs in privileges:
+                candidates.append((len(privileges), account))
+        if candidates:
+            # fewest privileges first: the weakest account that can do the job
+            return min(candidates, key=lambda entry: entry[0])[1]
+        if unknown:
+            return unknown[0][1]
+        return None
 
 
-    def for_node(self, nodename=None, write=False):
+    def for_node(self, nodename=None, needs=LOGIN):
         """
         This method will return how to reach a node's BMC over Redfish.
 
-        Three answers, and they are deliberately different things:
-        (True, None)   no redfishsetup is configured, so the caller keeps using the
-                       bmcsetup credentials - what every install does today
+        Two answers now, and TRIX-2027 is why there are no longer three:
         (True, dict)   these settings and this account
-        (False, text)  a setup is configured but cannot be used. That is a
-                       misconfiguration and it is said out loud per node, rather
-                       than quietly falling back to a credential the administrator
-                       did not choose.
+        (False, text)  Redfish cannot be used for this node, and the reason is said
+                       out loud per node rather than worked around.
+
+        There used to be a third - no redfishsetup meant "carry on with the bmcsetup
+        credentials". It worked, because IPMI and Redfish share one user store on
+        the BMC, and that is exactly what made it wrong: an administrator who
+        deliberately assigned no redfishsetup still got Redfish traffic, on
+        credentials they had nominated for IPMI. The absence of configuration did
+        not mean the absence of Redfish, so there was no way to say "do not touch
+        this over Redfish" short of taking the BMC off the network.
+
+        Capability is now the gate, which needs no flag: no redfishsetup, no
+        Redfish. The protocol fallback is untouched - control still tries Redfish
+        and then ipmitool - because that is a different mechanism and it is the
+        feature.
         """
         setupid = self.setup_id(nodename=nodename)
         if not setupid:
-            return True, None
+            return False, (f'{nodename} has no redfishsetup assigned, so Redfish is '
+                           'not configured for it')
         setup = Database().get_record(table='redfishsetup', where=f'id = "{setupid}"')
         if not setup:
             return False, f'redfishsetup {setupid} assigned to {nodename} no longer exists'
@@ -395,12 +468,115 @@ class RedfishAccess():
                                          where=f'redfishsetupid = "{setupid}"')
         if not accounts:
             return False, f"redfishsetup {setup[0]['name']} has no accounts"
-        account = self.pick_account(accounts=accounts, write=write)
+        account = self.pick_account(accounts=accounts, needs=needs)
+        if not account:
+            return False, (f"redfishsetup {setup[0]['name']} has no account carrying "
+                           f'{needs}; add one with a role that does, or this node '
+                           'cannot be asked to do that over Redfish by configuration')
         return True, {
             'scheme': setup[0]['scheme'] or 'https',
             'port': setup[0]['port'],
-            'verify': Helper().make_bool(setup[0]['verify']),
+            # a row written before verify had a default reads as None; make it a
+            # real bool here rather than relying on None being falsy downstream
+            'verify': bool(Helper().make_bool(setup[0]['verify'])),
             'username': account['username'],
             'password': account['password'],
             'account': account['name']
         }
+
+
+    def hardware(self, nodename=None):
+        """
+        This method returns (vendor, model) for a node, normalised into the tokens
+        the plugin search path uses, or (None, None) where nothing is known yet.
+
+        The manufacturer is derived rather than configured: nodeinventory already
+        holds it per node, so there is no column for an administrator to set and
+        get wrong, and it stays true when hardware is replaced.
+
+        A node can hold a snapshot per source and the two can disagree - dmidecode
+        and Redfish do not always return the same vendor string for the same
+        machine - so redfish wins where both exist. It is the BMC's own answer,
+        and it is the one that exists before a node has ever been provisioned.
+        """
+        rows = Database().get_record(table='nodeinventory',
+                                     where=f'nodeid IN (SELECT id FROM node WHERE name = "{nodename}")')
+        if not rows:
+            return None, None
+        chosen = None
+        for row in rows:
+            if str(row['source'] or '').strip().lower() == 'redfish':
+                chosen = row
+                break
+            if chosen is None:
+                chosen = row
+        return self.token(chosen['manufacturer']), self.token(chosen['product'], first=False)
+
+
+    def token(self, value=None, first=True):
+        """
+        This method turns a hardware string into a plugin name.
+
+        Vendor strings carry punctuation and a company suffix - 'Dell Inc.',
+        'VMware, Inc.' - so the first word is what names the file. A model does not
+        split usefully that way ('PowerEdge R650' is one model, not a family called
+        PowerEdge), so the whole string is used for that.
+        """
+        text = str(value or '').strip()
+        if not text:
+            return None
+        if first:
+            text = text.split(' ')[0]
+        text = ''.join(character for character in text.lower() if character.isalnum())
+        return text or None
+
+
+    def speaks_redfish(self, nodename=None):
+        """
+        This method says whether there is evidence that a node's BMC speaks Redfish.
+
+        It gates the generic redfish plugin, and the reason is scale rather than
+        tidiness. A redfish control plugin tries Redfish and falls back to ipmitool,
+        so offering it to a BMC that does not speak Redfish costs a connect timeout
+        per node before the fallback runs - invisible on a rig, and half an hour
+        added to a sweep of a few thousand dark nodes.
+
+        Evidence is an administrator having assigned a redfishsetup, or an inventory
+        snapshot that came from Redfish and therefore proves it answered.
+        """
+        if self.setup_id(nodename=nodename):
+            return True
+        rows = Database().get_record(
+            table='nodeinventory',
+            where=f'source = "redfish" AND nodeid IN (SELECT id FROM node WHERE name = "{nodename}")')
+        return bool(rows)
+
+
+    def plugin_candidates(self, nodename=None, groupname=None, generic=None):
+        """
+        This method builds a plugin search path for a node, and the model that
+        narrows each step of it.
+
+        Node name and group name come first and are unchanged, so anything an
+        administrator has explicitly named still wins. After them comes the node's
+        manufacturer, derived from nodeinventory rather than configured, so the
+        derived candidates can only take a slot that would otherwise have gone to
+        default.
+
+        A caller that has a vendor-neutral plugin to fall back on names it as
+        generic, and it is offered only where there is evidence the BMC speaks
+        Redfish. The control family has one; boot/bmc does not, because its plugins
+        emit a shell snippet for the install rather than talking to a service.
+
+        The model is returned separately because it is the loader's second level:
+        it tries <name><model>.py, then <name>/<model>.py, then <name>/default.py,
+        then <name>.py. Hardware from one vendor does differ, and that is where the
+        difference goes.
+        """
+        candidates = [nodename, groupname]
+        vendor, model = self.hardware(nodename=nodename)
+        if vendor:
+            candidates.append(vendor)
+        if generic and self.speaks_redfish(nodename=nodename):
+            candidates.append(generic)
+        return [candidate for candidate in candidates if candidate], model

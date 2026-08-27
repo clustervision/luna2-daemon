@@ -47,6 +47,7 @@ from common.bootstrap import validate_bootstrap
 from utils.housekeeper import Housekeeper
 from utils.profile_sync import ProfileSync
 from utils.plugin_sync import PluginSync
+from utils.bios_push import BiosPush
 from utils.service import Service
 from utils.helper import Helper
 from utils.queue import Queue
@@ -172,6 +173,9 @@ def start_background_workers():
     # ---------------- profile delivery thread ---------------------
     executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
     register_future(executor, executor.submit(ProfileSync().sync_mother, event))
+
+    LOGGER.info("Starting BIOS push thread")
+    register_future(executor, executor.submit(BiosPush().push_mother, event))
     # ----------------- osimage tasks thread -----------------------
     executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
     register_future(executor, executor.submit(Housekeeper().osimage_tasks_mother, event))

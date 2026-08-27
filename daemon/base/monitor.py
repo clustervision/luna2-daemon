@@ -40,6 +40,11 @@ from utils.status import Status
 from utils.queue import Queue
 from utils.redfish import RedfishAccess
 
+# How long after a node says its BMC is configured before we try to read it. Long
+# enough for a BMC to finish applying a static address and bring its HTTP service
+# up, short enough that the inventory is there by the time anyone looks.
+COLLECT_DELAY = '5m'
+
 
 try:
     PLUGIN_PATH = CONSTANT["PLUGINS"]["PLUGINS_DIRECTORY"]
@@ -244,10 +249,22 @@ class Monitor():
             self.logger.info(f'{nodename} reported its BMC configured, but no '
                              f'inventory was queued: {reason}')
             return False
+        # deferred, not retried. Luna has just given this BMC its address with
+        # ipmitool and the node is still installing; the BMC is not necessarily
+        # answering Redfish yet, and a collection fired now would mostly fail.
+        #
+        # The queue already does this: next_task_in_queue selects on
+        # created <= now, so a task created in the future is invisible until then
+        # and remains selectable for the hour after. A delay costs one column and
+        # replaces a retry loop, a backoff and a give-up count - none of which have
+        # to be written, tuned or explained.
+        #
+        # The fifteen-minute duplicate collapse is unaffected: a future created
+        # time is still inside its window, so a node reporting twice queues once.
         Queue().add_task_to_queue(task='collect_redfish_inventory', param=nodename,
-                                  subsystem='redfish')
-        self.logger.info(f'{nodename} reported its BMC configured; queued an '
-                         'out-of-band inventory collection')
+                                  subsystem='redfish', when=COLLECT_DELAY)
+        self.logger.info(f'{nodename} reported its BMC configured; an out-of-band '
+                         f'inventory collection is queued for {COLLECT_DELAY} from now')
         return True
 
 

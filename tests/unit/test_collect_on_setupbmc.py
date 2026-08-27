@@ -163,3 +163,48 @@ def test_the_drain_does_not_block_the_worker(node, monkeypatch):
     assert 'collect_child' not in source, (
         'collecting inline would block this loop for as long as the BMCs take'
     )
+
+
+# --- deferred rather than retried -------------------------------------------
+
+def test_the_collection_is_scheduled_into_the_future(node):
+    """
+    Luna has just given the BMC its address with ipmitool and the node is still
+    installing, so the BMC is not necessarily answering Redfish yet. A collection
+    fired at that moment would mostly fail.
+
+    The queue already solves this: next_task_in_queue selects on created <= now,
+    so a task created in the future is invisible until then. That is a delay
+    instead of a retry loop, a backoff and a give-up count - none of which have to
+    be written, tuned or explained.
+    """
+    Monitor().redfish_on_setupbmc(nodename=node, state='install.setupbmc')
+    row = queued()[0]
+    assert not Queue().next_task_in_queue('redfish', status='queued'), (
+        'a task queued for the future must not be selectable now'
+    )
+    assert row['param'] == 'node001'
+
+
+def test_it_becomes_selectable_once_the_delay_has_passed(node):
+    """The other half: deferred must not mean lost."""
+    Monitor().redfish_on_setupbmc(nodename=node, state='install.setupbmc')
+    row = queued()[0]
+    # bring the created time back as though the delay had elapsed
+    Database().update('queue', Helper().make_rows({'created': '2026-08-27 00:00:00'}),
+                      [{"column": "id", "value": row['id']}])
+    Database().update('queue', Helper().make_rows({'created': 'NOW'}),
+                      [{"column": "id", "value": row['id']}])
+    assert Queue().next_task_in_queue('redfish', status='queued')
+
+
+def test_deferring_does_not_break_the_duplicate_collapse(node):
+    """
+    The collapse looks for an identical task created inside the last fifteen
+    minutes. A future created time is still inside that window, so a node
+    reporting the stage twice must still queue once - checked, because a delay
+    that quietly disabled deduplication would only show up in a boot storm.
+    """
+    for _ in range(4):
+        Monitor().redfish_on_setupbmc(nodename=node, state='install.setupbmc')
+    assert len(queued()) == 1

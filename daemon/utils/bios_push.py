@@ -122,22 +122,71 @@ class BiosPush():
         return target.get('@odata.id') or None
 
 
-    def reset_type(self, system=None):
+    def allowable(self, actions=None, redfish=None, parameter='ResetType'):
+        """
+        This method returns the values a board says an action parameter accepts.
+
+        There are two ways to publish them and only reading one is the same as
+        not asking. The inline annotation is the older form and the one everybody
+        reads; a board that offers only @Redfish.ActionInfo then looks exactly
+        like a board that publishes nothing, and gets guessed at instead. Both
+        real machines this was written against publish it only that way.
+
+        The Redfish control plugin already answers this question correctly, and
+        this follows it deliberately rather than inventing a second shape - down
+        to reading through the cache, because the resource is per machine and a
+        push resets once per stage.
+        """
+        actions = actions or {}
+        inline = actions.get(f'{parameter}@Redfish.AllowableValues')
+        if isinstance(inline, list) and inline:
+            return [str(entry) for entry in inline]
+        path = actions.get('@Redfish.ActionInfo')
+        if not path or redfish is None:
+            return []
+        status, info = redfish.get(path=path, cache=True)
+        if not status or not isinstance(info, dict):
+            return []
+        for entry in info.get('Parameters') or []:
+            if entry.get('Name') == parameter:
+                values = entry.get('AllowableValues')
+                if isinstance(values, list) and values:
+                    return [str(value) for value in values]
+        return []
+
+
+    def reset_type(self, system=None, redfish=None):
         """
         This method picks a reset the board says it accepts.
 
         Asked rather than assumed: the allowable values are published, and a
         board that is sent a type it does not offer answers 400 and stays exactly
         where it was - which reads as a failed apply rather than a failed reset.
+
+        Returns (wanted, target, allowed). A board that publishes a list carrying
+        nothing we can use answers None for wanted, and that is a different thing
+        from publishing no list at all - the first is the machine telling us it
+        cannot do what we need, the second is us guessing. The caller has to be
+        able to tell them apart, so both come back.
         """
         actions = (system or {}).get('Actions', {}).get('#ComputerSystem.Reset', {})
-        allowed = actions.get('ResetType@Redfish.AllowableValues') or []
+        target = actions.get('target')
+        if not target:
+            return None, None, []
+        allowed = self.allowable(actions=actions, redfish=redfish)
         for wanted in RESET_ORDER:
             if wanted in allowed:
-                return wanted, actions.get('target')
-        # a board that publishes no list still has the action; ForceRestart is
-        # the one every implementation carries
-        return ('ForceRestart', actions.get('target')) if actions.get('target') else (None, None)
+                return wanted, target, allowed
+        if allowed:
+            return None, target, allowed
+        # a board that publishes no list at all still has the action; ForceRestart
+        # is the one every implementation carries. It is still a guess, so it is
+        # logged as one rather than made quietly.
+        self.logger.warning(
+            'this machine publishes no allowable reset types, inline or by '
+            'action info; falling back to ForceRestart'
+        )
+        return 'ForceRestart', target, []
 
 
     def reset(self, redfish=None):
@@ -147,9 +196,12 @@ class BiosPush():
         status, _, system = redfish.system()
         if not status:
             return False, 'cannot read the system resource to reset it'
-        wanted, target = self.reset_type(system=system)
+        wanted, target, allowed = self.reset_type(system=system, redfish=redfish)
         if not target:
             return False, 'this machine publishes no reset action'
+        if not wanted:
+            return False, (f'this machine offers no reset that applies staged '
+                           f'settings; it accepts {sorted(allowed)}')
         status, code, data = redfish.call(method='POST', path=target,
                                           payload={'ResetType': wanted})
         if not status:

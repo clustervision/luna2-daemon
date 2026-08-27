@@ -63,6 +63,7 @@ from base.cluster import Cluster
 from base.bmcsetup import BMCSetup
 from base.redfishsetup import RedfishSetup
 from base.bios import Bios
+from base.firmware import Firmware
 from base.switch import Switch
 from base.otherdev import OtherDev
 from base.rack import Rack

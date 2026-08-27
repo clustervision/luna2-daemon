@@ -47,6 +47,18 @@ from common.constant import CONSTANT
 OVERRIDABLE = ['provision_interface', 'provision_method', 'provision_fallback',
                'kerneloptions', 'ipxe_kernel', 'unmanaged_bmc_users']
 
+# The named things a group points at: the key the payload carries, the table that
+# name belongs to, how that table is spelled when we have to say it is missing, and
+# whether a supplied value may be empty.
+# True means: cannot be empty if supplied. False means: can only be empty or correct
+# The payload key carries a 'name' suffix where the column does not, so the table is
+# named here rather than guessed from the key.
+NAME_REFERENCES = {
+    'bmcsetupname':     ('bmcsetup', 'BMC Setup', True),
+    'redfishsetupname': ('redfishsetup', 'Redfish Setup', False),
+    'osimage':          ('osimage', 'OSimage', True),
+}
+
 
 class Group():
     """
@@ -333,6 +345,29 @@ class Group():
         return status, response
 
 
+    def resolve_references(self, data=None):
+        """
+        This method turns the names a group points at into the ids its columns hold,
+        and returns why it could not when one of them does not resolve.
+
+        Update and clone ask the same question of the same payload, so they ask it
+        here: a reference that only one of them knows about is a reference the other
+        one writes as a null.
+        """
+        for key, (table, label, required) in NAME_REFERENCES.items():
+            if key not in data:
+                continue
+            supplied = data[key]
+            if supplied == "" and not required:
+                data[table + 'id'] = ""
+            else:
+                data[table + 'id'] = Database().id_by_name(table, supplied)
+                if not data[table + 'id']:
+                    return f'Invalid request: {label} {supplied} does not exist'
+            del data[key]
+        return None
+
+
     def update_group(self, name=None, request_data=None):
         """
         This method will create or update a group.
@@ -467,31 +502,9 @@ class Group():
                 if key in data and (not data[key]) and (key not in items):
                     del data[key]
 
-            if 'redfishsetupname' in data:
-                redfishsetupname = data['redfishsetupname']
-                if redfishsetupname == "":
-                    data['redfishsetupid'] = ""
-                    del data['redfishsetupname']
-                else:
-                    data['redfishsetupid'] = Database().id_by_name('redfishsetup', redfishsetupname)
-                    if data['redfishsetupid']:
-                        del data['redfishsetupname']
-                    else:
-                        return False, f'Invalid request: Redfish Setup {redfishsetupname} does not exist'
-            if 'bmcsetupname' in data:
-                bmcsetupname = data['bmcsetupname']
-                data['bmcsetupid'] = Database().id_by_name('bmcsetup', data['bmcsetupname'])
-                if data['bmcsetupid']:
-                    del data['bmcsetupname']
-                else:
-                    return False, f'Invalid request: BMC Setup {bmcsetupname} does not exist'
-            if 'osimage' in data:
-                osimage = data['osimage']
-                data['osimageid'] = Database().id_by_name('osimage', osimage)
-                if data['osimageid']:
-                    del data['osimage']
-                else:
-                    return False, f'Invalid request: OSimage {osimage} does not exist'
+            problem = self.resolve_references(data)
+            if problem:
+                return False, problem
 
             new_interface = None
             if 'interfaces' in data:
@@ -704,28 +717,9 @@ class Group():
                         data[item]=str(Helper().bool_to_string(data[item]))
                 if (not data[item]) and (item not in items):
                     del data[item]
-            if 'redfishsetupname' in data:
-                redfishsetupname = data['redfishsetupname']
-                if redfishsetupname == "":
-                    data['redfishsetupid'] = ""
-                    del data['redfishsetupname']
-                else:
-                    data['redfishsetupid'] = Database().id_by_name('redfishsetup', redfishsetupname)
-                    if data['redfishsetupid']:
-                        del data['redfishsetupname']
-                    else:
-                        return False, f'Invalid request: Redfish Setup {redfishsetupname} does not exist'
-            if 'bmcsetupname' in data:
-                bmcsetupname = data['bmcsetupname']
-                data['bmcsetupid'] = Database().id_by_name('bmcsetup', data['bmcsetupname'])
-                if data['bmcsetupid']:
-                    del data['bmcsetupname']
-                else:
-                    return False, f'Invalid request: BMC Setup {bmcsetupname} does not exist'
-            if 'osimage' in data:
-                osimage = data['osimage']
-                del data['osimage']
-                data['osimageid'] = Database().id_by_name('osimage', osimage)
+            problem = self.resolve_references(data)
+            if problem:
+                return False, problem
             new_interface = None
             if 'interfaces' in data:
                 new_interface = data['interfaces']

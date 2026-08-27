@@ -36,7 +36,6 @@ __email__       = 'antoine.schonewille@clustervision.com'
 __status__      = 'Development'
 
 
-from time import sleep, time
 from json import dumps
 import requests
 import urllib3
@@ -311,33 +310,6 @@ class Redfish():
         This method will resolve the first Chassis.
         """
         return self.resource(collection='Chassis')
-
-
-    def poll_task(self, location=None, deadline=60, interval=5):
-        """
-        This method will follow a Redfish task to completion within a bounded
-        deadline, and say plainly that it is still running when the deadline is
-        reached. It is deliberately bounded: the control pipeline holds a worker
-        for the whole call, so anything that genuinely takes minutes belongs in
-        the queue rather than here.
-        """
-        if not location:
-            return False, 'No task location returned by the Redfish service'
-        expires = time() + deadline
-        state = 'Unknown'
-        while time() < expires:
-            status, data = self.get(path=location)
-            if not status:
-                return False, data
-            if not isinstance(data, dict):
-                return True, 'task completed'
-            state = str(data.get('TaskState', 'Unknown'))
-            if state in ['Completed', 'OK']:
-                return True, 'task completed'
-            if state in ['Exception', 'Killed', 'Cancelled', 'Interrupted']:
-                return False, self.reason(data, 0)
-            sleep(interval)
-        return False, f'task still {state} after {deadline} seconds: {location}'
 
 
 # The privileges a Redfish role carries, from the DMTF's predefined roles. Named

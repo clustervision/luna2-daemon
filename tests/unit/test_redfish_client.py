@@ -229,38 +229,6 @@ def test_the_body_reaches_the_service_as_json():
     assert loads(redfish.session.calls[0]['data']) == {'ResetType': 'On'}
 
 
-# --- long running work ------------------------------------------------------
-
-def test_a_finished_task_reports_completion():
-    redfish = client(routes={'/redfish/v1/TaskService/Tasks/1':
-                             FakeResponse(payload={'TaskState': 'Completed'})})
-    assert redfish.poll_task(location='/redfish/v1/TaskService/Tasks/1')[0] is True
-
-
-def test_a_failed_task_reports_the_service_reason():
-    redfish = client(routes={'/redfish/v1/TaskService/Tasks/1': FakeResponse(payload={
-        'TaskState': 'Exception',
-        '@Message.ExtendedInfo': [{'Message': 'image rejected'}]})})
-    status, message = redfish.poll_task(location='/redfish/v1/TaskService/Tasks/1')
-    assert status is False and message == 'image rejected'
-
-
-def test_polling_is_bounded_and_says_so():
-    """
-    The control pipeline holds a worker for the length of the call, so this may
-    never wait indefinitely -- work that genuinely takes minutes belongs in the
-    queue. Reaching the deadline is reported, not swallowed.
-    """
-    redfish = client(routes={'/redfish/v1/TaskService/Tasks/1':
-                             FakeResponse(payload={'TaskState': 'Running'})})
-    status, message = redfish.poll_task(location='/redfish/v1/TaskService/Tasks/1', deadline=0)
-    assert status is False and 'still' in message
-
-
-def test_no_task_location_is_refused_rather_than_polled():
-    assert Redfish(device='192.0.2.10').poll_task(location=None)[0] is False
-
-
 # --- which account a node is reached with -----------------------------------
 
 def accounts(*roles):

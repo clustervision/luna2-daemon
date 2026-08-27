@@ -44,6 +44,11 @@ from base.profile import Profile
 from base.route import Route
 from common.constant import CONSTANT
 
+# The named things a node points at, and whether a supplied value may be empty.
+# True means: cannot be empty if supplied. False means: can only be empty or correct
+NAME_REFERENCES = {'bmcsetup': False, 'group': True, 'osimage': False, 'switch': False,
+                   'cloud': False, 'redfishsetup': False}
+
 
 class Node():
     """
@@ -765,9 +770,7 @@ class Node():
                 else:
                     data['osimagetagid'] = "default"
 
-            # True means: cannot be empty if supplied. False means: can only be empty or correct
-            checks = {'bmcsetup': False, 'group': True, 'osimage': False, 'switch': False, 'cloud': False, 'redfishsetup': False}
-            for key, value in checks.items():
+            for key, value in NAME_REFERENCES.items():
                 if key in data:
                     check_name = data[key]
                     if data[key] == "" and value is False:
@@ -945,9 +948,7 @@ class Node():
                 if (not data[item]) and (item not in items):
                     del data[item]
 
-            # True means: cannot be empty if supplied. False means: can only be empty or correct
-            checks = {'bmcsetup': False, 'group': True, 'osimage': False, 'switch': False}
-            for key, value in checks.items():
+            for key, value in NAME_REFERENCES.items():
                 if key in data:
                     check_name = data[key]
                     if data[key] == "" and value is False:

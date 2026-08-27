@@ -73,9 +73,17 @@ __email__       = 'antoine.schonewille@clustervision.com'
 __status__      = 'Development'
 
 
+import concurrent.futures
+from time import sleep
 from urllib.parse import urlparse
 
+from common.constant import CONSTANT
+from utils.database import Database
+from utils.helper import Helper
 from utils.log import Log
+from utils.queue import Queue
+from utils.ha import HA
+from utils.firmware import FirmwareCatalog, FirmwareRequest
 
 
 # How a board will take an image, in the order we would rather use them.
@@ -89,6 +97,12 @@ HTTP = 'http'
 # is in neither list on purpose: it ends the waiting and decides nothing.
 FAILED_STATES = ['Exception', 'Killed', 'Cancelled', 'Interrupted']
 RUNNING_STATES = ['New', 'Starting', 'Running', 'Pending', 'Suspended', 'Stopping']
+
+# How many boards are flashed at once, and the pause between batches. This protects
+# the far end rather than the controller: a BMC is a small computer and a flash is
+# the heaviest thing it ever does.
+DEFAULT_BATCH = 10
+DEFAULT_DELAY = 0
 
 
 class FirmwarePush():
@@ -289,3 +303,125 @@ class FirmwarePush():
             return True, version
         return False, (f'{component} still reports {version or "nothing"} rather '
                        f'than {wanted}; the image may have landed in the inactive slot')
+
+
+    def batch_settings(self):
+        """
+        This method returns how many boards to flash at once and the pause between
+        batches, from luna.ini with the defaults in code.
+
+        [FIRMWARE] is read only if an administrator put it there. Declaring it
+        required would abort startup on every existing configuration that does not
+        have it, and abort before the logger exists to say why.
+        """
+        batch, delay = DEFAULT_BATCH, DEFAULT_DELAY
+        for option, default in (('FIRMWARE_BATCH_SIZE', batch),
+                                ('FIRMWARE_BATCH_DELAY', delay)):
+            value = default
+            try:
+                value = int(str(CONSTANT['FIRMWARE'][option]).replace('s', ''))
+            except (KeyError, TypeError, ValueError):
+                value = default
+            if option.endswith('SIZE'):
+                batch = max(1, value)
+            else:
+                delay = max(0, value)
+        return batch, delay
+
+
+    def sweep_child(self, pipeline, t=0):
+        """
+        One request per call; the mother decides how many of these run at once.
+        """
+        run = 1
+        while run:
+            run = 0
+            item = pipeline.get_node()
+            if not item:
+                # more workers than requests left. Not an error, and it must not
+                # raise: a child that dies inside an executor takes its exception
+                # with it and the mother learns nothing
+                continue
+            key, request = item
+            try:
+                status, message = self.update_node(request)
+            except Exception as exp:
+                status, message = False, f'{exp}'
+                self.logger.error(f'firmware update for request {key}: {exp}')
+            pipeline.add_message({key: f'{status}={message}'})
+
+
+    def sweep_mother(self, event):
+        """
+        This method drains firmware requests, master only.
+
+        One sweep, not one queued task per node. The requests live in their own
+        replicated table, so the sweep finds all of them in a single query and hands
+        them to a pool - which means a boot storm's worth of work costs one query
+        rather than a queue row, a claim and a removal per node.
+
+        Master only, because two controllers flashing the same board would be racing
+        over the one thing on a machine that must not be raced over. The passive one
+        does not drop these: a queue entry left on a passive controller is a leak, but
+        a request row is the record of what an operator asked for, and dropping it is
+        how an instruction disappears at a failover. It simply does not act on them.
+        """
+        self.logger.info('Starting firmware sweep thread')
+        ha_object = HA()
+        requests = FirmwareRequest()
+        while True:
+            try:
+                if (not ha_object.get_hastate()) or ha_object.get_role():
+                    requests.reclaim_abandoned()
+                    pipeline = Helper().Pipeline()
+                    for row in requests.pending():
+                        requests.claim(row['id'])
+                        pipeline.add_nodes({row['id']: row})
+                    if pipeline.has_nodes():
+                        self.sweep_batches(pipeline, requests)
+            except Exception as exp:
+                self.logger.error(f'firmware sweep thread encountered problem: {exp}')
+            if event.is_set():
+                return
+            sleep(5)
+
+
+    def sweep_batches(self, pipeline, requests=None):
+        """
+        This method runs the claimed requests in batches and records what happened.
+        """
+        batch, delay = self.batch_settings()
+        while pipeline.has_nodes():
+            with concurrent.futures.ThreadPoolExecutor(max_workers=batch) as executor:
+                _ = [executor.submit(self.sweep_child, pipeline, t)
+                     for t in range(1, batch + 1)]
+            sleep(0.1)
+            results = pipeline.get_messages()
+            for key in list(results):
+                status, message, *_ = (results[key].split('=', 1) + [None])
+                requests.finish(key, status == 'True', message)
+                pipeline.del_message(key)
+            if delay:
+                sleep(delay)
+
+
+    def update_node(self, request=None):
+        """
+        This method carries out one request, and answers whether the board is now
+        running what the catalogue asked for.
+
+        Every refusal below happens before anything is written to a board. What the
+        node should run comes from the catalogue and its own stored inventory, so a
+        request for a node the catalogue does not cover, or one nobody has collected
+        inventory from, is declined here rather than after a connection.
+        """
+        nodename = request.get('nodename')
+        status, plan = FirmwareCatalog().plan(nodename=nodename)
+        if not status:
+            return False, f'{nodename}: {plan}'
+        wanted = [item for item in plan['differs']
+                  if not request.get('component') or item['component'] == request['component']]
+        if not wanted:
+            return True, f'{nodename}: already running what the catalogue asks'
+        return False, (f'{nodename}: {len(wanted)} component(s) to update - '
+                       'the transfer itself is not implemented yet')

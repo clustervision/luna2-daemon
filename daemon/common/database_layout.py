@@ -177,6 +177,16 @@ DATABASE_LAYOUT_firmwarecatalog = [
 {"column": "updated",              "datatype": "VARCHAR", "length": "64"},
 {"column": "comment",              "datatype": "VARCHAR", "length": "20"}]
 
+DATABASE_LAYOUT_firmwarerequest = [
+{"column": "id",                   "datatype": "INTEGER", "key": "PRIMARY", "keyadd": "AUTOINCREMENT"},
+{"column": "nodeid",               "datatype": "INTEGER", "length": "10"},
+{"column": "component",            "datatype": "VARCHAR", "length": "128"},
+{"column": "request_id",           "datatype": "VARCHAR", "length": "64"},
+{"column": "status",               "datatype": "VARCHAR", "length": "20"},
+{"column": "message",              "datatype": "VARCHAR", "length": "2048"},
+{"column": "created",              "datatype": "VARCHAR", "length": "64"},
+{"column": "updated",              "datatype": "VARCHAR", "length": "64"}]
+
 DATABASE_LAYOUT_monitor = [
 {"column": "id",                   "datatype": "INTEGER", "key": "PRIMARY", "keyadd": "AUTOINCREMENT"},
 {"column": "tableref",             "datatype": "VARCHAR", "length": "100", "key": "UNIQUE", "with": "tablerefid"},

@@ -60,7 +60,7 @@ class Tables():
               'nodeinventoryfirmware',
               'rack', 'rackinventory', 'route', 'routemap',
               'redfishsetup', 'redfishaccount', 'biosconfig',
-              'firmwarecatalog']
+              'firmwarecatalog', 'firmwarerequest']
         self.sharedip = False
 
     def get_tables(self):

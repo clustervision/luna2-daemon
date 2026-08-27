@@ -59,6 +59,7 @@ __status__      = 'Development'
 
 from utils.log import Log
 from utils.database import Database
+from utils.helper import Helper
 from utils.redfish import RedfishAccess
 
 
@@ -210,3 +211,110 @@ class FirmwareCatalog():
         for reason, nodes in sorted((skipped or {}).items()):
             lines.append(f'{len(nodes)} skipped: {reason}')
         return lines
+
+
+# What a request is doing. 'queued' is waiting for the sweeper, 'in progress' has
+# been claimed by it, and anything else is a finished state kept for the status view.
+QUEUED = 'queued'
+CLAIMED = 'in progress'
+
+
+class FirmwareRequest():
+    """
+    This class records that somebody asked for a node's firmware to be updated, and
+    is what the sweeper reads.
+
+    A request is stored rather than derived, and that is the whole point. What the
+    catalogue says a node SHOULD run is derivable at any moment - that is what the
+    preview answers - but a flash is not a reconciliation. Acting on drift by itself
+    would mean a cluster reflashing because somebody edited a catalogue row, which is
+    the same reasoning that made a BIOS push explicit and applies harder here.
+
+    It lives in its own replicated table rather than in the queue. The queue is not
+    replicated: a task reaches the other controller only as a journal replay and the
+    passive one drops it, so work recorded only there is lost at a failover. A row
+    here is backed up, hashed and replicated, so a request outlives the controller
+    that took it.
+    """
+
+    def __init__(self):
+        """
+        This constructor will initialize all required variables here.
+        """
+        self.logger = Log.get_logger()
+        self.table = 'firmwarerequest'
+
+
+    def record(self, nodeids=None, component=None, request_id=None):
+        """
+        This method records a request for each node, and returns how many it wrote.
+
+        One row per node, because a node is the unit the work is done in and the unit
+        an answer is given about. Asking twice is not collapsed: the operator asked
+        again, and the catalogue or the machine may well have moved on since.
+        """
+        written = 0
+        for nodeid in nodeids or []:
+            row = Helper().make_rows({'nodeid': nodeid, 'component': component or '',
+                                      'request_id': request_id or '',
+                                      'status': QUEUED, 'created': 'NOW'})
+            if Database().insert(self.table, row):
+                written += 1
+        return written
+
+
+    def pending(self, status=QUEUED):
+        """
+        This method returns every request waiting, node name included, in one query.
+
+        One query and not one per node: the sweeper's whole job is to find the work,
+        and a sweep whose cost grows a round trip at a time is one that stops being
+        affordable exactly when a cluster is large enough to need it.
+        """
+        return Database().get_record_join(
+            ['firmwarerequest.id', 'firmwarerequest.nodeid', 'firmwarerequest.component',
+             'firmwarerequest.request_id', 'node.name as nodename'],
+            ['node.id=firmwarerequest.nodeid'],
+            [f'firmwarerequest.status="{status}"']) or []
+
+
+    def claim(self, requestid=None):
+        """
+        This method marks one request as taken, and it marks rather than deletes.
+
+        A request removed when it is claimed is lost if the daemon stops mid-flash,
+        and the node is then left part-updated with nothing recording that anybody
+        ever asked. Marked, it can be reclaimed.
+        """
+        Database().update(self.table, Helper().make_rows({'status': CLAIMED, 'updated': 'NOW'}),
+                          [{"column": "id", "value": requestid}])
+
+
+    def finish(self, requestid=None, status=None, message=None):
+        """
+        This method records how a request ended, and leaves the row for the status view.
+        """
+        Database().update(self.table,
+                          Helper().make_rows({'status': 'done' if status else 'failed',
+                                              'message': str(message or '')[:2000],
+                                              'updated': 'NOW'}),
+                          [{"column": "id", "value": requestid}])
+
+
+    def reclaim_abandoned(self, minutes=60):
+        """
+        This method returns requests a stopped daemon left claimed, to be tried again.
+
+        Nothing else will ever pick them up. A firmware flash is long enough that the
+        window has to be generous, which is why it is an hour rather than the half
+        hour a profile delivery uses.
+        """
+        stale = Database().get_record(
+            table=self.table,
+            where=f'status="{CLAIMED}" AND updated<datetime("now","-{minutes} minute")') or []
+        for row in stale:
+            self.logger.warning(f'firmware request {row["id"]} was left in progress; '
+                                'it will be tried again')
+            Database().update(self.table, Helper().make_rows({'status': QUEUED}),
+                              [{"column": "id", "value": row['id']}])
+        return stale

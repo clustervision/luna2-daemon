@@ -530,10 +530,22 @@ class Database():
         query = f'{insert} INTO "{table}" ({keys}) VALUES ({values});'
         self.logger.debug(f"Insert Query ---> {query}")
         attempt = 1
+        rowid = None
         while (not response) and attempt < 10:
             try:
                 local_thread.cursor.execute(query)
                 self.commit()
+                # The write is done. Everything below only works out the new row's
+                # id, and none of it may send us round this loop again: the read
+                # back compares a created/updated column against datetime('now',...)
+                # which is evaluated afresh when that query runs, so a second
+                # boundary falling between the insert and the read makes it miss a
+                # row that is there - and the loop would then insert it a second
+                # time. A write that raised nothing succeeded.
+                response = True
+                rowid = getattr(local_thread.cursor, 'lastrowid', None)
+                if rowid:
+                    break
                 new_where = where
                 where_list = []
                 for key,value in zip(where_keys, where_values):
@@ -543,10 +555,9 @@ class Database():
                 if len(where_list) > 0:
                     new_where = new_where + ' AND '.join(where_list)
                 result = self.get_record(table=table, where=new_where)
-                if result:
-                    response = True
-                    if 'id' in result[0]:
-                        response = result[0]['id']
+                if result and 'id' in result[0]:
+                    response = result[0]['id']
+                break
             except Exception as exp:
                 message = f'Error occur while executing => {query}. error is "{exp}" '
                 message += f'on attempt {attempt}.'
@@ -556,6 +567,8 @@ class Database():
                     sleep(3)
                 else:
                     break
+        if response is True and rowid:
+            response = rowid
         return response
 
 

@@ -94,10 +94,20 @@ def test_an_informational_message_is_not_a_refusal():
 # --- accepted, and silently not applied --------------------------------------
 
 def test_no_error_and_no_effect_retries_while_attempts_remain():
-    outcome, reason = Bios().verdict(wanted=WANTED, attributes=HALF, attempts=1)
+    """
+    'attempts' counts what was spent BEFORE this one - the executor increments it
+    after judging - so the attempt just made is that plus one. Numbered from the
+    raw counter an operator watched 0, 1, 2 go past and then read 'after 3
+    attempts', which is three writes and three reboots described as starting at
+    nothing.
+    """
+    outcome, reason = Bios().verdict(wanted=WANTED, attributes=HALF, attempts=0)
     assert outcome == 'retry'
     assert 'SriovGlobalEnable' in reason
-    assert "attempt 1 of 3" in reason, 'the report has to say where it is in the count'
+    assert "attempt 1 of 3" in reason, 'the first attempt is the first, not the zeroth'
+
+    _, second = Bios().verdict(wanted=WANTED, attributes=HALF, attempts=1)
+    assert "attempt 2 of 3" in second
 
 
 def test_it_gives_up_at_the_limit_and_says_how_many_it_spent():

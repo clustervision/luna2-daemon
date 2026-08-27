@@ -427,3 +427,8 @@ def test_the_group_lookup_is_one_query_not_one_per_node(cluster, monkeypatch):
     monkeypatch.setattr(Database, 'get_record', counting)
     Bios().status()
     assert calls.count('group') == 1, f'group was read {calls.count("group")} times'
+    assert calls.count('nodeinventory') == 1, (
+        f'nodeinventory was read {calls.count("nodeinventory")} times - reading it '
+        'per node is the cost this whole view exists to avoid'
+    )
+    assert len(calls) <= 3, f'{len(calls)} queries for a whole-cluster status'

@@ -466,8 +466,11 @@ class Bios():
         detail = ', '.join(f'{name} is {value!r}, wanted {wanted[name]!r}'
                            for name, value in sorted(missing.items()))
         if attempts < limit:
+            # attempts is a count of what has already been spent, so the attempt
+            # just made is that plus one. Numbering them from zero and then saying
+            # 'after 3 attempts' had an operator watching 0, 1, 2 go past
             return 'retry', (f'{len(missing)} setting(s) did not take on attempt '
-                             f'{attempts} of {limit}: {detail}')
+                             f'{attempts + 1} of {limit}: {detail}')
         return 'failed', (f'{len(missing)} setting(s) never took after {limit} '
                           f'attempt(s), with no error from the machine: {detail}')
 

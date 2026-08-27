@@ -37,7 +37,7 @@ from time import sleep
 from utils.log import Log
 from utils.database import Database
 from utils.helper import Helper
-from utils.redfish import Redfish, RedfishAccess
+from utils.redfish import Redfish, RedfishAccess, CONFIGURE_COMPONENTS
 from utils.status import Status
 from common.constant import CONSTANT
 
@@ -170,20 +170,16 @@ class Control():
             'redfish',
             [nodename,groupname]
         )
-        if access:
-            client = Redfish(
-                device=device,
-                username=access['username'],
-                password=access['password'],
-                scheme=access['scheme'],
-                port=access['port'],
-                verify=access['verify']
-            )
-        else:
-            # no redfishsetup for this node, so the bmcsetup credentials it already
-            # uses, over https with no verification. That is what a cluster does
-            # today, and an install that never sets one keeps behaving that way.
-            client = Redfish(device=device, username=username, password=password)
+        # for_node either answers with an account or refuses; there is no longer a
+        # third answer meaning "carry on with the bmcsetup credentials" (TRIX-2027)
+        client = Redfish(
+            device=device,
+            username=access['username'],
+            password=access['password'],
+            scheme=access['scheme'],
+            port=access['port'],
+            verify=access['verify']
+        )
         if action == 'setting':
             return redfish_plugin().setting(
                 redfish=client,

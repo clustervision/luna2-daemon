@@ -78,6 +78,10 @@ class FakeBmc():
 
     # --- the Redfish client surface the pusher uses --------------------------
 
+    def forget(self, path=None):
+        """The real client caches; a poller has to be able to drop that."""
+        return True
+
     def system(self):
         data = {
             'Manufacturer': 'Contoso', 'Model': 'PowerThing R750',
@@ -112,12 +116,19 @@ class FakeBmc():
         return False, f'{path} not found'
 
     def patch(self, path=None, payload=None):
+        """(status, data) - the arity utils/redfish.py actually returns.
+
+        It used to answer with three values, and the executor unpacked three, so
+        the two agreed with each other and with nothing else. Every real push
+        raised ValueError on its first stage while the suite stayed green: a fake
+        that encodes the wrong contract tests the fake.
+        """
         self.patches += 1
         if self.refuse:
-            return False, 400, self.refuse
+            return False, self.refuse
         # staged, NOT applied - this is the property the whole feature turns on
         self.staged.update(payload.get('Attributes') or {})
-        return True, 200, {}
+        return True, {}
 
     def call(self, method='GET', path=None, payload=None, headers=None):
         if 'ComputerSystem.Reset' in str(path):

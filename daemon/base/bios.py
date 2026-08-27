@@ -491,13 +491,19 @@ class Bios():
                 return False, (f'Group {group} has no nodes' if exists
                                else f'Group {group} is not available')
             return False, 'No nodes available'
-        # one lookup for the whole cluster rather than one per node: at four thousand
-        # nodes the difference is a query and four thousand queries
+        # two lookups for the whole cluster rather than two per node: at four
+        # thousand nodes that is the difference between three queries and eight
+        # thousand. The snapshots go the same way as the group names - reading them
+        # one node at a time was the cost this comment used to claim it avoided
         groups = {record['id']: record['name']
                   for record in Database().get_record(table='group') or []}
+        snapshots = {}
+        for record in Database().get_record(table='nodeinventory',
+                                            where='source = "redfish"') or []:
+            snapshots[record['nodeid']] = record
         response = {'config': {self.table: {'status': {}, 'summary': {}}}}
         for node in nodes:
-            row = self.stored_state(nodeid=node['id'])
+            row = self.stored_state(snapshot=snapshots.get(node['id']))
             row['group'] = groups.get(node['groupid']) or ''
             response['config'][self.table]['status'][node['name']] = row
             summary = response['config'][self.table]['summary']
@@ -505,28 +511,27 @@ class Bios():
         return True, response
 
 
-    def stored_state(self, nodeid=None):
+    def stored_state(self, snapshot=None):
         """
-        This method reads one node's stored BIOS state and names it.
+        This method names one node's stored BIOS state.
+
+        Takes the snapshot rather than fetching it, so a cluster-wide view can read
+        every node's in one query instead of one query per node.
         """
         row = {'config': '', 'digest': '', 'state': 'unknown',
                'bios_version': '', 'since': ''}
-        snapshot = Database().get_record(
-            table='nodeinventory',
-            where=f'nodeid = "{nodeid}" AND source = "redfish"')
         if not snapshot:
             return row
-        held = snapshot[0]
-        digest = held.get('bios_digest') or ''
-        row['config'] = held.get('bios_config') or ''
+        digest = snapshot.get('bios_digest') or ''
+        row['config'] = snapshot.get('bios_config') or ''
         row['digest'] = digest[:12]
-        row['bios_version'] = held.get('bios_version') or ''
-        row['since'] = held.get('updated') or ''
+        row['bios_version'] = snapshot.get('bios_version') or ''
+        row['since'] = snapshot.get('updated') or ''
         if not digest:
             return row
         if not row['config']:
             row['state'] = 'collected'
-        elif digest == (held.get('bios_config_digest') or ''):
+        elif digest == (snapshot.get('bios_config_digest') or ''):
             row['state'] = 'matched'
         else:
             row['state'] = 'drifted'

@@ -28,7 +28,7 @@ import pytest
 from base.nodeinventory import NodeInventory
 from utils.database import Database
 from utils.helper import Helper
-from utils.redfish import RedfishAccess
+from utils.redfish import RedfishAccess, LOGIN, CONFIGURE_COMPONENTS
 
 
 @pytest.fixture(name='node')
@@ -167,12 +167,12 @@ def test_a_read_only_setup_is_refused_a_write_rather_than_sent_one(node):
     Luna had said would explain.
     """
     add_redfishsetup(role='ReadOnly')
-    read = RedfishAccess().for_node(nodename=node, write=False)
+    read = RedfishAccess().for_node(nodename=node, needs=LOGIN)
     assert read[0] is True and read[1]['username'] == 'sweep'
 
-    write = RedfishAccess().for_node(nodename=node, write=True)
+    write = RedfishAccess().for_node(nodename=node, needs=CONFIGURE_COMPONENTS)
     assert write[0] is False
-    assert 'no account that may write' in write[1]
+    assert 'no account carrying' in write[1]
 
 
 def test_it_does_not_reach_for_the_bmcsetup_credentials_instead(node):
@@ -188,7 +188,7 @@ def test_it_does_not_reach_for_the_bmcsetup_credentials_instead(node):
     setupredfish - not a fallback (TRIX-2001).
     """
     add_redfishsetup(role='ReadOnly')
-    status, answer = RedfishAccess().for_node(nodename=node, write=True)
+    status, answer = RedfishAccess().for_node(nodename=node, needs=CONFIGURE_COMPONENTS)
     assert status is False
     assert 'admin' not in str(answer) and 'secret' not in str(answer)
 
@@ -201,8 +201,8 @@ def test_an_administrator_alongside_it_is_what_allows_the_write(node):
                                          {"column": "username", "value": 'rfadmin'},
                                          {"column": "password", "value": 'pw2'},
                                          {"column": "role", "value": 'Administrator'}])
-    assert RedfishAccess().for_node(nodename=node, write=True)[1]['username'] == 'rfadmin'
-    assert RedfishAccess().for_node(nodename=node, write=False)[1]['username'] == 'sweep', (
+    assert RedfishAccess().for_node(nodename=node, needs=CONFIGURE_COMPONENTS)[1]['username'] == 'rfadmin'
+    assert RedfishAccess().for_node(nodename=node, needs=LOGIN)[1]['username'] == 'sweep', (
         'and the read still uses the weakest account that can do the job'
     )
 
@@ -215,5 +215,66 @@ def test_a_vendor_role_we_do_not_rank_is_unknown_not_refused(node):
     one that refuses here. Stranding a node on an unknown would be worse.
     """
     add_redfishsetup(role='OemPowerOnly')
-    status, access = RedfishAccess().for_node(nodename=node, write=True)
+    status, access = RedfishAccess().for_node(nodename=node, needs=CONFIGURE_COMPONENTS)
     assert status is True and access['username'] == 'sweep'
+
+
+# --- the privilege an operation needs, not a rank ----------------------------
+
+def test_each_operation_asks_for_what_it_actually_needs(node):
+    """
+    Four accounts with four roles, and three operations that need three different
+    privileges. The same rule serves all of them: the weakest account carrying what
+    this operation needs.
+
+    Before, everything that was not a read took the strongest account available, so
+    a site that configured an Operator for day-to-day work and an Administrator for
+    account management got the Administrator used for both - and the reason for
+    having two accounts quietly disappeared.
+    """
+    add_redfishsetup(role='ReadOnly')
+    for num, role in enumerate(('Operator', 'Administrator', 'OemPowerOnly'), start=2):
+        Database().insert('redfishaccount', [
+            {"column": "id", "value": num},
+            {"column": "redfishsetupid", "value": 1},
+            {"column": "name", "value": role.lower()},
+            {"column": "username", "value": role.lower()},
+            {"column": "password", "value": 'pw'},
+            {"column": "role", "value": role}])
+
+    from utils.redfish import CONFIGURE_USERS
+    picked = {}
+    for label, needs in (('read', LOGIN), ('power', CONFIGURE_COMPONENTS),
+                         ('accounts', CONFIGURE_USERS)):
+        picked[label] = RedfishAccess().for_node(nodename=node, needs=needs)[1]['username']
+
+    assert picked['read'] == 'sweep', 'ReadOnly is enough to read'
+    assert picked['power'] == 'operator', (
+        'ComputerSystem.Reset needs ConfigureComponents, which an Operator carries - '
+        'reaching for the Administrator would use more than the job requires'
+    )
+    assert picked['accounts'] == 'administrator', (
+        'creating an account needs ConfigureUsers, which only an Administrator has'
+    )
+
+
+def test_a_bios_push_does_not_ask_for_more_than_it_needs():
+    """
+    Writing BIOS attributes and resetting the machine are both ConfigureComponents.
+    The executor has to say so, or it silently takes whatever bmc_for defaults to -
+    which is the read privilege, and would hand it a ReadOnly account for a write.
+    """
+    import ast
+    import inspect
+
+    from utils import bios_push
+
+    source = inspect.getsource(bios_push.BiosPush.push_node)
+    tree = ast.parse(source.lstrip())
+    needs = [keyword.value.id
+             for call in ast.walk(tree) if isinstance(call, ast.Call)
+             for keyword in call.keywords
+             if keyword.arg == 'needs' and isinstance(keyword.value, ast.Name)]
+    assert needs == ['CONFIGURE_COMPONENTS'], (
+        'the push must name the privilege it needs rather than take the default'
+    )

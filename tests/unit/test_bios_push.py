@@ -262,7 +262,7 @@ def node(monkeypatch):
     """A node whose BMC is whatever the test hands over."""
     def install(bmc):
         monkeypatch.setattr('base.nodeinventory.NodeInventory.bmc_for',
-                            lambda self, name=None: (True, {
+                            lambda self, name=None, needs=None: (True, {
                                 'device': '10.0.0.1', 'username': 'admin', 'password': 'x',
                                 'scheme': 'https', 'port': None, 'verify': False}))
         monkeypatch.setattr('utils.redfish.Redfish', lambda **kwargs: bmc)
@@ -348,7 +348,7 @@ def test_a_machine_with_no_settings_object_is_refused_before_writing(node):
 
 def test_an_unreachable_bmc_is_reported_not_raised(node, monkeypatch):
     monkeypatch.setattr('base.nodeinventory.NodeInventory.bmc_for',
-                        lambda self, name=None: (False, 'node001 has no BMC address configured'))
+                        lambda self, name=None, needs=None: (False, 'node001 has no BMC address configured'))
     status, message = BiosPush().push_node(nodename='node001', config=CONFIG)
     assert status is False and 'no BMC address' in message
 

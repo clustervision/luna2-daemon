@@ -43,7 +43,7 @@ from json import dumps
 from utils.database import Database
 from utils.log import Log
 from utils.helper import Helper
-from utils.redfish import Redfish, RedfishAccess
+from utils.redfish import Redfish, RedfishAccess, LOGIN
 from utils.status import Status
 from common.constant import CONSTANT
 
@@ -284,14 +284,15 @@ class NodeInventory():
             Database().insert(table, Helper().make_rows(row_data))
 
 
-    def bmc_for(self, name=None):
+    def bmc_for(self, name=None, needs=LOGIN):
         """
         This method resolves how to reach a node's BMC: its address, and the
         credentials to use.
 
-        The account is chosen for a READ. That is the first thing the Redfish roles
-        are actually good for - an inventory sweep across a whole cluster has no
-        business running as a BMC administrator.
+        The caller says what privilege the operation needs and gets the weakest
+        account carrying it - a whole-cluster inventory sweep has no business
+        running as a BMC administrator, and a BIOS push has no business running as
+        one either when an Operator can reset a system.
 
         A node with no redfishsetup is refused rather than reached with the bmcsetup
         credentials (TRIX-2027). Those credentials do work over Redfish, because the
@@ -309,7 +310,7 @@ class NodeInventory():
             return False, f'{name} does not exist or has no BMC interface configured'
         if not node[0]['device']:
             return False, f'{name} has no BMC address configured'
-        status, access = RedfishAccess().for_node(nodename=name, write=False)
+        status, access = RedfishAccess().for_node(nodename=name, needs=needs)
         if not status:
             return False, access
         return True, {'device': node[0]['device'], 'username': access['username'],

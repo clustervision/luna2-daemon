@@ -181,7 +181,7 @@ def bmc(monkeypatch):
     """Point base.bios at a served BMC rather than a real one."""
     def install(documents=DOCUMENTS, system=SYSTEM, reachable=True):
         monkeypatch.setattr('base.bios.NodeInventory.bmc_for',
-                            lambda self, name=None: (True, {
+                            lambda self, name=None, needs=None: (True, {
                                 'device': '10.0.0.1', 'username': 'ro', 'password': 'x',
                                 'scheme': 'https', 'port': None, 'verify': False})
                             if reachable else (False, f'{name} has no BMC address configured'))

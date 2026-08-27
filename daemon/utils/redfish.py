@@ -320,6 +320,26 @@ class Redfish():
         return False, f'task still {state} after {deadline} seconds: {location}'
 
 
+# The privileges a Redfish role carries, from the DMTF's predefined roles. Named
+# rather than ranked, because an operation needs a privilege and not a seniority:
+# resetting a system needs ConfigureComponents, which an Operator has, while
+# creating an account needs ConfigureUsers, which only an Administrator has.
+#
+# A vendor may define roles of its own with any privilege set it likes, so a name
+# absent from here is unknown rather than known-unable - see pick_account.
+LOGIN = 'Login'
+CONFIGURE_COMPONENTS = 'ConfigureComponents'
+CONFIGURE_USERS = 'ConfigureUsers'
+CONFIGURE_MANAGER = 'ConfigureManager'
+
+ROLE_PRIVILEGES = {
+    'readonly': (LOGIN, 'ConfigureSelf'),
+    'operator': (LOGIN, 'ConfigureSelf', CONFIGURE_COMPONENTS),
+    'administrator': (LOGIN, 'ConfigureSelf', CONFIGURE_COMPONENTS,
+                      CONFIGURE_USERS, CONFIGURE_MANAGER),
+}
+
+
 class RedfishAccess():
     """
     Resolves which Redfish setup and account a node is reached with.
@@ -350,50 +370,52 @@ class RedfishAccess():
         return None
 
 
-    def pick_account(self, accounts=None, write=False):
+    def pick_account(self, accounts=None, needs=LOGIN):
         """
-        This method will pick the weakest account that can do the job.
+        This method will pick the weakest account that carries the privilege an
+        operation actually needs.
 
-        Roles are optional. An account carrying none is usable for anything, so a
-        setup holding a single Administrator account behaves exactly as a cluster
-        does today - which is the point, because BMC account slots are finite and
-        customers use some of them for their own accounts.
+        One rule for reads and writes alike. It used to be two - reads took the
+        weakest account and writes took the strongest - and the second was wrong
+        in a way that quietly undid what an administrator had configured: power
+        control is a write, so a setup holding both an Operator and an
+        Administrator used the Administrator, and the reason for having two
+        accounts disappeared.
+
+        'write' could not express it either way, because a write is not one
+        privilege. Resetting a system needs ConfigureComponents, which an Operator
+        has; creating an account needs ConfigureUsers, which only an Administrator
+        has. Asking for the privilege rather than for a rank is what lets the same
+        rule serve both.
+
+        A role we do not rank is *unknown*, not known-unable. Redfish lets a vendor
+        define roles with arbitrary privilege sets, so one of those is tried rather
+        than refused - stranding a node on a name we have not seen would be worse
+        than attempting the call and reading the answer.
         """
-        preferred = ['Administrator', 'Operator']
-        if not write:
-            preferred = ['ReadOnly', 'Operator', 'Administrator']
-        for role in preferred:
-            for account in accounts:
-                if str(account['role'] or '').strip().lower() == role.lower():
-                    return account
-        for account in accounts:
-            if not str(account['role'] or '').strip():
-                return account
-        if write and all(str(account['role'] or '').strip().lower() == 'readonly'
-                         for account in accounts):
-            # Refused rather than answered with an account that cannot do the job.
-            # Handing a ReadOnly account back for a write sends it, gets refused by
-            # the board, and reports a permission error the operator cannot explain
-            # from anything Luna told them.
-            #
-            # Only an all-ReadOnly setup refuses. ReadOnly is the one predefined
-            # role that provably cannot write - Login and ConfigureSelf, nothing
-            # else - while a vendor role we do not rank is unknown rather than
-            # known-bad, and stranding a node on an unknown is worse than trying it.
-            #
-            # It must not reach for the bmcsetup credentials instead. Those do work
-            # over Redfish - one user store, two front ends - and that is the reason
-            # not to: an administrator who configured only a ReadOnly account has
-            # said read-only, and using the IPMI administrator behind their back
-            # escalates past an explicit choice rather than around a missing one.
-            # Creating the Redfish accounts in the first place is the one place that
-            # credential is the right one, and that is a deliberate act gated by
-            # setupredfish rather than a fallback (TRIX-2001).
-            return None
-        return accounts[0]
+        candidates = []
+        unknown = []
+        for account in accounts or []:
+            role = str(account['role'] or '').strip()
+            if not role:
+                # no role recorded: usable for anything, which is what a setup
+                # holding a single administrator has always relied on
+                unknown.append((0, account))
+                continue
+            privileges = ROLE_PRIVILEGES.get(role.lower())
+            if privileges is None:
+                unknown.append((0, account))
+            elif needs in privileges:
+                candidates.append((len(privileges), account))
+        if candidates:
+            # fewest privileges first: the weakest account that can do the job
+            return min(candidates, key=lambda entry: entry[0])[1]
+        if unknown:
+            return unknown[0][1]
+        return None
 
 
-    def for_node(self, nodename=None, write=False):
+    def for_node(self, nodename=None, needs=LOGIN):
         """
         This method will return how to reach a node's BMC over Redfish.
 
@@ -426,11 +448,11 @@ class RedfishAccess():
                                          where=f'redfishsetupid = "{setupid}"')
         if not accounts:
             return False, f"redfishsetup {setup[0]['name']} has no accounts"
-        account = self.pick_account(accounts=accounts, write=write)
+        account = self.pick_account(accounts=accounts, needs=needs)
         if not account:
-            return False, (f"redfishsetup {setup[0]['name']} has no account that may "
-                           'write; add one with a role that can, or this node is '
-                           'read-only over Redfish by configuration')
+            return False, (f"redfishsetup {setup[0]['name']} has no account carrying "
+                           f'{needs}; add one with a role that does, or this node '
+                           'cannot be asked to do that over Redfish by configuration')
         return True, {
             'scheme': setup[0]['scheme'] or 'https',
             'port': setup[0]['port'],

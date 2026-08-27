@@ -53,6 +53,7 @@ from utils.queue import Queue
 from utils.status import Status
 from utils.ha import HA
 from utils.bios import Bios as BiosPlanner
+from utils.redfish import CONFIGURE_COMPONENTS
 
 # The reset that gets a machine to consume its staged settings. GracefulRestart
 # is asked for first because the node may be running an operating system and
@@ -305,7 +306,11 @@ class BiosPush():
         from utils.redfish import Redfish
 
         label = nodename
-        status, access = NodeInventory().bmc_for(name=nodename)
+        # writing BIOS attributes and resetting the machine are both
+        # ConfigureComponents, which an Operator carries. Asking for more would use
+        # the strongest account a site configured, for work that never needed it
+        status, access = NodeInventory().bmc_for(name=nodename,
+                                                 needs=CONFIGURE_COMPONENTS)
         if not status:
             return False, access
         redfish = Redfish(device=access['device'], username=access['username'],

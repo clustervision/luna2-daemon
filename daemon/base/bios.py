@@ -505,29 +505,44 @@ class Bios():
         return row
 
 
-    def record_match(self, nodename=None, config=None, digest=None):
+    def record_match(self, name=None, payload=None):
         """
         This method records that a node was found holding a configuration.
 
-        Written where the inventory lives rather than on the node, because it is
-        an observation about the machine and it belongs beside the rest of what we
+        Written where the inventory lives rather than on the node, because it is an
+        observation about the machine and belongs beside the rest of what we
         observed - backed up with it, and carrying its own timestamp so nobody
         mistakes it for current.
+
+        And written *through the journal*, because nodeinventory is in
+        Tables().tables: the peer is expected to hold identical content and the
+        controllers compare hashes over it. Updating it directly would work
+        perfectly on the controller that ran the push and leave the other one
+        disagreeing on that table forever - which the secondary answers by clearing
+        and re-importing the whole of it. The collector beside this one goes through
+        the journal for exactly the same reason.
+
+        The signature is (object, payload) because that is the shape the journal
+        dispatches: it guesses arity from which of object/param/payload are set.
         """
-        node = Database().get_record(table='node', where=f'name = "{nodename}"')
+        config = (payload or {}).get('config') or ''
+        digest = (payload or {}).get('digest') or ''
+        node = Database().get_record(table='node', where=f'name = "{name}"')
         if not node:
             return False
-        where = [{"column": "nodeid", "value": node[0]['id']},
-                 {"column": "source", "value": "redfish"}]
-        row = Helper().make_rows({'bios_config': config or '',
-                                  'bios_config_digest': digest or '',
-                                  'bios_digest': digest or ''})
-        if Database().get_record(table='nodeinventory',
-                                 where=f"nodeid = \"{node[0]['id']}\" "
-                                       f'AND source = "redfish"'):
-            Database().update('nodeinventory', row, where)
-            return True
-        return False
+        if not Database().get_record(table='nodeinventory',
+                                     where=f"nodeid = \"{node[0]['id']}\" "
+                                           f'AND source = "redfish"'):
+            # nothing collected from this machine, so there is no observation to
+            # annotate. Inventing the row would put a BIOS record beside no inventory
+            return False
+        Database().update('nodeinventory',
+                          Helper().make_rows({'bios_config': config,
+                                              'bios_config_digest': digest,
+                                              'bios_digest': digest}),
+                          [{"column": "nodeid", "value": node[0]['id']},
+                           {"column": "source", "value": "redfish"}])
+        return True
 
 
     def push_bios(self, object_type=None, name=None, request_data=None):

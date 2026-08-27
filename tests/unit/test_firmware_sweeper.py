@@ -47,7 +47,8 @@ def db(tmp_path):
     constant.CONSTANT['DATABASE']['DATABASE'] = str(tmp_path / 'unit.db')
     database.local_thread.connection = None
     for table in ['node', 'group', 'firmwarecatalog', 'firmwarerequest',
-                  'nodeinventory', 'nodeinventoryfirmware', 'queue']:
+                  'nodeinventory', 'nodeinventoryfirmware', 'queue',
+                  'network', 'nodeinterface', 'ipaddress', 'controller']:
         Database().create(table, DBStructure().get_database_table_structure(table))
     yield Database()
     constant.CONSTANT['DATABASE']['DATABASE'] = original
@@ -205,3 +206,48 @@ def test_the_batch_size_has_a_default_and_can_be_configured(db):
         assert FirmwarePush().batch_settings() == (4, 2)
     finally:
         del constant.CONSTANT['FIRMWARE']
+
+
+def test_the_image_url_uses_the_address_that_faces_the_bmc(db):
+    """
+    Derived from the route rather than from configuration or from the database. The
+    database cannot answer it: a controller has one ipaddress row and it is the
+    cluster one, so on a cluster whose BMCs have their own network there is nothing
+    stored that says which address faces them.
+
+    Asked against the loopback, which is the one destination whose answer is knowable
+    without a network.
+    """
+    from utils.firmware_push import FirmwarePush
+
+    status, url = FirmwarePush().image_url(device='127.0.0.1', imagefile='bmc-7.10.bin')
+    assert status is True
+    assert url == 'http://127.0.0.1:7051/files/bmc-7.10.bin'
+
+
+def test_the_webserver_settings_are_honoured(db):
+    import common.constant as constant
+    from utils.firmware_push import FirmwarePush
+
+    constant.CONSTANT['WEBSERVER'] = {'PROTOCOL': 'https', 'PORT': '8443'}
+    try:
+        _, url = FirmwarePush().image_url(device='127.0.0.1', imagefile='bmc.bin')
+        assert url == 'https://127.0.0.1:8443/files/bmc.bin'
+    finally:
+        del constant.CONSTANT['WEBSERVER']
+
+
+def test_a_bmc_with_no_route_is_refused_with_the_reason(db):
+    """An address the kernel cannot route to has nowhere to fetch from."""
+    from utils.firmware_push import FirmwarePush
+
+    status, reason = FirmwarePush().image_url(device='2001:db8::1', imagefile='bmc.bin')
+    assert status is False
+    assert 'no route' in reason or 'no address facing' in reason
+
+
+def test_an_entry_with_no_image_file_is_refused_before_anything_is_contacted(db):
+    from utils.firmware_push import FirmwarePush
+
+    status, reason = FirmwarePush().image_url(device='127.0.0.1', imagefile=None)
+    assert status is False and 'no image file' in reason

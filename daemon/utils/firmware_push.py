@@ -74,6 +74,7 @@ __status__      = 'Development'
 
 
 import concurrent.futures
+import socket
 from time import sleep
 from urllib.parse import urlparse
 
@@ -103,6 +104,15 @@ RUNNING_STATES = ['New', 'Starting', 'Running', 'Pending', 'Suspended', 'Stoppin
 # the heaviest thing it ever does.
 DEFAULT_BATCH = 10
 DEFAULT_DELAY = 0
+
+# How long one component's flash is given, and how often the task is read. A flash
+# is ten to thirty minutes and drops the connection by design, so the worker holds
+# for it the way the BIOS push holds through a reboot.
+FLASH_DEADLINE = 2400
+POLL_INTERVAL = 15
+# How long to wait for an update service to come back before giving up on it. A BMC
+# that has just flashed itself is unreachable for a while, and that is not a failure.
+READY_DEADLINE = 300
 
 
 class FirmwarePush():
@@ -405,15 +415,103 @@ class FirmwarePush():
                 sleep(delay)
 
 
-    def update_node(self, request=None):
+    def image_url(self, device=None, imagefile=None):
         """
-        This method carries out one request, and answers whether the board is now
-        running what the catalogue asked for.
+        This method returns where this BMC can fetch an image from, or why it cannot.
 
-        Every refusal below happens before anything is written to a board. What the
-        node should run comes from the catalogue and its own stored inventory, so a
-        request for a node the catalogue does not cover, or one nobody has collected
-        inventory from, is declined here rather than after a connection.
+        The host is derived, and it has to be. A BMC sits on the management network,
+        and the address it can reach the controller on is the controller's address ON
+        THAT network - not its cluster address. Those are different interfaces on a
+        real machine, and handing a BMC the cluster one gives it something it cannot
+        route to.
+
+        Luna does not know that address. Checked rather than assumed: a controller has
+        exactly one ipaddress row and it is always the cluster one, so on a cluster
+        whose BMCs live on their own network there is nothing in the database that
+        answers this. The kernel does answer it, so it is asked - a connectionless UDP
+        socket sends nothing and reports the source address the route would use, which
+        is the same answer 'ip route get' gives.
+
+        It answers for this controller, which is the correct one by construction: the
+        sweep is master only and the image is staged on the machine running it.
+        """
+        if not imagefile:
+            return False, 'the catalogue entry names no image file'
+        if not device:
+            return False, 'no BMC address to work out a route to'
+        try:
+            probe = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            try:
+                probe.connect((str(device).strip('[]'), 1))
+                source = probe.getsockname()[0]
+            finally:
+                probe.close()
+        except OSError as exp:
+            return False, f'no route from this controller to {device}: {exp}'
+        if not source or source.startswith('0.'):
+            return False, f'this controller has no address facing {device}'
+        protocol, port = 'http', '7051'
+        try:
+            protocol = str(CONSTANT['WEBSERVER']['PROTOCOL'] or protocol)
+            port = str(CONSTANT['WEBSERVER']['PORT'] or port)
+        except (KeyError, TypeError):
+            pass
+        return True, f'{protocol}://{source}:{port}/files/{imagefile}'
+
+
+    def follow(self, redfish=None, task=None, deadline=FLASH_DEADLINE):
+        """
+        This method waits on one firmware task and returns (state, reason).
+
+        It only waits. Whether the flash worked is not this question - a task can
+        report Completed over an image that went into the slot the machine is not
+        booting from - so the answer here is handed to verify() and never treated as
+        success on its own.
+        """
+        waited = 0
+        while True:
+            state, reason = self.track(redfish=redfish, task=task,
+                                       deadline=deadline, waited=waited)
+            if state != 'waiting':
+                return state, reason
+            sleep(POLL_INTERVAL)
+            waited += POLL_INTERVAL
+
+
+    def wait_ready(self, redfish=None, deadline=READY_DEADLINE):
+        """
+        This method waits for the update service to be willing to take work.
+
+        A board that has just flashed itself answers 503 for a while, and pushing
+        into that window is accepted and silently discarded. So this is patient by
+        design: not ready is a reason to come back, and only running out of patience
+        is a failure.
+        """
+        waited = 0
+        while True:
+            status, reason = self.ready(redfish=redfish)
+            if status:
+                return True, None
+            if waited >= deadline:
+                return False, f'the update service was not ready after {waited}s: {reason}'
+            sleep(POLL_INTERVAL)
+            waited += POLL_INTERVAL
+
+
+    def update_node(self, request=None, redfish=None):
+        """
+        This method carries out one request, component by component, and answers
+        whether the board is now running what the catalogue asked for.
+
+        Every refusal that can be decided from stored state happens before a
+        connection is made. What the node should run comes from the catalogue and its
+        own inventory, so a node the catalogue does not cover, or one nobody has
+        collected inventory from, is declined without waking a BMC.
+
+        Components are done one at a time and each is verified before the next
+        starts. Flashing a BMC takes its own service away for a minute or two, so the
+        next component would otherwise be pushed into exactly the window that
+        swallows things.
         """
         nodename = request.get('nodename')
         status, plan = FirmwareCatalog().plan(nodename=nodename)
@@ -423,5 +521,59 @@ class FirmwarePush():
                   if not request.get('component') or item['component'] == request['component']]
         if not wanted:
             return True, f'{nodename}: already running what the catalogue asks'
-        return False, (f'{nodename}: {len(wanted)} component(s) to update - '
-                       'the transfer itself is not implemented yet')
+
+        if redfish is None:
+            from base.nodeinventory import NodeInventory
+            from utils.redfish import Redfish
+            status, access = NodeInventory().bmc_for(name=nodename)
+            if not status:
+                return False, f'{nodename}: {access}'
+            redfish = Redfish(device=access['device'], username=access['username'],
+                              password=access['password'], scheme=access['scheme'],
+                              port=access['port'], verify=access['verify'])
+
+        done = []
+        for item in wanted:
+            status, message = self.update_component(redfish=redfish, nodename=nodename,
+                                                    item=item)
+            if not status:
+                return False, (f'{message}' if not done
+                               else f'{message} (after {", ".join(done)})')
+            done.append(item['component'])
+        return True, f'{nodename}: {", ".join(done)} now at the catalogue version'
+
+
+    def update_component(self, redfish=None, nodename=None, item=None):
+        """
+        This method flashes one component and reads the version back.
+        """
+        component = item['component']
+        label = f'{nodename} {component}'
+        status, reason = self.wait_ready(redfish=redfish)
+        if not status:
+            return False, f'{label}: {reason}'
+        status, path, service = redfish.update_service()
+        if not status:
+            return False, f'{label}: {path}'
+        kind, uri = self.push_target(service=service)
+        if not kind:
+            return False, f'{label}: {uri}'
+        status, url = self.image_url(device=redfish.device, imagefile=item.get('imagefile'))
+        if not status:
+            return False, f'{label}: {url}'
+        action = ((service.get('Actions') or {}).get('#UpdateService.SimpleUpdate')) or {}
+        status, answer = self.submit(redfish=redfish, kind=kind, uri=uri, action=action,
+                                     image_url=url, component=component)
+        if not status:
+            return False, f'{label}: {answer}'
+        state, reason = self.follow(redfish=redfish, task=answer)
+        if state == 'failed':
+            return False, f'{label}: {reason}'
+        # 'gone' is the ordinary end of a flash on a service that deletes its task,
+        # and 'finished' only says the service stopped working on it. Neither is
+        # evidence, so both fall through to the one question that is
+        status, version = self.verify(redfish=redfish, component=component,
+                                      wanted=item['wanted'])
+        if not status:
+            return False, f'{label}: {version}'
+        return True, f'{label} is running {version}'

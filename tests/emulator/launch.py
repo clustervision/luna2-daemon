@@ -5,32 +5,25 @@
 # Copyright (C) 2026  ClusterVision Solutions b.v.
 
 """
-Start sushy-tools' Redfish emulator with a BIOS-capable driver.
+Start sushy-tools' Redfish emulator for tests/unit/test_bios_against_emulator.py.
 
-Only the driver class is substituted. Everything that goes over the wire - the
-routes, the @Redfish.Settings annotation, the settings object pointer, the JSON
-templates, the auth and the error bodies - is sushy-tools', which is the entire
-point of testing our client against it rather than against our own fake.
+Nothing here is substituted or subclassed: the driver, the routes, the staging
+and every byte that goes over the wire are sushy-tools'. That is the point - our
+client is being tested against somebody else's reading of the specification, and
+anything of ours in the path would weaken it.
 
-See README.md in this directory for what that does and does not prove.
+See README.md in this directory for what it does and does not prove, and for why
+it currently wants sushy-tools from source rather than from PyPI.
 
     ~/sushy-emu-venv/bin/python tests/emulator/launch.py [--port 8000]
 """
 
 import argparse
 import os
-import sys
 
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from sushy_tools.emulator import main
 
-from sushy_tools.emulator.resources.systems import fakedriver     # noqa: E402
-from biosdriver import BiosFakeDriver                             # noqa: E402
-
-fakedriver.FakeDriver = BiosFakeDriver          # before the app builds its driver
-
-from sushy_tools.emulator import main           # noqa: E402
-
-# Matches the default in tests/unit/test_bios_against_emulator.py. Override both
+# Matches the default in tests/unit/test_bios_against_emulator.py. Change both
 # together, or the tests will not find the system they ask for.
 SYSTEM_UUID = '27946b59-9e44-4fa7-8e91-f3527a1ef094'
 

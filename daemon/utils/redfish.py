@@ -252,6 +252,26 @@ class Redfish():
         return self.get(path='/redfish/v1/', cache=True)
 
 
+    def forget(self, path=None):
+        """
+        This method drops cached documents so a later read goes to the machine.
+
+        The cache exists for discovery, where the same few resources are walked
+        repeatedly and nothing moves under you. Polling is the opposite: a caller
+        waiting for a machine to finish POST needs each read to be a new answer,
+        and a cached one is not merely stale - it can never change, so the wait
+        either succeeds immediately on a pre-reset value or runs to its deadline.
+
+        With no path the whole cache goes, which is what a reset wants: the
+        machine is about to be a different machine.
+        """
+        if path is None:
+            self.cache = {}
+        else:
+            self.cache.pop(path, None)
+        return True
+
+
     def resource(self, collection=None):
         """
         This method will resolve a named service-root collection down to its

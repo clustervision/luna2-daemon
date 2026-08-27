@@ -174,7 +174,13 @@ def start_background_workers():
     executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
     register_future(executor, executor.submit(ProfileSync().sync_mother, event))
 
+    # ------------------ BIOS push thread ---------------------------
+    # its own executor, like every other worker. Sharing the one above put it in
+    # the queue behind sync_mother, which is a while True that only returns at
+    # shutdown - so it would never have started, and every queued push would sit
+    # there undrained with nothing saying why
     LOGGER.info("Starting BIOS push thread")
+    executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
     register_future(executor, executor.submit(BiosPush().push_mother, event))
     # ----------------- osimage tasks thread -----------------------
     executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)

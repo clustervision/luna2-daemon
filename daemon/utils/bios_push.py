@@ -207,6 +207,11 @@ class BiosPush():
                                           payload={'ResetType': wanted})
         if not status:
             return False, f'reset ({wanted}) refused: {data}'
+        # everything cached describes the machine as it was before the reset, and
+        # the wait that follows asks whether it has changed. A cached answer can
+        # never change, so the wait would either pass on a pre-reset BootProgress
+        # or run the full deadline against a document read once
+        redfish.forget()
         return True, wanted
 
 
@@ -214,8 +219,12 @@ class BiosPush():
         """
         How far through POST a machine is, as it reports it, or None.
         """
+        redfish.forget()
         status, _, system = redfish.system()
         if not status:
+            # unreachable is expected while a machine reboots, and it is not the
+            # same as 'no BootProgress published' - the caller must not read it as
+            # a power state
             return None, None
         progress = (system or {}).get('BootProgress') or {}
         return progress.get('LastState'), str(system.get('PowerState') or '')
@@ -243,7 +252,7 @@ class BiosPush():
                 seen_progress = True
                 if state in POST_DONE:
                     return True, f'reached {state} after {waited}s'
-            elif power.lower() == 'on' and waited >= interval * 2:
+            elif power and power.lower() == 'on' and waited >= interval * 2:
                 return True, (f'powered on after {waited}s; this machine does not '
                               'report BootProgress, so POST completion is assumed')
         if seen_progress:
@@ -264,7 +273,7 @@ class BiosPush():
         while True:
             payload = {'Attributes': stage,
                        '@Redfish.SettingsApplyTime': {'ApplyTime': 'OnReset'}}
-            status, code, data = redfish.patch(path=settings, payload=payload)
+            status, data = redfish.patch(path=settings, payload=payload)
             error = None if status else data
             if not error:
                 self.report(request_id, f'{label}: staged {len(stage)} setting(s), resetting')
@@ -367,32 +376,22 @@ class BiosPush():
 
     def registry_for(self, redfish=None, bios=None):
         """
-        The machine's attribute registry, resolved the same way a grab resolves
-        it. Kept here rather than reached for in base/ so this module does not
-        import a base class to read one document.
+        The machine's attribute registry, resolved by the one implementation that
+        resolves it.
+
+        This used to be a second copy that matched only on the collection entry's
+        Registry field, while the grab also accepts its Id and, failing both, the
+        registry document's own Id - because services disagree about which field
+        carries the name. Two answers to one question is how a machine ends up
+        where biosgrab succeeds and biospush then says the registry is not
+        published, on the same board, minutes apart.
+
+        The import is function-local for the reason the others in this module are:
+        base/ imports utils/, so taking it at module level closes the loop.
         """
-        wanted = (bios or {}).get('AttributeRegistry')
-        if not wanted:
-            return False, 'this machine names no BIOS attribute registry'
-        status, collection = redfish.get(path='/redfish/v1/Registries', cache=True)
-        if not status:
-            return False, f'registry collection unreadable: {collection}'
-        for member in collection.get('Members') or []:
-            path = member.get('@odata.id')
-            if not path:
-                continue
-            status, entry = redfish.get(path=path, cache=True)
-            if not status or entry.get('Registry') != wanted:
-                continue
-            for location in entry.get('Location') or []:
-                uri = location.get('Uri')
-                if not uri:
-                    continue
-                status, registry = redfish.get(path=uri)
-                if status:
-                    return True, registry
-            return False, f'registry {wanted} lists no readable location'
-        return False, f'registry {wanted} is not published by this machine'
+        from base.bios import Bios
+
+        return Bios().registry(redfish=redfish, bios=bios)
 
 
     def push_mother(self, event):
@@ -463,6 +462,13 @@ class BiosPush():
             # avoid telling
             self.record_applied(nodename=nodename, configname=configname)
         self.report(request_id, message, status=200 if status else 500)
+        # EOF is how this channel says a stream has ended: Status.get_status reads
+        # it as the signal to hand the last messages over and delete the request's
+        # rows. Without it a client streaming the request_id waits for a terminator
+        # that never comes, and the rows sit there until the hourly sweep. Every
+        # other producer on the channel sends one
+        if request_id:
+            Status().add_message(request_id, 'bios', 'EOF')
 
 
     def record_applied(self, nodename=None, configname=None):

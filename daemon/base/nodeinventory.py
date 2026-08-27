@@ -597,16 +597,39 @@ class NodeInventory():
 
         It returns as soon as the work is scheduled. Per-node outcomes arrive through
         the request_id channel, which is what luna already polls for a hostlist.
+
+        A group may be named instead of a hostlist, and it is expanded here at the
+        edge rather than carried into the sweep: the members are read now, so a node
+        added to the group after the operator asked is not silently included in
+        something they did not see. That is the same rule a BIOS push follows.
         """
         if not request_data:
             return False, 'Invalid request: Did not receive data'
         try:
-            raw_hosts = request_data['config']['node']['hostlist']
+            asked = request_data['config']['node']
         except (KeyError, TypeError):
             return False, 'Invalid request: no hostlist supplied'
-        hostlist = Helper().get_hostlist(raw_hosts)
-        if not hostlist:
-            return False, 'Invalid request: invalid hostlist'
+        if asked.get('group'):
+            group = asked['group']
+            # 'group' is a reserved SQL word, hence the backticks - the form
+            # utils/osimage.py uses. Bare, the statement is a syntax error the
+            # daemon logs and swallows, and an empty answer then reads exactly like
+            # a group with no nodes
+            members = Database().get_record_join(
+                ['node.name as name'], ['group.id=node.groupid'],
+                [f'`group`.name="{group}"'])
+            if not members:
+                exists = Database().get_record(table='group', where=f'name = "{group}"')
+                return False, (f'Group {group} has no nodes' if exists
+                               else f'Group {group} is not available')
+            hostlist = [member['name'] for member in members]
+        else:
+            raw_hosts = asked.get('hostlist')
+            if not raw_hosts:
+                return False, 'Invalid request: no hostlist supplied'
+            hostlist = Helper().get_hostlist(raw_hosts)
+            if not hostlist:
+                return False, 'Invalid request: invalid hostlist'
         batch = int(CONSTANT['BMCCONTROL']['BMC_BATCH_SIZE'])
         request_id = str(time()) + str(randint(1001, 9999)) + str(getpid())
         Status().add_message(request_id, 'redfish_inventory', 'Collecting inventory...')

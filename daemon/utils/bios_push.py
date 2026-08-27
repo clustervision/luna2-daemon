@@ -471,8 +471,8 @@ class BiosPush():
         """
         # same import note as push_node: base/ imports utils/, so this looks back
         # up the layering here rather than at module level
-        from base.bios import Bios
         from base.nodeinventory import NodeInventory
+        from utils.journal import Journal
         from utils.redfish import Redfish
 
         status, access = NodeInventory().bmc_for(name=nodename)
@@ -485,8 +485,14 @@ class BiosPush():
         if not status:
             return
         digest = NodeInventory().bios_digest(redfish=redfish, system=system)
-        if digest:
-            Bios().record_match(nodename=nodename, config=configname, digest=digest)
+        if not digest:
+            return
+        # through the journal, not straight at the table: nodeinventory is in
+        # Tables().tables, so the peer is expected to hold the same content and the
+        # controllers hash it. Writing it here only would leave the other controller
+        # disagreeing on that table for good
+        Journal().add_request(function='Bios.record_match', object=nodename,
+                              payload={'config': configname, 'digest': digest})
 
 
     def reclaim_abandoned(self):

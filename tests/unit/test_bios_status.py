@@ -156,7 +156,8 @@ def test_a_node_that_does_not_exist_is_refused_not_invented(cluster):
 def test_recording_a_match_writes_all_three_fields(cluster):
     snapshot(1, digest=digest_of({'BootMode': 'Legacy'}))
     held = digest_of({'BootMode': 'Uefi'})
-    assert Bios().record_match(nodename='node001', config='hpc-tuned', digest=held)
+    assert Bios().record_match(name='node001',
+                               payload={'config': 'hpc-tuned', 'digest': held})
     _, response = Bios().status('node001')
     row = response['config']['biosconfig']['status']['node001']
     assert row['state'] == 'matched'
@@ -168,7 +169,8 @@ def test_recording_against_a_node_with_no_redfish_snapshot_does_not_invent_one(c
     A node we have never collected from has no row to annotate, and inventing one
     would put a BIOS record beside no inventory at all.
     """
-    assert Bios().record_match(nodename='node001', config='c', digest='abc') is False
+    assert Bios().record_match(name='node001',
+                               payload={'config': 'c', 'digest': 'abc'}) is False
     _, response = Bios().status('node001')
     assert response['config']['biosconfig']['status']['node001']['state'] == 'unknown'
 
@@ -218,3 +220,62 @@ def test_a_machine_with_no_bios_to_read_gets_no_digest(bmc, system):
     answer.
     """
     assert NodeInventory().bios_digest(redfish=bmc, system=system) is None
+
+
+# --- and it has to reach the other controller -------------------------------
+
+def test_the_match_is_replicated_rather_than_written_straight_at_the_table():
+    """
+    nodeinventory is in Tables().tables, so the peer is expected to hold identical
+    content and the controllers hash it. A push that recorded the match locally
+    would work perfectly on the controller that ran it and leave the other one
+    disagreeing on that table for good - which the secondary answers by clearing
+    and re-importing the whole of it, per write.
+
+    So the executor must hand it to the journal, and it must name a function the
+    journal can actually dispatch. The collector beside it does the same thing for
+    the same reason.
+    """
+    import ast
+    import inspect
+
+    from utils import bios_push
+
+    source = inspect.getsource(bios_push.BiosPush.record_applied)
+    tree = ast.parse(source.lstrip())
+    functions = [
+        keyword.value.value
+        for node in ast.walk(tree)
+        if isinstance(node, ast.Call)
+        for keyword in node.keywords
+        if keyword.arg == 'function' and isinstance(keyword.value, ast.Constant)
+    ]
+    assert functions == ['Bios.record_match'], (
+        'the applied configuration must be recorded through Journal().add_request'
+    )
+    assert 'Database().update' not in source, 'that write would not reach the peer'
+
+
+def test_the_journal_can_dispatch_what_the_executor_names():
+    """
+    The journal resolves a class by name out of its own globals, so a base class it
+    does not import cannot be dispatched - and the failure lands on the *receiving*
+    controller, after the request that caused it already returned success. Checked
+    here rather than trusted.
+    """
+    from utils import journal
+
+    assert hasattr(journal, 'Bios')
+    assert callable(getattr(journal.Bios, 'record_match'))
+
+
+def test_record_match_takes_the_shape_the_journal_dispatches():
+    """
+    add_request guesses arity from which of object/param/payload it was given, so a
+    method reached with (object, payload) must accept exactly that. A signature that
+    disagrees raises a TypeError on the peer and wedges replication.
+    """
+    import inspect
+
+    parameters = list(inspect.signature(Bios.record_match).parameters)
+    assert parameters == ['self', 'name', 'payload']

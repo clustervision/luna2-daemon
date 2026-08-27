@@ -44,8 +44,11 @@ __status__      = 'Development'
 from base64 import b64encode, b64decode
 from datetime import datetime
 from json import dumps, loads
+from common.constant import CONSTANT
 from utils.database import Database
 from utils.log import Log
+from utils.queue import Queue
+from utils.status import Status
 from utils.helper import Helper
 from utils.bios import Bios as BiosPlanner, DEFAULT_EXCLUDE
 from utils.redfish import Redfish
@@ -364,3 +367,90 @@ class Bios():
         kept = len(data.get('attributes') or {})
         return True, (f"BIOS configuration {name} grabbed from {data.get('node')}: "
                       f"{kept} setting(s) stored, {len(dropped)} not carried")
+
+
+    def push_targets(self, object_type=None, name=None):
+        """
+        This method resolves what a push was aimed at into a list of node names.
+
+        A group is expanded here, at the edge, rather than carried as a group
+        into the queue: the members are read now, so a node added to the group
+        after the operator asked is not silently included in something they did
+        not see.
+        """
+        if object_type == 'group':
+            # the group is looked up on its own and the nodes fetched by id,
+            # rather than joined on group.name. 'group' is a reserved SQL word,
+            # so a where clause naming it is a syntax error - and the error is
+            # logged and swallowed, so the caller gets an empty result and
+            # reports the group as having no nodes. Empty and broken look
+            # identical, which is exactly why this is not written the short way
+            group = Database().get_record(table='group', where=f'name = "{name}"')
+            if not group:
+                return False, f'group {name} does not exist'
+            nodes = Database().get_record(table='node',
+                                          where=f"groupid = \"{group[0]['id']}\"")
+            if not nodes:
+                return False, f'group {name} has no nodes'
+            return True, [node['name'] for node in nodes]
+        node = Database().get_record(table='node', where=f'name = "{name}"')
+        if not node:
+            return False, f'node {name} does not exist'
+        return True, [name]
+
+
+    def push_bios(self, object_type=None, name=None, request_data=None):
+        """
+        This method queues a BIOS configuration to be applied to a node or to
+        every node of a group, and hands back the request to watch.
+
+        It queues and does not apply. A stage is a write, a reset and a wait for
+        POST, and a machine can need several - so this would hold an HTTP request
+        open for the better part of an hour. The work is reported through the
+        status channel instead, which is what the osimage push already does.
+
+        Nothing here happens on its own: this is the only way a BIOS setting is
+        ever written to a machine by Luna.
+        """
+        try:
+            data = request_data['config'][object_type][name]
+            configname = data['biosconfig']
+        except (KeyError, TypeError):
+            return False, 'Invalid request: no biosconfig name supplied'
+        record = Database().get_record(table=self.table, where=f'name = "{configname}"')
+        if not record:
+            return False, f'BIOS configuration {configname} is not available'
+        if not self.stored_attributes(record[0]):
+            return False, (f'BIOS configuration {configname} carries no settings; '
+                           'grab it from a node first')
+        policy = str(data.get('version_match') or self.version_policy()).strip().lower()
+
+        status, targets = self.push_targets(object_type=object_type, name=name)
+        if not status:
+            return False, targets
+        request_id = Status().gen_request_id()
+        for target in targets:
+            # force, because the collapse window would fold a second push of the
+            # same configuration into the first one - and here that is wrong: the
+            # operator asked again, and the machine may well have moved on
+            Queue().add_task_to_queue(task='push_bios',
+                                      param=f'{target}:{configname}:{policy}',
+                                      subsystem='bios', request_id=request_id, force=True)
+        Status().add_message(request_id, 'luna',
+                             f'queued {configname} for {len(targets)} node(s)')
+        return True, f'BIOS configuration {configname} queued for {len(targets)} node(s)', request_id
+
+
+    def version_policy(self):
+        """
+        How strict to be about a BIOS version difference, from luna.ini.
+
+        Read as optional with the default in code. [BIOS] is only there if an
+        administrator put it there, and declaring it required would abort startup
+        on every existing configuration that does not have it - before the logger
+        exists to say why.
+        """
+        try:
+            return str(CONSTANT['BIOS']['VERSION_MATCH']).strip().lower()
+        except (KeyError, TypeError):
+            return 'warn'

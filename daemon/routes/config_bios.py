@@ -137,3 +137,41 @@ def config_node_biosgrab(name=None):
             status, response = Bios().store_grabbed(config, payload)
     access_code = Helper().get_access_code(status, response)
     return {'message': response}, access_code
+
+
+@bios_blueprint.route("/config/node/<string:name>/_biospush", methods=['POST'])
+@token_required
+@validate_name
+@input_filter(checks=['config:node'], skip=None)
+def config_node_biospush(name=None):
+    """
+    This route will apply a stored BIOS configuration to a node.
+    """
+    return _biospush('node', name)
+
+
+@bios_blueprint.route("/config/group/<string:name>/_biospush", methods=['POST'])
+@token_required
+@validate_name
+@input_filter(checks=['config:group'], skip=None)
+def config_group_biospush(name=None):
+    """
+    This route will apply a stored BIOS configuration to every node of a group.
+    """
+    return _biospush('group', name)
+
+
+def _biospush(object_type=None, name=None):
+    """
+    Both push routes, which differ only in what they are aimed at.
+
+    The work is queued and the request id comes back at once: a stage is a write,
+    a reset and a wait for POST, so holding the HTTP request open would mean
+    holding it for the better part of an hour.
+    """
+    returned = Bios().push_bios(object_type=object_type, name=name,
+                                request_data=request.data)
+    status, response = returned[0], returned[1]
+    if status is True and len(returned) == 3:
+        return {'message': response, 'request_id': returned[2]}, 200
+    return {'message': response}, Helper().get_access_code(status, response)

@@ -521,6 +521,9 @@ DATABASE_LAYOUT_nodeinventory = [
 {"column": "gpu_count",            "datatype": "INTEGER", "length": "10"},
 {"column": "nic_count",            "datatype": "INTEGER", "length": "10"},
 {"column": "bios_version",         "datatype": "VARCHAR", "length": "64"},
+{"column": "bios_digest",          "datatype": "VARCHAR", "length": "64"},
+{"column": "bios_config",          "datatype": "VARCHAR", "length": "64"},
+{"column": "bios_config_digest",   "datatype": "VARCHAR", "length": "64"},
 {"column": "inventory",            "datatype": "TEXT"},
 {"column": "hash",                 "datatype": "VARCHAR", "length": "64"},
 {"column": "updated",              "datatype": "VARCHAR", "length": "64"}]

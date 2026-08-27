@@ -175,3 +175,39 @@ def _biospush(object_type=None, name=None):
     if status is True and len(returned) == 3:
         return {'message': response, 'request_id': returned[2]}, 200
     return {'message': response}, Helper().get_access_code(status, response)
+
+
+@bios_blueprint.route("/config/biosconfig/status", methods=['GET'])
+@token_required
+def config_bios_status():
+    """
+    Input - None
+    Output - What every node was last seen holding, from stored inventory. No BMC
+             is contacted, so this answers for machines that are switched off.
+    """
+    return _bios_status()
+
+
+@bios_blueprint.route("/config/biosconfig/status/<string:name>", methods=['GET'])
+@token_required
+@validate_name
+def config_bios_status_node(name=None):
+    """
+    Input - Node Name
+    Output - What that node was last seen holding.
+    """
+    return _bios_status(name)
+
+
+def _bios_status(name=None):
+    """
+    Both status routes, which differ only in whether one node was named.
+    """
+    access_code = 404
+    status, response = Bios().status(name)
+    if status is True:
+        access_code = 200
+        response = dumps(response)
+    else:
+        response = {'message': response}
+    return response, access_code

@@ -352,3 +352,78 @@ def test_a_snapshot_that_says_nothing_leaves_the_columns_alone(cluster):
         'inventory': {'source': 'inband', 'cpu_count': 64}}}}})
     node = Database().get_record(table='node', where='name = "node001"')[0]
     assert (node['vendor'], node['assettag']) == ('Contoso', 'ABC123')
+
+
+# --- BIOS is a group-level thing as much as a node-level one -----------------
+
+def grouped(cluster):
+    """node001+node002 in 'gpu', node003 in 'compute'."""
+    Database().insert('group', [{"column": "name", "value": 'gpu'},
+                                {"column": "id", "value": 1}])
+    Database().insert('group', [{"column": "name", "value": 'compute'},
+                                {"column": "id", "value": 2}])
+    for nodeid, groupid in ((1, 1), (2, 1), (3, 2)):
+        Database().update('node', Helper().make_rows({'groupid': groupid}),
+                          [{"column": "id", "value": nodeid}])
+
+
+def test_every_row_says_which_group_the_node_is_in(cluster):
+    grouped(cluster)
+    snapshot(1, digest=digest_of({'a': 1}))
+    _, response = Bios().status()
+    rows = response['config']['biosconfig']['status']
+    assert rows['node001']['group'] == 'gpu'
+    assert rows['node003']['group'] == 'compute'
+
+
+def test_a_group_can_be_asked_about_on_its_own(cluster):
+    """
+    A GPU group and a plain compute group want different BIOS settings, so an
+    operator has to be able to ask about one without reading past the other.
+    """
+    grouped(cluster)
+    status, response = Bios().status(group='gpu')
+    assert status is True
+    rows = response['config']['biosconfig']['status']
+    assert sorted(rows) == ['node001', 'node002'], 'compute must not be in here'
+    assert sum(response['config']['biosconfig']['summary'].values()) == 2
+
+
+def test_a_group_that_does_not_exist_and_one_with_no_nodes_are_different_answers(cluster):
+    """
+    'group' is a reserved SQL word, so a where clause naming it is a syntax error
+    the daemon logs and swallows - and the caller then sees an empty result, which
+    reads exactly like a group with no nodes. Empty and broken must not look alike.
+    """
+    grouped(cluster)
+    Database().insert('group', [{"column": "name", "value": 'empty'},
+                                {"column": "id", "value": 3}])
+    missing = Bios().status(group='nosuchgroup')
+    empty = Bios().status(group='empty')
+    assert missing[0] is False and 'not available' in missing[1]
+    assert empty[0] is False and 'no nodes' in empty[1]
+    assert missing[1] != empty[1]
+
+
+def test_naming_a_node_still_wins_over_a_group(cluster):
+    grouped(cluster)
+    _, response = Bios().status(name='node003', group='gpu')
+    assert sorted(response['config']['biosconfig']['status']) == ['node003']
+
+
+def test_the_group_lookup_is_one_query_not_one_per_node(cluster, monkeypatch):
+    """
+    At four thousand nodes the difference between a query and four thousand
+    queries is the difference between a usable command and an unusable one.
+    """
+    grouped(cluster)
+    calls = []
+    original = Database.get_record
+
+    def counting(self, select=None, table=None, where=None, orderby=None):
+        calls.append(table)
+        return original(self, select=select, table=table, where=where, orderby=orderby)
+
+    monkeypatch.setattr(Database, 'get_record', counting)
+    Bios().status()
+    assert calls.count('group') == 1, f'group was read {calls.count("group")} times'

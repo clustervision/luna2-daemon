@@ -437,7 +437,7 @@ class Bios():
         return True, [name]
 
 
-    def status(self, name=None):
+    def status(self, name=None, group=None):
         """
         Where every node stands on its BIOS, from what is stored - no BMC is
         contacted, and no node needs to be powered on.
@@ -456,6 +456,12 @@ class Bios():
         configuration it was last found to match, and the digest it had at that
         moment. Drift is the third disagreeing with the first.
 
+        Scoped to one node, to one group, or to the whole cluster. A BIOS
+        configuration is as much a group-level thing as a node-level one - a GPU
+        group and a plain compute group want different settings - so the group is
+        both a filter and a column, and an operator can ask about one without
+        reading past the other.
+
         States, and each says something different:
           matched      the last read found it holding that configuration
           drifted      it matched once, and its BIOS has moved since - somebody
@@ -464,13 +470,33 @@ class Bios():
           unknown      no Redfish inventory has ever been taken from it, so we
                        have never looked. Not a problem, just not an answer
         """
-        where = f'name = "{name}"' if name else None
+        where = None
+        if name:
+            where = f'name = "{name}"'
+        elif group:
+            # the group is resolved on its own and the nodes selected by id. 'group'
+            # is a reserved SQL word, so a where clause naming it is a syntax error
+            # that the daemon logs and swallows - and the caller then sees an empty
+            # result, which is indistinguishable from a group with no nodes
+            record = Database().get_record(table='group', where=f'name = "{group}"')
+            if not record:
+                return False, f'Group {group} is not available'
+            where = f"groupid = \"{record[0]['id']}\""
         nodes = Database().get_record(table='node', where=where)
         if not nodes:
-            return False, f'Node {name} is not available' if name else 'No nodes available'
+            if name:
+                return False, f'Node {name} is not available'
+            if group:
+                return False, f'Group {group} has no nodes'
+            return False, 'No nodes available'
+        # one lookup for the whole cluster rather than one per node: at four thousand
+        # nodes the difference is a query and four thousand queries
+        groups = {record['id']: record['name']
+                  for record in Database().get_record(table='group') or []}
         response = {'config': {self.table: {'status': {}, 'summary': {}}}}
         for node in nodes:
             row = self.stored_state(nodeid=node['id'])
+            row['group'] = groups.get(node['groupid']) or ''
             response['config'][self.table]['status'][node['name']] = row
             summary = response['config'][self.table]['summary']
             summary[row['state']] = summary.get(row['state'], 0) + 1

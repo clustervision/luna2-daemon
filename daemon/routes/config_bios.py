@@ -196,15 +196,27 @@ def config_bios_status_node(name=None):
     Input - Node Name
     Output - What that node was last seen holding.
     """
-    return _bios_status(name)
+    return _bios_status(name=name)
 
 
-def _bios_status(name=None):
+@bios_blueprint.route("/config/biosconfig/status/group/<string:name>", methods=['GET'])
+@token_required
+@validate_name
+def config_bios_status_group(name=None):
     """
-    Both status routes, which differ only in whether one node was named.
+    Input - Group Name
+    Output - What every node of that group was last seen holding. A BIOS
+             configuration is a group-level thing as often as a node-level one.
+    """
+    return _bios_status(group=name)
+
+
+def _bios_status(name=None, group=None):
+    """
+    All three status routes, which differ only in what was asked about.
     """
     access_code = 404
-    status, response = Bios().status(name)
+    status, response = Bios().status(name=name, group=group)
     if status is True:
         access_code = 200
         response = dumps(response)

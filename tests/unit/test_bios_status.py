@@ -33,6 +33,7 @@ import pytest
 from base.bios import Bios
 from base.nodeinventory import NodeInventory
 from utils.database import Database
+from utils.helper import Helper
 
 
 def digest_of(attributes):
@@ -295,3 +296,59 @@ def test_record_match_takes_the_shape_the_journal_dispatches():
 
     parameters = list(inspect.signature(Bios.record_match).parameters)
     assert parameters == ['self', 'name', 'payload']
+
+
+# --- the node's own vendor/assettag now come from the inventory ---------------
+
+def test_the_node_columns_are_derived_from_the_snapshot(cluster):
+    """
+    They used to be collected separately: the install ran dmidecode a second time
+    and POSTed a vendor and an assettag that update_inventory already sends as
+    manufacturer and serial. One collection now feeds both.
+    """
+    NodeInventory().update_inventory('node001', {'config': {'node': {'node001': {
+        'inventory': {'source': 'inband', 'manufacturer': 'Contoso',
+                      'product': 'R750', 'serial': 'ABC123'}}}}})
+    node = Database().get_record(table='node', where='name = "node001"')[0]
+    assert node['vendor'] == 'Contoso'
+    assert node['assettag'] == 'ABC123', 'assettag has always held the serial'
+
+
+def test_an_out_of_band_collection_refreshes_them_too(cluster):
+    """
+    The point of deriving them. A board that was replaced used to keep reporting
+    the machine it used to be until somebody reinstalled the node.
+    """
+    NodeInventory().update_inventory('node001', {'config': {'node': {'node001': {
+        'inventory': {'source': 'inband', 'manufacturer': 'Contoso', 'serial': 'OLD'}}}}})
+    NodeInventory().update_inventory('node001', {'config': {'node': {'node001': {
+        'inventory': {'source': 'redfish', 'manufacturer': 'Fabrikam', 'serial': 'NEW'}}}}})
+    node = Database().get_record(table='node', where='name = "node001"')[0]
+    assert (node['vendor'], node['assettag']) == ('Fabrikam', 'NEW')
+
+
+def test_redfish_wins_where_the_two_sources_disagree(cluster):
+    """
+    dmidecode and Redfish do not always spell a manufacturer the same way. The
+    preference is the same one the plugin search path uses, deliberately: two
+    rules for one question is how they drift apart.
+    """
+    NodeInventory().update_inventory('node001', {'config': {'node': {'node001': {
+        'inventory': {'source': 'redfish', 'manufacturer': 'Fabrikam', 'serial': 'RF'}}}}})
+    NodeInventory().update_inventory('node001', {'config': {'node': {'node001': {
+        'inventory': {'source': 'inband', 'manufacturer': 'Contoso', 'serial': 'IB'}}}}})
+    node = Database().get_record(table='node', where='name = "node001"')[0]
+    assert (node['vendor'], node['assettag']) == ('Fabrikam', 'RF'), (
+        'the in-band collection arrived last but must not win'
+    )
+
+
+def test_a_snapshot_that_says_nothing_leaves_the_columns_alone(cluster):
+    """A machine that reports no manufacturer must not blank what we already knew."""
+    Database().update('node', Helper().make_rows({'vendor': 'Contoso',
+                                                  'assettag': 'ABC123'}),
+                      [{"column": "name", "value": 'node001'}])
+    NodeInventory().update_inventory('node001', {'config': {'node': {'node001': {
+        'inventory': {'source': 'inband', 'cpu_count': 64}}}}})
+    node = Database().get_record(table='node', where='name = "node001"')[0]
+    assert (node['vendor'], node['assettag']) == ('Contoso', 'ABC123')

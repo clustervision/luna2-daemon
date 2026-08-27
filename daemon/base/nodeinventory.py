@@ -192,10 +192,57 @@ class NodeInventory():
         self._refresh_children(self.nic_table, nodeid, source, nics, self.nic_fields)
         self._refresh_children(self.firmware_table, nodeid, source, firmware,
                                self.firmware_fields)
+        self.refresh_node_identity(nodeid=nodeid)
 
         response = f"Inventory for node {name} updated"
         status = True
         return status, response
+
+
+    def refresh_node_identity(self, nodeid=None):
+        """
+        This method keeps the node's own vendor and assettag in step with what was
+        just collected.
+
+        The two columns are not a second inventory. They belong to the *device*
+        abstraction the rack view joins across node, switch, otherdevices and
+        controller - and switches have no inventory table, so the columns cannot
+        simply move here. What can go is the second collection: the install used
+        to run dmidecode again and POST these two values separately, which is one
+        more probe, one more request, and a second thing to disagree with.
+
+        Derived from the snapshot rather than sent alongside it, so they also
+        refresh on an out-of-band collection instead of only at install time. A
+        node whose board was replaced stops reporting the old one.
+
+        Where a node has both snapshots, redfish wins - the same preference the
+        plugin search path uses, kept identical on purpose: dmidecode and Redfish
+        do not always spell a manufacturer the same way, and two rules for one
+        question is how they drift.
+        """
+        rows = Database().get_record(table=self.table, where=f'nodeid = "{nodeid}"')
+        if not rows:
+            return False
+        chosen = None
+        for row in rows:
+            if str(row['source'] or '').strip().lower() == 'redfish':
+                chosen = row
+                break
+            if chosen is None:
+                chosen = row
+        identity = {}
+        if chosen.get('manufacturer'):
+            identity['vendor'] = chosen['manufacturer']
+        # assettag has held the serial number since it was introduced; the name is
+        # wrong and renaming it is an API change, so this fills it the way the
+        # install always did rather than quietly changing what it means
+        if chosen.get('serial'):
+            identity['assettag'] = chosen['serial']
+        if not identity:
+            return False
+        Database().update('node', Helper().make_rows(identity),
+                          [{"column": "id", "value": nodeid}])
+        return True
 
 
     def delete_inventory(self, nodeid=None):

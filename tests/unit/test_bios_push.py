@@ -140,7 +140,7 @@ def no_waiting(monkeypatch):
 
 def test_the_reset_type_is_one_the_board_says_it_accepts():
     _, _, system = FakeBmc().system()
-    wanted, target = BiosPush().reset_type(system=system)
+    wanted, target, _ = BiosPush().reset_type(system=system)
     assert wanted == 'GracefulRestart', (
         'a node may be running an operating system; there is no reason to pull '
         'the rug out when the board offers a graceful restart'
@@ -444,3 +444,86 @@ def test_a_group_that_does_not_exist_is_distinguished_from_one_with_no_nodes(sql
     status, response = Bios().push_bios(object_type='group', name='no-such-group',
                                         request_data=body('no-such-group'))[:2]
     assert status is False and response == 'group no-such-group does not exist'
+
+
+# --- the reset type, published only by action info ---------------------------
+
+class ActionInfoBmc():
+    """A board that publishes its allowable reset types the other way."""
+
+    def __init__(self, allowed=('On', 'ForceRestart', 'GracefulShutdown', 'ForceOff')):
+        self.allowed = list(allowed)
+        self.reads = 0
+
+    def get(self, path=None, cache=False):
+        if path == '/redfish/v1/Systems/Self/ResetActionInfo':
+            self.reads += 1
+            return True, {'Parameters': [
+                {'Name': 'SomethingElse', 'AllowableValues': ['nonsense']},
+                {'Name': 'ResetType', 'AllowableValues': self.allowed}]}
+        return False, f'{path} not found'
+
+
+def system_publishing_only_action_info():
+    """Verbatim shape of the real board: a target and an action info, no list."""
+    return {'Actions': {'#ComputerSystem.Reset': {
+        '@Redfish.ActionInfo': '/redfish/v1/Systems/Self/ResetActionInfo',
+        'target': '/redfish/v1/Systems/Self/Actions/ComputerSystem.Reset'}}}
+
+
+def test_the_allowable_reset_types_are_read_from_the_action_info():
+    bmc = ActionInfoBmc()
+    wanted, target, allowed = BiosPush().reset_type(
+        system=system_publishing_only_action_info(), redfish=bmc)
+    assert allowed == ['On', 'ForceRestart', 'GracefulShutdown', 'ForceOff'], (
+        'read from the action info, and from the ResetType parameter rather '
+        'than whichever parameter happens to come first'
+    )
+    assert wanted == 'ForceRestart', 'this board offers no GracefulRestart'
+    assert target.endswith('ComputerSystem.Reset')
+
+
+def test_a_board_offering_no_usable_reset_is_told_apart_from_one_that_is_silent():
+    """
+    The distinction the caller needs. A board that says On/GracefulShutdown/
+    ForceOff has told us it cannot restart to apply settings, and sending it
+    ForceRestart earns a 400 that reads as a failed apply. A board that says
+    nothing has told us nothing, and is worth the guess.
+    """
+    quiet = BiosPush().reset_type(system={'Actions': {'#ComputerSystem.Reset': {
+        'target': '/redfish/v1/Systems/1/Actions/ComputerSystem.Reset'}}})
+    assert quiet == ('ForceRestart', '/redfish/v1/Systems/1/Actions/ComputerSystem.Reset', [])
+
+    bmc = ActionInfoBmc(allowed=['On', 'GracefulShutdown', 'ForceOff'])
+    wanted, target, allowed = BiosPush().reset_type(
+        system=system_publishing_only_action_info(), redfish=bmc)
+    assert wanted is None, 'not a guess - the board has answered, and the answer is no'
+    assert target and allowed == ['On', 'GracefulShutdown', 'ForceOff']
+
+
+def test_the_inline_annotation_still_wins_where_a_board_publishes_one():
+    """The older form is not dropped; a board serving both is not read twice."""
+    bmc = ActionInfoBmc()
+    system = system_publishing_only_action_info()
+    system['Actions']['#ComputerSystem.Reset'][
+        'ResetType@Redfish.AllowableValues'] = ['GracefulRestart', 'ForceRestart']
+    wanted, _, _ = BiosPush().reset_type(system=system, redfish=bmc)
+    assert wanted == 'GracefulRestart'
+    assert bmc.reads == 0, 'no round trip when the board already told us inline'
+
+
+def test_the_action_info_is_read_through_the_cache():
+    """A push resets once per stage; the document does not change under us."""
+    bmc = ActionInfoBmc()
+    original = bmc.get
+
+    def counting(path=None, cache=False):
+        assert cache is True, 'a per-machine document read once per stage'
+        return original(path=path, cache=cache)
+
+    bmc.get = counting
+    BiosPush().reset_type(system=system_publishing_only_action_info(), redfish=bmc)
+
+
+def test_a_board_with_no_reset_action_at_all_is_still_refused():
+    assert BiosPush().reset_type(system={'Actions': {}}) == (None, None, [])

@@ -166,6 +166,17 @@ DATABASE_LAYOUT_biosconfig = [
 {"column": "updated",              "datatype": "VARCHAR", "length": "64"},
 {"column": "comment",              "datatype": "VARCHAR", "length": "20"}]
 
+DATABASE_LAYOUT_firmwarecatalog = [
+{"column": "id",                   "datatype": "INTEGER", "key": "PRIMARY", "keyadd": "AUTOINCREMENT"},
+{"column": "name",                 "datatype": "VARCHAR", "length": "40", "key": "UNIQUE"},
+{"column": "manufacturer",         "datatype": "VARCHAR", "length": "64"},
+{"column": "model",                "datatype": "VARCHAR", "length": "128"},
+{"column": "component",            "datatype": "VARCHAR", "length": "128"},
+{"column": "version",              "datatype": "VARCHAR", "length": "128"},
+{"column": "imagefile",            "datatype": "VARCHAR", "length": "255"},
+{"column": "updated",              "datatype": "VARCHAR", "length": "64"},
+{"column": "comment",              "datatype": "VARCHAR", "length": "20"}]
+
 DATABASE_LAYOUT_monitor = [
 {"column": "id",                   "datatype": "INTEGER", "key": "PRIMARY", "keyadd": "AUTOINCREMENT"},
 {"column": "tableref",             "datatype": "VARCHAR", "length": "100", "key": "UNIQUE", "with": "tablerefid"},

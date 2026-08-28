@@ -83,6 +83,26 @@ def config_node_get(name=None):
     return response, access_code
 
 
+@node_blueprint.route('/config/node/<string:name>/disklayout', methods=['GET'])
+@provision_token_required
+@validate_name
+def config_node_disklayout(name=None):
+    """
+    The node's resolved disklayout (group->node merged), on its own. Provision-scoped
+    and node-matched so a booting node can read the layout it is about to apply without
+    being handed the whole node record - GET /config/node/<name> stays admin-only.
+    Same config.node.<name>.disklayout shape the full node detail returns, so a client
+    parses it identically.
+    """
+    status, response = Node().get_node(name)
+    if status is not True:
+        return {'message': response}, 404
+    nodes = (response or {}).get('config', {}).get('node', {})
+    entry = nodes.get(name) or (next(iter(nodes.values()), {}) if nodes else {})
+    payload = {'config': {'node': {name: {'disklayout': entry.get('disklayout')}}}}
+    return dumps(payload), 200
+
+
 @node_blueprint.route('/config/node/<string:name>', methods=['POST'])
 @provision_token_required
 @validate_name

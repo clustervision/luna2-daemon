@@ -216,3 +216,22 @@ def test_lpart_flow_runs_each_phase_after_the_operator_hook():
             f'no lpart phase runs after {hook}; lpart must be invoked by the template, '
             f'not by putting a shim in the operator\'s {hook} field.'
         )
+
+
+def test_install_context_carries_provision_fields():
+    """lpart sources the download method (provision_method/fallback) and the
+    provision interface from install-context.json rather than a daemon call, so the
+    lpart template must materialise them there. Absent, a node that overrides the
+    default provision_method would silently fall back to lpart's built-in default."""
+    with open(LPART, encoding='utf-8') as handle:
+        text = handle.read()
+    for field, var in (
+        ('provision_method', 'PROVISION_METHOD'),
+        ('provision_fallback', 'PROVISION_FALLBACK'),
+        ('provision_interface', 'PROVISION_INTERFACE'),
+    ):
+        needle = '"%s": "{{ %s }}"' % (field, var)
+        assert needle in text, (
+            f'templ_install_lpart.cfg install-context.json must write {field} '
+            f'(expected {needle!r}); lpart reads it from that file.'
+        )

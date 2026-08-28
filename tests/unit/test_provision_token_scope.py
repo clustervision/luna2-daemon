@@ -59,3 +59,41 @@ def test_boot_install_accepts_a_provision_token():
         "boot_install must use @provision_token_required so a node's scoped token is not rejected"
     assert 'token_required' not in decs, \
         "boot_install carries @token_required, which rejects the scoped token a node now presents"
+
+
+def test_disklayout_endpoint_scoped_but_full_record_stays_admin_only():
+    """A booting node reads its own disklayout with its provision token, so
+    config_node_disklayout must accept the scoped token. The full node record
+    (config_node_get) must stay admin-only -- the whole reason for the split is
+    that a node never gets the provision token onto the entire record."""
+    routes = os.path.join(DAEMON, 'routes', 'config_node.py')
+
+    def _decs(name):
+        fn = _func(routes, name)
+        return {d.id if isinstance(d, ast.Name) else getattr(d, 'attr', None)
+                for d in fn.decorator_list if not isinstance(d, ast.Call)}
+
+    dl = _decs('config_node_disklayout')
+    assert 'provision_token_required' in dl, \
+        "config_node_disklayout must accept a node's scoped token"
+    assert 'token_required' not in dl, \
+        "config_node_disklayout must not carry the admin-only guard"
+
+    full = _decs('config_node_get')
+    assert 'token_required' in full, \
+        "GET /config/node/<name> (full record) must stay admin-only"
+    assert 'provision_token_required' not in full, \
+        "the full node record must not be reachable with a provision token"
+
+
+def test_group_disklayout_endpoint_is_admin_only():
+    """The group disklayout mirrors the node route but is admin-scoped: a node reads
+    its own resolved layout from the node route (which merges the group value in), so
+    the group's layout is never fetched with a provision token."""
+    routes = os.path.join(DAEMON, 'routes', 'config_group.py')
+    fn = _func(routes, 'config_group_disklayout')
+    decs = {d.id if isinstance(d, ast.Name) else getattr(d, 'attr', None)
+            for d in fn.decorator_list if not isinstance(d, ast.Call)}
+    assert 'token_required' in decs, "config_group_disklayout must be admin-only"
+    assert 'provision_token_required' not in decs, \
+        "a group's disklayout must not be reachable with a node's provision token"

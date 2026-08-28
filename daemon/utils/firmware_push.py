@@ -98,6 +98,19 @@ HTTP = 'http'
 FAILED_STATES = ['Exception', 'Killed', 'Cancelled', 'Interrupted']
 RUNNING_STATES = ['New', 'Starting', 'Running', 'Pending', 'Suspended', 'Stopping']
 
+
+# Components whose flash reinitialises the BMC to factory defaults - default
+# credentials and DHCP. On the AMI boards this was proven against, a BMC flash does
+# exactly that, and the standard Redfish SimpleUpdate carries no way to preserve it.
+# Luna does not fight that: it holds the intended config (the node's bmcsetup and its
+# assigned address) and restores it in-band through setupbmc on the node's next boot
+# through Luna. That restore is an operator action - Luna reports it and does NOT
+# reboot the node, because a firmware push is not licence to drain one. A BMC flash
+# does not reboot the host either, so the note always applies to it; a component whose
+# flash did reboot the node through Luna would have setupbmc run on its own, but none
+# here do.
+RESETS_BMC_CONFIG = ['BMC']
+
 # How many boards are flashed at once, and the pause between batches. This protects
 # the far end rather than the controller: a BMC is a small computer and a flash is
 # the heaviest thing it ever does.
@@ -546,7 +559,25 @@ class FirmwarePush():
                 return False, (f'{message}' if not done
                                else f'{message} (after {", ".join(done)})')
             done.append(item['component'])
-        return True, f'{nodename}: {", ".join(done)} now at the catalogue version'
+        return True, (f'{nodename}: {", ".join(done)} now at the catalogue version'
+                      + self.reconfigure_note(done))
+
+
+    def reconfigure_note(self, components=None):
+        """
+        This method returns the operator note for a flash that reset the BMC, or an
+        empty string when none did.
+
+        Kept apart from the success message so the wording lives in one place and can
+        be asserted on its own. It reports rather than acts: Luna cannot reach a reset
+        BMC with the stored credentials, and the config is restored by setupbmc on the
+        node's next boot through Luna - which Luna leaves to the operator to trigger.
+        """
+        if not any(component in RESETS_BMC_CONFIG for component in components or []):
+            return ''
+        return ('; the BMC was reset to defaults by the flash - boot the node through '
+                'Luna (setupbmc) to restore its address and credentials, until then '
+                'Luna cannot reach it')
 
 
     def update_component(self, redfish=None, nodename=None, item=None):

@@ -341,3 +341,76 @@ def test_an_address_on_no_luna_network_is_ignored(db, monkeypatch):
 
     found = Helper().get_controller_addresses_for_networks()['ipv4']
     assert found == {'cluster': '10.131.255.254'}
+
+
+# --- TRIX-2035: a flash that resets the BMC tells the operator, and reboots nothing ---
+
+def test_the_reconfigure_note_fires_only_for_a_config_resetting_component():
+    """
+    A BMC flash resets the board to defaults; a BIOS flash does not. The note is the
+    difference, and it must not appear where nothing was reset.
+    """
+    from utils.firmware_push import FirmwarePush
+
+    note = FirmwarePush().reconfigure_note(['BMC'])
+    assert 'setupbmc' in note and 'reset to defaults' in note
+    assert FirmwarePush().reconfigure_note(['BIOS']) == ''
+    assert FirmwarePush().reconfigure_note([]) == ''
+    # one resetting component among several is enough to warrant the note
+    assert 'setupbmc' in FirmwarePush().reconfigure_note(['BIOS', 'BMC'])
+
+
+def test_the_note_reports_and_does_not_promise_a_reboot():
+    """
+    Luna does not reboot a node for a firmware push, so the note must not say it will
+    - it tells the operator to boot the node, it does not claim to do it.
+    """
+    from utils.firmware_push import FirmwarePush
+
+    note = FirmwarePush().reconfigure_note(['BMC']).lower()
+    # it asks the operator to act; it never states Luna is rebooting anything
+    assert 'boot the node' in note
+    assert 'rebooting' not in note and 'will reboot' not in note
+
+
+def test_a_finished_bmc_flash_carries_the_note_into_its_result(db, nodes, monkeypatch):
+    """
+    The note has to reach the request row the operator reads, which means it has to be
+    on update_node's success message - not merely computable somewhere.
+    """
+    from utils.database import Database
+    from utils.helper import Helper
+    from utils.firmware_push import FirmwarePush
+
+    # node001 is behind on BMC (7.00 vs catalogue 7.10); make the flash itself a no-op
+    fp = FirmwarePush()
+    monkeypatch.setattr(fp, 'update_component',
+                        lambda redfish, nodename, item: (True, f'{nodename} {item["component"]} ok'))
+    status, message = fp.update_node({'nodename': 'node001'}, redfish=object())
+    assert status is True
+    assert 'now at the catalogue version' in message
+    assert 'setupbmc' in message
+
+
+def test_a_bios_only_flash_carries_no_note(db, nodes, monkeypatch):
+    from utils.database import Database
+    from utils.helper import Helper
+    from utils.firmware_push import FirmwarePush
+
+    ids = nodes
+    # give node001 a BIOS component that is behind, and no BMC difference
+    Database().update('nodeinventoryfirmware', Helper().make_rows({'version': '7.10'}),
+                      [{"column": "nodeid", "value": ids['node001']}])  # BMC now matches
+    db.insert('nodeinventoryfirmware', Helper().make_rows(
+        {'nodeid': ids['node001'], 'source': 'redfish', 'name': 'BIOS',
+         'component': 'BIOS', 'version': '1.00', 'updateable': 1}))
+    db.insert('firmwarecatalog', Helper().make_rows(
+        {'name': 'dellbios', 'manufacturer': 'Dell Inc.', 'model': 'PowerEdge R650',
+         'component': 'BIOS', 'version': '1.05', 'imagefile': 'bios.bin'}))
+
+    fp = FirmwarePush()
+    monkeypatch.setattr(fp, 'update_component',
+                        lambda redfish, nodename, item: (True, f'{nodename} {item["component"]} ok'))
+    status, message = fp.update_node({'nodename': 'node001'}, redfish=object())
+    assert status is True
+    assert 'setupbmc' not in message

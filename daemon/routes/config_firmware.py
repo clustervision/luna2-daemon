@@ -154,3 +154,89 @@ def _preview(object_type=None, name=None):
     else:
         response = {'message': response}
     return response, access_code
+
+
+@firmware_blueprint.route("/config/node/<string:name>/_firmwarepush", methods=['POST'])
+@token_required
+@validate_name
+@input_filter(checks=['config:node'], skip=None)
+def config_firmware_push_node(name=None):
+    """
+    Input - Node name, optionally a single component
+    Output - Records the update and hands back the request id.
+    """
+    return _firmwarepush('node', name)
+
+
+@firmware_blueprint.route("/config/group/<string:name>/_firmwarepush", methods=['POST'])
+@token_required
+@validate_name
+@input_filter(checks=['config:group'], skip=None)
+def config_firmware_push_group(name=None):
+    """
+    Input - Group name, optionally a single component
+    Output - The same, for every member the catalogue covers.
+    """
+    return _firmwarepush('group', name)
+
+
+def _firmwarepush(object_type=None, name=None):
+    """
+    Both push routes, which differ only in what they are aimed at.
+
+    The work is recorded and the request id comes back at once: a component takes
+    minutes and a board can need several, so holding the request open would mean
+    holding it for the better part of an hour.
+    """
+    returned = Firmware().push_firmware(object_type=object_type, name=name,
+                                        request_data=request.data)
+    status, response = returned[0], returned[1]
+    if status is True and len(returned) == 3:
+        return {'message': response, 'request_id': returned[2]}, 200
+    return {'message': response}, Helper().get_access_code(status, response)
+
+
+@firmware_blueprint.route("/config/firmwarecatalog/status", methods=['GET'])
+@token_required
+def config_firmware_status():
+    """
+    Input - None
+    Output - What became of every firmware update that was asked for.
+    """
+    return _firmware_status()
+
+
+@firmware_blueprint.route("/config/firmwarecatalog/status/<string:name>", methods=['GET'])
+@token_required
+@validate_name
+def config_firmware_status_node(name=None):
+    """
+    Input - Node name
+    Output - The same, for one node.
+    """
+    return _firmware_status(name=name)
+
+
+@firmware_blueprint.route("/config/firmwarecatalog/status/group/<string:name>", methods=['GET'])
+@token_required
+@validate_name
+def config_firmware_status_group(name=None):
+    """
+    Input - Group name
+    Output - The same, for every node of that group.
+    """
+    return _firmware_status(group=name)
+
+
+def _firmware_status(name=None, group=None):
+    """
+    All three status routes, which differ only in what was asked about.
+    """
+    access_code = 404
+    status, response = Firmware().status(name=name, group=group)
+    if status is True:
+        access_code = 200
+        response = dumps(response)
+    else:
+        response = {'message': response}
+    return response, access_code

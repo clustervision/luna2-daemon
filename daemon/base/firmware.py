@@ -45,7 +45,8 @@ __status__      = 'Development'
 from utils.log import Log
 from utils.database import Database
 from utils.helper import Helper
-from utils.firmware import FirmwareCatalog
+from utils.firmware import FirmwareCatalog, FirmwareRequest, QUEUED
+from utils.status import Status
 
 
 class Firmware():
@@ -180,3 +181,109 @@ class Firmware():
         if not node:
             return False, f'node {name} does not exist'
         return True, [name]
+
+
+    def push_firmware(self, object_type=None, name=None, request_data=None):
+        """
+        This method records that firmware should be updated, and hands back the
+        request to look at afterwards.
+
+        It records and does not flash. A single component takes minutes and a board
+        can need several, so holding an HTTP request open would mean holding it for
+        the better part of an hour. The sweeper picks the rows up.
+
+        What gets recorded is only the nodes that have work: the catalogue decides
+        per node, because a group routinely holds more than one platform, and a node
+        the catalogue does not cover or has never been collected from is reported
+        rather than queued. Refusing the whole instruction because one member of a
+        group has never booted would be the wrong way round.
+        """
+        component = None
+        try:
+            component = request_data['config'][object_type][name].get('component')
+        except (KeyError, TypeError, AttributeError):
+            component = None
+        status, targets = self.targets(object_type=object_type, name=name)
+        if not status:
+            return False, targets
+        answer = FirmwareCatalog().preview(nodenames=targets)
+        # one query for the ids rather than one per node: at four thousand nodes
+        # that is the difference between a query and four thousand of them
+        wanted, current = {}, {}
+        for plan in answer['ready']:
+            differs = [item for item in plan['differs']
+                       if not component or item['component'] == component]
+            (wanted if differs else current)[plan['node']] = plan
+        if not wanted:
+            return False, ('Nothing to update: '
+                           + '; '.join(answer['summary']))
+        names = '", "'.join(sorted(wanted))
+        nodeids = [record['id'] for record in Database().get_record(
+            table='node', where=f'name IN ("{names}")') or []]
+        request_id = Status().gen_request_id()
+        written = FirmwareRequest().record(nodeids=nodeids, component=component,
+                                           request_id=request_id)
+        message = f'firmware update queued for {written} node(s)'
+        if current:
+            message += f', {len(current)} already as the catalogue asks'
+        for reason, nodes in sorted((answer['skipped'] or {}).items()):
+            message += f', {len(nodes)} skipped: {reason}'
+        Status().add_message(request_id, 'luna', message)
+        return True, message, request_id
+
+
+    def status(self, name=None, group=None):
+        """
+        This method answers what became of the firmware updates that were asked for.
+
+        Read from the request rows, so it says what an operator asked and what came
+        of it - not what a node is running now, which is what the preview answers
+        from inventory. The two are different questions and conflating them is how a
+        push that never ran reads as a node that is up to date.
+
+        The newest request per node is the answer: asking again is not collapsed, so
+        a node can carry several, and the one worth showing is the last one.
+        """
+        where = []
+        if name:
+            where.append(f'node.name="{name}"')
+        elif group:
+            # the group is resolved on its own rather than joined on group.name.
+            # 'group' is a reserved SQL word, so a where clause naming it bare is a
+            # syntax error the daemon logs and swallows, leaving the caller an empty
+            # result that reads exactly like a group nobody put a node in
+            record = Database().get_record(table='group', where=f'name = "{group}"')
+            if not record:
+                return False, f'Group {group} is not available'
+            where.append(f"node.groupid=\"{record[0]['id']}\"")
+        records = Database().get_record_join(
+            ['firmwarerequest.id as id', 'firmwarerequest.component as component',
+             'firmwarerequest.request_id as request_id',
+             'firmwarerequest.status as state', 'firmwarerequest.message as message',
+             'firmwarerequest.created as created', 'firmwarerequest.updated as updated',
+             'node.name as nodename', 'node.groupid as groupid'],
+            ['node.id=firmwarerequest.nodeid'],
+            where)
+        if not records:
+            return False, 'No firmware update has been requested'
+        # one lookup for the group names rather than one per node
+        groups = {record['id']: record['name']
+                  for record in Database().get_record(table='group') or []}
+        latest, summary = {}, {}
+        for record in records:
+            previous = latest.get(record['nodename'])
+            if previous and previous['id'] >= record['id']:
+                continue
+            latest[record['nodename']] = record
+        response = {'config': {self.table: {'status': {}, 'summary': {}}}}
+        for nodename, record in latest.items():
+            state = record['state'] or QUEUED
+            response['config'][self.table]['status'][nodename] = {
+                'group': groups.get(record['groupid']) or '',
+                'component': record['component'] or '',
+                'request_id': record['request_id'] or '',
+                'state': state, 'message': record['message'] or '',
+                'since': record['updated'] or record['created'] or ''}
+            summary[state] = summary.get(state, 0) + 1
+        response['config'][self.table]['summary'] = summary
+        return True, response

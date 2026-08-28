@@ -54,7 +54,8 @@ class DBStructure():
                        'nodeinventory', 'nodeinventorydisk', 'nodeinventorygpu',
                        'nodeinventorynic', 'nodeinventoryfirmware', 'hash', 'ownercache',
                        'clustersecrets', 'profile', 'profilefile', 'redfishsetup',
-                       'redfishaccount', 'biosconfig']
+                       'redfishaccount', 'biosconfig', 'firmwarecatalog',
+                       'firmwarerequest']
    
  
     def check_db_tables(self):
@@ -213,6 +214,10 @@ class DBStructure():
             return DATABASE_LAYOUT_redfishaccount
         if table == "biosconfig":
             return DATABASE_LAYOUT_biosconfig
+        if table == "firmwarecatalog":
+            return DATABASE_LAYOUT_firmwarecatalog
+        if table == "firmwarerequest":
+            return DATABASE_LAYOUT_firmwarerequest
         if table == "monitor":
             return DATABASE_LAYOUT_monitor
         if table == "ipaddress":

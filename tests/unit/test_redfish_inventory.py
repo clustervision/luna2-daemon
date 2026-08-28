@@ -42,6 +42,14 @@ class FakeClient():
     def service_root(self):
         return self.get('/redfish/v1/')
 
+    # The real implementations, over this fake's transport. Rewriting them here
+    # would give the fake its own idea of how a singleton is resolved, and a fake
+    # that can disagree with the client proves nothing about the client.
+    from utils.redfish import Redfish
+    singleton = Redfish.singleton
+    update_service = Redfish.update_service
+    del Redfish
+
     def system(self):
         if self.system_data is None:
             return False, 'no system', None

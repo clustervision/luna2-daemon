@@ -48,6 +48,7 @@ from utils.housekeeper import Housekeeper
 from utils.profile_sync import ProfileSync
 from utils.plugin_sync import PluginSync
 from utils.bios_push import BiosPush
+from utils.firmware_push import FirmwarePush
 from utils.service import Service
 from utils.helper import Helper
 from utils.queue import Queue
@@ -59,6 +60,7 @@ from routes.boot_profiles import boot_profiles_blueprint
 from routes.config_bmcsetup import bmcsetup_blueprint
 from routes.config_redfishsetup import redfishsetup_blueprint
 from routes.config_bios import bios_blueprint
+from routes.config_firmware import firmware_blueprint
 from routes.config_cluster import cluster_blueprint
 from routes.config_dns import dns_blueprint
 from routes.config_route import route_blueprint
@@ -182,6 +184,13 @@ def start_background_workers():
     LOGGER.info("Starting BIOS push thread")
     executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
     register_future(executor, executor.submit(BiosPush().push_mother, event))
+    # ---------------- firmware sweep thread -------------------------
+    # its own executor, and not shared with the BIOS push above. A flash holds a
+    # worker for up to forty minutes, so the two sharing one would mean a BIOS
+    # push waiting out a firmware update before it started
+    LOGGER.info("Starting firmware sweep thread")
+    executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
+    register_future(executor, executor.submit(FirmwarePush().sweep_mother, event))
     # ----------------- osimage tasks thread -----------------------
     executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
     register_future(executor, executor.submit(Housekeeper().osimage_tasks_mother, event))
@@ -350,6 +359,7 @@ daemon.register_blueprint(boot_profiles_blueprint)
 daemon.register_blueprint(bmcsetup_blueprint)
 daemon.register_blueprint(redfishsetup_blueprint)
 daemon.register_blueprint(bios_blueprint)
+daemon.register_blueprint(firmware_blueprint)
 daemon.register_blueprint(hash_blueprint)
 daemon.register_blueprint(cluster_blueprint)
 daemon.register_blueprint(dns_blueprint)

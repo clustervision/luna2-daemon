@@ -36,7 +36,6 @@ __email__       = 'antoine.schonewille@clustervision.com'
 __status__      = 'Development'
 
 
-from time import sleep, time
 from json import dumps
 import requests
 import urllib3
@@ -106,6 +105,16 @@ class Redfish():
                     if text and text not in messages:
                         messages.append(str(text))
             if not messages:
+                # A task states its trouble in a plain Messages array rather than in
+                # extended info - a different shape for the same thing, and the one a
+                # firmware task uses. Without this an operator is told 'Redfish HTTP 0'
+                # about a task that says in words what went wrong.
+                for entry in data.get('Messages') or []:
+                    if isinstance(entry, dict):
+                        text = entry.get('Message') or entry.get('MessageId')
+                        if text and text not in messages:
+                            messages.append(str(text))
+            if not messages:
                 text = data.get('error', {}).get('message')
                 if text:
                     messages.append(str(text))
@@ -142,14 +151,20 @@ class Redfish():
     def call(self, method='GET', path='/redfish/v1/', payload=None, headers=None):
         """
         This method will perform one Redfish request and return
-        (status, http_code, data). Data is the parsed body where the service
-        answered JSON, the raw text where it did not, and the failure reason
-        where the call did not succeed.
+        (status, http_code, data, answered). Data is the parsed body where the
+        service answered JSON, the raw text where it did not, and the failure reason
+        where the call did not succeed. Answered is the service's own response
+        headers, empty where the request never got that far.
+
+        The headers are carried because a service that accepts long running work
+        answers 202 and puts the task in Location - and on some boards that is the
+        ONLY place it appears, the body carrying nothing to follow. Dropping them
+        silently loses the one handle on the work.
         """
         if not self.device:
-            return False, 0, 'No BMC address configured for this node'
+            return False, 0, 'No BMC address configured for this node', {}
         if not path:
-            return False, 0, 'No Redfish resource requested'
+            return False, 0, 'No Redfish resource requested', {}
         if not str(path).startswith('/'):
             path = f'/{path}'
         url = f'{self.base}{path}'
@@ -166,7 +181,7 @@ class Redfish():
             )
         except requests.exceptions.RequestException as exp:
             self.logger.debug(f'redfish {method} {url} failed: {exp}')
-            return False, 0, f'{self.device}: {self.transport_reason(exp)}'
+            return False, 0, f'{self.device}: {self.transport_reason(exp)}', {}
 
         data = response.text
         if response.content:
@@ -176,8 +191,9 @@ class Redfish():
                 data = response.text
         if not response.ok:
             self.logger.debug(f'redfish {method} {url} answered {response.status_code}')
-            return False, response.status_code, self.reason(data, response.status_code)
-        return True, response.status_code, data
+            return False, response.status_code, self.reason(data, response.status_code), \
+                dict(response.headers)
+        return True, response.status_code, data, dict(response.headers)
 
 
     def get(self, path='/redfish/v1/', cache=False):
@@ -188,7 +204,7 @@ class Redfish():
         """
         if cache and path in self.cache:
             return True, self.cache[path]
-        status, _, data = self.call(method='GET', path=path)
+        status, _, data, _ = self.call(method='GET', path=path)
         if status and cache:
             self.cache[path] = data
         return status, data
@@ -198,15 +214,28 @@ class Redfish():
         """
         This method will submit a resource or invoke a Redfish action.
         """
-        status, _, data = self.call(method='POST', path=path, payload=payload)
+        status, _, data, _ = self.call(method='POST', path=path, payload=payload)
         return status, data
+
+
+    def action(self, path=None, payload=None):
+        """
+        This method invokes an action and returns (status, data, location).
+
+        Location is where the service said the work went, taken from its header,
+        and it is the reason this exists rather than post() being used: a board can
+        answer 202 with a task in the header and nothing to follow in the body.
+        """
+        status, _, data, answered = self.call(method='POST', path=path, payload=payload)
+        location = (answered or {}).get('Location') or (answered or {}).get('location')
+        return status, data, location
 
 
     def delete(self, path=None):
         """
         This method will remove a Redfish resource.
         """
-        status, _, data = self.call(method='DELETE', path=path)
+        status, _, data, _ = self.call(method='DELETE', path=path)
         return status, data
 
 
@@ -225,7 +254,7 @@ class Redfish():
             etag = current.get('@odata.etag')
             if etag:
                 headers = {'If-Match': etag}
-        status, _, data = self.call(method='PATCH', path=path, payload=payload, headers=headers)
+        status, _, data, _ = self.call(method='PATCH', path=path, payload=payload, headers=headers)
         return status, data
 
 
@@ -292,6 +321,83 @@ class Redfish():
         return True, member_path, member_data
 
 
+    def singleton(self, name=None):
+        """
+        This method will resolve a service-root singleton - a resource the root
+        links to directly rather than through a collection - and return
+        (status, path, data).
+
+        Same answer shape as resource(), so a caller cannot be caught out by which
+        of the two it happened to use: on failure the reason is in the second slot.
+        """
+        status, root = self.service_root()
+        if not status:
+            return False, root, None
+        path = (root.get(name) or {}).get('@odata.id')
+        if not path:
+            return False, f'{name} is missing from the Redfish root', None
+        status, data = self.get(path=path, cache=True)
+        if not status:
+            return False, data, None
+        return True, path, data
+
+
+    def allowable(self, action=None, parameter=None):
+        """
+        This method returns the values a service will accept for one parameter of
+        one action, as a list, empty where it publishes none.
+
+        A board says so in one of two places - inline beside the action as
+        '<Parameter>@Redfish.AllowableValues', or only in the @Redfish.ActionInfo
+        document the action points at - and which one it uses varies by board and
+        by action rather than by vendor. Reading only the inline form is how a
+        board that supports something gets told it does not: measured, on a board
+        that publishes its transfer protocols in ActionInfo and nothing inline.
+        """
+        action = action or {}
+        inline = action.get(f'{parameter}@Redfish.AllowableValues')
+        if isinstance(inline, list) and inline:
+            return list(inline)
+        path = action.get('@Redfish.ActionInfo')
+        if not path:
+            return []
+        status, info = self.get(path=path, cache=True)
+        if not status or not isinstance(info, dict):
+            return []
+        for entry in info.get('Parameters') or []:
+            if isinstance(entry, dict) and entry.get('Name') == parameter:
+                values = entry.get('AllowableValues')
+                return list(values) if isinstance(values, list) else []
+        return []
+
+
+    def parameter_names(self, action=None):
+        """
+        This method returns the parameter names an action declares, as a list.
+
+        The concept an action takes is universal and the name it wears is not:
+        one board names the component to flash 'Targets' and another
+        'UpdateComponent', both declared properly in ActionInfo. Asking the board
+        what it calls things is the only way to build a payload it will accept.
+        """
+        path = (action or {}).get('@Redfish.ActionInfo')
+        if not path:
+            return []
+        status, info = self.get(path=path, cache=True)
+        if not status or not isinstance(info, dict):
+            return []
+        return [entry.get('Name') for entry in info.get('Parameters') or []
+                if isinstance(entry, dict) and entry.get('Name')]
+
+
+    def update_service(self):
+        """
+        This method will resolve the UpdateService, which the root links to
+        directly rather than through a collection.
+        """
+        return self.singleton(name='UpdateService')
+
+
     def system(self):
         """
         This method will resolve the first ComputerSystem.
@@ -311,33 +417,6 @@ class Redfish():
         This method will resolve the first Chassis.
         """
         return self.resource(collection='Chassis')
-
-
-    def poll_task(self, location=None, deadline=60, interval=5):
-        """
-        This method will follow a Redfish task to completion within a bounded
-        deadline, and say plainly that it is still running when the deadline is
-        reached. It is deliberately bounded: the control pipeline holds a worker
-        for the whole call, so anything that genuinely takes minutes belongs in
-        the queue rather than here.
-        """
-        if not location:
-            return False, 'No task location returned by the Redfish service'
-        expires = time() + deadline
-        state = 'Unknown'
-        while time() < expires:
-            status, data = self.get(path=location)
-            if not status:
-                return False, data
-            if not isinstance(data, dict):
-                return True, 'task completed'
-            state = str(data.get('TaskState', 'Unknown'))
-            if state in ['Completed', 'OK']:
-                return True, 'task completed'
-            if state in ['Exception', 'Killed', 'Cancelled', 'Interrupted']:
-                return False, self.reason(data, 0)
-            sleep(interval)
-        return False, f'task still {state} after {deadline} seconds: {location}'
 
 
 # The privileges a Redfish role carries, from the DMTF's predefined roles. Named

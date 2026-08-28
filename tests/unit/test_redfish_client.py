@@ -26,13 +26,16 @@ from utils.redfish import (Redfish, RedfishAccess, LOGIN,
 class FakeResponse():
     """Just enough of a requests response for the client to read."""
 
-    def __init__(self, status_code=200, payload=None, text=None):
+    def __init__(self, status_code=200, payload=None, text=None, headers=None):
         self.status_code = status_code
         self.payload = payload
         if text is None:
             text = dumps(payload) if payload is not None else ''
         self.text = text
         self.content = text.encode()
+        # a real response always has these; a service that accepts long running
+        # work puts the task in Location and the client has to be able to read it
+        self.headers = dict(headers or {})
 
     @property
     def ok(self):
@@ -136,8 +139,9 @@ def test_a_refused_call_reports_the_service_reason_not_the_body():
 
 
 def test_a_missing_device_is_refused_before_a_request_is_built():
-    status, _, message = Redfish(device=None).call()
+    status, _, message, answered = Redfish(device=None).call()
     assert status is False and 'No BMC address' in message
+    assert answered == {}, 'a request that was never made has no response headers'
 
 
 # --- discovery --------------------------------------------------------------
@@ -227,38 +231,6 @@ def test_the_body_reaches_the_service_as_json():
     redfish = client(routes={('POST', '/redfish/v1/act'): FakeResponse(status_code=204)})
     redfish.post(path='/redfish/v1/act', payload={'ResetType': 'On'})
     assert loads(redfish.session.calls[0]['data']) == {'ResetType': 'On'}
-
-
-# --- long running work ------------------------------------------------------
-
-def test_a_finished_task_reports_completion():
-    redfish = client(routes={'/redfish/v1/TaskService/Tasks/1':
-                             FakeResponse(payload={'TaskState': 'Completed'})})
-    assert redfish.poll_task(location='/redfish/v1/TaskService/Tasks/1')[0] is True
-
-
-def test_a_failed_task_reports_the_service_reason():
-    redfish = client(routes={'/redfish/v1/TaskService/Tasks/1': FakeResponse(payload={
-        'TaskState': 'Exception',
-        '@Message.ExtendedInfo': [{'Message': 'image rejected'}]})})
-    status, message = redfish.poll_task(location='/redfish/v1/TaskService/Tasks/1')
-    assert status is False and message == 'image rejected'
-
-
-def test_polling_is_bounded_and_says_so():
-    """
-    The control pipeline holds a worker for the length of the call, so this may
-    never wait indefinitely -- work that genuinely takes minutes belongs in the
-    queue. Reaching the deadline is reported, not swallowed.
-    """
-    redfish = client(routes={'/redfish/v1/TaskService/Tasks/1':
-                             FakeResponse(payload={'TaskState': 'Running'})})
-    status, message = redfish.poll_task(location='/redfish/v1/TaskService/Tasks/1', deadline=0)
-    assert status is False and 'still' in message
-
-
-def test_no_task_location_is_refused_rather_than_polled():
-    assert Redfish(device='192.0.2.10').poll_task(location=None)[0] is False
 
 
 # --- which account a node is reached with -----------------------------------

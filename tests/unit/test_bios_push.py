@@ -137,8 +137,10 @@ class FakeBmc():
                 if name not in self.drop:
                     self.attributes[name] = value
             self.staged = {}
-            return True, 204, {}
-        return False, 404, 'no such action'
+            # four values, like the client: the service's own response headers come
+            # back too, because a board can name a task only in Location
+            return True, 204, {}, {}
+        return False, 404, 'no such action', {}
 
 
 @pytest.fixture(autouse=True)

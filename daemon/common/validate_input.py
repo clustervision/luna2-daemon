@@ -127,6 +127,7 @@ MATCH = {
     'bond_slaves': 'interfacecsv',
     'newredfishsetupname': 'name',
     'biosconfig': 'name',
+    'firmwarecatalog': 'name',
     'newbiosname': 'name',
     'account': 'name',
     'scheme': 'redfishscheme',

@@ -103,7 +103,10 @@ def config_group_disklayout(name=None):
         return {'message': response}, 404
     groups = (response or {}).get('config', {}).get('group', {})
     entry = groups.get(name) or (next(iter(groups.values()), {}) if groups else {})
-    payload = {'config': {'group': {name: {'disklayout': entry.get('disklayout')}}}}
+    payload = {'config': {'group': {name: {
+        'disklayout': entry.get('disklayout'),
+        '_disklayout_source': entry.get('_disklayout_source'),
+    }}}}
     return dumps(payload), 200
 
 

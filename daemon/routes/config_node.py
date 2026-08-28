@@ -99,7 +99,10 @@ def config_node_disklayout(name=None):
         return {'message': response}, 404
     nodes = (response or {}).get('config', {}).get('node', {})
     entry = nodes.get(name) or (next(iter(nodes.values()), {}) if nodes else {})
-    payload = {'config': {'node': {name: {'disklayout': entry.get('disklayout')}}}}
+    payload = {'config': {'node': {name: {
+        'disklayout': entry.get('disklayout'),
+        '_disklayout_source': entry.get('_disklayout_source'),
+    }}}}
     return dumps(payload), 200
 
 

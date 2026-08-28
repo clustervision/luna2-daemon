@@ -87,6 +87,26 @@ def config_group_get(name=None):
     return response, access_code
 
 
+@group_blueprint.route('/config/group/<string:name>/disklayout', methods=['GET'])
+@token_required
+@validate_name
+def config_group_disklayout(name=None):
+    """
+    The group's disklayout on its own, mirroring the node route. Admin-scoped like the
+    rest of the group config: a booting node reads its OWN resolved layout from
+    GET /config/node/<name>/disklayout (which already merges this group value in), so a
+    node never needs the group's. Same config.group.<name>.disklayout shape the full
+    group detail returns.
+    """
+    status, response = Group().get_group(name)
+    if status is not True:
+        return {'message': response}, 404
+    groups = (response or {}).get('config', {}).get('group', {})
+    entry = groups.get(name) or (next(iter(groups.values()), {}) if groups else {})
+    payload = {'config': {'group': {name: {'disklayout': entry.get('disklayout')}}}}
+    return dumps(payload), 200
+
+
 @group_blueprint.route("/config/group/<string:name>/_member", methods=['GET'])
 @token_required
 @validate_name

@@ -64,6 +64,9 @@ INSTALL_DONE = ('install.success', 'install.booted')
 # every five minutes, which is often enough for a node that has just come back and rare
 # enough that it is never the thing doing the work
 RECONCILE_PASSES = 60
+# a persistently unreachable node warns on the first failure and then only every
+# LOG_EVERY-th retry, so an offline node cannot fill the log with one line per cool-off
+LOG_EVERY = 12
 # how long to leave a node alone after a failed attempt. Measured on a live pair: with a
 # fifteen second connect bound and twenty deliveries in flight, a thousand unreachable
 # nodes take about twelve minutes to work through. Without a cool-off the sweep would
@@ -424,8 +427,16 @@ class ProfileSync():
                                      "profile delivery")
                 else:
                     # a failure leaves the node's digest untouched, so it stays out of
-                    # line and the sweep picks it up again once its cool-off has passed
-                    self.logger.warning(f"delivering profiles to {label} failed: {message}")
+                    # line and the sweep picks it up again once its cool-off has passed.
+                    # an unreachable node would otherwise warn every cool-off forever, so
+                    # it is loud the first time and then only every LOG_EVERY-th retry;
+                    # the full detail stays at debug in between.
+                    attempts = Profile().failed_attempts(key)
+                    detail = f"delivering profiles to {label} failed (attempt {attempts}): {message}"
+                    if attempts <= 1 or attempts % LOG_EVERY == 0:
+                        self.logger.warning(detail)
+                    else:
+                        self.logger.debug(detail)
                     Queue().add_task_to_queue(task='sync_profiles', param=key,
                                               subsystem='profile', when=RETRY_DELAY)
                 pipeline.del_message(key)

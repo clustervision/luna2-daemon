@@ -472,6 +472,14 @@ class Profile():
             if not node:
                 return False
             nodeid = node[0]['id']
+        # a node with no profiles assigned and nothing ever delivered is uninvolved:
+        # queueing it only spends a worker chasing an empty delivery, and for an
+        # unreachable node that retry then repeats every cool-off forever. Same test the
+        # reconcile sweep applies in profile_sync.nodes_behind.
+        record = Database().get_record(table='node', where=f'id = "{nodeid}"')
+        delivered = record[0]['profiles_digest'] if record else None
+        if not delivered and not self.merged_profiles(nodeid):
+            return False
         # a deliberate change deserves a fresh attempt and a fresh clock: clearing the
         # outcome lifts the cool-off, and clearing the start means a node we had given up
         # on gets its full day again rather than being written off by an older failure

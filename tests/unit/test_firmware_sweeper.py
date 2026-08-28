@@ -360,6 +360,36 @@ def test_the_reconfigure_note_fires_only_for_a_config_resetting_component():
     assert 'setupbmc' in FirmwarePush().reconfigure_note(['BIOS', 'BMC'])
 
 
+def test_every_bmc_named_component_a_board_offers_earns_the_note():
+    """
+    The published UpdateComponent list of a real AMI board, which is the vocabulary
+    the catalogue has to use - payload() refuses anything the board does not offer.
+    Every entry naming the BMC resets its configuration, so every one of them has to
+    produce the note; an exact-match list caught 'BMC' and missed 'HPM_BMC', which
+    flashes the same chip and locked the operator out silently.
+    """
+    from utils.firmware_push import FirmwarePush
+
+    offered = ['BMC', 'BIOS', 'MB_CPLD', 'BPB_CPLD', 'HPM_BMC', 'HPM_BIOS', 'HPM_SCP']
+    resets = [name for name in offered if 'BMC' in name]
+    assert len(resets) > 1, 'the list this pins has stopped covering more than one spelling'
+    for name in resets:
+        assert 'setupbmc' in FirmwarePush().reconfigure_note([name]), name
+    for name in [name for name in offered if name not in resets]:
+        assert FirmwarePush().reconfigure_note([name]) == '', name
+
+
+def test_a_board_holding_two_bmc_images_earns_the_note_for_either():
+    """
+    A dual-image BMC publishes its firmware as BMCImage1 and BMCImage2. Flashing
+    either resets the same configuration, and neither is the bare string 'BMC'.
+    """
+    from utils.firmware_push import FirmwarePush
+
+    assert 'setupbmc' in FirmwarePush().reconfigure_note(['BMCImage1'])
+    assert 'setupbmc' in FirmwarePush().reconfigure_note(['BMCImage2'])
+
+
 def test_the_note_reports_and_does_not_promise_a_reboot():
     """
     Luna does not reboot a node for a firmware push, so the note must not say it will

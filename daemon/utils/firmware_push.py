@@ -99,16 +99,25 @@ FAILED_STATES = ['Exception', 'Killed', 'Cancelled', 'Interrupted']
 RUNNING_STATES = ['New', 'Starting', 'Running', 'Pending', 'Suspended', 'Stopping']
 
 
-# Components whose flash reinitialises the BMC to factory defaults - default
-# credentials and DHCP. On the AMI boards this was proven against, a BMC flash does
-# exactly that, and the standard Redfish SimpleUpdate carries no way to preserve it.
-# Luna does not fight that: it holds the intended config (the node's bmcsetup and its
-# assigned address) and restores it in-band through setupbmc on the node's next boot
-# through Luna. That restore is an operator action - Luna reports it and does NOT
-# reboot the node, because a firmware push is not licence to drain one. A BMC flash
-# does not reboot the host either, so the note always applies to it; a component whose
-# flash did reboot the node through Luna would have setupbmc run on its own, but none
-# here do.
+# Name fragments marking a component whose flash reinitialises the BMC to factory
+# defaults - default credentials and DHCP. On the AMI boards this was proven against,
+# a BMC flash does exactly that, and the standard Redfish SimpleUpdate carries no way
+# to preserve it. Luna does not fight that: it holds the intended config (the node's
+# bmcsetup and its assigned address) and restores it in-band through setupbmc on the
+# node's next boot through Luna. That restore is an operator action - Luna reports it
+# and does NOT reboot the node, because a firmware push is not licence to drain one. A
+# BMC flash does not reboot the host either, so the note always applies to it; a
+# component whose flash did reboot the node through Luna would have setupbmc run on
+# its own, but none here do.
+#
+# Matched as a fragment of the name rather than as the whole of it, because a board
+# names the same flash in more than one way and we only ever see the list it happens
+# to publish. One AMI board offers both 'BMC' and 'HPM_BMC' in its own UpdateComponent
+# list, and holds its firmware as 'BMCImage1'/'BMCImage2'; each of those resets the
+# same configuration. An exact list learns about a spelling only after somebody is
+# locked out by it. The cost either way is unequal and decides this: a fragment that
+# matches too widely adds a sentence to a success message, one that matches too
+# narrowly leaves an operator with an unreachable BMC and nothing saying why.
 RESETS_BMC_CONFIG = ['BMC']
 
 # How many boards are flashed at once, and the pause between batches. This protects
@@ -573,7 +582,8 @@ class FirmwarePush():
         BMC with the stored credentials, and the config is restored by setupbmc on the
         node's next boot through Luna - which Luna leaves to the operator to trigger.
         """
-        if not any(component in RESETS_BMC_CONFIG for component in components or []):
+        if not any(marker in str(component).upper()
+                   for component in components or [] for marker in RESETS_BMC_CONFIG):
             return ''
         return ('; the BMC was reset to defaults by the flash - boot the node through '
                 'Luna (setupbmc) to restore its address and credentials, until then '

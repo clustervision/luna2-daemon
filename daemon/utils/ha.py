@@ -31,7 +31,6 @@ __email__       = 'antoine.schonewille@clustervision.com'
 __status__      = 'Development'
 
 import re
-import netifaces as ni
 from time import sleep, time
 from random import randint
 from json import dumps,loads
@@ -96,35 +95,25 @@ class HA():
             #    self.logger.info(f"Real me is {real_me}")
 
 
-    def find_me(self,controllers=[],sharedip=None):
-        for interface in ni.interfaces():
-            try:
-                for assingment in ni.ifaddresses(interface)[ni.AF_INET6]:
-                    wip = assingment['addr']
-                    ip, *_ = wip.split('%', 1)+[None]
-                    self.logger.debug(f"Interface {interface} has ip {ip}")
-                    for controller in controllers:
-                        if sharedip and controller['beacon']:
-                            continue
-                        if controller['ipaddress_ipv6'] == ip:
-                            me=controller['hostname']
-                            self.logger.debug(f"My ipaddress is {ip} and i am {me}")
-                            return me, ip
-            except:
-                pass
-            try:
-                for assingment in ni.ifaddresses(interface)[ni.AF_INET]:
-                    ip = assingment['addr']
-                    self.logger.debug(f"Interface {interface} has ip {ip}")
-                    for controller in controllers:
-                        if sharedip and controller['beacon']:
-                            continue
-                        if controller['ipaddress'] == ip:
-                            me=controller['hostname']
-                            self.logger.debug(f"My ipaddress is {ip} and i am {me}")
-                            return me, ip
-            except:
-                pass
+    def find_me(self, controllers=[], sharedip=None):
+        """
+        This method returns which controller this machine is, by matching its own
+        addresses against the controller rows.
+
+        The addresses come from the one walk in Helper rather than a copy here.
+        Which address answers is the first that matches, so the order that walk
+        returns is what decides it - IPv6 before IPv4, interface by interface,
+        exactly as this did when it read the NICs itself.
+        """
+        for family, interface, ip in Helper().local_addresses():
+            column = 'ipaddress_ipv6' if family == 'ipv6' else 'ipaddress'
+            for controller in controllers:
+                if sharedip and controller['beacon']:
+                    continue
+                if controller[column] == ip:
+                    me = controller['hostname']
+                    self.logger.debug(f"My ipaddress is {ip} and i am {me}")
+                    return me, ip
         return None, None
 
 

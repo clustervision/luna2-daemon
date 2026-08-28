@@ -594,48 +594,137 @@ class Helper(object):
             )
             return len(ipaddress_list)
 
-    def get_controller_interfaces_for_networks(self):
-        interfaces={
-            'ipv4': {},
-            'ipv6': {}
-        }
-        networks = Database().get_record(table='network')
-        if networks:
-            for interface in ni.interfaces():
+    def get_controller_addresses_for_networks(self, every=False):
+        """
+        This method returns which of this controller's own addresses sits on each
+        Luna network, as {'ipv4': {network: ip}, 'ipv6': {network: ip}} - or with
+        every=True, {'ipv4': {network: [ip, ...]}, ...} keeping all of them.
+
+        Both forms come off the one walk rather than being separate methods,
+        because two methods answering the same question is what this file was
+        rewritten to stop. A caller that needs one address wants the first; a
+        caller publishing them wants all, since a machine can hold its own address
+        and a floating one on the same network and nothing local can tell which is
+        which.
+
+        The database cannot answer this. A controller carries exactly one ipaddress
+        row and it is the cluster one, so on a machine with an address per network -
+        which is every controller - the rest are known only to the kernel. They are
+        read from the interfaces and matched against the networks Luna already
+        defines, so the answer is in Luna's own terms rather than the operating
+        system's.
+
+        Which of an address's own networks it belongs to is the question two
+        different things need answered: what a BMC can reach the controller on, and
+        which address a per-network DNS zone should publish. Both were getting it
+        somewhere else, and somewhere else was wrong in both cases.
+        """
+        found = {'ipv4': {}, 'ipv6': {}}
+        for family, addresses in self.walk_controller_networks():
+            for network, interface, ip in addresses:
+                if every:
+                    if ip not in found[family].setdefault(network, []):
+                        found[family][network].append(ip)
+                elif network not in found[family]:
+                    found[family][network] = ip
+        return found
+
+
+    # the NIC walk held for a moment, shared by every caller in the process, in the
+    # same shape as owner_cache below. HA() reads this in its constructor and the
+    # daemon builds an HA() per request on several routes, so during a boot storm the
+    # same unchanged interfaces were being enumerated thousands of times a minute.
+    #
+    # Held for a moment and not for the life of the process, deliberately. Everything
+    # asking is asking about NOW: a floating address moves on failover and find_me
+    # decides who is master from it, so a stale answer is wrong exactly when it costs
+    # most. A few seconds collapses a burst into one walk and still notices a
+    # failover well inside one HA poll.
+    address_cache = {}
+    address_cache_ttl = 5
+
+    def local_addresses(self):
+        """
+        This method returns every address this machine holds, as a list of
+        (family, interface, ip). IPv6 comes before IPv4 within each interface.
+
+        This is the only place the daemon reads its own NICs. Everything that
+        needs to know something about this machine's addresses is a match on top
+        of this list - which Luna network an address falls inside, which
+        interface carries it, or which controller row it belongs to - and each of
+        those used to walk the interfaces itself. Three copies of one walk is how
+        the InfiniBand zone came to publish an ethernet address.
+
+        The order is part of the contract, not an accident. A machine can hold
+        several addresses that answer the same question and the caller takes the
+        first, so reordering this silently changes which address they get.
+        """
+        now = time()
+        cached = Helper.address_cache.get('local')
+        if cached and now - cached[1] < Helper.address_cache_ttl:
+            return cached[0]
+        found = []
+        for interface in ni.interfaces():
+            for family, want in (('ipv6', ni.AF_INET6), ('ipv4', ni.AF_INET)):
                 try:
-                    for assingment in ni.ifaddresses(interface)[ni.AF_INET6]:
-                        wip = assingment['addr']
-                        ip, *_ = wip.split('%', 1)+[None]
-                        self.logger.debug(f"Interface {interface} has ip {ip}")
-                        for network in networks:
-                            if not network['network_ipv6']:
-                                continue
-                            elif network['name'] in interfaces['ipv6']:
-                                continue
-                            if Helper().check_ip_range(ip, network['network_ipv6'] + '/' + network['subnet_ipv6']):
-                                self.logger.info(f"Controller IPv6 {ip} on interface {interface} belongs to network {network['name']}")
-                                interfaces['ipv6'][network['name']] = interface
-                                break
-                except:
-                    pass
-                try:
-                    for assingment in ni.ifaddresses(interface)[ni.AF_INET]:
-                        ip = assingment['addr']
-                        self.logger.debug(f"Interface {interface} has ip {ip}")
-                        for network in networks:
-                            if not network['network']:
-                                continue
-                            elif network['name'] in interfaces['ipv4']:
-                                continue
-                            if Helper().check_ip_range(ip, network['network'] + '/' + network['subnet']):
-                                self.logger.info(f"Controller IP {ip} on interface {interface} belongs to network {network['name']}")
-                                interfaces['ipv4'][network['name']] = interface
-                                break
-                except:
-                    pass
+                    assignments = ni.ifaddresses(interface)[want]
+                except (KeyError, ValueError):
+                    continue
+                for assignment in assignments:
+                    # a link-local IPv6 address carries its scope as '%eth0'
+                    ip, *_ = str(assignment.get('addr') or '').split('%', 1) + [None]
+                    if not ip:
+                        continue
+                    self.logger.debug(f"Interface {interface} has ip {ip}")
+                    found.append((family, interface, ip))
+        Helper.address_cache['local'] = (found, now)
+        return found
+
+
+    def walk_controller_networks(self):
+        """
+        This method pairs every local address with the Luna network it falls inside.
+
+        One pass, shared by the callers that want different halves of the answer -
+        the interface name and the address - so a machine's NICs are read once and
+        matched by one rule.
+        """
+        networks = Database().get_record(table='network') or []
+        matched = {'ipv4': [], 'ipv6': []}
+        for family, interface, ip in self.local_addresses():
+            key, subnet = (('network_ipv6', 'subnet_ipv6') if family == 'ipv6'
+                           else ('network', 'subnet'))
             for network in networks:
-                if (network['name'] not in interfaces['ipv6']) and (network['name'] not in interfaces['ipv4']):
-                    self.logger.warning(f"Network {network['name']} has no matching interface on controller")
+                if not network[key] or not network[subnet]:
+                    continue
+                if Helper().check_ip_range(ip, f"{network[key]}/{network[subnet]}"):
+                    matched[family].append((network['name'], interface, ip))
+                    break
+        return [('ipv6', matched['ipv6']), ('ipv4', matched['ipv4'])]
+
+
+    def get_controller_interfaces_for_networks(self):
+        """
+        This method returns which interface carries each Luna network, as
+        {'ipv4': {network: interface}, 'ipv6': {network: interface}}.
+
+        The first interface found for a network wins, which is what it has always
+        done: a machine can carry one network on two NICs and the answer has to be
+        one of them.
+        """
+        interfaces = {'ipv4': {}, 'ipv6': {}}
+        for family, addresses in self.walk_controller_networks():
+            for network, interface, ip in addresses:
+                if network in interfaces[family]:
+                    continue
+                interfaces[family][network] = interface
+                self.logger.info(f"Controller {family} {ip} on interface {interface} "
+                                 f"belongs to network {network}")
+        for network in Database().get_record(table='network') or []:
+            if (network['name'] not in interfaces['ipv6']
+                    and network['name'] not in interfaces['ipv4']):
+                self.logger.warning(
+                    f"Network {network['name']} has no matching interface on controller")
         return interfaces
 
 

@@ -1079,7 +1079,41 @@ class Config(object):
         networks = Database().get_record(table='network')
         if networks:
             dns_allowed_query=['127.0.0.0/8']
- 
+
+        # Every address this machine holds on each network, read from the NICs once
+        # here rather than per zone. The database cannot answer it: a controller
+        # carries exactly one ipaddress row and it is always the cluster one, so
+        # every other address it has is known only to the kernel.
+        #
+        # All of them and not one, because on the active controller an interface
+        # carries its own address and the floating one, nothing local says which is
+        # which, and both are correct answers for the controller. The passive holds
+        # a single address there and publishes that. Neither asks the other: a zone
+        # is built from what this machine can see, which is what makes it work when
+        # the other one is down.
+        my_addresses = Helper().get_controller_addresses_for_networks(every=True)
+
+        # Networks where an operator has published the controller by hand. Those
+        # records arrive with the rest of the DNS table below and must be the only
+        # ones, so discovery stands aside for that zone rather than adding to it.
+        overridden = {row['networkname'] for row in Database().get_record_join(
+            ['dns.host', 'network.name as networkname'],
+            ['dns.networkid=network.id'],
+            [f"dns.host='{controller_name}'"]) or []}
+
+        # Networks that already carry a stored controller address - the cluster one,
+        # normally. Those zones are LEFT EXACTLY AS THEY WERE. A node is handed this
+        # name while it boots, the stored address is the floating one, and the
+        # interface holding it also holds the controller's own address with nothing
+        # local to tell the two apart - so discovering there would turn one record
+        # into two and hand some fraction of a booting cluster the wrong one.
+        # Discovery is for the zones that had no answer of their own, which are the
+        # ones this ticket is about.
+        stored_networks = {row['networkname'] for row in Database().get_record_join(
+            ['ipaddress.ipaddress', 'network.name as networkname'],
+            ['ipaddress.networkid=network.id'],
+            ['ipaddress.tableref="controller"']) or []}
+
         controller_ips = []
         for nwk in networks:
             network_id = nwk['id']
@@ -1110,14 +1144,36 @@ class Config(object):
                 dns_zone_records[networkname]={}
 
                 # we always add a zone record for controller even when we're actually in it. we can override.
-                dns_zone_records[networkname][controller_name]={}
-                dns_zone_records[networkname][controller_name]['key']=controller_name
-                if nwk['network_ipv6'] and controller_ip_ipv6:
-                    dns_zone_records[networkname][controller_name]['type']='AAAA'
-                    dns_zone_records[networkname][controller_name]['value']=controller_ip_ipv6
-                else:
-                    dns_zone_records[networkname][controller_name]['type']='A'
-                    dns_zone_records[networkname][controller_name]['value']=controller_ip
+                # The addresses the controller actually holds on THIS network. Its
+                # stored one is the cluster address, and publishing that in every
+                # zone is what made an InfiniBand lookup answer with an ethernet
+                # address. Where it has nothing on a network the stored address is
+                # still how to reach it, so that is what this falls back to.
+                if networkname not in overridden and networkname not in stored_networks:
+                    found = my_addresses['ipv6'].get(networkname) or []
+                    kind = 'AAAA'
+                    if not (nwk['network_ipv6'] and found):
+                        found = my_addresses['ipv4'].get(networkname) or []
+                        kind = 'A'
+                    if not found:
+                        found = ([controller_ip_ipv6] if (nwk['network_ipv6']
+                                                          and controller_ip_ipv6)
+                                 else [controller_ip])
+                        kind = 'AAAA' if found[0] == controller_ip_ipv6 else 'A'
+                    for number, address in enumerate(found):
+                        # one entry per address, all under the one name. '#' cannot
+                        # appear in a hostname, so these cannot collide with a real
+                        # record arriving later
+                        entry = controller_name if not number else f'{controller_name}#{number}'
+                        dns_zone_records[networkname][entry] = {
+                            'key': controller_name, 'type': kind, 'value': address}
+                elif networkname not in overridden:
+                    dns_zone_records[networkname][controller_name] = {
+                        'key': controller_name,
+                        'type': 'AAAA' if (nwk['network_ipv6'] and controller_ip_ipv6) else 'A',
+                        'value': (controller_ip_ipv6 if (nwk['network_ipv6']
+                                                         and controller_ip_ipv6)
+                                  else controller_ip)}
 
                 authoritative_server=None
                 dns_zone_forwarders[networkname]=[]

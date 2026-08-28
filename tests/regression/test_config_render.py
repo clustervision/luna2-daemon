@@ -810,3 +810,171 @@ def test_get_all_occupied_ips_from_network(config_env, seeded):
     assert len(ips) == 256
     assert NODE_IP in ips
     assert CONTROLLER_IP in ips
+
+
+# --- TRIX-1946: a per-network zone publishes the controller's address ON that network ---
+
+IB_NETWORK = "ib"
+IB_CIDR = "10.139.0.0"
+IB_CONTROLLER_IP = "10.139.1.102"
+
+
+@pytest.fixture
+def two_networks(seeded):
+    """The layout from the report: a cluster network and an InfiniBand one."""
+    from utils.database import Database
+    _insert("network", name=IB_NETWORK, network=IB_CIDR, subnet="16", zone=IB_NETWORK)
+    return dict(seeded,
+                ibid=Database().get_record(table="network", where=f'name="{IB_NETWORK}"')[0]["id"])
+
+
+def _pretend_nics(monkeypatch, addresses):
+    """
+    This machine's addresses, as the shared walk would report them.
+
+    Stubbed at local_addresses rather than at netifaces, because that is the seam
+    every caller now goes through - and a test that stubbed netifaces would keep
+    passing if somebody added a second walk beside it.
+    """
+    from utils.helper import Helper
+    Helper.address_cache.clear()
+    monkeypatch.setattr(Helper, 'local_addresses', lambda self: list(addresses))
+
+
+@pytest.mark.regression
+def test_the_infiniband_zone_publishes_the_infiniband_address(config_env, two_networks,
+                                                              monkeypatch):
+    """
+    The bug: every zone carried the controller's stored address, which is always the
+    cluster one, so an InfiniBand lookup answered with an ethernet address.
+    """
+    from utils.config import Config
+
+    _pretend_nics(monkeypatch, [('ipv4', 'enp2s0f0np0', CONTROLLER_IP),
+                                ('ipv4', 'ibp129s0', IB_CONTROLLER_IP)])
+    assert Config().dns_configure() is True
+
+    ib_zone = open(os.path.join(config_env, f"{IB_NETWORK}.luna.zone"),
+                   encoding="utf-8").read()
+    assert f"controller                    IN A {IB_CONTROLLER_IP}" in ib_zone
+    assert CONTROLLER_IP not in ib_zone
+
+    # and the cluster zone is unchanged by any of it
+    cluster_zone = open(os.path.join(config_env, f"{NETWORK}.luna.zone"),
+                        encoding="utf-8").read()
+    assert f"controller                    IN A {CONTROLLER_IP}" in cluster_zone
+
+
+@pytest.mark.regression
+def test_a_network_the_controller_is_not_on_still_resolves_to_it(config_env, two_networks,
+                                                                 monkeypatch):
+    """
+    Falling back to the stored address is the existing behaviour and stays: the
+    controller is still reachable there, just not on that network.
+    """
+    from utils.config import Config
+
+    _pretend_nics(monkeypatch, [('ipv4', 'enp2s0f0np0', CONTROLLER_IP)])
+    assert Config().dns_configure() is True
+
+    ib_zone = open(os.path.join(config_env, f"{IB_NETWORK}.luna.zone"),
+                   encoding="utf-8").read()
+    assert f"controller                    IN A {CONTROLLER_IP}" in ib_zone
+
+
+@pytest.mark.regression
+def test_every_address_on_that_network_is_published(config_env, two_networks, monkeypatch):
+    """
+    An interface on the active controller carries its own address and the floating
+    one, and nothing local says which is which. Both answer for the controller, so
+    both are published rather than one being guessed at.
+    """
+    from utils.config import Config
+
+    _pretend_nics(monkeypatch, [('ipv4', 'enp2s0f0np0', CONTROLLER_IP),
+                                ('ipv4', 'ibp129s0', IB_CONTROLLER_IP),
+                                ('ipv4', 'ibp129s0', '10.139.1.199')])
+    assert Config().dns_configure() is True
+
+    ib_zone = open(os.path.join(config_env, f"{IB_NETWORK}.luna.zone"),
+                   encoding="utf-8").read()
+    published = [line.split()[-1] for line in ib_zone.splitlines()
+                 if line.startswith('controller ')]
+    assert sorted(published) == [IB_CONTROLLER_IP, '10.139.1.199']
+
+
+@pytest.mark.regression
+def test_the_passive_controller_publishes_what_it_can_see(config_env, two_networks,
+                                                          monkeypatch):
+    """
+    A zone is built from what this machine can see and nothing is asked of the
+    other controller - which is what makes it work when that one is down. The
+    passive holds a single address on the network and publishes that.
+    """
+    from utils.config import Config
+
+    _pretend_nics(monkeypatch, [('ipv4', 'enp2s0f0np0', '10.141.255.253'),
+                                ('ipv4', 'ibp129s0', '10.139.1.103')])
+    assert Config().dns_configure() is True
+
+    ib_zone = open(os.path.join(config_env, f"{IB_NETWORK}.luna.zone"),
+                   encoding="utf-8").read()
+    assert "controller                    IN A 10.139.1.103" in ib_zone
+
+
+@pytest.mark.regression
+def test_a_dns_entry_named_after_the_controller_replaces_what_was_discovered(
+        config_env, two_networks, monkeypatch):
+    """
+    The engineer's override. It has to be the ONLY record, not one more beside the
+    discovered ones - a name answering with both an override and the address it was
+    meant to replace is not an override.
+    """
+    from utils.config import Config
+
+    _insert("dns", host="controller", ipaddress="10.139.9.9",
+            networkid=two_networks["ibid"])
+    _pretend_nics(monkeypatch, [('ipv4', 'enp2s0f0np0', CONTROLLER_IP),
+                                ('ipv4', 'ibp129s0', IB_CONTROLLER_IP),
+                                ('ipv4', 'ibp129s0', '10.139.1.199')])
+    assert Config().dns_configure() is True
+
+    ib_zone = open(os.path.join(config_env, f"{IB_NETWORK}.luna.zone"),
+                   encoding="utf-8").read()
+    published = [line.split()[-1] for line in ib_zone.splitlines()
+                 if line.startswith('controller ')]
+    assert published == ['10.139.9.9']
+
+    # and only for the zone it was written for
+    cluster_zone = open(os.path.join(config_env, f"{NETWORK}.luna.zone"),
+                        encoding="utf-8").read()
+    assert f"controller                    IN A {CONTROLLER_IP}" in cluster_zone
+
+
+@pytest.mark.regression
+def test_a_network_with_a_stored_controller_address_is_left_exactly_alone(
+        config_env, two_networks, monkeypatch):
+    """
+    The cluster zone must not move. A node is handed this name while it boots, and
+    the interface carrying the stored floating address also carries the
+    controller's own - so discovering here would turn one record into two and hand
+    some fraction of a booting cluster the wrong one. Discovery is only for the
+    zones that had no answer of their own.
+    """
+    from utils.config import Config
+
+    _pretend_nics(monkeypatch, [('ipv4', 'enp2s0f0np0', CONTROLLER_IP),
+                                ('ipv4', 'enp2s0f0np0', '10.141.255.252'),
+                                ('ipv4', 'ibp129s0', IB_CONTROLLER_IP)])
+    assert Config().dns_configure() is True
+
+    cluster_zone = open(os.path.join(config_env, f"{NETWORK}.luna.zone"),
+                        encoding="utf-8").read()
+    published = [line.split()[-1] for line in cluster_zone.splitlines()
+                 if line.startswith('controller ')]
+    assert published == [CONTROLLER_IP], 'the cluster zone gained or lost a record'
+
+    # while the network that never had a stored address of its own is fixed
+    ib_zone = open(os.path.join(config_env, f"{IB_NETWORK}.luna.zone"),
+                   encoding="utf-8").read()
+    assert f"controller                    IN A {IB_CONTROLLER_IP}" in ib_zone

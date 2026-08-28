@@ -1368,3 +1368,31 @@ def test_the_action_rule_is_not_imposed_on_every_request_in_the_daemon(db):
     from common.validate_input import MATCH
     assert 'action' not in MATCH, \
         'the shared validator is judging every action field in the daemon again'
+
+
+def test_queue_node_skips_an_uninvolved_node(db):
+    """A node with no assigned profiles and nothing ever delivered (empty
+    profiles_digest) is uninvolved: queue_node must not enqueue it. Otherwise an
+    unreachable node with nothing to deliver is chased every cool-off forever - the
+    flood this guard removes."""
+    from base.profile import Profile
+    from utils.database import Database
+    from utils.helper import Helper
+    nodeid = db.insert('node', Helper().make_rows({'name': 'n-none'}))
+    assert Profile().queue_node(nodeid=nodeid) is False
+    assert not Database().get_record(table='queue', where="task = 'sync_profiles'")
+
+
+def test_queue_node_queues_a_previously_delivered_node(db):
+    """A node that was delivered to before (has a profiles_digest) must still be
+    queued even with no assignment now - it has to be brought back into line to clear
+    those profiles. So the guard skips only the truly uninvolved."""
+    from base.profile import Profile
+    from utils.database import Database
+    from utils.dbstructure import DBStructure
+    from utils.helper import Helper
+    # queue_node clears the outcome row, which lives in the monitor table.
+    Database().create('monitor', DBStructure().get_database_table_structure('monitor'))
+    nodeid = db.insert('node', Helper().make_rows({'name': 'n-had', 'profiles_digest': 'abc123'}))
+    assert Profile().queue_node(nodeid=nodeid) is True
+    assert Database().get_record(table='queue', where="task = 'sync_profiles'")

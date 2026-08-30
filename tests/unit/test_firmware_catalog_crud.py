@@ -136,6 +136,29 @@ def test_a_change_that_names_a_bad_image_file_is_refused_too(db):
     assert row['imagefile'] == 'bmc-7.10.bin'
 
 
+def test_naming_an_image_file_reminds_where_to_stage_it_and_that_the_bmc_must_reach_it(db):
+    """
+    The admin is told at the moment they set the entry up - not by the board, forty
+    minutes into a push, in the words 'file is missing'. The reminder is Luna's own
+    facts: the directory, the port. Whether the firewall allows it is the
+    installer's business, so the note says what must be true, not whether it is.
+    """
+    import common.constant as constant
+    status, response = entry('dellbmc', **COMPLETE)
+    assert status is True
+    assert 'bmc-7.10.bin' in response
+    assert constant.CONSTANT['FILES']['IMAGE_FILES'] in response
+    assert 'port 7051' in response and 'trusted zone' in response
+
+
+def test_a_change_that_sets_the_image_file_carries_the_reminder_and_one_that_does_not_does_not(db):
+    entry('dellbmc', **COMPLETE)
+    status, response = entry('dellbmc', imagefile='bmc-7.20.bin')
+    assert status is True and 'stage bmc-7.20.bin' in response
+    status, response = entry('dellbmc', version='7.20')
+    assert status is True and 'stage' not in response
+
+
 def test_an_existing_entry_can_be_changed_without_resupplying_everything(db):
     """A change is a change, not a re-creation: the required fields are already set."""
     entry('dellbmc', **COMPLETE)

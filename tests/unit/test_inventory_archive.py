@@ -117,3 +117,32 @@ def test_the_scalars_and_children_are_unaffected(sqlite_db):
     assert snapshot['manufacturer'] == SNAPSHOT['manufacturer']
     assert snapshot['disk_count'] == 1
     assert snapshot['nics'][0]['mac'] == 'aa:bb:cc:dd:ee:ff'
+
+
+def test_every_scalar_inventory_column_survives_update_inventory(sqlite_db):
+    """
+    The columns update_inventory persists are a hand-kept list beside the schema,
+    and a column added to the schema but not to the list is dropped silently: the
+    collector reads it from the board, the write path throws it away, and every
+    signal says success. bios_writable shipped exactly that way. Derived from the
+    schema, this learns about the next column for free.
+    """
+    from common.database_layout import DATABASE_LAYOUT_nodeinventory
+    # written by update_inventory itself, or by another writer on purpose:
+    # identity/key columns, the rollups it computes from the child lists, the
+    # archive pair, timestamps, and the match record_match owns
+    derived = {'id', 'nodeid', 'source', 'disk_count', 'disk_total_gb',
+               'gpu_count', 'nic_count', 'inventory', 'hash',
+               'created', 'updated'}
+    scalars = [column['column'] for column in DATABASE_LAYOUT_nodeinventory
+               if column['column'] not in derived]
+    assert 'bios_writable' in scalars, 'the column this test exists for left the schema'
+    Database().insert('node', Helper().make_rows({'name': 'node001'}))
+    inventory = {'source': 'redfish'}
+    inventory.update({column: '7' for column in scalars})
+    status, message = NodeInventory().update_inventory(
+        name='node001', request_data={'config': {'node': {'node001': {'inventory': inventory}}}})
+    assert status is True, message
+    row = Database().get_record(table='nodeinventory', where='source = "redfish"')[0]
+    dropped = [column for column in scalars if str(row.get(column) or '') != '7']
+    assert dropped == [], f'update_inventory silently drops: {dropped}'

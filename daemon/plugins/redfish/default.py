@@ -99,6 +99,20 @@ class Plugin():
         return True, f'uploaded on {uri}'
 
 
+    def multipart(self, component=None, filename=None):
+        """
+        This method returns the extra parts a multipart firmware push must carry
+        for this board, and the name the image is presented under, as
+        ({part name: JSON body}, filename).
+
+        The standard names two parts, UpdateParameters and UpdateFile, and that is
+        all the default sends. A vendor file overrides this where the board demands
+        more: a board that refuses the standard form says so only in its rejection,
+        which discovery cannot read before sending the image.
+        """
+        return {}, filename
+
+
     def probe(self, redfish=None, uri=None):
         """
         This method will read a Redfish resource and hand it back, so core can

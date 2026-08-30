@@ -567,7 +567,9 @@ class FirmwarePush():
             sleep(POLL_INTERVAL)
             waited += POLL_INTERVAL
         if not status:
-            return False, f'{version} (asked for {waited}s after the flash)'
+            # not a verdict: the board never answered, so nothing here says whether
+            # the flash landed. The caller decides what silence means
+            return None, f'{version} (asked for {waited}s after the flash)'
         if str(version).strip() == str(wanted).strip():
             return True, version
         return False, (f'{component} still reports {version or "nothing"} rather '
@@ -808,19 +810,70 @@ class FirmwarePush():
         for item in wanted:
             status, message = self.update_component(redfish=redfish, nodename=nodename,
                                                     item=item)
+            if status is None:
+                # the BMC was reset by its flash; nothing further can be flashed
+                # through it now, and the restore is owed
+                done.append(item['component'])
+                if request.get('id'):
+                    FirmwareRequest().mark_restore(request['id'])
+                return True, f'{message}{self.reconfigure_note(done)}'
             if not status:
                 return False, (f'{message}' if not done
                                else f'{message} (after {", ".join(done)})')
             done.append(item['component'])
-        if self.resets_config(done) and request.get('id'):
-            FirmwareRequest().mark_restore(request['id'])
-        return True, (f'{nodename}: {", ".join(done)} now at the catalogue version'
-                      + self.reconfigure_note(done))
+        # the board answered the stored credentials on its intended address, so
+        # those survived whatever the flash did. Whether the BIOS settings did is
+        # asked of the board now, against what Luna last recorded for the node
+        configname, drift = self.bios_drift(nodename=nodename, redfish=redfish)
+        message = f'{nodename}: {", ".join(done)} now at the catalogue version; BMC configuration retained'
+        if drift:
+            if request.get('id'):
+                FirmwareRequest().mark_restore(request['id'])
+            return True, (f'{message}; {len(drift)} BIOS setting(s) differ from the recorded '
+                          f'configuration {configname} - re-applied when the node next '
+                          'installs through Luna')
+        if configname:
+            message += f' and BIOS settings as recorded ({configname})'
+        return True, message
+
+
+    def bios_drift(self, nodename=None, redfish=None):
+        """
+        This method compares the BIOS settings a node holds now with the
+        configuration Luna last recorded for it, and returns (configuration name,
+        {attribute: value the board now holds}) - (None, {}) where nothing was
+        recorded or the board cannot be read.
+
+        A read, never a write: it only answers whether a flash took the settings
+        with it. Only attributes the board still publishes are compared; one it no
+        longer publishes is a different question from one it changed.
+        """
+        snapshot = Database().get_record(
+            table='nodeinventory',
+            where=f'nodeid IN (SELECT id FROM node WHERE name = "{nodename}") '
+                  'AND source = "redfish"')
+        configname = str((snapshot or [{}])[0].get('bios_config') or '').strip()
+        if not configname:
+            return None, {}
+        record = Database().get_record(table='biosconfig', where=f'name = "{configname}"')
+        if not record:
+            return None, {}
+        from base.bios import Bios
+        from utils.bios_push import BiosPush
+        stored = Bios().stored_attributes(record[0]) or {}
+        status, _, bios = BiosPush().bios_resource(redfish=redfish)
+        if not status:
+            return configname, {}
+        current = (bios or {}).get('Attributes') or {}
+        return configname, {name: current[name] for name, value in stored.items()
+                            if name in current and current[name] != value}
 
 
     def resets_config(self, components=None):
         """
-        This method says whether flashing these components resets the BMC to defaults.
+        This method says whether flashing these components can reset the BMC - the
+        components that carry the BMC firmware itself. Whether a flash DID is
+        decided from the board afterwards, not from this list.
         """
         return any(marker in str(component).upper()
                    for component in components or [] for marker in RESETS_BMC_CONFIG)
@@ -840,7 +893,7 @@ class FirmwarePush():
         """
         if not self.resets_config(components):
             return ''
-        return ('; the BMC was reset to defaults by the flash - boot the node through '
+        return ('; its configuration was reset by the flash - boot the node through '
                 'Luna (setupbmc): its address and credentials are restored in band, '
                 'after which Luna verifies the BMC and re-applies the BIOS configuration '
                 'it last recorded for this node. Until then Luna cannot reach it')
@@ -1030,6 +1083,13 @@ class FirmwarePush():
         # evidence, so both fall through to the one question that is
         status, version = self.verify(redfish=redfish, component=component,
                                       wanted=item['wanted'])
+        if status is None and self.resets_config([component]):
+            # the task completed and then the board stopped answering the stored
+            # credentials: that is what a flash that resets the BMC looks like from
+            # here. Flashed, unverified, configuration presumed gone - the caller
+            # records the restore this leaves owed
+            return None, (f'{label}: flashed (the task completed), but the board no '
+                          f'longer answers the stored credentials - {version}')
         if not status:
             return False, f'{label}: {version}'
         return True, f'{label} is running {version}'

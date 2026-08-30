@@ -24,6 +24,7 @@ import pytest
 from base.monitor import Monitor
 from utils.bios_push import BiosPush
 from utils.database import Database
+from utils.dbstructure import DBStructure
 from utils.helper import Helper
 from utils.queue import Queue
 
@@ -208,3 +209,16 @@ def test_deferring_does_not_break_the_duplicate_collapse(node):
     for _ in range(4):
         Monitor().redfish_on_setupbmc(nodename=node, state='install.setupbmc')
     assert len(queued()) == 1
+
+
+def test_reporting_the_stage_queues_the_restore_a_flash_left_owed(node):
+    """TRIX-2035: the node is holding its install for exactly this, so the restore
+    is queued now, not deferred like the inventory collection."""
+    Database().create('firmwarerequest', DBStructure().get_database_table_structure('firmwarerequest'))
+    Database().insert('firmwarerequest', Helper().make_rows(
+        {'nodeid': 1, 'component': 'BMC', 'request_id': 'req1', 'status': 'done',
+         'restore': 'pending', 'created': 'NOW'}))
+    Monitor().redfish_on_setupbmc(nodename=node, state='install.setupbmc')
+    restores = [row for row in Database().get_record(table='queue') or []
+                if row['task'] == 'restore_after_flash']
+    assert len(restores) == 1 and restores[0]['param'] == node

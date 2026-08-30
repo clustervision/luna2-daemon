@@ -184,6 +184,7 @@ DATABASE_LAYOUT_firmwarerequest = [
 {"column": "request_id",           "datatype": "VARCHAR", "length": "64"},
 {"column": "status",               "datatype": "VARCHAR", "length": "20"},
 {"column": "message",              "datatype": "VARCHAR", "length": "2048"},
+{"column": "restore",              "datatype": "VARCHAR", "length": "2048"},
 {"column": "created",              "datatype": "VARCHAR", "length": "64"},
 {"column": "updated",              "datatype": "VARCHAR", "length": "64"}]
 

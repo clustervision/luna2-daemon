@@ -160,8 +160,17 @@ class Firmware():
         This method is the peer's half of a write to the firmware request table.
         The journal dispatches it as Firmware().replay_request(<write>, <arguments>);
         it applies the write locally and never journals it again.
+
+        The answer is the only trace a lost write leaves here: the journal logs it
+        and removes the entry whatever it says, and the table is then repaired by
+        the hash sweep about an hour later. Until then this controller answers
+        stale - so a write that did not land has to say so, with the keys it was
+        addressed by.
         """
-        FirmwareRequest().apply(name, **(payload or {}))
+        payload = payload or {}
+        if not FirmwareRequest().apply(name, **payload):
+            keys = {key: payload.get(key) for key in ('request_id', 'nodeid')}
+            return False, f'firmware request {name} was not applied here: {keys}'
         return True, f'firmware request {name} replayed'
 
 

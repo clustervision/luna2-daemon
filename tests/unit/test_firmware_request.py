@@ -383,6 +383,29 @@ def test_the_peer_replays_the_write_onto_its_own_row(db, monkeypatch):
     assert (row['request_id'], row['status'], row['restore']) == ('r9', 'queued', RESTORE_PENDING)
 
 
+def test_the_peer_says_so_when_a_replayed_write_lands_on_nothing(db, monkeypatch):
+    """
+    The journal logs whatever the replay answers and drops the entry either way, so
+    the answer is the only trace a lost write leaves on the peer. An update for a
+    row the peer never received matches nothing - and it used to be reported as
+    replayed, so the peer's log said success while it answered stale for the hour
+    until the hash sweep repaired the table.
+    """
+    from base.firmware import Firmware
+    from utils.firmware import RESTORE_PENDING
+    journaled(monkeypatch)
+    nodeid = add_node(db, 'node001', 'Dell Inc.', 'PowerEdge R650')
+    status, message = Firmware().replay_request(
+        'update', {'request_id': 'never-arrived', 'nodeid': nodeid, 'restore': RESTORE_PENDING})
+    assert status is False
+    assert 'never-arrived' in message and str(nodeid) in message
+    assert requests(db) == []
+    status, _ = Firmware().replay_request('record', {'nodeid': nodeid, 'component': 'BMC', 'request_id': 'r9'})
+    assert status is True
+    status, _ = Firmware().replay_request('update', {'request_id': 'r9', 'nodeid': nodeid, 'restore': RESTORE_PENDING})
+    assert status is True
+
+
 def test_a_request_whose_claim_was_refused_is_not_flashed_and_stays_queued(db, monkeypatch):
     """
     The claim travels through the journal, and a controller out of sync is refused.

@@ -338,10 +338,11 @@ class FirmwareRequest():
 
     def apply_update(self, request_id=None, nodeid=None, **columns):
         columns['updated'] = 'NOW'
-        Database().update(self.table, Helper().make_rows(columns),
-                          [{"column": "request_id", "value": request_id},
-                           {"column": "nodeid", "value": nodeid}])
-        return True
+        # the update's own answer, not a constant: it is False when no row matched,
+        # which on the peer means the record this update was for never arrived
+        return bool(Database().update(self.table, Helper().make_rows(columns),
+                                      [{"column": "request_id", "value": request_id},
+                                       {"column": "nodeid", "value": nodeid}]))
 
 
     def identity(self, requestid=None):

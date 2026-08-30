@@ -155,3 +155,46 @@ def test_a_group_that_really_sets_ipxe_kernel_still_deviates(db):
     Group().update_group(name='fresh', request_data={'config': {'group': {
         'fresh': {'ipxe_kernel': 'alternative'}}}})
     assert group_flags('fresh') == (True, True)
+
+
+def dhcp_rebuilds(db):
+    """The DHCP rebuilds queued so far, as (task, parameter, who asked)."""
+    rows = db.get_record(table='queue', where='param = "dhcp"') or []
+    return [(row['task'], row['param'], row['request_id']) for row in rows]
+
+
+def test_changing_a_node_s_ipxe_kernel_rebuilds_dhcp(db, seed):
+    """
+    The iPXE binary is named per host in the DHCP configuration, so the setting
+    reaches the node only once that is rendered again. Stored without a rebuild it
+    is a value in a column and nothing else - the node keeps booting the old one.
+    Clearing it hands the node the group's choice, which is a change just the same.
+    """
+    from base.node import Node
+    status, response = Node().update_node(name='node001', request_data={'config': {'node': {
+        'node001': {'comment': 'nothing the DHCP config renders'}}}})
+    assert status is True, response
+    assert dhcp_rebuilds(db) == []
+    status, response = Node().update_node(name='node001', request_data={'config': {'node': {
+        'node001': {'ipxe_kernel': 'alternative'}}}})
+    assert status is True, response
+    assert dhcp_rebuilds(db) == [('restart', 'dhcp', '__node_update__')]
+    # the queue keeps one copy of a task still waiting; taken, it must be asked again
+    db.delete_row('queue', [{'column': 'param', 'value': 'dhcp'}])
+    status, response = Node().update_node(name='node001', request_data={'config': {'node': {
+        'node001': {'ipxe_kernel': ''}}}})
+    assert status is True, response
+    assert dhcp_rebuilds(db) == [('restart', 'dhcp', '__node_update__')]
+
+
+def test_changing_a_group_s_ipxe_kernel_rebuilds_dhcp(db, seed):
+    """Every node in the group is rendered with the binary the group gives it."""
+    from base.group import Group
+    status, response = Group().update_group(name='compute', request_data={'config': {'group': {
+        'compute': {'comment': 'nothing the DHCP config renders'}}}})
+    assert status is True, response
+    assert dhcp_rebuilds(db) == []
+    status, response = Group().update_group(name='compute', request_data={'config': {'group': {
+        'compute': {'ipxe_kernel': 'alternative'}}}})
+    assert status is True, response
+    assert dhcp_rebuilds(db) == [('restart', 'dhcp', '__group_update__')]

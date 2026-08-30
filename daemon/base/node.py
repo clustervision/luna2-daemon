@@ -738,6 +738,11 @@ class Node():
                 data['ipxe_kernel'] = str(data['ipxe_kernel']).strip().lower()
                 if data['ipxe_kernel'] not in ['default', 'alternative']:
                     return False, 'Invalid request: ipxe_kernel must be default or alternative'
+            if 'ipxe_kernel' in data:
+                # the iPXE binary is named per host in the DHCP configuration, so the
+                # change reaches the node only once that is rendered again - also when
+                # cleared, which hands the node the group's choice
+                needs_rewrite = True
             if 'install_mode' in data and data['install_mode']:
                 data['install_mode'] = str(data['install_mode']).strip().lower()
                 if data['install_mode'] not in ['auto', 'sync', 'full', 'local', 'memboot', 'sanitize', 'legacy']:

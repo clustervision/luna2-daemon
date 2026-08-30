@@ -45,12 +45,19 @@ def db(tmp_path):
 
     original = constant.CONSTANT['DATABASE']['DATABASE']
     constant.CONSTANT['DATABASE']['DATABASE'] = str(tmp_path / 'unit.db')
+    files = tmp_path / 'files'
+    files.mkdir()
+    for name in ('fw.bin',):
+        (files / name).write_bytes(b'firmware')
+    original_files = constant.CONSTANT['FILES']['IMAGE_FILES']
+    constant.CONSTANT['FILES']['IMAGE_FILES'] = str(files)
     database.local_thread.connection = None
     for table in ['node', 'group', 'firmwarecatalog', 'firmwarerequest',
                   'nodeinventory', 'nodeinventoryfirmware', 'status']:
         Database().create(table, DBStructure().get_database_table_structure(table))
     yield Database()
     constant.CONSTANT['DATABASE']['DATABASE'] = original
+    constant.CONSTANT['FILES']['IMAGE_FILES'] = original_files
     database.local_thread.connection = None
 
 
@@ -128,6 +135,25 @@ def test_a_node_the_catalogue_does_not_cover_is_refused_with_the_reason(db):
 
     status, response = push('node', 'node001')
     assert status is False and NO_ENTRY in response
+
+
+def test_a_node_whose_image_is_not_staged_is_refused_and_nothing_is_recorded(db):
+    """
+    Recording the request would put a node in the sweeper's hands with nothing to
+    give the BMC; the failure would then arrive minutes later, per node, in the
+    board's words. Refused here, in ours, with the file named.
+    """
+    nodeid = add_node(db, 'node001', 'Dell Inc.', 'PowerEdge R650')
+    add_running(db, nodeid, 'BMC', '7.00')
+    add_entry(db, 'dellbmc', 'Dell Inc.', 'PowerEdge R650', 'BMC', '7.10')
+    import os
+    import common.constant as constant
+    os.remove(os.path.join(constant.CONSTANT['FILES']['IMAGE_FILES'], 'fw.bin'))
+
+    status, response = push('node', 'node001')
+    assert status is False
+    assert 'fw.bin' in response and 'not staged' in response
+    assert requests(db) == []
 
 
 def test_a_group_is_answered_per_node_and_one_bad_member_does_not_stop_it(db):

@@ -45,6 +45,12 @@ def db(tmp_path):
 
     original = constant.CONSTANT['DATABASE']['DATABASE']
     constant.CONSTANT['DATABASE']['DATABASE'] = str(tmp_path / 'unit.db')
+    files = tmp_path / 'files'
+    files.mkdir()
+    for name in ('bmc.bin', 'bmc-7.10.bin', 'bios.bin',):
+        (files / name).write_bytes(b'firmware')
+    original_files = constant.CONSTANT['FILES']['IMAGE_FILES']
+    constant.CONSTANT['FILES']['IMAGE_FILES'] = str(files)
     database.local_thread.connection = None
     for table in ['node', 'group', 'firmwarecatalog', 'firmwarerequest',
                   'nodeinventory', 'nodeinventoryfirmware', 'queue',
@@ -52,6 +58,7 @@ def db(tmp_path):
         Database().create(table, DBStructure().get_database_table_structure(table))
     yield Database()
     constant.CONSTANT['DATABASE']['DATABASE'] = original
+    constant.CONSTANT['FILES']['IMAGE_FILES'] = original_files
     database.local_thread.connection = None
 
 
@@ -292,6 +299,21 @@ def test_an_entry_with_no_image_file_is_refused_before_anything_is_contacted(db,
 
     status, reason = FirmwarePush().image_url(nodename='node001', imagefile=None)
     assert status is False and 'no image file' in reason
+
+
+def test_an_image_that_is_gone_by_flash_time_is_refused_before_the_bmc_is_asked(db, nodes, monkeypatch):
+    """
+    The dry run checked; the sweep runs later, and the file can have gone in
+    between. The BMC would report 'file is missing' after fetching nothing - this
+    says so first, in the same words the preview uses.
+    """
+    from utils.firmware_push import FirmwarePush
+
+    bmc_on_network(db, nodes['node001'])
+    controller_addresses(monkeypatch, {'ipv4': {'ipmi': '10.148.255.254'}, 'ipv6': {}})
+    status, reason = FirmwarePush().image_url(nodename='node001', imagefile='gone.bin')
+    assert status is False
+    assert 'gone.bin' in reason and 'not staged' in reason
 
 
 def test_the_walk_pairs_every_local_address_with_its_luna_network(db, monkeypatch):

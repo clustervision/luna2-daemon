@@ -38,6 +38,12 @@ from utils.log import Log
 from utils.database import Database
 from common.constant import CONSTANT
 
+# Files with these extensions are handed out by the file server only with a token;
+# anything else is served to whoever can reach the port. OS images wear these and
+# are fetched by an installer that has a token, which is why the line sits where
+# it does. Kept here, where it is enforced, and read by whatever else must agree.
+TOKEN_GATED_EXTENSIONS = ('.gz', '.tar', '.bz', '.bz2', '.torrent')
+
 
 class Authentication():
     """
@@ -192,7 +198,7 @@ class Authentication():
         # (think: PXE+kernel+ramdisk)
         # we do enforce authentication for specific files. .bz2 + .torrent
         # are most likely the images.
-        auth_ext = [".gz", ".tar", ".bz", ".bz2", ".torrent"]
+        auth_ext = TOKEN_GATED_EXTENSIONS
 
         status=False
         http_token, uri, ext = None, None, None

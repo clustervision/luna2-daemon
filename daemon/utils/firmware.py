@@ -57,6 +57,8 @@ __email__       = 'antoine.schonewille@clustervision.com'
 __status__      = 'Development'
 
 
+import os
+from common.constant import CONSTANT
 from utils.log import Log
 from utils.database import Database
 from utils.helper import Helper
@@ -69,6 +71,8 @@ from utils.redfish import RedfishAccess
 NO_INVENTORY = 'no inventory; has this node booted?'
 NO_ENTRY = 'no catalogue entry for this hardware'
 NO_VERSION = 'the catalogue entry names no version'
+NO_IMAGEFILE = 'the catalogue entry names no image file'
+NO_IMAGE = 'image {imagefile} is not staged on this controller'
 
 
 class FirmwareCatalog():
@@ -137,7 +141,25 @@ class FirmwareCatalog():
         return versions
 
 
-    def plan(self, nodename=None):
+    def staged_images(self):
+        """
+        This method returns the names of the image files present on this controller.
+
+        preview() reads it once and hands it to every plan(): a stat per component
+        per node is twelve thousand stats on a four-thousand-node dry run, where one
+        directory listing answers for all of them. A directory that cannot be read
+        stages nothing - every node is then skipped for a named file, which is loud
+        in the right place, and the cause is in the log.
+        """
+        location = CONSTANT['FILES']['IMAGE_FILES']
+        try:
+            return set(os.listdir(location))
+        except (OSError, TypeError) as exp:
+            self.logger.error(f'cannot list the staged images in {location}: {exp}')
+            return set()
+
+
+    def plan(self, nodename=None, staged=None):
         """
         This method returns what a firmware push would do to one node, and why it
         would not, without contacting anything.
@@ -145,7 +167,13 @@ class FirmwareCatalog():
         Returns (status, answer). A False status carries the reason as a string,
         one of the constants above, so a caller fanning out over a group can group
         thousands of nodes by a handful of causes rather than printing a line each.
+
+        An image is needed to flash, not to compare, so it is only looked for where
+        a component would change: a fleet already on the catalogue version stays
+        'as the catalogue asks' after the file has been tidied away.
         """
+        if staged is None:
+            staged = self.staged_images()
         manufacturer, model = self.hardware(nodename=nodename)
         if not manufacturer or not model:
             return False, NO_INVENTORY
@@ -166,6 +194,11 @@ class FirmwareCatalog():
                     'imagefile': entry['imagefile']}
             wanted.append(item)
             if item['running'] != version:
+                imagefile = str(entry['imagefile'] or '').strip()
+                if not imagefile:
+                    return False, NO_IMAGEFILE
+                if imagefile not in staged:
+                    return False, NO_IMAGE.format(imagefile=imagefile)
                 differs.append(item)
         return True, {'node': nodename, 'hardware': (manufacturer, model),
                       'components': wanted, 'differs': differs}
@@ -187,8 +220,9 @@ class FirmwareCatalog():
         wrong way round.
         """
         ready, skipped = [], {}
+        staged = self.staged_images()
         for nodename in nodenames or []:
-            status, answer = self.plan(nodename=nodename)
+            status, answer = self.plan(nodename=nodename, staged=staged)
             if status:
                 ready.append(answer)
             else:

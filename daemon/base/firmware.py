@@ -42,11 +42,13 @@ __email__       = 'antoine.schonewille@clustervision.com'
 __status__      = 'Development'
 
 
+import os
 from utils.log import Log
 from utils.database import Database
 from utils.helper import Helper
 from utils.firmware import FirmwareCatalog, FirmwareRequest, QUEUED
 from utils.status import Status
+from base.authentication import TOKEN_GATED_EXTENSIONS
 
 
 class Firmware():
@@ -112,6 +114,9 @@ class Firmware():
         except (KeyError, TypeError):
             return False, 'Invalid request: Did not receive data'
         data['name'] = name
+        status, reason = self.image_file_is_usable(data.get('imagefile'))
+        if not status:
+            return False, f'Invalid request: {reason}'
         record = Database().get_record(table=self.table, where=f'name = "{name}"')
         if not record:
             missing = [field for field in ('manufacturer', 'model', 'component', 'version')
@@ -129,6 +134,27 @@ class Firmware():
         Database().update(self.table, Helper().make_rows(data),
                           [{"column": "id", "value": record[0]['id']}])
         return True, f'{self.table_cap} {name} updated'
+
+
+    def image_file_is_usable(self, imagefile=None):
+        """
+        This method refuses an image file name that could never be fetched.
+
+        The value is handed to a BMC as '/files/<imagefile>' on the file server, so
+        it has to be a bare name in that directory - and not one the server would
+        ask a token for, because a BMC has none to give. Both would otherwise
+        surface minutes later, per node, as the board's 'file is missing'.
+        """
+        imagefile = str(imagefile or '').strip()
+        if not imagefile:
+            return True, None
+        if os.sep in imagefile or imagefile in ('.', '..'):
+            return False, f'imagefile must be a bare file name in the files directory, not {imagefile}'
+        gated = [ext for ext in TOKEN_GATED_EXTENSIONS if imagefile.endswith(ext)]
+        if gated:
+            return False, (f'imagefile {imagefile} would be served only with a token, '
+                           f'which a BMC cannot present: do not use {gated[0]}')
+        return True, None
 
 
     def delete_firmware(self, name=None):

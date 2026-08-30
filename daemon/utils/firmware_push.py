@@ -83,7 +83,7 @@ from utils.helper import Helper
 from utils.log import Log
 from utils.queue import Queue
 from utils.ha import HA
-from utils.firmware import FirmwareCatalog, FirmwareRequest
+from utils.firmware import FirmwareCatalog, FirmwareRequest, NO_IMAGEFILE, NO_IMAGE
 
 
 # How a board will take an image, in the order we would rather use them.
@@ -461,7 +461,11 @@ class FirmwarePush():
         sweep is master only and the image is staged on the machine running it.
         """
         if not imagefile:
-            return False, 'the catalogue entry names no image file'
+            return False, NO_IMAGEFILE
+        # the dry run looked; the sweep runs later, and the file can have gone in
+        # between. One listing per flash is nothing against the minutes a flash takes
+        if imagefile not in FirmwareCatalog().staged_images():
+            return False, NO_IMAGE.format(imagefile=imagefile)
         bmc = Database().get_record_join(
             ['network.name as network'],
             ['nodeinterface.nodeid=node.id', 'ipaddress.tablerefid=nodeinterface.id',

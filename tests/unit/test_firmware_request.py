@@ -349,3 +349,29 @@ def test_the_peer_replays_the_write_onto_its_own_row(db, monkeypatch):
     Firmware().replay_request('update', {'request_id': 'r9', 'nodeid': nodeid, 'restore': RESTORE_PENDING})
     row = requests(db)[0]
     assert (row['request_id'], row['status'], row['restore']) == ('r9', 'queued', RESTORE_PENDING)
+
+
+def test_a_request_whose_claim_was_refused_is_not_flashed_and_stays_queued(db, monkeypatch):
+    """
+    The claim travels through the journal, and a controller out of sync is refused.
+    Flashing anyway would leave the row queued while the node was flashed, and the
+    next sweep would take it up and flash it again - for as long as the pair stayed
+    out of sync, and against the stored inventory, which still says the old version.
+    So a request that cannot be claimed is left alone, and said so.
+    """
+    from threading import Event
+    from utils.firmware import FirmwareRequest, QUEUED
+    from utils.firmware_push import FirmwarePush
+    nodeid = add_node(db, 'node001', 'Dell Inc.', 'PowerEdge R650')
+    journaled(monkeypatch)
+    assert FirmwareRequest().record(nodeids=[nodeid], component='BMC', request_id='r1') == 1
+    journaled(monkeypatch, answer=(False, 'not in sync'))
+    flashed = []
+    monkeypatch.setattr(FirmwarePush, 'sweep_batches',
+                        lambda self, pipeline, requests=None: flashed.append(pipeline.get_nodes()))
+    stop = Event()
+    stop.set()
+    FirmwarePush().sweep_mother(stop)
+    assert flashed == []
+    row = requests(db)[0]
+    assert (row['request_id'], row['status']) == ('r1', QUEUED)

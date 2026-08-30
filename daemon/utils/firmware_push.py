@@ -652,8 +652,12 @@ class FirmwarePush():
                     requests.reclaim_abandoned()
                     pipeline = Helper().Pipeline()
                     for row in requests.pending():
-                        requests.claim(row['id'])
-                        pipeline.add_nodes({row['id']: row})
+                        if requests.claim(row['id']):
+                            pipeline.add_nodes({row['id']: row})
+                        else:
+                            self.logger.warning(f'firmware request {row["id"]} for '
+                                                f'{row["nodename"]} left queued: the claim '
+                                                'could not be replicated; tried again next sweep')
                     if pipeline.has_nodes():
                         self.sweep_batches(pipeline, requests)
             except Exception as exp:
